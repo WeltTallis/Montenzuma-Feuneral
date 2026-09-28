@@ -639,7 +639,7 @@ const CoffinDetails = () => {
             localStorage.getItem('tenantSlug') ||
             localStorage.getItem('tenant_slug') ||
             'default';
-        navigate(`/tenant/${tenantSlug}/coffins`);
+        navigate(`/${tenantSlug}/coffins`);
     };
 
     if (loading) {
@@ -681,9 +681,9 @@ const CoffinDetails = () => {
         <PageContainer>
             {/* Breadcrumb */}
             <BreadcrumbNav>
-                <Link to={`/tenant/${tenantSlug}/dashboard`}><Home size={14} /> Dashboard</Link>
+                <Link to={`/${tenantSlug}/dashboard`}><Home size={14} /> Dashboard</Link>
                 <span className="separator">/</span>
-                <Link to={`/tenant/${tenantSlug}/coffins`} style={{ color: Colors.brass, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Link to={`/${tenantSlug}/coffins`} style={{ color: Colors.brass, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Package size={14} /> Coffin Inventory
                 </Link>
                 <span className="separator">/</span>
@@ -702,7 +702,7 @@ const CoffinDetails = () => {
                         </HeaderTitle>
                     </div>
                     <HeaderActions>
-                        <Button className="ghost sm" onClick={() => navigate(`/tenant/${tenantSlug}/coffins`)}>
+                        <Button className="ghost sm" onClick={() => navigate(`/${tenantSlug}/coffins`)}>
                             <ArrowLeft size={14} /> Back to Inventory
                         </Button>
                     </HeaderActions>

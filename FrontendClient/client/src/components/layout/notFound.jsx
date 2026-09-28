@@ -172,7 +172,7 @@ const NotFound = () => {
                     <button
                         onClick={() => {
                             const tenantSlug = getTenantSlug();
-                            navigate(`/tenant/${tenantSlug}/all-deceased`);
+                            navigate(`/${tenantSlug}/all-deceased`);
                         }}
                         style={{
                             display: 'flex',

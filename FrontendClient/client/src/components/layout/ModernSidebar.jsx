@@ -595,22 +595,22 @@ const ModernSidebar = ({
     {
       section: 'Main',
       items: [
-        { icon: Truck, label: 'Hearse', path: `/tenant/${tenantSlug}/hearse` },
-        { icon: Users, label: 'Deceased', path: `/tenant/${tenantSlug}/deceased` },
-        { icon: Package, label: 'Coffins', path: `/tenant/${tenantSlug}/coffins` },
-        { icon: Hammer, label: 'Workshop', path: `/tenant/${tenantSlug}/workshop` },
-        { icon: ShoppingCart, label: 'Flower Bookings', path: `/tenant/${tenantSlug}/flowers` },
-        { icon: Box, label: 'Mini Store', path: `/tenant/${tenantSlug}/mini-store` },
-        { icon: LayoutDashboard, label: 'Dashboard', path: `/tenant/${tenantSlug}/dashboard` },
+        { icon: Truck, label: 'Hearse', path: `/${tenantSlug}/hearse` },
+        { icon: Users, label: 'Deceased', path: `/${tenantSlug}/deceased` },
+        { icon: Package, label: 'Coffins', path: `/${tenantSlug}/coffins` },
+        { icon: Hammer, label: 'Workshop', path: `/${tenantSlug}/workshop` },
+        { icon: ShoppingCart, label: 'Flower Bookings', path: `/${tenantSlug}/flowers` },
+        { icon: Box, label: 'Mini Store', path: `/${tenantSlug}/mini-store` },
+        { icon: LayoutDashboard, label: 'Dashboard', path: `/${tenantSlug}/dashboard` },
       ]
     },
     {
       section: 'Extra',
       items: [
-        { icon: Settings, label: 'Settings', path: `/tenant/${tenantSlug}/settings` },
-        { icon: Calendar, label: 'Leaves Dashboard', path: `/tenant/${tenantSlug}/leaves` },
-        { icon: FileText, label: 'Apply Leave', path: `/tenant/${tenantSlug}/leaves/apply` },
-        { icon: LifeBuoy, label: 'Support', path: `/tenant/${tenantSlug}/support` },
+        { icon: Settings, label: 'Settings', path: `/${tenantSlug}/settings` },
+        { icon: Calendar, label: 'Leaves Dashboard', path: `/${tenantSlug}/leaves` },
+        { icon: FileText, label: 'Apply Leave', path: `/${tenantSlug}/leaves/apply` },
+        { icon: LifeBuoy, label: 'Support', path: `/${tenantSlug}/support` },
       ]
     }
   ];
@@ -620,7 +620,13 @@ const ModernSidebar = ({
     (items || []).map((section) => ({
       ...section,
       items: (section.items || []).filter((item) => {
-        const hiddenPaths = ['/tenant/' + tenantSlug + '/dashboard', '/tenant/' + tenantSlug + '/analytics', '/tenant/' + tenantSlug + '/workshop', '/dashboard', '/analytics', '/workshop'];
+        // Root-level twins plus both the new (/{slug}/…) and the legacy
+        // (/tenant/{slug}/…) spellings of the tenant-scoped paths.
+        const hiddenPaths = [
+          `/${tenantSlug}/dashboard`, `/${tenantSlug}/analytics`, `/${tenantSlug}/workshop`,
+          `/tenant/${tenantSlug}/dashboard`, `/tenant/${tenantSlug}/analytics`, `/tenant/${tenantSlug}/workshop`,
+          '/dashboard', '/analytics', '/workshop',
+        ];
         const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop', 'Chemical', 'Chemicals'];
         const itemPath = item.path || '';
         return !(hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop') || itemPath.includes('/chemical') || itemPath.includes('/chemicals'));
@@ -665,7 +671,7 @@ const ModernSidebar = ({
   const handleSwitchToTab = () => {
     const slug = getTenantSlug();
     console.log('[ModernSidebar] Switching to tab with slug:', slug);
-    navigate(`/tenant/${slug}/receptionist`, { replace: true });
+    navigate(`/${slug}/receptionist`, { replace: true });
   };
 
   const toggleSidebar = useCallback(() => {

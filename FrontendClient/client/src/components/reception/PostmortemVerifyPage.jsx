@@ -523,7 +523,7 @@ const PostmortemVerifyPage = () => {
         });
         sessionStorage.setItem(`postmortem_session_${sessionId}`, JSON.stringify(sessionData));
 
-        navigate(`/tenant/${slugLocal}/postmortem/results/${sessionId}`, {
+        navigate(`/${slugLocal}/postmortem/results/${sessionId}`, {
           state: sessionData
         });
       } else {

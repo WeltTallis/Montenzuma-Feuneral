@@ -40,7 +40,7 @@ const Construction404 = () => {
   const handleGoBack = () => navigate(-1);
   const handleGoHome = () => {
     const tenantSlug = getTenantSlug();
-    navigate(`/tenant/${tenantSlug}/all-deceased`);
+    navigate(`/${tenantSlug}/all-deceased`);
   };
 
   const styles = `

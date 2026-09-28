@@ -21,7 +21,7 @@ export default function SingleTenantLayout({ children }) {
 
     const handleNavigation = (path) => {
         // Navigate to full tenant path
-        const fullPath = tenantSlug ? `/tenant/${tenantSlug}${path}` : path;
+        const fullPath = tenantSlug ? `/${tenantSlug}${path}` : path;
         navigate(fullPath);
         setIsOpen(false);
     };

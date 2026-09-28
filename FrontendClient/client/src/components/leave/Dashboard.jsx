@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   HR LEAVE DASHBOARD  (route: /tenant/:slug/leaves)
+   HR LEAVE DASHBOARD  (route: /<slug>/leaves)
 
    Layout — single top navigation bar (no title line):
 

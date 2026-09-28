@@ -856,14 +856,14 @@ const DriverPortal = () => {
                         loadingL ? <Loading text="Loading leaves..." /> :
                             leaves.length === 0 ? (
                                 <Empty icon={Calendar} title="No Leaves" sub="No leave requests submitted yet." extra={
-                                    <ApplyLeaveBtn onClick={() => navigate(`/tenant/${slug}/leaves/apply`)}>
+                                    <ApplyLeaveBtn onClick={() => navigate(`/${slug}/leaves/apply`)}>
                                         <Plus size={14} /> Apply for Leave
                                     </ApplyLeaveBtn>
                                 } />
                             ) : (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                     <span style={{ fontSize: '.8rem', fontWeight: 600, color: T.textMute, fontFamily: "'Inter',sans-serif" }}>Your Leave Requests</span>
-                                    <ApplyLeaveBtn onClick={() => navigate(`/tenant/${slug}/leaves/apply`)}>
+                                    <ApplyLeaveBtn onClick={() => navigate(`/${slug}/leaves/apply`)}>
                                         <Plus size={14} /> Apply for Leave
                                     </ApplyLeaveBtn>
                                 </div>

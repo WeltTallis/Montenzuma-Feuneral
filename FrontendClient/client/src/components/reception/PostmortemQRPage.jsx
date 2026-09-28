@@ -11,7 +11,7 @@ const PostmortemQRPage = () => {
   const [copied, setCopied] = useState(false);
 
   const tenantSlug = slug || localStorage.getItem('tenantSlug') || 'system_shared';
-  const verifyUrl = `${window.location.origin}/tenant/${tenantSlug}/postmortem-verify`;
+  const verifyUrl = `${window.location.origin}/${tenantSlug}/postmortem-verify`;
 
   const handleCopy = async () => {
     try {

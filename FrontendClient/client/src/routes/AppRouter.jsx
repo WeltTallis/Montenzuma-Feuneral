@@ -284,8 +284,9 @@ const TenantResolver = () => {
 
   useEffect(() => {
     if (slug && (slug === 'dashboard' || slug === 'default' || slug === 'undefined' || slug === 'null') && resolvedSlug && resolvedSlug !== slug) {
-      const restPath = location.pathname.replace(`/tenant/${slug}`, '') || '/all-deceased';
-      navigate(`/tenant/${resolvedSlug}${restPath}`, { replace: true });
+      // Strip the placeholder tenant segment (legacy /tenant/<bad> or /<bad>).
+      const restPath = location.pathname.replace(/^\/tenant\/[^/]+/, '').replace(/^\/[^/]+/, '') || '/all-deceased';
+      navigate(`/${resolvedSlug}${restPath}`, { replace: true });
     }
   }, [slug, resolvedSlug, location.pathname, navigate]);
 
@@ -432,7 +433,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   // the floating overlay would cover page content or simply isn't wanted:
   // body intake form, body release form, drivers portal, the dashboard (and
   // its analytics twin), the reception portal and the flower screens.
-  // The matcher strips /tenant/:slug first, so a tenant slug that happens to
+  // The matcher strips the tenant slug first, so a tenant slug that happens to
   // be called "dashboard" can never hide the bell by accident.
   const showNotificationBell = shouldShowNotificationBell(location.pathname);
 
@@ -648,7 +649,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><AdminSupportDashboard /></Layout>
         } />
 
-        {/* System Admin Dashboard - role-guarded, reachable under /tenant/:slug/system-admin */}
+        {/* System Admin Dashboard - role-guarded, reachable under /<slug>/system-admin */}
         <Route path="system-admin" element={<SystemAdminRoute />} />
 
         {/* 404 */}
@@ -667,7 +668,7 @@ const SystemAdminRoute = () => {
 
   // Only allow systemadmin role (checks AuthContext user AND persisted storage)
   if (user?.role !== 'systemadmin' && !isAdminUser()) {
-    return <Navigate to={`/tenant/${tenantSlug}/deceased`} replace />;
+    return <Navigate to={`/${tenantSlug}/deceased`} replace />;
   }
 
   // Render the system admin dashboard
@@ -686,7 +687,7 @@ const DashboardRoleGate = ({ tenantSlug, tenantData }) => {
     return <Navigate to="/system-admin" replace />;
   }
   if (getStoredUserRole() === 'driver') {
-    return <Navigate to={`/tenant/${tenantSlug}/driver-portal`} replace />;
+    return <Navigate to={`/${tenantSlug}/driver-portal`} replace />;
   }
   return <DashboardPage tenantSlug={tenantSlug} tenantData={tenantData} />;
 };
@@ -694,13 +695,13 @@ const DashboardRoleGate = ({ tenantSlug, tenantData }) => {
 // Tenant root redirect: keep drivers inside the driver portal only.
 const TenantRootRedirect = ({ slug }) => {
   if (getStoredUserRole() === 'driver') {
-    return <Navigate to={`/tenant/${slug}/driver-portal`} replace />;
+    return <Navigate to={`/${slug}/driver-portal`} replace />;
   }
   return <Navigate to="deceased" replace />;
 };
 
-/* /tenant/:slug/deceased          → deceased LIST
-   /tenant/:slug/deceased?id=XXX   → deceased DETAILS for XXX (query-param URL format) */
+/* /<slug>/deceased          → deceased LIST
+   /<slug>/deceased?id=XXX   → deceased DETAILS for XXX (query-param URL format) */
 const DeceasedRouteSwitch = ({ tenantData, slug }) => {
   const [searchParams] = useSearchParams();
   const hasId = !!searchParams.get('id');
@@ -719,7 +720,7 @@ const TenantDeceasedIdRedirect = () => {
 
   useEffect(() => {
     const slug = slugParam || localStorage.getItem('tenantSlug') || '';
-    navigate(`/tenant/${slug}/deceased?id=${encodeURIComponent(id || '')}`, { replace: true });
+    navigate(`/${slug}/deceased?id=${encodeURIComponent(id || '')}`, { replace: true });
   }, [navigate, slugParam, id]);
 
   return (
@@ -738,7 +739,7 @@ const LegacyDeceasedRedirect = () => {
 
   useEffect(() => {
     const tenantSlug = localStorage.getItem('tenantSlug') || '';
-    navigate(`/tenant/${tenantSlug}/deceased?id=${encodeURIComponent(id || '')}`, { replace: true });
+    navigate(`/${tenantSlug}/deceased?id=${encodeURIComponent(id || '')}`, { replace: true });
   }, [navigate, id]);
 
   return (
@@ -751,18 +752,47 @@ const LegacyDeceasedRedirect = () => {
   );
 };
 
+/* ── Legacy URL compatibility ────────────────────────────────────────────
+   Tenant pages used to live at /tenant/<slug>/<page>; they now live at
+   /<slug>/<page>. Every old link — a bookmark, an installed-PWA start URL, a
+   postmortem QR code, a printed intake sheet — is redirected to the new URL
+   while keeping the rest of the path, query string and hash intact. */
+const LegacyTenantRedirect = () => {
+  const { slug } = useParams();
+  const location = useLocation();
+  const rest = location.pathname.replace(/^\/tenant\/[^/]+/, '');
+  return <Navigate to={`/${slug}${rest}${location.search}${location.hash}`} replace />;
+};
+
 const DashboardRedirect = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || null;
+  const { user: ctxUser } = useAuth();
+  // `state.from` is set by ProtectedRoute; `?open=` lets the PWA shortcuts
+  // (manifest.json) deep-link into a tenant page without knowing the slug.
+  const from = location.state?.from?.pathname
+    || new URLSearchParams(location.search).get('open')
+    || null;
   useEffect(() => {
     const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : {};
+    let storedUser = {};
+    try {
+      storedUser = userStr ? JSON.parse(userStr) : {};
+    } catch (e) {
+      console.error('Error parsing user', e);
+      storedUser = {};
+    }
+    // Fall back to the AuthContext identity (which is rebuilt from the JWT
+    // claims when the stored `user` blob is missing) so role checks still work
+    // for a recovered session.
+    const user = Object.keys(storedUser).length ? storedUser : (ctxUser || {});
 
-    const urlSlug = location.pathname.match(/\/tenant\/([^\/]+)/)?.[1];
+    // The tenant slug is either the first path segment (/acme/deceased) or,
+    // for legacy links, the second one (/tenant/acme/deceased).
+    const parts = location.pathname.split('/').filter(Boolean);
+    const urlSlug = parts[0] === 'tenant' ? parts[1] : parts[0];
     const storedTenantSlug = localStorage.getItem('tenantSlug');
-    let userTenantSlug = '';
-    if (userStr) { try { const u = JSON.parse(userStr); userTenantSlug = u.tenantSlug || u.branchDbName || u.branchSlug || u.tenant_slug || u.parentTenantSlug || ''; } catch (e) { console.error('Error parsing user', e); } }
+    const userTenantSlug = user.tenantSlug || user.branchDbName || user.branchSlug || user.tenant_slug || user.parentTenantSlug || '';
 
     let finalSlug = (urlSlug && urlSlug !== 'default' && urlSlug !== 'dashboard') ? urlSlug : (storedTenantSlug || userTenantSlug || '');
 
@@ -800,15 +830,15 @@ const DashboardRedirect = () => {
     }
 
     if (user?.role === 'driver') {
-      navigate(`/tenant/${finalSlug}/driver-portal`, { replace: true });
+      navigate(`/${finalSlug}/driver-portal`, { replace: true });
       return;
     }
 
     // Default landing after login / app entry is ALWAYS the deceased
     // register — never the dashboard. Resume a deep link only when the
     // router handed us a specific `from` destination.
-    if (from && from !== '/login' && from !== '/') { navigate(`/tenant/${finalSlug}${from}`, { replace: true }); } else { navigate(`/tenant/${finalSlug}/deceased`, { replace: true }); }
-  }, [navigate, location]);
+    if (from && from !== '/login' && from !== '/') { navigate(`/${finalSlug}${from}`, { replace: true }); } else { navigate(`/${finalSlug}/deceased`, { replace: true }); }
+  }, [navigate, location, ctxUser]);
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#6B7280' }}>
       <div style={{ textAlign: 'center' }}>
@@ -911,18 +941,32 @@ const AppRouter = () => (
       <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
       <Route path="/dashboard/*" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
 
-      {/* Public Postmortem Routes */}
-      <Route path="/tenant/:slug/postmortem-qr" element={<PostmortemQRPage />} />
-      <Route path="/tenant/:slug/postmortem-request" element={<PostmortemRequestForm />} />
-      <Route path="/tenant/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
-      <Route path="/tenant/:slug/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
-      <Route path="/tenant/:slug/release-form/:id" element={<ReleaseFormPage />} />
+      {/* Public Postmortem / release routes — slug-first URLs (/<slug>/...) */}
+      <Route path="/:slug/postmortem-qr" element={<PostmortemQRPage />} />
+      <Route path="/:slug/postmortem-request" element={<PostmortemRequestForm />} />
+      <Route path="/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
+      <Route path="/:slug/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
+      <Route path="/:slug/release-form/:id" element={<ReleaseFormPage />} />
       <Route path="/postmortem/verify" element={<PostmortemVerifyPage />} />
       <Route path="/postmortem/request" element={<PostmortemRequestForm />} />
       <Route path="/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
 
-      {/* Main Tenant Route - All authenticated routes */}
-      <Route path="/tenant/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />
+      {/* Public marketing namespaces. Unknown paths inside them must keep
+          falling back to the landing page (like the final `*` route) instead of
+          being swallowed by the dynamic /<slug>/* tenant route below. */}
+      <Route path="/solutions/*" element={<LandingPage />} />
+      <Route path="/blog/*" element={<LandingPage />} />
+      <Route path="/compare/*" element={<LandingPage />} />
+      <Route path="/locations/*" element={<LandingPage />} />
+      <Route path="/resources/*" element={<LandingPage />} />
+      <Route path="/preview/*" element={<LandingPage />} />
+
+      {/* Legacy /tenant/<slug>/... URLs → the slug-first equivalent. */}
+      <Route path="/tenant" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/tenant/*" element={<LegacyTenantRedirect />} />
+
+      {/* Main Tenant Route - All authenticated routes (slug-first: /<slug>/…) */}
+      <Route path="/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />
 
       {/* Mini Store - standalone mini POS / stock module */}
       <Route path="/store" element={<StoreDashboard />} />

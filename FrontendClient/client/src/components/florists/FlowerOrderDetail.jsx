@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { getTenantSlug } from '../../utils/globalAuth';
 import './FlowerOrderDetail.css';
+
+// Tenant routes are slug-first now (/<slug>/flowers), so build the back-link
+// from the signed-in tenant instead of the old dead /tenant/flowers path.
+const flowersPath = () => {
+    const slug = getTenantSlug();
+    return slug ? `/${slug}/flowers` : '/flowers';
+};
 
 const FlowerOrderDetail = () => {
     const navigate = useNavigate();
@@ -33,11 +41,11 @@ const FlowerOrderDetail = () => {
 
     const handleSave = () => {
         alert('Booking saved successfully!');
-        navigate('/tenant/flowers');
+        navigate(flowersPath());
     };
 
     const handleBack = () => {
-        navigate('/tenant/flowers');
+        navigate(flowersPath());
     };
 
     if (loading) {

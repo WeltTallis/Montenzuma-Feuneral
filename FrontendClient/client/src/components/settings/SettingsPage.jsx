@@ -131,7 +131,7 @@ export default function SettingsPage() {
         const push = (v) => { if (v && !seen.has(v)) { seen.add(v); } };
         // Parent tenant slug first — authoritative tenant for branches/users/settings.
         push(parentSlug);
-        // Then the URL slug, which is the canonical /tenant/:slug route. For a
+        // Then the URL slug, which is the canonical /<slug> route. For a
         // single-tenant (no parent) this IS the tenant slug.
         push(urlSlug);
         // Then the current user's own tenant slug / stored tenant slug, restricted
@@ -249,10 +249,10 @@ export default function SettingsPage() {
             const user = resolveStoredUser();
 
             // Redirect drivers to driver portal (tenant-scoped route).
-            // The driver-portal page only exists under /tenant/:slug/driver-portal.
+            // The driver-portal page only exists under /<slug>/driver-portal.
             if (user.role === 'driver') {
                 const navSlug = user.branchSlug || user.parentTenantSlug || user.tenantSlug || tenantSlug || urlSlug;
-                navigate(`/tenant/${navSlug}/driver-portal`);
+                navigate(`/${navSlug}/driver-portal`);
                 return;
             }
         }

@@ -67,7 +67,7 @@ export default function LoginPage() {
       // Drivers ONLY ever land on the driver portal dashboard.
       const dest = storedUser.role === 'driver' ? 'driver-portal' : 'deceased';
       if (slugOk) {
-        navigate(`/tenant/${slug}/${dest}`);
+        navigate(`/${slug}/${dest}`);
       } else {
         // The token is fine but nothing says which tenant it belongs to:
         // /dashboard runs its recovery path (and clears a truly dead session).
@@ -145,7 +145,7 @@ export default function LoginPage() {
             // Drivers ONLY ever land on the driver portal dashboard — never the
             // general admin dashboard. All other roles go straight to deceased records.
             const dest = userData.role === 'driver' ? 'driver-portal' : 'deceased';
-            navigate(`/tenant/${navSlug}/${dest}`, { replace: true });
+            navigate(`/${navSlug}/${dest}`, { replace: true });
           }, 400);
         } else {
           throw new Error('No tenant information available');

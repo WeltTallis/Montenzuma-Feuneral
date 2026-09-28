@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { DECEASED_CHANGED_EVENT } from '../../../api/dashboardDataApi';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 import {
@@ -487,10 +488,13 @@ const DeceasedListPage = () => {
   const [unavailableMessage, setUnavailableMessage] = useState('');
   const exportCleanupRef = useRef(null);
 
-  // ─── New Admission — uses tenant slug ───
+  // ─── New Admission — the tenant-scoped intake form (/<slug>/deceased/register).
+  // This used to point at /tenant/<slug>/register, a path that does not exist,
+  // so the button dumped every user on the 404/landing page.
   const handleNewAdmission = useCallback(() => {
-    const slug = getTenantSlug() || 'default';
-    navigate(`/tenant/${slug}/register`);
+    const slug = getTenantSlug() || localStorage.getItem('tenantSlug') || '';
+    if (!slug) { showToast.error('Tenant not resolved. Please sign in again.'); return; }
+    navigate(`/${slug}/deceased/register`);
   }, [navigate]);
 
   const fetchDeceased = useCallback(async () => {
@@ -500,11 +504,15 @@ const DeceasedListPage = () => {
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
       const headers = { 'Authorization': `Bearer ${token}`, 'x-tenant-slug': tenantSlug };
       const collected = []; let pageNum = 1; const pageSize = 200; let totalPages = 2;
+      // `_t` + no-store: never let the browser (or an intermediary) answer this
+      // read with a cached page — a just-registered body must appear here the
+      // moment the list loads.
+      const bust = Date.now();
       while (pageNum <= totalPages && pageNum <= 12) {
-        const params = { year: calYear, page: pageNum, limit: pageSize };
+        const params = { year: calYear, page: pageNum, limit: pageSize, _t: bust };
         if (search) params.search = search;
         if (setSearchParamsRef.current) { setSearchParamsRef.current({ year: calYear, page: pageNum, limit: pageSize }, { replace: true }); }
-        const res = await axios.get(`${BASE_URL}/deceased-all`, { params, headers });
+        const res = await axios.get(`${BASE_URL}/deceased-all`, { params, headers, cache: 'no-store' });
         const data = res.data?.data || res.data || [];
         const rows = Array.isArray(data) ? data : [];
         collected.push(...rows);
@@ -522,6 +530,26 @@ const DeceasedListPage = () => {
   }, [search, calYear]);
 
   useEffect(() => { fetchDeceased(); }, [fetchDeceased]);
+
+  // ─── Live freshness ───
+  // 1) A register/release anywhere in the app fires DECEASED_CHANGED_EVENT.
+  // 2) Returning to a tab that has been in the background re-reads the list.
+  // Both keep this page honest without hammering the API on every focus.
+  useEffect(() => {
+    const refreshedAtRef = { current: Date.now() };
+    const refresh = () => { refreshedAtRef.current = Date.now(); fetchDeceased(); };
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - refreshedAtRef.current < 30 * 1000) return;
+      refresh();
+    };
+    window.addEventListener(DECEASED_CHANGED_EVENT, refresh);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener(DECEASED_CHANGED_EVENT, refresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [fetchDeceased]);
 
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
@@ -561,7 +589,7 @@ const DeceasedListPage = () => {
 
   const getInitials = (name) => { if (!name) return 'NA'; return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(); };
   const getDaysInMorgue = (admittedDate) => { if (!admittedDate) return 0; const days = daysFromNow(admittedDate); return days != null ? Math.abs(days) : 0; };
-  const openProfile = (id) => { const tenantSlug = getTenantSlug(); navigate(`/tenant/${tenantSlug}/deceased?id=${encodeURIComponent(id)}`); };
+  const openProfile = (id) => { const tenantSlug = getTenantSlug(); navigate(`/${tenantSlug}/deceased?id=${encodeURIComponent(id)}`); };
 
   // ─── Export Functions ───
   const filenameFromDisposition = (response, fallback) => { const disp = String(response?.headers?.['content-disposition'] || ''); const match = disp.match(/filename="?([^";]+)"?/i); return match ? match[1] : fallback; };

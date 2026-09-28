@@ -209,7 +209,7 @@ const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0 }) => {
       const user = userStr ? JSON.parse(userStr) : {};
       slug = user?.parentTenantSlug || user?.tenantSlug || slug;
     }
-    navigate(`/tenant/${slug}/release-form/${deceasedId}`, {
+    navigate(`/${slug}/release-form/${deceasedId}`, {
       state: { deceasedData: deceased }
     });
   };

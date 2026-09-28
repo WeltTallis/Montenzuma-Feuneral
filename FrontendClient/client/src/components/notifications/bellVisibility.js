@@ -15,7 +15,7 @@
  *   • /flower-samples, /flowers/new — public-facing flower screens
  *
  * Entries are tenant-relative paths WITHOUT a leading tenant segment, e.g.
- * "/dashboard" matches /tenant/acme/dashboard but never hides the bell because
+ * "/dashboard" matches /acme/dashboard but never hides the bell because
  * the tenant slug itself happens to be called "dashboard".
  */
 export const BELL_HIDDEN_ROUTES = [
@@ -29,10 +29,26 @@ export const BELL_HIDDEN_ROUTES = [
   '/flowers/new', // flower booking form
 ];
 
-/** Strip /tenant/:slug (and any trailing slash) so matching is slug-proof. */
+/** Strip the tenant segment (and any trailing slash) so matching is slug-proof.
+ *  Current URLs are slug-first — /<slug>/<route> — while /tenant/<slug>/<route>
+ *  is the legacy shape that must keep working for old bookmarks. */
 const toTenantRelativePath = (pathname) => {
   const clean = String(pathname || '').split('?')[0].replace(/\/+$/, '') || '/';
-  return clean.replace(/^\/tenant\/[^/]+/, '') || '/';
+
+  const legacy = clean.replace(/^\/tenant\/[^/]+/, '');
+  if (legacy !== clean) return legacy || '/';
+
+  // Slug-first: strip the first segment ONLY when what remains is one of the
+  // hidden routes, so a tenant whose slug happens to be "dashboard" can never
+  // hide the bell by accident.
+  const segments = clean.split('/').filter(Boolean);
+  if (segments.length > 1) {
+    const rest = `/${segments.slice(1).join('/')}`;
+    if (BELL_HIDDEN_ROUTES.some((route) => rest === route || rest.startsWith(`${route}/`))) {
+      return rest;
+    }
+  }
+  return clean;
 };
 
 /**

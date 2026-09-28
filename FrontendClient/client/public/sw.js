@@ -1,20 +1,28 @@
 // Service Worker for Rest Point PWA
-// v2 — forces every client to drop its old caches on activation so the
-// fixed deceased-release form branding and the revived install prompt
-// actually load. Bump this version on every deploy that changes code.
-const CACHE_VERSION = 'v2'; // Increment this to force cache refresh
+// v3 — forces every client to drop its old caches on activation so the
+// slug-first URLs (/{tenant}/… instead of /tenant/{tenant}/…) and the fixed
+// install prompt actually load. Bump this version on every deploy that
+// changes code.
+const CACHE_VERSION = 'v3'; // Increment this to force cache refresh
 const STATIC_CACHE = `restpoint-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `restpoint-dynamic-${CACHE_VERSION}`;
 const CACHE_NAME = `restpoint-${CACHE_VERSION}`;
 
-// Assets to cache immediately on install
+// Assets to cache immediately on install.
+// NOTE: every path here MUST exist in /public. `cache.addAll()` rejects the
+// whole batch when ONE url 404s, which used to abort the install event — and
+// a service worker that never installs never gets a fetch handler, which is
+// exactly what Chrome requires before it will offer "Install app"
+// (`beforeinstallprompt`). '/tab.jpg' was in this list but is not shipped, so
+// the SW never activated and the install prompt never appeared on Android.
 const STATIC_ASSETS = [
     '/',
     '/manifest.json',
     '/favicon.ico',
     '/logo.png',
     '/apple-touch-icon.png',
-    '/tab.jpg',
+    '/android-chrome-192x192.png',
+    '/android-chrome-512x512.png',
     '/Funeral_Plan_hero.webp',
     '/Funeral-Insurance-scaled.jpg'
 ];
@@ -26,7 +34,15 @@ self.addEventListener('install', (event) => {
         caches.open(STATIC_CACHE)
             .then((cache) => {
                 console.log('[SW] Caching static assets');
-                return cache.addAll(STATIC_ASSETS);
+                // Cache each asset on its own: one missing file (or a flaky
+                // network) must never abort the whole install event.
+                return Promise.all(
+                    STATIC_ASSETS.map((url) =>
+                        cache.add(url).catch((error) => {
+                            console.warn('[SW] Skipped asset (not cached):', url, error?.message);
+                        })
+                    )
+                );
             })
             .then(() => {
                 console.log('[SW] Static assets cached successfully');
@@ -34,6 +50,9 @@ self.addEventListener('install', (event) => {
             })
             .catch((error) => {
                 console.error('[SW] Failed to cache static assets:', error);
+                // Still take over: a working fetch handler matters more than
+                // the pre-cache, and Chrome needs the SW to be active.
+                return self.skipWaiting();
             })
     );
 });

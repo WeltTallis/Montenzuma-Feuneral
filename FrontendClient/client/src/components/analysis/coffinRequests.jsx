@@ -249,7 +249,7 @@ export default function CoffinRequests() {
           <div
             key={request.id}
             style={S.card}
-            onClick={() => navigate(`/tenant/${localStorage.getItem('tenantSlug') || 'tenant'}/requests/${request.id}`)}
+            onClick={() => navigate(`/${localStorage.getItem('tenantSlug') || 'tenant'}/requests/${request.id}`)}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.boxShadow = '0 16px 35px rgba(15, 23, 42, 0.12)';

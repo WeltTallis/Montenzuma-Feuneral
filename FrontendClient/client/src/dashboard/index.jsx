@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import "./dashboard.css";
 
-import { fetchAllBranchDeceased } from "../api/dashboardDataApi";
+import { fetchAllBranchDeceased, DECEASED_CHANGED_EVENT } from "../api/dashboardDataApi";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../api/dashboardFeedApi";
 
 import {
@@ -67,6 +67,9 @@ function schedulePeriod(view, selDate) {
 function useCaseData() {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Timestamp of the last successful load — used to decide whether a tab that
+  // just regained focus really needs another network round trip.
+  const lastLoadRef = useRef(0);
 
   const load = useCallback(async (force = false) => {
     setLoading(true);
@@ -81,6 +84,7 @@ function useCaseData() {
         Array.isArray(releases) ? releases : [],
         Array.isArray(postmortems) ? postmortems : []
       ));
+      lastLoadRef.current = Date.now();
     } catch (e) {
       console.warn("[Operations dashboard] feed load failed:", e?.message);
       setCases([]);
@@ -89,7 +93,28 @@ function useCaseData() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // ALWAYS force the first load: opening the dashboard must show the register
+  // exactly as it is now, never a cached snapshot from a page view ago (that
+  // cache is what hid a just-registered deceased body).
+  useEffect(() => { load(true); }, [load]);
+
+  // A record registered/released anywhere in the app fires this event, so the
+  // dashboard repaints with fresh data even while it stays mounted.
+  useEffect(() => {
+    const refresh = () => { load(true); };
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      // Coming back to the tab: refresh only when the numbers are aging.
+      if (Date.now() - lastLoadRef.current > 60 * 1000) load(true);
+    };
+    window.addEventListener(DECEASED_CHANGED_EVENT, refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener(DECEASED_CHANGED_EVENT, refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load]);
+
   return { cases, loading, reload: load };
 }
 

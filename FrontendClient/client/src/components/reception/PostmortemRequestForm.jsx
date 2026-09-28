@@ -656,7 +656,7 @@ export default function PostmortemRequestForm() {
 
     console.log('[PostmortemRequestForm] Resolved tenantSlug:', tenantSlug);
 
-    const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/tenant/${tenantSlug}/postmortem-verify`;
+    const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${tenantSlug}/postmortem-verify`;
 
     const [currentDate, setCurrentDate] = useState('');
     const [currentTime, setCurrentTime] = useState('');

@@ -480,7 +480,7 @@ const DeceasedDetailPage = () => {
 
         <DeceasedProfileHeader
           deceased={deceased}
-          onBack={() => { const slug = getTenantSlug(); navigate(`/tenant/${slug}/all-deceased`); }}
+          onBack={() => { const slug = getTenantSlug(); navigate(`/${slug}/all-deceased`); }}
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
           onRefresh={handleRefresh}

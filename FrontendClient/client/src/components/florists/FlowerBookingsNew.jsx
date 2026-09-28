@@ -244,7 +244,7 @@ const FlowerBookingsNew = () => {
   // Deep-link support: ?view=samples opens this page straight on the uploaded
   // arrangements grid. LEGACY — the ReceptionPortal's "Flower Arrangements" tile
   // now links to the standalone user-facing gallery at
-  // /tenant/<slug>/flower-samples (florists/Samples.jsx). This param is kept
+  // /<slug>/flower-samples (florists/Samples.jsx). This param is kept
   // only so older bookmarks / cached builds still land somewhere sensible.
   const [view, setView] = useState(() => {
     const v = new URLSearchParams(window.location.search).get('view');

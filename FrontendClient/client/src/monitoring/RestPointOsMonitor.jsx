@@ -2,7 +2,7 @@
  * Rest Point OS — Infrastructure Monitor
  *
  * React port of the standalone monitoring/index.html, now served inside the app
- * at /tenant/:slug/monitoring. Every value comes from the API gateway's
+ * at /<slug>/monitoring. Every value comes from the API gateway's
  * GET /monitoring endpoint (services/api-gateway/monitoring.js) — live service
  * probes, real Redis cache counters, real BullMQ queue depth, and real request
  * metrics recorded by the gateway. The old Grafana / Prometheus / Loki /

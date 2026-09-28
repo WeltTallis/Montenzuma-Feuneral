@@ -1,29 +1,30 @@
 {
-  "name": "RP",
+  "name": "Rest Point",
   "short_name": "Rest Point",
   "description": "The operating system for funeral homes that take their reputation seriously",
   "id": "/?restpoint=pwa",
   "start_url": "/?restpoint=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#03071E",
   "theme_color": "#3D4F47",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/logo1.png",
+      "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo1.png",
+      "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo1.png",
+      "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -43,7 +44,19 @@
       "url": "/dashboard",
       "icons": [
         {
-          "src": "/logo1.png",
+          "src": "/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Body Admission",
+      "short_name": "Admission",
+      "description": "Register an admitted body",
+      "url": "/dashboard?open=/deceased/register",
+      "icons": [
+        {
+          "src": "/android-chrome-192x192.png",
           "sizes": "192x192"
         }
       ]
@@ -52,22 +65,10 @@
       "name": "Deceased Records",
       "short_name": "Records",
       "description": "View deceased records",
-      "url": "/deceased",
+      "url": "/dashboard?open=/deceased",
       "icons": [
         {
-          "src": "/logo1.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Apply Leave",
-      "short_name": "Leave",
-      "description": "Apply for staff leave",
-      "url": "/leaves/apply",
-      "icons": [
-        {
-          "src": "/logo1.png",
+          "src": "/android-chrome-192x192.png",
           "sizes": "192x192"
         }
       ]

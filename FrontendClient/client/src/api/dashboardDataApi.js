@@ -151,11 +151,15 @@ export const fetchAllBranchDeceased = async (forceRefresh = false) => {
   if (!branches.length) branches = [{ slug: currentSlug || 'system_shared', name: 'This branch' }];
 
   const out = [];
+  const stamp = forceRefresh ? Date.now() : null;
   await Promise.all(branches.map(async (b) => {
     try {
       for (let page = 1; page <= 6; page++) {
         const r = await api.get('/deceased/deceased-all', {
-          params: { page, limit: 100 },
+          // `_t` is only added on a forced refresh — it defeats any
+          // browser/proxy HTTP cache that would otherwise answer with the
+          // pre-registration list and make the dashboard look stale.
+          params: stamp ? { page, limit: 100, _t: stamp } : { page, limit: 100 },
           headers: { 'x-tenant-slug': b.slug },
         }).catch(() => null);
         const chunk = arr(r?.data?.data || r?.data);
@@ -183,6 +187,33 @@ export const fetchAllBranchDeceased = async (forceRefresh = false) => {
 export const clearDeceasedCache = () => {
   _deceasedCache = null;
   _deceasedCacheTs = 0;
+};
+
+/* ── Mutation → dashboard invalidation bridge ──────────────────────────
+   The dashboard caches its payloads (60s) so tab switches stay instant.
+   That cache is what made a freshly registered deceased invisible on the
+   dashboard: the page re-rendered from memory. Any mutation calls
+   notifyDeceasedChanged(), which wipes every cached payload AND fires a
+   browser event the dashboard (and the deceased list) subscribe to. */
+export const DECEASED_CHANGED_EVENT = 'rp:deceased-changed';
+
+/** Wipe every cached dashboard payload (lists, branches, feeds, KPI cards). */
+export const clearDashboardDataCache = () => {
+  cache.clear();
+  _deceasedCache = null;
+  _deceasedCacheTs = 0;
+};
+
+/** Announce a write (register / release / delete) and drop all caches. */
+export const notifyDeceasedChanged = () => {
+  clearDashboardDataCache();
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new Event(DECEASED_CHANGED_EVENT));
+    } catch (e) {
+      /* older browsers — the cache wipe above is the important part */
+    }
+  }
 };
 
 /** booking_dates is stored as a JSON array string e.g. '["2026-08-09"]' */

@@ -1442,7 +1442,7 @@ const RegisterCoffin = () => {
           <Button
             onClick={() => {
               const tenantSlug = getTenantSlug();
-              navigate(`/tenant/${tenantSlug}/coffins`);
+              navigate(`/${tenantSlug}/coffins`);
             }}
             style={{
               display: 'flex',

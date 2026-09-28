@@ -544,7 +544,7 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
                         <div>
                           <button type="button" className="btn-ghost" style={{ marginTop: 0 }} onClick={() => {
                             const slug = localStorage.getItem('tenantSlug') || ''
-                            navigate(slug ? `/tenant/${slug}/receptionist` : '/reception')
+                            navigate(slug ? `/${slug}/receptionist` : '/reception')
                           }}>
                             Done
                           </button>

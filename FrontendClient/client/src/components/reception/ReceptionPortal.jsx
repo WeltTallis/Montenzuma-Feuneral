@@ -407,10 +407,10 @@ export default function App() {
     setShowOverlay(true);
     setTimeout(() => {
       let redirectPath = "/";
-      if (serviceName === "Body Admission") redirectPath = `/tenant/${tenantSlug}/deceased/register`;
-      else if (serviceName === "Body Release") redirectPath = `/tenant/${tenantSlug}/release-form/new`;
-      else if (serviceName === "Flower Arrangements") redirectPath = `/tenant/${tenantSlug}/flower-samples`;
-      else if (serviceName === "Postmortem Records") redirectPath = `/tenant/${tenantSlug}/postmortem-request`;
+      if (serviceName === "Body Admission") redirectPath = `/${tenantSlug}/deceased/register`;
+      else if (serviceName === "Body Release") redirectPath = `/${tenantSlug}/release-form/new`;
+      else if (serviceName === "Flower Arrangements") redirectPath = `/${tenantSlug}/flower-samples`;
+      else if (serviceName === "Postmortem Records") redirectPath = `/${tenantSlug}/postmortem-request`;
       navigate(redirectPath);
       setShowOverlay(false);
       setSelectedService(null);
@@ -432,7 +432,7 @@ export default function App() {
 
           <TopBar>
             <BackBtn
-              onClick={() => navigate(`/tenant/${tenantSlug}/all-deceased`, { replace: true })}
+              onClick={() => navigate(`/${tenantSlug}/all-deceased`, { replace: true })}
               aria-label="Back to all deceased"
             >
               <span style={{ display: "inline-flex", width: 14, height: 14 }}>

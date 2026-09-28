@@ -124,7 +124,7 @@ export default function TicketPage() {
     useEffect(() => { replyEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selectedTicket]);
 
     const goHome = () => {
-        if (slug) navigate(`/tenant/${slug}/all-deceased`);
+        if (slug) navigate(`/${slug}/all-deceased`);
         else navigate('/');
     };
 

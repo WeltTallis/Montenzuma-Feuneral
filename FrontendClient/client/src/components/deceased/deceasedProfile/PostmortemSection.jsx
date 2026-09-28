@@ -714,7 +714,7 @@ const PostmortemSection = ({ deceasedId, deceasedData, onUpdate }) => {
                 <PrimaryButton
                     onClick={() => {
                         const tenantSlug = getTenantSlug();
-                        window.location.href = `/tenant/${tenantSlug}/postmortem-form/${deceasedId}`;
+                        window.location.href = `/${tenantSlug}/postmortem-form/${deceasedId}`;
                     }}
                     style={{ width: '100%', marginTop: '0.75rem' }}
                 >

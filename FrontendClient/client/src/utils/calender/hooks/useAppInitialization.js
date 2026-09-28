@@ -118,13 +118,15 @@ export const useAppInitialization = () => {
                 localStorage.setItem('tenantSlug', tenantSlug);
             }
 
-            // FALLBACK 3: If still no tenantSlug, try to get from URL
+            // FALLBACK 3: If still no tenantSlug, try to get from URL.
+            // Slug-first URLs look like /<slug>/<page>; the legacy shape was
+            // /tenant/<slug>/<page>.
             if (!tenantSlug) {
                 const urlParts = currentPath.split('/');
-                if (urlParts.length >= 3 && urlParts[1] === 'tenant') {
+                if (urlParts[1] === 'tenant' && urlParts.length >= 3) {
                     tenantSlug = urlParts[2];
-                    localStorage.setItem('tenantSlug', tenantSlug);
                 }
+                if (tenantSlug) localStorage.setItem('tenantSlug', tenantSlug);
             }
 
             // CRITICAL: If we still don't have tenantSlug, we can't route
@@ -134,13 +136,13 @@ export const useAppInitialization = () => {
             }
 
             // Check if we're on the correct tenant path
-            const expectedPath = `/tenant/${tenantSlug}`;
+            const expectedPath = `/${tenantSlug}`;
             const isOnCorrectPath = currentPath.startsWith(expectedPath);
 
             // If not on correct path, redirect immediately
             if (!isOnCorrectPath) {
                 console.log(`Redirecting to tenant path: ${expectedPath}/all-deceased`);
-                navigate(`/tenant/${tenantSlug}/all-deceased`, { replace: true });
+                navigate(`/${tenantSlug}/all-deceased`, { replace: true });
                 return;
             }
 

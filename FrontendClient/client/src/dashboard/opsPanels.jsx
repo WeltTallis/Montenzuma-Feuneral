@@ -676,7 +676,7 @@ export function CaseDrawer({ record, ctx, onClose }) {
     resolveTenantSlug?.() ||
     ""
   )) || "";
-  const profileUrl = p.id && tenantSlug ? `/tenant/${tenantSlug}/deceased/${p.id}` : null;
+  const profileUrl = p.id && tenantSlug ? `/${tenantSlug}/deceased/${p.id}` : null;
 
   return (
     <>

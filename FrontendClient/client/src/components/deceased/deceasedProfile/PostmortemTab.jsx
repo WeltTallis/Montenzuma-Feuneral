@@ -306,7 +306,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
   const hasData = pm.immediate_cause_of_death || pm.manner_of_death || pm.examination_summary || pm.findings || pm.toxicology_findings;
 
   const openForm = () => {
-    navigate(`/tenant/${tenantSlug}/postmortem-form/${deceasedId}`);
+    navigate(`/${tenantSlug}/postmortem-form/${deceasedId}`);
   };
 
   const generatePDF = async () => {

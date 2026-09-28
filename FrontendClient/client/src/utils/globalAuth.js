@@ -83,6 +83,21 @@ export const hasSession = () => {
 };
 
 /**
+ * Route names that sit directly under the tenant slug. Tenant URLs are
+ * slug-first (`/acme/deceased`), while the marketing site uses root-level
+ * paths (`/blog/history`) — so the SECOND segment is what tells them apart.
+ */
+const TENANT_ROUTE_SEGMENTS = new Set([
+  'dashboard', 'analytics', 'all-deceased', 'deceased', 'deceased-details',
+  'coffins', 'hearse', 'workshop', 'flowers', 'flower-samples', 'flower-bookings',
+  'settings', 'leaves', 'support', 'support-dashboard', 'store', 'mini-store',
+  'driver-portal', 'receptionist', 'reception', 'financials', 'financial-details',
+  'monitoring', 'scanner', 'system-admin', 'release-form', 'requests',
+  'postmortem-form', 'postmortem-qr', 'postmortem-results', 'postmortem-request',
+  'postmortem-verify', 'visitors', 'chemicals', 'invoices', 'documents',
+]);
+
+/**
  * True for routes that require an authenticated session
  * (i.e. the only places a 401 is allowed to bounce the browser to /login).
  * Public pages — the landing page, /scanner, /blog, /pricing, ... — must
@@ -90,12 +105,19 @@ export const hasSession = () => {
  */
 export const isAppPath = (pathname = typeof window !== 'undefined' ? window.location.pathname : '/') => {
   const path = pathname || '/';
-  return (
-    path.startsWith('/tenant/') ||
+  if (
+    path.startsWith('/tenant/') ||   // legacy tenant URLs (still redirected in-app)
     path.startsWith('/dashboard') ||
     path.startsWith('/system-admin') ||
     path.startsWith('/monitoring')
-  );
+  ) {
+    return true;
+  }
+
+  // Slug-first tenant URL: /<slug>/<route>
+  const [, first, second] = path.split('/');
+  if (!first || !second) return false;
+  return TENANT_ROUTE_SEGMENTS.has(second);
 };
 
 /**

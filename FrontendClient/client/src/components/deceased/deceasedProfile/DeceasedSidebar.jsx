@@ -324,7 +324,7 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
 
   const tenantSlug = getTenantSlug();
   const profileUrl = typeof window !== 'undefined' && tenantSlug && deceasedId
-    ? `${window.location.origin}/tenant/${encodeURIComponent(tenantSlug)}/deceased?id=${encodeURIComponent(deceasedId)}`
+    ? `${window.location.origin}/${encodeURIComponent(tenantSlug)}/deceased?id=${encodeURIComponent(deceasedId)}`
     : '';
 
   // ─── QR code encodes the profile URL keyed by the deceased ID ──────

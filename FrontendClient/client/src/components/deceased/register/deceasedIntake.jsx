@@ -4,7 +4,7 @@ import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
 import OfficialStamp from '../../../utils/stamp/stamp';
 import env from '../../../utils/config/env';
@@ -18,6 +18,9 @@ import InOurCare from '../../common/InOurCare';
 // date, which is 3 hours behind Nairobi — an intake captured between 00:00
 // and 02:59 Kenya time stored YESTERDAY's admission date.
 import { todayKey } from '../../../utils/dates/parseDates';
+// Registering a body changes the deceased register — this wipes the dashboard's
+// cached payloads and tells the dashboard / list page to re-read immediately.
+import { notifyDeceasedChanged } from '../../../api/dashboardDataApi';
 
 import {
   Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
@@ -692,6 +695,161 @@ const StampWrapper = styled.div`
   }
 `;
 
+/* ─── Confirmation gate (mirrors the release form's consent checkbox) ────────
+   The intake sheet is the official record of what was handed over, so the
+   receiving officer has to affirm it before it can be filed. The box sits
+   directly above the action buttons — the last thing seen before tapping
+   through — and the primary button is labelled "I Confirm & Continue" so the
+   tap itself doubles as the confirmation.
+   UI-only: `confirm_accepted` is never added to the API payload. */
+const ConfirmBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  margin-top: 2.5rem;
+  padding: 1.1rem 1.3rem 1.25rem;
+  background: ${COLORS.bone};
+  border: 1px solid ${COLORS.line};
+  border-left: 3px solid ${(p) => (p.$invalid ? COLORS.red : COLORS.brassLight)};
+  border-radius: 4px;
+  scroll-margin-top: 2rem;
+
+  &:focus-within {
+    border-color: ${COLORS.brassLight};
+    box-shadow: 0 0 0 2px rgba(169, 143, 110, 0.16);
+  }
+
+  @media (max-width: 1024px) {
+    gap: 0.45rem;
+    padding: 1.15rem 1.1rem 1.2rem;
+  }
+`;
+
+const ConfirmLeadin = styled.p`
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: ${COLORS.brass};
+`;
+
+/* The whole row is the tap target — on an iPad a 22px box alone is fiddly. */
+const ConfirmLabel = styled.label`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+`;
+
+/* Square checkbox — fills verdigris with a bone tick when checked. */
+const ConfirmBox = styled.input`
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin-top: 0.05rem;
+  position: relative;
+  border: 1.5px solid ${COLORS.ink};
+  border-radius: 3px;
+  background: ${COLORS.white};
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover { border-color: ${COLORS.verdigris}; }
+  &:checked { background: ${COLORS.verdigris}; border-color: ${COLORS.verdigris}; }
+  &:checked::after {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 3px;
+    width: 5px;
+    height: 10px;
+    border: solid ${COLORS.bone};
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+  }
+  &:focus-visible { outline: 2px solid ${COLORS.brassLight}; outline-offset: 2px; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Tablet / iPad portrait: grow the box (and its tick) for finger taps. */
+  @media (max-width: 1024px) {
+    width: 28px;
+    height: 28px;
+    border-width: 2px;
+
+    &:checked::after {
+      left: 9px;
+      top: 4px;
+      width: 7px;
+      height: 13px;
+      border-width: 0 3px 3px 0;
+    }
+  }
+`;
+
+/* Full wording on desktop / mobile … */
+const ConfirmText = styled.span`
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: ${COLORS.ink};
+  padding-top: 0.1rem;
+
+  @media (max-width: 600px) {
+    font-size: 0.9rem;
+  }
+`;
+
+/* … and the short wording on iPad widths, where the full sentence wraps to
+   three lines and pushes the action buttons off the first screen. */
+const ConfirmTextShort = styled.span`
+  display: none;
+
+  @media (max-width: 1024px) {
+    display: block;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: ${COLORS.ink};
+    padding-top: 0.05rem;
+  }
+`;
+
+const ConfirmHint = styled.p`
+  margin: 0 0 0 1.55rem;
+  font-size: 0.74rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: ${COLORS.gray};
+`;
+
+const ConfirmHintStrong = styled.strong`
+  font-family: 'Saira', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: ${COLORS.brass};
+`;
+
+const ConfirmError = styled.p`
+  margin: 0 0 0 1.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: ${COLORS.red};
+`;
+
 const ActionsContainer = styled.div`
   display: flex;
   gap: 1rem;
@@ -733,7 +891,7 @@ const ActionsContainer = styled.div`
 `;
 
 const PrimaryButton = styled.button`
-  background: #722F37;
+  background: ${(p) => (p.$locked ? '#B4AFA5' : '#722F37')};
   color: ${COLORS.bone};
   border: none;
   border-radius: 4px;
@@ -751,10 +909,22 @@ const PrimaryButton = styled.button`
   text-transform: uppercase;
 
   &:hover {
-    background: #5C242B;
+    background: ${(p) => (p.$locked ? '#B4AFA5' : '#5C242B')};
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(114, 47, 55, 0.25);
   }
+
+  /* Soft-locked while the confirmation box is unticked: the button reads as
+     inactive but stays tappable, so the officer gets told what is missing
+     instead of nothing happening (typing is rare on the shared iPad). */
+  ${(p) => p.$locked && css`
+    box-shadow: none;
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  `}
 
   &:disabled {
     background: ${COLORS.gray};
@@ -1226,6 +1396,9 @@ const DeceasedRegistrationForm = () => {
   };
 
   const sigPadRef1 = useRef(null);
+  // The confirmation block sits below the signature pad on a long intake
+  // sheet — scroll it into view if the officer taps continue without ticking.
+  const confirmBlockRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
   const [loadingAdmission, setLoadingAdmission] = useState(false);
@@ -1303,6 +1476,10 @@ const DeceasedRegistrationForm = () => {
     verified_by: getLoggedInUserEmail(),
     permit_number: '',
     relationship: '',
+    // UI-only gate: the receiving officer must tick the confirmation box before
+    // the record can be filed. Deliberately NOT part of the create payload —
+    // the intake endpoint does not take a consent field.
+    confirm_accepted: false,
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -1326,6 +1503,7 @@ const DeceasedRegistrationForm = () => {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken();
 
+      let uploaded = 0;
       for (const item of queue) {
         try {
           const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
@@ -1340,12 +1518,15 @@ const DeceasedRegistrationForm = () => {
 
           if (response.ok) {
             await deleteFromQueue(item.syncId);
+            uploaded += 1;
           }
         } catch (e) {
           // Silently fail, will retry next time
         }
       }
       notify.success('Sync Complete', 'Offline records uploaded successfully.');
+      // Anything that actually reached the server changes the register.
+      if (uploaded > 0) notifyDeceasedChanged();
     } catch (e) { console.error(e) }
   };
 
@@ -1385,8 +1566,8 @@ const DeceasedRegistrationForm = () => {
   }, [formData.gender]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -1426,6 +1607,9 @@ const DeceasedRegistrationForm = () => {
     if (sigPadRef1.current?.isEmpty()) {
       newErrors.signature = 'Signature is required to proceed';
     }
+    if (!formData.confirm_accepted) {
+      newErrors.confirm_accepted = 'Confirmation that the details are correct is required';
+    }
     setErrors(newErrors);
     return newErrors;
   };
@@ -1435,6 +1619,11 @@ const DeceasedRegistrationForm = () => {
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       const missingFields = Object.values(validationErrors);
+      // The confirmation box sits below the fold on a long intake sheet — bring
+      // it into view so the officer sees what is still unticked.
+      if (validationErrors.confirm_accepted) {
+        confirmBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       notify.info('Missing required details', `Please complete the following: ${missingFields.join(', ')}`);
       setMessage({
         type: 'error',
@@ -1548,6 +1737,11 @@ const DeceasedRegistrationForm = () => {
         reference: admissionId || (result?.data?.admission_number ?? ''),
       });
       setShowSuccess(true);
+
+      // The register just gained a body: drop the dashboard's cached payloads
+      // and tell every open list/dashboard to re-read, so the new record shows
+      // up immediately instead of after the 60s cache expires.
+      notifyDeceasedChanged();
 
       setFormData({
         ...initialFormData,
@@ -1671,7 +1865,7 @@ const DeceasedRegistrationForm = () => {
         reference={vigilData?.reference}
         onDone={() => {
           const slug = (typeof getTenantSlug === 'function' && getTenantSlug()) || localStorage.getItem('tenantSlug') || '';
-          navigate(slug ? `/tenant/${slug}/receptionist` : '/reception');
+          navigate(slug ? `/${slug}/receptionist` : '/reception');
         }}
       />
     );
@@ -2121,6 +2315,78 @@ const DeceasedRegistrationForm = () => {
                 </SignOffContainer>
               </Section>
 
+              {/* Confirmation gate — the officer has to tick this before the
+                  record can be filed. Mirrors the release form's consent box.
+                  The label swaps to the short wording at iPad widths. */}
+              <ConfirmBlock
+                ref={confirmBlockRef}
+                $invalid={!!errors.confirm_accepted}
+              >
+                <ConfirmLeadin>Declaration by the receiving officer</ConfirmLeadin>
+
+                <ConfirmLabel>
+                  <ConfirmBox
+                    type="checkbox"
+                    name="confirm_accepted"
+                    checked={!!formData.confirm_accepted}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                  />
+                  <ConfirmText>
+                    I confirm that the information above is correct and authorize its use for the funeral arrangements and related records.
+                  </ConfirmText>
+                  <ConfirmTextShort>
+                    I confirm the information above is correct and authorize its use.
+                  </ConfirmTextShort>
+                </ConfirmLabel>
+
+                {errors.confirm_accepted ? (
+                  <ConfirmError>
+                    <AlertCircle size={14} /> Tick the box above to confirm before continuing.
+                  </ConfirmError>
+                ) : (
+                  <ConfirmHint>
+                    Nothing is filed until you press <ConfirmHintStrong>I Confirm &amp; Continue</ConfirmHintStrong>
+                  </ConfirmHint>
+                )}
+              </ConfirmBlock>
+
+              {/* Confirmation gate — the officer has to tick this before the
+                  record can be filed. Mirrors the release form's consent box.
+                  The label swaps to the short wording at iPad widths. */}
+              <ConfirmBlock
+                ref={confirmBlockRef}
+                $invalid={!!errors.confirm_accepted}
+              >
+                <ConfirmLeadin>Declaration by the receiving officer</ConfirmLeadin>
+
+                <ConfirmLabel>
+                  <ConfirmBox
+                    type="checkbox"
+                    name="confirm_accepted"
+                    checked={!!formData.confirm_accepted}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                  />
+                  <ConfirmText>
+                    I confirm that the information above is correct and authorize its use for the funeral arrangements and related records.
+                  </ConfirmText>
+                  <ConfirmTextShort>
+                    I confirm the information above is correct and authorize its use.
+                  </ConfirmTextShort>
+                </ConfirmLabel>
+
+                {errors.confirm_accepted ? (
+                  <ConfirmError>
+                    <AlertCircle size={14} /> Tick the box above to confirm before continuing.
+                  </ConfirmError>
+                ) : (
+                  <ConfirmHint>
+                    Nothing is filed until you press <ConfirmHintStrong>I Confirm &amp; Continue</ConfirmHintStrong>
+                  </ConfirmHint>
+                )}
+              </ConfirmBlock>
+
               {/* Action Buttons */}
               <ActionsContainer>
                 {/* Pause Dropdown Wrapper */}
@@ -2173,14 +2439,18 @@ const DeceasedRegistrationForm = () => {
                   Cancel / Back
                 </BlackButton>
 
-                <PrimaryButton type="submit" disabled={isSubmitting}>
+                <PrimaryButton
+                  type="submit"
+                  disabled={isSubmitting}
+                  $locked={!formData.confirm_accepted}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 size={16} className="animate-spin" /> Submitting Record...
                     </>
                   ) : (
                     <>
-                      Submit Record <ArrowRight size={16} />
+                      <Check size={16} strokeWidth={2.5} /> I Confirm &amp; Continue <ArrowRight size={16} />
                     </>
                   )}
                 </PrimaryButton>

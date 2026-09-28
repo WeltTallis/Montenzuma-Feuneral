@@ -1774,7 +1774,7 @@ const DeceasedReleaseForm = () => {
         reference={rec.release_id || rec.admission_number || ''}
         onDone={() => {
           const slug = (typeof getTenantSlug === 'function' && getTenantSlug()) || localStorage.getItem('tenantSlug') || '';
-          navigate(slug ? `/tenant/${slug}/receptionist` : '/reception');
+          navigate(slug ? `/${slug}/receptionist` : '/reception');
         }}
       />
     );

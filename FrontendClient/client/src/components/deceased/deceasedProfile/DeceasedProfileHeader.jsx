@@ -239,7 +239,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
       const user = userStr ? JSON.parse(userStr) : {};
       slug = user?.parentTenantSlug || user?.tenantSlug || slug;
     }
-    navigate(`/tenant/${slug}/release-form/${deceasedId || displayId}`, {
+    navigate(`/${slug}/release-form/${deceasedId || displayId}`, {
       state: { deceasedData: deceased }
     });
   };
