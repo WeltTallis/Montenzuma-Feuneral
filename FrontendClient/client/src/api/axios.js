@@ -202,8 +202,17 @@ api.interceptors.request.use((config) => {
   if (slug && !config.headers['x-tenant-slug']) config.headers['x-tenant-slug'] = slug;
   if (tenantId) config.headers['x-tenant-id'] = tenantId;
   if (userId) config.headers['x-user-id'] = userId.toString();
-  if (branchSlug) config.headers['x-branch-slug'] = branchSlug;
-  if (branchDb) config.headers['x-branch-db'] = branchDb;
+
+  /* A caller that deliberately addresses ANOTHER branch (the dashboard fans out
+     once per branch to build "Load by Branch") passes the branch headers
+     explicitly. Those must win over the signed-in user's branch, otherwise every
+     per-branch request is silently rewritten to the session branch and all the
+     branches report identical totals. Only fill in what the caller left unset —
+     the normal case, where the session branch is correct, is unchanged. */
+  const wantedBranchSlug = config.headers['x-branch-slug'] || branchSlug;
+  const wantedBranchDb = config.headers['x-branch-db'] || branchDb;
+  if (wantedBranchSlug) config.headers['x-branch-slug'] = wantedBranchSlug;
+  if (wantedBranchDb) config.headers['x-branch-db'] = wantedBranchDb;
   if (branchId) config.headers['x-branch-id'] = branchId;
 
   return config;

@@ -187,7 +187,18 @@ export const fetchAllBranchDeceased = async (forceRefresh = false) => {
           // browser/proxy HTTP cache that would otherwise answer with the
           // pre-registration list and make the dashboard look stale.
           params: stamp ? { page, limit: 100, _t: stamp } : { page, limit: 100 },
-          headers: { 'x-tenant-slug': b.slug },
+          // `x-tenant-slug` alone is NOT enough to address another branch: the
+          // shared axios interceptor stamps the SIGNED-IN user's `x-branch-db`
+          // on every request, and deceased-service prefers that header when
+          // picking the database. Asking for Nairobi while signed in at Machakos
+          // therefore answered with Machakos rows three times over, and every
+          // branch on "Load by Branch" showed the same count. Send the branch
+          // explicitly so all four headers agree on the branch being fetched.
+          headers: {
+            'x-tenant-slug': b.slug,
+            'x-branch-slug': b.slug,
+            'x-branch-db': b.slug,
+          },
         }).catch(() => null);
         const chunk = arr(r?.data?.data || r?.data);
         if (!chunk.length) break;

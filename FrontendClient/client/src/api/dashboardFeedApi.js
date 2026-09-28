@@ -1,7 +1,7 @@
 import api from "./axios";
 import { getBranches, getBranchSlug, getTenantSlug, getParentTenantSlug } from "../utils/globalAuth";
 
-/* ─────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────────
    Independent dashboard feeds (Deceased analytics tab).
 
    • Releases  → bodycheckout-service
@@ -22,7 +22,7 @@ import { getBranches, getBranchSlug, getTenantSlug, getParentTenantSlug } from "
                    (LEFT JOIN deceased). That deceased JOIN is what supplies the Deceased
                    name — postmortem_requests has no name column of its own, so without
                    it every request rendered as "Unknown".
-   ───────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────────────────────── */
 
 const RELEASES_URL = "/body-release/checkout";
 const POSTMORTEMS_URL = "/deceased/postmortem-requests";
@@ -47,7 +47,12 @@ export async function fetchReleasesFeed() {
       let chunk = [];
       try {
         const res = await api.get(RELEASES_URL, {
-          headers: { "x-tenant-slug": b.slug },
+          // All branch headers must name the branch being fetched, not just
+          // x-tenant-slug — the shared interceptor adds the signed-in user's
+          // x-branch-db, which deceased-service prefers when choosing the
+          // database. Without this every "branch" release feed returned the
+          // session branch's rows.
+          headers: { "x-tenant-slug": b.slug, "x-branch-slug": b.slug, "x-branch-db": b.slug },
           params: { page: p, limit: 100 },
         });
         chunk = unwrap(res.data);
@@ -118,17 +123,22 @@ const resolveBranchList = async () => {
   return out;
 };
 
-/* Postmortem REQUESTS across EVERY branch — each branch is queried with its
-   slug as x-tenant-slug (the axios interceptor never overrides an explicit
-   header) and rows are tagged with branch_name / _branchSlug so the
-   dashboard shows requests from all locations, activity by branch. */
+/* Postmortem REQUESTS across EVERY branch — each branch is queried with its own
+   slug on x-tenant-slug AND on the branch headers, and rows are tagged with
+   branch_name / _branchSlug so the dashboard shows requests from all locations,
+   activity by branch. */
 export async function fetchPostmortemsFeed() {
   const branches = await resolveBranchList();
   if (branches.length > 1) {
     const perBranch = await Promise.all(
       branches.map(async (b) => {
         try {
-          const res = await api.get(POSTMORTEMS_URL, { headers: { "x-tenant-slug": b.slug } });
+          const res = await api.get(POSTMORTEMS_URL, {
+            // Same rule as the releases feed: the branch headers must name the
+            // branch being fetched, otherwise the interceptor's session-branch
+            // `x-branch-db` wins and every branch returns identical rows.
+            headers: { "x-tenant-slug": b.slug, "x-branch-slug": b.slug, "x-branch-db": b.slug },
+          });
           const rows = unwrap(res.data);
           return (Array.isArray(rows) ? rows : []).map((r) => ({
             ...r,

@@ -46,7 +46,7 @@ const Shell = styled.div`
 `;
 
 const Card = styled.div`
-    max-width: 860px;
+    max-width: 100%;
     width: 100%;
     background: ${C.paper2};
     overflow: hidden;
@@ -63,7 +63,7 @@ const Card = styled.div`
 // ─── Condolence Banner (no bottom border) ──────────────────────
 const Banner = styled.div`
     background: linear-gradient(180deg, #1c1812 0%, #2a2520 100%);
-    padding: 22px 40px;
+
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -106,7 +106,7 @@ const Banner = styled.div`
 // ─── Document Header (QR + timestamp) ──────────────────────────
 const DocHeader = styled.header`
     background: ${C.paper};
-    padding: 30px 40px;
+    padding: 10px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -654,6 +654,23 @@ export default function PostmortemRequestForm() {
         (typeof localStorage !== 'undefined' && localStorage.getItem('selectedTenant')) ||
         'system_shared';
 
+    /* The tenant headers for every lookup/submit below.
+     *
+     * deceased-service picks the DATABASE from the branch headers when present
+     * and falls back to x-tenant-slug. A multi-branch organisation keeps one
+     * database per branch, and the branch's own full slug is that database's
+     * name — so when reception is opened at /<org>-<branch>/postmortem-request
+     * we must send that branch on the branch headers too. Sending only
+     * x-tenant-slug worked only by accident (the gateway is pre-auth here and
+     * forwards it verbatim), and silently read the wrong database whenever the
+     * two disagreed. Sending all three keeps them in agreement, exactly like
+     * the dashboard's per-branch fan-out. */
+    const tenantHeaders = {
+        'x-tenant-slug': tenantSlug,
+        'x-branch-slug': tenantSlug,
+        'x-branch-db': tenantSlug,
+    };
+
     console.log('[PostmortemRequestForm] Resolved tenantSlug:', tenantSlug);
 
     const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${tenantSlug}/postmortem-verify`;
@@ -699,7 +716,7 @@ export default function PostmortemRequestForm() {
 
         try {
             const res = await axios.get(`${BASE_URL}/deceased/public/postmortem/search?${params.toString()}`, {
-                headers: { 'x-tenant-slug': tenantSlug },
+                headers: tenantHeaders,
             });
 
             console.log('[PostmortemRequestForm] Search response:', JSON.stringify(res.data, null, 2));
@@ -753,7 +770,7 @@ export default function PostmortemRequestForm() {
                     priority: form.priority,
                     source: 'family_reception',
                 },
-                { headers: { 'x-tenant-slug': tenantSlug } }
+                { headers: tenantHeaders }
             );
 
             console.log('[PostmortemRequestForm] Submit response:', JSON.stringify(res.data, null, 2));

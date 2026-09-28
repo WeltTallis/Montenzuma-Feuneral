@@ -364,8 +364,14 @@ export function AnalyticsView({
   calc, people, branch, calY, view = "month", selDate, dayTab, now, today,
   onOpenModal, onOpenCase, onPickDay, onDayTabChange,
 }) {
-  if (view === "day" || view === "week") {
-    return (
+  /* The charts used to be REPLACED by the day/week scheduler (an early return
+     above every card below), so switching the calendar to Day or Week made the
+     whole analytics section lose its donut, trend line, 7-day bars and branch
+     mix. Analytics is the one section whose Day/Week control is a drill-down,
+     not a different page — so the scheduler is now rendered ABOVE the charts and
+     the charts always stay. */
+  const periodScheduler =
+    view === "day" || view === "week" ? (
       <PeriodAnalytics
         people={people || []}
         view={view}
@@ -377,8 +383,7 @@ export function AnalyticsView({
         onPickDay={onPickDay}
         onDayTabChange={onDayTabChange}
       />
-    );
-  }
+    ) : null;
 
   const donutSegs = [
     { k: "in-care", c: "var(--blue)", v: calc.care.inCare, l: "In Care" },
@@ -407,6 +412,9 @@ export function AnalyticsView({
           </div>
         </div>
       </div>
+
+      {/* Day/Week drill-down, then the full set of charts — never instead of them. */}
+      {periodScheduler}
 
       <div className="kgrid">
         <Kpi

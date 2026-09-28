@@ -107,10 +107,34 @@ function extractToken(req) {
   return null;
 }
 
-/** Strip the `/api` and `/restpoint` gateway prefixes off an incoming URL. */
+/**
+ * The request path BELOW the API mount, with any `api` / version / `restpoint`
+ * prefix segments removed.
+ *
+ * This used to be a blind `.slice(2)`, which assumed a two-segment mount
+ * (`/api/v1`). The gateway actually mounts at `/api/v1/restpoint` — three
+ * segments — so every path kept a bogus leading `restpoint` token and
+ * `PRE_AUTH_PREFIXES.has(first)` was false for EVERY route, including `public`
+ * and `tenant`. Pre-auth requests (the reception/family postmortem portal, the
+ * public tenant lookup) therefore fell through to the fail-closed branch, which
+ * strips `x-tenant-slug` and `x-tenant-id`; deceased-service then resolved
+ * `system_shared` and answered 400 "Valid tenant required".
+ *
+ * Skipping the known prefix tokens is mount-depth agnostic, so this keeps
+ * working if the prefix is ever added to or removed from the gateway mount.
+ */
 function servicePathOf(req) {
   const raw = (req.originalUrl || req.url || '').split('?')[0];
-  return raw.split('/').filter(Boolean).slice(2).join('/');
+  const parts = raw.split('/').filter(Boolean);
+  const API_PREFIX = new Set(['api', 'v1', 'v2', 'restpoint']);
+  let i = 0;
+  while (i < parts.length && API_PREFIX.has(parts[i].toLowerCase())) i += 1;
+  // A gateway route may name its service first (`/deceased/public/...`), and the
+  // pre-auth set is written in terms of the FEATURE (`public`, `tenant`, `auth`).
+  // Drop a leading service-name segment too, so both spellings match.
+  const rest = parts.slice(i);
+  if (rest.length > 1 && !PRE_AUTH_PREFIXES.has(rest[0].toLowerCase())) rest.shift();
+  return rest.join('/');
 }
 
 function isPreAuthRoute(req) {
@@ -344,10 +368,7 @@ function applyTenantIdentity(proxyReq, req, log) {
   }
 
   if (!identityEstablished) {
-    // ── Fail closed: no verified identity and not a pre-auth surface ──
-    // Unconditionally drop every client-asserted identity header. The request can
-    // now only ever resolve to `system_shared`, or be rejected outright by the
-    // target service's own `protect` middleware.
+
     proxyReq.removeHeader('x-tenant-slug');
     proxyReq.removeHeader('x-tenant-id');
     proxyReq.removeHeader('x-user-id');

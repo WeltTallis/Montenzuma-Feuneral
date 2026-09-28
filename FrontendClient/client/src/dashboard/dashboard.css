@@ -487,7 +487,14 @@
 .rpd .tb-period span{font-size:10px;font-weight:500;color:var(--tx3)}
 .rpd .tb-period-count{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--tx3);white-space:nowrap}
 .rpd .tb-period-count b{font:700 16px var(--serif);color:var(--pink)}
-.rpd .mains.analytics-period{height:calc(100vh - 52px);padding-bottom:0;display:flex;overflow:hidden}
+/* Analytics Day/Week: the scheduler is a drill-down stacked ABOVE the charts,
+   so this column must scroll — it can no longer be a fixed-height,
+   overflow:hidden box that fits the scheduler and nothing else (that clipped the
+   charts off the bottom). The scheduler itself keeps a bounded height and
+   scrolls internally, so the KPI grid and every chart stay reachable. */
+.rpd .mains.analytics-period{height:calc(100vh - 52px);padding-bottom:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.rpd .mains.analytics-period>.sch.reference{flex:0 0 auto;height:min(46vh,420px);min-height:260px}
+.rpd .mains.analytics-period>.kgrid,.rpd .mains.analytics-period>.agrid,.rpd .mains.analytics-period>.acard{flex:0 0 auto}
 .rpd .sch.reference{width:100%;height:100%;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;background:var(--sect);overflow-x:auto;overflow-y:hidden}
 .rpd .sch.reference.week .sch-ad,.rpd .sch.reference.week .sch-dh,.rpd .sch.reference.week .sch-scroll{min-width:834px}
 .rpd .sch.reference .sch-top{display:none}
