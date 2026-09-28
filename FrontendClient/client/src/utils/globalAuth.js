@@ -149,6 +149,61 @@ export const getParentTenantSlug = () => {
 };
 
 /**
+ * The database slug of the branch the signed-in user is working in.
+ *
+ * A multi-branch organisation runs ONE DATABASE PER BRANCH
+ * (`<org>-<branch>`, e.g. `montenzuma-monalisa-feuneral-home-thika`) and the
+ * branch's full slug IS its database name. The organisation (parent) slug
+ * resolves to the MAIN/HQ database instead — that is why a user signed in at
+ * Thika was served Nairobi's deceased records: the request was addressed with
+ * the parent slug.
+ *
+ * Returns null for users without a branch (HQ/single-branch tenants), so
+ * callers can fall back to the parent tenant slug.
+ */
+export const getBranchDbSlug = () => {
+  // getBranchSlug() already falls back to the user blob
+  // (branchSlug → branchDbName), then the persisted branch db name is used.
+  const slug = getBranchSlug();
+  if (isUsableSlug(slug)) return slug;
+  try {
+    const db = localStorage.getItem('branchDbName') || sessionStorage.getItem('branchDbName');
+    if (isUsableSlug(db)) return db;
+  } catch {
+    // Storage unavailable (private mode / SSR)
+  }
+  return null;
+};
+
+/**
+ * Tenant + branch headers for a request to the deceased module.
+ *
+ * The deceased-service (and the body-release lookups) pick the DATABASE from
+ * `x-tenant-slug`, so for a branch user it MUST carry the branch slug — the
+ * parent slug reads the organisation's main database. The explicit
+ * `x-branch-*` headers travel alongside it so services that scope by branch
+ * once (instead of by database) keep working too.
+ *
+ * @param {string} [tenantSlug] organisation slug — the fallback for users who
+ *                              are not assigned to a branch (HQ / single-branch).
+ */
+export const getBranchScopeHeaders = (tenantSlug) => {
+  const branchSlug = getBranchDbSlug();
+  const headers = {};
+
+  // Prefer the branch: it decides which database the record lives in.
+  const effectiveSlug = branchSlug || tenantSlug;
+  if (effectiveSlug) headers['x-tenant-slug'] = String(effectiveSlug);
+
+  const branchId = getBranchId();
+  if (branchId) headers['x-branch-id'] = String(branchId);
+  if (branchSlug) headers['x-branch-slug'] = String(branchSlug);
+  if (branchSlug) headers['x-branch-db'] = String(branchSlug);
+
+  return headers;
+};
+
+/**
  * Get the current auth token from localStorage or sessionStorage
  */
 export const getAuthToken = () => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
-import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { getTenantSlug, getAuthToken, getBranchScopeHeaders } from '../../../utils/globalAuth';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 
 // Import your existing sub-components
@@ -277,9 +277,11 @@ const DeceasedDetailPage = () => {
     try {
       const slug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
+      // `x-tenant-slug` selects the DATABASE the deceased-service reads; for a
+      // branch user it must be the BRANCH slug (each branch owns its own DB).
       const headers = {
-        'x-tenant-slug': slug,
         'Authorization': `Bearer ${token}`,
+        ...getBranchScopeHeaders(slug),
       };
 
       // Fire ALL API calls in parallel — no waterfall
@@ -288,7 +290,7 @@ const DeceasedDetailPage = () => {
         axios.get(`${BASE_URL}/postmortem/${safeDeceasedId}`, { headers }).catch(() => null),
         axios.get(`${BASE_URL}/${safeDeceasedId}/next-of-kin`, { headers }).catch(() => null),
         axios.get(`${env.FULL_API_URL}/documents/${safeDeceasedId}`, {
-          headers: { 'x-tenant-slug': slug, 'Authorization': token ? `Bearer ${token}` : '' },
+          headers: { 'Authorization': token ? `Bearer ${token}` : '', ...getBranchScopeHeaders(slug) },
           withCredentials: false
         }).catch(() => null),
         axios.get(`${BASE_URL}/billing-summary/${safeDeceasedId}`, { headers }).catch(() => null),

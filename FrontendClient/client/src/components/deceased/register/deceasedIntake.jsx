@@ -1,5 +1,5 @@
 import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
-import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { getTenantSlug as getStoredTenantSlug, getAuthToken, getBranchScopeHeaders } from '../../../utils/globalAuth';
 import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -724,16 +724,6 @@ const ConfirmBlock = styled.div`
     gap: 0.45rem;
     padding: 1.15rem 1.1rem 1.2rem;
   }
-`;
-
-const ConfirmLeadin = styled.p`
-  margin: 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: ${COLORS.brass};
 `;
 
 /* The whole row is the tap target — on an iPad a 22px box alone is fiddly. */
@@ -1510,8 +1500,10 @@ const DeceasedRegistrationForm = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-tenant-slug': tenantSlug,
               'Authorization': `Bearer ${token}`,
+              // Register into the BRANCH database the user is working in —
+              // each branch keeps its own deceased records (see globalAuth).
+              ...getBranchScopeHeaders(tenantSlug),
             },
             body: JSON.stringify(item.payload),
           });
@@ -1710,8 +1702,10 @@ const DeceasedRegistrationForm = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-slug': tenantSlug,
           'Authorization': `Bearer ${token}`,
+          // Register into the BRANCH database the user is working in — each
+          // branch keeps its own deceased records (see globalAuth).
+          ...getBranchScopeHeaders(tenantSlug),
         },
         body: JSON.stringify(payload),
       });
@@ -2315,77 +2309,45 @@ const DeceasedRegistrationForm = () => {
                 </SignOffContainer>
               </Section>
 
-              {/* Confirmation gate — the officer has to tick this before the
-                  record can be filed. Mirrors the release form's consent box.
-                  The label swaps to the short wording at iPad widths. */}
-              <ConfirmBlock
-                ref={confirmBlockRef}
-                $invalid={!!errors.confirm_accepted}
-              >
-                <ConfirmLeadin>Declaration by the receiving officer</ConfirmLeadin>
+              {/* Confirmation gate — the NEXT OF KIN / contact person named
+                  above has to affirm the record before it can be filed. It is
+                  its own labelled step (same section head as the blocks above)
+                  so it can never be read as the receiving officer's signature.
+                  UI-only: `confirm_accepted` is never added to the payload. */}
+              <Section ref={confirmBlockRef}>
+                <SectionHead>
+                  <SectionNum>05</SectionNum>
+                  <SectionTitle>I Confirm &amp; Continue</SectionTitle>
+                </SectionHead>
 
-                <ConfirmLabel>
-                  <ConfirmBox
-                    type="checkbox"
-                    name="confirm_accepted"
-                    checked={!!formData.confirm_accepted}
-                    onChange={handleChange}
-                    disabled={isSubmitting}
-                  />
-                  <ConfirmText>
-                    I confirm that the information above is correct and authorize its use for the funeral arrangements and related records.
-                  </ConfirmText>
-                  <ConfirmTextShort>
-                    I confirm the information above is correct and authorize its use.
-                  </ConfirmTextShort>
-                </ConfirmLabel>
+                <ConfirmBlock $invalid={!!errors.confirm_accepted}>
+                  <ConfirmLabel>
+                    <ConfirmBox
+                      type="checkbox"
+                      name="confirm_accepted"
+                      checked={!!formData.confirm_accepted}
+                      onChange={handleChange}
+                      disabled={isSubmitting}
+                    />
+                    <ConfirmText>
+                      I confirm, as the next of kin, that the information above is correct and authorize its use for the funeral arrangements and related records.
+                    </ConfirmText>
+                    <ConfirmTextShort>
+                      I confirm, as the next of kin, that the information above is correct.
+                    </ConfirmTextShort>
+                  </ConfirmLabel>
 
-                {errors.confirm_accepted ? (
-                  <ConfirmError>
-                    <AlertCircle size={14} /> Tick the box above to confirm before continuing.
-                  </ConfirmError>
-                ) : (
-                  <ConfirmHint>
-                    Nothing is filed until you press <ConfirmHintStrong>I Confirm &amp; Continue</ConfirmHintStrong>
-                  </ConfirmHint>
-                )}
-              </ConfirmBlock>
-
-              {/* Confirmation gate — the officer has to tick this before the
-                  record can be filed. Mirrors the release form's consent box.
-                  The label swaps to the short wording at iPad widths. */}
-              <ConfirmBlock
-                ref={confirmBlockRef}
-                $invalid={!!errors.confirm_accepted}
-              >
-                <ConfirmLeadin>Declaration by the receiving officer</ConfirmLeadin>
-
-                <ConfirmLabel>
-                  <ConfirmBox
-                    type="checkbox"
-                    name="confirm_accepted"
-                    checked={!!formData.confirm_accepted}
-                    onChange={handleChange}
-                    disabled={isSubmitting}
-                  />
-                  <ConfirmText>
-                    I confirm that the information above is correct and authorize its use for the funeral arrangements and related records.
-                  </ConfirmText>
-                  <ConfirmTextShort>
-                    I confirm the information above is correct and authorize its use.
-                  </ConfirmTextShort>
-                </ConfirmLabel>
-
-                {errors.confirm_accepted ? (
-                  <ConfirmError>
-                    <AlertCircle size={14} /> Tick the box above to confirm before continuing.
-                  </ConfirmError>
-                ) : (
-                  <ConfirmHint>
-                    Nothing is filed until you press <ConfirmHintStrong>I Confirm &amp; Continue</ConfirmHintStrong>
-                  </ConfirmHint>
-                )}
-              </ConfirmBlock>
+                  {errors.confirm_accepted ? (
+                    <ConfirmError>
+                      <AlertCircle size={14} /> Tick the box above to confirm before continuing.
+                    </ConfirmError>
+                  ) : (
+                    <ConfirmHint>
+                      Nothing is filed until you press <ConfirmHintStrong>I Confirm &amp; Continue</ConfirmHintStrong>
+                    </ConfirmHint>
+                  )}
+                </ConfirmBlock>
+              </Section>
 
               {/* Action Buttons */}
               <ActionsContainer>

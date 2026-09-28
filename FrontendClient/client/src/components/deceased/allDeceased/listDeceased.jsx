@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
-import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { getTenantSlug, getAuthToken, getBranchScopeHeaders } from '../../../utils/globalAuth';
 import { DECEASED_CHANGED_EVENT } from '../../../api/dashboardDataApi';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
@@ -502,7 +502,13 @@ const DeceasedListPage = () => {
     try {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-      const headers = { 'Authorization': `Bearer ${token}`, 'x-tenant-slug': tenantSlug };
+      // The deceased-service resolves its DATABASE from these headers, so a
+      // branch user must be addressed with the BRANCH slug: every branch of a
+      // multi-branch organisation keeps its records in its own database
+      // (`<org>-<branch>`), while the parent tenant slug resolves to the
+      // organisation's main/HQ database — which is why a Thika user used to be
+      // shown Nairobi's deceased records.
+      const headers = { 'Authorization': `Bearer ${token}`, ...getBranchScopeHeaders(tenantSlug) };
       const collected = []; let pageNum = 1; const pageSize = 200; let totalPages = 2;
       // `_t` + no-store: never let the browser (or an intermediary) answer this
       // read with a cached page — a just-registered body must appear here the
@@ -626,7 +632,7 @@ const DeceasedListPage = () => {
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
       const pin = exportPin.trim();
       if (pin && !/^\d{4}$/.test(pin)) { showExportFailed('The security PIN must be exactly 4 digits. Please correct it and try again.'); return; }
-      const response = await axios.post(`${BASE_URL}/export-excel`, { startDate: exportStart || undefined, endDate: exportEnd || undefined, exportPin: pin || undefined }, { headers: { 'Authorization': `Bearer ${token}`, 'x-tenant-slug': tenantSlug }, responseType: 'blob', timeout: 30000 });
+      const response = await axios.post(`${BASE_URL}/export-excel`, { startDate: exportStart || undefined, endDate: exportEnd || undefined, exportPin: pin || undefined }, { headers: { 'Authorization': `Bearer ${token}`, ...getBranchScopeHeaders(tenantSlug) }, responseType: 'blob', timeout: 30000 });
       const contentType = (response.headers?.['content-type'] || '').toLowerCase();
       if (isFileResponse(contentType)) { loadExportHistory(); const fileName = filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`); showExportSuccess(response.data, fileName, pin.length > 0); downloadExportBlob(response.data, fileName); return; }
       const data = await parseBlobJson(response.data);
@@ -649,7 +655,7 @@ const DeceasedListPage = () => {
       try {
         const tenantSlug = getTenantSlug();
         const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-        const response = await axios.get(`${BASE_URL}/export-status/${jobId}`, { headers: { 'Authorization': `Bearer ${token}`, 'x-tenant-slug': tenantSlug }, responseType: 'blob', timeout: 15000 });
+        const response = await axios.get(`${BASE_URL}/export-status/${jobId}`, { headers: { 'Authorization': `Bearer ${token}`, ...getBranchScopeHeaders(tenantSlug) }, responseType: 'blob', timeout: 15000 });
         const contentType = (response.headers?.['content-type'] || '').toLowerCase();
         if (isFileResponse(contentType)) { cleanup(); loadExportHistory(); showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`), pinProtected); return; }
         let data; try { data = await parseBlobJson(response.data); } catch (e) { throw new Error('Unexpected status response'); }
@@ -671,7 +677,7 @@ const DeceasedListPage = () => {
     try {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-      const response = await axios.get(`${BASE_URL}/export-history`, { headers: { 'Authorization': `Bearer ${token}`, 'x-tenant-slug': tenantSlug } });
+      const response = await axios.get(`${BASE_URL}/export-history`, { headers: { 'Authorization': `Bearer ${token}`, ...getBranchScopeHeaders(tenantSlug) } });
       if (response.data?.success && Array.isArray(response.data?.data)) { setExportHistory(response.data.data.slice(0, 10)); } else { setExportHistory([]); }
     } catch (err) { console.error('Failed to fetch export history:', err); setExportHistory([]); }
   }, []);
