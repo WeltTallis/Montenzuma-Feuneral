@@ -66,7 +66,7 @@ function timelineFor(searched, today, now) {
       : e.t === "intake"
         ? `from ${p.receivedFrom} · ${p.officer}`
         : p.pm.authority;
-    return { kind: "event", key: `${e.t}-${p.adm}-${e.time}`, ev: e, p, st, meta };
+    return { kind: "event", key: `${e.t}-${p.uid}-${e.time}`, ev: e, p, st, meta };
   });
 
   return { rows, done, up, has: done + up > 0 };
@@ -103,10 +103,10 @@ function TimelineRows({ data, now, onOpenCase, endNote = true }) {
             <div className="tlr"><span className="tld">{r.st === "done" ? "✓" : ""}</span></div>
             <div
               className="tlc"
-              onClick={() => onOpenCase(r.p.adm, r.ev.t)}
+              onClick={() => onOpenCase(r.p.uid, r.ev.t)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter") onOpenCase(r.p.adm, r.ev.t); }}
+              onKeyDown={(e) => { if (e.key === "Enter") onOpenCase(r.p.uid, r.ev.t); }}
             >
               <div style={{ minWidth: 0, flex: 1 }}>
                 <span className="tlv" style={{ color: verb.c }}>{verb.verb}</span>{" "}
@@ -172,10 +172,10 @@ function QuadRow({ ev, onOpenCase }) {
   return (
     <div
       className="qrow2"
-      onClick={() => onOpenCase(p.adm, ev.t)}
+      onClick={() => onOpenCase(p.uid, ev.t)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter") onOpenCase(p.adm, ev.t); }}
+      onKeyDown={(e) => { if (e.key === "Enter") onOpenCase(p.uid, ev.t); }}
     >
       <span className="qt">{ev.time}</span>
       <Avatar c={p} />
@@ -239,19 +239,19 @@ function TodayQuad({ searched, calc, today, now, onOpenCase }) {
 
         <QuadCard icon="bed" title="Intake Today" tagText={intakes.length} tagColor="var(--blue)">
           {intakes.length
-            ? intakes.map((e) => <QuadRow key={`i-${e.p.adm}`} ev={e} onOpenCase={onOpenCase} />)
+            ? intakes.map((e) => <QuadRow key={`i-${e.p.uid}`} ev={e} onOpenCase={onOpenCase} />)
             : <div className="empty" style={{ padding: 26 }}>No intakes scheduled today.</div>}
         </QuadCard>
 
         <QuadCard icon="heart" title="Releases Today" tagText={rels.length} tagColor="var(--teal)">
           {rels.length
-            ? rels.map((e) => <QuadRow key={`r-${e.p.adm}`} ev={e} onOpenCase={onOpenCase} />)
+            ? rels.map((e) => <QuadRow key={`r-${e.p.uid}`} ev={e} onOpenCase={onOpenCase} />)
             : <div className="empty" style={{ padding: 26 }}>No releases scheduled today.</div>}
         </QuadCard>
 
         <QuadCard icon="vial" title="Postmortem Today" tagText={pms.length} tagColor="var(--orange)">
           {pms.length
-            ? pms.map((e) => <QuadRow key={`p-${e.p.adm}`} ev={e} onOpenCase={onOpenCase} />)
+            ? pms.map((e) => <QuadRow key={`p-${e.p.uid}`} ev={e} onOpenCase={onOpenCase} />)
             : <div className="empty" style={{ padding: 26 }}>No postmortems scheduled today.</div>}
         </QuadCard>
       </div>
@@ -311,13 +311,13 @@ function WeekColumns({ searched, selDate, today, filters, onPickDay, onOpenCase 
             const sub = e.t === "release" ? e.p.release.dest : e.t === "intake" ? e.p.receivedFrom : e.p.pm.authority;
             return (
               <div
-                key={`${e.t}-${e.p.adm}-${e.time}`}
+                key={`${e.t}-${e.p.uid}-${e.time}`}
                 className="wkev2"
                 style={{ borderLeftColor: TYPE_C[e.t] }}
-                onClick={() => onOpenCase(e.p.adm, e.t)}
+                onClick={() => onOpenCase(e.p.uid, e.t)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(ev) => { if (ev.key === "Enter") onOpenCase(e.p.adm, e.t); }}
+                onKeyDown={(ev) => { if (ev.key === "Enter") onOpenCase(e.p.uid, e.t); }}
               >
                 <div className="t" style={{ color: TYPE_C[e.t] }}>
                   <i />{e.time} · {TYPE_L[e.t]}
@@ -396,11 +396,11 @@ function BandedDay({ date, searched, filters, today, onOpenCase, onClearDay }) {
               return (
                 <div
                   className="tcard"
-                  key={`${e.t}-${e.p.adm}-${e.time}`}
-                  onClick={() => onOpenCase(e.p.adm, e.t)}
+                  key={`${e.t}-${e.p.uid}-${e.time}`}
+                  onClick={() => onOpenCase(e.p.uid, e.t)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(ev) => { if (ev.key === "Enter") onOpenCase(e.p.adm, e.t); }}
+                  onKeyDown={(ev) => { if (ev.key === "Enter") onOpenCase(e.p.uid, e.t); }}
                 >
                   <div className="tct"><b>{hh}</b><span>:{mm}</span></div>
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -523,12 +523,12 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
         return (
           <div
             className="row"
-            key={`${ev.t}-${p.adm}-${ev.date}-${ev.time}`}
+            key={`${ev.t}-${p.uid}-${ev.date}-${ev.time}`}
             style={{ gridTemplateColumns: OPS_COLS }}
-            onClick={() => onOpenCase(p.adm, ev.t)}
+            onClick={() => onOpenCase(p.uid, ev.t)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e2) => { if (e2.key === "Enter") onOpenCase(p.adm, ev.t); }}
+            onKeyDown={(e2) => { if (e2.key === "Enter") onOpenCase(p.uid, ev.t); }}
           >
             <div className="rbar" style={{ background: TYPE_C[ev.t] }} />
             <div className="cell">
@@ -655,12 +655,12 @@ export function RegisterView({ section, people, searched, filters, sort, onSort,
         return (
           <div
             className="row"
-            key={`${section}-${p.adm}`}
+            key={`${section}-${p.uid}`}
             style={{ gridTemplateColumns: REG_COLS }}
-            onClick={() => onOpenCase(p.adm, section)}
+            onClick={() => onOpenCase(p.uid, section)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter") onOpenCase(p.adm, section); }}
+            onKeyDown={(e) => { if (e.key === "Enter") onOpenCase(p.uid, section); }}
           >
             <div className="rbar" style={{ background: cfg.c }} />
             <div className="cell">

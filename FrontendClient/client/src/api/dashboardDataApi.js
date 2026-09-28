@@ -95,33 +95,55 @@ const sliceSlug = (v) => {
   return s && s !== 'undefined' && s !== 'null' ? s : null;
 };
 
-/** Resolve the branch list: blessed localStorage copy first, then the
-    tenant service (`/tenant/:parent/branches`). */
+/**
+ * Resolve the branch list.
+ *
+ * This used to `return` the localStorage copy as soon as it was non-empty, so
+ * a branch added to the tenant after login (or one the cached list was missing)
+ * was never queried and its bodies never appeared on the dashboard — the
+ * register silently covered fewer branches than the release/postmortem feeds,
+ * which resolve their own list. The two are now MERGED (deduped by slug,
+ * localStorage first so a user's own branch keeps its resolved slug) and the
+ * live tenant list is always folded in, so a newly created branch shows up on
+ * the very next dashboard load.
+ */
 const resolveBranches = async () => {
-  const fromLocal = getBranches();
-  if (Array.isArray(fromLocal) && fromLocal.length) {
-    return fromLocal.map((b) => ({
-      // Prefer the branch's COMPLETE slug (e.g. `org-home-nairobi`) — every
-      // branch carries one, including the main/parent branch — and let the
-      // backend resolve it to the branch database.
-      slug: sliceSlug(b?.branchSlug || b?.branch_slug || b?.branchDbName || b?.branch_db_name || b?.name),
-      name: (b?.branchName || b?.branch_name || b?.name || '').trim() || 'Branch',
-    }));
-  }
+  const out = [];
+  const seen = new Set();
+
+  const push = (slug, name) => {
+    const s = sliceSlug(slug);
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    out.push({ slug: s, name: (name || '').trim() || s });
+  };
+
+  const readSlug = (b) =>
+    // Prefer the branch's COMPLETE slug (e.g. `org-home-nairobi`) — every branch
+    // carries one, including the main/parent branch — and let the backend
+    // resolve it to the branch database.
+    b?.branchSlug || b?.branch_slug || b?.branchDbName || b?.branch_db_name || b?.db_name || b?.name;
+  const readName = (b) => b?.branchName || b?.branch_name || b?.name;
+
+  // 1) cached branch list (stored after login)
+  (getBranches() || []).forEach((b) => push(readSlug(b), readName(b)));
+
+  // 2) live list from the tenant service — adds branches created since login
   try {
     const parent = getParentTenantSlug();
-    if (!parent) return [];
-    const r = await api.get(`/tenant/${parent}/branches`);
-    return (Array.isArray(r?.data?.data) ? r.data.data : Array.isArray(r?.data) ? r.data : [])
-      .map((b) => ({
-        slug: sliceSlug(b?.branch_slug || b?.branchSlug || b?.branch_db_name || b?.branchDbName || b?.db_name || b?.name),
-        name: (b?.branch_name || b?.branchName || b?.name || '').trim() || 'Branch',
-      }))
-      .filter((b) => b.slug);
+    if (parent) {
+      const r = await api.get(`/tenant/${parent}/branches`);
+      (Array.isArray(r?.data?.data) ? r.data.data : Array.isArray(r?.data) ? r.data : [])
+        .forEach((b) => push(readSlug(b), readName(b)));
+    }
   } catch (e) {
     console.warn('[CommandCentre] branch resolve failed:', e?.message);
-    return [];
   }
+
+  // 3) the branch currently in use, whatever it is called
+  push(getBranchSlug() || getTenantSlug(), 'Current Branch');
+
+  return out;
 };
 
 // ── Cache for multi-branch deceased fetch (avoids refetch on tab switch) ──
@@ -152,9 +174,14 @@ export const fetchAllBranchDeceased = async (forceRefresh = false) => {
 
   const out = [];
   const stamp = forceRefresh ? Date.now() : null;
+  // Branches are fetched concurrently; a burst of registrations (or a bulk
+  // import) can push a branch past 6 pages, and the old cap silently truncated
+  // the tail — a branch reporting 39 bodies could show fewer. Keep paging until
+  // the server runs out, with a generous ceiling as a runaway guard.
+  const MAX_PAGES = 60;
   await Promise.all(branches.map(async (b) => {
     try {
-      for (let page = 1; page <= 6; page++) {
+      for (let page = 1; page <= MAX_PAGES; page++) {
         const r = await api.get('/deceased/deceased-all', {
           // `_t` is only added on a forced refresh — it defeats any
           // browser/proxy HTTP cache that would otherwise answer with the
@@ -170,6 +197,8 @@ export const fetchAllBranchDeceased = async (forceRefresh = false) => {
           branch: b.name,
           _branchSlug: b.slug,
         }));
+        // The server clamps `limit` to 100, so a short page is the last page.
+        // Compare against the effective page size, not the requested one.
         if (chunk.length < 100) break;
       }
     } catch (e) {

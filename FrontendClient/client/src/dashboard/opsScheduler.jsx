@@ -33,7 +33,7 @@ export const timeText = (minutes) => {
   return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 };
 
-export const eventKey = (event) => `${event.date}-${event.t}-${event.p.adm}-${event.time}`;
+export const eventKey = (event) => `${event.date}-${event.t}-${event.p.uid}-${event.time}`;
 const eventClass = (type) => (type === "intake" ? "evi" : type === "pm" ? "evp" : "evr");
 const passes = (record, filters) => !filters.length || filters.some((key) => matchPill(record, "command", key));
 
@@ -166,11 +166,11 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
           width: `calc(${width}% - 8px)`,
         }}
         title={`${title}\n${detail}`}
-        onClick={() => onOpenCase(event.p.adm, event.t)}
+        onClick={() => onOpenCase(event.p.uid, event.t)}
         role="button"
         tabIndex={0}
         onKeyDown={(keyEvent) => {
-          if (keyEvent.key === "Enter" || keyEvent.key === " ") onOpenCase(event.p.adm, event.t);
+          if (keyEvent.key === "Enter" || keyEvent.key === " ") onOpenCase(event.p.uid, event.t);
         }}
       >
         <div className="et">{event.time} – {timeText(end)}</div>
@@ -205,12 +205,12 @@ export default function SchedulerView({ searched, state, now, today, onOpenCase,
                 return (
                   <span
                     className={`adchip ${isIntake ? "adi" : "adr"}`}
-                    key={`${record.adm}-${isIntake ? "arrival" : "handover"}`}
-                    onClick={() => onOpenCase(record.adm, isIntake ? "intake" : "release")}
+                    key={`${record.uid}-${isIntake ? "arrival" : "handover"}`}
+                    onClick={() => onOpenCase(record.uid, isIntake ? "intake" : "release")}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(keyEvent) => {
-                      if (keyEvent.key === "Enter") onOpenCase(record.adm, isIntake ? "intake" : "release");
+                      if (keyEvent.key === "Enter") onOpenCase(record.uid, isIntake ? "intake" : "release");
                     }}
                   >
                     {isIntake ? "Arrival" : "Handover"} · {record.name.split(" ")[0]} {time || ""}

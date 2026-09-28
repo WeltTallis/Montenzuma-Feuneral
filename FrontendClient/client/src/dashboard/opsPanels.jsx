@@ -19,7 +19,7 @@ function CaseRow({ c, meta, right, onOpenCase }) {
     <button
       className="mrow mlink"
       style={{ boxShadow: `inset 3px 0 0 ${cfg.c}` }}
-      onClick={() => onOpenCase(c.adm)}
+      onClick={() => onOpenCase(c.uid)}
     >
       <Avatar c={c} />
       <div className="mmain">
@@ -37,7 +37,7 @@ function listCap(list, onOpenCase) {
   return (
     <>
       {list.slice(0, 20).map((c) => (
-        <CaseRow key={c.adm} c={c} meta={statusMeta(c)} onOpenCase={onOpenCase} />
+        <CaseRow key={c.uid} c={c} meta={statusMeta(c)} onOpenCase={onOpenCase} />
       ))}
       {list.length > 20 ? <div className="mfoot">+{list.length - 20} more cases…</div> : null}
     </>
@@ -83,7 +83,7 @@ function StaysBody({ people, median, avg, onOpenCase }) {
       {longest.length
         ? longest.map((s) => (
           <CaseRow
-            key={s.c.adm}
+            key={s.c.uid}
             c={s.c}
             meta={`${s.d} days in care · released ${fmtDate(s.c.release?.date)}`}
             onOpenCase={onOpenCase}
@@ -174,7 +174,7 @@ function modalFor(key, people, calc, onOpenCase, onOpenModal) {
       body: list.length
         ? list.slice(0, 20).map((c) => {
           const role = c.pm?.pathologist === arg && c.officer !== arg ? "Pathologist" : "Officer";
-          return <CaseRow key={c.adm} c={c} meta={`${role} · ${c.cause}`} onOpenCase={onOpenCase} />;
+          return <CaseRow key={c.uid} c={c} meta={`${role} · ${c.cause}`} onOpenCase={onOpenCase} />;
         })
         : <div className="empty" style={{ padding: 20 }}>No cases.</div>,
     };
@@ -188,7 +188,7 @@ function modalFor(key, people, calc, onOpenCase, onOpenModal) {
       count: list.length,
       body: list.length
         ? list.slice(0, 20).map((c) => (
-          <CaseRow key={c.adm} c={c} meta={`Age ${ageFor(c)} · ${c.cause}`} onOpenCase={onOpenCase} />
+          <CaseRow key={c.uid} c={c} meta={`Age ${ageFor(c)} · ${c.cause}`} onOpenCase={onOpenCase} />
         ))
         : <div className="empty" style={{ padding: 20 }}>No cases.</div>,
     };
@@ -215,14 +215,14 @@ function modalFor(key, people, calc, onOpenCase, onOpenModal) {
           <div className="msect">Intakes</div>
           {adm.length
             ? adm.slice(0, 10).map((c) => (
-              <CaseRow key={c.adm} c={c} meta={`Admitted ${fmtDate(c.admDate)} · ${c.receivedFrom}`} onOpenCase={onOpenCase} />
+              <CaseRow key={c.uid} c={c} meta={`Admitted ${fmtDate(c.admDate)} · ${c.receivedFrom}`} onOpenCase={onOpenCase} />
             ))
             : <div className="empty" style={{ padding: 14 }}>None.</div>}
           <div className="msect">Releases</div>
           {rel.length
             ? rel.slice(0, 10).map((c) => (
               <CaseRow
-                key={c.adm}
+                key={c.uid}
                 c={c}
                 meta={`Released ${fmtDate(c.release.date)} → ${String(c.release.dest).slice(0, 30)}`}
                 onOpenCase={onOpenCase}
@@ -248,7 +248,7 @@ function modalFor(key, people, calc, onOpenCase, onOpenModal) {
       count: evs.length,
       body: evs.length
         ? evs.map((e) => (
-          <CaseRow key={`${e.t}-${e.c.adm}`} c={e.c} meta={`${TYPE_L[e.t]} at ${e.time}`} onOpenCase={onOpenCase} />
+          <CaseRow key={`${e.t}-${e.c.uid}`} c={e.c} meta={`${TYPE_L[e.t]} at ${e.time}`} onOpenCase={onOpenCase} />
         ))
         : <div className="empty" style={{ padding: 20 }}>No activity.</div>,
     };
@@ -309,7 +309,7 @@ function modalFor(key, people, calc, onOpenCase, onOpenModal) {
         body: list.length
           ? list.slice(0, 20).map((c) => (
             <CaseRow
-              key={c.adm}
+              key={c.uid}
               c={c}
               meta={`${c.pm.authority} · ${c.pm.pathologist}`}
               right={(

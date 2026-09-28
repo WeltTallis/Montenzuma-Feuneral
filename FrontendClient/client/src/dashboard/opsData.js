@@ -189,6 +189,20 @@ const admNoOf = (r) =>
   String(r?.admission_number || r?.admission_no || r?.deceased_id || (r?.id ? `DC-${r.id}` : "") || "");
 const nameOf = (r) => r?.full_name || r?.name_of_deceased || r?.deceased_name || "Unknown";
 const branchOf = (r) => r?.branch_name || r?.branch || "Main Branch";
+
+/**
+ * Stable branch discriminator for a feed row.
+ * Every branch runs its OWN database with its OWN admission-number sequence, so
+ * an admission number is only unique WITHIN a branch — "ADM-001" exists in
+ * Nairobi and in Thika as unrelated people. The slug is preferred because it is
+ * identical on the register rows and the release/postmortem rows for the same
+ * branch; the name is the fallback when a feed row arrives untagged.
+ */
+const branchKeyOf = (r) =>
+  String(r?._branchSlug || r?.branch_slug || branchOf(r) || "").trim().toLowerCase();
+
+/** Globally-unique case id: branch + admission number. */
+const caseUidOf = (r) => `${branchKeyOf(r)}::${admNoOf(r)}`;
 const admKeyOf = (r) => keyOf(r?.date_key || r?.adm_date || r?.date_admitted || r?.created_at);
 const admTimeOf = (r) => timeOf(r?.time_key || r?.time_admitted || r?.adm_time || r?.created_at);
 
@@ -453,36 +467,79 @@ function mapReleaseRow(q) {
  * because its register page was not fetched.
  */
 export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
-  const byAdm = new Map();
+  const byUid = new Map();
   const order = [];
 
-  const put = (adm, c) => {
-    if (!adm) return null;
-    if (!byAdm.has(adm)) {
-      byAdm.set(adm, c);
-      order.push(adm);
+  /**
+   * Identity is `branch + admission number`, never the admission number alone.
+   * Each branch is a separate database with its OWN admission-number sequence,
+   * so keying on the bare number made `ADM-001` in branch B collide with
+   * `ADM-001` in branch A — `put` then kept only the first and SILENTLY DROPPED
+   * every other branch's record. That is what made a branch holding 39 bodies
+   * report 13. `c.adm` stays the human-readable admission number; `c.uid` is
+   * the collision-free id the drawer, the React keys and the feeds all key on.
+   */
+  const put = (uid, c) => {
+    if (!uid || !c) return null;
+    c.uid = uid;
+    if (!byUid.has(uid)) {
+      byUid.set(uid, c);
+      order.push(uid);
     }
-    return byAdm.get(adm);
+    return byUid.get(uid);
   };
 
-  deceasedRows.forEach((r) => put(admNoOf(r), mapDeceased(r)));
+  deceasedRows.forEach((r) => put(caseUidOf(r), mapDeceased(r)));
 
-  /* Register cases keyed by deceased_id. A postmortem request only carries a
-     deceased_id, so without this index a request could not find the case whose
-     admission number differs from its deceased_id. */
+  /* Register cases keyed by branch + deceased_id. A postmortem request only
+     carries a deceased_id, so without this index a request could not find the
+     case whose admission number differs from its deceased_id. Scoped by branch
+     because deceased_id is generated per branch database too. */
   const byDeceasedId = new Map();
   deceasedRows.forEach((r) => {
     const did = String(r?.deceased_id ?? "").trim();
-    const c = did ? byAdm.get(admNoOf(r)) : null;
-    if (did && c) byDeceasedId.set(did, c);
+    const c = did ? byUid.get(caseUidOf(r)) : null;
+    if (did && c) byDeceasedId.set(`${branchKeyOf(r)}::${did}`, c);
   });
+
+  /* Fallback index for feed rows that arrive WITHOUT a usable branch tag
+     (single-branch tenants hit the untagged code path in the feed API): an
+     admission number that maps to exactly one case is safe to match on. */
+  const byAdmOnly = new Map();
+  byUid.forEach((c) => {
+    if (!c.adm) return;
+    byAdmOnly.set(c.adm, (byAdmOnly.get(c.adm) || 0) + 1);
+  });
+
+  /** Resolve a feed row to its register case: branch-scoped first, then unique-by-number. */
+  const findCase = (row, adm, did) => {
+    if (!adm && !did) return null;
+    if (adm) {
+      const scoped = byUid.get(`${branchKeyOf(row)}::${adm}`);
+      if (scoped) return scoped;
+      if (byAdmOnly.get(adm) === 1) {
+        // unique across the whole set — safe regardless of the branch tag
+        for (const c of byUid.values()) if (c.adm === adm) return c;
+      }
+    }
+    if (did) {
+      const scoped = byDeceasedId.get(`${branchKeyOf(row)}::${did}`);
+      if (scoped) return scoped;
+      for (const c of byUid.values()) if (String(c.raw?.deceased_id ?? "").trim() === did) return c;
+    }
+    return null;
+  };
 
   releaseRows.forEach((q, i) => {
     const adm = String(q?.admission_number || q?.admission_no || "");
     const rel = releaseFromFeed(q);
-    const existing = adm ? byAdm.get(adm) : null;
+    const existing = findCase(q, adm, "");
     if (existing) existing.release = rel;
-    else put(adm || `REL-${q?.release_id || q?.id || i}`, mapReleaseRow(q));
+    else {
+      const c = mapReleaseRow(q);
+      const uid = adm ? `${branchKeyOf(q)}::${adm}` : `rel::${q?.release_id || q?.id || i}`;
+      put(uid, { ...c, uid });
+    }
   });
 
   pmRows.forEach((q) => {
@@ -490,19 +547,22 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
     // deceased table, so a row also carries the real admission_number — prefer
     // it, otherwise the request would only match on deceased_id.
     const adm = String(
-      q?.admission_number || q?.admission_no || q?.deceased_admission_number || q?.deceased_id || ""
+      q?.admission_number || q?.admission_no || q?.deceased_admission_number || ""
     );
-    if (!adm) return;
+    const did = String(q?.deceased_id ?? "").trim();
+    if (!adm && !did) return;
     const pm = pmFromRequest(q);
-    // Match the register case by admission number, then by deceased_id.
-    const existing = byAdm.get(adm)
-      || (q?.deceased_id ? byDeceasedId.get(String(q.deceased_id).trim()) : null);
+    // Match the register case by branch-scoped admission number, then deceased_id.
+    const existing = findCase(q, adm, did);
     if (existing) {
       existing.pm = pm;
       return;
     }
-    const created = put(adm, {
-      adm,
+    // A request with no register row still becomes a visible case so it never
+    // disappears — it is keyed by branch so it cannot merge with another branch.
+    const label = adm || did;
+    put(`${branchKeyOf(q)}::pm::${label}`, {
+      adm: label,
       name: nameOf(q),
       sex: q?.deceased_gender || "",
       dob: null,
@@ -522,16 +582,15 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
       notes: "",
       raw: q,
     });
-    return created;
   });
 
   /* register-only rows still carry enough signal for a derived release / pm */
-  byAdm.forEach((c) => {
+  byUid.forEach((c) => {
     if (!c.release) c.release = releaseFromRegister(c.raw);
     if (!c.pm) c.pm = pmFromRegister(c.raw);
   });
 
-  return order.map((k) => byAdm.get(k)).filter((c) => c && (c.adm || c.name !== "Unknown"));
+  return order.map((k) => byUid.get(k)).filter((c) => c && (c.adm || c.name !== "Unknown"));
 }
 
 /** True when a case has a completed postmortem, including legacy/raw API shapes. */

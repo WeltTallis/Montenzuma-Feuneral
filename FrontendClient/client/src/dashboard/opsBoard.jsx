@@ -147,11 +147,11 @@ export default function BoardSchedule({
           right: "3px",
         }}
         title={`${title}\n${event.time}–${timeText(end)} · ${event.p.adm} · ${location || "—"}`}
-        onClick={() => onOpenCase(event.p.adm, event.t)}
+        onClick={() => onOpenCase(event.p.uid, event.t)}
         role="button"
         tabIndex={0}
         onKeyDown={(keyEvent) => {
-          if (keyEvent.key === "Enter" || keyEvent.key === " ") onOpenCase(event.p.adm, event.t);
+          if (keyEvent.key === "Enter" || keyEvent.key === " ") onOpenCase(event.p.uid, event.t);
         }}
       >
         <div className="bd-t">{event.time}–{timeText(end)}</div>
@@ -174,12 +174,12 @@ export default function BoardSchedule({
                 return (
                   <span
                     className={`bd-chip ${isIntake ? "bd-chip-in" : "bd-chip-out"}`}
-                    key={`${record.adm}-${isIntake ? "arrival" : "handover"}`}
-                    onClick={() => onOpenCase(record.adm, isIntake ? "intake" : "release")}
+                    key={`${record.uid}-${isIntake ? "arrival" : "handover"}`}
+                    onClick={() => onOpenCase(record.uid, isIntake ? "intake" : "release")}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(keyEvent) => {
-                      if (keyEvent.key === "Enter") onOpenCase(record.adm, isIntake ? "intake" : "release");
+                      if (keyEvent.key === "Enter") onOpenCase(record.uid, isIntake ? "intake" : "release");
                     }}
                   >
                     {isIntake ? "Arrival" : "Handover"} · {record.name.split(" ")[0]} {time || ""}

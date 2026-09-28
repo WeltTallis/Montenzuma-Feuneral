@@ -118,6 +118,33 @@ function isPreAuthRoute(req) {
   return PRE_AUTH_PREFIXES.has(servicePathOf(req).split('/')[0]);
 }
 
+/**
+ * The branch database a signed identity is actually scoped to.
+ *
+ * A multi-branch organisation runs ONE DATABASE PER BRANCH, and the branch's full
+ * slug IS that database's name (`<org-slug>-<branch-slug>`, e.g.
+ * `montenzuma-monalisa-feuneral-home-thika`). The token's `tenantSlug` claim is
+ * the PARENT organisation, which resolves to the main/HQ database instead.
+ *
+ * This reads ONLY from signed claims, so it can narrow a request to the caller's
+ * own branch but can never widen it to a sibling branch or another tenant. The
+ * value is shape-validated before use because it is concatenated into a database
+ * name downstream.
+ *
+ * @returns {string} the branch database slug, or '' for HQ / single-branch users
+ */
+function branchDatabaseOf(identity) {
+  if (!identity) return '';
+  // `branchDbName` is authoritative when present; `branchSlug` is the same
+  // string for every branch created by the tenant service, so it is a safe
+  // fallback for tokens minted before `branchDbName` was added.
+  const candidate = identity.branchDbName || identity.branchSlug;
+  if (!candidate) return '';
+  const slug = String(candidate);
+  if (!TENANT_SLUG_RE.test(slug)) return '';
+  return slug;
+}
+
 // ─── Verification cache ─────────────────────────────────────────────────────
 // The gateway re-encounters the same access token on every call a user makes.
 // Memoise the positive result briefly to avoid re-verifying on every request.
@@ -179,6 +206,13 @@ function resolveIdentity(req) {
     tenantId: claims.tenantId || claims.tenant_id || undefined,
     userId: claims.userId || claims.user_id || claims.id || undefined,
     role: String(claims.role || ''),
+    // Branch scope is part of the SIGNED identity. The auth service deliberately
+    // keeps `tenantSlug` pointing at the PARENT organisation and carries the
+    // branch separately, so these must survive normalisation or the branch a user
+    // is assigned to would be lost at the gateway.
+    branchDbName: claims.branchDbName || claims.branch_db_name || undefined,
+    branchSlug: claims.branchSlug || claims.branch_slug || undefined,
+    branchId: claims.branchId || claims.branch_id || undefined,
   };
 
   // A verified token with no tenant claim is a platform-level token (e.g. a
@@ -212,6 +246,7 @@ function applyTenantIdentity(proxyReq, req, log) {
   const clientSlug = firstHeader(req.headers['x-tenant-slug']) || firstHeader(req.headers['x-tenant-id']);
   const clientUser = firstHeader(req.headers['x-user-id']);
   const clientBranch = firstHeader(req.headers['x-branch-id']);
+  const clientBranchSlug = firstHeader(req.headers['x-branch-slug']);
 
   let identity;
   try {
@@ -231,22 +266,57 @@ function applyTenantIdentity(proxyReq, req, log) {
 
   if (identity.verified && identity.tenantSlug) {
     // ── Authoritative path: identity comes from the signed claims ──
-    proxyReq.setHeader('x-tenant-slug', String(identity.tenantSlug));
+    // A multi-branch organisation runs ONE DATABASE PER BRANCH, keyed by the
+    // branch's own full slug. The token's `tenantSlug` claim is deliberately the
+    // PARENT organisation, so forwarding it verbatim routes every branch user to
+    // the HQ database. `branchDatabaseOf()` reads the SIGNED branch claim, so this
+    // narrows a request to the caller's own branch and can never reach a sibling
+    // branch or another tenant. HQ / single-branch users keep the parent slug.
+    const branchDb = branchDatabaseOf(identity);
+    const effectiveSlug = branchDb || String(identity.tenantSlug);
+
+    proxyReq.setHeader('x-tenant-slug', effectiveSlug);
     proxyReq.setHeader('x-tenant-id', String(identity.tenantId || ''));
     proxyReq.setHeader('x-user-id', String(identity.userId || ''));
     proxyReq.setHeader('x-tenant-verified', '1');
+    // Propagate the signed branch scope so branch-aware services can filter on it
+    // instead of trusting the client's own copy of these headers.
+    if (branchDb) {
+      proxyReq.setHeader('x-branch-db', branchDb);
+      if (identity.branchSlug) proxyReq.setHeader('x-branch-slug', String(identity.branchSlug));
+      if (identity.branchId) proxyReq.setHeader('x-branch-id', String(identity.branchId));
+    }
     proxyReq.removeHeader('x-tenant-assertion');
     proxyReq.removeHeader('x-user-assertion');
     proxyReq.removeHeader('x-tenant-mismatch');
     identityEstablished = true;
 
-    // A client asking for a different tenant than its token authorises is an
-    // attack, not a routing quirk. The header is replaced with the claim value
-    // and the attempt is logged for alerting.
-    if (clientSlug && String(clientSlug) !== String(identity.tenantSlug)) {
+    // A client asking for a scope its token does not authorise is an attack, not
+    // a routing quirk. The header was already replaced with the authorised value
+    // above, so the attempt is logged for alerting.
+    //
+    // The comparison is against `effectiveSlug` — the scope the token actually
+    // proves — NOT the raw `tenantSlug` claim. The claim is the parent org, so
+    // comparing against it would flag every legitimate branch user (whose client
+    // correctly sends its own branch slug) as an isolation breach.
+    if (clientSlug && String(clientSlug) !== effectiveSlug) {
       if (log && log.warn) {
         log.warn(
-          `[TENANT-ISOLATION] overrode x-tenant-slug=${clientSlug} with claim tenant=${identity.tenantSlug} ` +
+          `[TENANT-ISOLATION] overrode x-tenant-slug=${clientSlug} with authorised scope=${effectiveSlug} ` +
+          `for ${req.method} ${req.originalUrl} (user=${identity.userId}, role=${identity.role})`
+        );
+      }
+      proxyReq.setHeader('x-tenant-mismatch', '1');
+    }
+
+    // Same rule for an explicitly asserted BRANCH: a branch user claiming a
+    // different branch than its token was signed for is a genuine cross-branch
+    // attempt, even though the tenant itself matches. Narrowing is allowed
+    // (an HQ user with no branch scope may assert one); widening is not.
+    if (branchDb && clientBranchSlug && String(clientBranchSlug) !== String(identity.branchSlug || '')) {
+      if (log && log.warn) {
+        log.warn(
+          `[BRANCH-ISOLATION] overrode x-branch-slug=${clientBranchSlug} with signed branch=${identity.branchSlug} ` +
           `for ${req.method} ${req.originalUrl} (user=${identity.userId}, role=${identity.role})`
         );
       }

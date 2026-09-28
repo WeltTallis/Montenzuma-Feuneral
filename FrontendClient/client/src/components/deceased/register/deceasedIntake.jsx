@@ -709,9 +709,6 @@ const ConfirmBlock = styled.div`
   width: 100%;
   margin-top: 2.5rem;
   padding: 1.1rem 1.3rem 1.25rem;
-  background: ${COLORS.bone};
-  border: 1px solid ${COLORS.line};
-  border-left: 3px solid ${(p) => (p.$invalid ? COLORS.red : COLORS.brassLight)};
   border-radius: 4px;
   scroll-margin-top: 2rem;
 
@@ -747,9 +744,6 @@ const ConfirmBox = styled.input`
   position: relative;
   cursor: pointer;
   transition: all 0.15s ease;
-
-  &:hover { border-color: ${COLORS.verdigris}; }
-  &:checked { background: ${COLORS.verdigris}; border-color: ${COLORS.verdigris}; }
   &:checked::after {
     content: '';
     position: absolute;
@@ -2338,6 +2332,9 @@ const DeceasedRegistrationForm = () => {
                       I, {formData.contact_person}, confirm that the details recorded above
                       are true and correct.
                     </ConfirmText>
+                    <ConfirmTextShort>
+                      I confirm, as the next of kin, that the information above is correct.
+                    </ConfirmTextShort>
                   </ConfirmLabel>
 
                   {errors.confirm_accepted ? (

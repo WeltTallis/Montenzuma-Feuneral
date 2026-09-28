@@ -4,6 +4,7 @@ import "./dashboard.css";
 
 import { fetchAllBranchDeceased, DECEASED_CHANGED_EVENT } from "../api/dashboardDataApi";
 import { fetchReleasesFeed, fetchPostmortemsFeed } from "../api/dashboardFeedApi";
+import { useSocket } from "../utils/context/socketContext";
 
 import {
   DOWF, DOWM, MO, TYPE_C, addDays, baseList, buildCases, calcStats, eventsOf, fmtK, initials, isReleased,
@@ -70,8 +71,14 @@ function useCaseData() {
   // Timestamp of the last successful load — used to decide whether a tab that
   // just regained focus really needs another network round trip.
   const lastLoadRef = useRef(0);
+  // Guards against overlapping loads: several feeds + several branches can be
+  // in flight at once, and a slower earlier response must never overwrite a
+  // newer one.
+  const inflightRef = useRef(0);
+  const { socket } = useSocket();
 
   const load = useCallback(async (force = false) => {
+    const ticket = ++inflightRef.current;
     setLoading(true);
     try {
       const [deceased, releases, postmortems] = await Promise.all([
@@ -79,6 +86,8 @@ function useCaseData() {
         fetchReleasesFeed().catch(() => []),
         fetchPostmortemsFeed().catch(() => []),
       ]);
+      // A newer load started while this one was in flight — drop this result.
+      if (ticket !== inflightRef.current) return;
       setCases(buildCases(
         Array.isArray(deceased) ? deceased : [],
         Array.isArray(releases) ? releases : [],
@@ -87,9 +96,9 @@ function useCaseData() {
       lastLoadRef.current = Date.now();
     } catch (e) {
       console.warn("[Operations dashboard] feed load failed:", e?.message);
-      setCases([]);
+      if (ticket === inflightRef.current) setCases([]);
     } finally {
-      setLoading(false);
+      if (ticket === inflightRef.current) setLoading(false);
     }
   }, []);
 
@@ -114,6 +123,34 @@ function useCaseData() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [load]);
+
+  /* Live updates. The in-app event above only fires in the tab that performed
+     the write, so a body registered by a colleague (or in another tab) used to
+     leave the dashboard stale until it was reloaded. The backend already emits
+     these on every register / release / postmortem write, so subscribe to them
+     and refresh. Bursts are coalesced into one load so a bulk import does not
+     fire a request per row. */
+  useEffect(() => {
+    if (!socket) return undefined;
+    let timer = null;
+    const schedule = () => {
+      if (timer) return;
+      timer = setTimeout(() => { timer = null; load(true); }, 400);
+    };
+    const EVENTS = [
+      "notification:deceased-admitted", "deceased-admitted",
+      "notification:deceased-removed", "deceased-removed",
+      "notification:deceased-updated", "deceased-updated",
+      "notification:body-released", "body-released",
+      "notification:postmortem-request", "postmortem-request",
+      "notification:postmortem-update", "postmortem-update",
+    ];
+    EVENTS.forEach((e) => socket.on(e, schedule));
+    return () => {
+      if (timer) clearTimeout(timer);
+      EVENTS.forEach((e) => socket.off(e, schedule));
+    };
+  }, [socket, load]);
 
   return { cases, loading, reload: load };
 }
@@ -343,8 +380,11 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     return map;
   }, [scoped]);
 
+  /* The drawer is keyed on the branch-scoped `uid`, not the admission number —
+     two branches can legitimately hold the same admission number, and matching
+     on the bare number opened whichever row happened to come first. */
   const drawerCase = useMemo(
-    () => (drawer ? cases.find((c) => c.adm === drawer.adm) || null : null),
+    () => (drawer ? cases.find((c) => c.uid === drawer.uid) || null : null),
     [drawer, cases]
   );
 
@@ -391,7 +431,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   }, []);
 
   /* ── handlers ─────────────────────────────────────────────────────────── */
-  const openCase = useCallback((adm, ctx) => setDrawer({ adm, ctx: ctx || "intake" }), []);
+  const openCase = useCallback((uid, ctx) => setDrawer({ uid, ctx: ctx || "intake" }), []);
   const openModal = useCallback((key) => setModal(key), []);
 
   const pickDay = useCallback((key) => {
@@ -673,7 +713,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
         people={searched}
         calc={calc}
         onClose={() => setModal(null)}
-        onOpenCase={(adm) => { setModal(null); openCase(adm, "intake"); }}
+        onOpenCase={(uid) => { setModal(null); openCase(uid, "intake"); }}
         onOpenModal={openModal}
       />
 
