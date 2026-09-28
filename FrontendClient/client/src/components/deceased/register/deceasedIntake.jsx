@@ -2335,20 +2335,9 @@ const DeceasedRegistrationForm = () => {
                       disabled={isSubmitting}
                     />
                     <ConfirmText>
-
-
-
-                      <span>
-                        I  <ClauseKin>{contact_person || 'contact  person'}</ClauseKin>confirm,
-                      </span>
-
-
-
-
+                      I, {formData.contact_person}, confirm that the details recorded above
+                      are true and correct.
                     </ConfirmText>
-                    <ConfirmTextShort>
-                      that the information above is correct and authorize its use for the funeral arrangements and related records.
-                    </ConfirmTextShort>
                   </ConfirmLabel>
 
                   {errors.confirm_accepted ? (
