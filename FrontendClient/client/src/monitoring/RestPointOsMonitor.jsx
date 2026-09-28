@@ -216,6 +216,105 @@ export default function RestPointOsMonitor() {
   const s = data?.summary || {};
   const proc = data?.process || {};
 
+  /* The four chart builders below were referenced by the cards but never
+     declared, so the first render threw `ReferenceError: buildHistory is not
+     defined` and the Error Boundary replaced the whole monitor. Each returns
+     the same Chart.js config shape as buildTrend and reads only real fields
+     from the gateway's /monitoring payload. */
+
+  /** API requests per service (cumulative since start). */
+  const buildHistory = () => {
+    const entries = Object.entries(perService)
+      .map(([name, v]) => [name, Number(v?.count) || 0])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12);
+    return {
+      type: 'bar',
+      data: {
+        labels: entries.map(([n]) => n),
+        datasets: [
+          {
+            label: 'Requests', data: entries.map(([, v]) => v),
+            backgroundColor: gradientFor(document.createElement('canvas').getContext('2d'), C.cyan),
+            borderColor: C.cyan, borderWidth: 1, borderRadius: 3,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: axisY({ beginAtZero: true }), y: axisX() },
+      },
+    };
+  };
+
+  /** Redis hit vs miss split. */
+  const buildCache = () => {
+    const hits = Number(cache.hits) || 0;
+    const misses = Number(cache.misses) || 0;
+    return {
+      type: 'doughnut',
+      data: {
+        labels: ['Hits', 'Misses'],
+        datasets: [
+          {
+            data: [hits, misses],
+            backgroundColor: [C.green, C.yellow],
+            borderColor: '#0d1117', borderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, color: C.faint } } },
+      },
+    };
+  };
+
+  /** Real probe latency for the services that are currently up. */
+  const buildLatency = () => ({
+    type: 'bar',
+    data: {
+      labels: services.filter((x) => x.up).map((x) => x.name).slice(0, 12),
+      datasets: [
+        {
+          label: 'Latency (ms)', data: latencyPerService,
+          backgroundColor: gradientFor(document.createElement('canvas').getContext('2d'), C.pink),
+          borderColor: C.pink, borderWidth: 1, borderRadius: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: axisY({ beginAtZero: true }), x: axisX() },
+    },
+  });
+
+  /** 429s recorded at each sample in the selected range. */
+  const buildRateLimit = () => {
+    const pts = series.slice(-range);
+    return {
+      type: 'line',
+      data: {
+        labels: pts.map((x) => clockOf(x.t)),
+        datasets: [
+          {
+            label: '429s', data: pts.map((x) => Number(x.rateLimited) || 0),
+            borderColor: C.yellow, backgroundColor: 'transparent',
+            tension: 0.35, pointRadius: 0, pointHoverRadius: 5, borderWidth: 2, fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false } },
+        scales: { y: axisY({ beginAtZero: true, precision: 0 }), x: axisX() },
+      },
+    };
+  };
+
   const Stat = ({ tone, title, value }) => (
     <div className={`rpm-stat ${tone || ''}`}>
       <div className="t">{title}</div>

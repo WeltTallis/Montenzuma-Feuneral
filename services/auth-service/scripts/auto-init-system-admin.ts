@@ -103,7 +103,17 @@ export async function autoInitSystemAdmin() {
     `);
         console.log('Ensured tenants table');
 
-        // Create users table if it doesn't exist
+        // Create users table if it doesn't exist.
+        //
+        // `tenant_id` MUST be created as VARCHAR, not INT. Installs provisioned
+        // by the tenant-service migrations use UUID string keys
+        // (`tenants.id VARCHAR(36)` — see
+        // tenant-service/src/migrations/20260813000000_add_tenant_code_and_shared_db
+        // and ensure-tenant-admin.js, which declares `tenant_id VARCHAR(64) NULL`).
+        // This script previously created `tenant_id INT NOT NULL`, so on those
+        // installs MySQL truncated the UUID to a number (or raised
+        // "Incorrect integer value"), and the system admin failed to initialise
+        // with the id arriving as a number where a string was required.
         await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
         user_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -112,7 +122,7 @@ export async function autoInitSystemAdmin() {
         full_name VARCHAR(255) NOT NULL,
         phone VARCHAR(20),
         role VARCHAR(50) DEFAULT 'admin',
-        tenant_id INT NOT NULL,
+        tenant_id VARCHAR(64) NULL,
         branch_id INT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         is_verified BOOLEAN DEFAULT TRUE,
@@ -132,33 +142,72 @@ export async function autoInitSystemAdmin() {
         // the TENANT database, not from tenant_tracking.users.
         // The upserts below are idempotent and run on every startup.
 
-        // Create or update tenant
-        await connection.query(`
-            INSERT INTO tenants (
-                tenant_name, tenant_slug, db_name, email, phone, 
-                location, country, status, subscription_status, deployment_type
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'active', 'single')
-            ON DUPLICATE KEY UPDATE tenant_name = VALUES(tenant_name)
-        `, [
-            SYSTEM_ADMIN.tenantName,
-            SYSTEM_ADMIN.tenantSlug,
-            SYSTEM_ADMIN.dbName,
-            SYSTEM_ADMIN.email,
-            SYSTEM_ADMIN.phone,
-            SYSTEM_ADMIN.location,
-            SYSTEM_ADMIN.country
-        ]);
+        // Create or update tenant.
+        //
+        // `tenants.id` is a UUID string on installs provisioned by the
+        // tenant-service (`id VARCHAR(36)`, see ensure-tenant-admin.js which
+        // probes INFORMATION_SCHEMA for exactly this). This INSERT only lists
+        // the non-key columns, so the column must be auto-populated. Where it
+        // is a UUID with no default, supply one explicitly — the same
+        // detection the sibling script performs.
+        let tenantNeedsExplicitId = false;
+        try {
+            const [idCol] = await connection.query(
+                `SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'tenants' AND COLUMN_NAME = 'id'`
+            );
+            tenantNeedsExplicitId = idCol.length > 0 && !/auto_increment/i.test(idCol[0].EXTRA || '');
+        } catch { /* default false — plain auto-increment install */ }
+
+        if (tenantNeedsExplicitId) {
+            await connection.query(`
+                INSERT INTO tenants (
+                    id, tenant_name, tenant_slug, db_name, email, phone,
+                    location, country, status, subscription_status, deployment_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'active', 'single')
+                ON DUPLICATE KEY UPDATE tenant_name = VALUES(tenant_name)
+            `, [
+                require('crypto').randomUUID(),
+                SYSTEM_ADMIN.tenantName,
+                SYSTEM_ADMIN.tenantSlug,
+                SYSTEM_ADMIN.dbName,
+                SYSTEM_ADMIN.email,
+                SYSTEM_ADMIN.phone,
+                SYSTEM_ADMIN.location,
+                SYSTEM_ADMIN.country
+            ]);
+        } else {
+            await connection.query(`
+                INSERT INTO tenants (
+                    tenant_name, tenant_slug, db_name, email, phone,
+                    location, country, status, subscription_status, deployment_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'active', 'single')
+                ON DUPLICATE KEY UPDATE tenant_name = VALUES(tenant_name)
+            `, [
+                SYSTEM_ADMIN.tenantName,
+                SYSTEM_ADMIN.tenantSlug,
+                SYSTEM_ADMIN.dbName,
+                SYSTEM_ADMIN.email,
+                SYSTEM_ADMIN.phone,
+                SYSTEM_ADMIN.location,
+                SYSTEM_ADMIN.country
+            ]);
+        }
 
         // Get tenant id
         const [tenantsResult] = await connection.query(
             'SELECT id FROM tenants WHERE email = ?',
             [SYSTEM_ADMIN.email]
         );
-        const tenantId = tenantsResult[0]?.id;
-
-        if (!tenantId) {
-            throw new Error('Failed to get tenant_id');
+        if (!tenantsResult.length) {
+            throw new Error('Failed to resolve the system tenant row');
         }
+        // Coerce the id to the type the users table actually expects. mysql2
+        // returns an INT PK as a JS number and a UUID PK as a string; binding
+        // the wrong one is what produced "id required as string but initiated
+        // as number". Normalise to a string, which MySQL accepts for both a
+        // VARCHAR key and an INT key.
+        const tenantId = String(tenantsResult[0].id);
 
         // ================================================================
         // IMPORTANT: mirror the admin user into the TENANT'S OWN database.
@@ -179,7 +228,7 @@ export async function autoInitSystemAdmin() {
                     full_name VARCHAR(255) NOT NULL,
                     phone VARCHAR(20),
                     role VARCHAR(50) DEFAULT 'admin',
-                    tenant_id INT NULL,
+                    tenant_id VARCHAR(64) NULL,
                     branch_id INT NULL,
                     is_active BOOLEAN DEFAULT TRUE,
                     is_verified BOOLEAN DEFAULT TRUE,
