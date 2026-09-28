@@ -772,8 +772,8 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         }
 
         // ── 3. QUERY NEXT OF KIN ──
-        // `is_primary` / `is_deleted` are absent on some older tenants, so both
-        // the filter and the ordering are built from the real schema.
+        // `is_primary` / `is_deleted` are absent on some older tenants, so the
+        // filters are built from the real schema instead of being hardcoded.
         const nCols = await tableColumns(dbName, 'next_of_kin');
         let nextOfKin: any = null;
         if (nCols.size > 0 && nCols.has('deceased_id')) {

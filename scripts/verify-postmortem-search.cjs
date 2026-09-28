@@ -108,6 +108,8 @@ module.exports = { router, SRC, TMP, columnsOf, seedDeceased };
   show('[2] phone search, route fix only:',            await get('phone=0700000000', TMP));
 
   // ── PDF endpoint data queries, BEFORE the migration ────────────────────
+  // (table names are schema-qualified here only because this test connection
+  // has no default database; the app's tenant pool supplies it.)
   const { pickAs } = require('../services/deceased-service/utils/tenantSchema');
   const pdfCheck = async (label) => {
     const cols = await columnsOf(conn, TMP, 'deceased');
@@ -115,13 +117,13 @@ module.exports = { router, SRC, TMP, columnsOf, seedDeceased };
     try {
       const dq = `SELECT ${['full_name','date_of_death','signature','admission_number',
                            'date_of_birth','age','gender','place_of_death','national_id']
-                          .map(c => pickAs(cols, c, c)).join(', ')} FROM deceased WHERE deceased_id = ?`;
+                          .map(c => pickAs(cols, c, c)).join(', ')} FROM \`${TMP}\`.deceased WHERE deceased_id = ?`;
       const [d] = await conn.query(dq, ['D-TEST-1']);
       const where = ['deceased_id = ?'];
       if (ncols.has('is_primary')) where.push('is_primary = 1');
       if (ncols.has('is_deleted')) where.push('is_deleted = 0');
       const kq = `SELECT ${['full_name','relationship','contact']
-                     .map(c => pickAs(ncols, c, c)).join(', ')} FROM next_of_kin WHERE ${where.join(' AND ')} LIMIT 1`;
+                     .map(c => pickAs(ncols, c, c)).join(', ')} FROM \`${TMP}\`.next_of_kin WHERE ${where.join(' AND ')} LIMIT 1`;
       const [k] = await conn.query(kq, ['D-TEST-1']);
       console.log(`${label}\n  PDF deceased query: ok  full_name=${JSON.stringify(d[0]?.full_name)}` +
                   ` age=${JSON.stringify(d[0]?.age)}` +
@@ -136,7 +138,8 @@ module.exports = { router, SRC, TMP, columnsOf, seedDeceased };
   try {
     await conn.query(
       `SELECT full_name, date_of_death, signature, admission_number, date_of_birth,
-              age, gender, place_of_death, national_id FROM deceased WHERE deceased_id = ?`, ['D-TEST-1']);
+              age, gender, place_of_death, national_id FROM \`${TMP}\`.deceased WHERE deceased_id = ?`,
+      ['D-TEST-1']);
     console.log('\n[2c] old hardcoded PDF list: unexpectedly succeeded');
   } catch (e) {
     console.log(`[2c] old hardcoded PDF list threw: ${e.code} ${e.message}`);
