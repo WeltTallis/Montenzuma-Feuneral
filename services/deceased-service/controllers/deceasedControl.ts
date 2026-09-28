@@ -30,7 +30,14 @@ export const getAllDeceased = async (
 ): Promise<Response> => {
     try {
         const dbName = (req as any).tenant?.db_name;
-        const tenantId = (req as any).tenant?.id ?? (req as any).tenant?.tenant_id;
+        // Namespace the cache by the DATABASE, not by a tenant id. The tenant
+        // middleware used to hand every request `tenant_id: 0`, so all branches
+        // produced the identical key `deceased:list:0:page:1:...` and Redis
+        // happily served one branch's rows to another — the list looked frozen
+        // on whichever branch loaded first. `dbName` is the resolved, per-branch
+        // database, so it is the only value that actually separates them.
+        const tenantId = (req as any).tenant?.tenant_id ?? (req as any).tenant?.id;
+        const cacheScope = dbName || tenantId;
         const tenantSlug = (req as any).tenantSlug || "unknown";
 
         if (!dbName || tenantId === undefined || tenantId === null) {
@@ -63,7 +70,7 @@ export const getAllDeceased = async (
 
         // REDIS CACHE KEY
 
-        const cacheKey = `deceased:list:${tenantId}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}:year:${yearParam}:month:${monthParam}`;
+        const cacheKey = `deceased:list:${cacheScope}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}:year:${yearParam}:month:${monthParam}`;
 
         // Try to get from cache
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);

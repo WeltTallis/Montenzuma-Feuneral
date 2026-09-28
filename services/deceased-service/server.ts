@@ -43,6 +43,7 @@ app.use(cors({
         'x-user-id',
         'x-branch-id',
         'x-branch-slug',
+        'x-branch-db',
         'x-internal-secret',
         'Origin',
         'X-Requested-With',
@@ -117,10 +118,25 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
         // `x-slug` is the legacy spelling every other service still accepts
         // (coffin/hearse/shared dbConfig), so honour it here too — otherwise a
         // caller that only sends `x-slug` gets a blanket 403.
-        const tenantSlug = firstHeader(req.headers['x-tenant-slug']) || firstHeader(req.headers['x-slug']);
+        const parentSlug = firstHeader(req.headers['x-tenant-slug']) || firstHeader(req.headers['x-slug']);
         const branchId = firstHeader(req.headers['x-branch-id']);
+        // The branch DATABASE, when the caller states one. The frontend sends
+        // `x-branch-db` alongside `x-tenant-slug` precisely because a branch
+        // user must be addressed with the branch slug — the parent slug resolves
+        // to the organisation's HQ database, which is how a Machakos/Thika user
+        // kept being served Nairobi's deceased. Trusting the branch header first
+        // makes the branch the single source of truth for which DB is read.
+        const branchHeader = firstHeader(req.headers['x-branch-db']) || firstHeader(req.headers['x-branch-slug']);
+
+        // Only accept the branch header when it is itself a well-formed slug —
+        // it is still resolved through the tenant allowlist below, never used
+        // as a raw schema name, so this cannot become a privilege escalation.
+        const tenantSlug = (branchHeader && TENANT_SLUG_RE.test(branchHeader))
+            ? branchHeader
+            : parentSlug;
 
         (req as any).tenantSlug = tenantSlug;
+        (req as any).parentTenantSlug = parentSlug;
         (req as any).branchId = branchId;
 
         // Only log non-health-check requests
@@ -207,8 +223,13 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
         (req as any).tenant = {
             db_name: resolvedDbName,
-            id: 0,
-            tenant_id: 0,
+            // A hardcoded 0 here made EVERY branch share the cache namespace
+            // `deceased:list:0:page:1:...`. Two different branches therefore
+            // read and wrote the same Redis key, so one branch's rows were
+            // served to another. Scoping the key by the resolved database is
+            // what actually separates them — see getAllDeceased.
+            id: resolvedDbName,
+            tenant_id: resolvedDbName,
             name: tenantSlug,
             tenant_slug: tenantSlug
         };
