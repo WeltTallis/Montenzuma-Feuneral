@@ -745,9 +745,6 @@ const ConfirmBox = styled.input`
   flex: none;
   margin-top: 0.05rem;
   position: relative;
-  border: 1.5px solid ${COLORS.ink};
-  border-radius: 3px;
-  background: ${COLORS.white};
   cursor: pointer;
   transition: all 0.15s ease;
 
@@ -1285,6 +1282,14 @@ const FooterBar = styled.div`
     padding: 16px 20px;
     text-align: center;
   }
+`;
+
+
+
+
+const ClauseKin = styled.span`
+  font-weight: 600;
+  color: ${COLORS.brass};
 `;
 
 const RecordInfoStrip = styled.div`
@@ -2330,10 +2335,19 @@ const DeceasedRegistrationForm = () => {
                       disabled={isSubmitting}
                     />
                     <ConfirmText>
-                      I confirm, as the next of kin, that the information above is correct and authorize its use for the funeral arrangements and related records.
+
+
+
+                      <span>
+                        I  <ClauseKin>{contact_person || 'contact  person'}</ClauseKin>confirm,
+                      </span>
+
+
+
+
                     </ConfirmText>
                     <ConfirmTextShort>
-                      I confirm, as the next of kin, that the information above is correct.
+                      that the information above is correct and authorize its use for the funeral arrangements and related records.
                     </ConfirmTextShort>
                   </ConfirmLabel>
 
