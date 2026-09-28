@@ -135,7 +135,11 @@ const COLORS = {
   inkBlue: '#0f33e7',
   gold: '#C9A227',
   goldDark: '#A8851C',
-  tickBlue: '#2564eb1b',
+  // The completion tick. This was '#2564eb1b' — an 8-digit hex whose trailing
+  // `1b` is an ALPHA channel, so the tick rendered at ~10% opacity (roughly
+  // rgb(232,239,253) on the bone field) and was effectively invisible. Solid
+  // verdigris reads clearly and matches the form's palette.
+  tick: '#3D4F47',
 };
 
 /* ─── Sheet gutters ────────────────────────────────────────────────────────
@@ -586,7 +590,13 @@ const TickIconWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${COLORS.tickBlue};
+  /* Solid pill behind the tick so the field's bottom border rule does not run
+     straight through the icon, and the tick reads as a deliberate badge. */
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: ${COLORS.verdigris};
+  color: ${COLORS.white};
   pointer-events: none;
 `;
 
@@ -733,7 +743,11 @@ const ConfirmLabel = styled.label`
   -webkit-tap-highlight-color: transparent;
 `;
 
-/* Square checkbox — fills verdigris with a bone tick when checked. */
+/* Square checkbox — a soft fill marks the box and a solid white tick confirms
+   it. This declared NO border and NO background while using `appearance: none`,
+   so the box was completely invisible when empty; and the tick was drawn in
+   COLORS.bone, the same colour as the sheet, so it vanished when ticked too.
+   There are deliberately no borders in either state. */
 const ConfirmBox = styled.input`
   appearance: none;
   -webkit-appearance: none;
@@ -743,16 +757,25 @@ const ConfirmBox = styled.input`
   margin-top: 0.05rem;
   position: relative;
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 0;
+  border-radius: 4px;
+  background: ${COLORS.bone2};
+  box-shadow: inset 0 0 0 1.5px ${COLORS.line};
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+
+  &:checked {
+    background: ${COLORS.verdigris};
+    box-shadow: none;
+  }
   &:checked::after {
     content: '';
     position: absolute;
     left: 7px;
-    top: 3px;
-    width: 5px;
-    height: 10px;
-    border: solid ${COLORS.bone};
-    border-width: 0 2.5px 2.5px 0;
+    top: 2px;
+    width: 6px;
+    height: 12px;
+    border: solid ${COLORS.white};
+    border-width: 0 3px 3px 0;
     transform: rotate(45deg);
   }
   &:focus-visible { outline: 2px solid ${COLORS.brassLight}; outline-offset: 2px; }
@@ -762,7 +785,6 @@ const ConfirmBox = styled.input`
   @media (max-width: 1024px) {
     width: 28px;
     height: 28px;
-    border-width: 2px;
 
     &:checked::after {
       left: 9px;
@@ -2329,8 +2351,9 @@ const DeceasedRegistrationForm = () => {
                       disabled={isSubmitting}
                     />
                     <ConfirmText>
-                      I, {formData.contact_person}, confirm that the details recorded above
-                      are true and correct.
+                      {formData.contact_person?.trim()
+                        ? `I, ${formData.contact_person.trim()}, confirm that the details recorded above are true and correct.`
+                        : 'I confirm that the details recorded above are true and correct.'}
                     </ConfirmText>
                     <ConfirmTextShort>
                       I confirm, as the next of kin, that the information above is correct.
