@@ -1,5 +1,6 @@
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
 import { ensurePostmortemRequestsTable } from './postmortemRequestControl';
+import { tableColumns, pickAs } from '../utils/tenantSchema';
 import Logger from '../../../packages/shared-logger/src/index';
 import { Request, Response } from 'express';
 import { DateTime } from 'luxon';
@@ -753,17 +754,39 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         const postmortem = (pmResults as any[])[0];
 
         // ── 2. QUERY DECEASED ──
-        const deceasedQuery = `
-            SELECT full_name, date_of_death, signature, admission_number,
-                   date_of_birth, age, gender, place_of_death, national_id
-            FROM deceased WHERE deceased_id = ?`;
-        const decResults = await safeTenantQuery(dbName, deceasedQuery, [deceased_id]);
-        const deceased = decResults && (decResults as any[]).length > 0 ? (decResults as any[])[0] : null;
+        // Schema-adaptive: older tenants are missing `age`, `signature`,
+        // `date_of_birth`, `national_id`, ... and this endpoint is PUBLIC
+        // (the results page requests the PDF right after the search), so a
+        // hardcoded list made it 500 on exactly the same tenants as the search.
+        const dCols = await tableColumns(dbName, 'deceased');
+        const DECEASED_PDF_COLS = [
+            'full_name', 'date_of_death', 'signature', 'admission_number',
+            'date_of_birth', 'age', 'gender', 'place_of_death', 'national_id',
+        ];
+        let deceased: any = null;
+        if (dCols.has('deceased_id')) {
+            const deceasedQuery = `SELECT ${DECEASED_PDF_COLS.map((c) => pickAs(dCols, c, c)).join(', ')}
+                FROM deceased WHERE deceased_id = ?`;
+            const decResults = await safeTenantQuery(dbName, deceasedQuery, [deceased_id]);
+            deceased = decResults && (decResults as any[]).length > 0 ? (decResults as any[])[0] : null;
+        }
 
         // ── 3. QUERY NEXT OF KIN ──
-        const kinQuery = `SELECT full_name, relationship, contact FROM next_of_kin WHERE deceased_id = ? AND is_primary = 1 AND is_deleted = 0 LIMIT 1`;
-        const kinResults = await safeTenantQuery(dbName, kinQuery, [deceased_id]);
-        const nextOfKin = kinResults && (kinResults as any[]).length > 0 ? (kinResults as any[])[0] : null;
+        // `is_primary` / `is_deleted` are absent on some older tenants, so both
+        // the filter and the ordering are built from the real schema.
+        const nCols = await tableColumns(dbName, 'next_of_kin');
+        let nextOfKin: any = null;
+        if (nCols.size > 0 && nCols.has('deceased_id')) {
+            const where = ['deceased_id = ?'];
+            if (nCols.has('is_primary')) where.push('is_primary = 1');
+            if (nCols.has('is_deleted')) where.push('is_deleted = 0');
+            const kinSelect = ['full_name', 'relationship', 'contact']
+                .map((c) => pickAs(nCols, c, c))
+                .join(', ');
+            const kinQuery = `SELECT ${kinSelect} FROM next_of_kin WHERE ${where.join(' AND ')} LIMIT 1`;
+            const kinResults = await safeTenantQuery(dbName, kinQuery, [deceased_id]);
+            nextOfKin = kinResults && (kinResults as any[]).length > 0 ? (kinResults as any[])[0] : null;
+        }
 
         // ── 4. EXTRACT VALUES ──
         const facilityName = formatFacilityName(tenantSlug);

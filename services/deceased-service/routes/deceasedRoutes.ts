@@ -20,10 +20,16 @@ import { updateDeceasedStatus } from '../controllers/deceasedControl';
 import { getPostmortemRequests, getPostmortemStats } from '../controllers/postmortemRequestControl';
 import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exportExcelController';
 import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
+import { tableColumns, pickAs } from '../utils/tenantSchema';
 
 const router = Router();
 
-// Public endpoint for postmortem portal - no authentication required
+// ─── Tenant schema introspection ────────────────────────────────────────────
+// `tableColumns` / `pickAs` live in utils/tenantSchema so the public search and
+// the postmortem PDF generator share one implementation — see that file for why
+// tenant schemas diverge.
+
+// Public postmortem portal - no authentication required
 const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
     try {
         const { phone, id_number, admission_number, deceased_id } = req.query;
@@ -44,21 +50,53 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
             });
         }
 
+        // ── Schema-adaptive projection ──────────────────────────────────────
+        // See tableColumns() above: a tenant provisioned before a column existed
+        // must still answer the lookup instead of raising ER_BAD_FIELD_ERROR.
+        const dCols = await tableColumns(dbName, 'deceased');
+        const notFound = () => res.status(404).json({ success: false, message: 'No record found' });
+
+        if (dCols.size === 0) {
+            return notFound();
+        }
+
+        // Columns the public portal contract promises. The frontend
+        // (PostmortemRequestForm / PostmortemResultsPage) reads these by name,
+        // so a tenant missing one still gets the key — just null.
+        const DECEASED_COLS = [
+            'deceased_id', 'full_name', 'date_of_death', 'admission_number',
+            'date_of_birth', 'age', 'gender', 'place_of_death', 'national_id',
+            'phone_number', 'signature',
+        ];
+
         // Search by deceased_id, admission number, phone, or ID
-        let query = 'SELECT deceased_id, full_name, date_of_death, admission_number, date_of_birth, age, gender, place_of_death, national_id, phone_number, signature FROM deceased WHERE 1=1';
+        let query = `SELECT ${DECEASED_COLS.map((c) => pickAs(dCols, c, c)).join(', ')} FROM deceased WHERE 1=1`;
         const params: any[] = [];
 
         if (deceased_id) {
+            if (!dCols.has('deceased_id')) return notFound();
             query += ' AND deceased_id = ?';
             params.push(deceased_id);
         } else if (admission_number) {
+            if (!dCols.has('admission_number')) return notFound();
             query += ' AND admission_number = ?';
             params.push(admission_number);
         } else if (phone) {
-            // Search in deceased table first
-            query += ' AND (phone_number LIKE ? OR alternative_phone LIKE ?)';
-            params.push(`%${phone}%`, `%${phone}%`);
+            // Search in deceased table first. Only match on the phone columns
+            // this tenant actually has.
+            const phoneCols = ['phone_number', 'alternative_phone'].filter((c) => dCols.has(c));
+            if (phoneCols.length === 0) {
+                // This tenant keeps no phone on `deceased` at all. The only place
+                // the number can still match is next_of_kin.contact, so return no
+                // rows here and let the next-of-kin fallback below run. (Dropping
+                // the filter instead would return an arbitrary record.)
+                query += ' AND 1=0';
+            } else {
+                query += ` AND (${phoneCols.map((c) => `${c} LIKE ?`).join(' OR ')})`;
+                phoneCols.forEach(() => params.push(`%${phone}%`));
+            }
         } else if (id_number) {
+            if (!dCols.has('national_id')) return notFound();
             query += ' AND national_id = ?';
             params.push(id_number);
         }
@@ -69,19 +107,32 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
         // If phone search didn't find in deceased table, try next_of_kin table
         if ((!records || (records as any[]).length === 0) && phone) {
             try {
-                const nokQuery = `SELECT d.deceased_id, d.full_name, d.date_of_death, d.admission_number, 
-                    d.date_of_birth, d.age, d.gender, d.place_of_death, d.national_id, 
-                    d.phone_number, d.signature,
-                    nok.full_name as next_of_kin_name, nok.relationship as next_of_kin_relationship,
-                    nok.contact as next_of_kin_phone, nok.email as next_of_kin_email,
-                    nok.signature as next_of_kin_signature
-                    FROM deceased d 
-                    INNER JOIN next_of_kin nok ON d.deceased_id = nok.deceased_id 
-                    WHERE nok.contact LIKE ? AND nok.is_deleted = FALSE 
-                    LIMIT 1`;
-                const nokRecords = await safeTenantQuery(dbName, nokQuery, [`%${phone}%`]);
-                if (nokRecords && (nokRecords as any[]).length > 0) {
-                    records = nokRecords;
+                const nCols = await tableColumns(dbName, 'next_of_kin');
+                // The join needs the join keys plus a column to match the phone on.
+                if (nCols.size > 0 && nCols.has('deceased_id') && nCols.has('contact') && dCols.has('deceased_id')) {
+                    // Same schema-adaptive projection as the primary query: `d.*`
+                    // and `nok.*` are each selected only where they exist.
+                    const nokSelect = [
+                        ...DECEASED_COLS.map((c) => pickAs(dCols, c, c, 'd.')),
+                        pickAs(nCols, 'full_name', 'next_of_kin_name', 'nok.'),
+                        pickAs(nCols, 'relationship', 'next_of_kin_relationship', 'nok.'),
+                        pickAs(nCols, 'contact', 'next_of_kin_phone', 'nok.'),
+                        pickAs(nCols, 'email', 'next_of_kin_email', 'nok.'),
+                        pickAs(nCols, 'signature', 'next_of_kin_signature', 'nok.'),
+                    ].join(', ');
+
+                    // `is_deleted` is absent on some older tenants — only filter
+                    // on it when the column is really there.
+                    const notDeleted = nCols.has('is_deleted') ? ' AND nok.is_deleted = FALSE' : '';
+                    const nokQuery = `SELECT ${nokSelect}
+                        FROM deceased d
+                        INNER JOIN next_of_kin nok ON d.deceased_id = nok.deceased_id
+                        WHERE nok.contact LIKE ?${notDeleted}
+                        LIMIT 1`;
+                    const nokRecords = await safeTenantQuery(dbName, nokQuery, [`%${phone}%`]);
+                    if (nokRecords && (nokRecords as any[]).length > 0) {
+                        records = nokRecords;
+                    }
                 }
             } catch (e) {
                 console.error('[PUBLIC] Next of kin search error:', e);
@@ -89,10 +140,7 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
         }
 
         if (!records || (records as any[]).length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'No record found'
-            });
+            return notFound();
         }
 
         const deceased = (records as any[])[0];
@@ -100,18 +148,35 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
         // Get next of kin data if not already joined
         if (!deceased.next_of_kin_name) {
             try {
-                const nokQuery = `SELECT * FROM next_of_kin WHERE deceased_id = ? AND is_deleted = FALSE ORDER BY is_primary DESC, created_at ASC LIMIT 1`;
-                const nokRecords = await safeTenantQuery(dbName, nokQuery, [deceased.deceased_id]);
-                if (nokRecords && (nokRecords as any[]).length > 0) {
-                    const nok = (nokRecords as any[])[0];
-                    deceased.next_of_kin_name = nok.full_name;
-                    deceased.next_of_kin_relationship = nok.relationship;
-                    deceased.next_of_kin_phone = nok.contact;
-                    deceased.next_of_kin_email = nok.email;
-                    deceased.next_of_kin_id_number = nok.id_number || null;
-                    // Use next of kin signature if deceased doesn't have one
-                    if (!deceased.signature && nok.signature) {
-                        deceased.signature = nok.signature;
+                const nCols = await tableColumns(dbName, 'next_of_kin');
+                if (nCols.size > 0 && nCols.has('deceased_id')) {
+                    // `is_primary` / `is_deleted` are absent on older tenants, so
+                    // both the filter and the ordering are built conditionally —
+                    // otherwise this throws on those schemas and the kin details
+                    // are silently dropped from the response.
+                    const where = ['deceased_id = ?'];
+                    if (nCols.has('is_deleted')) where.push('is_deleted = FALSE');
+
+                    const order = [
+                        ...(nCols.has('is_primary') ? ['is_primary DESC'] : []),
+                        ...(nCols.has('created_at') ? ['created_at ASC'] : []),
+                    ];
+
+                    const nokQuery = `SELECT * FROM next_of_kin WHERE ${where.join(' AND ')}`
+                        + (order.length ? ` ORDER BY ${order.join(', ')}` : '')
+                        + ' LIMIT 1';
+                    const nokRecords = await safeTenantQuery(dbName, nokQuery, [deceased.deceased_id]);
+                    if (nokRecords && (nokRecords as any[]).length > 0) {
+                        const nok = (nokRecords as any[])[0];
+                        deceased.next_of_kin_name = nok.full_name;
+                        deceased.next_of_kin_relationship = nok.relationship;
+                        deceased.next_of_kin_phone = nok.contact;
+                        deceased.next_of_kin_email = nok.email;
+                        deceased.next_of_kin_id_number = nok.id_number || null;
+                        // Use next of kin signature if deceased doesn't have one
+                        if (!deceased.signature && nok.signature) {
+                            deceased.signature = nok.signature;
+                        }
                     }
                 }
             } catch (e) {

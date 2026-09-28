@@ -168,6 +168,40 @@ WHERE (d.is_deleted = 0 OR d.is_deleted IS NULL)
     name: '015_create_documents_table',
     sql: `CREATE TABLE IF NOT EXISTS documents (document_id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, document_type VARCHAR(100), file_name VARCHAR(255), original_name VARCHAR(255), stored_name VARCHAR(255), file_path VARCHAR(500), mime_type VARCHAR(100), file_size BIGINT DEFAULT 0, category VARCHAR(100) DEFAULT 'General', uploaded_by VARCHAR(255), status VARCHAR(50) DEFAULT 'pending', uploaded_at VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), tenant_slug VARCHAR(255), FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_documents_deceased (deceased_id), INDEX idx_documents_tenant (tenant_slug), INDEX idx_documents_type (document_type), INDEX idx_documents_uploaded (uploaded_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
+  {
+    // Schema parity for the PUBLIC postmortem portal.
+    //
+    // Tenant databases were provisioned at different times, so many of them
+    // predate several `deceased` / `next_of_kin` columns. The public search
+    // endpoint selects `age`, `phone_number`, `alternative_phone`, `signature`,
+    // `date_of_birth`, ... unconditionally, so on those tenants MySQL raised
+    // ER_BAD_FIELD_ERROR ("Unknown column 'age' in 'SELECT'") and the endpoint
+    // answered 500 "Search failed" for every lookup.
+    //
+    // The route is now schema-adaptive (degrades to NULL), and this migration
+    // brings the underlying data back to full parity. ADD COLUMN IF NOT EXISTS
+    // is a no-op where the column is already present, so it is safe to re-run
+    // and safe on fresh databases created by 010/011.
+    name: '016_public_postmortem_schema_parity',
+    sql: `ALTER TABLE deceased
+        ADD COLUMN IF NOT EXISTS age INT DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS date_of_birth DATE NULL,
+        ADD COLUMN IF NOT EXISTS gender VARCHAR(20) DEFAULT 'Male',
+        ADD COLUMN IF NOT EXISTS place_of_death VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS national_id VARCHAR(100) NULL,
+        ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20) NULL,
+        ADD COLUMN IF NOT EXISTS alternative_phone VARCHAR(20) NULL,
+        ADD COLUMN IF NOT EXISTS signature TEXT NULL;
+ALTER TABLE next_of_kin
+    ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL,
+    ADD COLUMN IF NOT EXISTS alternative_phone VARCHAR(20) NULL,
+    ADD COLUMN IF NOT EXISTS id_number VARCHAR(100) NULL,
+    ADD COLUMN IF NOT EXISTS id_type VARCHAR(50) NULL,
+    ADD COLUMN IF NOT EXISTS signature LONGTEXT NULL,
+    ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS created_at VARCHAR(255) NULL;`,
+  },
 ];
 
 // ─── Billing Service Migrations ──────────────────────────────────────────────
