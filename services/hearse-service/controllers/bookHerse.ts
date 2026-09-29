@@ -13,6 +13,7 @@ import {
     HearseDayAvailabilityDto, HearseMultiDateAvailabilityResponseDto
 } from '../models/hearseBookingDto';
 import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, BOOKING_CACHE_TTL, FLEET_CACHE_TTL } from '../utilities/hearseCache';
+import { decorateBranchNames } from '../utilities/branchNames';
 
 // Types
 interface HearseBooking {
@@ -624,11 +625,26 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
             }
             const bits: string[] = [];
             if (prefixes.size > 0 && prefixes.size <= 24) {
-                const list = [...prefixes].map((p) => `%"${p}-%`).join(' OR ');
-                bits.push(`(hb.booking_dates LIKE ${list})`);
+                // NOTE: the LIKE patterns MUST be bound parameters. They used to
+                // be inlined unquoted (a bare `%"2026-09-%`), so MySQL rejected
+                // the whole statement with ER_PARSE_ERROR and
+                // GET /hearse-bookings answered 500 for EVERY request that
+                // carried from/to — i.e. every month the calendar asked for.
+                const likes = [...prefixes].map(() => 'hb.booking_dates LIKE ?');
+                for (const prefix of prefixes) params.push(`%"${prefix}-%`);
+                bits.push(`(${likes.join(' OR ')})`);
             }
-            if (fromKey) { bits.push('hb.booking_date >= ?'); params.push(fromKey); }
-            if (toKey) { bits.push('hb.booking_date <= ?'); params.push(toKey); }
+            // Legacy rows only carry the single `booking_date` column, so they get
+            // a real range test. They must NOT be OR-ed as `>= from OR <= to`:
+            // that matches every booking older than `to`, i.e. the whole table.
+            if (fromKey && toKey) {
+                bits.push('(hb.booking_date >= ? AND hb.booking_date <= ?)');
+                params.push(fromKey, toKey);
+            } else if (fromKey) {
+                bits.push('hb.booking_date >= ?'); params.push(fromKey);
+            } else if (toKey) {
+                bits.push('hb.booking_date <= ?'); params.push(toKey);
+            }
             if (bits.length > 0) whereClauses.push(`(${bits.join(' OR ')})`);
         }
 
@@ -661,15 +677,25 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         }
 
         const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-        // Resolve the REAL branch name by joining the branches registry. The
-        // `hearses` table stores a generic literal ("Main Branch" / "Branch <uuid>"),
-        // so `h.branch_name` is what every booking used to display as its Branch.
-        // COALESCE also covers a booking that never set its own branch_id but was
-        // served by a branch-owned hearse. This mirrors hearseAnalytics.controller.ts,
-        // which already joins `branches` this way.
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.branch_slug AS booking_branch_slug, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name, b.branch_name AS branch_name, b.branch_slug AS branch_slug_resolved FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id LEFT JOIN branches b ON COALESCE(hb.branch_id, h.branch_id) = b.branch_id ${whereSQL} ORDER BY hb.created_at DESC`;
+        // Branch display names are NOT resolved with a SQL join any more.
+        // `branches` is a per-tenant table (plus the tenant_tracking registry)
+        // and DOES NOT EXIST in restpoint_operations, so the old
+        // `LEFT JOIN branches b ON COALESCE(hb.branch_id, h.branch_id) = b.branch_id`
+        // made this endpoint answer 500 (ER_NO_SUCH_TABLE: table
+        // 'restpoint_operations.branches' doesn't exist) for every request — the
+        // whole Hearse page was dead. It also matched nothing: those ids are
+        // UUIDs (or NULL), not the integers of the old schema.
+        // decorateBranchNames() resolves the REAL branch name from the branch
+        // registry afterwards and can never fail the request.
+        // `hb.tenant_slug` / `hb.tenant_db_name` / `hb.branch_id` are selected
+        // only so the registry can be matched per row; they are stripped again
+        // before the payload is sent (see below).
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug, hb.tenant_db_name AS tenant_db_name, hb.branch_id AS booking_branch_id, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
 
-        const bookings = await safeQuery(query, params);
+        const bookings = await decorateBranchNames(
+            await safeQuery(query, params) as any[],
+            { strip: ['booking_branch_id', 'tenant_slug', 'tenant_db_name'] }
+        );
         let allBranches: any[] = [];
         try {
             allBranches = await safeQuery(tenantId
@@ -687,7 +713,11 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         }
 
         res.status(200).json({ ...payload, source: 'database' });
-    } catch (error) {
+    } catch (error: any) {
+        // Never swallow the cause: the previous 'generic 500' made the
+        // ER_NO_SUCH_TABLE above invisible in production logs.
+        console.error('[hearse] getAllHearseBookings failed:',
+            error?.code || '', error?.sqlMessage || error?.message || error);
         res.status(500).json({ status: 'error', message: 'Failed to fetch hearse bookings.' });
     }
 });
