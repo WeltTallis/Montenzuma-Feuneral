@@ -484,7 +484,23 @@ function IntakePane({ p }) {
       <div className="cgrid">
         <Card l="Body Status" v={it.bodyStatus} hl />
         <Card l="Preservation" v={p.prepared ? "Embalmed / Prepared" : "Not yet prepared"} />
-        <Card l="Signature Captured" v={fBool(Boolean(first(raw.signature)))} />
+        {/* Read the NORMALISED signature first. `intakeOf()` already resolves it
+            from the register row; the panel used to read `raw.signature` only,
+            which is blank on most rows, so this always read "No" even when a
+            signature had actually been captured. */}
+        <Card
+          l="Signature Captured"
+          v={fBool(Boolean(first(it.signature, raw.signature)))}
+        />
+        {/* Mortuary tenure is the single most operationally important number
+            on this panel, so it is a full-width highlight rather than a
+            footnote in the hero strip. */}
+        <Card
+          l="Days in Morgue"
+          v={p.admDate && p.admDate > todayKey() ? "Scheduled" : `${daysInCare(p) ?? 0} days`}
+          hl
+          sub={p.release && p.release.status === "completed" ? "Released" : "Still in our care"}
+        />
       </div>
 
       <DrawerSection title="Next of Kin" />

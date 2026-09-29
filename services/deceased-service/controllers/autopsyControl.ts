@@ -1,4 +1,4 @@
-import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
+import { safeTenantExecute, safeTenantQuery, resolveDatabase, getRootPool } from '../../../shared/dbConfig';
 import { ensurePostmortemRequestsTable } from './postmortemRequestControl';
 import { tableColumns, pickAs } from '../utils/tenantSchema';
 import Logger from '../../../packages/shared-logger/src/index';
@@ -9,6 +9,7 @@ import fs from 'fs';
 import sharp from 'sharp';
 import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
 import https from 'https';
+import http from 'http';
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
@@ -84,16 +85,182 @@ function generateBarcodeBars(): string {
     return html;
 }
 
-function fetchLogoBase64(url: string): Promise<string | null> {
+// ═══════════════════════════════════════════════════════════════
+// TENANT BRANDING — the PDF must carry the SAME logo/name the
+// Settings page shows, not a hardcoded placeholder.
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Resolve the real tenant branding from `tenant_tracking.tenants`.
+ *
+ * The PDF used to derive its header from the URL slug
+ * (formatFacilityName) and point the logo at a hardcoded third-party image,
+ * so every postmortem report carried the wrong facility name and a logo that
+ * belonged to someone else entirely.
+ *
+ * Mirrors TenantModel.findBySubdomain: a request may arrive with a COMPLETE
+ * BRANCH slug (e.g. `org-home-nairobi`), so trailing segments are stripped
+ * until the parent tenant resolves.
+ *
+ * Never throws — a missing/branded-less tenant degrades to the slug-derived
+ * name so a report is still produced.
+ */
+async function resolveTenantBranding(tenantSlug: string): Promise<{
+    name: string; logoUrl: string; phone: string; email: string; address: string;
+}> {
+    const empty = { name: '', logoUrl: '', phone: '', email: '', address: '' };
+    if (!tenantSlug || tenantSlug === 'system_shared') return empty;
+
+    try {
+        const pool = await getRootPool();
+
+        // Try the slug as-is, then progressively strip trailing `-<segment>`s.
+        let candidate = tenantSlug;
+        for (let attempt = 0; attempt < 8 && candidate.includes('-'); attempt++) {
+            const [rows] = await pool.query(
+                `SELECT tenant_name, logo_url, phone, email, location, country
+                 FROM tenant_tracking.tenants
+                 WHERE tenant_slug = ? AND status = 'active'
+                 LIMIT 1`,
+                [candidate],
+            );
+            const row: any = (rows as any[])[0];
+            if (row) {
+                const location = (row.location || '').trim();
+                const country = (row.country || '').trim();
+                return {
+                    name: (row.tenant_name || '').trim(),
+                    logoUrl: (row.logo_url || '').trim(),
+                    phone: (row.phone || '').trim(),
+                    email: (row.email || '').trim(),
+                    // Avoid "Nairobi, Kenya" style duplication when the stored
+                    // location already ends with the country.
+                    address: location.toLowerCase().endsWith(country.toLowerCase()) && country
+                        ? location
+                        : [location, country].filter(Boolean).join(', '),
+                };
+            }
+            const lastDash = candidate.lastIndexOf('-');
+            candidate = candidate.substring(0, lastDash);
+            if (!candidate) break;
+        }
+    } catch (err: any) {
+        console.warn('[PDF] Tenant branding lookup failed:', err?.message || err);
+    }
+    return empty;
+}
+
+/**
+ * Load the tenant logo as a base64 data URL.
+ *
+ * Logos are stored as a RELATIVE path (`/uploads/tenants/<slug>/logos/x.png`)
+ * by the tenant-service upload handler, so `new URL()` cannot parse them and a
+ * plain HTTP fetch always failed — which is why the PDF showed no logo.
+ *
+ * Strategy, in order:
+ *   1. relative `/uploads/...` path → read from the shared uploads volume
+ *      (same approach already used for the signature image), which works
+ *      without any network hop or DNS;
+ *   2. absolute http(s) URL → fetch it.
+ *
+ * Never throws; returns null when no logo can be loaded, in which case the
+ * template simply omits the image.
+ */
+async function loadLogoBase64(logoUrl: string): Promise<string | null> {
+    if (!logoUrl) return null;
+
+    const raw = String(logoUrl).trim();
+
+    // ── 1. Relative uploads path → local filesystem ──
+    if (raw.startsWith('/uploads/') || raw.startsWith('uploads/')) {
+        try {
+            const uploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+            const relativePath = raw.replace(/^\/?uploads\//, '');
+            const fsPath = path.join(uploadsBase, relativePath);
+
+            // Guard against traversal in a stored DB value.
+            if (!fsPath.startsWith(path.resolve(uploadsBase)) && !fsPath.startsWith(uploadsBase)) {
+                return null;
+            }
+            if (!fs.existsSync(fsPath)) return null;
+
+            const buffer = fs.readFileSync(fsPath);
+            if (!buffer.length) return null;
+
+            // Derive the MIME from the extension — a JPEG named .jpg mislabelled
+            // as PNG renders as a broken image in Chromium.
+            const ext = path.extname(fsPath).toLowerCase();
+            const mimeByExt: Record<string, string> = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp',
+                '.svg': 'image/svg+xml',
+                '.bmp': 'image/bmp',
+                '.ico': 'image/x-icon',
+            };
+            const mime = mimeByExt[ext] || 'image/png';
+            return `data:${mime};base64,` + buffer.toString('base64');
+        } catch (err: any) {
+            console.warn('[PDF] Could not read tenant logo from disk:', err?.message || err);
+            return null;
+        }
+    }
+
+    // ── 2. Absolute URL → HTTP fetch ──
+    return fetchLogoBase64(raw);
+}
+
+/**
+ * Fetch a tenant logo and inline it as a base64 data URL.
+ *
+ * The old version only spoke https and always claimed image/png, so an
+ * http:// logo (rejected by Node's https client) or an SVG/JPEG logo produced
+ * a broken image in the PDF. Redirects were also unhandled, and uploads
+ * commonly live behind a redirecting public gateway.
+ */
+function fetchLogoBase64(url: string, depth = 0): Promise<string | null> {
     return new Promise((resolve) => {
-        const req = https.get(url, { timeout: 8000 }, (res) => {
-            if (res.statusCode !== 200) { resolve(null); return; }
+        if (!url || depth > 3) { resolve(null); return; }
+
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            resolve(null);
+            return;
+        }
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            resolve(null);
+            return;
+        }
+
+        const client = parsed.protocol === 'https:' ? https : http;
+        const req = client.get(url, { timeout: 8000 }, (res) => {
+            const status = res.statusCode || 0;
+            // Follow redirects so gateway-hosted uploads resolve.
+            if (status >= 300 && status < 400 && res.headers.location) {
+                res.resume();
+                resolve(fetchLogoBase64(new URL(res.headers.location, url).toString(), depth + 1));
+                return;
+            }
+            if (status !== 200) { res.resume(); resolve(null); return; }
+
+            // Preserve the real content type — a JPEG/SVG logo mislabelled as
+            // PNG renders as a broken image in Chromium.
+            const contentType = String(res.headers['content-type'] || '').split(';')[0].trim();
+            const mime = /^image\/(png|jpe?g|gif|webp|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)$/i.test(contentType)
+                ? contentType
+                : 'image/png';
+
             const chunks: Buffer[] = [];
             res.on('data', (chunk: Buffer) => chunks.push(chunk));
             res.on('end', () => {
-                const buffer = Buffer.concat(chunks);
-                resolve('data:image/png;base64,' + buffer.toString('base64'));
+                if (!chunks.length) { resolve(null); return; }
+                resolve(`data:${mime};base64,` + Buffer.concat(chunks).toString('base64'));
             });
+            res.on('error', () => resolve(null));
         });
         req.on('error', () => resolve(null));
         req.on('timeout', () => { req.destroy(); resolve(null); });
@@ -851,16 +1018,23 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
             }
         }
 
-        // ── 6. FETCH LOGO ──
-        const logoUrl = process.env.FUNERAL_HOME_LOGO_URL || 'https://lf.services/wp-content/uploads/2024/09/LFS-Logo2-e1725725010766.png';
-        const logoBase64 = await fetchLogoBase64(logoUrl);
+        // ── 6. TENANT BRANDING (logo + name, same source as Settings) ──
+        // Previously the logo was a hardcoded third-party image and the name was
+        // derived from the URL slug, so every report showed another company's
+        // branding. Resolve the real record; the env var stays as an operator
+        // override for single-tenant deployments.
+        const branding = await resolveTenantBranding(tenantSlug);
+        const brandingName = branding.name || facilityName;   // fall back to the slug-derived name
+        const logoBase64 = await loadLogoBase64(
+            branding.logoUrl || process.env.FUNERAL_HOME_LOGO_URL || '',
+        );
 
         // ── 7. BUILD HTML ──
         const html = buildReportHtml({
-            tenantName: facilityName,
-            tenantAddress: 'Nairobi, Kenya',
-            tenantPhone: '',
-            tenantEmail: '',
+            tenantName: brandingName,
+            tenantAddress: branding.address,
+            tenantPhone: branding.phone,
+            tenantEmail: branding.email,
             deceasedFullName: fullName,
             deceasedAdmission: admissionNumber,
             deceasedDateOfDeath: dateOfDeath,

@@ -176,13 +176,15 @@ const SearchIcon = styled.i`
 `;
 
 const SearchInput = styled.input`
-  height: 42px; width: 100%; border-radius: 10px;
-  border: 1px solid ${C.border}; background: ${C.bgField};
+  /* Quiet underline, matching the coffin-transfers search: no box, no fill —
+     just a bottom rule that colours on focus. */
+  height: 42px; width: 100%; border-radius: 0;
+  border: none; border-bottom: 1px solid ${C.border}; background: transparent;
   padding: 0 16px 0 40px; font-size: 14px;
   font-family: 'Inter', sans-serif; color: ${C.dark};
-  transition: all 0.25s ease; outline: none; box-sizing: border-box;
+  transition: border-color 0.2s ease, border-width 0.2s ease; outline: none; box-sizing: border-box;
   &::placeholder { color: #aaa; }
-  &:focus { background: white; border-color: ${C.accent}; box-shadow: 0 0 0 4px rgba(221,45,74,0.1); }
+  &:focus { background: transparent; border-bottom-color: ${C.accent}; box-shadow: none; }
   &:focus ~ ${SearchIcon} { color: ${C.accent}; }
 `;
 
