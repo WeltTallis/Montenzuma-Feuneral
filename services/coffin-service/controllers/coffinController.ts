@@ -747,14 +747,34 @@ export const getAllOrders = async (req: Request, res: Response) => {
     (req as any).branchId ||
     null;
 
+  // ── Month scoping ──────────────────────────────────────────────────────
+  // The reservations dashboard now fetches ONE month at a time instead of the
+  // whole booking history. `from`/`to` are inclusive ISO dates (YYYY-MM-DD);
+  // without them the endpoint still returns everything, so any other caller
+  // keeps working unchanged.
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const rawFrom = String(req.query.from ?? '').trim();
+  const rawTo = String(req.query.to ?? '').trim();
+  let fromDate = ISO_DATE.test(rawFrom) ? rawFrom : null;
+  let toDate = ISO_DATE.test(rawTo) ? rawTo : null;
+  // A reversed range (from > to) would silently match nothing; flip it so the
+  // caller still gets the month it asked for.
+  if (fromDate && toDate && fromDate > toDate) {
+    const swap = fromDate; fromDate = toDate; toDate = swap;
+  }
+
   try {
     // ── REDIS CACHE ─────────────────────────────────────────────────────
     // The reservations dashboard polls this on every render; it was hitting
-    // MySQL each time. The key carries the branch scope because the SQL below
-    // filters on it. The namespace is the same tenant slug clearCoffinCache()
-    // wipes, so createOrder/updateOrderStatus (and the stock-request paths that
+    // MySQL each time. The key carries the branch scope BECAUSE the SQL below
+    // filters on it, and it must equally carry the date range — without the
+    // range in the key, navigating from September to October would serve the
+    // September rows straight out of Redis.
+    // The namespace is the same tenant slug clearCoffinCache() wipes, so
+    // createOrder/updateOrderStatus (and the stock-request paths that
     // synthesize transfer rows) invalidate this key.
-    const cacheKey = `orders:list:branch:${branchId || 'all'}`;
+    const rangeKey = fromDate && toDate ? `:${fromDate}_${toDate}` : '';
+    const cacheKey = `orders:list:branch:${branchId || 'all'}${rangeKey}`;
     const cachedOrders: any = await getCached(tenantSlug, cacheKey);
     if (cachedOrders) {
       logger.info({ msg: 'Orders served from Redis', tenantSlug, cacheKey, count: cachedOrders.length });
@@ -766,6 +786,18 @@ export const getAllOrders = async (req: Request, res: Response) => {
     if (branchId) {
       branchClause = ' AND (cb.branch_id = ? OR cb.branch_id IS NULL)';
       params.push(String(branchId));
+    }
+
+    // Filter on the RAW service_date column, not the DATE_FORMAT() alias in the
+    // SELECT list — comparing a formatted string is both slower and unreliable
+    // across locales. COALESCE(service_date, DATE(created_at)) mirrors the
+    // value the UI actually displays, so a booking with no explicit service
+    // date still lands in the month its creation date falls in rather than
+    // vanishing from the calendar.
+    let dateClause = '';
+    if (fromDate && toDate) {
+      dateClause = ' AND DATE(COALESCE(cb.service_date, cb.created_at)) BETWEEN ? AND ?';
+      params.push(fromDate, toDate);
     }
 
     const sql = `
@@ -781,7 +813,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
              notes,
              created_at
       FROM coffin_bookings cb
-      WHERE cb.tenant_slug = ?${branchClause}
+      WHERE cb.tenant_slug = ?${branchClause}${dateClause}
       ORDER BY cb.created_at DESC
     `;
 
@@ -804,6 +836,14 @@ export const getAllOrders = async (req: Request, res: Response) => {
         transferBranchClause = ' AND sr.to_branch_id = ?';
         transferParams.push(String(branchId));
       }
+      // Synthesized transfer rows must obey the SAME month window as real
+      // bookings, otherwise navigating to October would still surface a
+      // September transfer as a phantom reservation.
+      let transferDateClause = '';
+      if (fromDate && toDate) {
+        transferDateClause = ' AND DATE(COALESCE(sr.service_date, sr.created_at)) BETWEEN ? AND ?';
+        transferParams.push(fromDate, toDate);
+      }
       const transferRows: any[] = await coffinQuery(
         `SELECT sr.request_id, sr.coffin_id, sr.coffin_name, sr.color, sr.size, sr.quantity,
                 sr.client_name, sr.client_phone, sr.deceased_name,
@@ -812,7 +852,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
          FROM stock_requests sr
          WHERE (sr.tenant_slug = ? OR sr.tenant_slug LIKE CONCAT(?, '-%'))
            AND sr.req_type = 'client'
-           AND sr.status IN ('pending', 'approved')${transferBranchClause}
+           AND sr.status IN ('pending', 'approved')${transferBranchClause}${transferDateClause}
          ORDER BY sr.created_at DESC`,
         transferParams
       );

@@ -2,32 +2,31 @@ import React, { useState } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
 import { useStoreContext } from '../storeContext';
 import { STORE_CATEGORIES, STORE_UNITS } from '../seed';
-
+import { getCurrentUserName } from '../../../utils/globalAuth';
+import notify from '../../../utils/notify';
 export default function AddItemModal({ show, onHide }) {
   const { addItem } = useStoreContext();
+  // "Added by" is attributed to the signed-in user instead of being typed in.
+  // Hand-typed names were misspelled, inconsistent, and trivially forged.
+  const currentUser = getCurrentUserName();
   const [payload, setPayload] = useState({
     name: '',
     category: STORE_CATEGORIES[0],
     unit: 'pcs',
     stock: '',
     minStock: '',
-    staff: '',
   });
 
   const upd = (k, v) => setPayload((p) => ({ ...p, [k]: v }));
   const reset = () =>
-    setPayload({ name: '', category: STORE_CATEGORIES[0], unit: 'pcs', stock: '', minStock: '', staff: '' });
+    setPayload({ name: '', category: STORE_CATEGORIES[0], unit: 'pcs', stock: '', minStock: '' });
 
   const onSave = () => {
     if (!payload.name || !payload.stock) {
-      alert('Name and stock are required');
+      notify.warning('Missing details', 'Name and stock are required.');
       return;
     }
-    if (!payload.staff.trim()) {
-      alert('Please enter your name in "Added by"');
-      return;
-    }
-    addItem({ ...payload, staff: payload.staff.trim(), stock: Number(payload.stock), minStock: Number(payload.minStock) });
+    addItem({ ...payload, staff: currentUser, stock: Number(payload.stock), minStock: Number(payload.minStock) });
     reset();
     onHide();
   };
@@ -91,12 +90,20 @@ export default function AddItemModal({ show, onHide }) {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label>Added by</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Enter your name"
-              value={payload.staff}
-              onChange={(e) => upd('staff', e.target.value)}
-            />
+            <div className="store-identity" role="status">
+              <span className="store-identity-avatar" aria-hidden="true">
+                {(currentUser || '?').trim().charAt(0).toUpperCase()}
+              </span>
+              <span className="store-identity-text">
+                <span className="store-identity-name">
+                  {currentUser || 'Signed-in user unavailable'}
+                </span>
+                <span className="store-identity-hint">
+                  <i className="fa-solid fa-lock me-1" />
+                  Taken from your signed-in account
+                </span>
+              </span>
+            </div>
           </Form.Group>
         </Form>
       </Modal.Body>

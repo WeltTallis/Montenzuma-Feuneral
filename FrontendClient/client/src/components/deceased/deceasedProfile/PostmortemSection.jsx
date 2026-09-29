@@ -9,7 +9,7 @@ import env from '../../../utils/config/env';
 import { ToastContainer } from 'react-toastify';
 import { showToast } from '../../../utils/toast';
 import { io } from 'socket.io-client';
-
+import notify from '../../../utils/notify';
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -285,7 +285,7 @@ const PostmortemSection = ({ deceasedId, deceasedData, onUpdate }) => {
     const handleRequestSubmit = async (e) => {
         e.preventDefault();
         if (!requestForm.reason || !requestForm.requested_by) {
-            alert('Please fill in all required fields');
+            notify.warning('Missing details', 'Please fill in all required fields.');
             return;
         }
         setIsLoading(true);

@@ -4,7 +4,7 @@ import styled, { keyframes } from 'styled-components';
 
 import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
-
+import notify from '../../utils/notify';
 // Candle flicker animation
 const flicker = keyframes`
   0%, 100% { opacity: 1; transform: scaleY(1); }
@@ -441,7 +441,7 @@ const PublicMemorialPage = () => {
       navigator.share({ title: `In Memory of ${deceased?.full_name || ' Loved One'}`, url: shareUrl });
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert('Link copied to clipboard!');
+      notify.success('Link copied', 'The memorial link is on your clipboard.');
     }
   };
 

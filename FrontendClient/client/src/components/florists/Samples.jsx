@@ -10,8 +10,7 @@ import Snowfall from "./Snowfall";
 import FlowerSnowBookingForm from "./FlowerSnowBookingForm";
 
 /* ─── Snow palette ───────────────────────────────────────────────────────── */
-const CSS = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;1,9..144,200;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap');
-:root{
+const CSS = `:root{
   --paper:#FBF8F4; --ink:#4A3B3C; --ink2:#7A6664; --ink3:#B09A94;
   --rosewood:#8B4557; --blush:#DCAEA6; --blush-xl:#F6E7E2;
   --gold:#C8A262; --hair:#E8E0DA; --hair2:#E0C9C0;

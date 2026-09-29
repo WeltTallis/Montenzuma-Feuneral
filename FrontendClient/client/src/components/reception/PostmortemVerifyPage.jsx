@@ -7,7 +7,6 @@ import { getTenantHeaders } from '../../api/endpoints';
 
 // ─── Google Fonts ────────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 `;
 
 // ─── Design tokens (new palette) ────────────────────────────

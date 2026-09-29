@@ -1,6 +1,6 @@
 
 import { toDateKey, formatTimeAmPm } from '../../utils/dates/parseDates';
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -689,10 +689,30 @@ const StatIcon = styled.span`
 `;
 
 // ===== MAIN CALENDAR COMPONENT =====
-const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick }) => {
+const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick, month, onMonthChange }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [selectedMultiDay, setSelectedMultiDay] = useState(null);
   const calendarRef = useRef(null);
+
+  // ── Month is owned by the parent ───────────────────────────────────────
+  // The parent holds it in the URL (?month=September&year=2026) because it
+  // also drives WHICH bookings get fetched. FullCalendar keeps its own visible
+  // date, so the two are synced both ways: a prop change jumps the grid, and a
+  // user pressing the grid's arrows reports the new month back up so the parent
+  // can refetch just that month.
+  useEffect(() => {
+    const api = calendarRef.current?.getApi?.();
+    if (!api || !month) return;
+    const current = api.getDate();
+    if (current.getFullYear() === month.getFullYear() && current.getMonth() === month.getMonth()) return;
+    api.gotoDate(month);
+  }, [month]);
+
+  const handleDatesSet = useCallback((arg) => {
+    if (!onMonthChange) return;
+    const d = arg?.start ? new Date(arg.start) : new Date();
+    onMonthChange(d.getMonth(), d.getFullYear());
+  }, [onMonthChange]);
 
   // Build a branch lookup map from cached branches to resolve branch_id → branch_name
   // Also maps branch_slug → branchName for slug-based lookups
@@ -1154,6 +1174,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
+          initialDate={month || undefined}
+          datesSet={handleDatesSet}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',

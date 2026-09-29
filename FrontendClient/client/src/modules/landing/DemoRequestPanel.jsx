@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
-
+import notify from '../../utils/notify';
 /**
  * DemoRequestPanel — "Request Free Demo" slide-out panel pinned to the right edge
  * of the landing page.
@@ -75,7 +75,7 @@ const DemoRequestPanel = () => {
       setSubmitted(true);
     } catch (error) {
       console.error('Failed to submit free-trial request:', error);
-      alert('We could not send your trial request right now. Please try again in a moment.');
+      notify.error('Request not sent', 'We could not send your trial request right now. Please try again in a moment.');
     } finally {
       setSubmitting(false);
     }

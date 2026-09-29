@@ -543,7 +543,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
  */
 export const getAllHearseBookings = asyncHandler(async (req: Request, res: Response) => {
     try {
-        const { status } = req.query;
+        const { status, from, to } = req.query;
         const whereClauses: string[] = [];
         const params: any[] = [];
 
@@ -573,13 +573,76 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
             params.push(status);
         }
 
+        // ─── MONTH SCOPING ───────────────────────────────────────────────────
+        // The Hearse page is a calendar, so it only ever renders ONE month at a
+        // time. Previously this endpoint always returned every booking the tenant
+        // has ever had, so a long-established funeral home downloaded thousands
+        // of rows just to draw 30 day cells. `from`/`to` are inclusive
+        // YYYY-MM-DD bounds; a booking is kept when any of its dates fall inside.
+        //
+        // `booking_dates` is a TEXT column holding the EXPANDED list of every day
+        // the booking spans, e.g. '["2026-08-30","2026-08-31","2026-09-01"]'.
+        // A booking that overlaps September therefore always contains at least
+        // one "2026-09-" key, so a month-prefix LIKE is an exact test for this
+        // data model (the same technique the notification cron already uses).
+        // The legacy single-date `booking_date` column is OR-ed in so older rows
+        // without a booking_dates array are never silently dropped.
+        const isDateKey = (v: any): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+        // Shape check alone is not enough: "2026-99-99" matches the regex but is
+        // not a real date. Round-tripping through Date rejects impossible
+        // months/days (and 29 Feb in a non-leap year) without pulling in a
+        // date library.
+        const isRealDate = (v: any): v is string => {
+            if (!isDateKey(v)) return false;
+            const [y, m, d] = v.split('-').map(Number);
+            if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+            const dt = new Date(Date.UTC(y, m - 1, d));
+            return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+        };
+        // A reversed range (to before from) is a caller bug, not a request for
+        // "everything" — normalising it silently would hide the bug and widen
+        // the scan, so swap it back into a sane order instead.
+        const rawFrom = isRealDate(from) ? from : null;
+        const rawTo = isRealDate(to) ? to : null;
+        const fromKey = rawFrom && rawTo && rawFrom > rawTo ? rawTo : rawFrom;
+        const toKey = rawFrom && rawTo && rawFrom > rawTo ? rawFrom : rawTo;
+        if (fromKey || toKey) {
+            // Collect every YYYY-MM prefix the requested range touches, so a
+            // range spanning a month boundary (or a whole year) still works.
+            const prefixes = new Set<string>();
+            const start = fromKey || toKey!;
+            const [sy, sm] = start.split('-').map(Number);
+            const [ey, em] = (toKey || fromKey!).split('-').map(Number);
+            const span = Math.abs((ey * 12 + em) - (sy * 12 + sm));
+            // Cap at 24 months: a wider request is almost certainly a mistake
+            // and should not silently become a full-table scan.
+            if (span <= 24) {
+                for (let i = 0; i <= span; i += 1) {
+                    const total = (sy * 12 + sm - 1) + i;
+                    prefixes.add(`${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`);
+                }
+            }
+            const bits: string[] = [];
+            if (prefixes.size > 0 && prefixes.size <= 24) {
+                const list = [...prefixes].map((p) => `%"${p}-%`).join(' OR ');
+                bits.push(`(hb.booking_dates LIKE ${list})`);
+            }
+            if (fromKey) { bits.push('hb.booking_date >= ?'); params.push(fromKey); }
+            if (toKey) { bits.push('hb.booking_date <= ?'); params.push(toKey); }
+            if (bits.length > 0) whereClauses.push(`(${bits.join(' OR ')})`);
+        }
+
         // ─── REDIS CACHE ─────────────────────────────────────────────────────
         // This endpoint had no cache at all, so the Hearse Bookings page hit
         // MySQL on every render. The cache key must include BOTH the status
         // filter and the tenant scope (the namespace already carries the scope,
         // so only the filter belongs in the key).
         const statusFilter = status && status !== 'all' ? String(status) : 'all';
-        const cacheKey = `bookings:list:status:${statusFilter}`;
+        // The month range MUST be part of the key: without it, September's
+        // response would be served to an October request and the calendar would
+        // silently show the wrong month.
+        const rangeFilter = fromKey && toKey ? `${fromKey}_${toKey}` : (fromKey || toKey || 'all');
+        const cacheKey = `bookings:list:status:${statusFilter}:range:${rangeFilter}`;
 
         // Same scope rule on read and write: an unscoped request queries the whole
         // shared operations DB, so it must neither read from nor write to cache.

@@ -1,4 +1,4 @@
-﻿import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
@@ -976,7 +976,6 @@ const ClearSigButton = styled.button`
 
 /* ─── Woodland Elegance Footer ─────────────────────────────── */
 const ElegantFooter = styled.footer`
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Karla:wght@400;500;700&display=swap');
 
   position: relative;
   width: 100%;

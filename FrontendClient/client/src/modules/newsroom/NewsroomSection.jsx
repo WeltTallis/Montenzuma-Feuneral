@@ -39,7 +39,6 @@ const RevealDir = ({ children, delay = 0, from = 'up', style = {}, className = '
 };
 
 const NS_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..600&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
   
   .newsroom-section {
     position: relative;

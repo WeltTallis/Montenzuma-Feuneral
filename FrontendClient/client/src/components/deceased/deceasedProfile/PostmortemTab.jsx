@@ -334,7 +334,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (error) {
       console.error('PDF generation error:', error);
-      alert(`Failed to generate PDF: ${error.message}`);
+      notify.error('PDF could not be generated', error.message);
     }
   };
 

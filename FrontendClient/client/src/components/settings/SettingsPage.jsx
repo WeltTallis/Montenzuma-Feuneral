@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ENDPOINTS } from '../../api/endpoints';
@@ -501,7 +501,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: THEME.colors.bone }}>
+        <div className="rp-settings-root" style={{ minHeight: '100vh', background: THEME.colors.bone }}>
             {error && (
                 <div className="rp-settings-pad" style={{
                     background: THEME.colors.redBg || '#fdecea',
@@ -517,7 +517,6 @@ export default function SettingsPage() {
                 </div>
             )}
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -525,10 +524,47 @@ export default function SettingsPage() {
            This page is styled almost entirely with inline styles, so the
            media-query rules below use !important to win over them on small
            screens. Nothing here applies above the breakpoints, so the desktop
-           layout stays exactly as it was. */
+           layout stays exactly as it was.
+
+           Scoped to .rp-settings-root so these !important rules can never
+           leak into other components rendered alongside this page. */
+        .rp-settings-root {
+          /* Long emails / URLs / slugs are the #1 cause of a page-level
+             horizontal scrollbar. Wrapping them everywhere means no single
+             string can ever widen the document. */
+          overflow-wrap: anywhere;
+        }
+        .rp-settings-root table { width: 100%; }
+
+        /* Tabs scroll horizontally at EVERY width, not just small screens.
+           With enough tabs (Users / Branches / Organization) the row can
+           overflow just above the 900px breakpoint too, where the old rules
+           had nothing to say. Harmless when it fits. */
+        .rp-settings-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .rp-settings-tabs button { flex: 0 0 auto; }
+
+        /* Text columns in flex rows must be allowed to shrink, otherwise a
+           long name forces the row wider than the viewport. */
+        .rp-settings-header-meta,
+        .rp-settings-branch-name,
+        .rp-settings-modal-title { min-width: 0; overflow-wrap: anywhere; }
+
+        /* ── Short viewports (landscape phones) ──────────────────────────────
+           Width breakpoints never fire in landscape (~700x390), so the desktop
+           layout was being crammed into a very short window. */
+        @media (max-height: 520px) {
+          .rp-settings-modal { align-items: flex-start !important; }
+          .rp-settings-modal-panel { max-height: 92vh !important; }
+        }
+
+        @media (max-width: 1024px) {
+          .rp-settings-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important; }
+        }
+
         @media (max-width: 900px) {
           .rp-settings-pad { padding-left: 1rem !important; padding-right: 1rem !important; }
           .rp-settings-header { flex-direction: column !important; align-items: stretch !important; gap: 1rem !important; }
+          .rp-settings-header-row { align-items: flex-start !important; }
           .rp-settings-tabs { overflow-x: auto !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
           .rp-settings-tabs::-webkit-scrollbar { height: 0; }
           .rp-settings-tabs button { white-space: nowrap !important; flex: 0 0 auto; padding: 0.7rem 0.9rem !important; }
@@ -541,6 +577,7 @@ export default function SettingsPage() {
           .rp-settings-actions { flex-direction: column-reverse !important; }
           .rp-settings-actions > button { width: 100% !important; }
         }
+
         @media (max-width: 560px) {
           /* The dashboard layout already adds 0.5rem of gutters on phones, so
              the page keeps only a little of its own to avoid double spacing. */
@@ -551,13 +588,45 @@ export default function SettingsPage() {
           .rp-settings-title { font-size: 1.25rem !important; }
           .rp-settings-branches { grid-template-columns: 1fr !important; }
           .rp-settings-inline { flex-direction: column !important; align-items: flex-start !important; }
+
+          /* Touch targets (44px is the platform minimum) — phones only, so
+             tablets keep the lighter desktop density. Scoped to real controls
+             on this page rather than naming buttons that may come and go. */
+          .rp-settings-root button,
+          .rp-settings-root input,
+          .rp-settings-root select { min-height: 44px; }
+
+          /* 16px stops iOS Safari from auto-zooming the page when a field is
+             focused, which otherwise leaves the form zoomed in and unusable. */
+          .rp-settings-root input,
+          .rp-settings-root select,
+          .rp-settings-root textarea { font-size: 16px !important; }
+
+          /* Docked at the bottom and anchored to the real safe area so the
+             buttons clear the iOS home indicator. */
+          .rp-settings-modal { align-items: flex-end !important; padding: 0 !important; }
+          .rp-settings-modal-panel {
+            border-radius: 12px 12px 0 0 !important;
+            max-height: 88vh !important;
+            padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          /* Space below the sticky header for the notch in landscape. */
+          .rp-settings-pad { padding-top: env(safe-area-inset-top) !important; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .rp-settings-root *, .rp-settings-root *::before, .rp-settings-root *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+          }
         }
       `}</style>
 
             {/* Header */}
             <div style={{ background: THEME.colors.white, borderBottom: `1px solid ${THEME.colors.line}`, padding: '1.5rem 0' }}>
                 <div className="rp-settings-pad rp-settings-header" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div className="rp-settings-header-row" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         {companyLogo ? (
                             <img
                                 src={companyLogo}
@@ -591,7 +660,7 @@ export default function SettingsPage() {
                                 {(settings?.tenantName || 'O').trim().charAt(0).toUpperCase()}
                             </div>
                         )}
-                        <div>
+                        <div className="rp-settings-header-meta">
                         <h1 className="rp-settings-title" style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.5rem', fontWeight: 600, color: THEME.colors.ink, marginBottom: '0.25rem' }}>
                             Settings
                         </h1>
@@ -1136,8 +1205,8 @@ export default function SettingsPage() {
                                         border: `1px solid ${THEME.colors.line}`,
                                         borderRadius: '8px',
                                     }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
-                                            <h4 style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: THEME.colors.ink }}>
+                                        <div className="rp-settings-branch-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
+                                            <h4 className="rp-settings-branch-name" style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: THEME.colors.ink }}>
                                                 {branch.branch_name}
                                             </h4>
                                             <span style={{
@@ -1196,8 +1265,8 @@ export default function SettingsPage() {
                         maxHeight: '90vh',
                         overflowY: 'auto',
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.25rem', fontWeight: 600, color: THEME.colors.ink }}>
+                        <div className="rp-settings-modal-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 className="rp-settings-modal-title" style={{ fontFamily: "'Inter', sans-serif", fontSize: '1.25rem', fontWeight: 600, color: THEME.colors.ink }}>
                                 Add New User
                             </h2>
                             <button

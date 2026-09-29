@@ -211,6 +211,50 @@ export const getAuthToken = () => {
 };
 
 /**
+ * Resolve the DISPLAY NAME of the signed-in user.
+ *
+ * Used wherever an audit field ("Added by", "Picked by", "Done by") should be
+ * attributed to whoever is actually signed in rather than typed by hand —
+ * hand-typed names are misspelled, inconsistent, and easy to fake.
+ *
+ * Order: localStorage/sessionStorage `user` object (several shapes are written
+ * by different login paths) → JWT claims → '' when genuinely unknown.
+ */
+export const getCurrentUserName = () => {
+  let stored = null;
+  try {
+    stored = JSON.parse(
+      localStorage.getItem('user') || sessionStorage.getItem('user') || '{}'
+    );
+  } catch {
+    stored = null;
+  }
+  if (stored && typeof stored === 'object') {
+    // firstName/lastName are written by some login paths, fullName by others.
+    const joined = [stored.firstName, stored.lastName].filter(Boolean).join(' ').trim();
+    const name =
+      joined ||
+      stored.fullName ||
+      stored.full_name ||
+      stored.name ||
+      stored.username ||
+      stored.displayName ||
+      stored.email ||
+      '';
+    if (name) return String(name).trim();
+  }
+
+  // Fall back to the signed token. The JWT carries `email` but no name claim.
+  const claims = decodeTokenClaims();
+  const claimName = [claims?.firstName, claims?.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const fromToken = claimName || claims?.email || '';
+  return String(fromToken).trim();
+};
+
+/**
  * Get the current user ID from localStorage
  */
 export const getUserId = () => {

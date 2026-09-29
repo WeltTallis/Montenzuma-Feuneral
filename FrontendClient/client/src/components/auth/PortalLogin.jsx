@@ -91,7 +91,6 @@ export default function PortalLoginPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
         @keyframes sp{to{transform:rotate(360deg)}}
         @keyframes fu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
         @keyframes ri{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}

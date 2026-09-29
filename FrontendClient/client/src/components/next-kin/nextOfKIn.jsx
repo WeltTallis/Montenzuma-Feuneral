@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Users, Plus, Edit, Trash2, Phone, Mail, MapPin, User, AlertCircle, RefreshCw } from '../../utils/icons/icons';
 import axios from 'axios';
-
+import notify from '../../utils/notify';
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const BASE_URL = `${API_GATEWAY_URL}/api/v1/restpoint`;
 
@@ -241,7 +241,7 @@ const NextOfKinSection = ({ nextOfKin = [], deceasedName, onUpdate }) => {
       onUpdate?.();
     } catch (error) {
       console.error('Error deleting next of kin:', error);
-      alert('Failed to remove next of kin');
+      notify.error('Could not remove next of kin', 'Please try again in a moment.');
     } finally {
       setIsLoading(false);
     }

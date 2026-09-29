@@ -1,8 +1,10 @@
+
+import { rebaseUploadUrl } from '../../../utils/tenantResolver/tenantBranding';
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import env from '../../../utils/config/env';
-import { rebaseUploadUrl } from '../../../utils/tenantResolver/tenantBranding';
+
 
 const SectionHead = styled.div`
   font-size: 11px;
@@ -87,10 +89,10 @@ const OverviewTab = ({ deceased, nextOfKin }) => {
 
   return (
     <>
-      {/* Deceased Name — blue, top-left */}
+      {/* Deceased Name — Julius Sans One, top-left */}
       <DetailItem $full style={{ marginBottom: '20px' }}>
         <DetailLabel style={{ fontSize: 11, opacity: 0.55 }}>Deceased Name</DetailLabel>
-        <DetailValue style={{ color: '#00296B', fontSize: 20, fontWeight: 800, fontFamily: 'Merriweather', marginBottom: 8 }}>{deceasedName}</DetailValue>
+        <DetailValue style={{ color: '#00296B', fontSize: 24, fontWeight: 400, fontFamily: "'Julius Sans One', serif", lineHeight: 1.25, marginBottom: 8 }}>{deceasedName}</DetailValue>
       </DetailItem>
 
       {/* 01 — Admission */}

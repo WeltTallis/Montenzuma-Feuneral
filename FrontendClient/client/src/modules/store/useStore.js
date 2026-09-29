@@ -3,14 +3,7 @@ import { toast } from 'react-toastify';
 import { StoreAPI } from '../../api/storeApi';
 import { getStatus, dateKey } from './seed';
 
-// ============================================================
-// Mini Store - data layer (React hook)
-//
-// Source of truth = the store API. LocalStorage is used as a
-// fallback so data survives page refreshes when the service
-// is unreachable. Mutations optimistically update local state,
-// persist to localStorage, then fire a best-effort API call.
-// ============================================================
+
 
 const STORAGE_KEY_ITEMS = 'miniStore_items';
 const STORAGE_KEY_TX = 'miniStore_transactions';
@@ -235,7 +228,7 @@ export const useStore = () => {
       setItems(storedItems);
       setTransactions(storedTx);
       setConnected(false);
-      setError(e.friendlyMessage || e.message || 'Mini Store service is unavailable.');
+      setError(e.friendlyMessage || e.message || 'Lichene Store service is unavailable.');
 
       // Recalculate next IDs from stored data
       if (storedItems.length) {

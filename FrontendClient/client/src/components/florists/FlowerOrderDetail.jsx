@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getTenantSlug } from '../../utils/globalAuth';
+import notify from '../../utils/notify';
 import './FlowerOrderDetail.css';
 
 // Tenant routes are slug-first now (/<slug>/flowers), so build the back-link
@@ -39,7 +40,7 @@ const FlowerOrderDetail = () => {
     }, [id]);
 
     const handleSave = () => {
-        alert('Booking saved successfully!');
+        notify.success('Booking saved', 'The booking was saved successfully.');
         navigate(flowersPath());
     };
 

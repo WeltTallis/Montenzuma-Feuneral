@@ -251,7 +251,7 @@ CREATE TABLE IF NOT EXISTS chemical_transactions (
   new_stock DECIMAL(10,2) NOT NULL,
   reference_type VARCHAR(50) DEFAULT NULL,
   reference_id INT DEFAULT NULL,
-  performed_by INT DEFAULT NULL,
+  performed_by VARCHAR(64) DEFAULT NULL,
   performed_by_name VARCHAR(255) DEFAULT NULL,
   notes TEXT DEFAULT NULL,
   created_at VARCHAR(255),
@@ -273,7 +273,7 @@ CREATE TABLE IF NOT EXISTS chemical_usage (
   quantity_used DECIMAL(10,2) NOT NULL,
   unit VARCHAR(50) NOT NULL DEFAULT 'liters',
   transaction_id INT DEFAULT NULL,
-  used_by INT DEFAULT NULL,
+  used_by VARCHAR(64) DEFAULT NULL,
   used_by_name VARCHAR(255) DEFAULT NULL,
   usage_notes TEXT DEFAULT NULL,
   created_at VARCHAR(255),
@@ -363,6 +363,35 @@ async function normalizePPERequestsSchema(connection, dbName) {
   }
 }
 
+// Employee-id columns must be able to hold a real `users.user_id`.
+//
+// The users table keys on `user_id VARCHAR(36)` (a UUID), but these columns
+// were created as INT. Writing a UUID into an INT either errors under strict
+// mode or is silently truncated to 0 — which is why per-employee tracking was
+// always empty and the name had to be typed in by hand. Widen them to VARCHAR
+// and resolve the real full_name at write time.
+async function ensureEmployeeIdColumns(connection, dbName) {
+  const fixes = [
+    { table: 'chemical_usage', column: 'used_by' },
+    { table: 'chemical_transactions', column: 'performed_by' },
+  ];
+  for (const fix of fixes) {
+    try {
+      const [cols] = await connection.query(
+        `SHOW COLUMNS FROM \`${fix.table}\` LIKE '${fix.column}'`
+      );
+      if (!cols.length) continue;               // table/column not created yet
+      if (String(cols[0].Type).toLowerCase().startsWith('varchar')) continue; // already fine
+      await connection.query(
+        `ALTER TABLE \`${fix.table}\` MODIFY COLUMN \`${fix.column}\` VARCHAR(64) DEFAULT NULL`
+      );
+      console.log(`   Widened ${fix.table}.${fix.column} to VARCHAR(64) in ${dbName}`);
+    } catch (error) {
+      console.warn(`  Employee id column warning for ${dbName}: ${error.message}`);
+    }
+  }
+}
+
 // Ensure pickup performer name columns exist on pre-existing databases so the
 // Staff Pickup Analysis can show who picked up each chemical.
 async function ensurePickupNameColumns(connection, dbName) {
@@ -433,6 +462,7 @@ async function ensureChemicalTables(dbName) {
     }
 
     await normalizePPERequestsSchema(connection, dbName);
+    await ensureEmployeeIdColumns(connection, dbName);
     await ensurePickupNameColumns(connection, dbName);
     await backfillTransactionDates(connection, dbName);
 

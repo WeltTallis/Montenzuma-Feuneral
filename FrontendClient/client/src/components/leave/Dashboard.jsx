@@ -3,7 +3,7 @@
 
    Layout — single top navigation bar (no title line):
 
-     Top bar → Overview · Approvals · Employees · History · Calendar
+     Top bar → Overview · Approvals · Employees · History
                + Refresh + Apply leave. 
                Picking one shows that section alone (e.g. Employees → only
                the employees table, History → only the leave history table).
@@ -13,7 +13,10 @@
         (side column:         → on leave today, next 14 days, own balance)
      3. Employees & balances  → searchable table, click a row for the drawer
      4. Leave history         → search / filter / paginate / export
-     5. Calendar              → compact month grid, periods list scrolls
+
+    There is deliberately NO Calendar tab: the team-wide month grid was noise,
+    and per-employee dates are far easier to read inside the employee drawer,
+    which carries its own calendar.
 
    Everything is derived from the endpoints the leave service already exposes
    (stats/overview, all, balances, users/on-leave, balance/:id, additions/:id)
@@ -599,7 +602,7 @@ const Overlay = styled.div`
   justify-content: flex-end;
 `;
 const Drawer = styled.div`
-  width: min(540px, 100%);
+  width: min(720px, 100%);
   height: 100%;
   background: ${COLORS.white};
   box-shadow: -12px 0 34px rgba(0, 0, 0, 0.2);
@@ -956,7 +959,6 @@ const LeaveDashboard = () => {
     { value: 'approvals', label: 'Approvals', icon: CheckCircle },
     { value: 'employees', label: 'Employees', icon: Users },
     { value: 'history', label: 'History', icon: History },
-    { value: 'calendar', label: 'Calendar', icon: Calendar },
   ], []);
 
   const [stats, setStats] = useState({ total: 0, pending: 0, on_leave: 0, by_status: [], by_type: [] });
@@ -1480,7 +1482,6 @@ const LeaveDashboard = () => {
   const showApprovals = view === 'approvals';
   const showEmployees = view === 'employees';
   const showHistory = view === 'history';
-  const showCalendar = view === 'calendar';
 
   return (
     <Page>
@@ -2293,38 +2294,6 @@ const LeaveDashboard = () => {
             </Section>
           )}
 
-          {showCalendar && (
-            <Section>
-              <CardHead>
-                <CardHeadLeft>
-                  <Calendar size={17} color={COLORS.primary} />
-                  <div>
-                    <CardTitle>Leave calendar</CardTitle>
-                    <CardSub>
-                      {records.length} request(s) plotted by date · click a leave to open that employee
-                    </CardSub>
-                  </div>
-                </CardHeadLeft>
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  {statusSlices.map((s) => (
-                    <MiniTag key={s.key} style={{ color: s.color }}>
-                      <PillDot $c={s.color} />{s.label} {s.value}
-                    </MiniTag>
-                  ))}
-                </div>
-              </CardHead>
-              <CardBody style={{ padding: '0.85rem' }}>
-                <LeaveCalendar
-                  leaves={records}
-                  onLeaveClick={(leave) => openUser({
-                    user_id: leave.user_id,
-                    name: leave.name,
-                    email: leave.email,
-                  })}
-                />
-              </CardBody>
-            </Section>
-          )}
 
         </>
       )}
@@ -2601,6 +2570,10 @@ const LeaveDashboard = () => {
                 <div>
                   <FieldLabel>Email</FieldLabel>
                   <FieldValue>{viewRequest.email || '—'}</FieldValue>
+                </div>
+                <div>
+                  <FieldLabel>Branch</FieldLabel>
+                  <FieldValue>{viewRequest.branch || '—'}</FieldValue>
                 </div>
                 <div>
                   <FieldLabel>Leave type</FieldLabel>

@@ -5,7 +5,6 @@ import { workshopService } from '../services/workshopService';
 import WorkshopTabs from './WorkshopTabs';
 import DashboardTab from './DashboardTab';
 import MaterialsTab from './MaterialsTab';
-import AnalyticsTab from './AnalyticsTab';
 import ModalRouter from './ModalRouter';
 import OrdersTab from './OrdersTab';
 import StoreTab from './StoreTab';
@@ -466,7 +465,6 @@ const WorkshopDashboard = () => {
             {tab === 'orders' && <OrdersTab />}
             {tab === 'materials' && <MaterialsTab />}
             {tab === 'store' && <StoreTab />}
-            {tab === 'analytics' && <AnalyticsTab />}
           </div>
         </div>
         {modal && <ModalRouter

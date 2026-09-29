@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import styled, { createGlobalStyle } from 'styled-components';
+import styled from 'styled-components';
 import { Download, AlertCircle, CheckCircle, User, Phone, FileText, Shield } from 'lucide-react';
+import notify from '../../utils/notify';
 
-// ─── Google Fonts ────────────────────────────────────────────
-const GlobalStyles = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,700&family=JetBrains+Mono:wght@400;500;600&family=Mr+Dafoe&display=swap');
-`;
+// The old per-component `createGlobalStyle` Google Fonts block was removed when
+// the app consolidated every family into the single combined @import in
+// src/index.css. All four families it loaded (Saira, Fraunces, JetBrains Mono,
+// Mr Dafoe) are already served from there, so the block was left behind as an
+// empty template that rendered nothing. Restoring the @import would duplicate
+// the request; re-adding it per component is explicitly discouraged in index.css.
 
 // ─── Design tokens (new palette) ────────────────────────────
 const C = {
@@ -653,7 +656,7 @@ const PostmortemResultsPage = () => {
 
     } catch (error) {
       console.error('PDF download error:', error);
-      alert(`Unable to download PDF: ${error.message}. Please try again or contact support.`);
+      notify.error('Download failed', error.message || 'Please try again or contact support.');
     }
   };
 
@@ -664,7 +667,6 @@ const PostmortemResultsPage = () => {
   if (loading) {
     return (
       <>
-        <GlobalStyles />
         <PageWrapper>
           <Sheet>
             <SheetInner>
@@ -681,7 +683,6 @@ const PostmortemResultsPage = () => {
   if (!reportData) {
     return (
       <>
-        <GlobalStyles />
         <PageWrapper>
           <Sheet>
             <SheetInner>
@@ -726,7 +727,6 @@ const PostmortemResultsPage = () => {
 
   return (
     <>
-      <GlobalStyles />
       <PageWrapper>
         <Sheet>
           <Watermark>CONFIDENTIAL</Watermark>

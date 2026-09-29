@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X, ArrowRight, ArrowUpRight, GraduationCap, ShieldCheck, Users, Zap, CheckCircle, Code2, Server, Settings, Trophy, Building2, Smartphone, MonitorSmartphone, Brain, Cpu } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
@@ -162,7 +162,6 @@ export default function WeltTallisAbout() {
     return (
         <div className="page-container">
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
                 *{margin:0;padding:0;box-sizing:border-box}
                 html{scroll-behavior:smooth}
                 body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone};-webkit-font-smoothing:antialiased}

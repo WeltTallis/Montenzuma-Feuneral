@@ -1,5 +1,6 @@
 import { resolveBranchName, isMultiDay, getBookingDateRange, getMultiDayColor } from './viewerShared';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getTenantId, getBranchId, getBranchSlug } from '../../utils/globalAuth';
 import { useSocket } from '../../utils/context/socketContext';
 import useAuthStore from '../../utils/store/useAuthStore';
@@ -40,6 +41,11 @@ const GENERIC_BRANCH_NAMES = new Set([
   '-',
   '',
 ]);
+
+
+
+
+
 
 const STATUS_CONFIG = {
   pending: { label: 'Pending', progress: 10, color: '#d97706', bg: '#FFFBEB', dotColor: '#d97706' },
@@ -119,7 +125,7 @@ const fmtBookingDates = (b) => {
   const first = new Date(clean[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const last = new Date(clean[clean.length - 1] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   if (clean.length === 1) return first;
-  return `${first} – ${last}`;
+  return `${first} - ${last}`;
 };
 
 const fmtRoute = (b) => {
@@ -207,8 +213,16 @@ const Icons = {
 };
 
 const api = {
-  getBookings: async () => {
-    const r = await fetch(`${API_BASE_URL}/hearse-bookings?t=${Date.now()}`, { headers: getAuthHeaders() });
+  getBookings: async (params = {}) => {
+    // Month scoping: the calendar only ever renders one month, so the page
+    // passes the visible month's bounds and the server filters server-side
+    // instead of shipping every booking this tenant has ever had.
+    const qs = new URLSearchParams();
+    if (params.from) qs.set('from', params.from);
+    if (params.to) qs.set('to', params.to);
+    if (params.status && params.status !== 'all') qs.set('status', params.status);
+    const query = qs.toString();
+    const r = await fetch(`${API_BASE_URL}/hearse-bookings${query ? `?${query}` : ''}&t=${Date.now()}`, { headers: getAuthHeaders() });
     if (!r.ok) throw new Error('Failed');
     return (await r.json()).bookings || [];
   },
@@ -597,13 +611,90 @@ const ActionMenuItem = styled.button`
 // ═════════════════════════════════════════════════════════════════════════════════════
 
 const HearseBookings = () => {
+  // ── URL state (canonical numeric month) ─────────────────────────────────
+  // The visible month lives in the query string so the page is linkable and
+  // survives a refresh / shared link:
+  //   /<tenant-slug>/hearse?month=9&year=2026&status=all
+  //
+  // The month is a NUMBER (1-12), not a name. Names invite a whole class of
+  // bugs — "Sept"/"sep"/"9"/"09"/"September " all have to be normalised, and a
+  // typo silently falls back to the wrong month. A number is validated once,
+  // here, and everything downstream (ISO range, cache key, calendar) is derived
+  // from it deterministically.
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // STRICT integer parse. `parseInt("9abc", 10)` returns 9, which would silently
+  // show September for a malformed URL, so the whole string must be digits —
+  // the regex rejects "", "9abc", "1.5", "-3", " 9 " and "0x9" alike.
+  const toInt = (v) => {
+    const s = String(v ?? '').trim();
+    if (!/^\d{1,6}$/.test(s)) return NaN;
+    const n = Number.parseInt(s, 10);
+    return Number.isSafeInteger(n) ? n : NaN;
+  };
+
+  const rawMonth = toInt(searchParams.get('month'));
+  const rawYear = toInt(searchParams.get('year'));
+  // Reject out-of-range months and implausible years instead of letting them
+  // through — a rolled-over Date would silently show the wrong month.
+  const urlMonth = rawMonth >= 1 && rawMonth <= 12 ? rawMonth - 1 : NaN; // 0-based
+  const urlYear = Number.isInteger(rawYear) && rawYear >= 1970 && rawYear <= 2200 ? rawYear : NaN;
+
+  // Status is a free-text param, so it is whitelisted against the real status
+  // list (module-level STATUS_LIST) rather than trusted. Anything unrecognised
+  // behaves as "all" instead of silently filtering everything away.
+  const rawStatus = String(searchParams.get('status') || 'all').trim().toLowerCase();
+  const urlStatus = (rawStatus === 'all' || STATUS_LIST.includes(rawStatus)) ? rawStatus : 'all';
+
+  // Month actually on screen. Anything missing or malformed in the URL falls
+  // back to the current month, so a bare or broken /hearse link still works.
+  // `now` is pinned once per mount (empty dep array) so it stays a STABLE
+  // dependency — a fresh `new Date()` on every render would defeat the
+  // memoisation on monthRange and refetch the month on every paint.
+  const now = useMemo(() => new Date(), []);
+  const initialMonth = Number.isNaN(urlMonth) ? now.getMonth() : urlMonth;
+  const initialYear = Number.isNaN(urlYear) ? now.getFullYear() : urlYear;
+  const [viewMonth, setViewMonth] = useState(initialMonth);
+  const [viewYear, setViewYear] = useState(initialYear);
+
+  // Rewrite the URL to the canonical form whenever the visible month changes.
+  // `replace: true` is essential — pushing would stack a history entry per
+  // month the user paged through.
+  const goToMonth = useCallback((month, year) => {
+    const m = Math.min(11, Math.max(0, month));
+    const y = Math.min(2200, Math.max(1970, year));
+    setViewMonth(m);
+    setViewYear(y);
+    const next = new URLSearchParams(searchParams);
+    next.set('month', String(m + 1));   // 1-12 in the URL, 0-11 in JS
+    next.set('year', String(y));
+    next.set('status', urlStatus);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, urlStatus]);
+
+  // The URL is the source of truth, so follow it when it changes underneath us
+  // (browser Back / Forward, or a pasted link). Without this the grid would
+  // keep showing the old month while the address bar said something else.
+  // NaN means "malformed or absent", which we deliberately leave alone — the
+  // current month is already showing and rewriting it here would fight the
+  // initial state.
+  useEffect(() => {
+    if (!Number.isNaN(urlMonth) && urlMonth !== viewMonth) setViewMonth(urlMonth);
+    if (!Number.isNaN(urlYear) && urlYear !== viewYear) setViewYear(urlYear);
+  }, [urlMonth, urlYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [bookings, setBookings] = useState([]);
   const [allHearses, setAllHearses] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  // Seeded from the URL (?status=...) so a shared link opens with the same
+  // filter applied. An empty string means "no status filter" client-side; the
+  // URL uses 'all' for the same thing, hence the mapping.
+  const [filterStatus, setFilterStatus] = useState(
+    urlStatus && urlStatus !== 'all' ? urlStatus : ''
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState(formatDateStr(new Date()));
@@ -680,14 +771,41 @@ const HearseBookings = () => {
 
   const handleDateFilter = useCallback((f) => { setDateFilter(f); setCurrentPage(1); }, []);
 
+  // Inclusive YYYY-MM-DD bounds for the month currently on screen. The month can
+  // be 12/13 in some time zones, so the range is built from a local Date and
+  // the last day is taken from the next month's day-0 rather than assumed to
+  // be 30.
+  // Inclusive YYYY-MM-DD bounds for the month currently on screen.
+  //   month=9&year=2026  ->  from 2026-09-01, to 2026-09-30
+  // The last day is taken from "day 0 of the next month" so February and the
+  // 31-day months are always correct — never a hard-coded 30.
+  // A local Date is used (not UTC) so the bounds always match the local
+  // calendar the user is looking at.
+  const monthRange = useMemo(() => {
+    const y = Number.isInteger(viewYear) ? viewYear : now.getFullYear();
+    const m = Number.isInteger(viewMonth) && viewMonth >= 0 && viewMonth <= 11
+      ? viewMonth
+      : now.getMonth();
+    const first = new Date(y, m, 1);
+    const last = new Date(y, m + 1, 0);
+    return { from: formatDateStr(first), to: formatDateStr(last) };
+  }, [viewYear, viewMonth, now]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [bks, brs, hrs] = await Promise.all([api.getBookings(), api.getBranches(), api.getAllHearses()]);
+      // Only the visible month is requested. Branches and the fleet do not
+      // change month-to-month, so they are still fetched once per call but the
+      // (large) bookings payload is now bounded to ~30 days.
+      const [bks, brs, hrs] = await Promise.all([
+        api.getBookings({ from: monthRange.from, to: monthRange.to }),
+        api.getBranches(),
+        api.getAllHearses(),
+      ]);
       setBookings(bks); setBranches(brs); setAllHearses(hrs);
     } catch (e) { notify.error('Failed to load data'); }
     setLoading(false);
-  }, []);
+  }, [monthRange.from, monthRange.to]);
 
   // Refresh data IN PLACE — same fetch as loadData() but WITHOUT the
   // full-page loading spinner. This is used after a create/update so the
@@ -696,11 +814,16 @@ const HearseBookings = () => {
   // feels like the whole page reloading.
   const refreshData = useCallback(async () => {
     try {
-      const [bks, brs, hrs] = await Promise.all([api.getBookings(), api.getBranches(), api.getAllHearses()]);
+      const [bks, brs, hrs] = await Promise.all([
+        api.getBookings({ from: monthRange.from, to: monthRange.to }),
+        api.getBranches(),
+        api.getAllHearses(),
+      ]);
       setBookings(bks); setBranches(brs); setAllHearses(hrs);
     } catch (e) { notify.error('Failed to refresh data'); }
-  }, []);
+  }, [monthRange.from, monthRange.to]);
 
+  // Refetch whenever the month on screen changes.
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
@@ -987,7 +1110,17 @@ const HearseBookings = () => {
               {branchOptions.map((b) => <option key={b.branch_id} value={b.branch_id}>{b.branch_name}</option>)}
               {branchOptions.length === 0 && <option value="">No branches</option>}
             </Select>
-            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <Select
+              value={filterStatus}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFilterStatus(v);
+                // Keep the URL in step so the status filter is shareable too.
+                const next = new URLSearchParams(searchParams);
+                next.set('status', v || 'all');
+                setSearchParams(next, { replace: true });
+              }}
+            >
               <option value="">All Statuses</option>
               {STATUS_LIST.map((status) => <option key={status} value={status}>{STATUS_CONFIG[status]?.label || status}</option>)}
             </Select>
@@ -1121,6 +1254,8 @@ const HearseBookings = () => {
               onDateClick={(date) => { setSelectedDate(date); setTimelineDate(date); }}
               onItemClick={openDrawer}
               onCreateBooking={onCreateBooking}
+              month={new Date(viewYear, viewMonth, 1)}
+              onMonthChange={goToMonth}
             />
           )}
 

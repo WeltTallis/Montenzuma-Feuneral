@@ -3,9 +3,7 @@ import styled, { keyframes } from 'styled-components';
 
 
 import { Loader2 } from '../../../utils/icons/icons'
-
-
-
+import notify from '../../../utils/notify';
 // Colors
 const Colors = {
   primaryDark: '#2C3E50',
@@ -572,7 +570,7 @@ const ExportModal = ({
   // Handle export
   const handleExport = () => {
     if (selectedColumns.length === 0) {
-      alert('Please select at least one column to export.');
+      notify.warning('Nothing selected', 'Choose at least one column to export.');
       return;
     }
 

@@ -129,7 +129,6 @@ const pulse = keyframes`
 
 /* ── Global font import ────────────────────────────────────── */
 const GlobalFonts = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Saira:wght@300;400;500;600;700&display=swap');
   body {
     margin: 0;
     background: #050507;

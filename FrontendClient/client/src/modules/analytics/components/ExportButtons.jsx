@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Download, FileText, Mail } from '../../utils/icons/icons';
 import AnalyticsService from '../../../services/analyticsService';
-
+import notify from '../../../utils/notify';
 const ExportWrapper = styled.div`
   display: flex;
   gap: 10px;
@@ -99,7 +99,7 @@ const ExportButtons = () => {
       setShowDropdown(false);
     } catch (error) {
       console.error('Error exporting:', error);
-      alert('Failed to export. Please try again.');
+      notify.error('Export failed', 'Please try again in a moment.');
     } finally {
       setLoading(false);
     }

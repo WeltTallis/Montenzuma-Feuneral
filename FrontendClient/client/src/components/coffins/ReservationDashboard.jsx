@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   eachDayOfInterval, isSameDay, isSameWeek, isSameMonth,
@@ -141,6 +142,56 @@ export default function ReservationDashboard(props) {
   var _af = useState([]), activeFilters = _af[0], setActiveFilters = _af[1];
   var inFlight = useRef(false), toastTimer = useRef(null), panelRef = useRef(null);
 
+  /* ── URL-driven month state ────────────────────────────────────────────
+     Mirrors the hearse calendar: only the visible month is fetched, and the
+     URL (?month=9&year=2026) is the source of truth so a link can be shared
+     and Back/Forward land on the right month. */
+  var _sp = useSearchParams(), searchParams = _sp[0], setSearchParams = _sp[1];
+
+  // STRICT integer parse: parseInt("9abc", 10) would return 9 and silently show
+  // the wrong month, so the whole string must be digits.
+  function toInt(v) { var s = String(v == null ? '' : v).trim(); if (!/^\d{1,6}$/.test(s)) return NaN; var n = parseInt(s, 10); return isFinite(n) ? n : NaN; }
+
+  var rawMonth = toInt(searchParams.get('month'));
+  var rawYear = toInt(searchParams.get('year'));
+  // Reject impossible values instead of letting Date roll over into a
+  // different month than the one the URL names.
+  var urlMonth = rawMonth >= 1 && rawMonth <= 12 ? rawMonth - 1 : NaN; // 0-based
+  var urlYear = rawYear >= 1970 && rawYear <= 2200 ? rawYear : NaN;
+
+  // `now` is pinned once so it stays a STABLE dependency — a fresh new Date()
+  // each render would defeat the memo and refetch on every paint.
+  var nowPinned = useMemo(function () { return new Date(); }, []);
+  var initialMonth = isNaN(urlMonth) ? nowPinned.getMonth() : urlMonth;
+  var initialYear = isNaN(urlYear) ? nowPinned.getFullYear() : urlYear;
+
+  var _vm = useState(initialMonth), viewMonth = _vm[0], setViewMonth = _vm[1];
+  var _vy = useState(initialYear), viewYear = _vy[0], setViewYear = _vy[1];
+
+  // The visible month as a real Date, and its inclusive ISO bounds for the API.
+  var visibleMonthDate = useMemo(function () { return new Date(viewYear, viewMonth, 1); }, [viewYear, viewMonth]);
+  var monthRange = useMemo(function () {
+    return { from: format(startOfMonth(visibleMonthDate), 'yyyy-MM-dd'), to: format(endOfMonth(visibleMonthDate), 'yyyy-MM-dd') };
+  }, [visibleMonthDate]);
+
+  // Follow the URL when it changes underneath us (Back/Forward, pasted link).
+  useEffect(function () {
+    if (!isNaN(urlMonth) && urlMonth !== viewMonth) setViewMonth(urlMonth);
+    if (!isNaN(urlYear) && urlYear !== viewYear) setViewYear(urlYear);
+  }, [urlMonth, urlYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Rewrite the URL to the canonical form on month change. `replace: true` stops
+  // a history entry per month paged through.
+  var goToMonth = useCallback(function (month, year) {
+    var m = Math.min(11, Math.max(0, month));
+    var y = Math.min(2200, Math.max(1970, year));
+    setViewMonth(m); setViewYear(y);
+    var next = new URLSearchParams(searchParams);
+    next.set('month', String(m + 1)); // 1-12 in the URL, 0-11 in JS
+    next.set('year', String(y));
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   useEffect(function () { setLiveBookings(bookings); }, [bookings]);
   useEffect(function () { setLiveCoffins(coffins); }, [coffins]);
   useEffect(function () { var t = setInterval(function () { setClock(new Date()); }, 1000); return function () { clearInterval(t); }; }, []);
@@ -155,9 +206,12 @@ export default function ReservationDashboard(props) {
     }, 2600);
   }, []);
 
+  // Month-scoped: only the visible month is requested. The endpoint defaults to
+  // "everything" when from/to are absent, so the params MUST be passed on every
+  // endpoint in the fallback chain.
   function doFetchOrders() {
     var eps = ['/coffins/orders', '/coffins/orders/list']; var idx = 0;
-    function next() { if (idx >= eps.length) return Promise.resolve([]); return api.get(eps[idx]).then(function (r) { var l = toArr(r && r.data); if (l.length > 0 || (r && r.data && r.data.success)) return l; idx++; return next(); }).catch(function () { idx++; return next(); }); }
+    function next() { if (idx >= eps.length) return Promise.resolve([]); return api.get(eps[idx], { params: { from: monthRange.from, to: monthRange.to } }).then(function (r) { var l = toArr(r && r.data); if (l.length > 0 || (r && r.data && r.data.success)) return l; idx++; return next(); }).catch(function () { idx++; return next(); }); }
     return next();
   }
   function doFetchCoffins() {
@@ -167,10 +221,12 @@ export default function ReservationDashboard(props) {
     return next();
   }
 
+  // monthRange.from/to are dependencies, so changing the visible month refetches
+  // that month. Coffins (inventory) are not date-scoped, so they are left alone.
   var fetchLive = useCallback(function () {
     if (inFlight.current) return Promise.resolve(); inFlight.current = true; setRefreshing(true);
     return Promise.all([doFetchOrders(), doFetchCoffins()]).then(function (res) { if (res[0].length) setLiveBookings(res[0]); if (res[1].length) setLiveCoffins(res[1]); setLiveError(null); }).catch(function (err) { setLiveError((err && err.response && err.response.data && err.response.data.message) || (err && err.message) || 'Live refresh failed'); }).finally(function () { inFlight.current = false; setRefreshing(false); });
-  }, []);
+  }, [monthRange.from, monthRange.to]);
 
   useEffect(function () { fetchLive(); var t = setInterval(function () { if (live) fetchLive(); }, REFRESH_MS); var onVis = function () { if (document.visibilityState === 'visible') fetchLive(); }; document.addEventListener('visibilitychange', onVis); return function () { clearInterval(t); document.removeEventListener('visibilitychange', onVis); }; }, [fetchLive, live]);
   var money = typeof formatPrice === 'function' ? formatPrice : usd;
@@ -200,17 +256,22 @@ export default function ReservationDashboard(props) {
 
   var visible = useMemo(function () {
     var result = mapped;
+    // Month view follows the URL-driven visible month, NOT `sel` — `sel` is a
+    // day/week cursor and drifts independently, which used to blank the grid.
     if (clickedDay) { result = result.filter(function (b) { return isSameDay(b.date, clickedDay); }); }
-    else { result = result.filter(function (b) { if (view === 'day') return isSameDay(b.date, sel); if (view === 'week') return isSameWeek(b.date, sel, { weekStartsOn: 1 }); return isSameMonth(b.date, sel); }); }
+    else { result = result.filter(function (b) { if (view === 'day') return isSameDay(b.date, sel); if (view === 'week') return isSameWeek(b.date, sel, { weekStartsOn: 1 }); return isSameMonth(b.date, visibleMonthDate); }); }
     if (activeFilters.length > 0) { result = result.filter(function (b) { return activeFilters.indexOf(b.status) !== -1; }); }
     if (searchQuery) { var q = searchQuery.toLowerCase(); result = result.filter(function (b) { return (b.clientName || '').toLowerCase().indexOf(q) !== -1 || (b.deceasedName || '').toLowerCase().indexOf(q) !== -1 || (b.coffinType || '').toLowerCase().indexOf(q) !== -1 || (b.phone || '').indexOf(q) !== -1; }); }
     return result;
-  }, [view, sel, mapped, clickedDay, activeFilters, searchQuery]);
+  }, [view, sel, mapped, clickedDay, activeFilters, searchQuery, visibleMonthDate]);
 
+  // Stats describe the month on screen. They previously counted the CURRENT
+  // month while the grid showed the selected one, so paging away made every
+  // card read 0 even with bookings on screen.
   var stats = useMemo(function () {
-    var now = new Date(); var month = mapped.filter(function (b) { return isSameMonth(b.date, now); });
-    return { total: month.length, pending: mapped.filter(function (b) { return b.status === 'pending'; }).length, revenue: month.filter(function (b) { return b.status === 'completed'; }).reduce(function (s, b) { return s + b.price; }, 0), today: mapped.filter(function (b) { return isToday(b.date); }).length };
-  }, [mapped]);
+    var month = mapped.filter(function (b) { return isSameMonth(b.date, visibleMonthDate); });
+    return { total: month.length, pending: month.filter(function (b) { return b.status === 'pending'; }).length, revenue: month.filter(function (b) { return b.status === 'completed'; }).reduce(function (s, b) { return s + b.price; }, 0), today: mapped.filter(function (b) { return isToday(b.date); }).length };
+  }, [mapped, visibleMonthDate]);
 
   var byType = useMemo(function () {
     var counts = {}; mapped.forEach(function (b) { var k = b.coffinType || 'Other'; counts[k] = (counts[k] || 0) + 1; });
@@ -220,9 +281,17 @@ export default function ReservationDashboard(props) {
   var statusData = useMemo(function () { var counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 }; mapped.forEach(function (b) { counts[b.status]++; }); return STORD.map(function (s) { return { key: s, label: ST[s].label, value: counts[s], color: ST[s].bar }; }); }, [mapped]);
   var filterCounts = useMemo(function () { var counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 }; mapped.forEach(function (b) { counts[b.status]++; }); return counts; }, [mapped]);
 
+  // Keep the mini-calendar on the same month as the grid. It is a secondary
+  // navigator, so deriving it from viewMonth/viewYear means the two can never
+  // disagree after a Back/Forward or a pasted link.
+  useEffect(function () { setCalMonth(visibleMonthDate); }, [visibleMonthDate]);
+
   var miniCalDays = useMemo(function () { return eachDayOfInterval({ start: startOfWeek(startOfMonth(calMonth), { weekStartsOn: 1 }), end: endOfWeek(endOfMonth(calMonth), { weekStartsOn: 1 }) }); }, [calMonth]);
 
-  function navigate(dir) { setClickedDay(null); if (view === 'day') { setSel(function (d) { return addDays(d, dir); }); } else if (view === 'week') { setSel(function (d) { return dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1); }); } else { setSel(function (d) { return dir === 1 ? addMonths(d, 1) : subMonths(d, 1); }); } setCalMonth(function (d) { return dir === 1 ? addMonths(d, 1) : subMonths(d, 1); }); }
+  // Paging the calendar drives `viewMonth`/`viewYear`, which drives monthRange
+  // and therefore the fetch. calMonth is derived from those via the effect
+  // above, and `sel` still tracks the day/week cursor, so both are kept in step.
+  function navigate(dir) { setClickedDay(null); if (view === 'day') { setSel(function (d) { return addDays(d, dir); }); } else if (view === 'week') { setSel(function (d) { return dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1); }); } goToMonth(viewMonth + dir, dir === 1 && viewMonth === 11 ? viewYear + 1 : dir === -1 && viewMonth === 0 ? viewYear - 1 : viewYear); }
   function miniCalNav(dir) { setCalMonth(function (d) { return dir === 1 ? addMonths(d, 1) : subMonths(d, 1); }); }
   function doRefresh() { setRefreshing(true); fetchLive().finally(function () { setRefreshing(false); showToast('Refreshed'); }); }
 
@@ -236,7 +305,7 @@ export default function ReservationDashboard(props) {
 
   function onMiniCalDayClick(day) { if (clickedDay && isSameDay(day, clickedDay)) { setClickedDay(null); } else { setClickedDay(day); setSel(day); } }
   function toggleFilter(status) { setActiveFilters(function (prev) { if (prev.indexOf(status) !== -1) return prev.filter(function (s) { return s !== status; }); return prev.concat([status]); }); setClickedDay(null); }
-  function goToday() { var now = new Date(); setSel(now); setCalMonth(now); setClickedDay(null); }
+  function goToday() { var now = new Date(); setSel(now); setClickedDay(null); goToMonth(now.getMonth(), now.getFullYear()); }
 
   if (liveError && (!liveBookings || liveBookings.length === 0)) {
     return (
@@ -257,7 +326,6 @@ export default function ReservationDashboard(props) {
   var barColors = ['#0f766e', '#0891b2', '#16a34a', '#475569', '#dc2626'];
 
   var css = [
-    "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');",
     '*{box-sizing:border-box;margin:0;padding:0}',
     '::-webkit-scrollbar{width:5px;height:4px}',
     '::-webkit-scrollbar-track{background:transparent}',

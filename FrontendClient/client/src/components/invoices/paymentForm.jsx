@@ -1,6 +1,6 @@
 // components/PaymentForm.jsx
 import React, { useState } from 'react';
-
+import notify from '../../utils/notify';
 const PaymentForm = ({ deceased, onCancel, onSubmit }) => {
   const [formData, setFormData] = useState({
     deceased_id: deceased.id,
@@ -13,7 +13,7 @@ const PaymentForm = ({ deceased, onCancel, onSubmit }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.amount || formData.amount <= 0) {
-      alert('Please enter a valid amount');
+      notify.warning('Invalid amount', 'Please enter a valid amount.');
       return;
     }
     onSubmit(formData);

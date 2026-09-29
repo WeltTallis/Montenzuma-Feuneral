@@ -63,6 +63,11 @@ router.get('/usage/chemical/:chemicalId', usageController.getByChemical);
 // Get full usage report (all deceased + chemicals used)
 router.get('/usage/report', usageController.getUsageReport);
 
+// Usage trends: daily totals + per-employee (real user name) + per-branch.
+// Declared AFTER '/usage/report' because '/usage/:x' style routes would
+// otherwise swallow the literal segment.
+router.get('/usage/trends', usageController.getUsageTrends);
+
 // ============================================
 // BRANCH-SPECIFIC ENDPOINTS
 // ============================================

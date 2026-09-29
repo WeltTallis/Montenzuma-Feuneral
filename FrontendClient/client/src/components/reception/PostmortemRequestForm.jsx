@@ -4,10 +4,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import env from '../../utils/config/env';
-
+import notify from '../../utils/notify';
 // ─── Google Fonts ────────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
   @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 `;
 
@@ -749,11 +748,11 @@ export default function PostmortemRequestForm() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.reason || !form.requested_by) {
-            alert('Please fill in all required fields.');
+            notify.warning('Missing details', 'Please fill in all required fields.');
             return;
         }
         if (!foundCase?.deceased_id) {
-            alert('Case not found. Please go back and search again.');
+            notify.warning('Case not found', 'Please go back and search again.');
             return;
         }
 

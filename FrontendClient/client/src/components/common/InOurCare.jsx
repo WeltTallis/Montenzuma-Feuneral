@@ -83,17 +83,8 @@ const InOurCare = ({ mode = 'intake', name, born, passed, reference, onDone }) =
   const canvasRef = useRef(null);
   const [step, setStep] = useState(0);
 
-  // Load the vigil fonts once (Cormorant Garamond + Karla).
-  useEffect(() => {
-    const id = 'inourcare-fonts';
-    if (!document.getElementById(id)) {
-      const link = document.createElement('link');
-      link.id = id;
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Karla:ital,wght@0,400;0,500;0,600;0,700&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
+  // Fonts (Cormorant Garamond + Karla) are loaded once, app-wide, from
+  // src/index.css — do not re-request them here.
 
   // The wick catches, then the words arrive — staggered reveals.
   useEffect(() => {

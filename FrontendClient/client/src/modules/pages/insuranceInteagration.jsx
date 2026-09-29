@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, CheckCircle, Clock, FileText, Users, TrendingUp, ArrowRight, Mail, Phone, MapPin, ChevronDown, Lock, Box, Zap, Wallet, Calendar, PieChart, Building2, UserPlus, RefreshCw } from '../../utils/icons/icons';
 
@@ -221,7 +221,6 @@ export default function InsurancePage() {
     return (
         <>
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; }

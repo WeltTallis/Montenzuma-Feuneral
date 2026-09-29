@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, Download, MapPin, Truck, Activity, Users, TrendingUp, Search, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, MessageSquare, LifeBuoy } from '../../utils/icons/icons';
 import PremiumReporting from './PremiumReporting';
@@ -432,7 +432,6 @@ export default function App() {
         <>
             <LandingPageSEO />
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth;overflow-x:hidden}
         body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.bone};-webkit-font-smoothing:antialiased;overflow-x:hidden}

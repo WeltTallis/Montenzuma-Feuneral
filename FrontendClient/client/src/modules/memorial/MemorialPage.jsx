@@ -412,7 +412,6 @@ export default function MemorialPage() {
             </Helmet>
 
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         body { font-family: "Inter", sans-serif; color: #5C5C5C; background: #FFFFFF; -webkit-font-smoothing: antialiased; }

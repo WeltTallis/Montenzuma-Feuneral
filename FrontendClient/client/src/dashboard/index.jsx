@@ -15,6 +15,7 @@ import { Ic } from "./opsIcons";
 import { OperationsView, RegisterView } from "./opsViews";
 import { AnalyticsView, Donut } from "./opsAnalytics";
 import { CaseDrawer, ModalHost } from "./opsPanels";
+import WorkshopPanel from "./WorkshopPanel";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Operations dashboard — the single shell.
@@ -40,6 +41,14 @@ const VIEWS = [
   { id: "day", label: "Day" },
   { id: "week", label: "Week" },
   { id: "month", label: "Month" },
+];
+
+/* The dashboard's top-level modules. "Operations" is the mortuary register
+   that has always lived here; "Workshop" swaps the main column for the
+   workshop store + analytics panel. */
+const MODULES = [
+  { id: "operations", label: "Operations" },
+  { id: "workshop", label: "Workshop" },
 ];
 
 const DARK_KEY = "rpd-ops-dark";
@@ -358,6 +367,11 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const { cases, loading, reload } = useCaseData();
 
   const [section, setSection] = useState("command");
+  // Top-level module switch: "operations" (mortuary register) or "workshop"
+  // (coffin store + production analytics). Choosing a module swaps the main
+  // column; the Operations section nav only applies within "operations".
+  const [module, setModule] = useState("operations");
+  const isWorkshop = module === "workshop";
   const [view, setView] = useState("month");
   const [selDate, setSelDate] = useState(todayKey());
   const [calY, setCalY] = useState(new Date().getFullYear());
@@ -514,7 +528,17 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   };
 
   const onNav = (id) => {
+    // Clicking a section always brings the mortuary register back — the
+    // workshop module has no register sections, so the nav would be a no-op.
+    if (isWorkshop) setModule("operations");
     setSection(id);
+    setFilters([]);
+    setTodayMode(false);
+  };
+
+  const onModule = (id) => {
+    setModule(id);
+    if (id === "operations") setSection("command");
     setFilters([]);
     setTodayMode(false);
   };
@@ -570,7 +594,20 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
       {/* ── toolbar ─────────────────────────────────────────────────── */}
       <header className={`tbar${isBoardPeriod ? " sched-mode" : ""}`}>
         <div className="tb-left">
-          <div className="nvp">
+          {/* Module switch — Operations (mortuary register) vs Workshop
+              (coffin store + production analytics). */}
+          <div className="selwrap modwrap">
+            <select
+              aria-label="Dashboard module"
+              value={module}
+              onChange={(e) => onModule(e.target.value)}
+            >
+              {MODULES.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="nvp" hidden={isWorkshop}>
             {NAV.map((n) => {
               const b = badges[n.id];
               return (
@@ -588,7 +625,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
         </div>
 
         <div className="tb-right">
-          <div className="searchbox">
+          <div className="searchbox" hidden={isWorkshop}>
             <Ic n="search" s={13} />
             <input
               id="rpd-search"
@@ -605,7 +642,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             ) : null}
           </div>
 
-          <div className="selwrap">
+          <div className="selwrap" hidden={isWorkshop}>
             <select
               aria-label="Branch"
               value={branch}
@@ -625,8 +662,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           {/* Fallback copy of the schedule controls. The sidebar calendar owns
               them, so this is hidden while the calendar is on screen and only
               surfaces when it is not (Analytics section, or a viewport too
-              narrow for the sidebar). */}
-          <div className="tb-sched">
+              narrow for the sidebar). The workshop module has no schedule at
+              all, so the whole cluster steps aside there. */}
+          <div className="tb-sched" hidden={isWorkshop}>
             <button className="tb-btn today-hot" onClick={goToday}>Today</button>
             <div className="navpair" aria-label="Change schedule period">
               <button className="tb-btn sq" onClick={() => stepPeriod(-1)} title="Previous period" aria-label="Previous period">‹</button>
@@ -676,7 +714,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
       {/* ── sidebar + main ──────────────────────────────────────────── */}
       <div className="shell">
-        {section !== "analytics" ? (
+        {section !== "analytics" && !isWorkshop ? (
           <aside className="side">
             <Sidebar
               calc={calc}
@@ -702,7 +740,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
         ) : null}
 
         <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}${isBoardPeriod ? " schedule-mode" : ""}`}>
-          {loading && !cases.length ? (
+          {isWorkshop ? (
+            <WorkshopPanel />
+          ) : loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}><Ic n="sync" s={22} /></span>
               <span style={{ fontSize: 12 }}>Loading operations…</span>

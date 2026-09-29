@@ -1,5 +1,7 @@
-/* Mini Store - Premium operational dashboard styling */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* Lichene Store - mortuary lichene/consumables inventory.
+   NOTE: the `.mini-store` class name is the historical scope hook and is kept
+   deliberately — renaming it would touch 100+ selectors for no user-visible
+   benefit. The product NAME shown in the UI is "Lichene Store". */
 
 :root {
  --k-primary: #0e4a6b;
@@ -190,6 +192,95 @@
   margin-top: 3px;
 }
 
+/* ─── Signed-in identity ───────────────────────────────────────────────────
+   Replaces the old free-text "Added by" / "Staff" inputs. The name is read
+   from the signed-in account, so it is shown as a locked chip rather than an
+   editable field. */
+.mini-store .store-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--k-border);
+  border-radius: 10px;
+  background: var(--k-surface-alt);
+}
+.mini-store .store-identity-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--k-primary), var(--k-primary-soft));
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+.mini-store .store-identity-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.mini-store .store-identity-name {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--k-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mini-store .store-identity-hint {
+  font-size: .7rem;
+  color: var(--k-ink-soft);
+  display: flex;
+  align-items: center;
+}
+.mini-store .store-identity-sm { padding: 7px 9px; gap: 8px; }
+.mini-store .store-identity-sm .store-identity-avatar { width: 28px; height: 28px; font-size: 11px; }
+.mini-store .store-identity-sm .store-identity-name { font-size: .8rem; }
+.mini-store .store-identity-sm .store-identity-hint { font-size: .66rem; }
+
+/* Navbar user pill (who is signed in) */
+.mini-store .store-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 9999px;
+  background: var(--k-surface-alt);
+  border: 1px solid var(--k-border);
+  max-width: 190px;
+}
+.mini-store .store-user-avatar {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--k-primary), var(--k-primary-soft));
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+}
+.mini-store .store-user-name {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--k-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mini-store .store-brand-name {
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
 .mini-store .badge-out { background: var(--k-danger-soft); color: var(--k-danger-dark); }
 .mini-store .badge-low { background: var(--k-warning-soft); color: var(--k-warning-dark); }
 .mini-store .badge-ok { background: var(--k-success-soft); color: var(--k-success-dark); }
@@ -350,7 +441,7 @@
 }
 
 /* ============================================================
-   Mobile responsive — premium and comfortable on phones
+   Mobile responsive
    ============================================================ */
 @media (max-width: 767.98px) {
   .mini-store .store-navbar {
@@ -370,16 +461,94 @@
   }
   .mini-store .navbar .navbar-tabs::-webkit-scrollbar { display: none; }
   .mini-store .navbar .navbar-tabs .btn { white-space: nowrap; }
-  .mini-store .navbar .navbar-actions { margin-left: auto; }
+  .mini-store .navbar .navbar-actions { margin-left: auto; gap: .5rem; }
 
+  /* Signed-in pill collapses to just the avatar so the "Add Item" button keeps
+     its room. The full name stays available as a tooltip. */
+  .mini-store .store-user-pill { padding: 3px; max-width: none; }
+  .mini-store .store-user-name { display: none; }
+
+  /* Stat tiles: a 5-across flex row collapses each tile to a sliver on a
+     phone. Scroll them horizontally with snap points instead, so each card
+     stays readable and tappable. */
+  .mini-store .stat-strip {
+   display: flex;
+   flex-wrap: nowrap;
+   overflow-x: auto;
+   -webkit-overflow-scrolling: touch;
+   scroll-snap-type: x mandatory;
+   margin: 0 -0.75rem 1rem;
+   padding: 0 0.75rem 0.35rem;
+   scrollbar-width: none;
+  }
+  .mini-store .stat-strip::-webkit-scrollbar { display: none; }
+  .mini-store .stat-tile {
+   flex: 0 0 auto;
+   width: 78%;
+   max-width: 280px;
+   scroll-snap-align: start;
+  }
+
+  /* Data tables have too many columns for a phone. Give them a real minimum
+     width and let the card scroll sideways rather than crushing every column
+     into unreadable slivers. */
+  .mini-store .panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .mini-store .panel > .table { min-width: 620px; }
+  .mini-store .table th,
+  .mini-store .table td { white-space: nowrap; }
+
+  /* Full-height bottom sheet; clear the iOS home indicator. */
   .mini-store .modal-dialog {
    margin: 0;
    align-items: flex-end;
    min-height: calc(100% - 1rem);
   }
-  .mini-store .modal-content { border-radius: 18px 18px 0 0; border: 0; max-height: 90vh; }
-  .mini-store .modal-body { overflow-y: auto; }
+  .mini-store .modal-content {
+   border-radius: 18px 18px 0 0;
+   border: 0;
+   max-height: 92vh;
+  }
+  .mini-store .modal-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .mini-store .modal-footer {
+   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+   position: sticky;
+   bottom: 0;
+   background: var(--k-surface);
+  }
 
-  .mini-store .stat-strip { margin-bottom: 1rem; }
-  .mini-store .panel { overflow-x: auto; }
+  /* 16px stops iOS Safari auto-zooming the page when a field is focused. */
+  .mini-store .form-control,
+  .mini-store .form-select { font-size: 16px; }
+
+  /* 44px is the platform minimum touch target. */
+  .mini-store .btn,
+  .mini-store .quick-btn,
+  .mini-store .store-tab-btn { min-height: 44px; }
+  .mini-store .quick-btn { min-width: 44px; }
+
+  /* The two header controls (mode select + "Back to items") sat side by side
+     and overflowed once the labels are rendered at phone width. */
+  .mini-store .card-header .d-flex { flex-wrap: wrap; row-gap: 0.5rem; }
+  .mini-store .card-header .form-select { max-width: 100% !important; }
+}
+
+@media (max-width: 400px) {
+  .mini-store .stat-tile { width: 86%; }
+  .mini-store .store-brand-name { font-size: .95rem; }
+}
+
+/* Landscape phones are short: cap the scroll areas so the page still scrolls
+   instead of the inner panels eating the whole viewport. */
+@media (max-width: 900px) and (max-height: 520px) {
+  .mini-store .panel > .table { max-height: 46vh; overflow-y: auto; }
+  .mini-store .stat-tile { padding: 10px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-store *,
+  .mini-store *::before,
+  .mini-store *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NewsroomSection from '../newsroom/NewsroomSection';
 import HardwareRequirementSection from './hardwareRequirement';
@@ -206,7 +206,6 @@ const MockDispatch = () => {
 };
 
 /* -- Floral Preview -- */
-const FLP_FONTS_ID = 'landing-cormorant-font';
 const FLP_FLOWERS = [
   {
     img: 'https://www.purpink.co.ke/cdn/shop/products/mixed-rose-and-baby-breath-funeral-heart-flowers-15918094876735.jpg?v=1611511543&width=1240',
@@ -237,13 +236,7 @@ const FloralPreview = () => {
   const indexRef = useRef(0);
 
   useEffect(() => {
-    if (!document.getElementById(FLP_FONTS_ID)) {
-      const link = document.createElement('link');
-      link.id = FLP_FONTS_ID;
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap';
-      document.head.appendChild(link);
-    }
+    // Cormorant Garamond is loaded app-wide from src/index.css.
     FLP_FLOWERS.forEach((f) => { const im = document.createElement('img'); im.src = f.img; });
     return () => { if (fadeTimer.current) clearTimeout(fadeTimer.current); };
   }, []);
@@ -366,7 +359,6 @@ export default function App() {
     <>
       <LandingPageSEO />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Saira:wght@400;500;600;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; overflow-x: hidden; }
         body { font-family: 'Fraunces', serif; color: ${C.gray}; background: ${C.bone}; -webkit-font-smoothing: antialiased; overflow-x: hidden; }

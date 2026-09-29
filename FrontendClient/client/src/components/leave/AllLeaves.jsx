@@ -4,7 +4,7 @@ import { useSocket } from '../../utils/context/socketContext';
 import { api, ENDPOINTS } from '../../api';
 import { getUserId, getParentTenantSlug } from '../../utils/globalAuth';
 import { Calendar, Clock, Users, FileText, AlertCircle, CheckCircle, XCircle, TrendingUp, Filter } from '../../utils/icons/icons';
-
+import notify from '../../utils/notify';
 const COLORS = {
   primary: '#0A2463',
   primaryLight: '#1A3A7A',
@@ -288,7 +288,7 @@ const AllLeaves = () => {
       fetchLeaves();
     } catch (error) {
       console.error('Error approving leave:', error);
-      alert('Failed to approve leave');
+      notify.error('Could not approve leave', 'Please try again in a moment.');
     }
   };
 
@@ -305,7 +305,7 @@ const AllLeaves = () => {
       fetchLeaves();
     } catch (error) {
       console.error('Error rejecting leave:', error);
-      alert('Failed to reject leave');
+      notify.error('Could not reject leave', 'Please try again in a moment.');
     }
   };
 

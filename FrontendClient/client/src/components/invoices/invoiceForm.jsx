@@ -1,6 +1,6 @@
 // components/InvoiceForm.jsx
 import React, { useState, useEffect } from 'react';
-
+import notify from '../../utils/notify';
 const InvoiceForm = ({ deceased, invoice, onSubmit, onCancel, isEditing = false }) => {
   const [formData, setFormData] = useState({
     invoice_number: '',
@@ -142,13 +142,13 @@ const InvoiceForm = ({ deceased, invoice, onSubmit, onCancel, isEditing = false 
     setLoading(true);
     
     if (!formData.invoice_number) {
-      alert('Please fill in all required fields');
+      notify.warning('Missing details', 'Please fill in all required fields.');
       setLoading(false);
       return;
     }
 
     if (formData.items.some(item => !item.service || item.amount <= 0)) {
-      alert('Please fill in all service items with valid amounts');
+      notify.warning('Invalid amounts', 'Please fill in all service items with valid amounts.');
       setLoading(false);
       return;
     }

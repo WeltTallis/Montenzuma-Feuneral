@@ -18,7 +18,6 @@ const BASE_URL = `${API_GATEWAY_URL}/deceased`;
 
 // ─── Global Font Styles & Body Reset ────────────────────────────────
 const GlobalFonts = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
   *, *::before, *::after { box-sizing: border-box; }
   body { margin: 0; padding: 0; overflow-x: hidden; background-color: #ececec; }
 `;

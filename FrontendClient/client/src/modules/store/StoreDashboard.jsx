@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import './store.css';
 import { useStore } from './useStore';
 import { StoreContext } from './storeContext';
+import { getCurrentUserName } from '../../utils/globalAuth';
 import AddItemModal from './components/AddItemModal';
 
 const DashboardView = React.lazy(() => import('./components/Dashboard'));
@@ -22,6 +23,7 @@ const TABS = [
 export default function StoreDashboard() {
   const store = useStore();
   const [showAdd, setShowAdd] = useState(false);
+  const currentUser = getCurrentUserName();
 
   const renderView = () => {
     switch (store.view) {
@@ -46,7 +48,7 @@ export default function StoreDashboard() {
               <span className="store-brand-mark d-inline-flex align-items-center justify-content-center rounded-circle">
                 <i className="fa-solid fa-store" />
               </span>
-              MiniStore
+              <span className="store-brand-name">Lichene Store</span>
             </Navbar.Brand>
 
             <div className="d-flex align-items-center gap-1 flex-wrap navbar-tabs">
@@ -70,6 +72,12 @@ export default function StoreDashboard() {
               >
                 <i className="fa-solid fa-plus" /> Add Item
               </Button>
+              <span className="store-user-pill" title={currentUser || 'Signed-in user'}>
+                <span className="store-user-avatar" aria-hidden="true">
+                  {(currentUser || '?').trim().charAt(0).toUpperCase()}
+                </span>
+                <span className="store-user-name">{currentUser || 'Signed in'}</span>
+              </span>
             </div>
           </Container>
         </Navbar>

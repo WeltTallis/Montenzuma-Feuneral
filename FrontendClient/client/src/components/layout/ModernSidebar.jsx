@@ -598,9 +598,10 @@ const ModernSidebar = ({
         { icon: Truck, label: 'Hearse', path: `/${tenantSlug}/hearse` },
         { icon: Users, label: 'Deceased', path: `/${tenantSlug}/deceased` },
         { icon: Package, label: 'Coffins', path: `/${tenantSlug}/coffins` },
+        { icon: Beaker, label: 'Chemicals', path: `/${tenantSlug}/chemicals` },
         { icon: Hammer, label: 'Workshop', path: `/${tenantSlug}/workshop` },
         { icon: ShoppingCart, label: 'Flower Bookings', path: `/${tenantSlug}/flowers` },
-        { icon: Box, label: 'Mini Store', path: `/${tenantSlug}/mini-store` },
+        { icon: Box, label: 'Lichene Store', path: `/${tenantSlug}/mini-store` },
         { icon: LayoutDashboard, label: 'Dashboard', path: `/${tenantSlug}/dashboard` },
       ]
     },
@@ -622,14 +623,17 @@ const ModernSidebar = ({
       items: (section.items || []).filter((item) => {
         // Root-level twins plus both the new (/{slug}/…) and the legacy
         // (/tenant/{slug}/…) spellings of the tenant-scoped paths.
+        // NOTE: Chemicals is deliberately NOT hidden. It has no other entry
+        // point, so filtering it here left single-tenant users with no way to
+        // reach /chemicals at all.
         const hiddenPaths = [
           `/${tenantSlug}/dashboard`, `/${tenantSlug}/analytics`, `/${tenantSlug}/workshop`,
           `/tenant/${tenantSlug}/dashboard`, `/tenant/${tenantSlug}/analytics`, `/tenant/${tenantSlug}/workshop`,
           '/dashboard', '/analytics', '/workshop',
         ];
-        const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop', 'Chemical', 'Chemicals'];
+        const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop'];
         const itemPath = item.path || '';
-        return !(hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop') || itemPath.includes('/chemical') || itemPath.includes('/chemicals'));
+        return !(hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop'));
       })
     })).filter((section) => (section.items || []).length > 0);
 

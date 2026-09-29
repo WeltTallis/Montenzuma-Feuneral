@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import styled, { keyframes, createGlobalStyle } from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { getTenantSlug, getAuthToken, getBranchScopeHeaders } from '../../../utils/globalAuth';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 
@@ -34,10 +34,6 @@ function _setCache(key, data) {
 
 const BASE_URL = `${env.FULL_API_URL}/deceased`;
 
-const GlobalFonts = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-`;
-
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
 
 const AppContainer = styled.div`
@@ -50,6 +46,12 @@ const AppContainer = styled.div`
   background: rgb(255, 255, 255);
   animation: ${fadeIn} 0.25s ease-out;
   padding: 1rem; /* Base padding for mobile */
+  box-sizing: border-box;
+  /* Safety net: a wide table must never push the whole page sideways. Every
+     table is additionally wrapped in its own scroll box (see the tab files),
+     but this guarantees the viewport itself never gains a scrollbar. */
+  overflow-x: hidden;
+  max-width: 100%;
   
   @media (min-width: 900px) {
     padding: 2rem; /* Desktop padding */
@@ -61,15 +63,21 @@ const ProfileLayout = styled.div`
   grid-template-columns: 1fr; /* Mobile first: single column */
   gap: 2rem; 
   align-items: flex-start;
+  /* Without this the grid track is sized by its widest child, so a wide table
+     inside MainContent would stretch the whole row past the viewport. */
+  min-width: 0;
+  max-width: 100%;
   
   @media (min-width: 900px) { 
-    grid-template-columns: 1fr 320px; 
+    grid-template-columns: minmax(0, 1fr) 320px; 
     gap: 4rem;
   }
 `;
 
 const MainContent = styled.div`
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   padding: 0; /* Remove fixed padding for mobile, rely on AppContainer */
@@ -79,57 +87,86 @@ const MainContent = styled.div`
   }
 `;
 
+/* ── Tab bar ──────────────────────────────────────────────────────────────
+   On a phone the six tabs simply do not fit on one line, and the old
+   `overflow-x: auto` + hidden-scrollbar approach made the cut-off tabs look
+   like a broken page. Below 900px they become a 3 x 2 grid so every tab is
+   visible and tappable without any horizontal scrolling at all. */
 const Tabs = styled.div`
-  display: flex; 
-  border-bottom: 2px solid #f0f0f0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
   margin-bottom: 1.5rem;
-  overflow-x: auto;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  
+  @media (min-width: 900px) {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #f0f0f0;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Hide scrollbar for Firefox */
+    margin-bottom: 2.5rem;
+  }
   
   &::-webkit-scrollbar {
     display: none; /* Hide scrollbar for Safari and Chrome */
   }
-
-  @media (min-width: 900px) {
-    margin-bottom: 2.5rem;
-  }
 `;
 
 const TabBtn = styled.button`
-  padding: 0.75rem 0; 
-  margin-right: 1.5rem;
+  padding: 0.6rem 0.25rem;
   background: none; 
   border: none; 
   cursor: pointer;
-  font-size: 0.875rem; 
+  font-size: 0.8rem; 
   font-weight: 600; 
   color: #888888;
   border-bottom: 2px solid transparent; 
-  margin-bottom: -2px;
   white-space: nowrap;
   transition: all 0.15s ease; 
-    font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Source Sans 3', sans-serif;
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
   
   &:hover { color: #1a1a1a; }
-  ${p => p.$active && `
-    color: #0a0a0a; 
-    border-bottom-color: #0a0a0a; 
-  `}
 
+  /* Active state: a filled pill on mobile, an underline from 900px up. */
+  ${p => p.$active && `
+    color: #0a0a0a;
+    background: #f0f0f0;
+  `}
+  
   @media (min-width: 900px) {
     padding: 1rem 0;
     margin-right: 2.5rem;
+    justify-content: flex-start;
+    text-align: left;
+    border-radius: 0;
+    overflow-wrap: normal;
+    flex-shrink: 0;
+    ${p => p.$active && `
+      background: none;
+      border-bottom-color: #0a0a0a;
+    `}
   }
 `;
 
 const TabContent = styled.div`
   display: grid;
   gap: 1.5rem;
+  /* Grid/flex children default to min-width:auto, so a wide child (a table
+     with white-space:nowrap) would stretch this box past the viewport and push
+     the whole page sideways. min-width:0 lets the child's own overflow-x
+     scroll container do its job instead. */
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 
   @media (min-width: 900px) {
     gap: 2.5rem;
@@ -140,6 +177,9 @@ const TabPane = styled.div`
   display: ${p => p.$active ? 'grid' : 'none'}; 
   gap: 1.5rem;
   animation: ${fadeIn} 0.2s ease;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 
   @media (min-width: 900px) {
     gap: 2.5rem;
@@ -476,7 +516,6 @@ const DeceasedDetailPage = () => {
   // The page renders instantly from cache/previous data, then updates when fresh data arrives
   return (
     <>
-      <GlobalFonts />
       <AppContainer>
         <ToastContainer position="top-right" />
 

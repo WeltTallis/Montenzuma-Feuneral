@@ -180,7 +180,6 @@ export default function TicketPage() {
     return (
         <div style={{ minHeight: '100vh', background: C.bone, fontFamily: "'Inter', sans-serif" }}>
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: ${C.bone}; }
         .tp-card { background: ${C.white}; border: 1px solid ${C.line}; border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; }

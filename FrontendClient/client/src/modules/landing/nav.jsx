@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import styled, { createGlobalStyle } from "styled-components";
-
-/* ── Global Fonts ── */
-const GlobalFonts = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
-`;
+import styled from "styled-components";
 
 /* ── Colors ── */
 const ink = "#15171A", bone = "#FAF8F4", bone2 = "#F3EFE6", brass = "#8B7355", line = "#E3DDD0", gray = "#6B6862", accent = "#C77B5E";
@@ -638,7 +633,6 @@ export default function Header() {
 
   return (
     <>
-      <GlobalFonts />
       <SiteHeader>
         
         {/* Top Utility Bar */}

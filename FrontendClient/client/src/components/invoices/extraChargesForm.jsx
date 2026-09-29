@@ -1,6 +1,6 @@
 // components/ExtraChargeForm.jsx
 import React, { useState } from 'react';
-
+import notify from '../../utils/notify';
 const ExtraChargeForm = ({ deceased, onCancel, onSubmit }) => {
   const [formData, setFormData] = useState({
     deceased_id: deceased.id,
@@ -14,7 +14,7 @@ const ExtraChargeForm = ({ deceased, onCancel, onSubmit }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.charge_type || !formData.amount || formData.amount <= 0) {
-      alert('Please fill in all required fields');
+      notify.warning('Missing details', 'Please fill in all required fields.');
       return;
     }
     onSubmit(formData);

@@ -54,9 +54,9 @@ const AvatarLg = styled.div`
 `;
 
 const SidebarName = styled.div`
-  font-family: 'Merriweather', serif;
+  font-family: 'Julius Sans One', serif;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 400;
   color: ${C.black};
 `;
 

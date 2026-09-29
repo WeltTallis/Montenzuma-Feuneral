@@ -7,7 +7,7 @@
   var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
     get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-  }) : x)(function(x) {
+  }) : x)(function (x) {
     if (typeof require !== "undefined") return require.apply(this, arguments);
     throw Error('Dynamic require of "' + x + '" is not supported');
   });
@@ -20,10 +20,6 @@
     return to;
   };
   var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-    // If the importer is in node compatibility mode or this is not an ESM
-    // file that has been converted to a CommonJS file using a Babel-
-    // compatible transform (i.e. "__esModule" has not been set), then set
-    // "default" to the CommonJS "module.exports" for node compatibility.
     isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
     mod
   ));
@@ -69,212 +65,305 @@
   }
   var Reveal = ({ children, delay = 0, style = {}, className = "" }) => {
     const [ref, shown] = useReveal();
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { ref, className, style: {
-      opacity: shown ? 1 : 0,
-      transform: shown ? "translateY(0)" : "translateY(30px)",
-      transition: `opacity 0.8s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.8s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
-      ...style
-    }, children });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+      ref, className, style: {
+        opacity: shown ? 1 : 0,
+        transform: shown ? "translateY(0)" : "translateY(30px)",
+        transition: `opacity 0.8s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.8s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+        ...style
+      }, children
+    });
   };
-  var AppWindow = ({ title, children, dark = false }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `app-window ${dark ? "dark" : "light"}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "window-header", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.4rem" }, children: [
+  var AppWindow = ({ title, children, dark = false }) => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("div", {
+    className: `app-window ${dark ? "dark" : "light"}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      className: "window-header", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        style: { display: "flex", gap: "0.4rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "window-dot", style: { background: "#FF5F57" } }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "window-dot", style: { background: "#FEBC2E" } }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "window-dot", style: { background: "#28C840" } })
-      ] }),
+        ]
+      }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "window-title", children: title }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { width: "40px" } })
-    ] }),
+      ]
+    }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "window-body", children })
-  ] });
-  var Marquee = ({ items, speed = 35 }) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "marquee-strip", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "marquee-track", style: { animationDuration: `${speed}s` }, children: [...items, ...items, ...items, ...items].map((item, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "marquee-item", children: [
+    ]
+  });
+  var Marquee = ({ items, speed = 35 }) => /* @__PURE__ */(0, import_jsx_runtime.jsx)("div", {
+    className: "marquee-strip", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+      className: "marquee-track", style: { animationDuration: `${speed}s` }, children: [...items, ...items, ...items, ...items].map((item, i) => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("span", {
+        className: "marquee-item", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "marquee-dot" }),
-    item
-  ] }, i)) }) });
-  var MockDocuments = () => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-inner", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          item
+        ]
+      }, i))
+    })
+  });
+  var MockDocuments = () => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("div", {
+    className: "mock-inner", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "mono-label", style: { color: import_colors.default.verdigris }, children: "CASE FILE" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "1.4rem", fontFamily: "'Fraunces', serif", color: import_colors.default.ink, marginTop: "0.3rem" }, children: "Otieno, J." })
-      ] }),
+        ]
+      }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "avatar", style: { background: import_colors.default.verdigris }, children: "JO" })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-list-header", children: [
+      ]
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      className: "mock-list-header", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Document Name" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Status" })
-    ] }),
-    [{ n: "Death certificate.pdf", c: import_colors.default.verdigris, s: "verified" }, { n: "Burial permit.pdf", c: import_colors.default.brass, s: "pending" }, { n: "Police abstract.pdf", c: import_colors.default.accent, s: "missing" }].map((d, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-row", style: { borderBottom: i < 2 ? `1px solid ${import_colors.default.line}` : "none" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "0.8rem" }, children: [
+      ]
+    }),
+      [{ n: "Death certificate.pdf", c: import_colors.default.verdigris, s: "verified" }, { n: "Burial permit.pdf", c: import_colors.default.brass, s: "pending" }, { n: "Police abstract.pdf", c: import_colors.default.accent, s: "missing" }].map((d, i) => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("div", {
+        className: "mock-row", style: { borderBottom: i < 2 ? `1px solid ${import_colors.default.line}` : "none" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+          style: { display: "flex", alignItems: "center", gap: "0.8rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "file-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.FileText, { size: 16, color: d.c }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: import_colors.default.ink }, children: d.n })
-      ] }),
+          ]
+        }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `status-badge ${d.s}`, children: d.s.charAt(0).toUpperCase() + d.s.slice(1) })
-    ] }, i))
-  ] });
-  var MockPortal = () => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-inner", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1.5rem" }, children: [
+        ]
+      }, i))
+    ]
+  });
+  var MockPortal = () => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("div", {
+    className: "mock-inner", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      style: { marginBottom: "1.5rem" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "mono-label", style: { color: import_colors.default.verdigris }, children: "MWANGI FAMILY" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "1.4rem", fontFamily: "'Fraunces', serif", color: import_colors.default.ink, marginTop: "0.3rem" }, children: "Arrangements confirmed" })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-row", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "0.8rem" }, children: [
+      ]
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      className: "mock-row", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        style: { display: "flex", alignItems: "center", gap: "0.8rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "file-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.FileText, { size: 16, color: import_colors.default.brass }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: import_colors.default.ink }, children: "Burial permit.pdf" })
-      ] }),
+        ]
+      }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "action-btn", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.Download, { size: 14 }) })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-row", children: [
+      ]
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      className: "mock-row", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: import_colors.default.ink, fontSize: "0.9rem" }, children: "Service invoice" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "status-badge neutral", children: "KES 84,000" })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-row", style: { borderBottom: "none" }, children: [
+      ]
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      className: "mock-row", style: { borderBottom: "none" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: import_colors.default.ink, fontSize: "0.9rem", fontWeight: 600 }, children: "Outstanding balance" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "pay-btn", children: "Pay KES 12,500" })
-    ] })
-  ] });
+      ]
+    })
+    ]
+  });
   var MockDispatch = () => {
     const [distance, setDistance] = (0, import_react.useState)(38);
     const [rate, setRate] = (0, import_react.useState)(195);
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-inner", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1.5rem" }, children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      className: "mock-inner", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        style: { marginBottom: "1.5rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "mono-label", style: { color: import_colors.default.brassLight }, children: "SMART DISPATCH" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "1.4rem", fontFamily: "'Fraunces', serif", color: import_colors.default.bone, marginTop: "0.3rem" }, children: "Route Optimization" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "map-visual", children: [
+        ]
+      }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        className: "map-visual", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "map-pin", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.MapPin, { size: 16, color: import_colors.default.bone }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "map-line" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "map-pin", style: { background: import_colors.default.accent }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.MapPin, { size: 16, color: import_colors.default.bone }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "map-truck", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.Truck, { size: 20, color: import_colors.default.brass }) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "slider-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "slider-row", children: [
+        ]
+      }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        className: "slider-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+          className: "slider-row", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Distance (km)" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "slider-value", children: distance })
-        ] }),
+          ]
+        }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "range", min: "2", max: "120", value: distance, onChange: (e) => setDistance(+e.target.value), className: "custom-range" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "slider-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "slider-row", children: [
+        ]
+      }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        className: "slider-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+          className: "slider-row", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Fuel rate (KES/L)" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "slider-value", children: rate })
-        ] }),
+          ]
+        }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "range", min: "150", max: "250", value: rate, onChange: (e) => setRate(+e.target.value), className: "custom-range" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "dispatch-footer", children: [
+        ]
+      }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        className: "dispatch-footer", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Auto billed Trip Cost" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "cost-value", children: [
-          "KES ",
-          Math.round(distance * 0.12 * rate).toLocaleString()
-        ] })
-      ] })
-    ] });
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+          className: "cost-value", children: [
+            "KES ",
+            Math.round(distance * 0.12 * rate).toLocaleString()
+          ]
+        })
+        ]
+      })
+      ]
+    });
   };
-  var MockHearse = () => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-inner", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1.5rem" }, children: [
+  var MockHearse = () => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("div", {
+    className: "mock-inner", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      style: { marginBottom: "1.5rem" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "mono-label", style: { color: import_colors.default.brassLight }, children: "FLEET STATUS" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "1.4rem", fontFamily: "'Fraunces', serif", color: import_colors.default.bone, marginTop: "0.3rem" }, children: "Live Fleet Tracking" })
-    ] }),
-    [{ n: "Hearse 01 - Benz", p: "KDA 123A", bg: "rgba(61,79,71,0.3)", ic: import_colors.default.bone, s: "available" }, { n: "Hearse 02 - Toyota", p: "KDB 456B", bg: "rgba(199,123,94,0.2)", ic: import_colors.default.accent, s: "dispatched" }, { n: "Hearse 03 - Nissan", p: "KDC 789C", bg: "rgba(139,115,85,0.2)", ic: import_colors.default.brass, s: "maintenance" }].map((h, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fleet-card", style: { borderBottom: i < 2 ? `1px solid ${import_colors.default.lineDark}` : "none" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fleet-info", children: [
+      ]
+    }),
+      [{ n: "Hearse 01 - Benz", p: "KDA 123A", bg: "rgba(61,79,71,0.3)", ic: import_colors.default.bone, s: "available" }, { n: "Hearse 02 - Toyota", p: "KDB 456B", bg: "rgba(199,123,94,0.2)", ic: import_colors.default.accent, s: "dispatched" }, { n: "Hearse 03 - Nissan", p: "KDC 789C", bg: "rgba(139,115,85,0.2)", ic: import_colors.default.brass, s: "maintenance" }].map((h, i) => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("div", {
+        className: "fleet-card", style: { borderBottom: i < 2 ? `1px solid ${import_colors.default.lineDark}` : "none" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+          className: "fleet-info", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "fleet-icon", style: { background: h.bg }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.Truck, { size: 18, color: h.ic }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+            children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { color: import_colors.default.bone, fontSize: "0.9rem", fontWeight: 500 }, children: h.n }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { color: import_colors.default.grayLight, fontSize: "0.75rem" }, children: h.p })
-        ] })
-      ] }),
+            ]
+          })
+          ]
+        }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `fleet-status ${h.s}`, children: h.s.charAt(0).toUpperCase() + h.s.slice(1) })
-    ] }, i))
-  ] });
-  var MockSupport = () => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mock-inner", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+        ]
+      }, i))
+    ]
+  });
+  var MockSupport = () => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("div", {
+    className: "mock-inner", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "mono-label", style: { color: import_colors.default.verdigris }, children: "SUPPORT TICKET #1042" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "1.15rem", fontFamily: "'Fraunces', serif", color: import_colors.default.ink, marginTop: "0.3rem" }, children: "Hearse booking issue" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: {
-        fontSize: "0.62rem",
-        fontFamily: "'JetBrains Mono', monospace",
-        padding: "0.3rem 0.6rem",
-        borderRadius: "4px",
-        fontWeight: 600,
-        color: import_colors.default.brass,
-        background: "rgba(139,115,85,0.1)"
-      }, children: "IN PROGRESS" })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.7rem", marginBottom: "1rem" }, children: [
+        ]
+      }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+        style: {
+          fontSize: "0.62rem",
+          fontFamily: "'JetBrains Mono', monospace",
+          padding: "0.3rem 0.6rem",
+          borderRadius: "4px",
+          fontWeight: 600,
+          color: import_colors.default.brass,
+          background: "rgba(139,115,85,0.1)"
+        }, children: "IN PROGRESS"
+      })
+      ]
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      style: { display: "flex", gap: "0.7rem", marginBottom: "1rem" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "avatar", style: { background: import_colors.default.accent, width: 30, height: 30, fontSize: "0.7rem", flexShrink: 0 }, children: "SM" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: import_colors.default.bone2, borderRadius: "10px 10px 10px 2px", padding: "0.75rem 1rem", flex: 1 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        style: { background: import_colors.default.bone2, borderRadius: "10px 10px 10px 2px", padding: "0.75rem 1rem", flex: 1 }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", fontFamily: "'JetBrains Mono', monospace", color: import_colors.default.gray, marginBottom: "0.3rem" }, children: "Sarah M. \xB7 10:32 AM" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.84rem", color: import_colors.default.ink, lineHeight: 1.6 }, children: "Booking freezes when I click confirm on the hearse page." })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.7rem", marginBottom: "1rem", flexDirection: "row-reverse" }, children: [
+        ]
+      })
+      ]
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      style: { display: "flex", gap: "0.7rem", marginBottom: "1rem", flexDirection: "row-reverse" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "avatar", style: { background: import_colors.default.verdigris, width: 30, height: 30, fontSize: "0.62rem", flexShrink: 0 }, children: "RP" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: import_colors.default.verdigrisTint || "rgba(61,79,71,0.08)", border: `1px solid ${import_colors.default.line}`, borderRadius: "10px 10px 2px 10px", padding: "0.75rem 1rem", flex: 1 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        style: { background: import_colors.default.verdigrisTint || "rgba(61,79,71,0.08)", border: `1px solid ${import_colors.default.line}`, borderRadius: "10px 10px 2px 10px", padding: "0.75rem 1rem", flex: 1 }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", fontFamily: "'JetBrains Mono', monospace", color: import_colors.default.verdigris, marginBottom: "0.3rem", fontWeight: 600 }, children: "RESTPOINT SUPPORT \xB7 10:35 AM" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.84rem", color: import_colors.default.ink, lineHeight: 1.6 }, children: "Thanks mumo  our team is on it. A fix is being deployed now; we'll update you here the moment it's live." })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: {
-      display: "flex",
-      alignItems: "center",
-      gap: "0.6rem",
-      borderTop: `1px solid ${import_colors.default.line}`,
-      paddingTop: "0.9rem",
-      fontSize: "0.72rem",
-      fontFamily: "'JetBrains Mono', monospace",
-      color: import_colors.default.gray
-    }, children: [
+        ]
+      })
+      ]
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: "0.6rem",
+        borderTop: `1px solid ${import_colors.default.line}`,
+        paddingTop: "0.9rem",
+        fontSize: "0.72rem",
+        fontFamily: "'JetBrains Mono', monospace",
+        color: import_colors.default.gray
+      }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { width: 7, height: 7, borderRadius: "50%", background: import_colors.default.verdigris, display: "inline-block", animation: "subtle-pulse 2s ease infinite" } }),
-      "Support agent online \xB7 replies arrive in real time",
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.4rem", color: import_colors.default.verdigris, fontWeight: 500 }, children: [
+        "Support agent online \xB7 replies arrive in real time",
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+          style: { marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.4rem", color: import_colors.default.verdigris, fontWeight: 500 }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.MessageSquare, { size: 12 }),
-        " Reply"
-      ] })
-    ] })
-  ] });
-  var FLP_FONTS_ID = "flp-fraunces-font";
+            " Reply"
+          ]
+        })
+      ]
+    })
+    ]
+  });
   var FLP_FLOWERS = [
     {
       img: "https://www.purpink.co.ke/cdn/shop/products/mixed-rose-and-baby-breath-funeral-heart-flowers-15918094876735.jpg?v=1611511543&width=1240",
       label: "Heart",
       alt: "Mixed Rose and Baby Breath Heart",
-      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        "Mixed Rose &",
+      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, {
+        children: [
+          "Mixed Rose &",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "Baby Breath Heart" })
-      ] })
+        ]
+      })
     },
     {
       img: "https://spearwoodflorist.com.au/cdn/shop/articles/wreaths_and_cross_on_stand_at_church_2d6f4e25-0eea-40d7-8288-7eaeff6403ca.jpg?v=1768882058&width=2000",
       label: "Cross",
       alt: "Wreaths and Cross on Stand",
-      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        "Wreaths & Cross",
+      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, {
+        children: [
+          "Wreaths & Cross",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "on Stand" })
-      ] })
+        ]
+      })
     },
     {
       img: "https://lh3.googleusercontent.com/grass-cs/ACvplmNcnjmG_DCkbiEq13xxkcDXWJ1z3V-j1e6EAEsPQPvmIyRP3OAqntGk_Y6UGfOPwWIIM73WQABVhLWZzm1QPBUeogNK8nkJxTIzd2TWXKXMCxrL759AgbZCVLwzjqblHsVds02pL-moRo-O=s1360-w1360-h1020-rw",
       label: "Spray",
       alt: "Elegant Floral Spray",
-      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        "Elegant",
+      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, {
+        children: [
+          "Elegant",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "Floral Spray" })
-      ] })
+        ]
+      })
     },
     {
       img: "https://www.purpink.co.ke/cdn/shop/files/Eternal_Embrace.png?v=1773229345&width=1240",
       label: "Embrace",
       alt: "The Eternal Embrace",
-      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        "The Eternal",
+      title: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, {
+        children: [
+          "The Eternal",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "Embrace" })
-      ] })
+        ]
+      })
     }
   ];
   var FloralPreview = () => {
@@ -283,13 +372,7 @@
     const fadeTimer = (0, import_react.useRef)(null);
     const indexRef = (0, import_react.useRef)(0);
     (0, import_react.useEffect)(() => {
-      if (!document.getElementById(FLP_FONTS_ID)) {
-        const link = document.createElement("link");
-        link.id = FLP_FONTS_ID;
-        link.rel = "stylesheet";
-        link.href = "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap";
-        document.head.appendChild(link);
-      }
+      // Fonts are loaded app-wide from src/index.css.
       FLP_FLOWERS.forEach((f) => {
         const im = document.createElement("img");
         im.src = f.img;
@@ -316,34 +399,58 @@
       return () => clearInterval(t);
     }, []);
     const current = FLP_FLOWERS[index];
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-tablet-wrapper", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-tablet-scale", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-tablet-scale-inner", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-tablet-frame", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flp-tablet-screen", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+      className: "flp-tablet-wrapper", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+        className: "flp-tablet-scale", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+          className: "flp-tablet-scale-inner", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+            className: "flp-tablet-frame", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+              className: "flp-tablet-screen", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("img", { className: "flp-hero", src: current.img, alt: current.alt, loading: "lazy", decoding: "async", style: { opacity: fading ? 0 : 1 } }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-overlay" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-strip", children: FLP_FLOWERS.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "flp-story", onClick: () => setFlower(i), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+                className: "flp-strip", children: FLP_FLOWERS.map((f, i) => /* @__PURE__ */(0, import_jsx_runtime.jsxs)("button", {
+                  className: "flp-story", onClick: () => setFlower(i), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `flp-ring ${i === index ? "flp-unseen" : "flp-seen"}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-ring-inner", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("img", { src: f.img, alt: f.alt, loading: "lazy", decoding: "async" }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "flp-story-label", children: f.label })
-      ] }, f.label)) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flp-title-block", children: [
+                  ]
+                }, f.label))
+              }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                className: "flp-title-block", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-name-tag", children: "Premium Funeral Flowers" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { className: "flp-headline", style: { opacity: fading ? 0 : 1, transform: fading ? "translateY(15px)" : "translateY(0)" }, children: current.title })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flp-wordmark", children: [
+                ]
+              }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                className: "flp-wordmark", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-wordmark-name", children: "RestPoint Floral Concierge" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flp-wordmark-sub", children: "Curated for funeral homes" })
-      ] })
-    ] }) }) }) }) });
+                ]
+              })
+              ]
+            })
+          })
+        })
+      })
+    });
   };
-  var Showcase = ({ no, title, desc, reverse, children }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Reveal, { className: "showcase-mobile", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5rem", alignItems: "center", marginBottom: "7rem" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "showcase-text", style: { order: reverse ? 2 : 1, paddingRight: reverse ? "0" : "2rem", paddingLeft: reverse ? "2rem" : "0" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mono-label", style: { color: import_colors.default.verdigris, fontSize: "0.78rem", marginBottom: "1.2rem" }, children: [
-        "Module ",
-        no
-      ] }),
+  var Showcase = ({ no, title, desc, reverse, children }) => /* @__PURE__ */(0, import_jsx_runtime.jsxs)(Reveal, {
+    className: "showcase-mobile", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5rem", alignItems: "center", marginBottom: "7rem" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+      className: "showcase-text", style: { order: reverse ? 2 : 1, paddingRight: reverse ? "0" : "2rem", paddingLeft: reverse ? "2rem" : "0" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+        className: "mono-label", style: { color: import_colors.default.verdigris, fontSize: "0.78rem", marginBottom: "1.2rem" }, children: [
+          "Module ",
+          no
+        ]
+      }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { style: { fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "1.2rem", lineHeight: 1.25 }, children: title }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { fontSize: "1.05rem", maxWidth: "480px", color: import_colors.default.gray, lineHeight: 1.8 }, children: desc })
-    ] }),
+      ]
+    }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "showcase-visual", style: { order: reverse ? 1 : 2, display: "flex", justifyContent: "center", width: "100%" }, children })
-  ] });
+    ]
+  });
   function App() {
     const navigate = (0, import_react_router_dom.useNavigate)();
     const goStart = () => {
@@ -361,10 +468,11 @@
       { dark: true, to: true, category: "NEW \xB7 SUPPORT CENTER", accent: import_colors.default.brass, title: "Real Time Customer Support", excerpt: "Submit issues directly through the platform and our support agents receive, respond, and resolve them in real time  with full status tracking and communication history.", status: "NOW LIVE" }
     ];
     const marqueeItems = ["Case Management", "Family Portal", "Smart Dispatch", "Fleet Tracking", "Funeral Insurance", "Real Time Support", "Billing & Invoicing", "Analytics & Reports", "Welfare Schemes"];
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, {
+      children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_LandingPageSEO.default, {}),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: `
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", {
+        children: `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; overflow-x: hidden; }
         body { font-family: 'Inter', sans-serif; color: ${import_colors.default.gray}; background: ${import_colors.default.bone}; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
@@ -603,119 +711,176 @@
           .module-excerpt { font-size: 1rem; }
         }
       ` }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("main", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("main", {
+          children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_nav.default, {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_hero.default, {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Marquee, { items: marqueeItems }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_imageCard.default, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", { id: "features", className: "section", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wrap", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Reveal, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { textAlign: "center", marginBottom: "5rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", {
+            id: "features", className: "section", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+              className: "wrap", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Reveal, {
+                children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                  style: { textAlign: "center", marginBottom: "5rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "label", style: { marginBottom: "1rem" }, children: "Features" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { style: { fontSize: "clamp(2rem, 4.5vw, 3rem)", marginBottom: "1rem" }, children: "Everything you need to operate with dignity" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { maxWidth: "600px", margin: "0 auto", color: import_colors.default.gray }, children: "From case management to funeral insurance integration, Rest Point provides the tools funeral homes and welfare organizations need to serve families efficiently." })
-          ] }) }),
+                  ]
+                })
+              }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Showcase, { no: "01", title: "Case management that respects your workflow", desc: "Track every detail from first call to final settlement. Rest Point keeps case files organized, documents verified, and families informed.", reverse: false, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AppWindow, { title: "restpoint.app/cases", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MockDocuments, {}) }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Showcase, { no: "02", title: "Family portal & online memorials", desc: "Give families secure access to arrangements, documents, and billing. Light a candle, leave a condolence, and stay connected.", reverse: true, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AppWindow, { title: "restpoint.app/portal", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MockPortal, {}) }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Showcase, { no: "03", title: "Smart dispatch & billing", desc: "Optimize hearse routes, calculate costs automatically, and bill with precision. Rest Point turns logistics into a competitive advantage.", reverse: false, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AppWindow, { title: "restpoint.app/dispatch", dark: true, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MockDispatch, {}) }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Showcase, { no: "04", title: "Hearse management module", desc: "Effective hearse management helps a funeral home provide reliable, professional, and respectful transportation services.", reverse: true, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AppWindow, { title: "restpoint.app/fleet", dark: true, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MockHearse, {}) }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_PremiumReporting.default, {}),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Showcase, { no: "06", title: "Real Time Customer Support", desc: "Clients can submit issues directly through the platform, while support agents receive, respond to, and resolve requests in real time. The system provides status tracking, communication history no question ever goes unanswered.", reverse: true, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AppWindow, { title: "restpoint.app/support", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MockSupport, {}) }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Showcase, { no: "07", title: "The Right Flowers. Right in Front of Them.", reverse: false, desc: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-            "Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Showcase, {
+                no: "07", title: "The Right Flowers. Right in Front of Them.", reverse: false, desc: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, {
+                  children: [
+                    "Families shouldn't have to search the internet for hours trying to figure out what flowers are right for the moment.",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-            "Give them a tablet at the front desk. Show them a curated selection of arrangements .",
+                    "Give them a tablet at the front desk. Show them a curated selection of arrangements .",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-            "Once they choose, the booking appears instantly in the software. Your florist gets notified right away.",
+                    "Once they choose, the booking appears instantly in the software. Your florist gets notified right away.",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-            "They can even add custom details on the spot  like ribbon colors, specific flower preferences, or personalized messages.",
+                    "They can even add custom details on the spot  like ribbon colors, specific flower preferences, or personalized messages.",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {})
-          ] }), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FloralPreview, {}) })
-        ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { id: "insurance", className: "insurance-section", children: [
+                  ]
+                }), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FloralPreview, {})
+              })
+              ]
+            })
+          }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", {
+            id: "insurance", className: "insurance-section", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "insurance-accent-bar" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "insurance-content", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Reveal, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+              className: "wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+                className: "insurance-content", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Reveal, {
+                  children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "label", style: { color: "#E8D5B5", marginBottom: "1.1rem" }, children: "Funeral Insurance & Welfare Management" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { style: { color: "#FFFFFF", marginBottom: "1.2rem", fontSize: "clamp(2rem, 4.5vw, 3rem)", lineHeight: 1.2 }, children: "We understand the pain and financial burden families face" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: "rgba(255,255,255,0.92)", lineHeight: 1.9, marginBottom: "1.4rem", fontSize: "1.05rem", maxWidth: "640px" }, children: "Families go through immense pain when they lose a loved one, only to be burdened with huge hospital bills and funeral expenses. We break down these barriers by bringing comprehensive funeral insurance solutions directly to your organization." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: "rgba(255,255,255,0.78)", lineHeight: 1.9, marginBottom: "2.5rem", fontSize: "1.05rem", maxWidth: "640px" }, children: "Rest Point now includes funeral insurance management and welfare scheme administration tools  claims, contributions, member tracking, and automated payouts all in one place." }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-brass", onClick: () => navigate("/insurance"), style: { padding: "1rem 2.4rem" }, children: [
-              "View More ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+                    className: "btn btn-brass", onClick: () => navigate("/insurance"), style: { padding: "1rem 2.4rem" }, children: [
+                      "View More ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.ArrowRight, { size: 16 })
-            ] })
-          ] }) }) })
-        ] }),
+                    ]
+                  })
+                  ]
+                })
+              })
+            })
+            ]
+          }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_hardwareRequirement.default, {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_Mission.default, {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_DirectorsMoment.default, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", { id: "modules", className: "modules-section", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wrap", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modules-header", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Reveal, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", {
+            id: "modules", className: "modules-section", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+              className: "wrap", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+                className: "modules-header", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Reveal, {
+                  children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "label", style: { marginBottom: "1rem" }, children: "Modules" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "Powerful modules, built right in" })
-          ] }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modules-grid", children: landingModules.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Reveal, { delay: i * 120, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-            "a",
-            {
-              className: `module-card${m.dark ? " dark" : ""}${m.static ? " static" : ""}`,
-              style: { "--accent": m.accent },
-              onClick: m.to ? goStart : void 0,
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "module-card-top", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "module-cat", style: { color: m.accent }, children: [
+                  ]
+                })
+              }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+                className: "modules-grid", children: landingModules.map((m, i) => /* @__PURE__ */(0, import_jsx_runtime.jsx)(Reveal, {
+                  delay: i * 120, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                    "a",
+                    {
+                      className: `module-card${m.dark ? " dark" : ""}${m.static ? " static" : ""}`,
+                      style: { "--accent": m.accent },
+                      onClick: m.to ? goStart : void 0,
+                      children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                        className: "module-card-top", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                          className: "module-cat", style: { color: m.accent }, children: [
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "module-dot", style: { background: m.accent } }),
-                    m.category
-                  ] }),
+                            m.category
+                          ]
+                        }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.ExternalLink, { size: 14, className: "module-ext" })
-                ] }),
+                        ]
+                      }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", { className: "module-title", children: m.title }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "module-excerpt", children: m.excerpt }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "module-status", children: m.status })
+                      ]
+                    }
+                  )
+                }, i))
+              })
               ]
-            }
-          ) }, i)) })
-        ] }) }),
+            })
+          }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_NewsroomSection.default, {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_FaqSection.default, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "lockin-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", {
+            className: "lockin-section", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "lockin-bg", style: { backgroundImage: "url('/lockin.webp')" } }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wrap lockin-content", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Reveal, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+              className: "wrap lockin-content", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Reveal, {
+                children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { className: "lockin-title", children: "Start using Rest Point." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "lockin-sub", children: "Grief is heavy enough. Running the operations behind it shouldn't be." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "lockin-desc", children: "Imagine the modern flow of your home: A family walks in, and instead of drowning in carbon copy paper, they sign admission forms directly on an iPad. At the front desk, they browse real, high resolution images of floral arrangements on a tablet, select the perfect tribute, and book it instantly no physical catalogs or messy ledgers required. Down the hall, body releases are processed seamlessly on the same screen." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "lockin-desc", children: "You step in to provide families with dignity and a seamless send off. Rest Point steps in to power how you do it." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "lockin-desc", children: "This is high end technology engineered specifically for the death care industry. We give you the infrastructure to digitize operations, eliminate the paperwork bottleneck, and deliver a flawless, premium experience from the front door to the final farewell." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "lockin-sub", children: "Upgrade your workflow. Centralize your data. Secure your operations today." }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "lockin-grid", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "lockin-card", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                  className: "lockin-grid", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                    className: "lockin-card", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "lockin-card-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.Layers, { size: 22, color: "#4D9B7F" }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: "One Platform." }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Case management, smart dispatch, family portals, and front desk tablet booking unified in one secure command center." })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "lockin-card", children: [
+                    ]
+                  }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                    className: "lockin-card", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "lockin-card-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.ShieldCheck, { size: 22, color: "#4D9B7F" }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: "Protected Details." }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "Every record, document, and digital signature. Paperless, accurate, encrypted, and fully auditable." })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "lockin-card", children: [
+                    ]
+                  }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+                    className: "lockin-card", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "lockin-card-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.Zap, { size: 22, color: "#4D9B7F" }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: "Move Faster." }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "From intake to release, eliminate the manual admin and give your team their time back to focus on what actually matters: care." })
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-brass", onClick: goStart, style: { marginTop: "2.5rem", padding: "0.9rem 2rem", fontSize: "0.9rem", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }, children: [
-              "Request Access to Rest Point ",
+                    ]
+                  })
+                  ]
+                }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+                  className: "btn btn-brass", onClick: goStart, style: { marginTop: "2.5rem", padding: "0.9rem 2rem", fontSize: "0.9rem", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }, children: [
+                    "Request Access to Rest Point ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons.ArrowRight, { size: 16 })
-            ] }),
+                  ]
+                }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { fontSize: "0.9rem", color: "rgba(250,248,244,0.5)", marginTop: "1.5rem" }, children: "Join the homes upgrading the future of death care." })
-          ] }) })
-        ] }),
+                ]
+              })
+            })
+            ]
+          }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_Footer.default, {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_FloatingCTA.default, {}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_DemoRequestPanel.default, {})
-      ] })
-    ] });
+          ]
+        })
+      ]
+    });
   }
 })();

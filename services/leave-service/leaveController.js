@@ -69,6 +69,26 @@ const generateLeaveRef = (fullName) => {
 };
 
 // ============================================
+// HELPER: The employee details every leave query needs.
+//
+// This used to be an INNER JOIN on `u.full_name`, which caused two bugs that
+// made the request panel show the wrong (or no) employee:
+//   1. An inner join DROPPED the whole request when the user row was missing or
+//      deleted, so a real leave request simply vanished from the list.
+//   2. `full_name` alone was used, so anyone whose full_name is blank showed an
+//      empty "Employee" field even though the account had a username/email.
+// The branch is joined too, so the detail panel can show where the person works.
+// ============================================
+const LEAVE_SELECT = `SELECT lr.*,
+        COALESCE(NULLIF(u.full_name, ''), NULLIF(u.username, ''), u.email) AS name,
+        u.email,
+        COALESCE(NULLIF(u.username, ''), NULLIF(u.full_name, '')) AS username,
+        COALESCE(NULLIF(b.branch_name, ''), NULLIF(u.branch_id, '')) AS branch
+FROM leave_requests lr
+LEFT JOIN users u ON lr.user_id = u.user_id
+LEFT JOIN branches b ON u.branch_id = b.branch_id`;
+
+// ============================================
 // HELPER: Calculate leave balance
 // ============================================
 const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
@@ -76,7 +96,10 @@ const calculateLeaveBalance = async (dbName, userId, tenantSlug) => {
         // Get initial balance from users table
         const userRows = await safeTenantQuery(
             dbName,
-            'SELECT annual_leave_balance, full_name, email FROM users WHERE user_id = ?',
+            `SELECT annual_leave_balance,
+                    COALESCE(NULLIF(full_name, ''), NULLIF(username, ''), email) AS full_name,
+                    email
+             FROM users WHERE user_id = ?`,
             [userId]
         );
         
@@ -226,9 +249,7 @@ const applyForLeave = async (req, res) => {
         // Get the created leave request
         const leaveRows = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.full_name AS name, u.email 
-       FROM leave_requests lr 
-       JOIN users u ON lr.user_id = u.user_id 
+            `${LEAVE_SELECT} 
        WHERE lr.id = ?`,
             [leaveId]
         );
@@ -263,9 +284,7 @@ const getAllLeaves = async (req, res) => {
     const { status, leave_type, start_date, end_date, user_id } = req.query;
 
     try {
-        let query = `SELECT lr.*, u.full_name AS name, u.email 
-                 FROM leave_requests lr 
-                 JOIN users u ON lr.user_id = u.user_id 
+        let query = `${LEAVE_SELECT} 
                  WHERE 1=1`;
         const params = [];
 
@@ -344,9 +363,7 @@ const getMyLeaves = async (req, res) => {
     }
 
     try {
-        let query = `SELECT lr.*, u.full_name AS name, u.email 
-       FROM leave_requests lr 
-       JOIN users u ON lr.user_id = u.user_id 
+        let query = `${LEAVE_SELECT} 
        WHERE lr.user_id = ?`;
         const params = [userId];
 
@@ -384,9 +401,7 @@ const getLeaveById = async (req, res) => {
     const leaveId = req.params.id;
 
     try {
-        let query = `SELECT lr.*, u.full_name AS name, u.email 
-       FROM leave_requests lr 
-       JOIN users u ON lr.user_id = u.user_id 
+        let query = `${LEAVE_SELECT} 
        WHERE lr.id = ?`;
         const params = [leaveId];
 
@@ -480,9 +495,7 @@ const updateLeaveStatus = async (req, res) => {
         // Get updated leave request
         const updatedRows = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.full_name AS name, u.email 
-       FROM leave_requests lr 
-       JOIN users u ON lr.user_id = u.user_id 
+            `${LEAVE_SELECT} 
        WHERE lr.id = ?`,
             [leaveId]
         );
@@ -547,9 +560,7 @@ const cancelLeave = async (req, res) => {
         // Get updated leave request
         const updatedRows = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.full_name AS name, u.email 
-       FROM leave_requests lr 
-       JOIN users u ON lr.user_id = u.user_id 
+            `${LEAVE_SELECT} 
        WHERE lr.id = ?`,
             [leaveId]
         );
@@ -605,9 +616,7 @@ const uploadDocument = async (req, res) => {
         // Get updated leave request
         const rows = await safeTenantQuery(
             dbName,
-            `SELECT lr.*, u.full_name AS name, u.email 
-       FROM leave_requests lr 
-       JOIN users u ON lr.user_id = u.user_id 
+            `${LEAVE_SELECT} 
        WHERE lr.id = ?`,
             [leaveId]
         );
@@ -739,9 +748,7 @@ const getUsersOnLeave = async (req, res) => {
     const dbName = req.tenant?.db_name || process.env.DB_NAME || 'restpoint_main';
 
     try {
-        let query = `SELECT lr.*, u.full_name AS name, u.email 
-       FROM leave_requests lr 
-       JOIN users u ON lr.user_id = u.user_id 
+        let query = `${LEAVE_SELECT} 
        WHERE lr.status = 'approved' 
        AND CURDATE() BETWEEN lr.start_date AND lr.end_date`;
         const params = [];
@@ -1092,7 +1099,7 @@ const addEmployee = async (req, res) => {
         // Get the created employee
         const userRows = await safeTenantQuery(
             dbName,
-            'SELECT user_id, full_name AS name, email, phone, role, annual_leave_balance FROM users WHERE user_id = ?',
+            'SELECT user_id, COALESCE(NULLIF(full_name, \'\'), NULLIF(username, \'\'), email) AS name, email, phone, role, annual_leave_balance FROM users WHERE user_id = ?',
             [userId]
         );
 
@@ -1153,7 +1160,10 @@ const getAllLeaveBalances = async (req, res) => {
         // Get all users
         const users = await safeTenantQuery(
             dbName,
-            'SELECT user_id, full_name, email, annual_leave_balance FROM users ORDER BY full_name ASC'
+            `SELECT user_id,
+                    COALESCE(NULLIF(full_name, ''), NULLIF(username, ''), email) AS full_name,
+                    email, annual_leave_balance
+             FROM users ORDER BY full_name ASC`
         );
 
         // Calculate balance for each user

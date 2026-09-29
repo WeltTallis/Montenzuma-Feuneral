@@ -165,6 +165,22 @@ const Btn = styled.button`
   `}
 `;
 
+/* Horizontal scroll box for the wide tables. Without it the 7-column payment
+   table pushes the whole profile page sideways on a phone. */
+const TableScroll = styled.div`
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  border: 1px solid ${C.borderLight || '#e0e0e0'};
+  border-radius: 6px;
+  
+  /* The table keeps a sensible min-width so columns stay readable and the
+     wrapper scrolls instead of squeezing everything into unreadable slivers. */
+  table { min-width: 620px; }
+`;
+
 const DataTable = styled.table`
   width: 100%; 
   border-collapse: collapse;
@@ -545,38 +561,42 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           + Record Payment
         </Btn>
       </SectionHead>
-      <DataTable>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Method</th>
-            <th>Insurance</th>
-            <th>Reference</th>
-            <th>Description</th>
-            <th>Amount</th>
-            <th>Recorded By</th>
-          </tr>
-        </thead>
-        <tbody>
-          {payments.length === 0 ? (
-            <tr><td colSpan={7} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No payments recorded</td></tr>
-          ) : payments.map((p, i) => (
-            <tr key={i}>
-              <td>{formatDate(p.created_at || p.payment_date)}</td>
-              <td>
-                <StatusTag $info={p.payment_method === 'M-Pesa'} $warning={p.payment_method === 'Cash'} $success={p.payment_method === 'Insurance'}>
-                  {p.payment_method || '—'}
-                </StatusTag>
-              </td>
-              <td>{p.insurance_provider || '—'}</td>
-              <td>{p.reference || '—'}</td>
-              <td>{p.description || p.notes || '—'}</td>
-              <td><strong>{fmtMoney(p.amount, p.currency)}</strong></td>
-              <td>{p.recorded_by || '—'}</td>
+      {/* Seven columns do not fit a phone. The wrapper scrolls the table on its
+          own so the page itself never gains a horizontal scrollbar. */}
+      <TableScroll>
+        <DataTable>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Method</th>
+              <th>Insurance</th>
+              <th>Reference</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Recorded By</th>
             </tr>
-          ))}
-        </tbody>
-      </DataTable>
+          </thead>
+          <tbody>
+            {payments.length === 0 ? (
+              <tr><td colSpan={7} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No payments recorded</td></tr>
+            ) : payments.map((p, i) => (
+              <tr key={i}>
+                <td>{formatDate(p.created_at || p.payment_date)}</td>
+                <td>
+                  <StatusTag $info={p.payment_method === 'M-Pesa'} $warning={p.payment_method === 'Cash'} $success={p.payment_method === 'Insurance'}>
+                    {p.payment_method || '—'}
+                  </StatusTag>
+                </td>
+                <td>{p.insurance_provider || '—'}</td>
+                <td>{p.reference || '—'}</td>
+                <td>{p.description || p.notes || '—'}</td>
+                <td><strong>{fmtMoney(p.amount, p.currency)}</strong></td>
+                <td>{p.recorded_by || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      </TableScroll>
     </>
   );
 };

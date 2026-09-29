@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import Snowfall from './Snowfall'
-
+import notify from '../../utils/notify';
 const FORM_CSS = `
 :root{
   --paper:#FBF6F1; --card:#FFFEFB;
@@ -393,7 +393,7 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
       })
       setStep(3)
     } catch (error) {
-      alert(error.friendlyMessage || 'Failed to submit. Please try again.')
+      notify.error('Submission failed', error.friendlyMessage || 'Failed to submit. Please try again.');
     } finally {
       setSending(false)
     }

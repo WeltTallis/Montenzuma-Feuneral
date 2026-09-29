@@ -99,6 +99,14 @@ const DataTable = styled.table`
   tbody tr:last-child td {
     border-bottom: none;
   }
+  
+  /* Long file names would otherwise stretch the table far past the viewport. */
+  td { overflow-wrap: anywhere; }
+  
+  @media (max-width: 640px) {
+    min-width: 520px;
+    th, td { padding: 10px 6px; font-size: 12px; }
+  }
 `;
 
 const TableScroll = styled.div`

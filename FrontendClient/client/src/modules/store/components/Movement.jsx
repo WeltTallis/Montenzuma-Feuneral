@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Form, Button, Card, Table, Badge } from 'react-bootstrap';
 import { useStoreContext } from '../storeContext';
 import { PICK_REASONS, getStatus, statusBadge } from '../seed';
-
+import { getCurrentUserName } from '../../../utils/globalAuth';
+import notify from '../../../utils/notify';
 export default function MovementView() {
   const ctx = useStoreContext();
   const { items, pickItem, restockItem, pendingQuick, setPendingQuick, setView } = ctx;
 
+  // "Done by" is the signed-in user, not a free-text field.
+  const currentUser = getCurrentUserName();
   const [mode, setMode] = useState('pick');
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({
-    qty: '', reason: PICK_REASONS[0], staff: '', notes: '', supplier: '',
+    qty: '', reason: PICK_REASONS[0], notes: '', supplier: '',
   });
 
   useEffect(() => {
@@ -28,14 +31,13 @@ export default function MovementView() {
   const submit = () => {
     const qty = Number(form.qty);
     if (!selectedItem) return;
-    if (qty <= 0) { alert('Enter a valid quantity'); return; }
+    if (qty <= 0) { notify.warning('Invalid quantity', 'Enter a valid quantity.'); return; }
     if (mode === 'pick') {
-      if (!form.staff.trim()) { alert('Please enter your name in "Staff"'); return; }
-      pickItem(selectedItem.id, qty, form.staff.trim(), form.reason, form.notes);
+      pickItem(selectedItem.id, qty, currentUser, form.reason, form.notes);
     } else {
       restockItem(selectedItem.id, qty, form.supplier || undefined);
     }
-    setForm({ qty: '', reason: PICK_REASONS[0], staff: '', notes: '', supplier: '' });
+    setForm({ qty: '', reason: PICK_REASONS[0], notes: '', supplier: '' });
   };
 
   const quickQty = (n) => setForm((f) => ({ ...f, qty: String(n) }));
@@ -135,14 +137,21 @@ export default function MovementView() {
                       </Form.Select>
                     </Form.Group>
                     <Form.Group className="mb-2">
-                      <Form.Label className="small">Staff</Form.Label>
-                      <Form.Control
-                        size="sm"
-                        type="text"
-                        placeholder="Enter your name"
-                        value={form.staff}
-                        onChange={(e) => upd('staff', e.target.value)}
-                      />
+                      <Form.Label className="small">Done by</Form.Label>
+                      <div className="store-identity store-identity-sm" role="status">
+                        <span className="store-identity-avatar" aria-hidden="true">
+                          {(currentUser || '?').trim().charAt(0).toUpperCase()}
+                        </span>
+                        <span className="store-identity-text">
+                          <span className="store-identity-name">
+                            {currentUser || 'Signed-in user unavailable'}
+                          </span>
+                          <span className="store-identity-hint">
+                            <i className="fa-solid fa-lock me-1" />
+                            From your signed-in account
+                          </span>
+                        </span>
+                      </div>
                     </Form.Group>
                     <Form.Group className="mb-2">
                       <Form.Label className="small">Notes (optional)</Form.Label>

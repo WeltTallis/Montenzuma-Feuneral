@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
-
+import notify from '../../utils/notify';
 // Inject Leaflet CSS dynamically
 const LEAFLET_CSS_ID = 'leaflet-css-cdn';
 if (!document.getElementById(LEAFLET_CSS_ID)) {
@@ -215,7 +215,7 @@ function AdvancedHearseRouter({ onClose }) {
         }
       }
     } catch {
-      alert('Routing failed.');
+      notify.error('Routing failed', 'We could not calculate a route. Please try again.');
     } finally { setLoading(false); }
   };
 
@@ -227,8 +227,8 @@ function AdvancedHearseRouter({ onClose }) {
       const data = await res.json();
       if (data && data.length > 0) {
         calculateRouteOSRM(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name.split(',')[0]);
-      } else { alert('Location not found.'); }
-    } catch { alert('Search failed.'); }
+      } else { notify.warning('Location not found', 'No matching place was found for that search.'); }
+    } catch { notify.error('Search failed', 'We could not search for that location right now.'); }
     finally { setLoading(false); }
   };
 
@@ -344,7 +344,7 @@ function AdvancedHearseRouter({ onClose }) {
                     <Button $variant="whatsapp" style={{ flex: 1 }} onClick={shareToWhatsApp}>
                       WA to Driver
                     </Button>
-                    <Button $variant="success" style={{ flex: 1 }} onClick={() => alert(`Confirmed. Total: KES ${grandTotal.toLocaleString()}`)}>
+                    <Button $variant="success" style={{ flex: 1 }} onClick={() => notify.success('Booking confirmed', `Total: KES ${grandTotal.toLocaleString()}`)}>
                       Confirm Booking
                     </Button>
                   </div>

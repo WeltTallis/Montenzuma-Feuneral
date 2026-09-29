@@ -2,7 +2,8 @@
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { api, ENDPOINTS } from '../../api';
-import { getUserId, getTenantSlug, getParentTenantSlug, getTenantId, getBranchId, getBranchSlug } from '../../utils/globalAuth';
+import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
+import notify from '../../utils/notify';
 import { Calendar, FileText, Upload, X, CheckCircle, AlertCircle, Loader2, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
 
 // ─── ADVANCED DESIGN SYSTEM (Your Custom Palette) ───────────────────────────
@@ -592,6 +593,14 @@ const ApplyLeave = () => {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // The banner is a persistent summary; the toast is the immediate feedback.
+  // Clear it after a few seconds so it never sits there looking stale.
+  useEffect(() => {
+    if (!banner) return undefined;
+    const t = setTimeout(() => setBanner(null), 6000);
+    return () => clearTimeout(t);
+  }, [banner]);
+
   const days = useMemo(() => {
     if (!range.start || !range.end) return 0;
     let count = 0;
@@ -633,19 +642,29 @@ const ApplyLeave = () => {
     [myLeaves, historyFilter]
   );
 
-  const canSubmit = Boolean(userId && form.type && range.start && range.end && form.reason.trim() && !submitting);
-
   const handleRangeChange = useCallback((start, end) => {
     setRange({ start, end });
     setBanner(null);
   }, []);
 
-  const clearRange = () => setRange({ start: null, end: null });
+  const clearRange = () => {
+    setRange({ start: null, end: null });
+    notify.info('Dates cleared', 'Your selected range was cleared.');
+  };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (submitting) return;
+    // Guard the required fields with a toast that says WHICH one is missing.
     if (!form.type.trim()) {
-      setBanner({ type: 'error', msg: 'Please select a leave type' });
+      notify.warning('Leave type required', 'Pick Annual, Sick or another type first.');
+      return;
+    }
+    if (!range.start || !range.end) {
+      notify.warning('No dates selected', 'Click your start date, then your end date on the calendar.');
+      return;
+    }
+    if (!form.reason.trim()) {
+      notify.warning('Reason required', 'Tell us why you are taking this leave.');
       return;
     }
     setSubmitting(true);
@@ -679,6 +698,10 @@ const ApplyLeave = () => {
       }
 
       setBanner({ type: 'success', msg: `Leave request submitted for ${formatDate(range.start)} → ${formatDate(range.end)}` });
+      notify.success(
+        'Leave request submitted',
+        `${formatDate(range.start)} → ${formatDate(range.end)} · ${days} day${days === 1 ? '' : 's'}`
+      );
       setForm({ type: '', priority: 'medium', reason: '' });
       setFile(null);
       setRange({ start: null, end: null });
@@ -692,6 +715,7 @@ const ApplyLeave = () => {
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to submit leave request';
       setBanner({ type: 'error', msg });
+      notify.error('Could not submit request', msg);
     } finally {
       setSubmitting(false);
     }
@@ -701,10 +725,35 @@ const ApplyLeave = () => {
     try {
       await api.patch(ENDPOINTS.LEAVE.CANCEL(leaveId), {}, tenantHeaders);
       setBanner({ type: 'success', msg: 'Leave request cancelled' });
+      notify.success('Request cancelled', 'Your leave request was withdrawn.');
       await loadData();
     } catch (err) {
-      setBanner({ type: 'error', msg: err?.response?.data?.message || 'Failed to cancel request' });
+      const msg = err?.response?.data?.message || 'Failed to cancel request';
+      setBanner({ type: 'error', msg });
+      notify.error('Could not cancel request', msg);
     }
+  };
+
+  /* ── file handling ────────────────────────────────────────────────────── */
+
+  const pickFile = (f) => {
+    if (!f) return;
+    // The backend only stores one document; anything else is rejected later
+    // with a confusing error, so catch it here with a clear message instead.
+    const ok = /\.(pdf|jpe?g|png)$/i.test(f.name);
+    if (!ok) {
+      notify.error('Unsupported file', 'Attach a PDF, JPG or PNG.');
+      return;
+    }
+    setFile(f);
+    notify.info('Document attached', f.name);
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    const input = document.getElementById('leave-file-input');
+    if (input) input.value = '';
+    notify.info('Document removed', 'The supporting document was detached.');
   };
 
   if (!userId) {
@@ -785,7 +834,7 @@ const ApplyLeave = () => {
                     <CardTitleAction type="button" onClick={clearRange}>Clear</CardTitleAction>
                   </DateRangeBox>
                 ) : (
-                  <Empty>No dates selected yet — drag on the calendar above.</Empty>
+                  <Empty>No dates selected yet — click on the calendar above.</Empty>
                 )}
               </FormGroup>
 
@@ -806,7 +855,7 @@ const ApplyLeave = () => {
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
                   style={{ display: 'none' }}
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={(e) => pickFile(e.target.files?.[0] || null)}
                 />
                 <DropZone
                   $drag={drag}
@@ -816,15 +865,14 @@ const ApplyLeave = () => {
                   onDrop={(e) => {
                     e.preventDefault();
                     setDrag(false);
-                    const f = e.dataTransfer?.files?.[0];
-                    if (f) setFile(f);
+                    pickFile(e.dataTransfer?.files?.[0] || null);
                   }}
                 >
                   {file ? (
                     <FileChip>
                       <FileText size={18} />
                       {file.name}
-                      <button type="button" aria-label="Remove file" onClick={(e) => { e.stopPropagation(); setFile(null); }}>
+                      <button type="button" aria-label="Remove file" onClick={(e) => { e.stopPropagation(); clearFile(); }}>
                         <X size={14} />
                       </button>
                     </FileChip>
@@ -840,8 +888,17 @@ const ApplyLeave = () => {
             </FormGrid>
 
             <Actions>
-              <Btn className="secondary" type="button" onClick={() => navigate(-1)}>Cancel</Btn>
-              <Btn className="primary" type="button" disabled={!canSubmit} onClick={handleSubmit}>
+              <Btn
+                className="secondary"
+                type="button"
+                onClick={() => { notify.info('Cancelled', 'Nothing was submitted.'); navigate(-1); }}
+              >
+                Cancel
+              </Btn>
+              {/* Only disabled while submitting: a permanently-disabled button
+                  gives the user no idea WHY it will not work. handleSubmit
+                  validates and toasts the specific missing field instead. */}
+              <Btn className="primary" type="button" disabled={submitting} onClick={handleSubmit}>
                 {submitting ? <Loader2 size={18} /> : <CheckCircle size={18} />}
                 {submitting ? 'Submitting...' : 'Submit Request'}
               </Btn>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import styled, { createGlobalStyle, keyframes } from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import {
   DollarSign, Save, ArrowLeft, Tag, Clock, Calendar, RefreshCw,
   X, Check, FlaskConical, CreditCard, FileText, Settings
@@ -11,11 +11,6 @@ import env from '../../../utils/config/env';
 
 // Base API URL (kept for parity with the standalone page)
 const BASE_API = env.API_URL || 'https://restpoint.co.ke/api/v1/restpoint';
-
-// Fonts match the Scanner Bridge side panel (ScanDocumentModal)
-const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-`;
 
 /* Palette copied from the Scanner Bridge side panel (components/scanner/ScanDocumentModal.jsx)
    so this panel looks identical: dark-teal header, white body, sharp corners,
@@ -663,7 +658,6 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
 
     <>
 
-      <GlobalStyle />
       <Scrim onClick={onClose} />
 
       <Panel className="open" role="dialog" aria-modal="true" aria-label="Charge configuration">
