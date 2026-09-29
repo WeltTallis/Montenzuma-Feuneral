@@ -58,6 +58,31 @@ const toKey = (d) => {
 
 const todayKey = () => toKey(new Date());
 
+/**
+ * Sortable epoch for any timestamp the feeds use.
+ *
+ * Backend datetimes are stored as naive Kenya wall time
+ * ("2026-09-11 16:33:00"), so the space is swapped for "T" to parse them as
+ * LOCAL components — the same rule as utils/dates/parseDates.js. Naive
+ * `new Date(...)` on a space-separated string is unreliable and falls back to
+ * implementation-specific parsing, which silently mis-sorts the feed.
+ * Returns 0 for anything unparsable so those rows sink to the bottom.
+ */
+const toTs = (v) => {
+  if (v == null || v === '') return 0;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? 0 : v.getTime();
+  const s = String(v).trim();
+  if (!s) return 0;
+  // Already ISO with T/Z/offset → parse as-is.
+  const d = s.includes('T')
+    ? new Date(s)
+    : new Date(s.replace(' ', 'T'));
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+/** Newest first; rows with no usable timestamp keep a stable order at the end. */
+const byNewest = (a, b) => (b?.ts || 0) - (a?.ts || 0);
+
 /** Case-insensitive membership check — true when `val` matches any of `list`. */
 const search = (val, list) => {
   const s = String(val == null ? '' : val).toLowerCase().trim();
@@ -1186,9 +1211,14 @@ export const fetchRecentActivityData = async (date) => {
     ]);
     const activities = [];
 
+    // Every entry carries `ts` so the merged feed can be ordered by real time.
+    // Previously each source was sliced and appended in a FIXED order
+    // (admissions, then bookings, then coffin orders, then stock requests) and
+    // every row was stamped "Today" — so the newest thing in the building could
+    // never reach the top, and a busy admissions list pushed fresher bookings
+    // off the panel entirely. Sources are now collected whole and sorted once.
     deceased
       .filter((r) => toKey(r?.date_key || r?.adm_date || r?.date_admitted || r?.created_at) === key)
-      .slice(0, 4)
       .forEach((r) => {
         activities.push({
           type: 'admit',
@@ -1196,25 +1226,24 @@ export const fetchRecentActivityData = async (date) => {
           detail: `${r?.full_name || 'Unknown'} — ${r?.branch_name || r?.receiving_officer || 'mortuary'}`,
           time: 'Today',
           branch: r?.branch_name || 'HQ',
+          ts: toTs(r?.created_at || r?.time_admitted || r?.adm_time || r?.date_admitted || r?.date_key),
         });
       });
 
-    (await bookingsForDate(key))
-      .slice(0, 4)
-      .forEach((b) => {
-        const done = search(b?.status, ['completed']);
-        activities.push({
-          type: done ? 'dispatch' : 'transfer',
-          title: done ? 'Hearse trip completed' : 'Hearse dispatched',
-          detail: `${b?.hearse_name || b?.plate_number || 'Hearse'} to ${b?.destination || 'burial site'}`,
-          time: 'Today',
-          branch: b?.branch_name || 'HQ',
-        });
+    (await bookingsForDate(key)).forEach((b) => {
+      const done = search(b?.status, ['completed']);
+      activities.push({
+        type: done ? 'dispatch' : 'transfer',
+        title: done ? 'Hearse trip completed' : 'Hearse dispatched',
+        detail: `${b?.hearse_name || b?.plate_number || 'Hearse'} to ${b?.destination || 'burial site'}`,
+        time: 'Today',
+        branch: b?.branch_name || 'HQ',
+        ts: toTs(b?.created_at || b?.updated_at || b?.from_timestamp || b?.booking_date),
       });
+    });
 
     orders
       .filter((o) => toKey(o?.created_at) === key)
-      .slice(0, 3)
       .forEach((o) => {
         activities.push({
           type: search(o?.status, ['approved', 'completed']) ? 'request-approve' : 'schedule',
@@ -1222,12 +1251,12 @@ export const fetchRecentActivityData = async (date) => {
           detail: `${o?.coffin_name || 'Coffin'} ${o?.quantity ? `x${o?.quantity}` : ''} (${o?.status || 'pending'})`,
           time: 'Today',
           branch: 'Workshop',
+          ts: toTs(o?.updated_at || o?.created_at),
         });
       });
 
     stockRequests
       .filter((r) => toKey(r?.created_at) === key)
-      .slice(0, 3)
       .forEach((r) => {
         activities.push({
           type: 'transfer',
@@ -1235,10 +1264,11 @@ export const fetchRecentActivityData = async (date) => {
           detail: `${r?.coffin_name || 'Coffin'} from ${r?.from_branch_name || r?.requesting_branch || 'branch'}`,
           time: 'Today',
           branch: r?.to_branch_name || r?.requesting_branch || 'Branch',
+          ts: toTs(r?.updated_at || r?.created_at),
         });
       });
 
-    return { activities: activities.slice(0, 12) };
+    return { activities: activities.sort(byNewest).slice(0, 12) };
   } catch (err) {
     console.warn('[RecentActivity] failed:', err?.message);
     return { activities: [] };

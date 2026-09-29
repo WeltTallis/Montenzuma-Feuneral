@@ -123,19 +123,33 @@ export class NotificationCronService {
             const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
             const bookings = await safeQuery(
-                `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, 
+                `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
                         hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
-                        h.hearse_name, h.plate_number, h.branch_id, h.branch_code
+                        hb.created_at,
+                        h.hearse_name, h.plate_number, h.branch_id, h.branch_code,
+                        b.branch_name AS branch_name
                  FROM hearse_bookings hb
                  LEFT JOIN hearses h ON hb.hearse_id = h.id
+                 LEFT JOIN branches b ON COALESCE(hb.branch_id, h.branch_id) = b.branch_id
                  WHERE hb.booking_dates LIKE ?
                  AND hb.status NOT IN ('completed', 'cancelled')`,
                 [`%"${tomorrowStr}"%`]
             );
 
-            if (bookings.length > 0) {
+            // A booking made moments ago already raised its own instant "New
+            // Hearse Booking" alert, so repeating it in tomorrow's planning digest
+            // is pure noise. Keep this digest for genuinely pre-existing bookings.
+            const FRESH_WINDOW_MS = 60 * 60 * 1000;
+            const cutoff = Date.now() - FRESH_WINDOW_MS;
+            const existingBookings = (bookings as any[]).filter((b: any) => {
+                if (!b?.created_at) return true;
+                const created = new Date(String(b.created_at).replace(' ', 'T')).getTime();
+                return Number.isNaN(created) || created < cutoff;
+            });
+
+            if (existingBookings.length > 0) {
                 // Group bookings by tenant so notifications go to the correct tenant room
-                const tenantGroups = this.groupBookingsByTenant(bookings);
+                const tenantGroups = this.groupBookingsByTenant(existingBookings);
                 for (const [tenantSlug, tenantBookings] of tenantGroups) {
                     // Skip if this exact reminder (same day + same bookings) was already emitted
                     if (!this.shouldEmit('upcoming_bookings_24h', tenantSlug, this.bookingSignature(tenantBookings, tomorrowStr))) {
@@ -157,10 +171,13 @@ export class NotificationCronService {
                             clientPhone: b.client_phone,
                             destination: b.destination,
                             bookingDates: b.booking_dates,
-                            hearseName: b.hearse_name || 'N/A',
-                            plateNumber: b.plate_number || 'N/A',
+                            hearseName: b.hearse_name || '',
+                            plateNumber: b.plate_number || '',
                             branchId: b.branch_id,
-                            branchCode: b.branch_code
+                            branchCode: b.branch_code,
+                            // The REAL branch name (Nairobi / Thika / Eter Mumo). Without it
+                            // the UI fell back to branch_code, i.e. the useless "MAIN".
+                            branchName: b.branch_name || ''
                         })),
                         timestamp: now
                     }, tenantSlug);
@@ -184,9 +201,11 @@ export class NotificationCronService {
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
                         hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
-                        h.hearse_name, h.plate_number, h.branch_id, h.branch_code
+                        h.hearse_name, h.plate_number, h.branch_id, h.branch_code,
+                        b.branch_name AS branch_name
                  FROM hearse_bookings hb
                  LEFT JOIN hearses h ON hb.hearse_id = h.id
+                 LEFT JOIN branches b ON COALESCE(hb.branch_id, h.branch_id) = b.branch_id
                  WHERE hb.booking_dates LIKE ?
                  AND hb.status IN ('booked', 'pending')`,
                 [`%${now.split('T')[0]}%`]
@@ -219,7 +238,10 @@ export class NotificationCronService {
                             hearseName: b.hearse_name || 'N/A',
                             plateNumber: b.plate_number || 'N/A',
                             branchId: b.branch_id,
-                            branchCode: b.branch_code
+                            branchCode: b.branch_code,
+                            // The REAL branch name (Nairobi / Thika / Eter Mumo). Without it
+                            // the UI fell back to branch_code, i.e. the useless "MAIN".
+                            branchName: b.branch_name || ''
                         })),
                         timestamp: getKenyaTimeISO()
                     }, tenantSlug);
@@ -243,9 +265,11 @@ export class NotificationCronService {
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
                         hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
-                        h.hearse_name, h.plate_number, h.branch_id, h.branch_code
+                        h.hearse_name, h.plate_number, h.branch_id, h.branch_code,
+                        b.branch_name AS branch_name
                  FROM hearse_bookings hb
                  LEFT JOIN hearses h ON hb.hearse_id = h.id
+                 LEFT JOIN branches b ON COALESCE(hb.branch_id, h.branch_id) = b.branch_id
                  WHERE hb.booking_dates LIKE ?
                  AND hb.status NOT IN ('completed', 'cancelled')`,
                 [`%${now.split('T')[0]}%`]
@@ -297,10 +321,11 @@ export class NotificationCronService {
                             clientPhone: b.client_phone,
                             destination: b.destination,
                             bookingDates: b.booking_dates,
-                            hearseName: b.hearse_name || 'N/A',
-                            plateNumber: b.plate_number || 'N/A',
+                            hearseName: b.hearse_name || '',
+                            plateNumber: b.plate_number || '',
                             branchId: b.branch_id,
-                            branchCode: b.branch_code
+                            branchCode: b.branch_code,
+                            branchName: b.branch_name || ''
                         })),
                         branchBreakdown,
                         timestamp: getKenyaTimeISO()

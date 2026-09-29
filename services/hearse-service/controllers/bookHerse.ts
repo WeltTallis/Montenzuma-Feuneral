@@ -416,12 +416,14 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                             destination: derivedDestination,
                             fromLocation: finalFrom,
                             toLocation: finalTo,
-                            hearseId: hearse_id || '',
+                            hearseId: bookedRow?.hearse_id || hearse_id || '',
+                            hearseName: bookedRow?.hearse_name || '',
+                            plateNumber: bookedRow?.plate_number || '',
+                            clientPhone: client_phone || '',
                             title: 'New Hearse Booking',
                             message: `New hearse booking: ${client_name} — ${derivedDestination}`,
                             type: 'new_booking',
                             priority: 'high',
-                            fullContent: `Booking Code: ${booking_code}\nClient: ${client_name}\nPhone: ${client_phone}\nRoute: ${derivedDestination}\nHearse: ${hearse_id || 'Not assigned'}`,
                         }
                     }, { timeout: 5000 });
                 } catch (emitError) {
@@ -501,12 +503,14 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                         destination: derivedDestination,
                         fromLocation: finalFrom,
                         toLocation: finalTo,
-                        hearseId: hearse_id || '',
+                        hearseId: booking?.hearse_id || hearse_id || '',
+                        hearseName: booking?.hearse_name || '',
+                        plateNumber: booking?.plate_number || '',
+                        clientPhone: client_phone || '',
                         title: 'New Hearse Booking',
                         message: `New hearse booking: ${client_name} — ${derivedDestination}`,
                         type: 'new_booking',
                         priority: 'high',
-                        fullContent: `Booking Code: ${booking_code}\nClient: ${client_name}\nPhone: ${client_phone}\nRoute: ${derivedDestination}\nHearse: ${hearse_id || 'Not assigned'}`,
                     }
                 }, { timeout: 5000 });
             } catch (emitError) {
@@ -594,7 +598,13 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         }
 
         const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.branch_slug AS booking_branch_slug, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
+        // Resolve the REAL branch name by joining the branches registry. The
+        // `hearses` table stores a generic literal ("Main Branch" / "Branch <uuid>"),
+        // so `h.branch_name` is what every booking used to display as its Branch.
+        // COALESCE also covers a booking that never set its own branch_id but was
+        // served by a branch-owned hearse. This mirrors hearseAnalytics.controller.ts,
+        // which already joins `branches` this way.
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.branch_slug AS booking_branch_slug, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name, b.branch_name AS branch_name, b.branch_slug AS branch_slug_resolved FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id LEFT JOIN branches b ON COALESCE(hb.branch_id, h.branch_id) = b.branch_id ${whereSQL} ORDER BY hb.created_at DESC`;
 
         const bookings = await safeQuery(query, params);
         let allBranches: any[] = [];

@@ -24,6 +24,23 @@ const API_BASE_URL = import.meta.env.PROD
 
 const RESULTS_PER_PAGE = 10;
 
+// Placeholder branch labels the backend used to store literally. They are NOT
+// real branch names, so they must never be shown as a booking's branch — a
+// booking either resolves to a real place ("Nairobi", "Thika", "Eter Mumo")
+// or it shows "Unknown".
+const GENERIC_BRANCH_NAMES = new Set([
+  'main branch',
+  'main',
+  'default',
+  'branch',
+  'unknown',
+  'n/a',
+  'na',
+  '—',
+  '-',
+  '',
+]);
+
 const STATUS_CONFIG = {
   pending: { label: 'Pending', progress: 10, color: '#d97706', bg: '#FFFBEB', dotColor: '#d97706' },
   booked: { label: 'Booked', progress: 25, color: '#00296B', bg: '#EFF6FF', dotColor: '#00296B' },
@@ -897,13 +914,28 @@ const HearseBookings = () => {
 
   const branchLabel = (b) => {
     if (!b) return 'Unknown';
-    const keys = [b.branch_id, b.branch_slug, b.branch, b.booking_branch_slug, b.hearse_branch_id];
+    // 1. The API now joins the branches registry, so `branch_name` is the REAL
+    //    name ("Nairobi", "Thika", "Eter Mumo"). Trust it — but only when it is a
+    //    real name, since older/other feeds can still send a generic literal.
+    const apiName = (b.branch_name || '').trim();
+    if (apiName && !GENERIC_BRANCH_NAMES.has(apiName.toLowerCase())) return apiName;
+
+    // 2. Live branch list — authoritative for any tenant.
+    const keys = [b.branch_id, b.branch_slug, b.branch, b.booking_branch_slug, b.hearse_branch_id, b.branch_slug_resolved];
     for (const k of keys) {
       if (k == null || k === '') continue;
       const hit = branchNameByKey.get(String(k).toLowerCase());
-      if (hit) return hit;
+      if (hit && !GENERIC_BRANCH_NAMES.has(String(hit).toLowerCase())) return hit;
     }
-    return resolveBranchName(b);
+
+    // 3. Slug/registry resolver in viewerShared.
+    const resolved = resolveBranchName(b);
+    if (resolved && !GENERIC_BRANCH_NAMES.has(String(resolved).toLowerCase())) return resolved;
+
+    // 4. Nothing resolved to a real branch — show the branch's own value rather
+    //    than the misleading "Main Branch" placeholder.
+    const byId = b.branch_id == null ? '' : branchNameByKey.get(String(b.branch_id).toLowerCase());
+    return apiName || byId || resolved || 'Unknown';
   };
 
   if (loading) {

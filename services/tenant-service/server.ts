@@ -539,18 +539,27 @@ app.get('/tenant/:tenantSlug/mortuary-charges/deceased-preview', asyncHandler(as
       free_days: 0
     };
 
-    // Get all active deceased
+    // Bodies still in our care. The release sync flips admission_status /
+    // release_status / body_status and stamps dispatch_date; the legacy `status`
+    // column stays 'active' forever, so filtering on that alone kept released
+    // bodies in the storage bill. dispatch_date is carried through so the day
+    // count below can stop at handover.
     const [deceased] = await conn.query(
-      `SELECT deceased_id, full_name, date_admitted, admission_status, gender
+      `SELECT deceased_id, full_name, date_admitted, dispatch_date, admission_status
        FROM deceased
-       WHERE is_deleted = FALSE AND admission_status NOT IN ('released', 'buried')
+       WHERE is_deleted = FALSE
+         AND COALESCE(admission_status, 'admitted') NOT IN ('released', 'buried')
+         AND COALESCE(release_status, 'pending') <> 'released'
+         AND LOWER(COALESCE(body_status, '')) NOT LIKE '%released%'
+         AND LOWER(COALESCE(body_status, '')) NOT LIKE '%buried%'
        ORDER BY date_admitted ASC`
     );
 
     const deceasedList = (deceased as any[]).map(d => {
       const admittedDate = new Date(d.date_admitted);
-      const now = new Date();
-      const totalDays = Math.max(0, Math.floor((now.getTime() - admittedDate.getTime()) / (1000 * 60 * 60 * 24)));
+      // Storage runs to the day the body left, or to today while it is held.
+      const endDate = d.dispatch_date ? new Date(d.dispatch_date) : new Date();
+      const totalDays = Math.max(0, Math.floor((endDate.getTime() - admittedDate.getTime()) / (1000 * 60 * 60 * 24)));
       const billableDays = Math.max(0, totalDays - (settings.free_days || 0));
       const storageFee = billableDays * parseFloat(settings.daily_storage_rate);
       const totalFee = storageFee + parseFloat(settings.initial_admission_fee);

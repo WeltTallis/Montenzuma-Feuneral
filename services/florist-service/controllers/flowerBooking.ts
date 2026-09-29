@@ -151,8 +151,16 @@ export const getBookings = async (req: any, res: any) => {
         const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
         const offset = (pageNum - 1) * limitNum;
 
+        // Newest FIRST. This was `ORDER BY date DESC, time ASC`, which sorted by
+        // DELIVERY date and then put the EARLIEST time of that day on top — so the
+        // booking the user had just created sat below older entries, and the top of
+        // the list was never the most recent thing. created_at/id is the real
+        // "when was this entered" clock; date/time still break ties for rows
+        // created in the same instant so the order stays stable.
         const bookings = await safeQuery(
-            `SELECT * FROM flower_bookings ${whereClause} ORDER BY date DESC, time ASC LIMIT ? OFFSET ?`,
+            `SELECT * FROM flower_bookings ${whereClause}
+             ORDER BY created_at DESC, id DESC, date DESC, time DESC
+             LIMIT ? OFFSET ?`,
             [...params, limitNum, offset]
         );
 

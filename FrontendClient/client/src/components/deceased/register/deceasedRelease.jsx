@@ -645,9 +645,17 @@ const ClauseNo = styled.span`
   text-align: right;
 `;
 
+/* The authorised facility reads as the named party on a legal declaration, so
+   it is set in caps to stand out from the surrounding sentence. `text-transform`
+   (not an uppercased string) keeps the stored tenant name untouched for copy /
+   print / PDF, which still read the original casing from the DOM's textContent. */
 const ClauseFacility = styled.span`
   font-weight: 600;
   color: ${COLORS.brass};
+  text-transform: uppercase;
+  /* Caps are wider and read colder at the inherited body size — a touch of
+     tracking and weight keeps the name legible without shouting over the clause. */
+  letter-spacing: 0.04em;
 `;
 
 const ConsentDivider = styled.div`

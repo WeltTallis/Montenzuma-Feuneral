@@ -192,10 +192,13 @@ function QuadRow({ ev, onOpenCase }) {
 function TodayQuad({ searched, calc, today, now, onOpenCase }) {
   const tl = timelineFor(searched, today, now);
   const evs = eventsOf(searched).filter((event) => event.date === today);
-  const byTime = (a, b) => a.time.localeCompare(b.time);
-  const intakes = evs.filter((e) => e.t === "intake").sort(byTime);
-  const rels = evs.filter((e) => e.t === "release").sort(byTime);
-  const pms = evs.filter((e) => e.t === "pm").sort(byTime);
+  // Newest FIRST. These were sorted ascending by time, so the body received a
+  // moment ago sat at the BOTTOM of "Intake Today" while the earliest arrival of
+  // the day was on top — the panel showed the least recent thing first.
+  const byNewest = (a, b) => b.time.localeCompare(a.time);
+  const intakes = evs.filter((e) => e.t === "intake").sort(byNewest);
+  const rels = evs.filter((e) => e.t === "release").sort(byNewest);
+  const pms = evs.filter((e) => e.t === "pm").sort(byNewest);
 
   const d = parseKey(today);
   const plural = (n, w) => `${n} ${w}${n !== 1 ? "s" : ""}`;
@@ -280,7 +283,7 @@ function WeekColumns({ searched, selDate, today, filters, onPickDay, onOpenCase 
     const dt = parseKey(key);
     const dayEvs = evs
       .filter((e) => e.date === key && passes(e.p, filters))
-      .sort((a, b) => a.time.localeCompare(b.time));
+      .sort((a, b) => b.time.localeCompare(a.time));
 
     const cI = dayEvs.filter((e) => e.t === "intake").length;
     const cR = dayEvs.filter((e) => e.t === "release").length;
@@ -374,7 +377,7 @@ function BandedDay({ date, searched, filters, today, onOpenCase, onClearDay }) {
   });
   const dayEvs = evs
     .filter((e) => e.date === date && passes(e.p, filters))
-    .sort((a, b) => a.time.localeCompare(b.time));
+    .sort((a, b) => b.time.localeCompare(a.time));
 
   const cnt = { intake: 0, release: 0, pm: 0 };
   dayEvs.forEach((e) => { cnt[e.t] += 1; });

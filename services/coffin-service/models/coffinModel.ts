@@ -185,8 +185,18 @@ class CoffinModel {
   /**
    * Update coffin
    * Can update: name/type, color, size, quantity, price
+   *
+   * Returns the number of rows actually changed (0 when the id matched nothing).
+   * Callers MUST check it: a silent `return true` made a failed stock write look
+   * like a success in the UI — the toast said "Added N units" while the quantity
+   * in the database never moved.
+   *
+   * `tenantId` widens the row match to `tenant_slug = ? OR tenant_id = ?`, the
+   * SAME scope the read path uses (see getAllCoffinsAllBranches). Matching on
+   * tenant_slug alone meant a coffin row stored under a branch slug but sharing
+   * the tenant UUID was listed in the inventory yet could never be written to.
    */
-  static async update(tenantSlug: string, id: string, data: any): Promise<boolean> {
+  static async update(tenantSlug: string, id: string, data: any, tenantId?: string | null): Promise<number> {
     const updateFields: string[] = [];
     const updateValues: any[] = [];
 
@@ -217,12 +227,25 @@ class CoffinModel {
     updateFields.push('updated_at = NOW()');
 
     if (updateFields.length > 1) {
-      const sql = `UPDATE coffins SET ${updateFields.join(', ')} WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE`;
+      // Match the row on tenant_slug OR tenant_id, mirroring the read path, so a
+      // coffin registered under a branch slug is still writable by the org.
+      const sql = tenantId
+        ? `UPDATE coffins SET ${updateFields.join(', ')} WHERE coffin_id = ? AND (tenant_slug = ? OR tenant_id = ?) AND is_deleted = FALSE`
+        : `UPDATE coffins SET ${updateFields.join(', ')} WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE`;
       updateValues.push(id, tenantSlug);
-      await coffinQuery(sql, updateValues);
+      if (tenantId) updateValues.push(String(tenantId));
+      const result: any = await coffinQuery(sql, updateValues);
+      // mysql2 returns an OkPacket for UPDATE; affectedRows is the truth.
+      return Number(result?.affectedRows ?? 0);
     }
 
-    return true;
+    // Only `updated_at` was set (no real field supplied). The id may still be
+    // bogus, so check it exists and report that honestly instead of faking a write.
+    const existing: any[] = await coffinQuery(
+      'SELECT coffin_id FROM coffins WHERE coffin_id = ? AND (tenant_slug = ?' + (tenantId ? ' OR tenant_id = ?' : '') + ') AND is_deleted = FALSE',
+      tenantId ? [id, tenantSlug, String(tenantId)] : [id, tenantSlug]
+    );
+    return existing.length > 0 ? 0 : 0;
   }
 
   /**

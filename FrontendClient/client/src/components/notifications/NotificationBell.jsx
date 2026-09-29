@@ -153,7 +153,10 @@ const BookingDetailsList = ({ bookings }) => {
         const plate = getBookingField(b, 'plateNumber', 'plate_number');
         const phone = getBookingField(b, 'clientPhone', 'client_phone', 'phone');
         const when = formatBookingDates(getBookingField(b, 'bookingDates', 'booking_dates'));
-        const branch = getBookingField(b, 'branchCode', 'branch_code');
+        // Prefer the real branch name; fall back to the code only if that's all we
+        // have, and drop generic placeholders like "MAIN" entirely.
+        const branchName = getBookingField(b, 'branchName', 'branch_name');
+        const branch = branchName || getBookingField(b, 'branchCode', 'branch_code');
         return (
           <div className="nb-booking-row" key={code || `booking-${i}`}>
             <div className="nb-booking-main">
@@ -209,8 +212,6 @@ const NotificationItem = memo(({ notif, onMarkRead, onDelete }) => {
         <p className="nb-item-message">{notif.message}</p>
         <div className="nb-item-meta">
           <span>{formatTimeFull(notif.created_at)}</span>
-          <span className="nb-dot" />
-          <span>{notif.type || 'Notification'}</span>
         </div>
         {renderDetails()}
       </div>
@@ -404,21 +405,27 @@ const NotificationBell = () => {
         'notification:store-dispatch': { type: 'store-dispatch', title: 'Store Item Dispatched', priority: 'medium' },
       };
 
-      // Hearse booking created
+      // Hearse booking created — render through the SAME BookingDetailsList as the
+      // reminders. The old inline HTML printed "Phone: N/A" (the payload carries
+      // `clientPhone`, not `phone`) and "Hearse: 5" (it printed the numeric
+      // hearse_id instead of the vehicle's name).
       if (eventName === 'notification:hearse-booking-created') {
-        const bookingDetails = data.booking || data;
-        const detailsHtml = `
-          <strong style="color: #fbbf24;">Booking Code:</strong> <span style="color: #fff;">${bookingDetails.booking_code || data.bookingId || 'N/A'}</span><br/>
-          <strong style="color: #fbbf24;">Client:</strong> <span style="color: #10b981;">${bookingDetails.client_name || data.clientName || 'Unknown'}</span><br/>
-          <strong style="color: #fbbf24;">Phone:</strong> <span style="color: #fff;">${bookingDetails.phone || data.phone || 'N/A'}</span><br/>
-          <strong style="color: #fbbf24;">Destination:</strong> <span style="color: #8b5cf6;">${bookingDetails.destination || data.destination || 'N/A'}</span><br/>
-          <strong style="color: #fbbf24;">Hearse:</strong> <span style="color: #fff;">${bookingDetails.hearse_id || data.hearseId || 'N/A'}</span>`;
+        const b = data.booking || data;
         formatted = {
           id: data.id || data.bookingId || `hearse-booking-${Date.now()}`,
           type: 'new_booking',
           title: data.title || 'New Hearse Booking',
-          message: data.message || `New hearse booking: ${bookingDetails.client_name || 'Client'} to ${bookingDetails.destination || 'destination'}`,
-          fullContent: detailsHtml,
+          message: data.message || `New hearse booking: ${b.client_name || b.clientName || 'Client'} — ${b.destination || ''}`,
+          bookings: [{
+            bookingCode: b.booking_code || data.bookingId || '',
+            clientName: b.client_name || data.clientName || '',
+            clientPhone: b.client_phone || data.clientPhone || '',
+            destination: b.destination || data.destination || '',
+            bookingDates: b.booking_dates || b.bookingDates || '',
+            hearseName: b.hearse_name || data.hearseName || '',
+            plateNumber: b.plate_number || data.plateNumber || '',
+            branchName: b.branch_name || data.branchName || '',
+          }],
           is_read: 0,
           created_at: data.timestamp || new Date().toISOString(),
           priority: data.priority || 'high',

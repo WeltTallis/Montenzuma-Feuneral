@@ -719,13 +719,23 @@ const ConfirmBlock = styled.div`
   width: 100%;
   margin-top: 2.5rem;
   padding: 1.1rem 1.3rem 1.25rem;
+  /* No border in any state — a confirmed gate is a finished gate. */
+  border: none;
   border-radius: 4px;
   scroll-margin-top: 2rem;
 
+  /* Focus ring is a keyboard/affordance aid only, and it is suppressed once
+     the box is ticked: tapping the checkbox focuses it, which used to leave a
+     brass ring sitting around the block after the officer had confirmed. */
   &:focus-within {
-    border-color: ${COLORS.brassLight};
     box-shadow: 0 0 0 2px rgba(169, 143, 110, 0.16);
   }
+
+  ${(p) => p.$checked && css`
+    &:focus-within {
+      box-shadow: none;
+    }
+  `}
 
   @media (max-width: 1024px) {
     gap: 0.45rem;
@@ -796,7 +806,7 @@ const ConfirmBox = styled.input`
   }
 `;
 
-/* Full wording on desktop / mobile … */
+/* Full wording on desktop / phone … */
 const ConfirmText = styled.span`
   font-family: 'Fraunces', Georgia, serif;
   font-size: 0.95rem;
@@ -808,14 +818,21 @@ const ConfirmText = styled.span`
   @media (max-width: 600px) {
     font-size: 0.9rem;
   }
+
+  /* The iPad copy takes over below — hide this one so the sentence is never
+     printed twice side by side on a tablet. */
+  @media (min-width: 601px) and (max-width: 1024px) {
+    display: none;
+  }
 `;
 
-/* … and the short wording on iPad widths, where the full sentence wraps to
-   three lines and pushes the action buttons off the first screen. */
+/* … and the short wording on iPad widths only (601–1024px), where the full
+   sentence wraps to three lines and pushes the action buttons off the first
+   screen. Phones keep the full, personalised wording above. */
 const ConfirmTextShort = styled.span`
   display: none;
 
-  @media (max-width: 1024px) {
+  @media (min-width: 601px) and (max-width: 1024px) {
     display: block;
     font-family: 'Fraunces', Georgia, serif;
     font-size: 1rem;
@@ -2341,7 +2358,10 @@ const DeceasedRegistrationForm = () => {
                   <SectionTitle>I Confirm &amp; Continue</SectionTitle>
                 </SectionHead>
 
-                <ConfirmBlock $invalid={!!errors.confirm_accepted}>
+                <ConfirmBlock
+                  $invalid={!!errors.confirm_accepted}
+                  $checked={!!formData.confirm_accepted}
+                >
                   <ConfirmLabel>
                     <ConfirmBox
                       type="checkbox"

@@ -471,7 +471,18 @@ export const updateCoffin = async (req: Request, res: Response) => {
       quantity, supplier, origin, color, size, category, currency
     } = (req as any).body;
 
-    await CoffinModel.update(tenantSlug, id, {
+    // Same tenant/branch context the create + read paths use, so the UPDATE
+    // resolves the same row the inventory list showed.
+    const headerOf = (name: string): string | null => {
+      const v = (req.headers as any)[name];
+      return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
+    };
+    const tenantIdVal = (() => {
+      const v = headerOf('x-tenant-id') || (req as any).tenantId || (req as any).body?.tenant_id || null;
+      return (v != null && String(v).trim() !== '') ? String(v).trim() : null;
+    })();
+
+    const affectedRows = await CoffinModel.update(tenantSlug, id, {
       type,
       name,
       material,
@@ -483,7 +494,19 @@ export const updateCoffin = async (req: Request, res: Response) => {
       color,
       size,
       category
-    });
+    }, tenantIdVal);
+
+    // 0 rows means the id did not resolve to a coffin this tenant can write.
+    // Previously this fell through to a 200 "updated successfully", so the UI
+    // showed "Added N units" and then re-read the SAME unchanged quantity —
+    // which is exactly the "says out of stock after adding" symptom.
+    if (affectedRows === 0) {
+      logger.warn({ msg: 'Coffin update matched no row', tenantSlug, id, tenantId: tenantIdVal });
+      return res.status(404).json({
+        success: false,
+        message: 'Coffin not found for this branch — the quantity was not changed. Refresh the inventory and try again.'
+      });
+    }
 
     // Handle new images
     if ((req as any).files && (req as any).files.length > 0) {
@@ -498,9 +521,9 @@ export const updateCoffin = async (req: Request, res: Response) => {
 
     await clearCoffinCache(tenantSlug);
 
-    logger.info({ msg: 'Coffin updated', tenantSlug, id });
+    logger.info({ msg: 'Coffin updated', tenantSlug, id, affectedRows });
 
-    return res.status(200).json({ success: true, message: 'Coffin updated successfully' });
+    return res.status(200).json({ success: true, message: 'Coffin updated successfully', quantity: quantity !== undefined ? parseInt(quantity) : undefined });
   } catch (error: any) {
     logger.error({ msg: 'Update coffin error', tenantSlug, id, error: error.message });
     return res.status(500).json({ success: false, message: error.message });

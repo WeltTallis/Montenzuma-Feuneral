@@ -59,10 +59,18 @@ const calculateDailyCharges = async (deceasedId, tenantSlug) => {
   try {
     logger.info(`Calculating daily charges for deceased: ${deceasedId}, tenant: ${tenantSlug}`);
 
-    // Get deceased details
+    // Get deceased details.
+    //
+    // Days are counted admission → RELEASE, not admission → NOW. `dispatch_date`
+    // is stamped by the release sync at handover, so a body already given back
+    // stops accruing on the day it left. DATEDIFF returns NULL if either side is
+    // missing, hence the COALESCE/IFNULL guards.
     const deceasedSql = `
-      SELECT d.*, 
-        DATEDIFF(NOW(), d.date_admitted) as days_admitted,
+      SELECT d.*,
+        GREATEST(0, IFNULL(DATEDIFF(
+          COALESCE(NULLIF(d.dispatch_date, ''), CURDATE()),
+          d.date_admitted
+        ), 0)) as days_admitted,
         DATEDIFF(NOW(), d.date_of_death) as days_since_death
       FROM deceased d
       WHERE d.id = ? AND d.tenant_slug = ?
@@ -132,11 +140,24 @@ const processDailyBilling = async (tenantSlug) => {
   try {
     logger.info(`Starting daily billing for tenant: ${tenantSlug}`);
 
-    // Get all active deceased for this tenant
+    // Get all bodies still in our care for this tenant.
+    //
+    // The release sync (bodycheckout-service → bodyRelease.controller.ts) flips
+    // body_status / release_status / admission_status and stamps dispatch_date.
+    // It deliberately does NOT touch the legacy `status` column, which stays
+    // 'active' forever — so the old `status IN ('admitted','active')` filter kept
+    // selecting bodies that had already been handed back to their families, and
+    // storage went on being billed for them for every day since. Filter on the
+    // columns that actually flip, and never bill a soft-deleted row.
     const deceasedSql = `
       SELECT id, deceased_id, full_name, date_admitted, status
-      FROM deceased 
-      WHERE tenant_slug = ? AND status IN ('admitted', 'active')
+      FROM deceased
+      WHERE tenant_slug = ?
+        AND COALESCE(is_deleted, FALSE) = FALSE
+        AND COALESCE(admission_status, 'admitted') NOT IN ('released', 'buried')
+        AND COALESCE(release_status, 'pending') <> 'released'
+        AND LOWER(COALESCE(body_status, '')) NOT LIKE '%released%'
+        AND LOWER(COALESCE(body_status, '')) NOT LIKE '%buried%'
     `;
     const deceasedList = await safeQuery(deceasedSql, [tenantSlug]);
 

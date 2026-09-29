@@ -77,9 +77,19 @@ export class BillingCalculator {
   async calculateDeceasedCharges(deceasedId: number, tenantSlug: string): Promise<DeceasedCharge> {
     const connection = await mysql.createConnection(this.dbConfig);
     try {
-      // Get deceased details with charge settings
+      // Get deceased details with charge settings.
+      // `dispatch_date` is stamped at handover by the release sync, so days are
+      // counted admission → RELEASE: a body already handed back to its family
+      // stops accruing instead of being billed for every day since.
       const [deceasedRows] = await connection.execute(`
-        SELECT date_admitted, full_name, per_hour_charge, per_day_charge, charge_currency, storage_type
+        SELECT
+          date_admitted,
+          dispatch_date,
+          full_name,
+          per_hour_charge,
+          per_day_charge,
+          charge_currency,
+          storage_type
         FROM deceased
         WHERE id = ? AND tenant_slug = ?
       `, [deceasedId, tenantSlug]);
@@ -89,7 +99,11 @@ export class BillingCalculator {
       }
 
       const deceased = (deceasedRows as any[])[0];
-      const daysAdmitted = Math.max(1, Math.ceil((new Date().getTime() - new Date(deceased.date_admitted).getTime()) / (1000 * 60 * 60 * 24)));
+      const endOfStay = deceased.dispatch_date ? new Date(deceased.dispatch_date) : new Date();
+      const daysAdmitted = Math.max(
+        0,
+        Math.ceil((endOfStay.getTime() - new Date(deceased.date_admitted).getTime()) / (1000 * 60 * 60 * 24))
+      );
 
       // Priority: 1. Per-deceased charges, 2. Tenant settings, 3. Defaults
       let dailyRate = 1500; // Default daily rate
