@@ -241,18 +241,38 @@ export const createBooking = async (req: any, res: any) => {
         const {
             arrangement_name, arrangement_id, deceased_name, booked_by,
             funeral_home, date, time, notes, phone, email, branch: branchFromPayload,
-            ribbon_color, size
+            ribbon_color, size, arrangements, flower_type: flowerTypeFromBody,
+            flower_description: flowerDescriptionFromBody
         } = req.body;
 
         // Map frontend fields to backend schema
-        const flower_type = arrangement_name || 'Custom Arrangement';
-        const flower_description = notes || '';
+        // The sample the client picked is the headline flower type — fall back
+        // through flower_type so a booking always names a real arrangement
+        // instead of a bare "Custom Arrangement".
+        const flower_type = arrangement_name || flowerTypeFromBody || 'Custom Arrangement';
+        const flower_description = notes || flowerDescriptionFromBody || '';
         const customer = booked_by || 'Guest';
         const customer_phone = phone || '';
         const customer_email = email || '';
         // Branch the flowers are coming from - resolved by the UI from the
         // logged-in user's branch context; optional.
         const branch = branchFromPayload || funeral_home || 'Not specified';
+
+        // Every arrangement booked in this order (usually 1, but a client can
+        // pick several samples) is stored as JSON so the dashboard can list
+        // them as real line items instead of guessing from a single name.
+        const normalisedArrangements = (Array.isArray(arrangements) ? arrangements : [])
+            .map(item => {
+                if (typeof item === 'string') return { arrangement_id: null, name: item };
+                return {
+                    arrangement_id: item?.arrangement_id ?? null,
+                    name: item?.name || item?.title || null
+                };
+            })
+            .filter(item => item.name);
+        const arrangementsJson = normalisedArrangements.length
+            ? JSON.stringify(normalisedArrangements)
+            : null;
 
         // Validation - "Expected By" (date/time) is NOT a must
         if (!customer) {
@@ -269,13 +289,13 @@ export const createBooking = async (req: any, res: any) => {
             `INSERT INTO flower_bookings
             (booking_id, tenant_slug, tenant_id, flower_type, flower_description, customer,
              customer_phone, customer_email, deceased_name, branch,
-             arrangement_id, date, time, status, notes, created_by, ribbon_color, size)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+             arrangement_id, date, time, status, notes, created_by, ribbon_color, size, arrangements)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
             [
                 booking_id, tenantSlug, tenantId, flower_type, flower_description, customer,
                 customer_phone || '', customer_email || '', deceased_name || '', branch,
                 arrangement_id || null, date || null, time || null, notes || '', req.tenantSlug || 'system',
-                ribbon_color || null, size || null
+                ribbon_color || null, size || null, arrangementsJson
             ]
         );
 

@@ -1,7 +1,8 @@
 // FlowerSnowBookingForm.jsx
-// Flower booking side panel: two step wizard, autofilled service date and time,
-// departed name dedication, free text ribbon color, size cards, flower note chips,
-// review step, and the compact confirmation. Rosewood footer inside.
+// Flower booking side panel: two step wizard, autofilled ready-at time,
+// the arrangements the client picked in the gallery, departed name dedication,
+// free text ribbon color, size cards, review step, and the compact
+// confirmation. Rosewood footer inside.
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -102,11 +103,14 @@ svg{display:block}
 .sizecard .tick{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--rosewood);color:#FBF3EE;display:none;place-items:center}
 .sizecard.on .tick{display:grid}
 .sizecard .tick svg{width:10px;height:10px}
-/* suggestion chips */
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.chip{padding:.45rem .85rem;border:1px dashed var(--hair2);border-radius:999px;background:transparent;
-  font:600 .76rem var(--sans);color:var(--ink2);transition:.2s}
-.chip:hover{border-color:var(--rose);color:var(--rosewood);border-style:solid}
+/* arrangements picked from the gallery */
+.chosen{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.chosenRow{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--hair2);
+  border-radius:14px;background:var(--blush-xl)}
+.chosenThumb{width:52px;height:52px;flex:none;border-radius:10px;object-fit:cover;background:var(--cream)}
+.chosenInfo{display:flex;flex-direction:column;gap:3px;min-width:0}
+.chosenInfo b{font:600 1.02rem/1.25 var(--serif);color:var(--rosewood)}
+.chosenInfo span{font:600 .7rem/1.35 var(--sans);letter-spacing:.04em;color:var(--ink3)}
 /* errors */
 .err{display:none;font:700 .76rem var(--sans);color:var(--brick);margin-top:6px}
 .field.bad input,.field.bad textarea{border-color:var(--brick)}
@@ -218,18 +222,52 @@ const FbSymbols = () => (
 
 /* helpers */
 
-const BLANK = { date: '', time: '', dep: '', ribbon: '', size: '', notes: '', name: '', phone: '', email: '' }
+const BLANK = { time: '', dep: '', ribbon: '', size: '', notes: '', name: '', phone: '' }
 const SIZES = [
   ['Standard', 'Classic tribute'],
   ['Large', 'Full & abundant'],
   ['Grand', 'Statement piece'],
 ]
-const NOTE_CHIPS = ['White lilies', 'Blush roses', 'Seasonal wildflowers', 'Extra greenery', 'No strong fragrance']
 
-const todayStr = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+/* Normalise a JSON/array sample field (types, colors, sizes…) into strings —
+   the API hands these back either as arrays or as JSON text. */
+const asTextList = (v) => {
+  if (Array.isArray(v)) return v.filter(Boolean).map(String)
+  if (typeof v === 'string' && v.trim()) {
+    try {
+      const p = JSON.parse(v)
+      return Array.isArray(p) ? p.filter(Boolean).map(String) : []
+    } catch {
+      return v.split(',').map(s => s.trim()).filter(Boolean)
+    }
+  }
+  return []
 }
+
+/* A picked sample → the shape the booking form + API need. */
+const normaliseArrangement = (a) => {
+  /* Sample images arrive as [{ url, is_primary, order }] — pick the primary. */
+  const list = Array.isArray(a?.images) ? a.images : []
+  const sorted = [...list].sort((x, y) => {
+    const p = Number(y?.is_primary) - Number(x?.is_primary)
+    if (p !== 0) return p
+    return (Number(y?.order ?? 0) || 0) - (Number(x?.order ?? 0) || 0)
+  })
+  const firstUrl = sorted.find(img => typeof img?.url === 'string' && img.url.trim())?.url
+    || sorted[0]?.url
+    || (typeof a?.image === 'string' ? a.image : '')
+    || (typeof a?.img === 'string' ? a.img : '')
+    || '';
+  return {
+    id: a?.arrangement_id || a?.id || '',
+    title: a?.title || a?.name || 'Arrangement',
+    image: firstUrl,
+    types: asTextList(a?.types ?? a?.type),
+    colors: asTextList(a?.colors),
+    sizes: asTextList(a?.sizes),
+  }
+}
+
 const nowTimeStr = () => {
   const d = new Date()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -244,7 +282,7 @@ const fmtTime = (t) => {
 
 /* main component */
 
-export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
+export default function FlowerSnowBookingForm({ open, onBooked, onClose, selectedArrangements = [] }) {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)          // 1 arrangement, 2 details, 3 confirmation
   const [form, setForm] = useState(BLANK)
@@ -252,12 +290,16 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
   const [sending, setSending] = useState(false)
   const [confirm, setConfirm] = useState(null)
 
-  const minDate = todayStr()
+  /* The arrangements the client picked in the gallery. Normalised once so the
+     whole flow (display → review → POST) speaks the same shape. */
+  const chosen = (Array.isArray(selectedArrangements) ? selectedArrangements : [])
+    .map(normaliseArrangement)
+    .filter(a => a.id || a.title)
 
-  /* autofill date and time whenever the panel opens */
+  /* autofill the time whenever the panel opens */
   useEffect(() => {
     if (open) {
-      setForm(f => ({ ...f, date: todayStr(), time: nowTimeStr() }))
+      setForm(f => ({ ...f, time: nowTimeStr() }))
     }
   }, [open])
 
@@ -291,20 +333,11 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
     setForm(f => ({ ...f, size: f.size === s ? '' : s }))
   }
 
-  const addChip = (text) => {
-    setForm(f => {
-      const cur = f.notes.trim()
-      if (cur.toLowerCase().includes(text.toLowerCase())) return f
-      return { ...f, notes: (cur ? cur.replace(/,\s*$/, '') + ', ' : '') + text }
-    })
-  }
-
   const dep = form.dep.trim()
 
-  /* step 1 to step 2: date and time required */
+  /* step 1 to step 2: the service time is required */
   const goDetails = () => {
     const b = {}
-    if (!form.date || form.date < minDate) b.date = true
     if (!form.time) b.time = true
     setBad(prev => ({ ...prev, ...b }))
     if (Object.keys(b).length) return
@@ -315,7 +348,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
     const b = {}
     if (form.name.trim().length < 2) b.name = true
     if (!/^[+\d][\d\s().-]{6,}$/.test(form.phone.trim())) b.phone = true
-    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) b.email = true
     setBad(prev => ({ ...prev, ...b }))
     if (Object.keys(b).length) {
       const first = document.querySelector('.fbp-panel .field.bad input, .fbp-panel .field.bad textarea')
@@ -324,25 +356,39 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
     }
     setSending(true)
     try {
+      /* Every picked arrangement travels with the booking. The FIRST one is the
+         headline (flower_type) and `arrangement_id` links the row back to the
+         sample so the dashboard shows its real photos/colours — every picked
+         name is also stamped in [TYPES:a|b] so nothing is ever lost. */
+      const clean = s => String(s || '').replace(/\|/g, '/').replace(/[[\]]/g, '').trim()
+      const names = chosen.map(c => c.title).filter(Boolean)
+      const headline = names[0] || 'Custom Arrangement'
+      const notesParts = [
+        names.length ? `[TYPES:${names.map(clean).join('|')}]` : '',
+        form.ribbon.trim() ? `Ribbon: ${form.ribbon.trim()}` : '',
+        form.size ? `Size: ${form.size}` : '',
+        form.notes.trim() || '',
+      ].filter(Boolean).join(' ')
+
       await api.post('/florist/bookings', {
-        date: form.date || null,
+        arrangement_id: chosen[0]?.id || null,
+        arrangement_name: headline.slice(0, 255),
+        flower_type: headline.slice(0, 255),
+        flower_description: form.notes.trim() || null,
+        arrangements: chosen.map(c => ({ arrangement_id: c.id || null, name: c.title })),
         time: form.time || null,
         deceased_name: dep || null,
         ribbon_color: form.ribbon.trim() || null,
         size: form.size || null,
         special_instructions: form.notes.trim() || null,
+        notes: notesParts || null,
         booked_by: form.name.trim() || null,
         phone: form.phone.trim() || null,
-        email: form.email.trim() || null,
       })
       const ref = 'MH-' + Math.random().toString(36).slice(2, 6).toUpperCase()
-      const dateStr = form.date
-        ? new Date(form.date + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
-        + (form.time ? ' · ' + fmtTime(form.time) : '')
-        : ''
       setConfirm({
         ref,
-        dateStr,
+        whenStr: form.time ? fmtTime(form.time) : '',
         mem: dep ? `Flowers for ${dep}, arranged with care.` : "We'll confirm by phone within two hours.",
       })
       setStep(3)
@@ -354,7 +400,7 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
   }
 
   const resetAll = () => {
-    setForm({ ...BLANK, date: todayStr(), time: nowTimeStr() })
+    setForm({ ...BLANK, time: nowTimeStr() })
     setBad({})
     setConfirm(null)
     setSending(false)
@@ -364,13 +410,11 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
 
   /* review rows for step 2 */
   const reviewRows = (() => {
-    const dateStr = form.date
-      ? new Date(form.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-      : ''
-    const when = [dateStr, form.time ? fmtTime(form.time) : ''].filter(Boolean).join(' · ')
+    const names = chosen.map(c => c.title).filter(Boolean)
     return [
-      ['When', when],
+      ['Arrangement', names.join(' · ')],
       ['Departed', dep],
+      ['Ready at', form.time ? fmtTime(form.time) : ''],
       ['Ribbon color', form.ribbon.trim()],
       ['Size', form.size],
       ['Notes', form.notes.trim()],
@@ -425,19 +469,28 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
                   {step === 1 && (
                     <section className="pane active">
                       <div className="fs-title"><svg className="b"><use href="#bloom" /></svg>Service</div>
-                      <div className="frow">
-                        <div className={'field' + (bad.date ? ' bad' : '')}>
-                          <label htmlFor="fDate">Service date</label>
-                          <input type="date" id="fDate" min={minDate} {...set('date')} />
-                          <p className="err">Required</p>
+
+                      {/* The arrangements the client picked in the gallery */}
+                      {chosen.length > 0 && (
+                        <div className="chosen" role="list">
+                          {chosen.map(c => (
+                            <div className="chosenRow" key={c.id || c.title} role="listitem">
+                              {c.image && <img className="chosenThumb" src={c.image} alt={c.title} />}
+                              <div className="chosenInfo">
+                                <b>{c.title}</b>
+                                <span>{[c.types[0], c.colors.slice(0, 2).join(', '), c.sizes[0]].filter(Boolean).join(' · ') || 'Custom arrangement'}</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className={'field' + (bad.time ? ' bad' : '')}>
-                          <label htmlFor="fTime">Service time</label>
-                          <input type="time" id="fTime" {...set('time')} />
-                          <p className="err">Required</p>
-                        </div>
+                      )}
+
+                      <div className={'field' + (bad.time ? ' bad' : '')}>
+                        <label htmlFor="fTime">Ready at</label>
+                        <input type="time" id="fTime" {...set('time')} />
+                        <p className="err">Required</p>
                       </div>
-                      <p className="autofilled">Set to today, just now. Adjust if the service is later.</p>
+                      <p className="autofilled">Set to now. Adjust if the flowers are needed later.</p>
 
                       <div className="field">
                         <label htmlFor="fDep">Departed name <span className="opt">(optional)</span></label>
@@ -475,11 +528,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
                           <textarea id="fNotes" maxLength={300} placeholder="Favourite blooms, colours..." {...set('notes')} />
                           <span className="counter">{form.notes.length} / 300</span>
                         </div>
-                        <div className="chips">
-                          {NOTE_CHIPS.map(c => (
-                            <button key={c} type="button" className="chip" onClick={() => addChip(c)}>{c}</button>
-                          ))}
-                        </div>
                       </div>
 
                       <div className="btnrow">
@@ -513,11 +561,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
                         <input type="tel" id="fPhone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={setPhone} />
                         <p className="err">Enter a valid phone number</p>
                       </div>
-                      <div className={'field' + (bad.email ? ' bad' : '')}>
-                        <label htmlFor="fEmail">Email</label>
-                        <input type="email" id="fEmail" autoComplete="email" inputMode="email" {...set('email')} />
-                        <p className="err">Enter a valid email address</p>
-                      </div>
 
                       <div className="btnrow">
                         <button type="button" className="btn-back" onClick={() => setStep(1)}>Back</button>
@@ -539,7 +582,7 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose }) {
                         <p className="csub">{confirm.mem}</p>
                         <div className="cref">
                           {confirm.ref && <span>Ref {confirm.ref}</span>}
-                          {confirm.dateStr && <span>{confirm.dateStr}</span>}
+                          {confirm.whenStr && <span>Ready at {confirm.whenStr}</span>}
                         </div>
                         <div>
                           <button type="button" className="btn-ghost" style={{ marginTop: 0 }} onClick={() => {

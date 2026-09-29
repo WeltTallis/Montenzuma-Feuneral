@@ -1,5 +1,5 @@
 
-import { Flower2, MapPin, User, Calendar, Clock, ChevronLeft, ChevronRight, X, Check, Truck, Home, Package, AlertTriangle } from '../../utils/icons/icons';
+import { Flower2, MapPin, User, Calendar, X, Check, Home, Package } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -65,22 +65,6 @@ const pad = n => String(n).padStart(2, '0');
 const fmtDateStr = d => toDateKey(d) || '';
 const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d; };
 const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
-const fmtTime = s => {
-  if (!s) return '';
-  const raw = String(s).trim();
-  // Raw HH:mm / HH:mm:ss strings (as stored in TIME columns) can't be parsed
-  // by new Date() — handle them directly to avoid "Invalid Date".
-  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(raw);
-  if (m) {
-    let h = parseInt(m[1], 10);
-    const ap = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    return `${h}:${m[2]} ${ap}`;
-  }
-  const d = new Date(raw);
-  return isNaN(d) ? '' : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-};
-const fmtDateTime = s => s ? new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
 const fmtDateOnly = s => s ? new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 // Normalise a JSON/array field (types, colors, sizes…) into a plain array —
 // older rows may store them as JSON strings.
@@ -261,7 +245,7 @@ const FlowerBookingsNew = () => {
     remarks: '',            // special remarks / instructions
     deceased_name: '',
     booked_by: getLocalUserName(),
-    date: fmtDateStr(new Date()),   // Expected By — required so calendar tracks every order
+    date: fmtDateStr(new Date()),   // the day the order was placed — calendar tracks it
     time: '10:00',
     priority: 'Normal'
   });
@@ -273,6 +257,9 @@ const FlowerBookingsNew = () => {
   const [creating, setCreating] = useState(false);
   const creatingRef = useRef(false);
   const [arrangements, setArrangements] = useState([]);
+  // Which sample is being deleted right now (null = none) — keeps the button
+  // disabled + "Deleting…" so a slow request can't be fired twice.
+  const [deletingId, setDeletingId] = useState(null);
   // Guards against double-click / double-submit creating duplicate orders
   const [placingOrder, setPlacingOrder] = useState(false);
   const placingRef = useRef(false);
@@ -398,7 +385,12 @@ const FlowerBookingsNew = () => {
   // `delivery_date`, sometimes as a full DATETIME) — always normalise to a
   // clean YYYY-MM-DD key so list, cards and calendar agree. The [WHEN:…]
   // token stamped at booking time wins over anything the server shifted.
-  const bookingDateKey = (b) => parseWhen(b).date || toDateOnly(b?.delivery_date || b?.date);
+  // There is NO separate "expected by" day any more: what a booking shows is
+  // the day it was BOOKED, so rows with no date fall back to created_at.
+  const bookingDateKey = (b) =>
+    parseWhen(b).date
+    || toDateOnly(b?.created_at)
+    || toDateOnly(b?.delivery_date || b?.date);
 
   const getEventsForDate = useCallback((dateStr) => {
     // Full Calendar: an order appears under the day it was BOOKED (created),
@@ -470,7 +462,7 @@ const FlowerBookingsNew = () => {
     // Re-entry guard — a double-click must NEVER place the order twice
     if (placingRef.current) return;
     if (!newBooking.deceased_name?.trim()) return showToast('Please enter the deceased name', 'error');
-    if (!newBooking.date || !newBooking.time) return showToast('Expected By date and time are required', 'error');
+    if (!newBooking.time) return showToast('Ready-at time is required', 'error');
     placingRef.current = true;
     setPlacingOrder(true);
 
@@ -487,11 +479,12 @@ const FlowerBookingsNew = () => {
       // ONE row = ONE order containing ALL its flower types. The full list is
       // stored as JSON in the `arrangements` column; ribbon gets its dedicated
       const clean = s => String(s || '').replace(/\|/g, '/').replace(/[[\]]/g, '').trim();
-      // [TYPES:…] keeps every flower name · [WHEN:…] pins the exact chosen
-      // date+time so server timezone handling can never shift it a day.
+      // [TYPES:…] keeps every flower name · [WHEN:…] pins the exact booked day
+      // so the calendar and list always agree on one date.
+      const bookedOn = newBooking.date || fmtDateStr(new Date());
       const notesValue = [
         `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
-        `[WHEN:${newBooking.date} ${newBooking.time}]`,
+        `[WHEN:${bookedOn} ${newBooking.time}]`,
         newBooking.size?.trim() ? `Size: ${newBooking.size.trim()}` : '',
         newBooking.priority?.trim() ? `Priority: ${newBooking.priority.trim()}` : '',
         newBooking.remarks?.trim() || ''
@@ -508,7 +501,7 @@ const FlowerBookingsNew = () => {
         booked_by: newBooking.booked_by || getLocalUserName() || 'System',
         branch: resolveBranchName() || undefined,
         funeral_home: resolveBranchName() || undefined,
-        date: newBooking.date,
+        date: bookedOn,
         time: newBooking.time,
         priority: newBooking.priority,
         notes: notesValue.trim() || null
@@ -651,6 +644,27 @@ const FlowerBookingsNew = () => {
     }
   };
 
+  const deleteArrangement = useCallback(async (arrangement) => {
+    const id = arrangement?.arrangement_id || arrangement?.id;
+    if (!id) return showToast('This sample has no id and cannot be deleted', 'error');
+    if (!window.confirm(`Delete "${arrangement.title || 'this sample'}"? This cannot be undone.`)) return;
+
+    setDeletingId(String(id));
+    try {
+      await api.delete(`/florist/flower-samples/${encodeURIComponent(id)}`);
+      showToast('Sample deleted');
+      await Promise.all([loadArrangements(), loadBookings()]);
+    } catch (err) {
+      console.error('[FlowerBookings] Delete sample FAILED:', err?.response?.status, err?.response?.data || err.message);
+      showToast(
+        err?.response?.data?.message || err?.friendlyMessage || 'Failed to delete sample',
+        'error'
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }, [showToast, loadArrangements, loadBookings]);
+
   const renderToolbar = () => {
     const d = calDate;
     return (
@@ -697,8 +711,8 @@ const FlowerBookingsNew = () => {
   };
 
   const renderList = () => {
-    // Group orders by their "Expected By" date (normalised key). Orders without
-    // a deadline land in the "Awaiting Date" group at the end.
+    // Group orders by the day they were BOOKED (normalised key). Rows with no
+    // resolvable date land in the "Undated" group at the end.
     const sorted = [...bookings].sort((a, b) => {
       const da = a.date ? new Date(a.date).getTime() : Infinity;
       const db = b.date ? new Date(b.date).getTime() : Infinity;
@@ -769,7 +783,7 @@ const FlowerBookingsNew = () => {
                 <Calendar size={14} />
                 {dateObj
                   ? dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-                  : 'No Expected Date Yet'}
+                  : 'Undated'}
               </div>
               {dayBookings.map(bk => renderBookingCard(bk))}
             </div>
@@ -906,14 +920,6 @@ const FlowerBookingsNew = () => {
     };
     const statusCfg = STATUS_FLOW.indexOf(normStatus(b.status)) >= 0 ? { label: STATUS_LABELS[normStatus(b.status)] || b.status, color: '#2F4F3E', bg: '#f0f7f4' } : { label: b.status, color: '#64748b', bg: '#f1f5f9' };
 
-    // ── Expected By deadline ── (the [WHEN:…] stamp beats server-side shifts)
-    const when = parseWhen(b);
-    const dateKey = when.date || bookingDateKey(b);
-    const timeVal = when.time || toTimeOnly(b.time || b.delivery_time);
-    const expectedTs = dateKey ? new Date(`${dateKey}T${timeVal || '00:00'}:00`).getTime() : null;
-    const isDone = b.status === 'completed';
-    const overdue = expectedTs && !isDone && expectedTs < Date.now();
-
     // ── Card background by status ──
     // Every order status gets its own distinct tint so the list can be read
     // at a glance without opening a single card.
@@ -956,12 +962,8 @@ const FlowerBookingsNew = () => {
           </div>
         </div>
         <div className="flx-card-right" style={styles.bookingRight}>
-          <div className="flx-expected" style={{ ...styles.expectedBy, ...(overdue ? { color: '#B91C1C' } : null) }}>
-            <Clock size={11} /> {dateKey
-              ? `Expected by ${fmtDateOnly(dateKey)}${timeVal ? `, ${fmtTime(timeVal)}` : ''}`
-              : 'No deadline set'}
-            {overdue ? ' · OVERDUE' : ''}
-          </div>
+          {/* No "Expected By" line — the value it showed was the day the order
+              was BOOKED, which the feed header already groups under. */}
           <div style={styles.pillsRow}>
             <span style={{ ...styles.priorityPill, background: b.priority === 'High' ? '#FEE2E2' : b.priority === 'Low' ? '#DCFCE7' : '#F1F5F9', color: b.priority === 'High' ? '#B91C1C' : b.priority === 'Low' ? '#166534' : '#475569' }}>
               {b.priority}
@@ -1117,27 +1119,28 @@ const FlowerBookingsNew = () => {
                     {arrangement.title}
                   </div>
                   <div style={{ fontSize: '13px', color: '#9C9389', marginBottom: '12px' }}>
-                    {arrangement.types?.[0] || 'Custom'}
+                    {asList(arrangement.types).join(', ') || 'Custom'}
                   </div>
                 </div>
+                {/* No "Book This" here — clients book the samples themselves
+                    from the public gallery; staff only manage them. */}
                 <button
-                  onClick={() => {
-                    // Booking is always free-text — open the blank order form
-                    setView('new');
-                  }}
+                  onClick={() => deleteArrangement(arrangement)}
+                  disabled={deletingId === String(arrangement.arrangement_id)}
+                  title="Delete this sample"
                   style={{
                     width: '100%',
                     padding: '10px',
                     borderRadius: '12px',
-                    background: '#2F4F3E',
+                    background: deletingId === String(arrangement.arrangement_id) ? '#9C9389' : '#B91C1C',
                     color: '#fff',
                     border: 'none',
                     fontWeight: 600,
                     fontSize: '13px',
-                    cursor: 'pointer'
+                    cursor: deletingId === String(arrangement.arrangement_id) ? 'wait' : 'pointer'
                   }}
                 >
-                  Book This
+                  {deletingId === String(arrangement.arrangement_id) ? 'Deleting…' : 'Delete Sample'}
                 </button>
               </div>
             ))}
@@ -1217,15 +1220,12 @@ const FlowerBookingsNew = () => {
             required
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <label style={lbl}>Expected By Date *</label>
-              <input type="date" style={inp} value={newBooking.date} onChange={e => setNewBooking(prev => ({ ...prev, date: e.target.value }))} required />
-            </div>
-            <div>
-              <label style={lbl}>Ready At Time *</label>
-              <input type="time" style={inp} value={newBooking.time} onChange={e => setNewBooking(prev => ({ ...prev, time: e.target.value }))} required />
-            </div>
+          {/* No "Expected By" date — an order is filed under the day it was
+              booked, so the picker only ever showed the booked date back to
+              the user. Only the ready-at time is asked for. */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={lbl}>Ready At Time *</label>
+            <input type="time" style={inp} value={newBooking.time} onChange={e => setNewBooking(prev => ({ ...prev, time: e.target.value }))} required />
           </div>
 
           <label style={{ ...lbl, marginTop: '6px' }}>Booked By</label>
@@ -1301,8 +1301,6 @@ const FlowerBookingsNew = () => {
   const renderDetail = () => {
     const b = bookings.find(x => x.id === activeBookingId);
     if (!b) return '';
-    const dKey = parseWhen(b).date || bookingDateKey(b);
-    const tStr = parseWhen(b).time || toTimeOnly(b.time || b.delivery_time);
     const lineItems = parseLineItems(b);
     // Exact match only — a custom-typed type must NEVER borrow another
     // arrangement's name/photos. The booking's own fields are the truth.
@@ -1468,13 +1466,6 @@ const FlowerBookingsNew = () => {
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><Calendar size={22} /></div>
-                <div style={styles.detailItemInfo}>
-                  <div style={styles.detailLabel}>Expected By</div>
-                  <div style={styles.detailValue}>{dKey ? `${fmtDateOnly(dKey)}${tStr ? ' · ' + fmtTime(tStr) : ''}` : 'Awaiting scheduling'}</div>
-                </div>
-              </div>
-              <div style={styles.detailItem}>
                 <div style={styles.detailItemIcon}><MapPin size={22} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Flowers Coming From</div>
@@ -1580,7 +1571,6 @@ const FlowerBookingsNew = () => {
           .flx-actions > button { flex: 1 1 auto; min-width: 0; padding-left: 6px !important; padding-right: 6px !important; font-size: 10px !important; }
           .flx-content { padding: 18px 12px !important; }
           .flx-card-right { align-items: flex-start !important; }
-          .flx-expected { white-space: normal !important; }
           .fb-booking-name { white-space: normal !important; }
           .fb-booking-meta { flex-direction: column !important; }
 
@@ -2132,15 +2122,6 @@ const styles = {
     alignItems: 'center',
     gap: '6px',
     minWidth: 0,
-  },
-  expectedBy: {
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#574F47',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '5px',
-    whiteSpace: 'nowrap',
   },
   bookingRight: {
     display: 'flex',

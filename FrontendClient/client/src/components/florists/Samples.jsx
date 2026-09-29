@@ -2,7 +2,7 @@
 // Haute floral gallery: carousel + stories + detailed expanded view + snow booking form
 // Connects to real flower-samples API and flower-bookings flow
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import api from "../../api/axios";
 import { getTenantId } from "../../utils/globalAuth";
 import { Flower2 } from "../../utils/icons/icons";
@@ -252,6 +252,15 @@ export default function Samples() {
     portrait: pickPrimaryImage(a),
   }));
 
+  /* The full sample records behind the current cart selection — these ride into
+     the booking form so the booking keeps the real arrangement (id, photos,
+     types/colors) instead of degrading to "Custom Arrangement". */
+  const selectedArrangements = useMemo(() => {
+    if (!selectedIds.length) return [];
+    const picked = new Set(selectedIds.map(String));
+    return arrangements.filter(a => picked.has(String(a.arrangement_id || a.id)));
+  }, [arrangements, selectedIds]);
+
   const openBookingFlow = useCallback(() => {
     setShowBooking(true);
   }, []);
@@ -396,7 +405,8 @@ export default function Samples() {
           {showBooking && (
             <FlowerSnowBookingForm
               open={showBooking}
-              onBooked={() => setShowBooking(false)}
+              selectedArrangements={selectedArrangements}
+              onBooked={() => { setShowBooking(false); setSelectedIds([]); }}
               onClose={() => setShowBooking(false)}
             />
           )}

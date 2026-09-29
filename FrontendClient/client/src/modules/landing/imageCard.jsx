@@ -96,9 +96,15 @@ const Card = styled.div`
   overflow: hidden;
   position: relative;
   cursor: pointer;
-  background-image: url(${p => p.$img});
+  /* Per-card background, with '/bg.webp' as the default. The previous four
+     hotlinked stock photos (a Pinterest pin, a UK video cover, an Unsplash
+     office) clashed badly and broke whenever the host was slow or
+     hotlink-protected, so every image here is bundled locally. Cards without
+     an explicit 'img' fall back to the shared brand background. */
+  background-image: url(${p => p.$img || '/bg.webp'});
   background-size: cover;
   background-position: center;
+  background-color: #0b0b0b;
   border: 1px solid rgba(255,255,255,0.14);
   
   opacity: 0;
@@ -192,28 +198,26 @@ const CARDS = [
     id: 'body-intake',
     sub: 'Admission & Registration',
     title: 'Body Intake',
-    img: 'https://i.pinimg.com/736x/4d/97/3d/4d973d1e3be9a1fb3a504d0218854797.jpg', 
     preview: '/preview/body-intake',
   },
   {
     id: 'release-form',
     sub: 'Authorization & Transfer',
     title: 'Body Release',
-    img: 'https://coleman-milne.co.uk/wp-content/uploads/2022/12/Etive-Video-Cover.png', 
     preview: '/preview/release-form',
   },
   {
     id: 'reception',
     sub: 'Front Desk & Walk-ins',
     title: 'Reception Portal',
-    img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=900&fit=crop&auto=format', 
+    img: '/hearsemodule.jpg',
     preview: '/preview/reception-portal',
   },
   {
     id: 'floral',
     sub: 'Service Florals & Orders',
     title: 'Floral Arrangement',
-    img: 'https://i.pinimg.com/1200x/6f/59/16/6f5916baed8c05713704a10a015ac372.jpg', // New Floral Image
+    img: '/sales-export-img.jpg',
     preview: '/preview/florals',
   },
 ];

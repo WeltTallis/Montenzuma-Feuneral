@@ -25,7 +25,6 @@ const FlowerOrderDetail = () => {
             event_type: 'Wedding',
             customer: 'John Doe',
             customer_phone: '+254 712 345 678',
-            customer_email: 'john@example.com',
             delivery_date: '2024-12-25',
             delivery_time: '14:00',
             delivery_address: '123 Main Street, Nairobi',
@@ -125,17 +124,6 @@ const FlowerOrderDetail = () => {
                             id="customerPhone"
                             value={booking.customer_phone}
                             onChange={(e) => setBooking({ ...booking, customer_phone: e.target.value })}
-                            required
-                        />
-                    </div>
-
-                    <div className="input-box">
-                        <label htmlFor="customerEmail">Email *</label>
-                        <input
-                            type="email"
-                            id="customerEmail"
-                            value={booking.customer_email}
-                            onChange={(e) => setBooking({ ...booking, customer_email: e.target.value })}
                             required
                         />
                     </div>
