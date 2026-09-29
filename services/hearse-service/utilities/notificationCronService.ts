@@ -300,9 +300,12 @@ export class NotificationCronService {
                 // Group bookings by tenant so notifications go to the correct tenant room
                 const tenantGroups = this.groupBookingsByTenant(bookings);
                 for (const [tenantSlug, tenantBookings] of tenantGroups) {
-                    // Group by branch
+                    // Group by branch. Prefer the RESOLVED branch name that
+                    // decorateBranchNames() attached (Nairobi / Thika / …):
+                    // `branch_code` is a generic literal like "MAIN" on most rows,
+                    // which lumped every branch into one meaningless bucket.
                     const branchGroups = tenantBookings.reduce((acc: Record<string, any[]>, booking: any) => {
-                        const branchKey = booking.branch_code || 'general';
+                        const branchKey = booking.branch_name || booking.branch_code || 'general';
                         if (!acc[branchKey]) {
                             acc[branchKey] = [];
                         }
