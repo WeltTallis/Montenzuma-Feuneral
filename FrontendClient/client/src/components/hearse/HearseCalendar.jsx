@@ -708,22 +708,38 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     api.gotoDate(month);
   }, [month]);
 
-  // ── Report the month the user is LOOKING at, not the grid's leading cell ──
-  // FullCalendar's `datesSet.arg.start` is the first VISIBLE cell of the grid,
-  // which in dayGridMonth is the Sunday on/before the 1st — often in the
-  // PREVIOUS month. Feeding it back as the "current month" made the grid walk
-  // backwards one month at a time (Sep 2026 -> Aug -> Jul -> ... -> Mar 2026,
-  // where Mar 1 is a Sunday and the drift finally stopped). That is why the
-  // calendar jumped to March.
+  // ── Report the month the user is LOOKING at, not a range's leading edge ───
+  // Two different ranges have to be told apart here:
   //
-  // `view.currentStart` / `view.currentEnd` are the bounds of the current VIEW
-  // period itself, so they stay inside the displayed month. We take the month
-  // from currentStart, with currentEnd as the fallback for views whose period
-  // does not start inside the visible month.
+  //   * `arg.start` — the first VISIBLE cell. In dayGridMonth that is the
+  //     Sunday on/before the 1st, usually in the PREVIOUS month. Reporting it
+  //     made the grid walk backwards one month at a time (Sep 2026 -> Aug ->
+  //     Jul -> ... -> Mar 2026, where Mar 1 is a Sunday and the drift finally
+  //     stopped). That is why the calendar used to jump to March.
+  //
+  //   * `view.currentStart` — the "current" range, trimmed by FullCalendar to
+  //     the view's granularity. For `currentRangeUnit === 'month'` it is trimmed
+  //     to the 1st, so it WAS correct in month view. But the week views use
+  //     `currentRangeUnit === 'week'`, so `currentStart` is the Sunday/Monday
+  //     the week BEGINS on — and a week that opens in August while displaying
+  //     September (Aug 30 – Sep 5) reports August. The parent then wrote
+  //     ?month=August and the month-sync effect called gotoDate(Aug 1), dragging
+  //     the calendar backwards the instant you pressed "Week". This is why the
+  //     URL flipped to the wrong month when switching to week view.
+  //
+  // The cursor date (`api.getDate()`) is the one value guaranteed to lie inside
+  // the visible range for EVERY view: month, week and day ranges are all derived
+  // from it, and prev/next/today/gotoDate move it. It therefore always names the
+  // month the user is actually focused on. The view ranges stay as fallbacks for
+  // the first render, before the ref is populated (initialView is dayGridMonth,
+  // where currentStart is already the 1st).
   const handleDatesSet = useCallback((arg) => {
     if (!onMonthChange) return;
     const view = arg?.view || {};
-    const d = view.currentStart ? new Date(view.currentStart)
+    const api = calendarRef.current?.getApi?.();
+    const cursor = api && typeof api.getDate === 'function' ? api.getDate() : null;
+    const d = cursor ? new Date(cursor)
+            : view.currentStart ? new Date(view.currentStart)
             : view.currentEnd ? new Date(view.currentEnd)
             : new Date();
     onMonthChange(d.getMonth(), d.getFullYear());
