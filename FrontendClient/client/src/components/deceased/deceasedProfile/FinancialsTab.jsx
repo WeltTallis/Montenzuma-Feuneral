@@ -1,397 +1,481 @@
-
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { todayKey } from '../../../utils/dates/parseDates';
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { C, formatDate } from './theme';
-import env from '../../../utils/config/env';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { showToast } from '../../../utils/toast';
+import { getTenantBrandingFromStorage } from '../../../utils/tenantResolver/tenantBranding';
+import { useTenantStore } from '../../../modules/seo/useTenantStore';
+import env from '../../../utils/config/env';
 import axios from 'axios';
 
-const SectionHead = styled.div`
-  font-size: 12px; 
-  font-weight: 700; 
-  letter-spacing: 0.1em;
-  text-transform: uppercase; 
-  margin-bottom: 16px; 
-  display: flex; 
-  align-items: center; 
-  gap: 8px;
-  
-  width: fit-content;
-  padding-bottom: 4px;
-  border-bottom: 2px solid ${C.black};
-  color: ${C.black};
-  
-  span { 
-    opacity: 0.5; 
-    font-size: 10px; 
+// ── Icons ───────────────────────────────────────────────────────────────────
+const Ico = ({ d, w = 15, sw = 1.8, style }) => (
+  <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}>
+    <path d={d} />
+  </svg>
+);
+const IcoCard = (p) => <Ico {...p} d="M2 5h20v14H2z M2 10h20" />;
+const IcoReceipt = (p) => <Ico {...p} d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21V3z M9 8h6 M9 12h6" />;
+const IcoPrinter = (p) => <Ico {...p} d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z" />;
+const IcoPlus = (p) => <Ico {...p} d="M12 5v14M5 12h14" sw={2.4} />;
+const IcoClose = (p) => <Ico {...p} d="M18 6 6 18M6 6l12 12" />;
+const IcoTrash = (p) => <Ico {...p} d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />;
+const IcoList = (p) => <Ico {...p} d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />;
+const IcoTrend = (p) => <Ico {...p} d="M12 3v18M5 8l7-5 7 5" />;
+const IcoCheck = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5" /></svg>
+);
+
+// ── Design system, scoped to .fx-root ──────────────────────────────────────
+const FX_CSS = `
+.fx-root{
+  --fx-bg:#f4f3f0; --fx-paper:#fdfcf9;
+  --fx-ink:#1a1a1a; --fx-ink-soft:#4a4a4a; --fx-ink-faint:#8a8a8a;
+  --fx-line:#e2dfd8; --fx-line-soft:#ecebe6;
+  --fx-accent:#8a6d3b; --fx-accent-dark:#6b522a;
+  --fx-green:#35774b; --fx-green-bg:#e9f4ec; --fx-green-grad:#ddefe3;
+  --fx-amber:#a3731f; --fx-amber-bg:#faf3e2; --fx-amber-grad:#f5ead0;
+  --fx-blue:#3d6a9e;  --fx-blue-bg:#e8eff8;  --fx-blue-grad:#dbe8f5;
+  --fx-brass:#8a6d3b; --fx-brass-bg:#f3ecdd; --fx-brass-grad:#ecdfc6;
+  --fx-red:#b0503f;   --fx-red-bg:#f9ece9;
+  --fx-radius:14px;
+  --fx-shadow-sm:0 1px 2px rgba(26,26,26,.05);
+  --fx-shadow-md:0 2px 4px rgba(26,26,26,.05), 0 14px 34px rgba(26,26,26,.08);
+  --fx-shadow-paper:0 20px 50px rgba(0,0,0,.07), 0 6px 12px rgba(0,0,0,.03);
+  --fx-serif:'Cormorant Garamond', Georgia, serif;
+  --fx-sans:'Inter', system-ui, sans-serif;
+  color:var(--fx-ink); font-family:var(--fx-sans); line-height:1.55;
+  -webkit-font-smoothing:antialiased; overflow-wrap:anywhere;
+}
+.fx-root *, .fx-root *::before, .fx-root *::after{ box-sizing:border-box; }
+.fx-root img{ max-width:100%; display:block; }
+.fx-root button{ cursor:pointer; background:none; border:0; font:inherit; color:inherit; }
+.fx-root input, .fx-root select{ font:inherit; color:inherit; }
+.fx-root :focus-visible{ outline:2px solid var(--fx-accent); outline-offset:2px; border-radius:4px; }
+.fx-root input[type=number]{ appearance:textfield; -moz-appearance:textfield; }
+.fx-root input[type=number]::-webkit-outer-spin-button,
+.fx-root input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+.fx-hidden{ display:none !important; }
+
+/* Buttons */
+.fx-btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border-radius:10px; font-size:.85rem; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:all .18s ease; }
+.fx-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none !important; }
+.fx-btn-primary{ background:var(--fx-ink); color:#fff; border-color:var(--fx-ink); box-shadow:var(--fx-shadow-sm); }
+.fx-btn-primary:hover:not(:disabled){ background:#333; transform:translateY(-1px); box-shadow:var(--fx-shadow-md); }
+.fx-btn-green{ background:var(--fx-green); color:#fff; border-color:var(--fx-green); box-shadow:var(--fx-shadow-sm); }
+.fx-btn-green:hover:not(:disabled){ background:#2b6340; transform:translateY(-1px); box-shadow:var(--fx-shadow-md); }
+.fx-btn-ghost{ background:#fff; border-color:var(--fx-line); color:var(--fx-ink-soft); }
+.fx-btn-ghost:hover:not(:disabled){ border-color:var(--fx-ink-faint); color:var(--fx-ink); background:var(--fx-paper); }
+.fx-icon-btn{ width:34px; height:34px; display:grid; place-items:center; border-radius:8px; color:var(--fx-ink-faint); transition:.15s; }
+.fx-icon-btn:hover:not(:disabled){ background:var(--fx-red-bg); color:var(--fx-red); }
+.fx-icon-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+/* Sub topbar */
+.fx-topbar{ position:sticky; top:0; z-index:40; background:rgba(253,252,249,.94); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--fx-line); }
+.fx-topbar-inner{ display:flex; align-items:stretch; gap:22px; }
+.fx-topbar-label{ display:flex; align-items:center; font-size:.68rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--fx-ink-faint); flex:none; }
+.fx-tabs{ display:flex; gap:22px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; flex:1; min-width:0; }
+.fx-tabs::-webkit-scrollbar{ display:none; }
+.fx-tab{ position:relative; display:inline-flex; align-items:center; gap:8px; height:56px; font-size:.875rem; font-weight:500; color:var(--fx-ink-faint); white-space:nowrap; transition:color .15s; }
+.fx-tab::after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px; background:transparent; transition:background .15s; }
+.fx-tab:hover{ color:var(--fx-ink); }
+.fx-tab.active{ color:var(--fx-ink); font-weight:600; }
+.fx-tab.active::after{ background:var(--fx-accent); }
+.fx-topbar-side{ display:flex; align-items:center; gap:10px; flex:none; }
+.fx-seg{ display:inline-flex; background:var(--fx-line-soft); padding:4px; border-radius:10px; gap:4px; }
+.fx-seg button{ padding:6px 14px; border-radius:7px; font-size:.76rem; font-weight:600; color:var(--fx-ink-faint); transition:.15s; }
+.fx-seg button.on{ background:#fff; color:var(--fx-ink); box-shadow:var(--fx-shadow-sm); }
+.fx-chip{ font-size:.72rem; font-weight:600; padding:5px 12px; border-radius:999px; border:1px solid var(--fx-line); color:var(--fx-ink-soft); background:#fff; white-space:nowrap; }
+.fx-chip.ok{ background:var(--fx-green-bg); color:var(--fx-green); border-color:#cbe2d2; }
+.fx-chip.due{ background:var(--fx-amber-bg); color:var(--fx-amber); border-color:#ecd9ae; }
+
+/* Cards + panels */
+.fx-card{ background:#fff; border:1px solid var(--fx-line); border-radius:var(--fx-radius); box-shadow:var(--fx-shadow-sm); }
+.fx-panel{ display:none; }
+.fx-panel.active{ display:block; animation:fxFadeUp .28s ease; }
+@keyframes fxFadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+@keyframes fxFadeIn{ from{ opacity:0; } to{ opacity:1; } }
+.fx-panel-card{ padding:26px; margin-bottom:24px; }
+.fx-panel-head{ display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+.fx-panel-head h2{ font-size:1.05rem; font-weight:600; display:flex; align-items:center; gap:12px; }
+.fx-panel-head .fx-sub{ font-size:.8rem; color:var(--fx-ink-faint); margin-top:2px; }
+.fx-panel-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.fx-tile{ width:38px; height:38px; border-radius:11px; display:grid; place-items:center; flex:none; color:#fff; box-shadow:var(--fx-shadow-sm); }
+.fx-tile-green{ background:linear-gradient(140deg,#4a8f60,#2e6a44); }
+.fx-tile-brass{ background:linear-gradient(140deg,#a3834d,#71582e); }
+.fx-tile-ink{ background:linear-gradient(140deg,#3a3a3a,#151515); }
+
+/* Stat cards */
+.fx-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px; margin-bottom:24px; }
+.fx-stat{ padding:20px 22px; border-radius:var(--fx-radius); border:1px solid var(--fx-line); position:relative; overflow:hidden; transition:.18s; background:#fff; }
+.fx-stat:hover{ transform:translateY(-2px); box-shadow:var(--fx-shadow-md); }
+.fx-stat::after{ content:""; position:absolute; right:-28px; top:-28px; width:96px; height:96px; border-radius:50%; opacity:.5; }
+.fx-stat .fx-stat-ico{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; margin-bottom:12px; color:#fff; }
+.fx-stat-label{ font-size:.64rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--fx-ink-faint); }
+.fx-stat-val{ font-family:var(--fx-serif); font-size:2.1rem; font-weight:600; margin-top:4px; line-height:1.1; font-variant-numeric:tabular-nums; }
+.fx-stat-sub{ font-size:.76rem; color:var(--fx-ink-faint); margin-top:4px; display:block; }
+.fx-stat.brass{ background:linear-gradient(160deg,var(--fx-brass-grad),#fcfaf5); border-color:#e6d9bd; }
+.fx-stat.brass::after{ background:var(--fx-brass-bg); }
+.fx-stat.brass .fx-stat-ico{ background:var(--fx-brass); }
+.fx-stat.brass .fx-stat-val{ color:var(--fx-accent-dark); }
+.fx-stat.blue{ background:linear-gradient(160deg,var(--fx-blue-grad),#f8fafd); border-color:#cfdff0; }
+.fx-stat.blue::after{ background:var(--fx-blue-bg); }
+.fx-stat.blue .fx-stat-ico{ background:var(--fx-blue); }
+.fx-stat.blue .fx-stat-val{ color:var(--fx-blue); }
+.fx-stat.amber{ background:linear-gradient(160deg,var(--fx-amber-grad),#fdfbf4); border-color:#ecdbb2; }
+.fx-stat.amber::after{ background:var(--fx-amber-bg); }
+.fx-stat.amber .fx-stat-ico{ background:var(--fx-amber); }
+.fx-stat.amber .fx-stat-val{ color:var(--fx-amber); }
+.fx-stat.green{ background:linear-gradient(160deg,var(--fx-green-grad),#fbfdfa); border-color:#cfe4d6; }
+.fx-stat.green::after{ background:var(--fx-green-bg); }
+.fx-stat.green .fx-stat-ico{ background:var(--fx-green); }
+.fx-stat.green .fx-stat-val{ color:var(--fx-green); }
+`;
+
+/* Tables + pills */
+const FX_CSS2 = `
+.fx-table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.fx-root table.fx{ width:100%; border-collapse:collapse; min-width:680px; }
+.fx-root table.fx th{ text-align:left; font-size:.62rem; text-transform:uppercase; letter-spacing:.12em; color:var(--fx-ink-faint); font-weight:600; padding:10px 10px; border-bottom:2px solid var(--fx-line); white-space:nowrap; }
+.fx-root table.fx td{ padding:13px 10px; border-bottom:1px solid var(--fx-line-soft); font-size:.86rem; vertical-align:middle; }
+.fx-root table.fx tbody tr{ transition:background .12s; }
+.fx-root table.fx tbody tr:hover{ background:var(--fx-paper); }
+.fx-root table.fx tbody tr:last-child td{ border-bottom:0; }
+.fx-root table.fx th:last-child, .fx-root table.fx td.fx-cell-actions{ text-align:right; }
+.fx-root table.fx td.fx-num{ font-family:var(--fx-serif); font-style:italic; color:var(--fx-ink-faint); width:44px; font-size:.9rem; }
+.fx-root table.fx .fx-item-main{ font-weight:600; font-size:.88rem; }
+.fx-root table.fx .fx-item-sub{ display:block; font-size:.74rem; color:var(--fx-ink-faint); font-weight:300; margin-top:2px; }
+.fx-root table.fx .fx-money{ font-family:var(--fx-serif); font-size:1.05rem; font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.fx-root table.fx .fx-muted{ color:var(--fx-ink-faint); }
+.fx-root table.fx .fx-ref{ font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:.78rem; letter-spacing:.02em; background:var(--fx-paper); border:1px solid var(--fx-line); padding:3px 8px; border-radius:6px; white-space:nowrap; }
+.fx-root table.fx .fx-by{ max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle; color:var(--fx-ink-soft); }
+.fx-pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:999px; font-size:.72rem; font-weight:600; white-space:nowrap; }
+.fx-pill .fx-pdot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+.fx-pill-cash{ background:var(--fx-amber-bg); color:var(--fx-amber); }
+.fx-pill-mpesa{ background:var(--fx-green-bg); color:var(--fx-green); }
+.fx-pill-card{ background:var(--fx-blue-bg); color:var(--fx-blue); }
+.fx-pill-bank{ background:#ece9f4; color:#5c5390; }
+.fx-pill-insurance{ background:var(--fx-brass-bg); color:var(--fx-accent-dark); }
+.fx-empty{ text-align:center; padding:34px 10px; color:var(--fx-ink-faint); font-size:.86rem; }
+
+/* Forms */
+.fx-field label{ display:block; font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--fx-ink-faint); margin-bottom:7px; }
+.fx-input{ width:100%; padding:10px 13px; border:1px solid var(--fx-line); border-radius:9px; background:#fff; font-size:.88rem; color:var(--fx-ink); transition:border-color .15s, box-shadow .15s; }
+.fx-input::placeholder{ color:#b9b4aa; }
+.fx-input:focus{ outline:none; border-color:var(--fx-ink); box-shadow:0 0 0 3px rgba(26,26,26,.08); }
+.fx-root select.fx-input{ appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%238a8a8a' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:34px; }
+.fx-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.fx-form-grid .fx-full{ grid-column:1/-1; }
+.fx-form-actions{ display:flex; justify-content:flex-end; gap:10px; grid-column:1/-1; margin-top:2px; }
+.fx-add-form{ border:1px dashed #d9c9a6; border-radius:12px; background:linear-gradient(160deg,var(--fx-brass-bg),#fdfcf9); padding:18px; margin-bottom:20px; animation:fxFadeUp .22s ease; }
+`;
+
+/* Receipt layout + statement paper */
+const FX_CSS3 = `
+.fx-r-layout{ display:grid; grid-template-columns:320px 1fr; gap:32px; align-items:start; }
+.fx-r-details{ position:sticky; top:80px; margin-bottom:0 !important; }
+.fx-r-details h3{ font-size:.95rem; font-weight:600; margin-bottom:4px; }
+.fx-r-details .fx-hint{ font-size:.76rem; color:var(--fx-ink-faint); margin-bottom:16px; }
+.fx-statement{ max-width:820px; margin:0 auto; background:var(--fx-paper); padding:4.2rem 3.8rem; box-shadow:var(--fx-shadow-paper); position:relative; overflow:hidden; animation:fxFadeUp .35s ease; }
+.fx-statement::before{ content:''; position:absolute; inset:1.4rem; border:1px solid var(--fx-line); pointer-events:none; z-index:0; }
+.fx-statement .fx-content{ position:relative; z-index:1; }
+.fx-statement .fx-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:3.4rem; padding-bottom:2.2rem; border-bottom:2px solid var(--fx-accent); gap:2rem; }
+.fx-brand-logo{ width:64px; height:64px; border-radius:14px; background:linear-gradient(140deg,#3a3a3a,#151515); color:var(--fx-paper); display:grid; place-items:center; font-family:var(--fx-serif); font-size:1.8rem; font-weight:600; margin-bottom:1.1rem; overflow:hidden; }
+.fx-brand-logo img{ width:100%; height:100%; object-fit:contain; padding:7px; }
+.fx-brand-name{ font-family:var(--fx-serif); font-size:1.35rem; font-weight:600; letter-spacing:.02em; margin-bottom:.35rem; }
+.fx-address{ font-size:.78rem; color:var(--fx-ink-soft); line-height:1.65; }
+.fx-meta-info{ text-align:right; }
+.fx-doc-title{ font-family:var(--fx-serif); font-size:1.55rem; font-weight:500; letter-spacing:.05em; margin-bottom:1rem; }
+.fx-meta-grid{ display:grid; grid-template-columns:auto 1fr; gap:.2rem 1.4rem; font-size:.8rem; justify-items:start; }
+.fx-meta-grid .fx-label{ color:var(--fx-ink-faint); text-transform:uppercase; letter-spacing:.15em; font-size:.62rem; align-self:center; }
+.fx-meta-grid .fx-val{ font-weight:500; font-family:var(--fx-serif); font-size:.98rem; }
+.fx-memoriam{ text-align:center; margin-bottom:3.4rem; padding:1.8rem 0; border-top:1px solid var(--fx-line); border-bottom:1px solid var(--fx-line); }
+.fx-memoriam .fx-label{ font-size:.66rem; letter-spacing:.3em; text-transform:uppercase; color:var(--fx-accent); margin-bottom:.9rem; display:block; }
+.fx-memoriam .fx-name{ font-family:var(--fx-serif); font-size:2rem; font-weight:500; margin-bottom:.2rem; }
+.fx-memoriam .fx-dates{ font-family:var(--fx-serif); font-style:italic; font-size:1.1rem; color:var(--fx-ink-soft); }
+.fx-root table.fx-items{ width:100%; border-collapse:collapse; margin-bottom:2.6rem; min-width:0; }
+.fx-root table.fx-items thead th{ text-align:left; font-size:.62rem; text-transform:uppercase; letter-spacing:.2em; color:var(--fx-accent); padding:.7rem 0; border-bottom:1px solid var(--fx-accent); font-weight:600; }
+.fx-root table.fx-items thead th:last-child{ text-align:right; }
+.fx-root table.fx-items tbody td{ padding:1rem 0; border-bottom:1px solid var(--fx-line); vertical-align:top; }
+.fx-root table.fx-items td.fx-num{ color:var(--fx-ink-faint); font-size:.82rem; width:44px; font-family:var(--fx-serif); font-style:italic; }
+.fx-root table.fx-items td.fx-desc{ font-size:.88rem; font-weight:500; }
+.fx-root table.fx-items td.fx-desc .fx-details{ display:block; font-size:.74rem; color:var(--fx-ink-faint); font-weight:300; margin-top:.15rem; }
+.fx-root table.fx-items td.fx-amount{ text-align:right; font-family:var(--fx-serif); font-size:1.15rem; font-weight:500; white-space:nowrap; }
+.fx-root table.fx-items tbody tr:hover{ background:transparent; }
+.fx-root table.fx-items td.fx-items-empty{ text-align:center; color:var(--fx-ink-faint); font-style:italic; font-family:var(--fx-serif); font-size:1rem; padding:1.6rem 0; }
+`;
+
+/* Statement summary, signatures, modal */
+const FX_CSS4 = `
+.fx-summary-wrapper{ display:flex; justify-content:flex-end; align-items:center; gap:2.6rem; margin-bottom:3rem; flex-wrap:wrap; }
+.fx-summary{ width:330px; max-width:100%; }
+.fx-summary-row{ display:flex; justify-content:space-between; align-items:baseline; gap:1rem; padding:.55rem 0; font-size:.88rem; color:var(--fx-ink-soft); }
+.fx-summary-row .fx-val{ font-family:var(--fx-serif); font-size:1.08rem; color:var(--fx-ink); font-weight:500; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.fx-summary-row.fx-total{ margin-top:.4rem; padding-top:1.3rem; border-top:1px solid var(--fx-accent); }
+.fx-summary-row.fx-total .fx-label{ font-family:var(--fx-serif); text-transform:uppercase; font-weight:600; font-size:.9rem; color:var(--fx-ink); letter-spacing:.1em; }
+.fx-summary-row.fx-total .fx-val{ font-size:1.75rem; font-weight:700; }
+.fx-summary-row.fx-paid .fx-val{ color:var(--fx-accent); }
+.fx-paid-methods{ font-size:.68rem; color:var(--fx-ink-faint); text-align:right; margin-top:-2px; letter-spacing:.04em; }
+.fx-summary-row.fx-balance .fx-label, .fx-summary-row.fx-balance .fx-val{ color:var(--fx-accent); font-weight:700; }
+.fx-paid-seal{ width:104px; height:104px; border:2px solid var(--fx-accent); border-radius:50%; color:var(--fx-accent); display:flex; align-items:center; justify-content:center; transform:rotate(-14deg); opacity:.85; flex:none; position:relative; }
+.fx-paid-seal::before{ content:''; position:absolute; inset:5px; border:1px solid var(--fx-accent); border-radius:50%; }
+.fx-paid-seal-text{ font-family:var(--fx-serif); font-size:1.35rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+.fx-signatures{ display:grid; grid-template-columns:1fr 1fr; gap:3.5rem; margin-top:3.4rem; }
+.fx-sig-block{ text-align:center; }
+.fx-sig-line{ border-bottom:1px solid var(--fx-ink); height:38px; margin-bottom:.7rem; }
+.fx-sig-name{ font-family:var(--fx-serif); font-size:1.08rem; font-weight:500; }
+.fx-sig-title{ font-size:.66rem; text-transform:uppercase; letter-spacing:.15em; color:var(--fx-ink-faint); margin-top:.2rem; }
+.fx-statement .fx-footer{ text-align:center; margin-top:4rem; padding-top:2.2rem; border-top:1px solid var(--fx-line); }
+.fx-footer-quote{ font-family:var(--fx-serif); font-style:italic; font-size:1.08rem; color:var(--fx-accent); margin-bottom:.9rem; }
+.fx-footer-note{ font-size:.66rem; color:var(--fx-ink-faint); letter-spacing:.12em; text-transform:uppercase; }
+.fx-bottom-barcode{ margin-top:2.6rem; display:flex; flex-direction:column; align-items:center; }
+.fx-barcode{ height:38px; display:flex; align-items:stretch; gap:1px; justify-content:center; }
+.fx-bar{ background:#000; }
+.fx-barcode-num{ font-size:.72rem; letter-spacing:.22em; color:var(--fx-ink-soft); margin-top:8px; font-weight:600; }
+.fx-modal{ position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(26,26,26,.5); backdrop-filter:blur(3px); animation:fxFadeIn .2s ease; }
+.fx-modal-panel{ width:100%; max-width:560px; max-height:calc(100vh - 48px); overflow-y:auto; background:#fff; border-radius:16px; box-shadow:0 24px 64px rgba(0,0,0,.3); padding:24px; animation:fxFadeUp .22s ease; }
+.fx-modal-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px; }
+.fx-modal-head h3{ font-size:1.05rem; }
+.fx-modal-head p{ font-size:.8rem; color:var(--fx-ink-faint); margin-top:2px; }
+.fx-modal-body{ display:grid; gap:15px; }
+.fx-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+.fx-grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; }
+.fx-modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:4px; padding-top:16px; border-top:1px solid var(--fx-line-soft); }
+`;
+
+/* Responsive + print */
+const FX_CSS5 = `
+@media (max-height:520px){ .fx-modal{ align-items:flex-start; } .fx-modal-panel{ max-height:92vh; } }
+@media (max-width:980px){ .fx-r-layout{ grid-template-columns:1fr; } .fx-r-details{ position:static; } }
+@media (max-width:760px){
+  .fx-root table.fx{ min-width:0; }
+  .fx-root table.fx thead{ display:none; }
+  .fx-root table.fx, .fx-root table.fx tbody{ display:block; }
+  .fx-root table.fx tbody tr{ display:block; border:1px solid var(--fx-line); border-radius:12px; padding:6px 16px; margin-bottom:12px; background:#fff; }
+  .fx-root table.fx tbody tr:hover{ background:#fff; }
+  .fx-root table.fx td{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0; border-bottom:1px solid var(--fx-line-soft); text-align:right; }
+  .fx-root table.fx td::before{ content:attr(data-label); font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--fx-ink-faint); text-align:left; }
+  .fx-root table.fx td:last-child{ border-bottom:0; }
+  .fx-root table.fx td.fx-num{ display:none; }
+  .fx-root table.fx td.fx-cell-user{ justify-content:flex-start; }
+  .fx-root table.fx td.fx-cell-user::before, .fx-root table.fx td.fx-cell-actions::before{ display:none; }
+  .fx-statement{ padding:2.6rem 1.6rem; }
+  .fx-statement::before{ display:none; }
+  .fx-statement .fx-header{ flex-direction:column; }
+  .fx-meta-info{ text-align:left; }
+  .fx-signatures{ grid-template-columns:1fr; gap:2.2rem; }
+}
+@media (max-width:640px){
+  .fx-form-grid{ grid-template-columns:1fr; }
+  .fx-grid3{ grid-template-columns:1fr; }
+  .fx-panel-card{ padding:18px 16px; }
+  .fx-panel-head{ flex-direction:column; align-items:stretch; }
+  .fx-panel-actions .fx-btn{ flex:1; }
+  .fx-stats{ grid-template-columns:1fr; }
+}
+@media (max-width:560px){
+  .fx-topbar{ padding-top:env(safe-area-inset-top); }
+  .fx-topbar-label{ display:none; }
+  .fx-topbar-side .fx-chip{ display:none; }
+  .fx-tabs{ gap:18px; }
+  .fx-btn, .fx-input{ min-height:44px; }
+  .fx-root input, .fx-root select{ font-size:16px; }
+  .fx-modal{ padding:0; align-items:flex-end; }
+  .fx-modal-panel{ border-radius:18px 18px 0 0; max-height:90vh; padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
+  .fx-grid2{ grid-template-columns:1fr; }
+  .fx-modal-foot{ flex-direction:column-reverse; }
+  .fx-modal-foot .fx-btn{ width:100%; }
+  .fx-form-actions{ flex-direction:column-reverse; }
+  .fx-form-actions .fx-btn{ width:100%; }
+  .fx-paid-seal{ width:84px; height:84px; }
+  .fx-paid-seal-text{ font-size:1.05rem; }
+}
+@media (prefers-reduced-motion:reduce){
+  .fx-root *, .fx-root *::before, .fx-root *::after{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
+@media print{
+  @page{ size:A4; margin:12mm; }
+  .fx-root{ background:#fff !important; }
+  .fx-no-print{ display:none !important; }
+  .fx-root .fx-panel{ display:none !important; }
+  .fx-root .fx-panel.fx-print-target{ display:block !important; }
+  .fx-r-layout{ display:block !important; }
+  .fx-statement{ max-width:100% !important; box-shadow:none !important; padding:0 !important; animation:none; }
+  .fx-statement::before{ display:none; }
+}
+`;
+
+// ── Formatting helpers ─────────────────────────────────────────────────────
+const CURRENCIES = ['KES', 'USD'];
+const sym = (c) => (c === 'USD' ? '$' : 'KES');
+const fmt2 = (a, c) => `${sym(c)} ${Number(a || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt0 = (a, c) => `${sym(c)} ${Math.round(Number(a || 0)).toLocaleString('en-US')}`;
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// A bare "YYYY-MM-DD" must not be shifted a day by the browser's zone, so it is
+// parsed as LOCAL midnight. A full timestamp keeps whatever the backend sent.
+const toDate = (v) => {
+  if (!v) return null;
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.slice(0, 10))) return new Date(`${v.slice(0, 10)}T00:00:00`);
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+const shortDate = (v) => { const d = toDate(v); return d ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; };
+const longDate = (v) => { const d = toDate(v); return d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'; };
+
+const sumBy = (rows, cur, get) => rows
+  .filter((r) => (r.currency || 'KES') === cur)
+  .reduce((s, r) => s + (parseFloat(get(r)) || 0), 0);
+
+const pillClass = (m) => {
+  const k = String(m || '').toLowerCase();
+  if (k.includes('m-pesa') || k.includes('mpesa')) return 'fx-pill-mpesa';
+  if (k.includes('cash')) return 'fx-pill-cash';
+  if (k.includes('card')) return 'fx-pill-card';
+  if (k.includes('insur')) return 'fx-pill-insurance';
+  return 'fx-pill-bank';
+};
+
+const CHARGE_TYPES = [
+  'Professional Services', 'Preparation & Restorative Care', 'Facilities — Visitation',
+  'Facilities — Funeral Ceremony', 'Casket', 'Burial Vault', 'Memorial Stationery',
+  'Floral Tributes', 'Transportation', 'Repatriation Documentation', 'Other',
+];
+
+// Deterministic bar pattern from the invoice code (no randomness per render).
+const barcodeBars = (seed) => {
+  let h = 2166136261;
+  for (let i = 0; i < String(seed).length; i++) { h ^= String(seed).charCodeAt(i); h = Math.imul(h, 16777619); }
+  let a = h >>> 0;
+  const rnd = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const widths = [1, 1, 1, 2, 2, 3, 4];
+  const out = [];
+  for (let i = 0; i < 48; i++) {
+    const w = widths[Math.floor(rnd() * widths.length)];
+    out.push({ dark: i % 2 === 0, w });
   }
-  
-  ${p => p.$mt0 && 'margin-top: 0;'}
-  ${p => p.$mt4 && 'margin-top: 32px;'}
-`;
+  return out;
+};
 
-// Dedicated Grid for the Top Summary - forces 3 columns on large screens
-const SummaryGrid = styled.div`
-  display: grid; 
-  grid-template-columns: repeat(3, 1fr); 
-  gap: 2rem; 
-  margin-bottom: 40px;
-  padding-bottom: 32px;
-  border-bottom: 1px solid #f0f0f0; /* Clean separator */
-  
-  @media (max-width: 768px) { 
-    grid-template-columns: 1fr; 
-    gap: 1.5rem;
-    padding-bottom: 24px;
-    margin-bottom: 32px;
-  }
-`;
-
-const DetailItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-`;
-
-const DetailLabel = styled.span`
-  font-size: 11px; 
-  font-weight: 700; 
-  letter-spacing: 0.12em;
-  text-transform: uppercase; 
-  color: ${p => p.$color || C.gray}; 
-`;
-
-const DetailValue = styled.div`
-  font-size: 1.75rem; /* Larger, cooler numbers */
-  font-weight: 700; 
-  color: ${p => p.$color || C.black}; 
-  word-break: break-word;
-  line-height: 1.2;
-`;
-
-const FormRow = styled.div`
-  display: flex; 
-  gap: 16px; 
-  margin-bottom: 16px; 
-  flex-wrap: wrap;
-`;
-
-const FormGroup = styled.div`
-  flex: 1; 
-  min-width: 150px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const FormLabel = styled.label`
-  font-size: 10px; 
-  font-weight: 700; 
-  letter-spacing: 0.12em;
-  text-transform: uppercase; 
-  color: ${C.gray}; 
-`;
-
-const FormInput = styled.input`
-  height: 40px; 
-  width: 100%; 
-  border: 1px solid ${C.border || '#e0e0e0'}; 
-  border-radius: 4px;
-  padding: 0 12px; 
-  font-family: 'Source Sans 3', sans-serif; 
-  font-size: 14px;
-  color: ${C.dark || '#1a1a1a'}; 
-  background: #ffffff; 
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-  
-  &:focus { 
-    outline: none; 
-    border-color: ${C.black}; 
-  }
-`;
-
-const FormSelect = styled.select`
-  height: 40px; 
-  width: 100%; 
-  border: 1px solid ${C.border || '#e0e0e0'}; 
-  border-radius: 4px;
-  padding: 0 12px; 
-  font-family: 'Source Sans 3', sans-serif; 
-  font-size: 14px;
-  color: ${C.dark || '#1a1a1a'}; 
-  background: #ffffff; 
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-  
-  &:focus { 
-    outline: none; 
-    border-color: ${C.black}; 
-  }
-`;
-
-const Btn = styled.button`
-  padding: 10px 20px; 
-  border-radius: 4px; 
-  font-weight: 600; 
-  font-size: 13px;
-  cursor: pointer; 
-  border: 1px solid ${C.border || '#e0e0e0'}; 
-  background: white; 
-  color: ${C.dark || '#1a1a1a'};
-  transition: 0.15s; 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
-  gap: 6px;
-  font-family: 'Source Sans 3', sans-serif;
-  
-  &:hover { 
-    background: ${C.bgField || '#f7f7f5'}; 
-    border-color: ${C.gray || '#777777'}; 
-  }
-  
-  ${p => p.$primary && `
-    background: ${C.black}; 
-    color: white; 
-    border-color: ${C.black};
-    &:hover { 
-      background: #333; 
-      border-color: #333;
-    }
-  `}
-`;
-
-/* Horizontal scroll box for the wide tables. Without it the 7-column payment
-   table pushes the whole profile page sideways on a phone. */
-const TableScroll = styled.div`
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  border: 1px solid ${C.borderLight || '#e0e0e0'};
-  border-radius: 6px;
-  
-  /* The table keeps a sensible min-width so columns stay readable and the
-     wrapper scrolls instead of squeezing everything into unreadable slivers. */
-  table { min-width: 620px; }
-`;
-
-const DataTable = styled.table`
-  width: 100%; 
-  border-collapse: collapse;
-  
-  th { 
-    text-align: left; 
-    font-size: 11px; 
-    text-transform: uppercase; 
-    color: ${C.gray}; 
-    padding: 12px 8px; 
-    border-bottom: 2px solid ${C.borderLight || '#e0e0e0'}; 
-    white-space: nowrap; 
-  }
-  
-  td { 
-    padding: 12px 8px; 
-    font-size: 13px; 
-    border-bottom: 1px solid ${C.borderLight || '#e0e0e0'}; 
-    vertical-align: middle; 
-  }
-  
-  /* Make table take full width and align nicely */
-  tbody tr:last-child td {
-    border-bottom: none;
-  }
-`;
-
-const StatusTag = styled.span`
-  display: inline-flex; 
-  align-items: center; 
-  gap: 6px; 
-  padding: 4px 10px;
-  border-radius: 4px; 
-  font-size: 11px; 
-  font-weight: 700;
-  background: ${p => p.$success ? C.successBg : p.$warning ? C.warningBg : p.$info ? C.infoBg : C.bgField};
-  color: ${p => p.$success ? C.success : p.$warning ? C.warning : p.$info ? C.info : C.gray};
-  border: 1px solid ${p => p.$success ? '#a7f3d0' : p.$warning ? '#fde68a' : p.$info ? '#bfdbfe' : C.borderLight};
-`;
-const ModalOverlay = styled.div`
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(0,0,0,0.5);
-  display: flex; align-items: center; justify-content: center;
-`;
-const ModalCard = styled.div`
-  background: #fff; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-`;
-const ModalHead = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid ${C.borderLight};
-  font-size: 16px; font-weight: 700;
-`;
-const ModalBody = styled.div` padding: 20px; `;
-const ModalFoot = styled.div`
-  display: flex; justify-content: flex-end; gap: 8px;
-  padding: 16px 20px; border-top: 1px solid ${C.borderLight};
-`;
-const CloseBtn = styled.button`
-  background: none; border: none; font-size: 24px; cursor: pointer; color: ${C.gray};
-  &:hover { color: ${C.black}; }
-`;
-
-
-
-const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, onDataChanged }) => {
+// ── Component ──────────────────────────────────────────────────────────────
+const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, deceased, onDataChanged }) => {
   const [payments, setPayments] = useState(initialPayments || []);
   const [chargeList, setChargeList] = useState(initialCharges || []);
-  const [isRecording, setIsRecording] = useState(false);
+  const [tab, setTab] = useState('payments');
+  const [viewCur, setViewCur] = useState('KES');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [deletingChargeId, setDeletingChargeId] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showChargeForm, setShowChargeForm] = useState(false);
   const [isAddingCharge, setIsAddingCharge] = useState(false);
-  const [chargeForm, setChargeForm] = useState({
-    charge_type: '',
-    amount: '',
-    currency: 'KES',
-    description: '',
-    service_date: todayKey()
-  });
-  // KES-first billing — USD stays selectable for foreign payments. Insurance
-  // payments additionally carry the name of the insurance provider.
+  const [deletingChargeId, setDeletingChargeId] = useState(null);
+
   const [paymentForm, setPaymentForm] = useState({
-    date: todayKey(),
-    currency: 'KES',
-    payment_method: 'Cash',
-    reference: '',
-    amount: '',
-    description: '',
-    insurance_provider: ''
+    date: todayKey(), currency: 'KES', payment_method: 'Cash',
+    reference: '', amount: '', description: '', insurance_provider: '',
   });
+  const [chargeForm, setChargeForm] = useState({
+    charge_type: '', amount: '', currency: 'KES', description: '', service_date: todayKey(),
+  });
+
+  // Organisation letterhead — the store wins over the login-time localStorage,
+  // the same precedence resolveTenantBranding() uses on the intake/release forms.
+  const { tenantData } = useTenantStore();
+  const stored = getTenantBrandingFromStorage();
+  const org = {
+    name: tenantData?.name || tenantData?.tenantName || stored.name || '',
+    phone: tenantData?.phone || stored.phone || '',
+    location: tenantData?.location || stored.location || '',
+    country: tenantData?.country || stored.country || '',
+    logoUrl: tenantData?.logoUrl || tenantData?.logo_url || stored.logoUrl || '',
+  };
+
+  const dName = deceased?.full_name || deceased?.name || deceased?.deceased_name || '';
+  const dBirth = deceased?.date_of_birth || deceased?.dob || deceased?.birth_date || '';
+  const dDeath = deceased?.date_of_death || deceased?.dod || deceased?.death_date || '';
+  const dAdmNo = deceased?.admission_number || deceased?.admission_no || deceased?.admissionNumber || '';
+  const yearOf = (v) => { const d = toDate(v); return d ? String(d.getFullYear()) : ''; };
+  const lifeYears = (yearOf(dBirth) && yearOf(dDeath)) ? `${yearOf(dBirth)} — ${yearOf(dDeath)}` : '';
+
+  const [receipt, setReceipt] = useState(() => ({
+    currency: 'KES',
+    invoice: dAdmNo || '',
+    adjust: '',
+    stmtDate: todayKey(),
+    serviceDate: (initialCharges || [])[0]?.service_date || todayKey(),
+    deceased: dName,
+    years: lifeYears,
+    repName: '', repTitle: 'Authorizing Representative',
+    sigName: '', sigTitle: '',
+    quote: '',
+  }));
+
+  const setReceiptField = useCallback((k, v) => setReceipt((p) => ({ ...p, [k]: v })), []);
 
   // Keep local mirrors in sync with parent data
   useEffect(() => { setChargeList(initialCharges || []); }, [initialCharges]);
 
-  // Currency-aware billing math (KES-first; USD kept for foreign payments)
-  const currencySymbol = (cur) => (cur === 'KES' ? 'KES' : '$');
-  const fmtMoney = (amount, cur) =>
-    `${currencySymbol(cur)} ${parseFloat(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  const CURRENCIES = ['KES', 'USD'];
-  const sumBy = (rows, cur, getAmount) => rows
-    .filter(r => (r.currency || 'KES') === cur)
-    .reduce((s, r) => s + (parseFloat(getAmount(r) || 0) || 0), 0);
-
-  const summaryRows = CURRENCIES
-    .map(cur => {
-      const chargesTotal = sumBy(chargeList, cur, c => c.amount ?? c.charge_amount);
-      const paidTotal = sumBy(payments, cur, p => p.amount);
-      return { currency: cur, chargesTotal, paidTotal, balance: chargesTotal - paidTotal };
-    })
-    // Only show currencies that actually have billing/payment activity.
-    // This hides the all-zero row (e.g. "USD 0.00 / Balance Due 0.00")
-    // when everything is billed and paid in KES.
-    .filter(r => r.chargesTotal !== 0 || r.paidTotal !== 0);
-
-  // Load payments from API
+  // Fill in the deceased once it arrives (the tab can mount before the fetch lands).
   useEffect(() => {
-    if (deceasedId) {
-      loadPayments();
-    }
-  }, [deceasedId]);
+    setReceipt((p) => ({
+      ...p,
+      deceased: p.deceased || dName,
+      years: p.years || lifeYears,
+      invoice: p.invoice || dAdmNo,
+    }));
+  }, [dName, lifeYears, dAdmNo]);
 
-  const loadPayments = async () => {
+  const headers = useCallback(() => ({
+    'x-tenant-slug': getTenantSlug(),
+    'Authorization': `Bearer ${getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || ''}`,
+  }), []);
+
+  const loadPayments = useCallback(async () => {
+    if (!deceasedId) return;
     try {
-      const tenantSlug = getTenantSlug();
-      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
-      const response = await axios.get(
-        `${env.FULL_API_URL}/payments/${deceasedId}`,
-        {
-          headers: {
-            'x-tenant-slug': tenantSlug,
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      if (response.data?.success) {
-        setPayments(response.data.data || []);
-      }
+      const res = await axios.get(`${env.FULL_API_URL}/payments/${deceasedId}`, { headers: headers() });
+      if (res.data?.success) setPayments(res.data.data || []);
     } catch (error) {
       console.error('Error loading payments:', error);
     }
-  };
+  }, [deceasedId, headers]);
+
+  useEffect(() => { loadPayments(); }, [loadPayments]);
+
 
   const handleRecordPayment = async (e) => {
     e.preventDefault();
-
     if (!paymentForm.amount || !paymentForm.reference) {
-      showToast.error('Please fill in all required fields');
-      return;
+      showToast.error('Please fill in all required fields'); return;
     }
-
-    // An insurance settlement must name the insurer — the provider is stored
-    // with the payment and shown in the payment history.
     if (paymentForm.payment_method === 'Insurance' && !(paymentForm.insurance_provider || '').trim()) {
-      showToast.error('Please enter the name of the insurance provider');
-      return;
+      showToast.error('Please enter the name of the insurance provider'); return;
     }
-
     setIsRecording(true);
     try {
-      const tenantSlug = getTenantSlug();
-      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
+      let userEmail = 'Unknown';
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw) { const u = JSON.parse(raw); userEmail = u.email || u.username || 'Unknown'; }
+      } catch (_) { /* keep Unknown */ }
 
-      const userEmail = (() => {
-        try {
-          const userStr = localStorage.getItem('user');
-          if (userStr) {
-            const user = JSON.parse(userStr);
-            return user.email || user.username || 'Unknown';
-          }
-        } catch (e) {
-          console.error('Error getting user email:', e);
-        }
-        return 'Unknown';
-      })();
+      const res = await axios.post(`${env.FULL_API_URL}/payments`, {
+        deceased_id: deceasedId,
+        amount: parseFloat(paymentForm.amount),
+        currency: paymentForm.currency || 'KES',
+        payment_method: paymentForm.payment_method,
+        insurance_provider: paymentForm.payment_method === 'Insurance'
+          ? (paymentForm.insurance_provider || '').trim() || null : null,
+        reference: paymentForm.reference,
+        payment_date: paymentForm.date,
+        description: paymentForm.description || null,
+        recorded_by: userEmail,
+      }, { headers: headers() });
 
-      const response = await axios.post(
-        `${env.FULL_API_URL}/payments`,
-        {
-          deceased_id: deceasedId,
-          amount: parseFloat(paymentForm.amount),
-          currency: paymentForm.currency || 'KES',
-          payment_method: paymentForm.payment_method,
-          insurance_provider: paymentForm.payment_method === 'Insurance'
-            ? (paymentForm.insurance_provider || '').trim() || null
-            : null,
-          reference: paymentForm.reference,
-          payment_date: paymentForm.date,
-          description: paymentForm.description || null,
-          recorded_by: userEmail
-        },
-        {
-          headers: {
-            'x-tenant-slug': tenantSlug,
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data?.success) {
+      if (res.data?.success) {
         showToast.success('Payment recorded successfully');
         setShowPaymentModal(false);
-        setPaymentForm({
-          date: todayKey(),
-          currency: paymentForm.currency || 'KES',
-          payment_method: 'Cash',
-          reference: '',
-          amount: '',
-          description: '',
-          insurance_provider: ''
-        });
+        setPaymentForm((p) => ({ ...p, payment_method: 'Cash', reference: '', amount: '', description: '', insurance_provider: '' }));
         await loadPayments();
         if (onDataChanged) onDataChanged();
       }
@@ -403,55 +487,35 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     }
   };
 
-  // ---------------- Individual charges (bill per deceased, USD-first) --------
   const handleAddCharge = async (e) => {
     e.preventDefault();
     if (!chargeForm.charge_type || !chargeForm.amount || parseFloat(chargeForm.amount) <= 0) {
-      showToast.error('Please provide a charge type and a valid amount');
-      return;
+      showToast.error('Please provide a charge type and a valid amount'); return;
     }
-
     setIsAddingCharge(true);
     try {
-      const tenantSlug = getTenantSlug();
-      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
+      const res = await axios.post(`${env.FULL_API_URL}/charges`, {
+        deceased_id: deceasedId,
+        charge_type: chargeForm.charge_type,
+        amount: parseFloat(chargeForm.amount),
+        currency: chargeForm.currency || 'KES',
+        description: chargeForm.description || null,
+        service_date: chargeForm.service_date,
+      }, { headers: headers() });
 
-      const response = await axios.post(
-        `${env.FULL_API_URL}/charges`,
-        {
-          deceased_id: deceasedId,
-          charge_type: chargeForm.charge_type,
-          amount: parseFloat(chargeForm.amount),
-          currency: chargeForm.currency || 'KES',
-          description: chargeForm.description || null,
-          service_date: chargeForm.service_date
-        },
-        {
-          headers: {
-            'x-tenant-slug': tenantSlug,
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data?.success) {
+      if (res.data?.success) {
         showToast.success('Charge added to bill');
-        const created = response.data.data;
-        if (created) setChargeList(prev => [created, ...prev]);
-        setChargeForm({
-          charge_type: '',
-          amount: '',
-          currency: chargeForm.currency || 'KES',
-          description: '',
-          service_date: todayKey()
-        });
+        const created = res.data.data;
+        if (created) setChargeList((prev) => [created, ...prev]);
+        setChargeForm((p) => ({ ...p, charge_type: '', amount: '', description: '' }));
+        setShowChargeForm(false);
         if (onDataChanged) onDataChanged();
       } else {
-        throw new Error(response.data?.message || 'Failed to add charge');
+        throw new Error(res.data?.message || 'Failed to add charge');
       }
     } catch (error) {
       console.error('Error adding charge:', error);
-      showToast.error(error.response?.data?.message || 'Failed to add charge');
+      showToast.error(error.response?.data?.message || error.message || 'Failed to add charge');
     } finally {
       setIsAddingCharge(false);
     }
@@ -459,20 +523,10 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
   const handleDeleteCharge = async (chargeId) => {
     if (!window.confirm('Remove this charge from the bill?')) return;
-
     setDeletingChargeId(chargeId);
     try {
-      const tenantSlug = getTenantSlug();
-      const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || '';
-
-      await axios.delete(`${env.FULL_API_URL}/charges/${chargeId}`, {
-        headers: {
-          'x-tenant-slug': tenantSlug,
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      setChargeList(prev => prev.filter(c => (c.charge_id ?? c.id) !== chargeId));
+      await axios.delete(`${env.FULL_API_URL}/charges/${chargeId}`, { headers: headers() });
+      setChargeList((prev) => prev.filter((c) => (c.charge_id ?? c.id) !== chargeId));
       showToast.success('Charge removed');
       if (onDataChanged) onDataChanged();
     } catch (error) {
@@ -483,121 +537,688 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     }
   };
 
-  return (
-    <>
-      {showPaymentModal && (
-        <ModalOverlay onClick={() => setShowPaymentModal(false)}>
-          <ModalCard onClick={(e) => e.stopPropagation()}>
-            <ModalHead>
-              <span>Record Payment</span>
-              <CloseBtn onClick={() => setShowPaymentModal(false)}>×</CloseBtn>
-            </ModalHead>
-            <form onSubmit={handleRecordPayment}>
-              <ModalBody>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Date</FormLabel>
-                    <FormInput type="date" value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} required />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Currency</FormLabel>
-                    <FormSelect value={paymentForm.currency} onChange={(e) => setPaymentForm({ ...paymentForm, currency: e.target.value })}>
-                      <option value="KES">KES (KSh)</option>
-                      <option value="USD">USD ($)</option>
-                    </FormSelect>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Payment Method</FormLabel>
-                    <FormSelect value={paymentForm.payment_method} onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
-                      <option>Cash</option>
-                      <option>M-Pesa</option>
-                      <option>Card</option>
-                      <option>Bank Transfer</option>
-                      <option>Insurance</option>
-                    </FormSelect>
-                  </FormGroup>
-                </FormRow>
-                {paymentForm.payment_method === 'Insurance' && (
-                  <FormRow>
-                    <FormGroup style={{ flex: 2, minWidth: '220px' }}>
-                      <FormLabel>Name of Insurance *</FormLabel>
-                      <FormInput
-                        placeholder="e.g. CIC Insurance, Jubilee Insurance, Britam"
-                        value={paymentForm.insurance_provider}
-                        onChange={(e) => setPaymentForm({ ...paymentForm, insurance_provider: e.target.value })}
-                        required
-                      />
-                    </FormGroup>
-                  </FormRow>
-                )}
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Reference Number</FormLabel>
-                    <FormInput placeholder="e.g. QXR89YU72" value={paymentForm.reference} onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })} required />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Amount ({paymentForm.currency === 'KES' ? 'KES' : 'USD'})</FormLabel>
-                    <FormInput type="number" placeholder="0.00" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} required />
-                  </FormGroup>
-                  <FormGroup style={{ flex: 2, minWidth: '200px' }}>
-                    <FormLabel>Description / Notes (Optional)</FormLabel>
-                    <FormInput placeholder="e.g. Facility fee, Coffin, Embalming, etc." value={paymentForm.description} onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })} />
-                  </FormGroup>
-                </FormRow>
-              </ModalBody>
-              <ModalFoot>
-                <Btn type="button" onClick={() => setShowPaymentModal(false)}>Cancel</Btn>
-                <Btn $primary type="submit" disabled={isRecording}>{isRecording ? 'Recording...' : 'Save Payment'}</Btn>
-              </ModalFoot>
-            </form>
-          </ModalCard>
-        </ModalOverlay>
-      )}
 
-      {/* Payment History with Record button */}
-      <SectionHead $mt4 style={{ justifyContent: 'space-between', width: '100%' }}>
-        <span><span style={{ opacity: 0.5, fontSize: '10px' }}>02</span> Payment History</span>
-        <Btn $primary onClick={() => setShowPaymentModal(true)} style={{ padding: '4px 12px', fontSize: '11px' }}>
-          + Record Payment
-        </Btn>
-      </SectionHead>
-      {/* Seven columns do not fit a phone. The wrapper scrolls the table on its
-          own so the page itself never gains a horizontal scrollbar. */}
-      <TableScroll>
-        <DataTable>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Method</th>
-              <th>Insurance</th>
-              <th>Reference</th>
-              <th>Description</th>
-              <th>Amount</th>
-              <th>Recorded By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payments.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: C.gray, padding: '24px 0' }}>No payments recorded</td></tr>
-            ) : payments.map((p, i) => (
-              <tr key={i}>
-                <td>{formatDate(p.created_at || p.payment_date)}</td>
-                <td>
-                  <StatusTag $info={p.payment_method === 'M-Pesa'} $warning={p.payment_method === 'Cash'} $success={p.payment_method === 'Insurance'}>
-                    {p.payment_method || '—'}
-                  </StatusTag>
-                </td>
-                <td>{p.insurance_provider || '—'}</td>
-                <td>{p.reference || '—'}</td>
-                <td>{p.description || p.notes || '—'}</td>
-                <td><strong>{fmtMoney(p.amount, p.currency)}</strong></td>
-                <td>{p.recorded_by || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </DataTable>
-      </TableScroll>
-    </>
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const chargeAmount = (c) => c.amount ?? c.charge_amount;
+  const shownPayments = useMemo(
+    () => payments.filter((p) => (p.currency || 'KES') === viewCur), [payments, viewCur]
+  );
+  const shownCharges = useMemo(
+    () => chargeList.filter((c) => (c.currency || 'KES') === viewCur), [chargeList, viewCur]
+  );
+  const billed = sumBy(chargeList, viewCur, chargeAmount);
+  const largest = shownCharges.reduce((m, c) => Math.max(m, Number(chargeAmount(c)) || 0), 0);
+  const biggestRow = shownCharges.find((c) => Number(chargeAmount(c)) === largest);
+
+  // Top-bar chip: what is still owed, across every currency.
+  const dues = CURRENCIES
+    .map((c) => ({ c, b: sumBy(chargeList, c, chargeAmount) - sumBy(payments, c, (p) => p.amount) }))
+    .filter((r) => r.b > 0.004);
+
+  // Statement maths, all in the statement's own currency.
+  const rc = receipt.currency;
+  const rcItems = chargeList.filter((c) => (c.currency || 'KES') === rc);
+  const rcPays = payments.filter((p) => (p.currency || 'KES') === rc);
+  const subtotal = sumBy(rcItems, rc, chargeAmount);
+  const paid = sumBy(rcPays, rc, (p) => p.amount);
+  const adjust = Math.max(0, parseFloat(receipt.adjust) || 0);
+  const total = Math.max(0, subtotal - adjust);
+  const balance = total - paid;
+  const paidMethods = [...new Set(rcPays.map((p) => p.payment_method).filter(Boolean))];
+  const invoiceCode = `MTZ-${(toDate(receipt.stmtDate)?.getFullYear() || '')}-${receipt.invoice || '0000'}`;
+  const bars = useMemo(() => barcodeBars(invoiceCode), [invoiceCode]);
+  const monogram = (org.name || 'O').trim().charAt(0).toUpperCase();
+  const orgAddress = [org.location, org.phone ? `Tel. ${org.phone}` : ''].filter(Boolean);
+
+  // ESC closes the payment modal; body scroll stays locked while it is open.
+  useEffect(() => {
+    if (!showPaymentModal) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setShowPaymentModal(false); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [showPaymentModal]);
+
+
+  // Count-up for the stat cards. Honours prefers-reduced-motion by snapping.
+  const prefersReduced = typeof window !== 'undefined'
+    && window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [statNow, setStatNow] = useState({ billed: 0, count: shownCharges.length });
+  useEffect(() => {
+    const targetBilled = billed;
+    const targetCount = shownCharges.length;
+    setStatNow((p) => ({ ...p, billed: targetBilled, count: targetCount }));
+    if (prefersReduced) return undefined;
+    const t0 = performance.now();
+    const dur = 550;
+    let raf = 0;
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      setStatNow({ billed: targetBilled * e, count: targetCount * e });
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [billed, shownCharges.length, prefersReduced]);
+
+  const TABS = [
+    { key: 'payments', label: 'Payments', Icon: IcoCard },
+    { key: 'charges', label: 'Itemized Charges', Icon: IcoReceipt },
+    { key: 'receipt', label: 'Generate Receipt', Icon: IcoPrinter },
+  ];
+
+  return (
+    <div className="fx-root">
+      <style>{FX_CSS}</style>
+      <style>{FX_CSS2}</style>
+      <style>{FX_CSS3}</style>
+      <style>{FX_CSS4}</style>
+      <style>{FX_CSS5}</style>
+
+      {/* ── Sub topbar ── */}
+      <div className="fx-topbar fx-no-print">
+        <div className="fx-topbar-inner">
+          <span className="fx-topbar-label">Financials</span>
+          <nav className="fx-tabs" role="tablist" aria-label="Financials sections">
+            {TABS.map((t) => {
+              const TabIcon = t.Icon;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t.key}
+                  className={'fx-tab' + (tab === t.key ? ' active' : '')}
+                  onClick={() => setTab(t.key)}
+                >
+                  <TabIcon w={14} />
+                  {t.label}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="fx-topbar-side">
+            <div className="fx-seg" role="group" aria-label="Display currency">
+              {CURRENCIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={viewCur === c ? 'on' : ''}
+                  onClick={() => setViewCur(c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <span className={'fx-chip ' + (dues.length ? 'due' : 'ok')}>
+              {dues.length
+                ? dues.map((r) => `${fmt0(r.b, r.c)} due`).join(' · ')
+                : 'Account settled'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ TAB 1 · PAYMENTS ═══ */}
+      <section className={'fx-panel' + (tab === 'payments' ? ' active' : '')} role="tabpanel">
+        <div className="fx-card fx-panel-card">
+          <div className="fx-panel-head">
+            <div>
+              <h2>
+                <span className="fx-tile fx-tile-green"><IcoCard w={17} sw={2} /></span>
+                Payment History
+              </h2>
+              <p className="fx-sub">Every payment received, with method and reference.</p>
+            </div>
+            <div className="fx-panel-actions">
+              <button type="button" className="fx-btn fx-btn-green" onClick={() => setShowPaymentModal(true)}>
+                <IcoPlus w={14} /> Record payment
+              </button>
+            </div>
+          </div>
+
+          <div className="fx-table-scroll">
+            <table className="fx">
+              <thead>
+                <tr>
+                  <th>Date</th><th>Method</th><th>Insurance</th><th>Reference</th>
+                  <th>Description</th><th>Amount</th><th>Recorded by</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shownPayments.length === 0 && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="fx-empty">
+                        <IcoCard w={26} style={{ margin: '0 auto 10px', opacity: .5 }} />
+                        No payments recorded in {viewCur} yet.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {shownPayments.map((p, i) => (
+                  <tr key={p.payment_id || p.id || i}>
+                    <td data-label="Date">{shortDate(p.payment_date || p.created_at)}</td>
+                    <td data-label="Method">
+                      <span className={'fx-pill ' + pillClass(p.payment_method)}>
+                        <span className="fx-pdot" />
+                        {p.payment_method || '—'}
+                      </span>
+                    </td>
+                    <td data-label="Insurance">
+                      {p.insurance_provider || <span className="fx-muted">—</span>}
+                    </td>
+                    <td data-label="Reference"><span className="fx-ref">{p.reference || '—'}</span></td>
+                    <td data-label="Description">
+                      {p.description || p.notes || <span className="fx-muted">—</span>}
+                    </td>
+                    <td data-label="Amount"><span className="fx-money">{fmt2(p.amount, p.currency)}</span></td>
+                    <td data-label="Recorded by">
+                      <span className="fx-by" title={p.recorded_by || ''}>{p.recorded_by || '—'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ TAB 2 · ITEMIZED CHARGES ═══ */}
+      <section className={'fx-panel' + (tab === 'charges' ? ' active' : '')} role="tabpanel">
+        <div className="fx-stats">
+          <div className="fx-stat brass">
+            <div className="fx-stat-ico"><IcoReceipt w={16} sw={2} /></div>
+            <span className="fx-stat-label">Total billed</span>
+            <div className="fx-stat-val">{fmt0(statNow.billed, viewCur)}</div>
+            <span className="fx-stat-sub">
+              {shownCharges.length ? `${shownCharges.length} item${shownCharges.length === 1 ? '' : 's'} on the bill` : 'nothing billed'}
+            </span>
+          </div>
+          <div className="fx-stat blue">
+            <div className="fx-stat-ico"><IcoList w={16} sw={2} /></div>
+            <span className="fx-stat-label">Items on bill</span>
+            <div className="fx-stat-val">{Math.round(statNow.count)}</div>
+            <span className="fx-stat-sub">line items, numbered like the statement</span>
+          </div>
+          <div className="fx-stat amber">
+            <div className="fx-stat-ico"><IcoTrend w={16} sw={2} /></div>
+            <span className="fx-stat-label">Largest item</span>
+            <div className="fx-stat-val">{shownCharges.length ? fmt0(largest, viewCur) : '—'}</div>
+            <span className="fx-stat-sub">{biggestRow ? (biggestRow.charge_type || 'Charge') : 'no items yet'}</span>
+          </div>
+        </div>
+
+        <div className="fx-card fx-panel-card">
+          <div className="fx-panel-head">
+            <div>
+              <h2>
+                <span className="fx-tile fx-tile-brass"><IcoReceipt w={17} sw={2} /></span>
+                Itemized Charges
+              </h2>
+              <p className="fx-sub">Every service and item billed to this account.</p>
+            </div>
+            <div className="fx-panel-actions">
+              <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowChargeForm((v) => !v)}>
+                <IcoPlus w={14} /> {showChargeForm ? 'Close' : 'Add charge'}
+              </button>
+            </div>
+          </div>
+
+          <form className={'fx-add-form' + (showChargeForm ? '' : ' fx-hidden')} onSubmit={handleAddCharge} noValidate>
+            <div className="fx-form-grid">
+              <div className="fx-field">
+                <label htmlFor="cType">Charge type</label>
+                <select
+                  id="cType"
+                  className="fx-input"
+                  value={chargeForm.charge_type}
+                  onChange={(e) => setChargeForm((p) => ({ ...p, charge_type: e.target.value }))}
+                >
+                  <option value="">Select type…</option>
+                  {CHARGE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="fx-field">
+                <label htmlFor="cAmount">Amount</label>
+                <input
+                  id="cAmount" className="fx-input" type="number" min="0" step="any" placeholder="0.00"
+                  value={chargeForm.amount}
+                  onChange={(e) => setChargeForm((p) => ({ ...p, amount: e.target.value }))}
+                />
+              </div>
+              <div className="fx-field">
+                <label htmlFor="cCurrency">Currency</label>
+                <select
+                  id="cCurrency" className="fx-input" value={chargeForm.currency}
+                  onChange={(e) => setChargeForm((p) => ({ ...p, currency: e.target.value }))}
+                >
+                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="fx-field">
+                <label htmlFor="cDate">Service date</label>
+                <input
+                  id="cDate" className="fx-input" type="date" value={chargeForm.service_date}
+                  onChange={(e) => setChargeForm((p) => ({ ...p, service_date: e.target.value }))}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="cDesc">Description (optional)</label>
+                <input
+                  id="cDesc" className="fx-input"
+                  placeholder="e.g. Hand-rubbed finish, brushed bronze hardware"
+                  value={chargeForm.description}
+                  onChange={(e) => setChargeForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </div>
+              <div className="fx-form-actions">
+                <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowChargeForm(false)}>Cancel</button>
+                <button type="submit" className="fx-btn fx-btn-primary" disabled={isAddingCharge}>
+                  {isAddingCharge ? 'Adding…' : 'Add to bill'}
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div className="fx-table-scroll">
+            <table className="fx">
+              <thead>
+                <tr><th /><th>Item</th><th>Date</th><th>Amount</th><th /></tr>
+              </thead>
+              <tbody>
+                {shownCharges.length === 0 && (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="fx-empty">
+                        <IcoReceipt w={26} style={{ margin: '0 auto 10px', opacity: .5 }} />
+                        No charges billed in {viewCur} yet.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {shownCharges.map((c, i) => {
+                  const cid = c.charge_id ?? c.id;
+                  return (
+                    <tr key={cid ?? i}>
+                      <td className="fx-num">{pad2(i + 1)}</td>
+                      <td className="fx-cell-user" data-label="Item">
+                        <span className="fx-item-main">
+                          {c.charge_type || 'Charge'}
+                          {c.description && <span className="fx-item-sub">{c.description}</span>}
+                        </span>
+                      </td>
+                      <td data-label="Date">{shortDate(c.service_date)}</td>
+                      <td data-label="Amount"><span className="fx-money">{fmt2(chargeAmount(c), c.currency)}</span></td>
+                      <td className="fx-cell-actions" data-label="">
+                        <button
+                          type="button"
+                          className="fx-icon-btn"
+                          title="Remove charge"
+                          disabled={deletingChargeId === cid}
+                          onClick={() => handleDeleteCharge(cid)}
+                        >
+                          <IcoTrash w={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ TAB 3 · GENERATE RECEIPT ═══ */}
+      <section className={'fx-panel fx-print-target' + (tab === 'receipt' ? ' active' : '')} role="tabpanel">
+        <div className="fx-panel-head fx-no-print">
+          <div>
+            <h2>
+              <span className="fx-tile fx-tile-ink"><IcoPrinter w={17} /></span>
+              Generate Receipt
+            </h2>
+            <p className="fx-sub">A formal Statement of Arrangements, auto-filled live from the bill.</p>
+          </div>
+          <div className="fx-panel-actions">
+            <button type="button" className="fx-btn fx-btn-primary" onClick={() => window.print()}>
+              <IcoPrinter w={15} /> Print / Save PDF
+            </button>
+          </div>
+        </div>
+
+        <div className="fx-r-layout">
+          <aside className="fx-card fx-panel-card fx-r-details fx-no-print">
+            <h3>Statement details</h3>
+            <p className="fx-hint">Amounts, totals and the paid seal update automatically.</p>
+            <div className="fx-form-grid">
+              <div className="fx-field fx-full">
+                <label htmlFor="dCurrency">Statement currency</label>
+                <select
+                  id="dCurrency" className="fx-input" value={receipt.currency}
+                  onChange={(e) => setReceiptField('currency', e.target.value)}
+                >
+                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="fx-field">
+                <label htmlFor="dInvoice">Invoice no.</label>
+                <input
+                  id="dInvoice" className="fx-input" value={receipt.invoice}
+                  onChange={(e) => setReceiptField('invoice', e.target.value)}
+                />
+              </div>
+              <div className="fx-field">
+                <label htmlFor="dAdjust">Courtesy adjustment</label>
+                <input
+                  id="dAdjust" className="fx-input" type="number" min="0" step="any" value={receipt.adjust}
+                  onChange={(e) => setReceiptField('adjust', e.target.value)}
+                />
+              </div>
+              <div className="fx-field">
+                <label htmlFor="dStmtDate">Statement date</label>
+                <input
+                  id="dStmtDate" className="fx-input" type="date" value={receipt.stmtDate}
+                  onChange={(e) => setReceiptField('stmtDate', e.target.value)}
+                />
+              </div>
+              <div className="fx-field">
+                <label htmlFor="dServiceDate">Service date</label>
+                <input
+                  id="dServiceDate" className="fx-input" type="date" value={receipt.serviceDate}
+                  onChange={(e) => setReceiptField('serviceDate', e.target.value)}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="dDeceased">In loving memory of</label>
+                <input
+                  id="dDeceased" className="fx-input" value={receipt.deceased}
+                  onChange={(e) => setReceiptField('deceased', e.target.value)}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="dYears">Years</label>
+                <input
+                  id="dYears" className="fx-input" value={receipt.years}
+                  onChange={(e) => setReceiptField('years', e.target.value)}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="dRepName">Authorizing representative</label>
+                <input
+                  id="dRepName" className="fx-input" value={receipt.repName}
+                  onChange={(e) => setReceiptField('repName', e.target.value)}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="dRepTitle">Representative title</label>
+                <input
+                  id="dRepTitle" className="fx-input" value={receipt.repTitle}
+                  onChange={(e) => setReceiptField('repTitle', e.target.value)}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="dSigName">Signatory</label>
+                <input
+                  id="dSigName" className="fx-input" value={receipt.sigName}
+                  onChange={(e) => setReceiptField('sigName', e.target.value)}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="dSigTitle">Signatory title</label>
+                <input
+                  id="dSigTitle" className="fx-input" value={receipt.sigTitle}
+                  onChange={(e) => setReceiptField('sigTitle', e.target.value)}
+                />
+              </div>
+              <div className="fx-field fx-full">
+                <label htmlFor="dQuote">Footer quote</label>
+                <input
+                  id="dQuote" className="fx-input" value={receipt.quote}
+                  onChange={(e) => setReceiptField('quote', e.target.value)}
+                />
+              </div>
+            </div>
+          </aside>
+
+          <div>
+            <div className="fx-statement">
+              <div className="fx-content">
+                <header className="fx-header">
+                  <div>
+                    <div className="fx-brand-logo">
+                      {org.logoUrl ? <img src={org.logoUrl} alt="" /> : monogram}
+                    </div>
+                    <div className="fx-brand-name">{org.name || '—'}</div>
+                    <div className="fx-address">
+                      {orgAddress.length
+                        ? orgAddress.map((l, i) => <React.Fragment key={i}>{i > 0 && <br />}{l}</React.Fragment>)
+                        : <span className="fx-muted">—</span>}
+                    </div>
+                  </div>
+                  <div className="fx-meta-info">
+                    <div className="fx-doc-title">Statement of Arrangements</div>
+                    <div className="fx-meta-grid">
+                      <span className="fx-label">Invoice</span>
+                      <span className="fx-val">{receipt.invoice ? `No. ${receipt.invoice}` : '—'}</span>
+                      <span className="fx-label">Date</span>
+                      <span className="fx-val">{longDate(receipt.stmtDate)}</span>
+                      <span className="fx-label">Service</span>
+                      <span className="fx-val">{longDate(receipt.serviceDate)}</span>
+                    </div>
+                  </div>
+                </header>
+
+                <section className="fx-memoriam">
+                  <span className="fx-label">In Loving Memory Of</span>
+                  <div className="fx-name">{receipt.deceased || '—'}</div>
+                  {receipt.years ? <div className="fx-dates">{receipt.years}</div> : null}
+                </section>
+
+                <table className="fx-items">
+                  <thead>
+                    <tr><th>Item</th><th>Description</th><th>Amount</th></tr>
+                  </thead>
+                  <tbody>
+                    {rcItems.length === 0 && (
+                      <tr>
+                        <td className="fx-items-empty" colSpan={3}>
+                          No items billed in {rc} for this statement.
+                        </td>
+                      </tr>
+                    )}
+                    {rcItems.map((c, i) => (
+                      <tr key={c.charge_id ?? c.id ?? i}>
+                        <td className="fx-num">{pad2(i + 1)}</td>
+                        <td className="fx-desc">
+                          {c.charge_type || 'Charge'}
+                          {c.description && <span className="fx-details">{c.description}</span>}
+                        </td>
+                        <td className="fx-amount">{fmt0(chargeAmount(c), rc)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="fx-summary-wrapper">
+                  {(balance <= 0.004 && paid > 0) && (
+                    <div className="fx-paid-seal"><span className="fx-paid-seal-text">Paid</span></div>
+                  )}
+                  <div className="fx-summary">
+                    <div className="fx-summary-row">
+                      <span>Subtotal</span><span className="fx-val">{fmt0(subtotal, rc)}</span>
+                    </div>
+                    {adjust > 0 && (
+                      <div className="fx-summary-row">
+                        <span>Courtesy Adjustment</span>
+                        <span className="fx-val">— {fmt0(adjust, rc)}</span>
+                      </div>
+                    )}
+                    <div className="fx-summary-row fx-total">
+                      <span className="fx-label">Total Due</span>
+                      <span className="fx-val">{fmt0(total, rc)}</span>
+                    </div>
+                    <div className="fx-summary-row fx-paid">
+                      <span>Payment Received</span>
+                      <span className="fx-val">{fmt0(paid, rc)}</span>
+                    </div>
+                    <div className="fx-paid-methods">{paidMethods.length ? paidMethods.join(' · ') : ''}</div>
+                    <div className="fx-summary-row fx-balance">
+                      <span className="fx-label">Balance Remaining</span>
+                      <span className="fx-val">{fmt2(Math.max(0, balance), rc)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="fx-signatures">
+                  <div className="fx-sig-block">
+                    <div className="fx-sig-line" />
+                    <div className="fx-sig-name">{receipt.sigName || '—'}</div>
+                    <div className="fx-sig-title">{receipt.sigTitle || '—'}</div>
+                  </div>
+                  <div className="fx-sig-block">
+                    <div className="fx-sig-line" />
+                    <div className="fx-sig-name">{receipt.repName || '—'}</div>
+                    <div className="fx-sig-title">{receipt.repTitle || '—'}</div>
+                  </div>
+                </div>
+
+                <footer className="fx-footer">
+                  {receipt.quote ? <div className="fx-footer-quote">“{receipt.quote}”</div> : null}
+                  <div className="fx-footer-note">Official Statement</div>
+                </footer>
+
+                <div className="fx-bottom-barcode">
+                  <div className="fx-barcode">
+                    {bars.map((b, i) => (
+                      <span key={i} className={b.dark ? 'fx-bar' : undefined} style={{ width: `${b.w}px` }} />
+                    ))}
+                  </div>
+                  <div className="fx-barcode-num">{invoiceCode}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Record payment modal ── */}
+      {showPaymentModal && (
+        <div className="fx-modal" onClick={() => setShowPaymentModal(false)}>
+          <div
+            className="fx-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="fx-pay-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="fx-modal-head">
+              <div>
+                <h3 id="fx-pay-title">Record payment</h3>
+                <p>Receipts feed straight into the statement.</p>
+              </div>
+              <button
+                type="button"
+                className="fx-icon-btn"
+                aria-label="Close"
+                onClick={() => setShowPaymentModal(false)}
+              >
+                <IcoClose w={16} />
+              </button>
+            </div>
+
+            <form className="fx-modal-body" onSubmit={handleRecordPayment} noValidate>
+              <div className="fx-grid3">
+                <div className="fx-field">
+                  <label htmlFor="pDate">Date</label>
+                  <input
+                    id="pDate" className="fx-input" type="date" required
+                    value={paymentForm.date}
+                    onChange={(e) => setPaymentForm((p) => ({ ...p, date: e.target.value }))}
+                  />
+                </div>
+                <div className="fx-field">
+                  <label htmlFor="pCurrency">Currency</label>
+                  <select
+                    id="pCurrency" className="fx-input" value={paymentForm.currency}
+                    onChange={(e) => setPaymentForm((p) => ({ ...p, currency: e.target.value }))}
+                  >
+                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="fx-field">
+                  <label htmlFor="pMethod">Method</label>
+                  <select
+                    id="pMethod" className="fx-input" value={paymentForm.payment_method}
+                    onChange={(e) => setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))}
+                  >
+                    <option>Cash</option>
+                    <option>M-Pesa</option>
+                    <option>Card</option>
+                    <option>Bank Transfer</option>
+                    <option>Insurance</option>
+                  </select>
+                </div>
+              </div>
+
+              {paymentForm.payment_method === 'Insurance' && (
+                <div className="fx-field">
+                  <label htmlFor="pIns">Name of insurance *</label>
+                  <input
+                    id="pIns" className="fx-input"
+                    placeholder="e.g. CIC Insurance, Jubilee, Britam"
+                    value={paymentForm.insurance_provider}
+                    onChange={(e) => setPaymentForm((p) => ({ ...p, insurance_provider: e.target.value }))}
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="fx-grid2">
+                <div className="fx-field">
+                  <label htmlFor="pRef">Reference number</label>
+                  <input
+                    id="pRef" className="fx-input" placeholder="e.g. QXR89YU72" required
+                    value={paymentForm.reference}
+                    onChange={(e) => setPaymentForm((p) => ({ ...p, reference: e.target.value }))}
+                  />
+                </div>
+                <div className="fx-field">
+                  <label htmlFor="pAmount">Amount</label>
+                  <input
+                    id="pAmount" className="fx-input" type="number" min="0" step="any" placeholder="0.00" required
+                    value={paymentForm.amount}
+                    onChange={(e) => setPaymentForm((p) => ({ ...p, amount: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="fx-field">
+                <label htmlFor="pDesc">Description / notes (optional)</label>
+                <input
+                  id="pDesc" className="fx-input"
+                  placeholder="e.g. Facility fee, coffin, embalming…"
+                  value={paymentForm.description}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </div>
+
+              <div className="fx-modal-foot">
+                <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowPaymentModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="fx-btn fx-btn-green" disabled={isRecording}>
+                  {isRecording ? 'Saving…' : 'Save payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

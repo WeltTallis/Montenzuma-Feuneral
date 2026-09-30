@@ -549,7 +549,7 @@ const DeceasedDetailPage = () => {
               </TabPane>
 
               <TabPane $active={activeTab === 'financials'}>
-                <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} />
+                <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} deceased={deceased} onDataChanged={fetchData} />
               </TabPane>
 
               <TabPane $active={activeTab === 'release'}>
