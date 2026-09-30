@@ -79,16 +79,141 @@ const pingOnce = (url, timeoutMs) =>
   });
 
 /**
+ * Ask the bridge which scanner devices it can actually see, for the side panel.
+ * Resolves to an array (possibly empty) and never throws — a bridge that is
+ * present but has no hardware attached is still a useful answer.
+ */
+export const listScanners = (url, timeoutMs = 5000) =>
+  new Promise((resolve) => {
+    if (!url) return resolve([]);
+    let ws = null;
+    let settled = false;
+    const done = (list) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { if (ws) ws.close(); } catch { /* ignore */ }
+      resolve(Array.isArray(list) ? list : []);
+    };
+
+    try { ws = new WebSocket(url); } catch { return done([]); }
+    const timer = setTimeout(() => done([]), timeoutMs);
+    ws.onopen = () => { try { ws.send(JSON.stringify({ action: 'GET_SCANNERS' })); } catch { done([]); } };
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (Array.isArray(data?.scanners)) done(data.scanners);
+      } catch { /* non-json */ }
+    };
+    ws.onerror = () => done([]);
+    ws.onclose = () => done([]);
+  });
+
+/** Read a value from either storage, tolerating privacy-mode failures. */
+const readStored = (key) => {
+  try { return localStorage.getItem(key) || sessionStorage.getItem(key) || ''; } catch { return ''; }
+};
+
+/** The signed-in user's access token, if the app has one. */
+export const getAuthToken = () => readStored('authToken') || readStored('accessToken');
+
+/**
+ * Ask the Restpoint cloud for a short-lived scan grant.
+ *
+ * The grant is what proves to the bridge that this tab is a genuine, signed-in
+ * Restpoint session. It expires in 60s and is single-use, which is why it is
+ * fetched per scan rather than cached.
+ *
+ *   → { ok: true, grant }  |  → { ok: false, reason }
+ */
+export const fetchScanGrant = async (timeoutMs = 10000) => {
+  const token = getAuthToken();
+  if (!token) return { ok: false, reason: 'You need to sign in to Restpoint before scanning.' };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${env.API_GATEWAY_URL}/bridge/grant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      credentials: 'include',
+      signal: controller.signal,
+    });
+    if (res.status === 401) return { ok: false, reason: 'Your session has expired. Please sign in again.' };
+    if (!res.ok) return { ok: false, reason: `Restpoint returned HTTP ${res.status}.` };
+    const body = await res.json();
+    const grant = body?.data?.grant;
+    if (!grant) return { ok: false, reason: 'Restpoint did not issue a scan grant.' };
+    return { ok: true, grant, expiresAt: body?.data?.expiresAt };
+  } catch (e) {
+    return { ok: false, reason: 'Could not reach Restpoint to authorise the scan. Check your internet connection.' };
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+/**
+ * Complete the bridge handshake on an OPEN socket: send the grant, wait for the
+ * bridge to confirm it with the cloud, and hand back the session id.
+ *
+ *   → { ok: true, sessionId, info }  |  → { ok: false, reason, code }
+ */
+export const authoriseSocket = (ws, grant, timeoutMs = 15000) =>
+  new Promise((resolve) => {
+    let settled = false;
+    const done = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const timer = setTimeout(
+      () => done({ ok: false, reason: 'The scanner bridge did not answer in time.' }),
+      timeoutMs,
+    );
+
+    const onMessage = (event) => {
+      let data;
+      try { data = JSON.parse(event.data); } catch { return; }
+
+      if (data?.type === 'hello_ok') {
+        ws.removeEventListener('message', onMessage);
+        done({ ok: true, sessionId: data.sessionId, info: data });
+        return;
+      }
+      if (data?.type === 'hello_rejected') {
+        ws.removeEventListener('message', onMessage);
+        done({
+          ok: false,
+          code: data.code || 'GRANT_REJECTED',
+          // Surface the bridge's own reason: "grant expired" and "could not
+          // reach Restpoint" need very different advice for the user.
+          reason: data.reason || 'The bridge could not confirm your Restpoint session.',
+        });
+        return;
+      }
+    };
+
+    ws.addEventListener('message', onMessage);
+    try {
+      ws.send(JSON.stringify({ action: 'HELLO', grant }));
+    } catch {
+      ws.removeEventListener('message', onMessage);
+      done({ ok: false, reason: 'Could not talk to the scanner bridge.' });
+    }
+  });
+
+/**
  * Build the START_SCAN payload the bridge expects, enriched with the current
  * user session (token / tenant slug / gateway base) so the agent can upload the
  * scanned PDF straight to the documents-service.
+ *
+ * `sessionId` comes from the HELLO handshake and is mandatory: the bridge
+ * refuses to drive the scanner without an authorised session.
  */
-export const buildStartScanMessage = ({ deceasedId, documentName, category, extra = {} }) => {
-  const read = (key) => {
-    try { return localStorage.getItem(key) || sessionStorage.getItem(key) || ''; } catch { return ''; }
-  };
-  const token = read('authToken') || read('accessToken');
-  const tenantSlug = read('tenantSlug') || read('tenant_slug');
+export const buildStartScanMessage = ({ deceasedId, documentName, category, sessionId, extra = {} }) => {
+  const token = getAuthToken();
+  const tenantSlug = readStored('tenantSlug') || readStored('tenant_slug');
 
   // The bridge is local, but document uploads must use the same canonical
   // gateway as the rest of the app. In production this is the cloud API;
@@ -97,6 +222,7 @@ export const buildStartScanMessage = ({ deceasedId, documentName, category, extr
 
   return {
     action: 'START_SCAN',
+    sessionId: sessionId || undefined,
     deceasedId: String(deceasedId || ''),
     documentName: documentName || `Scan_${String(deceasedId || 'document')}.pdf`,
     category: category || 'Scan',

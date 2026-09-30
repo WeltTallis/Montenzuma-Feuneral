@@ -241,8 +241,37 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
   const footerMarginLeft = isMobile ? '0' : (sidebarOpen ? '200px' : '60px');
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F7F9FB', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', flex: 1, position: 'relative' }}>
+    // 100dvh (not 100vh) on the outer shell: on mobile 100vh resolves to the
+    // FULL viewport including the strip behind the collapsing URL bar, so a
+    // "100vh" shell was always taller than the screen the user could see.
+    <div className="rp-app-shell" style={{ minHeight: '100dvh' }}>
+      <style>{`
+        .rp-app-shell{
+          display:flex;
+          flex-direction:column;
+          background:#F7F9FB;
+          /* Belt-and-braces: nothing inside the dashboard may scroll the page
+             sideways. Wide tables scroll inside their own .panel wrapper. */
+          max-width:100%;
+          /* "clip", NOT "hidden": overflow-x:hidden would turn this shell into a
+             scroll container, which silently breaks every position:sticky header
+             inside it (the financials topbar, monitor header, ...). "clip" contains
+             the overflow without creating a scrollport, so sticky still works. */
+          overflow-x:clip;
+        }
+        .rp-app-body{ min-height:0; }
+        /* The floating menu button is position:fixed at the bottom-left of the
+           VIEWPORT, so at full scroll it lands on top of the footer. Reserving a
+           lane under the footer keeps the button on empty space instead of
+           covering the copyright / WhatsApp links. */
+        @media (max-width:767px){
+          .rp-app-footer{ padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
+        }
+      `}</style>
+      {/* minWidth:0 — a flex item defaults to min-width:auto, so ONE wide child
+          (the store's 620px table, a long settings row) used to stretch this row
+          past the viewport and give the whole page a horizontal scrollbar. */}
+      <div className="rp-app-body" style={{ display: 'flex', flex: '1 0 auto', position: 'relative', minWidth: 0 }}>
         <ModernSidebar
           tenantData={tenantData}
           deploymentType={deploymentType}
@@ -251,11 +280,15 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
           onLogout={handleLogout}
           onToggle={handleSidebarToggle}
         />
-        <main style={{ flex: 1, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease' }}>
+        <main style={{ flex: 1, minWidth: 0, marginLeft, padding: contentPadding, background: '#F7F9FB', transition: 'margin-left 0.3s ease, padding 0.3s ease' }}>
           <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
         </main>
       </div>
-      <div style={{ marginLeft: footerMarginLeft, transition: 'margin-left 0.3s ease' }}>
+      {/* The footer is a sibling of the content, not inside it. Pages that set
+          their own min-height:100vh used to add a SECOND full viewport before
+          this footer, which is what left it hanging past the fold with empty
+          space underneath. Pages are now free to size to their content. */}
+      <div className="rp-app-footer" style={{ marginLeft: footerMarginLeft, transition: 'margin-left 0.3s ease' }}>
         <FooterComponent />
       </div>
     </div>

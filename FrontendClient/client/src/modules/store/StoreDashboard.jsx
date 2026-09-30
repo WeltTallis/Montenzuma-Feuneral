@@ -84,6 +84,47 @@ export default function StoreDashboard() {
 
         <main className="py-3 py-md-4 page-bg">
           <Container fluid className="px-3 px-md-4">
+            {/* Offline / unsynced banner. Without it the store looks healthy
+                while every "save" is really only a localStorage write that is
+                lost on refresh — which is how this failed silently before. */}
+            {!store.loading && (!store.connected || store.pendingSync > 0) && (
+              <div
+                className="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-3 py-2 px-3"
+                role="status"
+                aria-live="polite"
+              >
+                <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                  {!store.connected && <strong>Store service unreachable.</strong>}
+                  {store.error ? <span> {store.error} </span> : null}
+                  {store.pendingSync > 0 && (
+                    <span>
+                      <strong>{store.pendingSync}</strong>{' '}
+                      {store.pendingSync === 1 ? 'item is' : 'items are'} saved in this
+                      browser only and {store.pendingSync === 1 ? 'has' : 'have'} not
+                      reached the server yet.
+                    </span>
+                  )}
+                  {!store.connected && (
+                    <span>
+                      Changes are held in this browser and upload automatically
+                      once the service is reachable. Clearing site data or using a
+                      different browser will lose them.
+                    </span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  className="d-inline-flex align-items-center gap-1"
+                  onClick={store.refresh}
+                  disabled={store.loading}
+                >
+                  <i className="fa-solid fa-rotate" aria-hidden="true" /> Retry now
+                </Button>
+              </div>
+            )}
+
             {store.loading ? (
               <div className="text-center py-5">
                 <span className="spinner-border" role="status" />

@@ -1,10 +1,11 @@
 "use client";
-import React from "react";
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import styled, { keyframes, createGlobalStyle } from "styled-components";
-import "bootstrap/dist/css/bootstrap.min.css";
 import { useTenantStore } from "../../modules/seo/useTenantStore";
+import { useParams, useNavigate } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { useState, useEffect } from "react";
+import React from "react";
+
 
 /* Font family stack — Saira is now strictly enforced everywhere in the UI
    to prevent browser fallback fonts from making the text look bad. */
@@ -18,20 +19,31 @@ function Icon({ size = 14, sw = 2.25, color = "currentColor", children }) {
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24">
       <g fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={sw}>
         {children}
+
       </g>
     </svg>
   );
 }
+
+
+
 const ArrowLeftIcon = (p) => (
   <Icon {...p}>
     <path d="m12 19l-7-7l7-7m7 7H5" />
   </Icon>
 );
+
+
+
 const ArrowUpRightIcon = (p) => (
   <Icon {...p}>
     <path d="M7 7h10v10M7 17L17 7" />
   </Icon>
 );
+
+
+
+
 const Building2Icon = (p) => (
   <Icon {...p}>
     <path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3" />
@@ -39,11 +51,16 @@ const Building2Icon = (p) => (
     <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
   </Icon>
 );
+
+
+
 const LogOutIcon = (p) => (
   <Icon {...p}>
     <path d="m16 17l5-5l-5-5m5 5H9m0 9H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
   </Icon>
 );
+
+
 const Flower2Icon = (p) => (
   <Icon {...p}>
     <path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1" />
@@ -51,12 +68,16 @@ const Flower2Icon = (p) => (
     <path d="M12 10v12m0 0c4.2 0 7-1.667 7-5c-4.2 0-7 1.667-7 5m0 0c-4.2 0-7-1.667-7-5c4.2 0 7 1.667 7 5" />
   </Icon>
 );
+
+
 const FileTextIcon = (p) => (
   <Icon {...p}>
     <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
     <path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8" />
   </Icon>
 );
+
+
 const SparklesIcon = (p) => (
   <Icon {...p}>
     <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4" />
@@ -64,50 +85,55 @@ const SparklesIcon = (p) => (
   </Icon>
 );
 
+
+
+const BLUE = {
+  bright: "#4A8FD4",
+  cardBorder: "#00296B88",
+  rule: "#4A8FD470",
+  glow: "rgba(74,143,212,.30)",
+  glowStrong: "rgba(74,143,212,.55)",
+  ghost: "#4A8FD412",
+  bg: "linear-gradient(145deg, #081426 0%, #04070d 100%)",
+};
+const RED = {
+  bright: "#ff006e",
+  cardBorder: "#ff006e40",
+  rule: "#ff006e70",
+  glow: "rgba(255,0,110,.30)",
+  glowStrong: "rgba(255,0,110,.55)",
+  ghost: "#ff006e12",
+  bg: "linear-gradient(145deg, #1f0a15 0%, #0a0305 100%)",
+};
+
 /* ── Card data ─────────────────────────────────────────────── */
 const CARDS = [
   {
     num: "01",
     title: "Body Admission",
     sub: "Respectful reception & formal registration of the deceased",
-    accent: "#00d9ff",
-    bg: "linear-gradient(145deg, #0f1820 0%, #050709 100%)",
-    border: "#00d9ff40",
-    topRule: "linear-gradient(to right, transparent 5%, #00d9ff70 50%, transparent 95%)",
-    ghost: "#00d9ff12",
+    ...BLUE,
     Icon: Building2Icon,
   },
   {
     num: "02",
     title: "Body Release",
     sub: "Dignified coordination of the final departure",
-    accent: "#ff006e",
-    bg: "linear-gradient(145deg, #1f0a15 0%, #0a0305 100%)",
-    border: "#ff006e40",
-    topRule: "linear-gradient(to right, transparent 5%, #ff006e70 50%, transparent 95%)",
-    ghost: "#ff006e12",
+    ...RED,
     Icon: LogOutIcon,
   },
   {
     num: "03",
     title: "Flower Arrangements",
     sub: "Bespoke floral tributes, wreaths & memorial displays",
-    accent: "#00d9ff",
-    bg: "linear-gradient(145deg, #0a1520 0%, #050709 100%)",
-    border: "#00d9ff40",
-    topRule: "linear-gradient(to right, transparent 5%, #00d9ff70 50%, transparent 95%)",
-    ghost: "#00d9ff12",
+    ...BLUE,
     Icon: Flower2Icon,
   },
   {
     num: "04",
     title: "Postmortem Records",
     sub: "Secure access to medical documentation & reports",
-    accent: "#ff006e",
-    bg: "linear-gradient(145deg, #180a14 0%, #070304 100%)",
-    border: "#ff006e40",
-    topRule: "linear-gradient(to right, transparent 5%, #ff006e70 50%, transparent 95%)",
-    ghost: "#ff006e12",
+    ...RED,
     Icon: FileTextIcon,
   },
 ];
@@ -123,8 +149,8 @@ const rise = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `;
 const pulse = keyframes`
-  0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,217,255,0.5); }
-  50%     { opacity: .5; box-shadow: 0 0 0 5px rgba(0,217,255,0); }
+  0%,100% { opacity: 1; box-shadow: 0 0 0 0 ${BLUE.glow}; }
+  50%     { opacity: .5; box-shadow: 0 0 0 5px rgba(74,143,212,0); }
 `;
 
 /* ── Global font import ────────────────────────────────────── */
@@ -151,12 +177,18 @@ const Hero = styled.div`
   position: relative;
   overflow: hidden;
   height: 100vh;
-  min-height: 900px;
-  max-height: 1200px;
+  min-height: 640px;
+  max-height: 1100px;
+  /* Fallback backdrop, visible until /portal.webp decodes and permanently if it
+     is missing. Without it a missing/renamed image left the whole hero solid
+     black, so the first thing a receptionist saw was an empty screen. */
+  background:
+    radial-gradient(80% 60% at 70% 20%, rgba(74, 143, 212, 0.14), transparent 60%),
+    radial-gradient(70% 60% at 20% 80%, rgba(255, 0, 110, 0.1), transparent 60%),
+    linear-gradient(160deg, #0b0d14 0%, #050507 60%, #030304 100%);
   @media (max-width: 1100px) { height: 60vh; min-height: 500px; max-height: 800px; }
-  @media (max-width: 880px)  { height: 50vh; min-height: 400px; max-height: 700px; }
-  @media (max-width: 720px)  { height: 40vh; min-height: 350px; max-height: 600px; }
-  @media (max-width: 480px)  { height: 35vh; min-height: 300px; max-height: 500px; }
+  @media (max-width: 880px)  { height: 60vh; min-height: 480px; max-height: 800px; }
+  @media (max-width: 600px)  { height: 48vh; min-height: 380px; max-height: 600px; }
 `;
 
 const HeroImg = styled.img`
@@ -193,7 +225,7 @@ const BackBtn = styled.button`
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #00d9ff;
+  color: ${BLUE.bright};
   background: transparent;
   border: none;
   padding: 4px 0;
@@ -244,7 +276,7 @@ const Dot = styled.div`
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #00d9ff;
+  background: ${BLUE.bright};
   animation: ${pulse} 2.6s ease-in-out infinite;
   @media (prefers-reduced-motion: reduce) { animation: none; }
 `;
@@ -304,10 +336,18 @@ const CardBtn = styled.button`
   cursor: pointer;
   display: block;
   animation: ${rise} 0.7s ease both;
+  /* Visible keyboard focus. Without this the card was completely unidentifiable
+     when tabbed to, because the hover treatment only fires on :hover. */
+  &:focus-visible {
+    outline: 2px solid ${BLUE.bright};
+    outline-offset: 4px;
+    border-radius: 14px;
+  }
   &:nth-of-type(1) { animation-delay: 0.05s; }
   &:nth-of-type(2) { animation-delay: 0.15s; }
   &:nth-of-type(3) { animation-delay: 0.25s; }
   &:nth-of-type(4) { animation-delay: 0.35s; }
+  @media (prefers-reduced-motion: reduce) { animation: none; }
 `;
 
 const CardBox = styled.div`
@@ -323,14 +363,35 @@ const CardBox = styled.div`
   min-height: 280px;
   height: 100%;
   transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease, border-color 0.4s ease;
-  ${CardBtn}:hover & {
+  ${CardBtn}:hover &, ${CardBtn}:focus-visible & {
     transform: translateY(-8px);
     border-color: ${(p) => p.$accent};
-    box-shadow: 0 34px 80px rgba(0, 0, 0, 0.8), 0 0 40px ${(p) => p.$accent}30, inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: 0 34px 80px rgba(0, 0, 0, 0.8), 0 0 40px ${(p) => p.$glow}, inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  ${CardBtn}:active & {
+    transform: translateY(-5px) scale(0.995);
   }
   @media (max-width: 880px) { min-height: 250px; padding: 28px 24px 24px; }
   @media (max-width: 720px) { min-height: 240px; }
-  @media (max-width: 480px) { min-height: 200px; padding: 24px 20px 20px; }
+  @media (max-width: 600px) { min-height: 210px; padding: 24px 20px 20px; }
+`;
+
+/* The card's service icon, drawn bare on the card surface. drop-shadow follows the
+   stroke itself (SVG filters respect alpha), so the glow hugs the glyph instead
+   of showing as a blurred rectangle behind a bounding box. */
+const IconBare = styled.span`
+  display: inline-flex;
+  color: ${(p) => p.$accent};
+  filter: drop-shadow(0 0 8px ${(p) => p.$glow});
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.35s ease;
+  ${CardBtn}:hover & {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 14px ${(p) => p.$glow});
+  }
+  @media (max-width: 600px) {
+    svg { width: 30px; height: 30px; }
+  }
+  @media (prefers-reduced-motion: reduce) { transition: none; }
 `;
 
 const Corner = styled.div`
@@ -370,10 +431,11 @@ const Spinner = styled.div`
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 217, 255, 0.1);
-  border-top-color: #00d9ff;
+  border: 1px solid rgba(74, 143, 212, 0.1);
+  border-top-color: ${BLUE.bright};
   margin-bottom: 32px;
   animation: ${spin} 1.1s linear infinite;
+  @media (prefers-reduced-motion: reduce) { animation-duration: 2.4s; }
 `;
 
 /* ── Component ─────────────────────────────────────────────── */
@@ -423,11 +485,17 @@ export default function App() {
         {/* ── Hero ── */}
         <Hero>
           <div style={{ position: "absolute", inset: 0 }}>
-            <HeroImg src="/portal.webp" alt="Reception portal" />
+            {/* onError hides the <img> so the Hero's gradient backdrop shows
+                through instead of a broken-image glyph on the landing screen. */}
+            <HeroImg
+              src="/portal.webp"
+              alt="Reception portal"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
           </div>
           <Scrim $g="linear-gradient(to right, rgba(14,14,25,0.95) 0%, rgba(5,5,7,0.85) 1%, rgba(5,5,7,0.4) 10%)" />
           <Scrim $g="linear-gradient(to top, rgba(5,5,7,1) 0%, rgba(5,5,7,0) 15%)" />
-          <Scrim $g="linear-gradient(135deg, rgba(0,217,255,0.08) 0%, transparent 10%)" />
+          <Scrim $g="linear-gradient(135deg, rgba(74,143,212,0.10) 0%, transparent 12%)" />
 
           <TopBar>
             <BackBtn
@@ -445,7 +513,7 @@ export default function App() {
                 style={{
                   width: 128,
                   height: 1,
-                  background: "linear-gradient(to right, transparent, rgba(0,217,255,0.5), transparent)",
+                  background: "linear-gradient(to right, transparent, rgba(74,143,212,0.6), transparent)",
                 }}
               />
               <Tag>Reception Portal</Tag>
@@ -508,7 +576,7 @@ export default function App() {
               <h3 style={{
                 fontFamily: BODY, // Applied Saira
                 fontSize: 28,
-                color: "#00d9ff",
+                color: "#ecfdf5",
                 fontWeight: 600,
                 margin: 0
               }}>
@@ -533,13 +601,16 @@ export default function App() {
           <div className="row g-4">
             {CARDS.map((c) => (
               <div className="col-12 col-md-6" key={c.num}>
-                <CardBtn onClick={() => handleServiceClick(c.title)}>
-                  <CardBox $bg={c.bg} $border={c.border} $accent={c.accent}>
-                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: c.topRule }} />
-                    <Corner $accent={c.accent} $pos="tl" />
-                    <Corner $accent={c.accent} $pos="tr" />
-                    <Corner $accent={c.accent} $pos="bl" />
-                    <Corner $accent={c.accent} $pos="br" />
+                <CardBtn
+                  onClick={() => handleServiceClick(c.title)}
+                  aria-label={`Begin ${c.title}`}
+                >
+                  <CardBox $bg={c.bg} $border={c.cardBorder} $accent={c.bright} $glow={c.glow}>
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(to right, transparent 5%, ${c.rule} 50%, transparent 95%)` }} />
+                    <Corner $accent={c.bright} $pos="tl" />
+                    <Corner $accent={c.bright} $pos="tr" />
+                    <Corner $accent={c.bright} $pos="bl" />
+                    <Corner $accent={c.bright} $pos="br" />
                     <div
                       style={{
                         position: "absolute",
@@ -562,40 +633,32 @@ export default function App() {
                         display: "flex",
                         alignItems: "flex-start",
                         justifyContent: "space-between",
-                        marginBottom: 28,
+                        marginBottom: 24,
                         position: "relative",
                         zIndex: 1,
                       }}
                     >
-                      <div
-                        style={{
-                          width: 60,
-                          height: 60,
-                          borderRadius: 8,
-                          background: `${c.accent}22`,
-                          border: `1.5px solid ${c.accent}50`,
-                          boxShadow: "0 8px 16px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.06)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <c.Icon size={26} sw={1.85} color={c.accent} />
-                      </div>
+                      {/* Bare icon — no tile. The old 60x60 tinted box made every
+                          card read as a generic icon-button row and buried the
+                          corner brackets that give the card its identity. The
+                          accent glow now carries that role instead. */}
+                      <IconBare $accent={c.bright} $glow={c.glow}>
+                        <c.Icon size={34} sw={1.6} color={c.bright} />
+                      </IconBare>
                       <div style={{
                         fontFamily: BODY, // Applied Saira
                         fontSize: 28,
-                        color: c.accent,
+                        color: c.bright,
                         fontWeight: 700,
-                        opacity: 0.6
+                        opacity: 0.65
                       }}>
                         {c.num}
                       </div>
                     </div>
 
-                    <div style={{ marginBottom: 24, height: 4, background: `linear-gradient(to right, ${c.accent}60, transparent)` }} />
+                    <div style={{ marginBottom: 22, height: 4, background: `linear-gradient(to right, ${c.rule}, transparent)` }} />
 
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, position: "relative", zIndex: 1 }}>
                       <div
                         style={{
                           fontFamily: BODY, // Applied Saira
@@ -604,7 +667,7 @@ export default function App() {
                           letterSpacing: "-0.3px",
                           lineHeight: 1.3,
                           fontWeight: 600,
-                          marginBottom: 12,
+                          marginBottom: 10,
                         }}
                       >
                         {c.title}
@@ -612,7 +675,10 @@ export default function App() {
                       <div style={{
                         fontFamily: BODY, // Applied Saira
                         fontSize: 13.5,
-                        color: "#a89a88",
+                        /* Cool grey-blue per the approved palette. This was a warm
+                           tan (#a89a88) left over from a different theme, which
+                           muddied the description against the navy cards. */
+                        color: "#9aa3b8",
                         fontWeight: 300,
                         lineHeight: 1.7
                       }}>
@@ -620,8 +686,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24, paddingTop: 8, position: "relative", zIndex: 1 }}>
-                      <Continue $accent={c.accent}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 22, paddingTop: 8, position: "relative", zIndex: 1 }}>
+                      <Continue $accent={c.bright}>
                         <span style={{
                           fontFamily: BODY, // Applied Saira
                           fontSize: 12,

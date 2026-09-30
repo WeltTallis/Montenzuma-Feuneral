@@ -5,639 +5,568 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import env from '../../utils/config/env';
 import notify from '../../utils/notify';
-// ─── Google Fonts ────────────────────────────────────────────
+
+// ─── Fonts + icon lib ───────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Saira:wght@400;500;600;700&display=swap');
   @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  img, svg { display: block; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
 `;
 
-// ─── Design tokens (new palette) ────────────────────────────
+// ─── Design tokens (approved white theme) ───────────────────────
 const C = {
-    paper: '#f3efe5',
-    paper2: '#f7f4ec',
     ink: '#211d17',
     ink2: '#5d554a',
-    hair: 'rgba(33, 29, 23, .16)',
-    hair2: 'rgba(33, 29, 23, .38)',
+    inkFaint: '#a7a294',
+    line: '#e8e4da',
+    lineSoft: '#f0ede5',
+    paperSoft: '#fcfbf8',
     ox: '#7c2b23',
+    oxDeep: '#6a241e',
+    oxBg: '#faf0ee',
     moss: '#4d5f42',
+    mossDeep: '#3e4d35',
+    mossBg: '#f0f4ec',
     och: '#9a6a1e',
+    ochBg: '#faf4e8',
     ease: 'cubic-bezier(.32, .72, .24, 1)',
+    serif: "'Fraunces', Georgia, serif",
+    sans: "'Saira', system-ui, sans-serif",
 };
 
 const BASE_URL = env.FULL_API_URL;
 
-// ─── Animations ────────────────────────────────────────────────
-const fadeIn = keyframes`from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}`;
+// ─── Animations ─────────────────────────────────────────────────
+const fadeIn = keyframes`from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}`;
+const fadeUp = keyframes`from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}`;
 const spin = keyframes`to{transform:rotate(360deg)}`;
 const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}`;
 
-// ─── Layout ────────────────────────────────────────────────────
+// ─── Inline SVG icons (match the approved HTML) ─────────────────
+const I = {
+    Hash: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M9 3 7 21M17 3l-2 18M4 8h17M3 16h17" /></svg>,
+    Calendar: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>,
+    Clock: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
+    Info: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>,
+    Warn: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>,
+    CheckCircle: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.5 12.5 2.5 2.5 4.5-5.5" /></svg>,
+    List: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></svg>,
+    Search: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>,
+    SearchLg: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>,
+    Close: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>,
+    Shield: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 4 6v6c0 4.5 3.2 7.9 8 9 4.8-1.1 8-4.5 8-9V6l-8-3z" /></svg>,
+    Flag: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V4M5 4h13l-3 4 3 4H5" /></svg>,
+    Align: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>,
+    UserTag: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="8" r="4" /></svg>,
+    ArrowLeft: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>,
+    Send: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-11 11M22 2 15 22l-4-9-9-4 20-7z" /></svg>,
+    Plus: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
+    Check: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m4 12.5 5 5L20 6.5" /></svg>,
+    CheckLg: () => <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m4 12.5 5 5L20 6.5" /></svg>,
+    DoubleCheck: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m2 12.5 5 5L19 5.5" /><path d="m13 17 2 2L23 11" /></svg>,
+    Leaf: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" /><path d="M4 20c4-6.5 8.5-10 13-12.5" /></svg>,
+};
+
+// ─── Layout ─────────────────────────────────────────────────────
 const Shell = styled.div`
-    font-family: 'Saira', sans-serif;
-    background: radial-gradient(circle at top center, #efe9da 0%, #e6e0d0 100%);
+    font-family: ${C.sans};
+    background: #fff;
     color: ${C.ink};
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     -webkit-font-smoothing: antialiased;
-    padding: 0;
+    overflow-wrap: anywhere;
 `;
 
 const Card = styled.div`
-    max-width: 100%;
     width: 100%;
-    background: ${C.paper2};
-    overflow: hidden;
-    animation: ${fadeIn} 0.5s ${C.ease} both;
-    border-radius: 0;
+    max-width: 860px;
+    background: #fff;
+    /* NO border — soft layered shadow only */
+    box-shadow: 0 2px 6px rgba(33,29,23,.04), 0 24px 60px -24px rgba(33,29,23,.14);
+    animation: ${fadeIn} .5s ${C.ease} both;
+    display: flex;
+    flex-direction: column;
 
     @media (max-width: 600px) {
-        margin: 0;
-        border-radius: 0;
         min-height: 100vh;
     }
 `;
 
-// ─── Condolence Banner (no bottom border) ──────────────────────
-const Banner = styled.div`
-    background: linear-gradient(180deg, #1c1812 0%, #2a2520 100%);
+// Slim 3-color accent line at the very top
+const AccentLine = styled.div`
+    height: 3px;
+    background: linear-gradient(90deg, ${C.moss} 0 33.3%, ${C.och} 33.3% 66.6%, ${C.ox} 66.6% 100%);
+`;
 
+// ─── Condolence strip (light, quiet) ────────────────────────────
+const Condolence = styled.div`
     text-align: center;
-    position: relative;
-    overflow: hidden;
-    /* bottom border removed */
-
-    &::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background:
-            radial-gradient(circle at 20% 50%, rgba(154, 106, 30, .08), transparent 50%),
-            radial-gradient(circle at 80% 50%, rgba(124, 43, 35, .10), transparent 50%);
-        pointer-events: none;
-    }
+    padding: 16px 28px;
+    background: ${C.paperSoft};
+    border-bottom: 1px solid ${C.lineSoft};
 
     p {
-        position: relative;
-        font-family: 'Fraunces', serif;
-        font-size: 17px;
-        color: rgba(243, 239, 229, .94);
-        font-weight: 400;
+        font-family: ${C.serif};
         font-style: italic;
+        font-size: 15.5px;
         line-height: 1.55;
-        letter-spacing: 0.01em;
-        margin: 0;
+        color: ${C.ink2};
     }
-
-    .ornament {
-        display: inline-block;
-        margin: 0 14px;
+    .orn {
         color: ${C.och};
-        opacity: .6;
-        font-size: 12px;
+        opacity: .55;
+        font-size: 11px;
+        margin: 0 12px;
         vertical-align: middle;
     }
 
-    @media (max-width: 600px) { padding: 18px 20px; }
+    @media (max-width: 600px) { p { font-size: 14px; } }
 `;
 
-// ─── Document Header (QR + timestamp) ──────────────────────────
+// ─── Document header ────────────────────────────────────────────
 const DocHeader = styled.header`
-    background: ${C.paper};
-    padding: 10px 10px;
+    background: #fff;
+    padding: 22px 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 24px;
-    border-bottom: 1px solid ${C.hair};
+    border-bottom: 1px solid ${C.lineSoft};
 
-    @media (max-width: 600px) {
+    @media (max-width: 640px) {
         flex-direction: column;
-        padding: 24px;
-        align-items: center;
+        padding: 22px 20px;
         text-align: center;
     }
 `;
 
-const HeaderLeft = styled.div`display:flex;flex-direction:column;gap:14px;`;
+const HeaderLeft = styled.div`
+    display: flex; flex-direction: column; gap: 12px; min-width: 0;
+    @media (max-width: 640px) { align-items: center; }
+`;
 
 const ReqIdBadge = styled.div`
-    font-family: 'Saira', sans-serif;
-    font-size: 19px;
-    font-weight: 600;
-    color: ${C.ink};
-    letter-spacing: -.01em;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 19px; font-weight: 600; letter-spacing: -.01em;
 
-    i {
-        color: ${C.och};
-        font-size: 14px;
-        width: 28px;
-        height: 28px;
-        background: rgba(154, 106, 30, .10);
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
+    .ico {
+        width: 30px; height: 30px; flex: none; border-radius: 50%;
+        background: ${C.ochBg}; color: ${C.och};
+        display: grid; place-items: center;
     }
+
+    @media (max-width: 640px) { justify-content: center; }
 `;
 
 const Timestamps = styled.div`
-    display: flex;
-    gap: 22px;
-    flex-wrap: wrap;
-    @media (max-width: 600px) { justify-content: center; }
+    display: flex; gap: 20px; flex-wrap: wrap;
+    @media (max-width: 640px) { justify-content: center; }
 `;
 
 const MetaItem = styled.div`
-    font-size: 13px;
-    color: ${C.ink2};
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: ${C.ink2};
 
-    i { color: ${C.och}; font-size: 11px; }
-    span {
-        font-weight: 600;
-        color: ${C.ink};
-        font-variant-numeric: tabular-nums;
-    }
+    svg { color: ${C.och}; flex: none; }
+    b { color: ${C.ink}; font-weight: 600; font-variant-numeric: tabular-nums; }
 `;
 
-const QrWrapper = styled.div`display:flex;flex-direction:column;align-items:center;gap:8px;`;
+const QrWrapper = styled.div`
+    display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none;
+`;
 
 const QrBox = styled.div`
-    width: 108px;
-    height: 108px;
-    padding: 8px;
-    border: 1px solid ${C.hair2};
+    width: 104px; height: 104px; padding: 8px;
+    border: 1px solid ${C.lineSoft};
     background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(33, 29, 23, .08);
+    box-shadow: 0 2px 8px rgba(33,29,23,.05);
+    display: flex; align-items: center; justify-content: center;
 `;
 
 const QrLabel = styled.span`
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: .22em;
-    color: ${C.moss};
-    font-weight: 700;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .2em; text-transform: uppercase;
+    color: ${C.moss}; text-align: center;
 `;
 
 // ─── Title ──────────────────────────────────────────────────────
 const TitleSection = styled.div`
-    padding: 36px 40px 24px;
+    padding: 34px 40px 20px;
     text-align: center;
-    background: ${C.paper2};
 
     h1 {
-        font-family: 'Fraunces', serif;
-        font-size: 30px;
-        font-weight: 600;
-        color: ${C.ink};
-        margin: 0 0 8px;
-        letter-spacing: -.01em;
+        font-family: ${C.serif}; font-weight: 600;
+        font-size: 30px; letter-spacing: -.01em; margin-bottom: 8px;
 
-        .accent {
-            color: ${C.ox};
-            font-style: italic;
-        }
+        .accent { color: ${C.ox}; font-style: italic; }
     }
     p {
-        font-family: 'Fraunces', serif;
-        font-size: 14px;
-        color: ${C.ink2};
-        font-style: italic;
-        margin: 0;
+        font-family: ${C.serif}; font-style: italic;
+        font-size: 14px; color: ${C.ink2};
     }
 
-    @media (max-width: 600px) {
-        padding: 24px 20px;
+    @media (max-width: 640px) {
+        padding: 26px 20px 16px;
         h1 { font-size: 24px; }
     }
 `;
 
 // ─── Step indicator ─────────────────────────────────────────────
 const Steps = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    padding: 0 40px 32px;
-    background: ${C.paper2};
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 2px 40px 28px;
 `;
 
 const Step = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: ${p => p.$active ? C.ink : p.$done ? C.moss : C.ink2};
-    position: relative;
-    z-index: 1;
-`;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: ${p => (p.$active ? C.ink : p.$done ? C.moss : C.inkFaint)};
+    position: relative; z-index: 1; text-align: center; min-width: 76px;
 
-const StepNum = styled.div`
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    font-size: 13px;
-    font-weight: 700;
-    background: ${p => p.$active ? C.ink : p.$done ? C.moss : C.paper};
-    color: ${p => (p.$active || p.$done) ? '#f3efe5' : C.ink2};
-    box-shadow: ${p => p.$active
-        ? `0 0 0 1px ${C.ink}, 0 6px 14px rgba(33, 29, 23, .25)`
+    .num {
+        width: 34px; height: 34px; border-radius: 50%;
+        display: grid; place-items: center; font-size: 13px; font-weight: 700;
+        background: ${p => (p.$active ? C.ink : p.$done ? C.moss : '#fff')};
+        color: ${p => (p.$active || p.$done) ? '#fff' : C.ink2};
+        box-shadow: ${p => p.$active
+        ? `0 0 0 1px ${C.ink}, 0 6px 14px rgba(33,29,23,.18)`
         : p.$done
-            ? `0 0 0 1px ${C.moss}, 0 4px 12px rgba(77, 95, 66, .3)`
-            : `0 0 0 1px ${C.hair}`};
-    transition: all 0.35s ${C.ease};
+            ? `0 0 0 1px ${C.moss}, 0 4px 12px rgba(77,95,66,.22)`
+            : `0 0 0 1px ${C.line}`};
+        transition: all .35s ${C.ease};
+    }
+
+    @media (max-width: 640px) {
+        font-size: 9px; min-width: 60px;
+        .num { width: 30px; height: 30px; font-size: 12px; }
+    }
 `;
 
 const StepLine = styled.div`
-    flex: 1;
-    height: 2px;
-    background: ${C.hair};
-    margin: 0 -10px 22px;
-    max-width: 80px;
-    position: relative;
-    overflow: hidden;
+    flex: 1; max-width: 80px; height: 2px;
+    margin: 17px -8px 0;
+    background: ${C.lineSoft};
+    position: relative; overflow: hidden;
 
     &::after {
         content: '';
-        position: absolute;
-        inset: 0;
+        position: absolute; inset: 0;
         background: ${C.moss};
-        transform: scaleX(${p => p.$done ? 1 : 0});
+        transform: scaleX(${p => (p.$done ? 1 : 0)});
         transform-origin: left;
         transition: transform .5s ${C.ease};
     }
+
+    @media (max-width: 640px) { margin-top: 14px; }
 `;
 
-// ─── Form body ──────────────────────────────────────────────────
+// ─── Form body / footer ─────────────────────────────────────────
 const Body = styled.div`
-    padding: 32px 40px;
-    background: ${C.paper};
-    border-top: 1px solid ${C.hair};
+    padding: 30px 40px;
+    border-top: 1px solid ${C.lineSoft};
 
-    @media (max-width: 600px) { padding: 24px 20px; }
+    @media (max-width: 640px) { padding: 24px 20px; }
 `;
 
-const FormGroup = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 24px;
-    &:last-child { margin-bottom: 0; }
-`;
-
-const Label = styled.label`
-    font-size: 11px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: ${C.moss};
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    i {
-        color: ${C.och};
-        font-size: 11px;
-        width: 18px;
-        height: 18px;
-        background: rgba(154, 106, 30, .10);
-        display: grid;
-        place-items: center;
-    }
-`;
-
-const Input = styled.input`
-    background: ${C.paper2};
-    border: 1px solid ${p => p.$error ? C.ox : C.hair};
-    padding: 14px 16px;
-    font-family: 'Saira', sans-serif;
-    font-size: 15px;
-    color: ${C.ink};
-    transition: all .2s ${C.ease};
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-    animation: ${p => p.$shake ? shake : 'none'} .4s ease;
-
-    &::placeholder { color: #a7a294; }
-    &:focus {
-        background: #fff;
-        border-color: ${C.moss};
-        box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
-    }
-`;
-
-const Select = styled.select`
-    background: ${C.paper2};
-    border: 1px solid ${C.hair};
-    padding: 14px 16px;
-    font-family: 'Saira', sans-serif;
-    font-size: 15px;
-    color: ${C.ink};
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-    cursor: pointer;
-    transition: all .2s ${C.ease};
-
-    &:focus {
-        background: #fff;
-        border-color: ${C.moss};
-        box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
-    }
-`;
-
-const Textarea = styled.textarea`
-    background: ${C.paper2};
-    border: 1px solid ${C.hair};
-    padding: 14px 16px;
-    font-family: 'Fraunces', serif;
-    font-size: 15px;
-    color: ${C.ink};
-    transition: all .2s ${C.ease};
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-    resize: vertical;
-    min-height: 130px;
-    line-height: 1.6;
-
-    &::placeholder { color: #a7a294; }
-    &:focus {
-        background: #fff;
-        border-color: ${C.moss};
-        box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
-    }
-`;
-
-// ─── Alert boxes ────────────────────────────────────────────────
-const Alert = styled.div`
-    padding: 16px 20px;
-    font-size: 14px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    line-height: 1.55;
-    background: ${p => p.$type === 'success'
-        ? 'rgba(77, 95, 66, .10)'
-        : p.$type === 'error'
-            ? 'rgba(124, 43, 35, .08)'
-            : 'rgba(154, 106, 30, .10)'};
-    color: ${p => p.$type === 'success'
-        ? '#2a3825'
-        : p.$type === 'error'
-            ? '#5a1f1a'
-            : '#5a3f12'};
-    border: 1px solid ${p => p.$type === 'success'
-        ? 'rgba(77, 95, 66, .30)'
-        : p.$type === 'error'
-            ? 'rgba(124, 43, 35, .30)'
-            : 'rgba(154, 106, 30, .25)'};
-
-    i { flex-shrink: 0; margin-top: 2px; color: inherit; }
-    i.fa-info-circle, i.fa-check-circle { color: ${p => p.$type === 'success' ? C.moss : p.$type === 'error' ? C.ox : C.och}; }
-    i.fa-exclamation-triangle { color: ${C.ox}; }
-    strong { font-weight: 700; }
-`;
-
-// ─── Found case card ─────────────────────────────────────────────
-const CaseCard = styled.div`
-    background: ${C.paper2};
-    border: 1px solid ${C.hair};
-    border-left: 3px solid ${C.moss};
-    padding: 4px 20px;
-    margin-bottom: 24px;
-    animation: ${fadeIn} .3s ease both;
-`;
-
-const CaseTitle = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 0 10px;
-    border-bottom: 1px solid ${C.hair};
-    margin-bottom: 4px;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    font-weight: 700;
-    color: ${C.moss};
-
-    i { color: ${C.moss}; }
-`;
-
-const CaseRow = styled.div`
-    display: flex;
-    justify-content: space-between;
-    font-size: 14px;
-    padding: 10px 0;
-    border-bottom: 1px dashed ${C.hair};
-    &:last-child { border-bottom: none; }
-    span:first-child { color: ${C.ink2}; font-weight: 500; }
-    span:last-child  { color: ${C.ink};   font-weight: 600; font-variant-numeric: tabular-nums; }
-`;
-
-// ─── Buttons ────────────────────────────────────────────────────
 const FormFooter = styled.div`
-    border-top: 1px solid ${C.hair};
-    padding: 22px 40px;
-    background: ${C.paper2};
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
+    border-top: 1px solid ${C.lineSoft};
+    padding: 20px 40px;
+    background: ${C.paperSoft};
+    display: flex; justify-content: flex-end; gap: 12px;
 
-    @media (max-width: 600px) {
+    @media (max-width: 640px) {
         padding: 16px 20px;
         flex-direction: column-reverse;
         button { width: 100%; justify-content: center; }
     }
 `;
 
-const Btn = styled.button`
-    padding: 13px 26px;
-    font-family: 'Saira', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
+const FormGroup = styled.div`
+    display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;
+    &:last-child { margin-bottom: 0; }
+`;
+
+const Label = styled.label`
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: ${C.moss};
+
+    .lico {
+        width: 20px; height: 20px; flex: none;
+        display: grid; place-items: center;
+        background: ${C.ochBg}; color: ${C.och};
+    }
+`;
+
+const Input = styled.input`
+    width: 100%; background: #fff;
+    border: 1px solid ${p => (p.$error ? C.ox : C.line)};
+    padding: 14px 16px;
+    font-size: 15px; color: ${C.ink};
+    outline: none; border-radius: 0;
     transition: all .2s ${C.ease};
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
+    animation: ${p => (p.$shake ? shake : 'none')} .4s ease;
+
+    &::placeholder { color: ${C.inkFaint}; }
+    &:focus {
+        border-color: ${C.moss};
+        box-shadow: 0 0 0 4px rgba(77,95,66,.10);
+    }
+`;
+
+const Select = styled.select`
+    width: 100%; background: #fff;
+    border: 1px solid ${C.line};
+    padding: 14px 42px 14px 16px;
+    font-size: 15px; color: ${C.ink};
+    outline: none; border-radius: 0; cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%235d554a' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    transition: all .2s ${C.ease};
+
+    &:focus {
+        border-color: ${C.moss};
+        box-shadow: 0 0 0 4px rgba(77,95,66,.10);
+    }
+`;
+
+const Textarea = styled.textarea`
+    width: 100%; background: #fff;
+    border: 1px solid ${C.line};
+    padding: 14px 16px;
+    font-family: ${C.serif};
+    font-size: 15px; color: ${C.ink};
+    outline: none; border-radius: 0;
+    resize: vertical; min-height: 130px; line-height: 1.6;
+    transition: all .2s ${C.ease};
+
+    &::placeholder { color: ${C.inkFaint}; }
+    &:focus {
+        border-color: ${C.moss};
+        box-shadow: 0 0 0 4px rgba(77,95,66,.10);
+    }
+`;
+
+// ─── Priority segmented control ─────────────────────────────────
+const SegPriority = styled.div`
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+`;
+
+const POpt = styled.button`
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 10px;
+    border: 1px solid ${C.line}; background: #fff;
+    font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: ${C.ink2};
+    transition: all .2s ${C.ease};
+
+    .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: ${p => (p.$val === 'normal' ? C.moss : p.$val === 'urgent' ? C.och : C.ox)};
+    }
+
+    &:hover { border-color: ${C.ink2}; color: ${C.ink}; }
+
+    ${p => p.$on && `
+        background: ${p.$val === 'normal' ? C.mossBg : p.$val === 'urgent' ? C.ochBg : C.oxBg};
+        border-color: ${p.$val === 'normal' ? C.moss : p.$val === 'urgent' ? C.och : C.ox};
+        color: ${p.$val === 'normal' ? C.mossDeep : p.$val === 'urgent' ? '#5a3f12' : '#5a1f1a'};
+    `}
+`;
+
+// ─── Alert boxes ────────────────────────────────────────────────
+const Alert = styled.div`
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 15px 18px; margin-bottom: 24px;
+    font-size: 14px; line-height: 1.55;
     border: 1px solid transparent;
-    text-transform: uppercase;
-    letter-spacing: .08em;
+    animation: ${fadeUp} .25s ease both;
+
+    svg { flex: none; margin-top: 2px; }
+    strong { font-weight: 700; }
+    small { opacity: .8; display: block; margin-top: 4px; }
+
+    ${p => p.$type === 'success' && `
+        background: ${C.mossBg}; color: #2a3825; border-color: #d5e0cd;
+        svg { color: ${C.moss}; }
+    `}
+    ${p => p.$type === 'error' && `
+        background: ${C.oxBg}; color: #5a1f1a; border-color: #edd3ce;
+        svg { color: ${C.ox}; }
+    `}
+    ${p => !p.$type && `
+        background: ${C.ochBg}; color: #5a3f12; border-color: #eee0c2;
+        svg { color: ${C.och}; }
+    `}
+`;
+
+// ─── Found case card ────────────────────────────────────────────
+const CaseCard = styled.div`
+    background: ${C.paperSoft};
+    border: 1px solid ${C.lineSoft};
+    border-left: 3px solid ${C.moss};
+    padding: 4px 20px;
+    margin-bottom: 24px;
+    animation: ${fadeUp} .3s ease both;
+`;
+
+const CaseTitle = styled.div`
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 0 10px;
+    border-bottom: 1px solid ${C.lineSoft};
+    margin-bottom: 4px;
+    font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: ${C.moss};
+
+    svg { color: ${C.moss}; }
+`;
+
+const CaseRow = styled.div`
+    display: flex; justify-content: space-between; gap: 16px;
+    padding: 10px 0; font-size: 14px;
+    border-bottom: 1px dashed ${C.line};
+    &:last-child { border-bottom: none; }
+
+    .k { color: ${C.ink2}; font-weight: 500; }
+    .v { color: ${C.ink}; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+`;
+
+// ─── Buttons ────────────────────────────────────────────────────
+const Btn = styled.button`
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 13px 26px;
+    font-size: 13px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    border: 1px solid transparent;
+    transition: all .2s ${C.ease};
 
     &:disabled { opacity: .65; cursor: not-allowed; transform: none !important; }
 
     ${p => p.$ghost && `
-        background: transparent;
-        border-color: ${C.hair2};
-        color: ${C.ink2};
-        &:hover:not(:disabled) {
-            border-color: ${C.ink2};
-            color: ${C.ink};
-            background: ${C.paper};
-        }
+        background: #fff; border-color: ${C.line}; color: ${C.ink2};
+        &:hover:not(:disabled) { border-color: ${C.ink2}; color: ${C.ink}; }
     `}
-
     ${p => p.$primary && `
-        background: ${C.ox};
-        color: #f3efe5;
-        box-shadow: 0 6px 16px -4px rgba(124, 43, 35, .45);
+        background: ${C.ox}; color: #fff;
+        box-shadow: 0 6px 16px -4px rgba(124,43,35,.40);
         &:hover:not(:disabled) {
-            background: #6a241e;
-            transform: translateY(-1px);
-            box-shadow: 0 10px 24px -4px rgba(124, 43, 35, .55);
+            background: ${C.oxDeep}; transform: translateY(-1px);
+            box-shadow: 0 10px 24px -4px rgba(124,43,35,.50);
         }
-        i { color: rgba(243, 239, 229, .85); }
     `}
-
     ${p => p.$done && `
-        background: ${C.moss};
-        color: #f3efe5;
-        box-shadow: 0 6px 16px -4px rgba(77, 95, 66, .45);
+        background: ${C.moss}; color: #fff;
+        box-shadow: 0 6px 16px -4px rgba(77,95,66,.40);
         &:hover:not(:disabled) {
-            background: #3e4d35;
-            transform: translateY(-1px);
-            box-shadow: 0 10px 24px -4px rgba(77, 95, 66, .55);
+            background: ${C.mossDeep}; transform: translateY(-1px);
+            box-shadow: 0 10px 24px -4px rgba(77,95,66,.50);
         }
-        i { color: rgba(243, 239, 229, .85); }
     `}
 `;
 
 const Spinner = styled.div`
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid rgba(243, 239, 229, .35);
-    border-top-color: #f3efe5;
+    width: 14px; height: 14px; border-radius: 50%; flex: none;
+    border: 2px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
     animation: ${spin} .7s linear infinite;
-    flex-shrink: 0;
 `;
 
-// ─── Woodland Elegance Footer (no top border) ───────────────────
+// ─── Confirmation hero ──────────────────────────────────────────
+const ConfirmHero = styled.div`
+    text-align: center; padding: 6px 0 22px;
+
+    .ring {
+        width: 88px; height: 88px; margin: 0 auto 20px; border-radius: 50%;
+        background: ${C.mossBg}; border: 1px solid #d5e0cd;
+        display: grid; place-items: center; color: ${C.moss};
+        animation: ${fadeUp} .4s ${C.ease} both;
+    }
+    h2 { font-family: ${C.serif}; font-size: 1.6rem; font-weight: 600; margin-bottom: 6px; }
+    > p { font-family: ${C.serif}; font-style: italic; color: ${C.ink2}; }
+    .meta {
+        display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;
+        margin-top: 18px; font-size: 13px; color: ${C.ink2};
+        b { color: ${C.ink}; font-variant-numeric: tabular-nums; }
+    }
+`;
+
+// ─── Woodland Elegance Footer (dark) ────────────────────────────
 const ElegantFooter = styled.footer`
     position: relative;
-    width: 100%;
-    overflow: hidden;
-    background: #1a1611;
-    color: #f3efe5;
+    width: 100%; overflow: hidden;
+    margin-top: auto;
+    background: #1a1611; color: #f3efe5;
     text-align: center;
-    padding: 64px 20px 0;
-    /* top border removed */
-    box-sizing: border-box;
+    padding: 56px 24px 0;
 
     &::before, &::after {
         content: '';
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        border-radius: 50%;
-        pointer-events: none;
+        position: absolute; left: 50%; transform: translateX(-50%);
+        border-radius: 50%; pointer-events: none;
     }
-    &::before { bottom: -240px; width: 480px; height: 480px; border: 1.5px solid rgba(243, 239, 229, .08); }
-    &::after  { bottom: -300px; width: 640px; height: 640px; border: 1px   solid rgba(243, 239, 229, .05); }
+    &::before { bottom: -240px; width: 480px; height: 480px; border: 1.5px solid rgba(243,239,229,.08); }
+    &::after  { bottom: -300px; width: 640px; height: 640px; border: 1px solid rgba(243,239,229,.05); }
 
-    @media (max-width: 560px) { padding: 44px 20px 0; }
+    @media (max-width: 640px) { padding: 44px 20px 0; }
 `;
 
 const LeafMark = styled.div`
-    width: 50px;
-    height: 50px;
-    margin: 0 auto 22px;
-    border-radius: 50%;
-    background: rgba(243, 239, 229, .04);
-    border: 1px solid rgba(154, 106, 30, .35);
-    display: grid;
-    place-items: center;
-    position: relative;
-    z-index: 1;
-`;
-
-const FooterTagline = styled.p`
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-weight: 400;
-    font-size: 1.35rem;
-    line-height: 1.55;
-    color: rgba(243, 239, 229, .88);
-    max-width: 44ch;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
-`;
-
-const FooterValues = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    margin: 32px auto 0;
-    max-width: 420px;
-    position: relative;
-    z-index: 1;
-
-    &::before, &::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: rgba(243, 239, 229, .15);
-    }
-`;
-
-const FooterValueLabel = styled.span`
-    font-family: 'Saira', sans-serif;
-    font-weight: 700;
-    font-size: .66rem;
-    letter-spacing: .26em;
-    text-transform: uppercase;
-    color: rgba(243, 239, 229, .65);
-`;
-
-const FooterValueDot = styled.b`
-    font-family: 'Saira', sans-serif;
-    font-weight: 600;
-    font-size: 1rem;
+    width: 50px; height: 50px; margin: 0 auto 20px; border-radius: 50%;
+    background: rgba(243,239,229,.04);
+    border: 1px solid rgba(154,106,30,.35);
+    display: grid; place-items: center;
+    position: relative; z-index: 1;
     color: ${C.och};
 `;
 
-const FooterBar = styled.div`
-    margin-top: 48px;
-    border-top: 1px solid rgba(243, 239, 229, .10);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding: 22px 32px;
-    font-family: 'Saira', sans-serif;
-    font-weight: 500;
-    font-size: .76rem;
-    color: rgba(243, 239, 229, .5);
-    position: relative;
-    z-index: 1;
+const FooterTagline = styled.p`
+    font-family: ${C.serif}; font-style: italic; font-weight: 400;
+    font-size: 1.25rem; line-height: 1.55;
+    color: rgba(243,239,229,.88);
+    max-width: 44ch; margin: 0 auto;
+    position: relative; z-index: 1;
+`;
 
-    @media (max-width: 560px) {
-        flex-direction: column;
-        gap: 6px;
-        padding: 16px 20px;
-        text-align: center;
+const FooterValues = styled.div`
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    max-width: 420px; margin: 26px auto 0;
+    position: relative; z-index: 1;
+
+    &::before, &::after { content: ''; flex: 1; height: 1px; background: rgba(243,239,229,.15); }
+
+    .vlabel {
+        font-weight: 700; font-size: .64rem; letter-spacing: .26em; text-transform: uppercase;
+        color: rgba(243,239,229,.65);
+    }
+    .vdot { color: ${C.och}; font-weight: 600; }
+`;
+
+const FooterBar = styled.div`
+    position: relative; z-index: 1;
+    margin-top: 42px;
+    border-top: 1px solid rgba(243,239,229,.10);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; flex-wrap: wrap;
+    padding: 20px 32px;
+    font-weight: 500; font-size: .76rem;
+    color: rgba(243,239,229,.5);
+
+    @media (max-width: 640px) {
+        flex-direction: column; gap: 6px; padding: 16px 20px; text-align: center;
     }
 `;
 
@@ -653,24 +582,13 @@ export default function PostmortemRequestForm() {
         (typeof localStorage !== 'undefined' && localStorage.getItem('selectedTenant')) ||
         'system_shared';
 
-    /* The tenant headers for every lookup/submit below.
-     *
-     * deceased-service picks the DATABASE from the branch headers when present
-     * and falls back to x-tenant-slug. A multi-branch organisation keeps one
-     * database per branch, and the branch's own full slug is that database's
-     * name — so when reception is opened at /<org>-<branch>/postmortem-request
-     * we must send that branch on the branch headers too. Sending only
-     * x-tenant-slug worked only by accident (the gateway is pre-auth here and
-     * forwards it verbatim), and silently read the wrong database whenever the
-     * two disagreed. Sending all three keeps them in agreement, exactly like
-     * the dashboard's per-branch fan-out. */
+    // deceased-service picks the DATABASE from the branch headers when present
+    // and falls back to x-tenant-slug — sending all three keeps them in agreement.
     const tenantHeaders = {
         'x-tenant-slug': tenantSlug,
         'x-branch-slug': tenantSlug,
         'x-branch-db': tenantSlug,
     };
-
-    console.log('[PostmortemRequestForm] Resolved tenantSlug:', tenantSlug);
 
     const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${tenantSlug}/postmortem-verify`;
 
@@ -717,8 +635,6 @@ export default function PostmortemRequestForm() {
             const res = await axios.get(`${BASE_URL}/deceased/public/postmortem/search?${params.toString()}`, {
                 headers: tenantHeaders,
             });
-
-            console.log('[PostmortemRequestForm] Search response:', JSON.stringify(res.data, null, 2));
 
             const record = res.data?.data?.deceased || res.data?.deceased || res.data?.data;
             if (record && (record.deceased_id || record.full_name)) {
@@ -772,8 +688,6 @@ export default function PostmortemRequestForm() {
                 { headers: tenantHeaders }
             );
 
-            console.log('[PostmortemRequestForm] Submit response:', JSON.stringify(res.data, null, 2));
-
             if (res.data?.success) {
                 setSubmitResult({ ok: true, msg: res.data?.message || 'Postmortem request submitted successfully.' });
                 setForm({ reason: '', requested_by: '', priority: 'normal' });
@@ -809,37 +723,45 @@ export default function PostmortemRequestForm() {
     const step1Done = !!foundCase;
     const step2Done = submitResult?.ok;
 
+    // Cosmetic confirmation reference derived from the admission number.
+    const confirmRef = foundCase
+        ? `PM-${new Date().getFullYear()}-${String(foundCase.admission_number || foundCase.deceased_id || '').slice(-4) || '0000'}`
+        : '';
+
     return (
         <>
             <GlobalStyles />
             <Shell>
                 <Card>
 
-                    {/* ── Condolence Banner ── */}
-                    <Banner>
-                        <p>
-                            <span className="ornament">❦</span>
-                            We are deeply sorry for your loss. Please accept our heartfelt condolences.
-                            <span className="ornament">❦</span>
-                        </p>
-                    </Banner>
+                    <AccentLine aria-hidden="true" />
 
-                    {/* ── Document Header ── */}
+                    {/* ── Condolence strip (light) ── */}
+                    <Condolence>
+                        <p>
+                            <span className="orn">❦</span>
+                            We are deeply sorry for your loss. Please accept our heartfelt condolences.
+                            <span className="orn">❦</span>
+                        </p>
+                    </Condolence>
+
+                    {/* ── Document header ── */}
                     <DocHeader>
                         <HeaderLeft>
                             <ReqIdBadge>
-                                <i className="fas fa-hashtag" /> Postmortem Request Form
+                                <span className="ico"><I.Hash /></span>
+                                Postmortem Request Form
                             </ReqIdBadge>
                             <Timestamps>
-                                <MetaItem><i className="fas fa-calendar-alt" /><span>{currentDate}</span></MetaItem>
-                                <MetaItem><i className="fas fa-clock" /><span>{currentTime}</span></MetaItem>
+                                <MetaItem><I.Calendar /><b>{currentDate}</b></MetaItem>
+                                <MetaItem><I.Clock /><b>{currentTime}</b></MetaItem>
                             </Timestamps>
                         </HeaderLeft>
                         <QrWrapper>
                             <QrBox>
                                 <QRCodeSVG
                                     value={verifyUrl}
-                                    size={92}
+                                    size={88}
                                     level="H"
                                     includeMargin={false}
                                     bgColor="#FFFFFF"
@@ -858,36 +780,28 @@ export default function PostmortemRequestForm() {
 
                     {/* ─── Step indicator ─── */}
                     <Steps>
-                        <Step $active={!step1Done} $done={step1Done}>
-                            <StepNum $active={!step1Done} $done={step1Done}>
-                                {step1Done ? <i className="fas fa-check" /> : '1'}
-                            </StepNum>
+                        <Step $active={!step1Done && !step2Done} $done={step1Done}>
+                            <div className="num">{step1Done ? <I.Check /> : '1'}</div>
                             Find Case
                         </Step>
                         <StepLine $done={step1Done} />
                         <Step $active={step1Done && !step2Done} $done={step2Done}>
-                            <StepNum $active={step1Done && !step2Done} $done={step2Done}>
-                                {step2Done ? <i className="fas fa-check" /> : '2'}
-                            </StepNum>
+                            <div className="num">{step2Done ? <I.Check /> : '2'}</div>
                             Submit Request
                         </Step>
                         <StepLine $done={step2Done} />
                         <Step $active={false} $done={step2Done}>
-                            <StepNum $done={step2Done}>
-                                {step2Done ? <i className="fas fa-check" /> : '3'}
-                            </StepNum>
+                            <div className="num">{step2Done ? <I.Check /> : '3'}</div>
                             Confirmed
                         </Step>
                     </Steps>
 
-                    {/* ════════════════════════════════════════════
-                        STEP 1 — Case lookup
-                    ════════════════════════════════════════════ */}
+                    {/* ════════════ STEP 1 — Case lookup ════════════ */}
                     {!step1Done && !step2Done && (
                         <form onSubmit={handleLookup}>
                             <Body>
                                 <Alert>
-                                    <i className="fas fa-info-circle" />
+                                    <I.Info />
                                     <div>
                                         Enter the <strong>Deceased Admission Number</strong>, the <strong>Next-of-Kin phone number</strong>,
                                         or the <strong>National ID</strong> to locate the case.
@@ -895,15 +809,16 @@ export default function PostmortemRequestForm() {
                                 </Alert>
 
                                 {lookupError && (
-                                    <Alert $type="error">
-                                        <i className="fas fa-exclamation-triangle" />
+                                    <Alert $type="error" role="alert">
+                                        <I.Warn />
                                         {lookupError}
                                     </Alert>
                                 )}
 
                                 <FormGroup>
                                     <Label htmlFor="searchType">
-                                        <i className="fas fa-list" /> Search By
+                                        <span className="lico"><I.List /></span>
+                                        Search By
                                     </Label>
                                     <Select
                                         id="searchType"
@@ -918,7 +833,7 @@ export default function PostmortemRequestForm() {
 
                                 <FormGroup style={{ marginBottom: 0 }}>
                                     <Label htmlFor="identifier">
-                                        <i className="fas fa-search" />
+                                        <span className="lico"><I.Search /></span>
                                         {searchType === 'phone' ? 'Phone Number' : searchType === 'id_number' ? 'ID Number' : 'Admission Number'}
                                     </Label>
                                     <Input
@@ -928,6 +843,7 @@ export default function PostmortemRequestForm() {
                                         value={identifier}
                                         onChange={e => { setIdentifier(e.target.value); setLookupError(''); }}
                                         $shake={shakeId}
+                                        $error={!!lookupError}
                                         required
                                     />
                                 </FormGroup>
@@ -935,67 +851,66 @@ export default function PostmortemRequestForm() {
 
                             <FormFooter>
                                 <Btn type="button" $ghost onClick={() => window.history.back()}>
-                                    <i className="fas fa-times" /> Cancel
+                                    <I.Close /> Cancel
                                 </Btn>
                                 <Btn type="submit" $primary disabled={isSearching}>
-                                    {isSearching ? <><Spinner /> Searching…</> : <><i className="fas fa-search" /> Find Case</>}
+                                    {isSearching ? <><Spinner /> Searching…</> : <><I.SearchLg /> Find Case</>}
                                 </Btn>
                             </FormFooter>
                         </form>
                     )}
 
-                    {/* ════════════════════════════════════════════
-                        STEP 2 — Request form (case found)
-                    ════════════════════════════════════════════ */}
+                    {/* ════════════ STEP 2 — Request form ════════════ */}
                     {step1Done && !step2Done && (
                         <form onSubmit={handleSubmit}>
                             <Body>
                                 <Alert $type="success">
-                                    <i className="fas fa-check-circle" />
+                                    <I.CheckCircle />
                                     <div>Case found. Please review the details below and complete your request.</div>
                                 </Alert>
 
                                 <CaseCard>
                                     <CaseTitle>
-                                        <i className="fas fa-user-tag" /> Deceased Record
+                                        <I.UserTag /> Deceased Record
                                     </CaseTitle>
                                     <CaseRow>
-                                        <span>Full Name</span>
-                                        <span>{foundCase.full_name || '—'}</span>
+                                        <span className="k">Full Name</span>
+                                        <span className="v">{foundCase.full_name || '—'}</span>
                                     </CaseRow>
                                     <CaseRow>
-                                        <span>Admission No.</span>
-                                        <span>{foundCase.admission_number || foundCase.deceased_id}</span>
+                                        <span className="k">Admission No.</span>
+                                        <span className="v">{foundCase.admission_number || foundCase.deceased_id}</span>
                                     </CaseRow>
                                     {foundCase.date_of_death && (
                                         <CaseRow>
-                                            <span>Date of Death</span>
-                                            <span>{foundCase.date_of_death}</span>
+                                            <span className="k">Date of Death</span>
+                                            <span className="v">{foundCase.date_of_death}</span>
                                         </CaseRow>
                                     )}
                                     {foundCase.gender && (
                                         <CaseRow>
-                                            <span>Gender</span>
-                                            <span>{foundCase.gender}</span>
+                                            <span className="k">Gender</span>
+                                            <span className="v">{foundCase.gender}</span>
                                         </CaseRow>
                                     )}
                                     {(foundCase.next_of_kin_name || foundCase.next_of_kin) && (
                                         <CaseRow>
-                                            <span>Next of Kin</span>
-                                            <span>{foundCase.next_of_kin_name || foundCase.next_of_kin}</span>
+                                            <span className="k">Next of Kin</span>
+                                            <span className="v">{foundCase.next_of_kin_name || foundCase.next_of_kin}</span>
                                         </CaseRow>
                                     )}
                                     {(foundCase.next_of_kin_phone || foundCase.tell_no || foundCase.phone_number) && (
                                         <CaseRow>
-                                            <span>Kin Contact</span>
-                                            <span>{foundCase.next_of_kin_phone || foundCase.tell_no || foundCase.phone_number}</span>
+                                            <span className="k">Kin Contact</span>
+                                            <span className="v">{foundCase.next_of_kin_phone || foundCase.tell_no || foundCase.phone_number}</span>
                                         </CaseRow>
                                     )}
                                 </CaseCard>
 
                                 <FormGroup>
                                     <Label htmlFor="requested_by">
-                                        <i className="fas fa-user-shield" /> Requesting Authority / Your Name
+                                        <span className="lico"><I.Shield /></span>
+                                        Requesting Authority / Your Name
                                     </Label>
                                     <Input
                                         id="requested_by"
@@ -1008,23 +923,35 @@ export default function PostmortemRequestForm() {
                                 </FormGroup>
 
                                 <FormGroup>
-                                    <Label htmlFor="priority">
-                                        <i className="fas fa-flag" /> Priority
+                                    <Label as="span">
+                                        <span className="lico"><I.Flag /></span>
+                                        Priority
                                     </Label>
-                                    <Select
-                                        id="priority"
-                                        value={form.priority}
-                                        onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-                                    >
-                                        <option value="normal">Normal</option>
-                                        <option value="urgent">Urgent</option>
-                                        <option value="emergency">Emergency</option>
-                                    </Select>
+                                    <SegPriority role="radiogroup" aria-label="Priority">
+                                        {[
+                                            { val: 'normal', label: 'Normal' },
+                                            { val: 'urgent', label: 'Urgent' },
+                                            { val: 'emergency', label: 'Emergency' },
+                                        ].map(opt => (
+                                            <POpt
+                                                key={opt.val}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={form.priority === opt.val}
+                                                $val={opt.val}
+                                                $on={form.priority === opt.val}
+                                                onClick={() => setForm(f => ({ ...f, priority: opt.val }))}
+                                            >
+                                                <span className="dot" /> {opt.label}
+                                            </POpt>
+                                        ))}
+                                    </SegPriority>
                                 </FormGroup>
 
                                 <FormGroup style={{ marginBottom: 0 }}>
                                     <Label htmlFor="reason">
-                                        <i className="fas fa-align-left" /> Reason for Request
+                                        <span className="lico"><I.Align /></span>
+                                        Reason for Request
                                     </Label>
                                     <Textarea
                                         id="reason"
@@ -1038,29 +965,36 @@ export default function PostmortemRequestForm() {
 
                             <FormFooter>
                                 <Btn type="button" $ghost onClick={() => { setFoundCase(null); setLookupError(''); }}>
-                                    <i className="fas fa-arrow-left" /> Back
+                                    <I.ArrowLeft /> Back
                                 </Btn>
                                 <Btn type="submit" $primary disabled={isSubmitting}>
-                                    {isSubmitting ? <><Spinner /> Submitting…</> : <><i className="fas fa-paper-plane" /> Submit Request</>}
+                                    {isSubmitting ? <><Spinner /> Submitting…</> : <><I.Send /> Submit Request</>}
                                 </Btn>
                             </FormFooter>
                         </form>
                     )}
 
-                    {/* ════════════════════════════════════════════
-                        STEP 3 — Confirmation
-                    ════════════════════════════════════════════ */}
+                    {/* ════════════ STEP 3 — Confirmation ════════════ */}
                     {step2Done && (
                         <>
                             <Body>
-                                <Alert $type="success">
-                                    <i className="fas fa-check-circle" />
+                                <ConfirmHero>
+                                    <div className="ring"><I.CheckLg /></div>
+                                    <h2>Request Submitted</h2>
+                                    <p>The mortuary team will review your request and contact you shortly.</p>
+                                    <div className="meta">
+                                        <span>Reference · <b>{confirmRef}</b></span>
+                                        <span>Priority · <b style={{ textTransform: 'capitalize' }}>normal</b></span>
+                                    </div>
+                                </ConfirmHero>
+
+                                <Alert $type="success" style={{ marginBottom: 0 }}>
+                                    <I.CheckCircle />
                                     <div>
                                         <strong>Request Submitted.</strong><br />
-                                        {submitResult.msg}<br />
-                                        <small style={{ opacity: .8, marginTop: 4, display: 'block' }}>
-                                            The mortuary team will review your request and contact you shortly.
-                                            You can scan the QR code above to check the results later.
+                                        {submitResult.msg}
+                                        <small>
+                                            You can scan the QR code above at any time to check the results.
                                         </small>
                                     </div>
                                 </Alert>
@@ -1072,31 +1006,27 @@ export default function PostmortemRequestForm() {
                                     setSubmitResult(null);
                                     setForm({ reason: '', requested_by: '', priority: 'normal' });
                                 }}>
-                                    <i className="fas fa-plus" /> New Request
+                                    <I.Plus /> New Request
                                 </Btn>
                                 <Btn type="button" $done onClick={handleDone}>
-                                    <i className="fas fa-check-double" /> Done
+                                    <I.DoubleCheck /> Done
                                 </Btn>
                             </FormFooter>
                         </>
                     )}
 
-                    {/* ── Woodland Elegance Footer ── */}
+                    {/* ── Woodland Elegance Footer (dark) ── */}
                     <ElegantFooter>
                         <LeafMark>
-                            <svg viewBox="0 0 24 24" fill="none" stroke={C.och} strokeWidth="1.5"
-                                strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
-                                <path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" />
-                                <path d="M4 20c4-6.5 8.5-10 13-12.5" />
-                            </svg>
+                            <I.Leaf />
                         </LeafMark>
 
                         <FooterTagline>Received with dignity. Cared for with respect. Remembered with love.</FooterTagline>
 
                         <FooterValues>
-                            <FooterValueLabel>Dignity</FooterValueLabel><FooterValueDot>·</FooterValueDot>
-                            <FooterValueLabel>Care</FooterValueLabel><FooterValueDot>·</FooterValueDot>
-                            <FooterValueLabel>Respect</FooterValueLabel>
+                            <span className="vlabel">Dignity</span><span className="vdot">·</span>
+                            <span className="vlabel">Care</span><span className="vdot">·</span>
+                            <span className="vlabel">Respect</span>
                         </FooterValues>
 
                         <FooterBar>

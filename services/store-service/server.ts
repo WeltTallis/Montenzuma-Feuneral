@@ -3,6 +3,7 @@
 //  MINI   STORE  SERVICE  SERVER.ts
 import { fileURLToPath, pathToFileURL } from 'url';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import express from 'express';
 import cors from 'cors';
@@ -14,10 +15,43 @@ import knex from 'knex';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from the project root
-const envPath = path.resolve(__dirname, '../../.env');
-console.log(`[STORE] Loading .env from: ${envPath}`);
-dotenv.config({ path: envPath });
+// Load .env. In Docker the image runs from /usr/src/app/services/store-service
+// and .dockerignore EXCLUDES .env, so the old hard-coded `../../.env` always
+// resolved to a path that does not exist — it logged "Loading .env from:
+// /usr/src/app/.env" and then silently did nothing, which reads like a missing
+// file. Real configuration arrives as real environment variables (compose
+// `env_file` + `environment:`), so a missing file is normal and must not be
+// reported as a problem. Try the repo root first (local dev), then this
+// service's own .env, and only warn if none exist.
+const envCandidates = [
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../.env'),
+  path.resolve(__dirname, '.env'),
+];
+const foundEnv = envCandidates.find((p) => {
+  try { return fs.existsSync(p); } catch { return false; }
+});
+
+if (foundEnv) {
+  dotenv.config({ path: foundEnv });
+  console.log(`[STORE] Loaded .env from: ${foundEnv}`);
+} else {
+  // Expected in Docker. Say so explicitly, and name what we will use instead.
+  console.log('[STORE] No .env file found (normal in Docker) — using environment variables from the container.');
+}
+
+// Fail fast and loudly if the DB config really is absent, instead of silently
+// building a knex client against 127.0.0.1/root with an empty password and
+// then serving "demo-only" responses that look like lost data.
+const REQUIRED_DB_ENV = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'OPERATIONS_DATABASE'];
+const missingDbEnv = REQUIRED_DB_ENV.filter((k) => !process.env[k]);
+if (missingDbEnv.length) {
+  console.error(
+    `[STORE] FATAL: missing database configuration: ${missingDbEnv.join(', ')}. ` +
+    'Set DB_HOST / DB_USER / DB_PASSWORD / OPERATIONS_DATABASE on the service ' +
+    '(docker-compose `environment:` or `env_file`).',
+  );
+}
 
 
 const { default: storeRoutes } = await import('./routes/storeRoutes.ts');

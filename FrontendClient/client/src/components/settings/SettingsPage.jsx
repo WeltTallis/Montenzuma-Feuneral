@@ -575,7 +575,7 @@ export default function SettingsPage() {
 
     if (loading) {
         return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.colors.bone, fontFamily: "'Inter', sans-serif" }}>
+            <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.colors.bone, fontFamily: "'Inter', sans-serif" }}>
                 <style>{`@keyframes rps-spin { to { transform: rotate(360deg); } }`}</style>
                 <div style={{ textAlign: 'center' }}>
                     <div style={{ width: '40px', height: '40px', border: `3px solid ${THEME.colors.line}`, borderTopColor: THEME.colors.brass, borderRadius: '50%', animation: 'rps-spin 0.65s linear infinite', margin: '0 auto 1rem' }} />
@@ -598,7 +598,10 @@ export default function SettingsPage() {
           --rps-radius:14px;
           --rps-shadow-sm:0 1px 2px rgba(21,23,26,.05);
           --rps-shadow-md:0 2px 4px rgba(21,23,26,.05), 0 14px 34px rgba(21,23,26,.09);
-          min-height:100vh;
+          min-height:100%;
+          max-width:100%;
+          /* clip, not hidden — see note in AppRouter's .rp-app-shell */
+          overflow-x:clip;
           background:var(--rps-bone);
           color:var(--rps-ink);
           font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;

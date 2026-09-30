@@ -105,6 +105,9 @@
 /* ── charts ── */
 .rpm-chart { position: relative; height: 220px; width: 100%; }
 .rpm-chart-sm { position: relative; height: 180px; width: 100%; }
+/* Taller canvas for the per-service line chart (6 series + bottom legend) and
+   the slow-query bars, which carry one row per request. */
+.rpm-chart-tall { height: 320px; }
 
 /* ── stat boxes ── */
 .rpm-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
@@ -132,6 +135,48 @@
 
 /* ── logs ── */
 .rpm-logs { background: var(--black); border: 1px solid var(--line); border-radius: 4px; padding: 1rem; height: 250px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; line-height: 1.6; }
+
+/* Log search bar. Wraps to a second row on narrow screens instead of letting
+   five controls overflow the card. */
+.rpm-log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+.rpm-log-input {
+  flex: 1 1 150px;
+  min-width: 0;
+  background: var(--black);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+.rpm-log-input:focus { outline: none; border-color: var(--cyan); }
+.rpm-log-input::placeholder { color: var(--gray); }
+.rpm-btn {
+  flex: 0 0 auto;
+  background: var(--cyan);
+  color: var(--black);
+  border: 0;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  min-height: 34px;
+}
+.rpm-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+/* Loki log lines are long JSON/pino payloads; wrap them instead of letting one
+   line stretch the card sideways. */
+.rpm-log .msg { min-width: 0; overflow-wrap: anywhere; }
 .rpm-logs::-webkit-scrollbar { width: 4px; }
 .rpm-logs::-webkit-scrollbar-thumb { background: var(--dark-2); }
 .rpm-log { color: #5a5e63; margin-bottom: 0.3rem; display: flex; gap: 0.8rem; }

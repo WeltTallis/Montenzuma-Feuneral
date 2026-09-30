@@ -2,6 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 
 const APP_VERSION = '1.0.0';
@@ -14,22 +15,85 @@ const truthy = (v?: string): boolean => /^(1|true|yes|on)$/i.test(String(v || ''
 // editing the file.
 (function loadEnv() {
 
-  const cwd = process.cwd();
-  
-  for (const name of ['.env.local', '.env']) {
-    const p = path.join(cwd, name);
-    if (fs.existsSync(p)) {
-      for (const line of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
-        const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)/);
-        if (!m) continue;
-        let v = m[2].trim();
-        if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
-        if (v.startsWith("'") && v.endsWith("'")) v = v.slice(1, -1);
-        if (process.env[m[1]] === undefined) process.env[m[1]] = v;
-      }
+  const candidates: string[] = [];
+
+  // Per-user, writable, and it survives app upgrades.
+  if (process.env.APPDATA) {
+    candidates.push(path.join(process.env.APPDATA, 'Restpoint', 'ScannerBridge'));
+  }
+  if (process.env.LOCALAPPDATA) {
+    candidates.push(path.join(process.env.LOCALAPPDATA, 'Restpoint', 'ScannerBridge'));
+  }
+  // Portable / USB-stick deployments that ship a .env next to the EXE.
+  try {
+    candidates.push(path.dirname(process.execPath));
+  } catch { /* ignore */ }
+  // Dev fallback: `npm run dev` from the repo.
+  candidates.push(process.cwd());
+
+  const seen = new Set<string>();
+  let loadedAny = false;
+  for (const dir of candidates) {
+    if (!dir || seen.has(dir)) continue;
+    seen.add(dir);
+    for (const name of ['.env.local', '.env']) {
+      const p = path.join(dir, name);
+      try {
+        if (!fs.existsSync(p)) continue;
+        for (const line of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
+          const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)/);
+          if (!m) continue;
+          let v = m[2].trim();
+          if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
+          if (v.startsWith("'") && v.endsWith("'")) v = v.slice(1, -1);
+          if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+        }
+        loadedAny = true;
+        console.log(`[BRIDGE] config loaded from ${p}`);
+      } catch { /* unreadable file - try the next candidate */ }
     }
   }
+  if (!loadedAny) console.log('[BRIDGE] no configuration file found - using defaults.');
 })();
+
+// ── desktop app: persistent identity + single-instance guard ──────────────
+// This ships as a standalone Windows EXE, so two things that are irrelevant
+// for a dev service become correctness requirements:
+//
+//  * Identity. The cloud needs to tell *this machine* apart from every other
+//    reception PC, and the id must survive restarts and app upgrades. It is
+//    generated once and kept in the per-user data folder. Losing it would
+//    re-register the machine as a brand new bridge on every launch.
+//  * Single instance. A desktop user double-clicking the icon, or an
+//    auto-start entry plus a manual launch, would otherwise start a second
+//    server that fights the first one for port 8081 and crashes with a
+//    confusing EADDRINUSE. We detect that and exit quietly.
+const DATA_DIR = process.env.APPDATA
+  ? path.join(process.env.APPDATA, 'Restpoint', 'ScannerBridge')
+  : path.join(process.cwd(), '.bridge-data');
+
+/** Stable id for this installation, created on first run. */
+function resolveBridgeId(): string {
+  const file = path.join(DATA_DIR, 'bridge-id');
+  try {
+    if (fs.existsSync(file)) {
+      const existing = fs.readFileSync(file, 'utf8').trim();
+      if (existing) return existing;
+    }
+  } catch { /* fall through and mint a new one */ }
+
+  const minted = randomBytes(16).toString('hex');
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(file, minted, 'utf8');
+  } catch (e) {
+    // A read-only install is not fatal: the id is just regenerated next launch.
+    console.warn(`[BRIDGE] could not persist bridge id: ${(e as Error).message}`);
+  }
+  return minted;
+}
+
+const BRIDGE_ID = resolveBridgeId();
 
 // ─ NAPS2 path discovery ────────────────────────────────────────────────────
 // On Windows the real binary is NAPS2.Console.exe (the old naps2.exe alias was
@@ -151,7 +215,42 @@ const SCAN_COMMAND = (process.env.SCAN_COMMAND || '').trim();
 const SCAN_COMMAND_EXTRA = (process.env.SCAN_COMMAND_EXTRA || '').trim();
 const SCANNER_STDIO = process.env.SCANNER_STDIO === 'inherit' ? 'inherit' : 'pipe';
 const SCAN_TIMEOUT_MS = Math.max(10000, Number(process.env.SCAN_TIMEOUT_MS || 120000));
-const ALLOWED_ORIGINS = (process.env.BRIDGE_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+// ── Origin allow-list (fail-closed) ─────────────────────────────────────────
+// The bridge binds 127.0.0.1, so it is reachable by ANY web page the reception
+// computer happens to have open: a page can open ws://127.0.0.1:8081 and send
+// START_SCAN, physically running the scanner (and occupying the single-flight
+// lock) without the user touching anything. The old check was
+// `if (ALLOWED_ORIGINS.length && origin && …)` — with BRIDGE_ALLOWED_ORIGINS
+// unset (the default) ALLOWED_ORIGINS.length was 0, so the whole condition was
+// false and the guard never ran at all.
+//
+// Defaults now cover the real deployment plus local dev. Set
+// BRIDGE_ALLOWED_ORIGINS to override, e.g.
+//   BRIDGE_ALLOWED_ORIGINS=https://restpoint.co.ke,https://app.restpoint.co.ke
+const DEFAULT_ALLOWED_ORIGINS = [
+    'https://restpoint.co.ke',
+    'https://www.restpoint.co.ke',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5174',
+];
+const ALLOWED_ORIGINS = (() => {
+    const configured = (process.env.BRIDGE_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    return configured.length ? configured : DEFAULT_ALLOWED_ORIGINS;
+})();
+
+// ── Restpoint Cloud address used for grant verification ────────────────────
+// This is deliberately NOT taken from the START_SCAN message. If the agent
+// verified grants against a client-supplied apiBase, the entire scheme would
+// collapse: a hostile client could point the bridge at a server it controls and
+// have that server answer "valid: true" for any string. The URL is therefore
+// fixed on the bridge machine at install time and the agent only ever talks to
+// that one host.
+const CLOUD_URL = String(
+    process.env.BRIDGE_CLOUD_URL || 'https://restpoint.co.ke'
+).replace(/\/+$/, '');
+
+const GRANT_TOLERANCE_MS = 90_000;   // session outlives the 60s grant a little
 
 // ── NAPS2 6.x–8.x CLI options ───────────────────────────────────────────────
 // The installed NAPS2 has NO "scan" / "list" verbs — the console tool is purely
@@ -664,6 +763,55 @@ async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Pro
 }
 
 
+// ── cloud-issued scan grant ────────────────────────────────────────────────
+// Authorised sessions, keyed by the socket that completed the HELLO handshake.
+// A scan is only ever run for a socket that holds one of these, which is what
+// stops a local process (or a second user on the reception PC) from driving the
+// scanner simply by opening a socket and sending START_SCAN.
+interface BridgeSession {
+    id: string;
+    tenant: string;
+    subject: string;
+    expiresAt: number;
+}
+
+const sessions = new Map<WebSocket, BridgeSession>();
+
+function sessionFor(socket: WebSocket): BridgeSession | null {
+    const s = sessions.get(socket);
+    if (!s) return null;
+    if (s.expiresAt <= Date.now()) { sessions.delete(socket); return null; }
+    return s;
+}
+
+/**
+ * Ask the Restpoint cloud whether a scan grant is genuine.
+ * Always fails closed: any network, parsing or transport problem is a "no".
+ */
+async function verifyScanGrant(grant: string): Promise<{ ok: boolean; reason: string; data?: any }> {
+    const fetchFn = (typeof fetch !== 'undefined' ? fetch : null) as any;
+    if (!fetchFn) return { ok: false, reason: 'this bridge needs Node 18+ to reach Restpoint' };
+
+    const url = `${CLOUD_URL}/bridge/verify-grant`;
+    try {
+        const res = await fetchFn(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grant }),
+            signal: AbortSignal.timeout(10_000),
+        });
+        if (!res.ok) return { ok: false, reason: `cloud returned HTTP ${res.status}` };
+        const json = await res.json();
+        const data = json?.data || json;
+        if (!data?.valid) return { ok: false, reason: String(data?.reason || 'grant rejected') };
+        return { ok: true, reason: 'granted', data };
+    } catch (e) {
+        // Offline / DNS / TLS problems must NOT silently authorise a scan.
+        return { ok: false, reason: `could not reach Restpoint (${(e as Error).message})` };
+    }
+}
+
+
 function handleMessage(socket: WebSocket, raw: unknown): void {
     let msg: Record<string, any>;
     try {
@@ -676,10 +824,49 @@ function handleMessage(socket: WebSocket, raw: unknown): void {
     }
 
     switch (String(msg?.action || '').toUpperCase()) {
+        case 'HELLO':
+            void (async () => {
+                const grant = String(msg?.grant || '').trim();
+                if (!grant) {
+                    sendJson(socket, { status: 'ERROR', type: 'hello_rejected', message: 'Missing scan grant. Sign in to Restpoint first.' });
+                    return;
+                }
+                sendJson(socket, { status: 'AUTHORISING', type: 'hello_pending', message: 'Checking with Restpoint…' });
+                const verdict = await verifyScanGrant(grant);
+                if (!verdict.ok) {
+                    console.warn(`[BRIDGE] HELLO rejected: ${verdict.reason}`);
+                    sendJson(socket, {
+                        status: 'ERROR', type: 'hello_rejected', code: 'GRANT_REJECTED',
+                        reason: verdict.reason, bridgeId: BRIDGE_ID,
+                        message: 'This bridge could not confirm your Restpoint session. Please sign in again.',
+                    });
+                    try { socket.close(1008, 'grant rejected'); } catch { /* ignore */ }
+                    return;
+                }
+                const session: BridgeSession = {
+                    id: randomUUID(),
+                    tenant: String(verdict.data?.tenant || 'system_shared'),
+                    subject: String(verdict.data?.subject || 'unknown'),
+                    expiresAt: Date.now() + GRANT_TOLERANCE_MS,
+                };
+                sessions.set(socket, session);
+                console.log(`[BRIDGE] authorised ${session.subject} @ ${session.tenant} on ${BRIDGE_ID.slice(0, 8)}`);
+                sendJson(socket, {
+                    status: 'OK', type: 'hello_ok', bridge: 'restpoint-scanner-bridge',
+                    version: APP_VERSION, bridgeId: BRIDGE_ID,
+                    sessionId: session.id, tenant: session.tenant,
+                    expiresAt: session.expiresAt, time: Date.now(),
+                });
+            })();
+            return;
+
         case 'PING':
             sendJson(socket, {
                 type: 'pong', status: 'OK', version: APP_VERSION,
-                bridge: 'restpoint-scanner-bridge', mock: MOCK_MODE,
+                bridge: 'restpoint-scanner-bridge', bridgeId: BRIDGE_ID,
+                // Lets the app show "bridge found" before the user has signed in,
+                // and tell that state apart from "authorised to scan".
+                authorised: !!sessionFor(socket), mock: MOCK_MODE,
                 scanner: SCANNER_NAME || null, busy, time: Date.now(),
                 naps2: resolvedNaps2Path, driver: SCANNER_DRIVER || null, device: _scannerName || null,
             });
@@ -690,6 +877,17 @@ function handleMessage(socket: WebSocket, raw: unknown): void {
             return;
 
         case 'START_SCAN':
+            // Authorisation gate. Everything before this point only ever reads
+            // local hardware metadata; this is the first action with a physical
+            // or data-security consequence, so it must be cloud-authorised.
+            const session = sessionFor(socket);
+            if (!session) {
+                sendJson(socket, {
+                    status: 'ERROR', code: 'NOT_AUTHORISED', bridgeId: BRIDGE_ID,
+                    message: 'This bridge is not authorised. Sign in to Restpoint and reconnect.',
+                });
+                return;
+            }
             if (busy) {
                 sendJson(socket, { status: 'ERROR', message: 'Another scan is already in progress. Wait for it to finish, then try again.' });
                 return;
@@ -713,22 +911,53 @@ function handleMessage(socket: WebSocket, raw: unknown): void {
     }
 }
 
-const wss = new WebSocketServer({ host: BRIDGE_HOST, port: BRIDGE_PORT });
+// Origin enforcement happens in verifyClient, i.e. BEFORE the WebSocket upgrade
+// completes. Doing it in the 'connection' handler (as this used to) was too
+// late: the handshake had already succeeded, so a hostile page got a live,
+// usable socket and was only disconnected a moment later — measured as
+// "ACCEPTED" by the test that drove this fix. verifyClient returning a non-true
+// value aborts the upgrade outright (HTTP 401), so the page never obtains a
+// socket it could ever send START_SCAN on.
+//
+// A client that sends NO Origin is not a browser, so it cannot have been
+// navigated to by a hostile page; it is allowed through, which keeps the
+// agent's own diagnostics and the e2e/mock tests working. The single-flight
+// `busy` lock and the upload auth remain the guards on that path.
+const wss = new WebSocketServer({
+    host: BRIDGE_HOST,
+    port: BRIDGE_PORT,
+    verifyClient: (info: any) => {
+        const origin = (info && info.origin)
+            || (info && info.req && info.req.headers && info.req.headers.origin)
+            || '';
+        if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+            console.warn(`[BRIDGE] rejected upgrade from disallowed origin: ${origin}`);
+            return false;
+        }
+        return true;
+    },
+});
 
-wss.on('connection', (socket: WebSocket, request: any) => {
-    // (Optional) origin allow-list.
-    const origin = (request && request.headers && request.headers.origin) || (request && request.origin) || '';
-    if (ALLOWED_ORIGINS.length && origin && !ALLOWED_ORIGINS.includes(origin)) {
-        console.warn(`[BRIDGE] rejecting connection from origin ${origin}`);
-        socket.close(1008, 'Origin not allowed');
-        return;
-    }
-
+wss.on('connection', (socket: WebSocket) => {
     socket.on('message', (raw: unknown) => {
         try { handleMessage(socket, raw); }
         catch (e) { sendJson(socket, { status: 'ERROR', message: (e as Error).message || 'internal error' }); }
     });
     socket.on('error', (e: Error) => console.error(`[BRIDGE] socket error: ${e.message}`));
+    socket.on('close', () => { sessions.delete(socket); });
+});
+
+// Single-instance guard for the desktop app. A second copy (double-click, or an
+// auto-start entry firing alongside a manual launch) must not crash with a raw
+// EADDRINUSE stack trace the user cannot act on - the first instance is already
+// doing the job, so we exit cleanly.
+wss.on('error', (e: any) => {
+    if (e && e.code === 'EADDRINUSE') {
+        console.log(`[BRIDGE] port ${BRIDGE_PORT} is already in use - another copy is probably already running. Exiting.`);
+        process.exit(0);
+    }
+    console.error(`[BRIDGE] server error: ${e?.message || e}`);
+    process.exit(1);
 });
 
 const shutdown = () => {
@@ -753,6 +982,11 @@ if (!MOCK_MODE && !fs.existsSync(resolvedNaps2Path)) {
 console.log(`  scanner     →  ${SCANNER_NAME || 'auto-detect'}`);
 console.log(`  driver      →  ${SCANNER_DRIVER || 'auto'}`);
 console.log(`  work dir    →  ${SCAN_DIR}`);
+console.log(`  origins     →  ${ALLOWED_ORIGINS.join(', ')}`);
+console.log(`  cloud       →  ${CLOUD_URL}`);
+console.log(`  bridge id   →  ${BRIDGE_ID}`);
+console.log(`  data dir    →  ${DATA_DIR}`);
+console.log('  Scan flow: HELLO {grant} → START_SCAN {sessionId, deceasedId, token}');
 console.log('  To scan + upload send: { action:"START_SCAN", deceasedId, token, tenantSlug, apiBase }');
 console.log('══════════════════════════════════════════════════════════════');
 export { };

@@ -20,6 +20,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const agentPath = path.resolve(here, '..', 'dist', 'agent.js');
 const BRIDGE_PORT = 8199;
 const E2E_DECEASED = 'E2E-001';
+// The only grant the fake cloud will accept.
+const E2E_GRANT = 'e2e-valid-scan-grant';
 
 const log = (...a) => console.log('[e2e]', ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -63,10 +65,40 @@ await new Promise((ok) => httpServer.listen(0, '127.0.0.1', ok));
 const httpPort = httpServer.address().port;
 log(`fake documents-service on 127.0.0.1:${httpPort}`);
 
+// ── 1b. fake Restpoint cloud: issues + verifies scan grants ───────────────
+// The bridge refuses to drive the scanner until a scan grant has been checked
+// with the cloud, so the e2e has to stand in for the gateway too.
+log('step 1b: fake Restpoint cloud (grant verification)…');
+const cloudServer = createServer((req, res) => {
+  let raw = '';
+  req.on('data', (c) => { raw += c; });
+  req.on('end', () => {
+    res.setHeader('Content-Type', 'application/json');
+    if (req.url !== '/bridge/verify-grant') { res.statusCode = 404; return res.end('{}'); }
+    let grant = '';
+    try { grant = JSON.parse(raw || '{}').grant || ''; } catch { /* ignore */ }
+    const valid = grant === E2E_GRANT;
+    res.end(JSON.stringify({
+      success: true,
+      data: valid ? { valid: true, tenant: 'e2e-tenant', subject: 'e2e-user' } : { valid: false, reason: 'grant signature invalid' },
+    }));
+  });
+});
+await new Promise((ok) => cloudServer.listen(0, '127.0.0.1', ok));
+const cloudPort = cloudServer.address().port;
+log(`fake Restpoint cloud on 127.0.0.1:${cloudPort}`);
+
 // ── 2. spawn the compiled agent in MOCK_SCAN mode ──────────────────────────
 log('step 2: spawning compiled agent (MOCK_SCAN)…');
 const agent = spawn(process.execPath, [agentPath], {
-  env: { ...process.env, MOCK_SCAN: '1', BRIDGE_ALLOW_SHUTDOWN: '1', BRIDGE_PORT: String(BRIDGE_PORT), BRIDGE_HOST: '127.0.0.1' },
+  env: {
+    ...process.env,
+    MOCK_SCAN: '1',
+    BRIDGE_ALLOW_SHUTDOWN: '1',
+    BRIDGE_PORT: String(BRIDGE_PORT),
+    BRIDGE_HOST: '127.0.0.1',
+    BRIDGE_CLOUD_URL: `http://127.0.0.1:${cloudPort}`,
+  },
   stdio: 'ignore',
 });
 
@@ -105,9 +137,20 @@ const pong = await waitFor((m) => m?.status === 'OK' && m?.type === 'pong', 6_00
 if (!pong) { console.error('✘ PING failed', inbox); agent.kill?.(); process.exit(1); }
 log(`PING ok — bridge v${pong?.version}, mock=${pong?.mock}`);
 
+// A scan is only allowed after the bridge has confirmed a grant with the cloud.
+log('step 4b: HELLO (authorise with the cloud)…');
+send({ action: 'HELLO', grant: E2E_GRANT });
+const hello = await waitFor((m) => m?.type === 'hello_ok' || m?.type === 'hello_rejected', 10_000);
+if (hello?.type !== 'hello_ok') {
+  console.error('✘ HELLO was not authorised', inbox);
+  agent.kill?.(); httpServer.close(); cloudServer.close(); process.exit(1);
+}
+log(`HELLO ok — session ${String(hello.sessionId).slice(0, 8)}…, bridge ${String(hello.bridgeId).slice(0, 8)}`);
+
 log('step 5: START_SCAN → SCANNING → UPLOADING → COMPLETE…');
 send({
   action: 'START_SCAN',
+  sessionId: hello.sessionId,
   deceasedId: E2E_DECEASED,
   documentName: 'Scan_E2E.pdf',
   category: 'Scan',
@@ -151,6 +194,9 @@ if (captures.length === 0) {
   if (c.tenantSlug === 'e2e-tenant') console.log('  ✔ x-tenant-slug header forwarded'); else fail(`x-tenant-slug: ${c.tenantSlug}`);
   if (c.body.includes(Buffer.from('%PDF-'))) console.log(`  ✔ payload is a real PDF (${c.body.length} bytes)`); else fail('payload is not a PDF');
   if (/multipart\/form-data;\s*boundary=/.test(c.contentType)) console.log('  ✔ multipart content-type with boundary'); else fail(`content-type: ${c.contentType}`);
+  // The scanner only ever ran because the cloud authorised the bridge first.
+  if (hello?.sessionId) console.log('  ✔ scan only ran after a cloud-authorised HELLO session');
+  else fail('no authorised session');
 }
 
 // ── teardown ───────────────────────────────────────────────────────────────
@@ -162,6 +208,7 @@ try {
 await sleep(400);
 try { agent.kill?.(); } catch { /* ignore */ }
 try { httpServer.close(); } catch { /* ignore */ }
+try { cloudServer.close(); } catch { /* ignore */ }
 
 console.log(failed ? '\n✘ E2E FAILED' : '\n✔ E2E PASSED — scan → direct documents-service upload works');
 process.exit(failed ? 1 : 0);

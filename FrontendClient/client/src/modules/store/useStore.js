@@ -396,8 +396,13 @@ export const useStore = () => {
     toast(`"${item.name}" removed from the store`);
   };
 
+  // Items that exist only in this browser and have NOT reached the store
+  // service yet. Surfaced in the UI so a silent offline mode (where everything
+  // looks like it saved but nothing reached the server) is impossible to miss.
+  const pendingSync = useMemo(() => items.filter((i) => i && i._local).length, [items]);
+
   return {
-    items, transactions, stats, connected, loading, error,
+    items, transactions, stats, connected, loading, error, pendingSync,
     view, setView, pendingQuick, setPendingQuick,
     refresh: loadFromService,
     addItem, pickItem, restockItem, deleteItem,

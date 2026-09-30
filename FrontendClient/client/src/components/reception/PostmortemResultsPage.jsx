@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { Download, AlertCircle, CheckCircle, User, Phone, FileText, Shield } from 'lucide-react';
 import notify from '../../utils/notify';
+import { resolveTenantBranding } from '../../utils/tenantResolver/tenantBranding';
+import { useTenantStore } from '../../modules/seo/useTenantStore';
 
 // The old per-component `createGlobalStyle` Google Fonts block was removed when
 // the app consolidated every family into the single combined @import in
@@ -84,103 +86,114 @@ const Watermark = styled.div`
 `;
 
 // ─── Letterhead ──────────────────────────────────────────────
+// Centred masthead (name → tagline → logo → contact → case ref) so the real
+// tenant's identity leads the document. The old split logo-left / ref-right
+// grid gave the organisation's own details less weight than the case number.
 const Letterhead = styled.div`
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 32px;
-  align-items: center;
-  padding-bottom: 40px;
+  text-align: center;
+  padding-bottom: 36px;
   border-bottom: 3px double ${C.ink};
-  margin-bottom: 48px;
+  margin-bottom: 44px;
   position: relative;
   z-index: 1;
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 24px;
-    padding-bottom: 28px;
-    margin-bottom: 32px;
+    padding-bottom: 26px;
+    margin-bottom: 30px;
   }
 `;
 
-const LogoLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 24px;
+const BrandName = styled.h2`
+  font-family: 'Fraunces', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: ${C.mossDeep};
+  letter-spacing: .02em;
+  line-height: 1.15;
+  margin: 0;
+  /* A long trading name must wrap rather than push the sheet sideways. */
+  overflow-wrap: anywhere;
+
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
 `;
 
+const Tagline = styled.span`
+  display: block;
+  margin-top: 6px;
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .24em;
+  color: ${C.och};
+`;
+
+// Circular crest. Holds the tenant's real uploaded logo when there is one, and
+// falls back to the mortuary cross (then to a monogram) so the slot is never
+// empty on an official document.
 const Logo = styled.div`
-  width: 64px;
-  height: 64px;
+  width: 76px;
+  height: 76px;
+  margin: 22px auto 0;
   border: 2px solid ${C.mossDeep};
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: ${C.mossDeep};
-  flex-shrink: 0;
   background: ${C.paper2};
-`;
-
-const LogoText = styled.div`
-  h2 {
-    font-family: 'Fraunces', serif;
-    margin: 0;
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: ${C.mossDeep};
-    letter-spacing: .02em;
-    line-height: 1.1;
-  }
-
-  .tagline {
-    font-size: .75rem;
-    text-transform: uppercase;
-    letter-spacing: .22em;
-    color: ${C.och};
-    font-weight: 700;
-    margin-top: 6px;
-    display: block;
-  }
-
-  .address {
-    font-size: .78rem;
-    color: ${C.ink2};
-    margin-top: 8px;
-    font-style: normal;
-    font-family: 'JetBrains Mono', monospace;
-    line-height: 1.55;
-  }
-`;
-
-const LetterheadRight = styled.div`
-  text-align: right;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: .8rem;
+  overflow: hidden;
+  flex-shrink: 0;
 
   @media (max-width: 768px) {
-    text-align: left;
+    width: 64px;
+    height: 64px;
+    margin-top: 18px;
   }
 `;
 
-const RefLabel = styled.div`
-  font-size: .65rem;
-  text-transform: uppercase;
-  letter-spacing: .18em;
-  color: ${C.ink2};
-  margin-bottom: 4px;
+const LogoImg = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Breathing room so a logo with its own padding isn't clipped by the circle. */
+  padding: 8px;
 `;
 
-const RefNumber = styled.div`
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: ${C.ink};
-  font-variant-numeric: tabular-nums;
+const LogoMonogram = styled.span`
+  font-family: 'Fraunces', serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: ${C.mossDeep};
+  line-height: 1;
 `;
 
-const RefDate = styled.div`
-  margin-top: 12px;
+const AddressBlock = styled.address`
+  margin: 18px auto 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-style: normal;
+  font-size: .74rem;
+  line-height: 1.75;
   color: ${C.ink2};
+  max-width: 34rem;
+
+  span {
+    display: block;
+  }
+`;
+
+const RefLine = styled.p`
+  margin: 14px 0 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  color: ${C.ink2};
+
+  b {
+    color: ${C.ink};
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
 `;
 
 // ─── Salutation & Intro ─────────────────────────────────────
@@ -602,11 +615,18 @@ const CenterBox = styled.div`
 
 // ─── Component ──────────────────────────────────────────────
 const PostmortemResultsPage = () => {
-  const { sessionId, slug } = useParams();
+  // `slug` is intentionally not used for branding — deriving the funeral home's
+  // name from the URL was what produced reports letterheaded by the wrong org.
+  const { sessionId } = useParams();
   const location = useLocation();
+  const { tenantData } = useTenantStore();
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [signatureError, setSignatureError] = useState(false);
+  // A stored logo URL can still 404 (tenant deleted the file, or it was never
+  // uploaded under that key). Swapping to the monogram on error stops the crest
+  // showing a broken-image glyph on a document a family keeps.
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     if (location.state) {
@@ -704,26 +724,55 @@ const PostmortemResultsPage = () => {
   const { deceased, postmortem, verifiedAt } = reportData;
   const status = postmortem?.status || 'completed';
 
-  const formatTenantName = (slugStr) => {
-    if (!slugStr || slugStr === 'default' || slugStr === 'system_shared') return 'Rest Point Funeral Home';
-    return slugStr
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
+  // ── Letterhead data ──────────────────────────────────────────
+  // The report payload is authoritative; resolveTenantBranding() is the fallback
+  // (it merges the tenant store over login-time localStorage and, importantly,
+  // REBASES the logo URL onto the public gateway origin so a stored
+  // "http://api-gateway:5000/..." logo actually loads instead of failing as
+  // mixed content). The old formatTenantName() guessed the funeral home's name
+  // from the URL slug and hardcoded "Rest Point Funeral Home" / "Nairobi, Kenya",
+  // which meant a family could be handed a report letterheaded by the WRONG
+  // organisation. Nothing is invented here — a missing value renders blank.
+  const brand = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
+  const apiTenant = reportData?.tenant || {};
+  const apiDec = reportData?.deceased || {};
 
-  const tenantName = reportData?.tenant?.name
-    || reportData?.deceased?.tenant_name
-    || (slug ? formatTenantName(slug) : 'Rest Point Funeral Home');
-  const tenantAddress = reportData?.tenant?.address
-    || reportData?.deceased?.tenant_address
-    || 'Nairobi, Kenya';
-  const tenantPhone = reportData?.tenant?.phone
-    || reportData?.deceased?.tenant_phone
+  const tenantName = apiTenant.name
+    || apiTenant.tenantName
+    || apiDec.tenant_name
+    || brand.name
     || '';
-  const tenantEmail = reportData?.tenant?.email
-    || reportData?.deceased?.tenant_email
+  const tenantAddress = apiTenant.address
+    || apiDec.tenant_address
+    || brand.displayAddress
+    || brand.location
     || '';
+  const tenantPhone = apiTenant.phone
+    || apiDec.tenant_phone
+    || brand.displayPhone
+    || '';
+  // resolveTenantBranding() pads a non-email string with "@restpoint.co.ke".
+  // Harmless for an input, wrong on an official document, so validate.
+  const emailCandidate = apiTenant.email || apiDec.tenant_email || brand.displayEmail || '';
+  const tenantEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCandidate) ? emailCandidate : '';
+  const tenantCountry = apiTenant.country || apiDec.tenant_country || brand.country || '';
+  const tenantLogo = apiTenant.logoUrl
+    || apiTenant.logo_url
+    || apiTenant.logo
+    || apiDec.tenant_logo
+    || brand.tenantLogoUrl
+    || '';
+
+  // Initials for the crest fallback, e.g. "Lee Funeral Home" → "L".
+  const tenantInitial = (tenantName || '').trim().charAt(0).toUpperCase();
+
+  // Contact lines for the masthead, only those the tenant actually has.
+  const contactLines = [
+    tenantAddress,
+    tenantPhone ? `Tel: ${tenantPhone}` : '',
+    tenantEmail,
+    tenantCountry,
+  ].filter(Boolean);
 
   return (
     <>
@@ -732,32 +781,40 @@ const PostmortemResultsPage = () => {
           <Watermark>CONFIDENTIAL</Watermark>
 
           <SheetInner>
-            {/* ─── Letterhead ─── */}
+            {/* ─── Letterhead: real tenant name → logo → contact ─── */}
             <Letterhead>
-              <LogoLeft>
-                <Logo>
+              <BrandName>{tenantName || '—'}</BrandName>
+              <Tagline>Mortuary &amp; Bereavement Services</Tagline>
+
+              <Logo>
+                {tenantLogo && !logoError ? (
+                  <LogoImg
+                    src={tenantLogo}
+                    alt={`${tenantName || 'Organisation'} logo`}
+                    onError={() => setLogoError(true)}
+                  />
+                ) : tenantInitial ? (
+                  <LogoMonogram>{tenantInitial}</LogoMonogram>
+                ) : (
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-                    strokeLinecap="round" strokeLinejoin="round" style={{ width: '36px', height: '36px' }}>
+                    strokeLinecap="round" strokeLinejoin="round" style={{ width: '34px', height: '34px' }}>
                     <path d="M12 2v20M12 2c-2.5 0-5 1.5-5 4 0 2.5 2.5 4 5 4M12 2c2.5 0 5 1.5 5 4 0 2.5-2.5 4-5 4M12 22c-2.5 0-5-1.5-5-4 0-2.5 2.5-4 5-4M12 22c2.5 0 5-1.5 5-4 0-2.5-2.5-4-5-4" />
                   </svg>
-                </Logo>
-                <LogoText>
-                  <h2>{tenantName}</h2>
-                  <span className="tagline">Mortuary &amp; Bereavement Services</span>
-                  <address className="address">
-                    {tenantAddress}
-                    {tenantPhone ? <><br />Tel: {tenantPhone}</> : null}
-                    {tenantEmail ? <> · {tenantEmail}</> : null}
-                  </address>
-                </LogoText>
-              </LogoLeft>
-              <LetterheadRight>
-                <RefLabel>Case Reference</RefLabel>
-                <RefNumber>{deceased?.admission_number || 'N/A'}</RefNumber>
-                <RefDate>
-                  Issued: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </RefDate>
-              </LetterheadRight>
+                )}
+              </Logo>
+
+              {contactLines.length > 0 && (
+                <AddressBlock>
+                  {contactLines.map((line, i) => <span key={i}>{line}</span>)}
+                </AddressBlock>
+              )}
+
+              <RefLine>
+                Case Reference · <b>{deceased?.admission_number || 'N/A'}</b>
+                {' · '}
+                Issued:{' '}
+                {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </RefLine>
             </Letterhead>
 
             {/* ─── Body ─── */}
@@ -837,11 +894,11 @@ const PostmortemResultsPage = () => {
                 </InfoGrid>
               </DataSection>
 
-              {/* Section 3 — Examination Details */}
+              {/* Section 3 — Postmortem Results */}
               <DataSection>
                 <DataHeading>
                   <FileText />
-                  Examination Details &amp; Findings
+                  Postmortem Results
                 </DataHeading>
                 <InfoGrid>
                   <InfoRow>

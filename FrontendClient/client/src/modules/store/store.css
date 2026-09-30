@@ -34,7 +34,15 @@
   font-family: 'DM Sans', sans-serif;
   background: radial-gradient(circle at top, #f8fbff 0%, #f3f6fb 42%, #eef3f9 100%);
   color: var(--k-ink);
-  min-height: 100vh;
+  /* NOT min-height:100vh. This page renders INSIDE the dashboard shell, which is
+     already 100dvh tall and has a footer as a sibling below it. A 100vh floor
+     here stacked a second full viewport above the footer, so on a phone the page
+     became ~2 screens tall, the footer hung past the fold, and blank space piled
+     up beneath it. Sizing to content lets the shell keep the footer on screen.
+     `overflow-x:hidden` stops the 620px-wide table from widening the page. */
+  min-height: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .mini-store h1,
@@ -138,7 +146,12 @@
 
 .mini-store .page-bg {
   background: transparent;
-  min-height: calc(100vh - 72px);
+  /* Was calc(100vh - 72px): that reserved a FULL viewport for the page body on
+     top of the dashboard shell's own 100dvh, so the footer was always pushed a
+     whole screen down and the user saw it hanging with blank space below. 100dvh
+     tracks the real (URL-bar-aware) viewport, and 60% is enough to fill a short
+     page without ever creating a second screen of dead space. */
+  min-height: min(60dvh, 60vh);
   padding-top: 1.1rem;
 }
 

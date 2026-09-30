@@ -315,6 +315,12 @@ services:
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      # Coffin inventory lists are large (image URLs per row + booking notes), so
+      # the service registers a bigger Redis budget than the 10MB shared default.
+      # Without this, checkAndBalance() evicted the cached list moments after it
+      # was written and every request fell through to MySQL.
+      COFFIN_REDIS_MAX_MEMORY_MB: 20
+      COFFIN_REDIS_SOFT_LIMIT_MB: 16
     volumes:
       - coffin_service_data:/usr/src/app/data
       # Coffin-service imports @montezuma/shared-services, whose barrel
@@ -324,6 +330,14 @@ services:
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
+    # Redis must be up BEFORE the coffin service accepts traffic. Without this the
+    # first requests run uncached: getRedisClient() backs off after a failed
+    # attempt, so early calls silently hit the database instead of the cache.
+    depends_on:
+      redis:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
     healthcheck:
       test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
@@ -338,8 +352,14 @@ services:
     image: restpoint-documents-service:latest
     container_name: restpoint_documents_service
     restart: always
+    # NOT published to the host by default. The api-gateway is the only client
+    # (over the internal docker network), and exposing the port let anyone who
+    # could reach it bypass the gateway's auth entirely. Local debugging can
+    # still opt back in with DOCUMENTS_SERVICE_EXTERNAL_PORT=5007 in .env.
+    expose:
+      - '5000'
     ports:
-      - '${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000'
+      - '${DOCUMENTS_SERVICE_BIND:-127.0.0.1}:${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000'
     env_file:
       - .env.production
     environment:

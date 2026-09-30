@@ -39,6 +39,7 @@ const counters = {
   rateLimited: 0,
   latencySum: 0,
   latencyCount: 0,
+  slow: 0,
 };
 
 const perService = new Map();
@@ -61,7 +62,12 @@ function pushLog(entry) {
  * themselves so polling the dashboard does not inflate its own numbers.
  */
 function metricsMiddleware(req, res, next) {
-  if (!req.path || req.path === '/monitoring' || req.path === '/health') return next();
+  // Skip the monitoring endpoints themselves so polling the dashboard does not
+  // inflate its own numbers. The exact match is not enough: /monitoring/logs is
+  // a real GET that would otherwise be counted and appear as traffic.
+  if (!req.path || req.path === '/monitoring' || req.path.startsWith('/monitoring/') || req.path === '/health') {
+    return next();
+  }
 
   const started = process.hrtime.bigint();
   const firstSegment = (req.path.split('/').filter(Boolean)[0] || 'root');
@@ -91,6 +97,22 @@ function metricsMiddleware(req, res, next) {
       status,
       ms: Math.round(ms * 10) / 10,
     });
+
+    // A slow request is not an error, so it is classified as "ok" above and
+    // would otherwise leave no trace. Capture it separately — the duration here
+    // is measured around the real proxied upstream call, so it includes the
+    // downstream service's database time.
+    if (ms >= SLOW_REQUEST_MS) {
+      counters.slow += 1;
+      recordSlowRequest({
+        t: new Date().toISOString(),
+        method: req.method,
+        path: (req.originalUrl || '').split('?')[0].slice(0, 160),
+        service: firstSegment,
+        status,
+        ms: Math.round(ms * 10) / 10,
+      });
+    }
   });
 
   return next();
@@ -282,9 +304,18 @@ async function queueStats() {
 }
 
 // --- Rolling series ------------------------------------------------------
+// Per-service request counts are recorded INTO each sample, not derived at read
+// time. requests.perService is a single cumulative snapshot, so a line chart
+// built from it would be N flat parallel lines that never move — you cannot see
+// which service is actually busy. Sampling the per-service counters every tick
+// makes consecutive samples differ, so the deltas are a real traffic timeline.
 function recordSeriesSample(probeResult) {
   const upCount = probeResult.filter((p) => p.up).length;
   const latencies = probeResult.filter((p) => p.up).map((p) => p.latencyMs);
+
+  const perServiceCounts = {};
+  perService.forEach((b, name) => { perServiceCounts[name] = b.count; });
+
   series.push({
     t: new Date().toISOString(),
     total: counters.total,
@@ -295,8 +326,141 @@ function recordSeriesSample(probeResult) {
     avgLatencyMs: latencies.length
       ? Math.round((latencies.reduce((a, b) => a + b, 0) / latencies.length) * 10) / 10
       : 0,
+    perService: perServiceCounts,
   });
   if (series.length > SERIES_SIZE) series.shift();
+}
+
+/* ── Slow request tracking ────────────────────────────────────────────────
+ * A database query that takes 2s does not make the request fail, it just makes
+ * it slow — so it never reaches the error counters or the log ring. The
+ * ConnectionManager in every service already prints "🐢 Slow query" to stdout
+ * for anything over 1s, but that text dies with the container log; nothing
+ * aggregates it, so there was no slow-query view anywhere.
+ *
+ * The gateway cannot see other services' SQL, but end-to-end request duration
+ * is dominated by database time, so the requests that cross this threshold are
+ * the DB-bound ones. This records the real measured duration of the slowest
+ * requests with the method/path/service so they can be triaged. */
+const SLOW_REQUEST_MS = Number(process.env.MONITOR_SLOW_REQUEST_MS || 1500);
+const SLOW_RING_SIZE = 100;
+const slowRing = [];
+
+function recordSlowRequest(entry) {
+  slowRing.unshift(entry);
+  if (slowRing.length > SLOW_RING_SIZE) slowRing.length = SLOW_RING_SIZE;
+}
+
+/** Oldest→newest, slowest first, with an aggregate summary for the header. */
+function slowRequestSnapshot() {
+  const list = slowRing.slice().sort((a, b) => b.ms - a.ms);
+  const durations = list.map((e) => e.ms);
+  return {
+    thresholdMs: SLOW_REQUEST_MS,
+    total: counters.slow,
+    worstMs: durations.length ? durations[0] : 0,
+    avgMs: durations.length
+      ? Math.round((durations.reduce((a, b) => a + b, 0) / durations.length) * 10) / 10
+      : 0,
+    byService: list.reduce((acc, e) => {
+      acc[e.service] = (acc[e.service] || 0) + 1;
+      return acc;
+    }, {}),
+    slowest: list.slice(0, 25),
+  };
+}
+
+// --- Loki log store -----------------------------------------------------
+/* The Grafana/Prometheus/Loki/Promtail stack was removed from docker-compose, so
+ * there is no Loki container to query and LOKI_ENABLED is unset — pino's
+ * `pino-loki` transport never runs and nothing is shipped anywhere. The only
+ * "logs" that exist are the gateway's own ring buffer.
+ *
+ * Rather than show nothing, this queries Loki's HTTP API when it IS reachable
+ * (so the view lights up the moment the stack is deployed again) and otherwise
+ * reports `available: false` with the reason, letting the UI fall back to the
+ * gateway request log. It never throws and never blocks the report. */
+const LOKI_URL = process.env.LOKI_URL || '';
+const LOKI_TIMEOUT_MS = Number(process.env.MONITOR_LOKI_TIMEOUT_MS || 2500);
+
+function lokiConfigured() {
+  return Boolean(LOKI_URL);
+}
+
+/**
+ * Query Loki's /loki/api/v1/query_range with LogQL.
+ * @param {object} opts { limit, hours, level, service, contains }
+ */
+async function queryLoki(opts = {}) {
+  if (!lokiConfigured()) {
+    return { available: false, reason: 'Loki not configured (LOKI_URL unset)' };
+  }
+
+  const hours = Math.min(Math.max(Number(opts.hours) || 1, 0.02), 24);
+  const limit = Math.min(Math.max(Number(opts.limit) || 100, 1), 500);
+  const end = Date.now();
+  const start = end - hours * 3600 * 1000;
+
+  // Build a LogQL stream selector. Every service ships with the service_name
+  // label (see shared-logger), so that is the only label we can rely on.
+  const matchers = [];
+  if (opts.service) {
+    // Escape quotes/backslashes so a crafted service name cannot alter the query.
+    const safe = String(opts.service).replace(/["\\]/g, '\\$&');
+    matchers.push(`service_name="${safe}"`);
+  }
+  if (opts.level) {
+    const safeLevel = String(opts.level).replace(/["\\|]/g, '');
+    if (safeLevel) matchers.push(`|= \`${safeLevel}\``);
+  }
+  let query = matchers.length ? `{${matchers.filter((m) => !m.startsWith('|=')).join(',')}}` : '{}';
+  if (matchers.some((m) => m.startsWith('|='))) query += ` ${matchers.find((m) => m.startsWith('|='))}`;
+  if (opts.contains) {
+    const safeTerm = String(opts.contains).replace(/["`\\]/g, '\\$&');
+    query += ` |= \`${safeTerm}\``;
+  }
+
+  const url = `${LOKI_URL.replace(/\/+$/, '')}/loki/api/v1/query_range`
+    + `?query=${encodeURIComponent(query)}`
+    + `&limit=${limit}`
+    + `&start=${start * 1e6}`   // Loki wants nanoseconds
+    + `&end=${end * 1e6}`
+    + `&direction=backward`;
+
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(LOKI_TIMEOUT_MS),
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      return { available: false, reason: `Loki responded ${res.status}` };
+    }
+    const json = await res.json();
+
+    // Loki returns streams[].values as [nsTimestamp, "line"] pairs, newest first.
+    const lines = [];
+    for (const stream of json?.data?.result || []) {
+      const labels = stream?.stream || {};
+      for (const v of stream?.values || []) {
+        lines.push({
+          t: new Date(Number(v[0]) / 1e6).toISOString(),
+          service: labels.service_name || labels.job || 'unknown',
+          line: String(v[1] ?? ''),
+        });
+      }
+    }
+    lines.sort((a, b) => (a.t < b.t ? 1 : -1));
+
+    return {
+      available: true,
+      source: 'loki',
+      query,
+      total: lines.length,
+      entries: lines.slice(0, limit),
+    };
+  } catch (err) {
+    return { available: false, reason: `Loki unreachable: ${err?.message || err}` };
+  }
 }
 
 let seriesTimer = null;
@@ -349,6 +513,11 @@ async function buildReport(serviceUrls, appMeta) {
     queues: queues,
     series: series,
     logs: logRing.slice(0, 60),
+    // Slowest requests (DB-bound in practice) — see recordSlowRequest().
+    slowQueries: slowRequestSnapshot(),
+    // Whether a Loki log store is configured, so the UI can label its source
+    // honestly instead of implying the request ring buffer is the full log store.
+    logsStore: { lokiConfigured: lokiConfigured(), lokiUrl: LOKI_URL ? LOKI_URL.replace(/\/+$/, '') : null },
   };
 }
 
@@ -357,5 +526,10 @@ module.exports = {
   buildReport: buildReport,
   startSeriesTimer: startSeriesTimer,
   countersSnapshot: countersSnapshot,
+  // Exposed so the gateway can mount GET /monitoring/logs. Returns
+  // { available:false, reason } rather than throwing when Loki is absent.
+  queryLoki: queryLoki,
+  slowRequestSnapshot: slowRequestSnapshot,
+  SLOW_REQUEST_MS: SLOW_REQUEST_MS,
   PROBE_TIMEOUT_MS: PROBE_TIMEOUT_MS,
 };

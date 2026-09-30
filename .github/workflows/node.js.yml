@@ -15,8 +15,14 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        # Must match the repo's engines: root is ">=22.0.0 <25.0.0", and
+        # services/scanner-bridge additionally requires ">=24.0.0". The previous
+        # matrix (18/20/22) tested only versions the project does not support
+        # and never tested a version the bridge supports, so it was guaranteed
+        # to report problems the project does not have and miss the ones it does.
+        node-version: ['22.x', '24.x']
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
@@ -26,7 +32,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm ci
+    - run: npm ci --legacy-peer-deps
     - run: npm run build --if-present
     - name: Check cross-directory relative require paths
       run: npm run check:paths

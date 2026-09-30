@@ -1,42 +1,132 @@
-# Builds the macOS .pkg installer for the Restpoint Scanner Bridge on a real
-# macOS runner (pkgbuild/productbuild only exist there — a Windows host cannot
-# produce a valid .pkg, which is why `npm run build:mac` warns and exits early
-# when run locally on Windows).
+# Builds the Restpoint Scanner Bridge installers.
 #
-# The finished package is committed back into the SPA's public downloads folder,
-# so staff get a real double-clickable .pkg at:
+# Two jobs, two operating systems, because each platform needs its own toolchain:
+#   * Windows .exe  - pkg (any host) + PE header patching
+#   * macOS   .pkg  - pkg + `pkgbuild`, which ONLY exists on macOS.
+# A .pkg cannot be produced on Windows: it is a XAR archive assembled by
+# pkgbuild from the Xcode Command Line Tools, and there is no cross-platform
+# equivalent. That is why the macOS job runs on a macos-latest runner rather
+# than being folded into the Windows one.
+#
+# Both jobs upload the installer as a workflow artifact and also commit the
+# .pkg back into the SPA's public downloads folder so staff can fetch it from
 #   /downloads/macbook/Restpoint-Scanner-Bridge.pkg
 #
-# Trigger: manual (Actions tab) or push a tag like mac-pkg-v1.
-name: Scanner Bridge macOS pkg
+# Trigger: the Actions tab ("Run workflow"), or any push that touches the
+# bridge - the installers embed the compiled agent, so a stale .pkg ships the
+# old agent and silently undoes any security fix.
+name: Scanner Bridge installers
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'mac-pkg-v*'
+    paths:
+      - 'services/scanner-bridge/src/**'
+      - 'services/scanner-bridge/scripts/**'
+      - 'services/scanner-bridge/installer.cjs'
+      - 'services/scanner-bridge/package.json'
+      - 'services/scanner-bridge/package-lock.json'
+      - 'package-lock.json'
+      - '.github/workflows/scanner-bridge-macos.yml'
+
+# Never let two builds race to commit the .pkg.
+concurrency:
+  group: scanner-bridge-installers
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
+  # ── Windows ────────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows .exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 24 is required: services/scanner-bridge declares
+      # "engines": { "node": ">=24.0.0" } and uses modern global fetch APIs.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Type-check the agent
+        working-directory: services/scanner-bridge
+        run: npm run typecheck
+
+      - name: Test the agent
+        working-directory: services/scanner-bridge
+        run: npm test
+
+      - name: Build the Windows installer
+        working-directory: services/scanner-bridge
+        run: npm run build:installer
+
+      - name: Verify the .exe was produced
+        shell: pwsh
+        run: |
+          $p = 'services/scanner-bridge/dist/Setup-Restpoint-Scanner-Bridge.exe'
+          if (-not (Test-Path $p)) { Write-Error "No installer was produced at $p"; exit 1 }
+          $size = (Get-Item $p).Length
+          if ($size -lt 1MB) { Write-Error "Installer is only $size bytes - the agent is probably not embedded"; exit 1 }
+          # Confirm it is a real PE executable.
+          $mz = [System.IO.File]::ReadAllBytes($p)[0..1]
+          if ($mz[0] -ne 0x4D -or $mz[1] -ne 0x5A) { Write-Error 'Not a Windows executable (no MZ header)'; exit 1 }
+          Write-Output "::notice::Valid Windows installer, $([math]::Round($size/1MB,1)) MB"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Restpoint-Scanner-Bridge-Windows
+          path: services/scanner-bridge/dist/Setup-Restpoint-Scanner-Bridge.exe
+          if-no-files-found: error
+
+  # ── macOS ──────────────────────────────────────────────────────────────────
   build-pkg:
+    name: macOS .pkg
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
-      # Workspace-root install so services/scanner-bridge can reach the hoisted
-      # pkg binary at node_modules/.bin/pkg (see scripts/build-macos.mjs).
       - name: Install dependencies
         run: npm install --legacy-peer-deps
+
+      - name: Test the agent
+        working-directory: services/scanner-bridge
+        run: npm test
 
       - name: Build the macOS .pkg
         working-directory: services/scanner-bridge
         run: npm run build:mac
+
+      # Guard against the failure this repo already hit: a build step that warns
+      # and exits 0, leaving CI green with no installer produced. Verify the
+      # artifact exists and really is a macOS Installer package.
+      - name: Verify the .pkg is a real installer
+        run: |
+          set -euo pipefail
+          PKG="services/scanner-bridge/dist/Restpoint-Scanner-Bridge.pkg"
+          if [ ! -f "$PKG" ]; then
+            echo "::error::No .pkg was produced at $PKG"
+            exit 1
+          fi
+          echo "size: $(du -h "$PKG" | cut -f1)"
+          # A .pkg is a XAR archive; its table of contents lists the Payload.
+          xar -tf "$PKG"
+          xar -tf "$PKG" | grep -q '^Payload$' \
+            || { echo "::error::$PKG has no Payload - not a valid installer package"; exit 1; }
+          echo "::notice::Valid macOS installer package confirmed."
 
       - name: Commit the .pkg into the client downloads folder
         run: |

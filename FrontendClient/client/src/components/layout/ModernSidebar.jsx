@@ -314,29 +314,32 @@ const MobileMenuButton = styled.button`
   position: fixed;
   bottom: 18px;
   left: 14px;
-  z-index: 90;
+  /* Above the sidebar drawer (70) and its scrim (65) is what made the button
+     "get lost" — while the drawer was open it stayed on top, and at full scroll
+     it floated over the dark footer where a translucent white button all but
+     disappeared. It now sits ABOVE the drawer only while closed, and gets a
+     solid background + stronger shadow so it is always visible. */
+  z-index: 80;
   width: 52px;
   height: 52px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 18px;
   padding: 0;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22), 0 2px 8px rgba(15, 23, 42, 0.12);
   display: none;
   align-items: center;
   justify-content: center;
   color: ${COLORS.textMain};
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:active {
     transform: scale(0.96);
   }
-  
+
   @media (max-width: 767px) {
     display: flex;
   }
@@ -396,29 +399,27 @@ const SingleTenantMenuButton = styled.button`
   position: fixed;
   bottom: 18px;
   left: 14px;
-  z-index: 90;
+  z-index: 80;
   width: 52px;
   height: 52px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 18px;
   padding: 0;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22), 0 2px 8px rgba(15, 23, 42, 0.12);
   display: none;
   align-items: center;
   justify-content: center;
   color: ${COLORS.textMain};
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:active {
     transform: scale(0.96);
   }
-  
+
   &:hover {
     background: ${COLORS.grayHover};
   }
@@ -766,6 +767,10 @@ const ModernSidebar = ({
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Open menu"
           aria-expanded={isOpen}
+          /* The button is position:fixed, so with the drawer open it would
+             otherwise hover over the drawer panel itself. Hide it while open —
+             the panel has its own CloseButton. */
+          style={isOpen ? { display: 'none' } : undefined}
         >
           <Menu size={22} />
         </DrawerButton>

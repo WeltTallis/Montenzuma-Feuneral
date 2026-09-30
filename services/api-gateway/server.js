@@ -37,7 +37,11 @@ const fs = require('fs');
 const { applyTenantIdentity } = require('./tenantIdentity');
 // Real infrastructure monitoring (replaces the removed Grafana/Prometheus/Loki
 // stack). Exposes GET /monitoring and records per-request metrics.
-const { metricsMiddleware, buildReport, startSeriesTimer } = require('./monitoring');
+const { metricsMiddleware, buildReport, startSeriesTimer, queryLoki } = require('./monitoring');
+// Scanner Bridge authorisation. The bridge is a desktop app on the reception PC;
+// these endpoints let a signed-in browser obtain a short-lived scan grant that
+// the bridge validates with the cloud before it will drive the scanner.
+const { registerBridgeRoutes } = require('./bridge');
 // Using Node's built-in global fetch (no explicit require needed, no
 // version-mismatch risk from a transitively-hoisted undici copy). A prior
 // version of this file used a manually constructed undici Agent/dispatcher
@@ -879,6 +883,12 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
 // HEALTH & DEBUG (must be before 404 handler)
 // =============================================================================
 
+// Scanner Bridge authorisation. These are handled by the gateway itself rather
+// than proxied: the bridge agent asks the cloud directly whether a scan grant is
+// genuine, so the answer has to come from a real signature check here.
+// Mounted before the proxy so /bridge/* is never forwarded to a backend.
+registerBridgeRoutes(app, Logger);
+
 // GET /monitoring — live infrastructure report for the Rest Point OS dashboard.
 // Probes every routed service, reads Redis cache + BullMQ queue depth, and
 // returns the in-process request metrics. Always answers 200: a degraded
@@ -902,6 +912,36 @@ app.get('/monitoring', async (req, res) => {
 // Keep a background sample running so the trend chart has history even when
 // nobody is watching the dashboard.
 startSeriesTimer(() => SERVICE_URLS);
+
+// GET /monitoring/logs - server-side log query.
+//
+// Separate from /monitoring on purpose: the report is polled every 5s and must
+// stay cheap, while a log search is user-initiated and wants its own filters and
+// a larger result window. When no Loki is configured the response is
+// { available:false, reason } with HTTP 200 — the UI then shows the gateway's own
+// request log instead of an error page, because a 503 here would look like the
+// whole monitoring stack was down.
+app.get('/monitoring/logs', async (req, res) => {
+  try {
+    const { limit, hours, level, service, contains } = req.query || {};
+    const result = await queryLoki({ limit, hours, level, service, contains });
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...result,
+        generatedAt: new Date().toISOString(),
+        // Lets the UI show the request ring as an explicit fallback.
+        fallback: result.available ? null : { source: 'gateway-request-log' },
+      },
+    });
+  } catch (err) {
+    Logger.error(`[/monitoring/logs] ${err.message}`);
+    return res.status(200).json({
+      success: true,
+      data: { available: false, reason: err.message, entries: [] },
+    });
+  }
+});
 
 app.get('/health', (req, res) => {
   // Static self-report. The gateway does NOT probe backend services on this

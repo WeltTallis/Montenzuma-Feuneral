@@ -1,19 +1,20 @@
 import { getTenantSlug, getAuthToken } from '../../../utils/globalAuth';
 import { todayKey } from '../../../utils/dates/parseDates';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { showToast } from '../../../utils/toast';
-import { getTenantBrandingFromStorage } from '../../../utils/tenantResolver/tenantBranding';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import env from '../../../utils/config/env';
 import axios from 'axios';
 
-// ── Icons ───────────────────────────────────────────────────────────────────
+//  Icons 
 const Ico = ({ d, w = 15, sw = 1.8, style }) => (
   <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}>
     <path d={d} />
   </svg>
 );
+
 const IcoCard = (p) => <Ico {...p} d="M2 5h20v14H2z M2 10h20" />;
 const IcoReceipt = (p) => <Ico {...p} d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21V3z M9 8h6 M9 12h6" />;
 const IcoPrinter = (p) => <Ico {...p} d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z" />;
@@ -21,7 +22,14 @@ const IcoPlus = (p) => <Ico {...p} d="M12 5v14M5 12h14" sw={2.4} />;
 const IcoClose = (p) => <Ico {...p} d="M18 6 6 18M6 6l12 12" />;
 const IcoTrash = (p) => <Ico {...p} d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />;
 const IcoList = (p) => <Ico {...p} d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />;
+const IcoPhone = (p) => <Ico {...p} d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />;
+const IcoMail = (p) => <Ico {...p} d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z M3.4 6.2 12 12.6l8.6-6.4" />;
+const IcoPin = (p) => <Ico {...p} d="M20 10.5c0 5.6-8 11.5-8 11.5S4 16.1 4 10.5a8 8 0 1 1 16 0z M12 13.2a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4z" />;
+const IcoGlobe = (p) => <Ico {...p} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M2.5 12h19 M12 2c2.6 2.6 4 6.1 4 10s-1.4 7.4-4 10c-2.6-2.6-4-6.1-4-10s1.4-7.4 4-10z" />;
+
+
 const IcoTrend = (p) => <Ico {...p} d="M12 3v18M5 8l7-5 7 5" />;
+
 const IcoCheck = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5" /></svg>
@@ -173,18 +181,33 @@ const FX_CSS2 = `
 
 /* Receipt layout + statement paper */
 const FX_CSS3 = `
-.fx-r-layout{ display:grid; grid-template-columns:320px 1fr; gap:32px; align-items:start; }
-.fx-r-details{ position:sticky; top:80px; margin-bottom:0 !important; }
-.fx-r-details h3{ font-size:.95rem; font-weight:600; margin-bottom:4px; }
-.fx-r-details .fx-hint{ font-size:.76rem; color:var(--fx-ink-faint); margin-bottom:16px; }
-.fx-statement{ max-width:820px; margin:0 auto; background:var(--fx-paper); padding:4.2rem 3.8rem; box-shadow:var(--fx-shadow-paper); position:relative; overflow:hidden; animation:fxFadeUp .35s ease; }
+/* The receipt owns the full column; the editor sits underneath it so the
+   statement is never squeezed into a narrow 1fr track beside a sidebar. */
+.fx-r-layout{ display:grid; grid-template-columns:minmax(0,1fr); gap:26px; align-items:start; }
+.fx-r-details{ margin-bottom:0 !important; }
+.fx-r-details h3{ font-size:.95rem; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:9px; }
+.fx-r-details .fx-hint{ font-size:.76rem; color:var(--fx-ink-faint); margin-bottom:18px; }
+.fx-r-section{ margin-bottom:22px; padding-bottom:22px; border-bottom:1px solid var(--fx-line-soft); }
+.fx-r-section:last-child{ margin-bottom:0; padding-bottom:0; border-bottom:0; }
+.fx-r-section-title{ font-size:.6rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--fx-accent); margin-bottom:14px; }
+.fx-r-live{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+.fx-r-live-item{ padding:13px 16px; border:1px solid var(--fx-line); border-radius:11px; background:var(--fx-paper); }
+.fx-r-live-label{ display:block; font-size:.58rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--fx-ink-faint); }
+.fx-r-live-val{ display:block; font-family:var(--fx-serif); font-size:1.3rem; font-weight:600; margin-top:3px; font-variant-numeric:tabular-nums; }
+.fx-r-live-item.ok .fx-r-live-val{ color:var(--fx-green); }
+.fx-r-live-item.due .fx-r-live-val{ color:var(--fx-accent); }
+.fx-statement{ width:100%; max-width:900px; margin:0 auto; background:var(--fx-paper); padding:3.6rem 3.4rem; box-shadow:var(--fx-shadow-paper); position:relative; overflow:hidden; animation:fxFadeUp .35s ease; }
 .fx-statement::before{ content:''; position:absolute; inset:1.4rem; border:1px solid var(--fx-line); pointer-events:none; z-index:0; }
 .fx-statement .fx-content{ position:relative; z-index:1; }
-.fx-statement .fx-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:3.4rem; padding-bottom:2.2rem; border-bottom:2px solid var(--fx-accent); gap:2rem; }
-.fx-brand-logo{ width:64px; height:64px; border-radius:14px; background:linear-gradient(140deg,#3a3a3a,#151515); color:var(--fx-paper); display:grid; place-items:center; font-family:var(--fx-serif); font-size:1.8rem; font-weight:600; margin-bottom:1.1rem; overflow:hidden; }
+.fx-statement .fx-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2.8rem; padding-bottom:2rem; border-bottom:2px solid var(--fx-accent); gap:2rem; }
+.fx-letterhead{ display:flex; align-items:flex-start; gap:16px; min-width:0; }
+.fx-brand-logo{ width:66px; height:66px; border-radius:14px; background:linear-gradient(140deg,#3a3a3a,#151515); color:var(--fx-paper); display:grid; place-items:center; font-family:var(--fx-serif); font-size:1.8rem; font-weight:600; margin-bottom:0; overflow:hidden; flex:none; }
 .fx-brand-logo img{ width:100%; height:100%; object-fit:contain; padding:7px; }
-.fx-brand-name{ font-family:var(--fx-serif); font-size:1.35rem; font-weight:600; letter-spacing:.02em; margin-bottom:.35rem; }
+.fx-brand-text{ min-width:0; }
+.fx-brand-name{ font-family:var(--fx-serif); font-size:1.35rem; font-weight:600; letter-spacing:.02em; margin-bottom:.45rem; }
 .fx-address{ font-size:.78rem; color:var(--fx-ink-soft); line-height:1.65; }
+.fx-contact{ display:flex; align-items:flex-start; gap:8px; margin-top:3px; }
+.fx-contact svg{ flex:none; margin-top:3px; color:var(--fx-accent); }
 .fx-meta-info{ text-align:right; }
 .fx-doc-title{ font-family:var(--fx-serif); font-size:1.55rem; font-weight:500; letter-spacing:.05em; margin-bottom:1rem; }
 .fx-meta-grid{ display:grid; grid-template-columns:auto 1fr; gap:.2rem 1.4rem; font-size:.8rem; justify-items:start; }
@@ -209,7 +232,7 @@ const FX_CSS3 = `
 /* Statement summary, signatures, modal */
 const FX_CSS4 = `
 .fx-summary-wrapper{ display:flex; justify-content:flex-end; align-items:center; gap:2.6rem; margin-bottom:3rem; flex-wrap:wrap; }
-.fx-summary{ width:330px; max-width:100%; }
+.fx-summary{ width:min(330px,100%); }
 .fx-summary-row{ display:flex; justify-content:space-between; align-items:baseline; gap:1rem; padding:.55rem 0; font-size:.88rem; color:var(--fx-ink-soft); }
 .fx-summary-row .fx-val{ font-family:var(--fx-serif); font-size:1.08rem; color:var(--fx-ink); font-weight:500; white-space:nowrap; font-variant-numeric:tabular-nums; }
 .fx-summary-row.fx-total{ margin-top:.4rem; padding-top:1.3rem; border-top:1px solid var(--fx-accent); }
@@ -233,21 +256,24 @@ const FX_CSS4 = `
 .fx-barcode{ height:38px; display:flex; align-items:stretch; gap:1px; justify-content:center; }
 .fx-bar{ background:#000; }
 .fx-barcode-num{ font-size:.72rem; letter-spacing:.22em; color:var(--fx-ink-soft); margin-top:8px; font-weight:600; }
-.fx-modal{ position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(26,26,26,.5); backdrop-filter:blur(3px); animation:fxFadeIn .2s ease; }
-.fx-modal-panel{ width:100%; max-width:560px; max-height:calc(100vh - 48px); overflow-y:auto; background:#fff; border-radius:16px; box-shadow:0 24px 64px rgba(0,0,0,.3); padding:24px; animation:fxFadeUp .22s ease; }
-.fx-modal-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px; }
-.fx-modal-head h3{ font-size:1.05rem; }
-.fx-modal-head p{ font-size:.8rem; color:var(--fx-ink-faint); margin-top:2px; }
-.fx-modal-body{ display:grid; gap:15px; }
+/* Record payment — a right-hand side panel, not a centred modal. */
+.fx-drawer{ position:fixed; inset:0; z-index:1000; display:flex; justify-content:flex-end; background:rgba(26,26,26,.5); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); animation:fxFadeIn .2s ease; }
+.fx-drawer-panel{ width:min(460px,100%); height:100%; display:flex; flex-direction:column; background:#fff; box-shadow:-24px 0 70px rgba(0,0,0,.28); animation:fxDrawerIn .3s cubic-bezier(.22,.7,.3,1); }
+@keyframes fxDrawerIn{ from{ transform:translateX(100%); } to{ transform:translateX(0); } }
+.fx-drawer-head{ flex:none; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:24px 26px 18px; border-bottom:1px solid var(--fx-line-soft); }
+.fx-drawer-head h3{ font-size:1.05rem; display:flex; align-items:center; gap:10px; }
+.fx-drawer-head p{ font-size:.8rem; color:var(--fx-ink-faint); margin-top:5px; max-width:34ch; }
+.fx-drawer-body{ flex:1; min-height:0; overflow-y:auto; padding:22px 26px; display:grid; gap:16px; align-content:start; }
 .fx-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:15px; }
 .fx-grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; }
-.fx-modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:4px; padding-top:16px; border-top:1px solid var(--fx-line-soft); }
+.fx-grid2 .fx-full, .fx-grid3 .fx-full{ grid-column:1/-1; }
+.fx-drawer-foot{ flex:none; display:flex; justify-content:flex-end; gap:10px; padding:18px 26px calc(18px + env(safe-area-inset-bottom)); border-top:1px solid var(--fx-line-soft); background:var(--fx-paper); }
+.fx-drawer-foot .fx-btn{ min-width:118px; }
 `;
 
 /* Responsive + print */
 const FX_CSS5 = `
-@media (max-height:520px){ .fx-modal{ align-items:flex-start; } .fx-modal-panel{ max-height:92vh; } }
-@media (max-width:980px){ .fx-r-layout{ grid-template-columns:1fr; } .fx-r-details{ position:static; } }
+@media (max-width:980px){ .fx-statement{ padding:2.8rem 2.2rem; } }
 @media (max-width:760px){
   .fx-root table.fx{ min-width:0; }
   .fx-root table.fx thead{ display:none; }
@@ -263,8 +289,17 @@ const FX_CSS5 = `
   .fx-statement{ padding:2.6rem 1.6rem; }
   .fx-statement::before{ display:none; }
   .fx-statement .fx-header{ flex-direction:column; }
+  .fx-letterhead{ gap:12px; }
+  .fx-brand-logo{ width:54px; height:54px; border-radius:11px; font-size:1.4rem; }
+  .fx-brand-logo img{ padding:5px; }
+  .fx-brand-name{ font-size:1.15rem; }
   .fx-meta-info{ text-align:left; }
   .fx-signatures{ grid-template-columns:1fr; gap:2.2rem; }
+  .fx-memoriam{ margin-bottom:2.2rem; padding:1.3rem 0; }
+  .fx-memoriam .fx-name{ font-size:1.5rem; }
+  .fx-summary-wrapper{ gap:1.6rem; }
+  .fx-summary{ width:100%; }
+  .fx-summary-row.fx-total .fx-val{ font-size:1.5rem; }
 }
 @media (max-width:640px){
   .fx-form-grid{ grid-template-columns:1fr; }
@@ -281,11 +316,9 @@ const FX_CSS5 = `
   .fx-tabs{ gap:18px; }
   .fx-btn, .fx-input{ min-height:44px; }
   .fx-root input, .fx-root select{ font-size:16px; }
-  .fx-modal{ padding:0; align-items:flex-end; }
-  .fx-modal-panel{ border-radius:18px 18px 0 0; max-height:90vh; padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
   .fx-grid2{ grid-template-columns:1fr; }
-  .fx-modal-foot{ flex-direction:column-reverse; }
-  .fx-modal-foot .fx-btn{ width:100%; }
+  .fx-drawer-foot{ flex-direction:column-reverse; }
+  .fx-drawer-foot .fx-btn{ width:100%; }
   .fx-form-actions{ flex-direction:column-reverse; }
   .fx-form-actions .fx-btn{ width:100%; }
   .fx-paid-seal{ width:84px; height:84px; }
@@ -297,7 +330,7 @@ const FX_CSS5 = `
 @media print{
   @page{ size:A4; margin:12mm; }
   .fx-root{ background:#fff !important; }
-  .fx-no-print{ display:none !important; }
+  .fx-no-print, .fx-drawer{ display:none !important; }
   .fx-root .fx-panel{ display:none !important; }
   .fx-root .fx-panel.fx-print-target{ display:block !important; }
   .fx-r-layout{ display:block !important; }
@@ -358,6 +391,131 @@ const barcodeBars = (seed) => {
   return out;
 };
 
+/* ── Statement details editor ───────────────────────────────────────────────
+   Rendered BELOW the receipt (not beside it) so the statement always gets the
+   full column width. Grouped into sections because a flat 10-field grid read as
+   an undifferentiated wall of inputs. */
+const StatementDetailsPane = ({ receipt, setField }) => (
+  <aside className="fx-card fx-panel-card fx-r-details fx-no-print">
+    <h3>
+      <span className="fx-tile fx-tile-brass"><IcoCard w={16} sw={2} /></span>
+      Statement details
+    </h3>
+    <p className="fx-hint">These print exactly as typed. Totals and the paid seal are computed live from the bill.</p>
+
+    <div className="fx-r-section">
+      <div className="fx-r-section-title">Statement</div>
+      <div className="fx-form-grid">
+        <div className="fx-field">
+          <label htmlFor="dCurrency">Currency</label>
+          <select
+            id="dCurrency" className="fx-input" value={receipt.currency}
+            onChange={(e) => setField('currency', e.target.value)}
+          >
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="fx-field">
+          <label htmlFor="dInvoice">Invoice no.</label>
+          <input
+            id="dInvoice" className="fx-input" value={receipt.invoice}
+            onChange={(e) => setField('invoice', e.target.value)}
+          />
+        </div>
+        <div className="fx-field">
+          <label htmlFor="dStmtDate">Statement date</label>
+          <input
+            id="dStmtDate" className="fx-input" type="date" value={receipt.stmtDate}
+            onChange={(e) => setField('stmtDate', e.target.value)}
+          />
+        </div>
+        <div className="fx-field">
+          <label htmlFor="dServiceDate">Service date</label>
+          <input
+            id="dServiceDate" className="fx-input" type="date" value={receipt.serviceDate}
+            onChange={(e) => setField('serviceDate', e.target.value)}
+          />
+        </div>
+        <div className="fx-field fx-full">
+          <label htmlFor="dAdjust">Courtesy adjustment</label>
+          <input
+            id="dAdjust" className="fx-input" type="number" min="0" step="any" placeholder="0.00" value={receipt.adjust}
+            onChange={(e) => setField('adjust', e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="fx-r-section">
+      <div className="fx-r-section-title">Deceased</div>
+      <div className="fx-form-grid">
+        <div className="fx-field fx-full">
+          <label htmlFor="dDeceased">In loving memory of</label>
+          <input
+            id="dDeceased" className="fx-input" value={receipt.deceased}
+            onChange={(e) => setField('deceased', e.target.value)}
+          />
+        </div>
+        <div className="fx-field fx-full">
+          <label htmlFor="dYears">Years</label>
+          <input
+            id="dYears" className="fx-input" value={receipt.years}
+            onChange={(e) => setField('years', e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="fx-r-section">
+      <div className="fx-r-section-title">Signatories</div>
+      <div className="fx-form-grid">
+        <div className="fx-field">
+          <label htmlFor="dSigName">Signatory</label>
+          <input
+            id="dSigName" className="fx-input" value={receipt.sigName}
+            onChange={(e) => setField('sigName', e.target.value)}
+          />
+        </div>
+        <div className="fx-field">
+          <label htmlFor="dSigTitle">Signatory title</label>
+          <input
+            id="dSigTitle" className="fx-input" value={receipt.sigTitle}
+            onChange={(e) => setField('sigTitle', e.target.value)}
+          />
+        </div>
+        <div className="fx-field">
+          <label htmlFor="dRepName">Authorizing representative</label>
+          <input
+            id="dRepName" className="fx-input" value={receipt.repName}
+            onChange={(e) => setField('repName', e.target.value)}
+          />
+        </div>
+        <div className="fx-field">
+          <label htmlFor="dRepTitle">Representative title</label>
+          <input
+            id="dRepTitle" className="fx-input" value={receipt.repTitle}
+            onChange={(e) => setField('repTitle', e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="fx-r-section">
+      <div className="fx-r-section-title">Footer</div>
+      <div className="fx-form-grid">
+        <div className="fx-field fx-full">
+          <label htmlFor="dQuote">Footer quote</label>
+          <input
+            id="dQuote" className="fx-input" placeholder="e.g. Thank you for trusting us with your loved one."
+            value={receipt.quote}
+            onChange={(e) => setField('quote', e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  </aside>
+);
+
 // ── Component ──────────────────────────────────────────────────────────────
 const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, deceased, onDataChanged }) => {
   const [payments, setPayments] = useState(initialPayments || []);
@@ -378,16 +536,25 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     charge_type: '', amount: '', currency: 'KES', description: '', service_date: todayKey(),
   });
 
-  // Organisation letterhead — the store wins over the login-time localStorage,
-  // the same precedence resolveTenantBranding() uses on the intake/release forms.
+  // Organisation letterhead. resolveTenantBranding() merges the Zustand tenant
+  // store (populated by TenantResolver for the EXACT tenant in the URL) over the
+  // login-time localStorage values, then normalises the phone/email and — most
+  // importantly — rebases the logo onto the public gateway origin so it actually
+  // renders instead of failing as mixed content / unresolvable docker DNS.
   const { tenantData } = useTenantStore();
-  const stored = getTenantBrandingFromStorage();
+  const brand = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
+  // resolveTenantBranding().email pads any non-email string with "@restpoint.co.ke",
+  // which is fine for an input field but must never be printed on a receipt, so
+  // only a well-formed address is allowed through.
+  const brandEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(brand.displayEmail || '') ? brand.displayEmail : '';
   const org = {
-    name: tenantData?.name || tenantData?.tenantName || stored.name || '',
-    phone: tenantData?.phone || stored.phone || '',
-    location: tenantData?.location || stored.location || '',
-    country: tenantData?.country || stored.country || '',
-    logoUrl: tenantData?.logoUrl || tenantData?.logo_url || stored.logoUrl || '',
+    name: brand.name || '',
+    phone: brand.displayPhone || '',
+    email: brandEmail,
+    address: brand.displayAddress || brand.location || '',
+    country: brand.country || '',
+    branch: brand.displayBranch || '',
+    logoUrl: brand.tenantLogoUrl || '',
   };
 
   const dName = deceased?.full_name || deceased?.name || deceased?.deceased_name || '';
@@ -568,16 +735,35 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
   const invoiceCode = `MTZ-${(toDate(receipt.stmtDate)?.getFullYear() || '')}-${receipt.invoice || '0000'}`;
   const bars = useMemo(() => barcodeBars(invoiceCode), [invoiceCode]);
   const monogram = (org.name || 'O').trim().charAt(0).toUpperCase();
-  const orgAddress = [org.location, org.phone ? `Tel. ${org.phone}` : ''].filter(Boolean);
+  // Letterhead contact rows, in order, with only values the tenant actually has.
+  // `location` is kept as a fallback so older records without `address` still print.
+  const orgContacts = [
+    org.branch ? { Icon: IcoPin, text: org.branch } : null,
+    org.address ? { Icon: IcoPin, text: org.address } : null,
+    org.phone ? { Icon: IcoPhone, text: org.phone } : null,
+    org.email ? { Icon: IcoMail, text: org.email } : null,
+    org.country ? { Icon: IcoGlobe, text: org.country } : null,
+  ].filter(Boolean);
 
-  // ESC closes the payment modal; body scroll stays locked while it is open.
+  // The payment side panel is a real dialog: ESC and the scrim close it, the page
+  // behind it stays locked, and focus moves into the panel so keyboard users are
+  // not left tabbing through the tables underneath.
+  const payPanelRef = useRef(null);
   useEffect(() => {
     if (!showPaymentModal) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') setShowPaymentModal(false); };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+    const t = setTimeout(() => {
+      const first = payPanelRef.current?.querySelector('input, select, button');
+      if (first) first.focus();
+    }, 320);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+      clearTimeout(t);
+    };
   }, [showPaymentModal]);
 
 
@@ -891,112 +1077,46 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         </div>
 
         <div className="fx-r-layout">
-          <aside className="fx-card fx-panel-card fx-r-details fx-no-print">
-            <h3>Statement details</h3>
-            <p className="fx-hint">Amounts, totals and the paid seal update automatically.</p>
-            <div className="fx-form-grid">
-              <div className="fx-field fx-full">
-                <label htmlFor="dCurrency">Statement currency</label>
-                <select
-                  id="dCurrency" className="fx-input" value={receipt.currency}
-                  onChange={(e) => setReceiptField('currency', e.target.value)}
-                >
-                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="fx-field">
-                <label htmlFor="dInvoice">Invoice no.</label>
-                <input
-                  id="dInvoice" className="fx-input" value={receipt.invoice}
-                  onChange={(e) => setReceiptField('invoice', e.target.value)}
-                />
-              </div>
-              <div className="fx-field">
-                <label htmlFor="dAdjust">Courtesy adjustment</label>
-                <input
-                  id="dAdjust" className="fx-input" type="number" min="0" step="any" value={receipt.adjust}
-                  onChange={(e) => setReceiptField('adjust', e.target.value)}
-                />
-              </div>
-              <div className="fx-field">
-                <label htmlFor="dStmtDate">Statement date</label>
-                <input
-                  id="dStmtDate" className="fx-input" type="date" value={receipt.stmtDate}
-                  onChange={(e) => setReceiptField('stmtDate', e.target.value)}
-                />
-              </div>
-              <div className="fx-field">
-                <label htmlFor="dServiceDate">Service date</label>
-                <input
-                  id="dServiceDate" className="fx-input" type="date" value={receipt.serviceDate}
-                  onChange={(e) => setReceiptField('serviceDate', e.target.value)}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="dDeceased">In loving memory of</label>
-                <input
-                  id="dDeceased" className="fx-input" value={receipt.deceased}
-                  onChange={(e) => setReceiptField('deceased', e.target.value)}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="dYears">Years</label>
-                <input
-                  id="dYears" className="fx-input" value={receipt.years}
-                  onChange={(e) => setReceiptField('years', e.target.value)}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="dRepName">Authorizing representative</label>
-                <input
-                  id="dRepName" className="fx-input" value={receipt.repName}
-                  onChange={(e) => setReceiptField('repName', e.target.value)}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="dRepTitle">Representative title</label>
-                <input
-                  id="dRepTitle" className="fx-input" value={receipt.repTitle}
-                  onChange={(e) => setReceiptField('repTitle', e.target.value)}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="dSigName">Signatory</label>
-                <input
-                  id="dSigName" className="fx-input" value={receipt.sigName}
-                  onChange={(e) => setReceiptField('sigName', e.target.value)}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="dSigTitle">Signatory title</label>
-                <input
-                  id="dSigTitle" className="fx-input" value={receipt.sigTitle}
-                  onChange={(e) => setReceiptField('sigTitle', e.target.value)}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="dQuote">Footer quote</label>
-                <input
-                  id="dQuote" className="fx-input" value={receipt.quote}
-                  onChange={(e) => setReceiptField('quote', e.target.value)}
-                />
-              </div>
+          {/* Live figures for the statement currently on screen — so the totals
+              being printed are readable without scrolling into the paper. */}
+          <div className="fx-r-live fx-no-print">
+            <div className="fx-r-live-item">
+              <span className="fx-r-live-label">Items</span>
+              <span className="fx-r-live-val">{rcItems.length}</span>
             </div>
-          </aside>
+            <div className="fx-r-live-item">
+              <span className="fx-r-live-label">Billed</span>
+              <span className="fx-r-live-val">{fmt0(subtotal, rc)}</span>
+            </div>
+            <div className="fx-r-live-item ok">
+              <span className="fx-r-live-label">Received</span>
+              <span className="fx-r-live-val">{fmt0(paid, rc)}</span>
+            </div>
+            <div className={'fx-r-live-item' + (balance > 0.004 ? ' due' : ' ok')}>
+              <span className="fx-r-live-label">Balance</span>
+              <span className="fx-r-live-val">{fmt0(Math.max(0, balance), rc)}</span>
+            </div>
+          </div>
 
-          <div>
+          <div className="fx-r-paper">
             <div className="fx-statement">
               <div className="fx-content">
                 <header className="fx-header">
-                  <div>
+                  <div className="fx-letterhead">
                     <div className="fx-brand-logo">
                       {org.logoUrl ? <img src={org.logoUrl} alt="" /> : monogram}
                     </div>
-                    <div className="fx-brand-name">{org.name || '—'}</div>
-                    <div className="fx-address">
-                      {orgAddress.length
-                        ? orgAddress.map((l, i) => <React.Fragment key={i}>{i > 0 && <br />}{l}</React.Fragment>)
-                        : <span className="fx-muted">—</span>}
+                    <div className="fx-brand-text">
+                      <div className="fx-brand-name">{org.name || '—'}</div>
+                      <div className="fx-address">
+                        {orgContacts.length
+                          ? orgContacts.map(({ Icon, text }, i) => (
+                            <span className="fx-contact" key={i}>
+                              <Icon w={12} />{text}
+                            </span>
+                          ))
+                          : <span className="fx-muted">—</span>}
+                      </div>
                     </div>
                   </div>
                   <div className="fx-meta-info">
@@ -1102,22 +1222,30 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
               </div>
             </div>
           </div>
+
+          {/* Editor sits BELOW the receipt — full width, never stealing space
+              from the statement it is meant to preview. */}
+          <StatementDetailsPane receipt={receipt} setField={setReceiptField} />
         </div>
       </section>
 
-      {/* ── Record payment modal ── */}
+      {/* ── Record payment side panel ── */}
       {showPaymentModal && (
-        <div className="fx-modal" onClick={() => setShowPaymentModal(false)}>
+        <div className="fx-drawer" onClick={() => setShowPaymentModal(false)}>
           <div
-            className="fx-modal-panel"
+            className="fx-drawer-panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="fx-pay-title"
+            ref={payPanelRef}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="fx-modal-head">
+            <div className="fx-drawer-head">
               <div>
-                <h3 id="fx-pay-title">Record payment</h3>
+                <h3 id="fx-pay-title">
+                  <span className="fx-tile fx-tile-green"><IcoCard w={15} sw={2} /></span>
+                  Record payment
+                </h3>
                 <p>Receipts feed straight into the statement.</p>
               </div>
               <button
@@ -1130,7 +1258,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
               </button>
             </div>
 
-            <form className="fx-modal-body" onSubmit={handleRecordPayment} noValidate>
+            <form id="fx-pay-form" className="fx-drawer-body" onSubmit={handleRecordPayment} noValidate>
               <div className="fx-grid3">
                 <div className="fx-field">
                   <label htmlFor="pDate">Date</label>
@@ -1205,16 +1333,16 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                   onChange={(e) => setPaymentForm((p) => ({ ...p, description: e.target.value }))}
                 />
               </div>
-
-              <div className="fx-modal-foot">
-                <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowPaymentModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="fx-btn fx-btn-green" disabled={isRecording}>
-                  {isRecording ? 'Saving…' : 'Save payment'}
-                </button>
-              </div>
             </form>
+
+            <div className="fx-drawer-foot">
+              <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowPaymentModal(false)}>
+                Cancel
+              </button>
+              <button type="submit" form="fx-pay-form" className="fx-btn fx-btn-green" disabled={isRecording}>
+                {isRecording ? 'Saving…' : 'Save payment'}
+              </button>
+            </div>
           </div>
         </div>
       )}

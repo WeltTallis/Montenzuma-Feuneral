@@ -1,7 +1,7 @@
 ﻿
 
 import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
-import { serviceGet, serviceSet, serviceDel, clearServiceCache } from '@montezuma/shared-services';
+import { serviceGet, serviceSet, serviceDel, clearServiceCache, registerService } from '@montezuma/shared-services';
 import { publishTask } from '@montezuma/shared-services';
 import CoffinModel from '../models/coffinModel.js';
 import logger from '@montezuma/shared-logger';
@@ -12,6 +12,41 @@ import axios from 'axios';
 
 const SERVICE_NAME = 'coffin-service';
 const CACHE_TTL = 300; // 5 minutes
+
+// ─── Redis memory budget ────────────────────────────────────────────────
+// Coffin rows are HEAVY: every inventory row carries GROUP_CONCAT(image_url) and
+// coffin bookings embed notes/signature data, so a single cached list is orders
+// of magnitude larger than a typical notification payload.
+//
+// Without this registration getServiceConfig() falls back to the shared DEFAULT
+// of 10MB max / 8MB soft for the WHOLE "coffin-service" namespace. Once a
+// tenant's cached lists crossed that soft limit, checkAndBalance() — which runs
+// after every serviceSet() — started evicting keys by ascending TTL. The entry
+// just written has the LONGEST ttl, so it survived while shorter-lived keys went
+// first, and once the hard limit (85% of max) was reached even TTL'd keys were
+// dropped. Net effect: the cache was written, then immediately evicted, so every
+// request fell through to the database and the Redis hit rate stayed at zero.
+//
+// Raising the ceiling to the 20MB the registerService() cap allows gives the
+// inventory lists room to live for their full TTL. Raise further via
+// REDIS_SERVICE_MAX_MEMORY_MB only if you also raise the cap in registerService().
+const envNum = (v: string | undefined, fallback: number): number => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+const COFFIN_REDIS_MAX_MB = envNum(process.env.COFFIN_REDIS_MAX_MEMORY_MB, 20);
+const COFFIN_REDIS_SOFT_MB = envNum(
+  process.env.COFFIN_REDIS_SOFT_LIMIT_MB,
+  Math.round(COFFIN_REDIS_MAX_MB * 0.8)
+);
+
+registerService({
+  name: SERVICE_NAME,
+  maxMemoryMB: COFFIN_REDIS_MAX_MB,
+  softLimitMB: COFFIN_REDIS_SOFT_MB,
+  notificationTTL: 86400,
+  balanceTTL: 300,
+});
 
 // ─── Notification Emission via Socket.IO service 
 const SOCKETIO_SERVICE_URL =
@@ -39,15 +74,26 @@ async function emitSocketNotification(event: string, data: any, tenantSlug: stri
 
 // ─── Cache Helpers ──────────────────────────────────────────────────────
 
+// Hit/miss counters. Without these the only way to tell "Redis is down" from
+// "Redis works but the entry keeps getting evicted" was to read docker logs and
+// count "served from Redis" lines by hand. Surfaced on /coffins/health/redis.
+const cacheStats = { hits: 0, misses: 0, writes: 0, clears: 0 };
+
 async function getCached(tenantSlug: string, key: string) {
-  return serviceGet(SERVICE_NAME, tenantSlug, key);
+  const value = await serviceGet(SERVICE_NAME, tenantSlug, key);
+  if (value === null || value === undefined) cacheStats.misses++;
+  else cacheStats.hits++;
+  return value;
 }
 
 async function setCached(tenantSlug: string, key: string, value: any, ttl: number = CACHE_TTL) {
-  return serviceSet(SERVICE_NAME, tenantSlug, key, value, ttl);
+  const ok = await serviceSet(SERVICE_NAME, tenantSlug, key, value, ttl);
+  if (ok) cacheStats.writes++;
+  return ok;
 }
 
 async function clearCoffinCache(tenantSlug: string) {
+  cacheStats.clears++;
   await clearServiceCache(SERVICE_NAME, tenantSlug);
 }
 
@@ -1546,16 +1592,27 @@ export const healthCheck = async (req: Request, res: Response) => {
  */
 export const redisHealthCheck = async (req: Request, res: Response) => {
   try {
-    const { redisHealth } = require('@montezuma/shared-services');
+    const { redisHealth, getServiceConfig } = require('@montezuma/shared-services');
     const redis = await redisHealth();
+    const total = cacheStats.hits + cacheStats.misses;
     return res.status(redis.status === 'UP' ? 200 : 503).json({
       service: SERVICE_NAME,
-      redis
+      redis,
+      // A 0% hit rate with redis.status === 'UP' means the entry is being
+      // written then evicted (budget too small) or the key namespace is wrong —
+      // not that Redis is unreachable.
+      cache: {
+        ...cacheStats,
+        hitRate: total > 0 ? Math.round((cacheStats.hits / total) * 100) + '%' : 'n/a',
+        budget: getServiceConfig(SERVICE_NAME),
+        ttlSeconds: CACHE_TTL,
+      }
     });
   } catch (error: any) {
     return res.status(500).json({
       service: SERVICE_NAME,
-      redis: { status: 'ERROR', error: error?.message || String(error) }
+      redis: { status: 'ERROR', error: error?.message || String(error) },
+      cache: { ...cacheStats }
     });
   }
 };

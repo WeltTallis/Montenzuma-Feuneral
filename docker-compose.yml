@@ -104,6 +104,9 @@ services:
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
       WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
+      # Mini Store. Was ONLY reachable via .env.production (env_file), which is a
+      # back to the bundled 127.0.0.1:7071, gets rewritten to
+      STORE_SERVICE_URL: http://restpoint_store_service:5000
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
       LEAVE_SERVICE_URL: http://restpoint_leave_service:5000
       FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
@@ -315,6 +318,12 @@ services:
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      # Coffin inventory lists are large (image URLs per row + booking notes), so
+      # the service registers a bigger Redis budget than the 10MB shared default.
+      # Without this, checkAndBalance() evicted the cached list moments after it
+      # was written and every request fell through to MySQL.
+      COFFIN_REDIS_MAX_MEMORY_MB: 20
+      COFFIN_REDIS_SOFT_LIMIT_MB: 16
     volumes:
       - coffin_service_data:/usr/src/app/data
       # Coffin-service imports @montezuma/shared-services, whose barrel
@@ -324,6 +333,14 @@ services:
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
+    # Redis must be up BEFORE the coffin service accepts traffic. Without this the
+    # first requests run uncached: getRedisClient() backs off after a failed
+    # attempt, so early calls silently hit the database instead of the cache.
+    depends_on:
+      redis:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
     healthcheck:
       test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
@@ -338,8 +355,14 @@ services:
     image: restpoint-documents-service:latest
     container_name: restpoint_documents_service
     restart: always
+    # Bound to loopback only — the api-gateway reaches it over the internal
+    # docker network. Publishing this port on 0.0.0.0 let anyone who could
+    # reach it bypass the gateway's auth and read/write every tenant's documents.
+    # Override DOCUMENTS_SERVICE_BIND=0.0.0.0 only for local debugging.
+    expose:
+      - '5000'
     ports:
-      - '${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000'
+      - '${DOCUMENTS_SERVICE_BIND:-127.0.0.1}:${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000'
     env_file:
       - .env.production
     environment:

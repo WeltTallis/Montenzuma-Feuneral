@@ -7,7 +7,31 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const workspaceRoot = path.resolve(root, '..', '..');
-const pkgCommand = path.join(workspaceRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'pkg.cmd' : 'pkg');
+
+/**
+ * Locate the `pkg` executable. This used to hardcode
+ * `<workspaceRoot>/node_modules/.bin/pkg`, so when npm did not hoist the
+ * package the build failed with a bare "'...\pkg.cmd' is not recognized",
+ * which looks like a broken script instead of a missing dependency.
+ */
+function resolvePkgCommand() {
+  const binName = process.platform === 'win32' ? 'pkg.cmd' : 'pkg';
+  const candidates = [
+    path.join(root, 'node_modules', '.bin', binName),
+    path.join(workspaceRoot, 'node_modules', '.bin', binName),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  console.error(
+    `\n[installer] BUILD FAILED: the "pkg" compiler is not installed.\n` +
+    `      Looked in:\n        ${candidates.join('\n        ')}\n\n` +
+    `      Fix by installing it:\n        npm install --legacy-peer-deps\n`
+  );
+  process.exit(1);
+}
+
+const pkgCommand = resolvePkgCommand();
 const agentExe = path.join(root, 'dist', 'agent.exe');
 const installerExe = path.join(root, 'dist', 'Setup-Restpoint-Scanner-Bridge.exe');
 const installerTemplate = path.join(root, 'installer.cjs');

@@ -125,127 +125,147 @@ const AppContainer = styled.div`
   @media (max-width: 768px) { padding: 6px; }
 `;
 
-// ─── TOOLBAR: desktop = one line, mobile = 3 rows ───
+// ─── TOOLBAR: desktop = one line, mobile = wraps cleanly ───
+// The white card behind the controls is gone: it boxed in a strip of inputs that
+// already have their own borders, which made the bar read as a second panel
+// stacked on the page. `flex-wrap: wrap` (rather than nowrap + overflow-x) is
+// what keeps the row from collapsing into a horizontal scroller on mid-width
+// screens, where the old version squeezed the search box to nothing.
 const Toolbar = styled.div`
-  display: flex; align-items: center; gap: 10px;
-  background: white; border: 1px solid ${C.borderLight};
-  border-radius: 14px; padding: 12px 16px;
-  margin-bottom: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-  flex-wrap: nowrap; overflow-x: auto; box-sizing: border-box;
-  &::-webkit-scrollbar { height: 4px; }
-  &::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 2px; }
-  /* Mobile: 3 rows — search full width, filters one line, buttons one line */
-  @media (max-width: 768px) {
-    flex-wrap: wrap; padding: 10px 12px; gap: 8px;
-  }
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: transparent; border: 1px solid ${C.borderLight};
+  border-radius: 14px; padding: 10px 12px;
+  margin-bottom: 20px; box-sizing: border-box; width: 100%;
+  min-width: 0;
+  @media (max-width: 768px) { padding: 10px; border-radius: 12px; }
 `;
 
+// Wraps internally instead of being forced to 100% + a manual `order` on each
+// child. The old fixed-basis rows were what overlapped and re-flowed oddly once
+// the viewport crossed 768px.
 const ToolbarLeft = styled.div`
-  display: flex; align-items: center; gap: 10px;
-  flex: 1; min-width: 0;
-  @media (max-width: 768px) {
-    flex: 1 1 100%; flex-wrap: wrap; gap: 8px;
-  }
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  flex: 1 1 380px; min-width: 0;
 `;
 
 const ToolbarRight = styled.div`
-  display: flex; align-items: center; gap: 10px;
-  flex-shrink: 0;
-  @media (max-width: 768px) {
-    flex: 1 1 100%;
-  }
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  flex: 0 0 auto; margin-left: auto; min-width: 0;
+  /* Below 768px the button row drops to its own line and stretches. */
+  @media (max-width: 768px) { margin-left: 0; flex: 1 1 100%; }
 `;
 
 const ToolbarDivider = styled.div`
-  width: 1px; height: 32px; background: ${C.border}; flex-shrink: 0;
+  width: 1px; height: 24px; background: ${C.border}; flex-shrink: 0;
   @media (max-width: 768px) { display: none; }
 `;
 
 const SearchWrapper = styled.div`
   position: relative; display: flex; align-items: center;
-  flex: 1 1 200px; min-width: 150px; max-width: 300px;
+  flex: 1 1 220px; min-width: 170px; max-width: 320px;
   /* Mobile: full width, own row */
   @media (max-width: 768px) {
-    flex: 1 1 100%; max-width: 100%; order: 1;
+    flex: 1 1 100%; max-width: 100%;
   }
 `;
 
 const SearchIcon = styled.i`
-  position: absolute; left: 14px; color: ${C.gray};
-  font-size: 14px; pointer-events: none; z-index: 1; transition: color 0.2s;
+  position: absolute; left: 13px; color: ${C.gray};
+  font-size: 13px; pointer-events: none; z-index: 1; transition: color 0.2s;
 `;
 
+// A real search field, not a bare underline. The borderless variant looked like
+// an unfinished line next to the boxed filter dropdowns, and on a busy list page
+// it gave no visual cue that the control was interactive at all. It now shares
+// the filters' exact height/radius/fill so the whole control row reads as one
+// set of peers.
 const SearchInput = styled.input`
-  /* Quiet underline, matching the coffin-transfers search: no box, no fill —
-     just a bottom rule that colours on focus. */
-  height: 42px; width: 100%; border-radius: 0;
-  border: none; border-bottom: 1px solid ${C.border}; background: transparent;
-  padding: 0 16px 0 40px; font-size: 14px;
+  height: 38px; width: 100%;
+  border-radius: 10px;
+  border: 1px solid ${C.border}; background: ${C.bgField};
+  padding: 0 12px 0 34px; font-size: 14px;
   font-family: 'Inter', sans-serif; color: ${C.dark};
-  transition: border-color 0.2s ease, border-width 0.2s ease; outline: none; box-sizing: border-box;
+  transition: all 0.2s ease; outline: none; box-sizing: border-box;
+  min-width: 0;
   &::placeholder { color: #aaa; }
-  &:focus { background: transparent; border-bottom-color: ${C.accent}; box-shadow: none; }
+  &:focus { background: white; border-color: ${C.accent}; box-shadow: 0 0 0 3px rgba(221,45,74,0.1); }
   &:focus ~ ${SearchIcon} { color: ${C.accent}; }
 `;
 
-/* Mobile: filters row — each takes equal width, one line */
+/* Filters share the search field's metrics exactly (38px / 10px radius / same
+   fill) so the control row reads as one uniform set. min-width stops a
+   three-across layout from crushing the labels into "All S…". */
 const FilterWrapper = styled.div`
   position: relative; display: flex; align-items: center; flex-shrink: 0;
+  flex: 1 1 130px; min-width: 118px; max-width: 190px;
   @media (max-width: 768px) {
-    flex: 1 1 0; min-width: 0; order: 2;
+    flex: 1 1 0; min-width: 0; max-width: none;
   }
+  /* The year picker only ever shows four digits, so it gets a fixed narrow
+     track. This is a prop rather than an inline max-width because an inline
+     style would win over the media query above and the control could not
+     rebalance when the three filters share a row on a phone. */
+  ${p => p.$year && 'flex: 0 0 96px; max-width: 96px;'}
 `;
 
 const FilterSelect = styled.select`
-  height: 42px; border-radius: 10px;
+  height: 38px; border-radius: 10px;
   border: 1px solid ${C.border}; background: ${C.bgField};
-  padding: 0 36px 0 16px; font-size: 14px; font-weight: 500;
+  padding: 0 32px 0 12px; font-size: 13.5px; font-weight: 500;
   font-family: 'Inter', sans-serif; color: ${C.dark};
   cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;
-  transition: all 0.25s ease; box-sizing: border-box;
-  width: 100%;
-  &:focus { background: white; border-color: ${C.accent}; box-shadow: 0 0 0 4px rgba(221,45,74,0.1); }
+  transition: all 0.2s ease; box-sizing: border-box;
+  width: 100%; min-width: 0; text-overflow: ellipsis;
+  &:focus { background: white; border-color: ${C.accent}; box-shadow: 0 0 0 3px rgba(221,45,74,0.1); }
 `;
 
 const SelectArrow = styled.i`
-  position: absolute; right: 14px; color: ${C.gray};
-  pointer-events: none; font-size: 12px; transition: color 0.2s;
+  position: absolute; right: 12px; color: ${C.gray};
+  pointer-events: none; font-size: 11px; transition: color 0.2s;
   ${FilterWrapper}:hover & { color: ${C.dark}; }
 `;
 
 // ─── Buttons ──
+// Slimmer to match the 38px controls: the old 42px height + 20px side padding
+// made the three action buttons the heaviest, most attention-grabbing thing in
+// the bar, which is wrong — they are secondary to the search and filters. The
+// per-variant drop shadows are removed for the same reason: three raised
+// buttons next to flat inputs read as a different, louder interface.
 const Btn = styled.button`
-  height: 42px; padding: 0 20px; border-radius: 10px;
-  font-weight: 600; font-size: 14px; cursor: pointer;
+  height: 38px; padding: 0 15px; border-radius: 10px;
+  font-weight: 600; font-size: 13px; cursor: pointer;
   border: 1px solid transparent; transition: all 0.2s ease;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   font-family: 'Inter', sans-serif; white-space: nowrap; box-sizing: border-box;
-  flex-shrink: 0;
+  flex-shrink: 0; min-width: 0;
   &:disabled { opacity: 0.6; cursor: not-allowed; }
-  /* Mobile: equal width, one line */
+  i { font-size: 12px; }
+  /* Mobile: the row is already full width — let the buttons share it evenly
+     instead of each demanding its natural width and overflowing. overflow/
+     ellipsis is the last-resort guard: at 320px three labelled buttons cannot
+     fit their natural width, and without this the text bled outside the card
+     instead of truncating cleanly. */
   @media (max-width: 768px) {
-    flex: 1 1 0; min-width: 0; padding: 0 10px; font-size: 12px;
+    flex: 1 1 0; min-width: 0; padding: 0 8px; font-size: 12px; gap: 5px;
+    overflow: hidden; text-overflow: ellipsis;
   }
 
   ${p => p.$ghost && `background: ${C.bgField}; border: 1px solid ${C.border}; color: ${C.mid};
     &:hover { background: #eef2f6; border-color: ${C.gray}; color: ${C.black}; }`}
 
   ${p => p.$danger && `background: #dc2626; color: white;
-    box-shadow: 0 4px 12px rgba(220,38,38,0.2);
-    &:hover:not(:disabled) { background: #b91c1c; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220,38,38,0.3); }`}
+    &:hover:not(:disabled) { background: #b91c1c; }`}
 
   ${p => p.$admission && `background: ${C.stBooked}; color: white;
-    box-shadow: 0 4px 12px rgba(0,41,107,0.2);
-    &:hover:not(:disabled) { background: #001f50; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,41,107,0.3); }`}
+    &:hover:not(:disabled) { background: #001f50; }`}
 
   ${p => p.$export && `background: ${C.exportBtn}; color: white;
-    box-shadow: 0 4px 12px rgba(15,48,64,0.2);
-    &:hover:not(:disabled) { background: #0c2530; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15,48,64,0.3); }`}
+    &:hover:not(:disabled) { background: #0c2530; }`}
 
   ${p => p.$primary && `background: ${C.black}; color: white;
     &:hover:not(:disabled) { background: ${C.dark}; }`}
 
-  ${p => p.$sm && `height: 32px; padding: 0 16px; font-size: 13px; border-radius: 8px;`}
+  ${p => p.$sm && `height: 32px; padding: 0 14px; font-size: 12.5px; border-radius: 8px;`}
 `;
 
 // ─── List Components ───
@@ -714,16 +734,16 @@ const DeceasedListPage = () => {
       <AppContainer>
         <ToastContainer position="top-right" autoClose={3000} />
 
-        {/* ═══ TOOLBAR: desktop = one line, mobile = 3 rows ═══ */}
+        {/* ═══ TOOLBAR: one row when it fits, wraps cleanly when it does not ═══ */}
         <Toolbar>
           <ToolbarLeft>
-            {/* Row 1 on mobile: search full width */}
+            {/* Grows to fill; drops to its own full-width row on a phone. */}
             <SearchWrapper>
               <SearchInput type="text" placeholder="Search name or ID..." value={search} onChange={e => setSearch(e.target.value)} />
               <SearchIcon className="fas fa-search" />
             </SearchWrapper>
 
-            {/* Row 2 on mobile: status + gender + year on one line */}
+            {/* Status + gender + year share whatever width the search leaves. */}
             <FilterWrapper>
               <FilterSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">All Statuses</option>
@@ -745,7 +765,7 @@ const DeceasedListPage = () => {
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>
 
-            <FilterWrapper style={{ maxWidth: '110px' }}>
+            <FilterWrapper $year>
               <FilterSelect value={calYear} onChange={e => setCalYear(Number(e.target.value))}>
                 {Array.from({ length: 7 }, (_, i) => today.getFullYear() - 3 + i).map(y => (<option key={y} value={y}>{y}</option>))}
               </FilterSelect>
@@ -753,7 +773,7 @@ const DeceasedListPage = () => {
             </FilterWrapper>
           </ToolbarLeft>
 
-          {/* Row 3 on mobile: all buttons on one line */}
+          {/* Action buttons — right-aligned on wide screens, own row on mobile. */}
           <ToolbarRight>
             <ToolbarDivider />
             <Btn $danger onClick={handleRefresh} disabled={refreshing || loading}>

@@ -15,6 +15,12 @@ const { getKenyaTimeISO } = require('../../packages/shared-utils/dist/timestamps
 const PDFDocument = require('pdfkit');
 const sharp = require('sharp');
 
+// Auth middleware. `protect` verifies the JWT and, crucially, calls
+// attachTenantFromClaims(), which OVERWRITES req.tenantSlug with the tenant from
+// the signed claims. That is what turns the client-supplied `x-tenant-slug`
+// header from an authority into a hint — see the router mount at the bottom.
+const { protect, authorizeAny } = require('../../app-global/middlewares/authMiddleware');
+
 // Safely import centralized upload service (fallback to local if missing)
 let centralizedUploadService;
 try {
@@ -73,7 +79,27 @@ const getGlobalUploadsDir = () => {
 
 const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
 const sanitizeSlug = (v) => String(v || 'system_shared').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'system_shared';
-const getTenantSlug = (req) => sanitizeSlug(req.headers['x-tenant-slug'] || req.headers['x-tenant-id'] || 'system_shared');
+
+// Tenant resolution, in strict order of authority:
+//
+//   1. req.tenantSlug — set by authMiddleware's `protect` from the SIGNED JWT
+//      claims. This is the only trustworthy value and the isolation boundary
+//      (the platform is database-per-tenant).
+//   2. The x-tenant-slug / x-tenant-id headers — accepted ONLY for the
+//      unauthenticated surfaces that sit outside the router (`/health` and the
+//      `/uploads` static mount). For those the slug selects a folder, it does
+//      not authorise access to anything.
+//
+// This function used to read the header unconditionally, which meant that even
+// after `protect` overwrote req.tenantSlug with the verified claim, every
+// handler and the multer destination callback still resolved the tenant from
+// the client-controlled header — so the upload still landed wherever the caller
+// asked. Reading req.tenantSlug first is what actually makes the protection hold.
+const getTenantSlug = (req) => {
+  if (req.tenantSlug) return sanitizeSlug(req.tenantSlug);
+  const hdr = req.headers['x-tenant-slug'] || req.headers['x-tenant-id'];
+  return sanitizeSlug(hdr || 'system_shared');
+};
 const tenantUploadDir = (t, d) => path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(t), 'documents', String(d || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100));
 const centralizedTenantUploadDir = (t, d) => path.join(GLOBAL_UPLOADS_DIR, sanitizeSlug(t), 'documents', sanitizeSlug(d));
 const normalizeDeceasedId = (value) => {
@@ -435,6 +461,29 @@ documentsRouter.post('/share', async (req, res) => {
   console.log(`[DOCUMENTS] Share request: ${req.body.documentName || req.body.documentId} to ${req.body.recipientEmail}`);
   res.json({ success: true, message: 'Shared successfully' });
 });
+
+// ── AUTHENTICATION ────────────────────────────────────────────────────────
+// The router used to be mounted with NO auth middleware at all. Combined with
+// `getTenantSlug()` reading `x-tenant-slug` straight off the request, and this
+// service's port being published to the host in docker-compose
+// (`${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000`), that meant anyone who
+// could reach port 5007 could:
+//   * upload arbitrary files (50MB each, unlimited) → disk exhaustion / hosting
+//   * set `x-tenant-slug: <any-tenant>` and inject documents into ANOTHER
+//     funeral home's records
+//   * GET /:deceasedId and read any tenant's documents
+// CORS did not help — it only constrains browsers, not curl or a script.
+//
+// `protect` verifies the bearer token and re-derives req.tenantSlug from the
+// signed claims, so the header can no longer choose the database.
+// `authorizeAny` then rejects anything that somehow reached the router without
+// a populated req.user, so the pair is fail-closed rather than relying on
+// `protect` alone.
+//
+// The health route above is intentionally left OUTSIDE this router so Docker's
+// healthcheck (and the gateway's own probe) keeps working without a token.
+documentsRouter.use(protect);
+documentsRouter.use(authorizeAny);
 
 app.use('/api/v1/restpoint/documents', documentsRouter);
 app.use('/v1/restpoint/documents', documentsRouter);
