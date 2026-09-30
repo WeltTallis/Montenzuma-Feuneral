@@ -14,6 +14,7 @@
 #   sh scripts/list-build-services.sh docker-compose.prod.yml images      # "<svc>\t<image>"
 #   sh scripts/list-build-services.sh docker-compose.prod.yml image-list  # "<image>"
 #   sh scripts/list-build-services.sh docker-compose.prod.yml dockerfiles # "<Dockerfile path>"
+#   sh scripts/list-build-services.sh verify-dockerfiles                 # exit 1 if any missing
 #
 # The list is DERIVED from the compose file rather than hand-maintained, because
 # the old hardcoded list silently omitted florist-service and made `make prod-up`
@@ -35,7 +36,8 @@ COMPOSE_FILE=""
 MODE="services"
 for arg in "$@"; do
   case "${arg#--}" in
-    services | images | image-list | dockerfiles) MODE="${arg#--}" ;;
+    services | images | image-list | dockerfiles | verify-dockerfiles)
+      MODE="${arg#--}" ;;
     *) COMPOSE_FILE="${arg}" ;;
   esac
 done
@@ -67,8 +69,15 @@ fi
 #
 # Pulled images (mariadb/redis/rabbitmq) have no `build:` key, so they are
 # excluded automatically rather than by a hardcoded name list.
+# The awk pass only needs to know how to format its output; verify-dockerfiles
+# reuses the `dockerfiles` formatting and adds the existence check below.
+AWK_MODE="${MODE}"
+if [ "${AWK_MODE}" = "verify-dockerfiles" ]; then
+  AWK_MODE="dockerfiles"
+fi
+
 RESULT="$(
-  printf '%s\n' "${CONFIG}" | awk -v mode="${MODE}" '
+  printf '%s\n' "${CONFIG}" | awk -v mode="${AWK_MODE}" '
     function emit() {
       if (svc != "" && has_build) {
         if (mode == "images")          print svc "\t" image;
@@ -122,9 +131,33 @@ if [ -z "${RESULT}" ]; then
   fi
 fi
 
-if [ -n "${RESULT}" ]; then
+# In verify mode only the pass/fail summary is useful, not the path list.
+if [ -n "${RESULT}" ] && [ "${MODE}" != "verify-dockerfiles" ]; then
   printf '%s\n' "${RESULT}"
 fi
+
+# verify-dockerfiles: every Dockerfile referenced by a buildable service must
+# exist on disk. Catches a compose file pointing at a missing Dockerfile BEFORE
+# the slow serial builds start.
+if [ "${MODE}" = "verify-dockerfiles" ]; then
+  MISSING=0
+  COUNT=0
+  # Only paths without IFS characters are expected; the compose files use plain
+  # relative paths under the repo root.
+  for path in ${RESULT}; do
+    COUNT=$((COUNT + 1))
+    if [ ! -f "${path}" ]; then
+      echo "list-build-services: missing Dockerfile: ${path}" >&2
+      MISSING=$((MISSING + 1))
+    fi
+  done
+  if [ "${MISSING}" -gt 0 ]; then
+    echo "list-build-services: ${MISSING} of ${COUNT} Dockerfile(s) missing" >&2
+    exit 1
+  fi
+  echo "Dockerfiles present: ${COUNT}"
+fi
+
 exit 0
 
 

@@ -202,7 +202,11 @@ rebuild-slim:
 	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
 	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE) up -d --no-deps $$svc; done
 	@echo "$(BLUE)Removing unused old image layers and build cache...$(NC)"
-	@node scripts/docker-cleanup.mjs --apply
+	@if [ -f scripts/docker-cleanup.mjs ] && command -v node >/dev/null 2>&1; then \
+		node scripts/docker-cleanup.mjs --apply; \
+	else \
+		echo "$(YELLOW)  skipped layer reclamation (needs node + scripts/docker-cleanup.mjs)$(NC)"; \
+	fi
 	@echo "$(GREEN)✓ Slim rebuild and safe reclamation complete$(NC)"
 
 rebuild-slim-prod:
@@ -210,7 +214,11 @@ rebuild-slim-prod:
 	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE_PROD) build --no-cache $$svc; done
 	@set -e; for svc in florist-service leave-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE_PROD) up -d --no-deps $$svc; done
 	@echo "$(BLUE)Removing unused old production layers and build cache...$(NC)"
-	@node scripts/docker-cleanup.mjs --apply
+	@if [ -f scripts/docker-cleanup.mjs ] && command -v node >/dev/null 2>&1; then \
+		node scripts/docker-cleanup.mjs --apply; \
+	else \
+		echo "$(YELLOW)  skipped layer reclamation (needs node + scripts/docker-cleanup.mjs)$(NC)"; \
+	fi
 	@echo "$(GREEN)✓ Production slim rebuild and safe reclamation complete$(NC)"
 
 # Build with cache optimizations
@@ -424,7 +432,7 @@ deploy-prod: validate check-build-list-prod
 	@sleep 30
 	@$(COMPOSE_PROD) ps
 
-deploy-staging:
+deploy-staging: check-build-list
 	@echo "$(BLUE)Deploying to STAGING...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@$(COMPOSE) up -d --no-build
@@ -436,7 +444,7 @@ deploy-staging:
 # volume and network.
 check-prod-images:
 	@missing=""; \
-	for img in $$($(COMPOSE_PROD) config --format json 2>/dev/null | node scripts/compose-build-services.mjs --image-list); do \
+	for img in $$(sh scripts/list-build-services.sh docker-compose.prod.yml image-list); do \
 		docker image inspect "$$img" >/dev/null 2>&1 || missing="$$missing $$img"; \
 	done; \
 	if [ -n "$$missing" ]; then \
@@ -453,7 +461,7 @@ prod-build: check-build-list-prod
 	@set -e; for svc in $(BUILD_SERVICES_PROD); do echo "  -> building $$svc"; $(COMPOSE_PROD) build $$svc; done
 	@echo "$(GREEN)✓ Production build complete$(NC)"
 
-prod-up: validate check-prod-images
+prod-up: validate check-build-list-prod check-prod-images
 	@echo "$(BLUE)Starting production services (docker-compose.prod.yml)...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build
 	@echo "$(GREEN)✓ Production services started$(NC)"
@@ -478,14 +486,16 @@ validate:
 	@if [ -f docker-compose.prod.yml ]; then \
 		$(COMPOSE_PROD) config > /dev/null 2>&1 && echo "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)" || echo "$(RED)✗ docker-compose.prod.yml invalid$(NC)"; \
 	fi
-	@node scripts/check-make-service-lists.mjs
+	@sh scripts/list-build-services.sh verify-dockerfiles
+	@sh scripts/list-build-services.sh docker-compose.prod.yml verify-dockerfiles
 
 # Every buildable service must have its Dockerfile on disk. Catches a compose
 # file pointing at a Dockerfile that does not exist BEFORE the slow serial
 # builds start (and before `up --no-build` fails on a missing image).
 check-dockerfiles:
 	@echo "$(BLUE)Checking Dockerfiles for every buildable service...$(NC)"
-	@node scripts/check-make-service-lists.mjs
+	@sh scripts/list-build-services.sh verify-dockerfiles
+	@sh scripts/list-build-services.sh docker-compose.prod.yml verify-dockerfiles
 
 validate-dockerfiles:
 	@echo "$(BLUE)Validating all Dockerfiles...$(NC)"
