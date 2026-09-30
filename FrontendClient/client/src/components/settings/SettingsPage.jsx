@@ -102,6 +102,9 @@ export default function SettingsPage() {
     const [orgStatus, setOrgStatus] = useState(null); // { type: 'success' | 'error', message }
     const [logoUploading, setLogoUploading] = useState(false);
     const logoInputRef = useRef(null);
+    // Focused when the Add-user side panel opens, so the form is immediately
+    // reachable by keyboard and screen-reader users.
+    const sideNameRef = useRef(null);
 
     const [userForm, setUserForm] = useState({
         email: '',
@@ -548,14 +551,16 @@ export default function SettingsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, isManager, isMultiTenant]);
 
-    // Modal: ESC to close + body scroll lock while open.
+    // Side panel: ESC to close, focus the first field, lock body scroll.
     useEffect(() => {
         if (!showAddUserModal) return;
         const onKey = (e) => { if (e.key === 'Escape') setShowAddUserModal(false); };
         document.addEventListener('keydown', onKey);
+        const focusTimer = setTimeout(() => sideNameRef.current?.focus(), 120);
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         return () => {
+            clearTimeout(focusTimer);
             document.removeEventListener('keydown', onKey);
             document.body.style.overflow = prevOverflow;
         };
@@ -740,17 +745,18 @@ export default function SettingsPage() {
         .rps-summary-rows>div{ display:flex; justify-content:space-between; gap:12px; }
         .rps-summary-rows b{ font-weight:600; color:#fff; }
 
-        /* ── Modal ── */
-        .rps-modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(21,23,26,.5); animation:rps-fade .2s ease; }
-        .rps-modal-panel{ width:100%; max-width:520px; max-height:calc(100vh - 48px); overflow-y:auto; background:#fff; border-radius:16px; box-shadow:0 24px 64px rgba(21,23,26,.28); padding:26px; animation:rps-fade-up .22s ease; }
-        .rps-modal-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:20px; }
-        .rps-modal-head h3{ font-size:1.05rem; }
-        .rps-modal-head p{ font-size:.82rem; color:var(--rps-gray); margin-top:2px; }
-        .rps-modal-body{ display:grid; gap:16px; }
+        /* ── Side panel (Add user) ── */
+        @keyframes rps-slide-in{ from{ transform:translateX(100%); } to{ transform:none; } }
+        .rps-scrim{ position:fixed; inset:0; z-index:50; background:rgba(21,23,26,.45); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); animation:rps-fade .2s ease; }
+        .rps-side{ position:fixed; top:0; right:0; bottom:0; z-index:51; width:min(460px,100%); display:flex; flex-direction:column; background:#fff; box-shadow:-10px 0 44px rgba(21,23,26,.2); animation:rps-slide-in .26s cubic-bezier(.22,.9,.28,1); }
+        .rps-side-head{ flex:none; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:24px 24px 18px; border-bottom:1px solid var(--rps-line); }
+        .rps-side-head h3{ font-size:1.05rem; }
+        .rps-side-head p{ font-size:.82rem; color:var(--rps-gray); margin-top:2px; }
+        .rps-side-form{ flex:1 1 auto; min-height:0; overflow-y:auto; display:grid; gap:16px; align-content:start; padding:22px 24px 24px; }
         .rps-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
         .rps-pwd-row{ display:flex; gap:10px; }
         .rps-pwd-row .rps-input{ flex:1; }
-        .rps-modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; padding-top:18px; border-top:1px solid var(--rps-bone-2); }
+        .rps-side-foot{ position:sticky; bottom:-24px; z-index:2; display:flex; justify-content:flex-end; gap:10px; margin:0 -24px -24px; padding:18px 24px calc(18px + env(safe-area-inset-bottom)); border-top:1px solid var(--rps-bone-2); background:#fff; }
         .rps-mini-select{ padding:7px 30px 7px 10px; border:1px solid var(--rps-line); border-radius:8px; background-color:#fff; font-size:.8rem; color:var(--rps-ink); }
         .rps-mini-select:focus{ outline:none; border-color:var(--rps-brass); }
 
@@ -760,8 +766,9 @@ export default function SettingsPage() {
 
         /* ── Responsive ── */
         @media (max-height:520px){
-          .rps-modal{ align-items:flex-start; }
-          .rps-modal-panel{ max-height:92vh; }
+          .rps-side-head{ padding:16px 18px 14px; }
+          .rps-side-form{ padding:16px 18px 18px; }
+          .rps-side-foot{ bottom:-18px; margin:0 -18px -18px; padding:14px 18px; }
         }
         @media (max-width:860px){
           .rps-org-layout, .rps-charges-layout{ grid-template-columns:1fr; }
@@ -795,11 +802,10 @@ export default function SettingsPage() {
           .rps-tabs{ gap:20px; }
           .rps-btn, .rps-input, .rps-mini-select{ min-height:44px; }
           .rp-settings-root input, .rp-settings-root select{ font-size:16px !important; } /* stops iOS zoom-on-focus */
-          .rps-modal{ padding:0; align-items:flex-end; }
-          .rps-modal-panel{ border-radius:18px 18px 0 0; max-height:90vh; padding-bottom:calc(22px + env(safe-area-inset-bottom)); }
+          .rps-side{ width:100%; box-shadow:none; }
           .rps-grid2{ grid-template-columns:1fr; }
-          .rps-modal-foot{ flex-direction:column-reverse; }
-          .rps-modal-foot .rps-btn{ width:100%; }
+          .rps-side-foot{ flex-direction:column-reverse; }
+          .rps-side-foot .rps-btn{ width:100%; }
           .rps-form-actions{ flex-direction:column-reverse; }
           .rps-form-actions .rps-btn{ width:100%; }
         }
@@ -1272,16 +1278,19 @@ export default function SettingsPage() {
                 )}
             </main>
 
-            {/* ── Add User modal ──────────────────────────────────────── */}
+            {/* ── Add User — side panel, slides in from the right ────── */}
             {showAddUserModal && (
-                <div
-                    className="rps-modal"
-                    onClick={(e) => { if (e.target === e.currentTarget) setShowAddUserModal(false); }}
-                >
-                    <div className="rps-modal-panel" role="dialog" aria-modal="true" aria-labelledby="rps-modal-title">
-                        <div className="rps-modal-head">
+                <React.Fragment>
+                    <button
+                        type="button"
+                        className="rps-scrim"
+                        aria-label="Close add user panel"
+                        onClick={() => setShowAddUserModal(false)}
+                    />
+                    <aside className="rps-side" role="dialog" aria-modal="true" aria-labelledby="rps-side-title">
+                        <div className="rps-side-head">
                             <div>
-                                <h3 id="rps-modal-title">Add user</h3>
+                                <h3 id="rps-side-title">Add user</h3>
                                 <p>Create an account and assign their branch &amp; role.</p>
                             </div>
                             <button type="button" className="rps-icon-btn" aria-label="Close" onClick={() => setShowAddUserModal(false)}>
@@ -1289,7 +1298,7 @@ export default function SettingsPage() {
                             </button>
                         </div>
 
-                        <form className="rps-modal-body" onSubmit={handleAddUser} noValidate>
+                        <form className="rps-side-form" onSubmit={handleAddUser} noValidate>
                             {formError && (
                                 <div className="rps-inline-status error" role="alert" style={{ marginBottom: 0 }}>
                                     {formError}
@@ -1300,6 +1309,7 @@ export default function SettingsPage() {
                                 <label htmlFor="nu-name">Full name</label>
                                 <input
                                     id="nu-name"
+                                    ref={sideNameRef}
                                     className="rps-input"
                                     type="text"
                                     value={userForm.full_name}
@@ -1380,7 +1390,7 @@ export default function SettingsPage() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="rps-modal-foot">
+                            <div className="rps-side-foot">
                                 <button type="button" className="rps-btn rps-btn-ghost" onClick={() => setShowAddUserModal(false)}>
                                     Cancel
                                 </button>
@@ -1389,8 +1399,8 @@ export default function SettingsPage() {
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
+                    </aside>
+                </React.Fragment>
             )}
 
             {/* ── Toast ───────────────────────────────────────────────── */}
