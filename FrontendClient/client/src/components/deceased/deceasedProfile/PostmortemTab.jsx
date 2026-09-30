@@ -8,7 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import env from '../../../utils/config/env';
 import notify from '../../../utils/notify';
 import styled from 'styled-components';
-import { C, formatDate } from './theme';
+// `formatDate` only — the old `C` palette import went unused once this tab was
+// restyled onto the results page's archival tokens (see `PM` below).
+import { formatDate } from './theme';
 import axios from 'axios';
 
 /* ─────────────────────────────────────────────────────────────────────────────
