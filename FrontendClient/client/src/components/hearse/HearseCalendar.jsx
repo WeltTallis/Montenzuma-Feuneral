@@ -693,6 +693,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [selectedMultiDay, setSelectedMultiDay] = useState(null);
   const calendarRef = useRef(null);
+  // Last month reported to the parent. A view switch (Month -> Week -> Day)
+  // also fires datesSet, and we must not treat that as a month change.
+  const lastReportedMonth = useRef(null);
 
   // ── Month is owned by the parent ───────────────────────────────────────
   // The parent holds it in the URL (?month=September&year=2026) because it
@@ -742,7 +745,18 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             : view.currentStart ? new Date(view.currentStart)
             : view.currentEnd ? new Date(view.currentEnd)
             : new Date();
-    onMonthChange(d.getMonth(), d.getFullYear());
+    const m = d.getMonth();
+    const y = d.getFullYear();
+
+    // Changing ONLY the view fires datesSet too. If the month is the same we
+    // write nothing at all: no setState, no setSearchParams, no history entry.
+    // The parent refetches purely on viewMonth -> viewYear -> monthRange, so
+    // skipping here is what guarantees that opening Week view re-uses the
+    // bookings already in memory instead of hitting the API again.
+    const key = `${y}-${m}`;
+    if (lastReportedMonth.current === key) return;
+    lastReportedMonth.current = key;
+    onMonthChange(m, y);
   }, [onMonthChange]);
 
   // Build a branch lookup map from cached branches to resolve branch_id → branch_name
