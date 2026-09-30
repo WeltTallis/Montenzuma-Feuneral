@@ -60,6 +60,79 @@ server {
     # is not up yet, taking the whole SPA down with it.
     resolver 127.0.0.11 valid=10s ipv6=off;
 
+    # ── Request hardening ────────────────────────────────────────────────
+    # Everything below is answered by nginx itself: it never reaches the SPA
+    # fallback, never reaches a file, and never reaches the app. These are
+    # DEEP-DEFENCE rules — they stop the noisy, obviously-malicious traffic,
+    # they are not a replacement for validating input inside each service.
+    server_tokens off;
+
+    # Only the verbs the SPA and the API actually use. TRACE/TRACK/CONNECT are
+    # used for cross-site tracing (XST) and tunnel smuggling.
+    if ($request_method !~ ^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$) {
+        return 405;
+    }
+
+    # A null byte or a ".." segment has no legitimate use here and is the raw
+    # material for path traversal and file smuggling.
+    # The ".." test runs against $uri (the NORMALISED, decoded path with no
+    # query string) so a legitimate `?redirect=../dashboard` is not caught,
+    # while the encoded forms are tested on the raw $request_uri.
+    if ($request_uri ~* "%00")  { return 400; }
+    if ($uri       ~* "%00")  { return 400; }
+    if ($uri       ~* "(^|/)\.\.(/|$)") { return 400; }
+    if ($request_uri ~* "%2e%2e")    { return 400; }
+
+    # Dotfiles and VCS metadata. `(?!well-known)` keeps ACME / .well-known
+    # working. This is what used to be served straight out of the doc root by
+    # the `try_files $uri` in the SPA fallback below.
+    # `return 404` (not `deny`, which would answer 403) — a 403 tells a scanner
+    # the resource exists and just needs credentials.
+    location ~ /\.(?!well-known) {
+        return 404;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Known scanner / exploit probes. Answered 404 so the bot gets nothing.
+    # `/metrics` is deliberately NOT here: the monitoring stack scrapes it and
+    # the gateway's real endpoint is /monitoring (exact-matched below).
+    location ~* ^/(?:wp-admin|wp-login|wp-content|wp-includes|xmlrpc\.php|xmlrpc|administrator|phpmyadmin|phpMyAdmin|adminer|pma|actuator|actuator/health|actuator/env|console|manager/html|jmx-console|solr|jenkins|gitlab|gitea|server-status|server-info|stub_status|nginx-status)(/|$) {
+        return 404;
+    }
+
+    # ── Never serve these file types ─────────────────────────────────────
+    # Declared BEFORE the static-asset regex further down on purpose: nginx
+    # evaluates regex locations in file order, first match wins. That keeps
+    # `/app.js.bak` and `/index.html.map` out of the cached-asset branch.
+    # `.json`, `.html`, `.xml`, `.webmanifest` and `.ico` are deliberately NOT
+    # listed — the SPA needs them (manifest.json, receipt.html, sw.js ...).
+    location ~* \.(?:map|bak|old|orig|save|swp|swo|tmp|temp|log|sql|dump|db|sqlite3?|env|ini|conf|cfg|yaml|yml|sh|bash|zsh|ps1|bat|cmd|git|lock|ts|tsx|jsx|sql\.gz|tar|gz|rar|7z|zip|bz2|xz)$ {
+        return 404;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Ceilings. 50m matches the gateway's `express.json({ limit: '50mb' })`
+    # so an upload rejected by the body parser is not rejected here first;
+    # 16k of header space is far more than any real request needs and stops
+    # header-stuffing. Timeouts stop a slow-loris style hold.
+    client_max_body_size       50m;
+    client_body_buffer_size  256k;
+    client_header_timeout     15s;
+    client_body_timeout       30s;
+    send_timeout              30s;
+    keepalive_timeout        65s;
+    large_client_header_buffers 4 16k;
+    reset_timedout_connection  on;
+
+    # `nosniff` stops a served file from being re-interpreted as another type
+    # (the classic .txt→HTML trick). `Referrer-Policy` keeps tenant slugs out
+    # of outbound Referer headers.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Permitted-Cross-Domain-Policies "none" always;
+
     # Infrastructure Monitor - GET /monitoring.
     # The dashboard polls the API gateway ROOT (/monitoring), NOT under
     # /api/v1/restpoint. CRITICAL: without this block /monitoring falls into
@@ -100,8 +173,11 @@ server {
     location ^~ /downloads/ {
         alias /usr/share/nginx/html/downloads/;
         autoindex off;
-        types { }
+        types { }r
         default_type application/zip;
+        # A `location`-level add_header REPLACES the inherited server-level set,
+        # so re-declare nosniff here or downloads lose it.
+        add_header X-Content-Type-Options "nosniff" always;
         add_header Content-Disposition "attachment" always;
         add_header Cache-Control "public, max-age=86400" always;
     }

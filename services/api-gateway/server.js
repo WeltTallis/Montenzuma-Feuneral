@@ -483,13 +483,32 @@ const limiterHandler = (label) => (req, res, next, options) => {
 const keyByIp = (req) => clientIp(req);
 
 // Credential / account endpoints get a much tighter budget (brute force).
+// Bare `auth` is NOT in this set: /auth/<action> is matched as a PAIR, so the
+// read-only /auth/me ("who am I", which a route guard may call on navigation
+// and which is not brute-forceable) never lands in a 1r/s bucket.
 const AUTH_SEGMENTS = new Set([
-  'auth', 'login', 'register', 'logout', 'refresh', 'change-password', 'me',
-  'password-reset', 'forgot-password', 'reset-password', 'otp', 'verify',
+  'login', 'register', 'logout', 'refresh', 'otp', 'verify', 'change-password',
+  'password-reset', 'forgot-password', 'reset-password',
 ]);
+// Which path segments decide the auth bucket.
+// The gateway mounts its router at /api/v1/restpoint and routes on the segment
+// AFTER it, so a real login arrives as /api/v1/restpoint/auth/login and "auth"
+// is the THIRD segment, not the first. An earlier version stripped only "/api/"
+// and compared segment[0], which is the literal "v1" — so the auth limiter
+// never fired for any real request path. Walk the first few segments after
+// /api/, matching both a bare action segment and the auth/<action> pair.
 const isAuthRoute = (req) => {
-  const seg = req.path.replace(/^\/api\/?/, '').split('/').filter(Boolean)[0] || '';
-  return AUTH_SEGMENTS.has(seg.toLowerCase());
+  const segs = req.path
+    .replace(/^\/api\/?/, '')
+    .split('/')
+    .filter(Boolean)
+    .map((s) => s.toLowerCase());
+  const n = Math.min(segs.length, 4);
+  for (let i = 0; i < n; i += 1) {
+    if (AUTH_SEGMENTS.has(segs[i])) return true;
+    if (segs[i] === 'auth' && i + 1 < n && AUTH_SEGMENTS.has(segs[i + 1])) return true;
+  }
+  return false;
 };
 
 const authLimiter = rateLimit({
