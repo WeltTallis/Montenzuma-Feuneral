@@ -362,13 +362,178 @@ app.use((req, res, next) => isMultipart(req) ? next() : express.json({ limit: '5
 app.use((req, res, next) => isMultipart(req) ? next() : express.urlencoded({ extended: true, limit: '50mb' })(req, res, next));
 app.use(cookieParser(process.env.JWT_SECRET));
 
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000000,
-  message: { success: false, message: 'Too many requests, please try again later.' },
+// ─── Rate limiting ──────────────────────────────────────────────────────────
+// This was a single hard-coded limiter: `windowMs: 15 * 60 * 1000, max:
+// 1000000`. That is ~1,100 requests/second sustained — functionally NO limit at
+// all — and the RATE_LIMIT_* values sitting in .env were never read by anything.
+// Two more things made it useless even at a sane `max`:
+//
+//   1. KEYING. The chain is Cloudflare → nginx → gateway and `trust proxy` is
+//      off by default, so `req.ip` was the nginx peer address (with
+//      TRUST_PROXY=true it becomes Cloudflare's edge IP instead). Either way
+//      EVERY visitor collapsed into one shared bucket.
+//   2. STORAGE. The default in-process MemoryStore forgets every counter on
+//      restart, and gives each gateway replica its own private allowance.
+//
+// Limits are now env-driven and tiered, keyed on the real visitor, and counted
+// in Redis — degrading to in-memory counting if Redis is unavailable so an
+// outage there can never take the API down.
+
+const IP_RE = /^[0-9a-f:.]{3,45}$/i;
+
+// Ask the edge for the actual visitor before falling back to the socket peer.
+const clientIp = (req) => {
+  const candidates = [req.headers['cf-connecting-ip'], req.headers['x-real-ip'], req.ip];
+  for (const raw of candidates) {
+    if (typeof raw !== 'string') continue;
+    const v = raw.split(',')[0].trim();
+    if (IP_RE.test(v)) return v;
+  }
+  return 'unknown';
+};
+
+const numEnv = (name, fallback) => {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+const WINDOW_MS      = numEnv('RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000);
+const MAX_REQUESTS   = numEnv('RATE_LIMIT_MAX_REQUESTS', 600);
+const AUTH_WINDOW_MS = numEnv('RATE_LIMIT_AUTH_WINDOW_MS', 15 * 60 * 1000);
+const AUTH_MAX       = numEnv('RATE_LIMIT_AUTH_MAX', 10);
+const WRITE_MAX      = numEnv('RATE_LIMIT_WRITE_MAX', 200);
+
+/**
+ * Fixed-window counter store shared across gateway replicas.
+ * Uses INCR/EXPIRE on Redis and mirrors the exact same counter in-process, so a
+ * Redis failure downgrades the limiter to memory instead of erroring the route.
+ */
+const createStore = (windowMs, prefix) => {
+  const mem = new Map();
+  let redis = null;
+  if (process.env.REDIS_URL) {
+    try {
+      const Redis = require('ioredis');
+      redis = new Redis(process.env.REDIS_URL, { enableOfflineQueue: false, maxRetriesPerRequest: 1 });
+      redis.on('error', (e) => Logger.warn(`[rate-limit] redis: ${e.message}`));
+    } catch (e) {
+      Logger.warn(`[rate-limit] ioredis unavailable (${e.message}); counting in memory`);
+      redis = null;
+    }
+  }
+  Logger.info(`[rate-limit] ${prefix} counters: ${redis ? 'redis' : 'memory'} · ${windowMs / 1000}s window`);
+
+  return {
+    async init() { /* nothing to warm up */ },
+    async increment(key) {
+      const now = Date.now();
+      if (redis) {
+        try {
+          const rk = `${prefix}${key}`;
+          const total = await redis.incr(rk);
+          if (total === 1) await redis.expire(rk, Math.ceil(windowMs / 1000) + 1);
+          const ttl = await redis.ttl(rk);
+          return { totalHits: total, resetTime: now + (ttl > 0 ? ttl * 1000 : windowMs) };
+        } catch (e) {
+          Logger.warn(`[rate-limit] redis hit failed (${e.message}); using memory for the rest of this window`);
+          redis = null;
+        }
+      }
+      const cur = mem.get(key);
+      if (!cur || cur.resetTime <= now) {
+        const fresh = { totalHits: 1, resetTime: now + windowMs };
+        mem.set(key, fresh);
+        return fresh;
+      }
+      cur.totalHits += 1;
+      return cur;
+    },
+    async decrement(key) {
+      const cur = mem.get(key);
+      if (cur && cur.resetTime > Date.now() && cur.totalHits > 0) cur.totalHits -= 1;
+      if (redis) { try { await redis.decr(`${prefix}${key}`); } catch { /* best effort */ } }
+    },
+    async resetKey(key) {
+      mem.delete(key);
+      if (redis) { try { await redis.del(`${prefix}${key}`); } catch { /* best effort */ } }
+    },
+    async resetAll() { mem.clear(); },
+  };
+};
+
+const limiterHandler = (label) => (req, res, next, options) => {
+  // express-rate-limit v7 reaches the handler as handler(req, res, next, options)
+  // (verified in dist/index.cjs) and its resetTime is a Date — `info.resetTime
+  // instanceof Date`. Accept epoch-ms too so a store returning a number, or a
+  // future version changing the shape, cannot produce a bogus retry value.
+  const rt = options && options.resetTime;
+  const resetMs = rt instanceof Date
+    ? rt.getTime()
+    : (typeof rt === 'number' ? rt : Date.now() + WINDOW_MS);
+  const retry = Math.max(1, Math.ceil((resetMs - Date.now()) / 1000));
+  Logger.warn(`[rate-limit] 429 ${label} ip=${clientIp(req)} ${req.method} ${req.originalUrl}`);
+  res.setHeader('Retry-After', String(retry));
+  res.status(429).json({
+    success: false,
+    message: 'Too many requests. Please slow down and try again shortly.',
+    retryAfterSeconds: retry,
+  });
+};
+
+const keyByIp = (req) => clientIp(req);
+
+// Credential / account endpoints get a much tighter budget (brute force).
+const AUTH_SEGMENTS = new Set([
+  'auth', 'login', 'register', 'logout', 'refresh', 'change-password', 'me',
+  'password-reset', 'forgot-password', 'reset-password', 'otp', 'verify',
+]);
+const isAuthRoute = (req) => {
+  const seg = req.path.replace(/^\/api\/?/, '').split('/').filter(Boolean)[0] || '';
+  return AUTH_SEGMENTS.has(seg.toLowerCase());
+};
+
+const authLimiter = rateLimit({
+  windowMs: AUTH_WINDOW_MS,
+  max: AUTH_MAX,
+  keyGenerator: keyByIp,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  store: createStore(AUTH_WINDOW_MS, 'rl:auth:'),
+  handler: limiterHandler('auth'),
 });
 
+// Writes cost real work upstream, so they are capped harder than reads.
+const writeLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: WRITE_MAX,
+  keyGenerator: keyByIp,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip: (req) => !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method),
+  store: createStore(WINDOW_MS, 'rl:write:'),
+  handler: limiterHandler('write'),
+});
+
+// The general ceiling for everything under /api/.
+const apiLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: MAX_REQUESTS,
+  keyGenerator: keyByIp,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  store: createStore(WINDOW_MS, 'rl:api:'),
+  handler: limiterHandler('api'),
+});
+
+// Strictest tier first, so a login flood is throttled by `auth` rather than
+// burning through the much larger general allowance.
+app.use('/api/', (req, res, next) =>
+  (isAuthRoute(req) ? authLimiter : writeLimiter)(req, res, next));
 app.use('/api/', apiLimiter);
+
+Logger.info(
+  `[rate-limit] api=${MAX_REQUESTS}/${WINDOW_MS / 1000}s auth=${AUTH_MAX}/${AUTH_WINDOW_MS / 1000}s write=${WRITE_MAX}/${WINDOW_MS / 1000}s`
+);
 
 app.use((req, res, next) => {
   Logger.info(`→ ${req.method} ${req.originalUrl}`);
