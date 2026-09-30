@@ -1,19 +1,11 @@
-// Service Worker for Rest Point PWA
-// v3 — forces every client to drop its old caches on activation so the
-// slug-first URLs (/{tenant}/… instead of /tenant/{tenant}/…) and the fixed
-// install prompt actually load. Bump this version on every deploy that
-// changes code.
-const CACHE_VERSION = 'v3'; // Increment this to force cache refresh
+
+const CACHE_VERSION = 'v1'; // Increment this to force cache refresh
 const STATIC_CACHE = `restpoint-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `restpoint-dynamic-${CACHE_VERSION}`;
 const CACHE_NAME = `restpoint-${CACHE_VERSION}`;
 
 // Assets to cache immediately on install.
-// NOTE: every path here MUST exist in /public. `cache.addAll()` rejects the
-// whole batch when ONE url 404s, which used to abort the install event — and
-// a service worker that never installs never gets a fetch handler, which is
-// exactly what Chrome requires before it will offer "Install app"
-// (`beforeinstallprompt`). '/tab.jpg' was in this list but is not shipped, so
+
 // the SW never activated and the install prompt never appeared on Android.
 const STATIC_ASSETS = [
     '/',
