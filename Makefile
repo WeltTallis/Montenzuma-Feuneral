@@ -18,19 +18,23 @@ COMPOSE      := docker compose
 COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 
 # Build-service list — DERIVED from the compose files' `build:` blocks by
-# scripts/compose-build-services.mjs.
+# scripts/list-build-services.sh.
 #
-# This list used to be hand-maintained with a "remember to update this" comment,
-# and it drifted: florist-service exists in BOTH compose files but was never
-# added here, so every build target silently skipped it and the later
-# `up --no-build` died with:
+# POSIX sh + awk on purpose: the production host runs Docker on a plain Debian
+# VPS with NO Node.js installed. Shelling out to `node` here broke every target:
+#     /bin/sh: 1: node: not found
+#     make: *** [Makefile:454: validate] Error 127
+#
+# The list used to be hand-maintained, and it drifted: florist-service exists in
+# BOTH compose files but was never added, so every build target silently skipped
+# it and the later `up --no-build` died with:
 #   Error response from daemon: No such image: restpoint-florist-service:latest
 # Deriving the list makes a newly added compose service impossible to forget.
 #
 # Override to build a subset, e.g.
 #   make build RAW_BUILD_SERVICES="api-gateway frontend"
-ALL_BUILD_SERVICES_DEV  := $(shell $(COMPOSE) config --format json 2>/dev/null | node scripts/compose-build-services.mjs)
-ALL_BUILD_SERVICES_PROD := $(shell $(COMPOSE_PROD) config --format json 2>/dev/null | node scripts/compose-build-services.mjs)
+ALL_BUILD_SERVICES_DEV  := $(shell sh scripts/list-build-services.sh 2>/dev/null)
+ALL_BUILD_SERVICES_PROD := $(shell sh scripts/list-build-services.sh docker-compose.prod.yml 2>/dev/null)
 
 # Union of both compose files; $(sort) de-duplicates.
 RAW_BUILD_SERVICES ?= $(sort $(ALL_BUILD_SERVICES_DEV) $(ALL_BUILD_SERVICES_PROD))
@@ -48,6 +52,27 @@ RED    := \033[0;31m
 YELLOW := \033[0;33m
 CYAN   := \033[0;36m
 NC     := \033[0m # No Color
+
+# ------------------------------------------------------------
+# Service-list guards
+#
+# An empty derived list turns every build loop into a no-op that still prints
+# "✓ Build complete" — that is how broken/unbuilt images silently reached
+# production before. Wire these in as prerequisites so the failure is loud.
+# ------------------------------------------------------------
+check-build-list:
+	@if [ -z "$(strip $(BUILD_SERVICES))" ]; then \
+		echo "$(RED)✗ No buildable services found in docker-compose.yml$(NC)"; \
+		echo "$(YELLOW)  Diagnose with: sh scripts/list-build-services.sh$(NC)"; \
+		exit 1; \
+	fi
+
+check-build-list-prod:
+	@if [ -z "$(strip $(BUILD_SERVICES_PROD))" ]; then \
+		echo "$(RED)✗ No buildable services found in docker-compose.prod.yml$(NC)"; \
+		echo "$(YELLOW)  Diagnose with: sh scripts/list-build-services.sh docker-compose.prod.yml$(NC)"; \
+		exit 1; \
+	fi
 
 # Default target
 .DEFAULT_GOAL := help
@@ -114,37 +139,37 @@ help:
 # ============================================================
 
 # Standard build (with cache) — builds ONE image at a time (OOM-safe)
-build:
+build: check-build-list
 	@echo "$(BLUE)Building all Docker images (serial, 1 at a time)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@echo "$(GREEN)✓ Build complete$(NC)"
 
 # FAST build with BuildKit (cached) — still serial to avoid OOM
-build-fast:
+build-fast: check-build-list
 	@echo "$(BLUE)Building all images with BuildKit (serial, 1 at a time)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build $$svc; done
 	@echo "$(GREEN)✓ Fast build complete$(NC)"
 
 # Standard no-cache build
-build-no-cache:
+build-no-cache: check-build-list
 	@echo "$(BLUE)Rebuilding all images from scratch (serial)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Build complete$(NC)"
 
 # FAST no-cache build with BuildKit — still serial to avoid OOM
-build-no-cache-fast:
+build-no-cache-fast: check-build-list
 	@echo "$(BLUE)Rebuilding all images from scratch with BuildKit (serial)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Fast build complete$(NC)"
 
 # Build all services
-build-all:
+build-all: check-build-list
 	@echo "$(BLUE)Building all services with no cache (serial)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ Build complete$(NC)"
 
 # Build all services FAST (cached, serial)
-build-all-fast:
+build-all-fast: check-build-list
 	@echo "$(BLUE)Building ALL services with BuildKit (serial)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
 	@echo "$(GREEN)✓ All services built$(NC)"
@@ -189,7 +214,7 @@ rebuild-slim-prod:
 	@echo "$(GREEN)✓ Production slim rebuild and safe reclamation complete$(NC)"
 
 # Build with cache optimizations
-build-optimized:
+build-optimized: check-build-list
 	@echo "$(BLUE)Building with cache optimizations (serial)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --build-arg BUILDKIT_INLINE_CACHE=1 $$svc; done
 	@echo "$(GREEN)✓ Optimized build complete$(NC)"
@@ -209,7 +234,7 @@ rebuild-fast: clear-cache build-no-cache-fast up
 # STARTUP TARGETS
 # ============================================================
 
-up: validate
+up: validate check-build-list
 	@echo "$(BLUE)Stopping old containers and starting fresh...$(NC)"
 	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
 	@echo "$(BLUE)Building images (serial, 1 at a time)...$(NC)"
@@ -221,7 +246,7 @@ up: validate
 	@sleep 30
 	@make health
 
-up-force:
+up-force: check-build-list
 	@echo "$(BLUE)Force recreating all containers...$(NC)"
 	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
@@ -381,7 +406,7 @@ prod:
 	@echo "$(GREEN)✓ Production environment configured$(NC)"
 	@make build-no-cache-fast
 
-deploy-prod: validate
+deploy-prod: validate check-build-list-prod
 	@echo "$(BLUE)Deploying to PRODUCTION...$(NC)"
 	@if [ ! -f .env.production ]; then \
 		echo "$(RED)Error: .env.production not found!$(NC)"; \
@@ -423,7 +448,7 @@ check-prod-images:
 	echo "$(GREEN)✓ All production images present$(NC)"
 
 # Build every production image (serial, OOM-safe), without starting anything.
-prod-build:
+prod-build: check-build-list-prod
 	@echo "$(BLUE)Building production images (serial, 1 at a time)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES_PROD); do echo "  -> building $$svc"; $(COMPOSE_PROD) build $$svc; done
 	@echo "$(GREEN)✓ Production build complete$(NC)"
@@ -650,7 +675,7 @@ fix-frontend:
 	@sleep 5
 	@docker logs restpoint_frontend --tail=20
 
-fix-all:
+fix-all: check-build-list
 	@echo "$(BLUE)Fixing all services...$(NC)"
 	@$(COMPOSE) down --remove-orphans
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --no-cache $$svc; done
