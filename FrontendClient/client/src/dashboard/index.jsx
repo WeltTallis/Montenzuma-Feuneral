@@ -388,10 +388,14 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Newest FIRST. `sortRegisters` multiplies by `dir`, so d:1 was ascending —
+  // the record just registered sank to the BOTTOM of the register and the oldest
+  // body sat on top. Every register section is a "what just happened" log, so the
+  // default has to read newest → oldest.
   const [sorts, setSorts] = useState({
-    intake: { f: "date", d: 1 },
-    release: { f: "date", d: 1 },
-    pm: { f: "date", d: 1 },
+    intake: { f: "date", d: -1 },
+    release: { f: "date", d: -1 },
+    pm: { f: "date", d: -1 },
   });
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(nowClock());
@@ -513,10 +517,14 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const togglePill = (key) =>
     setFilters((prev) => (prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]));
 
+  // Clicking a NEW column starts it in the order people expect from that column:
+  // a date column reads newest-first (the same default the register opens with),
+  // while name and status read A→Z. Clicking the column that is already active
+  // simply flips the direction.
   const onSort = (field) =>
     setSorts((prev) => {
-      const s = prev[section] || { f: "date", d: 1 };
-      return { ...prev, [section]: s.f === field ? { f: field, d: s.d * -1 } : { f: field, d: 1 } };
+      const s = prev[section] || { f: "date", d: -1 };
+      return { ...prev, [section]: s.f === field ? { f: field, d: s.d * -1 } : { f: field, d: field === "date" ? -1 : 1 } };
     });
 
   const doRefresh = async () => {

@@ -3,7 +3,7 @@
 // Bump this on EVERY deploy that changes code — without a bump the
 // stale-while-revalidate fetch handler keeps serving the previous
 // content-hashed JS chunks out of cache and the deploy looks like a no-op.
-const CACHE_VERSION = 'v4'; // Increment this to force cache refresh
+const CACHE_VERSION = 'v5'; // Increment this to force cache refresh
 const STATIC_CACHE = `restpoint-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `restpoint-dynamic-${CACHE_VERSION}`;
 const CACHE_NAME = `restpoint-${CACHE_VERSION}`;
