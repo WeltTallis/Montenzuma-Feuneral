@@ -11,34 +11,35 @@ PARALLEL ?= 1
 export COMPOSE_PARALLEL_LIMIT := $(PARALLEL)
 export NODE_OPTIONS := --max-old-space-size=2048
 
-# Build-service list — matches the build: entries in docker-compose.yml.
-# If a service is added/removed from the compose file, update RAW_BUILD_SERVICES.
-RAW_BUILD_SERVICES := \
-  api-gateway \
-  auth-service \
-  tenant-service \
-  deceased-service \
-  invoice-service \
-  coffin-service \
-  documents-service \
-  analytics-service \
-  store-service \
-  socketio-service \
-  bodycheckout-service \
-  extra-services \
-  support-service \
-  chemical-service \
-  billing-service \
-  hearse-service \
-  workshop-service \
-  leave-service \
-  frontend
+# ------------------------------------------------------------
+# Compose commands
+# ------------------------------------------------------------
+COMPOSE      := docker compose
+COMPOSE_PROD := docker compose -f docker-compose.prod.yml
+
+# Build-service list — DERIVED from the compose files' `build:` blocks by
+# scripts/compose-build-services.mjs.
+#
+# This list used to be hand-maintained with a "remember to update this" comment,
+# and it drifted: florist-service exists in BOTH compose files but was never
+# added here, so every build target silently skipped it and the later
+# `up --no-build` died with:
+#   Error response from daemon: No such image: restpoint-florist-service:latest
+# Deriving the list makes a newly added compose service impossible to forget.
+#
+# Override to build a subset, e.g.
+#   make build RAW_BUILD_SERVICES="api-gateway frontend"
+ALL_BUILD_SERVICES_DEV  := $(shell $(COMPOSE) config --format json 2>/dev/null | node scripts/compose-build-services.mjs)
+ALL_BUILD_SERVICES_PROD := $(shell $(COMPOSE_PROD) config --format json 2>/dev/null | node scripts/compose-build-services.mjs)
+
+# Union of both compose files; $(sort) de-duplicates.
+RAW_BUILD_SERVICES ?= $(sort $(ALL_BUILD_SERVICES_DEV) $(ALL_BUILD_SERVICES_PROD))
 
 # For the DEV compose file (docker-compose.yml) — used by build/build-fast/up/...
-BUILD_SERVICES := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose config --services 2>/dev/null | grep -qw "$$svc" && echo "$$svc"; done)
+BUILD_SERVICES := $(filter $(RAW_BUILD_SERVICES),$(ALL_BUILD_SERVICES_DEV))
 
 # For the PROD compose file (docker-compose.prod.yml) — used by deploy-prod
-BUILD_SERVICES_PROD := $(shell for svc in $(RAW_BUILD_SERVICES); do docker compose -f docker-compose.prod.yml config --services 2>/dev/null | grep -qw "$$svc" && echo "$$svc"; done)
+BUILD_SERVICES_PROD := $(filter $(RAW_BUILD_SERVICES),$(ALL_BUILD_SERVICES_PROD))
 
 # Colors for output
 BLUE   := \033[0;34m
@@ -47,10 +48,6 @@ RED    := \033[0;31m
 YELLOW := \033[0;33m
 CYAN   := \033[0;36m
 NC     := \033[0m # No Color
-
-# Environment
-COMPOSE      := docker compose
-COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 
 # Default target
 .DEFAULT_GOAL := help
@@ -95,7 +92,8 @@ help:
 	@echo "$(GREEN)── Production Deployment ─────────────────────────$(NC)"
 	@echo "  make deploy-prod          - Deploy to production (docker-compose.prod.yml)"
 	@echo "  make deploy-staging       - Deploy to staging"
-	@echo "  make prod-up              - Start production services"
+	@echo "  make prod-up              - Start production services (requires built images)"
+	@echo "  make prod-build           - Build all production images (without starting)"
 	@echo "  make prod-down            - Stop production services"
 	@echo "  make prod-logs            - Production logs"
 	@echo "  make prod-health          - Production health check"
@@ -407,7 +405,30 @@ deploy-staging:
 	@$(COMPOSE) up -d --no-build
 	@echo "$(GREEN)✓ Staging deployment complete$(NC)"
 
-prod-up: validate
+# Fail early with an actionable message when an image a service depends on was
+# never built. Without this, `up -d --no-build` only surfaces Docker's opaque
+# "No such image: restpoint-<svc>:latest" AFTER it has already created every
+# volume and network.
+check-prod-images:
+	@missing=""; \
+	for img in $$($(COMPOSE_PROD) config --format json 2>/dev/null | node scripts/compose-build-services.mjs --image-list); do \
+		docker image inspect "$$img" >/dev/null 2>&1 || missing="$$missing $$img"; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo "$(RED)✗ Missing production image(s):$$missing$(NC)"; \
+		echo "$(YELLOW)  They must be built before 'prod-up' can use --no-build.$(NC)"; \
+		echo "$(YELLOW)  Fix with:  make prod-build   (or 'make deploy-prod' to build + start)$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)✓ All production images present$(NC)"
+
+# Build every production image (serial, OOM-safe), without starting anything.
+prod-build:
+	@echo "$(BLUE)Building production images (serial, 1 at a time)...$(NC)"
+	@set -e; for svc in $(BUILD_SERVICES_PROD); do echo "  -> building $$svc"; $(COMPOSE_PROD) build $$svc; done
+	@echo "$(GREEN)✓ Production build complete$(NC)"
+
+prod-up: validate check-prod-images
 	@echo "$(BLUE)Starting production services (docker-compose.prod.yml)...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build
 	@echo "$(GREEN)✓ Production services started$(NC)"
