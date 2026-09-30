@@ -708,9 +708,24 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     api.gotoDate(month);
   }, [month]);
 
+  // ── Report the month the user is LOOKING at, not the grid's leading cell ──
+  // FullCalendar's `datesSet.arg.start` is the first VISIBLE cell of the grid,
+  // which in dayGridMonth is the Sunday on/before the 1st — often in the
+  // PREVIOUS month. Feeding it back as the "current month" made the grid walk
+  // backwards one month at a time (Sep 2026 -> Aug -> Jul -> ... -> Mar 2026,
+  // where Mar 1 is a Sunday and the drift finally stopped). That is why the
+  // calendar jumped to March.
+  //
+  // `view.currentStart` / `view.currentEnd` are the bounds of the current VIEW
+  // period itself, so they stay inside the displayed month. We take the month
+  // from currentStart, with currentEnd as the fallback for views whose period
+  // does not start inside the visible month.
   const handleDatesSet = useCallback((arg) => {
     if (!onMonthChange) return;
-    const d = arg?.start ? new Date(arg.start) : new Date();
+    const view = arg?.view || {};
+    const d = view.currentStart ? new Date(view.currentStart)
+            : view.currentEnd ? new Date(view.currentEnd)
+            : new Date();
     onMonthChange(d.getMonth(), d.getFullYear());
   }, [onMonthChange]);
 
