@@ -11,105 +11,165 @@ import styled from 'styled-components';
 import { C, formatDate } from './theme';
 import axios from 'axios';
 
-/* -- Minimized styling, matching OverviewTab -- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design language borrowed from the reception Postmortem Results page
+   (components/reception/PostmortemResultsPage.jsx).
+
+   That page renders the same clinical record as a formal document, so it uses
+   an archival palette — warm paper, near-black ink, moss for structure and a
+   single ochre accent — set in Fraunces / Saira / JetBrains Mono. This tab was
+   showing the identical data in flat greys, which made the two screens look
+   like different systems reporting the same case.
+
+   Only the visual layer changed. No field, section, label or behaviour was
+   added, removed or renamed; the render tree below the styled-components is
+   byte-for-byte the same.
+   ───────────────────────────────────────────────────────────────────────────── */
+const PM = {
+  paper2: '#f7f4ec',
+  ink: '#211d17',
+  ink2: '#5d554a',
+  hair: 'rgba(33, 29, 23, .16)',
+  hair2: 'rgba(33, 29, 23, .38)',
+  moss: '#4d5f42',
+  mossDeep: '#2f3d28',
+  och: '#9a6a1e',
+  ox: '#7c2b23',
+};
+
 const SectionHead = styled.div`
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-bottom: 3px;
-  border-bottom: 2px solid ${C.black};
-  color: ${C.black};
-  width: fit-content;
-  span { opacity: 0.45; font-size: 9px; }
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: ${PM.mossDeep};
+  margin-bottom: 18px;
+
+  /* Hairline rule fills the remaining width — the DataHeading pattern. */
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: ${PM.hair};
+  }
+
+  span { opacity: 0.45; font-size: 10px; }
   ${p => p.$mt0 && 'margin-top: 0;'}
 `;
 
 const DetailGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px 24px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 4px 48px;
+  margin-bottom: 32px;
 `;
 
 const DetailItem = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
+  padding-bottom: 12px;
+  /* Dotted rule, matching the InfoRow treatment on the results page. */
+  border-bottom: 1px dotted ${PM.hair};
   ${p => p.$full && 'grid-column: 1 / -1;'}
 `;
 
 const DetailLabel = styled.span`
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #999;
+  letter-spacing: 0.12em;
+  color: ${PM.och};
 `;
 
 const DetailValue = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: ${C.black};
+  font-size: 16px;
+  font-weight: 500;
+  color: ${PM.ink};
   word-break: break-word;
-  line-height: 1.35;
-  ${p => p.$body && 'font-weight: 400; line-height: 1.6; font-size: 13px; color: #555;'}
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  ${p => p.$mono && "font-family: 'JetBrains Mono', monospace; font-size: 14px;"}
+
+  /* Long-form clinical prose (findings, summary) reads as a quoted block
+     rather than a value, mirroring the SummaryBox on the results page. */
+  ${p => p.$body && `
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    line-height: 1.7;
+    font-size: 15px;
+    color: ${PM.ink};
+    font-variant-numeric: normal;
+    background: ${PM.paper2};
+    border-left: 4px solid ${PM.och};
+    padding: 16px 20px;
+    margin: 6px 0 14px;
+  `}
 `;
 
 const Btn = styled.button`
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 9px 16px;
+  border-radius: 3px;
   font-weight: 600;
   font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
-  border: 1px solid ${C.border || '#e0e0e0'};
-  background: white;
-  color: ${C.dark || '#1a1a1a'};
-  transition: 0.15s;
+  border: 1px solid ${PM.hair2};
+  background: ${PM.paper2};
+  color: ${PM.ink};
+  transition: 0.15s cubic-bezier(.32, .72, .24, 1);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Saira', sans-serif;
 
   &:hover {
-    background: ${C.bgField || '#f7f7f5'};
-    border-color: ${C.gray || '#777777'};
+    background: #fffdf7;
+    border-color: ${PM.moss};
+    color: ${PM.mossDeep};
   }
 
   ${p => p.$primary && `
-    background: ${C.black};
-    color: white;
-    border-color: ${C.black};
+    background: ${PM.mossDeep};
+    color: #fdfbf5;
+    border-color: ${PM.mossDeep};
     &:hover {
-      background: #333;
-      border-color: #333;
+      background: ${PM.moss};
+      border-color: ${PM.moss};
+      color: #fdfbf5;
     }
   `}
 `;
 
+/* Status chips move from saturated blue/amber to muted paper tints so they sit
+   inside the archival palette instead of shouting against it. */
 const StatusChip = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 3px;
+  padding: 3px 10px;
+  border-radius: 2px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  font-family: 'Saira', sans-serif;
 
-  ${p => p.$status === 'sent' && `background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;`}
-  ${p => p.$status === 'initiated' && `background: #fef3c7; color: #92400e; border: 1px solid #fde68a;`}
-  ${p => p.$status === 'cancelled' && `background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; text-decoration: line-through;`}
+  ${p => p.$status === 'sent' && `background: ${PM.paper2}; color: ${PM.mossDeep}; border: 1px solid ${PM.hair2};`}
+  ${p => p.$status === 'initiated' && `background: ${PM.paper2}; color: ${PM.och}; border: 1px solid ${PM.och};`}
+  ${p => p.$status === 'cancelled' && `background: ${PM.paper2}; color: ${PM.ink2}; border: 1px solid ${PM.hair}; text-decoration: line-through;`}
 `;
 
 const EmptyNote = styled.p`
-  font-size: 12px;
-  color: ${C.gray};
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.7;
+  color: ${PM.ink2};
   margin: 0 0 12px;
 `;
 
@@ -129,40 +189,41 @@ const FormGroup = styled.div`
 `;
 
 const FormLabel = styled.label`
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #999;
+  letter-spacing: 0.12em;
+  color: ${PM.och};
 `;
 
 const FormInput = styled.input`
-  height: 34px;
+  height: 36px;
   width: 100%;
-  border: 1px solid ${C.border || '#e0e0e0'};
-  border-radius: 4px;
+  border: 1px solid ${PM.hair2};
+  border-radius: 3px;
   padding: 0 10px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 13px;
-  color: ${C.dark || '#1a1a1a'};
-  background: #ffffff;
+  color: ${PM.ink};
+  background: ${PM.paper2};
   box-sizing: border-box;
 
   &:focus {
     outline: none;
-    border-color: ${C.black};
+    border-color: ${PM.moss};
+    background: #fdfbf5;
   }
 `;
 
 const FormTextarea = styled.textarea`
   width: 100%;
-  border: 1px solid ${C.border || '#e0e0e0'};
-  border-radius: 4px;
+  border: 1px solid ${PM.hair2};
+  border-radius: 3px;
   padding: 8px 10px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Saira', sans-serif;
   font-size: 13px;
-  color: ${C.dark || '#1a1a1a'};
-  background: #ffffff;
+  color: ${PM.ink};
+  background: ${PM.paper2};
   box-sizing: border-box;
   resize: vertical;
   min-height: 56px;
@@ -170,7 +231,8 @@ const FormTextarea = styled.textarea`
 
   &:focus {
     outline: none;
-    border-color: ${C.black};
+    border-color: ${PM.moss};
+    background: #fdfbf5;
   }
 `;
 
@@ -182,37 +244,41 @@ const ModalOverlay = styled.div`
   padding: 20px;
 `;
 const ModalCard = styled.div`
-  background: #fff; border-radius: 8px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  background: #fdfbf5; border: 1px solid ${PM.hair2}; border-radius: 3px;
+  width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 60px -20px rgba(33, 29, 23, .35);
 `;
 const ModalHead = styled.div`
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid ${C.borderLight};
-  font-size: 16px; font-weight: 700; color: ${C.black};
+  padding: 16px 20px; border-bottom: 3px double ${PM.ink};
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 700; color: ${PM.mossDeep};
 `;
 const ModalBody = styled.div` padding: 20px; `;
 const ModalFoot = styled.div`
   display: flex; justify-content: flex-end; gap: 8px;
-  padding: 16px 20px; border-top: 1px solid ${C.borderLight};
+  padding: 16px 20px; border-top: 1px solid ${PM.hair};
 `;
 const CloseBtn = styled.button`
-  background: none; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: ${C.gray};
-  &:hover { color: ${C.black}; }
+  background: none; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: ${PM.ink2};
+  &:hover { color: ${PM.ox}; }
 `;
 const ModalContext = styled.div`
-  font-size: 12px; color: ${C.gray}; margin-bottom: 14px;
-  padding-bottom: 10px; border-bottom: 1px dashed ${C.borderLight};
-  b { color: ${C.black}; }
+  font-size: 12px; color: ${PM.ink2}; margin-bottom: 14px;
+  padding-bottom: 10px; border-bottom: 1px dotted ${PM.hair};
+  b { color: ${PM.ink}; }
 `;
 const ModalHint = styled.p`
-  font-size: 11px; color: ${C.gray}; margin: 2px 0 0; line-height: 1.5;
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-style: italic; color: ${PM.ink2}; margin: 2px 0 0; line-height: 1.6;
 `;
 
-/* Plain inline stat — no boxes, matching the minimized look */
+/* Plain inline stat — value in ink, label in the ochre small-caps used
+   throughout the results page. */
 const StatLine = ({ label, value, color }) => (
-  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
-    <b style={{ fontSize: 14, color: color || C.black, fontWeight: 700 }}>{value}</b>
-    <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#999', fontWeight: 700 }}>{label}</span>
+  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+    <b style={{ fontSize: 16, color: color || PM.ink, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{value}</b>
+    <span style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: PM.och, fontWeight: 700 }}>{label}</span>
   </span>
 );
 
@@ -553,14 +619,14 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
           {listedRequests.map((r) => (
             <div
               key={r.id}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.borderLight || '#eeeceb'}`, flexWrap: 'wrap' }}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: `1px dotted ${PM.hair}`, flexWrap: 'wrap' }}
             >
               <div style={{ flex: 1, minWidth: 220 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: C.black }}>{r.request_ref || r.requested_by}</span>
+                  <span style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 15, color: PM.ink }}>{r.request_ref || r.requested_by}</span>
                   <StatusChip $status={r.status}>{r.status}</StatusChip>
                 </div>
-                <div style={{ fontSize: 12, color: C.gray, marginTop: 3, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13, color: PM.ink2, marginTop: 3, lineHeight: 1.7 }}>
                   Requested by <b>{r.requested_by || '—'}</b>
                   {r.requesting_authority ? <> · Authority: {r.requesting_authority}</> : null}
                   <br />
@@ -573,7 +639,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
                 {r.derived ? (
                   // Legacy / portal request that only exists on the postmortem row —
                   // no tracked id to act on, so show read-only context instead.
-                  <span style={{ fontSize: 11, color: C.gray }}>
+                  <span style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, color: PM.ink2 }}>
                     {r.status === 'initiated' ? 'Awaiting mortuary review' : 'Examination on record'}
                   </span>
                 ) : (
@@ -587,7 +653,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
                       </>
                     )}
                     {r.status === 'sent' && (
-                      <span style={{ fontSize: 11, color: C.gray }}>Awaiting examination</span>
+                      <span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: 14, color: PM.ink2 }}>Awaiting examination</span>
                     )}
                   </>
                 )}
@@ -598,7 +664,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
       )}
 
       {hasData ? (
-        <div style={{ marginTop: 16, border: `1px solid ${C.borderLight}`, borderRadius: 8, padding: '18px 20px', background: C.bgSection }}>
+        <div style={{ marginTop: 16, border: `1px solid ${PM.hair}`, borderRadius: 3, padding: '18px 20px', background: PM.paper2 }}>
           {/* 02 — Official Determination of Death */}
           <SectionHead $mt0><span>02</span> Official Determination of Death</SectionHead>
           <DetailGrid>

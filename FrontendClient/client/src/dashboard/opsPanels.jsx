@@ -5,6 +5,9 @@ import {
 import { Avatar } from "./opsBits";
 import { Ic } from "./opsIcons";
 import { getTenantSlug as resolveTenantSlug } from "../utils/globalAuth";
+import { useState } from "react";
+import env from "../utils/config/env";
+import { rebaseUploadUrl } from "../utils/tenantResolver/tenantBranding";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Overlays — the analytics drill-down modal and the case-file drawer.
@@ -422,6 +425,49 @@ const first = (...vals) => {
 const fDateTime = (d, t) => (d ? `${fmtDate(d)}${t ? ` · ${t}` : ""}` : "—");
 const fBool = (b, y = "Yes", n = "No") => (b === true ? y : b === false ? n : "—");
 
+/**
+ * The captured next-of-kin signature.
+ *
+ * The deceased-profile Overview tab has always shown the real image; this
+ * drawer only ever said "Yes", so staff had to open a second screen to check
+ * what had actually been signed — exactly the thing you want to see at a
+ * glance when verifying a release. Uses the same URL rules as OverviewTab so
+ * both surfaces render the same file for the same case.
+ */
+function SignatureImage({ path }) {
+  const [failed, setFailed] = useState(false);
+
+  const src = (() => {
+    if (!path) return null;
+    if (path.startsWith("data:image")) return path;
+    if (path.startsWith("http")) return rebaseUploadUrl(path);
+    if (path.startsWith("/")) return `${env.UPLOADS_URL}${path}`;
+    return `${env.UPLOADS_URL}/${String(path).replace(/^\/+/, "")}`;
+  })();
+
+  if (!path || !src) return null;
+
+  if (failed) {
+    return (
+      <a href={src} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1a73e8" }}>
+        Click to view signature ↗
+      </a>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt="Next of Kin Signature"
+      onError={() => setFailed(true)}
+      style={{
+        maxWidth: "100%", maxHeight: 180, marginTop: 6, background: "#fff",
+        padding: 6, borderRadius: 6, objectFit: "contain",
+        border: "1px solid rgba(255,255,255,0.12)",
+      }}
+    />
+  );
+}
+
 /* ── Sub-components for Comprehensive Case Drawer ─────────────────────── */
 
 /**
@@ -478,6 +524,22 @@ function IntakePane({ p }) {
         <Card l="Place of Death" v={p.place} />
         <Card l="Cause of Death" v={p.cause} hl />
         <Card l="Deceased ID" v={it.deceasedId} mono />
+        {/* Identity + mortuary detail. These are all on the register row and in
+            intakeOf(), but were never rendered here, so the drawer looked
+            emptier than the data actually was. */}
+        <Card l="ID Type" v={it.idType} />
+        <Card l="National ID" v={it.idNo} mono />
+        <Card l="County" v={it.county} />
+        <Card l="Physician" v={it.physician} />
+        <Card l="Chamber Assigned" v={it.chamber} />
+        <Card l="Storage Type" v={it.storage} />
+        <Card l="Mortuary Location" v={it.location} />
+        <Card l="Verified By" v={it.verifiedBy} />
+        <Card l="Release Status" v={it.releaseStatus} />
+        <Card l="Burial Type" v={it.burialType} />
+        <Card l="Coffin Status" v={it.coffinStatus} />
+        <Card l="Dispatched To" v={first(it.dispatchedTo, raw.dispatched_to)} />
+        <Card l="Identifying Marks" v={it.marks} />
       </div>
 
       <DrawerSection title="Body Status" />
@@ -509,6 +571,27 @@ function IntakePane({ p }) {
         <Card l="Relationship" v={nok.rel} />
         <Card l="Phone Number" v={first(nok.phone, it.phone)} mono />
         <Card l="Additional Contacts" v={it.nokCount != null ? `${it.nokCount}` : ""} />
+        <Card l="Alt. Phone" v={first(nok.altPhone, it.altPhone)} mono />
+        <Card l="Email" v={first(nok.email, it.email)} />
+        <Card l="National ID" v={nok.id} mono />
+        <Card l="Address" v={first(nok.address, raw.address)} />
+      </div>
+
+      {/* The actual signature image, matching the deceased-profile Overview tab.
+          Previously this drawer only reported Yes/No, so confirming who signed
+          meant leaving the dashboard and opening the case file. */}
+      <DrawerSection title="Authorisation Signature" />
+      <div className="cgrid">
+        {(() => {
+          const sig = first(it.signature, nok.signature, raw.signature);
+          if (!sig) return <Card l="Signature" v="" />;
+          return (
+            <div className="ccard wide" style={{ gridColumn: "1 / -1" }}>
+              <div className="ccl-row"><span className="ccl">Signature captured</span></div>
+              <SignatureImage path={sig} />
+            </div>
+          );
+        })()}
       </div>
 
       <DrawerSection title="Charges" />
@@ -613,18 +696,6 @@ function ReleasePane({ p, rel }) {
         <Card l="Burial Permit Number" v={rel.permit} mono />
       </div>
 
-      <DrawerSection title="Deceased Record" />
-      <div className="cgrid">
-        <Card l="Full Name" v={first(rw.full_name, rw.name_of_deceased, p.name)} hl />
-        <Card l="Admission Number" v={first(rw.admission_number, p.adm)} mono />
-        <Card l="Gender" v={first(rw.gender, p.sex)} />
-        <Card l="Age" v={(() => { const a = first(rw.age, p.intake?.age, p.age); return a === "" ? "" : `${a} years`; })()} />
-        <Card l="Date of Death" v={fRawDate(first(p.dod, rw.date_of_death))} />
-        <Card l="Cause of Death" v={first(p.cause, rw.cause_of_death)} />
-        <Card l="Place of Death" v={first(p.place, rw.place_of_death)} />
-        <Card l="Burial Permit Number" v={first(rw.permit_number, rel.permit, p.permit)} mono />
-      </div>
-
       <DrawerSection title="Recipient &amp; Authorized Collector" />
       <div className="cgrid">
         <Card l="Next of Kin (as recorded)" v={first(rw.next_kin, p.nok?.name)} />
@@ -643,6 +714,30 @@ function ReleasePane({ p, rel }) {
         <Card l="Items Returned" v={rel.items} />
         <Card l="Handover Notes" v={rel.notes} />
         <Card l="Recorded At" v={first(rel.recordedAt, p.raw?.created_at)} mono />
+      </div>
+
+      {/* The release signature. This is already parsed onto `rel` by
+          releaseFromFeed() / releaseFromRegister() but was never rendered, so
+          the drawer could show a completed release with no evidence of who
+          authorised it. Releasing a body is the point of no return, so this is
+          the one thing that must be visible before the drawer is closed.
+          Falls back through the release row, then the register row, because
+          either form may have captured it. */}
+      <DrawerSection title="Release Signature" />
+      <div className="cgrid">
+        {(() => {
+          const sig = first(rel.signature, rel.staffSignature, rw.signature, rw.staff_signature, p.nok?.signature);
+          if (!sig) return <Card l="Release Signature" v="" />;
+          return (
+            <div className="ccard wide" style={{ gridColumn: "1 / -1" }}>
+              <div className="ccl-row">
+                <span className="ccl">Release Signature</span>
+                <span className="cctag">Authorised</span>
+              </div>
+              <SignatureImage path={sig} />
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
