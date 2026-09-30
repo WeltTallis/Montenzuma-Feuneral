@@ -400,6 +400,10 @@ export default function InsurancePage() {
         .compare-col h4{font-family:'Fraunces',serif;color:${C.ink};font-size:1.25rem;margin-bottom:1rem}
         .compare-col ul{list-style:none;padding:0;margin:0}
         .compare-col ul li{display:flex;gap:0.7rem;align-items:flex-start;padding:0.5rem 0;font-size:0.92rem;color:${C.gray};line-height:1.6}
+        .showcase-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}
+        .showcase-media{border-radius:12px;overflow:hidden;border:1px solid ${C.line};box-shadow:0 30px 60px -20px rgba(21,23,26,0.28);background:${C.bone2}}
+        .showcase-media img{display:block;width:100%;height:auto}
+        @media(max-width:900px){.showcase-grid{grid-template-columns:1fr;gap:2rem}}
         @media(max-width:680px){.compare-grid{grid-template-columns:1fr}}
         @media(max-width:800px){.nav-links{display:none}.nav-cta{display:none}.mobile-nav{display:flex;gap:0.5rem;align-items:center}}
         @media(max-width:768px){
@@ -512,6 +516,34 @@ export default function InsurancePage() {
                                         </div>
                                     </Reveal>
                                 ))}
+                            </div>
+                        </Reveal>
+                    </div>
+                </section>
+
+                {/* Cover That Speaks to Families */}
+                <section className="edu-section">
+                    <div className="wrap">
+                        <Reveal>
+                            <div className="showcase-grid">
+                                <div>
+                                    <div className="edu-kicker"><ShieldCheck size={16} /> Because Their Tomorrow Matters</div>
+                                    <h2 className="edu-head">Cover that gives families peace of mind and financial support when it matters most</h2>
+                                    <p className="edu-sub">
+                                        Rest Point last expense cover protects the people behind every policy. Families get financial protection for funeral costs, real support in a hard moment, and a simple, fast claims process - so they are never left worrying about money when they need to grieve.
+                                    </p>
+                                    <ul className="content-list" style={{ marginBottom: '2rem' }}>
+                                        <li><Check size={16} color={C.verdigris} /> <span><strong>Financial protection</strong> - help covering funeral costs</span></li>
+                                        <li><Check size={16} color={C.verdigris} /> <span><strong>Support for your family</strong> - less worry, more comfort</span></li>
+                                        <li><Check size={16} color={C.verdigris} /> <span><strong>Simple &amp; fast claims process</strong> - when you need it most</span></li>
+                                    </ul>
+                                    <button className="btn btn-brass" onClick={goStart} style={{ padding: '1rem 2.2rem' }}>
+                                        Get covered today <ArrowRight size={16} />
+                                    </button>
+                                </div>
+                                <Reveal delay={120} className="showcase-media">
+                                    <img src="/insurance1.png" alt="Rest Point funeral insurance giving families financial protection, support, and a fast claims process" width="1024" height="1024" loading="lazy" decoding="async" />
+                                </Reveal>
                             </div>
                         </Reveal>
                     </div>
