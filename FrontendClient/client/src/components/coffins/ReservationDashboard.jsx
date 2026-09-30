@@ -7,7 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   eachDayOfInterval, isSameDay, isSameWeek, isSameMonth,
-  addWeeks, subWeeks, addMonths, subMonths, addDays, isToday,
+  addWeeks, subWeeks, addDays, isToday,
 } from 'date-fns';
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
@@ -183,8 +183,18 @@ export default function ReservationDashboard(props) {
   // Rewrite the URL to the canonical form on month change. `replace: true` stops
   // a history entry per month paged through.
   var goToMonth = useCallback(function (month, year) {
-    var m = Math.min(11, Math.max(0, month));
-    var y = Math.min(2200, Math.max(1970, year));
+    // Carry the overflow instead of clamping it. Callers hand us raw arithmetic
+    // (`viewMonth + dir`, `calMonth.getMonth() + dir`), so December + 1 must
+    // roll into January of the NEXT year. Clamping used to snap month 12 back
+    // to 11, turning one "next" click into an 11-month jump (Dec-2026 -> Dec-2027)
+    // and making the year the caller pre-adjusted land a year too far.
+    // getMonth() is 0-based, so 12 wraps to 0.
+    var m = Math.trunc(Number(month));
+    var y = Math.trunc(Number(year));
+    if (!isFinite(m) || !isFinite(y)) return;
+    y += Math.floor(m / 12);
+    m = ((m % 12) + 12) % 12;
+    y = Math.min(2200, Math.max(1970, y));
     setViewMonth(m); setViewYear(y);
     var next = new URLSearchParams(searchParams);
     next.set('month', String(m + 1)); // 1-12 in the URL, 0-11 in JS
@@ -291,8 +301,20 @@ export default function ReservationDashboard(props) {
   // Paging the calendar drives `viewMonth`/`viewYear`, which drives monthRange
   // and therefore the fetch. calMonth is derived from those via the effect
   // above, and `sel` still tracks the day/week cursor, so both are kept in step.
-  function navigate(dir) { setClickedDay(null); if (view === 'day') { setSel(function (d) { return addDays(d, dir); }); } else if (view === 'week') { setSel(function (d) { return dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1); }); } goToMonth(viewMonth + dir, dir === 1 && viewMonth === 11 ? viewYear + 1 : dir === -1 && viewMonth === 0 ? viewYear - 1 : viewYear); }
-  function miniCalNav(dir) { setCalMonth(function (d) { return dir === 1 ? addMonths(d, 1) : subMonths(d, 1); }); }
+  // Paging keeps the FETCHED month in step with the cursor: day/week move the
+  // cursor first and then the URL — and therefore monthRange — follows it.
+  // Month view just pages the month itself; goToMonth normalises the wrap.
+  function navigate(dir) {
+    setClickedDay(null);
+    if (view === 'day') { var nd = addDays(sel, dir); setSel(nd); goToMonth(nd.getMonth(), nd.getFullYear()); return; }
+    if (view === 'week') { var nw = dir === 1 ? addWeeks(sel, 1) : subWeeks(sel, 1); setSel(nw); goToMonth(nw.getMonth(), nw.getFullYear()); return; }
+    goToMonth(viewMonth + dir, viewYear);
+  }
+  // The mini-calendar IS the month navigator: paging it changes the VISIBLE
+  // month rather than only the sidebar preview, so it rewrites the URL and
+  // refetches that month's reservations. Previously it only nudged `calMonth`,
+  // which left the list pinned to whatever month the URL opened with.
+  function miniCalNav(dir) { goToMonth(calMonth.getMonth() + dir, calMonth.getFullYear()); }
   function doRefresh() { setRefreshing(true); fetchLive().finally(function () { setRefreshing(false); showToast('Refreshed'); }); }
 
   function markAsPaid() {
@@ -303,7 +325,14 @@ export default function ReservationDashboard(props) {
     });
   }
 
-  function onMiniCalDayClick(day) { if (clickedDay && isSameDay(day, clickedDay)) { setClickedDay(null); } else { setClickedDay(day); setSel(day); } }
+  function onMiniCalDayClick(day) {
+    if (clickedDay && isSameDay(day, clickedDay)) { setClickedDay(null); return; }
+    // A day belonging to another month must switch the visible month first:
+    // the reservation list is fetched month-scoped, so staying put would leave
+    // the grid on the old month while the sidebar highlighted the new one.
+    if (!isSameMonth(day, visibleMonthDate)) goToMonth(day.getMonth(), day.getFullYear());
+    setClickedDay(day); setSel(day);
+  }
   function toggleFilter(status) { setActiveFilters(function (prev) { if (prev.indexOf(status) !== -1) return prev.filter(function (s) { return s !== status; }); return prev.concat([status]); }); setClickedDay(null); }
   function goToday() { var now = new Date(); setSel(now); setClickedDay(null); goToMonth(now.getMonth(), now.getFullYear()); }
 
@@ -385,6 +414,7 @@ export default function ReservationDashboard(props) {
     '.cb-nav-select{height:30px;padding:0 10px;border:1px solid ' + BRD + ';border-radius:7px;background:' + CARD + ';color:' + TX + ';font-size:11px;font-weight:700;font-family:' + FONT + ';cursor:pointer;min-width:140px;outline:none}',
     '.cb-nav-select:hover{border-color:' + ACC + '}',
     '.cb-tb-btn{height:30px;padding:0 12px;border:1px solid ' + BRD + ';background:' + CARD + ';color:' + TX2 + ';border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;font-family:' + FONT + ';transition:all .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}',
+    '.cb-tb-nav{height:30px;width:30px;padding:0;border:1px solid ' + BRD + ';background:' + CARD + ';color:' + TX2 + ';border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;font-family:' + FONT + ';transition:all .12s;display:inline-flex;align-items:center;justify-content:center}.cb-tb-nav:hover{background:' + ACCLT + ';border-color:' + ACCL + ';color:' + ACC + '}',
     '.cb-tb-btn:hover{border-color:' + ACC + ';color:' + ACC + '}',
     '.cb-tb-btn.sq{width:30px;padding:0;justify-content:center}',
     '.cb-tb-views{display:flex;background:' + BG + ';border:1px solid ' + BRD + ';border-radius:7px;padding:2px;gap:1px}',
@@ -508,6 +538,8 @@ export default function ReservationDashboard(props) {
           {headerActions}
           {!showAltSection && (
             <React.Fragment>
+              <button className="cb-tb-nav" onClick={function () { navigate(-1); }} title="Previous month" aria-label="Previous month">{IC.cl}</button>
+              <button className="cb-tb-nav" onClick={function () { navigate(1); }} title="Next month" aria-label="Next month">{IC.cr}</button>
               <button className="cb-tb-btn" onClick={goToday}>Today</button>
               <div className="cb-tb-views">
                 {['day', 'week', 'month'].map(function (v) { return <button key={v} className={'cb-tb-v' + (view === v ? ' on' : '')} onClick={function () { setView(v); setClickedDay(null); }}>{v}</button>; })}
