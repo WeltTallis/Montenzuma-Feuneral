@@ -453,6 +453,14 @@ validate:
 	@if [ -f docker-compose.prod.yml ]; then \
 		$(COMPOSE_PROD) config > /dev/null 2>&1 && echo "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)" || echo "$(RED)✗ docker-compose.prod.yml invalid$(NC)"; \
 	fi
+	@node scripts/check-make-service-lists.mjs
+
+# Every buildable service must have its Dockerfile on disk. Catches a compose
+# file pointing at a Dockerfile that does not exist BEFORE the slow serial
+# builds start (and before `up --no-build` fails on a missing image).
+check-dockerfiles:
+	@echo "$(BLUE)Checking Dockerfiles for every buildable service...$(NC)"
+	@node scripts/check-make-service-lists.mjs
 
 validate-dockerfiles:
 	@echo "$(BLUE)Validating all Dockerfiles...$(NC)"
