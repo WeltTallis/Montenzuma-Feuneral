@@ -4,7 +4,6 @@ export { default as CreateOrderForm } from './CreateOrderForm';
 export { default as CreateWorkerForm } from './CreateWorkerForm';
 export { default as WorkshopHeader } from './WorkshopHeader';
 export { default as WorkshopTabs } from './WorkshopTabs';
-export { default as DashboardTab } from './DashboardTab';
 export { default as MaterialsTab } from './MaterialsTab';
 export { default as ModalRouter } from './ModalRouter';
 export { default as OrdersTab } from './OrdersTab';

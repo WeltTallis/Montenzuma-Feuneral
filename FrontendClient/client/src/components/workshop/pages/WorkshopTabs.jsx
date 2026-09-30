@@ -7,10 +7,9 @@ const T = {
 };
 
 // Analytics is NOT a workshop tab any more — it lives inside the Operations
-// dashboard (dashboard/ -> Workshop module). The workshop keeps the hands-on
-// tabs only.
+// dashboard (dashboard/ -> Workshop module). The Dashboard tab was removed too;
+// the workshop keeps the hands-on tabs only, and Orders is the landing tab.
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high' },
   { id: 'orders', label: 'Orders', icon: 'fa-clipboard-list' },
   { id: 'materials', label: 'Materials', icon: 'fa-boxes-stacked' },
   { id: 'store', label: 'Store', icon: 'fa-warehouse' },

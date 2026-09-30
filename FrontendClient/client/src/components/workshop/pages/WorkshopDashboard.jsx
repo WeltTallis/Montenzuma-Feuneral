@@ -3,7 +3,6 @@ import { useSocket } from '../../../utils/context/socketContext';
 import { workshopService } from '../services/workshopService';
 
 import WorkshopTabs from './WorkshopTabs';
-import DashboardTab from './DashboardTab';
 import MaterialsTab from './MaterialsTab';
 import ModalRouter from './ModalRouter';
 import OrdersTab from './OrdersTab';
@@ -96,14 +95,14 @@ const S = {
 
 const WorkshopDashboard = () => {
   const { socket } = useSocket();
-  const [tab, setTab] = useState('dashboard');
+  // Orders is the landing tab — the Dashboard tab no longer exists.
+  const [tab, setTab] = useState('orders');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
   const [orders, setOrders] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [materials, setMaterials] = useState([]);
-  const [reports, setReports] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [modal, setModal] = useState(null);
 
@@ -117,16 +116,14 @@ const WorkshopDashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      const [ordersRes, workersRes, materialsRes, reportsRes] = await Promise.all([
+      const [ordersRes, workersRes, materialsRes] = await Promise.all([
         workshopService.getOrders(),
         workshopService.getWorkers(),
         workshopService.getMaterials(),
-        workshopService.getProductionReport().catch(() => ({ data: null })),
       ]);
       if (ordersRes.data) setOrders(Array.isArray(ordersRes.data) ? ordersRes.data.map(transformOrder) : []);
       if (workersRes.data) setWorkers(Array.isArray(workersRes.data) ? workersRes.data.map(transformWorker) : []);
       if (materialsRes.data) setMaterials(Array.isArray(materialsRes.data) ? materialsRes.data.map(transformMaterial) : []);
-      if (reportsRes.data) setReports(reportsRes.data);
       setConnected(true);
     } catch (err) {
       setError(err.message);
@@ -338,11 +335,11 @@ const WorkshopDashboard = () => {
   };
 
   const value = useMemo(() => ({
-    orders, workers, materials, reports, loading, error, connected,
+    orders, workers, materials, loading, error, connected,
     toasts, modal, setModal, addToast, createOrder, updateOrderStatus,
     createWorker, deleteWorker, addMaterial, deleteOrder, loadData, tab, setTab,
     assignWorker,
-  }), [orders, workers, materials, reports, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteOrder, loadData, assignWorker]);
+  }), [orders, workers, materials, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteOrder, loadData, assignWorker]);
 
   // ─── Loading State ──────────────────────────────────────────────────
   if (loading && !orders.length) {
@@ -461,7 +458,6 @@ const WorkshopDashboard = () => {
         <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 24px 48px' }}>
           <WorkshopTabs activeTab={tab} onTabChange={setTab} />
           <div style={{ marginTop: 24 }}>
-            {tab === 'dashboard' && <DashboardTab />}
             {tab === 'orders' && <OrdersTab />}
             {tab === 'materials' && <MaterialsTab />}
             {tab === 'store' && <StoreTab />}
