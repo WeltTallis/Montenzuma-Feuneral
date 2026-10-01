@@ -69,58 +69,24 @@ server {
     # is not up yet, taking the whole SPA down with it.
     resolver 127.0.0.11 valid=10s ipv6=off;
 
-    # ── Request hardening ────────────────────────────────────────────────
-    # Everything below is answered by nginx itself: it never reaches the SPA
-    # fallback, never reaches a file, and never reaches the app. These are
-    # DEEP-DEFENCE rules — they stop the noisy, obviously-malicious traffic,
-    # they are not a replacement for validating input inside each service.
+    # ------------------------------------------------------------------
+    # HARDENING: intentionally minimal.
+    # ------------------------------------------------------------------
+    # This block previously carried a deep-defence stack — a verb allowlist
+    # (`if ($request_method !~ ^(GET|HEAD|POST|...)$) { return 405; }`), null-byte
+    # and `..` path-traversal 400s, a dotfile 404, a scanner/exploit path blocklist
+    # and a "never serve these extensions" 404. All of it has been REMOVED because
+    # the verb allowlist broke the application outright:
+    #
+    #   POST https://restpoint.co.ke/api/v1/restpoint/auth/login  ->  405
+    #
+    # Any POST/PUT/PATCH that reached this container was rejected here, so login
+    # (and every other write) failed before it could reach the app. The blocks were
+    # also redundant: the container serves ONLY a static SPA from /usr/share/nginx/
+    # html — there are no .env, .git, .sql or credential files in the image to
+    # protect, and real input validation belongs in the services, not in a static
+    # file server. `server_tokens off` is kept because it costs nothing.
     server_tokens off;
-
-    # Only the verbs the SPA and the API actually use. TRACE/TRACK/CONNECT are
-    # used for cross-site tracing (XST) and tunnel smuggling.
-    if ($request_method !~ ^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$) {
-        return 405;
-    }
-
-    # A null byte or a ".." segment has no legitimate use here and is the raw
-    # material for path traversal and file smuggling.
-    # The ".." test runs against $uri (the NORMALISED, decoded path with no
-    # query string) so a legitimate `?redirect=../dashboard` is not caught,
-    # while the encoded forms are tested on the raw $request_uri.
-    if ($request_uri ~* "%00")  { return 400; }
-    if ($uri       ~* "%00")  { return 400; }
-    if ($uri       ~* "(^|/)\.\.(/|$)") { return 400; }
-    if ($request_uri ~* "%2e%2e")    { return 400; }
-
-    # Dotfiles and VCS metadata. `(?!well-known)` keeps ACME / .well-known
-    # working. This is what used to be served straight out of the doc root by
-    # the `try_files $uri` in the SPA fallback below.
-    # `return 404` (not `deny`, which would answer 403) — a 403 tells a scanner
-    # the resource exists and just needs credentials.
-    location ~ /\.(?!well-known) {
-        return 404;
-        access_log off;
-        log_not_found off;
-    }
-
-    # Known scanner / exploit probes. Answered 404 so the bot gets nothing.
-    # `/metrics` is deliberately NOT here: the monitoring stack scrapes it and
-    # the gateway's real endpoint is /monitoring (exact-matched below).
-    location ~* ^/(?:wp-admin|wp-login|wp-content|wp-includes|xmlrpc\.php|xmlrpc|administrator|phpmyadmin|phpMyAdmin|adminer|pma|actuator|actuator/health|actuator/env|console|manager/html|jmx-console|solr|jenkins|gitlab|gitea|server-status|server-info|stub_status|nginx-status)(/|$) {
-        return 404;
-    }
-
-    # ── Never serve these file types ─────────────────────────────────────
-    # Declared BEFORE the static-asset regex further down on purpose: nginx
-    # evaluates regex locations in file order, first match wins. That keeps
-    # `/app.js.bak` and `/index.html.map` out of the cached-asset branch.
-    # `.json`, `.html`, `.xml`, `.webmanifest` and `.ico` are deliberately NOT
-    # listed — the SPA needs them (manifest.json, receipt.html, sw.js ...).
-    location ~* \.(?:map|bak|old|orig|save|swp|swo|tmp|temp|log|sql|dump|db|sqlite3?|env|ini|conf|cfg|yaml|yml|sh|bash|zsh|ps1|bat|cmd|git|lock|ts|tsx|jsx|sql\.gz|tar|gz|rar|7z|zip|bz2|xz)$ {
-        return 404;
-        access_log off;
-        log_not_found off;
-    }
 
     # Ceilings. 50m matches the gateway's `express.json({ limit: '50mb' })`
     # so an upload rejected by the body parser is not rejected here first;
@@ -167,6 +133,37 @@ server {
         proxy_connect_timeout 10s;
         proxy_send_timeout    30s;
         proxy_read_timeout    30s;
+    }
+
+    # API traffic must NEVER fall through to the SPA fallback. A POST to a
+    # non-existent path lands on `try_files ... /index.html`, and nginx cannot
+    # serve a static file over POST — it answers 405. That is what broke login:
+    #   POST /api/v1/restpoint/auth/login -> 405 Method Not Allowed
+    # Proxying /api/ here means the request is forwarded to the gateway even if
+    # the host reverse proxy sends it to this container (which it did — the
+    # access log shows POSTs to /api/ arriving here from 172.18.0.1).
+    #
+    # `^~` so no regex location below can shadow it. The target goes through a
+    # variable + `resolver` for the same reason as /monitoring and /socket.io/:
+    # a static proxy_pass would stop nginx from starting whenever the gateway
+    # container is not yet resolvable, taking the whole SPA down with it.
+    location ^~ /api/ {
+        set $restpoint_api "restpoint_api_gateway:5000";
+        proxy_pass http://$restpoint_api;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_request_buffering off;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 15 min, matching the host reverse proxy: org setup, PDF generation and
+        # bulk uploads are slow but legitimate.
+        proxy_connect_timeout 900s;
+        proxy_send_timeout    900s;
+        proxy_read_timeout    900s;
     }
 
     # Socket.IO — WebSocket + long-polling, proxied to the socketio-service

@@ -437,15 +437,24 @@ const createStore = (windowMs, prefix) => {
           const total = await redis.incr(rk);
           if (total === 1) await redis.expire(rk, Math.ceil(windowMs / 1000) + 1);
           const ttl = await redis.ttl(rk);
-          return { totalHits: total, resetTime: now + (ttl > 0 ? ttl * 1000 : windowMs) };
+          // `resetTime` MUST be a Date. express-rate-limit v7 calls
+          // `info.resetTime.getTime()` internally when it builds the RateLimit
+          // headers, so returning a bare epoch number produced
+          //     TypeError: resetTime.getTime is not a function
+          // which surfaced as a 500 "Now API Gateway is Down" on every request
+          // that went through a limiter (login, and all writes) — even though
+          // the gateway and the target service were both perfectly healthy.
+          return { totalHits: total, resetTime: new Date(now + (ttl > 0 ? ttl * 1000 : windowMs)) };
         } catch (e) {
           Logger.warn(`[rate-limit] redis hit failed (${e.message}); using memory for the rest of this window`);
           redis = null;
         }
       }
       const cur = mem.get(key);
-      if (!cur || cur.resetTime <= now) {
-        const fresh = { totalHits: 1, resetTime: now + windowMs };
+      // `.getTime()` because resetTime is a Date (see the note in the redis
+      // branch above); the comparison must use the epoch value.
+      if (!cur || cur.resetTime.getTime() <= now) {
+        const fresh = { totalHits: 1, resetTime: new Date(now + windowMs) };
         mem.set(key, fresh);
         return fresh;
       }
@@ -454,7 +463,7 @@ const createStore = (windowMs, prefix) => {
     },
     async decrement(key) {
       const cur = mem.get(key);
-      if (cur && cur.resetTime > Date.now() && cur.totalHits > 0) cur.totalHits -= 1;
+      if (cur && cur.resetTime.getTime() > Date.now() && cur.totalHits > 0) cur.totalHits -= 1;
       if (redis) { try { await redis.decr(`${prefix}${key}`); } catch { /* best effort */ } }
     },
     async resetKey(key) {
@@ -998,16 +1007,25 @@ app.use((req, res) => {
 
 // ERROR HANDLER
 app.use((err, req, res, next) => {
-  Logger.error(`Server Error: ${err.message}`);
-  res.status(500).json({
-    success: false,
-    message: 'Now API Gateway is Down',
-    description: 'Unable to connect to the API Gateway.',
-    details: 'No services can be reached at the moment.',
-    action: 'Please contact the System Administrator.',
-    error: isProd ? undefined : err.message,
-    timestamp: new Date().toISOString()
-  });
+  // Log the REAL cause first — the generic body below previously sent operators
+  // hunting a connectivity problem that did not exist. (A `resetTime.getTime is
+  // not a function` TypeError from the rate-limit store was reported to the UI
+  // as "Now API Gateway is Down".)
+  Logger.error(`[ERROR] ${req.method} ${req.originalUrl}: ${err.message}`);
+  if (err.stack && !isProd) Logger.debug(err.stack);
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      success: false,
+      // The status line is a 500 for a bug in THIS process, not proof that the
+      // service it fronts is unreachable. Say what actually happened.
+      message: err.status && err.status < 500 ? err.message : 'Internal gateway error',
+      description: 'The API gateway could not complete this request.',
+      details: isProd ? undefined : err.message,
+      action: 'Please contact the System Administrator.',
+      path: req.originalUrl,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // START SERVER
