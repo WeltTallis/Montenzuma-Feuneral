@@ -123,6 +123,7 @@ help:
 	@echo "  make prod-logs            - Production logs"
 	@echo "  make prod-health          - Production health check"
 	@echo "  make prod-doctor          - Diagnose why a service will not start"
+	@echo "  make fix-db-healthcheck   - Repair MariaDB healthcheck user (access denied)"
 	@echo ""
 	@echo "$(GREEN)── Frontend ────────────────────────────────────────────$(NC)"
 	@echo "  make fix-frontend         - Rebuild ONLY the UI from scratch (no cache)"
@@ -520,7 +521,22 @@ prod-doctor:
 	@echo ""
 	@echo "$(BLUE)=== MariaDB connection usage vs limit ===$(NC)"
 	@echo "$(YELLOW)If Max_used_connections approaches max_connections, the limit is the cause.$(NC)"
-	@docker exec restpoint_mariadb sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "SHOW STATUS LIKE '"'"'Max_used_connections'"'"'; SHOW STATUS LIKE '"'"'Threads_connected'"'"'; SHOW VARIABLES LIKE '"'"'max_connections'"'"';"' 2>/dev/null || echo "$(YELLOW)Could not query MariaDB (container may be down).$(NC)"
+	@echo "$(YELLOW)NOTE: the entrypoint unsets MARIADB_ROOT_PASSWORD before exec'ing the$(NC)"
+	@echo "$(YELLOW)server, so it is read from .env on the host instead.$(NC)"
+	@dbpw=$$(sed -n 's/^[[:space:]]*MARIADB_ROOT_PASSWORD[[:space:]]*=[[:space:]]*//p' .env.production .env 2>/dev/null | head -n 1 | tr -d '\r'); \
+	if [ -n "$$dbpw" ]; then \
+		docker exec restpoint_mariadb mariadb -uroot -p"$$dbpw" --protocol socket -e \
+			"SHOW STATUS LIKE 'Max_used_connections'; SHOW STATUS LIKE 'Threads_connected'; SHOW VARIABLES LIKE 'max_connections';" 2>/dev/null \
+			|| echo "$(YELLOW)Could not query MariaDB (container may be down).$(NC)"; \
+	else \
+		echo "$(YELLOW)MARIADB_ROOT_PASSWORD not found in .env.production/.env$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)=== Healthcheck credential file (is the user missing?) ===$(NC)"
+	@echo "$(YELLOW)If this file exists but the 'healthcheck' SQL user does not, the$(NC)"
+	@echo "$(YELLOW)container is permanently unhealthy — run 'make fix-db-healthcheck'.$(NC)"
+	@docker exec restpoint_mariadb sh -c 'cat /var/lib/mysql/.my-healthcheck.cnf 2>/dev/null | sed "s/^\(password[[:space:]]*=\).*/\1 <redacted>/"' 2>/dev/null \
+		|| echo "$(YELLOW)No .my-healthcheck.cnf in the data volume.$(NC)"
 	@echo ""
 	@echo "$(BLUE)=== Containers stuck restarting (crash-looping) ===$(NC)"
 	@docker ps -a --filter 'name=restpoint_' --filter 'status=restarting' --format '{{.Names}}' 2>/dev/null | while read -r c; do \
@@ -531,6 +547,22 @@ prod-doctor:
 	@echo "$(BLUE)=== Is the UI up right now? (served on host :8080) ===$(NC)"
 	@docker ps --filter 'name=restpoint_frontend' --format '{{.Names}}: {{.Status}}' 2>/dev/null || true
 	@curl -s -o /dev/null -w '    http://localhost:8080 -> HTTP %{http_code}\n' http://localhost:8080/ 2>/dev/null || echo "    (no response)"
+
+# Repair the MariaDB healthcheck user.
+#
+# mariadb:10.11 (10.11.19+) authenticates healthcheck.sh using credentials stored
+# in /var/lib/mysql/.my-healthcheck.cnf, and its entrypoint only creates the
+# matching SQL account on FIRST volume init. `_check_if_upgrade_is_needed` skips
+# the repair whenever that file already exists, so a volume where the file
+# survived but the account did not is stuck forever:
+#     ERROR 1045 (28000): Access denied for user 'healthcheck'@'localhost'
+#     healthcheck innodb_initialized failed
+# The server is fine — it is the PROBE that cannot authenticate — yet the
+# container reports `unhealthy` and `condition: service_healthy` then blocks the
+# whole stack. This target recreates the account using the password from that
+# same file (never an invented one) and verifies with the image's own binary.
+fix-db-healthcheck:
+	@sh scripts/fix-db-healthcheck.sh
 
 # ============================================================
 # VALIDATION

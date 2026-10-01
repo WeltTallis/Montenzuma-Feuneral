@@ -16,6 +16,10 @@ services:
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
+      # Kept ONLY for the healthcheck below. The image entrypoint unsets
+      # MARIADB_ROOT_PASSWORD before exec'ing the server (so it is not readable
+      # at runtime), which is why a separate variable is needed.
+      MARIADB_HEALTH_PW: ${DB_ROOT_PASSWORD}
     ports:
       - '${MARIADB_EXTERNAL_PORT:-3306}:3306'
     volumes:
@@ -25,15 +29,35 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      # `healthcheck.sh --connect` opens a NEW mysqladmin connection on every
-      # probe, so it is the first client to be refused when the server is busy
-      # or briefly at max_connections — which is how a database that was serving
-      # every service perfectly could still report `unhealthy` and, through
-      # `condition: service_healthy`, stop the whole stack from deploying. The
-      # server config was raised to 1000 connections to stop that happening; the
-      # generous retries/start_period below are the second line of defence, so a
-      # short spike degrades to a slow "starting" instead of a hard failure.
-      test: [ 'CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized' ]
+      # WHY THIS NO LONGER USES `healthcheck.sh`
+      # --------------------------------------
+      # mariadb:10.11 (10.11.19+) has healthcheck.sh read credentials from
+      # /var/lib/mysql/.my-healthcheck.cnf, a file the entrypoint generates ONLY on
+      # first volume init. `_check_if_upgrade_is_needed` deliberately skips the
+      # repair when that file already exists, so a volume where the file survived
+      # but the `healthcheck` SQL account did not is stuck permanently:
+      #     ERROR 1045 (28000): Access denied for user 'healthcheck'@'localhost'
+      #     healthcheck innodb_initialized failed
+      # Note the server itself was completely fine — only the PROBE could not
+      # authenticate — yet `condition: service_healthy` on api-gateway then blocked
+      # the entire stack, including the UI.
+      #
+      # This probe therefore talks to the server DIRECTLY as root, so it depends on
+      # nothing but the root password and the socket:
+      #   * no .my-healthcheck.cnf      -> cannot go stale
+      #   * no `healthcheck` SQL user   -> nothing to create or re-grant
+      #   * `SELECT 1 ... information_schema.ENGINES` is the same assertion the
+      #     image's own `innodb_initialized` test makes, so crash-recovery
+      #     completion is still verified (a bare `SELECT 1` would pass too early).
+      # `$$` escapes to `$` so the value is expanded inside the container, not by
+      # Compose.
+      test:
+        - 'CMD-SHELL'
+        - >-
+          mariadb --protocol=socket -uroot -p"$$MARIADB_HEALTH_PW" -N -B
+          -e "SELECT 1 FROM information_schema.ENGINES
+          WHERE engine='innodb' AND support IN ('YES','DEFAULT','ENABLED')"
+          | grep -qx 1
       interval: 15s
       timeout: 10s
       retries: 10

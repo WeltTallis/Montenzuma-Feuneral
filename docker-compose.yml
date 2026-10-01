@@ -16,6 +16,10 @@ services:
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
+      # Kept ONLY for the healthcheck below — the image entrypoint unsets
+      # MARIADB_ROOT_PASSWORD before exec'ing the server, so it is not readable
+      # at runtime and a separate variable is needed.
+      MARIADB_HEALTH_PW: ${DB_ROOT_PASSWORD}
     ports:
       - '${MARIADB_EXTERNAL_PORT:-3306}:3306'
     volumes:
@@ -25,10 +29,22 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      # See the identical note in docker-compose.prod.yml: the `--connect` probe
-      # needs a fresh connection, so retries/start_period are generous enough that
-      # a short spike reads as "starting" rather than `unhealthy`.
-      test: [ 'CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized' ]
+      # Talks to the server DIRECTLY as root. See the long note in
+      # docker-compose.prod.yml: `healthcheck.sh` reads credentials from
+      # /var/lib/mysql/.my-healthcheck.cnf, a file only generated on FIRST volume
+      # init, and the entrypoint's repair path is skipped whenever that file
+      # already exists. A volume where the file survived but the `healthcheck` SQL
+      # account did not is then permanently unhealthy even though the server is
+      # fine, and `condition: service_healthy` blocks the whole stack.
+      # The query below is the same assertion the image's `innodb_initialized`
+      # test makes, so crash-recovery completion is still verified.
+      test:
+        - 'CMD-SHELL'
+        - >-
+          mariadb --protocol=socket -uroot -p"$$MARIADB_HEALTH_PW" -N -B
+          -e "SELECT 1 FROM information_schema.ENGINES
+          WHERE engine='innodb' AND support IN ('YES','DEFAULT','ENABLED')"
+          | grep -qx 1
       interval: 15s
       timeout: 10s
       retries: 10
