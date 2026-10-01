@@ -2,9 +2,15 @@
 // Workshop surface embedded in the Operations dashboard. Owns the single
 // fetch (store inventory + orders + workers) and hands the payloads to the
 // Store and Analytics views, so neither makes its own requests.
+//
+// The module owns a real header — back-to-Operations, title, live status and
+// refresh — so the dashboard never leaves the user stranded on a page with a
+// bare strip of tabs and no way out.
 
 import { useCallback, useEffect, useState } from "react";
+import { useSocket } from "../utils/context/socketContext";
 import { workshopService } from "../components/workshop/services/workshopService";
+import { Ic } from "./opsIcons";
 import WorkshopAnalytics from "./WorkshopAnalytics";
 import StoreView from "./StoreView";
 
@@ -35,7 +41,8 @@ function TabBar({ active, onChange }) {
   );
 }
 
-export default function WorkshopPanel() {
+export default function WorkshopPanel({ onExit }) {
+  const { connected } = useSocket();
   const [store, setStore] = useState(null);
   const [orders, setOrders] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -65,9 +72,47 @@ export default function WorkshopPanel() {
 
   useEffect(() => { load(); }, [load]);
 
+  const header = (
+    <div className="wp-head">
+      <button
+        type="button"
+        className="wp-back"
+        onClick={onExit}
+        title="Back to Operations"
+        aria-label="Back to Operations"
+      >
+        <Ic n="arrowL" s={13} />
+        Operations
+      </button>
+
+      <div className="wp-head-txt">
+        <h1>Workshop</h1>
+        <p>Coffin store, production tracking and worker output</p>
+      </div>
+
+      <div className="wp-head-right">
+        <span className={`wp-live${connected ? " on" : ""}`}>
+          <i aria-hidden="true" />
+          {connected ? "Live" : "Offline"}
+        </span>
+        <button
+          type="button"
+          className="wp-refresh"
+          onClick={load}
+          disabled={loading}
+          title="Reload workshop data"
+        >
+          <span className={loading ? "spin" : ""}><Ic n="sync" s={13} /></span>
+          Refresh
+        </button>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="wp-wrap">
+        {header}
         <div className="wp-loading">Loading workshop data…</div>
       </div>
     );
@@ -75,6 +120,8 @@ export default function WorkshopPanel() {
 
   return (
     <div className="wp-wrap">
+      {header}
+
       {error ? <div className="wp-err">{error}</div> : null}
 
       <TabBar active={tab} onChange={setTab} />

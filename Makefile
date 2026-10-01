@@ -394,7 +394,7 @@ dev:
 			echo "RABBITMQ_USER=guest" >> .env; \
 			echo "RABBITMQ_PASSWORD=guest" >> .env; \
 			echo "REDIS_PASSWORD=" >> .env; \
-			echo "CORS_ORIGIN=http://localhost:3000,http://localhost:5000,http://localhost:8082" >> .env; \
+			echo "CORS_ORIGIN=http://localhost:3000,http://localhost:5000,http://localhost:8080" >> .env; \
 		fi; \
 	fi
 	@echo "$(GREEN)✓ Development environment ready$(NC)"

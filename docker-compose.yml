@@ -812,7 +812,13 @@ services:
     container_name: restpoint_frontend
     restart: always
     ports:
-      - '${FRONTEND_EXTERNAL_PORT:-8080}:80'
+      # The UI is PINNED to host port 8080 — deliberately NOT configurable.
+      # It was previously '${FRONTEND_EXTERNAL_PORT:-8080}:80', which meant the
+      # UI silently moved to 8082 whenever .env.production (8082) was the
+      # interpolation source, breaking nginx-host.conf, which reverse-proxies
+      # the SPA to http://127.0.0.1:8080. Keep this at 8080; FRONTEND_EXTERNAL_PORT
+      # in .env / .env.production is kept at 8080 for documentation only.
+      - '8080:80'
     depends_on:
       api-gateway:
         condition: service_healthy

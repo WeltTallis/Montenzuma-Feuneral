@@ -327,13 +327,10 @@ export default function WorkshopAnalytics({ orders = [], workers = [], onRemoveW
 
   return (
     <div className="wa">
-      {/* ── header ── */}
-      <div className="wa-head">
-        <div>
-          <h1>Production Analytics <em>·</em></h1>
-          <p>Coffins made by each worker · live stages · monthly trend lines</p>
-        </div>
-      </div>
+      {/* The module header (back-to-Operations, title, live status and
+          refresh) now lives in WorkshopPanel. A second <h1> here used to
+          leave the Analytics tab looking completely different from the
+          Store tab, which had no header at all. */}
 
       {/* ── stats ── */}
       <div className="wa-stats">

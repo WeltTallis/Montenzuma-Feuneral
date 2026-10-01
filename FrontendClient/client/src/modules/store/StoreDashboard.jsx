@@ -44,13 +44,6 @@ export default function StoreDashboard() {
           style={{ minHeight: 72 }}
         >
           <Container fluid className="px-0">
-            <Navbar.Brand className="store-brand d-flex align-items-center gap-2 me-4">
-              <span className="store-brand-mark d-inline-flex align-items-center justify-content-center rounded-circle">
-                <i className="fa-solid fa-store" />
-              </span>
-              <span className="store-brand-name">Lichene Store</span>
-            </Navbar.Brand>
-
             <div className="d-flex align-items-center gap-1 flex-wrap navbar-tabs">
               {TABS.map((t) => (
                 <Button

@@ -240,14 +240,12 @@ const Btn = styled.button`
   flex-shrink: 0; min-width: 0;
   &:disabled { opacity: 0.6; cursor: not-allowed; }
   i { font-size: 12px; }
-  /* Mobile: the row is already full width — let the buttons share it evenly
-     instead of each demanding its natural width and overflowing. overflow/
-     ellipsis is the last-resort guard: at 320px three labelled buttons cannot
-     fit their natural width, and without this the text bled outside the card
-     instead of truncating cleanly. */
+
   @media (max-width: 768px) {
-    flex: 1 1 0; min-width: 0; padding: 0 8px; font-size: 12px; gap: 5px;
-    overflow: hidden; text-overflow: ellipsis;
+    flex: 1 1 0; min-width: 0; padding: 6px 8px; font-size: 12px; gap: 5px;
+    height: auto; min-height: 44px; line-height: 1.25;
+    white-space: normal; overflow: visible; text-align: center;
+    i { font-size: 13px; }
   }
 
   ${p => p.$ghost && `background: ${C.bgField}; border: 1px solid ${C.border}; color: ${C.mid};
@@ -819,60 +817,60 @@ const DeceasedListPage = () => {
               <thead><tr><th>Deceased Name</th><th>Admission No.</th><th>Date Admitted</th><th>Days in Morgue</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
                 {loading ? (<tr><td colSpan={6}><LoadingState><div className="spinner" /> Loading records...</LoadingState></td></tr>)
-                : serviceUnavailable ? (<tr><td colSpan={6}><EmptyRow>Unable to load records at this time. Please try again later.</EmptyRow></td></tr>)
-                : filteredRecords.length === 0 ? (<tr><td colSpan={6}><EmptyRow>No records found matching your filters.</EmptyRow></td></tr>)
-                : filteredRecords.map(r => {
-                  const name = r.full_name || r.name || 'Unknown';
-                  const id = r.deceased_id || r.id;
-                  const adm = r.admission_number || r.admission_no || '—';
-                  const admitted = r.created_at || r.date_admitted || r.admission_date;
-                  const days = getDaysInMorgue(admitted);
-                  const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
-                  const sex = r.sex || r.gender || '';
-                  const isFemale = sex.toLowerCase() === 'female';
-                  return (
-                    <tr key={id} onClick={() => openProfile(id)}>
-                      <td><NameCell><AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm><div><div style={{ fontWeight: 600 }}>{name}</div><div className="meta">{sex ? `${sex}, ` : ''}{r.age || '—'} yrs</div></div></NameCell></td>
-                      <td>{adm}</td>
-                      <td>{formatDate(admitted)}</td>
-                      <td>{days} days</td>
-                      <td><StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge></td>
-                      <td><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></td>
-                    </tr>
-                  );
-                })}
+                  : serviceUnavailable ? (<tr><td colSpan={6}><EmptyRow>Unable to load records at this time. Please try again later.</EmptyRow></td></tr>)
+                    : filteredRecords.length === 0 ? (<tr><td colSpan={6}><EmptyRow>No records found matching your filters.</EmptyRow></td></tr>)
+                      : filteredRecords.map(r => {
+                        const name = r.full_name || r.name || 'Unknown';
+                        const id = r.deceased_id || r.id;
+                        const adm = r.admission_number || r.admission_no || '—';
+                        const admitted = r.created_at || r.date_admitted || r.admission_date;
+                        const days = getDaysInMorgue(admitted);
+                        const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
+                        const sex = r.sex || r.gender || '';
+                        const isFemale = sex.toLowerCase() === 'female';
+                        return (
+                          <tr key={id} onClick={() => openProfile(id)}>
+                            <td><NameCell><AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm><div><div style={{ fontWeight: 600 }}>{name}</div><div className="meta">{sex ? `${sex}, ` : ''}{r.age || '—'} yrs</div></div></NameCell></td>
+                            <td>{adm}</td>
+                            <td>{formatDate(admitted)}</td>
+                            <td>{days} days</td>
+                            <td><StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge></td>
+                            <td><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></td>
+                          </tr>
+                        );
+                      })}
               </tbody>
             </StyledTable>
           </TableWrap>
 
           <MobileCardContainer>
             {loading ? (<LoadingState><div className="spinner" /> Loading records...</LoadingState>)
-            : serviceUnavailable ? (<MobileCard style={{ cursor: 'default', textAlign: 'center' }}>Unable to load records at this time. Please try again later.</MobileCard>)
-            : filteredRecords.length === 0 ? (<MobileCard style={{ cursor: 'default', textAlign: 'center' }}>No records found matching your filters.</MobileCard>)
-            : filteredRecords.map(r => {
-              const name = r.full_name || r.name || 'Unknown';
-              const id = r.deceased_id || r.id;
-              const adm = r.admission_number || r.admission_no || '—';
-              const admitted = r.created_at || r.date_admitted || r.admission_date;
-              const days = getDaysInMorgue(admitted);
-              const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
-              const sex = r.sex || r.gender || '';
-              const isFemale = sex.toLowerCase() === 'female';
-              return (
-                <MobileCard key={id} onClick={() => openProfile(id)}>
-                  <MobileCardHeader>
-                    <MobileCardNameWrap><AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm><div><div>{name}</div><div>{sex ? `${sex}, ` : ''}{r.age || '—'} yrs</div></div></MobileCardNameWrap>
-                    <StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge>
-                  </MobileCardHeader>
-                  <MobileCardDetails>
-                    <div><span>Admission No.</span><strong>{adm}</strong></div>
-                    <div><span>Days in Morgue</span><strong>{days} days</strong></div>
-                    <div style={{ gridColumn: 'span 2' }}><span>Date Admitted</span><strong>{formatDate(admitted)}</strong></div>
-                  </MobileCardDetails>
-                  <MobileCardFooter><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></MobileCardFooter>
-                </MobileCard>
-              );
-            })}
+              : serviceUnavailable ? (<MobileCard style={{ cursor: 'default', textAlign: 'center' }}>Unable to load records at this time. Please try again later.</MobileCard>)
+                : filteredRecords.length === 0 ? (<MobileCard style={{ cursor: 'default', textAlign: 'center' }}>No records found matching your filters.</MobileCard>)
+                  : filteredRecords.map(r => {
+                    const name = r.full_name || r.name || 'Unknown';
+                    const id = r.deceased_id || r.id;
+                    const adm = r.admission_number || r.admission_no || '—';
+                    const admitted = r.created_at || r.date_admitted || r.admission_date;
+                    const days = getDaysInMorgue(admitted);
+                    const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
+                    const sex = r.sex || r.gender || '';
+                    const isFemale = sex.toLowerCase() === 'female';
+                    return (
+                      <MobileCard key={id} onClick={() => openProfile(id)}>
+                        <MobileCardHeader>
+                          <MobileCardNameWrap><AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm><div><div>{name}</div><div>{sex ? `${sex}, ` : ''}{r.age || '—'} yrs</div></div></MobileCardNameWrap>
+                          <StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge>
+                        </MobileCardHeader>
+                        <MobileCardDetails>
+                          <div><span>Admission No.</span><strong>{adm}</strong></div>
+                          <div><span>Days in Morgue</span><strong>{days} days</strong></div>
+                          <div style={{ gridColumn: 'span 2' }}><span>Date Admitted</span><strong>{formatDate(admitted)}</strong></div>
+                        </MobileCardDetails>
+                        <MobileCardFooter><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></MobileCardFooter>
+                      </MobileCard>
+                    );
+                  })}
           </MobileCardContainer>
         </ListCard>
 

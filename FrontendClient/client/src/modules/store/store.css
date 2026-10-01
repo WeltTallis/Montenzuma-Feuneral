@@ -49,9 +49,7 @@
 .mini-store h2,
 .mini-store h3,
 .mini-store h4,
-.mini-store .navbar-brand,
 .mini-store .nav-link,
-.mini-store .store-brand,
 .mini-store .store-tab-btn {
   font-family: 'Space Grotesk', sans-serif;
 }
@@ -62,20 +60,6 @@
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--k-border);
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
-}
-
-.mini-store .store-brand {
-  color: var(--k-primary) !important;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-}
-
-.mini-store .store-brand-mark {
-  width: 38px;
-  height: 38px;
-  background: linear-gradient(135deg, rgba(31, 41, 55, 0.12), rgba(99, 102, 241, 0.18));
-  color: var(--k-primary);
-  box-shadow: inset 0 0 0 1px rgba(31, 41, 55, 0.08);
 }
 
 .mini-store .navbar-tabs {
@@ -287,13 +271,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mini-store .store-brand-name {
-  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
 .mini-store .badge-out { background: var(--k-danger-soft); color: var(--k-danger-dark); }
 .mini-store .badge-low { background: var(--k-warning-soft); color: var(--k-warning-dark); }
 .mini-store .badge-ok { background: var(--k-success-soft); color: var(--k-success-dark); }
@@ -547,7 +524,6 @@
 
 @media (max-width: 400px) {
   .mini-store .stat-tile { width: 86%; }
-  .mini-store .store-brand-name { font-size: .95rem; }
 }
 
 /* Landscape phones are short: cap the scroll areas so the page still scrolls

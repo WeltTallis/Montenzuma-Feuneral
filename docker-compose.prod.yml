@@ -809,7 +809,12 @@ services:
     container_name: restpoint_frontend
     restart: always
     ports:
-      - '${FRONTEND_EXTERNAL_PORT:-8080}:80'
+      # The UI is PINNED to host port 8080 — deliberately NOT configurable.
+      # It was previously '${FRONTEND_EXTERNAL_PORT:-8080}:80', and
+      # .env.production set FRONTEND_EXTERNAL_PORT=8082, so production served the
+      # UI on 8082 while nginx-host.conf reverse-proxies the SPA to
+      # http://127.0.0.1:8080. Pinning to 8080 keeps both in sync.
+      - '8080:80'
     depends_on:
       api-gateway:
         condition: service_healthy

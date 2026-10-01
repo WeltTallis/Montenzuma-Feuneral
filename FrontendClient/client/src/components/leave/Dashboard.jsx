@@ -219,8 +219,9 @@ const Spin = styled.span`
 
 const Page = styled.div`
   padding: 0.25rem 0 2rem 0;
-  max-width: 1440px;
-  margin: 0 auto;
+
+  width: 100%;
+  min-width: 0;
   animation: ${fadeUp} 0.25s ease-out;
 `;
 
@@ -306,6 +307,12 @@ const Section = styled.section`
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
   overflow: hidden;
+  /* Stretched by the grid so all three cards share one bottom edge. Without
+     this the shortest card (Leave type mix with few types) ends well above the
+     tallest one, and the row of three reads as ragged rather than as a set. */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 `;
 const CardHead = styled.div`
   display: flex;
@@ -325,13 +332,30 @@ const CardHead = styled.div`
 const CardHeadLeft = styled.div`display: flex; align-items: center; gap: 0.55rem; min-width: 0;`;
 const CardTitle = styled.h2`margin: 0; font-size: 0.98rem; font-weight: 700; color: ${COLORS.text};`;
 const CardSub = styled.div`font-size: 0.75rem; color: ${COLORS.textSecondary}; margin-top: 0.1rem;`;
-const CardBody = styled.div`padding: 1.1rem;`;
+/* flex:1 lets the body absorb the extra height the equal-height card gained.
+   The CENTRED variant is applied only to the three overview chart cards, where
+   it puts the empty state ("No leave requests recorded yet.") in the middle of
+   the card rather than clinging to the top of a tall box. The table cards
+   (Employees / History) keep the plain body so their rows stay top-aligned —
+   vertically centring a long table would strand it mid-card. */
+const CardBody = styled.div`padding: 1.1rem; flex: 1;`;
+const CardBodyCenter = styled(CardBody)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+`;
 
 const Grid3 = styled.div`
   display: grid;
+  /* The three overview cards share the full width evenly. The old 1150px
+     breakpoint dropped straight to a single column, which on a tablet or a
+     half-width browser window turned three small charts into one very tall
+     stack. Two columns is the useful middle step: the cards stay side by side
+     where there is room for a chart, and only go single-column on a phone. */
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
-  @media (max-width: 1150px) { grid-template-columns: 1fr; }
+  @media (max-width: 1150px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 720px) { grid-template-columns: 1fr; }
 `;
 const Split = styled.div`
   display: grid;
@@ -1543,7 +1567,7 @@ const LeaveDashboard = () => {
                     </div>
                   </CardHeadLeft>
                 </CardHead>
-                <CardBody>
+                <CardBodyCenter>
                   {totalRequests === 0 ? (
                     <Empty>
                       <PieChartIcon size={22} />
@@ -1571,7 +1595,7 @@ const LeaveDashboard = () => {
                       </Legend>
                     </DonutWrap>
                   )}
-                </CardBody>
+                </CardBodyCenter>
               </Section>
 
               <Section>
@@ -1584,7 +1608,7 @@ const LeaveDashboard = () => {
                     </div>
                   </CardHeadLeft>
                 </CardHead>
-                <CardBody>
+                <CardBodyCenter>
                   {records.length === 0 ? (
                     <Empty>
                       <BarChart3 size={22} />
@@ -1613,7 +1637,7 @@ const LeaveDashboard = () => {
                       </KeyStats>
                     </>
                   )}
-                </CardBody>
+                </CardBodyCenter>
               </Section>
 
               <Section>
@@ -1626,7 +1650,7 @@ const LeaveDashboard = () => {
                     </div>
                   </CardHeadLeft>
                 </CardHead>
-                <CardBody>
+                <CardBodyCenter>
                   {typeMix.length === 0 ? (
                     <Empty>
                       <BarChart3 size={22} />
@@ -1665,7 +1689,7 @@ const LeaveDashboard = () => {
                       </KeyStats>
                     </>
                   )}
-                </CardBody>
+                </CardBodyCenter>
               </Section>
             </Grid3>
           )}

@@ -36,7 +36,15 @@ const S = {
   danger: '#dc2626',
   dangerLight: '#fef2f2',
   info: '#0284c7',
-  drawerWidth: 520,
+  // Width of the right-hand drawer. "Find Stock in Other Branches" puts a
+  // branch filter and a stacked result card per coffin in here, and at the
+  // previous 520px the result rows were squeezed: the coffin name ellipsised
+  // early and the stock chip + Request button had to compete for the same
+  // horizontal space, wrapping into an unreadable two-line block on a laptop.
+  // 640 gives the row room to breathe while still leaving the page visible
+  // behind it. The drawer is `width:100%` with this as maxWidth, so phones
+  // are unaffected — they already take the full screen.
+  drawerWidth: 640,
   font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
   shadowMd: '0 4px 6px rgba(0, 0, 0, 0.06)',
@@ -385,10 +393,10 @@ const styles = {
     fontFamily: 'inherit',
   },
   fnActive: { background: S.primaryLight, color: S.primary, borderColor: S.primary },
-  tableWrap: { overflowX: 'auto' },
+  tableWrap: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: {
-    padding: '12px 24px',
+    padding: '12px 16px',
     textAlign: 'left',
     fontSize: 11,
     textTransform: 'uppercase',
@@ -400,13 +408,40 @@ const styles = {
     whiteSpace: 'nowrap',
   },
   td: {
-    padding: '14px 24px',
+    // 16px horizontal padding instead of 24px. Seven columns at 24px put ~340px
+    // of pure padding into a row, which squeezed "Details" down to a 4-line
+    // stack and made the table feel cramped even on a laptop. 16px keeps the
+    // columns readable while giving the content columns real width.
+    padding: '14px 16px',
     fontSize: 14,
     borderBottom: `1px solid ${S.borderLight}`,
     color: S.text,
     verticalAlign: 'middle',
   },
   ci: { display: 'flex', alignItems: 'center', gap: 12 },
+  // Details used to be a 4-row flex column (Size / Color / Material / Category),
+  // making every row 4 lines tall regardless of how much data was present. These
+  // soft inline chips wrap onto as many lines as they need and read as a single
+  // tidy group, so a row with one attribute stays one line.
+  cdetail: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px 6px',
+    maxWidth: 260,
+  },
+  cchip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '3px 8px',
+    borderRadius: 6,
+    background: S.bg,
+    border: `1px solid ${S.borderLight}`,
+    fontSize: 11.5,
+    color: S.textMuted,
+    whiteSpace: 'nowrap',
+  },
+  cchipKey: { color: S.text, fontWeight: 600 },
   thumb: {
     width: 40,
     height: 40,
@@ -1980,19 +2015,19 @@ const CoffinDashboard = () => {
           ].filter(Boolean).join('');
 
           return `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; padding:14px 16px; border:1px solid ${S.border}; border-radius:10px; background:#fff; transition:all 0.2s;">
-            <div style="display:flex; gap:14px; align-items:center; min-width:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; padding:14px 16px; border:1px solid ${S.border}; border-radius:10px; background:#fff; transition:all 0.2s; flex-wrap:wrap;">
+            <div style="display:flex; gap:14px; align-items:center; min-width:0; flex:1 1 240px;">
               <div style="width:40px; height:40px; background:${S.primaryLight}; border-radius:10px; display:flex; align-items:center; justify-content:center; color:${S.primary}; font-weight:800; font-size:16px; flex-shrink:0;">
                 ${c.name?.charAt(0) || '?'}
               </div>
               <div style="min-width:0;">
-                <div style="font-weight:600; color:${S.text}; font-size:14px; margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</div>
+                <div style="font-weight:600; color:${S.text}; font-size:14px; margin-bottom:5px; overflow-wrap:anywhere;">${c.name}</div>
                 <div style="font-size:12px; color:${S.textMuted}; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                   ${meta}
                 </div>
               </div>
             </div>
-            <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+            <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; margin-left:auto;">
               <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; background:${stockBg}; color:${stockColor}; white-space:nowrap;">
                 ${stock} ${stockLabel}
               </span>
@@ -2398,8 +2433,8 @@ const CoffinDashboard = () => {
                       <td style={styles.td}>
                         <div style={styles.ci}>
                           <div style={styles.thumb}>{coffin.name?.charAt(0) || '?'}</div>
-                          <div>
-                            <div style={styles.cname}>{coffin.name}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ ...styles.cname, overflowWrap: 'anywhere' }}>{coffin.name}</div>
                             <div style={styles.sku}>{coffin.sku}</div>
                           </div>
                         </div>
@@ -2416,34 +2451,36 @@ const CoffinDashboard = () => {
                         {coffin.custom_id || coffin.coffin_id || '—'}
                       </td>
                       <td style={styles.td}>
-                        <div
-                          style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12 }}
-                        >
-                          {coffin.size && (
-                            <span style={{ color: S.text, fontWeight: 600 }}>
-                              Size: {coffin.size}
-                            </span>
-                          )}
-                          {coffin.color && (
-                            <span style={{ color: S.text, fontWeight: 600 }}>
-                              Color: {coffin.color}
-                            </span>
-                          )}
-                          {coffin.material && (
-                            <span style={{ color: S.textMuted }}>Material: {coffin.material}</span>
-                          )}
-                          {coffin.category && (
-                            <span style={{ color: S.textMuted }}>Category: {coffin.category}</span>
-                          )}
-                          {!coffin.size &&
-                            !coffin.color &&
-                            !coffin.material &&
-                            !coffin.category && (
-                              <span style={{ color: S.textLight, fontStyle: 'italic' }}>
+                        {(() => {
+                          // Built as chips rather than the previous fixed
+                          // column of rows: a coffin with only a size used to
+                          // render the same 4-line-tall cell as one with all
+                          // four attributes, so the table had a ragged,
+                          // low-density rhythm. These wrap to fit the data.
+                          const details = [
+                            coffin.size ? ['Size', coffin.size] : null,
+                            coffin.color ? ['Color', coffin.color] : null,
+                            coffin.material ? ['Material', coffin.material] : null,
+                            coffin.category ? ['Category', coffin.category] : null,
+                          ].filter(Boolean);
+                          if (details.length === 0) {
+                            return (
+                              <span style={{ color: S.textLight, fontStyle: 'italic', fontSize: 12.5 }}>
                                 No additional details
                               </span>
-                            )}
-                        </div>
+                            );
+                          }
+                          return (
+                            <div style={styles.cdetail}>
+                              {details.map(([k, v]) => (
+                                <span key={k} style={styles.cchip} title={`${k}: ${v}`}>
+                                  <span style={styles.cchipKey}>{k}</span>
+                                  {v}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td style={{ ...styles.td, fontWeight: 600 }}>{formatKES(coffin.price)}</td>
                       <td

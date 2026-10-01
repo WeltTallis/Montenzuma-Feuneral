@@ -45,10 +45,11 @@ const VIEWS = [
 
 /* The dashboard's top-level modules. "Operations" is the mortuary register
    that has always lived here; "Workshop" swaps the main column for the
-   workshop store + analytics panel. */
+   workshop store + production analytics. Rendered as a segmented switch (not a
+   dropdown) so both destinations — and the way back — stay one click away. */
 const MODULES = [
-  { id: "operations", label: "Operations" },
-  { id: "workshop", label: "Workshop" },
+  { id: "operations", label: "Operations", icon: "cal" },
+  { id: "workshop", label: "Workshop", icon: "hammer" },
 ];
 
 const DARK_KEY = "rpd-ops-dark";
@@ -603,18 +604,26 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
       <header className={`tbar${isBoardPeriod ? " sched-mode" : ""}`}>
         <div className="tb-left">
           {/* Module switch — Operations (mortuary register) vs Workshop
-              (coffin store + production analytics). */}
-          <div className="selwrap modwrap">
-            <select
-              aria-label="Dashboard module"
-              value={module}
-              onChange={(e) => onModule(e.target.value)}
-            >
-              {MODULES.map((m) => (
-                <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
+              (coffin store + production analytics). A segmented control, not a
+              <select>: both destinations stay labelled and clickable, so the
+              way back to Operations is always visible. It is the primary
+              top-level control, so the active module takes the accent fill. */}
+          <div className="modtabs" role="tablist" aria-label="Dashboard module">
+            {MODULES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                role="tab"
+                aria-selected={module === m.id}
+                className={`modtab${module === m.id ? " on" : ""}`}
+                onClick={() => onModule(m.id)}
+              >
+                <Ic n={m.icon} s={13} />
+                {m.label}
+              </button>
+            ))}
           </div>
+          {isWorkshop ? <div className="divider" /> : null}
           <div className="nvp" hidden={isWorkshop}>
             {NAV.map((n) => {
               const b = badges[n.id];
@@ -749,7 +758,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
         <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}${isBoardPeriod ? " schedule-mode" : ""}`}>
           {isWorkshop ? (
-            <WorkshopPanel />
+            <WorkshopPanel onExit={() => onModule("operations")} />
           ) : loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}><Ic n="sync" s={22} /></span>
