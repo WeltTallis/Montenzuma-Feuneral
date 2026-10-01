@@ -6,10 +6,9 @@ import axios from 'axios';
 import env from '../../utils/config/env';
 import notify from '../../utils/notify';
 
-// ─── Fonts + icon lib ───────────────────────────────────────────
+// ─── Fonts ──────────────────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Saira:wght@400;500;600;700&display=swap');
-  @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -22,25 +21,22 @@ const GlobalStyles = createGlobalStyle`
   }
 `;
 
-// ─── Design tokens (approved white theme) ───────────────────────
+// ─── Design tokens ──────────────────────────────────────────────
 const C = {
-    ink: '#211d17',
-    ink2: '#5d554a',
-    inkFaint: '#a7a294',
-    line: '#e8e4da',
-    lineSoft: '#f0ede5',
-    paperSoft: '#fcfbf8',
+    ink: '#1a1611',
+    ink2: '#5f584c',
+    inkFaint: '#a39d90',
+    line: '#e6e2d8',
+    lineSoft: '#f1efe9',
+    paper: '#faf9f6',
     ox: '#7c2b23',
     oxDeep: '#6a241e',
-    oxBg: '#faf0ee',
-    moss: '#4d5f42',
-    mossDeep: '#3e4d35',
-    mossBg: '#f0f4ec',
-    och: '#9a6a1e',
-    ochBg: '#faf4e8',
+    green: '#3f5138',
+    amber: '#a16207',
+    red: '#b91c1c',
     ease: 'cubic-bezier(.32, .72, .24, 1)',
-    serif: "'Fraunces', Georgia, serif",
     sans: "'Saira', system-ui, sans-serif",
+    mono: "'JetBrains Mono', monospace",
 };
 
 const BASE_URL = env.FULL_API_URL;
@@ -50,31 +46,6 @@ const fadeIn = keyframes`from{opacity:0;transform:translateY(14px)}to{opacity:1;
 const fadeUp = keyframes`from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}`;
 const spin = keyframes`to{transform:rotate(360deg)}`;
 const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}`;
-
-// ─── Inline SVG icons (match the approved HTML) ─────────────────
-const I = {
-    Hash: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M9 3 7 21M17 3l-2 18M4 8h17M3 16h17" /></svg>,
-    Calendar: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>,
-    Clock: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
-    Info: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>,
-    Warn: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>,
-    CheckCircle: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.5 12.5 2.5 2.5 4.5-5.5" /></svg>,
-    List: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></svg>,
-    Search: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>,
-    SearchLg: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>,
-    Close: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>,
-    Shield: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 4 6v6c0 4.5 3.2 7.9 8 9 4.8-1.1 8-4.5 8-9V6l-8-3z" /></svg>,
-    Flag: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V4M5 4h13l-3 4 3 4H5" /></svg>,
-    Align: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>,
-    UserTag: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="8" r="4" /></svg>,
-    ArrowLeft: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>,
-    Send: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-11 11M22 2 15 22l-4-9-9-4 20-7z" /></svg>,
-    Plus: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>,
-    Check: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m4 12.5 5 5L20 6.5" /></svg>,
-    CheckLg: () => <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m4 12.5 5 5L20 6.5" /></svg>,
-    DoubleCheck: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m2 12.5 5 5L19 5.5" /><path d="m13 17 2 2L23 11" /></svg>,
-    Leaf: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" /><path d="M4 20c4-6.5 8.5-10 13-12.5" /></svg>,
-};
 
 // ─── Layout ─────────────────────────────────────────────────────
 const Shell = styled.div`
@@ -93,112 +64,62 @@ const Card = styled.div`
     width: 100%;
     max-width: 860px;
     background: #fff;
-    /* NO border — soft layered shadow only */
-    box-shadow: 0 2px 6px rgba(33,29,23,.04), 0 24px 60px -24px rgba(33,29,23,.14);
+    box-shadow: 0 2px 6px rgba(26,22,17,.04), 0 24px 60px -24px rgba(26,22,17,.14);
     animation: ${fadeIn} .5s ${C.ease} both;
     display: flex;
     flex-direction: column;
 
-    @media (max-width: 600px) {
-        min-height: 100vh;
-    }
+    @media (max-width: 600px) { min-height: 100vh; }
 `;
 
-// Slim 3-color accent line at the very top
 const AccentLine = styled.div`
     height: 3px;
-    background: linear-gradient(90deg, ${C.moss} 0 33.3%, ${C.och} 33.3% 66.6%, ${C.ox} 66.6% 100%);
+    background: linear-gradient(90deg, ${C.ox} 0 60%, ${C.ink} 60% 100%);
 `;
 
-// ─── Condolence strip (light, quiet) ────────────────────────────
+// ─── Condolence (plain white — no background, no border) ────────
 const Condolence = styled.div`
     text-align: center;
     padding: 16px 28px;
-    background: ${C.paperSoft};
-    border-bottom: 1px solid ${C.lineSoft};
-
-    p {
-        font-family: ${C.serif};
-        font-style: italic;
-        font-size: 15.5px;
-        line-height: 1.55;
-        color: ${C.ink2};
-    }
-    .orn {
-        color: ${C.och};
-        opacity: .55;
-        font-size: 11px;
-        margin: 0 12px;
-        vertical-align: middle;
-    }
-
-    @media (max-width: 600px) { p { font-size: 14px; } }
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: ${C.ink2};
 `;
 
-// ─── Document header ────────────────────────────────────────────
+// ─── Document header (step 1 only) ──────────────────────────────
 const DocHeader = styled.header`
-    background: #fff;
-    padding: 22px 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 24px;
+    padding: 20px 40px;
     border-bottom: 1px solid ${C.lineSoft};
 
-    /* Mobile keeps the desktop ROW (title left, QR right) instead of stacking
-       and centring everything. Stacking pushed the QR + date + time into three
-       centred rows and wasted the full width of the card. */
     @media (max-width: 640px) {
         flex-direction: row;
         align-items: flex-start;
-        justify-content: space-between;
         gap: 12px;
-        padding: 18px 20px;
-        text-align: left;
+        padding: 16px 20px;
     }
 `;
 
 const HeaderLeft = styled.div`
-    display: flex; flex-direction: column; gap: 12px; min-width: 0;
-    /* Let the text column take the slack so the QR is pushed hard right and
-       the two never collide on a narrow phone. */
-    @media (max-width: 640px) { align-items: flex-start; flex: 1; gap: 10px; }
+    display: flex; flex-direction: column; gap: 8px; min-width: 0;
+    @media (max-width: 640px) { flex: 1; }
 `;
 
-const ReqIdBadge = styled.div`
-    display: flex; align-items: center; gap: 12px;
-    font-size: 19px; font-weight: 600; letter-spacing: -.01em;
-
-    .ico {
-        width: 30px; height: 30px; flex: none; border-radius: 50%;
-        background: ${C.ochBg}; color: ${C.och};
-        display: grid; place-items: center;
-    }
-
-    /* Left-aligned to START (was centred), and shrunk so the label still fits
-       beside the QR on a 360px screen. */
-    @media (max-width: 640px) {
-        justify-content: flex-start;
-        gap: 9px;
-        font-size: 15px;
-        .ico { width: 26px; height: 26px; }
-    }
+const DhTitle = styled.div`
+    font-size: 17px; font-weight: 600; letter-spacing: -.01em;
+    @media (max-width: 640px) { font-size: 15px; }
 `;
 
-const Timestamps = styled.div`
-    display: flex; gap: 20px; flex-wrap: wrap;
-    /* Date and time stay SIDE BY SIDE, hugging the start edge. */
-    @media (max-width: 640px) { justify-content: flex-start; gap: 14px; }
-`;
+const DhMeta = styled.div`
+    font-family: ${C.mono};
+    font-size: .68rem;
+    letter-spacing: .08em;
+    color: ${C.inkFaint};
 
-const MetaItem = styled.div`
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; color: ${C.ink2};
-
-    svg { color: ${C.och}; flex: none; }
-    b { color: ${C.ink}; font-weight: 600; font-variant-numeric: tabular-nums; }
-
-    @media (max-width: 640px) { font-size: 12px; gap: 5px; }
+    b { color: ${C.ink2}; font-weight: 500; font-variant-numeric: tabular-nums; }
 `;
 
 const QrWrapper = styled.div`
@@ -206,293 +127,244 @@ const QrWrapper = styled.div`
 `;
 
 const QrBox = styled.div`
-    width: 104px; height: 104px; padding: 8px;
+    width: 92px; height: 92px; padding: 8px;
     border: 1px solid ${C.lineSoft};
     background: #fff;
-    box-shadow: 0 2px 8px rgba(33,29,23,.05);
     display: flex; align-items: center; justify-content: center;
 
-    /* QRCodeSVG is rendered with a hard-coded size={88}, which would overflow
-       the smaller mobile box. CSS width/height beat the SVG's own width/height
-       attributes, so this scales it down and keeps it perfectly square —
-       a squashed QR does not scan. */
     svg { width: 100%; height: 100%; display: block; }
-
-    /* Shrink to 76px on phones so the whole row fits without wrapping. */
-    @media (max-width: 640px) { width: 76px; height: 76px; padding: 6px; }
+    @media (max-width: 640px) { width: 70px; height: 70px; padding: 6px; }
 `;
 
 const QrLabel = styled.span`
-    font-size: 10px; font-weight: 700;
-    letter-spacing: .2em; text-transform: uppercase;
-    color: ${C.moss}; text-align: center;
-
+    font-family: ${C.mono};
+    font-size: .56rem; font-weight: 700;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: ${C.ox};
+    text-align: center;
     @media (max-width: 640px) { font-size: 8px; letter-spacing: .12em; }
 `;
 
 // ─── Title ──────────────────────────────────────────────────────
 const TitleSection = styled.div`
-    padding: 34px 40px 20px;
+    padding: 30px 40px 26px;
     text-align: center;
 
-    h1 {
-        font-family: ${C.serif}; font-weight: 600;
-        font-size: 30px; letter-spacing: -.01em; margin-bottom: 8px;
-
-        .accent { color: ${C.ox}; font-style: italic; }
-    }
-    p {
-        font-family: ${C.serif}; font-style: italic;
-        font-size: 14px; color: ${C.ink2};
-    }
+    h1 { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+    h1 em { font-style: italic; color: ${C.ox}; }
+    p { font-size: 13.5px; color: ${C.ink2}; margin-top: 6px; }
 
     @media (max-width: 640px) {
-        padding: 26px 20px 16px;
-        h1 { font-size: 24px; }
+        padding: 24px 20px 20px;
+        h1 { font-size: 21px; }
     }
 `;
 
-// ─── Step indicator ─────────────────────────────────────────────
-const Steps = styled.div`
-    display: flex; align-items: flex-start; justify-content: center;
-    padding: 2px 40px 28px;
+// ─── Section bar (dark ink + mono label) ────────────────────────
+const SBar = styled.div`
+    display: flex; align-items: center; gap: .75rem;
+    margin-bottom: 1.6rem;
+    padding: .72rem 1.15rem;
+    background: ${C.ink};
+    border-radius: 3px;
+
+    .n { font-family: ${C.mono}; font-size: .68rem; font-weight: 500; color: rgba(250,248,244,.42); }
+    .t { font-family: ${C.mono}; font-size: .78rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #faf8f4; }
 `;
 
-const Step = styled.div`
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    color: ${p => (p.$active ? C.ink : p.$done ? C.moss : C.inkFaint)};
-    position: relative; z-index: 1; text-align: center; min-width: 76px;
-
-    .num {
-        width: 34px; height: 34px; border-radius: 50%;
-        display: grid; place-items: center; font-size: 13px; font-weight: 700;
-        background: ${p => (p.$active ? C.ink : p.$done ? C.moss : '#fff')};
-        color: ${p => (p.$active || p.$done) ? '#fff' : C.ink2};
-        box-shadow: ${p => p.$active
-        ? `0 0 0 1px ${C.ink}, 0 6px 14px rgba(33,29,23,.18)`
-        : p.$done
-            ? `0 0 0 1px ${C.moss}, 0 4px 12px rgba(77,95,66,.22)`
-            : `0 0 0 1px ${C.line}`};
-        transition: all .35s ${C.ease};
-    }
-
-    @media (max-width: 640px) {
-        font-size: 9px; min-width: 60px;
-        .num { width: 30px; height: 30px; font-size: 12px; }
-    }
-`;
-
-const StepLine = styled.div`
-    flex: 1; max-width: 80px; height: 2px;
-    margin: 17px -8px 0;
-    background: ${C.lineSoft};
-    position: relative; overflow: hidden;
-
-    &::after {
-        content: '';
-        position: absolute; inset: 0;
-        background: ${C.moss};
-        transform: scaleX(${p => (p.$done ? 1 : 0)});
-        transform-origin: left;
-        transition: transform .5s ${C.ease};
-    }
-
-    @media (max-width: 640px) { margin-top: 14px; }
-`;
-
-// ─── Form body / footer ─────────────────────────────────────────
+// ─── Body / footer ──────────────────────────────────────────────
 const Body = styled.div`
-    padding: 30px 40px;
-    border-top: 1px solid ${C.lineSoft};
-
-    @media (max-width: 640px) { padding: 24px 20px; }
+    padding: 28px 40px;
+    @media (max-width: 640px) { padding: 22px 20px; }
 `;
 
 const FormFooter = styled.div`
     border-top: 1px solid ${C.lineSoft};
-    padding: 20px 40px;
-    background: ${C.paperSoft};
+    padding: 18px 40px;
+    background: #fff;
     display: flex; justify-content: flex-end; gap: 12px;
 
     @media (max-width: 640px) {
-        padding: 16px 20px;
+        padding: 14px 20px;
         flex-direction: column-reverse;
         button { width: 100%; justify-content: center; }
     }
 `;
 
+// ─── Form primitives (underline-only fields) ────────────────────
 const FormGroup = styled.div`
-    display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;
+    display: flex; flex-direction: column; gap: 9px; margin-bottom: 26px;
     &:last-child { margin-bottom: 0; }
 `;
 
 const Label = styled.label`
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-    color: ${C.moss};
-
-    .lico {
-        width: 20px; height: 20px; flex: none;
-        display: grid; place-items: center;
-        background: ${C.ochBg}; color: ${C.och};
-    }
+    font-size: .68rem; font-weight: 600;
+    letter-spacing: .13em; text-transform: uppercase;
+    color: ${C.ink2};
 `;
 
-const Input = styled.input`
-    width: 100%; background: #fff;
-    border: 1px solid ${p => (p.$error ? C.ox : C.line)};
-    padding: 14px 16px;
+const Field = styled.input`
+    width: 100%; background: transparent;
+    border: 0; border-bottom: 1px solid #ccc; border-radius: 0;
+    padding: 10px 2px;
     font-size: 15px; color: ${C.ink};
-    outline: none; border-radius: 0;
-    transition: all .2s ${C.ease};
+    outline: none;
+    transition: border-color .2s ${C.ease};
     animation: ${p => (p.$shake ? shake : 'none')} .4s ease;
 
-    &::placeholder { color: ${C.inkFaint}; }
-    &:focus {
-        border-color: ${C.moss};
-        box-shadow: 0 0 0 4px rgba(77,95,66,.10);
-    }
+    &::placeholder { color: ${C.inkFaint}; font-weight: 400; }
+    &:hover { border-bottom-color: ${C.ink}; }
+    &:focus { border-bottom-color: ${C.ox}; }
+    ${p => p.$error && `border-bottom-color: ${C.red};`}
 `;
 
-const Select = styled.select`
-    width: 100%; background: #fff;
-    border: 1px solid ${C.line};
-    padding: 14px 42px 14px 16px;
+const SelectField = styled.select`
+    width: 100%; background: transparent;
+    border: 0; border-bottom: 1px solid #ccc; border-radius: 0;
+    padding: 10px 34px 10px 2px;
     font-size: 15px; color: ${C.ink};
-    outline: none; border-radius: 0; cursor: pointer;
+    outline: none; cursor: pointer;
     appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%235d554a' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%235f584c' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 16px center;
-    transition: all .2s ${C.ease};
+    background-position: right 4px center;
+    transition: border-color .2s ${C.ease};
 
-    &:focus {
-        border-color: ${C.moss};
-        box-shadow: 0 0 0 4px rgba(77,95,66,.10);
-    }
+    &:hover { border-bottom-color: ${C.ink}; }
+    &:focus { border-bottom-color: ${C.ox}; }
 `;
 
-const Textarea = styled.textarea`
-    width: 100%; background: #fff;
-    border: 1px solid ${C.line};
-    padding: 14px 16px;
-    font-family: ${C.serif};
+const TextareaField = styled.textarea`
+    width: 100%; background: transparent;
+    border: 0; border-bottom: 1px solid #ccc; border-radius: 0;
+    padding: 10px 2px;
     font-size: 15px; color: ${C.ink};
-    outline: none; border-radius: 0;
-    resize: vertical; min-height: 130px; line-height: 1.6;
-    transition: all .2s ${C.ease};
+    outline: none;
+    resize: vertical; min-height: 110px; line-height: 1.6;
+    transition: border-color .2s ${C.ease};
 
-    &::placeholder { color: ${C.inkFaint}; }
-    &:focus {
-        border-color: ${C.moss};
-        box-shadow: 0 0 0 4px rgba(77,95,66,.10);
-    }
+    &::placeholder { color: ${C.inkFaint}; font-weight: 400; }
+    &:hover { border-bottom-color: ${C.ink}; }
+    &:focus { border-bottom-color: ${C.ox}; }
 `;
 
-// ─── Priority segmented control ─────────────────────────────────
-const SegPriority = styled.div`
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+// ─── Notices (plain text — no background, no border) ────────────
+const Hint = styled.p`
+    font-size: 14px; line-height: 1.65;
+    color: ${C.ink2}; margin-bottom: 26px;
+    strong { color: ${C.ox}; font-weight: 600; }
 `;
 
-const POpt = styled.button`
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 12px 10px;
-    border: 1px solid ${C.line}; background: #fff;
-    font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+const NoteErr = styled.p`
+    font-size: 14px; line-height: 1.55;
+    color: ${C.red}; margin-bottom: 26px;
+    animation: ${fadeUp} .25s ease both;
+`;
+
+const NoteOk = styled.p`
+    font-size: 14px; line-height: 1.55;
+    color: ${C.green}; margin-bottom: 26px;
+    animation: ${fadeUp} .25s ease both;
+`;
+
+// ─── Case record (step 2) ───────────────────────────────────────
+const CaseId = styled.div`
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 16px; margin-bottom: 1.7rem;
+`;
+
+const CaseName = styled.h2`
+    font-size: 26px; font-weight: 600;
+    letter-spacing: -.01em; line-height: 1.2;
+    @media (max-width: 640px) { font-size: 22px; }
+`;
+
+const CaseAdm = styled.div`
+    font-family: ${C.mono};
+    font-size: .82rem; font-weight: 700;
+    letter-spacing: .07em;
+    color: ${C.ox}; margin-top: 7px;
+
+    span { color: ${C.inkFaint}; font-weight: 500; }
+`;
+
+const ChangeLink = styled.button`
+    font-size: 12.5px; font-weight: 600;
     color: ${C.ink2};
-    transition: all .2s ${C.ease};
+    border-bottom: 1px solid ${C.line};
+    padding-bottom: 1px; flex: none;
+    white-space: nowrap;
+    transition: all .15s;
+
+    &:hover { color: ${C.ox}; border-color: ${C.ox}; }
+`;
+
+const CaseGrid = styled.dl`
+    display: grid; grid-template-columns: 1fr 1fr;
+    column-gap: 2.5rem; margin-bottom: 2.4rem;
+
+    @media (max-width: 640px) { grid-template-columns: 1fr; column-gap: 0; }
+`;
+
+const CaseItem = styled.div`
+    padding: 11px 0;
+    border-bottom: 1px dashed ${C.line};
+
+    dt {
+        font-family: ${C.mono};
+        font-size: .56rem; font-weight: 700;
+        letter-spacing: .16em; text-transform: uppercase;
+        color: ${C.inkFaint}; margin-bottom: 4px;
+    }
+    dd { font-size: 14.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+`;
+
+// ─── Priority (no background fills — ox underline) ──────────────
+const Seg = styled.div`
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border-bottom: 1px solid ${C.line};
+`;
+
+const SegOpt = styled.button`
+    position: relative;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 6px;
+    font-size: 11.5px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: ${C.inkFaint};
+    transition: color .2s ${C.ease};
+
+    & + & { border-left: 1px solid ${C.lineSoft}; }
 
     .dot {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: ${p => (p.$val === 'normal' ? C.moss : p.$val === 'urgent' ? C.och : C.ox)};
+        width: 7px; height: 7px; border-radius: 50%; flex: none;
+        transition: transform .2s ${C.ease};
+        background: ${p => p.$val === 'normal' ? C.green : p.$val === 'urgent' ? C.amber : C.ox};
     }
 
-    &:hover { border-color: ${C.ink2}; color: ${C.ink}; }
+    &:hover { color: ${C.ink2}; }
 
     ${p => p.$on && `
-        background: ${p.$val === 'normal' ? C.mossBg : p.$val === 'urgent' ? C.ochBg : C.oxBg};
-        border-color: ${p.$val === 'normal' ? C.moss : p.$val === 'urgent' ? C.och : C.ox};
-        color: ${p.$val === 'normal' ? C.mossDeep : p.$val === 'urgent' ? '#5a3f12' : '#5a1f1a'};
+        color: ${C.ink};
+        .dot { transform: scale(1.25); }
+        &::after {
+            content: '';
+            position: absolute; left: 14%; right: 14%; bottom: -1px;
+            height: 2px; background: ${C.ox};
+        }
     `}
-`;
-
-// ─── Alert boxes ────────────────────────────────────────────────
-const Alert = styled.div`
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 15px 18px; margin-bottom: 24px;
-    font-size: 14px; line-height: 1.55;
-    border: 1px solid ${C.lineSoft};
-    border-left: 3px solid ${C.inkFaint};
-    /* Kept WHITE, not a saturated tint. These notices used to carry a full
-       moss/och fill, which against the all-white card read as a heavy dark
-       slab sitting on the form. The semantic colour now lives in the left
-       accent + icon only, and the dark body text keeps its contrast. */
-    background: #fff;
-    color: ${C.ink};
-    animation: ${fadeUp} .25s ease both;
-
-    svg { flex: none; margin-top: 2px; }
-    strong { font-weight: 700; }
-    small { opacity: .8; display: block; margin-top: 4px; }
-
-    ${p => p.$type === 'success' && `
-        border-left-color: ${C.moss};
-        svg { color: ${C.moss}; }
-    `}
-    ${p => p.$type === 'error' && `
-        border-left-color: ${C.ox};
-        svg { color: ${C.ox}; }
-    `}
-    ${p => !p.$type && `
-        border-left-color: ${C.och};
-        svg { color: ${C.och}; }
-    `}
-`;
-
-// ─── Found case card ────────────────────────────────────────────
-const CaseCard = styled.div`
-    /* White, matching the card it sits on. It previously used paperSoft
-       (#fcfbf8) with a moss left edge, which read as a filled block. */
-    background: #fff;
-    border: 1px solid ${C.lineSoft};
-    border-left: 3px solid ${C.moss};
-    padding: 4px 20px;
-    margin-bottom: 24px;
-    animation: ${fadeUp} .3s ease both;
-`;
-
-const CaseTitle = styled.div`
-    display: flex; align-items: center; gap: 10px;
-    padding: 14px 0 10px;
-    border-bottom: 1px solid ${C.lineSoft};
-    margin-bottom: 4px;
-    font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-    color: ${C.moss};
-
-    svg { color: ${C.moss}; }
-`;
-
-const CaseRow = styled.div`
-    display: flex; justify-content: space-between; gap: 16px;
-    padding: 10px 0; font-size: 14px;
-    border-bottom: 1px dashed ${C.line};
-    &:last-child { border-bottom: none; }
-
-    .k { color: ${C.ink2}; font-weight: 500; }
-    .v { color: ${C.ink}; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 `;
 
 // ─── Buttons ────────────────────────────────────────────────────
 const Btn = styled.button`
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-    padding: 13px 26px;
-    font-size: 13px; font-weight: 600;
+    padding: 12px 24px;
+    font-size: 12.5px; font-weight: 600;
     letter-spacing: .08em; text-transform: uppercase;
     border: 1px solid transparent;
     transition: all .2s ${C.ease};
 
-    &:disabled { opacity: .65; cursor: not-allowed; transform: none !important; }
+    &:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
 
     ${p => p.$ghost && `
         background: #fff; border-color: ${C.line}; color: ${C.ink2};
@@ -500,18 +372,10 @@ const Btn = styled.button`
     `}
     ${p => p.$primary && `
         background: ${C.ox}; color: #fff;
-        box-shadow: 0 6px 16px -4px rgba(124,43,35,.40);
+        box-shadow: 0 6px 16px -4px rgba(124,43,35,.4);
         &:hover:not(:disabled) {
             background: ${C.oxDeep}; transform: translateY(-1px);
-            box-shadow: 0 10px 24px -4px rgba(124,43,35,.50);
-        }
-    `}
-    ${p => p.$done && `
-        background: ${C.moss}; color: #fff;
-        box-shadow: 0 6px 16px -4px rgba(77,95,66,.40);
-        &:hover:not(:disabled) {
-            background: ${C.mossDeep}; transform: translateY(-1px);
-            box-shadow: 0 10px 24px -4px rgba(77,95,66,.50);
+            box-shadow: 0 10px 24px -4px rgba(124,43,35,.5);
         }
     `}
 `;
@@ -523,33 +387,41 @@ const Spinner = styled.div`
     animation: ${spin} .7s linear infinite;
 `;
 
-// ─── Confirmation hero ──────────────────────────────────────────
-const ConfirmHero = styled.div`
-    text-align: center; padding: 6px 0 22px;
+// ─── Confirmation ───────────────────────────────────────────────
+const Confirm = styled.div`
+    text-align: center; padding: 14px 0 10px;
 
-    .ring {
-        width: 88px; height: 88px; margin: 0 auto 20px; border-radius: 50%;
-        background: ${C.mossBg}; border: 1px solid #d5e0cd;
-        display: grid; place-items: center; color: ${C.moss};
-        animation: ${fadeUp} .4s ${C.ease} both;
+    h2 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    > p { font-size: 14.5px; color: ${C.ink2}; }
+
+    .ref {
+        font-family: ${C.mono};
+        font-size: .8rem; font-weight: 700;
+        letter-spacing: .1em; color: ${C.ox};
+        border-top: 1px dashed ${C.line};
+        border-bottom: 1px dashed ${C.line};
+        display: inline-block;
+        padding: 12px 28px; margin: 20px 0 4px;
     }
-    h2 { font-family: ${C.serif}; font-size: 1.6rem; font-weight: 600; margin-bottom: 6px; }
-    > p { font-family: ${C.serif}; font-style: italic; color: ${C.ink2}; }
+
     .meta {
-        display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;
-        margin-top: 18px; font-size: 13px; color: ${C.ink2};
-        b { color: ${C.ink}; font-variant-numeric: tabular-nums; }
+        display: flex; justify-content: center; gap: 26px; flex-wrap: wrap;
+        margin-top: 16px;
+        font-family: ${C.mono};
+        font-size: .72rem; letter-spacing: .06em;
+        color: ${C.inkFaint};
+        b { color: ${C.ink}; font-weight: 600; }
     }
 `;
 
-// ─── Woodland Elegance Footer (dark) ────────────────────────────
+// ─── Dark footer ────────────────────────────────────────────────
 const ElegantFooter = styled.footer`
     position: relative;
     width: 100%; overflow: hidden;
     margin-top: auto;
-    background: #1a1611; color: #f3efe5;
+    background: #14110d; color: #f3efe5;
     text-align: center;
-    padding: 56px 24px 0;
+    padding: 52px 24px 0;
 
     &::before, &::after {
         content: '';
@@ -562,45 +434,37 @@ const ElegantFooter = styled.footer`
     @media (max-width: 640px) { padding: 44px 20px 0; }
 `;
 
-const LeafMark = styled.div`
-    width: 50px; height: 50px; margin: 0 auto 20px; border-radius: 50%;
-    background: rgba(243,239,229,.04);
-    border: 1px solid rgba(154,106,30,.35);
-    display: grid; place-items: center;
-    position: relative; z-index: 1;
-    color: ${C.och};
-`;
-
 const FooterTagline = styled.p`
-    font-family: ${C.serif}; font-style: italic; font-weight: 400;
-    font-size: 1.25rem; line-height: 1.55;
+    position: relative; z-index: 1;
+    font-size: 19px; font-weight: 400;
+    line-height: 1.55;
     color: rgba(243,239,229,.88);
     max-width: 44ch; margin: 0 auto;
-    position: relative; z-index: 1;
 `;
 
 const FooterValues = styled.div`
-    display: flex; align-items: center; justify-content: center; gap: 16px;
-    max-width: 420px; margin: 26px auto 0;
     position: relative; z-index: 1;
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    max-width: 420px; margin: 24px auto 0;
 
     &::before, &::after { content: ''; flex: 1; height: 1px; background: rgba(243,239,229,.15); }
 
-    .vlabel {
-        font-weight: 700; font-size: .64rem; letter-spacing: .26em; text-transform: uppercase;
-        color: rgba(243,239,229,.65);
+    span {
+        font-family: ${C.mono};
+        font-weight: 700; font-size: .58rem;
+        letter-spacing: .26em; text-transform: uppercase;
+        color: rgba(243,239,229,.6);
     }
-    .vdot { color: ${C.och}; font-weight: 600; }
 `;
 
 const FooterBar = styled.div`
     position: relative; z-index: 1;
-    margin-top: 42px;
-    border-top: 1px solid rgba(243,239,229,.10);
+    margin-top: 40px;
+    border-top: 1px solid rgba(243,239,229,.1);
     display: flex; justify-content: space-between; align-items: center;
     gap: 10px; flex-wrap: wrap;
-    padding: 20px 32px;
-    font-weight: 500; font-size: .76rem;
+    padding: 18px 32px;
+    font-size: 12.5px; font-weight: 500;
     color: rgba(243,239,229,.5);
 
     @media (max-width: 640px) {
@@ -620,8 +484,6 @@ export default function PostmortemRequestForm() {
         (typeof localStorage !== 'undefined' && localStorage.getItem('selectedTenant')) ||
         'system_shared';
 
-    // deceased-service picks the DATABASE from the branch headers when present
-    // and falls back to x-tenant-slug — sending all three keeps them in agreement.
     const tenantHeaders = {
         'x-tenant-slug': tenantSlug,
         'x-branch-slug': tenantSlug,
@@ -728,7 +590,6 @@ export default function PostmortemRequestForm() {
 
             if (res.data?.success) {
                 setSubmitResult({ ok: true, msg: res.data?.message || 'Postmortem request submitted successfully.' });
-                setForm({ reason: '', requested_by: '', priority: 'normal' });
             } else {
                 setSubmitResult({ ok: false, msg: res.data?.message || 'Submission failed. Please try again.' });
             }
@@ -761,7 +622,6 @@ export default function PostmortemRequestForm() {
     const step1Done = !!foundCase;
     const step2Done = submitResult?.ok;
 
-    // Cosmetic confirmation reference derived from the admission number.
     const confirmRef = foundCase
         ? `PM-${new Date().getFullYear()}-${String(foundCase.admission_number || foundCase.deceased_id || '').slice(-4) || '0000'}`
         : '';
@@ -772,185 +632,130 @@ export default function PostmortemRequestForm() {
             <Shell>
                 <Card>
 
-                    <AccentLine aria-hidden="true" />
-
-                    {/* ── Condolence strip (light) ── */}
-                    <Condolence>
-                        <p>
-                            <span className="orn">❦</span>
-                            We are deeply sorry for your loss. Please accept our heartfelt condolences.
-                            <span className="orn">❦</span>
-                        </p>
-                    </Condolence>
-
-                    {/* ── Document header ── */}
-                    <DocHeader>
-                        <HeaderLeft>
-                            <ReqIdBadge>
-                                <span className="ico"><I.Hash /></span>
-                                Postmortem Request Form
-                            </ReqIdBadge>
-                            <Timestamps>
-                                <MetaItem><I.Calendar /><b>{currentDate}</b></MetaItem>
-                                <MetaItem><I.Clock /><b>{currentTime}</b></MetaItem>
-                            </Timestamps>
-                        </HeaderLeft>
-                        <QrWrapper>
-                            <QrBox>
-                                <QRCodeSVG
-                                    value={verifyUrl}
-                                    size={88}
-                                    level="H"
-                                    includeMargin={false}
-                                    bgColor="#FFFFFF"
-                                    fgColor={C.ink}
-                                />
-                            </QrBox>
-                            <QrLabel>Scan for Results</QrLabel>
-                        </QrWrapper>
-                    </DocHeader>
-
-                    {/* ── Title ── */}
-                    <TitleSection>
-                        <h1>Postmortem <span className="accent">Examination</span> Request</h1>
-                        <p>Complete all fields accurately to authorize the procedure.</p>
-                    </TitleSection>
-
-                    {/* ─── Step indicator ─── */}
-                    <Steps>
-                        <Step $active={!step1Done && !step2Done} $done={step1Done}>
-                            <div className="num">{step1Done ? <I.Check /> : '1'}</div>
-                            Find Case
-                        </Step>
-                        <StepLine $done={step1Done} />
-                        <Step $active={step1Done && !step2Done} $done={step2Done}>
-                            <div className="num">{step2Done ? <I.Check /> : '2'}</div>
-                            Submit Request
-                        </Step>
-                        <StepLine $done={step2Done} />
-                        <Step $active={false} $done={step2Done}>
-                            <div className="num">{step2Done ? <I.Check /> : '3'}</div>
-                            Confirmed
-                        </Step>
-                    </Steps>
-
-                    {/* ════════════ STEP 1 — Case lookup ════════════ */}
+                    {/* ══════ STEP 1 — FIND CASE ══════ */}
                     {!step1Done && !step2Done && (
-                        <form onSubmit={handleLookup}>
-                            <Body>
-                                <Alert>
-                                    <I.Info />
-                                    <div>
+                        <>
+                            <AccentLine aria-hidden="true" />
+                            <Condolence>
+                                We are deeply sorry for your loss. Please accept our heartfelt condolences.
+                            </Condolence>
+
+                            <DocHeader>
+                                <HeaderLeft>
+                                    <DhTitle>Postmortem Request Form</DhTitle>
+                                    <DhMeta>DATE <b>{currentDate.toUpperCase()}</b> · TIME <b>{currentTime}</b></DhMeta>
+                                </HeaderLeft>
+                                <QrWrapper>
+                                    <QrBox>
+                                        <QRCodeSVG
+                                            value={verifyUrl}
+                                            size={88}
+                                            level="H"
+                                            includeMargin={false}
+                                            bgColor="#FFFFFF"
+                                            fgColor={C.ink}
+                                        />
+                                    </QrBox>
+                                    <QrLabel>Scan for Results</QrLabel>
+                                </QrWrapper>
+                            </DocHeader>
+
+                            <TitleSection>
+                                <h1>Postmortem <em>Examination</em> Request</h1>
+                                <p>Complete all fields accurately to authorize the procedure.</p>
+                            </TitleSection>
+
+                            <form onSubmit={handleLookup}>
+                                <Body>
+                                    <SBar><span className="n">01</span><span className="t">Locate Case</span></SBar>
+
+                                    <Hint>
                                         Enter the <strong>Deceased Admission Number</strong>, the <strong>Next-of-Kin phone number</strong>,
                                         or the <strong>National ID</strong> to locate the case.
-                                    </div>
-                                </Alert>
+                                    </Hint>
 
-                                {lookupError && (
-                                    <Alert $type="error" role="alert">
-                                        <I.Warn />
-                                        {lookupError}
-                                    </Alert>
-                                )}
+                                    {lookupError && (
+                                        <NoteErr role="alert">{lookupError}</NoteErr>
+                                    )}
 
-                                <FormGroup>
-                                    <Label htmlFor="searchType">
-                                        <span className="lico"><I.List /></span>
-                                        Search By
-                                    </Label>
-                                    <Select
-                                        id="searchType"
-                                        value={searchType}
-                                        onChange={e => { setSearchType(e.target.value); setLookupError(''); }}
-                                    >
-                                        <option value="phone">Next of Kin Phone</option>
-                                        <option value="id_number">National ID</option>
-                                        <option value="admission_number">Deceased Admission Number</option>
-                                    </Select>
-                                </FormGroup>
+                                    <FormGroup>
+                                        <Label htmlFor="searchType">Search By</Label>
+                                        <SelectField
+                                            id="searchType"
+                                            value={searchType}
+                                            onChange={e => { setSearchType(e.target.value); setLookupError(''); }}
+                                        >
+                                            <option value="phone">Next of Kin Phone</option>
+                                            <option value="id_number">National ID</option>
+                                            <option value="admission_number">Deceased Admission Number</option>
+                                        </SelectField>
+                                    </FormGroup>
 
-                                <FormGroup style={{ marginBottom: 0 }}>
-                                    <Label htmlFor="identifier">
-                                        <span className="lico"><I.Search /></span>
-                                        {searchType === 'phone' ? 'Phone Number' : searchType === 'id_number' ? 'ID Number' : 'Admission Number'}
-                                    </Label>
-                                    <Input
-                                        id="identifier"
-                                        type="text"
-                                        placeholder={searchType === 'phone' ? 'e.g. +254700000000' : searchType === 'id_number' ? 'e.g. 12345678' : 'e.g. MON-XXXXXX'}
-                                        value={identifier}
-                                        onChange={e => { setIdentifier(e.target.value); setLookupError(''); }}
-                                        $shake={shakeId}
-                                        $error={!!lookupError}
-                                        required
-                                    />
-                                </FormGroup>
-                            </Body>
+                                    <FormGroup style={{ marginBottom: 0 }}>
+                                        <Label htmlFor="identifier">
+                                            {searchType === 'phone' ? 'Phone Number' : searchType === 'id_number' ? 'ID Number' : 'Admission Number'}
+                                        </Label>
+                                        <Field
+                                            id="identifier"
+                                            type="text"
+                                            placeholder={searchType === 'phone' ? 'e.g. +254700000000' : searchType === 'id_number' ? 'e.g. 12345678' : 'e.g. MON-XXXXXX'}
+                                            value={identifier}
+                                            onChange={e => { setIdentifier(e.target.value); setLookupError(''); }}
+                                            $shake={shakeId}
+                                            $error={!!lookupError}
+                                            required
+                                        />
+                                    </FormGroup>
+                                </Body>
 
-                            <FormFooter>
-                                <Btn type="button" $ghost onClick={() => window.history.back()}>
-                                    <I.Close /> Cancel
-                                </Btn>
-                                <Btn type="submit" $primary disabled={isSearching}>
-                                    {isSearching ? <><Spinner /> Searching…</> : <><I.SearchLg /> Find Case</>}
-                                </Btn>
-                            </FormFooter>
-                        </form>
+                                <FormFooter>
+                                    <Btn type="button" $ghost onClick={() => window.history.back()}>Cancel</Btn>
+                                    <Btn type="submit" $primary disabled={isSearching}>
+                                        {isSearching ? <><Spinner /> Searching…</> : 'Find Case'}
+                                    </Btn>
+                                </FormFooter>
+                            </form>
+                        </>
                     )}
 
-                    {/* ════════════ STEP 2 — Request form ════════════ */}
+                    {/* ══════ STEP 2 — CASE FOUND (no top header) ══════ */}
                     {step1Done && !step2Done && (
                         <form onSubmit={handleSubmit}>
                             <Body>
-                                <Alert $type="success">
-                                    <I.CheckCircle />
-                                    <div>Case found. Please review the details below and complete your request.</div>
-                                </Alert>
+                                <NoteOk>Case found — verify the record below, then complete your request.</NoteOk>
 
-                                <CaseCard>
-                                    <CaseTitle>
-                                        <I.UserTag /> Deceased Record
-                                    </CaseTitle>
-                                    <CaseRow>
-                                        <span className="k">Full Name</span>
-                                        <span className="v">{foundCase.full_name || '—'}</span>
-                                    </CaseRow>
-                                    <CaseRow>
-                                        <span className="k">Admission No.</span>
-                                        <span className="v">{foundCase.admission_number || foundCase.deceased_id}</span>
-                                    </CaseRow>
+                                <SBar><span className="n">01</span><span className="t">Deceased Record</span></SBar>
+
+                                <CaseId>
+                                    <div>
+                                        <CaseName>{foundCase.full_name || '—'}</CaseName>
+                                        <CaseAdm><span>ADMISSION</span> {foundCase.admission_number || foundCase.deceased_id}</CaseAdm>
+                                    </div>
+                                    <ChangeLink type="button" onClick={() => { setFoundCase(null); setLookupError(''); }}>
+                                        Change case
+                                    </ChangeLink>
+                                </CaseId>
+
+                                <CaseGrid>
                                     {foundCase.date_of_death && (
-                                        <CaseRow>
-                                            <span className="k">Date of Death</span>
-                                            <span className="v">{foundCase.date_of_death}</span>
-                                        </CaseRow>
+                                        <CaseItem><dt>Date of Death</dt><dd>{foundCase.date_of_death}</dd></CaseItem>
                                     )}
                                     {foundCase.gender && (
-                                        <CaseRow>
-                                            <span className="k">Gender</span>
-                                            <span className="v">{foundCase.gender}</span>
-                                        </CaseRow>
+                                        <CaseItem><dt>Gender</dt><dd>{foundCase.gender}</dd></CaseItem>
                                     )}
                                     {(foundCase.next_of_kin_name || foundCase.next_of_kin) && (
-                                        <CaseRow>
-                                            <span className="k">Next of Kin</span>
-                                            <span className="v">{foundCase.next_of_kin_name || foundCase.next_of_kin}</span>
-                                        </CaseRow>
+                                        <CaseItem><dt>Next of Kin</dt><dd>{foundCase.next_of_kin_name || foundCase.next_of_kin}</dd></CaseItem>
                                     )}
                                     {(foundCase.next_of_kin_phone || foundCase.tell_no || foundCase.phone_number) && (
-                                        <CaseRow>
-                                            <span className="k">Kin Contact</span>
-                                            <span className="v">{foundCase.next_of_kin_phone || foundCase.tell_no || foundCase.phone_number}</span>
-                                        </CaseRow>
+                                        <CaseItem><dt>Kin Contact</dt><dd>{foundCase.next_of_kin_phone || foundCase.tell_no || foundCase.phone_number}</dd></CaseItem>
                                     )}
-                                </CaseCard>
+                                </CaseGrid>
+
+                                <SBar><span className="n">02</span><span className="t">Request Details</span></SBar>
 
                                 <FormGroup>
-                                    <Label htmlFor="requested_by">
-                                        <span className="lico"><I.Shield /></span>
-                                        Requesting Authority / Your Name
-                                    </Label>
-                                    <Input
+                                    <Label htmlFor="requested_by">Requesting Authority / Your Name</Label>
+                                    <Field
                                         id="requested_by"
                                         type="text"
                                         placeholder="e.g. John Kamau (Son), Dr. Mwangi, Police Inspector Oloo"
@@ -961,17 +766,14 @@ export default function PostmortemRequestForm() {
                                 </FormGroup>
 
                                 <FormGroup>
-                                    <Label as="span">
-                                        <span className="lico"><I.Flag /></span>
-                                        Priority
-                                    </Label>
-                                    <SegPriority role="radiogroup" aria-label="Priority">
+                                    <Label as="span">Priority</Label>
+                                    <Seg role="radiogroup" aria-label="Priority">
                                         {[
                                             { val: 'normal', label: 'Normal' },
                                             { val: 'urgent', label: 'Urgent' },
                                             { val: 'emergency', label: 'Emergency' },
                                         ].map(opt => (
-                                            <POpt
+                                            <SegOpt
                                                 key={opt.val}
                                                 type="button"
                                                 role="radio"
@@ -981,17 +783,14 @@ export default function PostmortemRequestForm() {
                                                 onClick={() => setForm(f => ({ ...f, priority: opt.val }))}
                                             >
                                                 <span className="dot" /> {opt.label}
-                                            </POpt>
+                                            </SegOpt>
                                         ))}
-                                    </SegPriority>
+                                    </Seg>
                                 </FormGroup>
 
                                 <FormGroup style={{ marginBottom: 0 }}>
-                                    <Label htmlFor="reason">
-                                        <span className="lico"><I.Align /></span>
-                                        Reason for Request
-                                    </Label>
-                                    <Textarea
+                                    <Label htmlFor="reason">Reason for Request</Label>
+                                    <TextareaField
                                         id="reason"
                                         placeholder="Please describe the circumstances or reason for requesting the postmortem examination…"
                                         value={form.reason}
@@ -1002,40 +801,30 @@ export default function PostmortemRequestForm() {
                             </Body>
 
                             <FormFooter>
-                                <Btn type="button" $ghost onClick={() => { setFoundCase(null); setLookupError(''); }}>
-                                    <I.ArrowLeft /> Back
-                                </Btn>
+                                <Btn type="button" $ghost onClick={() => { setFoundCase(null); setLookupError(''); }}>Back</Btn>
                                 <Btn type="submit" $primary disabled={isSubmitting}>
-                                    {isSubmitting ? <><Spinner /> Submitting…</> : <><I.Send /> Submit Request</>}
+                                    {isSubmitting ? <><Spinner /> Submitting…</> : 'Submit Request'}
                                 </Btn>
                             </FormFooter>
                         </form>
                     )}
 
-                    {/* ════════════ STEP 3 — Confirmation ════════════ */}
+                    {/* ══════ STEP 3 — CONFIRMED ══════ */}
                     {step2Done && (
                         <>
                             <Body>
-                                <ConfirmHero>
-                                    <div className="ring"><I.CheckLg /></div>
+                                <Confirm>
                                     <h2>Request Submitted</h2>
                                     <p>The mortuary team will review your request and contact you shortly.</p>
+                                    <div className="ref">REF · {confirmRef}</div>
                                     <div className="meta">
-                                        <span>Reference · <b>{confirmRef}</b></span>
-                                        <span>Priority · <b style={{ textTransform: 'capitalize' }}>normal</b></span>
+                                        <span>PRIORITY · <b style={{ textTransform: 'uppercase' }}>{form.priority}</b></span>
+                                        <span>LOGGED · <b>{currentDate.toUpperCase()}</b></span>
                                     </div>
-                                </ConfirmHero>
-
-                                <Alert $type="success" style={{ marginBottom: 0 }}>
-                                    <I.CheckCircle />
-                                    <div>
-                                        <strong>Request Submitted.</strong><br />
-                                        {submitResult.msg}
-                                        <small>
-                                            You can scan the QR code above at any time to check the results.
-                                        </small>
-                                    </div>
-                                </Alert>
+                                </Confirm>
+                                <NoteOk style={{ margin: '20px 0 0' }}>
+                                    <strong>Request Submitted.</strong> Scan the QR code on the form at any time to check the results.
+                                </NoteOk>
                             </Body>
                             <FormFooter>
                                 <Btn type="button" $ghost onClick={() => {
@@ -1044,29 +833,19 @@ export default function PostmortemRequestForm() {
                                     setSubmitResult(null);
                                     setForm({ reason: '', requested_by: '', priority: 'normal' });
                                 }}>
-                                    <I.Plus /> New Request
+                                    New Request
                                 </Btn>
-                                <Btn type="button" $done onClick={handleDone}>
-                                    <I.DoubleCheck /> Done
-                                </Btn>
+                                <Btn type="button" $primary onClick={handleDone}>Done</Btn>
                             </FormFooter>
                         </>
                     )}
 
-                    {/* ── Woodland Elegance Footer (dark) ── */}
+                    {/* ── Dark footer ── */}
                     <ElegantFooter>
-                        <LeafMark>
-                            <I.Leaf />
-                        </LeafMark>
-
                         <FooterTagline>Received with dignity. Cared for with respect. Remembered with love.</FooterTagline>
-
                         <FooterValues>
-                            <span className="vlabel">Dignity</span><span className="vdot">·</span>
-                            <span className="vlabel">Care</span><span className="vdot">·</span>
-                            <span className="vlabel">Respect</span>
+                            <span>Dignity</span><span>Care</span><span>Respect</span>
                         </FooterValues>
-
                         <FooterBar>
                             <span>© {new Date().getFullYear()} RestPoint Funeral Management</span>
                             <span>Official Postmortem Request</span>
