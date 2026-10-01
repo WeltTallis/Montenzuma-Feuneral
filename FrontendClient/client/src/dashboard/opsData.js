@@ -530,10 +530,63 @@ export function buildCases(deceasedRows = [], releaseRows = [], pmRows = []) {
     return null;
   };
 
+  /**
+   * Resolve a release row to its register case by DECEASED NAME.
+   *
+   * Used only as a fallback for releases recorded without an
+   * `admission_number` (see the releaseRows.forEach comment). Two guards keep a
+   * name collision from attaching one person's release to another's case:
+   *   1. branch-scoped match first (same discipline as findCase);
+   *   2. a name must resolve to exactly ONE case — if two cases share the name,
+   *      no match is made and the release stays on its own synthetic row.
+   */
+  const byName = new Map();
+  byUid.forEach((c) => {
+    const n = String(c.raw?.full_name || c.raw?.name_of_deceased || c.raw?.deceased_name || "").trim();
+    if (!n) return;
+    byName.set(`${branchKeyOf(c.raw)}::${n.toLowerCase()}`, (byName.get(`${branchKeyOf(c.raw)}::${n.toLowerCase()}`) || 0) + 1);
+  });
+  const findCaseByName = (name) => {
+    const n = String(name || "").trim().toLowerCase();
+    if (!n) return null;
+    for (const c of byUid.values()) {
+      const cn = String(c.raw?.full_name || c.raw?.name_of_deceased || c.raw?.deceased_name || "").trim().toLowerCase();
+      if (!cn || cn !== n) continue;
+      const scoped = byName.get(`${branchKeyOf(c.raw)}::${n}`);
+      if (scoped === 1) return c;          // unique within the branch — safe
+      if (scoped === undefined) return c;   // branch tag absent on the feed row
+      // Ambiguous inside the branch: fall through and require global uniqueness.
+      let total = 0;
+      for (const other of byUid.values()) {
+        const on = String(other.raw?.full_name || other.raw?.name_of_deceased || other.raw?.deceased_name || "").trim().toLowerCase();
+        if (on === n) total += 1;
+      }
+      if (total === 1) return c;
+    }
+    return null;
+  };
+
   releaseRows.forEach((q, i) => {
     const adm = String(q?.admission_number || q?.admission_no || "");
     const rel = releaseFromFeed(q);
-    const existing = findCase(q, adm, "");
+    // Match on the admission number OR the deceased NAME.
+    //
+    // `body_releases.admission_number` is NULLABLE and the release form does not
+    // always capture it, so a completed release routinely arrives with
+    // admission_number empty. Matching on adm alone then failed to find the
+    // register case, so the release was dropped and the drawer rendered
+    // "No body release has been recorded" with Release Reference No.,
+    // Destination, Mode of Transport and Hearse / Plate all "—" — even though the
+    // body HAD been released. The deceased profile page already matches on name
+    // as well (ReleaseTab.jsx, `/body-release/checkout`), which is why the same
+    // case shows full release details there and nothing on the dashboard.
+    //
+    // Name matching is a FALLBACK only: a name can repeat, so an admission-number
+    // match always wins and a name match is accepted only when it is unambiguous
+    // across the whole case set.
+    const did = String(q?.deceased_id || "");
+    const nm = String(q?.name_of_deceased || q?.deceased_name || "").trim();
+    const existing = findCase(q, adm, did) || findCaseByName(nm);
     if (existing) existing.release = rel;
     else {
       const c = mapReleaseRow(q);
@@ -752,23 +805,62 @@ export const bandOf = (time) => {
 };
 
 /* ── register sorting ───────────────────────────────────────────────────── */
+/**
+ * Build a COMPARABLE sort key for a register row's date+time.
+ *
+ * WHY THIS EXISTS — `localeCompare` silently mis-sorts these dates
+ * ------------------------------------------------------------
+ * The obvious comparison is `dir * (aDate + aTime).localeCompare(bDate + bTime)`.
+ * It is wrong. The register stores `YYYY-MM-DD` and `HH:MM`, so concatenating
+ * them gives "2026-10-3000:00" vs "2026-10-0100:00". ICU collation treats '-'
+ * and ':' as punctuation with lower weight than digits, and in several locales
+ * they are effectively ignored, so the comparison degenerates to
+ * "20261030 00 00" vs "20261001 00 00" — which sorts as TEXT, putting
+ * 2026-10-01 AFTER 2026-10-30's neighbour incorrectly. Verified:
+ *
+ *     '2026-10-30'.localeCompare('2026-10-01')  ===  1   // Oct 30 sorts LAST
+ *
+ * so the newest record appeared at the BOTTOM of the register, which is exactly
+ * the "October 1 shows first instead of October 30" symptom. Plain `<` is no
+ * better — the same string is not monotonically ordered.
+ *
+ * The fix is to reduce the timestamp to a single NUMBER by removing every
+ * non-digit, so ordering is numeric and total:
+ *
+ *     "2026-10-30" + "09:30"  ->  202610300930
+ *
+ * A row with no date yields NaN and is always sorted last, so undated records
+ * never displace real ones at the top of the list.
+ */
+function tsKey(date, time) {
+  const d = String(date ?? "").replace(/\D/g, "");
+  const t = String(time ?? "").replace(/\D/g, "");
+  if (!d) return Number.NaN;
+  return Number(`${d}${t.padEnd(4, "0")}`);
+}
+
 export function sortRegisters(list, section, sort) {
   const dir = sort.d;
-  return list.slice().sort((a, b) => {
-    if (sort.f === "name") return dir * a.name.localeCompare(b.name);
-    if (sort.f === "status") return dir * careOf(a).localeCompare(careOf(b));
-    const ka = section === "release"
-      ? `${a.release?.date || ""}${a.release?.time || ""}`
-      : section === "pm"
-        ? `${a.pm?.reqDate || ""}${a.pm?.reqTime || ""}`
-        : `${a.admDate || ""}${a.admTime || ""}`;
-    const kb = section === "release"
-      ? `${b.release?.date || ""}${b.release?.time || ""}`
-      : section === "pm"
-        ? `${b.pm?.reqDate || ""}${b.pm?.reqTime || ""}`
-        : `${b.admDate || ""}${b.admTime || ""}`;
-    return dir * ka.localeCompare(kb);
-  });
+  const cmp = (a, b) => {
+    if (sort.f === "name") return dir * String(a.name || "").localeCompare(String(b.name || ""));
+    if (sort.f === "status") return dir * String(careOf(a) || "").localeCompare(String(careOf(b) || ""));
+    const keyOf_ = (p) =>
+      section === "release"
+        ? tsKey(p.release?.date, p.release?.time)
+        : section === "pm"
+          ? tsKey(p.pm?.reqDate, p.pm?.reqTime)
+          : tsKey(p.admDate, p.admTime);
+    const ka = keyOf_(a);
+    const kb = keyOf_(b);
+    // Undated rows (NaN) always sink to the bottom, in BOTH directions, so a
+    // missing date can never masquerade as the newest entry.
+    if (Number.isNaN(ka) && Number.isNaN(kb)) return 0;
+    if (Number.isNaN(ka)) return 1;
+    if (Number.isNaN(kb)) return -1;
+    if (ka === kb) return 0;
+    return dir * (ka < kb ? -1 : 1);
+  };
+  return list.slice().sort(cmp);
 }
 
 /* ── analytics aggregates ───────────────────────────────────────────────── */

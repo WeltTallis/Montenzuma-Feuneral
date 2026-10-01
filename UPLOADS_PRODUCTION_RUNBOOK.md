@@ -22,6 +22,31 @@ shared host directory and removes every path that silently lost files.
 Everything is served to browsers at `https://restpoint.co.ke/uploads/...`
 (nginx → tenant-service static mount → the same `/opt/storage/uploads`).
 
+## The frontend container serves /uploads/ itself
+
+`frontend` now bind-mounts the uploads folder **read-only**:
+
+```yaml
+volumes:
+  - /opt/storage/uploads:/opt/storage/uploads:ro
+```
+
+and its nginx answers `/uploads/...` straight off that mount
+(`location ^~ /uploads/` in `FrontendClient/Dockerfile`) instead of letting the
+request fall through to the SPA fallback — which returned `index.html`, i.e.
+HTML where the browser expected an image or a PDF. Previously uploads were only
+visible because the **host** nginx had a `location /uploads/` rule; any request
+reaching `:8080` directly (portal subdomain, bare port hit) got HTML.
+
+The `^~` modifier is required: the static-asset regex
+`~* \.(js|css|png|...)$` also matches `/uploads/<tenant>/images/x.png`, and a
+regex location outranks a plain prefix one, so without `^~` it would 404 from the
+SPA document root.
+
+If the mount is missing or a file is not yet readable, nginx falls back to
+`tenant-service` (`error_page 404 = @uploads_via_tenant_service`), so this change
+cannot regress the previous behaviour.
+
 ## What was broken and is now fixed
 
 | Area | Before | Now |

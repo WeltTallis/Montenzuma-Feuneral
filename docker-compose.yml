@@ -848,6 +848,13 @@ services:
     # ordering requirement needs expressing here.
     networks:
       - restpoint_network
+    volumes:
+      # READ-ONLY view of the shared uploads folder so the container's own
+      # nginx serves /uploads/... from disk (see `location ^~ /uploads/` in
+      # FrontendClient/Dockerfile). Without it those requests fall through
+      # `try_files ... /index.html` and every signature/logo/PDF renders as a
+      # broken image. `:ro` because this container only ever reads.
+      - /opt/storage/uploads:/opt/storage/uploads:ro
     healthcheck:
       # busybox wget, not GNU wget — `nginx:alpine` ships no `wget` package, so
       # `wget` is busybox's and supports neither `--no-verbose` nor `--tries`.

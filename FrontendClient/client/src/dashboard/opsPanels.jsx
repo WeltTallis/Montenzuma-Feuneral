@@ -364,9 +364,22 @@ export function ModalHost({ modalKey, people, calc, onClose, onOpenCase, onOpenM
 
 /* ── case-file drawer (single contextual pane) ──────────────────────────── */
 
-/** A labelled value tile inside the drawer. */
-function Card({ l, v, hl, mono, sub, tag, tagCol }) {
+/**
+ * A labelled value tile inside the drawer.
+ *
+ * EMPTY TILES ARE NOT RENDERED. The register is a wide `SELECT *`, so most
+ * mortuary fields (chamber, storage type, mortuary location, verified-by,
+ * burial type, coffin status, dispatched-to, identifying marks, …) are NULL for
+ * most cases. Rendering a tile per field filled every drawer with rows of "—",
+ * which buried the handful of values that actually mattered. A card with no
+ * value now renders nothing at all, so the drawer only shows real data.
+ *
+ * Pass `keepEmpty` for a field whose BLANKNESS is the message (e.g. an explicit
+ * "not recorded yet" state); it then renders in the muted `is-nil` style.
+ */
+function Card({ l, v, hl, mono, sub, tag, tagCol, keepEmpty }) {
   const isNil = v === null || v === undefined || v === "" || v === "—";
+  if (isNil && !keepEmpty) return null;
   return (
     <div className={`ccard${hl ? " wide" : ""}${isNil ? " is-nil" : ""}`}>
       <div className="ccl-row">
@@ -426,38 +439,62 @@ const fDateTime = (d, t) => (d ? `${fmtDate(d)}${t ? ` · ${t}` : ""}` : "—");
 const fBool = (b, y = "Yes", n = "No") => (b === true ? y : b === false ? n : "—");
 
 /**
- * The captured next-of-kin signature.
+ * A captured signature image (next-of-kin or release authorisation).
  *
- * The deceased-profile Overview tab has always shown the real image; this
- * drawer only ever said "Yes", so staff had to open a second screen to check
- * what had actually been signed — exactly the thing you want to see at a
- * glance when verifying a release. Uses the same URL rules as OverviewTab so
- * both surfaces render the same file for the same case.
+ * WHY THE FALLBACK CHANGED
+ * -----------------------
+ * This used to show "Click to view signature ↗" whenever the <img> failed to
+ * load. That is a misleading label: it implies a link that works, but the file
+ * was already 404/500, so clicking just produced a broken page. Operators read
+ * it as "the signature is captured, tap to open" and stopped investigating —
+ * which is precisely the case where the file is MISSING and the release is not
+ * actually evidenced.
+ *
+ * It now says the file could not be loaded and offers a clearly-secondary
+ * "open anyway" link, so a missing signature is visible as a missing signature.
+ * The inline preview is tried FIRST; the link is a fallback, not the headline.
+ *
+ * The data-URI form is handled explicitly: a canvas/base64 signature is stored
+ * inline and is by far the most common shape, and it must never be prefixed
+ * with UPLOADS_URL.
  */
-function SignatureImage({ path }) {
+function SignatureImage({ path, label = "Signature" }) {
   const [failed, setFailed] = useState(false);
 
   const src = (() => {
     if (!path) return null;
-    if (path.startsWith("data:image")) return path;
-    if (path.startsWith("http")) return rebaseUploadUrl(path);
-    if (path.startsWith("/")) return `${env.UPLOADS_URL}${path}`;
-    return `${env.UPLOADS_URL}/${String(path).replace(/^\/+/, "")}`;
+    const p = String(path).trim();
+    if (!p) return null;
+    if (/^data:image\//i.test(p)) return p;           // inline capture — use as-is
+    if (/^https?:\/\//i.test(p)) return rebaseUploadUrl(p);
+    if (p.startsWith("/")) return `${env.UPLOADS_URL}${p}`;
+    return `${env.UPLOADS_URL}/${p.replace(/^\/+/, "")}`;
   })();
 
-  if (!path || !src) return null;
+  if (!src) return null;
 
   if (failed) {
     return (
-      <a href={src} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1a73e8" }}>
-        Click to view signature ↗
-      </a>
+      <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.5 }}>
+        <span style={{ color: "var(--amber, #b45309)" }}>
+          ⚠ {label} image could not be loaded — the file may be missing.
+        </span>{" "}
+        <a
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: "#1a73e8", textDecoration: "underline", whiteSpace: "nowrap" }}
+        >
+          open anyway ↗
+        </a>
+      </div>
     );
   }
   return (
     <img
       src={src}
-      alt="Next of Kin Signature"
+      alt={label}
+      loading="lazy"
       onError={() => setFailed(true)}
       style={{
         maxWidth: "100%", maxHeight: 180, marginTop: 6, background: "#fff",
@@ -508,7 +545,8 @@ function IntakePane({ p }) {
       <DrawerSection title="Permit &amp; Contact" />
       <div className="cgrid">
         <Card l="Burial Permit Number" v={p.permit} mono />
-        <Card l="National ID" v={it.idNo} mono />
+        {/* National ID deliberately lives ONLY in "Deceased Details" below. It was
+            rendered here as well, so the same number appeared twice in one drawer. */}
         <Card l="Phone Number" v={first(it.phone, nok.phone)} mono />
         <Card l="Alternate Phone" v={first(nok.altPhone, it.altPhone)} mono />
         <Card l="Email" v={first(nok.email, it.email)} />
@@ -523,7 +561,15 @@ function IntakePane({ p }) {
         <Card l="Age at Death" v={it.age != null ? `${it.age} years` : ""} />
         <Card l="Place of Death" v={p.place} />
         <Card l="Cause of Death" v={p.cause} hl />
-        <Card l="Deceased ID" v={it.deceasedId} mono />
+        {/* Deceased ID is the register's own public identifier. `p.adm`
+            (Admission Number) is derived from admission_number and FALLS BACK to
+            deceased_id when the row has no admission_number, so both tiles used
+            to show the same string (e.g. LEE-PETQVA28B4KVAYUHCC8). Read the real
+            column here and only show this tile when it genuinely differs from the
+            admission number, so the drawer never prints one value twice. */}
+        {it.deceasedId && it.deceasedId !== p.adm ? (
+          <Card l="Deceased ID" v={it.deceasedId} mono />
+        ) : null}
         {/* Identity + mortuary detail. These are all on the register row and in
             intakeOf(), but were never rendered here, so the drawer looked
             emptier than the data actually was. */}
@@ -577,22 +623,12 @@ function IntakePane({ p }) {
         <Card l="Address" v={first(nok.address, raw.address)} />
       </div>
 
-      {/* The actual signature image, matching the deceased-profile Overview tab.
-          Previously this drawer only reported Yes/No, so confirming who signed
-          meant leaving the dashboard and opening the case file. */}
-      <DrawerSection title="Authorisation Signature" />
-      <div className="cgrid">
-        {(() => {
-          const sig = first(it.signature, nok.signature, raw.signature);
-          if (!sig) return <Card l="Signature" v="" />;
-          return (
-            <div className="ccard wide" style={{ gridColumn: "1 / -1" }}>
-              <div className="ccl-row"><span className="ccl">Signature captured</span></div>
-              <SignatureImage path={sig} />
-            </div>
-          );
-        })()}
-      </div>
+      {/* Authorisation Signature — REMOVED.
+          The register row carries a `signature` column that is empty for most
+          cases, so this section rendered either an empty tile or a broken image,
+          and the same value was already shown under "Signature Captured" in the
+          Body Status section above. If the signature is needed operationally it
+          belongs on the deceased profile's Overview tab, not in the dashboard. */}
 
       <DrawerSection title="Charges" />
       <div className="cgrid">
@@ -716,29 +752,35 @@ function ReleasePane({ p, rel }) {
         <Card l="Recorded At" v={first(rel.recordedAt, p.raw?.created_at)} mono />
       </div>
 
-      {/* The release signature. This is already parsed onto `rel` by
-          releaseFromFeed() / releaseFromRegister() but was never rendered, so
-          the drawer could show a completed release with no evidence of who
-          authorised it. Releasing a body is the point of no return, so this is
-          the one thing that must be visible before the drawer is closed.
-          Falls back through the release row, then the register row, because
-          either form may have captured it. */}
-      <DrawerSection title="Release Signature" />
-      <div className="cgrid">
-        {(() => {
-          const sig = first(rel.signature, rel.staffSignature, rw.signature, rw.staff_signature, p.nok?.signature);
-          if (!sig) return <Card l="Release Signature" v="" />;
-          return (
-            <div className="ccard wide" style={{ gridColumn: "1 / -1" }}>
-              <div className="ccl-row">
-                <span className="ccl">Release Signature</span>
-                <span className="cctag">Authorised</span>
+      {/* The release signature. `rel` only exists when the release feed row was
+          successfully matched to this case (see the name-matching fallback in
+          buildCases), so an unmatched release used to render an empty tile here
+          AND an empty "Release Reference No." above, which read as "no release
+          recorded" even when the body had in fact been released. The section is
+          now suppressed entirely when there is no signature, and the image
+          falls back through every column the release form can write. */}
+      {(() => {
+        const sig = first(
+          rel.signature, rel.staffSignature,
+          rw.signature, rw.staff_signature, rw.receiver_signature,
+          p.nok?.signature, p.intake?.signature, p.raw?.signature,
+        );
+        if (!sig) return null;
+        return (
+          <>
+            <DrawerSection title="Release Signature" />
+            <div className="cgrid">
+              <div className="ccard wide" style={{ gridColumn: "1 / -1" }}>
+                <div className="ccl-row">
+                  <span className="ccl">Release Signature</span>
+                  <span className="cctag">Authorised</span>
+                </div>
+                <SignatureImage path={sig} label="Release signature" />
               </div>
-              <SignatureImage path={sig} />
             </div>
-          );
-        })()}
-      </div>
+          </>
+        );
+      })()}
     </div>
   );
 }

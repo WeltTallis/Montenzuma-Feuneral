@@ -194,6 +194,89 @@ server {
         proxy_read_timeout    7d;
     }
 
+    # ------------------------------------------------------------------
+    # /uploads/ — the ONE shared uploads folder (host /opt/storage/uploads,
+    # mounted READ-ONLY into this container; see the `volumes:` block on
+    # the `frontend` service in docker-compose.prod.yml).
+    # ------------------------------------------------------------------
+    # WHY THIS BLOCK IS REQUIRED: without it every /uploads/... request fell
+    # through to the SPA fallback below and was answered with index.html,
+    # which a browser renders as a broken <img> — signatures, tenant logos,
+    # coffin images and PDFs silently "disappeared" even though the files
+    # existed on the host. Previously they only worked because the HOST
+    # reverse proxy had its own `location /uploads/` → tenant-service:5002
+    # rule; anything that reached this container directly (portal subdomain,
+    # a bare :8080 hit) got HTML where an image was expected.
+    #
+    # `^~` is LOAD-BEARING, not cosmetic. The static-asset regex
+    # `~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff...)$` further down also
+    # matches /uploads/<tenant>/images/coffin.png, and a regex location
+    # beats a plain prefix one — so without `^~` that block would answer
+    # 404 from the SPA document root (/usr/share/nginx/html) instead of
+    # serving the mounted file. `^~` also stops regex evaluation entirely
+    # for this prefix.
+    #
+    # `alias` (rather than root + rewrite) keeps the mount point in exactly
+    # one place. `try_files` is deliberately NOT used alongside it: try_files
+    # resolves $uri against `root`, not against `alias`, and mis-resolves —
+    # nginx's own 404 for a missing file is both the correct answer here and
+    # the trigger for the fallback below.
+    location ^~ /uploads/ {
+        alias /opt/storage/uploads/;
+
+        # No directory listings — a tenant must never be able to enumerate
+        # another tenant's uploads by walking the path.
+        autoindex off;
+
+        # Uploaded content is user-supplied, so never serve dotfiles out of
+        # it (an upload named `.env` would otherwise be readable). The regex
+        # only matches a dot IMMEDIATELY after a slash, so a legitimate name
+        # like /uploads/acme.ltd/logo.png is unaffected. Returns 403, not
+        # 404, so this refusal cannot be rewritten by the 404 fallback below.
+        if ($uri ~ "(^|/)\.") { return 403; }
+
+        # A `location`-level add_header REPLACES the inherited server-level
+        # set, so the security headers are re-declared here rather than lost.
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        # Uploaded files are immutable once written, so cache them hard.
+        # ACAO is required because <img>/PDF.js fetch these cross-origin
+        # (e.g. from the portal subdomain) and a blocked read is a broken
+        # image rather than a visible error.
+        add_header Cache-Control "public, max-age=86400" always;
+        add_header Access-Control-Allow-Origin "*" always;
+
+        # Files in the shared folder are written by the backend containers as
+        # uid 1001 while this worker runs as `nginx`, so a file that exists
+        # but is not yet world-readable must not 404 for ever. Fall through to
+        # the service that owns the same folder instead.
+        error_page 404 = @uploads_via_tenant_service;
+    }
+
+    # Fallback for when the read-only mount is absent (image run without the
+    # compose `volumes:` entry) or a file is unreadable: ask tenant-service,
+    # which owns the canonical static mount of the same directory
+    # (express.static(GLOBAL_UPLOADS_DIR) in services/tenant-service/server.ts).
+    # Same variable + `resolver` form as /monitoring, /api/ and /socket.io/
+    # above, so nginx still STARTS when the tenant-service container is down —
+    # this block is only reached per request, and then fails that ONE file
+    # instead of taking the whole SPA offline.
+    location @uploads_via_tenant_service {
+        set $restpoint_uploads "restpoint_tenant_service:5000";
+        proxy_pass http://$restpoint_uploads;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout    30s;
+        proxy_read_timeout    30s;
+    }
+
                 # SPA fallback: any route that is not a static file returns index.html
     location / {
         try_files $uri $uri/ /index.html;

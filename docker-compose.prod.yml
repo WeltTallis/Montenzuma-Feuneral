@@ -871,6 +871,28 @@ services:
     # the browser getting connection-refused for the entire application.
     networks:
       - restpoint_network
+    volumes:
+      # READ-ONLY view of the ONE shared uploads folder, so the container's
+      # own nginx can serve /uploads/... directly from disk (see the
+      # `location ^~ /uploads/` block in FrontendClient/Dockerfile).
+      #
+      # Without this the SPA has no /uploads/ route at all: every request
+      # falls through `try_files ... /index.html` and the browser renders
+      # index.html as a broken image / unparseable PDF. Files were only
+      # visible because the HOST nginx proxied /uploads/ -> tenant-service;
+      # any request that reached this container directly got HTML.
+      #
+      # `:ro` — this container only ever READS uploads. Every service that
+      # WRITES them mounts /opt/storage read-write instead; keeping the
+      # frontend read-only means a compromised web tier cannot delete or
+      # overwrite tenant documents.
+      #
+      # Permissions: files are written by the backend containers as uid 1001
+      # while nginx's workers run as `nginx`, so the tree must be readable —
+      # `chmod -R a+rX /opt/storage/uploads` (setup-production-storage.sh).
+      # Files that are present but unreadable still resolve through the
+      # tenant-service fallback in the nginx config.
+      - /opt/storage/uploads:/opt/storage/uploads:ro
     healthcheck:
       # busybox wget, not GNU wget. `nginx:alpine` ships no `wget` package, so
       # `wget` is busybox's, which supports neither `--no-verbose` nor `--tries`
