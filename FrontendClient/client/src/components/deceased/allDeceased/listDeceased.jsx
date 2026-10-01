@@ -639,7 +639,7 @@ const DeceasedListPage = () => {
   const closeExportNotify = useCallback(() => { setExportNotify(null); }, []);
   const downloadExportCopy = useCallback(() => { if (exportNotify?.fileUrl) { downloadExportFile(exportNotify.fileUrl, exportNotify.fileName); return; } const blob = exportNotify?.blob; if (!blob) return; downloadExportBlob(blob, exportNotify?.fileName || `Deceased_Records_${todayKey()}.xlsx`); }, [exportNotify]);
   const showExportFailed = useCallback((message) => { setExporting(false); setShowExport(false); setExportNotify({ type: 'error', message: message || 'The export could not be completed. Please try again.', blob: null, fileUrl: null, fileName: '' }); }, []);
-  const showExportSuccess = useCallback((blob, fileName, pinProtected = false, fileUrl = null) => { setExporting(false); setShowExport(false); setExportNotify({ type: 'success', message: `${fileName || 'Deceased records export'} was generated successfully and saved to your device.${pinProtected ? ' It is PIN-protected — Excel will ask for the PIN when you open it.' : ''}`, blob: blob || null, fileUrl: fileUrl || null, fileName: fileName || '' }); }, []);
+  const showExportSuccess = useCallback((blob, fileName, pinProtected = false, fileUrl = null) => { setExporting(false); setShowExport(false); setExportNotify({ type: 'success', message: `${fileName || 'Deceased records export'} was generated successfully .${pinProtected ? ' It is PIN-protected.' : ''}`, blob: blob || null, fileUrl: fileUrl || null, fileName: fileName || '' }); }, []);
   const isFileResponse = (contentType = '') => contentType.includes('spreadsheetml') || contentType.includes('zip') || contentType.includes('octet-stream');
   const parseBlobJson = async (blob) => { const text = await blob.text(); return JSON.parse(text); };
 
@@ -650,7 +650,7 @@ const DeceasedListPage = () => {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
       const pin = exportPin.trim();
-      if (pin && !/^\d{4}$/.test(pin)) { showExportFailed('The security PIN must be exactly 4 digits. Please correct it and try again.'); return; }
+      if (pin && !/^\d{4}$/.test(pin)) { showExportFailed('The  PIN must be  4 digits.'); return; }
       const response = await axios.post(`${BASE_URL}/export-excel`, { startDate: exportStart || undefined, endDate: exportEnd || undefined, exportPin: pin || undefined }, { headers: { 'Authorization': `Bearer ${token}`, ...getBranchScopeHeaders(tenantSlug) }, responseType: 'blob', timeout: 30000 });
       const contentType = (response.headers?.['content-type'] || '').toLowerCase();
       if (isFileResponse(contentType)) { loadExportHistory(); const fileName = filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`); showExportSuccess(response.data, fileName, pin.length > 0); downloadExportBlob(response.data, fileName); return; }
@@ -685,7 +685,7 @@ const DeceasedListPage = () => {
         let serverMessage = '';
         if (err?.response?.data && typeof err.response.data.text === 'function') { try { serverMessage = (await parseBlobJson(err.response.data))?.message || ''; } catch (e) { /* ignore */ } }
         if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) { attempts++; if (attempts < maxAttempts) { timeoutId = setTimeout(poll, pollInterval); } else { fail('Export timed out. Please try again.'); } return; }
-        if (err.response?.status === 404) { fail('Export job expired or was not found. Please start a new export.'); return; }
+        if (err.response?.status === 404) { fail('Export job expired .'); return; }
         fail(serverMessage || 'Export failed. Please try again.');
       }
     };

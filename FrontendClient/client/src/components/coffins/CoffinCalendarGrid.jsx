@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import styled from 'styled-components';
 import { startOfWeek, addDays, isSameDay, isSameMonth, isToday, format } from 'date-fns';
 
-/* Coffin reservations — DAY and WEEK calendar grids.
+/* Coffin reservations â€” DAY and WEEK calendar grids.
  *
  * These mirror what the hearse calendar does instead of rendering the same
  * flat table for every view: DAY shows that day's reservations on a time
@@ -145,5 +145,141 @@ const Empty = styled.div`
   grid-column: 2 / -1; padding: 40px 16px; text-align: center;
   color: ${C.ink4}; font-size: 12px; font-weight: 600;
 `;
+const SH = 6;   // first hour shown
+const EH = 22;  // last hour shown (exclusive)
+const HOURS = [];
+for (let h = SH; h < EH; h++) HOURS.push(h);
 
-const tintOf = (color) => color + '14';
+export default function CoffinCalendarGrid({ view, date, bookings = [], onPick, onPickDay }) {
+  const isWeek = view === 'week';
+
+  /* The seven days on screen. For the DAY view this is just the one day, which
+     lets a single grid implementation serve both views. */
+  const days = useMemo(() => {
+    if (isWeek) {
+      const start = startOfWeek(date, { weekStartsOn: 1 });
+      return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    }
+    return [date];
+  }, [isWeek, date]);
+
+  /* ONE pass over the bookings builds the per-day model: which land on which
+     day, which have a usable time, and which hour row each sits in. Doing this
+     inside the render loop instead would re-split the whole list for every
+     hour cell â€” O(hours x days x bookings) on every paint.
+
+     Days are keyed on the LOCAL date, never toISOString(): that converts to
+     UTC and silently shifts every evening booking into the next day for
+     anyone east of Greenwich. */
+  const model = useMemo(() => {
+    const buckets = new Map();
+    days.forEach((d) => buckets.set(format(d, 'yyyy-MM-dd'), []));
+
+    (bookings || []).forEach((b) => {
+      if (!b || !b.date) return;
+      const k = format(b.date, 'yyyy-MM-dd');
+      if (buckets.has(k)) buckets.get(k).push(b);
+    });
+
+    let total = 0;
+    const cols = days.map((d) => {
+      const key = format(d, 'yyyy-MM-dd');
+      const list = buckets.get(key) || [];
+      total += list.length;
+
+      const untimed = [];
+      const rows = new Map();
+      list.forEach((b) => {
+        const h = parseHour(b.time);
+        // No parsable time -> the "No time" lane. A time outside the visible
+        // window is CLAMPED onto the nearest hour row so it is still visible
+        // instead of vanishing off the top or bottom of the grid.
+        if (h === null) { untimed.push(b); return; }
+        const row = Math.max(SH, Math.min(EH - 1, Math.floor(h)));
+        if (!rows.has(row)) rows.set(row, []);
+        rows.get(row).push(b);
+      });
+
+      return { d, key, total: list.length, untimed, rows };
+    });
+
+    return { cols, total, untimedAll: cols.flatMap((c) => c.untimed) };
+  }, [bookings, days]);
+
+  const renderChip = (b) => {
+    const s = statusOf(b);
+    return (
+      <Chip
+        key={b.id ?? `${b.clientName}-${b.time}`}
+        $color={s.color}
+        $tint={tintOf(s.color)}
+        onClick={() => onPick && onPick(b)}
+        title={`${b.clientName} Â· ${s.label}`}
+      >
+        {b.time && <span className="t">{b.time}</span>}
+        <span className="n">{b.clientName}</span>
+        <span className="m">{b.coffinType}</span>
+      </Chip>
+    );
+  };
+
+  const colsStyle = { '--cols': model.cols.length };
+
+  return (
+    <Frame>
+      <Head style={colsStyle}>
+        <HeadCorner>{isWeek ? '' : 'Time'}</HeadCorner>
+        {model.cols.map(({ d }) => {
+          const cls = [
+            isToday(d) ? 'today' : '',
+            isSameMonth(d, date) ? '' : 'other',
+            isSameDay(d, date) ? 'sel' : '',
+          ].filter(Boolean).join(' ');
+          return (
+            <DayHead
+              key={format(d, 'yyyy-MM-dd')}
+              className={cls}
+              onClick={() => onPickDay && onPickDay(d)}
+              title={`Jump to ${format(d, 'EEEE d MMMM yyyy')}`}
+            >
+              <span className="dow">{format(d, 'EEE')}</span>
+              <span className="dom">{format(d, 'd')}</span>
+            </DayHead>
+          );
+        })}
+      </Head>
+
+      {model.total === 0 ? (
+        <BodyGrid style={colsStyle}>
+          <Empty>
+            No coffin reservations for {isWeek ? 'this week' : format(date, 'EEEE d MMMM')}.
+          </Empty>
+        </BodyGrid>
+      ) : (
+        <BodyGrid style={colsStyle}>
+          {/* Untimed lane â€” one row across the whole grid */}
+          {model.untimedAll.length > 0 && (
+            <>
+              <TimeCell style={{ height: 'auto', padding: '9px 7px 0 0' }} />
+              <UntimedWrap>
+                <UntimedLabel>No time</UntimedLabel>
+                {model.untimedAll.map(renderChip)}
+              </UntimedWrap>
+            </>
+          )}
+
+          {/* Hour spine */}
+          {HOURS.map((h) => (
+            <React.Fragment key={h}>
+              <TimeCell>{fmtHour(h)}</TimeCell>
+              {model.cols.map(({ key, rows }) => {
+                const hits = rows.get(h) || [];
+                return <DayCell key={key + '-' + h}>{hits.map(renderChip)}</DayCell>;
+              })}
+            </React.Fragment>
+          ))}
+        </BodyGrid>
+      )}
+    </Frame>
+  );
+}

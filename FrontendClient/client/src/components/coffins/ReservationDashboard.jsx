@@ -17,6 +17,7 @@ import api from '../../api/axios';
 import { getParentTenantSlug, getTenantId } from '../../utils/globalAuth';
 import CoffinInventory from './coffininventory';
 import CoffinTransfers from './coffinTransfers';
+import CoffinCalendarGrid from './CoffinCalendarGrid';
 
 var TX   = '#111827';
 var TX2  = '#374151';
@@ -361,6 +362,11 @@ export default function ReservationDashboard(props) {
     );
   }
 
+  /* The nav arrows step by whatever the CURRENT view pages by, so their labels
+     must follow the view too. They used to say "Previous month" in every mode,
+     which misdescribed the day and week grids. */
+  var navUnit = view === 'day' ? 'day' : view === 'week' ? 'week' : 'month';
+
   /* Stat cards — colored backgrounds */
   var statItems = [
     { l: 'This Month', v: stats.total,       ic: IC.cal, bg: '#0284c7' },
@@ -554,8 +560,8 @@ export default function ReservationDashboard(props) {
           {headerActions}
           {!showAltSection && (
             <React.Fragment>
-              <button className="cb-tb-nav" onClick={function () { navigate(-1); }} title="Previous month" aria-label="Previous month">{IC.cl}</button>
-              <button className="cb-tb-nav" onClick={function () { navigate(1); }} title="Next month" aria-label="Next month">{IC.cr}</button>
+              <button className="cb-tb-nav" onClick={function () { navigate(-1); }} title={'Previous ' + navUnit} aria-label={'Previous ' + navUnit}>{IC.cl}</button>
+              <button className="cb-tb-nav" onClick={function () { navigate(1); }} title={'Next ' + navUnit} aria-label={'Next ' + navUnit}>{IC.cr}</button>
               <button className="cb-tb-btn" onClick={goToday}>Today</button>
               <div className="cb-tb-views">
                 {['day', 'week', 'month'].map(function (v) { return <button key={v} className={'cb-tb-v' + (view === v ? ' on' : '')} onClick={function () { setView(v); setClickedDay(null); }}>{v}</button>; })}
@@ -701,6 +707,24 @@ export default function ReservationDashboard(props) {
               </div>
             )}
 
+            {/* DAY / WEEK render a real calendar grid; MONTH keeps the table.
+                Previously all three rendered this same table and only the
+                filter changed, so clicking "week" gave a list rather than the
+                week laid out day by day. */}
+            {(view === 'day' || view === 'week') ? (
+              <CoffinCalendarGrid
+                view={view}
+                date={sel}
+                bookings={visible}
+                onPick={function (b) { setPanelBk(b); }}
+                onPickDay={function (d) {
+                  setSel(d);
+                  setClickedDay(null);
+                  goToMonth(d.getMonth(), d.getFullYear());
+                }}
+              />
+            ) : (
+              <React.Fragment>
             <div className="cb-lh">
               <div />
               {['Client', 'Coffin', 'Schedule', 'Status', 'Amount'].map(function (h, i) {
@@ -747,6 +771,8 @@ export default function ReservationDashboard(props) {
                 );
               })}
             </div>
+              </React.Fragment>
+            )}
           </main>
         </div>
       )}
