@@ -823,25 +823,28 @@ services:
       # UI on 8082 while nginx-host.conf reverse-proxies the SPA to
       # http://127.0.0.1:8080. Pinning to 8080 keeps both in sync.
       - '8080:80'
-    depends_on:
-      # `service_started`, NOT `service_healthy` — this is what took the whole UI
-      # offline. The UI is a STATIC nginx bundle: it serves index.html and the
-      # hashed assets from its own container and never needs the gateway to be
-      # up to answer `GET /`. Gating it on the gateway's health check made the
-      # UI's availability a hostage to the gateway's, and the gateway in turn
-      # gates on `mariadb: service_healthy` — so a single unhealthy database
-      # health check produced the cascade
-      #     mariadb unhealthy -> api-gateway never starts -> frontend never starts
-      # and `make prod-up` aborted with
-      #     dependency failed to start: container restpoint_mariadb is unhealthy
-      # leaving NO UI at all, even though nginx was perfectly able to serve the
-      # SPA. The gateway proxies its own API calls at runtime (its /monitoring
-      # and /socket.io proxy_pass targets resolve through Docker DNS, and the
-      # gateway itself retries the backend), so "started" is the correct
-      # prerequisite. The API returning 502 while the backend recovers is far
-      # better than a browser getting connection-refused on the whole app.
-      api-gateway:
-        condition: service_started
+    # NO depends_on HERE — DELIBERATELY.
+    #
+    # An earlier version gated the UI on the gateway:
+    #     depends_on: { api-gateway: { condition: service_healthy } }
+    # and changing it to `service_started` was NOT enough either, because
+    # api-gateway itself has `depends_on: { mariadb: { condition: service_healthy } }`.
+    # Any depends_on on the gateway is therefore TRANSITIVELY a depends_on MariaDB,
+    # so an unhealthy database blocked the UI through both conditions:
+    #     mariadb unhealthy -> api-gateway never starts
+    #                        -> frontend waits forever ("Container ... Waiting")
+    # The UI is a static nginx bundle that serves index.html and its hashed assets
+    # from its own container; it does not need the gateway to answer `GET /`.
+    # Its own Dockerfile already handles an absent gateway correctly — the
+    # `/monitoring` and `/socket.io` proxy_pass targets go through the
+    # `resolver 127.0.0.11` + variable form precisely so nginx does not refuse to
+    # start when the gateway is not resolvable yet, and it resolves the name
+    # lazily per request. So there is no ordering requirement to express here, and
+    # omitting the block is what makes the UI genuinely independent.
+    #
+    # Consequence: the SPA is reachable during a backend outage and its own
+    # API calls fail visibly, which is the correct behaviour — far better than
+    # the browser getting connection-refused for the entire application.
     networks:
       - restpoint_network
     healthcheck:

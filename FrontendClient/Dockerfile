@@ -210,7 +210,7 @@ server {
     location ^~ /downloads/ {
         alias /usr/share/nginx/html/downloads/;
         autoindex off;
-        types { }r
+        types { }
         default_type application/zip;
         # A `location`-level add_header REPLACES the inherited server-level set,
         # so re-declare nosniff here or downloads lose it.

@@ -822,14 +822,14 @@ services:
       # the SPA to http://127.0.0.1:8080. Keep this at 8080; FRONTEND_EXTERNAL_PORT
       # in .env / .env.production is kept at 8080 for documentation only.
       - '8080:80'
-    depends_on:
-      # `service_started`, NOT `service_healthy` — see the identical note in
-      # docker-compose.prod.yml. The UI is a STATIC nginx bundle and never needs
-      # the gateway to answer `GET /`; gating on the gateway's health check let
-      # one unhealthy database health check take the entire UI offline via
-      # mariadb -> api-gateway -> frontend.
-      api-gateway:
-        condition: service_started
+    # NO depends_on HERE — DELIBERATELY. See the full note in
+    # docker-compose.prod.yml. In short: api-gateway itself has
+    # `depends_on: { mariadb: { condition: service_healthy } }`, so ANY depends_on
+    # the UI declares on the gateway is transitively a depends_on MariaDB — which
+    # is how one unhealthy database probe kept the UI from ever starting. The UI
+    # is a static nginx bundle that serves `GET /` on its own, and its Dockerfile
+    # already resolves the gateway lazily via `resolver 127.0.0.11`, so no
+    # ordering requirement needs expressing here.
     networks:
       - restpoint_network
     healthcheck:

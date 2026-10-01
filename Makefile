@@ -126,6 +126,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)── Frontend ────────────────────────────────────────────$(NC)"
 	@echo "  make fix-frontend         - Rebuild ONLY the UI from scratch (no cache)"
+	@echo "  make prod-ui-up           - Start ONLY the prod UI, ignoring all backend deps"
 	@echo ""
 	@echo "$(GREEN)── Maintenance ─────────────────────────────────────────$(NC)"
 	@echo "  make clean                - Remove containers & volumes (DESTRUCTIVE)"
@@ -475,12 +476,21 @@ prod-build: check-build-list-prod
 #
 # `--wait` is deliberately NOT used: it would reintroduce the same all-or-nothing
 # abort on any service that fails to reach `healthy`.
+# A `service_healthy` dependency that never becomes healthy makes `up -d` sit at
+# "Container ... Waiting" until the CLI gives up — and because Compose resolves
+# dependencies before starting dependents, that hang blocks the UI too, even
+# though the SPA needs none of it. So the UI is started FIRST, on its own, with
+# `--no-deps`, and the rest of the stack is brought up afterwards. nginx serves
+# index.html immediately and the SPA's own API calls simply fail until the
+# backend is back, which is the behaviour we want.
 prod-up: validate check-build-list-prod check-prod-images
-	@echo "$(BLUE)Phase 1/2: starting infrastructure...$(NC)"
+	@echo "$(BLUE)Phase 1/3: starting the UI (independent of the backend)...$(NC)"
+	@$(COMPOSE_PROD) up -d --no-build --no-deps frontend
+	@echo "$(BLUE)Phase 2/3: starting infrastructure...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build mariadb redis rabbitmq
-	@echo "$(BLUE)Phase 2/2: starting application services + UI...$(NC)"
+	@echo "$(BLUE)Phase 3/3: starting application services...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build || \
-		echo "$(YELLOW)⚠ Some services did not start; the UI is served independently and should still be up.$(NC)"
+		echo "$(YELLOW)⚠ Some services did not start. The UI is already up — run 'make prod-doctor'.$(NC)"
 	@echo "$(GREEN)✓ Production services started$(NC)"
 	@sleep 30
 	@$(COMPOSE_PROD) ps
@@ -730,6 +740,20 @@ fix-frontend:
 	@echo "$(GREEN)✓ Frontend rebuilt from scratch and restarted$(NC)"
 	@sleep 5
 	@docker logs restpoint_frontend --tail=20
+
+# Bring the UI up on PRODUCTION right now, ignoring every backend dependency.
+# This is the emergency lever when something like MariaDB is stuck and
+# `make prod-up` hangs at "Container restpoint_mariadb Waiting" — the SPA is a
+# static nginx bundle, so it does not need the database to serve index.html.
+# `--no-deps` is what makes this work: without it Compose would still resolve
+# the dependency chain and block on the unhealthy database.
+prod-ui-up:
+	@echo "$(BLUE)Starting ONLY the UI, ignoring all backend dependencies...$(NC)"
+	@$(COMPOSE_PROD) up -d --no-build --no-deps frontend
+	@sleep 3
+	@docker ps --filter 'name=restpoint_frontend' --format '{{.Names}}: {{.Status}}'
+	@curl -s -o /dev/null -w '    http://localhost:8080 -> HTTP %{http_code}\n' http://localhost:8080/ || true
+	@echo "$(YELLOW)API calls fail until the backend recovers — run 'make prod-doctor'.$(NC)"
 
 fix-all: check-build-list
 	@echo "$(BLUE)Fixing all services...$(NC)"
