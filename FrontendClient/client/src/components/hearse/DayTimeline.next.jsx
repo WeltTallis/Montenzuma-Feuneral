@@ -130,115 +130,115 @@ const toDateKey = (d) => {
     String(dt.getMonth() + 1).padStart(2, '0') + '-' +
     String(dt.getDate()).padStart(2, '0')
   );
-/* Multi-day bookings carry a JSON array of ISO dates in `booking_dates`.
-   Anything unparsable degrades to an empty list rather than throwing — the
-   day grid must still render the booking. */
-const bookingDatesOf = (b) => {
-  try {
-    const arr = typeof b?.booking_dates === 'string'
-      ? JSON.parse(b.booking_dates)
-      : (b?.booking_dates || []);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-};
-
-/* The specific `booking_dates` entry matching dateKey, else the booking's own
-   date when it matches. Lets multi-day bookings carry a per-day time. */
-const entryForDate = (b, dateKey) => {
-  const hit = bookingDatesOf(b).find(
-    (d) => String(d).split('T')[0].slice(0, 10) === dateKey
-  );
-  if (hit) return hit;
-  const own = b?.booking_date || b?.estimated_departure_time || b?.date || '';
-  return String(own).split('T')[0].slice(0, 10) === dateKey ? own : null;
-};
-
-/* Start hour for this specific day, or null when the booking is untimed
-   (and therefore belongs in the all-day lane). */
-const startHourFor = (b, dateKey) => {
-  const hit = entryForDate(b, dateKey);
-  if (hit && String(hit).length > 10) {
-    const h = parseTimeValue(hit);
-    if (h !== null) return h;
-  }
-  return parseTimeValue(firstFilled(b, START_FIELDS));
-};
-
-/* End hour. Falls back to start + DEFAULT_DUR so a card always has a height,
-   and is forced to be strictly after start (a zero-height card is invisible
-   and looks like a dropped booking). */
-const endHourFor = (b, dateKey, startH) => {
-  if (startH === null) return null;
-  const hit = entryForDate(b, dateKey);
-  let end = null;
-  if (hit && String(hit).length > 10) end = parseTimeValue(hit);
-  if (end === null) end = parseTimeValue(firstFilled(b, END_FIELDS));
-  if (end === null || end <= startH) return startH + DEFAULT_DUR;
-  return end;
-};
-
-const statusColorOf = (b) => STATUS_COLOR[b?.status] || '#2563EB';
-const statusLabelOf = (b) => STATUS_CONFIG[b?.status]?.label || b?.status || 'Booked';
-
-const hourLabel = (h) => {
-  const hr = Math.floor(h);
-  const ap = hr >= 12 ? 'PM' : 'AM';
-  const h12 = hr % 12 === 0 ? 12 : hr % 12;
-  return `${h12} ${ap}`;
-};
-
-const fmtDuration = (start, end) => {
-  const mins = Math.round((end - start) * 60);
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-};
-
-/* Flatten the API's varying field names into the display fields the card
-   markup needs. Kept in one place so the card, the all-day chip, the
-   multi-day chip and the detail panel can never disagree about what a
-   booking is called. */
-const displayFields = (b) => ({
-  client: b.client_name || b.clientName || b.customer_name || b.contact_name || '—',
-  from: b.from_location || b.origin || b.pickup_location || b.departure_point || '—',
-  dest: b.destination || b.to_location || b.destination_name || b.delivery_location || '—',
-  plate: b.plate_number || b.number_plate || b.hearse_plate || b.vehicle_plate || '',
-  phone: b.client_phone || b.phone || '',
-  branch: b.branch_name || b.branch || '',
-});
-
-/* Column layout for overlapping bookings: greedy first-fit into lanes, then
-   widen every booking to the widest lane set it participates in. Without the
-   second pass a short booking tucked beside a long one would only use its own
-   lane width and leave a visible gap. */
-function layoutColumns(items) {
-  const sorted = [...items].sort(
-    (a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start)
-  );
-  const laneEnds = [];
-  sorted.forEach((it) => {
-    let lane = laneEnds.findIndex((e) => it.start >= e);
-    if (lane === -1) {
-      lane = laneEnds.length;
-      laneEnds.push(it.end);
-    } else {
-      laneEnds[lane] = it.end;
+  /* Multi-day bookings carry a JSON array of ISO dates in `booking_dates`.
+     Anything unparsable degrades to an empty list rather than throwing — the
+     day grid must still render the booking. */
+  const bookingDatesOf = (b) => {
+    try {
+      const arr = typeof b?.booking_dates === 'string'
+        ? JSON.parse(b.booking_dates)
+        : (b?.booking_dates || []);
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
     }
-    it.col = lane;
+  };
+
+  /* The specific `booking_dates` entry matching dateKey, else the booking's own
+     date when it matches. Lets multi-day bookings carry a per-day time. */
+  const entryForDate = (b, dateKey) => {
+    const hit = bookingDatesOf(b).find(
+      (d) => String(d).split('T')[0].slice(0, 10) === dateKey
+    );
+    if (hit) return hit;
+    const own = b?.booking_date || b?.estimated_departure_time || b?.date || '';
+    return String(own).split('T')[0].slice(0, 10) === dateKey ? own : null;
+  };
+
+  /* Start hour for this specific day, or null when the booking is untimed
+     (and therefore belongs in the all-day lane). */
+  const startHourFor = (b, dateKey) => {
+    const hit = entryForDate(b, dateKey);
+    if (hit && String(hit).length > 10) {
+      const h = parseTimeValue(hit);
+      if (h !== null) return h;
+    }
+    return parseTimeValue(firstFilled(b, START_FIELDS));
+  };
+
+  /* End hour. Falls back to start + DEFAULT_DUR so a card always has a height,
+     and is forced to be strictly after start (a zero-height card is invisible
+     and looks like a dropped booking). */
+  const endHourFor = (b, dateKey, startH) => {
+    if (startH === null) return null;
+    const hit = entryForDate(b, dateKey);
+    let end = null;
+    if (hit && String(hit).length > 10) end = parseTimeValue(hit);
+    if (end === null) end = parseTimeValue(firstFilled(b, END_FIELDS));
+    if (end === null || end <= startH) return startH + DEFAULT_DUR;
+    return end;
+  };
+
+  const statusColorOf = (b) => STATUS_COLOR[b?.status] || '#2563EB';
+  const statusLabelOf = (b) => STATUS_CONFIG[b?.status]?.label || b?.status || 'Booked';
+
+  const hourLabel = (h) => {
+    const hr = Math.floor(h);
+    const ap = hr >= 12 ? 'PM' : 'AM';
+    const h12 = hr % 12 === 0 ? 12 : hr % 12;
+    return `${h12} ${ap}`;
+  };
+
+  const fmtDuration = (start, end) => {
+    const mins = Math.round((end - start) * 60);
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m ? `${h}h ${m}m` : `${h}h`;
+  };
+
+  /* Flatten the API's varying field names into the display fields the card
+     markup needs. Kept in one place so the card, the all-day chip, the
+     multi-day chip and the detail panel can never disagree about what a
+     booking is called. */
+  const displayFields = (b) => ({
+    client: b.client_name || b.clientName || b.customer_name || b.contact_name || '—',
+    from: b.from_location || b.origin || b.pickup_location || b.departure_point || '—',
+    dest: b.destination || b.to_location || b.destination_name || b.delivery_location || '—',
+    plate: b.plate_number || b.number_plate || b.hearse_plate || b.vehicle_plate || '',
+    phone: b.client_phone || b.phone || '',
+    branch: b.branch_name || b.branch || '',
   });
-  sorted.forEach((it) => {
-    let max = it.col;
-    sorted.forEach((o) => {
-      if (o !== it && o.start < it.end && o.end > it.start && o.col > max) max = o.col;
+
+  /* Column layout for overlapping bookings: greedy first-fit into lanes, then
+     widen every booking to the widest lane set it participates in. Without the
+     second pass a short booking tucked beside a long one would only use its own
+     lane width and leave a visible gap. */
+  function layoutColumns(items) {
+    const sorted = [...items].sort(
+      (a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start)
+    );
+    const laneEnds = [];
+    sorted.forEach((it) => {
+      let lane = laneEnds.findIndex((e) => it.start >= e);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(it.end);
+      } else {
+        laneEnds[lane] = it.end;
+      }
+      it.col = lane;
     });
-    it.tot = max + 1;
-  });
-  return sorted;
-}
-const CSS = `
+    sorted.forEach((it) => {
+      let max = it.col;
+      sorted.forEach((o) => {
+        if (o !== it && o.start < it.end && o.end > it.start && o.col > max) max = o.col;
+      });
+      it.tot = max + 1;
+    });
+    return sorted;
+  }
+  const CSS = `
 .dtl-root{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;color:#000;height:100%;display:flex;flex-direction:column;
   background:#fff}
@@ -358,4 +358,397 @@ const CSS = `
   .dtl-hint{display:none}
 }
 `;
-};
+  const DayTimeline = ({ date, bookings = [], onClose, onItemClick, onDateChange, onCreateBooking }) => {
+    const [selected, setSelected] = useState(null);
+    const [toasts, setToasts] = useState([]);
+    const scrollRef = useRef(null);
+    const toastId = useRef(0);
+
+    const pushToast = useCallback((msg) => {
+      const id = ++toastId.current;
+      setToasts((t) => [...t, { id, msg }]);
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2400);
+    }, []);
+
+    /* Build the Date at LOCAL midnight. `new Date('2026-03-06')` is UTC midnight,
+       which renders as the previous day anywhere west of Greenwich. */
+    const dateKey = toDateKey(date);
+    const dateObj = useMemo(() => {
+      if (!dateKey) return null;
+      const d = new Date(dateKey + 'T00:00:00');
+      return isNaN(d.getTime()) ? null : d;
+    }, [dateKey]);
+
+    const isToday = dateKey !== '' && dateKey === toDateKey(new Date());
+
+    /* ---------- derived booking model ----------
+       The parent already filtered to this day, but membership is re-checked
+       here with the same logic used for time resolution so a booking whose own
+       date field disagrees is dropped rather than rendered at a wrong hour. */
+    const { allDay, timed, multiDay, counts } = useMemo(() => {
+      const list = Array.isArray(bookings) ? bookings : [];
+      const ad = [];
+      const tm = [];
+
+      list.forEach((b) => {
+        if (!entryForDate(b, dateKey)) return;
+        const start = startHourFor(b, dateKey);
+        const rec = {
+          b,
+          id: b.booking_id || b.id,
+          ...displayFields(b),
+          color: statusColorOf(b),
+          label: statusLabelOf(b),
+          span: bookingDatesOf(b).length,
+        };
+        if (start === null) {
+          ad.push(rec);
+        } else {
+          tm.push({ ...rec, start, end: endHourFor(b, dateKey, start) });
+        }
+      });
+
+      const c = {};
+      list.forEach((b) => {
+        const k = b.status || 'booked';
+        c[k] = (c[k] || 0) + 1;
+      });
+
+      return {
+        allDay: ad,
+        timed: layoutColumns(tm),
+        multiDay: list
+          .map((b) => ({ b, span: bookingDatesOf(b).length }))
+          .filter((x) => x.span > 1),
+        counts: c,
+      };
+    }, [bookings, dateKey]);
+
+    const total = allDay.length + timed.length;
+
+    /* Bookings outside the rendered hours are clamped onto the first/last row
+       instead of being dropped — a 04:00 departure still has to be visible. */
+    const clamp = useCallback((h) => Math.max(SH, Math.min(EH - 1, h)), []);
+
+    const shiftDay = useCallback((n) => {
+      if (!dateObj || !onDateChange) return;
+      const d = new Date(dateObj.getTime());
+      d.setDate(d.getDate() + n);
+      onDateChange(toDateKey(d));
+    }, [dateObj, onDateChange]);
+
+    const goToday = useCallback(() => {
+      if (onDateChange) onDateChange(toDateKey(new Date()));
+    }, [onDateChange]);
+    /* ---------- keyboard ----------
+         Escape closes the detail panel first, then the whole overlay — a single
+         Escape should not discard the panel and the timeline at once. */
+    useEffect(() => {
+      const h = (e) => {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); shiftDay(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); shiftDay(1); }
+        else if (e.key === 'Escape') {
+          if (selected) setSelected(null);
+          else if (onClose) onClose();
+        }
+      };
+      window.addEventListener('keydown', h);
+      return () => window.removeEventListener('keydown', h);
+    }, [shiftDay, onClose, selected]);
+
+    /* Scroll to "now" on today, otherwise to the day's first booking. Left at
+       the top when there is nothing to scroll to, so an empty day opens clean. */
+    useEffect(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      let target = null;
+      if (isToday) {
+        const d = new Date();
+        const nowH = d.getHours() + d.getMinutes() / 60;
+        if (nowH >= SH && nowH <= EH) target = (nowH - SH) * ROW_H;
+      } else if (timed.length) {
+        target = (clamp(timed[0].start) - SH) * ROW_H;
+      }
+      if (target !== null) el.scrollTop = Math.max(0, target - ROW_H);
+    }, [dateKey, isToday, timed, clamp]);
+
+    /* Every hook above runs unconditionally; only now is it safe to bail out
+       on an unusable date. */
+    if (!date || !dateObj) return null;
+
+    const hours = [];
+    for (let h = SH; h < EH; h++) hours.push(h);
+
+    const now = new Date();
+    const nowH = now.getHours() + now.getMinutes() / 60;
+    const nowLabel =
+      `${now.getHours() % 12 === 0 ? 12 : now.getHours() % 12}:` +
+      `${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+
+    return createPortal(
+      <div className="dtl-root" style={{ position: 'fixed', inset: 0, zIndex: 5000 }}>
+        <style>{CSS}</style>
+
+        <div ref={scrollRef} className="dtl-scroll">
+          {/* status summary */}
+          {total > 0 && (
+            <div className="dtl-stats">
+              {Object.keys(counts).map((k) => (
+                <span key={k} className="dtl-stat">
+                  <span className="dtl-dot" style={{ background: STATUS_COLOR[k] || '#999' }} />
+                  {counts[k]} {STATUS_CONFIG[k]?.label || k}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* day header */}
+          <div className="dtl-dh">
+            <div className="dtl-nav">
+              <button className="dtl-navbtn" onClick={() => shiftDay(-1)} title="Previous day" aria-label="Previous day">‹</button>
+              <button className="dtl-navbtn" onClick={() => shiftDay(1)} title="Next day" aria-label="Next day">›</button>
+              <button className="dtl-todaybtn" onClick={goToday}>Today</button>
+            </div>
+            <div className="dtl-dhc">
+              <span className="dtl-dn">{dateObj.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+              <span className="dtl-dsub">
+                {dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {' · '}{total} booking{total !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="dtl-sp" />
+            <span className="dtl-hint">← → to change day</span>
+            <button className="dtl-navbtn" onClick={onClose} title="Close" aria-label="Close">×</button>
+          </div>
+
+          {/* multi-day rail */}
+          {multiDay.length > 0 && (
+            <div className="dtl-mdb">
+              <span className="dtl-mdb-l">Multi-day</span>
+              {multiDay.map((m, i) => {
+                const d = displayFields(m.b);
+                return (
+                  <button
+                    key={m.b.booking_id || m.b.id || i}
+                    className="dtl-mdb-i"
+                    style={{ background: statusColorOf(m.b) }}
+                    onClick={() => setSelected({
+                      b: m.b, ...d,
+                      color: statusColorOf(m.b),
+                      label: statusLabelOf(m.b),
+                      span: m.span,
+                    })}
+                  >
+                    {d.client}<span className="dtl-sub">{m.span}d</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {/* day grid */}
+          <div className="dtl-grid">
+            {allDay.length > 0 && (
+              <div className="dtl-allday">
+                <div className="dtl-ad-label">All day</div>
+                <div className="dtl-ad-row">
+                  {allDay.map((it) => (
+                    <button
+                      key={it.id ?? it.client}
+                      className="dtl-adev"
+                      style={{ background: it.color }}
+                      onClick={() => setSelected(it)}
+                    >
+                      {it.client}<span className="dtl-sub">{it.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {total === 0 ? (
+              <div className="dtl-empty">No bookings for this day — click any hour to add one</div>
+            ) : (
+              <div className="dtl-tg">
+                {hours.map((h) => (
+                  <div key={h} className="dtl-trow">
+                    <div className="dtl-tl">{hourLabel(h)}</div>
+                    <div
+                      className="dtl-dc"
+                      role="button"
+                      tabIndex={-1}
+                      aria-label={`Add booking at ${hourLabel(h)}`}
+                      onClick={() => {
+                        if (onCreateBooking) onCreateBooking([dateKey]);
+                        else pushToast(`Add booking at ${hourLabel(h)}`);
+                      }}
+                    />
+                  </div>
+                ))}
+
+                <div className="dtl-ov">
+                  {timed.map((it) => {
+                    const top = (clamp(it.start) - SH) * ROW_H + 2;
+                    const height = Math.max(
+                      MIN_CARD_H,
+                      (Math.min(it.end, EH) - clamp(it.start)) * ROW_H - 4
+                    );
+                    const w = 100 / it.tot;
+                    /* Detail rows are revealed by card HEIGHT, not by a media
+                       query: a 30-minute booking must not try to render a
+                       3-line footer inside a 26px box. */
+                    const showDest = height >= 44;
+                    const showMeta = height >= 92;
+                    return (
+                      <button
+                        key={it.id ?? `${it.client}-${it.start}`}
+                        className="dtl-bb"
+                        style={{
+                          top, height, background: it.color,
+                          left: `calc(${it.col * w}% + 4px)`,
+                          width: `calc(${w}% - 8px)`,
+                        }}
+                        onClick={() => setSelected(it)}
+                      >
+                        <span className="dtl-bb-t">
+                          <span className="dtl-grow">
+                            {hourLabel(it.start)} – {hourLabel(it.end)}
+                          </span>
+                          {it.span > 1 && <span className="dtl-pill">{it.span}d</span>}
+                          <span className="dtl-pill">{fmtDuration(it.start, it.end)}</span>
+                        </span>
+                        <span className="dtl-bb-cl">{it.client}</span>
+                        {showDest && <span className="dtl-bb-sub">→ {it.dest}</span>}
+                        {showMeta && (
+                          <span className="dtl-bb-meta">
+                            {it.plate && <span className="dtl-chip">{it.plate}</span>}
+                            {it.phone && <span className="dtl-chip">{it.phone}</span>}
+                            {it.branch && <span className="dtl-chip">{it.branch}</span>}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {isToday && nowH >= SH && nowH <= EH && (
+                  <div className="dtl-nl" style={{ top: (nowH - SH) * ROW_H }}>
+                    <span className="dtl-nl-l">{nowLabel}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        {/* detail panel */}
+        {selected && (
+          <div className="dtl-panel" role="dialog" aria-label="Booking details">
+            <div className="dtl-panel-h">
+              <span className="dtl-panel-t">Booking Details</span>
+              <button className="dtl-x" onClick={() => setSelected(null)} aria-label="Close">×</button>
+            </div>
+            <div className="dtl-panel-b">
+              <div className="dtl-row" style={{ background: `${selected.color}14` }}>
+                <div
+                  style={{
+                    width: 30, height: 30, borderRadius: 7, background: selected.color,
+                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14, fontWeight: 800, flexShrink: 0,
+                  }}
+                >
+                  {String(selected.client || '?').trim().charAt(0).toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="dtl-row-l">Client</div>
+                  <div className="dtl-row-v">{selected.client}</div>
+                </div>
+              </div>
+
+              <div className="dtl-sec">Schedule</div>
+              <div className="dtl-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="dtl-row-l">
+                    {selected.start != null
+                      ? `${hourLabel(selected.start)} – ${hourLabel(selected.end)} · ${fmtDuration(selected.start, selected.end)}`
+                      : 'All day'}
+                  </div>
+                  <div className="dtl-row-v">
+                    {dateObj.toLocaleDateString('en-US', {
+                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="dtl-sec">Route</div>
+              <div className="dtl-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="dtl-row-l">From</div>
+                  <div className="dtl-row-v">{selected.from}</div>
+                </div>
+              </div>
+              <div className="dtl-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="dtl-row-l">Destination</div>
+                  <div className="dtl-row-v">{selected.dest}</div>
+                </div>
+              </div>
+
+              <div className="dtl-sec">Details</div>
+              <div className="dtl-row">
+                <div style={{ minWidth: 0 }}>
+                  <div className="dtl-row-l">Status</div>
+                  <div className="dtl-row-v" style={{ color: selected.color }}>{selected.label}</div>
+                </div>
+              </div>
+              {selected.plate && (
+                <div className="dtl-row">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="dtl-row-l">Hearse</div>
+                    <div className="dtl-row-v">{selected.plate}</div>
+                  </div>
+                </div>
+              )}
+              {selected.phone && (
+                <div className="dtl-row">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="dtl-row-l">Phone</div>
+                    <div className="dtl-row-v">{selected.phone}</div>
+                  </div>
+                </div>
+              )}
+              {selected.branch && (
+                <div className="dtl-row">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="dtl-row-l">Branch</div>
+                    <div className="dtl-row-v">{selected.branch}</div>
+                  </div>
+                </div>
+              )}
+
+              {onItemClick && (
+                <button
+                  className="dtl-open"
+                  style={{ background: selected.color }}
+                  onClick={() => onItemClick(selected.b)}
+                >
+                  Open Full Booking →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {toasts.length > 0 && (
+          <div className="dtl-toasts">
+            {toasts.map((t) => (
+              <div key={t.id} className="dtl-tm">{t.msg}</div>
+            ))}
+          </div>
+        )}
+      </div>,
+      document.body
+    );
+  }
+}
+
+export default DayTimeline;
