@@ -122,6 +122,7 @@ help:
 	@echo "  make prod-down            - Stop production services"
 	@echo "  make prod-logs            - Production logs"
 	@echo "  make prod-health          - Production health check"
+	@echo "  make prod-doctor          - Diagnose why a service will not start"
 	@echo ""
 	@echo "$(GREEN)── Frontend ────────────────────────────────────────────$(NC)"
 	@echo "  make fix-frontend         - Rebuild ONLY the UI from scratch (no cache)"
@@ -461,9 +462,25 @@ prod-build: check-build-list-prod
 	@set -e; for svc in $(BUILD_SERVICES_PROD); do echo "  -> building $$svc"; $(COMPOSE_PROD) build $$svc; done
 	@echo "$(GREEN)✓ Production build complete$(NC)"
 
+# `up -d` ABORTS the moment any `condition: service_healthy` dependency is not
+# satisfied, which used to leave the box with NO services started at all — one
+# unhealthy database probe took down the entire deployment, including the UI that
+# had nothing to do with the database. Starting in two phases fixes that:
+#
+#   1. infra (mariadb/redis/rabbitmq) — `up -d` here is still all-or-nothing, but
+#      these three have no service_healthy dependents to wait on, so it cannot
+#      cascade.
+#   2. everything else — with infra already running, Compose evaluates the
+#      health conditions against live containers instead of starting from zero.
+#
+# `--wait` is deliberately NOT used: it would reintroduce the same all-or-nothing
+# abort on any service that fails to reach `healthy`.
 prod-up: validate check-build-list-prod check-prod-images
-	@echo "$(BLUE)Starting production services (docker-compose.prod.yml)...$(NC)"
-	@$(COMPOSE_PROD) up -d --no-build
+	@echo "$(BLUE)Phase 1/2: starting infrastructure...$(NC)"
+	@$(COMPOSE_PROD) up -d --no-build mariadb redis rabbitmq
+	@echo "$(BLUE)Phase 2/2: starting application services + UI...$(NC)"
+	@$(COMPOSE_PROD) up -d --no-build || \
+		echo "$(YELLOW)⚠ Some services did not start; the UI is served independently and should still be up.$(NC)"
 	@echo "$(GREEN)✓ Production services started$(NC)"
 	@sleep 30
 	@$(COMPOSE_PROD) ps
@@ -475,6 +492,35 @@ prod-down:
 
 prod-logs:
 	@$(COMPOSE_PROD) logs -f --tail=100
+
+# -----------------------------------------------------------------------------
+# DIAGNOSIS
+# -----------------------------------------------------------------------------
+# `make prod-up` failing with
+#     dependency failed to start: container restpoint_mariadb is unhealthy
+# says nothing about WHY. This target prints the actual health-check output
+# (the real error), the live connection usage, and the containers that are
+# restarting, so the cause is identified in one command instead of guessed at.
+prod-doctor:
+	@echo "$(BLUE)=== Container status ===$(NC)"
+	@$(COMPOSE_PROD) ps -a --format 'table {{.Name}}\t{{.Status}}' 2>/dev/null || docker ps -a --format 'table {{.Names}}\t{{.Status}}'
+	@echo ""
+	@echo "$(BLUE)=== MariaDB health-check output (the real error) ===$(NC)"
+	@docker inspect --format '{{range .State.Health.Log}}{{.ExitCode}}: {{.Output}}{{end}}' restpoint_mariadb 2>/dev/null | tail -n 20 || echo "$(YELLOW)No health log — is the container running?$(NC)"
+	@echo ""
+	@echo "$(BLUE)=== MariaDB connection usage vs limit ===$(NC)"
+	@echo "$(YELLOW)If Max_used_connections approaches max_connections, the limit is the cause.$(NC)"
+	@docker exec restpoint_mariadb sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "SHOW STATUS LIKE '"'"'Max_used_connections'"'"'; SHOW STATUS LIKE '"'"'Threads_connected'"'"'; SHOW VARIABLES LIKE '"'"'max_connections'"'"';"' 2>/dev/null || echo "$(YELLOW)Could not query MariaDB (container may be down).$(NC)"
+	@echo ""
+	@echo "$(BLUE)=== Containers stuck restarting (crash-looping) ===$(NC)"
+	@docker ps -a --filter 'name=restpoint_' --filter 'status=restarting' --format '{{.Names}}' 2>/dev/null | while read -r c; do \
+		echo "$(YELLOW)$c$(NC)"; \
+		docker logs --tail=15 "$$c" 2>&1 | sed 's/^/    /'; \
+	done
+	@echo ""
+	@echo "$(BLUE)=== Is the UI up right now? (served on host :8080) ===$(NC)"
+	@docker ps --filter 'name=restpoint_frontend' --format '{{.Names}}: {{.Status}}' 2>/dev/null || true
+	@curl -s -o /dev/null -w '    http://localhost:8080 -> HTTP %{http_code}\n' http://localhost:8080/ 2>/dev/null || echo "    (no response)"
 
 # ============================================================
 # VALIDATION

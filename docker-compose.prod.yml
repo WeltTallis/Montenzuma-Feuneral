@@ -25,11 +25,19 @@ services:
     networks:
       - restpoint_network
     healthcheck:
+      # `healthcheck.sh --connect` opens a NEW mysqladmin connection on every
+      # probe, so it is the first client to be refused when the server is busy
+      # or briefly at max_connections — which is how a database that was serving
+      # every service perfectly could still report `unhealthy` and, through
+      # `condition: service_healthy`, stop the whole stack from deploying. The
+      # server config was raised to 1000 connections to stop that happening; the
+      # generous retries/start_period below are the second line of defence, so a
+      # short spike degrades to a slow "starting" instead of a hard failure.
       test: [ 'CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized' ]
       interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 90s
 
   redis:
     image: redis:7-alpine
@@ -816,8 +824,24 @@ services:
       # http://127.0.0.1:8080. Pinning to 8080 keeps both in sync.
       - '8080:80'
     depends_on:
+      # `service_started`, NOT `service_healthy` — this is what took the whole UI
+      # offline. The UI is a STATIC nginx bundle: it serves index.html and the
+      # hashed assets from its own container and never needs the gateway to be
+      # up to answer `GET /`. Gating it on the gateway's health check made the
+      # UI's availability a hostage to the gateway's, and the gateway in turn
+      # gates on `mariadb: service_healthy` — so a single unhealthy database
+      # health check produced the cascade
+      #     mariadb unhealthy -> api-gateway never starts -> frontend never starts
+      # and `make prod-up` aborted with
+      #     dependency failed to start: container restpoint_mariadb is unhealthy
+      # leaving NO UI at all, even though nginx was perfectly able to serve the
+      # SPA. The gateway proxies its own API calls at runtime (its /monitoring
+      # and /socket.io proxy_pass targets resolve through Docker DNS, and the
+      # gateway itself retries the backend), so "started" is the correct
+      # prerequisite. The API returning 502 while the backend recovers is far
+      # better than a browser getting connection-refused on the whole app.
       api-gateway:
-        condition: service_healthy
+        condition: service_started
     networks:
       - restpoint_network
     healthcheck:

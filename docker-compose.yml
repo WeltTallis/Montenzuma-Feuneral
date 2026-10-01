@@ -25,11 +25,14 @@ services:
     networks:
       - restpoint_network
     healthcheck:
+      # See the identical note in docker-compose.prod.yml: the `--connect` probe
+      # needs a fresh connection, so retries/start_period are generous enough that
+      # a short spike reads as "starting" rather than `unhealthy`.
       test: [ 'CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized' ]
       interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 90s
 
   redis:
     image: redis:7-alpine
@@ -820,8 +823,13 @@ services:
       # in .env / .env.production is kept at 8080 for documentation only.
       - '8080:80'
     depends_on:
+      # `service_started`, NOT `service_healthy` — see the identical note in
+      # docker-compose.prod.yml. The UI is a STATIC nginx bundle and never needs
+      # the gateway to answer `GET /`; gating on the gateway's health check let
+      # one unhealthy database health check take the entire UI offline via
+      # mariadb -> api-gateway -> frontend.
       api-gateway:
-        condition: service_healthy
+        condition: service_started
     networks:
       - restpoint_network
     healthcheck:

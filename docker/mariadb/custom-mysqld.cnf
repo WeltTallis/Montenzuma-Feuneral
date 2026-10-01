@@ -39,8 +39,27 @@ log_warnings = 2
 
 # --- Connection / thread tuning ----------------------------------------------
 # Helps expose meaningful, actionable connection metrics.
-max_connections = 500
+#
+# max_connections MUST be sized for the whole mesh, not one client. This stack
+# runs ~20 Node services, and EVERY one of them opens its own pools against
+# this server (see shared/dbConfig.ts): a 5-connection root pool plus one
+# 10-connection pool PER TENANT DATABASE (up to 50 cached tenants per service).
+# The previous 500 was therefore reachable from a single busy service, and once
+# the limit was hit the healthcheck's own `--connect` probe (mysqladmin ping)
+# was refused a slot too — so MariaDB flipped to `unhealthy` even while it was
+# serving fine, and `condition: service_healthy` on api-gateway kept the UI
+# from ever starting. 1000 gives real headroom for the mesh; raise further only
+# together with the RAM to back it (each connection costs buffer memory).
+max_connections = 1000
 thread_cache_size = 100
-wait_timeout = 28800
-interactive_timeout = 28800
+
+# Idle-socket reaping. The previous 28800s (8h) meant a leaked/lingering client
+# socket held its slot for the rest of the workday, so a transient burst could
+# permanently saturate max_connections with nothing actually using it. Client
+# pools already close idle connections long before this (5 min in
+# shared/dbConfig.ts), so 600s only ever catches genuine leaks. It applies to
+# IDLE sockets only — a running query is governed by max_execution_time, which
+# stays unset, so long migrations and reports are unaffected.
+wait_timeout = 600
+interactive_timeout = 600
 connect_timeout = 10
