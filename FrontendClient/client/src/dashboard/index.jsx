@@ -29,12 +29,17 @@ import WorkshopPanel from "./WorkshopPanel";
    body-release feed and the postmortem-request feed.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* The section nav. Labels are deliberately short: this row shares the toolbar
+   with the module switch, search, branch, schedule and avatar, and the long
+   forms pushed that right-hand cluster off screen. Every entry keeps its full
+   wording in `full`, which becomes the hover title and the accessible name —
+   so the abbreviations cost nothing in clarity. */
 const NAV = [
-  { id: "command", label: "Operations", icon: "cal" },
-  { id: "intake", label: "Intake Register", icon: "bed" },
-  { id: "release", label: "Releases & Transfers", icon: "heart" },
-  { id: "pm", label: "Postmortem Requests", icon: "vial" },
-  { id: "analytics", label: "Analytics", icon: "grid" },
+  { id: "command", label: "Operations", icon: "cal", full: "Operations" },
+  { id: "intake", label: "Intake", icon: "bed", full: "Intake Register" },
+  { id: "release", label: "Release", icon: "heart", full: "Releases & Transfers" },
+  { id: "pm", label: "PM", icon: "vial", full: "Postmortem Requests" },
+  { id: "analytics", label: "Analytics", icon: "grid", full: "Analytics" },
 ];
 
 const VIEWS = [
@@ -632,6 +637,8 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
                   key={n.id}
                   className={section === n.id ? "on" : ""}
                   onClick={() => onNav(n.id)}
+                  title={n.full}
+                  aria-label={n.full}
                 >
                   <Ic n={n.icon} s={13} />{n.label}
                   {b > 0 ? <span className="nvb">{b}</span> : null}
