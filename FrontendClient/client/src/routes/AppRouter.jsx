@@ -260,12 +260,29 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
           overflow-x:clip;
         }
         .rp-app-body{ min-height:0; }
-        /* The floating menu button is position:fixed at the bottom-left of the
-           VIEWPORT, so at full scroll it lands on top of the footer. Reserving a
-           lane under the footer keeps the button on empty space instead of
-           covering the copyright / WhatsApp links. */
+        /* The floating menu button (ModernSidebar's MobileMenuButton /
+           SingleTenantMenuButton) is position:fixed at bottom:18px, 52px tall
+           on the LEFT edge, so at full scroll it lands on top of the footer.
+           A lane is reserved so the button never covers the copyright /
+           WhatsApp links.
+
+           The reserve is padding on the DARK FOOTER BAR ITSELF
+           (.rp-app-footer > footer), never on the .rp-app-footer wrapper.
+           Padding on the wrapper reserved a transparent strip BELOW the bar,
+           so the dark footer looked raised with a band of empty space under it
+           on every tenant page (deceased profile + list, mini store, apply
+           leave, support). Pushing the bar's own bottom padding grows the bar
+           into the lane instead: the background stays continuous and the
+           button lands on the dark bar, where its white fill and shadow stay
+           visible.
+
+           Specificity note: styled-components compiles FooterBar to a single
+           class, so this element+class selector (0,1,1) outranks it (0,1,0)
+           and wins regardless of stylesheet injection order. */
         @media (max-width:767px){
-          .rp-app-footer{ padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
+          .rp-app-footer > footer{
+            padding-bottom:calc(76px + env(safe-area-inset-bottom, 0px));
+          }
         }
       `}</style>
       {/* minWidth:0 — a flex item defaults to min-width:auto, so ONE wide child

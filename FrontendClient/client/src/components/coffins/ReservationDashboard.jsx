@@ -202,7 +202,19 @@ export default function ReservationDashboard(props) {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  useEffect(function () { setLiveBookings(bookings); }, [bookings]);
+  // `scopedFetched` becomes true once the month-scoped fetch below succeeds.
+  // The parent's `bookings` prop is fetched WITHOUT from/to (coffininventory
+  // line ~1137 `api.get('/coffins/orders')`), and the backend deliberately
+  // returns EVERYTHING when those params are absent. Seeding from that prop
+  // unconditionally meant every parent refresh (socket transfer event, manual
+  // refresh) dumped the whole booking history — months back — back into the
+  // dashboard, so the calendar dots, status counts and analytics all reported
+  // old months instead of the month on screen. Seed from the prop ONLY until
+   // the authoritative month-scoped fetch has landed.
+  var scopedFetched = useRef(false);
+  useEffect(function () {
+    if (!scopedFetched.current) setLiveBookings(bookings);
+  }, [bookings]);
   useEffect(function () { setLiveCoffins(coffins); }, [coffins]);
   useEffect(function () { var t = setInterval(function () { setClock(new Date()); }, 1000); return function () { clearInterval(t); }; }, []);
 
@@ -235,7 +247,11 @@ export default function ReservationDashboard(props) {
   // that month. Coffins (inventory) are not date-scoped, so they are left alone.
   var fetchLive = useCallback(function () {
     if (inFlight.current) return Promise.resolve(); inFlight.current = true; setRefreshing(true);
-    return Promise.all([doFetchOrders(), doFetchCoffins()]).then(function (res) { if (res[0].length) setLiveBookings(res[0]); if (res[1].length) setLiveCoffins(res[1]); setLiveError(null); }).catch(function (err) { setLiveError((err && err.response && err.response.data && err.response.data.message) || (err && err.message) || 'Live refresh failed'); }).finally(function () { inFlight.current = false; setRefreshing(false); });
+    // Always adopt the month-scoped result, INCLUDING an empty one. The previous
+    // `if (res[0].length)` guard meant a month with no bookings silently kept
+    // whatever was already in state — so paging into an empty month still
+    // rendered the previous month's rows instead of an empty calendar.
+    return Promise.all([doFetchOrders(), doFetchCoffins()]).then(function (res) { scopedFetched.current = true; setLiveBookings(res[0]); if (res[1].length) setLiveCoffins(res[1]); setLiveError(null); }).catch(function (err) { setLiveError((err && err.response && err.response.data && err.response.data.message) || (err && err.message) || 'Live refresh failed'); }).finally(function () { inFlight.current = false; setRefreshing(false); });
   }, [monthRange.from, monthRange.to]);
 
   useEffect(function () { fetchLive(); var t = setInterval(function () { if (live) fetchLive(); }, REFRESH_MS); var onVis = function () { if (document.visibilityState === 'visible') fetchLive(); }; document.addEventListener('visibilitychange', onVis); return function () { clearInterval(t); document.removeEventListener('visibilitychange', onVis); }; }, [fetchLive, live]);

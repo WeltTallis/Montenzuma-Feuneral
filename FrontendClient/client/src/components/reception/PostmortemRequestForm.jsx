@@ -145,16 +145,24 @@ const DocHeader = styled.header`
     gap: 24px;
     border-bottom: 1px solid ${C.lineSoft};
 
+    /* Mobile keeps the desktop ROW (title left, QR right) instead of stacking
+       and centring everything. Stacking pushed the QR + date + time into three
+       centred rows and wasted the full width of the card. */
     @media (max-width: 640px) {
-        flex-direction: column;
-        padding: 22px 20px;
-        text-align: center;
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 20px;
+        text-align: left;
     }
 `;
 
 const HeaderLeft = styled.div`
     display: flex; flex-direction: column; gap: 12px; min-width: 0;
-    @media (max-width: 640px) { align-items: center; }
+    /* Let the text column take the slack so the QR is pushed hard right and
+       the two never collide on a narrow phone. */
+    @media (max-width: 640px) { align-items: flex-start; flex: 1; gap: 10px; }
 `;
 
 const ReqIdBadge = styled.div`
@@ -167,12 +175,20 @@ const ReqIdBadge = styled.div`
         display: grid; place-items: center;
     }
 
-    @media (max-width: 640px) { justify-content: center; }
+    /* Left-aligned to START (was centred), and shrunk so the label still fits
+       beside the QR on a 360px screen. */
+    @media (max-width: 640px) {
+        justify-content: flex-start;
+        gap: 9px;
+        font-size: 15px;
+        .ico { width: 26px; height: 26px; }
+    }
 `;
 
 const Timestamps = styled.div`
     display: flex; gap: 20px; flex-wrap: wrap;
-    @media (max-width: 640px) { justify-content: center; }
+    /* Date and time stay SIDE BY SIDE, hugging the start edge. */
+    @media (max-width: 640px) { justify-content: flex-start; gap: 14px; }
 `;
 
 const MetaItem = styled.div`
@@ -181,6 +197,8 @@ const MetaItem = styled.div`
 
     svg { color: ${C.och}; flex: none; }
     b { color: ${C.ink}; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 640px) { font-size: 12px; gap: 5px; }
 `;
 
 const QrWrapper = styled.div`
@@ -193,12 +211,23 @@ const QrBox = styled.div`
     background: #fff;
     box-shadow: 0 2px 8px rgba(33,29,23,.05);
     display: flex; align-items: center; justify-content: center;
+
+    /* QRCodeSVG is rendered with a hard-coded size={88}, which would overflow
+       the smaller mobile box. CSS width/height beat the SVG's own width/height
+       attributes, so this scales it down and keeps it perfectly square —
+       a squashed QR does not scan. */
+    svg { width: 100%; height: 100%; display: block; }
+
+    /* Shrink to 76px on phones so the whole row fits without wrapping. */
+    @media (max-width: 640px) { width: 76px; height: 76px; padding: 6px; }
 `;
 
 const QrLabel = styled.span`
     font-size: 10px; font-weight: 700;
     letter-spacing: .2em; text-transform: uppercase;
     color: ${C.moss}; text-align: center;
+
+    @media (max-width: 640px) { font-size: 8px; letter-spacing: .12em; }
 `;
 
 // ─── Title ──────────────────────────────────────────────────────
@@ -393,7 +422,14 @@ const Alert = styled.div`
     display: flex; align-items: flex-start; gap: 12px;
     padding: 15px 18px; margin-bottom: 24px;
     font-size: 14px; line-height: 1.55;
-    border: 1px solid transparent;
+    border: 1px solid ${C.lineSoft};
+    border-left: 3px solid ${C.inkFaint};
+    /* Kept WHITE, not a saturated tint. These notices used to carry a full
+       moss/och fill, which against the all-white card read as a heavy dark
+       slab sitting on the form. The semantic colour now lives in the left
+       accent + icon only, and the dark body text keeps its contrast. */
+    background: #fff;
+    color: ${C.ink};
     animation: ${fadeUp} .25s ease both;
 
     svg { flex: none; margin-top: 2px; }
@@ -401,22 +437,24 @@ const Alert = styled.div`
     small { opacity: .8; display: block; margin-top: 4px; }
 
     ${p => p.$type === 'success' && `
-        background: ${C.mossBg}; color: #2a3825; border-color: #d5e0cd;
+        border-left-color: ${C.moss};
         svg { color: ${C.moss}; }
     `}
     ${p => p.$type === 'error' && `
-        background: ${C.oxBg}; color: #5a1f1a; border-color: #edd3ce;
+        border-left-color: ${C.ox};
         svg { color: ${C.ox}; }
     `}
     ${p => !p.$type && `
-        background: ${C.ochBg}; color: #5a3f12; border-color: #eee0c2;
+        border-left-color: ${C.och};
         svg { color: ${C.och}; }
     `}
 `;
 
 // ─── Found case card ────────────────────────────────────────────
 const CaseCard = styled.div`
-    background: ${C.paperSoft};
+    /* White, matching the card it sits on. It previously used paperSoft
+       (#fcfbf8) with a moss left edge, which read as a filled block. */
+    background: #fff;
     border: 1px solid ${C.lineSoft};
     border-left: 3px solid ${C.moss};
     padding: 4px 20px;
