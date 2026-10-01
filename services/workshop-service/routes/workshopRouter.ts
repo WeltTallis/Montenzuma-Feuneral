@@ -6,7 +6,9 @@ import {
     getOrder,
     createOrder,
     updateOrder,
-    deleteOrder
+    deleteOrder,
+    holdOrder,
+    releaseOrder
 } from '../controllers/coffinOrderController'
 
 import {
@@ -72,6 +74,12 @@ workshopRouter.post('/orders', createOrder)
 workshopRouter.get('/orders/:id', getOrder)
 workshopRouter.patch('/orders/:id', updateOrder)
 workshopRouter.delete('/orders/:id', deleteOrder)
+
+// Hold / release — pause a job (e.g. the assigned worker is on leave) and put
+// it back exactly where it was. Declared BEFORE '/orders/:id/...' style routes
+// would matter, but these are distinct literals so order is not load-bearing.
+workshopRouter.post('/orders/:id/hold', holdOrder)
+workshopRouter.post('/orders/:id/release', releaseOrder)
 
 // ============ PRODUCTION STAGES ============
 workshopRouter.get('/orders/:orderId/stages', getStages)

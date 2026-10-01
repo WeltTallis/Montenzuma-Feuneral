@@ -102,7 +102,7 @@ export default function LoginPage() {
         email: identifier.trim(),
         password: password.trim()
       });
-      
+
       if (response && response.success) {
         toast.success('Login successful! Welcome back.', {
           position: "top-right",
@@ -182,7 +182,7 @@ export default function LoginPage() {
         
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth}
-        body{font-family:'Inter',sans-serif;color:${C.gray};background:${C.white};-webkit-font-smoothing:antialiased}
+        body{font-family:'Inter',sans-serif;color:${C.gray};-webkit-font-smoothing:antialiased}
         h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
         
         .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: ${C.white}; }

@@ -456,6 +456,45 @@ const WorkshopDashboard = () => {
         WebkitFontSmoothing: 'antialiased'
       }}>
         <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 24px 48px' }}>
+          {/* ── Admin action bar ──────────────────────────────────────────
+              Worker registration was fully built but UNREACHABLE: the modal
+              (ModalRouter type="createWorker"), the submit handler
+              (createWorker -> POST /workshop/workers) and the "Add Worker"
+              heading all existed, yet NOTHING in the workshop ever called
+              setModal('createWorker'). Orders and Materials each open their
+              own modal from their own tab, so the button had nowhere to live.
+
+              It sits above the tabs, not inside one, because workers are used
+              by every tab (they are the assign target on an order) and there
+              is no Workers tab of its own. */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 12, flexWrap: 'wrap', marginBottom: 16,
+          }}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: S.text }}>Workshop</h2>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: S.textMuted }}>
+                {workers.length} worker{workers.length !== 1 ? 's' : ''} registered
+              </p>
+            </div>
+            <button
+              onClick={() => setModal('createWorker')}
+              className="btn btn-primary"
+              style={{
+                background: S.primary, color: '#fff', border: 'none',
+                padding: '10px 18px', borderRadius: 8, fontWeight: 700,
+                fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                transition: S.transition, whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = S.primaryDark}
+              onMouseLeave={e => e.currentTarget.style.background = S.primary}
+            >
+              <i className="fas fa-user-plus" style={{ fontSize: 12 }} /> Register Worker
+            </button>
+          </div>
+
           <WorkshopTabs activeTab={tab} onTabChange={setTab} />
           <div style={{ marginTop: 24 }}>
             {tab === 'orders' && <OrdersTab />}

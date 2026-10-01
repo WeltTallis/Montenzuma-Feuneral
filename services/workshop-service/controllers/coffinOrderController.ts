@@ -305,10 +305,144 @@ const deleteOrder = async (req: Request, res: Response) => {
     }
 };
 
+/* ============================================================================
+ * HOLD / RELEASE  — pause a coffin order (e.g. the assigned worker is on
+ * leave) and later put it back exactly where it was.
+ *
+ * Why this needs its own endpoints rather than a generic status PATCH:
+ *   - a hold REQUIRES a reason, so the caller must supply one
+ *   - releasing must restore the PREVIOUS status, not guess a default. An
+ *     order held while "assembly" has to come back to "assembly", not to
+ *     "pending" — otherwise releasing silently rewinds production.
+ * ========================================================================== */
+
+// Idempotent column bootstrap. The workshop tenant tables are created at
+// runtime (same pattern as storeController's ensureStoreTables), so existing
+// tenants gain the columns on first use without a manual migration.
+const ensureHoldColumns = async (tenantDb: string) => {
+    const hasColumn = async (col: string) => {
+        const rows: any = await safeTenantQuery(
+            tenantDb,
+            `SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'coffin_orders' AND COLUMN_NAME = ?`,
+            [col]
+        );
+        return Number(rows?.[0]?.n || 0) > 0;
+    };
+    const add = async (sql: string) => {
+        try { await safeTenantExecute(tenantDb, sql); }
+        catch (e: any) { console.error('[WORKSHOP] hold column bootstrap failed:', e.message); }
+    };
+    if (!(await hasColumn('hold_reason')))
+        await add('ALTER TABLE `coffin_orders` ADD COLUMN `hold_reason` TEXT NULL');
+    if (!(await hasColumn('on_hold_at')))
+        await add('ALTER TABLE `coffin_orders` ADD COLUMN `on_hold_at` VARCHAR(255) NULL');
+    if (!(await hasColumn('on_hold_by')))
+        await add('ALTER TABLE `coffin_orders` ADD COLUMN `on_hold_by` VARCHAR(255) NULL');
+    if (!(await hasColumn('status_before_hold')))
+        await add('ALTER TABLE `coffin_orders` ADD COLUMN `status_before_hold` VARCHAR(50) NULL');
+};
+
+/*
+    @route  POST /api/workshop/orders/:id/hold
+    @desc   Pause a coffin order. Requires a reason.
+*/
+const holdOrder = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+
+        const { reason } = req.body || {};
+        const clean = String(reason || '').trim();
+        // A hold without a reason is not auditable â€” the whole point of holding
+        // is to record WHY the job stopped, so it is enforced, not optional.
+        if (!clean) return res.status(400).json({ error: 'A hold reason is required' });
+        if (clean.length > 500) return res.status(400).json({ error: 'Reason is too long (max 500 characters)' });
+
+        await ensureHoldColumns(tenantDb);
+
+        const rows: any = await safeTenantQuery(
+            tenantDb,
+            'SELECT id, status FROM coffin_orders WHERE id = ?',
+            [req.params.id]
+        );
+        if (!rows?.length) return res.status(404).json({ error: 'Order not found' });
+        if (rows[0].status === 'on_hold') {
+            return res.status(409).json({ error: 'Order is already on hold' });
+        }
+
+        const heldBy =
+            (req as any).user?.full_name || (req as any).user?.name ||
+            (req as any).user?.email || 'admin';
+
+        // status_before_hold preserves the exact prior state so release() can
+        // put the job back where it was.
+        await safeTenantExecute(
+            tenantDb,
+            `UPDATE coffin_orders
+             SET status = 'on_hold', hold_reason = ?, on_hold_at = ?, on_hold_by = ?,
+                 status_before_hold = status
+             WHERE id = ?`,
+            [clean, new Date().toISOString(), heldBy, req.params.id]
+        );
+
+        try { getIO()?.emit('workshop:order-held', { id: req.params.id, reason: clean, by: heldBy }); }
+        catch { /* sockets are best-effort */ }
+
+        res.json({ success: true, id: req.params.id, status: 'on_hold', reason: clean, heldBy });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/*
+    @route  POST /api/workshop/orders/:id/release
+    @desc   Release a held coffin order back to the status it had before.
+*/
+const releaseOrder = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+
+        await ensureHoldColumns(tenantDb);
+
+        const rows: any = await safeTenantQuery(
+            tenantDb,
+            'SELECT id, status, status_before_hold FROM coffin_orders WHERE id = ?',
+            [req.params.id]
+        );
+        if (!rows?.length) return res.status(404).json({ error: 'Order not found' });
+        if (rows[0].status !== 'on_hold') {
+            return res.status(409).json({ error: 'Order is not on hold' });
+        }
+
+        // Fall back to 'pending' only if there is nothing recorded to restore.
+        const restored = rows[0].status_before_hold || 'pending';
+
+        await safeTenantExecute(
+            tenantDb,
+            `UPDATE coffin_orders
+             SET status = ?, hold_reason = NULL, on_hold_at = NULL, on_hold_by = NULL,
+                 status_before_hold = NULL
+             WHERE id = ?`,
+            [restored, req.params.id]
+        );
+
+        try { getIO()?.emit('workshop:order-released', { id: req.params.id, status: restored }); }
+        catch { /* sockets are best-effort */ }
+
+        res.json({ success: true, id: req.params.id, status: restored });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 export {
     getOrders,
     getOrder,
     createOrder,
     updateOrder,
-    deleteOrder
+    deleteOrder,
+    holdOrder,
+    releaseOrder
 };

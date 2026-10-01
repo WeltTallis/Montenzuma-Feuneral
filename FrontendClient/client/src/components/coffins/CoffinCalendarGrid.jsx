@@ -39,6 +39,13 @@ const ST = {
 
 const statusOf = (b) => ST[b?.status] || ST.pending;
 
+/* Translucent chip tint for a status colour: the 6-digit hex plus a 2-digit
+   alpha ("14" ≈ 8%). Using hex + alpha keeps the tint locked to whatever the
+   status palette says, so a new status can never land on a hard-coded colour.
+   Requires a 6-digit hex — the palette above satisfies that, and the `+ 14`
+   on a named colour like "red" would produce an invalid 8-char string. */
+const tintOf = (color) => (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color) ? color + '14' : color);
+
 /* "14:30" -> 14.5 ; anything unparsable -> null (untimed lane). */
 const parseHour = (t) => {
   if (!t) return null;
