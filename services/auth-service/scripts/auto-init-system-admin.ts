@@ -50,13 +50,13 @@ export async function autoInitSystemAdmin() {
                     database: 'tenant_tracking'
                 });
                 connected = true;
-                console.log('✅ Connected to database');
+
             } catch (connErr) {
                 // If access denied, do not attempt auto-provisioning during startup in production.
                 // Instead, instruct operator to run the bootstrap tool with admin credentials.
                 const error: any = connErr;
                 if (error && (error.code === 'ER_ACCESS_DENIED_ERROR' || (error.message && error.message.includes('Access denied')))) {
-                    console.error('❌ Database access denied for configured DB user. Auto-provisioning is disabled at startup to avoid unexpected privilege escalations.');
+                    console.error(' Database access denied for configured DB user. Auto-provisioning is disabled at startup to avoid unexpected privilege escalations.');
                     console.error('To provision the database and user, run the provided bootstrap script with administrator credentials (DB_ADMIN_USER / DB_ADMIN_PASSWORD).');
                     console.error(`Configured DB_USER=${process.env.DB_USER}, DB_HOST=${process.env.DB_HOST}, DB_PORT=${process.env.DB_PORT}`);
                     throw error; // bubble to outer catch and return appropriate failure
@@ -74,7 +74,7 @@ export async function autoInitSystemAdmin() {
         }
 
         // Create tenant_tracking database and tables FIRST
-        console.log('🔨 Creating system admin user...');
+        console.log(' Creating system admin user...');
         await connection.query('CREATE DATABASE IF NOT EXISTS tenant_tracking');
         await connection.query('USE tenant_tracking');
         console.log('Using tenant_tracking database');
@@ -258,34 +258,82 @@ export async function autoInitSystemAdmin() {
                 tenantId
             ]);
             await connection.query('USE tenant_tracking');
-            console.log(`✅ System admin ensured inside tenant database '${SYSTEM_ADMIN.dbName}'`);
+            console.log(` System admin ensured inside tenant database '${SYSTEM_ADMIN.dbName}'`);
         } catch (mirrorErr: any) {
             try { await connection.query('USE tenant_tracking'); } catch { /* ignore */ }
-            console.warn(`⚠️  Could not mirror admin into tenant DB '${SYSTEM_ADMIN.dbName}': ${mirrorErr?.message || mirrorErr}`);
+            console.warn(` Could not mirror admin into tenant DB '${SYSTEM_ADMIN.dbName}': ${mirrorErr?.message || mirrorErr}`);
         }
 
         // Hash password
         const passwordHash = bcrypt.hashSync(SYSTEM_ADMIN.password, 10);
 
-        // Create system admin user
-        await connection.query(`
-            INSERT INTO users (
-                email, password_hash, full_name, phone, 
-                role, tenant_id, is_verified, is_active
-            ) VALUES (?, ?, ?, ?, ?, ?, 1, 1)
-            ON DUPLICATE KEY UPDATE 
-                password_hash = VALUES(password_hash),
-                role = VALUES(role),
-                is_active = 1,
-                is_verified = 1
-        `, [
-            SYSTEM_ADMIN.email,
-            passwordHash,
-            SYSTEM_ADMIN.fullName,
-            SYSTEM_ADMIN.phone,
-            SYSTEM_ADMIN.role,
-            tenantId
-        ]);
+        // `users.user_id` has the SAME shape problem as `tenants.id` above, and
+        // it is the one that actually breaks login.
+        //
+        // The CREATE TABLE at the top of this file declares
+        //     user_id INT AUTO_INCREMENT PRIMARY KEY
+        // but that statement is a NO-OP whenever the table already exists, and
+        // on tenant-service-provisioned installs `users` was created by
+        // migration 003_create_users_table (shared/services/all-service-migrations.ts)
+        // as:
+        //     user_id VARCHAR(36) PRIMARY KEY
+        // — a UUID key with NO default and NO auto-increment. The INSERT below
+        // lists only the non-key columns, so MySQL rejects it:
+        //     Field 'user_id' doesn't have a default value  (ERROR 1364)
+        // The system admin was therefore never created and every login failed
+        // with "Invalid email or password".
+        //
+        // Detect the column the same way `tenants.id` is detected above and
+        // supply a UUID explicitly when the key is not auto-populated.
+        let userNeedsExplicitId = false;
+        try {
+            const [uCol] = await connection.query(
+                `SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = 'tenant_tracking' AND TABLE_NAME = 'users' AND COLUMN_NAME = 'user_id'`
+            );
+            userNeedsExplicitId = uCol.length > 0 && !/auto_increment/i.test(uCol[0].EXTRA || '');
+        } catch { /* default false — plain auto-increment install */ }
+
+        if (userNeedsExplicitId) {
+            await connection.query(`
+                INSERT INTO users (
+                    user_id, email, password_hash, full_name, phone,
+                    role, tenant_id, is_verified, is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)
+                ON DUPLICATE KEY UPDATE
+                    password_hash = VALUES(password_hash),
+                    role = VALUES(role),
+                    is_active = 1,
+                    is_verified = 1
+            `, [
+                require('crypto').randomUUID(),
+                SYSTEM_ADMIN.email,
+                passwordHash,
+                SYSTEM_ADMIN.fullName,
+                SYSTEM_ADMIN.phone,
+                SYSTEM_ADMIN.role,
+                tenantId
+            ]);
+        } else {
+            await connection.query(`
+                INSERT INTO users (
+                    email, password_hash, full_name, phone,
+                    role, tenant_id, is_verified, is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, 1, 1)
+                ON DUPLICATE KEY UPDATE
+                    password_hash = VALUES(password_hash),
+                    role = VALUES(role),
+                    is_active = 1,
+                    is_verified = 1
+            `, [
+                SYSTEM_ADMIN.email,
+                passwordHash,
+                SYSTEM_ADMIN.fullName,
+                SYSTEM_ADMIN.phone,
+                SYSTEM_ADMIN.role,
+                tenantId
+            ]);
+        }
 
         // Get the user_id
         const [usersResult] = await connection.query(
@@ -294,11 +342,9 @@ export async function autoInitSystemAdmin() {
         );
         const userId = usersResult[0]?.user_id;
 
-        console.log('✅ System admin user created successfully!');
+        console.log(' System admin user created successfully!');
         console.log(`   Email: ${SYSTEM_ADMIN.email}`);
-        console.log(`   Role: ${SYSTEM_ADMIN.role}`);
-        console.log(`   User ID: ${userId}`);
-        console.log(`   Tenant ID: ${tenantId}`);
+
 
         return {
             success: true,
@@ -310,7 +356,7 @@ export async function autoInitSystemAdmin() {
         };
 
     } catch (error: any) {
-        console.error('❌ Error initializing system admin:', error.message);
+        console.error(' Error initializing system admin:', error.message);
         return {
             success: false,
             message: error.message,
@@ -327,7 +373,7 @@ export async function autoInitSystemAdmin() {
 if (require.main === module) {
     autoInitSystemAdmin()
         .then(result => {
-            console.log('\n📊 Initialization Result:', result);
+            console.log('\n Initialization Result:', result);
             process.exit(result.success ? 0 : 1);
         })
         .catch(error => {

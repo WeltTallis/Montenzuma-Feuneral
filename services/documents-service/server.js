@@ -19,7 +19,17 @@ const sharp = require('sharp');
 // attachTenantFromClaims(), which OVERWRITES req.tenantSlug with the tenant from
 // the signed claims. That is what turns the client-supplied `x-tenant-slug`
 // header from an authority into a hint — see the router mount at the bottom.
-const { protect, authorizeAny } = require('../../app-global/middlewares/authMiddleware');
+// ONE level up, not two. server.js lives at
+// /usr/src/app/services/documents-service/server.js and the image copies
+// services/app-global to /usr/src/app/services/app-global, so `../app-global`
+// is the path that resolves. The old `../../app-global/...` resolved to
+// /usr/src/app/app-global (outside the copied tree) and made the process die on
+// boot with:
+//     Error: Cannot find module '../../app-global/middlewares/authMiddleware'
+// This require is a HARD require, so the service crash-looped; the identical
+// require at the bottom of this file is wrapped in try/catch and merely fell
+// back to a default, which is why the inconsistency went unnoticed.
+const { protect, authorizeAny } = require('../app-global/middlewares/authMiddleware');
 
 // Safely import centralized upload service (fallback to local if missing)
 let centralizedUploadService;

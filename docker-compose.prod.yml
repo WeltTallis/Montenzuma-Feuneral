@@ -872,7 +872,11 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/' ]
+      # busybox wget, not GNU wget. `nginx:alpine` ships no `wget` package, so
+      # `wget` is busybox's, which supports neither `--no-verbose` nor `--tries`
+      # and exited non-zero on every probe — marking a perfectly healthy SPA
+      # `unhealthy`. `-q -O /dev/null` are supported and exit 0 only on a 200.
+      test: [ 'CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost/' ]
       interval: 30s
       timeout: 10s
       retries: 3

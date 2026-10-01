@@ -849,7 +849,10 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/' ]
+      # busybox wget, not GNU wget — `nginx:alpine` ships no `wget` package, so
+      # `wget` is busybox's and supports neither `--no-verbose` nor `--tries`.
+      # See the identical note in docker-compose.prod.yml.
+      test: [ 'CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost/' ]
       interval: 30s
       timeout: 10s
       retries: 3

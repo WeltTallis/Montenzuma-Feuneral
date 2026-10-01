@@ -233,7 +233,16 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+# busybox wget, NOT GNU wget. `nginx:alpine` has no `wget` package installed, so
+# `wget` here is busybox's, whose option set is:
+#     [-cqS] [--spider] [-O FILE] [-o LOGFILE] [--header STR] ... [-T SEC]
+# It has NO `--no-verbose` and NO `--tries`, so the previous
+#     wget --no-verbose --tries=1 --spider http://localhost/
+# exited non-zero with "unrecognized option" on every probe. The SPA was serving
+# perfectly the whole time (real traffic in the access log) while Docker marked
+# the container `unhealthy` — purely a broken probe. `-q -O /dev/null` are both
+# supported by busybox and do a real GET, exiting 0 only on a 200.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+    CMD wget -q -O /dev/null http://localhost/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
