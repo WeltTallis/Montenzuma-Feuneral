@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
+import { api } from '../../api';
+import { ENDPOINTS } from '../../api/endpoints';
+import { getUserId, getParentTenantSlug } from '../../utils/globalAuth';
+import { hasUnseenDecisions } from '../../utils/leaveDecisionBadge';
+import { isWorkshopAdmin } from '../../utils/workshopRole';
+import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight, BookOpen } from '../../utils/icons/icons';
 
 // ============================================================
 // DESIGN SYSTEM
@@ -115,6 +120,7 @@ const MenuItem = styled.div`
 `;
 
 const MenuItemIcon = styled.span`
+  position: relative;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -151,6 +157,19 @@ const MenuBadge = styled.span`
   opacity: ${(props) => (props.$visible ? 1 : 0)};
   transition: opacity ${TRANSITIONS.default};
   flex-shrink: 0;
+`;
+
+const LeaveAlertDot = styled.span`
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EF4444;
+  box-shadow: 0 0 0 2px ${COLORS.white};
+  pointer-events: none;
+  z-index: 2;
 `;
 
 const CollapsedItem = styled.div`
@@ -544,6 +563,40 @@ const ModernSidebar = ({
 
   const tenantSlug = getTenantSlug();
 
+  // ── Red dot on "Apply Leave" ──────────────────────────────────────────────
+  // Shows ONLY when an approver has decided one of THIS user's requests
+  // (approved/rejected) and they have not opened the Apply Leave page since.
+  // Deliberately NOT a new notification system — it is a badge on the existing
+  // nav item. Polled because an approval lands while the user is elsewhere in
+  // the app, and a one-shot fetch on mount would never notice it.
+  const [leaveAlert, setLeaveAlert] = useState(false);
+
+  useEffect(() => {
+    const uid = getUserId();
+    if (!uid) return undefined;
+
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const parentSlug = getParentTenantSlug() || getTenantSlug();
+        const headers = { 'x-tenant-slug': parentSlug, 'x-user-id': String(uid) };
+        const res = await api.get(ENDPOINTS.LEAVE.MY_LEAVES, { headers });
+        const rows = res?.data?.data || res?.data || [];
+        if (!cancelled && Array.isArray(rows)) {
+          setLeaveAlert(hasUnseenDecisions(rows, uid));
+        }
+      } catch {
+        // Leave service unreachable — never show a false "you have news" dot.
+        if (!cancelled) setLeaveAlert(false);
+      }
+    };
+
+    check();
+    const poll = setInterval(check, 60000);
+    return () => { cancelled = true; clearInterval(poll); };
+  }, [location.pathname]);
+
   // Debug log to show what slug we're using
   console.log('[ModernSidebar] Final tenant slug:', tenantSlug);
 
@@ -613,6 +666,12 @@ const ModernSidebar = ({
         { icon: Calendar, label: 'Leaves Dashboard', path: `/${tenantSlug}/leaves` },
         { icon: FileText, label: 'Apply Leave', path: `/${tenantSlug}/leaves/apply` },
         { icon: LifeBuoy, label: 'Support', path: `/${tenantSlug}/support` },
+        // Admin-only: the Store tab's Calendar + History, split out of the
+        // workshop so floor staff keep a plain stock list. Hidden (not merely
+        // disabled) for workers so they are never offered a dead end.
+        ...(isWorkshopAdmin()
+          ? [{ icon: BookOpen, label: 'Store Journal', path: `/${tenantSlug}/workshop/store-journal` }]
+          : []),
       ]
     }
   ];
@@ -706,6 +765,7 @@ const ModernSidebar = ({
         <MenuItemIcon $active={isActive(item.path)}>
           <item.icon size={20} />
         </MenuItemIcon>
+        {leaveAlert && item.label === 'Apply Leave' && <LeaveAlertDot />}
         <MenuItemLabel $active={isActive(item.path)} $visible={visible}>
           {item.label}
         </MenuItemLabel>
@@ -729,6 +789,7 @@ const ModernSidebar = ({
         <MenuItemIcon $active={isActive(item.path)}>
           <item.icon size={20} />
         </MenuItemIcon>
+        {leaveAlert && item.label === 'Apply Leave' && <LeaveAlertDot />}
         {item.badge && (
           <span style={{
             position: 'absolute',
@@ -813,7 +874,18 @@ const ModernSidebar = ({
     );
   }
 
-  // ─── DESKTOP VIEW (multi-branch) ────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+  //  DESKTOP VIEW (multi-branch) 
   return (
     <SidebarWrapper>
       <SidebarContainer $isOpen={isOpen}>

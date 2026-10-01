@@ -3,6 +3,9 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { api, ENDPOINTS } from '../../api';
 import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globalAuth';
+// Clears the red dot on the "Apply Leave" nav item: being on this page IS the
+// "I have seen it" signal.
+import { markDecisionsSeen } from '../../utils/leaveDecisionBadge';
 import notify from '../../utils/notify';
 import { Calendar, FileText, Upload, X, CheckCircle, AlertCircle, Loader2, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
 
@@ -106,7 +109,6 @@ const statusColors = {
 const Container = styled.div`
   max-width: 1280px;
   margin: 0 auto;
-  background: ${C.bgApp};
   font-family: 'Source Sans 3', -apple-system, sans-serif;
   padding: 2rem 1rem;
   color: ${C.black};
@@ -362,49 +364,6 @@ const LoadingRow = styled.div`
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 `;
 
-// History Section
-const HistoryCard = styled.div`
-  margin-top: 1.5rem; background: ${C.bgSection}; border: 1px solid ${C.borderLight};
-  border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
-`;
-
-const HistoryHead = styled.div`
-  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-  flex-wrap: wrap; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid ${C.borderLight};
-`;
-
-const FilterRow = styled.div` display: flex; gap: 0.5rem; flex-wrap: wrap; `;
-const FilterChip = styled.button`
-  border: 1px solid ${C.border}; background: ${C.bgSection}; color: ${C.gray};
-  border-radius: 999px; padding: 0.4rem 0.85rem; font-size: 0.75rem; font-weight: 600;
-  cursor: pointer; text-transform: capitalize; transition: all 0.2s;
-  &:hover { border-color: ${C.exportBtn}; color: ${C.exportBtn}; }
-  ${(p) => p.$active && `border-color: ${C.exportBtn}; background: ${C.exportBtn}; color: #fff;`}
-`;
-
-const HistRow = styled.div`
-  border-radius: 8px; padding: 1rem 1.25rem; margin-top: 0.75rem;
-  border: 1px solid ${C.borderLight}; border-left: 4px solid transparent;
-  background: ${(p) => (statusColors[p.$status] || statusColors.pending).bg};
-  border-left-color: ${(p) => (statusColors[p.$status] || statusColors.pending).fg};
-`;
-
-const HistTop = styled.div` display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; `;
-const HistType = styled.span` font-size: 0.95rem; font-weight: 700; color: ${C.black}; text-transform: capitalize; `;
-const RefCode = styled.span`
-  font-size: 0.75rem; font-family: monospace; color: ${C.gray};
-  background: rgba(255,255,255,0.5); padding: 0.15rem 0.5rem; border-radius: 4px;
-`;
-const HistMeta = styled.div` margin-top: 0.5rem; font-size: 0.85rem; color: ${C.mid}; font-weight: 500; `;
-const HistReason = styled.div`
-  margin-top: 0.5rem; font-size: 0.85rem; color: ${C.black};
-  background: rgba(255,255,255,0.6); border-radius: 6px; padding: 0.75rem 1rem;
-`;
-const RejectBox = styled.div`
-  margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;
-  font-size: 0.85rem; color: ${C.danger}; font-weight: 600;
-`;
-
 // ===== CALENDAR LOGIC =====
 
 function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
@@ -573,7 +532,6 @@ const ApplyLeave = () => {
   const [form, setForm] = useState({ type: '', priority: 'medium', reason: '' });
   const [file, setFile] = useState(null);
   const [drag, setDrag] = useState(false);
-  const [historyFilter, setHistoryFilter] = useState('all');
 
   const loadData = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
@@ -592,6 +550,13 @@ const ApplyLeave = () => {
   }, [userId, tenantHeaders]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Opening this page means the user has seen any decision on their requests,
+  // so clear the red dot on the sidebar's Apply Leave icon. Done in an effect
+  // (not during render) so it never writes to localStorage mid-render.
+  useEffect(() => {
+    if (!loading && myLeaves.length) markDecisionsSeen(myLeaves, userId);
+  }, [loading, myLeaves, userId]);
 
   // The banner is a persistent summary; the toast is the immediate feedback.
   // Clear it after a few seconds so it never sits there looking stale.
@@ -625,22 +590,6 @@ const ApplyLeave = () => {
     [myLeaves]
   );
   const recentRequests = useMemo(() => myLeaves.slice(0, 6), [myLeaves]);
-
-  const historyCounts = useMemo(() => {
-    const c = { all: myLeaves.length, pending: 0, approved: 0, rejected: 0, cancelled: 0 };
-    myLeaves.forEach((l) => {
-      const s = String(l.status || '').toLowerCase();
-      if (c[s] !== undefined) c[s] += 1;
-    });
-    return c;
-  }, [myLeaves]);
-
-  const filteredRequests = useMemo(
-    () => (historyFilter === 'all'
-      ? myLeaves
-      : myLeaves.filter((l) => String(l.status || '').toLowerCase() === historyFilter)),
-    [myLeaves, historyFilter]
-  );
 
   const handleRangeChange = useCallback((start, end) => {
     setRange({ start, end });
@@ -769,7 +718,7 @@ const ApplyLeave = () => {
       <Header>
         <HeaderContent>
           <Title>Apply for Leave</Title>
-          <Subtitle>Hi {userName} — select your dates on the calendar, fill in the details and submit.</Subtitle>
+          <Subtitle>Hi {userName} select your dates on the calendar .</Subtitle>
         </HeaderContent>
         <CardTitleAction onClick={() => navigate(-1)}>
           <ChevronLeft size={14} /> Back
@@ -971,58 +920,6 @@ const ApplyLeave = () => {
           </Card>
         </div>
       </Layout>
-
-      <HistoryCard>
-        <HistoryHead>
-          <CardTitle style={{ margin: 0 }}><FileText size={18} /> My leave applications</CardTitle>
-          <FilterRow>
-            {['all', 'pending', 'approved', 'rejected', 'cancelled'].map((s) => (
-              <FilterChip key={s} $active={historyFilter === s} onClick={() => setHistoryFilter(s)}>
-                {s} ({historyCounts[s] ?? 0})
-              </FilterChip>
-            ))}
-          </FilterRow>
-        </HistoryHead>
-
-        {loading ? (
-          <LoadingRow><Loader2 size={16} /> Loading your applications...</LoadingRow>
-        ) : filteredRequests.length === 0 ? (
-          <Empty>
-            {historyFilter === 'all'
-              ? 'No leave applications yet — select your dates above and submit your first request.'
-              : `No ${historyFilter} applications.`}
-          </Empty>
-        ) : (
-          filteredRequests.map((l) => {
-            const st = String(l.status || 'pending').toLowerCase();
-            return (
-              <HistRow key={l.id || `${l.start_date}-${l.end_date}-${l.created_at}`} $status={st}>
-                <HistTop>
-                  <HistType>
-                    {String(l.leave_type || 'leave').replace('_', ' ')}
-                    {l.is_half_day ? ' · half day' : ''}
-                  </HistType>
-                  {l.reference_code && <RefCode>{l.reference_code}</RefCode>}
-                  <StatusBadge $status={st}>{st}</StatusBadge>
-                  {st === 'pending' && (
-                    <CancelBtn onClick={() => handleCancel(l.id)}>Cancel request</CancelBtn>
-                  )}
-                </HistTop>
-                <HistMeta>
-                  {formatDate(l.start_date)} &rarr; {formatDate(l.end_date)}
-                  {' '}&middot;{' '}{l.days ?? countBusinessDays(l.start_date, l.end_date)} day(s)
-                  {' '}&middot;{' '}applied {formatDate(l.created_at)}
-                  {l.approved_at ? ` · decided ${formatDate(l.approved_at)}` : ''}
-                </HistMeta>
-                {l.reason && <HistReason>{l.reason}</HistReason>}
-                {st === 'rejected' && l.rejection_reason && (
-                  <RejectBox><AlertCircle size={14} /> {l.rejection_reason}</RejectBox>
-                )}
-              </HistRow>
-            );
-          })
-        )}
-      </HistoryCard>
     </Container>
   );
 };

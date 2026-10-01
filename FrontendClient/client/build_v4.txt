@@ -1,0 +1,119 @@
+
+> client@0.0.0 build
+> vite build
+
+[36mvite v8.2.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...Found 1 warning while optimizing generated CSS:
+
+[2m│   }[22m
+[2m│ }[22m
+[2m│[22m @import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=DM+Sans:ital,wght@0,300..900;1,300..900&family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Instrument+Sans:wght@400;500;600;700&family=Inter:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Julius+Sans+One&family=Karla:ital,wght@0,400..700;1,400..700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&family=Mr+Dafoe&family=Roboto+Condensed:ital,wght@0,300..700;1,300..700&family=Saira:ital,wght@0,100..900;1,100..900&family=Share+Tech+Mono&family=Source+Sans+3:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@300..700&display=swap');
+[2m┆[22m        [33m[2m^--[22m @import rules must precede all rules aside from @charset and @layer statements[39m
+[2m┆[22m
+[2m│ *, *::before, *::after {[22m
+[2m│   box-sizing: border-box;[22m
+
+✓ 3028 modules transformed.
+dist/inde.html.gz              12.85 kB
+dist/document-read.html.gz     11.03 kB
+dist/manifest.json.gz          0.56 kB
+dist/manifest.json.br          0.43 kB
+dist/document-read.html.br     9.54 kB
+dist/inde.html.br              11.28 kB
+dist/service_worker.js.gz      1.16 kB
+dist/service_worker.js.br      0.99 kB
+dist/receipt.html.gz           3.94 kB
+dist/receipt.html.br           3.21 kB
+dist/sitemap.xml.gz            1.21 kB
+dist/sw.js.gz                  2.89 kB
+dist/sw.js.br                  2.40 kB
+dist/sitemap.xml.br            0.96 kB
+dist/js/app.js.gz              8.01 kB
+dist/js/script.js.gz           5.03 kB
+dist/pdf.worker.min.js.gz      289.09 kB
+dist/js/script.js.br           4.31 kB
+dist/js/app.js.br              6.94 kB
+dist/pdf.worker.min.js.br      231.53 kB
+dist/document-read.html.gz     11.03 kB
+dist/manifest.json.gz          0.56 kB
+dist/inde.html.gz              12.85 kB
+dist/manifest.json.br          0.43 kB
+dist/receipt.html.gz           3.94 kB
+dist/receipt.html.br           3.21 kB
+dist/document-read.html.br     9.54 kB
+dist/service_worker.js.gz      1.16 kB
+dist/sitemap.xml.gz            1.21 kB
+dist/service_worker.js.br      0.99 kB
+dist/sw.js.gz                  2.89 kB
+dist/pdf.worker.min.js.gz      289.09 kB
+dist/sitemap.xml.br            0.96 kB
+dist/js/app.js.gz              8.01 kB
+dist/sw.js.br                  2.40 kB
+dist/js/script.js.gz           5.03 kB
+dist/inde.html.br              11.28 kB
+dist/js/script.js.br           4.31 kB
+dist/js/app.js.br              6.94 kB
+dist/pdf.worker.min.js.br      231.53 kB
+[31m✗[39m Build failed in 13.56s
+dist/document-read.html.gz     11.03 kB
+dist/manifest.json.gz          0.56 kB
+dist/inde.html.gz              12.85 kB
+dist/manifest.json.br          0.43 kB
+dist/receipt.html.gz           3.94 kB
+dist/receipt.html.br           3.21 kB
+dist/document-read.html.br     9.54 kB
+dist/service_worker.js.gz      1.16 kB
+dist/sitemap.xml.gz            1.21 kB
+dist/service_worker.js.br      0.99 kB
+dist/pdf.worker.min.js.gz      289.09 kB
+dist/sw.js.gz                  2.89 kB
+dist/sw.js.br                  2.40 kB
+dist/sitemap.xml.br            0.96 kB
+dist/js/script.js.gz           5.03 kB
+dist/js/app.js.gz              8.01 kB
+dist/inde.html.br              11.28 kB
+dist/js/script.js.br           4.31 kB
+dist/js/app.js.br              6.94 kB
+dist/pdf.worker.min.js.br      231.53 kB
+dist/document-read.html.gz     11.03 kB
+dist/inde.html.gz              12.85 kB
+dist/manifest.json.gz          0.56 kB
+dist/manifest.json.br          0.43 kB
+dist/receipt.html.gz           3.94 kB
+dist/receipt.html.br           3.21 kB
+dist/service_worker.js.gz      1.16 kB
+dist/document-read.html.br     9.54 kB
+dist/sitemap.xml.gz            1.21 kB
+dist/pdf.worker.min.js.gz      289.09 kB
+dist/service_worker.js.br      0.99 kB
+dist/sw.js.gz                  2.89 kB
+dist/sitemap.xml.br            0.96 kB
+dist/js/app.js.gz              8.01 kB
+dist/sw.js.br                  2.40 kB
+dist/js/script.js.gz           5.03 kB
+dist/inde.html.br              11.28 kB
+dist/js/script.js.br           4.31 kB
+dist/js/app.js.br              6.94 kB
+dist/pdf.worker.min.js.br      231.53 kB
+[31merror during build:
+[31mBuild failed with 1 error:
+
+[31m[builtin:vite-transform] [0mAdjacent JSX elements must be wrapped in an enclosing tag.
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/components/workshop/pages/StoreTab.jsx:432:5 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m432 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m<[38;5;249md[0m[38;5;249mi[0m[38;5;249mv[0m[38;5;249m [0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249my[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249m=[0m[38;5;249m{[0m[38;5;249m{[0m[38;5;249m [0m[38;5;249md[0m[38;5;249mi[0m[38;5;249ms[0m[38;5;249mp[0m[38;5;249ml[0m[38;5;249ma[0m[38;5;249my[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mf[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249mx[0m[38;5;249m'[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mf[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249mx[0m[38;5;249mD[0m[38;5;249mi[0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mc[0m[38;5;249mo[0m[38;5;249ml[0m[38;5;249mu[0m[38;5;249mm[0m[38;5;249mn[0m[38;5;249m'[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mg[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m1[0m[38;5;249m6[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m}[0m[38;5;249m>[0m
+ [38;5;240m    │[0m     ┬  
+ [38;5;240m    │[0m     ╰── 
+ [38;5;240m    │[0m 
+ [38;5;240m    │[0m [38;5;115mHelp[0m: Did you want a JSX fragment `<>...</>`?
+[38;5;246m─────╯[0m
+[31m
+    at aggregateBindingErrorsIntoJsError (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/error-BzLGqhSQ.mjs:48:18)
+    at unwrapBindingResult (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/error-BzLGqhSQ.mjs:18:128)
+    at #build (file:///D:/new/restpoint/FrontendClient/client/node_modules/rolldown/dist/shared/rolldown-I5b6h5Km.mjs:132:34)
+    at async buildEnvironment (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:33669:66)
+    at async Object.build (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:34091:19)
+    at async Object.buildApp (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/chunks/node.js:34088:153)
+    at async CAC.<anonymous> (file:///D:/new/restpoint/FrontendClient/client/node_modules/vite/dist/node/cli.js:776:3) {
+  errors: [Getter/Setter]
+}[39m

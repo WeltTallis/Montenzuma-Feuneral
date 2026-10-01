@@ -16,22 +16,38 @@ const TABS = [
 ];
 
 const WorkshopTabs = ({ activeTab, onTabChange }) => {
+  // Horizontally scrollable on a phone so the three tabs never get squeezed
+  // into unreadable slivers; equal-width full-bleed buttons on very small screens.
   return (
-    <div style={{
-      display: 'flex', gap: 3, background: T.surface, border: `1px solid ${T.bdr}`,
-      borderRadius: 10, padding: 3, width: 'fit-content', marginBottom: 16
-    }}>
+    <div
+      className="ws-tabs"
+      style={{
+        display: 'flex', gap: 3, background: T.surface, border: `1px solid ${T.bdr}`,
+        borderRadius: 10, padding: 3, width: 'fit-content', maxWidth: '100%',
+        marginBottom: 16, overflowX: 'auto', WebkitOverflowScrolling: 'touch'
+      }}
+    >
       {TABS.map(t => (
-        <button key={t.id} onClick={() => onTabChange(t.id)} style={{
-          padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', border: 'none', background: activeTab === t.id ? T.primary : 'transparent',
-          color: activeTab === t.id ? '#fff' : T.textSec, display: 'flex', alignItems: 'center', gap: 6,
-          transition: 'all 0.15s', fontFamily: 'inherit'
-        }}>
+        <button
+          key={t.id}
+          onClick={() => onTabChange(t.id)}
+          style={{
+            padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', border: 'none', background: activeTab === t.id ? T.primary : 'transparent',
+            color: activeTab === t.id ? '#fff' : T.textSec, display: 'flex', alignItems: 'center', gap: 6,
+            transition: 'all 0.15s', fontFamily: 'inherit', whiteSpace: 'nowrap', flex: '0 0 auto'
+          }}
+        >
           <i className={`fas ${t.icon}`} style={{ fontSize: 12 }} />
           {t.label}
         </button>
       ))}
+      <style>{`
+        @media (max-width: 600px) {
+          .ws-tabs { width: 100%; }
+          .ws-tabs > button { flex: 1 1 0; justify-content: center; padding: 9px 10px; font-size: 12px; }
+        }
+      `}</style>
     </div>
   );
 };

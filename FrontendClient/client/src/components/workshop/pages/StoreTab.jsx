@@ -65,11 +65,6 @@ const StoreTab = () => {
 
   const [capacity, setCapacity] = useState(() => load(`${CAP_KEY}.${slug}`, 50));
 
-  const [monthCursor, setMonthCursor] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
-
-  const [selectedDate, setSelectedDate] = useState(() => toKey(new Date()));
-
-  const [section, setSection] = useState('calendar');
 
   const [modal, setModal] = useState(null);
 
@@ -172,13 +167,11 @@ const StoreTab = () => {
 
   const gaugePct = Math.min(100, Math.round((totalUnits / (capacity || 1)) * 100));
 
-  const todayKey = toKey(new Date());
 
   const dispatchedToday = Number(stats.dispatchedToday) || 0;
 
   const totalDispatched = Number(stats.totalDispatched) || 0;
 
-  const totalRestocked = history.reduce((s, h) => s + (h.action === 'RESTOCK' ? (Number(h.qty) || 0) : 0), 0);
 
 
 
@@ -412,33 +405,6 @@ const StoreTab = () => {
 
 
 
-  const y = monthCursor.getFullYear();
-
-  const m = monthCursor.getMonth();
-
-  const monthTitle = monthCursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  const lead = (new Date(y, m, 1).getDay() + 6) % 7;
-
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
-
-  const cells = [];
-
-  for (let i = 0; i < lead; i++) cells.push(null);
-
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  const dayKeyOf = (day) => `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  const entriesForDay = (day) => history.filter(h => h.date === dayKeyOf(day));
-
-  const selectedEntries = history.filter(h => h.date === selectedDate);
-
-  const monthPrev = () => setMonthCursor(new Date(y, m - 1, 1));
-
-  const monthNext = () => setMonthCursor(new Date(y, m + 1, 1));
 
 
 
@@ -450,6 +416,23 @@ const StoreTab = () => {
 
   return (
 
+    <>
+
+    {/* Store is the one screen workers use on a phone while standing at the
+        racks: the gauge + stat band stacks, and the stock table scrolls
+        sideways instead of squashing the action buttons off-screen. */}
+    <style>{`
+      .st-gauge { display: grid; grid-template-columns: 230px 1fr; gap: 16px; align-items: stretch; }
+      .st-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+      .st-tablewrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .st-tablewrap table { min-width: 560px; }
+
+      @media (max-width: 768px) {
+        .st-gauge { grid-template-columns: 1fr; gap: 12px; }
+        .st-stats { grid-template-columns: 1fr; gap: 10px; }
+      }
+    `}</style>
+
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {renderHeader()}
@@ -458,7 +441,8 @@ const StoreTab = () => {
 
       {renderInventory()}
 
-      {renderJournal()}
+      {/* Calendar + History moved to the admin-only Store Journal page
+          (/workshop/store-journal). Floor staff work from this stock list. */}
 
       {modal?.type === 'dispatch' && renderDispatchModal()}
 
@@ -468,6 +452,7 @@ const StoreTab = () => {
 
     </div>
 
+    </>
   );
 
 
@@ -586,7 +571,7 @@ const StoreTab = () => {
 
     return (
 
-      <div style={{ display: 'grid', gridTemplateColumns: '230px 1fr', gap: 16, alignItems: 'stretch' }}>
+      <div className="st-gauge">
 
         <div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 12, padding: '18px 12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
 
@@ -600,7 +585,7 @@ const StoreTab = () => {
 
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+        <div className="st-stats">
 
           {statCard('#1e3a8a', 'Coffins in Store', coffinsCount, 'Ready for pickup', 'fa-warehouse')}
 
@@ -630,7 +615,7 @@ const StoreTab = () => {
 
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="st-tablewrap" style={{ overflowX: 'auto' }}>
 
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
 
@@ -733,272 +718,6 @@ const StoreTab = () => {
       </div>
 
     );
-
-  }
-
-  function renderJournal() {
-
-    return (
-
-      <div style={{ background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 12, overflow: 'hidden' }}>
-
-        <div style={{ padding: '12px 18px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-
-            <button onClick={() => setSection('calendar')} style={segBtn(section === 'calendar')}><i className="fas fa-calendar-days" style={{ fontSize: 11 }} /> Calendar</button>
-
-            <button onClick={() => setSection('history')} style={segBtn(section === 'history')}><i className="fas fa-clock-rotate-left" style={{ fontSize: 11 }} /> History</button>
-
-          </div>
-
-          {section === 'calendar' ? (
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-
-              <button onClick={monthPrev} style={navBtn()}><i className="fas fa-chevron-left" style={{ fontSize: 10 }} /></button>
-
-              <span style={{ fontSize: 13, fontWeight: 800, color: T.text, minWidth: 130, textAlign: 'center' }}>{monthTitle}</span>
-
-              <button onClick={monthNext} style={navBtn()}><i className="fas fa-chevron-right" style={{ fontSize: 10 }} /></button>
-
-            </div>
-
-          ) : (
-
-            <span style={{ fontSize: 12, color: T.textSec }}>{history.length} record(s)</span>
-
-          )}
-
-        </div>
-
-
-
-        {section === 'calendar' ? (
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 0, minHeight: 420 }}>
-
-            <div style={{ padding: 14, borderRight: `1px solid ${T.borderLight}` }}>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 6 }}>
-
-              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(d => (
-
-                <div key={d} style={{ textAlign: 'center', fontSize: 9, fontWeight: 800, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 0' }}>{d}</div>
-
-              ))}
-
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-
-              {cells.map((day, i) => {
-
-                if (!day) return <div key={`e${i}`} />;
-
-                const key = dayKeyOf(day);
-
-                const entries = entriesForDay(day);
-
-                const dispCount = entries.filter(h => h.action === 'DISPATCH').length;
-
-                const isSel = selectedDate === key;
-
-                const isToday = todayKey === key;
-
-                return (
-
-                  <button
-
-                    key={key}
-
-                    onClick={() => setSelectedDate(key)}
-
-                    style={{
-
-                      minHeight: 54, borderRadius: 8, border: `1px solid ${isSel ? T.primary : T.bdr}`,
-
-                      background: isSel ? T.primary : isToday ? T.primaryBg : T.surface,
-
-                      color: isSel ? '#fff' : isToday ? T.primary : T.text,
-
-                      cursor: 'pointer', position: 'relative', padding: '6px',
-
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', fontFamily: 'inherit',
-
-                    }}
-
-                  >
-
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{day}</span>
-
-                    {dispCount > 0 && (
-
-                      <span style={{ marginTop: 4, fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 8, background: isSel ? 'rgba(255,255,255,0.25)' : T.successBg, color: isSel ? '#fff' : T.success, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-
-                        <i className="fas fa-truck" style={{ fontSize: 8 }} /> {dispCount}
-
-                      </span>
-
-                    )}
-
-                  </button>
-
-                );
-
-              })}
-
-            </div>
-
-            </div>
-
-            <div style={{ padding: 16, background: T.bg, display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-              <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 10 }}>
-
-                <i className="fas fa-magnifying-glass" style={{ color: T.primary, marginRight: 6 }} />What happened on {fmtDate(selectedDate)}
-
-              </div>
-
-              {selectedEntries.length === 0 ? (
-
-                <div style={{ fontSize: 12, color: T.textMuted, padding: '14px 0', textAlign: 'center', background: T.bg, borderRadius: 8 }}>No store activity on this day.</div>
-
-              ) : (
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-
-                  {selectedEntries.map(h => (
-
-                    <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${T.borderLight}`, background: h.action === 'DISPATCH' ? T.dangerBg : T.successBg }}>
-
-                      <i className={`fas ${h.action === 'DISPATCH' ? 'fa-truck' : 'fa-box-open'}`} style={{ color: h.action === 'DISPATCH' ? T.danger : T.success, fontSize: 15, width: 22, textAlign: 'center' }} />
-
-                      <div style={{ flex: 1 }}>
-
-                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}><span style={{ color: h.action === 'DISPATCH' ? T.danger : T.success, fontWeight: 800 }}>{h.action === 'DISPATCH' ? 'Dispatched' : 'Restocked'}</span> · {h.name}</div>
-
-                        <div style={{ fontSize: 11, color: T.textSec }}>{h.sub}{h.notes ? ` · ${h.notes}` : ''}</div>
-
-                      </div>
-
-                      <div style={{ textAlign: 'right' }}>
-
-                        <div style={{ fontSize: 15, fontWeight: 800, color: h.action === 'DISPATCH' ? T.danger : T.success }}>{h.action === 'DISPATCH' ? '−' : '+'}{h.qty} {h.unit}</div>
-
-                        <div style={{ fontSize: 10, color: T.textMuted }}>by {h.pickedBy}</div>
-
-                      </div>
-
-                    </div>
-
-                  ))}
-
-                </div>
-
-              )}
-
-            </div>
-
-          </div>
-
-        ) : (
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 0, minHeight: 420 }}>
-
-            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 460, overflowY: 'auto', borderRight: `1px solid ${T.borderLight}` }}>
-
-            {history.length === 0 && <div style={{ textAlign: 'center', color: T.textMuted, padding: 40, fontSize: 13 }}>No dispatch history yet.</div>}
-
-            {history.map(h => (
-
-              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${T.borderLight}`, background: h.action === 'DISPATCH' ? T.dangerBg : T.successBg }}>
-
-                <i className={`fas ${h.action === 'DISPATCH' ? 'fa-truck' : 'fa-box-open'}`} style={{ color: h.action === 'DISPATCH' ? T.danger : T.success, fontSize: 15, width: 22, textAlign: 'center' }} />
-
-                <div style={{ flex: 1 }}>
-
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{h.name}</div>
-
-                  <div style={{ fontSize: 11, color: T.textSec }}>{fmtDate(h.date)} · {h.pickedBy}</div>
-
-                  {h.notes && <div style={{ fontSize: 10, color: T.textMuted }}>{h.notes}</div>}
-
-                </div>
-
-                <div style={{ fontSize: 15, fontWeight: 800, color: h.action === 'DISPATCH' ? T.danger : T.success }}>{h.action === 'DISPATCH' ? '−' : '+'}{h.qty} {h.unit}</div>
-
-              </div>
-
-            ))}
-
-          </div>
-
-            <div style={{ padding: 16, background: T.bg, display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-              <div style={{ fontSize: 12, fontWeight: 800, color: T.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <i className="fas fa-chart-simple" style={{ color: T.primary, fontSize: 11 }} /> Store Activity Summary
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ background: T.surface, border: `1px solid ${T.borderLight}`, borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 11, color: T.textMuted }}>Total Dispatched</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: T.danger }}>{totalDispatched} <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>coffins</span></div>
-                </div>
-
-                <div style={{ background: T.surface, border: `1px solid ${T.borderLight}`, borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 11, color: T.textMuted }}>Total Restocked</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: T.success }}>{totalRestocked} <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>units</span></div>
-                </div>
-
-                <div style={{ background: T.surface, border: `1px solid ${T.borderLight}`, borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 11, color: T.textMuted }}>Transactions</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: T.primary }}>{history.length} <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>records</span></div>
-                </div>
-              </div>
-
-              <div style={{ fontSize: 12, fontWeight: 800, color: T.text, display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                <i className="fas fa-clock-rotate-left" style={{ color: T.primary, fontSize: 11 }} /> Most Recent
-              </div>
-
-              {history.length === 0 ? (
-                <div style={{ fontSize: 12, color: T.textMuted, padding: '12px 0' }}>No activity recorded yet.</div>
-              ) : (
-                (() => {
-                  const latest = history[0];
-                  const isDisp = latest && latest.action === 'DISPATCH';
-                  return (
-                    <div style={{ background: T.surface, border: `1px solid ${T.borderLight}`, borderRadius: 10, padding: '12px 14px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{latest ? latest.name : '—'}</div>
-                      <div style={{ fontSize: 11, color: T.textSec, marginTop: 2 }}>{latest ? (isDisp ? 'Dispatched' : 'Restocked') + ' · ' + fmtDate(latest.date) + ' · by ' + (latest.pickedBy || '—') : ''}</div>
-                    </div>
-                  );
-                })()
-              )}
-
-            </div>
-
-          </div>
-
-        )}
-
-      </div>
-
-    );
-
-  }
-
-
-
-  function segBtn(active) {
-
-    return { padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: active ? T.primary : T.bg, color: active ? '#fff' : T.textSec, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' };
-
-  }
-
-  function navBtn() {
-
-    return { width: 28, height: 28, borderRadius: 7, border: `1px solid ${T.bdr}`, background: T.surface, color: T.textSec, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' };
 
   }
 

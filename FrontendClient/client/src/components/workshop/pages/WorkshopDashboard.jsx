@@ -8,6 +8,8 @@ import ModalRouter from './ModalRouter';
 import OrdersTab from './OrdersTab';
 import StoreTab from './StoreTab';
 import Toasts from './Toasts';
+// "Register Worker" is an admin action — adding people to the workshop roster.
+import { isWorkshopAdmin } from '../../../utils/workshopRole';
 
 export const Ctx = createContext(null);
 
@@ -448,6 +450,27 @@ const WorkshopDashboard = () => {
       <style>{`
         body { font-family: ${S.font}; background-color: ${S.bg}; }
         * { box-sizing: border-box; }
+
+        /* Workshop shell: keep the page padding and the header row usable on a
+           phone. The header is flex+wrap, so on narrow screens the title and the
+           Register Worker button stack instead of being crushed side by side. */
+        .ws-page { max-width: 1480px; margin: 0 auto; padding: 24px 24px 48px; }
+        .ws-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+        .ws-head h2 { font-size: 20px; }
+        .ws-title-wrap { min-width: 0; }
+        .ws-btn-primary {
+          background: ${S.primary}; color: #fff; border: none;
+          padding: 10px 18px; border-radius: 8px; font-weight: 700;
+          font-size: 13px; font-family: inherit; cursor: pointer;
+          display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+          .ws-page { padding: 16px 14px 40px; }
+          .ws-head { flex-direction: column; align-items: stretch; gap: 12px; }
+          .ws-head h2 { font-size: 18px; }
+          .ws-btn-primary { width: 100%; justify-content: center; }
+        }
       `}</style>
       <div style={{
         minHeight: '100vh',
@@ -455,7 +478,7 @@ const WorkshopDashboard = () => {
         color: S.text,
         WebkitFontSmoothing: 'antialiased'
       }}>
-        <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 24px 48px' }}>
+        <div className="ws-page">
           {/* ── Admin action bar ──────────────────────────────────────────
               Worker registration was fully built but UNREACHABLE: the modal
               (ModalRouter type="createWorker"), the submit handler
@@ -467,32 +490,24 @@ const WorkshopDashboard = () => {
               It sits above the tabs, not inside one, because workers are used
               by every tab (they are the assign target on an order) and there
               is no Workers tab of its own. */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: 12, flexWrap: 'wrap', marginBottom: 16,
-          }}>
-            <div style={{ minWidth: 0 }}>
+          <div className="ws-head">
+            <div className="ws-title-wrap">
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: S.text }}>Workshop</h2>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: S.textMuted }}>
                 {workers.length} worker{workers.length !== 1 ? 's' : ''} registered
               </p>
             </div>
-            <button
-              onClick={() => setModal('createWorker')}
-              className="btn btn-primary"
-              style={{
-                background: S.primary, color: '#fff', border: 'none',
-                padding: '10px 18px', borderRadius: 8, fontWeight: 700,
-                fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-                transition: S.transition, whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = S.primaryDark}
-              onMouseLeave={e => e.currentTarget.style.background = S.primary}
-            >
-              <i className="fas fa-user-plus" style={{ fontSize: 12 }} /> Register Worker
-            </button>
+            {/* Admin-only: only an administrator may add people to the roster. */}
+            {isWorkshopAdmin() && (
+              <button
+                onClick={() => setModal('createWorker')}
+                className="btn btn-primary ws-btn-primary"
+                onMouseEnter={e => e.currentTarget.style.background = S.primaryDark}
+                onMouseLeave={e => e.currentTarget.style.background = S.primary}
+              >
+                <i className="fas fa-user-plus" style={{ fontSize: 12 }} /> Register Worker
+              </button>
+            )}
           </div>
 
           <WorkshopTabs activeTab={tab} onTabChange={setTab} />

@@ -29,7 +29,7 @@ const C = {
   danger: '#ef4444',
   purple: '#8b5cf6',
   cardBg: '#03071E',
-  // ─── HTML-template status badge colors ───
+  // ─── HTML-template status badge colors 
   stActiveColor: '#00296B',
   stPmReqColor: '#E36414',
   stPmDoneColor: '#5F0F40',
@@ -446,7 +446,7 @@ export default function BookNewHearseModal({
     const u = JSON.parse(localStorage.getItem('user') || '{}');
     const db = u?.dbName || u?.branchDbName || '';
     setForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: d, branch_id: u?.branch_id || '', branch_code: db.split('-').pop() || '', booking_date: d[0] || '', service_charge: 0 });
-    setTmpDates([]); setPkOpen(false); setFleet({}); setSL(false); setSR(false); setCheckError(null);
+    setTmpDates([]); setAnchor(null); setPkOpen(false); setFleet({}); setSL(false); setSR(false); setCheckError(null);
   }, [open, initialDates]);
 
   // Guard so an older, slower response can never overwrite a newer one.
@@ -628,9 +628,57 @@ export default function BookNewHearseModal({
     setForm(p => ({ ...p, hearse_id: h.id, service_charge: total }));
   };
 
-  const togDate = (ds) => { setTmpDates(p => p.includes(ds) ? p.filter(d => d !== ds) : [...p, ds].sort()); };
+  /* ── Range date selection ──────────────────────────────────────────────────
+     The picker works as START -> END, like any booking calendar:
+       1st click  = start of the range (a single day stays selected)
+       2nd click  = end of the range -> every day in between is selected
+       3rd click  = starts a brand new range
+
+     Previously each click was a plain toggle, so booking a span meant tapping
+     every single day and one mis-tap deleted the start date. `anchor` holds the
+     in-progress start; while it is set the calendar is in "picking the end"
+     mode, which the header copy reflects. */
+  const [anchor, setAnchor] = useState(null);
+
+  // Expand a start/end pair into the inclusive list of YYYY-MM-DD keys between
+  // them. Iterates day-by-day rather than trusting millisecond maths, so a
+  // range that spans a DST boundary or a month/year rollover is still exact.
+  const expandRange = (startKey, endKey) => {
+    const out = [];
+    const cur = new Date(startKey + 'T00:00:00');
+    const last = new Date(endKey + 'T00:00:00');
+    if (Number.isNaN(cur.getTime()) || Number.isNaN(last.getTime())) return [startKey];
+    // Guard against a runaway loop if the keys are somehow equal-but-invalid.
+    for (let i = 0; i < 3660; i++) {
+      if (cur > last) break;
+      out.push(formatDateStr(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  };
+
+  const togDate = (ds) => {
+    setTmpDates((prev) => {
+      // No start picked yet, or the range is already complete -> begin a new one.
+      if (anchor === null || anchor === undefined) {
+        setAnchor(ds);
+        return [ds];
+      }
+      // Second click closes the range. Clicking the same day twice = a single
+      // day (no accidental one-day ranges), and a backwards click is swapped so
+      // the earlier day becomes the start instead of silently doing nothing.
+      if (ds === anchor) { setAnchor(null); return [ds]; }
+      const [s, e] = anchor <= ds ? [anchor, ds] : [ds, anchor];
+      setAnchor(null);
+      return expandRange(s, e);
+    });
+  };
+
+  // Abort the in-progress range without changing the days already selected.
+  const cancelRange = () => { setAnchor(null); setTmpDates([]); };
 
   const confirmDates = () => {
+    setAnchor(null);
     setDates(tmpDates);
     // The total service charge is a whole-booking amount, so a date change keeps
     // whatever was entered — it is never recalculated from a daily rate.
@@ -837,11 +885,19 @@ export default function BookNewHearseModal({
         <PkOv onClick={() => setPkOpen(false)}>
           <PkBox onClick={e => e.stopPropagation()}>
             <PkHead>
-              <div><div style={{ fontSize: '.9rem', fontWeight: 700, color: '#fff' }}>Select Booking Dates</div><div style={{ fontSize: '.66rem', color: 'rgba(255,255,255,.55)' }}>Click to toggle</div></div>
+              <div><div style={{ fontSize: '.9rem', fontWeight: 700, color: '#fff' }}>Select Booking Dates</div><div style={{ fontSize: '.66rem', color: 'rgba(255,255,255,.55)' }}>{anchor ? 'Now pick the END date' : 'Click a START date, then an END date'}</div></div>
               <PkClose onClick={() => setPkOpen(false)}><X size={13} /></PkClose>
             </PkHead>
             <PkBody>
-              <div style={{ fontSize: '.72rem', fontWeight: 600, color: C.primary, marginBottom: '.35rem' }}>{tmpDates.length} date{tmpDates.length !== 1 ? 's' : ''} selected</div>
+              {/* Days picked so far, and how that compares with the fleet size —
+                  these are the two numbers the officer needs before confirming. */}
+              <div style={{ fontSize: '.72rem', fontWeight: 600, color: C.primary, marginBottom: '.35rem', display: 'flex', alignItems: 'center', gap: '.35rem', flexWrap: 'wrap' }}>
+                <span>{tmpDates.length} day{tmpDates.length !== 1 ? 's' : ''} selected</span>
+                <span style={{ color: C.textMuted, fontWeight: 500 }}>· {avCount || 0} of {(hearses || []).length} hearse{(hearses || []).length === 1 ? '' : 's'} available</span>
+                {anchor
+                  ? <span style={{ color: C.textMuted, fontWeight: 500 }}>· start {new Date(anchor + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — now pick the end</span>
+                  : tmpDates.length > 0 && <span style={{ color: C.textMuted, fontWeight: 500 }}>· click another day to extend</span>}
+              </div>
               {tmpDates.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem', marginBottom: '.6rem' }}>{tmpDates.map(d => { const dt = new Date(d + 'T00:00:00'); return <Chip key={d}>{dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Chip> })}</div>}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.55rem' }}>
                 <PkNav type="button" onClick={() => { if (pkM === 0) { setPkM(11); setPkY(p => p - 1) } else setPkM(p => p - 1) }}></PkNav>
@@ -850,7 +906,7 @@ export default function BookNewHearseModal({
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px' }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(w => <div key={w} style={{ textAlign: 'center', fontSize: '.6rem', fontWeight: 700, color: C.textMuted, padding: '.3rem 0' }}>{w}</div>)}
-                {(() => { const { d: days, ts } = calDays(); return days.map((day, i) => { if (day === null) return <div key={`e${i}`} />; const ds = `${pkY}-${String(pkM + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isT = ds === ts; const isS = tmpDates.includes(ds); const isP = new Date(ds + 'T00:00:00') < new Date(ts + 'T00:00:00'); return <div key={ds} style={{ textAlign: 'center', padding: '.38rem 0', cursor: isP ? 'not-allowed' : 'pointer', borderRadius: '5px', fontSize: '.78rem', fontWeight: isS ? 700 : 500, background: isS ? C.primary : isT ? '#f0fdf4' : 'transparent', color: isS ? '#fff' : isP ? '#ccc' : isT ? '#059669' : C.text, border: isT && !isS ? '1px solid ' + '#10b981' : '1px solid transparent', transition: 'all .1s' }} onClick={() => !isP && togDate(ds)}>{day}</div> }) })()}
+                {(() => { const { d: days, ts } = calDays(); const last = tmpDates[tmpDates.length - 1]; return days.map((day, i) => { if (day === null) return <div key={`e${i}`} />; const ds = `${pkY}-${String(pkM + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isT = ds === ts; const isS = tmpDates.includes(ds); const isP = new Date(ds + 'T00:00:00') < new Date(ts + 'T00:00:00'); const isAnchor = anchor === ds; const inRange = !!anchor && ds > anchor && (!last || ds <= last); return <div key={ds} title={isS ? ds : ''} style={{ textAlign: 'center', padding: '.38rem 0', cursor: isP ? 'not-allowed' : 'pointer', borderRadius: '5px', fontSize: '.78rem', fontWeight: isS || isAnchor ? 700 : 500, background: isS ? C.primary : isAnchor ? 'rgba(199,138,58,.16)' : inRange ? 'rgba(199,138,58,.08)' : isT ? '#f0fdf4' : 'transparent', color: isS ? '#fff' : isP ? '#ccc' : isAnchor || inRange ? C.primary : isT ? '#059669' : C.text, border: isAnchor ? '1px dashed ' + C.primary : isT && !isS ? '1px solid ' + '#10b981' : '1px solid transparent', transition: 'all .1s' }} onClick={() => !isP && togDate(ds)}>{day}</div> }) })()}
               </div>
               {/* Live feedback — the availability request now fires on EVERY date
                   tick (debounced), so this line updates while days are toggled. */}
@@ -863,7 +919,8 @@ export default function BookNewHearseModal({
               )}
               <PkFoot>
                 <BtnGhost type="button" onClick={() => setPkOpen(false)}>Cancel</BtnGhost>
-                <BtnPrimary type="button" onClick={confirmDates} disabled={!tmpDates.length}>Confirm ({tmpDates.length})</BtnPrimary>
+                <BtnGhost type="button" onClick={cancelRange} disabled={!tmpDates.length} style={{ opacity: tmpDates.length ? 1 : .5 }}>Clear</BtnGhost>
+                <BtnPrimary type="button" onClick={confirmDates} disabled={!tmpDates.length}>{tmpDates.length} day{tmpDates.length !== 1 ? 's' : ''} selected{anchor ? ' — or keep 1 day' : ''}</BtnPrimary>
               </PkFoot>
             </PkBody>
           </PkBox>
