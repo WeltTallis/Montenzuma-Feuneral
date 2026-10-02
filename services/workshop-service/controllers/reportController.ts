@@ -9,6 +9,131 @@ const logger = {
 };
 
 /* 
+    @route  GET /api/workshop/reports/worker-production
+    @desc   How many coffins each worker has PRODUCED, per month.
+
+    Why this exists instead of reusing getOrders() in the browser:
+
+    1. "Produced" is only knowable from orders that are ALREADY finished, but the
+       live workshop board deliberately stops downloading finished orders (see
+       coffinOrderController.getOrders `exclude_status`). Any screen that derived
+       production from that live payload therefore reported 0 for everyone.
+
+    2. A coffin may be assigned to several workers across stages. COUNT(DISTINCT
+       coffin_order_id) is what stops one coffin being counted once per worker who
+       ever touched it.
+
+    3. The month a coffin is credited to must be the month it was FINISHED, not
+       the month it was ordered — a job ordered 28 Feb and finished 3 Mar belongs
+       to March. completed_at on the assignment is that moment; order_date is the
+       fallback for rows written before the column was populated.
+
+    Query params:
+      ?year=2026     calendar year (defaults to the current year)
+      ?months=6      how many trailing months to return (default 12, max 24)
+*/
+const FINISHED_STATUSES = ['completed', 'delivered', 'dispatched', 'collected'];
+
+const getWorkerProduction = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) {
+            return res.status(400).json({ error: 'Tenant database not resolved' });
+        }
+
+        const now = new Date();
+        const year = parseInt(String(req.query.year || now.getFullYear()), 10) || now.getFullYear();
+        const months = Math.min(24, Math.max(1, parseInt(String(req.query.months || 12), 10) || 12));
+
+        const finishedPlaceholders = FINISHED_STATUSES.map(() => '?').join(',');
+
+        /* One row per (worker, month): how many finished coffins they produced. */
+        const perMonth: any = await safeTenantQuery(tenantDb,
+            `SELECT
+                w.id                                   AS worker_id,
+                w.full_name                            AS full_name,
+                w.role                                 AS role,
+                YEAR(COALESCE(wa.completed_at, co.order_date, co.created_at))  AS y,
+                MONTH(COALESCE(wa.completed_at, co.order_date, co.created_at)) AS m,
+                COUNT(DISTINCT wa.coffin_order_id)      AS produced
+             FROM worker_assignments wa
+             JOIN workshop_workers w  ON w.id = wa.user_id
+             JOIN coffin_orders co    ON co.id = wa.coffin_order_id
+             WHERE co.status IN (${finishedPlaceholders})
+               AND YEAR(COALESCE(wa.completed_at, co.order_date, co.created_at)) = ?
+             GROUP BY w.id, w.full_name, w.role, y, m
+             ORDER BY w.full_name ASC, m ASC`,
+            [...FINISHED_STATUSES, year]
+        );
+
+        /* Workers with nothing finished this year still deserve a row, otherwise
+           they silently vanish from the report and look like they were deleted. */
+        const roster: any = await safeTenantQuery(tenantDb,
+            'SELECT id AS worker_id, full_name, role FROM workshop_workers ORDER BY full_name ASC',
+            []
+        );
+
+        /* Labour hours are logged per assignment regardless of order status. */
+        const hours: any = await safeTenantQuery(tenantDb,
+            `SELECT wa.user_id AS worker_id, COALESCE(SUM(wa.hours_worked), 0) AS hours
+             FROM worker_assignments wa
+             GROUP BY wa.user_id`,
+            []
+        );
+
+        const byWorker = new Map<string, Record<string, number>>();
+        perMonth.forEach((r: any) => {
+            const key = String(r.worker_id);
+            if (!byWorker.has(key)) byWorker.set(key, {});
+            // SQL returns months as strings; normalise so the client can index
+            // by the same "YYYY-MM" key it renders in the table header.
+            byWorker.get(key)![`${r.y}-${String(r.m).padStart(2, '0')}`] = Number(r.produced) || 0;
+        });
+
+        const hoursByWorker = new Map<string, number>(
+            hours.map((h: any) => [String(h.worker_id), Number(h.hours) || 0])
+        );
+
+        const workers = roster.map((w: any) => {
+            const id = String(w.worker_id);
+            const monthly = byWorker.get(id) || {};
+            const allTime = Object.values(monthly).reduce((s: number, v) => s + (v as number), 0);
+            return {
+                worker_id: w.worker_id,
+                name: w.full_name,
+                role: w.role || 'Worker',
+                monthly,
+                total: allTime,
+                hours: hoursByWorker.get(id) || 0,
+            };
+        });
+
+        // Month columns: the trailing `months` window, oldest first.
+        const monthKeys: string[] = [];
+        for (let i = months - 1; i >= 0; i -= 1) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+        const currentKey = monthKeys[monthKeys.length - 1];
+
+        res.json({
+            year,
+            months: monthKeys,
+            current_month: currentKey,
+            workers,
+            totals: {
+                workers: workers.length,
+                produced: workers.reduce((s: number, w: any) => s + w.total, 0),
+                thisMonth: workers.reduce((s: number, w: any) => s + (w.monthly[currentKey] || 0), 0),
+            },
+        });
+    } catch (error: any) {
+        logger.error('getWorkerProduction failed', { error: error.message, stack: error.stack, tenant: (req as any).tenant?.db_name });
+        res.status(500).json({ error: error.message || 'Failed to load worker production' });
+    }
+};
+
+/*
     @route  GET /api/workshop/reports/daily
     @desc   Get daily production report
 */
@@ -359,6 +484,7 @@ const getMonthlyAnalytics = async (req: Request, res: Response) => {
 };
 
 export {
+    getWorkerProduction,
     getDailyReport,
     getWeeklyReport,
     getInventoryReport,

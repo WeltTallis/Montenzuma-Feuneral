@@ -1,3 +1,4 @@
+import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import { Router } from 'express';
 import { releaseBodyController } from '../controllers/bodyRelease.controller';
 import { getReleaseController, listReleasesController, getReleaseByAdmissionController } from '../controllers/release.controller';

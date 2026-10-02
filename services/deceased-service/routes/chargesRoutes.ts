@@ -1,17 +1,14 @@
-import { Router } from 'express';
+import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import {
-    getCharges,
-    addCharge,
-    updateCharge,
-    deleteCharge,
-    getPayments,
-    recordPayment
+    getCharges, addCharge, updateCharge, deleteCharge, getPayments, recordPayment
 } from '../controllers/chargesControl';
-
+import { Router } from 'express';
 const router = Router();
 
 // Import authentication middleware
-const { protect } = require('../../../services/app-global/middlewares/authMiddleware');
+
+router.use(protect);
+router.use(authorizeAny);
 
 // Payment routes (no auth required for mock implementation)
 router.get('/payments/:deceased_id', getPayments);

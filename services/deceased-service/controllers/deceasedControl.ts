@@ -300,13 +300,22 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
             }
             if (chargeRows && chargeRows.length > 0) {
                 const cs = chargeRows[0];
+                // A row can bill per hour OR per day. `storage_rate` is the
+                // single "effective rate" the UI used to read unconditionally
+                // from daily_rate, which is why switching a record to per-hour
+                // appeared to do nothing — the day figure kept being shown.
+                // Resolve the basis first, then expose BOTH rates so callers can
+                // switch basis without another round-trip.
+                const chargeType = String(cs.charge_type ?? 'daily').toLowerCase() === 'hourly' ? 'hourly' : 'daily';
+                const dailyRate = Number(cs.daily_rate ?? cs.storage_rate ?? cs.per_day ?? 500);
+                const hourlyRate = Number(cs.hourly_rate ?? cs.per_hour ?? 125);
                 deceased.charges = {
-                    storage_rate: Number(cs.daily_rate ?? cs.storage_rate ?? 500),
-                    per_day: Number(cs.daily_rate ?? cs.storage_rate ?? 500),
-                    per_hour: Number(cs.hourly_rate ?? cs.per_hour ?? 125),
+                    storage_rate: chargeType === 'hourly' ? hourlyRate : dailyRate,
+                    per_day: dailyRate,
+                    per_hour: hourlyRate,
                     currency: cs.currency ?? 'KES',
                     rate_profile: cs.rate_profile ?? 'standard',
-                    charge_type: cs.charge_type ?? 'daily',
+                    charge_type: chargeType,
                     usd_rate: Number(cs.usd_rate ?? 130),
                     is_default: chargeIsDefault,
                     source: chargeIsDefault ? 'home_default' : 'deceased_specific',

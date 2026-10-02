@@ -410,20 +410,54 @@ const DeceasedDetailPage = () => {
       }
 
       // 6) Charge settings
+      //
+      // GET /deceased/:id already returns a fully resolved `charges` block
+      // (per-day AND per-hour rates plus `source`/`is_default` telling us
+      // whether the record owns its rates or inherits the home default). This
+      // second fetch exists only to pick up edits made from the Charge Settings
+      // panel. It therefore has to MERGE, not rebuild.
+      //
+      // It used to rebuild the object from scratch and, in doing so, dropped
+      // `source`/`is_default` and invented 500/125 fallbacks for every missing
+      // value. The sidebar labels a record "Deceased-specific" purely from
+      // those two flags, so every inherited (home default) rate got mislabelled
+      // as deceased-specific — and a per-hour configuration still displayed the
+      // daily figure because `storage_rate` was always taken from dailyRate.
       if (csRes.status === 'fulfilled' && csRes.value?.data?.data) {
         const cs = csRes.value.data.data;
-        setDeceased(prev => prev ? {
-          ...prev, charges: {
-            storage_rate: parseFloat(cs.dailyRate ?? cs.daily_rate ?? cs.storage_rate ?? cs.per_day ?? prev?.charges?.storage_rate ?? 500),
-            per_day: parseFloat(cs.dailyRate ?? cs.daily_rate ?? prev?.charges?.per_day ?? 500),
-            per_hour: parseFloat(cs.hourlyRate ?? cs.hourly_rate ?? prev?.charges?.per_hour ?? 125),
-            currency: cs.currency ?? prev?.charges?.currency ?? 'KES',
-            rate_profile: cs.rateProfile ?? cs.rate_profile ?? 'standard',
-            charge_type: cs.chargeType ?? cs.charge_type ?? 'daily',
-            usd_rate: parseFloat(cs.usdRate ?? cs.usd_rate ?? prev?.charges?.usd_rate ?? 130),
-            updated_at: cs.updatedAt ?? cs.updated_at ?? null
-          }
-        } : prev);
+        // `exists === false` means there is no row for this deceased AND no home
+        // default either. Keep whatever GET /deceased/:id resolved (i.e. leave
+        // the charges block untouched) instead of overwriting it with defaults.
+        if (cs.exists !== false) {
+          const csChargeType = String(cs.chargeType ?? cs.charge_type ?? 'daily').toLowerCase() === 'hourly'
+            ? 'hourly'
+            : 'daily';
+          const csDaily = Number(cs.dailyRate ?? cs.daily_rate ?? cs.per_day ?? 0) || 0;
+          const csHourly = Number(cs.hourlyRate ?? cs.hourly_rate ?? cs.per_hour ?? 0) || 0;
+          setDeceased(prev => {
+            if (!prev) return prev;
+            // Provenance comes from this endpoint too, so a rate saved for THIS
+            // deceased right after the panel closes is labelled correctly too.
+            const csIsDefault = Boolean(cs.isDefault ?? cs.is_default ?? prev?.charges?.is_default);
+            const csSource = cs.source ?? (csIsDefault ? 'home_default' : 'deceased_specific');
+            return {
+              ...prev,
+              charges: {
+                ...(prev.charges || {}),
+                storage_rate: csChargeType === 'hourly' ? csHourly : csDaily,
+                per_day: csDaily,
+                per_hour: csHourly,
+                currency: cs.currency ?? prev?.charges?.currency ?? 'KES',
+                rate_profile: cs.rateProfile ?? cs.rate_profile ?? prev?.charges?.rate_profile ?? 'standard',
+                charge_type: csChargeType,
+                usd_rate: Number(cs.usdRate ?? cs.usd_rate ?? prev?.charges?.usd_rate ?? 130),
+                updated_at: cs.updatedAt ?? cs.updated_at ?? prev?.charges?.updated_at ?? null,
+                is_default: csIsDefault,
+                source: csSource,
+              }
+            };
+          });
+        }
       }
 
       // 7) Release data. The route id is often the public deceased_id, while

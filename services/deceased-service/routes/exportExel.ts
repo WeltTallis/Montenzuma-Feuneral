@@ -1,5 +1,8 @@
+import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import express from 'express';
 const router = express.Router();
+router.use(protect);
+router.use(authorizeAny);
 
 // Import controllers
 import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exportExcelController';

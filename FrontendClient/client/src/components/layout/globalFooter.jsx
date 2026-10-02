@@ -204,7 +204,7 @@ const FooterComponent = () => {
   // Generate a random product ID
   const generateProductId = () => {
     const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-    return `WT-RSP-CLOUD.V2.1-${currentYear}-${randomCode}`;
+    return `WT/RSP/CLOUD.V2.1/${currentYear}-${randomCode}`;
   };
   const [productId] = useState(generateProductId());
 

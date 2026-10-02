@@ -34,6 +34,22 @@ const getOrders = async (req: Request, res: Response) => {
             query += ' AND co.status = ?';
             params.push(req.query.status);
         }
+        // Bulk exclusion: `?exclude_status=completed,delivered`.
+        // The single `status` filter above can only ever return ONE status, so a
+        // live workshop board (which wants "everything still on the floor")
+        // previously had to download the entire finished history on every
+        // refresh and filter in the browser. This pushes that work into MySQL
+        // and keeps the payload to the rows the screen actually renders.
+        if (req.query.exclude_status) {
+            const excluded = String(req.query.exclude_status)
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (excluded.length) {
+                query += ` AND co.status NOT IN (${excluded.map(() => '?').join(',')})`;
+                params.push(...excluded);
+            }
+        }
         if (req.query.from_date) {
             query += ' AND co.order_date >= ?';
             params.push(req.query.from_date);

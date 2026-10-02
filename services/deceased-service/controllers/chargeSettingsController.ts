@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
+import { Request, Response } from 'express';
 import Logger from '../../../packages/shared-logger/src/index';
 import redisService from '../../../packages/shared-services/dist/redisService';
 
@@ -58,7 +58,28 @@ export const getChargeSettings = async (req: TenantRequest, res: Response): Prom
             rows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [HOME_DEFAULT_KEY])) || [];
             isDefault = rows.length > 0;
         }
-        return res.status(200).json({ success: true, data: { ...toCamel(rows[0]), isDefault } });
+        // `exists` tells the caller whether ANY row backs this response. Without
+        // it the client cannot tell "this deceased inherits the home default"
+        // apart from "this deceased has no charge configuration at all" — both
+        // used to arrive as a bare object, and the UI then invented a rate.
+        //
+        // `source`/`is_default` are the provenance flags the profile sidebar
+        // renders as "Home default" vs "Deceased-specific". They are returned in
+        // BOTH camelCase and snake_case because the profile page merges this
+        // payload straight into the snake_case `charges` object it got from
+        // GET /deceased/:id, and dropping them there is what made a record
+        // inherit the home rate while still being labelled "Deceased-specific".
+        const exists = rows.length > 0;
+        return res.status(200).json({
+            success: true,
+            data: {
+                ...toCamel(rows[0]),
+                exists,
+                isDefault,
+                is_default: isDefault,
+                source: isDefault ? 'home_default' : 'deceased_specific',
+            }
+        });
     } catch (error: any) {
         console.error('Error loading charge settings:', error);
         return res.status(500).json({ success: false, message: error.message || 'Failed to load charge settings' });
@@ -84,8 +105,15 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
         const usdRate = Number(b.usdRate ?? 130);
         const settingsKey = b.isHomeDefault ? HOME_DEFAULT_KEY : id;
 
+        // Validate whichever rate the chosen frequency actually bills from.
+        // Only the daily side used to be checked, so an hourly configuration
+        // could be saved with a zero/absent hourly rate and the profile then
+        // showed the untouched daily figure as if nothing had changed.
         if (chargeType === 'daily' && (!Number.isFinite(dailyRate) || dailyRate <= 0)) {
             return res.status(400).json({ success: false, message: 'A positive daily rate is required.' });
+        }
+        if (chargeType === 'hourly' && (!Number.isFinite(hourlyRate) || hourlyRate <= 0)) {
+            return res.status(400).json({ success: false, message: 'A positive hourly rate is required.' });
         }
 
         await ensureChargeSettingsTable(dbName);
@@ -107,7 +135,18 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
         Logger.info({ message: 'Charge settings updated', deceasedId: settingsKey, tenantSlug });
 
         const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [settingsKey])) || [];
-        return res.status(200).json({ success: true, message: 'Charge settings updated successfully', data: { ...toCamel(rows[0]), isDefault: settingsKey === HOME_DEFAULT_KEY } });
+        const isDefault = settingsKey === HOME_DEFAULT_KEY;
+        return res.status(200).json({
+            success: true,
+            message: 'Charge settings updated successfully',
+            data: {
+                ...toCamel(rows[0]),
+                exists: rows.length > 0,
+                isDefault,
+                is_default: isDefault,
+                source: isDefault ? 'home_default' : 'deceased_specific',
+            }
+        });
     } catch (error: any) {
         console.error('Error updating charge settings:', error);
         return res.status(500).json({ success: false, message: error.message || 'Failed to update charge settings' });
@@ -115,17 +154,17 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
 };
 
 export const getBillingSummary = async (req: Request, res: Response): Promise<Response> => {
-  return res.status(200).json({
-    success: true,
-    message: 'Billing summary placeholder',
-    data: { id: req.params.id }
-  });
+    return res.status(200).json({
+        success: true,
+        message: 'Billing summary placeholder',
+        data: { id: req.params.id }
+    });
 };
 
 export const recalculateBalance = async (req: Request, res: Response): Promise<Response> => {
-  return res.status(200).json({
-    success: true,
-    message: 'Recalculation completed',
-    data: { id: req.params.id }
-  });
+    return res.status(200).json({
+        success: true,
+        message: 'Recalculation completed',
+        data: { id: req.params.id }
+    });
 };

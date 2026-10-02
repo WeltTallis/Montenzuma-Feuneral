@@ -227,6 +227,7 @@ export const ENDPOINTS = {
       INVENTORY: '/workshop/reports/inventory',
       PRODUCTION: '/workshop/reports/production',
       COSTING: '/workshop/reports/costing',
+      WORKER_PRODUCTION: '/workshop/reports/worker-production',
     },
     WORK_ORDER: {
       PDF: (id) => `/workshop/orders/${id}/work-order/pdf`,

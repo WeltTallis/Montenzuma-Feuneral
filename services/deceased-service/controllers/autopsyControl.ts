@@ -1,23 +1,26 @@
 import { safeTenantExecute, safeTenantQuery, resolveDatabase, getRootPool } from '../../../shared/dbConfig';
+import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps';
+import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
 import { ensurePostmortemRequestsTable } from './postmortemRequestControl';
 import { tableColumns, pickAs } from '../utils/tenantSchema';
 import Logger from '../../../packages/shared-logger/src/index';
 import { Request, Response } from 'express';
+import generateBarcodeBars from '../utils/generateBarCode'
 import { DateTime } from 'luxon';
-import path from 'path';
-import fs from 'fs';
 import sharp from 'sharp';
-import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
 import https from 'https';
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
+
+
+
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
 }
 
-const nowNairobi = (): string => {
-    return DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd HH:mm:ss');
-};
+const nowNairobi = getKenyaTimeISO();
 
 const formatFacilityName = (tenantSlug: string): string => {
     if (!tenantSlug || tenantSlug === 'system_shared') return 'RestPoint Mortuary';
@@ -57,38 +60,9 @@ function esc(s: string | null | undefined): string {
         .replace(/"/g, '&quot;');
 }
 
-// ── Realistic Code-128-style barcode with guard bars + quiet zones ──
-function generateBarcodeBars(): string {
-    const p: [number, boolean][] = [
-        [8,false],[3,true],[1,false],[1,true],[1,false],[3,true],[2,false],
-        [1,true],[2,false],[3,true],[1,false],[2,true],[2,false],
-        [1,true],[3,false],[2,true],[1,false],[3,true],[1,false],
-        [2,true],[1,false],[1,true],[3,false],[3,true],[2,false],
-        [1,true],[2,false],[2,true],[1,false],[3,true],[3,false],
-        [2,true],[1,false],[1,true],[2,false],[3,true],[1,false],
-        [1,true],[3,false],[3,true],[1,false],[2,true],[2,false],
-        [3,true],[1,false],[1,true],[2,false],[2,true],[3,false],
-        [1,true],[1,false],[3,true],[2,false],[2,true],[1,false],
-        [3,true],[2,false],[1,true],[3,false],[2,true],[1,false],
-        [1,true],[2,false],[3,true],[1,false],[2,true],[3,false],
-        [2,false],[3,true],[1,false],[1,true],[1,false],[3,true],[8,false],
-    ];
-    let html = '';
-    for (let i = 0; i < p.length; i++) {
-        const w = Math.max(1, p[i][0]);
-        if (p[i][1]) {
-            html += '<div style="width:' + w + 'px;background:#1a1a1a;height:100%;flex-shrink:0;"></div>';
-        } else {
-            html += '<div style="width:' + w + 'px;height:100%;flex-shrink:0;"></div>';
-        }
-    }
-    return html;
-}
 
-// ═══════════════════════════════════════════════════════════════
-// TENANT BRANDING — the PDF must carry the SAME logo/name the
-// Settings page shows, not a hardcoded placeholder.
-// ═══════════════════════════════════════════════════════════════
+
+
 
 /**
  * Resolve the real tenant branding from `tenant_tracking.tenants`.
@@ -311,7 +285,7 @@ function buildReportHtml(p: {
         pathSig = esc(shortName);
     }
 
-    const barcodeBars = generateBarcodeBars();
+    const barcodeBars = generateBarcodeBars;
 
     return '<!DOCTYPE html>\n'
         + '<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n'
@@ -514,7 +488,7 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
             return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
         }
 
-        const now = nowNairobi();
+        const now = getKenyaTimeISO();
         const requestId = `PMREQ-${Date.now()}-${deceased_id}`;
         const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
         const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
@@ -642,7 +616,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
 
         const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
         const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
-        const now = nowNairobi();
+        const now = getKenyaTimeISO();
 
         if (existing && (existing as any[]).length > 0) {
             const updateQuery = `
@@ -852,7 +826,7 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
         if (fields.length === 0) return res.status(400).json({ success: false, message: 'No fields to update' });
 
         fields.push('updated_at = ?');
-        values.push(nowNairobi());
+        values.push(getKenyaTimeISO());
         values.push(id);
 
         const updateQuery = `UPDATE postmortem SET ${fields.join(', ')} WHERE id = ?`;

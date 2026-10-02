@@ -1,9 +1,11 @@
+
+import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps'
+import { generateDatedCheckoutId } from '../utilities/generateCheckoutId';
+import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
+import Logger from '../../../packages/shared-logger/dist/index';
 import { Request, Response, NextFunction } from 'express';
 import * as Zod from 'zod';
 import axios from 'axios';
-import Logger from '../../../packages/shared-logger/dist/index';
-import { generateDatedCheckoutId } from '../utilities/generateCheckoutId';
-import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 import sharp from 'sharp';
 
 /**
@@ -34,6 +36,10 @@ async function toInkBlue(buffer: Buffer): Promise<Buffer> {
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
+
+
+
+const now = getKenyaTimeISO();
 
 /**
  * Process a base64 signature and upload it to the centralized uploads service.
@@ -69,18 +75,18 @@ async function processAndUploadSignature(
       const path = await import('path');
       const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
       const signatureDir = path.join(globalUploadsDir, tenantSlug || 'system', 'signatures');
-      
+
       // Ensure directory exists
       await fs.promises.mkdir(signatureDir, { recursive: true });
-      
+
       // Save the PNG file
       const filename = `${filenamePrefix}_${Date.now()}.png`;
       const fullPath = path.join(signatureDir, filename);
       await fs.promises.writeFile(fullPath, processedBuffer);
-      
+
       // Create URL path
       const urlPath = `/uploads/${tenantSlug || 'system'}/signatures/${filename}`;
-      
+
       Logger.info(`[RELEASE] Signature saved directly to disk: ${urlPath}`);
       return urlPath;
     } catch (error: any) {
@@ -156,42 +162,13 @@ const formatDateForMySQL = (dateStr?: string): string | null => {
   }
 };
 
-// Helper function to format datetime for MySQL (YYYY-MM-DD HH:MM:SS)
-const formatDateTimeForMySQL = (date: Date): string => {
-  return date.toISOString().slice(0, 19).replace('T', ' ');
-};
 
-// Helper function to format time for MySQL (HH:MM:SS)
-const formatTimeForMySQL = (timeStr?: string): string | null => {
-  if (!timeStr) return null;
-  try {
-    // If time is in ISO format, extract just the time part (in KENYA time —
-    // the platform's timestamp convention — never raw UTC, which is 3h
-    // behind Nairobi).
-    if (timeStr.includes('T')) {
-      const date = new Date(timeStr);
-      if (isNaN(date.getTime())) return null;
-      return new Date(date.getTime() + KENYA_OFFSET_MS).toISOString().slice(11, 19);
-    }
-    // If time is already in HH:MM:SS format, return as is
-    if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
-      return timeStr;
-    }
-    // If time is in HH:MM format, add :00 seconds
-    if (/^\d{2}:\d{2}$/.test(timeStr)) {
-      return `${timeStr}:00`;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
 
 // POST /body-release/checkout - Create new release
 export const releaseBodyController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['X-tenant-slug'] as string;
-    
+
     if (!tenantSlug) {
       res.status(400).json({
         success: false,
@@ -202,7 +179,7 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
 
     // Validate request body
     const validatedData = releaseBodySchema.parse(req.body);
-    
+
     // Generate release ID
     const releaseId = generateDatedCheckoutId();
     Logger.info(`[RELEASE] Generated release ID: ${releaseId} for tenant: ${tenantSlug}`);
@@ -211,7 +188,8 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     // UTC value made created_at and the deceased register's dispatch_date
     // fallback "yesterday" for anything recorded between 00:00 and 02:59
     // Nairobi time).
-    const currentDateTime = formatDateTimeForMySQL(kenyaNow());
+    const currentDateTime = getKenyaTimeISO();
+
 
     // Process signatures through centralized upload service
     // This uploads signatures to /opt/storage/uploads/{tenant}/signatures/ instead of storing inline
@@ -249,7 +227,7 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       tell_number: validatedData.tell_number,
       relationship: validatedData.relationship || null,
       date_of_removal: formatDateForMySQL(validatedData.date_of_removal || validatedData.release_date),
-      time_of_removal: formatTimeForMySQL(validatedData.time_of_removal || validatedData.release_time || validatedData.time_received),
+      time_of_removal: now,
       permit_number: validatedData.permit_number || null,
       mode_of_transport: validatedData.mode_of_transport || null,
       final_destination: validatedData.final_destination || null,

@@ -1,7 +1,9 @@
-﻿import { Router, Request, Response } from 'express';
-import multer from 'multer';
+﻿
+import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import * as coffinController from '../controllers/coffinController.js';
+import { Router, Request, Response } from 'express';
 import logger from '@montezuma/shared-logger';
+import multer from 'multer';
 
 const router = Router();
 const upload = multer({
@@ -12,15 +14,19 @@ const upload = multer({
   }
 });
 
+
+router.use(protect);
+router.use(authorizeAny as any);
+
+
 // Apply tenant middleware (server.ts handles tenant resolution)
 router.use((req: Request, res: Response, next: any) => {
   (req as any).upload = upload;
   next();
 });
 
-// ============================================================
 // COFFIN CRUD - name, color, size, quantity, price, image
-// ============================================================
+
 
 router.post('/', upload.array('images', 10), coffinController.createCoffin);
 router.post('/create', upload.array('images', 10), coffinController.createCoffin);
@@ -42,9 +48,8 @@ router.put('/update/:id', upload.array('images', 10), coffinController.updateCof
 router.delete('/:id', coffinController.deleteCoffin);
 router.delete('/delete/:id', coffinController.deleteCoffin);
 
-// ============================================================
 // ORDERS (BOOKINGS) - coffin_name, color, size, quantity, booked_by, booked_for
-// ============================================================
+
 
 router.post('/orders', coffinController.createOrder);
 router.post('/bookings', coffinController.createOrder);
@@ -61,8 +66,6 @@ router.patch('/orders/:id/status', coffinController.updateOrderStatus);
 // Alias used by the frontend inventory page (/coffins/bookings/:id/status)
 router.patch('/bookings/:id/status', coffinController.updateOrderStatus);
 
-// PUT alias so the reservation dashboard "Mark as Paid" flow persists to the DB
-// (it calls PUT /coffins/orders/:id with { paid: true }).
 router.put('/orders/:id', coffinController.updateOrderStatus);
 router.put('/bookings/:id', coffinController.updateOrderStatus);
 
@@ -81,8 +84,6 @@ router.get('/stock-requests/detail/:id', coffinController.getStockRequestById);
 
 router.patch('/stock-requests/:id/status', coffinController.updateStockRequestStatus);
 
-// Action-based status updates the frontend uses: approve / reject / delivered.
-// 2-status workflow (approved → delivered); legacy "transferring" maps to approved.
 router.post('/stock-requests/:id/:action', coffinController.updateStockRequestAction);
 
 // ============================================================
@@ -90,26 +91,11 @@ router.post('/stock-requests/:id/:action', coffinController.updateStockRequestAc
 // ============================================================
 
 router.get('/health', coffinController.healthCheck);
-
-// Redis diagnostics — "is the coffin cache actually working?" in one call.
-// The cache only ever produces hits when the shared Redis client is genuinely
-// connected (see getRedisClient()'s SETEX/GET self-test in the package log):
-//   [Redis] Connected (redis://***@restpoint_redis:6379)
-//   [Redis] SETEX/GET self-test passed — caching is ACTIVE
 router.get('/health/redis', coffinController.redisHealthCheck);
-
-// ============================================================
-// GET coffin by ID - registered LAST among the GET routes so the
-// catch-all :id does not hijack single-segment endpoints such as
-// /orders, /stock-requests, and /health (Express first-match-wins).
-// ============================================================
-router.get('/detail/:id', coffinController.getCoffinById);
 router.get('/:id', coffinController.getCoffinById);
 
-// ============================================================
-// 404 handler for unmatched routes within /coffins
-// ============================================================
 
+//   404
 router.use((req: Request, res: Response) => {
   logger.warn({
     msg: 'Coffin route not found',
@@ -118,7 +104,7 @@ router.use((req: Request, res: Response) => {
     tenant: (req as any).tenantSlug
   });
 
-  
+
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found in coffin service`

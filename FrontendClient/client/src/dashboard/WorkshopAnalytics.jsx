@@ -302,8 +302,107 @@ function TrendChart({ rows }) {
   );
 }
 
+/* ── Production per worker per month ────────────────────────────────────────
+   The explicit "how many has each worker produced each month" grid.
+
+   The rest of this file derives its numbers from the LIVE order payload, which
+   by design no longer contains finished orders — so every derived figure reads
+   0. This grid is driven by GET /workshop/reports/worker-production instead,
+   which aggregates finished orders in SQL, and is the authoritative answer. */
+function ProductionGrid({ production }) {
+  const months = Array.isArray(production?.months) ? production.months : [];
+  const rows = Array.isArray(production?.workers) ? production.workers : [];
+
+  const monthLabel = (key) => {
+    const [y, m] = String(key).split("-").map(Number);
+    if (!y || !m) return key;
+    return `${MONTHS[m - 1]} ${String(y).slice(2)}`;
+  };
+
+  // The highest single cell decides the heat scale, so one busy month does not
+  // wash every other month out to zero colour.
+  const peak = Math.max(1, ...rows.flatMap((r) => months.map((m) => Number(r.monthly?.[m]) || 0)));
+  const grand = rows.reduce((s, r) => s + (Number(r.total) || 0), 0);
+
+  if (!rows.length) {
+    return (
+      <div className="wa-panel">
+        <h2>Production per Worker, per Month</h2>
+        <div className="wa-sub">Coffins finished, credited to the month they were completed</div>
+        <div className="wa-empty">No workers registered yet.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wa-panel wa-pm-panel">
+      <h2>
+        Production per Worker, per Month
+        {grand > 0 && <span className="wa-month-chip">{grand} total</span>}
+      </h2>
+      <div className="wa-sub">
+        Coffins finished, credited to the month they were completed — not the month they were ordered
+      </div>
+
+      {/* Horizontally scrollable so a 12-month window stays readable on a phone
+          instead of being crushed into unreadable 3-character columns. */}
+      <div className="wa-pm-scroll">
+        <table className="wa-pm">
+          <thead>
+            <tr>
+              <th className="wa-pm-name">Worker</th>
+              {months.map((m) => (
+                <th key={m} className="wa-pm-cell">{monthLabel(m)}</th>
+              ))}
+              <th className="wa-pm-total">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.worker_id}>
+                <th scope="row" className="wa-pm-name">
+                  <span className="wa-avatar">{initials(r.name)}</span>
+                  <span className="wa-pm-who">
+                    <b>{r.name}</b>
+                    <small>{r.role}</small>
+                  </span>
+                </th>
+                {months.map((m) => {
+                  const v = Number(r.monthly?.[m]) || 0;
+                  const intensity = v / peak;
+                  return (
+                    <td key={m} className={`wa-pm-cell${v === 0 ? " zero" : ""}`}>
+                      {/* Opacity ramps with the value so the eye lands on the
+                          productive months without needing a colour scale. */}
+                      <span style={v ? { background: `rgba(95, 15, 64, ${0.12 + intensity * 0.55})` } : undefined}>
+                        {v}
+                      </span>
+                    </td>
+                  );
+                })}
+                <td className="wa-pm-total">{r.total || 0}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row" className="wa-pm-name">All workers</th>
+              {months.map((m) => (
+                <td key={m} className="wa-pm-cell">
+                  {rows.reduce((s, r) => s + (Number(r.monthly?.[m]) || 0), 0)}
+                </td>
+              ))}
+              <td className="wa-pm-total">{grand}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main view ─────────────────────────────────────────────────────────── */
-export default function WorkshopAnalytics({ orders = [], workers = [], onRemoveWorker }) {
+export default function WorkshopAnalytics({ orders = [], workers = [], production = null, onRemoveWorker }) {
   const { rows, totals } = useWorkerStats(orders, workers);
 
   const maxBar = Math.max(1, ...rows.map((r) => r.completed + r.active));
@@ -317,7 +416,16 @@ export default function WorkshopAnalytics({ orders = [], workers = [], onRemoveW
     return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
   })();
 
-  if (rows.length === 0) {
+  // The headline figures must come from the SQL aggregation, not from the live
+  // order payload: the live payload deliberately excludes finished orders, so
+  // every derived total there is structurally 0. `production` is the fallback
+  // for the one case the endpoint cannot cover — no workers registered at all.
+  const made = production?.totals?.produced ?? totals.made;
+  const madeThisMonth = production?.totals?.thisMonth ?? totals.month;
+  const workerCount = production?.totals?.workers ?? totals.workers;
+
+  // With no workers there is nothing else to show; the grid handles its own empty state.
+  if (rows.length === 0 && !production) {
     return (
       <div className="wa-panel">
         <div className="wa-empty">No workers registered yet.</div>
@@ -332,18 +440,21 @@ export default function WorkshopAnalytics({ orders = [], workers = [], onRemoveW
           leave the Analytics tab looking completely different from the
           Store tab, which had no header at all. */}
 
+      {/* ── the answer, first: what each worker produced each month ── */}
+      <ProductionGrid production={production} />
+
       {/* ── stats ── */}
       <div className="wa-stats">
         <div className="wa-stat">
           <div className="wa-label">Workers</div>
-          <div className="wa-num">{totals.workers}</div>
+          <div className="wa-num">{workerCount}</div>
         </div>
         <div className="wa-stat wa-stat--plum">
           <div className="wa-label">Coffins Made</div>
-          <div className="wa-num">{totals.made}</div>
-          <span className={`wa-delta${totals.month - totals.lastMonth > 0 ? "" : " flat"}`}>
-            <i className={`fas ${totals.month - totals.lastMonth > 0 ? "fa-arrow-up" : "fa-minus"}`} />
-            {" "}{totals.month - totals.lastMonth > 0 ? `+${totals.month - totals.lastMonth} this month` : "no change"}
+          <div className="wa-num">{made}</div>
+          <span className={`wa-delta${madeThisMonth - totals.lastMonth > 0 ? "" : " flat"}`}>
+            <i className={`fas ${madeThisMonth - totals.lastMonth > 0 ? "fa-arrow-up" : "fa-minus"}`} />
+            {" "}{madeThisMonth - totals.lastMonth > 0 ? `+${madeThisMonth - totals.lastMonth} this month` : "no change"}
           </span>
         </div>
         <div className="wa-stat">

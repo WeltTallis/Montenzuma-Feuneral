@@ -5128,6 +5128,241 @@
    }
 }
 
+/* ── Production per worker per month ─────────────────────────────────────────
+   The explicit "how many has each worker produced each month" grid. The grid
+   scrolls horizontally rather than shrinking its month columns, because 12
+   columns squeezed into a phone width turns every number into a 3px smear. */
+.rpd .wa-pm-panel {
+   margin-bottom: 18px
+}
+
+.rpd .wa-pm-panel h2 {
+   display: flex;
+   align-items: center;
+   gap: 10px
+}
+
+.rpd .wa-pm-scroll {
+   overflow-x: auto;
+   -webkit-overflow-scrolling: touch;
+   margin-top: 14px;
+   border: 1px solid var(--brd);
+   border-radius: 8px
+}
+
+.rpd .wa-pm {
+   width: 100%;
+   border-collapse: collapse;
+   font-size: 12px;
+   min-width: 560px
+}
+
+.rpd .wa-pm th,
+.rpd .wa-pm td {
+   padding: 7px 8px;
+   text-align: center;
+   border-bottom: 1px solid var(--bg);
+   white-space: nowrap
+}
+
+.rpd .wa-pm thead th {
+   font-size: 10px;
+   font-weight: 700;
+   text-transform: uppercase;
+   letter-spacing: .04em;
+   color: var(--tx3);
+   background: var(--sect);
+   position: sticky;
+   top: 0
+}
+
+.rpd .wa-pm-name {
+   text-align: left !important;
+   min-width: 168px;
+   position: sticky;
+   left: 0;
+   background: var(--card);
+   z-index: 1
+}
+
+.rpd .wa-pm thead .wa-pm-name {
+   background: var(--sect);
+   z-index: 2
+}
+
+.rpd .wa-pm-who {
+   display: inline-flex;
+   flex-direction: column;
+   vertical-align: middle;
+   margin-left: 7px;
+   line-height: 1.25
+}
+
+.rpd .wa-pm-who b {
+   font-size: 12px;
+   color: var(--tx)
+}
+
+.rpd .wa-pm-who small {
+   font-size: 10px;
+   color: var(--tx3)
+}
+
+.rpd .wa-pm-cell span {
+   display: inline-block;
+   min-width: 24px;
+   padding: 3px 6px;
+   border-radius: 5px;
+   font-weight: 700;
+   color: #fff
+}
+
+.rpd .wa-pm-cell.zero span {
+   background: transparent;
+   color: var(--tx3);
+   font-weight: 500
+}
+
+.rpd .wa-pm-total {
+   font-weight: 800;
+   color: var(--tx);
+   background: var(--sect)
+}
+
+.rpd .wa-pm tfoot th,
+.rpd .wa-pm tfoot td {
+   border-bottom: none;
+   border-top: 2px solid var(--brd);
+   font-weight: 800;
+   color: var(--tx);
+   background: var(--sect)
+}
+
+.rpd .wa-pm tbody tr:hover td {
+   background: var(--sect)
+}
+
+/* ── Register Worker (admin-only, dashboard Workshop tab) ────────────────── */
+.rpd .wp-addworker {
+   padding: 8px 14px;
+   border-radius: 8px;
+   font: 700 12px var(--sans);
+   cursor: pointer;
+   display: inline-flex;
+   align-items: center;
+   gap: 7px;
+   white-space: nowrap;
+   background: #00296B;
+   border: 1px solid #00296B;
+   color: #fff
+}
+
+.rpd .wp-addworker:hover {
+   background: #001f4d
+}
+
+.rpd .wp-ok {
+   background: #E8F5E9;
+   border: 1px solid #A5D6A7;
+   color: #132A13;
+   border-radius: 8px;
+   padding: 10px 14px;
+   font-size: 12.5px;
+   font-weight: 600;
+   margin-bottom: 14px
+}
+
+/* ── Store inventory rows: phone layout ─────────────────────────────────────
+   Above, an inventory line is a 5-column grid (name · type · qty · out ·
+   actions). Squeezed onto a phone that produced two 90px columns of unreadable
+   digits. Below 860px each row becomes a stacked card: the name on its own
+   line, a labelled stats row, then full-width action buttons. */
+@media(max-width:860px) {
+   .rpd .sv-topbar {
+      flex-direction: column;
+      align-items: stretch
+   }
+
+   .rpd .sv-tcap {
+      justify-content: space-between
+   }
+
+   .rpd .sv-btn-dispatch {
+      width: 100%;
+      justify-content: center
+   }
+
+   .rpd .sv-inv-row {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+      align-items: start;
+      padding: 14px 16px
+   }
+
+   /* Name spans the full width so it never competes with the numbers. */
+   .rpd .sv-inv-row>div:first-child {
+      grid-column: 1 / -1
+   }
+
+   .rpd .sv-inv-kind {
+      justify-self: start
+   }
+
+   .rpd .sv-inv-out {
+      justify-self: end;
+      text-align: right
+   }
+
+   .rpd .sv-inv-actions {
+      grid-column: 1 / -1;
+      justify-content: stretch
+   }
+
+   /* Big touch targets — these are used one-handed, standing at the racks. */
+   .rpd .sv-inv-actions .sv-mini {
+      flex: 1;
+      justify-content: center;
+      padding: 11px 10px;
+      font-size: 12px
+   }
+}
+
+@media(max-width:560px) {
+   .rpd .sv-tstats {
+      gap: 14px
+   }
+
+   .rpd .sv-panel-head {
+      flex-direction: column;
+      align-items: flex-start
+   }
+
+   /* Below this the two numbers still fit; below THAT the separator only
+      added visual noise between two stacked stats. */
+   .rpd .sv-tsep {
+      display: none
+   }
+
+   .rpd .sv-journal {
+      grid-template-columns: 1fr
+   }
+}
+
+/* The per-month production grid needs no special phone treatment beyond the
+   horizontal scroll it already has, but the sticky name column must not eat
+   the whole viewport on a narrow screen. */
+@media(max-width:560px) {
+   .rpd .wa-pm-name {
+      min-width: 132px
+   }
+
+   .rpd .wa-pm-cell span {
+      min-width: 20px;
+      padding: 3px 4px;
+      font-size: 11px
+   }
+}
+
 /* ── Workshop module header ───────────────────────────────────────────────
    Back-to-Operations, the module title, live status and refresh. The Workshop
    module renders no sidebar, so this bar is the only persistent chrome telling

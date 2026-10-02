@@ -23,8 +23,22 @@ const handleResponse = async (apiCall) => {
 // ============ ORDERS ============
 export const workshopService = {
     // --- Orders ---
+    // `params.exclude_status` (comma separated) is pushed down to MySQL via
+    // GET /workshop/orders?exclude_status=... so the live board stops pulling
+    // the whole finished history on every refresh.
     getOrders: (params = {}) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.ORDERS, { params })),
+
+    // Statuses that represent a finished job. Kept in one place because both the
+    // live board (exclude them) and the production analytics (only count them)
+    // need the exact same list.
+    FINISHED_ORDER_STATUSES: ['completed', 'delivered', 'dispatched', 'collected', 'cancelled'],
+
+    /** Orders still on the floor — what the workshop tab actually renders. */
+    getActiveOrders: () =>
+        handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.ORDERS, {
+            params: { exclude_status: workshopService.FINISHED_ORDER_STATUSES.join(',') },
+        })),
 
     getOrder: (id) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.ORDER_DETAIL(id))),
@@ -117,6 +131,12 @@ export const workshopService = {
 
     getInventoryReport: (params = {}) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.REPORTS.INVENTORY, { params })),
+
+    // Per-worker, per-month production. This is the source of truth for "how many
+    // has each worker produced" — it is computed in SQL over FINISHED orders,
+    // which the live board no longer downloads (see getActiveOrders).
+    getWorkerProduction: (params = {}) =>
+        handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.REPORTS.WORKER_PRODUCTION, { params })),
 
     // --- Work Orders & PDF ---
     getWorkOrderPDF: (id) =>

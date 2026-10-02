@@ -1,11 +1,11 @@
-const express = require('express');
-const router = express.Router();
+const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
 const chemicalController = require('../controllers/chemicalController');
 const usageController = require('../controllers/usageController');
+const express = require('express');
+const router = express.Router();
 
 // Import authentication middleware
 // @ts-ignore - authMiddleware is JavaScript, not TypeScript
-const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
 
 // All routes are protected with JWT authentication
 router.use(protect);

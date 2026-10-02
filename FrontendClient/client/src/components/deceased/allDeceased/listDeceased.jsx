@@ -6,9 +6,7 @@ import { DECEASED_CHANGED_EVENT } from '../../../api/dashboardDataApi';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 import {
-  formatDate,
-  daysFromNow,
-  todayKey,
+  formatDate, daysFromNow, todayKey,
 } from '../../../utils/dates/parseDates';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
@@ -58,6 +56,8 @@ const STATUS_CONFIG = {
   maintenance: { label: 'Maintenance', c: C.gray, filter: 'other' },
   default: { label: 'In Care', c: C.cBlue, filter: 'under care' },
 };
+
+
 
 const getStatusInfo = (statusStr) => {
   const raw = String(statusStr ?? '').trim();
@@ -522,11 +522,7 @@ const DeceasedListPage = () => {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
       // The deceased-service resolves its DATABASE from these headers, so a
-      // branch user must be addressed with the BRANCH slug: every branch of a
-      // multi-branch organisation keeps its records in its own database
-      // (`<org>-<branch>`), while the parent tenant slug resolves to the
-      // organisation's main/HQ database — which is why a Thika user used to be
-      // shown Nairobi's deceased records.
+
       const headers = { 'Authorization': `Bearer ${token}`, ...getBranchScopeHeaders(tenantSlug) };
       const collected = []; let pageNum = 1; const pageSize = 200; let totalPages = 2;
       // `_t` + no-store: never let the browser (or an intermediary) answer this
@@ -636,6 +632,8 @@ const DeceasedListPage = () => {
       return true;
     }
   };
+
+
   const closeExportNotify = useCallback(() => { setExportNotify(null); }, []);
   const downloadExportCopy = useCallback(() => { if (exportNotify?.fileUrl) { downloadExportFile(exportNotify.fileUrl, exportNotify.fileName); return; } const blob = exportNotify?.blob; if (!blob) return; downloadExportBlob(blob, exportNotify?.fileName || `Deceased_Records_${todayKey()}.xlsx`); }, [exportNotify]);
   const showExportFailed = useCallback((message) => { setExporting(false); setShowExport(false); setExportNotify({ type: 'error', message: message || 'The export could not be completed. Please try again.', blob: null, fileUrl: null, fileName: '' }); }, []);
@@ -725,7 +723,7 @@ const DeceasedListPage = () => {
     }).filter(Boolean);
   }, [yearRecords]);
 
-  // ─── Render ──────────────────────────────────────────────────────
+  // ─── Render 
   return (
     <>
       <GlobalFonts />

@@ -8,8 +8,6 @@ import ModalRouter from './ModalRouter';
 import OrdersTab from './OrdersTab';
 import StoreTab from './StoreTab';
 import Toasts from './Toasts';
-// "Register Worker" is an admin action — adding people to the workshop roster.
-import { isWorkshopAdmin } from '../../../utils/workshopRole';
 
 export const Ctx = createContext(null);
 
@@ -119,7 +117,10 @@ const WorkshopDashboard = () => {
       setLoading(true);
       setError(null);
       const [ordersRes, workersRes, materialsRes] = await Promise.all([
-        workshopService.getOrders(),
+        // Finished jobs are excluded server-side: the Orders tab is a live board
+        // of what is still on the floor, and downloading every completed coffin
+        // on each refresh (plus on every socket event) grew without bound.
+        workshopService.getActiveOrders(),
         workshopService.getWorkers(),
         workshopService.getMaterials(),
       ]);
@@ -453,23 +454,25 @@ const WorkshopDashboard = () => {
 
         /* Workshop shell: keep the page padding and the header row usable on a
            phone. The header is flex+wrap, so on narrow screens the title and the
-           Register Worker button stack instead of being crushed side by side. */
+           action button stack instead of being crushed side by side. */
         .ws-page { max-width: 1480px; margin: 0 auto; padding: 24px 24px 48px; }
         .ws-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
         .ws-head h2 { font-size: 20px; }
         .ws-title-wrap { min-width: 0; }
-        .ws-btn-primary {
-          background: ${S.primary}; color: #fff; border: none;
+        .ws-btn-ghost {
+          background: #fff; color: ${S.primary}; border: 1px solid ${S.border};
           padding: 10px 18px; border-radius: 8px; font-weight: 700;
           font-size: 13px; font-family: inherit; cursor: pointer;
           display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+          text-decoration: none;
         }
+        .ws-btn-ghost:hover { background: ${S.primaryBg}; }
 
         @media (max-width: 768px) {
           .ws-page { padding: 16px 14px 40px; }
           .ws-head { flex-direction: column; align-items: stretch; gap: 12px; }
           .ws-head h2 { font-size: 18px; }
-          .ws-btn-primary { width: 100%; justify-content: center; }
+          .ws-btn-ghost { width: 100%; justify-content: center; }
         }
       `}</style>
       <div style={{
@@ -497,17 +500,13 @@ const WorkshopDashboard = () => {
                 {workers.length} worker{workers.length !== 1 ? 's' : ''} registered
               </p>
             </div>
-            {/* Admin-only: only an administrator may add people to the roster. */}
-            {isWorkshopAdmin() && (
-              <button
-                onClick={() => setModal('createWorker')}
-                className="btn btn-primary ws-btn-primary"
-                onMouseEnter={e => e.currentTarget.style.background = S.primaryDark}
-                onMouseLeave={e => e.currentTarget.style.background = S.primary}
-              >
-                <i className="fas fa-user-plus" style={{ fontSize: 12 }} /> Register Worker
-              </button>
-            )}
+            {/* "Register Worker" moved to the Operations dashboard's Workshop tab
+                (dashboard/WorkshopPanel.jsx). Users work from that tab, and this
+                standalone page is no longer where they add people — keeping a
+                second copy here meant two places to maintain for no benefit. */}
+            <a href="#/workshop" className="btn ws-btn-ghost">
+              <i className="fas fa-chart-line" style={{ fontSize: 12 }} /> Open dashboard workshop
+            </a>
           </div>
 
           <WorkshopTabs activeTab={tab} onTabChange={setTab} />

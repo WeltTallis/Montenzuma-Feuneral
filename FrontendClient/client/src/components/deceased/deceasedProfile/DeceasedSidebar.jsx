@@ -1,7 +1,7 @@
 import React from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { QRCodeSVG } from 'qrcode.react';
-import { C, getInitials, formatDate, getDaysInMorgue } from './theme';
+import { C, getInitials, formatDate, getDaysInMorgue, getHoursInMorgue } from './theme';
 import { getTenantSlug } from '../../../utils/globalAuth';
 
 /* ─── Pulse animation for active timeline dots ─── */
@@ -88,6 +88,19 @@ const ChargeRow = styled.div`
   color: ${C.mid};
   &:last-of-type { border-bottom: none; }
   strong { color: ${p => (p.$highlight ? C.danger : C.black)}; font-weight: 700; }
+`;
+// Rendered as a <p> (not a <div>) so the ChargeRow `&:last-of-type` rule above
+// keeps targeting the last charge row instead of latching onto this note.
+const ChargeNote = styled.p`
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: ${C.mid};
+  background: ${C.bgSection};
+  border: 1px solid ${C.borderLight};
+  border-radius: 6px;
+  strong { color: ${C.black}; font-weight: 700; }
 `;
 const SidebarSection = styled.div`
   margin-bottom: 28px;
@@ -291,12 +304,40 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   const isFemale = sex.toLowerCase() === 'female';
   const documentCount = Array.isArray(deceased?.documents) ? deceased.documents.length : 0;
   const releaseData = deceased?.releaseData || null;
-  const daysInCare = getDaysInMorgue(deceased?.date_admitted || deceased?.created_at);
-  const dailyRate = Number(deceased?.charges?.per_day ?? deceased?.charges?.dailyRate ?? deceased?.charges?.storage_rate ?? 0);
-  const chargeSource = deceased?.charges?.source === 'home_default' || deceased?.charges?.is_default
-    ? 'Home default'
-    : 'Deceased-specific';
-  const estimatedCareTotal = daysInCare * dailyRate;
+  const admittedAt = deceased?.date_admitted || deceased?.created_at;
+  const daysInCare = getDaysInMorgue(admittedAt);
+  const hoursInCare = getHoursInMorgue(admittedAt);
+
+  // ── Charge basis: a record bills EITHER per day OR per hour ────────────────
+  // This block used to read `per_day` unconditionally and always multiply it by
+  // days-in-care, so a record configured as "per hour" kept displaying (and
+  // totalling) the daily rate — which is exactly why setting an hourly charge
+  // looked like it did nothing. Both rates now come back from the API and the
+  // configured `charge_type` decides which one is active.
+  const chargeType = String(deceased?.charges?.charge_type || deceased?.charges?.chargeType || 'daily').toLowerCase() === 'hourly'
+    ? 'hourly'
+    : 'daily';
+  const isHourly = chargeType === 'hourly';
+  const dailyRate = Number(deceased?.charges?.per_day ?? deceased?.charges?.dailyRate ?? deceased?.charges?.storage_rate ?? 0) || 0;
+  const hourlyRate = Number(deceased?.charges?.per_hour ?? deceased?.charges?.hourlyRate ?? 0) || 0;
+
+  // Fall back to the other basis only when the active one was never set, so a
+  // half-filled configuration still shows a number rather than "Not set".
+  const activeRate = isHourly
+    ? (hourlyRate || dailyRate)
+    : (dailyRate || hourlyRate);
+  const billingUnits = isHourly ? hoursInCare : daysInCare;
+  const unitLabel = isHourly ? 'hour' : 'day';
+
+  // Provenance — the backend resolves a deceased-specific row first and only
+  // falls back to the home default when the record has none of its own. These
+  // flags MUST survive every client-side merge of the charges payload or the
+  // label below lies and reports "Deceased-specific" for an inherited rate.
+  const usesHomeDefault = deceased?.charges?.source === 'home_default' || deceased?.charges?.is_default === true;
+  const chargeSource = usesHomeDefault ? 'Home default' : 'Deceased-specific';
+
+  const estimatedCareTotal = billingUnits * activeRate;
+  const fmtMoney = (n) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 
   // ── Correct deceased ID & admission number ───────────────────────────
   // The deceased is looked up by ID, so we always resolve the canonical
@@ -358,21 +399,38 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
       <SidebarSection>
         <h3>Care Charges</h3>
         <ChargeRow>
-          <span>Days in care</span>
-          <strong>{daysInCare} day{daysInCare === 1 ? '' : 's'}</strong>
+          <span>Basis</span>
+          <strong>{isHourly ? 'Per hour' : 'Per day'}</strong>
         </ChargeRow>
         <ChargeRow>
-          <span>Daily rate</span>
-          <strong>{dailyRate ? `KES ${dailyRate.toLocaleString()}` : 'Not set'}</strong>
+          <span>{isHourly ? 'Hours in care' : 'Days in care'}</span>
+          <strong>
+            {isHourly
+              ? `${fmtMoney(hoursInCare)} hour${hoursInCare === 1 ? '' : 's'}`
+              : `${daysInCare} day${daysInCare === 1 ? '' : 's'}`}
+          </strong>
         </ChargeRow>
+        <ChargeRow>
+          <span>{isHourly ? 'Hourly rate' : 'Daily rate'}</span>
+          <strong>{activeRate ? `KES ${fmtMoney(activeRate)} / ${unitLabel}` : 'Not set'}</strong>
+        </ChargeRow>
+        {/* Provenance: shown only when a rate is actually in play. Labelling an
+            unconfigured record "Deceased-specific" was misleading, and labelling
+            an inherited one the same way was plain wrong. */}
         <ChargeRow>
           <span>Rate source</span>
-          <strong>{dailyRate ? chargeSource : 'Not configured'}</strong>
+          <strong>{activeRate ? chargeSource : 'Not configured'}</strong>
         </ChargeRow>
         <ChargeRow $highlight>
           <span>Estimated care total</span>
-          <strong>{`KES ${estimatedCareTotal.toLocaleString()}`}</strong>
+          <strong>{`KES ${fmtMoney(estimatedCareTotal)}`}</strong>
         </ChargeRow>
+        {usesHomeDefault && (
+          <ChargeNote>
+            Inherited from your home default rates. Open <strong>Charge Settings</strong> to set a
+            rate for this deceased only.
+          </ChargeNote>
+        )}
       </SidebarSection>
 
       <SidebarSection>

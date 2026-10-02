@@ -1,9 +1,12 @@
+import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import { Router } from 'express';
 import {
-    createPostmortemRequest, getPostmortemRequests,  getPostmortemStats,  sendPostmortemRequest,updatePostmortemRequestStatus
+    createPostmortemRequest, getPostmortemRequests, getPostmortemStats, sendPostmortemRequest, updatePostmortemRequestStatus
 } from '../controllers/postmortemRequestControl';
 
 const router = Router();
+router.use(protect);
+router.use(authorizeAny);
 
 // Pre-examination postmortem request tracking
 router.get('/postmortem-requests/stats', getPostmortemStats);

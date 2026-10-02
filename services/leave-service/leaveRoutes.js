@@ -20,6 +20,8 @@ const {
 
 const { protect, authorizeAny } = require('../../services/app-global/middlewares/authMiddleware');
 const router = express.Router();
+router.use(protect)
+router.use(authorizeAny)
 
 // Multer for supporting-document uploads. Files land in the ONE shared
 // uploads folder (<UPLOADS_BASE_DIR>/leave-documents), which matches the

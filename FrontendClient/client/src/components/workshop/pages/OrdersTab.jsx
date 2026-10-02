@@ -82,12 +82,26 @@ const OrdersTab = () => {
   const [assigningOrderId, setAssigningOrderId] = useState(null);
   const [statusOrderId, setStatusOrderId] = useState(null);
 
+  // This tab renders the LIVE board only — finished orders are filtered out in
+  // SQL (see workshopService.getActiveOrders), so "All" and "Active" are the
+  // same set and a "Completed" option could only ever show 0. The stage filter
+  // therefore groups what is still on the floor by where it currently is.
+  const STAGE_FILTERS = [
+    { value: 'all', label: 'All Open' },
+    { value: 'Building', label: 'Building' },
+    { value: 'Waiting Bay', label: 'Waiting Bay' },
+    { value: 'Painting', label: 'Painting' },
+    { value: 'Interior', label: 'Interior' },
+  ];
+
   const filtered = useMemo(() => {
     let f = [...orders];
-    if (filter === 'active') f = f.filter(o => o.status !== 'completed' && o.status !== 'delivered');
-    else if (filter === 'completed') f = f.filter(o => o.status === 'completed' || o.status === 'delivered');
+    if (filter !== 'all') f = f.filter(o => o.stageIndex === STAGES.findIndex(s => s.name === filter));
     return f.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [orders, filter]);
+
+  const stageCount = (value) =>
+    value === 'all' ? orders.length : orders.filter(o => o.stageIndex === STAGES.findIndex(s => s.name === value)).length;
 
   const assigningOrder = assigningOrderId != null ? orders.find(o => o.dbId === assigningOrderId) : null;
   const statusOrder = statusOrderId != null ? orders.find(o => o.dbId === statusOrderId) : null;
@@ -96,9 +110,9 @@ const OrdersTab = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <select value={filter} onChange={e => setFilter(e.target.value)} className="select" style={{ padding: '8px 32px 8px 12px', fontSize: 13 }}>
-          <option value="all">All Orders ({orders.length})</option>
-          <option value="active">Active ({orders.filter(o => o.stageIndex < 4).length})</option>
-          <option value="completed">Completed ({orders.filter(o => o.stageIndex === 4).length})</option>
+          {STAGE_FILTERS.map(f => (
+            <option key={f.value} value={f.value}>{f.label} ({stageCount(f.value)})</option>
+          ))}
         </select>
         <button onClick={() => setModal('createOrder')} className="btn btn-primary" style={{ padding: '10px 20px', fontWeight: 700 }}>
           <i className="fas fa-plus" style={{ fontSize: 11 }} /> New Order

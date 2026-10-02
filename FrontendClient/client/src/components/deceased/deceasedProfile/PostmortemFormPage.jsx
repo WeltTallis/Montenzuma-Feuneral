@@ -9,7 +9,7 @@ import axios from 'axios';
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const BASE_URL = `${API_GATEWAY_URL}`;
 
-// ─── Design Tokens (matches deceasedIntake) ──────────────────────────
+// ─── Design Tokens (matches deceasedIntake) ──
 const COLORS = {
   ink: '#03071E',
   bone: '#FAF8F4',
