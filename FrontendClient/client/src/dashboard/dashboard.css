@@ -4701,6 +4701,20 @@
    font-size: 8px
 }
 
+/* A single worker crossing THEIR OWN target for that month. Green tint on the
+   cell plus a tick, matching the workshop-level month header so "met" reads the
+   same wherever it appears. */
+.rpd .wa-pm-cell.met {
+   background: var(--green-bg);
+   box-shadow: inset 0 0 0 1px var(--green)
+}
+
+.rpd .wa-pm-cell.met > i {
+   margin-left: 3px;
+   font-size: 8px;
+   color: var(--green)
+}
+
 /* ── Set monthly target modal ──────────────────────────────────────────────
    Overlay + dialog. The grid is auto-fit so it reflows from four columns on a
    desktop to two and then one on a phone without a media query. */
@@ -5295,6 +5309,69 @@
 
 .rpd .wa-wperiod b {
    color: var(--tx)
+}
+
+/* ── Worker monthly-target progress on the worker card ──────────────────────
+   Sits between "coffins made" and the mini stats. Only rendered when the admin
+   has set a target for that worker, so a card without one keeps its old shape. */
+.rpd .wa-mt {
+   display: flex;
+   flex-direction: column;
+   gap: 5px;
+   margin-top: -2px
+}
+
+.rpd .wa-mt-top {
+   display: flex;
+   justify-content: space-between;
+   align-items: baseline;
+   gap: 8px
+}
+
+.rpd .wa-mt-label {
+   font: 700 9.5px var(--sans);
+   letter-spacing: .06em;
+   text-transform: uppercase;
+   color: var(--tx3)
+}
+
+.rpd .wa-mt-val {
+   font: 800 11.5px var(--sans);
+   color: var(--tx);
+   display: inline-flex;
+   align-items: center;
+   gap: 4px
+}
+
+.rpd .wa-mt-track {
+   height: 6px;
+   border-radius: 4px;
+   background: var(--sect);
+   overflow: hidden
+}
+
+.rpd .wa-mt-track span {
+   display: block;
+   height: 100%;
+   background: var(--warn);
+   border-radius: 4px
+}
+
+.rpd .wa-mt.met .wa-mt-val {
+   color: var(--green)
+}
+
+.rpd .wa-mt.met .wa-mt-track span {
+   background: var(--green)
+}
+
+/* The whole card goes green once the worker has crossed their monthly number,
+   because "who hit target" is the question a manager scans this row for — a
+   single coloured bar is too easy to miss across a grid of cards. */
+.rpd .wa-wcard.wa-wcard--met {
+   border-color: var(--green);
+   background: var(--green-bg);
+   box-shadow: 0 0 0 1px var(--green) inset
 }
 
 .rpd .wa-link-btn {

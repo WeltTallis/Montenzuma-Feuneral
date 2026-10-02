@@ -76,6 +76,27 @@ const ensureStoreTables = async (tenantDb: string) => {
             updated_at VARCHAR(255),
             UNIQUE KEY uniq_target_month (target_month)
         ) ENGINE=InnoDB`);
+    /* Per-WORKER monthly target: how many coffins one worker is expected to
+       finish in a month.
+
+       Its own table rather than a worker_id column on workshop_monthly_targets,
+       because that table's UNIQUE key is (target_month) alone — a workshop-wide
+       row and a per-worker row for the same month could not coexist under it.
+
+       (worker_id, target_month) is unique so setting the same worker's month
+       twice overwrites instead of stacking duplicate rows. */
+    await safeTenantExecute(tenantDb, `
+        CREATE TABLE IF NOT EXISTS workshop_worker_targets (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            worker_id INT NOT NULL,
+            target_month VARCHAR(7) NOT NULL,
+            target_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            created_by VARCHAR(255) DEFAULT '',
+            created_at VARCHAR(255) NOT NULL,
+            updated_at VARCHAR(255),
+            UNIQUE KEY uniq_worker_target (worker_id, target_month),
+            INDEX idx_worker_target_month (target_month)
+        ) ENGINE=InnoDB`);
 };
 
 /* Accepted month format. A malformed "2026-13" is rejected rather than stored,
@@ -146,7 +167,27 @@ const getTargets = async (req: Request, res: Response) => {
             });
         }
 
-        res.json({ year, months });
+        /* Per-worker targets for the same year, so the dashboard can colour a
+           worker card the moment they cross their own number. Returned flat —
+           the client indexes it by worker id + month — because the roster is
+           small and a nested shape would only have to be walked twice. */
+        const workerRows: any = await safeTenantQuery(tenantDb,
+            `SELECT worker_id, target_month, target_qty
+             FROM workshop_worker_targets
+             WHERE target_month LIKE ?
+             ORDER BY worker_id ASC, target_month ASC`,
+            [`${year}-%`]
+        );
+
+        res.json({
+            year,
+            months,
+            workerTargets: (workerRows || []).map((r: any) => ({
+                worker_id: r.worker_id,
+                month: String(r.target_month),
+                target: Number(r.target_qty) || 0,
+            })),
+        });
     } catch (error: any) {
         res.status(500).json({ error: error.message || 'Failed to load monthly targets' });
     }
@@ -164,9 +205,18 @@ const setTarget = async (req: Request, res: Response) => {
 
         const month = String(req.body?.month || '').trim();
         const qty = Number(req.body?.target);
+        /* Optional. Absent/null/'' means the workshop-wide target (the original
+           behaviour); a number means that one worker's own target. */
+        const rawWorker = req.body?.worker_id;
+        const workerId = (rawWorker === null || rawWorker === undefined || rawWorker === '')
+            ? null
+            : Number(rawWorker);
 
         if (!MONTH_RE.test(month)) {
             return res.status(400).json({ error: 'Month must be in YYYY-MM format' });
+        }
+        if (workerId !== null && (!Number.isInteger(workerId) || workerId <= 0)) {
+            return res.status(400).json({ error: 'worker_id must be a positive whole number' });
         }
         if (!Number.isFinite(qty) || qty < 0) {
             return res.status(400).json({ error: 'Target must be zero or greater' });
@@ -181,6 +231,20 @@ const setTarget = async (req: Request, res: Response) => {
             || (req as any).user?.name
             || (req as any).user?.email
             || '';
+
+        if (workerId !== null) {
+            await safeTenantExecute(tenantDb,
+                `INSERT INTO workshop_worker_targets
+                    (worker_id, target_month, target_qty, created_by, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, NOW(), NOW())
+                 ON DUPLICATE KEY UPDATE
+                    target_qty = VALUES(target_qty),
+                    created_by = VALUES(created_by),
+                    updated_at = NOW()`,
+                [workerId, month, qty, setBy]
+            );
+            return res.json({ ok: true, worker_id: workerId, month, target: qty, setBy });
+        }
 
         await safeTenantExecute(tenantDb,
             `INSERT INTO workshop_monthly_targets
@@ -219,21 +283,49 @@ const getInventory = async (req: Request, res: Response) => {
         // store grew a long, meaningless list of individual coffins. The store
         // only ever needs to know "how many of each TYPE do we hold", so all
         // orders of the same type collapse into a single row keyed by the type.
-        const typeKey = (t: string) => `cft:${String(t).trim().toLowerCase().replace(/\s+/g, '-')}`;
-        const byType = new Map<string, { type: string; count: number; colors: Set<string>; sizes: Set<string> }>();
+        /* The search key is the normalised type, so "Executive", "executive "
+           and "EXECUTIVE" are one store line rather than three. Everything that
+           is not a letter or a digit folds into a hyphen first, which also makes
+           "Standard 6ft" and "Standard-6ft" the same row. */
+        const typeKey = (t: string) => {
+            const slug = String(t).trim().toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return `cft:${slug || 'uncategorised'}`;
+        };
+
+        /* A row is given ONE label. Previously it was whichever order happened to
+           sort first, so the Store could show "standard" beside the "Standard"
+           the operator had just picked from the order form. The most-used spelling
+           now wins, and a label typed entirely in lower case is title-cased so
+           legacy rows read like the types on the order form, while a spelling that
+           already carries capitals ("XL", "6ft Casket") is left untouched. */
+        const prettify = (s: string) =>
+            s === s.toLowerCase() ? s.replace(/\b[a-z]/g, (ch) => ch.toUpperCase()) : s;
+
+        const byType = new Map<string, { spellings: Map<string, number>; count: number; colors: Set<string>; sizes: Set<string> }>();
         (coffins || []).forEach((c: any) => {
             const type = String(c.coffin_type ?? '').trim() || 'Uncategorised';
             const key = typeKey(type);
-            if (!byType.has(key)) byType.set(key, { type, count: 0, colors: new Set(), sizes: new Set() });
+            if (!byType.has(key)) byType.set(key, { spellings: new Map(), count: 0, colors: new Set(), sizes: new Set() });
             const bucket = byType.get(key)!;
             bucket.count += 1;
+            bucket.spellings.set(type, (bucket.spellings.get(type) || 0) + 1);
             if (c.color) bucket.colors.add(String(c.color));
             if (c.size) bucket.sizes.add(String(c.size));
         });
 
-        const coffinTypes = [...byType.entries()].map(([key, b]) => ({
-            key, type: b.type, count: b.count, colors: [...b.colors], sizes: [...b.sizes],
-        })).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
+        const coffinTypes = [...byType.entries()].map(([key, b]) => {
+            const spelling = [...b.spellings.entries()].sort((x, y) => {
+                if (y[1] !== x[1]) return y[1] - x[1];                        // most used
+                const capX = Number(x[0][0] === x[0][0].toUpperCase());
+                const capY = Number(y[0][0] === y[0][0].toUpperCase());
+                if (capX !== capY) return capY - capX;                        // capitalised first
+                if (x[0].length !== y[0].length) return x[0].length - y[0].length;
+                return x[0].localeCompare(y[0]);
+            })[0][0];
+            return { key, type: prettify(spelling), count: b.count, colors: [...b.colors], sizes: [...b.sizes] };
+        }).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
 
         const syncItems: any[] = [];
         coffinTypes.forEach(({ key, type, count, colors, sizes }) => {
@@ -261,18 +353,26 @@ const getInventory = async (req: Request, res: Response) => {
             }
         }
 
-        // Coffin quantities are DERIVED (produced − dispatched), so an order
-        // reaching the Store raises its type's count and every dispatch lowers
-        // it — no manual reconciling, and the ledger stays the source of truth
-        // for what has actually gone out.
-        const dispatchRows: any = await safeTenantQuery(tenantDb,
-            `SELECT item_key, SUM(qty) AS qty FROM store_transactions
-             WHERE action = 'DISPATCH' AND item_key LIKE 'cft:%' GROUP BY item_key`);
-        const dispatchedByKey = new Map<string, number>(
-            (dispatchRows || []).map((r: any) => [String(r.item_key), Number(r.qty) || 0])
+        /* quantity = produced + manually added - dispatched.
+
+           "Produced" is how many finished orders of that type exist; the ledger
+           supplies the other two legs. The RESTOCK leg matters: the quantity used
+           to be recomputed from production alone, so an operator's "Add" on a
+           coffin type was silently wiped the next time the Store was opened. */
+        const ledgerRows: any = await safeTenantQuery(tenantDb,
+            `SELECT item_key, action, SUM(qty) AS qty FROM store_transactions
+             WHERE item_key LIKE 'cft:%' AND action IN ('DISPATCH','RESTOCK')
+             GROUP BY item_key, action`);
+        const ledgerByKey = (action: string) => new Map<string, number>(
+            (ledgerRows || [])
+                .filter((r: any) => r.action === action)
+                .map((r: any) => [String(r.item_key), Number(r.qty) || 0])
         );
+        const dispatchedByKey = ledgerByKey('DISPATCH');
+        const restockedByKey = ledgerByKey('RESTOCK');
+
         for (const { key, count } of coffinTypes) {
-            const target = Math.max(0, count - (dispatchedByKey.get(key) || 0));
+            const target = Math.max(0, count + (restockedByKey.get(key) || 0) - (dispatchedByKey.get(key) || 0));
             await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = ? WHERE item_key = ?', [target, key]);
         }
 
@@ -280,6 +380,22 @@ const getInventory = async (req: Request, res: Response) => {
         // inflating totals, then drop the empty ones entirely.
         await safeTenantExecute(tenantDb, `UPDATE store_items SET quantity = 0 WHERE item_key LIKE 'cf:%'`);
         await safeTenantExecute(tenantDb, `DELETE FROM store_items WHERE item_key LIKE 'cf:%' AND quantity = 0`);
+
+        /* Coffin rows that correspond to nothing: no finished order behind them
+           and no ledger entry either. These are leftovers from the old per-order
+           `cf:<id>` scheme, or a type whose orders were all deleted, and leaving
+           them at a stale quantity is what made the Store disagree with the
+           floor. A row WITH history is kept even at zero — that is a real type
+           the Store tracks and has simply run out of. */
+        const derivedKeys = coffinTypes.map((c) => c.key);
+        const orphanFilter = derivedKeys.length
+            ? ` AND item_key NOT IN (${derivedKeys.map(() => '?').join(',')})`
+            : '';
+        await safeTenantExecute(tenantDb,
+            `DELETE FROM store_items
+              WHERE item_key LIKE 'cft:%'${orphanFilter}
+                AND item_key NOT IN (SELECT DISTINCT item_key FROM store_transactions WHERE item_key LIKE 'cft:%')`,
+            derivedKeys);
 
         const items: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items ORDER BY item_type, item_name');
         const history: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions ORDER BY txn_date DESC, id DESC');

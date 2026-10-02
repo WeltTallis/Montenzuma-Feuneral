@@ -73,6 +73,22 @@ function ownsOrder(w, o) {
   return !!name && String(o.assigned_to_name || "").trim().toLowerCase() === name;
 }
 
+/** workerId -> { "YYYY-MM": target } from the monthly-targets payload.
+ *
+ *  Kept flat on the wire and indexed here so a card or a grid cell can ask "what
+ *  is this worker's target for this month" in O(1) instead of walking the array
+ *  on every render. A worker with no target for a month is simply absent, which
+ *  the callers read as "no target" rather than "target of zero". */
+function workerTargetMap(targets) {
+  const byWorker = new Map();
+  (Array.isArray(targets?.workerTargets) ? targets.workerTargets : []).forEach((t) => {
+    const wid = String(t.worker_id);
+    if (!byWorker.has(wid)) byWorker.set(wid, new Map());
+    byWorker.get(wid).set(String(t.month), Number(t.target) || 0);
+  });
+  return byWorker;
+}
+
 /** Build every derived number the view needs, once.
  *
  *  `production` is the source of truth for anything measuring FINISHED work
@@ -517,6 +533,11 @@ function ProductionGrid({ production, targets }) {
       .map((m) => m.month)
   );
 
+  /* Per-worker targets, so a cell can be marked the moment THAT worker crossed
+     THEIR OWN number — which is a different question from the workshop's month
+     header above it. */
+  const wTargets = workerTargetMap(targets);
+
   if (!rows.length) {
     return (
       <div className="wa-panel">
@@ -562,14 +583,23 @@ function ProductionGrid({ production, targets }) {
                 </th>
                 {months.map((m) => {
                   const v = Number(r.monthly?.[m]) || 0;
+                  const t = wTargets.get(String(r.worker_id))?.get(String(m)) || 0;
+                  // Met only when a target was actually set for that worker+month,
+                  // so an unset month is never painted as a success.
+                  const hit = t > 0 && v >= t;
                   const intensity = v / peak;
                   return (
-                    <td key={m} className={`wa-pm-cell${v === 0 ? " zero" : ""}`}>
+                    <td
+                      key={m}
+                      className={`wa-pm-cell${v === 0 ? " zero" : ""}${hit ? " met" : ""}`}
+                      title={t > 0 ? `${r.name} · ${m}: ${v} of ${t} coffins${hit ? " — target met" : ""}` : undefined}
+                    >
                       {/* Opacity ramps with the value so the eye lands on the
                           productive months without needing a colour scale. */}
                       <span style={v ? { background: `rgba(95, 15, 64, ${0.12 + intensity * 0.55})` } : undefined}>
                         {v}
                       </span>
+                      {hit ? <i className="fas fa-check" aria-hidden="true" /> : null}
                     </td>
                   );
                 })}
@@ -649,7 +679,12 @@ function ProductionMix({ byType }) {
 
 /* ── Main view ─────────────────────────────────────────────────────────── */
 export default function WorkshopAnalytics({ orders = [], workers = [], production = null, targets = null, onRemoveWorker }) {
-  const { rows, totals } = useWorkerStats(orders, workers, production);
+  const { rows, totals, monthKey } = useWorkerStats(orders, workers, production);
+
+  /* Per-worker monthly targets: worker id -> "YYYY-MM" -> target. Read by the
+     worker cards to colour the ones that have crossed their own number. */
+  const wTargets = useMemo(() => workerTargetMap(targets), [targets]);
+  const targetOf = (wid, month) => wTargets.get(String(wid))?.get(String(month)) || 0;
 
   const maxBar = Math.max(1, ...rows.map((r) => r.completed + r.active));
   // Top producers: this month only, matching the reference's "Sep 2025" chip.
@@ -777,8 +812,12 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
             return r.perMonth[monthKeyOf(d)] || 0;
           });
           const sparkMax = Math.max(1, ...spark);
+          // This worker's target for the CURRENT month, and whether they hit it.
+          const mt = targetOf(r.id, monthKey);
+          const mtPct = mt > 0 ? Math.min(100, Math.round((r.month / mt) * 100)) : 0;
+          const mtMet = mt > 0 && r.month >= mt;
           return (
-            <div className="wa-wcard" key={r.id}>
+            <div className={`wa-wcard${mtMet ? " wa-wcard--met" : ""}`} key={r.id}>
               <div className="wa-wcard-top">
                 <span className="wa-avatar wa-avatar--lg">{initials(r.name)}</span>
                 <div>
@@ -802,6 +841,24 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
                   ))}
                 </div>
               </div>
+
+              {/* This worker's own monthly number. Only rendered when a target
+                  has actually been set, so cards without one keep their old
+                  shape instead of showing an empty 0/0 bar. */}
+              {mt > 0 && (
+                <div className={`wa-mt${mtMet ? " met" : ""}`}>
+                  <div className="wa-mt-top">
+                    <span className="wa-mt-label">{monthLabel} target</span>
+                    <span className="wa-mt-val">
+                      {mtMet ? <i className="fas fa-check" aria-hidden="true" /> : null}
+                      {r.month} / {mt}
+                    </span>
+                  </div>
+                  <div className="wa-mt-track">
+                    <span style={{ width: `${Math.max(4, mtPct)}%` }} />
+                  </div>
+                </div>
+              )}
 
               <div className="wa-wmini">
                 <div><b>{r.active}</b><span>active</span></div>

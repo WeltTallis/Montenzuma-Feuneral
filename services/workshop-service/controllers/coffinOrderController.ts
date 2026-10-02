@@ -229,7 +229,7 @@ const createOrder = async (req: Request, res: Response) => {
             VALUES (?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?,
                     NOW(), NOW(), NOW())`,
-            [order_number, coffin_name, coffin_type || 'standard', size || null,
+            [order_number, coffin_name, coffin_type || 'Standard', size || null,
                 color, notes, due_date || null, priority || 'normal', branch_id || 1, tenantSlug]
         );
 

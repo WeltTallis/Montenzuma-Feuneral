@@ -134,8 +134,11 @@ export const workshopService = {
     getMonthlyTargets: (params = {}) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.STORE_TARGETS, { params })),
 
-    setMonthlyTarget: (month, target) =>
-        handleResponse(workshopApi.put(ENDPOINTS.WORKSHOP.STORE_TARGETS, { month, target })),
+    // `workerId` (optional) scopes the target to ONE worker; omit it for the
+    // workshop-wide number. Both are stored server-side and returned together by
+    // getMonthlyTargets (months[] for the workshop, workerTargets[] per worker).
+    setMonthlyTarget: (month, target, workerId = null) =>
+        handleResponse(workshopApi.put(ENDPOINTS.WORKSHOP.STORE_TARGETS, { month, target, worker_id: workerId })),
 
     // --- Reports ---
     getDailyReport: (params = {}) =>

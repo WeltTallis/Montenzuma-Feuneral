@@ -50,13 +50,56 @@ function TabBar({ active, onChange }) {
   );
 }
 
-function TargetModal({ months, onSave, onClose }) {
-  const [draft, setDraft] = useState(() => {
-    const o = {};
-    (months || []).forEach((m) => { o[m.month] = m.target > 0 ? String(m.target) : ""; });
-    return o;
-  });
+function TargetModal({ months, workerTargets, workers, production, onSave, onClose }) {
+  /* Whose target is being edited: "workshop", or a worker id. Both live in the
+     same 12-month grid so the admin sees one screen whichever scope they pick. */
+  const [scope, setScope] = useState("workshop");
   const [err, setErr] = useState("");
+
+  const workerOptions = (workers || []).map((w) => ({
+    id: String(w.user_id ?? w.id),
+    name: String(w.full_name || `${w.first_name || ""} ${w.last_name || ""}`.trim() || "Worker"),
+  }));
+
+  /* Which "made" figure belongs to the chosen scope. Workshop scope reads the
+     server's per-month `produced`; a worker scope reads that worker's own
+     per-month bucket from the worker-production report — so the "N made" beside
+     each input is always the number the target will actually be judged against. */
+  const producedFor = (monthKey) => {
+    if (scope === "workshop") {
+      return Number((months || []).find((m) => m.month === monthKey)?.produced) || 0;
+    }
+    const w = (production?.workers || []).find((x) => String(x.worker_id) === String(scope));
+    return Number(w?.monthly?.[monthKey]) || 0;
+  };
+
+  /* The target already set for THIS scope, so switching to a worker shows that
+     worker's numbers instead of re-using the workshop's. */
+  const targetFor = (monthKey) => {
+    if (scope === "workshop") {
+      return Number((months || []).find((m) => m.month === monthKey)?.target) || 0;
+    }
+    const row = (workerTargets || []).find(
+      (x) => String(x.worker_id) === String(scope) && String(x.month) === monthKey
+    );
+    return Number(row?.target) || 0;
+  };
+
+  const buildDraft = () => {
+    const o = {};
+    (months || []).forEach((m) => {
+      const t = targetFor(m.month);
+      o[m.month] = t > 0 ? String(t) : "";
+    });
+    return o;
+  };
+
+  const [draft, setDraft] = useState(buildDraft);
+
+  /* Switching scope must rebuild the sheet, or a worker's sheet would still be
+     showing the workshop's numbers. `months`/`workerTargets` are stable for the
+     life of the modal, so scope is the only trigger that matters here. */
+  useEffect(() => { setDraft(buildDraft()); }, [scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = async () => {
     // Validate everything before writing, so a typo in month 7 does not leave
@@ -71,12 +114,14 @@ function TargetModal({ months, onSave, onClose }) {
       }
     }
     setErr("");
+    // null = the workshop-wide target; a worker id = that worker's own target.
+    const workerId = scope === "workshop" ? null : scope;
     for (const m of months || []) {
       const raw = (draft[m.month] ?? "").trim();
       // Blank is saved as 0 rather than skipped, so clearing a target that was
       // previously set actually removes it instead of silently keeping the old
       // number in place.
-      await onSave(m.month, raw === "" ? 0 : Number(raw));
+      await onSave(m.month, raw === "" ? 0 : Number(raw), workerId);
     }
   };
 
@@ -90,19 +135,35 @@ function TargetModal({ months, onSave, onClose }) {
         </div>
 
         <div className="wp-target-body">
+          <div className="wp-target-scope">
+            <label htmlFor="wp-target-who">Target applies to</label>
+            <select
+              id="wp-target-who"
+              value={scope}
+              onChange={(e) => setScope(e.target.value)}
+            >
+              <option value="workshop">Whole workshop</option>
+              {workerOptions.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+
           <p className="wp-target-sub">
-            How many coffins the workshop aims to finish each month. Leave a month
-            blank to track it without a target.
+            {scope === "workshop"
+              ? "How many coffins the workshop aims to finish each month. Leave a month blank to track it without a target."
+              : `How many coffins ${workerOptions.find((w) => w.id === scope)?.name || "this worker"} is expected to finish each month. A month they reach it turns green on the analytics.`}
           </p>
 
           <div className="wp-target-grid">
             {(months || []).map((m) => {
               const val = draft[m.month] ?? "";
               const has = val.trim() !== "";
+              const produced = producedFor(m.month);
               const pct = has && Number(val) > 0
-                ? Math.min(100, Math.round((m.produced / Number(val)) * 100))
+                ? Math.min(100, Math.round((produced / Number(val)) * 100))
                 : 0;
-              const met = has && Number(val) > 0 && m.produced >= Number(val);
+              const met = has && Number(val) > 0 && produced >= Number(val);
               return (
                 <div className="wp-target-cell" key={m.month}>
                   <label>{m.month}</label>
@@ -116,7 +177,7 @@ function TargetModal({ months, onSave, onClose }) {
                     onChange={(e) => setDraft((d) => ({ ...d, [m.month]: e.target.value }))}
                   />
                   <div className="wp-target-actual">
-                    <span className={met ? "met" : ""}>{m.produced} made</span>
+                    <span className={met ? "met" : ""}>{produced} made</span>
                     {has && Number(val) > 0 && (
                       <span className={met ? "met" : "miss"}>
                         {met ? "Target met" : `${pct}%`}
@@ -221,10 +282,13 @@ export default function WorkshopPanel({ onExit }) {
     }
   };
 
-  const saveTarget = async (month, qty) => {
-    const res = await workshopService.setMonthlyTarget(month, qty);
+  const saveTarget = async (month, qty, workerId = null) => {
+    const res = await workshopService.setMonthlyTarget(month, qty, workerId);
     if (res && res.success) {
-      setTargetSaved(`Target for ${month} set to ${qty} coffin${Number(qty) === 1 ? "" : "s"}.`);
+      const who = workerId
+        ? (workers.find((w) => String(w.user_id ?? w.id) === String(workerId))?.full_name || "Worker")
+        : "the workshop";
+      setTargetSaved(`Target for ${who} in ${month} set to ${qty} coffin${Number(qty) === 1 ? "" : "s"}.`);
       setTargetOpen(false);
       // Reload so the chart reflects the new mark immediately rather than waiting
       // for the next refresh cycle.
@@ -327,6 +391,7 @@ export default function WorkshopPanel({ onExit }) {
 
       {error ? <div className="wp-err">{error}</div> : null}
       {workerSaved ? <div className="wp-ok">{workerSaved}</div> : null}
+      {targetSaved ? <div className="wp-ok">{targetSaved}</div> : null}
 
       {/* No <TabBar /> here any more — it is part of `header` above, so the
           module is a single navigation row rather than a header plus a second
@@ -356,6 +421,9 @@ export default function WorkshopPanel({ onExit }) {
       {targetOpen && (
         <TargetModal
           months={targets?.months || []}
+          workerTargets={targets?.workerTargets || []}
+          workers={workers}
+          production={production}
           onSave={saveTarget}
           onClose={() => { setTargetSaved(""); setTargetOpen(false); }}
         />

@@ -325,7 +325,7 @@ async function ensureWorkshopTables(dbName: string) {
         const neededOrderColumns: [string, string][] = [
             ['order_number', "VARCHAR(50) NULL"],
             ['coffin_name', "VARCHAR(255) NULL"],
-            ['coffin_type', "VARCHAR(50) DEFAULT 'standard'"],
+            ['coffin_type', "VARCHAR(50) DEFAULT 'Standard'"],
             ['size', "VARCHAR(100) NULL"],
             ['color', "VARCHAR(100) NULL"],
             ['notes', "TEXT NULL"],
