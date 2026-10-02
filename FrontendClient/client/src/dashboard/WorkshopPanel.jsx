@@ -67,8 +67,15 @@ export default function WorkshopPanel({ onExit }) {
       setError("");
       const [storeRes, ordersRes, workersRes, productionRes] = await Promise.all([
         workshopService.getStoreInventory().catch(() => ({ data: null, success: false })),
-        // Live board only — completed/delivered jobs are filtered out in SQL.
-        workshopService.getActiveOrders().catch(() => ({ data: [], success: false })),
+        // The dashboard needs the FULL history, not just the live board. Its Analytics
+        // tab counts FINISHED coffins per worker / per month, and that data only
+        // exists in completed/delivered orders. Fetching active-only here made
+        // "Coffins per Worker" and the trend chart permanently blank.
+        //
+        // The active-only filter belongs to the workshop's ORDERS TAB for normal
+        // users (components/workshop/pages/WorkshopDashboard.jsx), which is a live
+        // board of what is on the floor — not here.
+        workshopService.getOrders().catch(() => ({ data: [], success: false })),
         workshopService.getWorkers().catch(() => ({ data: [], success: false })),
         workshopService.getWorkerProduction({ months: 12 }).catch(() => ({ data: null, success: false })),
       ]);

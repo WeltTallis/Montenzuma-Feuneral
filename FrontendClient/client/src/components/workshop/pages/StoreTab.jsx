@@ -463,39 +463,33 @@ const StoreTab = () => {
 
     return (
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      /* The "Store Management / In-store coffins · dispatch · history" identity block
+       was removed by request — the Store tab is already named Store in the tab
+       bar directly above it, so the heading repeated itself. The capacity
+       control and the Dispatch action are deliberately KEPT: they are the only
+       two working controls on this screen. */
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {/* Right-hand control cluster: capacity + dispatch sit side by side. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
 
-          <i className="fas fa-warehouse" style={{ color: T.primary, background: T.primaryBg, width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 
-          <div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: T.textSec, whiteSpace: 'nowrap' }}>Store Capacity</span>
 
-            <div style={{ fontSize: 20, fontWeight: 800, color: T.text, letterSpacing: '-0.01em' }}>Store Management</div>
+            <input type="number" min={1} value={capacity} onChange={e => { const v = Math.max(1, parseInt(e.target.value, 10) || 50); setCapacity(v); save(`${CAP_KEY}.${slug}`, v); }} style={{ width: 76, padding: '8px 10px', border: `1px solid ${T.bdr}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', fontWeight: 700, boxSizing: 'border-box' }} />
 
-            <div style={{ fontSize: 12, color: T.textSec }}>In-store coffins · dispatch · history</div>
+            <span style={{ fontSize: 11, color: T.textMuted }}>units</span>
 
           </div>
 
-        </div>
+          <button
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            onClick={openAviationDispatch}
 
-          <span style={{ fontSize: 12, fontWeight: 700, color: T.textSec }}>Store Capacity</span>
+            disabled={readyCoffins.length === 0}
 
-          <input type="number" min={1} value={capacity} onChange={e => { const v = Math.max(1, parseInt(e.target.value, 10) || 50); setCapacity(v); save(`${CAP_KEY}.${slug}`, v); }} style={{ width: 76, padding: '8px 10px', border: `1px solid ${T.bdr}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', fontWeight: 700, boxSizing: 'border-box' }} />
-
-          <span style={{ fontSize: 11, color: T.textMuted }}>units</span>
-
-        </div>
-
-        <button
-
-          onClick={openAviationDispatch}
-
-          disabled={readyCoffins.length === 0}
-
-          style={{
+            style={{
 
             padding: '10px 20px',
 
@@ -534,6 +528,9 @@ const StoreTab = () => {
           Dispatch Coffins ({readyCoffins.length})
 
         </button>
+
+        {/* closes the right-hand control cluster */}
+        </div>
 
       </div>
 

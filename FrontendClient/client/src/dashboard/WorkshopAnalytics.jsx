@@ -64,13 +64,33 @@ function ownsOrder(w, o) {
   return !!name && String(o.assigned_to_name || "").trim().toLowerCase() === name;
 }
 
-/** Build every derived number the view needs, once. */
-function useWorkerStats(orders, workers) {
+/** Build every derived number the view needs, once.
+ *
+ *  `production` is the source of truth for anything measuring FINISHED work
+ *  (coffins made, per-month counts, totals). It comes from
+ *  GET /workshop/reports/worker-production, which aggregates finished orders in
+ *  SQL.
+ *
+ *  WHY IT CANNOT COME FROM `orders` ANY MORE: the live board deliberately
+ *  excludes completed/delivered orders (workshopService.getActiveOrders), so
+ *  every `done` branch below was structurally unreachable — which left
+ *  "Coffins per Worker" and the whole trend chart permanently blank no matter
+ *  how much the florists actually produced. `orders` is still the right source
+ *  for IN-PROGRESS work (the in-progress list and the live counts), so it is
+ *  kept for those.
+ */
+function useWorkerStats(orders, workers, production) {
   return useMemo(() => {
     const now = new Date();
     const monthKey = monthKeyOf(now);
     const weekAgo = now.getTime() - 7 * 86400000;
     const lastMonthKey = monthKeyOf(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+
+    // Server-side per-worker production, indexed by the same stable user id.
+    const prodById = new Map();
+    (Array.isArray(production?.workers) ? production.workers : []).forEach((p) => {
+      prodById.set(String(p.worker_id), p);
+    });
 
     const rows = (Array.isArray(workers) ? workers : []).map((w, i) => {
       const mine = (Array.isArray(orders) ? orders : []).filter((o) => ownsOrder(w, o));
@@ -78,19 +98,35 @@ function useWorkerStats(orders, workers) {
       let completed = 0, active = 0, hours = 0, month = 0, week = 0, lastMonth = 0;
       const inProgress = [];
 
+      // ── FINISHED work: prefer the SQL aggregation ──
+      const prod = prodById.get(String(w.user_id ?? w.id));
+      if (prod) {
+        completed = Number(prod.total) || 0;
+        Object.entries(prod.monthly || {}).forEach(([k, v]) => { perMonth[k] = Number(v) || 0; });
+        month = Number((prod.monthly || {})[monthKey]) || 0;
+        lastMonth = Number((prod.monthly || {})[lastMonthKey]) || 0;
+      }
+
       mine.forEach((o) => {
         const created = o.order_date || o.created_at || o.createdAt || null;
         const createdMs = created ? new Date(created).getTime() : null;
         const done = isFinished(o.status);
 
         if (done) {
-          completed += 1;
-          if (createdMs) {
-            const k = monthKeyOf(new Date(createdMs));
-            perMonth[k] = (perMonth[k] || 0) + 1;
-            if (k === monthKey) month += 1;
-            if (k === lastMonthKey) lastMonth += 1;
-            if (createdMs >= weekAgo) week += 1;
+          // Only count locally when the SQL aggregate is unavailable (the
+          // endpoint failed), otherwise the same coffin would be counted twice.
+          if (!prod) {
+            completed += 1;
+            if (createdMs) {
+              const k = monthKeyOf(new Date(createdMs));
+              perMonth[k] = (perMonth[k] || 0) + 1;
+              if (k === monthKey) month += 1;
+              if (k === lastMonthKey) lastMonth += 1;
+              if (createdMs >= weekAgo) week += 1;
+            }
+          } else if (createdMs && createdMs >= weekAgo) {
+            // "This week" is a rolling window the month buckets cannot express.
+            week += 1;
           }
         } else {
           active += 1;
@@ -130,7 +166,7 @@ function useWorkerStats(orders, workers) {
     };
 
     return { rows, totals, monthKey };
-  }, [orders, workers]);
+  }, [orders, workers, production]);
 }
 
 
@@ -403,7 +439,7 @@ function ProductionGrid({ production }) {
 
 /* ── Main view ─────────────────────────────────────────────────────────── */
 export default function WorkshopAnalytics({ orders = [], workers = [], production = null, onRemoveWorker }) {
-  const { rows, totals } = useWorkerStats(orders, workers);
+  const { rows, totals } = useWorkerStats(orders, workers, production);
 
   const maxBar = Math.max(1, ...rows.map((r) => r.completed + r.active));
   // Top producers: this month only, matching the reference's "Sep 2025" chip.

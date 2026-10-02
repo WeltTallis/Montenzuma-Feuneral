@@ -829,8 +829,17 @@ const DriverPortal = () => {
                     ].map(t => {
                         const on = tab === t.k;
                         const Icon = t.icon;
+                        // "Leaves" is a dead-end for a driver: the portal has no
+                        // way to SUBMIT a request, only to read the ones already
+                        // filed. Clicking it now takes the driver straight to the
+                        // Apply for Leave form — the one action they actually come
+                        // here for — instead of a list they cannot add to.
+                        const go = () => {
+                            if (t.k === 'leaves') navigate(`/${slug}/leaves/apply`);
+                            else setTab(t.k);
+                        };
                         return (
-                            <button key={t.k} onClick={() => setTab(t.k)} className="anim-press" style={{
+                            <button key={t.k} onClick={go} title={t.k === 'leaves' ? 'Apply for leave' : undefined} className="anim-press" style={{
                                 flex: 1, padding: '12px 8px', borderRadius: 11, background: on ? T.surface2 : 'transparent',
                                 border: '1px solid transparent', color: on ? T.text : T.textMute,
                                 fontWeight: 600, fontSize: '.8rem', cursor: 'pointer',

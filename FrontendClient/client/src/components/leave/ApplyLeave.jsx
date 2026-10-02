@@ -180,6 +180,14 @@ const GlobalStyle = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800&display=swap');
   * { box-sizing: border-box; }
   body { background: ${C.app}; margin: 0; }
+
+  /* Safety net for the sideways scroll on narrow phones. The individual
+     grids/flex rows above are fixed individually (minmax(0,1fr), min-width:0),
+     but this guarantees that if ANY future child refuses to shrink the page
+     clips rather than letting the whole document pan sideways. overflow-x
+     clips only; overflow-y stays visible so normal scrolling is untouched. */
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  #root { overflow-x: hidden; max-width: 100vw; }
 `;
 
 const Container = styled.div`
@@ -216,6 +224,12 @@ const BackBtn = styled.button`
 const Layout = styled.div`
   display: grid; grid-template-columns: 1fr 368px; gap: 20px; align-items: start;
   @media (max-width: 980px) { grid-template-columns: 1fr; }
+
+  /* min-width: 0 on BOTH tracks. Grid items default to min-width:auto, which
+     resolves to their min-content width — so a single wide child (the calendar
+     grid, a long nowrap chip) could not shrink and forced its whole track
+     wider than the viewport, producing the sideways scroll on a phone. */
+  > * { min-width: 0; }
 `;
 
 const SideInner = styled.div`
@@ -294,7 +308,11 @@ const NavBtn = styled.button`
 `;
 
 const CalGrid = styled.div`
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+  /* minmax(0, 1fr) so the tracks can shrink below the 30px DayNum's min-content
+     width. A bare 1fr is minmax(auto, 1fr), whose auto minimum refuses to
+     shrink — seven such columns plus gaps overflowed a phone and pushed the
+     whole page sideways. */
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px;
   user-select: none; -webkit-user-select: none; touch-action: pan-y;
   @media (max-width: 640px) { gap: 2px; }
 `;
@@ -353,8 +371,11 @@ const CalHint = styled.p`
 
 /* ═══════════════════════ FORM ═══════════════════════ */
 const FormGrid = styled.div`
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;
-  @media (max-width: 640px) { grid-template-columns: 1fr; gap: 15px; }
+  display: grid;
+  /* minmax(0, 1fr) on both tracks: the default min-width:auto lets a long
+     nowrap <select> or input value widen its column past the viewport. */
+  grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;
+  @media (max-width: 640px) { grid-template-columns: minmax(0, 1fr); gap: 15px; }
 `;
 const FormGroup = styled.div`
   display: flex; flex-direction: column; gap: 7px;
@@ -988,7 +1009,10 @@ const ApplyLeave = () => {
       <GlobalStyle />
       <Container>
         <Header>
-          <div style={{ flex: 1, minWidth: 220 }}>
+          /* min-width: 0, NOT 220. This flex child held a 220px floor, so on a 320px
+            phone the title block plus the Back button exceeded the row and the
+            header pushed the page sideways. min-width:0 lets the text wrap. */
+            <div style={{ flex: 1, minWidth: 0 }}>
             <Crumb>Leave · Self-service</Crumb>
             <Title>Apply for Leave</Title>
             <Subtitle>Hi <b>{userName}</b> — pick your dates on the calendar, add the details, submit.</Subtitle>

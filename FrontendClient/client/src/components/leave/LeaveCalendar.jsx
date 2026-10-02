@@ -110,7 +110,12 @@ const CalBtn = styled.button`
 
 const CalGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr), NOT a bare 1fr: a bare 1fr is really minmax(auto, 1fr), whose
+     "auto" minimum refuses to shrink below the cell's min-content width. The
+     32px DayNum plus 4px Cell padding gave every column a ~40px floor, so seven
+     columns demanded ~280px plus gaps — more than a 320px phone has left after
+     the card padding, and the grid pushed the whole page sideways. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
 `;
 

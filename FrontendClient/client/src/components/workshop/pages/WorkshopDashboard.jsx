@@ -482,28 +482,12 @@ const WorkshopDashboard = () => {
         WebkitFontSmoothing: 'antialiased'
       }}>
         <div className="ws-page">
-          {/* ── Admin action bar ──────────────────────────────────────────
-              Worker registration was fully built but UNREACHABLE: the modal
-              (ModalRouter type="createWorker"), the submit handler
-              (createWorker -> POST /workshop/workers) and the "Add Worker"
-              heading all existed, yet NOTHING in the workshop ever called
-              setModal('createWorker'). Orders and Materials each open their
-              own modal from their own tab, so the button had nowhere to live.
-
-              It sits above the tabs, not inside one, because workers are used
-              by every tab (they are the assign target on an order) and there
-              is no Workers tab of its own. */}
+          {/* The "Workshop / N workers registered" title block was removed by
+              request — the page already says Workshop in the browser title and
+              the Store/Materials/Orders tabs identify the module. The only thing
+              that earned its place in the header was the dashboard link, so that
+              stays, now left-aligned on its own row. */}
           <div className="ws-head">
-            <div className="ws-title-wrap">
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: S.text }}>Workshop</h2>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: S.textMuted }}>
-                {workers.length} worker{workers.length !== 1 ? 's' : ''} registered
-              </p>
-            </div>
-            {/* "Register Worker" moved to the Operations dashboard's Workshop tab
-                (dashboard/WorkshopPanel.jsx). Users work from that tab, and this
-                standalone page is no longer where they add people — keeping a
-                second copy here meant two places to maintain for no benefit. */}
             <a href="#/workshop" className="btn ws-btn-ghost">
               <i className="fas fa-chart-line" style={{ fontSize: 12 }} /> Open dashboard workshop
             </a>
