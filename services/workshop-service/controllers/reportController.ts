@@ -32,7 +32,16 @@ const logger = {
       ?year=2026     calendar year (defaults to the current year)
       ?months=6      how many trailing months to return (default 12, max 24)
 */
-const FINISHED_STATUSES = ['completed', 'delivered', 'dispatched', 'collected'];
+// 'store' is the FIX for the blank analytics. Reaching the Store stage is how a
+// coffin leaves the workshop, so a coffin a worker finished but that was then
+// moved up to Store was excluded by this list and reported as zero production
+// for that worker — which is why "Coffins per Worker" and the dashboard charts
+// showed nothing. It sits alongside completed/delivered, both of which are also
+// post-Store states.
+//
+// 'cancelled' is intentionally absent: the job was stopped, not produced, so
+// crediting it would overstate a worker's output.
+const FINISHED_STATUSES = ['completed', 'delivered', 'store', 'dispatched', 'collected'];
 
 const getWorkerProduction = async (req: Request, res: Response) => {
     try {
@@ -149,8 +158,15 @@ const getDailyReport = async (req: Request, res: Response) => {
         const [orders]: any = await safeTenantQuery(tenantDb,
             `SELECT 
                 COUNT(*) as total_orders,
-                SUM(CASE WHEN status IN ('completed','delivered') THEN 1 ELSE 0 END) as completed_orders,
-                SUM(CASE WHEN status NOT IN ('completed','delivered') THEN 1 ELSE 0 END) as pending_orders,
+                /* 'store' is FINISHED — it is how a coffin leaves the workshop.
+                   It was missing from both halves of this CASE, so a coffin a
+                   worker had finished and moved up to Store was counted as
+                   still pending, which is why the daily workshop summary read
+                   zero. 'cancelled' is excluded from "pending" on purpose: it is
+                   neither produced nor outstanding. Kept in sync with
+                   FINISHED_STATUSES at the top of this file. */
+                SUM(CASE WHEN status IN ('completed','delivered','store','dispatched','collected') THEN 1 ELSE 0 END) as completed_orders,
+                SUM(CASE WHEN status NOT IN ('completed','delivered','store','dispatched','collected','cancelled') THEN 1 ELSE 0 END) as pending_orders,
                 COALESCE(SUM(selling_price), 0) as total_revenue,
                 COALESCE(SUM(total_cost), 0) as total_cost,
                 COALESCE(SUM(profit), 0) as total_profit

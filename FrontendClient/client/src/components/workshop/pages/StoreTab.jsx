@@ -51,7 +51,7 @@ const Gauge = ({ pct, label }) => {
 
 };
 
-const StoreTab = () => {
+const StoreTab = ({ dispatchRequest = 0 }) => {
   const ctx = useContext(Ctx);
   if (!ctx) return null;
   const { addToast, workers = [] } = ctx;
@@ -184,6 +184,18 @@ const StoreTab = () => {
   // Aviation-style multi-coffin dispatch
 
   const readyCoffins = items.filter(it => it.kind === 'Coffin' && effQty(it) > 0);
+
+  /* The "Dispatch Coffin" button now lives in the workshop top bar, one level
+     above this tab, but the stored-coffin list it needs lives here. The parent
+     bumps `dispatchRequest` on each click; we watch it and run the very same
+     openAviationDispatch that this button used to call directly.
+
+     The guard on n > 0 matters: on first mount the prop is 0, and the effect
+     must not fire then or the panel would pop open the moment the Store tab
+     was rendered. */
+  useEffect(() => {
+    if (dispatchRequest > 0) openAviationDispatch();
+  }, [dispatchRequest]);
 
 
 
@@ -483,53 +495,17 @@ const StoreTab = () => {
 
           </div>
 
-          <button
+          {/* "Dispatch Coffins" MOVED to the workshop top bar (WorkshopDashboard.jsx).
 
-            onClick={openAviationDispatch}
+              It is a workshop-wide action — a coffin has to be finished and in the
+              store before it can be dispatched — so burying it on the Store tab
+              made the driver cross two tabs to reach it. It now lives next to the
+              tab switcher and drives this tab through the `dispatchRequest`
+              counter, which opens the same panel via the effect below.
 
-            disabled={readyCoffins.length === 0}
+              Only the button was removed. Store Capacity stays, because it is the
+              one setting that actually belongs to this screen. */}
 
-            style={{
-
-            padding: '10px 20px',
-
-            background: 'linear-gradient(135deg, #DC2626, #B91C1C)',
-
-            color: '#fff',
-
-            border: 'none',
-
-            borderRadius: 8,
-
-            fontSize: 13,
-
-            fontWeight: 700,
-
-            cursor: readyCoffins.length === 0 ? 'not-allowed' : 'pointer',
-
-            opacity: readyCoffins.length === 0 ? 0.5 : 1,
-
-            display: 'inline-flex',
-
-            alignItems: 'center',
-
-            gap: 8,
-
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
-
-            fontFamily: 'inherit',
-
-          }}
-
-        >
-
-          <i className="fas fa-truck-fast" style={{ fontSize: 12 }} />
-
-          Dispatch Coffins ({readyCoffins.length})
-
-        </button>
-
-        {/* closes the right-hand control cluster */}
         </div>
 
       </div>

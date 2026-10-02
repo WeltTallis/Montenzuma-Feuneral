@@ -100,6 +100,16 @@ const WorkshopDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
+  // Incrementing counter, not a boolean: the Store tab watches it and opens the
+  // dispatch panel each time it changes. A boolean would fire only on the first
+  // click, because going true -> false -> true needs two clicks to re-arm.
+  const [dispatchRequest, setDispatchRequest] = useState(0);
+  // Dispatch is a workshop-wide action but the stored-coffin list lives inside
+  // StoreTab, so the top bar asks StoreTab to run it via this counter.
+  const requestDispatch = useCallback(() => {
+    setTab('store');
+    setDispatchRequest(n => n + 1);
+  }, []);
   const [orders, setOrders] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -457,6 +467,29 @@ const WorkshopDashboard = () => {
            action button stack instead of being crushed side by side. */
         .ws-page { max-width: 1480px; margin: 0 auto; padding: 24px 24px 48px; }
         .ws-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+        /* Top navigation: tabs left, actions right. Both halves shrink rather than
+           overflow so the row stays usable from ~320px upwards; the actions wrap
+           under the tabs on a phone. */
+        .ws-topbar {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+        }
+        .ws-topbar > :first-child { min-width: 0; flex: 1 1 260px; }
+        .ws-topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .ws-topbar-actions .ws-btn-ghost,
+        .ws-topbar-actions .ws-btn-primary { flex: 0 0 auto; }
+        .ws-btn-ghost:disabled { opacity: 0.6; cursor: wait; }
+
+        .ws-btn-primary {
+          background: linear-gradient(135deg, #DC2626, #B91C1C); color: #fff;
+          border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700;
+          font-size: 13px; font-family: inherit; cursor: pointer;
+          display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+          box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+        }
+        .ws-btn-primary:hover { filter: brightness(1.08); }
+
         .ws-btn-ghost {
           background: #fff; color: ${S.primary}; border: 1px solid ${S.border};
           padding: 10px 18px; border-radius: 8px; font-weight: 700;
@@ -480,22 +513,45 @@ const WorkshopDashboard = () => {
         WebkitFontSmoothing: 'antialiased'
       }}>
         <div className="ws-page">
-          {/* The "Workshop / N workers registered" title block was removed by
-              request — the page already says Workshop in the browser title and
-              the Store/Materials/Orders tabs identify the module. The only thing
-              that earned its place in the header was the dashboard link, so that
-              stays, now left-aligned on its own row. */}
-          <div className="ws-head">
-            <a href="#/workshop" className="btn ws-btn-ghost">
-              <i className="fas fa-chart-line" style={{ fontSize: 12 }} /> Open dashboard workshop
-            </a>
+          {/* ── Clean top navigation ─────────────────────────────────────
+              One row: the tab switcher on the left, the page-level actions on
+              the right. Dispatch Coffins lives HERE at the top now rather than
+              buried inside the Store tab — it is a workshop-wide action (a
+              coffin is finished before it can be dispatched), so making the
+              driver leave two tabs before they can reach it was the friction.
+              It still dispatches the same stored-coffin set; only its location
+              changed. The "Open dashboard workshop" link is gone for good —
+              the dashboard is one click away and the duplicate header text is
+              gone too. */}
+          <div className="ws-topbar">
+            <WorkshopTabs activeTab={tab} onTabChange={setTab} />
+
+            <div className="ws-topbar-actions">
+              <button
+                className="ws-btn-ghost"
+                onClick={loadData}
+                disabled={loading}
+                title="Reload workers, orders and stock"
+              >
+                <i className={loading ? 'fas fa-rotate fa-spin' : 'fas fa-rotate'}
+                  style={{ fontSize: 12 }} />
+                {loading ? 'Refreshing' : 'Refresh'}
+              </button>
+
+              <button
+                className="btn ws-btn-primary"
+                onClick={requestDispatch}
+                title="Go to the Store and open the dispatch panel"
+              >
+                <i className="fas fa-truck" style={{ fontSize: 12 }} /> Dispatch Coffin
+              </button>
+            </div>
           </div>
 
-          <WorkshopTabs activeTab={tab} onTabChange={setTab} />
           <div style={{ marginTop: 24 }}>
             {tab === 'orders' && <OrdersTab />}
             {tab === 'materials' && <MaterialsTab />}
-            {tab === 'store' && <StoreTab />}
+            {tab === 'store' && <StoreTab dispatchRequest={dispatchRequest} />}
           </div>
         </div>
         {modal && <ModalRouter

@@ -37,7 +37,16 @@ const STATUS_TO_STAGE = {
   completed: 4, delivered: 4, store: 4,
 };
 
-const FINISHED = ["completed", "delivered", "cancelled", "dispatched", "collected"];
+// A coffin counts as PRODUCED once it reaches the Store stage.
+//
+// "store" is deliberately in this list. It maps to stage 4 below (the final
+// stage, alongside completed/delivered) but was MISSING here, so every coffin a
+// worker had moved up to Store — the normal end of the workshop pipeline — was
+// treated as still-in-progress. The result: "Coffins per Worker", the per-month
+// counts and the totals all read 0, which is why the dashboard analytics showed
+// nothing at all. `cancelled` is kept for completeness: it is not real output,
+// so it is excluded from the per-worker totals below.
+const FINISHED = ["completed", "delivered", "store", "dispatched", "collected"];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -116,12 +125,17 @@ function useWorkerStats(orders, workers, production) {
           // Only count locally when the SQL aggregate is unavailable (the
           // endpoint failed), otherwise the same coffin would be counted twice.
           if (!prod) {
-            completed += 1;
+            // A cancelled order is finished but is NOT output — counting it as a
+            // coffin made would inflate every worker's numbers.
+            const isReal = String(o.status || '').toLowerCase() !== 'cancelled';
+            if (isReal) completed += 1;
             if (createdMs) {
               const k = monthKeyOf(new Date(createdMs));
-              perMonth[k] = (perMonth[k] || 0) + 1;
-              if (k === monthKey) month += 1;
-              if (k === lastMonthKey) lastMonth += 1;
+              if (isReal) {
+                perMonth[k] = (perMonth[k] || 0) + 1;
+                if (k === monthKey) month += 1;
+                if (k === lastMonthKey) lastMonth += 1;
+              }
               if (createdMs >= weekAgo) week += 1;
             }
           } else if (createdMs && createdMs >= weekAgo) {

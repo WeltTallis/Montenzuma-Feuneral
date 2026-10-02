@@ -11,11 +11,11 @@ const T = {
 };
 
 const STAGES = [
-  { name: 'Building', icon: 'fa-hammer', color: '#2563EB' },
-  { name: 'Waiting Bay', icon: 'fa-clock', color: '#D97706' },
-  { name: 'Painting', icon: 'fa-paint-roller', color: '#7C3AED' },
-  { name: 'Interior', icon: 'fa-couch', color: '#0891B2' },
-  { name: 'Store', icon: 'fa-warehouse', color: '#059669' },
+  { name: 'Building', icon: 'fa-hammer', color: '#2563EB', bg: '#EFF6FF' },
+  { name: 'Waiting Bay', icon: 'fa-clock', color: '#D97706', bg: '#FFFBEB' },
+  { name: 'Painting', icon: 'fa-paint-roller', color: '#7C3AED', bg: '#F5F3FF' },
+  { name: 'Interior', icon: 'fa-couch', color: '#0891B2', bg: '#ECFEFF' },
+  { name: 'Store', icon: 'fa-warehouse', color: '#059669', bg: '#ECFDF5' },
 ];
 
 const stageKey = (name) => name.toLowerCase().replace(/\s+/g, '_');
@@ -23,6 +23,10 @@ const stageKey = (name) => name.toLowerCase().replace(/\s+/g, '_');
 /* -- Clean card shell -----------------------------------------------
    Deliberately flat: one hairline border, no gradients, no status pills.
    The stage reads as a coloured dot + label, exactly like the reference. */
+/* The card background is tinted by stage so the whole board can be read at a
+       glance: scan a coffin and its stage is obvious from the colour without
+       hunting for the label. A LEFT border in the full stage colour reinforces
+       it, and the stage dot stays for the accessible text cue. */
 const card = {
   background: T.surface, border: `1px solid ${T.bdr}`, borderRadius: 8, padding: 16,
   display: 'flex', flexDirection: 'column', gap: 10,
@@ -131,7 +135,14 @@ const OrdersTab = () => {
             const isDone = order.stageIndex === 4;
             const daysInStage = isDone ? 0 : Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 86400000);
             return (
-              <div key={order.dbId} style={card}>
+              <div
+                key={order.dbId}
+                style={{
+                  ...card,
+                  background: stage.bg,
+                  borderLeft: `4px solid ${stage.color}`,
+                }}
+              >
                 <div style={cardTop}>
                   <span style={orderIdStyle}>{order.id}</span>
                   <span style={stageTag}>
@@ -195,7 +206,17 @@ const OrdersTab = () => {
                       await updateOrderStatus(statusOrder.dbId, stageKey(s.name));
                       setStatusOrderId(null);
                     }}
-                    style={{ ...optRow, color: isCurrent ? T.textMuted : T.text, cursor: isCurrent ? 'default' : 'pointer' }}
+                    /* Each option carries its own stage tint so the scanner flow
+                       reads consistently with the board behind it. */
+                    style={{
+                      ...optRow,
+                      background: s.bg,
+                      borderLeft: `3px solid ${s.color}`,
+                      borderRadius: 6,
+                      color: isCurrent ? T.textMuted : T.text,
+                      cursor: isCurrent ? 'default' : 'pointer',
+                      opacity: isCurrent ? 0.6 : 1,
+                    }}
                   >
                     <span style={{ ...dot, width: 8, height: 8, background: s.color }} />
                     {s.name}
