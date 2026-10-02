@@ -457,8 +457,6 @@ const WorkshopDashboard = () => {
            action button stack instead of being crushed side by side. */
         .ws-page { max-width: 1480px; margin: 0 auto; padding: 24px 24px 48px; }
         .ws-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-        .ws-head h2 { font-size: 20px; }
-        .ws-title-wrap { min-width: 0; }
         .ws-btn-ghost {
           background: #fff; color: ${S.primary}; border: 1px solid ${S.border};
           padding: 10px 18px; border-radius: 8px; font-weight: 700;
