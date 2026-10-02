@@ -1,0 +1,3 @@
+keys: [ 'text', 'data', 'options' ]
+data sample: "110100100001"
+len: 112 barset: undefined

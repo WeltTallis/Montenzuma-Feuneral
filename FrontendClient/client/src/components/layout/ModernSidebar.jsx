@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { api } from '../../api';
 import { ENDPOINTS } from '../../api/endpoints';
 import { getUserId, getParentTenantSlug } from '../../utils/globalAuth';
-import { hasUnseenDecisions } from '../../utils/leaveDecisionBadge';
+import { countUnseenDecisions } from '../../utils/leaveDecisionBadge';
+import { useSocket } from '../../utils/context/socketContext';
 import { isWorkshopAdmin } from '../../utils/workshopRole';
 import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight, BookOpen } from '../../utils/icons/icons';
 
@@ -159,17 +160,55 @@ const MenuBadge = styled.span`
   flex-shrink: 0;
 `;
 
+// Red COUNT badge for "Apply Leave" (was an 8px dot that could only say
+// "something", never "how much"). Deliberately oversized and solid red: this is
+// the one signal that tells an employee their leave was approved or rejected,
+// and it has to be legible at a glance from across a desk.
+//
+// The white ring keeps it readable over both the white nav row and the navy
+// active row it sits on, and the pulse makes it impossible to miss on first
+// arrival — then settles so it stops nagging.
 const LeaveAlertDot = styled.span`
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #EF4444;
-  box-shadow: 0 0 0 2px ${COLORS.white};
+  top: 2px;
+  right: 2px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: #DC2626;
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px ${COLORS.white}, 0 2px 6px rgba(220, 38, 38, 0.5);
   pointer-events: none;
-  z-index: 2;
+  z-index: 3;
+  animation: leaveBadgePulse 2.4s ease-in-out infinite;
+
+  @keyframes leaveBadgePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 2px ${COLORS.white}, 0 2px 6px rgba(220, 38, 38, 0.5); }
+    50%      { transform: scale(1.08); box-shadow: 0 0 0 2px ${COLORS.white}, 0 0 0 6px rgba(220, 38, 38, 0.18); }
+  }
+
+  /* Respect reduced-motion: keep the badge legible, drop the animation. */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  /* Collapsed rail has no room for a wide pill — show just the number. */
+  ${(props) => props.$compact && `
+    min-width: 18px;
+    height: 18px;
+    font-size: 11px;
+    top: 0;
+    right: 0;
+  `}
 `;
 
 const CollapsedItem = styled.div`
@@ -563,39 +602,134 @@ const ModernSidebar = ({
 
   const tenantSlug = getTenantSlug();
 
-  // ── Red dot on "Apply Leave" ──────────────────────────────────────────────
-  // Shows ONLY when an approver has decided one of THIS user's requests
-  // (approved/rejected) and they have not opened the Apply Leave page since.
-  // Deliberately NOT a new notification system — it is a badge on the existing
-  // nav item. Polled because an approval lands while the user is elsewhere in
-  // the app, and a one-shot fetch on mount would never notice it.
-  const [leaveAlert, setLeaveAlert] = useState(false);
+  // ── Red COUNT badge on "Apply Leave" ──────────────────────────────────────
+  // Shows how many of THIS user's requests an approver has DECIDED
+  // (approved/rejected) that they have not opened the Apply Leave page to see
+  // yet. Deliberately NOT the notification bell — it is a badge on this nav item.
+  //
+  // This used to POLL: a GET /leaves/my-leaves every 60s, re-armed on EVERY
+  // route change by its `location.pathname` dependency. With several tabs open
+  // that is a request per user per minute per tab, and it was the leave endpoint
+  // that kept tripping the API gateway's rate limiter.
+  //
+  // It is now event-driven. leave-service publishes to the platform socket bus
+  // (SOCKETIO_SERVICE_URL/emit/...), which arrives here already prefixed as
+  // `notification:leave:updated`. The socket is ALSO the reconnect safety net:
+  // a slow poll is kept only while the socket is DOWN, so a user who never
+  // approves anything generates zero requests on a healthy connection.
+  const [leaveAlertCount, setLeaveAlertCount] = useState(0);
+  const { socket, connected } = useSocket();
+  const leaveRowsRef = useRef([]);
 
+  const recomputeBadge = useCallback(() => {
+    const uid = getUserId();
+    if (!uid) {
+      setLeaveAlertCount(0);
+      return;
+    }
+    setLeaveAlertCount(countUnseenDecisions(leaveRowsRef.current, uid));
+  }, []);
+
+  // Seed once per mount: one request to learn the CURRENT state. The badge must
+  // be right on first paint, before any event has had a chance to fire.
   useEffect(() => {
     const uid = getUserId();
     if (!uid) return undefined;
 
     let cancelled = false;
 
-    const check = async () => {
+    const fetchOnce = async () => {
       try {
         const parentSlug = getParentTenantSlug() || getTenantSlug();
         const headers = { 'x-tenant-slug': parentSlug, 'x-user-id': String(uid) };
         const res = await api.get(ENDPOINTS.LEAVE.MY_LEAVES, { headers });
         const rows = res?.data?.data || res?.data || [];
-        if (!cancelled && Array.isArray(rows)) {
-          setLeaveAlert(hasUnseenDecisions(rows, uid));
-        }
+        if (cancelled || !Array.isArray(rows)) return;
+        leaveRowsRef.current = rows;
+        recomputeBadge();
       } catch {
-        // Leave service unreachable — never show a false "you have news" dot.
-        if (!cancelled) setLeaveAlert(false);
+        // Leave service unreachable — never show a false "you have news" badge.
+        if (!cancelled) setLeaveAlertCount(0);
       }
     };
 
-    check();
-    const poll = setInterval(check, 60000);
+    fetchOnce();
+
+    // ── Recovery poll, ONLY while the socket is down ──
+    // A 60s retry is cheap when compared with polling unconditionally, and it
+    // guarantees the badge self-heals if the socket was down when a decision
+    // landed (otherwise the miss would persist until the next reload).
+    const poll = setInterval(() => {
+      if (!connected) fetchOnce();
+    }, 60000);
+
     return () => { cancelled = true; clearInterval(poll); };
-  }, [location.pathname]);
+  }, [connected, recomputeBadge]);
+
+  // Real-time updates. Applies the change to the cached rows and recomputes, so
+  // an approval lands on the badge without any request.
+  useEffect(() => {
+    if (!socket) return undefined;
+
+    const onLeaveEvent = (payload) => {
+      // The bus prefixes events with "notification:". Accept the bare name too
+      // so this keeps working if the event is ever added to the no-prefix list.
+      const leave = payload?.leave || payload?.data || payload;
+      if (!leave || leave.id == null) return;
+
+      const uid = getUserId();
+      if (!uid) return;
+
+      // Ignore decisions about somebody else's request.
+      const owner = leave.user_id ?? leave.userId;
+      if (owner != null && String(owner) !== String(uid)) return;
+
+      const rows = Array.isArray(leaveRowsRef.current) ? leaveRowsRef.current : [];
+      const key = String(leave.id);
+      const idx = rows.findIndex((l) => String(l?.id) === key);
+
+      if (idx === -1) {
+        // Never seen this request (e.g. the tab was closed when it was filed) —
+        // one fetch to resync beats guessing at the shape of the new row.
+        const parentSlug = getParentTenantSlug() || getTenantSlug();
+        api.get(ENDPOINTS.LEAVE.MY_LEAVES, { headers: { 'x-tenant-slug': parentSlug, 'x-user-id': String(uid) } })
+          .then((res) => {
+            const next = res?.data?.data || res?.data || [];
+            if (Array.isArray(next)) {
+              leaveRowsRef.current = next;
+              recomputeBadge();
+            }
+          })
+          .catch(() => { /* badge simply stays as-is until the next event */ });
+        return;
+      }
+
+      // Merge the authoritative status in place. `status` is what the badge
+      // counts, so updating it is the entire job.
+      const next = rows.slice();
+      next[idx] = { ...next[idx], ...leave, id: next[idx].id };
+      leaveRowsRef.current = next;
+      recomputeBadge();
+    };
+
+    socket.on('notification:leave:updated', onLeaveEvent);
+    socket.on('notification:leave:created', onLeaveEvent);
+
+    return () => {
+      socket.off('notification:leave:updated', onLeaveEvent);
+      socket.off('notification:leave:created', onLeaveEvent);
+    };
+  }, [socket, recomputeBadge]);
+
+  // Opening the Apply Leave page IS the "I have seen it" signal — mark the
+  // decisions read so the badge clears on arrival instead of lingering.
+  useEffect(() => {
+    if (!location.pathname.includes('/leaves/apply')) return;
+    import('../../utils/leaveDecisionBadge').then(({ markDecisionsSeen }) => {
+      markDecisionsSeen(leaveRowsRef.current, getUserId());
+      recomputeBadge();
+    });
+  }, [location.pathname, recomputeBadge]);
 
   // Debug log to show what slug we're using
   console.log('[ModernSidebar] Final tenant slug:', tenantSlug);
@@ -765,7 +899,14 @@ const ModernSidebar = ({
         <MenuItemIcon $active={isActive(item.path)}>
           <item.icon size={20} />
         </MenuItemIcon>
-        {leaveAlert && item.label === 'Apply Leave' && <LeaveAlertDot />}
+        {leaveAlertCount > 0 && item.label === 'Apply Leave' && (
+          <LeaveAlertDot
+            title={`${leaveAlertCount} leave ${leaveAlertCount === 1 ? 'decision' : 'decisions'} waiting for you`}
+            aria-label={`${leaveAlertCount} leave decisions waiting`}
+          >
+            {leaveAlertCount > 99 ? '99+' : leaveAlertCount}
+          </LeaveAlertDot>
+        )}
         <MenuItemLabel $active={isActive(item.path)} $visible={visible}>
           {item.label}
         </MenuItemLabel>
@@ -789,7 +930,15 @@ const ModernSidebar = ({
         <MenuItemIcon $active={isActive(item.path)}>
           <item.icon size={20} />
         </MenuItemIcon>
-        {leaveAlert && item.label === 'Apply Leave' && <LeaveAlertDot />}
+        {leaveAlertCount > 0 && item.label === 'Apply Leave' && (
+          <LeaveAlertDot
+            $compact
+            title={`${leaveAlertCount} leave ${leaveAlertCount === 1 ? 'decision' : 'decisions'} waiting for you`}
+            aria-label={`${leaveAlertCount} leave decisions waiting`}
+          >
+            {leaveAlertCount > 99 ? '99+' : leaveAlertCount}
+          </LeaveAlertDot>
+        )}
         {item.badge && (
           <span style={{
             position: 'absolute',

@@ -42,12 +42,61 @@ const getTenantSlug = (req) => {
 // real-time leave update was silently dropped. Requiring lazily (after
 // server.js has finished loading and set module.exports) gets the live io
 // instance.
+//
+// THAT STILL WAS NOT ENOUGH, and this is why the frontend had to poll.
+// The browser never connects to THIS service's Socket.IO server — it connects
+// to the platform socketio-service (utils/context/socketContext.jsx), a
+// completely separate instance. Emitting on `io` alone reached a server nobody
+// was subscribed to, so `leave:updated` never arrived and the sidebar had to
+// re-GET /leaves/my-leaves every 60s, which is what kept tripping the API
+// gateway's rate limiter.
+//
+// Every other service (coffin, bodycheckout, deceased, florist…) publishes to
+// the shared bus by POSTing to SOCKETIO_SERVICE_URL/emit/:event. Leave now does
+// the same, so the browser's single socket carries leave events too.
+const SOCKETIO_SERVICE_URL =
+    process.env.SOCKETIO_SERVICE_URL ||
+    'http://restpoint_socketio_service:5000';
+
+/** Bridge a leave event onto the platform socket bus. Fire-and-forget. */
+const emitToSharedBus = (tenantSlug, event, data) => {
+    // /emit validates the slug against /^[a-z0-9-]+$/ and the event against
+    // /^[a-zA-Z0-9-_]+$/. Checking here avoids firing a request whose only
+    // possible outcome is a 400 we would then ignore.
+    if (!tenantSlug || !/^[a-z0-9-]+$/.test(String(tenantSlug))) return;
+    if (!/^[a-zA-Z0-9\-_]+$/.test(String(event))) return;
+
+    // Deliberately NOT awaited: a slow or unreachable socketio-service must
+    // never delay the HTTP response the leave request itself returned on.
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const abortTimer = controller ? setTimeout(() => controller.abort(), 3000) : null;
+
+    Promise.resolve()
+        .then(() => fetch(`${SOCKETIO_SERVICE_URL}/emit/${event}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenantSlug, data: data || {} }),
+            ...(controller ? { signal: controller.signal } : {}),
+        }))
+        .then((res) => {
+            if (abortTimer) clearTimeout(abortTimer);
+            if (!res.ok) console.warn(`[LEAVE] socket emit ${event} -> HTTP ${res.status}`);
+        })
+        .catch((e) => {
+            if (abortTimer) clearTimeout(abortTimer);
+            console.warn(`[LEAVE] socket emit ${event} failed: ${e?.message}`);
+        });
+};
+
 const emitUpdate = (tenantSlug, event, data) => {
     const { io } = require('./server');
     if (io) {
         io.to(`tenant_${tenantSlug}`).emit(event, data);
         io.to('admin').emit(event, data);
     }
+
+    // The delivery path the browser actually listens on.
+    emitToSharedBus(tenantSlug, event, data);
 };
 
 // ============================================

@@ -1,17 +1,21 @@
 /**
  * "New leave decision" indicator for the Apply Leave nav item.
  *
- * The sidebar shows a small red dot when the signed-in user has a leave request
- * that an approver has DECIDED (approved or rejected) and that decision has not
- * been seen yet. Pending requests are deliberately excluded — nothing has
- * happened for them yet, so a red dot would cry wolf on every single request.
+ * The sidebar shows a red COUNT badge when the signed-in user has leave
+ * requests that an approver has DECIDED (approved or rejected) and that the
+ * user has not seen yet. Pending requests are deliberately excluded — nothing
+ * has happened for them yet, so a badge would cry wolf on every request.
+ *
+ * The count is what the UI renders. The previous bare 8px dot could not tell
+ * "one approval" from "five decisions waiting", which is the difference between
+ * checking later today and checking right now.
  *
  * The seen-marker is stored per user in localStorage so two people sharing a
  * browser (a shared back-office iPad, say) never mark each other's decisions as
  * read, and it survives a page reload.
  */
 
-// Anything other than these two means "still waiting", so no dot.
+// Anything other than these two means "still waiting", so no badge.
 const DECIDED = new Set(['approved', 'rejected']);
 
 const key = (userId) => `leaveDecisionsSeen:${userId || 'unknown'}`;
@@ -45,6 +49,14 @@ export const getUnseenDecisions = (leaves, userId) => {
 /** True when at least one decided request is still unseen. */
 export const hasUnseenDecisions = (leaves, userId) =>
   getUnseenDecisions(leaves, userId).length > 0;
+
+/**
+ * How many decided requests are still unseen — the number the sidebar badge
+ * renders. Kept separate from hasUnseenDecisions so the existing boolean callers
+ * keep working untouched.
+ */
+export const countUnseenDecisions = (leaves, userId) =>
+  getUnseenDecisions(leaves, userId).length;
 
 /**
  * Marks the given requests as seen. Called when the user actually opens the

@@ -245,7 +245,8 @@ function fetchLogoBase64(url: string, depth = 0): Promise<string | null> {
 // HTML TEMPLATE — height:297mm + overflow:hidden = GUARANTEED 1 page
 // flex pushes bottom section to bottom, filling the page
 // ═══════════════════════════════════════════════════════════════
-function buildReportHtml(p: {
+// async: renders the barcode (await generateBarcodeBars) into the HTML.
+async function buildReportHtml(p: {
     tenantName: string;
     tenantAddress: string;
     tenantPhone: string;
@@ -270,7 +271,7 @@ function buildReportHtml(p: {
     issuedDate: string;
     logoBase64: string | null;
     signatureBase64: string | null;
-}): string {
+}): Promise<string> {
 
     const logoHtml = p.logoBase64
         ? '<img src="' + p.logoBase64 + '" alt="Logo" style="height:50px;width:auto;max-width:115px;object-fit:contain;" />'
@@ -285,7 +286,24 @@ function buildReportHtml(p: {
         pathSig = esc(shortName);
     }
 
-    const barcodeBars = generateBarcodeBars;
+    // ACTUALLY RENDER THE BARCODE. This line used to be
+    //   const barcodeBars = generateBarcodeBars;
+    // which stored the FUNCTION and interpolated it into the HTML below —
+    // producing the literal text "async () => {...}" where the barcode should
+    // be. The autopsy report has therefore never actually contained a barcode.
+    // A barcode failure must never take down the whole report, so fall back to
+    // an empty string; the admission number is printed underneath anyway.
+    let barcodeBars = '';
+    try {
+        barcodeBars = await generateBarcodeBars(p.deceasedAdmission || '', {
+            width: 2,
+            height: 60,
+            displayValue: true,
+        });
+    } catch (e) {
+        Logger.warn({ message: `Barcode render failed, omitting it: ${(e as Error).message}` });
+        barcodeBars = '';
+    }
 
     return '<!DOCTYPE html>\n'
         + '<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n'
@@ -1004,7 +1022,8 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         );
 
         // ── 7. BUILD HTML ──
-        const html = buildReportHtml({
+        // await: buildReportHtml renders the barcode, which is async.
+        const html = await buildReportHtml({
             tenantName: brandingName,
             tenantAddress: branding.address,
             tenantPhone: branding.phone,
