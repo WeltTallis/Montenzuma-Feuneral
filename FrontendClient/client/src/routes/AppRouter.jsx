@@ -109,7 +109,6 @@ const StoreDashboard = lazy(() => import('../modules/store'));
 const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/chemicalAnalytics'));
 const ReleaseFormPreview = lazy(() => import('../components/deceased/register/deceasedRelease'));
 const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
-const StoreJournal = lazy(() => import('../components/workshop/pages/StoreJournal'));
 const BodyIntakePreview = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const FlowerBookingsPreview = lazy(() => import('../components/florists/FlowerBookingsNew'));
 const ReceptionPortalPreview = lazy(() => import('../components/reception/ReceptionPortal'));
@@ -601,11 +600,16 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><WorkshopDashboard /></Layout>
         } />
 
-        {/* Store Journal - the Store tab's Calendar + History, split out as an
-            admin-only management view. StoreJournal re-checks the role itself so
-            the data never renders for a worker even if this URL is typed. */}
+        {/* Store Journal — the Journal is no longer a standalone destination.
+            The Store, with its Calendar + History journal, is a tab inside the
+            Operations dashboard's Workshop module, which is where the nav now
+            sends people. This redirect is kept deliberately: the old
+            /workshop/store-journal URL is already in bookmarks, browser history
+            and any links sent to staff, and a redirect lands them on a working
+            screen instead of a 404. `replace` so Back does not bounce straight
+            back into the redirect. */}
         <Route path="workshop/store-journal" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><StoreJournal /></Layout>
+          <Navigate to={`/${slug}/dashboard`} replace />
         } />
 
         {/* Settings - All authenticated users */}

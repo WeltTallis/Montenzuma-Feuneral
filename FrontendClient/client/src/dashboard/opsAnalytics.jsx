@@ -4,11 +4,8 @@ import { Ic } from "./opsIcons";
 import { fmtK, parseKey, shortDate } from "./opsData";
 import SchedulerView from "./opsScheduler";
 
-/* ══════════════════════════════════════════════════════════════════════════
-   Analytics — KPI grid, the hand-built SVG charts and the insights card.
-   ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── donut ──────────────────────────────────────────────────────────────── */
+
 
 /** Segmented ring; each segment eases in and opens its case list on click. */
 export function Donut({ segs, size = 110, stroke = 17, label, onOpenModal }) {
@@ -392,7 +389,7 @@ export function AnalyticsView({
     { k: "released", c: "var(--teal)", v: calc.care.released, l: "Released / Transferred" },
   ];
   const bMax = Math.max(...calc.bmix.map((b) => b.n), 1);
-  const sMax = Math.max(...calc.staff.map((s) => s[1]), 1);
+  // `sMax` removed with the "Caseload by Staff" card — it had no other reader.
   const aMax = Math.max(...calc.buckets.map((b) => b[1]), 1);
   const legend = (
     <span className="chartlegend">
@@ -532,22 +529,12 @@ export function AnalyticsView({
           </div>
         </ACard>
 
-        <ACard title="Caseload by Staff" note="Assignments per officer + examinations by the pathologist.">
-          <div style={{ padding: "14px 16px" }}>
-            {calc.staff.length ? calc.staff.map((s, i) => (
-              <HBar
-                key={s[0]}
-                label={s[0]}
-                value={s[1]}
-                max={sMax}
-                color={i % 2 ? "var(--dng)" : "var(--plum)"}
-                delay={i * 0.08}
-                modalKey={`staff:${s[0]}`}
-                onClickModal={onOpenModal}
-              />
-            )) : <div className="empty" style={{ padding: 18 }}>No staff data.</div>}
-          </div>
-        </ACard>
+        {/* "Caseload by Staff" was removed from here by request. It was the only
+            consumer of the `staff:` modal key and of the `sMax` scale, both of
+            which are gone with it — see opsPanels.modalFor for the now-unreachable
+            `kind === "staff"` branch. `calc.staff` itself is still computed in
+            opsData because nothing else reads it yet either; say the word and I
+            will strip that too. */}
 
         <ACard title="Age at Death Distribution" note="Deceased by age bracket — click a column for its cases.">
           <div style={{ padding: "14px 16px" }}>

@@ -28,7 +28,17 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 15 * 1024 * 1024 // 15MB — phone photos routinely exceed 5MB
+    fileSize: 15 * 1024 * 1024, // 15MB — phone photos routinely exceed 5MB
+    // A per-file limit is meaningless without a CAP ON THE TOTAL: multer buffers
+    // every file in RAM before the controller runs, so 10 × 15MB is a 150MB spike
+    // PER REQUEST. On a small container with concurrent uploads that OOM-kills
+    // the process — which is exactly the "arrangements sometimes fail, randomly"
+    // symptom. 10 files / 60 parts keeps a full photo set working while bounding
+    // the worst case to something survivable.
+    files: 10,
+    fields: 30,
+    parts: 60,
+    fieldSize: 1024 * 1024,
   },
     fileFilter: (req, file, cb) => {
     // Accept only image files
@@ -41,8 +51,43 @@ const upload = multer({
 });
 
 // Middleware to handle multiple file uploads (max 10 files)
+//
+// WHY THIS EXISTS — "arrangements sometimes fail":
+// `upload.array()` ABORTS the whole request the moment ONE file breaches a limit,
+// discarding everything it had already buffered. Uploading an 11th photo, or one
+// photo over 15MB, used to return a bare 400 with no usable message; the
+// controller never ran, so the user's title and description were lost too and
+// they had to retype everything. Because it only triggered on larger batches it
+// looked random — the same florist, same form, working one day and not the next.
+//
+// Handling the error here turns each cause into a SPECIFIC, actionable message
+// so the client can say exactly what to change.
 const uploadMiddleware = (req: any, res: any, next: any) => {
-  upload.array('images', 10)(req, res, next);
+  upload.array('images', 10)(req, res, (err: any) => {
+    if (!err) return next();
+
+    const code = err?.code;
+    if (code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        message: 'One of the photos is larger than 15MB. Please compress it or upload fewer images.',
+      });
+    }
+    if (code === 'LIMIT_FILE_COUNT' || code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Too many photos in one arrangement (maximum 10).',
+      });
+    }
+    if (code === 'LIMIT_PART_COUNT') {
+      return res.status(400).json({
+        success: false,
+        message: 'Too many form fields sent with the upload.',
+      });
+    }
+    console.warn('[FLOWERS] Upload middleware rejected:', code || err?.message);
+    return res.status(400).json({ success: false, message: err?.message || 'Upload failed' });
+  });
 };
 
 // ============================================

@@ -218,6 +218,91 @@ const FLX_RESPONSIVE = `
   .flx-cal-weekdays { grid-template-columns: repeat(3, 1fr) !important; }
   .flx-cal-days { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
   .flx-cal-day { min-height: 70px !important; min-width: 0 !important; padding: 6px !important; }
+
+  /* Samples gallery — one card per row. The grid used a fixed 200px minimum,
+     which still fitted TWO columns on a 375px phone once padding was added,
+     leaving a ~110px thumbnail too small to judge the arrangement's quality. */
+  .fb-samples-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .fb-sample-media { height: 240px !important; }
+}
+
+
+.fb-samples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fb-sample-card {
+  background: #fff;
+  border: 1px solid #EAE7E2;
+  border-radius: 20px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  /* A long arrangement title must not stretch the track and break the grid. */
+  min-width: 0;
+}
+
+.fb-sample-media {
+  position: relative;
+  width: 100%;
+  /* 4:3 reads well for a floral arrangement and gives real estate to the
+     image rather than to the card chrome. */
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  background: #1C1A17;
+}
+
+.fb-sample-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Slight lift on hover so a client browsing options can tell the tiles
+     apart; transitions only on capable pointers. */
+  transition: transform .25s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fb-sample-card:hover .fb-sample-media img { transform: scale(1.03); }
+}
+
+/* Multi-photo badge, bottom-right of the thumbnail. */
+.fb-sample-count {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: rgba(0, 0, 0, .62);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+
+.fb-sample-title {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Playfair Display', serif;
+  margin-bottom: 4px;
+  /* Wrap instead of overflowing the card. */
+  overflow-wrap: anywhere;
+}
+
+.fb-sample-sub {
+  font-size: 13px;
+  color: #9C9389;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
 }
 `;
 
@@ -556,6 +641,39 @@ const FlowerBookingsNew = () => {
     }
   }, [showToast, loadBookings]);
 
+  // ─── Image preflight ────────────────────────────────────────────────────────
+  //
+  // WHY THIS EXISTS. The server accepts 15MB per photo but REJECTS the entire
+  // request when one file breaches a limit, discarding every photo already
+  // buffered along with the user's typed title and description. That is the
+  // "arrangements sometimes fail" experience: it only triggers on bigger batches,
+  // so it looks random.
+  //
+  // Catching it HERE costs the user nothing — they keep their form, get told
+  // exactly which photo is the problem, and can fix it before anything is sent.
+  //
+  // DELIBERATELY NOT COMPRESSING. The gallery must show the florist's work at
+  // full quality, so files are sent byte-for-byte. We only MEASURE here.
+  const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+  const MAX_IMAGE_COUNT = 10;
+
+  const inspectImages = (files) => {
+    const list = Array.from(files || []).filter((f) => f && f.size > 0);
+    if (list.length > MAX_IMAGE_COUNT) {
+      return `You selected ${list.length} photos. You can upload up to ${MAX_IMAGE_COUNT} per arrangement.`;
+    }
+    const oversized = list.find((f) => f.size > MAX_IMAGE_BYTES);
+    if (oversized) {
+      const mb = (oversized.size / (1024 * 1024)).toFixed(1);
+      return `"${oversized.name}" is ${mb}MB, which is over the 15MB limit. Please compress it or upload it on its own.`;
+    }
+    const wrongType = list.find((f) => f.type && !f.type.startsWith('image/'));
+    if (wrongType) {
+      return `"${wrongType.name}" is not an image. Please choose photo files only.`;
+    }
+    return null;
+  };
+
   const handleCreateArrangement = async (e) => {
     e.preventDefault();
     // Guard against double clicks while an upload is in flight
@@ -581,6 +699,11 @@ const FlowerBookingsNew = () => {
     if (!types) return showToast('Please enter at least one flower type (comma-separated)', 'error');
     if (!colors) return showToast('Please enter at least one color (comma-separated)', 'error');
     if (!sizes) return showToast('Please enter at least one size (comma-separated)', 'error');
+
+    // Preflight the photos BEFORE anything is sent, so an oversized file never
+    // costs the user their typed details (see inspectImages for the why).
+    const imageProblem = inspectImages(fd.getAll('images'));
+    if (imageProblem) return showToast(imageProblem, 'error');
 
     const payload = new FormData();
     payload.append('title', title);
@@ -1079,46 +1202,42 @@ const FlowerBookingsNew = () => {
             <p style={{ fontSize: '14px' }}>Click "Create Arrangement" to upload your first sample.</p>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: '24px'
-          }}>
+          <div className="fb-samples-grid">
             {arrangements.map(arrangement => (
-              <div key={arrangement.arrangement_id} style={{
-                background: '#fff',
-                border: '1px solid #EAE7E2',
-                borderRadius: '20px',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{
-                  width: '100%',
-                  height: '180px',
-                  borderRadius: '14px',
-                  marginBottom: '12px',
-                  overflow: 'hidden',
-                  background: '#1C1A17'
-                }}>
+              <div key={arrangement.arrangement_id} className="fb-sample-card">
+                <div
+                  className="fb-sample-media"
+                  style={{ background: '#1C1A17' }}
+                >
                   {arrangement.images?.length > 0 ? (
                     <img
                       src={arrangement.images[0]?.url || arrangement.images[0]}
                       alt={arrangement.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      // NOT lazy: the samples grid IS the gallery clients browse
+                      // to choose an arrangement, so a lazy thumbnail shows as a
+                      // blank box exactly when someone is deciding. These are
+                      // already-optimised originals served from /uploads.
+                      loading="eager"
+                      decoding="async"
                     />
                   ) : (
                     <div style={styles.productMediaPlaceholder}>
                       {arrangement.title?.charAt(0) || 'F'}
                     </div>
                   )}
+                  {/* Multi-photo indicator — staff need to know a sample has
+                      more angles without opening it. */}
+                  {(arrangement.images?.length || 0) > 1 && (
+                    <span className="fb-sample-count">
+                      +{(arrangement.images.length - 1)} more
+                    </span>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '16px', fontWeight: 600, fontFamily: "'Playfair Display', serif", marginBottom: '4px' }}>
+                  <div className="fb-sample-title">
                     {arrangement.title}
                   </div>
-                  <div style={{ fontSize: '13px', color: '#9C9389', marginBottom: '12px' }}>
+                  <div className="fb-sample-sub">
                     {asList(arrangement.types).join(', ') || 'Custom'}
                   </div>
                 </div>

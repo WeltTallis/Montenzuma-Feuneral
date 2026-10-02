@@ -838,6 +838,41 @@ function tsKey(date, time) {
   if (!d) return Number.NaN;
   return Number(`${d}${t.padEnd(4, "0")}`);
 }
+export { tsKey };
+
+/**
+ * Order dashboard event rows NEWEST FIRST — the feed an operator actually reads.
+ *
+ * Two separate defects were fixed here at once:
+ *
+ * 1. DIRECTION. The list sorted ascending, so the oldest event in the period
+ *    came first. On a month view that pushed today's events (the only ones
+ *    anyone acts on) to the BOTTOM of a screenful. Now newest-first, so today
+ *    leads, then yesterday, and so on backwards through the period.
+ *
+ * 2. COMPARISON. It used `${date}${time}.localeCompare(...)`, which is the
+ *    exact anti-pattern documented on tsKey above: ICU collation de-prioritises
+ *    the '-' and ':' punctuation, so '2026-10-02' and '2026-10-01' do NOT
+ *    reliably order, and single-digit day numbers ('2026-10-1') lose the
+ *    fixed-width property entirely. Descending a broken comparator makes the
+ *    mis-ordering worse, not better. Both directions now compare the numeric
+ *    tsKey instead.
+ *
+ * Undated events (NaN) sink to the bottom in both directions so a missing date
+ * can never masquerade as the newest entry.
+ */
+export function sortEventsNewestFirst(list) {
+  return list.slice().sort((a, b) => {
+    const ka = tsKey(a.date, a.time);
+    const kb = tsKey(b.date, b.time);
+    if (Number.isNaN(ka) && Number.isNaN(kb)) return 0;
+    if (Number.isNaN(ka)) return 1;
+    if (Number.isNaN(kb)) return -1;
+    if (ka === kb) return 0;
+    // Descending: the larger timestamp (newer) comes first.
+    return ka > kb ? -1 : 1;
+  });
+}
 
 export function sortRegisters(list, section, sort) {
   const dir = sort.d;

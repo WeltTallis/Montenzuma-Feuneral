@@ -1084,7 +1084,29 @@ const ChemicalInventoryAnalytics = () => {
   const recentTransactions = data.recent_transactions || [];
   const topUsedChemicals = data.top_used_chemicals || [];
 
-  const resolvePerformer = (t) => { const name = String(t.performed_by || t.used_by || '').trim(); return name || 'Unknown'; };
+  // Identity of the person on a transaction.
+  //
+  // The SQL behind `recent_transactions` aliases the NAME into `performed_by`
+  // (`COALESCE(cu.used_by_name, ct.performed_by_name)`), while the underlying
+  // column `ct.performed_by` holds the numeric user id — but because the alias
+  // SHADOWS it, `t.performed_by` was the display name and `t.used_by` was null.
+  // Grouping by that name is what the old code did, and it is wrong twice over:
+  //
+  //   1. A rename splits one person into two "staff", each with a bogus
+  //      50%-smaller average interval.
+  //   2. Two colleagues sharing a name (or a blank/"Unknown") collapse into a
+  //      single fake person whose intervals are nonsense.
+  //
+  // Group on the STABLE ID (performed_by_id / used_by) and carry the name along
+  // for display. `used_by_id`/`used_by_name` are also accepted so this keeps
+  // working if the query is ever changed back to returning raw columns.
+  const performerIdOf = (t) =>
+    String(t.performed_by_id ?? t.used_by ?? t.performed_by ?? '').trim() || null;
+  const performerNameOf = (t) =>
+    String(t.performed_by_name ?? t.performed_by ?? t.used_by_name ?? '').trim() || 'Unknown';
+  // Fall back to the id only when there is genuinely no name, so a legacy row
+  // still groups consistently instead of scattering across N buckets.
+  const performerKeyOf = (t) => performerIdOf(t) || `name:${performerNameOf(t)}`;
   const parseTxnDate = (t) => { const raw = t.transaction_date || t.created_at; if (!raw) return null; const d = new Date(raw); if (isNaN(d.getTime()) || d.getFullYear() < 2000) return null; return d; };
 
   const totalChemicals = data.total_chemicals || 0;
@@ -1108,23 +1130,84 @@ const ChemicalInventoryAnalytics = () => {
     { label: 'Total Chemicals', current: totalChemicals, target: 10, unit: '', color: T.purple },
   ];
 
+  // Group pickups per person, keeping the branch so a shared multi-branch
+  // chemical stock can be attributed to the branch it was taken from.
   const personHistory = {};
   pickupTransactions.forEach(t => {
-    const name = resolvePerformer(t);
-    if (!personHistory[name]) personHistory[name] = { name, unit: t.unit, pickups: 0, totalVolume: 0, dates: [] };
-    const h = personHistory[name]; h.pickups++; h.totalVolume += parseFloat(t.quantity) || 0;
+    const key = performerKeyOf(t);
+    const branch = String(t.branch_name || t.branch_id || '').trim() || 'Unassigned';
+    if (!personHistory[key]) {
+      personHistory[key] = {
+        key, name: performerNameOf(t), branch,
+        unit: t.unit, pickups: 0, totalVolume: 0, dates: [],
+        branches: {},        // branch -> pickups (a person can work several)
+      };
+    }
+    const h = personHistory[key];
+    h.pickups++;
+    h.totalVolume += parseFloat(t.quantity) || 0;
+    h.branches[branch] = (h.branches[branch] || 0) + 1;
     const d = parseTxnDate(t); if (d) h.dates.push(d.getTime());
   });
-  Object.values(personHistory).forEach(h => h.dates.sort((a, b) => a - b));
-  const gapsOf = (dates) => { const gaps = []; for (let j = 1; j < dates.length; j++) gaps.push((dates[j] - dates[j - 1]) / 86400000); return gaps; };
+  Object.values(personHistory).forEach(h => {
+    h.dates.sort((a, b) => a - b);
+    // Most-used branch wins the label when a person covers several, so the row
+    // still reads as ONE person rather than being split per branch.
+    h.mainBranch = Object.entries(h.branches).sort((a, b) => b[1] - a[1])[0]?.[0] || h.branch;
+  });
+
+  // ELAPSED TIME between CONSECUTIVE pickups by the same person — this is the
+  // "from when they last picked up to when they picked up next" interval.
+  //
+  // Worked in MILLISECONDS and only converted for display. The old code divided
+  // by 86400000 and then compared two adjacent gaps with `<=`, which is wrong:
+  //   - two pickups in one shift are 0.04 days apart, so they round to "0 days"
+  //     and the trend badge reads "0d";
+  //   - the "trend" compared only the LAST TWO gaps, so one short gap flipped
+  //     the badge to "More frequent" regardless of the rest of the history.
+  const gapsOf = (dates) => {
+    const gaps = [];
+    for (let j = 1; j < dates.length; j++) {
+      const ms = dates[j] - dates[j - 1];
+      if (ms > 0) gaps.push(ms);
+    }
+    return gaps;
+  };
   const avgOf = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
+  const msToDays = (ms) => ms / 86400000;
+  // Human interval: minutes below an hour, hours below a day, then days. Keeps
+  // "42m" readable instead of rounding two same-shift pickups to "0.0 days".
+  const fmtGap = (ms) => {
+    if (ms == null) return null;
+    const mins = ms / 60000;
+    if (mins < 60) return `${Math.round(mins)}m`;
+    const hrs = ms / 3600000;
+    if (hrs < 24) return `${hrs.toFixed(1)}h`;
+    return `${(ms / 86400000).toFixed(1)}d`;
+  };
+  // Frequency trend from ALL gaps, not just the last two: compare the mean of
+  // the most recent half against the older half. A shrinking mean means they are
+  // collecting more often. Fewer than 3 gaps is too little to call a direction.
+  const trendOf = (gaps) => {
+    if (gaps.length < 3) return null;
+    const sorted = [...gaps].sort((a, b) => a - b);
+    const half = Math.max(1, Math.floor(sorted.length / 2));
+    const older = avgOf(sorted.slice(0, half));
+    const recent = avgOf(sorted.slice(sorted.length - half));
+    if (older == null || recent == null) return null;
+    if (Math.abs(recent - older) / older < 0.15) return 'flat';
+    return recent < older ? 'up' : 'down';
+  };
 
   const activityData = recentTransactions.map((t, i) => {
-    const date = parseTxnDate(t); const hist = personHistory[resolvePerformer(t)];
+    const date = parseTxnDate(t); const hist = personHistory[performerKeyOf(t)];
+    // Gap from THIS person's immediately preceding pickup to this one. -1 means
+    // there is no earlier pickup to measure against (their first in the window).
     const idx = date && hist ? hist.dates.indexOf(date.getTime()) : -1;
-    const gapDays = idx > 0 ? Math.round((hist.dates[idx] - hist.dates[idx - 1]) / 86400000) : null;
-    const personAvg = hist && hist.dates.length > 1 ? avgOf(gapsOf(hist.dates)) : null;
-    return { id: t.id, person: resolvePerformer(t), chemical: `${t.chemical_name} (${parseFloat(t.quantity).toFixed(1)}${t.unit === 'liters' ? 'L' : t.unit})`, action: t.transaction_type === 'received' ? 'Received' : t.transaction_type === 'consumed' ? 'Consumed' : t.transaction_type, time: date ? timeAgo(date) : '\u2014', date, gapDays, avgInterval: personAvg != null ? personAvg.toFixed(1) : null, avatarColor: T.chartColors[i % T.chartColors.length], type: t.transaction_type };
+    const gapMs = idx > 0 ? hist.dates[idx] - hist.dates[idx - 1] : null;
+    const personGaps = hist ? gapsOf(hist.dates) : [];
+    const personAvg = personGaps.length ? avgOf(personGaps) : null;
+    return { id: t.id, person: performerNameOf(t), chemical: `${t.chemical_name} (${parseFloat(t.quantity).toFixed(1)}${t.unit === 'liters' ? 'L' : t.unit})`, action: t.transaction_type === 'received' ? 'Received' : t.transaction_type === 'consumed' ? 'Consumed' : t.transaction_type, time: date ? timeAgo(date) : '\u2014', date, gapMs, gapDays: gapMs != null ? Math.round(msToDays(gapMs)) : null, gapLabel: fmtGap(gapMs), avgInterval: fmtGap(personAvg), branch: String(t.branch_name || t.branch_id || '').trim() || 'Unassigned', avatarColor: T.chartColors[i % T.chartColors.length], type: t.transaction_type };
   });
 
   const freqBuckets = { '0-3 days': 0, '4-7 days': 0, '8-14 days': 0, '15+ days': 0 };
@@ -1141,14 +1224,30 @@ const ChemicalInventoryAnalytics = () => {
   const staffData = Object.values(personHistory).map((s, i) => {
     const avgVol = s.pickups > 0 ? (s.totalVolume / s.pickups).toFixed(1) : '0.0';
     const avgUnit = s.unit === 'liters' ? 'L' : 'units';
-    const gaps = gapsOf(s.dates); const avgDays = avgOf(gaps);
-    const trend = gaps.length >= 2 ? (gaps[gaps.length - 1] <= gaps[gaps.length - 2] ? 'up' : 'down') : null;
-    return { name: s.name, pickups: s.pickups, avgDays: avgDays != null ? parseFloat(avgDays.toFixed(1)) : null, avgVolume: `${avgVol}${avgUnit}`, trend, color: T.chartColors[i % T.chartColors.length] };
-  });
+    const gaps = gapsOf(s.dates);
+    const avgMs = avgOf(gaps);
+    // NEWEST gap = how long since this person's previous collection ended, i.e.
+    // the most recent "from last pickup to this pickup" interval.
+    const lastGapMs = gaps.length ? gaps[gaps.length - 1] : null;
+    return {
+      name: s.name, branch: s.mainBranch, pickups: s.pickups,
+      // Kept numeric days for any consumer that still expects a number.
+      avgDays: avgMs != null ? msToDays(avgMs) : null,
+      avgInterval: fmtGap(avgMs),
+      lastInterval: fmtGap(lastGapMs),
+      lastIntervalDays: lastGapMs != null ? msToDays(lastGapMs) : null,
+      minInterval: gaps.length ? fmtGap(Math.min(...gaps)) : null,
+      maxInterval: gaps.length ? fmtGap(Math.max(...gaps)) : null,
+      avgVolume: `${avgVol}${avgUnit}`,
+      trend: trendOf(gaps),
+      color: T.chartColors[i % T.chartColors.length],
+    };
+  }).sort((a, b) => b.pickups - a.pickups);
 
   const allPersonalGaps = Object.values(personHistory).flatMap(h => gapsOf(h.dates));
   const overallAvgGap = avgOf(allPersonalGaps);
-  const avgInterval = overallAvgGap != null ? overallAvgGap.toFixed(1) : 'N/A';
+  // fmtGap returns null (not "N/A") when there are no intervals yet.
+  const avgInterval = fmtGap(overallAvgGap);
 
   // Donut chart
   const radius = 70; let accumulatedAngle = -90;
@@ -1295,7 +1394,7 @@ const ChemicalInventoryAnalytics = () => {
         <StatCard $bg="#D97706">
           <StatInfo>
             <StatLabel $light>Avg. Interval</StatLabel>
-            <StatValue $light>{avgInterval}{avgInterval !== 'N/A' ? 'd' : ''}</StatValue>
+            <StatValue $light>{avgInterval ?? '\u2014'}</StatValue>
             <StatChange $light><ArrowDown size={12} /> Between pickups</StatChange>
           </StatInfo>
           <StatIcon $light><Clock size={18} /></StatIcon>
@@ -1371,8 +1470,9 @@ const ChemicalInventoryAnalytics = () => {
                     <ActivityTop><ActivityPerson>{item.person}</ActivityPerson><ActivityTime>{item.time}</ActivityTime></ActivityTop>
                     <ActivityDesc>{item.chemical} — {item.action}</ActivityDesc>
                     <ActivityMeta>
-                      {item.gapDays != null && <MetaTag $type={getDaysLabel(item.gapDays).type}><Clock size={9} /> {getDaysLabel(item.gapDays).text}</MetaTag>}
-                      {item.avgInterval != null && <MetaTag $type="info"><Zap size={9} /> Avg {item.avgInterval}d</MetaTag>}
+                      {item.gapLabel != null && <MetaTag $type={getDaysLabel(item.gapDays ?? 0).type}><Clock size={9} /> Since last: {item.gapLabel}</MetaTag>}
+                      {item.avgInterval != null && <MetaTag $type="info"><Zap size={9} /> Avg {item.avgInterval}</MetaTag>}
+                      <MetaTag $type="muted">{item.branch}</MetaTag>
                     </ActivityMeta>
                   </ActivityContent>
                 </ActivityItem>
@@ -1387,15 +1487,19 @@ const ChemicalInventoryAnalytics = () => {
         <ChartCardHeader><ChartTitle><Users size={15} /> Staff Pickup Analysis</ChartTitle><ChartSubtitle>Who picks what and how often</ChartSubtitle></ChartCardHeader>
         <div style={{ overflowX: 'auto' }}>
           <StaffTable>
-            <thead><tr><StaffTH>Staff Member</StaffTH><StaffTH>Total Pickups</StaffTH><StaffTH>Avg. Interval</StaffTH><StaffTH>Avg. Volume</StaffTH><StaffTH>Freq. Trend</StaffTH></tr></thead>
+            <thead><tr><StaffTH>Staff Member</StaffTH><StaffTH>Branch</StaffTH><StaffTH>Total Pickups</StaffTH><StaffTH>Last Interval</StaffTH><StaffTH>Avg. Interval</StaffTH><StaffTH>Range</StaffTH><StaffTH>Avg. Volume</StaffTH><StaffTH>Freq. Trend</StaffTH></tr></thead>
             <tbody>
               {staffData.map((staff, i) => (
                 <StaffTR key={i}>
                   <StaffTD><StaffNameCell><StaffAvatar $color={staff.color}>{getInitials(staff.name)}</StaffAvatar><span style={{ fontWeight: 500 }}>{staff.name}</span></StaffNameCell></StaffTD>
+                  <StaffTD>{staff.branch || '\u2014'}</StaffTD>
                   <StaffTD style={{ fontWeight: 600 }}>{staff.pickups}</StaffTD>
-                  <StaffTD>{staff.avgDays != null ? <MetaTag $type={getDaysLabel(staff.avgDays).type}>{staff.avgDays} days</MetaTag> : <span style={{ color: T.textMuted, fontSize: 12 }}>\u2014</span>}</StaffTD>
+                  {/* Most recent consecutive-pair gap for this person. */}
+                  <StaffTD>{staff.lastInterval != null ? <MetaTag $type="info"><Clock size={9} /> {staff.lastInterval}</MetaTag> : <span style={{ color: T.textMuted, fontSize: 12 }}>\u2014</span>}</StaffTD>
+                  <StaffTD>{staff.avgInterval != null ? <MetaTag $type={getDaysLabel(staff.avgDays ?? 0).type}>{staff.avgInterval}</MetaTag> : <span style={{ color: T.textMuted, fontSize: 12 }}>\u2014</span>}</StaffTD>
+                  <StaffTD style={{ fontSize: 11.5, color: T.textMuted, whiteSpace: 'nowrap' }}>{staff.minInterval && staff.maxInterval ? `${staff.minInterval} \u2013 ${staff.maxInterval}` : '\u2014'}</StaffTD>
                   <StaffTD>{staff.avgVolume}/pickup</StaffTD>
-                  <StaffTD>{staff.trend ? <TrendBadge $up={staff.trend === 'up'}>{staff.trend === 'up' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}{staff.trend === 'up' ? 'More frequent' : 'Less frequent'}</TrendBadge> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', fontWeight: 600, color: T.textMuted }}><Clock size={12} /> Not enough data</span>}</StaffTD>
+                  <StaffTD>{staff.trend && staff.trend !== 'flat' ? <TrendBadge $up={staff.trend === 'up'}>{staff.trend === 'up' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}{staff.trend === 'up' ? 'More frequent' : 'Less frequent'}</TrendBadge> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', fontWeight: 600, color: T.textMuted }}><Clock size={12} /> {staff.trend === 'flat' ? 'Steady' : 'Not enough data'}</span>}</StaffTD>
                 </StaffTR>
               ))}
             </tbody>

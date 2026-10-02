@@ -325,14 +325,31 @@ exports.getDashboardSummary = async (req, res) => {
        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND tenant_slug = ?`,
       [tenantSlug]
     );
+    // `performed_by` is the DISPLAY NAME (aliased over the raw column), so the
+    // stable employee ID was being shadowed and never reached the client. Every
+    // per-person trend therefore grouped by a human-readable string: a rename
+    // split one person into two, and two colleagues sharing a name merged into
+    // one. Expose the id under its OWN key alongside the name so the client can
+    // group on identity and still display the label.
     const recentTransactions = await safeTenantQuery(tenantDb,
       `SELECT ct.*, c.name as chemical_name,
-              COALESCE(cu.used_by_name, ct.performed_by_name) AS performed_by
+              COALESCE(cu.used_by_name, ct.performed_by_name) AS performed_by,
+              COALESCE(cu.used_by, ct.performed_by)        AS performed_by_id,
+              COALESCE(ct.performed_by_name, '')           AS performed_by_name,
+              COALESCE(b.branch_name, CONCAT('Branch ', ct.branch_id)) AS branch_name
        FROM chemical_transactions ct 
        JOIN chemicals c ON c.id = ct.chemical_id
        LEFT JOIN chemical_usage cu ON cu.transaction_id = ct.id AND cu.tenant_slug = ct.tenant_slug
+       LEFT JOIN branches b ON b.branch_id = CAST(ct.branch_id AS CHAR)
+                           OR b.branch_code = CAST(ct.branch_id AS CHAR)
        WHERE ct.tenant_slug = ?
-       ORDER BY ct.created_at DESC LIMIT 30`,
+       -- 500, not 30: the per-person interval trends are derived from the gap
+       -- between CONSECUTIVE pickups, so a person needs their whole recent
+       -- history here. At 30 rows a busy branch showed only a handful of events
+       -- per person, which is exactly the data the trend is computed from — the
+       -- averages and "more/less frequent" badges were being calculated from
+       -- whatever happened to fit in the most recent page.
+       ORDER BY ct.created_at DESC LIMIT 500`,
       [tenantSlug]
     );
     const topUsed = await safeTenantQuery(tenantDb,

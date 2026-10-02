@@ -441,8 +441,10 @@ const StoreTab = () => {
 
       {renderInventory()}
 
-      {/* Calendar + History moved to the admin-only Store Journal page
-          (/workshop/store-journal). Floor staff work from this stock list. */}
+      {/* Calendar + History used to live on a separate admin-only /workshop/store-journal
+          page. That page is gone: the journal is part of the Store view inside the
+          Operations dashboard's Workshop module, so there is one Store, not two.
+          Floor staff keep working from this plain stock list. */}
 
       {modal?.type === 'dispatch' && renderDispatchModal()}
 

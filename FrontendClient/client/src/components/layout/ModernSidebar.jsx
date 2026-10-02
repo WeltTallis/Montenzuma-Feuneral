@@ -4,10 +4,11 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { api } from '../../api';
 import { ENDPOINTS } from '../../api/endpoints';
 import { getUserId, getParentTenantSlug } from '../../utils/globalAuth';
-import { countUnseenDecisions } from '../../utils/leaveDecisionBadge';
+import { countUnseenDecisions, markDecisionsSeen } from '../../utils/leaveDecisionBadge';
 import { useSocket } from '../../utils/context/socketContext';
-import { isWorkshopAdmin } from '../../utils/workshopRole';
-import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight, BookOpen } from '../../utils/icons/icons';
+// `isWorkshopAdmin` and `BookOpen` were only needed by the removed "Store
+// Journal" nav item; the Journal now lives inside the dashboard's Store view.
+import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
 
 // ============================================================
 // DESIGN SYSTEM
@@ -721,14 +722,17 @@ const ModernSidebar = ({
     };
   }, [socket, recomputeBadge]);
 
-  // Opening the Apply Leave page IS the "I have seen it" signal — mark the
-  // decisions read so the badge clears on arrival instead of lingering.
+  // Opening the Apply Leave page IS the "I have seen it" signal — the badge must
+  // NOT self-dismiss on a timer or after N seconds. It stays put until the user
+  // deliberately visits the page, because a leave decision that quietly vanishes
+  // is worse than one that nags.
+  //
+  // `markDecisionsSeen` is imported statically (not via a dynamic import) so it
+  // cannot lose a race with the badge recompute or fail silently on a slow chunk.
   useEffect(() => {
     if (!location.pathname.includes('/leaves/apply')) return;
-    import('../../utils/leaveDecisionBadge').then(({ markDecisionsSeen }) => {
-      markDecisionsSeen(leaveRowsRef.current, getUserId());
-      recomputeBadge();
-    });
+    markDecisionsSeen(leaveRowsRef.current, getUserId());
+    recomputeBadge();
   }, [location.pathname, recomputeBadge]);
 
   // Debug log to show what slug we're using
@@ -800,12 +804,13 @@ const ModernSidebar = ({
         { icon: Calendar, label: 'Leaves Dashboard', path: `/${tenantSlug}/leaves` },
         { icon: FileText, label: 'Apply Leave', path: `/${tenantSlug}/leaves/apply` },
         { icon: LifeBuoy, label: 'Support', path: `/${tenantSlug}/support` },
-        // Admin-only: the Store tab's Calendar + History, split out of the
-        // workshop so floor staff keep a plain stock list. Hidden (not merely
-        // disabled) for workers so they are never offered a dead end.
-        ...(isWorkshopAdmin()
-          ? [{ icon: BookOpen, label: 'Store Journal', path: `/${tenantSlug}/workshop/store-journal` }]
-          : []),
+        // "Store Journal" used to sit HERE as its own admin-only nav item. It is
+        // gone because the Journal is no longer a separate destination: the
+        // Calendar + History journal is part of the Store view inside the
+        // Operations dashboard's Workshop module (dashboard/WorkshopPanel.jsx →
+        // StoreView), which every user reaches from Workshop → Dashboard. Leaving
+        // a second, duplicate entry point here meant two UIs for one feature and
+        // a dead-looking link for anyone who was not an admin.
       ]
     }
   ];

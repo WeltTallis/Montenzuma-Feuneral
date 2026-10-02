@@ -2,6 +2,7 @@ import {
   BANDS, DOWF, DOWM, MO, MOS, TYPE_C, TYPE_L, TYPE_SOLID, careCfg,
   bandOf, fmtDate, matchPill, parseKey, shortDate, weekStartOf, addDays,
   EVENT_VERB, eventsOf, periodRange, applyFilters, baseList, sortRegisters,
+  sortEventsNewestFirst,
 } from "./opsData";
 import { Avatar, CountUp, StatusChip } from "./opsBits";
 import { Ic } from "./opsIcons";
@@ -478,7 +479,9 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
     }
   });
   const visible = list.filter((ev) => passes(ev.p, state.filters));
-  visible.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+  // Newest first — today's events lead, then yesterday, backwards through the
+  // period. See sortEventsNewestFirst for why this is not a localeCompare.
+  const visibleSorted = sortEventsNewestFirst(visible);
 
   const sel = parseKey(state.selDate);
   const periodLbl = `Month of ${MO[sel.getMonth()]} ${sel.getFullYear()}`;
@@ -520,7 +523,7 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
         <div style={{ textAlign: "left" }}>Status</div>
       </div>
 
-      {visible.length ? visible.map((ev) => {
+      {visibleSorted.length ? visibleSorted.map((ev) => {
         const p = ev.p;
         const sub = ev.t === "release" ? p.release.dest : ev.t === "intake" ? p.receivedFrom : p.pm.authority;
         return (
@@ -599,9 +602,9 @@ export function OperationsView({ searched, calc, state, now, today, onOpenCase, 
 /* ── registers (intake · releases · postmortems) ────────────────────────── */
 
 const REG_META = {
-  intake: { h: "Intake Register", sub: "All admissions across branches", icon: "bed" },
-  release: { h: "Releases & Transfers", sub: "Handovers to family, cemeteries and partner facilities", icon: "heart" },
-  pm: { h: "Postmortem Requests", sub: "Coroner & physician examination requests", icon: "vial" },
+  intake: { h: "Intake ", sub: "All admissions across branches", icon: "bed" },
+  release: { h: "Release", sub: "Handovers to family, cemeteries and partner facilities", icon: "heart" },
+  pm: { h: "PM", sub: "Coroner & physician examination requests", icon: "vial" },
 };
 
 const REG_COLS = "3px 1.4fr 1.4fr 1fr 1fr";
