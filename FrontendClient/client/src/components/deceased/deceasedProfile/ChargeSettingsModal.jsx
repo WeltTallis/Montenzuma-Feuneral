@@ -1,3 +1,21 @@
+/**
+ * DEPRECATED — do not wire this component up.
+ *
+ * This is an older profile-level charge panel that was superseded by
+ * `components/deceased/charges/ChargeSettingsModal.jsx`, which is the component
+ * the deceased profile actually renders (see deceasedDetailPage.jsx).
+ *
+ * It is kept only as a historical reference and is deliberately NOT imported
+ * anywhere. It would not work if it were:
+ *   • it POSTs to `/deceased/update-charge-settings/:id`, which the deceased
+ *     service does not expose (charge settings are written with
+ *     `PUT /deceased/charge-settings/:id`);
+ *   • its rate fields read/write a `charges` state that was never declared.
+ *
+ * Use `charges/ChargeSettingsModal.jsx` for per-deceased rates. Remember: a
+ * record inherits the tenant-wide home default (Settings → Care Charges) until
+ * a rate is saved against that record's own id.
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../../api/axios';

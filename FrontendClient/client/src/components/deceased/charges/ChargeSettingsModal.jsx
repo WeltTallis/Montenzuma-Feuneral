@@ -521,6 +521,55 @@ const StripMeta = styled.div`
   color: ${C.gray};
 `;
 
+/* Provenance banner — tells the user, before they touch a field, whether the
+   numbers on screen are this record's own rates or the inherited home default.
+   Without it the panel silently pre-filled the inherited home-default figures
+   and any save turned them into a "Deceased-specific" override, which made it
+   impossible to tell why one record stopped following the home default. */
+const SourceBanner = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 13px;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  background: ${({ $tone }) => ($tone === 'own' ? '#eef6ff' : '#fdf6e7')};
+  border: 1px solid ${({ $tone }) => ($tone === 'own' ? '#cfe3f7' : '#f0dfb8')};
+  color: ${C.dark};
+
+  strong {
+    font-weight: 700;
+  }
+
+  span:first-child {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: ${({ $tone }) => ($tone === 'own' ? C.info : C.warning)};
+  }
+`;
+
+const BannerActions = styled.div`
+  margin-top: 9px;
+`;
+
+const MiniBtn = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  font: 700 12px ${FONT_SANS};
+  color: ${C.black};
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:disabled {
+    opacity: .5;
+    cursor: wait;
+  }
+`;
+
 // Main Component
 const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpdate }) => {
   // Form state
@@ -534,6 +583,20 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
   });
   const [loading, setLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  // Where do the numbers on screen come from? The profile GET returns the home
+  // default whenever this record has no row of its own, so without this flag the
+  // panel cannot tell "inherited" from "own rate" — it just showed the inherited
+  // figures and any save silently materialised them as a deceased-specific
+  // override.
+  const [provenance, setProvenance] = useState({
+    loaded: false,
+    hasOwnRow: false,
+    exists: false,
+    isDefault: false,
+    home: null,
+  });
 
   // Load existing charge settings when the modal opens
   useEffect(() => {
@@ -544,7 +607,10 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
       try {
         const response = await api.get(ENDPOINTS.DECEASED.CHARGE_SETTINGS(deceasedId));
         if (response.data?.success) {
-          const data = response.data.data;
+          // `data` is absent when neither this record nor the tenant has a row
+          // yet — dereferencing it used to throw and abort the whole panel.
+          const data = response.data.data || {};
+          const hasOwnRow = data.hasOwnRow ?? data.has_own_row ?? !(data.isDefault ?? data.is_default ?? false);
           setChargeSettings({
             rateProfile: data.rateProfile || 'standard',
             currency: data.currency || 'KES',
@@ -552,6 +618,22 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
             dailyRate: data.dailyRate || '',
             hourlyRate: data.hourlyRate || '',
             usdRate: data.usdRate || '130',
+          });
+          setProvenance({
+            loaded: true,
+            hasOwnRow: Boolean(hasOwnRow) && data.exists !== false,
+            exists: data.exists !== false,
+            isDefault: Boolean(data.isDefault ?? data.is_default),
+            // Snapshot of the inherited home default, so the banner keeps
+            // quoting the home rate even while the user edits the fields.
+            home: !hasOwnRow && data.exists !== false
+              ? {
+                  chargeType: data.chargeType || 'daily',
+                  currency: data.currency || 'KES',
+                  dailyRate: Number(data.dailyRate) || 0,
+                  hourlyRate: Number(data.hourlyRate) || 0,
+                }
+              : null,
           });
         }
       } catch (error) {
@@ -608,19 +690,27 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
       }
 
       const apiData = {
+        // Belt-and-braces: the route already identifies the record, and the
+        // server scopes the write from the ROUTE, but sending the id in the body
+        // too keeps this request unambiguous however it is proxied.
+        deceasedId,
         rateProfile: chargeSettings.rateProfile,
         currency: chargeSettings.currency,
         chargeType: chargeSettings.chargeType,
         dailyRate,
         hourlyRate,
         usdRate,
+        // Explicitly per-deceased. The home default is only ever written from
+        // Settings → Care Charges (which targets the `__DEFAULT__` sentinel);
+        // this panel must never change the rate of other records.
         isHomeDefault: false,
       };
 
       const response = await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS(deceasedId), apiData);
 
       if (response.data?.success) {
-        toast.success('Charge configuration saved.');
+        toast.success(response.data?.message || 'Charge configuration saved for this record.');
+        setProvenance((prev) => ({ ...prev, hasOwnRow: true, exists: true, isDefault: false, home: prev.home }));
         if (onUpdate) onUpdate();
         onClose();
       } else {
@@ -643,6 +733,35 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
     return Math.max(0, days);
   };
 
+  // Drop this record's override so it bills from the home default again (and
+  // therefore keeps following any future change made in Settings → Care
+  // Charges). Calls the same endpoint with `useHomeDefault: true`; the server
+  // deletes the per-deceased row and returns the resolved home-default rates.
+  const handleResetToHomeDefault = async () => {
+    if (!deceasedId) return;
+    setResetting(true);
+    try {
+      const response = await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS(deceasedId), {
+        deceasedId,
+        useHomeDefault: true,
+        isHomeDefault: false,
+      });
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Failed to reset charge settings');
+      }
+
+      toast.success(response.data?.message || 'This record now uses the home default charges.');
+      if (onUpdate) onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Reset error:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to reset charge settings');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const symbols = { KES: 'KSh', USD: '$' };
   const formatVal = (val) => (val ? parseInt(val, 10).toLocaleString('en-US') : '');
   const fmt = (n) => (n ? `${symbols[chargeSettings.currency]} ${parseInt(n, 10).toLocaleString('en-US')}` : 'Not set');
@@ -651,6 +770,17 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
   const projection = currentRate
     ? (chargeSettings.chargeType === 'daily' ? currentRate * 30 : currentRate * 24 * 30)
     : 0;
+
+  // Quoted in the provenance banner — the inherited home default, captured when
+  // the panel opened so it stays accurate while the user edits the fields.
+  const homeSnapshot = provenance.home;
+  const homeRate = homeSnapshot
+    ? (homeSnapshot.chargeType === 'hourly' ? homeSnapshot.hourlyRate : homeSnapshot.dailyRate)
+    : 0;
+  const homeUnit = homeSnapshot?.chargeType === 'hourly' ? 'hour' : 'day';
+  const homeRateLabel = homeRate
+    ? `${symbols[homeSnapshot.currency] || ''} ${formatVal(homeRate)} / ${homeUnit}`
+    : '';
 
   if (!isOpen) return null;
 
@@ -685,6 +815,47 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
               </StripMeta>
             </div>
           </Strip>
+
+          {/* Provenance — say where the numbers come from BEFORE the user edits
+              them, so nobody has to guess whether a save touched one record or
+              the whole home. */}
+          {!isLoadingData && provenance.loaded && (
+            <SourceBanner $tone={provenance.hasOwnRow ? 'own' : 'home'}>
+              <span aria-hidden="true">{provenance.hasOwnRow ? '●' : '▲'}</span>
+              <div>
+                {provenance.hasOwnRow ? (
+                  <>
+                    This record has <strong>its own rates</strong>, overriding your home default.
+                    Anything you save here applies to <strong>this record only</strong>.
+                    <BannerActions>
+                      <MiniBtn
+                        type="button"
+                        onClick={handleResetToHomeDefault}
+                        disabled={resetting || loading}
+                      >
+                        {resetting ? 'Reverting…' : 'Use the home default instead'}
+                      </MiniBtn>
+                    </BannerActions>
+                  </>
+                ) : provenance.exists ? (
+                  <>
+                    This record <strong>inherits your home default</strong>
+                    {homeRateLabel ? ` (${homeRateLabel})` : ''}. The rates below are the home
+                    default; saving them applies to <strong>this record only</strong>.
+                    <BannerActions>
+                      Home defaults are managed in <strong>Settings → Care Charges</strong>.
+                    </BannerActions>
+                  </>
+                ) : (
+                  <>
+                    No rates configured yet — neither a home default nor a rate for this record.
+                    Saving below sets rates for <strong>this record only</strong>. Set a home
+                    default in <strong>Settings → Care Charges</strong> to apply it to every record.
+                  </>
+                )}
+              </div>
+            </SourceBanner>
+          )}
 
           <form onSubmit={handleSubmit}>
             {/* Frequency */}
@@ -756,7 +927,11 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
                   ? 'Charged once for each day in care.'
                   : 'Charged for every hour in care.'}
               </Hint>
-              <Hint>This setting applies only to this deceased record. Home defaults are managed in Settings.</Hint>
+              <Hint>
+                {provenance.hasOwnRow
+                  ? 'Saved for this record only — every other record keeps using the home default.'
+                  : 'Saving overrides the home default for this record only. Home defaults live in Settings → Care Charges.'}
+              </Hint>
             </Group>
 
             {/* FX (USD only) */}

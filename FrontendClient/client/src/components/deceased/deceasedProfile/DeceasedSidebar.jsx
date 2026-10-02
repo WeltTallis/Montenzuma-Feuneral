@@ -336,6 +336,10 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   const usesHomeDefault = deceased?.charges?.source === 'home_default' || deceased?.charges?.is_default === true;
   const chargeSource = usesHomeDefault ? 'Home default' : 'Deceased-specific';
 
+  // The configured currency, never a hard-coded "KES" — a USD record used to be
+  // displayed with a shilling prefix while the summary maths stayed unchanged.
+  const chargeCurrency = deceased?.charges?.currency || 'KES';
+
   const estimatedCareTotal = billingUnits * activeRate;
   const fmtMoney = (n) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 
@@ -412,7 +416,7 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
         </ChargeRow>
         <ChargeRow>
           <span>{isHourly ? 'Hourly rate' : 'Daily rate'}</span>
-          <strong>{activeRate ? `KES ${fmtMoney(activeRate)} / ${unitLabel}` : 'Not set'}</strong>
+          <strong>{activeRate ? `${chargeCurrency} ${fmtMoney(activeRate)} / ${unitLabel}` : 'Not set'}</strong>
         </ChargeRow>
         {/* Provenance: shown only when a rate is actually in play. Labelling an
             unconfigured record "Deceased-specific" was misleading, and labelling
@@ -423,12 +427,12 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
         </ChargeRow>
         <ChargeRow $highlight>
           <span>Estimated care total</span>
-          <strong>{`KES ${fmtMoney(estimatedCareTotal)}`}</strong>
+          <strong>{`${chargeCurrency} ${fmtMoney(estimatedCareTotal)}`}</strong>
         </ChargeRow>
         {usesHomeDefault && (
           <ChargeNote>
-            Inherited from your home default rates. Open <strong>Charge Settings</strong> to set a
-            rate for this deceased only.
+            Billing from your <strong>home default</strong> rate. Open <strong>Charge Settings</strong> to
+            set a rate for this deceased only — the home default is changed in Settings → Care Charges.
           </ChargeNote>
         )}
       </SidebarSection>

@@ -220,6 +220,12 @@ export default function SettingsPage() {
         }
         setHomeChargesSaving(true);
         try {
+            // The `__DEFAULT__` sentinel in the URL is what scopes this write to
+            // the tenant-wide home default — the server derives the target from
+            // the route, not from `isHomeDefault`. Deceased records that carry
+            // their own rate are therefore never touched from this screen (and,
+            // symmetrically, a record's profile panel can never reach the home
+            // default).
             await api.put(ENDPOINTS.DECEASED.UPDATE_CHARGE_SETTINGS('__DEFAULT__'), {
                 rateProfile: 'standard',
                 ...homeCharges,
@@ -229,7 +235,7 @@ export default function SettingsPage() {
                 isHomeDefault: true,
             });
             setError(null);
-            setChargesMsg({ type: 'success', message: 'Care charges saved.' });
+            setChargesMsg({ type: 'success', message: 'Care charges saved — records without their own rate now bill from these.' });
             showToast('Care charges saved');
         } catch (err) {
             setChargesMsg({ type: 'error', message: err.response?.data?.message || 'Failed to save default care charges.' });
@@ -884,7 +890,11 @@ export default function SettingsPage() {
                             <div className="rps-panel-head">
                                 <div>
                                     <h2>Care Charges</h2>
-                                    <p>Default charges applied to new admissions at the home.</p>
+                                    <p>
+                                        Home default charges. Every deceased record bills from these rates
+                                        unless it has its own rate set from its profile — a per-record rate
+                                        is never changed from here.
+                                    </p>
                                 </div>
                             </div>
 

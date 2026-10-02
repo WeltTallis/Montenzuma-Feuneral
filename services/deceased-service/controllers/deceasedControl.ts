@@ -13,6 +13,12 @@ const SERVICE_NAME = 'deceased-service';
 // created this process lifetime — avoids a DDL roundtrip on every profile load.
 const chargeSettingsInitialized = new Set<string>();
 
+// The tenant-wide "home default" charge row is stored in `charge_settings` under
+// this sentinel key (never a real deceased id). Kept identical to the value used
+// by chargeSettingsController — a divergence here meant a profile silently lost
+// the home-default fallback.
+const HOME_DEFAULT_KEY = '__DEFAULT__';
+
 // TYPES
 
 interface TenantRequest extends Request {
@@ -294,8 +300,12 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
                 chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
             }
             let chargeIsDefault = false;
+            // No row of its own → bill from the tenant-wide HOME DEFAULT. This is
+            // the "always use the home default" rule: a record only stops
+            // following the home default once someone saves a rate for that
+            // specific record from its profile's Charge Settings panel.
             if (!chargeRows || chargeRows.length === 0) {
-                chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', ['__DEFAULT__'])) || [];
+                chargeRows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [HOME_DEFAULT_KEY])) || [];
                 chargeIsDefault = chargeRows.length > 0;
             }
             if (chargeRows && chargeRows.length > 0) {

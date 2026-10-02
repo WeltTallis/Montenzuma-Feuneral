@@ -8,7 +8,39 @@ interface TenantRequest extends Request {
 }
 
 const nowNairobi = (): string => new Date().toISOString();
+
+// The tenant-wide "home default" lives in the same table as the per-deceased
+// rows, keyed by this sentinel instead of a real deceased id.
 const HOME_DEFAULT_KEY = '__DEFAULT__';
+
+// Values the client may send in the `:id` segment when it means "the home
+// default" (the Settings → Care Charges screen). Anything else is treated as a
+// real deceased identifier.
+const HOME_DEFAULT_ALIASES = ['__default__', 'default', 'home', 'home_default'];
+
+const isHomeDefaultTarget = (id: unknown): boolean => {
+    const key = String(id ?? '').trim().toLowerCase();
+    return key === '' || HOME_DEFAULT_ALIASES.includes(key);
+};
+
+/**
+ * Decide WHICH row a charge-settings write may touch.
+ *
+ * The scope is derived from the ROUTE (`/deceased/charge-settings/:id`), never
+ * from the request body. Previously this was `b.isHomeDefault ? __DEFAULT__ : id`,
+ * which meant a single deceased's edit could be promoted into the tenant-wide
+ * home default (and therefore change the billing of EVERY record) merely by
+ * arriving with `isHomeDefault: true` — or by any stale client that still sent
+ * the flag. A deceased id must only ever write that deceased's own row; the
+ * home default is only writable through the `__DEFAULT__` sentinel used by
+ * Settings → Care Charges.
+ */
+const resolveSettingsKey = (id: unknown): { settingsKey: string; isHomeDefault: boolean } => {
+    if (isHomeDefaultTarget(id)) {
+        return { settingsKey: HOME_DEFAULT_KEY, isHomeDefault: true };
+    }
+    return { settingsKey: String(id).trim(), isHomeDefault: false };
+};
 
 const getTenantSlugFromReq = (req: TenantRequest): string =>
     ((req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || (req as any).tenantSlug || 'system_shared');
@@ -52,16 +84,36 @@ export const getChargeSettings = async (req: TenantRequest, res: Response): Prom
     try {
         const { id } = req.params;
         await ensureChargeSettingsTable(dbName);
-        let rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [id])) || [];
-        let isDefault = false;
-        if (rows.length === 0) {
-            rows = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [HOME_DEFAULT_KEY])) || [];
-            isDefault = rows.length > 0;
-        }
+
+        // Does this record own its rates, or does it inherit the home default?
+        const { settingsKey: requestedKey, isHomeDefault: requestedDefault } = resolveSettingsKey(id);
+
+        // 1) The record's OWN row always wins.
+        const ownRows: any[] = requestedDefault
+            ? []
+            : (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [requestedKey])) || [];
+
+        // 2) When the record has no row of its own — or the caller simply asked
+        //    for the default — fall back to the tenant-wide home default, which
+        //    is the rate that actually bills this record.
+        const defaultRows: any[] = (await safeTenantQuery(
+            dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [HOME_DEFAULT_KEY]
+        )) || [];
+
+        const rows = ownRows.length > 0 ? ownRows : defaultRows;
+        const isDefault = ownRows.length === 0;
+        const exists = rows.length > 0;
+        const hasOwnRow = ownRows.length > 0;
+
         // `exists` tells the caller whether ANY row backs this response. Without
         // it the client cannot tell "this deceased inherits the home default"
         // apart from "this deceased has no charge configuration at all" — both
         // used to arrive as a bare object, and the UI then invented a rate.
+        //
+        // `hasOwnRow` is what lets the Charge Settings panel say, in words,
+        // "this record is inheriting your home default" instead of silently
+        // pre-filling the inherited numbers and then writing them back as a
+        // deceased-specific override the user never intended.
         //
         // `source`/`is_default` are the provenance flags the profile sidebar
         // renders as "Home default" vs "Deceased-specific". They are returned in
@@ -69,12 +121,15 @@ export const getChargeSettings = async (req: TenantRequest, res: Response): Prom
         // payload straight into the snake_case `charges` object it got from
         // GET /deceased/:id, and dropping them there is what made a record
         // inherit the home rate while still being labelled "Deceased-specific".
-        const exists = rows.length > 0;
         return res.status(200).json({
             success: true,
             data: {
-                ...toCamel(rows[0]),
+                ...(toCamel(rows[0]) || {}),
                 exists,
+                hasOwnRow,
+                has_own_row: hasOwnRow,
+                requestedFor: requestedDefault ? HOME_DEFAULT_KEY : requestedKey,
+                resolvedFor: hasOwnRow ? requestedKey : (exists ? HOME_DEFAULT_KEY : null),
                 isDefault,
                 is_default: isDefault,
                 source: isDefault ? 'home_default' : 'deceased_specific',
@@ -103,7 +158,48 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
         const dailyRate = Number(b.dailyRate ?? 3000);
         const hourlyRate = Number(b.hourlyRate ?? 125);
         const usdRate = Number(b.usdRate ?? 130);
-        const settingsKey = b.isHomeDefault ? HOME_DEFAULT_KEY : id;
+
+        // ─── SCOPE: route decides, never the body ────────────────────────────
+        // `/deceased/charge-settings/<deceasedId>` → that deceased's OWN row.
+        // `/deceased/charge-settings/__DEFAULT__` → the tenant-wide home default
+        // (only the Settings → Care Charges screen uses this).
+        // `b.isHomeDefault` is ignored here: it used to promote a single
+        // record's edit to the home default, which changed the billing of every
+        // other deceased.
+        const { settingsKey, isHomeDefault: targetsHomeDefault } = resolveSettingsKey(id);
+
+        await ensureChargeSettingsTable(dbName);
+
+        // ─── "Use home default" ─────────────────────────────────────────────
+        // Explicitly drop this record's override so it goes back to inheriting
+        // the home default rate (and therefore follows future changes made in
+        // Settings → Care Charges). Only ever applies to a real deceased id —
+        // the home default row itself is never deleted.
+        if (!targetsHomeDefault && (b.useHomeDefault === true || b.resetToHomeDefault === true)) {
+            await safeTenantExecute(dbName, 'DELETE FROM charge_settings WHERE deceased_id = ?', [settingsKey]);
+            await redisService.clearServiceCache('deceased-service', tenantSlug);
+            Logger.info({ message: 'Charge settings reset to home default', deceasedId: settingsKey, tenantSlug });
+
+            const defaultRows: any[] = (await safeTenantQuery(
+                dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [HOME_DEFAULT_KEY]
+            )) || [];
+            const exists = defaultRows.length > 0;
+            return res.status(200).json({
+                success: true,
+                message: 'This record now uses the home default charges.',
+                data: {
+                    ...(toCamel(defaultRows[0]) || {}),
+                    exists,
+                    hasOwnRow: false,
+                    has_own_row: false,
+                    requestedFor: settingsKey,
+                    resolvedFor: exists ? HOME_DEFAULT_KEY : null,
+                    isDefault: true,
+                    is_default: true,
+                    source: 'home_default',
+                }
+            });
+        }
 
         // Validate whichever rate the chosen frequency actually bills from.
         // Only the daily side used to be checked, so an hourly configuration
@@ -116,7 +212,6 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
             return res.status(400).json({ success: false, message: 'A positive hourly rate is required.' });
         }
 
-        await ensureChargeSettingsTable(dbName);
         await safeTenantExecute(dbName, `
             INSERT INTO charge_settings
                 (deceased_id, rate_profile, currency, charge_type, daily_rate, hourly_rate, usd_rate, updated_by, created_at, updated_at)
@@ -135,13 +230,19 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
         Logger.info({ message: 'Charge settings updated', deceasedId: settingsKey, tenantSlug });
 
         const rows: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM charge_settings WHERE deceased_id = ?', [settingsKey])) || [];
-        const isDefault = settingsKey === HOME_DEFAULT_KEY;
+        const isDefault = targetsHomeDefault;
         return res.status(200).json({
             success: true,
-            message: 'Charge settings updated successfully',
+            message: isDefault
+                ? 'Home default charges updated — applies to every record without its own rate.'
+                : 'Charge settings updated for this record only',
             data: {
-                ...toCamel(rows[0]),
+                ...(toCamel(rows[0]) || {}),
                 exists: rows.length > 0,
+                hasOwnRow: !isDefault,
+                has_own_row: !isDefault,
+                requestedFor: settingsKey,
+                resolvedFor: settingsKey,
                 isDefault,
                 is_default: isDefault,
                 source: isDefault ? 'home_default' : 'deceased_specific',
