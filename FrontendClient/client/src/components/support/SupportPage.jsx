@@ -103,6 +103,17 @@ const livePulse = keyframes`
   50% { transform: scale(1.7); opacity: 0; }
 `;
 
+/* Desktop: a fixed-height two-pane shell.
+
+   MOBILE IS DELIBERATELY DIFFERENT. The old rule kept `height: calc(100vh - X)`
+   together with `overflow: hidden`, so on a phone any content taller than the
+   shell was silently clipped with NO scrollbar and no way to reach it — text
+   simply disappeared. That is the "text gets locked" symptom: the message body
+   and the reply box were unreachable on small screens.
+
+   Below 860px the shell stops being a fixed-height container and becomes a
+   normal scrolling page, so everything is reachable by thumb instead of being
+   trapped in a clipped box. */
 const Shell = styled.div`
   display: flex;
   height: calc(100vh - 150px);
@@ -115,9 +126,11 @@ const Shell = styled.div`
   color: ${C.gray800};
 
   @media (max-width: 860px) {
-    height: calc(100vh - 110px);
-    min-height: 480px;
+    height: auto;
+    min-height: 0;
     border-radius: 12px;
+    overflow: visible;
+    flex-direction: column;
   }
 `;
 
@@ -316,6 +329,11 @@ const TopbarSubtitle = styled.div`
   gap: 6px;
 `;
 
+/* The old fixed `width: 240px` did not fit a phone once the surrounding header
+   items were counted, so the field either overflowed or shrank to nothing.
+   `flex: 1` + `min-width: 0` lets it take the space that is genuinely free and
+   shrink gracefully, and on mobile it drops to its own full-width row so the
+   box is comfortable to tap rather than a cramped sliver. */
 const SearchBox = styled.div`
   display: flex;
   align-items: center;
@@ -324,7 +342,9 @@ const SearchBox = styled.div`
   border: 1px solid ${C.gray200};
   border-radius: 8px;
   padding: 7px 12px;
-  width: 240px;
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 320px;
   transition: all 0.2s ease;
   margin-left: auto;
 
@@ -334,10 +354,23 @@ const SearchBox = styled.div`
     box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
   }
 
+  /* 16px rather than 13px below 860px: anything under 16px makes iOS Safari
+     zoom the whole page the moment the field is focused, which is what makes a
+     support form feel broken on a phone. */
   input {
     border: none; background: transparent; outline: none;
-    font-size: 13px; color: ${C.gray800}; width: 100%; font-family: inherit;
+    font-size: 13px; color: ${C.gray800}; width: 100%; min-width: 0; font-family: inherit;
     &::placeholder { color: ${C.gray400}; }
+
+    @media (max-width: 860px) { font-size: 16px; }
+  }
+
+  @media (max-width: 860px) {
+    max-width: none;
+    margin-left: 0;
+    order: 10;
+    width: 100%;
+  }
   }
 
   @media (max-width: 640px) { width: 150px; }
@@ -364,25 +397,47 @@ const Btn = styled.button`
 
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
+/* `overflow: hidden` on a flex row clips whichever pane is taller, which on a
+   phone cut the bottom of the thread — including the reply box — off with no
+   way to scroll to it. min-height:0 lets the panes actually shrink, and on
+   mobile the content stacks and scrolls with the page instead. */
 const Content = styled.div`
   flex: 1;
   overflow: hidden;
   display: flex;
+  min-height: 0;
+  min-width: 0;
+
+  @media (max-width: 860px) {
+    overflow: visible;
+    flex-direction: column;
+  }
 `;
 
+/* On a phone the two panes stack. The old rule gave the list `max-height: 40%`
+   of a container that was itself capped by the shell's viewport height, which
+   left the thread pane a sliver — you could see the ticket list and almost none
+   of the message you had tapped to open.
+
+   Now the list is capped in real viewport terms (so it still behaves like a
+   list, not an endless column) but the thread below it grows naturally and
+   scrolls with the page. */
 const ListPane = styled.div`
   width: 400px;
   border-right: 1px solid ${C.gray200};
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  min-height: 0;
 
   @media (max-width: 860px) { width: 320px; }
   @media (max-width: 640px) {
     width: 100%;
-    max-height: 40%;
+    /* A real scroll height, not a percentage of a clipped parent. */
+    max-height: 46vh;
     border-right: none;
     border-bottom: 1px solid ${C.gray200};
+    flex-shrink: 1;
   }
 `;
 
@@ -477,6 +532,12 @@ const CardTitle = styled.div`
   line-height: 1.4;
 `;
 
+/* Clamped to 2 lines as a preview — but released on mobile.
+
+   A phone has plenty of vertical room and nothing to scroll past, so clipping
+   here just hid the user's own words from them. The full message is always in
+   the thread, but the preview is where people read first, so it stops hiding
+   text below 640px. */
 const CardPreview = styled.div`
   font-size: 12px;
   color: ${C.gray400};
@@ -485,6 +546,11 @@ const CardPreview = styled.div`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+
+  @media (max-width: 640px) {
+    -webkit-line-clamp: unset;
+    display: block;
+  }
 `;
 
 const CardFooter = styled.div`
@@ -572,14 +638,30 @@ const StatusSelect = styled.select`
   &:focus { border-color: ${C.accent}; }
 `;
 
+/* The thread is its own scroll area on desktop, which is right: the composer
+   stays pinned to the bottom while you read back through history.
+
+   On mobile that becomes a scroll trap — a nested scroll region inside a page
+   that also scrolls, which is fiddly on a phone and is what makes the last
+   message feel unreachable. Below 860px the thread stops being its own scroller
+   and simply grows, letting the page scroll as one continuous column with the
+   reply box underneath it. */
 const Thread = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 20px 22px;
+  min-height: 0;
 
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: ${C.gray300}; border-radius: 10px; }
+
+  @media (max-width: 860px) {
+    flex: none;
+    overflow-y: visible;
+    min-height: 0;
+    padding: 16px 14px;
+  }
 `;
 
 const Msg = styled.div`
@@ -632,6 +714,9 @@ const ReplyBox = styled.div`
   border-top: 1px solid ${C.gray200};
   flex-shrink: 0;
   background: ${C.white};
+
+  /* Matches the thread's mobile inset so the composer does not look bolted on. */
+  @media (max-width: 860px) { padding: 12px 14px 14px; }
 `;
 
 const ReplyArea = styled.div`
@@ -659,6 +744,11 @@ const ReplyArea = styled.div`
     min-height: 56px;
     max-height: 120px;
     &::placeholder { color: ${C.gray400}; }
+
+    /* 16px on mobile: at 13.5px iOS zooms the page on focus and the user then
+       has to pinch back out before they can send. A composer that fights the
+       keyboard is the main reason a support page feels broken on a phone. */
+    @media (max-width: 860px) { font-size: 16px; }
   }
 `;
 
@@ -1012,16 +1102,40 @@ const SupportPage = () => {
 
     const openCount = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
 
+    /* Search.
+
+   The old version did a single `includes(q)` against four fields, which meant
+   the query had to appear as one unbroken substring in one field. Typing
+   "refund invoice" found nothing unless those two words happened to sit next
+   to each other in the subject, and searching by an ID prefix quietly failed
+   against the name field.
+
+   Now the query is split on whitespace and EVERY word must appear somewhere in
+   the ticket (AND, not OR — so results narrow as you type instead of widening).
+   Each word is matched independently across id, subject, message, user name and
+   status, and reply text is folded in, which is where the answer to "did they
+   mention my refund?" usually actually is. */
+    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+
     const visibleTickets = tickets.filter(t => {
         if (filter !== 'all' && t.status !== filter) return false;
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-            String(t.ticket_id).includes(q) ||
-            (t.subject || '').toLowerCase().includes(q) ||
-            (t.message || '').toLowerCase().includes(q) ||
-            (t.user_name || '').toLowerCase().includes(q)
-        );
+        if (!terms.length) return true;
+
+        // The replies belonging to this ticket, folded into the haystack so a word
+        // used only in the conversation still matches. That is where the answer
+        // to "did they mention my refund?" usually actually is.
+        const repliesFor = replies
+            .filter((x) => String(x.ticket_id) === String(t.ticket_id))
+            .map((x) => x.message || '')
+            .join(' ');
+
+        const haystack = [
+            t.ticket_id, t.subject, t.message, t.user_name, t.user_email, t.status, repliesFor,
+        ]
+            .map((v) => String(v == null ? '' : v).toLowerCase())
+            .join('  ');
+
+        return terms.every((term) => haystack.includes(term));
     });
 
     const selectedTicket = tickets.find(t => String(t.ticket_id) === String(selectedId)) || null;
@@ -1082,7 +1196,7 @@ const SupportPage = () => {
                     <SidebarFooter>
                         <Avatar $online={connected}>{initials}</Avatar>
                         <UserInfo>
-                            <UserName>{displayName}</UserName>
+                            <UserName title={displayName}>{displayName}</UserName>
                             <UserRole>Tenant Account</UserRole>
                         </UserInfo>
                     </SidebarFooter>
@@ -1150,8 +1264,12 @@ const SupportPage = () => {
                                                 <TicketId>#{t.ticket_id}</TicketId>
                                                 <TypeBadge $bg={tp.bg} $color={tp.color}>{tp.label}</TypeBadge>
                                             </CardHeader>
-                                            <CardTitle>{t.subject}</CardTitle>
-                                            <CardPreview>{t.message}</CardPreview>
+                                            <CardTitle title={t.subject}>{t.subject}</CardTitle>
+                                            {/* title carries the full text: the
+                                                2-line clamp above hides the rest on
+                                                desktop, and a title is the cheapest
+                                                way to keep it recoverable. */}
+                                            <CardPreview title={t.message}>{t.message}</CardPreview>
                                             <CardFooter>
                                                 <MiniAvatar>{getInitials(t.user_name, t.user_email)}</MiniAvatar>
                                                 <Meta><User size={10} /> {t.user_name || t.user_email || 'User'}</Meta>

@@ -18,10 +18,15 @@ import ModalRouter from "../components/workshop/pages/ModalRouter";
 import { isWorkshopAdmin } from "../utils/workshopRole";
 
 /* Sub-tabs inside the dashboard's Workshop module. Analytics was moved here
-   from the workshop app, and the Store now has a dashboard view of its own. */
+   from the workshop app, and the Store now has a dashboard view of its own.
+
+   ORDER MATTERS: Analytics is first and is also the landing view. Analytics is
+   the reason an owner opens this module — it answers "are we on track, and who
+   is producing" — whereas the Store is a look-up ("did that coffin leave yet")
+   that most visits never need. */
 const TABS = [
-  { id: "store", label: "Store", icon: "fa-warehouse" },
   { id: "analytics", label: "Analytics", icon: "fa-chart-line" },
+  { id: "store", label: "Store", icon: "fa-warehouse" },
 ];
 
 
@@ -160,9 +165,9 @@ export default function WorkshopPanel({ onExit }) {
   const [workerSaved, setWorkerSaved] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // Store / Analytics sub-tab. Store is the landing view: the workshop's
-  // numbers start with what is physically on the shelf.
-  const [tab, setTab] = useState("store");
+  // Analytics / Store sub-tab. Analytics lands first: it is what the owner
+  // opens the module for. The Store is a second-look screen.
+  const [tab, setTab] = useState("analytics");
   const isAdmin = isWorkshopAdmin();
 
   const load = useCallback(async () => {
