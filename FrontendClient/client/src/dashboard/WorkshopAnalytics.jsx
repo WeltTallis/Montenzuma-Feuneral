@@ -302,42 +302,57 @@ function TrendChart({ rows }) {
             <text key={m} x={x(i)} y={H - 10} textAnchor="middle" fontSize="10" fill="#9CA3AF">{m}</text>
           ))}
 
-          {series.map((s) => (
-            <g key={s.name}>
-              {/* area fill only when a single worker is isolated */}
-              {!isAll && (
-                <path
-                  d={`M ${x(0)} ${y(0)} ` + s.values.map((v, i) => `L ${x(i)} ${y(v)}`).join(" ") + ` L ${x(11)} ${y(0)} Z`}
-                  fill={s.color}
-                  opacity="0.07"
-                />
-              )}
-              <path
-                d={s.values.map((v, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(v)}`).join(" ")}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={isAll ? 2 : 2.5}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                opacity={isAll ? 0.9 : 1}
-              />
-              {s.values.map((v, i) => {
-                if (i > lastMonth) return null;
-                return (
-                  <g key={i}>
-                    <circle cx={x(i)} cy={y(v)} r={isAll ? 3 : 4} fill="#fff" stroke={s.color} strokeWidth="2">
-                      <title>{`${MONTHS[i]} ${activeYear} · ${s.name}: ${v} coffin${v === 1 ? "" : "s"}`}</title>
-                    </circle>
-                    {!isAll && (
-                      <text x={x(i)} y={y(v) - 10} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#111827">
-                        {v}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </g>
-          ))}
+          {series.map((s) => {
+            /* Only the months that have actually happened get plotted. Drawing a
+               curve out to December when it is only February would invent a
+               decline that never occurred, and a smoothed curve exaggerates
+               that kind of fiction far more than a straight line does — so the
+               series is cut at the last real month first, then smoothed. */
+            const drawn = s.values.slice(0, lastMonth + 1);
+            const pts = drawn.map((v, i) => [x(i), y(v)]);
+            const linePath = smoothPath(pts);
+
+            return (
+              <g key={s.name}>
+                {/* area fill only when a single worker is isolated */}
+                {!isAll && linePath && (
+                  <path
+                    /* Closed along the baseline rather than following the curve
+                       back, so the fill hugs the floor instead of bowing under it. */
+                    d={`${linePath} L ${x(drawn.length - 1)} ${y(0)} L ${x(0)} ${y(0)} Z`}
+                    fill={s.color}
+                    opacity="0.07"
+                  />
+                )}
+                {linePath && (
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke={s.color}
+                    strokeWidth={isAll ? 2 : 2.5}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    opacity={isAll ? 0.9 : 1}
+                  />
+                )}
+                {s.values.map((v, i) => {
+                  if (i > lastMonth) return null;
+                  return (
+                    <g key={i}>
+                      <circle cx={x(i)} cy={y(v)} r={isAll ? 3 : 4} fill="#fff" stroke={s.color} strokeWidth="2">
+                        <title>{`${MONTHS[i]} ${activeYear} · ${s.name}: ${v} coffin${v === 1 ? "" : "s"}`}</title>
+                      </circle>
+                      {!isAll && (
+                        <text x={x(i)} y={y(v) - 10} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#111827">
+                          {v}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
         </svg>
       </div>
 
@@ -352,6 +367,128 @@ function TrendChart({ rows }) {
   );
 }
 
+/* ── Smooth curve for the trend line ───────────────────────────────────────
+   Turns a list of points into a cubic Bézier path that passes exactly through
+   every one of them (Catmull-Rom converted to Bézier).
+
+   Why not just a <polyline> or a chain of "L" commands: those draw hard
+   angular corners, so a month where production dipped read as a cliff and a
+   recovery read as a spike. Monthly coffin counts are small integers and the
+   shape between two real months is interpolation, not data — a smooth curve
+   makes that honest instead of implying a sharp change that never happened.
+
+   Catmull-Rom specifically because it is INTERPOLATING: the curve is
+   guaranteed to pass through the real data points rather than near them, so no
+   month is visually distorted by the smoothing. A plain Bézier through the
+   points would pull them off and understate a genuine peak.
+
+   `tension` is the 0.5 Catmull-Rom constant, which is what keeps the curve
+   from overshooting. Raising it makes the line balloon between a high and a
+   low month — bad for integer counts, because it can dip below zero and draw a
+   "negative" month that is not in the data. */
+function smoothPath(pts, tension = 0.5) {
+  if (!pts.length) return "";
+  if (pts.length < 3) {
+    // Two points have no interior tangent to blend, so a curve would add
+    // nothing and could look skewed. A straight line is the honest shape.
+    return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p[0]} ${p[1]}`).join(" ");
+  }
+
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    // p0/p3 are the neighbours that set the tangent at each end of this
+    // segment; p1/p2 are the two points being joined. They are clamped at the
+    // ends so the first and last segments do not invent a phantom point.
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+
+    const c1x = p1[0] + ((p2[0] - p0[0]) / 6) * tension * 2;
+    const c1y = p1[1] + ((p2[1] - p0[1]) / 6) * tension * 2;
+    const c2x = p2[0] - ((p3[0] - p1[0]) / 6) * tension * 2;
+    const c2y = p2[1] - ((p3[1] - p1[1]) / 6) * tension * 2;
+
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2[0]} ${p2[1]}`;
+  }
+
+  return d;
+}
+
+/* Monthly attainment strip: one column per month, showing how many coffins were
+   made against the month's target, with the months that were hit called out.
+
+   This is the "who crossed the target" view at workshop level. It sits above the
+   per-worker grid because the question is asked at two levels: did the workshop
+   hit its number, and then which worker carried it.
+
+   A month with NO target set is deliberately not shown as a miss. There was
+   nothing to hit, so it is simply left unmarked — painting an unset month red
+   would report a failure that was never in question. */
+function TargetAttainment({ targets }) {
+  const months = Array.isArray(targets?.months) ? targets.months : [];
+  const scored = months.filter((m) => Number(m.target) > 0);
+  if (!scored.length) return null;
+
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const met = scored.filter((m) => m.produced >= m.target);
+
+  return (
+    <div className="wa-panel">
+      <h2>
+        Monthly Target
+        {met.length > 0 && (
+          <span className="wa-month-chip">{met.length} of {scored.length} hit</span>
+        )}
+      </h2>
+      <div className="wa-sub">
+        Coffins finished against the number the workshop aimed for that month
+      </div>
+
+      <div className="wa-target-strip">
+        {scored.map((m) => {
+          const hit = m.produced >= m.target;
+          const pct = Math.min(100, Math.round((m.produced / m.target) * 100));
+          const isNow = m.month === currentMonth;
+          return (
+            <div
+              key={m.month}
+              className={`wa-target-col${hit ? " hit" : ""}${isNow ? " now" : ""}`}
+              title={
+                `${m.month}: ${m.produced} of ${m.target} coffins` +
+                `${isNow ? " (current month)" : ""}`
+              }
+            >
+              <div className="wa-target-bar">
+                <span style={{ height: `${Math.max(4, pct)}%` }} />
+              </div>
+              <div className="wa-target-pct">{pct}%</div>
+              <div className="wa-target-n">{m.produced}/{m.target}</div>
+              <div className="wa-target-m">{m.month.slice(5)}</div>
+              {hit ? <i className="fas fa-check" aria-hidden="true" /> : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* Month header. A month the workshop HIT its target gets a tick and a green tint,
+   so a manager reading down the column can see at a glance which months were
+   good ones without cross-referencing the attainment strip above. */
+function MonthHead({ keyStr, hit }) {
+  const [y, m] = String(keyStr).split("-").map(Number);
+  return (
+    <th className={`wa-pm-cell${hit ? " hit" : ""}`}>
+      {y && m ? `${MONTHS[m - 1]} ${String(y).slice(2)}` : keyStr}
+      {hit ? <i className="fas fa-check" aria-hidden="true" /> : null}
+    </th>
+  );
+}
+
 /* ── Production per worker per month ────────────────────────────────────────
    The explicit "how many has each worker produced each month" grid.
 
@@ -359,20 +496,26 @@ function TrendChart({ rows }) {
    by design no longer contains finished orders — so every derived figure reads
    0. This grid is driven by GET /workshop/reports/worker-production instead,
    which aggregates finished orders in SQL, and is the authoritative answer. */
-function ProductionGrid({ production }) {
+function ProductionGrid({ production, targets }) {
   const months = Array.isArray(production?.months) ? production.months : [];
   const rows = Array.isArray(production?.workers) ? production.workers : [];
 
-  const monthLabel = (key) => {
-    const [y, m] = String(key).split("-").map(Number);
-    if (!y || !m) return key;
-    return `${MONTHS[m - 1]} ${String(y).slice(2)}`;
-  };
+  // The month heading is now rendered by <MonthHead>, which also carries the
+  // "target hit" tick, so the old local monthLabel formatter is no longer used.
 
   // The highest single cell decides the heat scale, so one busy month does not
   // wash every other month out to zero colour.
   const peak = Math.max(1, ...rows.flatMap((r) => months.map((m) => Number(r.monthly?.[m]) || 0)));
   const grand = rows.reduce((s, r) => s + (Number(r.total) || 0), 0);
+
+  /* Which months the workshop hit its target, keyed "YYYY-MM" so the header can
+     mark them inline. Months with no target set are absent from this map and so
+     are left unmarked rather than being shown as a miss. */
+  const hitMonths = new Set(
+    (Array.isArray(targets?.months) ? targets.months : [])
+      .filter((m) => Number(m.target) > 0 && m.produced >= m.target)
+      .map((m) => m.month)
+  );
 
   if (!rows.length) {
     return (
@@ -402,7 +545,7 @@ function ProductionGrid({ production }) {
             <tr>
               <th className="wa-pm-name">Worker</th>
               {months.map((m) => (
-                <th key={m} className="wa-pm-cell">{monthLabel(m)}</th>
+                <MonthHead key={m} keyStr={m} hit={hitMonths.has(m)} />
               ))}
               <th className="wa-pm-total">Total</th>
             </tr>
@@ -505,7 +648,7 @@ function ProductionMix({ byType }) {
 }
 
 /* ── Main view ─────────────────────────────────────────────────────────── */
-export default function WorkshopAnalytics({ orders = [], workers = [], production = null, onRemoveWorker }) {
+export default function WorkshopAnalytics({ orders = [], workers = [], production = null, targets = null, onRemoveWorker }) {
   const { rows, totals } = useWorkerStats(orders, workers, production);
 
   const maxBar = Math.max(1, ...rows.map((r) => r.completed + r.active));
@@ -544,8 +687,9 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
           Store tab, which had no header at all. */}
 
       {/* ── the answer, first: what each worker produced each month ── */}
+      <TargetAttainment targets={targets} />
       <ProductionMix byType={production?.by_type} />
-      <ProductionGrid production={production} />
+      <ProductionGrid production={production} targets={targets} />
 
       {/* ── stats ── */}
       <div className="wa-stats">

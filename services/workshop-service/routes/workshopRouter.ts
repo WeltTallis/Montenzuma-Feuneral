@@ -60,7 +60,9 @@ import {
     getInventory,
     dispatchItem,
     restockItem,
-    getHistory
+    getHistory,
+    getTargets,
+    setTarget
 } from '../controllers/storeController'
 
 const workshopRouter = express.Router()
@@ -136,5 +138,11 @@ workshopRouter.get('/store/inventory', getInventory)
 workshopRouter.get('/store/history', getHistory)
 workshopRouter.post('/store/dispatch', dispatchItem)
 workshopRouter.post('/store/restock', restockItem)
+
+// Monthly coffin output target. GET is open to any workshop user (the analytics
+// read it to draw the progress bars); PUT changes the target, so it is gated to
+// workshop admins only — the same rule as "Register Worker" on the dashboard.
+workshopRouter.get('/store/targets', getTargets)
+workshopRouter.put('/store/targets', authorizeAny as any, setTarget)
 
 export { workshopRouter }

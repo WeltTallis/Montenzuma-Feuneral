@@ -29,25 +29,22 @@ export const workshopService = {
     getOrders: (params = {}) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.ORDERS, { params })),
 
-    // Statuses that represent a finished job. Kept in one place because both the
-    // live board (exclude them) and the production analytics (only count them)
-    // need the exact same list.
+    // Statuses that represent a finished job.
     //
-    // 'store' MUST be in here. It is the stage a coffin reaches when it is
-    // finished and put away, and it was missing — which broke the flow in two
-    // directions at once:
-    //   1. the live board did not exclude it, so finished coffins piled up on
-    //      the workshop Orders tab forever, side by side with work in progress;
-    //   2. the analytics did not count it, so nothing a worker finished ever
-    //      showed up in their monthly output.
-    // 'cancelled' is listed as finished so it leaves the live board, but it is
-    // explicitly NOT counted as production anywhere — see reportController.
+    // NO LONGER USED TO FILTER THE BOARD. The live board used to send this list
+    // to the server as `exclude_status`, which meant the browser decided what
+    // counted as finished — and a cached bundle missing 'store' let every
+    // completed coffin back onto the workers' board. getActiveOrders() now sends
+    // `active_only=1` and the server applies its own list.
+    //
+    // Kept as documentation of the domain only. The authoritative list is
+    // FINISHED_ORDER_STATUSES in services/workshop-service/controllers/
+    // coffinOrderController.ts, which the analytics share.
     FINISHED_ORDER_STATUSES: ['completed', 'delivered', 'store', 'dispatched', 'collected', 'cancelled'],
 
-    /** Orders still on the floor — what the workshop tab actually renders. */
     getActiveOrders: () =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.ORDERS, {
-            params: { exclude_status: workshopService.FINISHED_ORDER_STATUSES.join(',') },
+            params: { active_only: 1 },
         })),
 
     getOrder: (id) =>
@@ -128,6 +125,17 @@ export const workshopService = {
 
     recordMaterialUsage: (orderId, data) =>
         handleResponse(workshopApi.post(ENDPOINTS.WORKSHOP.PRODUCTION.USE_MATERIAL(orderId), data)),
+
+    // --- Monthly output target ---
+    // How many coffins the workshop aims to finish each month, plus what it
+    // actually finished. The server counts the actuals with the same finished-
+    // status and credit-date rules as the worker report, so these two numbers
+    // can never disagree on the same screen.
+    getMonthlyTargets: (params = {}) =>
+        handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.STORE_TARGETS, { params })),
+
+    setMonthlyTarget: (month, target) =>
+        handleResponse(workshopApi.put(ENDPOINTS.WORKSHOP.STORE_TARGETS, { month, target })),
 
     // --- Reports ---
     getDailyReport: (params = {}) =>

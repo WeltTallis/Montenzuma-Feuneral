@@ -4601,6 +4601,257 @@
    gap: 12px
 }
 
+/* ── Monthly target attainment ────────────────────────────────────────────
+   One column per month that has a target set. Uses the project's own tokens
+   (--green / --warn) rather than hard-coded hex so the strip stays legible if
+   the palette is retuned.
+
+   Months that were hit get --green and a tick; the current month gets a ring so
+   it is obvious which column is still in progress rather than already failed. */
+.rpd .wa-target-strip {
+   display: flex;
+   gap: 8px;
+   margin-top: 14px;
+   overflow-x: auto;
+   -webkit-overflow-scrolling: touch;
+   padding-bottom: 4px
+}
+
+.rpd .wa-target-col {
+   flex: 1 0 62px;
+   min-width: 62px;
+   text-align: center;
+   position: relative;
+   padding: 8px 4px 6px;
+   border: 1px solid var(--brd);
+   border-radius: 8px;
+   background: var(--card)
+}
+
+.rpd .wa-target-col.now {
+   border-color: var(--acc);
+   box-shadow: 0 0 0 2px var(--blue-bg)
+}
+
+.rpd .wa-target-col.hit {
+   border-color: var(--green);
+   background: var(--green-bg)
+}
+
+/* The bar is a track + fill; the fill is 4% minimum so a month with 1 coffin
+   still shows something rather than an invisible sliver. */
+.rpd .wa-target-bar {
+   height: 52px;
+   border-radius: 5px;
+   background: var(--sect);
+   display: flex;
+   align-items: flex-end;
+   overflow: hidden
+}
+
+.rpd .wa-target-bar span {
+   display: block;
+   width: 100%;
+   background: var(--warn)
+}
+
+.rpd .wa-target-col.hit .wa-target-bar span {
+   background: var(--green)
+}
+
+.rpd .wa-target-pct {
+   font: 800 13px var(--sans);
+   color: var(--tx);
+   margin-top: 6px
+}
+
+.rpd .wa-target-n {
+   font: 700 10.5px var(--sans);
+   color: var(--tx3);
+   white-space: nowrap
+}
+
+.rpd .wa-target-m {
+   font: 700 9.5px var(--sans);
+   letter-spacing: .08em;
+   text-transform: uppercase;
+   color: var(--tx4);
+   margin-top: 2px
+}
+
+.rpd .wa-target-col > i {
+   position: absolute;
+   top: 5px;
+   right: 6px;
+   font-size: 9px;
+   color: var(--green)
+}
+
+/* A month column heading marked as a hit target. Green tint rather than a
+   strong fill, because the number cells below carry their own heat shading and
+   a loud header would compete with them. */
+.rpd .wa-pm-cell.hit {
+   background: var(--green-bg);
+   color: var(--green);
+   font-weight: 800
+}
+
+.rpd .wa-pm-cell.hit i {
+   margin-left: 4px;
+   font-size: 8px
+}
+
+/* ── Set monthly target modal ──────────────────────────────────────────────
+   Overlay + dialog. The grid is auto-fit so it reflows from four columns on a
+   desktop to two and then one on a phone without a media query. */
+.rpd .wp-modal-ov {
+   position: fixed;
+   inset: 0;
+   background: rgba(17, 24, 39, .45);
+   z-index: 1000
+}
+
+.rpd .wp-target-modal {
+   position: fixed;
+   z-index: 1001;
+   top: 50%;
+   left: 50%;
+   transform: translate(-50%, -50%);
+   width: min(720px, calc(100vw - 28px));
+   max-height: calc(100vh - 40px);
+   display: flex;
+   flex-direction: column;
+   background: var(--card);
+   border: 1px solid var(--brd);
+   border-radius: 12px;
+   box-shadow: 0 25px 60px rgba(0, 0, 0, .22);
+   overflow: hidden
+}
+
+.rpd .wp-target-head {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 16px 20px;
+   border-bottom: 1px solid var(--brd)
+}
+
+.rpd .wp-target-head h3 {
+   font: 800 15px var(--sans);
+   margin: 0;
+   color: var(--tx)
+}
+
+.rpd .wp-target-head button {
+   background: none;
+   border: none;
+   font-size: 21px;
+   line-height: 1;
+   color: var(--tx3);
+   cursor: pointer
+}
+
+/* min-height:0 lets the body actually shrink and scroll. Without it a flex child
+   refuses to go below its content height, so the footer would be pushed off the
+   bottom of a short screen instead of the grid scrolling. */
+.rpd .wp-target-body {
+   padding: 16px 20px;
+   overflow-y: auto;
+   min-height: 0
+}
+
+.rpd .wp-target-sub {
+   font-size: 12.5px;
+   color: var(--tx3);
+   margin: 0 0 14px
+}
+
+.rpd .wp-target-grid {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+   gap: 12px
+}
+
+.rpd .wp-target-cell label {
+   display: block;
+   font: 700 10.5px var(--sans);
+   letter-spacing: .06em;
+   text-transform: uppercase;
+   color: var(--tx3);
+   margin-bottom: 4px
+}
+
+.rpd .wp-target-cell input {
+   width: 100%;
+   padding: 8px 10px;
+   border: 1px solid var(--brd);
+   border-radius: 7px;
+   font: 700 13px var(--sans);
+   color: var(--tx);
+   background: var(--bg);
+   box-sizing: border-box
+}
+
+.rpd .wp-target-cell input:focus {
+   outline: none;
+   border-color: var(--acc)
+}
+
+.rpd .wp-target-actual {
+   display: flex;
+   justify-content: space-between;
+   gap: 6px;
+   font: 600 11px var(--sans);
+   color: var(--tx3);
+   margin-top: 5px
+}
+
+.rpd .wp-target-actual .met {
+   color: var(--green)
+}
+
+/* Under target is amber, not red. A month that simply has not finished yet is
+   not a failure — red would read as blame rather than as progress. */
+.rpd .wp-target-actual .miss {
+   color: var(--warn)
+}
+
+.rpd .wp-target-track {
+   height: 5px;
+   border-radius: 99px;
+   background: var(--sect);
+   overflow: hidden;
+   margin-top: 5px
+}
+
+.rpd .wp-target-track span {
+   display: block;
+   height: 100%;
+   background: var(--warn)
+}
+
+.rpd .wp-target-track span.met {
+   background: var(--green)
+}
+
+.rpd .wp-target-foot {
+   display: flex;
+   justify-content: flex-end;
+   gap: 8px;
+   padding: 14px 20px;
+   border-top: 1px solid var(--brd)
+}
+
+.rpd .wp-target-foot .wp-btn-ghost {
+   padding: 9px 16px;
+   border: 1px solid var(--brd);
+   border-radius: 8px;
+   background: var(--bg);
+   color: var(--tx2);
+   font: 700 12.5px var(--sans);
+   cursor: pointer
+}
+
 .rpd .wa-bar-row {
    margin-bottom: 14px
 }
@@ -6881,12 +7132,45 @@
    color: var(--tx3)
 }
 
+/* The route, shown under the quantity on the hero. Where a coffin went is the
+   first thing anyone opening a dispatch record wants to know, so it gets its own
+   line instead of being two separate fields further down the drawer.
+
+   The pill is translucent white so it reads on the red/green hero gradient
+   without needing its own colour per theme. */
+.rpd .sv-txn-route {
+   display: inline-flex;
+   align-items: center;
+   gap: 7px;
+   margin-top: 10px;
+   padding: 5px 11px;
+   border-radius: 99px;
+   background: rgba(255, 255, 255, .18);
+   border: 1px solid rgba(255, 255, 255, .3);
+   font: 700 12px var(--sans);
+   /* A long branch name must wrap inside the pill rather than push the hero
+       wider than the drawer, so max-width + break-word together. */
+   max-width: 100%;
+   word-break: break-word
+}
+
 .rpd .sv-txn-field .v {
    font-size: 13px;
    font-weight: 600;
    margin-top: 1px;
    word-break: break-word;
    color: var(--tx)
+}
+
+/* Purpose and Remarks hold a sentence the user typed, so they read as text
+   rather than as a value crammed onto one line. Slightly smaller and with real
+   line height, which is what makes a two-line remark look intentional instead
+   of like a broken label. */
+.rpd .sv-txn-field .v.prose {
+   font-size: 12.5px;
+   font-weight: 500;
+   line-height: 1.5;
+   color: var(--tx2)
 }
 
 .rpd .sv-txn-foot {

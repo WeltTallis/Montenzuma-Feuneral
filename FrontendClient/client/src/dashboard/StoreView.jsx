@@ -371,6 +371,12 @@ export default function StoreView({ store, onChanged }) {
 /** One journal line - shared by the calendar detail pane and History. */
 function TxRow({ t, onOpen }) {
   const out = isDispatch(t);
+  /* Show the destination in the list itself. The list is a triage view: someone
+     scanning it wants to know which branch a coffin went to, and previously the
+     only clue was the item name and the date, so a Machakos dispatch and a
+     Nairobi dispatch of the same coffin looked identical until opened. */
+  const to = parseDispatchLog(t.notes);
+  const dest = to ? dispatchRoute(to) : null;
   return (
     <button className="sv-tx" onClick={onOpen}>
       <i className={`fas ${out ? "fa-truck sv-tx-ico disp" : "fa-box-open sv-tx-ico rest"}`} />
@@ -379,7 +385,7 @@ function TxRow({ t, onOpen }) {
           <b className={out ? "disp" : "rest"}>{out ? "Dispatched" : "Restocked"}</b> · {t.item_name || t.item_key}
         </div>
         <div className="sv-tx-sub">
-          {[t.item_sub, t.txn_by ? `by ${t.txn_by}` : "", t.day ? fmtDay(t.day) : ""]
+          {[t.item_sub, t.txn_by ? `by ${t.txn_by}` : "", dest ? `→ ${dest}` : "", t.day ? fmtDay(t.day) : ""]
             .filter(Boolean).join(" · ")}
         </div>
       </div>
@@ -613,15 +619,140 @@ function omit(obj, key) {
   return out;
 }
 
+/* Dispatch details are stored as a flat, pipe-delimited string in the ledger's
+   notes column, e.g.
+
+     DISPATCH LOG: Dispatch ID: DSP-2026-96 | Dispatched By: Mumo | Received By:
+     Front desk | Driver: Kioko | From: Nairobi | Destination: Machakos |
+     Purpose: Low stock in machakos | Remarks: Handle with care by mumo |
+     Time: 15:00
+
+   It was previously dumped into the drawer verbatim, so every record rendered as
+   one unreadable wall of text with pipe characters running through it. This
+   pulls it apart into labelled rows instead.
+
+   Splitting is on the FIRST "Label:" of each segment only, and deliberately
+   handles the free-text fields correctly: "Purpose" and "Remarks" are things a
+   person types and may themselves contain a colon or a pipe, so once those
+   labels are reached the remainder of the segment is taken verbatim rather than
+   being re-parsed. Without that, "Remarks: Handle: with | care" would be torn
+   apart mid-sentence. */
+const DISPATCH_LABELS = {
+  "Dispatch ID": "Dispatch ID",
+  "Dispatched By": "Dispatched By",
+  "Received By": "Received By",
+  "Driver": "Driver",
+  "From": "From",
+  "To": "To",
+  "Destination": "Destination",
+  "Purpose": "Purpose",
+  "Remarks": "Remarks",
+  "Time": "Time",
+  "Assigned To": "Assigned To",
+};
+
+// Labels whose value is free text typed by a person. Everything after one of
+// these is kept intact, so a colon or pipe inside their text is not mistaken
+// for the start of a new field.
+const FREE_TEXT_LABELS = new Set(["Purpose", "Remarks"]);
+
+/* Order the fields are shown in. Anything unrecognised is appended afterwards
+   so a field added later still shows up instead of vanishing. */
+const DISPATCH_ORDER = [
+  "Dispatch ID", "Date", "Dispatched By", "Received By", "Driver",
+  "From", "Destination", "Purpose", "Time", "Remarks", "Assigned To",
+];
+
+function parseDispatchLog(notes) {
+  const raw = String(notes || "").trim();
+  if (!raw) return null;
+
+  // Only treat this as a dispatch log if it says so. A restock note, or a
+  // dispatch typed by hand in the single-item form, must render as prose.
+  const body = raw.replace(/^DISPATCH LOG:\s*/i, "");
+  const isLog = /^DISPATCH LOG:/i.test(raw) || /(^|\|)\s*Dispatch ID\s*:/i.test(raw);
+  if (!isLog) return null;
+
+  const parts = body.split("|");
+  const found = {};
+  let freeTextKey = null;
+
+  parts.forEach((part) => {
+    const chunk = part.trim();
+    if (!chunk) return;
+
+    if (freeTextKey) {
+      // Inside a person-typed field, so only a LABEL: prefix ends it.
+      const m = chunk.match(/^([A-Za-z ]{2,20}):\s*(.*)$/);
+      if (m && Object.prototype.hasOwnProperty.call(DISPATCH_LABELS, m[1].trim())) {
+        freeTextKey = null;
+        found[m[1].trim()] = m[2].trim();
+      } else {
+        found[freeTextKey] = `${found[freeTextKey]} | ${chunk}`.trim();
+      }
+      return;
+    }
+
+    const m = chunk.match(/^([A-Za-z ]{2,20}):\s*(.*)$/);
+    if (!m) return;
+    const key = m[1].trim();
+    if (!Object.prototype.hasOwnProperty.call(DISPATCH_LABELS, key)) return;
+    found[key] = m[2].trim();
+    if (FREE_TEXT_LABELS.has(key)) freeTextKey = key;
+  });
+
+  if (!Object.keys(found).length) return null;
+
+  const ordered = [];
+  DISPATCH_ORDER.forEach((k) => {
+    if (k === "Date") return;              // the ledger has a real date column
+    if (found[k] !== undefined && found[k] !== "") {
+      ordered.push({ k, v: found[k] });
+    }
+  });
+  // Anything the parser found that is not in the display order still gets shown.
+  Object.keys(found).forEach((k) => {
+    if (DISPATCH_ORDER.includes(k)) return;
+    if (found[k] !== undefined && found[k] !== "") ordered.push({ k, v: found[k] });
+  });
+
+  return ordered.length ? ordered : null;
+}
+
+/* Where the coffin went, stated as a single readable route. The log stores From
+   and Destination separately, which reads as two unrelated facts; paired up they
+   answer the only question that matters about a dispatch. */
+function dispatchRoute(parsed) {
+  if (!parsed) return null;
+  const get = (k) => {
+    const hit = parsed.find((p) => p.k === k);
+    return hit ? hit.v : "";
+  };
+  const to = get("Destination") || get("To");
+  const from = get("From");
+  if (!to && !from) return null;
+  if (from && to && from !== to) return `${from} → ${to}`;
+  return to || from;
+}
+
 /** Transaction detail: coloured hero + the fields the ledger actually stores. */
 function TxnDrawer({ t, onClose }) {
   const out = isDispatch(t);
-  const Field = ({ k, v, full }) => (
+  const parsed = out ? parseDispatchLog(t.notes) : null;
+  const route = dispatchRoute(parsed);
+
+  // Everything the log captured that is not already promoted into its own field
+  // below, so no recorded detail is quietly dropped from the record.
+  const shown = new Set(["Date", "From", "Destination", "To"]);
+  const rest = parsed ? parsed.filter((p) => !shown.has(p.k)) : [];
+
+  const Field = ({ k, v, full, prose }) => (
     <div className={`sv-txn-field${full ? " full" : ""}`}>
       <div className="k">{k}</div>
-      <div className="v">{v || "-"}</div>
+      <div className={`v${prose ? " prose" : ""}`}>{v || "-"}</div>
     </div>
   );
+
   return (
     <>
       <div className="sv-txn-ov open" onClick={onClose} />
@@ -636,6 +767,14 @@ function TxnDrawer({ t, onClose }) {
           <div className="qty-big">
             {out ? "-" : "+"}{Number(t.qty) || 0} <small>{t.unit || "pcs"}</small>
           </div>
+          {/* The route is the single most useful fact about a dispatch, so it is
+              given its own line under the quantity rather than being left for the
+              reader to piece together from two separate fields further down. */}
+          {route ? (
+            <div className="sv-txn-route">
+              <i className="fas fa-location-arrow" aria-hidden="true" /> {route}
+            </div>
+          ) : null}
         </div>
 
         <div className="sv-txn-body">
@@ -647,10 +786,43 @@ function TxnDrawer({ t, onClose }) {
             <Field k="Quantity" v={`${Number(t.qty) || 0} ${t.unit || "pcs"}`} />
           </div>
 
-          <div className="sv-txn-sec">Notes</div>
-          <div className="sv-txn-grid">
-            <Field k="" v={t.notes || "No notes recorded."} full />
-          </div>
+          {out && (
+            <>
+              <div className="sv-txn-sec">Dispatch Details</div>
+
+              {parsed ? (
+                <div className="sv-txn-grid">
+                  {rest.map((p) => (
+                    /* Remarks and Purpose are written by a person and can run to
+                       a sentence or two, so they take the full row instead of
+                       being squeezed into a narrow column. */
+                    <Field
+                      key={p.k}
+                      k={p.k}
+                      v={p.v}
+                      full={p.k === "Remarks" || p.k === "Purpose"}
+                      prose={p.k === "Remarks" || p.k === "Purpose"}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="sv-txn-grid">
+                  <Field k="" v={t.notes || "No dispatch details recorded."} full />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* A restock note is free prose the user typed, so it is shown as-is.
+              Only a dispatch gets the structured breakdown above. */}
+          {!out && (
+            <>
+              <div className="sv-txn-sec">Notes</div>
+              <div className="sv-txn-grid">
+                <Field k="" v={t.notes || "No notes recorded."} full />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="sv-txn-foot">

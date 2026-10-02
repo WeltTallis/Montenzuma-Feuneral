@@ -229,6 +229,8 @@ export const ENDPOINTS = {
       COSTING: '/workshop/reports/costing',
       WORKER_PRODUCTION: '/workshop/reports/worker-production',
     },
+    // Monthly coffin output target: read for the progress bars, written by admins.
+    STORE_TARGETS: '/workshop/store/targets',
     WORK_ORDER: {
       PDF: (id) => `/workshop/orders/${id}/work-order/pdf`,
     },

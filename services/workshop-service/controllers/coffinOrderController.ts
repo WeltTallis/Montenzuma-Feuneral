@@ -45,6 +45,31 @@ const getOrders = async (req: Request, res: Response) => {
             query += ' AND co.status = ?';
             params.push(req.query.status);
         }
+        /* Live board: ?active_only=1
+           -------------------------------------------
+           Returns ONLY work still on the floor, and the SERVER decides what
+           "finished" means.
+
+           This used to rely on the browser passing `exclude_status=<list>`, which
+           meant the finished-status list lived in the client. It drifted: the
+           client list was missing 'store' — the exact status the Orders tab
+           writes when a coffin is completed — so completed coffins were never
+           excluded and the board filled up with "✓ Completed" cards for workers
+           to wade through. The same list also existed a third time in
+           reportController.ts, and the three copies did not agree.
+
+           Keeping the decision here removes the duplication entirely: one list
+           (FINISHED_ORDER_STATUSES at the top of this file) now governs both the
+           live board and the analytics, and the client cannot accidentally ship
+           a stale copy.
+
+           Kept additive with exclude_status below, so a caller may still
+           exclude extra statuses on top. */
+        if (String(req.query.active_only ?? '') === '1') {
+            query += ` AND co.status NOT IN (${FINISHED_ORDER_STATUSES.map(() => '?').join(',')})`;
+            params.push(...FINISHED_ORDER_STATUSES);
+        }
+
         // Bulk exclusion: `?exclude_status=completed,delivered`.
         // The single `status` filter above can only ever return ONE status, so a
         // live workshop board (which wants "everything still on the floor")

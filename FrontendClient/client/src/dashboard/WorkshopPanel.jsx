@@ -24,18 +24,7 @@ const TABS = [
   { id: "analytics", label: "Analytics", icon: "fa-chart-line" },
 ];
 
-/* ONE top navigation for the whole Workshop module.
 
-   There used to be THREE stacked bars: the wp-head (back / title / Live /
-   Register Worker / Refresh), then the wp-tabs pill row (Store / Analytics)
-   immediately below it, then the analytics panels' own headings. Same idea
-   repeated three times in ~120px of vertical space, with the section switcher
-   buried under the page title instead of being the most obvious control on
-   screen.
-
-   Now it is a single bar: back + title on the left, the Store/Analytics switcher
-   in the middle, and the actions on the right. One row, and the section the
-   user is actually switching between is the biggest thing in it. */
 function TabBar({ active, onChange }) {
   return (
     <div className="wp-tabs" role="tablist" aria-label="Workshop sections">
@@ -56,6 +45,102 @@ function TabBar({ active, onChange }) {
   );
 }
 
+function TargetModal({ months, onSave, onClose }) {
+  const [draft, setDraft] = useState(() => {
+    const o = {};
+    (months || []).forEach((m) => { o[m.month] = m.target > 0 ? String(m.target) : ""; });
+    return o;
+  });
+  const [err, setErr] = useState("");
+
+  const save = async () => {
+    // Validate everything before writing, so a typo in month 7 does not leave
+    // months 1-6 saved and 7-12 missing.
+    for (const m of months || []) {
+      const raw = (draft[m.month] ?? "").trim();
+      if (raw === "") continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || Math.floor(n) !== n) {
+        setErr(`${m.month} must be a whole number of coffins.`);
+        return;
+      }
+    }
+    setErr("");
+    for (const m of months || []) {
+      const raw = (draft[m.month] ?? "").trim();
+      // Blank is saved as 0 rather than skipped, so clearing a target that was
+      // previously set actually removes it instead of silently keeping the old
+      // number in place.
+      await onSave(m.month, raw === "" ? 0 : Number(raw));
+    }
+  };
+
+  return (
+    <>
+      <div className="wp-modal-ov" onClick={onClose} />
+      <div className="wp-target-modal" role="dialog" aria-label="Set monthly coffin target">
+        <div className="wp-target-head">
+          <h3>Monthly Coffin Target</h3>
+          <button type="button" onClick={onClose} aria-label="Close">&times;</button>
+        </div>
+
+        <div className="wp-target-body">
+          <p className="wp-target-sub">
+            How many coffins the workshop aims to finish each month. Leave a month
+            blank to track it without a target.
+          </p>
+
+          <div className="wp-target-grid">
+            {(months || []).map((m) => {
+              const val = draft[m.month] ?? "";
+              const has = val.trim() !== "";
+              const pct = has && Number(val) > 0
+                ? Math.min(100, Math.round((m.produced / Number(val)) * 100))
+                : 0;
+              const met = has && Number(val) > 0 && m.produced >= Number(val);
+              return (
+                <div className="wp-target-cell" key={m.month}>
+                  <label>{m.month}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="—"
+                    value={val}
+                    onChange={(e) => setDraft((d) => ({ ...d, [m.month]: e.target.value }))}
+                  />
+                  <div className="wp-target-actual">
+                    <span className={met ? "met" : ""}>{m.produced} made</span>
+                    {has && Number(val) > 0 && (
+                      <span className={met ? "met" : "miss"}>
+                        {met ? "Target met" : `${pct}%`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="wp-target-track">
+                    <span
+                      className={met ? "met" : ""}
+                      style={has && Number(val) > 0 ? { width: `${pct}%` } : undefined}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {err ? <div className="wp-err">{err}</div> : null}
+        </div>
+
+        <div className="wp-target-foot">
+          <button type="button" className="wp-btn-ghost" onClick={onClose}>Cancel</button>
+          <button type="button" className="wp-addworker" onClick={save}>Save Targets</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function WorkshopPanel({ onExit }) {
   const { connected } = useSocket();
   const [store, setStore] = useState(null);
@@ -66,6 +151,12 @@ export default function WorkshopPanel({ onExit }) {
   // its own SQL aggregation or every headline figure reads zero.
   const [production, setProduction] = useState(null);
   const [showWorkerModal, setShowWorkerModal] = useState(false);
+  // Monthly output target. `targets.months` is all twelve months of the year,
+  // each with target / produced / met, so the chart can mark attainment without
+  // the client having to fill gaps in the year itself.
+  const [targets, setTargets] = useState(null);
+  const [targetOpen, setTargetOpen] = useState(false);
+  const [targetSaved, setTargetSaved] = useState("");
   const [workerSaved, setWorkerSaved] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -77,7 +168,7 @@ export default function WorkshopPanel({ onExit }) {
   const load = useCallback(async () => {
     try {
       setError("");
-      const [storeRes, ordersRes, workersRes, productionRes] = await Promise.all([
+      const [storeRes, ordersRes, workersRes, productionRes, targetsRes] = await Promise.all([
         workshopService.getStoreInventory().catch(() => ({ data: null, success: false })),
         // The dashboard needs the FULL history, not just the live board. Its Analytics
         // tab counts FINISHED coffins per worker / per month, and that data only
@@ -90,11 +181,16 @@ export default function WorkshopPanel({ onExit }) {
         workshopService.getOrders().catch(() => ({ data: [], success: false })),
         workshopService.getWorkers().catch(() => ({ data: [], success: false })),
         workshopService.getWorkerProduction({ months: 12 }).catch(() => ({ data: null, success: false })),
+        // Targets are additive: if this call fails the rest of the dashboard still
+        // renders and simply shows no target marks.
+        workshopService.getMonthlyTargets({ year: new Date().getFullYear() })
+          .catch(() => ({ data: null, success: false })),
       ]);
       if (storeRes?.success) setStore(storeRes.data);
       if (ordersRes?.success) setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
       if (workersRes?.success) setWorkers(Array.isArray(workersRes.data) ? workersRes.data : []);
       if (productionRes?.success && productionRes.data) setProduction(productionRes.data);
+      if (targetsRes?.success && targetsRes.data) setTargets(targetsRes.data);
     } catch (e) {
       setError(e?.friendlyMessage || e?.message || "Could not load workshop data");
     } finally {
@@ -117,6 +213,19 @@ export default function WorkshopPanel({ onExit }) {
     } else {
       setWorkerSaved("");
       setError(res?.error || "Could not add worker");
+    }
+  };
+
+  const saveTarget = async (month, qty) => {
+    const res = await workshopService.setMonthlyTarget(month, qty);
+    if (res && res.success) {
+      setTargetSaved(`Target for ${month} set to ${qty} coffin${Number(qty) === 1 ? "" : "s"}.`);
+      setTargetOpen(false);
+      // Reload so the chart reflects the new mark immediately rather than waiting
+      // for the next refresh cycle.
+      await load();
+    } else {
+      setError(res?.error || "Could not save target");
     }
   };
 
@@ -144,7 +253,22 @@ export default function WorkshopPanel({ onExit }) {
       {/* The section switcher sits INSIDE the header row, not on a second bar
           under it. It is the control the user reaches for most, so it belongs
           where the eye already is. */}
+      {/* Monthly target is an admin setting, exactly like Register Worker — it is
+          a commitment the workshop makes, not something a worker needs to see.
+          The set-target control opens on the month being viewed. */}
       <TabBar active={tab} onChange={setTab} />
+
+      {isAdmin && (
+        <button
+          type="button"
+          className="wp-addworker"
+          onClick={() => setTargetOpen(true)}
+          title="Set how many coffins the workshop aims to finish each month"
+        >
+          <i className="fas fa-bullseye" aria-hidden="true" style={{ fontSize: 11 }} />
+          Set Target
+        </button>
+      )}
 
       <div className="wp-head-right">
         <span className={`wp-live${connected ? " on" : ""}`}>
@@ -208,13 +332,28 @@ export default function WorkshopPanel({ onExit }) {
       ) : (
         <div className="wp-grid">
           <section className="wp-analytics">
-            <WorkshopAnalytics orders={orders} workers={workers} production={production} />
+            <WorkshopAnalytics
+              orders={orders}
+              workers={workers}
+              production={production}
+              targets={targets}
+            />
           </section>
         </div>
       )}
 
       {showWorkerModal && (
         <ModalRouter type="createWorker" onClose={() => setShowWorkerModal(false)} onSubmit={createWorker} />
+      )}
+
+      {/* Admin-only. Rendered here rather than in the header so it is a sibling
+          of the rest of the content and cannot disturb the single nav bar. */}
+      {targetOpen && (
+        <TargetModal
+          months={targets?.months || []}
+          onSave={saveTarget}
+          onClose={() => { setTargetSaved(""); setTargetOpen(false); }}
+        />
       )}
     </div>
   );

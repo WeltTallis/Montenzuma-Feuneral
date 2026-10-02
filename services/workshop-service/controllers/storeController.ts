@@ -59,6 +59,144 @@ const ensureStoreTables = async (tenantDb: string) => {
             INDEX idx_txn_date (txn_date),
             INDEX idx_item_key (item_key)
         ) ENGINE=InnoDB`);
+    /* Monthly workshop output target, per calendar month.
+
+       Keyed by year-month ("2026-10") rather than one global number, because the
+       target is genuinely per month and a flat figure would misreport attainment
+       for every month it was not written for. Row-per-month also keeps history:
+       the target that applied at the time survives, so attainment is measured
+       against what was actually aimed for. */
+    await safeTenantExecute(tenantDb, `
+        CREATE TABLE IF NOT EXISTS workshop_monthly_targets (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            target_month VARCHAR(7) NOT NULL,
+            target_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            created_by VARCHAR(255) DEFAULT '',
+            created_at VARCHAR(255) NOT NULL,
+            updated_at VARCHAR(255),
+            UNIQUE KEY uniq_target_month (target_month)
+        ) ENGINE=InnoDB`);
+};
+
+/* Accepted month format. A malformed "2026-13" is rejected rather than stored,
+   because it would silently never match a real month and the target would look
+   set while doing nothing. */
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/* GET /store/targets?year=2026 — every month of the year, target plus actual.
+
+   The actual figure is counted from finished coffin orders using exactly the
+   same rules as the worker report (same finished statuses, same credit-date
+   fallback), so the progress bar can never disagree with the per-worker numbers
+   shown beside it. Two different definitions of "finished" on one dashboard is
+   how a payroll dispute starts. */
+const getTargets = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const year = parseInt(String(req.query.year || new Date().getFullYear()), 10) || new Date().getFullYear();
+
+        const rows: any = await safeTenantQuery(tenantDb,
+            `SELECT target_month, target_qty, created_by, updated_at
+             FROM workshop_monthly_targets
+             WHERE target_month LIKE ?
+             ORDER BY target_month ASC`,
+            [`${year}-%`]
+        );
+
+        const actual: any = await safeTenantQuery(tenantDb,
+            `SELECT
+                 DATE_FORMAT(COALESCE(NULLIF(completed_at,''), NULLIF(order_date,''), NULLIF(created_at,''), NOW()), '%Y-%m') AS ym,
+                 COUNT(*) AS produced
+             FROM coffin_orders
+             WHERE status IN ('completed','delivered','store','dispatched','collected')
+               AND COALESCE(NULLIF(completed_at,''), NULLIF(order_date,''), NULLIF(created_at,''), NOW()) >= ?
+             GROUP BY ym`,
+            [`${year}-01-01`]
+        );
+
+        const actualByMonth = new Map<string, number>(
+            actual.map((a: any) => [String(a.ym), Number(a.produced) || 0])
+        );
+        const targetByMonth = new Map<string, any>(
+            rows.map((r: any) => [String(r.target_month), r])
+        );
+
+        /* All twelve months are always returned so the client renders a complete
+           year without filling gaps itself and getting it subtly wrong. */
+        const months = [];
+        for (let m = 1; m <= 12; m += 1) {
+            const key = `${year}-${String(m).padStart(2, '0')}`;
+            const t = targetByMonth.get(key);
+            const targetQty = t ? Number(t.target_qty) || 0 : 0;
+            const produced = actualByMonth.get(key) || 0;
+            months.push({
+                month: key,
+                target: targetQty,
+                produced,
+                /* A month with no target is null, NOT "missed" — there was
+                   nothing to hit, so the UI says "not set" instead of showing a
+                   red shortfall for a month nobody aimed at. */
+                met: targetQty > 0 ? produced >= targetQty : null,
+                pct: targetQty > 0 ? Math.min(999, Math.round((produced / targetQty) * 100)) : null,
+                setBy: t?.created_by || '',
+                updatedAt: t?.updated_at || '',
+            });
+        }
+
+        res.json({ year, months });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message || 'Failed to load monthly targets' });
+    }
+};
+
+/* PUT /store/targets — set one month's target (upsert).
+
+   Editing a month that already has a target overwrites it rather than failing
+   on the unique key, which is what an admin correcting a typo expects. */
+const setTarget = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const month = String(req.body?.month || '').trim();
+        const qty = Number(req.body?.target);
+
+        if (!MONTH_RE.test(month)) {
+            return res.status(400).json({ error: 'Month must be in YYYY-MM format' });
+        }
+        if (!Number.isFinite(qty) || qty < 0) {
+            return res.status(400).json({ error: 'Target must be zero or greater' });
+        }
+        /* A fractional coffin is not a real target, and rounding silently would
+           mean the stored number is not the number the admin typed. */
+        if (Math.floor(qty) !== qty) {
+            return res.status(400).json({ error: 'Target must be a whole number of coffins' });
+        }
+
+        const setBy = (req as any).user?.full_name
+            || (req as any).user?.name
+            || (req as any).user?.email
+            || '';
+
+        await safeTenantExecute(tenantDb,
+            `INSERT INTO workshop_monthly_targets
+                (target_month, target_qty, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE
+                target_qty = VALUES(target_qty),
+                created_by = VALUES(created_by),
+                updated_at = NOW()`,
+            [month, qty, setBy]
+        );
+
+        res.json({ ok: true, month, target: qty, setBy });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message || 'Failed to save target' });
+    }
 };
 
 const getInventory = async (req: Request, res: Response) => {
@@ -288,5 +426,7 @@ export {
     getInventory,
     dispatchItem,
     restockItem,
-    getHistory
+    getHistory,
+    getTargets,
+    setTarget
 };
