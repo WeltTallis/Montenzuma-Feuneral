@@ -56,20 +56,53 @@ const getWorkerProduction = async (req: Request, res: Response) => {
 
         const finishedPlaceholders = FINISHED_STATUSES.map(() => '?').join(',');
 
-        /* One row per (worker, month): how many finished coffins they produced. */
+        /* Which date a coffin is credited to, in order of truth:
+             1. worker_assignments.completed_at  — when the coffin actually reached
+                the Store, stamped by updateOrder. This is the month the worker was
+                paid for.
+             2. co.order_date                    — fallback for rows finished before
+                that stamp existed.
+             3. co.created_at                    — last resort.
+
+           NULLIF(...,'') is load-bearing. These three columns are all
+           varchar(255), not DATETIME, and they routinely hold an EMPTY STRING
+           rather than NULL. COALESCE skips NULL but happily returns '', and
+           YEAR('') is NULL — so a coffin with a blank order_date was not counted
+           in the wrong month, it was dropped from the report entirely, and the
+           worker who built it looked like they had produced nothing. That is the
+           main reason the analytics read as empty.
+
+           COALESCE around the whole expression is the final safety net: an order
+           with no usable date anywhere is credited to the current year/month
+           rather than vanishing. */
+        const CREDIT_DATE = `COALESCE(
+            NULLIF(wa.completed_at, ''),
+            NULLIF(co.order_date, ''),
+            NULLIF(co.created_at, ''),
+            NOW()
+        )`;
+
+        /* One row per (worker, month): how many finished coffins they produced.
+
+           COUNT(DISTINCT wa.coffin_order_id) is the right grain for this report.
+           Two workers on the same coffin type are two SEPARATE coffin_orders rows
+           (each with its own colour), so each counts once for its own worker —
+           production is counted per physical coffin, never per type. And because
+           a single coffin can be assigned to the same worker across several
+           stages, DISTINCT stops one coffin being credited several times. */
         const perMonth: any = await safeTenantQuery(tenantDb,
             `SELECT
                 w.id                                   AS worker_id,
                 w.full_name                            AS full_name,
                 w.role                                 AS role,
-                YEAR(COALESCE(wa.completed_at, co.order_date, co.created_at))  AS y,
-                MONTH(COALESCE(wa.completed_at, co.order_date, co.created_at)) AS m,
+                YEAR(${CREDIT_DATE})                  AS y,
+                MONTH(${CREDIT_DATE})                 AS m,
                 COUNT(DISTINCT wa.coffin_order_id)      AS produced
              FROM worker_assignments wa
              JOIN workshop_workers w  ON w.id = wa.user_id
              JOIN coffin_orders co    ON co.id = wa.coffin_order_id
              WHERE co.status IN (${finishedPlaceholders})
-               AND YEAR(COALESCE(wa.completed_at, co.order_date, co.created_at)) = ?
+               AND YEAR(${CREDIT_DATE}) = ?
              GROUP BY w.id, w.full_name, w.role, y, m
              ORDER BY w.full_name ASC, m ASC`,
             [...FINISHED_STATUSES, year]
@@ -80,6 +113,29 @@ const getWorkerProduction = async (req: Request, res: Response) => {
         const roster: any = await safeTenantQuery(tenantDb,
             'SELECT id AS worker_id, full_name, role FROM workshop_workers ORDER BY full_name ASC',
             []
+        );
+
+        /* Per coffin type, so a manager can see the actual mix being produced and
+           spot that two workers on "carrier caskets" means TWO coffins rather
+           than one shared job.
+
+           Grouped by coffin_type AND colour on purpose. Two people building the
+           same coffin type in different colours are two distinct coffins, and
+           they are counted as two — grouped by type alone the colour would be
+           invisible and the total would look like a single job. */
+        const byType: any = await safeTenantQuery(tenantDb,
+            `SELECT
+                co.coffin_type                AS coffin_type,
+                COALESCE(NULLIF(co.color, ''), 'Unspecified') AS color,
+                COUNT(DISTINCT co.id)          AS produced,
+                COUNT(DISTINCT wa.user_id)     AS workers
+             FROM worker_assignments wa
+             JOIN coffin_orders co ON co.id = wa.coffin_order_id
+             WHERE co.status IN (${finishedPlaceholders})
+               AND YEAR(${CREDIT_DATE}) = ?
+             GROUP BY co.coffin_type, COALESCE(NULLIF(co.color, ''), 'Unspecified')
+             ORDER BY produced DESC, co.coffin_type ASC`,
+            [...FINISHED_STATUSES, year]
         );
 
         /* Labour hours are logged per assignment regardless of order status. */
@@ -130,6 +186,15 @@ const getWorkerProduction = async (req: Request, res: Response) => {
             months: monthKeys,
             current_month: currentKey,
             workers,
+            // What was produced, broken down by coffin type and colour. The client
+            // renders this as the production mix so the workshop floor and the
+            // dashboard report the same numbers.
+            by_type: byType.map((r: any) => ({
+                coffin_type: r.coffin_type || 'standard',
+                color: r.color,
+                produced: Number(r.produced) || 0,
+                workers: Number(r.workers) || 0,
+            })),
             totals: {
                 workers: workers.length,
                 produced: workers.reduce((s: number, w: any) => s + w.total, 0),

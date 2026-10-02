@@ -451,6 +451,59 @@ function ProductionGrid({ production }) {
   );
 }
 
+/* ── Production mix: what was actually made ──────────────────────────────
+   Coffin type + colour, straight from the SQL aggregate.
+
+   This exists because "2 workers on carrier caskets" is ambiguous on a
+   spreadsheet of totals: it could be one shared job or two separate coffins.
+   It is two. Grouping by type AND colour makes that visible — the same type in
+   two colours shows up as two rows, which is exactly the physical reality on
+   the floor. */
+function ProductionMix({ byType }) {
+  const rows = Array.isArray(byType) ? byType.filter((r) => Number(r.produced) > 0) : [];
+  const total = rows.reduce((s, r) => s + Number(r.produced || 0), 0);
+
+  if (!rows.length) {
+    return (
+      <div className="wa-panel">
+        <h2>What Was Produced</h2>
+        <div className="wa-sub">Completed coffins by type and colour</div>
+        <div className="wa-empty">No completed coffins for this year yet.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wa-panel">
+      <h2>
+        What Was Produced
+        {total > 0 && <span className="wa-month-chip">{total} total</span>}
+      </h2>
+      <div className="wa-sub">
+        Each finished coffin counted once — the same type in two colours is two coffins
+      </div>
+
+      <div className="wa-mix">
+        {rows.map((r, i) => (
+          <div className="wa-mix-row" key={`${r.coffin_type}-${r.color}-${i}`}>
+            <div className="wa-mix-name">
+              <b>{r.coffin_type}</b>
+              <small>{r.color}</small>
+            </div>
+            <div className="wa-mix-bar">
+              <span style={{ width: `${(Number(r.produced) / total) * 100}%` }} />
+            </div>
+            <div className="wa-mix-num">
+              {r.produced}
+              {Number(r.workers) > 1 && <small>{r.workers} workers</small>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main view ─────────────────────────────────────────────────────────── */
 export default function WorkshopAnalytics({ orders = [], workers = [], production = null, onRemoveWorker }) {
   const { rows, totals } = useWorkerStats(orders, workers, production);
@@ -491,6 +544,7 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
           Store tab, which had no header at all. */}
 
       {/* ── the answer, first: what each worker produced each month ── */}
+      <ProductionMix byType={production?.by_type} />
       <ProductionGrid production={production} />
 
       {/* ── stats ── */}

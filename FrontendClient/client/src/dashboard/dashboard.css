@@ -4605,6 +4605,80 @@
    margin-bottom: 14px
 }
 
+/* ── Production mix (coffin type + colour) ──────────────────────────────
+   A horizontal bar per type/colour pair. min-width:0 on the name column stops
+   a long coffin name from pushing the count off the right edge, and the bar
+   track is a fixed-height slot so rows stay aligned regardless of text length. */
+.rpd .wa-mix {
+   margin-top: 12px
+}
+
+.rpd .wa-mix-row {
+   display: flex;
+   align-items: center;
+   gap: 12px;
+   padding: 9px 0;
+   border-bottom: 1px solid var(--brd)
+}
+
+.rpd .wa-mix-row:last-child {
+   border-bottom: none
+}
+
+.rpd .wa-mix-name {
+   min-width: 0;
+   flex: 0 1 190px;
+   display: flex;
+   flex-direction: column
+}
+
+.rpd .wa-mix-name b {
+   font: 700 12.5px var(--sans);
+   color: var(--tx);
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   text-transform: capitalize
+}
+
+.rpd .wa-mix-name small {
+   font-size: 11px;
+   color: var(--tx3);
+   text-transform: capitalize
+}
+
+.rpd .wa-mix-bar {
+   flex: 1 1 auto;
+   min-width: 0;
+   height: 8px;
+   border-radius: 99px;
+   background: var(--bg);
+   border: 1px solid var(--brd);
+   overflow: hidden
+}
+
+.rpd .wa-mix-bar span {
+   display: block;
+   height: 100%;
+   background: #5F0F40;
+   border-radius: 99px
+}
+
+.rpd .wa-mix-num {
+   flex: 0 0 auto;
+   min-width: 62px;
+   text-align: right;
+   font: 800 13px var(--sans);
+   color: var(--tx);
+   display: flex;
+   flex-direction: column
+}
+
+.rpd .wa-mix-num small {
+   font: 400 10px var(--sans);
+   color: var(--tx3)
+}
+
 .rpd .wa-bar-row:last-child {
    margin-bottom: 0
 }
@@ -5401,9 +5475,13 @@
    color: var(--acc)
 }
 
+/* The title no longer flexes. It used to grow to push the actions right, but now
+   the TABS carry margin-left:auto, so two auto margins would split the free space
+   between them and the bar would shift around as labels changed width. Title
+   stays its natural width and the tabs own the single auto margin. */
 .rpd .wp-head-txt {
    min-width: 0;
-   flex: 1 1 auto
+   flex: 0 0 auto
 }
 
 .rpd .wp-head-txt h1 {
@@ -5422,12 +5500,15 @@
    white-space: nowrap
 }
 
+/* margin-left:auto was removed: .wp-tabs owns the single auto margin now, which
+   is what slides BOTH the tabs and these actions to the right of the title.
+   Keeping it here as well split the free space between the two and made the bar
+   jitter. */
 .rpd .wp-head-right {
    display: flex;
    align-items: center;
    gap: 8px;
-   flex-shrink: 0;
-   margin-left: auto
+   flex-shrink: 0
 }
 
 /* Live pill — green + a pulsing dot when the socket is connected, neutral when not. */
@@ -5490,26 +5571,49 @@
 }
 
 @media(max-width:560px) {
-   .rpd .wp-head-txt p {
-      display: none
+   /* The title's <p> subtitle is gone, so this rule no longer hid anything.
+      What DOES need to collapse on a phone is the section switcher: with the
+      tabs, Live, Register Worker and Refresh all in one row, the bar is far
+      too wide. margin-left:auto is dropped so the tabs sit under the title
+      instead of being pushed off the right edge, and the tabs are allowed to
+      scroll rather than crushing their labels. */
+   .rpd .wp-tabs {
+       margin-left: 0;
+       order: 3;
+       width: 100%;
+       overflow-x: auto;
+       -webkit-overflow-scrolling: touch
+   }
+
+   .rpd .wp-tab {
+       flex: 1 0 auto
    }
 
    .rpd .wp-refresh {
-      font-size: 0;
-      gap: 0;
-      padding: 0 12px
+       font-size: 0;
+       gap: 0;
+       padding: 0 12px
    }
 }
 
 /* ── Workshop module sub-tabs (Store / Analytics) ──────────────────────── */
+/* Now that the switcher lives INSIDE .wp-head, it must not draw a second card
+   around itself — a bordered, filled pill floating in another bordered, filled
+   card read as two boxes stacked inside one another. It is now just a segmented
+   control on the header's own surface.
+
+   margin-left:auto is what centres it between the title and the actions: the
+   title block flexes to fill, so the actions get pushed to the far right. */
 .rpd .wp-tabs {
    display: inline-flex;
    gap: 3px;
-   background: var(--card);
+   background: var(--bg);
    border: 1px solid var(--brd);
    border-radius: 10px;
    padding: 3px;
-   width: fit-content
+   width: fit-content;
+   flex: 0 0 auto;
+   margin-left: auto
 }
 
 .rpd .wp-tab {

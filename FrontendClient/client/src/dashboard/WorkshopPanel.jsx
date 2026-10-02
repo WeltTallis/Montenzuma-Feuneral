@@ -24,6 +24,18 @@ const TABS = [
   { id: "analytics", label: "Analytics", icon: "fa-chart-line" },
 ];
 
+/* ONE top navigation for the whole Workshop module.
+
+   There used to be THREE stacked bars: the wp-head (back / title / Live /
+   Register Worker / Refresh), then the wp-tabs pill row (Store / Analytics)
+   immediately below it, then the analytics panels' own headings. Same idea
+   repeated three times in ~120px of vertical space, with the section switcher
+   buried under the page title instead of being the most obvious control on
+   screen.
+
+   Now it is a single bar: back + title on the left, the Store/Analytics switcher
+   in the middle, and the actions on the right. One row, and the section the
+   user is actually switching between is the biggest thing in it. */
 function TabBar({ active, onChange }) {
   return (
     <div className="wp-tabs" role="tablist" aria-label="Workshop sections">
@@ -121,10 +133,18 @@ export default function WorkshopPanel({ onExit }) {
         Operations
       </button>
 
+      {/* The subtitle "Coffin store, production tracking and worker output" was
+          removed: the two tabs below now say Store and Analytics outright, so
+          the sentence only restated the switcher. The Live pill stays because
+          it reports a real connection state that neither tab communicates. */}
       <div className="wp-head-txt">
         <h1>Workshop</h1>
-        <p>Coffin store, production tracking and worker output</p>
       </div>
+
+      {/* The section switcher sits INSIDE the header row, not on a second bar
+          under it. It is the control the user reaches for most, so it belongs
+          where the eye already is. */}
+      <TabBar active={tab} onChange={setTab} />
 
       <div className="wp-head-right">
         <span className={`wp-live${connected ? " on" : ""}`}>
@@ -179,7 +199,9 @@ export default function WorkshopPanel({ onExit }) {
       {error ? <div className="wp-err">{error}</div> : null}
       {workerSaved ? <div className="wp-ok">{workerSaved}</div> : null}
 
-      <TabBar active={tab} onChange={setTab} />
+      {/* No <TabBar /> here any more — it is part of `header` above, so the
+          module is a single navigation row rather than a header plus a second
+          bar repeating the same job. */}
 
       {tab === "store" ? (
         <StoreView store={store} onChanged={load} />

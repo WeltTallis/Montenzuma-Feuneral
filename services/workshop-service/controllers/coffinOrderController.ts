@@ -3,6 +3,17 @@ import { safeTenantQuery, safeTenantExecute } from '../database/db'
 // @ts-ignore - socket module types not fully declared
 import { getIO } from '../socket'
 
+/* Statuses that mean the coffin is finished and has left the workshop.
+
+   'store' is the one the app actually uses: the Orders tab's stage list ends at
+   Store, so that is the status written when a coffin is completed. It MUST be
+   in this list or the completion is never recorded, which is what left the
+   monthly production report showing zeros.
+
+   Must stay in sync with FINISHED_ORDER_STATUSES in reportController.ts and
+   FINISHED_ORDER_STATUSES in the frontend workshopService. */
+const FINISHED_ORDER_STATUSES = ['completed', 'delivered', 'store', 'dispatched', 'collected'];
+
 /*                  
     @route  GET /api/workshop/orders
     @desc   Get all coffin orders with optional filters
@@ -188,8 +199,11 @@ const createOrder = async (req: Request, res: Response) => {
         const insertResult: any = await safeTenantExecute(tenantDb,
             `INSERT INTO coffin_orders
             (order_number, coffin_name, coffin_type, size, color,
-             notes, due_date, priority, branch_id, tenant_slug)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             notes, due_date, priority, branch_id, tenant_slug,
+             order_date, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    NOW(), NOW(), NOW())`,
             [order_number, coffin_name, coffin_type || 'standard', size || null,
                 color, notes, due_date || null, priority || 'normal', branch_id || 1, tenantSlug]
         );
@@ -281,8 +295,57 @@ const updateOrder = async (req: Request, res: Response) => {
             values
         );
 
+        const newStatus = req.body.status;
+
         if (!updateResult.affectedRows) {
             return res.status(404).json({ error: 'Order not found' });
+        }
+
+        /* Stamp the completion moment — this is what makes the monthly production
+           report meaningful, and it was never being written.
+
+           The workshop flow is: create order -> assign to a worker -> worker
+           builds it across the stages -> it is finished and moved to the Store.
+           That last move is the completion, and it is the moment a coffin should
+           be credited to the worker who built it and to that calendar month.
+
+           Without this, worker_assignments.completed_at stayed NULL forever, so
+           the analytics fell back to the order's creation date. A coffin ordered
+           on 28 Feb and finished on 3 Mar was paid to February, and — because
+           the fallback is also the only thing that survives when BOTH date
+           columns are NULL — a row with no dates at all was silently dropped
+           from the report and the worker appeared to have produced nothing.
+
+           Stamped on every assignment for the order, because several workers can
+           share stages of one coffin. NULLIF/COALESCE keep an already-stamped
+           value from being overwritten if the status is re-sent. */
+        if (newStatus && FINISHED_ORDER_STATUSES.includes(String(newStatus))) {
+            try {
+                await safeTenantExecute(tenantDb,
+                    `UPDATE worker_assignments
+                     SET completed_at = COALESCE(completed_at, NOW())
+                     WHERE coffin_order_id = ?`,
+                    [req.params.id]
+                );
+            } catch (stampError: any) {
+                console.error(`[WORKSHOP] Could not stamp completed_at on order ${req.params.id}:`, stampError.message);
+            }
+
+            /* Backfill the order's own date columns for rows written before this
+               was recorded. The report's month fallback needs at least one of
+               them, and an order created without a date would otherwise be
+               invisible to it forever. */
+            try {
+                await safeTenantExecute(tenantDb,
+                    `UPDATE coffin_orders
+                     SET order_date = COALESCE(NULLIF(order_date, ''), NOW()),
+                         created_at = COALESCE(NULLIF(created_at, ''), order_date, NOW())
+                     WHERE id = ?`,
+                    [req.params.id]
+                );
+            } catch (backfillError: any) {
+                console.error(`[WORKSHOP] Could not backfill dates on order ${req.params.id}:`, backfillError.message);
+            }
         }
 
                 const updatedOrders: any = await safeTenantQuery(tenantDb, 'SELECT * FROM coffin_orders WHERE id = ?', [req.params.id]);

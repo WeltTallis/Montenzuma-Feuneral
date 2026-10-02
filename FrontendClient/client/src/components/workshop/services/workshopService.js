@@ -32,7 +32,17 @@ export const workshopService = {
     // Statuses that represent a finished job. Kept in one place because both the
     // live board (exclude them) and the production analytics (only count them)
     // need the exact same list.
-    FINISHED_ORDER_STATUSES: ['completed', 'delivered', 'dispatched', 'collected', 'cancelled'],
+    //
+    // 'store' MUST be in here. It is the stage a coffin reaches when it is
+    // finished and put away, and it was missing — which broke the flow in two
+    // directions at once:
+    //   1. the live board did not exclude it, so finished coffins piled up on
+    //      the workshop Orders tab forever, side by side with work in progress;
+    //   2. the analytics did not count it, so nothing a worker finished ever
+    //      showed up in their monthly output.
+    // 'cancelled' is listed as finished so it leaves the live board, but it is
+    // explicitly NOT counted as production anywhere — see reportController.
+    FINISHED_ORDER_STATUSES: ['completed', 'delivered', 'store', 'dispatched', 'collected', 'cancelled'],
 
     /** Orders still on the floor — what the workshop tab actually renders. */
     getActiveOrders: () =>
