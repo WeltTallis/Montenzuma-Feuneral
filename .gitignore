@@ -37,7 +37,7 @@ export-body.json
 # NOTE: .env and .env.production were previously COMMITTED and contain real
 # credentials (DB_PASSWORD, DB_ROOT_PASSWORD, VMC, JWT secrets, S3 keys).
 # They are untracked from here on — see the rotate-these note in the handover.
-.env
+
 .env.*
 !.env.example
 !.env.sample

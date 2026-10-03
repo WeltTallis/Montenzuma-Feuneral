@@ -177,7 +177,7 @@ function Hero() {
 
           <div className="absolute top-8 left-4 flex items-center rounded-2xl  gap-3  bg-ac-primary px-4 py-2.5 text-ac-onprimary shadow-lg sm:left-[-1rem]">
             <ShieldCheck className="size-5 text-ac-highlight" aria-hidden="true" />
-            <span className="text-sm font-medium">Covered by Montenzuma</span>
+            <span className="text-sm font-medium">Covered by Montenzuma  Feuneral</span>
           </div>
         </div>
       </div>
@@ -293,7 +293,7 @@ function About() {
                 the brand's meaning reads clearly against the white page. */}
             <div className="rounded-2xl bg-ac-primary p-5 text-center shadow-sm sm:p-7">
               <p className="font-serif text-xl text-ac-onprimary sm:text-2xl">Amani</p>
-              <p className="text-sm italic text-ac-onprimary/85">Peace — You Deserve</p>
+              <p className="text-sm italic text-ac-onprimary/85">Peace You Deserve</p>
             </div>
           </div>
         </div>
