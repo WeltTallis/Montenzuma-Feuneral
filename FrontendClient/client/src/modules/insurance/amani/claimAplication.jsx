@@ -347,52 +347,61 @@ const ClaimSubmissionForm = () => {
 
     .content-wrapper { position: relative; z-index: 1; }
 
-    /* === TOP DOCUMENT STRIP === */
+    /* === TOP DOCUMENT STRIP ===
+       A quiet reference line, not a title block. This was set as a 1.1rem
+       Fraunces wordmark beside a bordered, shadowed "Filling Date & Time"
+       chip - so the strip put two competing headings above the real
+       "Submit a Claim" <h1> and the page read like a registration cover.
+       Now it is one small grey line: brand left, timestamp right-aligned in
+       the same size. No border box, no chip, no background - the form's own
+       heading stays the only heading on the page. */
     .doc-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 1.5rem var(--gutter);
+      align-items: baseline;
+      padding: 0.75rem var(--gutter);
       flex-wrap: wrap;
-      gap: 1rem;
-      background: var(--bone2);
+      gap: 0.25rem 1rem;
+      background: transparent;
       border-bottom: 1px solid var(--line);
     }
     .hdr-brand {
       font-family: 'Fraunces', serif;
-      font-size: 1.1rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      color: var(--ink);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray);
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.35rem;
     }
-    .hdr-brand span { color: var(--blue-primary); font-weight: 700; }
+    .hdr-brand span { color: var(--gray); font-weight: 600; }
 
     .hdr-right {
       display: flex;
       flex-direction: row;
-      align-items: center;
+      align-items: baseline;
       gap: 0.4rem;
-      padding: 0.5rem 1rem;
-      background: white;
-      border: 1px solid #dbeafe;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(11, 63, 138, 0.05);
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
     }
     .hdr-label {
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       letter-spacing: 0.11em;
       text-transform: uppercase;
-      color: var(--blue-primary);
+      color: var(--gray);
       font-family: 'JetBrains Mono', monospace;
-      opacity: 0.8;
+      opacity: 0.7;
     }
     .hdr-value {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
+      font-size: 0.68rem;
       font-weight: 500;
-      color: var(--blue-primary);
+      color: var(--gray);
     }
 
     /* === FORM INTRO: "Submit a Claim" & "What's Needed" === */

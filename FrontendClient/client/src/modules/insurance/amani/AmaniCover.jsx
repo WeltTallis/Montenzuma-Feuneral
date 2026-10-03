@@ -70,17 +70,28 @@ function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <a
-              href="#apply"
+            {/* Now a real client-side route to /amani/cover/apply rather than an
+                #apply jump. The #apply anchor scrolls to the embedded form on
+                this same page; the standalone application page is the fuller
+                document and is what the button promises. Matches the header CTA
+                wording - "Get covered" names the action instead of describing
+                what the button does. */}
+            <Link
+              to="/amani/cover/apply"
               className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-base font-medium text-white shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
             >
-              Find your cover
+              Get covered
               <ArrowRight className="size-4" aria-hidden="true" />
-            </a>
-            {/* Real client-side route — see /amani/payments in AppRouter. */}
+            </Link>
+            {/* Real client-side route — see /amani/payments in AppRouter.
+                Was bg-ac-accent (#1f56c4) - a brighter blue that read as a
+                lighter tier next to the navy "Get covered". Now bg-ac-ink
+                (#0f3040), the dark desaturated teal-navy already in the Amani
+                palette, so the pair is clearly two different colours without
+                introducing a hue that is not part of the brand. */}
             <Link
               to="/amani/payments"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-accent px-7 text-base font-medium text-white shadow-lg shadow-ac-accent/20 transition-colors hover:bg-ac-accent/90"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-ink px-7 text-base font-medium text-white shadow-lg shadow-ac-ink/20 transition-colors hover:bg-ac-ink/90"
             >
               Make a payment
               <ArrowRight className="size-4" aria-hidden="true" />

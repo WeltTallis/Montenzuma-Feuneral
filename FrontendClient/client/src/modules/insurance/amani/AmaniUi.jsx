@@ -100,33 +100,49 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
           buttons wrapped onto the logo line and the "Get covered" label was
           clipped. Now: smaller horizontal padding, a shorter bar on phones,
           and compact buttons that only grow to full size from `sm` up. */}
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-18 sm:gap-6 sm:px-6 lg:px-10">
-        <Link to="/amani/cover" className="flex shrink-0 items-baseline gap-2" aria-label="Amani Cover home">
-          <span className="font-serif text-xl font-semibold tracking-tight text-ac-primary sm:text-2xl">Amani</span>
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-18 sm:gap-6 sm:px-6 lg:px-10">
+        {/* Logo and section links share the LEFT group. They were separate
+            justify-between children before, which put the links in the middle
+            of the bar - exactly where the centred phone number now sits, so
+            the number was landing on top of them. Grouping them left leaves
+            the middle of the bar genuinely free. */}
+        <div className="flex shrink-0 items-center gap-8">
+          <Link to="/amani/cover" className="flex items-baseline gap-2" aria-label="Amani Cover home">
+            <span className="font-serif text-xl font-semibold tracking-tight text-ac-primary sm:text-2xl">Amani</span>
 
-        </Link>
+          </Link>
 
-        <nav aria-label="Main" className="hidden md:block">
-          <ul className="flex items-center gap-8 text-sm text-ac-mutedfg">
-            {links.map((link) => (
-              <li key={link.label}>
-                <a href={link.href} className="transition-colors hover:text-ac-primary">
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+          <nav aria-label="Main" className="hidden md:block">
+            <ul className="flex items-center gap-6 text-sm text-ac-mutedfg lg:gap-7">
+              {links.map((link) => (
+                <li key={link.label}>
+                  <a href={link.href} className="transition-colors hover:text-ac-primary">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+
+        {/* The 24/7 family line, centred in the bar on request - previously it
+            sat in the right-hand group next to the CTA, where it read as one
+            more button rather than as the number to call.
+
+            Absolutely positioned rather than a flex sibling, because the bar is
+            justify-between: a third flex child would be pushed toward the right
+            edge by the width of the CTA, not centred. Hidden until `lg`, which is
+            where the links above and the CTA leave enough room for it without
+            overlapping either. */}
+        <a
+          href={CONTACT.phoneHref}
+          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 whitespace-nowrap text-sm font-medium text-ac-primary lg:flex"
+        >
+          <Phone className="size-4 text-ac-accent" aria-hidden="true" />
+          {CONTACT.phone}
+        </a>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <a
-            href={CONTACT.phoneHref}
-            className="hidden items-center gap-2 text-sm font-medium text-ac-primary xl:flex"
-          >
-            <Phone className="size-4 text-ac-accent" aria-hidden="true" />
-            {CONTACT.phone}
-          </a>
-
           {/* Existing members: claims, not a new application. RED because this
               is the urgent, time-sensitive action for a bereaved family and it
               was previously a low-contrast outline that read as disabled next
@@ -190,9 +206,13 @@ const LEGAL_LINKS = [
   { href: '#', label: 'Complaints' },
 ];
 
-// Slightly larger typography for headings and links
-const FOOT_HEADING = ' uppercase font-medium text-ac-onprimary';
-const FOOT_LINK = 'text-ac-onprimary/70 transition-colors hover:text-ac-onprimary text-[0.95rem]';
+/* Footer typography. Cut twice over: the first pass to text-xs/text-sm was
+   still reading too large next to the page content, so the headings and links
+   are now set in explicit rem values below Tailwind's `sm` step (12px and
+   13px) rather than a named scale size. */
+const FOOT_HEADING = 'text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-ac-onprimary/50';
+const FOOT_LINK = 'text-ac-onprimary/70 transition-colors hover:text-ac-onprimary text-[0.8125rem]';
+const FOOT_COLUMN = 'flex flex-col gap-2.5 text-[0.8125rem]';
 
 export function AmaniFooter() {
   const { pathname } = useLocation();
@@ -204,26 +224,28 @@ export function AmaniFooter() {
       <div className="px-6 lg:px-10">
         {/* CTA Section completely removed as requested */}
 
-        <div className="mx-auto grid max-w-7xl gap-10 pt-12 pb-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8 lg:pt-16 lg:pb-12">
+        {/* Padding cut roughly in half (pt-16/pb-12 -> pt-9/pb-7): the footer's
+            height was reading as a second page rather than as a footer. */}
+        <div className="mx-auto grid max-w-7xl gap-8 pt-9 pb-7 sm:grid-cols-2 lg:grid-cols-12 lg:gap-7 lg:pt-10 lg:pb-8">
           <div className="sm:col-span-2 lg:col-span-4">
             <p className="flex items-baseline gap-2">
-              <span className="font-serif text-3xl font-semibold">Amani</span>
+              <span className="font-serif text-2xl font-semibold">Amani</span>
 
             </p>
-            <p className="mt-4 max-w-sm text-[0.95rem] leading-relaxed text-ac-onprimary/70">
-              Amani means peace. Amani Cover is funeral insurance from Montenzuma Monalisa Funeral
+            <p className="mt-3 max-w-sm text-[0.8125rem] leading-relaxed text-ac-onprimary/65">
+              Amani Cover is funeral insurance from Montenzuma Monalisa Funeral
               Home, so your family never has to worry about money while they say goodbye. We&rsquo;ve
               been with Kenyan families for over 25 years, and we&rsquo;re here for yours.
             </p>
-            <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-ac-onprimary/15 px-4 py-2 text-sm text-ac-onprimary/80">
-              <span className="size-2.5 rounded-full bg-ac-highlight" aria-hidden="true" />
+            <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-ac-onprimary/15 px-3 py-1 text-[0.6875rem] text-ac-onprimary/75">
+              <span className="size-1.5 rounded-full bg-ac-highlight" aria-hidden="true" />
               Trusted by families across Kenya
             </p>
           </div>
 
           <nav aria-label="Explore" className="lg:col-span-2">
             <h2 className={FOOT_HEADING}>Explore</h2>
-            <ul className="mt-5 flex flex-col gap-4 text-[0.95rem]">
+            <ul className="mt-3 flex flex-col gap-2.5 text-[0.8125rem]">
               <li><a href={anchor('about')} className={FOOT_LINK}>About</a></li>
               <li><a href={anchor('how')} className={FOOT_LINK}>How it works</a></li>
               <li><a href={anchor('apply')} className={FOOT_LINK}>Apply now</a></li>
@@ -234,14 +256,27 @@ export function AmaniFooter() {
 
           <nav aria-label="Support" className="lg:col-span-2">
             <h2 className={FOOT_HEADING}>Support</h2>
-            <ul className="mt-5 flex flex-col gap-4 text-[0.95rem]">
+            <ul className="mt-3 flex flex-col gap-2.5 text-[0.8125rem]">
               {SUPPORT_LINKS.map((link) => (
                 /* `to:`, not an anchor hash. These were switched from landing
                    anchors to real routes, but the markup kept reading
                    `link.hash` - which is undefined on every entry - so all four
                    links rendered as "#undefined" and went nowhere. */
                 <li key={link.label}>
-                  <Link to={link.to} className={FOOT_LINK}>
+                  <Link
+                    to={link.to}
+                    className={
+                      /* "Make a claim" is the one SUPPORT link that is an
+                         urgent action rather than an informational page, so it
+                         carries the same red as the header's "Submit claim"
+                         button - the claim action reads the same wherever it is
+                         offered. The other three stay at the muted footer
+                         link colour. */
+                      link.label === 'Make a claim'
+                        ? `${FOOT_LINK} font-medium text-red-300 hover:text-red-200`
+                        : FOOT_LINK
+                    }
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -251,30 +286,30 @@ export function AmaniFooter() {
 
           <div className="sm:col-span-2 lg:col-span-4">
             <h2 className={FOOT_HEADING}>Contact us</h2>
-            <address className="mt-5 flex flex-col gap-5 text-[0.95rem] not-italic">
-              <a href={CONTACT.phoneHref} className={`flex items-start gap-3 ${FOOT_LINK}`}>
-                <Phone className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
+            <address className="mt-3 flex flex-col gap-3.5 text-[0.8125rem] not-italic">
+              <a href={CONTACT.phoneHref} className={`flex items-start gap-2.5 ${FOOT_LINK}`}>
+                <Phone className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
                   <span className="block text-ac-onprimary font-medium">Call us, day or night</span>
                   {CONTACT.phone}
                 </span>
               </a>
-              <a href={CONTACT.emailHref} className={`flex items-start gap-3 ${FOOT_LINK}`}>
-                <Mail className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
+              <a href={CONTACT.emailHref} className={`flex items-start gap-2.5 ${FOOT_LINK}`}>
+                <Mail className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
                   <span className="block text-ac-onprimary font-medium">Write to us</span>
                   {CONTACT.email}
                 </span>
               </a>
-              <p className="flex items-start gap-3 text-ac-onprimary/70">
-                <MapPin className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
+              <p className="flex items-start gap-2.5 text-ac-onprimary/70">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
                   <span className="block text-ac-onprimary font-medium">Visit us</span>
                   {CONTACT.address}
                 </span>
               </p>
-              <p className="flex items-start gap-3 text-ac-onprimary/70">
-                <Clock className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
+              <p className="flex items-start gap-2.5 text-ac-onprimary/70">
+                <Clock className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
                   <span className="block text-ac-onprimary font-medium">Opening hours</span>
                   {CONTACT.hours}
@@ -284,9 +319,9 @@ export function AmaniFooter() {
           </div>
         </div>
 
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 border-t border-ac-onprimary/10 py-6 text-sm text-ac-onprimary/60 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-ac-onprimary/10 py-4 text-xs text-ac-onprimary/60 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} Montenzuma Monalisa Funeral Home. All rights reserved.</p>
-          <ul className="flex flex-wrap gap-x-6 gap-y-2">
+          <ul className="flex flex-wrap gap-x-5 gap-y-1.5">
             {LEGAL_LINKS.map((link) => (
               <li key={link.label}>
                 <a href={link.href} className="transition-colors hover:text-ac-onprimary">
