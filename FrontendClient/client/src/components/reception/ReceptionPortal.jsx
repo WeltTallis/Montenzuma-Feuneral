@@ -86,6 +86,25 @@ const SparklesIcon = (p) => (
 );
 
 
+/* Shield-check (Amani Insurance) — shield outline with a check mark. It is the
+   one tile whose mock uses a finer stroke (1.6), so sw is baked in here and the
+   mock stays pixel-identical. */
+const ShieldCheckIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6">
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="m9 12 2 2 4-4" />
+    </g>
+  </svg>
+);
+
+const Building2Icon = (p) => (
+  <Icon {...p}>
+    <path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3" />
+    <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" />
+    <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+
+
 
 const BLUE = {
   bright: "#4A8FD4",
@@ -104,6 +123,15 @@ const RED = {
   glowStrong: "rgba(255,0,110,.55)",
   ghost: "#ff006e12",
   bg: "linear-gradient(145deg, #1f0a15 0%, #0a0305 100%)",
+};
+const GREEN = {
+  bright: "#34D399",
+  cardBorder: "#34d3994c",
+  rule: "#34D39970",
+  glow: "rgba(52,211,153,.30)",
+  glowStrong: "rgba(52,211,153,.55)",
+  ghost: "#34d39912",
+  bg: "linear-gradient(145deg, #0a1410 0%, #050a07 100%)",
 };
 
 /* ── Card data ─────────────────────────────────────────────── */
@@ -135,6 +163,13 @@ const CARDS = [
     sub: "Secure access to medical documentation & reports",
     ...RED,
     Icon: FileTextIcon,
+  },
+  {
+    num: "05",
+    title: "Amani Insurance",
+    sub: "Funeral cover with peace of mind for your family",
+    ...GREEN,
+    Icon: ShieldCheckIcon,
   },
 ];
 
@@ -473,6 +508,7 @@ export default function App() {
       else if (serviceName === "Body Release") redirectPath = `/${tenantSlug}/release-form/new`;
       else if (serviceName === "Flower Arrangements") redirectPath = `/${tenantSlug}/flower-samples`;
       else if (serviceName === "Postmortem Records") redirectPath = `/${tenantSlug}/postmortem-request`;
+      else if (serviceName === "Amani Insurance") redirectPath = "/insurance";
       navigate(redirectPath);
       setShowOverlay(false);
       setSelectedService(null);

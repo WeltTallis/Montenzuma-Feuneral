@@ -1,0 +1,115 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  color-scheme: light;
+  --bg: #ececec;
+  --card: #ffffff;
+  --brd: #e0e0e0;
+  --brdl: #efefef;
+  --field: #f7f7f5;
+  --sect: #fafaf9;
+  --tx: #0a0a0a;
+  --tx2: #444444;
+  --tx3: #777777;
+  --tx4: #aaaaaa;
+  --brand: #0F3040;
+  --brandl: #163f52;
+  --pink: #DD2D4A;
+  --pinkl: #fef2f2;
+  --blue: #00296B;
+  --blue-bg: rgba(0, 41, 107, .08);
+  --orange: #E36414;
+  --orange-bg: rgba(227, 100, 20, .09);
+  --plum: #5F0F40;
+  --warm-white: var(--bg);
+  --ink: var(--tx);
+  --sage-deep: var(--brand);
+  --soft-sage: var(--blue-bg);
+  --blush: var(--pinkl);
+  --gold: var(--orange);
+  --muted-ink: var(--tx3);
+  --line: var(--brd);
+  --background: var(--bg);
+  --foreground: var(--tx);
+  --card-foreground: var(--tx);
+  --popover: var(--card);
+  --popover-foreground: var(--tx);
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: var(--blue-bg);
+  --secondary-foreground: var(--blue);
+  --muted: var(--field);
+  --muted-foreground: var(--tx3);
+  --accent: var(--pinkl);
+  --accent-foreground: var(--plum);
+  --destructive: var(--pink);
+  --border: var(--brd);
+  --input: var(--brd);
+  --ring: var(--blue);
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-cormorant);
+}
+
+* {
+  @apply border-border outline-ring/50;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-background text-foreground;
+  font-family: var(--font-inter), Arial, sans-serif;
+}
+
+.nav-link {
+  @apply text-sm font-medium text-[var(--muted-ink)] transition-colors hover:text-[var(--ink)];
+}
+
+.eyebrow {
+  @apply text-xs font-semibold uppercase tracking-[0.2em] text-[var(--sage-deep)];
+}
+
+.section-title {
+  @apply max-w-md font-serif text-4xl leading-[1.08] tracking-[-0.03em] sm:text-5xl;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
