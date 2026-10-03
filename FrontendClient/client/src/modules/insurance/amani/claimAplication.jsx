@@ -291,56 +291,110 @@ const ClaimSubmissionForm = () => {
 
     .content-wrapper { position: relative; z-index: 1; }
 
+    /* === TOP DOCUMENT STRIP === */
     .doc-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      padding: 3rem var(--gutter) 2rem;
+      align-items: center;
+      padding: 1.5rem var(--gutter);
       flex-wrap: wrap;
-      gap: 2rem;
+      gap: 1rem;
+      background: var(--bone2);
       border-bottom: 1px solid var(--line);
     }
-
-    .hdr-left { flex: 1; min-width: 300px; }
-    .hdr-welcome {
+    .hdr-brand {
       font-family: 'Fraunces', serif;
-      font-size: 1.5rem;
-      font-weight: 500;
+      font-size: 1.1rem;
+      font-weight: 600;
       color: var(--ink);
-      margin-bottom: 1.5rem;
-    }
-    .hdr-facility { display: flex; flex-direction: column; gap: 0.5rem; }
-    .fac-line {
-      font-size: 0.8rem;
-      color: var(--gray);
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
-    .fac-line svg { width: 14px; height: 14px; stroke: var(--blue-primary); }
+    .hdr-brand span { color: var(--blue-primary); font-weight: 700; }
 
     .hdr-right {
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 0.5rem;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      background: white;
+      border: 1px solid #dbeafe;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(11, 63, 138, 0.05);
     }
     .hdr-label {
       font-size: 0.65rem;
       letter-spacing: 0.11em;
       text-transform: uppercase;
-      color: var(--gray);
+      color: var(--blue-primary);
       font-family: 'JetBrains Mono', monospace;
+      opacity: 0.8;
     }
     .hdr-value {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1rem;
+      font-size: 0.85rem;
       font-weight: 500;
       color: var(--blue-primary);
+    }
+
+    /* === FORM INTRO: "Submit a Claim" & "What's Needed" === */
+    .form-intro {
+      padding: 4rem var(--gutter) 3rem;
+      border-bottom: 1px solid var(--line);
+      background: white;
+    }
+    .intro-title {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(2.5rem, 5vw, 3.5rem);
+      font-weight: 500;
+      color: var(--ink);
+      margin: 0 0 1.5rem 0;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .intro-title span { color: var(--blue-primary); font-style: italic; }
+
+    .intro-subtitle {
+      font-size: 1.1rem;
+      color: var(--gray);
+      max-width: 700px;
+      margin-bottom: 2.5rem;
+      line-height: 1.6;
+    }
+
+    .checklist-card {
       background: var(--blue-bg);
-      padding: 0.2rem 0.8rem;
       border: 1px solid #dbeafe;
-      border-radius: 4px;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 800px;
+    }
+    .checklist-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue-primary);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      color: var(--ink);
+      font-weight: 500;
     }
 
     .form-body { padding: 3rem var(--gutter) 1.5rem var(--gutter); }
@@ -619,21 +673,22 @@ const ClaimSubmissionForm = () => {
     }
 
     @media (max-width: 1024px) {
-      .doc-header, .form-body, .record-strip { padding-left: var(--gutter-tablet); padding-right: var(--gutter-tablet); }
+      .doc-header, .form-body, .record-strip, .form-intro { padding-left: var(--gutter-tablet); padding-right: var(--gutter-tablet); }
       .col, .col-2, .col-half { flex: 1 1 100%; min-width: 100%; }
       .row { flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem; }
       .actions-container { flex-direction: column-reverse; }
       .actions-container .btn { width: 100%; }
+      .checklist-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
-      .doc-header, .form-body, .record-strip { padding-left: var(--gutter-mobile); padding-right: var(--gutter-mobile); }
-      .hdr-right { align-items: flex-start; width: 100%; }
+      .doc-header, .form-body, .record-strip, .form-intro { padding-left: var(--gutter-mobile); padding-right: var(--gutter-mobile); }
+      .hdr-right { width: 100%; justify-content: space-between; }
     }
     }
   `;
 
     const TickSvg = () => (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
         </svg>
     );
@@ -647,26 +702,50 @@ const ClaimSubmissionForm = () => {
 
                 <div className="content-wrapper">
 
-                    {/* Document Header */}
+                    {/* Top Document Strip */}
                     <header className="doc-header">
-                        <div className="hdr-left">
-                            <div className="hdr-welcome"> Amani  Montenzuma Feuneral· Nairobi </div>
-                            <div className="hdr-facility">
-                                <div className="fac-line">
-                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
-                                    (020) 2346928/9
+                        <div className="hdr-brand">
+                            Amani <span>Cover</span> · Montenzuma Monalisa Funeral
+                        </div>
+                        <div className="hdr-right">
+                            <span className="hdr-label">Filing Date:</span>
+                            <span className="hdr-value">{fillStamp}</span>
+                        </div>
+                    </header>
+
+                    {/* Form Intro: Submit a Claim & Checklist */}
+                    <div className="form-intro">
+                        <h1 className="intro-title">Submit a <span>Claim</span></h1>
+                        <p className="intro-subtitle">
+                            We are deeply sorry for your loss. Please complete the form below to initiate the claims process.
+                            To ensure a smooth and swift review, please have the following information and documents ready before you begin.
+                        </p>
+
+                        <div className="checklist-card">
+                            <div className="checklist-title">
+                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px', stroke: 'var(--blue-primary)' }}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                                What you will need:
+                            </div>
+                            <div className="checklist-grid">
+                                <div className="check-item">
+                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', stroke: 'var(--blue-tick)', flexShrink: 0, marginTop: '2px' }}><polyline points="20 6 9 17 4 12" /></svg>
+                                    Claimant & Deceased ID details
                                 </div>
-                                <div className="fac-line">
-                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-                                    monte2lisa@yahoo.com
+                                <div className="check-item">
+                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', stroke: 'var(--blue-tick)', flexShrink: 0, marginTop: '2px' }}><polyline points="20 6 9 17 4 12" /></svg>
+                                    Amani Cover Policy Number
+                                </div>
+                                <div className="check-item">
+                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', stroke: 'var(--blue-tick)', flexShrink: 0, marginTop: '2px' }}><polyline points="20 6 9 17 4 12" /></svg>
+                                    Date, place, and cause of passing
+                                </div>
+                                <div className="check-item">
+                                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', stroke: 'var(--blue-tick)', flexShrink: 0, marginTop: '2px' }}><polyline points="20 6 9 17 4 12" /></svg>
+                                    Death Certificate & Burial Permit
                                 </div>
                             </div>
                         </div>
-                        <div className="hdr-right">
-                            <div className="hdr-label">Filing Date & Time</div>
-                            <div className="hdr-value">{fillStamp}</div>
-                        </div>
-                    </header>
+                    </div>
 
                     {/* Form Body */}
                     <div className="form-body">
@@ -975,7 +1054,7 @@ const ClaimSubmissionForm = () => {
                     <div className="record-strip">
                         Montenzuma Monalisa Generated on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                         <br />
-                        - Official Claim  Record -
+                        - Official Claim Record -
                     </div>
                 </div>
             </div>

@@ -46,11 +46,14 @@ const SUB_ANCHORS = [
   { href: '/amani/cover#faq', label: 'Questions' },
 ];
 
-/* Sticky header, ported from the redesign's site-header.tsx. */
+/* Sticky header. The two right-hand CTAs are real client-side routes, not
+   anchors: "Get covered" opens the application form on its own page
+   (/amani/cover/apply) and "Submit claim" opens /amani/claims for members who
+   already hold cover. On the landing route they stay links so a stray
+   middle-click still works the same. */
 export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
   const isLanding = active === '/amani/cover';
   const links = inPageLinks && inPageLinks.length ? inPageLinks : isLanding ? LANDING_ANCHORS : SUB_ANCHORS;
-  const applyHref = isLanding ? '#apply' : '/amani/cover#apply';
 
   return (
     <header className="sticky top-0 z-40 border-b border-ac-border/70 bg-ac-bg/85 backdrop-blur-md">
@@ -72,20 +75,29 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <a
             href={CONTACT.phoneHref}
-            className="hidden items-center gap-2 text-sm font-medium text-ac-primary lg:flex"
+            className="hidden items-center gap-2 text-sm font-medium text-ac-primary xl:flex"
           >
             <Phone className="size-4 text-ac-accent" aria-hidden="true" />
             {CONTACT.phone}
           </a>
-          <a
-            href={applyHref}
+
+          {/* Existing members: claims, not a new application. */}
+          <Link
+            to="/amani/claims"
+            className="inline-flex h-10 items-center rounded-xl border border-ac-accent/40 px-4 text-sm font-medium text-ac-accent transition-colors hover:bg-ac-accent/5"
+          >
+            Submit claim
+          </Link>
+
+          <Link
+            to="/amani/cover/apply"
             className="inline-flex h-10 items-center rounded-xl bg-ac-primary px-5 text-sm font-medium text-white transition-colors hover:bg-ac-primary/90"
           >
             Get covered
-          </a>
+          </Link>
         </div>
       </div>
     </header>
@@ -118,11 +130,13 @@ export function PageHeader({ eyebrow, title, accent, intro }) {
 
 /* Footer, ported from the redesign's site-footer.tsx. Shared by all three
    Amani routes. */
+/* Support links now point at the real routes rather than landing anchors, so
+   "Make a claim" lands on the claims page instead of scrolling to the FAQ. */
 const SUPPORT_LINKS = [
-  { hash: 'apply', label: 'Request a call' },
-  { hash: 'claim', label: 'Making a claim' },
-  { hash: 'faq', label: 'Waiting periods' },
-  { hash: 'apply', label: 'Update my cover' },
+  { to: '/amani/cover/apply', label: 'Request a call' },
+  { to: '/amani/claims', label: 'Making a claim' },
+  { to: '/amani/cover/terms', label: 'Waiting periods' },
+  { to: '/amani/payments', label: 'Make a payment' },
 ];
 const LEGAL_LINKS = [
   { href: '#', label: 'Privacy policy' },

@@ -1,5 +1,6 @@
 
 
+import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Check,
@@ -81,15 +82,14 @@ function Hero() {
               Find your cover
               <ArrowRight className="size-4" aria-hidden="true" />
             </a>
-            {/* Second CTA. There is no /amani/payment route yet, so this dials the
-                branch line — replace href with the real payment URL once it exists. */}
-            <a
-              href={CONTACT.phoneHref}
+            {/* Real client-side route — see /amani/payments in AppRouter. */}
+            <Link
+              to="/amani/payments"
               className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-accent px-7 text-base font-medium text-white shadow-lg shadow-ac-accent/20 transition-colors hover:bg-ac-accent/90"
             >
               Make a payment
               <ArrowRight className="size-4" aria-hidden="true" />
-            </a>
+            </Link>
           </div>
 
           <div className="mt-12 flex items-center gap-5 border-t border-ac-border pt-8">
@@ -452,13 +452,13 @@ function ClaimBand() {
           </p>
         </div>
 
-        <a
-          href={CONTACT.phoneHref}
+        <Link
+          to="/amani/claims"
           className="inline-flex h-13 shrink-0 items-center justify-center gap-2.5 rounded-xl bg-ac-accent px-8 text-base font-medium text-white shadow-lg shadow-ac-accent/25 transition-colors hover:bg-ac-accent/90"
         >
-          <Phone className="size-5" aria-hidden="true" />
-          Call {CONTACT.phone}
-        </a>
+          Submit a claim
+          <ArrowRight className="size-5" aria-hidden="true" />
+        </Link>
       </div>
     </section>
   );
