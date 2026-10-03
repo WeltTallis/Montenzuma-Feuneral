@@ -145,12 +145,35 @@ function Hero() {
             </div>
           </div>
 
-          <figure className="absolute -bottom-8 left-4 max-w-xs rounded-2xl border border-ac-border bg-ac-card p-5 shadow-xl shadow-ac-primary/10 sm:left-[-2rem]">
+          <figure
+            className="
+    absolute
+    -bottom-14
+    left-[-2rem]
+    w-[24rem]
+    max-w-[calc(100vw-1.5rem)]
+    rounded-2xl
+    border
+    border-ac-border
+    bg-ac-card
+    p-3
+    shadow-xl
+    shadow-ac-primary/10
+
+    sm:-bottom-8
+    sm:left-[-9.8rem]
+    sm:w-[24rem]
+  "
+          >
             <blockquote className="font-serif text-lg leading-snug text-ac-primary">
               &ldquo;When Mama passed, they carried everything. We could simply grieve together.&rdquo;
             </blockquote>
-            <figcaption className="mt-3 text-xs text-ac-mutedfg">Grace W., Amani Cover member</figcaption>
+
+            <figcaption className="mt-3 text-xs text-ac-mutedfg">
+              Grace W., Amani Cover member
+            </figcaption>
           </figure>
+
 
           <div className="absolute top-8 left-4 flex items-center rounded-2xl  gap-3  bg-ac-primary px-4 py-2.5 text-ac-onprimary shadow-lg sm:left-[-1rem]">
             <ShieldCheck className="size-5 text-ac-highlight" aria-hidden="true" />

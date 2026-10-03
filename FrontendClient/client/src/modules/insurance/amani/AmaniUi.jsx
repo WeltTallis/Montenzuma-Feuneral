@@ -56,11 +56,11 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
   const links = inPageLinks && inPageLinks.length ? inPageLinks : isLanding ? LANDING_ANCHORS : SUB_ANCHORS;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ac-border/70 bg-ac-bg/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40  border-ac-border/70 bg-ac-bg/85 backdrop-blur-md">
       <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-6 lg:px-10">
         <Link to="/amani/cover" className="flex items-baseline gap-2" aria-label="Amani Cover home">
           <span className="font-serif text-2xl font-semibold tracking-tight text-ac-primary">Amani</span>
-          <span className="text-xs font-medium uppercase tracking-[0.25em] text-ac-accent">Cover</span>
+
         </Link>
 
         <nav aria-label="Main" className="hidden md:block">
