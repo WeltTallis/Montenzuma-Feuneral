@@ -162,7 +162,7 @@ export function AmaniFooter() {
           <div className="sm:col-span-2 lg:col-span-4">
             <p className="flex items-baseline gap-2">
               <span className="font-serif text-3xl font-semibold">Amani</span>
-              <span className="text-xs font-medium uppercase tracking-[0.25em] text-ac-accent">Cover</span>
+
             </p>
             <p className="mt-4 max-w-sm text-[0.95rem] leading-relaxed text-ac-onprimary/70">
               Funeral cover from Montenzuma Monalisa Funeral Home. For over 25 years we have honoured

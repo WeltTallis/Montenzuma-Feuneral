@@ -152,7 +152,7 @@ function Hero() {
             <figcaption className="mt-3 text-xs text-ac-mutedfg">Grace W., Amani Cover member</figcaption>
           </figure>
 
-          <div className="absolute top-8 left-4 flex items-center gap-3 rounded-full bg-ac-primary px-4 py-2.5 text-ac-onprimary shadow-lg sm:left-[-1rem]">
+          <div className="absolute top-8 left-4 flex items-center rounded-2xl  gap-3  bg-ac-primary px-4 py-2.5 text-ac-onprimary shadow-lg sm:left-[-1rem]">
             <ShieldCheck className="size-5 text-ac-highlight" aria-hidden="true" />
             <span className="text-sm font-medium">Covered by Montenzuma</span>
           </div>
@@ -223,7 +223,7 @@ function Moments() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-ac-primary/85 via-ac-primary/10 to-transparent" />
                 <figcaption className="absolute inset-x-0 bottom-0 p-4 sm:p-6 lg:p-8">
-                  <span className="inline-block rounded-full bg-ac-bg/95 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ac-primary sm:px-3 sm:py-1 sm:text-xs">
+                  <span className="inline-block  bg-ac-bg/95 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ac-primary sm:px-3 sm:py-1 sm:text-xs">
                     {moment.label}
                   </span>
                   <p
