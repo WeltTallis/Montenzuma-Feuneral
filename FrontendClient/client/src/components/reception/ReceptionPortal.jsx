@@ -4,7 +4,6 @@ import { useTenantStore } from "../../modules/seo/useTenantStore";
 import { useParams, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useState, useEffect } from "react";
-import React from "react";
 
 
 /* Font family stack — Saira is now strictly enforced everywhere in the UI
@@ -78,14 +77,6 @@ const FileTextIcon = (p) => (
 );
 
 
-const SparklesIcon = (p) => (
-  <Icon {...p}>
-    <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4" />
-    <circle cx="4" cy="20" r="2" />
-  </Icon>
-);
-
-
 /* Shield-check (Amani Insurance) — shield outline with a check mark. It is the
    one tile whose mock uses a finer stroke (1.6), so sw is baked in here and the
    mock stays pixel-identical. */
@@ -97,14 +88,6 @@ const ShieldCheckIcon = () => (
     </g>
   </svg>
 );
-
-const Building2Icon = (p) => (
-  <Icon {...p}>
-    <path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3" />
-    <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" />
-    <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
-
-
 
 const BLUE = {
   bright: "#4A8FD4",
