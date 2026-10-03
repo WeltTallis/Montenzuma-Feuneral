@@ -99,6 +99,10 @@ function Hero() {
                   key={avatar.src}
                   className="relative size-12 overflow-hidden rounded-full ring-4 ring-ac-bg"
                 >
+                  {/* These avatars render at size-12 (48px). An explicit
+                      `sizes="48px"` makes the browser pick the smallest
+                      variant; without a correct value it would assume 100vw
+                      and download a full-size photo for a 48px circle. */}
                   <FillImage src={avatar.src} alt={avatar.alt} sizes="48px" className="object-cover" />
                 </span>
               ))}
@@ -116,34 +120,45 @@ function Hero() {
         </div>
 
 
-        <div className="relative">
-          <div className="grid aspect-[5/5.4] grid-cols-6 grid-rows-6 gap-4">
-            <div className="relative col-span-4 row-span-6 overflow-hidden rounded-t-[999px] rounded-b-[2.5rem] shadow-2xl shadow-ac-primary/15">
-              <FillImage
-                src={PHOTOS.familyHero}
-                alt="A multigenerational family embracing together on a sofa in warm afternoon light"
-                priority
-                className="object-cover"
-                sizes="(max-width: 1024px) 66vw, 35vw"
-              />
+        {/* MOBILE: this was `aspect-[5/5.4] grid-cols-6 grid-rows-6` at every width, so
+            a 390px phone got a 6-column collage squeezed into ~350px (each
+            photo ~55px wide) inside a box 380px TALL — unreadable thumbnails
+            and a huge empty scroll before the copy. It now collapses to one
+            hero photo on phones, which is the only one that matters, and the
+            two supporting photos sit side by side underneath it. */}
+          <div className="relative">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:aspect-[5/5.4] lg:grid-cols-6 lg:grid-rows-6">
+              {/* FillImage is position:absolute, so every frame needs an explicit
+                  ratio or the grid row collapses to 0px tall on mobile. */}
+              <div className="relative col-span-2 row-span-1 aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-ac-primary/15 sm:aspect-[16/11] sm:rounded-t-[999px] sm:rounded-b-[2.5rem] lg:col-span-4 lg:row-span-6 lg:aspect-auto lg:rounded-t-[999px] lg:rounded-b-[2.5rem]">
+                <FillImage
+                  src={PHOTOS.familyHero}
+                  alt="A multigenerational family embracing together on a sofa in warm afternoon light"
+                  priority
+                  className="object-cover"
+                  /* One column on phones, the 4-of-6 collage slot from lg up.
+                     Getting this right is what makes the browser pick the 640w
+                     file on a small screen instead of the 1024w one. */
+                  sizes="(max-width: 1023px) 92vw, 38vw"
+                />
+              </div>
+              <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mt-10 lg:aspect-auto">
+                <FillImage
+                  src={PHOTOS.whiteLilies}
+                  alt="White lilies and roses in a glass vase beside a framed family photo"
+                  className="object-cover"
+                  sizes="(max-width: 1023px) 46vw, 18vw"
+                />
+              </div>
+              <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mb-10 lg:aspect-auto">
+                <FillImage
+                  src={PHOTOS.elderlyCouple}
+                  alt="An elderly couple holding hands and smiling on their porch"
+                  className="object-cover"
+                  sizes="(max-width: 1023px) 46vw, 18vw"
+                />
+              </div>
             </div>
-            <div className="relative col-span-2 row-span-3 mt-10 overflow-hidden rounded-[2rem]">
-              <FillImage
-                src={PHOTOS.whiteLilies}
-                alt="White lilies and roses in a glass vase beside a framed family photo"
-                className="object-cover"
-                sizes="(max-width: 1024px) 33vw, 18vw"
-              />
-            </div>
-            <div className="relative col-span-2 row-span-3 mb-10 overflow-hidden rounded-[2rem]">
-              <FillImage
-                src={PHOTOS.elderlyCouple}
-                alt="An elderly couple holding hands and smiling on their porch"
-                className="object-cover"
-                sizes="(max-width: 1024px) 33vw, 18vw"
-              />
-            </div>
-          </div>
 
           <figure
             className="

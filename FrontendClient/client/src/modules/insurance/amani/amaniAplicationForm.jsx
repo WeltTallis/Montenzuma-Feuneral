@@ -404,7 +404,11 @@ export default function AmaniApplicationForm() {
       --af-tick: #2563eb;
       --af-gutter: 96px;
       --af-gutter-tablet: 64px;
-      --af-gutter-mobile: 32px;
+      /* 32px of padding on EACH side cost a 360px phone 64px of its width —
+         nearly a fifth of the screen — before a single character was readable.
+         16px keeps a comfortable touch/reading margin while letting the form
+         genuinely fill the screen. */
+      --af-gutter-mobile: 16px;
 
       position: relative;
       width: 100%;
@@ -434,9 +438,28 @@ export default function AmaniApplicationForm() {
       border-bottom: 1px solid var(--af-line);
     }
     .af-hdr-left { flex: 1; min-width: 300px; }
+    /* Document title. Was font-size 1.5rem / weight 500, the same visual
+       weight as the small grey contact lines, so it read as another line of
+       contact info rather than as the title of the form. Now larger, bolder,
+       in the accent blue, with a tight leading and a real <h1> above it. */
     .af-hdr-welcome {
-      font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem;
-      font-weight: 500; margin-bottom: 1.5rem;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(1.75rem, 6vw, 2.5rem);
+      font-weight: 600;
+      line-height: 1.12;
+      letter-spacing: -0.015em;
+      color: var(--af-blue);
+      margin: 0 0 0.4rem;
+    }
+    /* Provider attribution directly under the title — smaller and greyer than
+       the title, but darker than the contact lines so the hierarchy is
+       title > provider > contact. */
+    .af-hdr-provider {
+      font-family: 'Saira', system-ui, sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #334155;
+      margin: 0 0 1.35rem;
     }
     .af-hdr-facility { display: flex; flex-direction: column; gap: 0.5rem; }
     .af-fac-line {
@@ -672,12 +695,36 @@ export default function AmaniApplicationForm() {
       .af-actions { flex-direction: column-reverse; }
       .af-actions .af-btn { width: 100%; }
     }
+
+    /* Phones: the document was inset by a 32px gutter on BOTH sides on top of
+       the page's own px-6, so a 360px screen lost ~80px to margins and the
+       input rows were cramped. Below 600px the form now goes edge-to-edge
+       (it still has the 16px reading gutter, but no extra page padding) and
+       the header stacks so the date stamp sits under the title instead of
+       competing with it for horizontal space. */
     @media (max-width: 600px) {
       .af-doc-header, .af-form-body, .af-record-strip {
-        padding-left: var(--af-gutter-mobile); padding-right: var(--af-gutter-mobile);
+        padding-left: var(--af-gutter-mobile);
+        padding-right: var(--af-gutter-mobile);
       }
       .af-hdr-right { align-items: flex-start; width: 100%; }
       .af-watermark { font-size: 4rem; }
+
+      /* Full-bleed: kill the page gutter so the form spans the whole screen,
+         and reduce the document's own padding to a comfortable 16px. */
+      .amani-appform { max-width: 100%; border-left: none; border-right: none; }
+      .af-doc-header { padding: 1.5rem var(--af-gutter-mobile) 1.25rem; gap: 1rem; }
+      .af-form-body { padding: 1.75rem var(--af-gutter-mobile) 1.25rem; }
+      .af-record-strip { margin: 1.5rem var(--af-gutter-mobile) 0; }
+
+      /* min-width:300px forced the header column to overflow a 360px screen
+         once the real padding was accounted for. */
+      .af-hdr-left { min-width: 0; }
+
+      .af-doc-section { margin-bottom: 2rem; }
+      .af-section-head { padding: 0.65rem 1rem; margin-bottom: 1.25rem; }
+      .af-group-block { padding: 1rem 0.85rem 1.1rem; }
+      .af-member-row { padding: 0.85rem 0.8rem 0.95rem; }
     }
   `;
 
@@ -690,7 +737,18 @@ export default function AmaniApplicationForm() {
         {/* Document header */}
         <header className="af-doc-header">
           <div className="af-hdr-left">
-            <div className="af-hdr-welcome"> Amani  Cover  Apllication Form Montenzuma</div>
+            {/* Was one flattened string, "Amani  Cover  Apllication Form
+                Montenzuma", in the same weight and colour as the contact lines
+                below it — so the document title did not read as a title, and
+                "Apllication" was misspelt. Split into a real heading plus a
+                provider line, with the title given the heavy Fraunces treatment
+                and the accent colour so it is unmistakable on a phone. */}
+            <h1 className="af-hdr-welcome">
+              Amani Cover Application Form
+            </h1>
+            <p className="af-hdr-provider">
+              Montenzuma Monalisa Funeral Home
+            </p>
             <div className="af-hdr-facility">
               <div className="af-fac-line">
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>

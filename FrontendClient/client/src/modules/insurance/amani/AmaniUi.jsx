@@ -12,22 +12,62 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Clock, Mail, MapPin, Phone } from 'lucide-react';
 import { CONTACT } from './amaniData';
+import { IMAGE_VARIANTS } from './imageManifest';
 import './AmaniCover.css';
 
 /* Plain <img> that fills its (position:relative) parent, matching what the
-   redesign's next/image `fill` prop did. `priority` marks the LCP hero image.
-   The `.amani-fill` class (see AmaniCover.css) carries the absolute inset /
-   100% sizing as an UNLAYERED rule, because the host app ships an unlayered
-   `img { height: auto }` that would otherwise beat Tailwind's `h-full`. */
-export function FillImage({ src, alt, className = '', priority = false, sizes }) {
+   redesign's next/image `fill` prop did.
+
+   PERFORMANCE
+   Every Amani photo used to be a ~1.5-2.4 MB PNG. With a plain `src` the
+   browser downloads the full file on every device, so a phone pulled ~27 MB
+   before the page was usable — and it re-downloaded those huge files on every
+   navigation because <img> gives the browser no width hint to cache against.
+
+   Now:
+     • srcSet + sizes  → the browser fetches ONE correctly-sized WebP
+                          (a 390px phone gets the 640w file, ~40 KB, not
+                          the 1.7 MB PNG). Without `sizes` the browser would
+                          assume 100vw and grab the largest variant, so the
+                          two attributes only work as a pair.
+     • loading="lazy"  → below-the-fold photos are not fetched until they are
+                         near the viewport. `priority` opts the LCP hero out.
+     • fetchPriority    → only the LCP hero gets "high"; everything else is
+                          left alone so it cannot compete with it.
+     • decoding="async" → decode off the main thread.
+     • LQIP background  → a 24px blurred WebP is painted instantly behind the
+                          photo, so there is never a blank white box while the
+                          real file loads. This is what removes the "flash".
+
+   IMAGES NOT IN THE MANIFEST (e.g. an avatar added without re-running the
+   generator) fall back to the original `src` — this is an optimisation, never
+   a hard dependency. */
+export function FillImage({ src, alt, className = '', priority = false, sizes, width, height }) {
+  const entry = IMAGE_VARIANTS[src];
+
+  /* Default `sizes` when the caller does not supply one. 100vw is the safe
+     general answer for a full-bleed photo; the hero passes an explicit value.
+     Overstating it only costs a slightly-too-large file, never a broken one. */
+  const sizesAttr = sizes || '100vw';
+
+  const style = entry?.lqip
+    ? { backgroundImage: `url(${entry.lqip})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : undefined;
+
   return (
     <img
-      src={src}
+      src={entry ? entry.variants[entry.variants.length - 1].file : src}
+      /* The smallest variant as the plain `src` fallback for any browser or
+         context that ignores srcset. */
+      srcSet={entry ? entry.variants.map((v) => `${v.file} ${v.width}w`).join(', ') : undefined}
+      sizes={entry ? sizesAttr : undefined}
       alt={alt}
-      sizes={sizes}
+      width={entry ? entry.width : width}
+      height={entry ? entry.height : height}
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
-      fetchPriority={priority ? 'high' : 'auto'}
+      fetchPriority={priority ? 'high' : undefined}
+      style={style}
       className={`amani-fill ${className}`}
     />
   );
@@ -92,19 +132,18 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
           {/* Existing members: claims, not a new application. RED because this
               is the urgent, time-sensitive action for a bereaved family and it
               was previously a low-contrast outline that read as disabled next
-              to the solid blue "Get covered" button. */}
+              to the solid blue "Get covered" button.
+
+              "Get covered" was REMOVED from the header on request — with two
+              buttons the bar overflowed on a 360px phone. New applicants still
+              reach the form from the hero's "Find your cover" CTA, the footer's
+              "Apply now", or any in-page #apply link, so /amani/cover/apply is
+              never more than one tap away and nothing is orphaned. */}
           <Link
             to="/amani/claims"
-            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-red-600 px-3 text-[0.8125rem] font-semibold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:h-10 sm:px-4 sm:text-sm"
+            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-red-600 px-3.5 text-[0.8125rem] font-semibold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:h-10 sm:px-5 sm:text-sm"
           >
             Submit claim
-          </Link>
-
-          <Link
-            to="/amani/cover/apply"
-            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-ac-primary px-3.5 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-ac-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-primary sm:h-10 sm:px-5 sm:text-sm"
-          >
-            Get covered
           </Link>
         </div>
       </div>
