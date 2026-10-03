@@ -22,6 +22,7 @@
    ========================================================================== */
 
 import { useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 import { GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions } from './amaniData';
 
 /* One object drives the initial state, the reset AND the field list, so a field
@@ -102,6 +103,31 @@ function errorMessageFor(name) {
     case 'email': return 'Enter a valid email address.';
     case 'cover': return 'Please choose a cover type.';
     case 'confirmAccepted': return 'Please tick the box to confirm before continuing.';
+    default: return 'This field is required.';
+  }
+}
+
+/* ---- Amani Group member rules ---------------------------------------
+   Kept separate from isFieldValid because these fields live in an array and
+   are never read off `formData` by name. Phone is required per member — a
+   group policy needs a number for each person so the family line can reach
+   them when it matters. */
+function memberFieldValid(field, value) {
+  const v = value == null ? '' : String(value);
+  switch (field) {
+    case 'fullName':
+      return v.trim().length > 1;
+    case 'phone':
+      return v.replace(/\D/g, '').length >= 9;
+    default:
+      return true;
+  }
+}
+
+function memberErrorFor(field) {
+  switch (field) {
+    case 'fullName': return "Enter this member's full name.";
+    case 'phone': return 'Enter a valid phone number.';
     default: return 'This field is required.';
   }
 }
@@ -483,22 +509,110 @@ export default function AmaniApplicationForm() {
     .af-input-wrap.has-error .af-doc-input,
     .af-input-wrap.has-error .af-doc-select { border-bottom-color: var(--af-error); }
 
-    .af-radio-group { display: flex; flex-wrap: wrap; gap: 1rem 2rem; padding-top: 0.5rem; }
-    .af-radio-opt { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
-    .af-radio-opt input {
+    /* Radio appearance. Scoped to BOTH the legacy .af-radio-opt and the newer
+       .af-cover-card so the custom dot is applied either way — without this
+       the native radio shows through unstyled inside the cover cards. */
+    .af-radio-opt, .af-cover-card { cursor: pointer; }
+    .af-radio-opt input, .af-cover-card input {
       appearance: none; -webkit-appearance: none; width: 20px; height: 20px;
       border: 1.5px solid #cbd5e1; border-radius: 50%; position: relative;
       cursor: pointer; margin: 0; transition: all 0.2s; flex: none;
     }
-    .af-radio-opt input:checked { border-color: var(--af-blue); }
-    .af-radio-opt input:checked::after {
+    .af-radio-opt input:checked, .af-cover-card input:checked { border-color: var(--af-blue); }
+    .af-radio-opt input:checked::after, .af-cover-card input:checked::after {
       content: ''; position: absolute; top: 3px; left: 3px;
       width: 10px; height: 10px; border-radius: 50%; background: var(--af-blue);
     }
-    .af-radio-opt input:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
+    .af-radio-opt input:focus-visible, .af-cover-card input:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
     .af-radio-opt span { font-size: 1rem; }
-    .af-input-wrap.has-error .af-radio-group {
+    .af-input-wrap.has-error .af-radio-group,
+    .af-input-wrap.has-error .af-cover-cards {
       padding-left: 4px; border-left: 2px solid var(--af-error);
+    }
+
+    /* ---- Amani Group repeater -----------------------------------------
+       Cover cards: each option is a full-width tappable card rather than a
+       bare radio + label, so the one-line description underneath has room and
+       the whole card is a comfortable touch target on a phone. */
+    .af-cover-cards { display: flex; flex-direction: column; gap: 0.75rem; padding-top: 0.5rem; width: 100%; }
+    .af-cover-card {
+      display: flex; align-items: flex-start; gap: 0.85rem;
+      padding: 1rem 1.15rem; border: 1.5px solid var(--af-line);
+      border-radius: 6px; background: #fff; cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+    .af-cover-card:hover { border-color: #94a3b8; background: #fcfdff; }
+    .af-cover-card:has(input:checked) {
+      border-color: var(--af-blue); background: #eff6ff;
+      box-shadow: 0 1px 3px rgba(11, 63, 138, 0.12);
+    }
+    .af-cover-card input { margin-top: 0.15rem; }
+    .af-cover-card-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+    .af-cover-card-title { font-size: 1rem; font-weight: 600; color: var(--af-blue); }
+    .af-cover-card-hint { font-size: 0.8rem; color: var(--af-gray); line-height: 1.45; }
+    .af-cover-card-badge {
+      display: inline-block; margin-top: 0.3rem; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
+      color: #92400e; background: #fef3c7; border: 1px solid #fde68a;
+      border-radius: 3px; padding: 0.15rem 0.45rem; align-self: flex-start;
+    }
+    .af-cover-card:focus-within { outline: 2px solid var(--af-tick); outline-offset: 2px; }
+
+    /* Member rows */
+    .af-group-block {
+      margin-top: 1.5rem; padding: 1.25rem 1.15rem 1.35rem;
+      background: #f8fafc; border: 1px solid var(--af-line); border-radius: 6px;
+    }
+    .af-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
+    .af-group-title { font-size: 0.95rem; font-weight: 600; color: #15171a; }
+    .af-group-count {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--af-blue);
+      background: #eff6ff; border: 1px solid #dbeafe; border-radius: 999px;
+      padding: 0.25rem 0.65rem; white-space: nowrap;
+    }
+    .af-group-count.is-short { color: var(--af-error); background: #fef2f2; border-color: #fecaca; }
+    .af-group-note { font-size: 0.78rem; color: var(--af-gray); margin: 0 0 1rem; }
+
+    .af-member-row {
+      position: relative; background: #fff; border: 1px solid var(--af-line);
+      border-radius: 5px; padding: 1rem 1rem 1.1rem; margin-bottom: 0.85rem;
+    }
+    .af-member-row.has-error { border-color: #fca5a5; }
+    .af-member-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .af-member-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--af-gray);
+    }
+    .af-member-remove {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: transparent; border: none; padding: 0.25rem 0.4rem;
+      font-family: inherit; font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--af-error); cursor: pointer; border-radius: 4px;
+    }
+    .af-member-remove:hover { background: #fef2f2; }
+    .af-member-remove:focus-visible { outline: 2px solid var(--af-error); outline-offset: 1px; }
+    .af-member-remove svg { width: 13px; height: 13px; }
+
+    .af-add-member {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+      width: 100%; height: 2.75rem; padding: 0 1.25rem;
+      background: #fff; color: var(--af-blue);
+      box-shadow: inset 0 0 0 1.5px var(--af-blue);
+      border-radius: 4px; font-family: inherit; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+    }
+    .af-add-member:hover { background: #eff6ff; }
+    .af-add-member:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
+    .af-add-member svg { width: 15px; height: 15px; }
+
+    .af-group-summary {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.78rem; color: var(--af-gray); margin: 0.85rem 0 0;
     }
 
     .af-confirm-block {
@@ -740,18 +854,26 @@ export default function AmaniApplicationForm() {
                     Choose Cover Type <span className="af-req">*</span>
                   </label>
                   <div className={getInputWrapClass('cover')} style={{ width: '100%' }}>
-                    <div className="af-radio-group" role="radiogroup" aria-label="Choose cover type">
+                    <div className="af-cover-cards" role="radiogroup" aria-label="Choose cover type">
                       {coverOptions.map((option) => (
-                        <label className="af-radio-opt" key={option.value}>
+                        <label className="af-cover-card" key={option.value}>
                           <input
                             type="radio"
                             name="cover"
                             value={option.value}
                             checked={formData.cover === option.value}
-                            onChange={handleChange}
+                            onChange={handleCoverChange}
                             onBlur={handleBlur}
                           />
-                          <span>{option.label}</span>
+                          <span className="af-cover-card-body">
+                            <span className="af-cover-card-title">{option.label}</span>
+                            <span className="af-cover-card-hint">{option.hint}</span>
+                            {option.minMembers && (
+                              <span className="af-cover-card-badge">
+                                Min. {option.minMembers} people
+                              </span>
+                            )}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -760,6 +882,123 @@ export default function AmaniApplicationForm() {
                     )}
                   </div>
                 </div>
+
+                {/* Amani Group only — the repeater for everyone else on the
+                    policy. Rendered conditionally so Solo/Family applications
+                    never show it, and cleared when the cover type changes. */}
+                {isGroup && (
+                  <div className="af-group-block">
+                    <div className="af-group-head">
+                      <span className="af-group-title">Group members</span>
+                      <span
+                        className={
+                          groupSize >= MIN_GROUP_MEMBERS
+                            ? 'af-group-count'
+                            : 'af-group-count is-short'
+                        }
+                      >
+                        {groupSize} of {MIN_GROUP_MEMBERS} min.
+                      </span>
+                    </div>
+
+                    <p className="af-group-note">
+                      You are member 1. Add everyone else on this policy &mdash;
+                      an Amani Group needs at least {MIN_GROUP_MEMBERS} people in total.
+                    </p>
+
+                    {formData.members.map((member, index) => {
+                      const rowErrors = memberErrors[member.key] || {};
+                      const rowHasError = Boolean(rowErrors.fullName || rowErrors.phone);
+                      return (
+                        <div
+                          className={rowHasError ? 'af-member-row has-error' : 'af-member-row'}
+                          key={member.key}
+                        >
+                          <div className="af-member-head">
+                            <span className="af-member-num">Member {index + 2}</span>
+                            <button
+                              type="button"
+                              className="af-member-remove"
+                              onClick={() => removeMember(member.key)}
+                            >
+                              <Trash2 aria-hidden="true" />
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="af-row" style={{ marginBottom: 0 }}>
+                            <div className="af-col">
+                              <label className="af-field-label" htmlFor={`af-m-${member.key}-name`}>
+                                Full Name <span className="af-req">*</span>
+                              </label>
+                              <div
+                                className={
+                                  memberTouched[member.key]?.fullName && rowErrors.fullName
+                                    ? 'af-input-wrap has-error'
+                                    : 'af-input-wrap'
+                                }
+                              >
+                                <input
+                                  id={`af-m-${member.key}-name`}
+                                  data-af-member={member.key}
+                                  className="af-doc-input"
+                                  type="text"
+                                  value={member.fullName}
+                                  placeholder="Their full name"
+                                  onChange={(e) => updateMember(member.key, 'fullName', e.target.value)}
+                                  onBlur={() => handleMemberBlur(member.key, 'fullName')}
+                                  aria-invalid={Boolean(memberTouched[member.key]?.fullName && rowErrors.fullName)}
+                                  required
+                                />
+                                <div className="af-tick-icon"><TickSvg /></div>
+                                {memberTouched[member.key]?.fullName && rowErrors.fullName && (
+                                  <span className="af-err-msg">{rowErrors.fullName}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="af-col">
+                              <label className="af-field-label" htmlFor={`af-m-${member.key}-phone`}>
+                                Phone Number <span className="af-req">*</span>
+                              </label>
+                              <div
+                                className={
+                                  memberTouched[member.key]?.phone && rowErrors.phone
+                                    ? 'af-input-wrap has-error'
+                                    : 'af-input-wrap'
+                                }
+                              >
+                                <input
+                                  id={`af-m-${member.key}-phone`}
+                                  data-af-member={member.key}
+                                  className="af-doc-input"
+                                  type="tel"
+                                  value={member.phone}
+                                  placeholder="07XX XXX XXX"
+                                  onChange={(e) => updateMember(member.key, 'phone', e.target.value)}
+                                  onBlur={() => handleMemberBlur(member.key, 'phone')}
+                                  aria-invalid={Boolean(memberTouched[member.key]?.phone && rowErrors.phone)}
+                                  required
+                                />
+                                <div className="af-tick-icon"><TickSvg /></div>
+                                {memberTouched[member.key]?.phone && rowErrors.phone && (
+                                  <span className="af-err-msg">{rowErrors.phone}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <button type="button" className="af-add-member" onClick={addMember}>
+                      <Plus aria-hidden="true" />
+                      Add another member
+                    </button>
+
+                    {groupError && <span className="af-err-msg">{groupError}</span>}
+                  </div>
+                )}
               </section>
 
               {/* Section 03 — contact */}
