@@ -1,19 +1,13 @@
-
-
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Check,
-  Phone,
-  Plus,
   ShieldCheck,
   Star,
 } from 'lucide-react';
 import {
-  CONTACT,
   PHOTOS,
   aboutPoints,
-  faqs,
   moments,
   promises,
   steps,
@@ -22,11 +16,12 @@ import AmaniApplicationForm from './amaniAplicationForm';
 import { AmaniFooter, AmaniNav, FillImage } from './AmaniUi';
 import './AmaniCover.css';
 
-/* In-page anchors shown in the header, matching the redesign's navLinks. */
+/* In-page anchors shown in the header. The "Questions" (#faq) entry was
+   removed with the FAQ section; leaving it would produce a header link that
+   jumps to a section that no longer exists. */
 const NAV_LINKS = [
   { href: '#about', label: 'About' },
   { href: '#how', label: 'How it works' },
-  { href: '#faq', label: 'Questions' },
 ];
 
 export default function AmaniCover() {
@@ -40,7 +35,6 @@ export default function AmaniCover() {
         <Moments />
         <About />
         <HowItWorks />
-        <Faq />
         <ApplySection />
         <ClaimBand />
       </main>
@@ -70,8 +64,9 @@ function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            Amani Cover helps your family honour a life with dignity without carrying the
-            financial burden alone. Arranged with care by Montenzuma Monalisa Funeral Home.
+            Amani means peace. Amani Cover is funeral insurance that lets your family say goodbye
+            with dignity, without worrying about the cost. Offered by Montenzuma Monalisa Funeral
+            Home, trusted by families for over 25 years.
           </p>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -181,7 +176,7 @@ function Hero() {
   "
           >
             <blockquote className="font-serif text-lg leading-snug text-ac-primary">
-              &ldquo;When Mama passed, they carried everything. We could simply grieve together.&rdquo;
+              &ldquo;When Mama passed, our cover took care of everything. We could simply grieve together.&rdquo;
             </blockquote>
 
             <figcaption className="mt-3 text-xs text-ac-mutedfg">
@@ -192,7 +187,7 @@ function Hero() {
 
           <div className="absolute top-8 left-4 flex items-center rounded-2xl  gap-3  bg-ac-primary px-4 py-2.5 text-ac-onprimary shadow-lg sm:left-[-1rem]">
             <ShieldCheck className="size-5 text-ac-highlight" aria-hidden="true" />
-            <span className="text-sm font-medium">Covered by Montenzuma  Feuneral</span>
+            <span className="text-sm font-medium">Covered by Montenzuma Funeral</span>
           </div>
         </div>
       </div>
@@ -237,8 +232,8 @@ function Moments() {
             </h2>
           </div>
           <p className="max-w-sm leading-relaxed text-ac-mutedfg text-pretty">
-            When the hardest day comes, we take care of the arrangements  so your family can hold
-            each other, not paperwork.
+            When the hardest day comes, your cover takes care of the costs and arrangements, so
+            your family can hold each other instead of worrying about bills.
           </p>
         </div>
 
@@ -308,7 +303,7 @@ function About() {
                 the brand's meaning reads clearly against the white page. */}
             <div className="rounded-2xl bg-ac-primary p-5 text-center shadow-sm sm:p-7">
               <p className="font-serif text-xl text-ac-onprimary sm:text-2xl">Amani</p>
-              <p className="text-sm italic text-ac-onprimary/85">Peace You Deserve</p>
+              <p className="text-sm italic text-ac-onprimary/85">means peace</p>
             </div>
           </div>
         </div>
@@ -321,9 +316,9 @@ function About() {
             More than a policy. <em className="text-ac-accent">A promise to your family.</em>
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            For over 25 years, Montenzuma Monalisa Funeral Home has walked beside families in their
-            hardest moments. Amani Cover brings that same care forward so the people you love are
-            never left to face it alone.
+            Amani means peace. For over 25 years, Montenzuma Monalisa Funeral Home has walked
+            beside families through loss. Amani Cover is our funeral insurance, built so the
+            people you love never have to face the cost of saying goodbye alone.
           </p>
           <ul className="mt-8 flex flex-col gap-4">
             {aboutPoints.map((point) => (
@@ -356,8 +351,8 @@ function HowItWorks() {
               Protection, in three simple steps.
             </h2>
             <p className="mt-5 max-w-sm leading-relaxed text-ac-mutedfg">
-              You do not have to figure it all out at once. We make each part clear, personal and
-              easy to understand.
+              You do not have to figure it all out at once. We make every part of your funeral
+              cover clear, personal and easy to understand.
             </p>
             <a
               href="#apply"
@@ -408,48 +403,6 @@ function HowItWorks() {
   );
 }
 
-/* ── faq.tsx ──────────────────────────────────────────────────── */
-function Faq() {
-  return (
-    <section id="faq" className="scroll-mt-20 px-6 py-20 lg:px-10 lg:py-28">
-      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">Questions</p>
-          <h2 className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
-            Honest answers, kindly given.
-          </h2>
-          <p className="mt-5 leading-relaxed text-ac-mutedfg">
-            {`Can't find what you're looking for? Call us on `}
-            <a href={CONTACT.phoneHref} className="font-medium text-ac-primary underline underline-offset-4">
-              {CONTACT.phone}
-            </a>
-            .
-          </p>
-        </div>
-
-        {/* Native <details> — no React state needed, matches the redesign and
-            keeps the accordion keyboard/screen-reader behaviour for free. */}
-        <div className="divide-y divide-ac-border border-y border-ac-border">
-          {faqs.map((item) => (
-            <details key={item.q} className="group py-6">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 font-serif text-xl text-ac-primary [&::-webkit-details-marker]:hidden">
-                {item.q}
-                <span className="grid size-9 shrink-0 place-items-center rounded-full border border-ac-border transition-transform group-open:rotate-45">
-                  <Plus className="size-4" aria-hidden="true" />
-                </span>
-              </summary>
-              <p className="mt-4 max-w-2xl leading-relaxed text-ac-mutedfg">{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-
-
-
 /* ── apply-form.tsx ───────────────────────────────────────────── */
 /* The real application document lives in its own module — see
    amaniAplicationForm.jsx. This section is only the page shell: it owns the
@@ -466,10 +419,8 @@ function ApplySection() {
 
 /* ── claim.tsx ────────────────────────────────────────────────── */
 /* Members who already hold cover must not be pushed through the application
-   form, and the page previously had NO way to start a claim at all. Claims are
-   handled by the family line rather than a second form, so this is a call to
-   action — wired to tel: for the same reason the hero's "Make a payment" is.
-   Swap in a real claim URL once a claims endpoint exists. */
+   form, and the page previously had NO way to start a claim at all. The
+   button routes to the claims page. */
 function ClaimBand() {
   return (
     <section
@@ -485,8 +436,9 @@ function ClaimBand() {
             Make a claim.
           </h2>
           <p className="mt-3 leading-relaxed text-ac-onprimary/80">
-            You do not need to fill in any forms. Call our family line and a dedicated
-            coordinator will explain the next steps and stand beside you through the process.
+            We keep the claims process simple at a difficult time. Submit your claim and a
+            dedicated coordinator will explain the next steps and stand beside your family
+            through the process.
           </p>
         </div>
 

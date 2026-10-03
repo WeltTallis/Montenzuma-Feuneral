@@ -78,12 +78,10 @@ export function FillImage({ src, alt, className = '', priority = false, sizes, w
 const LANDING_ANCHORS = [
   { href: '#about', label: 'About' },
   { href: '#how', label: 'How it works' },
-  { href: '#faq', label: 'Questions' },
 ];
 const SUB_ANCHORS = [
   { href: '/amani/cover#about', label: 'About' },
   { href: '/amani/cover#how', label: 'How it works' },
-  { href: '/amani/cover#faq', label: 'Questions' },
 ];
 
 /* Sticky header. The two right-hand CTAs are real client-side routes, not
@@ -143,7 +141,7 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
             to="/amani/claims"
             className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-red-600 px-3.5 text-[0.8125rem] font-semibold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:h-10 sm:px-5 sm:text-sm"
           >
-            Submit claim
+            Make a claim
           </Link>
         </div>
       </div>
@@ -177,17 +175,18 @@ export function PageHeader({ eyebrow, title, accent, intro }) {
 
 /* Footer, ported from the redesign's site-footer.tsx. Shared by all three
    Amani routes. */
-/* Support links now point at the real routes rather than landing anchors, so
-   "Make a claim" lands on the claims page instead of scrolling to the FAQ. */
+/* Support links point at the real routes rather than landing anchors, so
+   "Making a claim" lands on the claims page instead of scrolling to a
+   section. Rendered with <Link to={...}> to match. */
 const SUPPORT_LINKS = [
-  { to: '/amani/cover/apply', label: 'Request a call' },
-  { to: '/amani/claims', label: 'Making a claim' },
+  { to: '/amani/cover/apply', label: 'Talk to our team' },
+  { to: '/amani/claims', label: 'Make a claim' },
   { to: '/amani/cover/terms', label: 'Waiting periods' },
-  { to: '/amani/payments', label: 'Make a payment' },
+  { to: '/amani/payments', label: 'Pay your contribution' },
 ];
 const LEGAL_LINKS = [
   { href: '#', label: 'Privacy policy' },
-  { href: '/amani/cover/terms', label: 'Cover terms' },
+  { href: '/amani/cover/terms', label: 'Policy terms' },
   { href: '#', label: 'Complaints' },
 ];
 
@@ -212,8 +211,9 @@ export function AmaniFooter() {
 
             </p>
             <p className="mt-4 max-w-sm text-[0.95rem] leading-relaxed text-ac-onprimary/70">
-              Funeral cover from Montenzuma Monalisa Funeral Home. For over 25 years we have honoured
-              every life with dignity, and stood beside the families left behind.
+              Amani means peace. Amani Cover is funeral insurance from Montenzuma Monalisa Funeral
+              Home, so your family never has to worry about money while they say goodbye. We&rsquo;ve
+              been with Kenyan families for over 25 years, and we&rsquo;re here for yours.
             </p>
             <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-ac-onprimary/15 px-4 py-2 text-sm text-ac-onprimary/80">
               <span className="size-2.5 rounded-full bg-ac-highlight" aria-hidden="true" />
@@ -226,9 +226,8 @@ export function AmaniFooter() {
             <ul className="mt-5 flex flex-col gap-4 text-[0.95rem]">
               <li><a href={anchor('about')} className={FOOT_LINK}>About</a></li>
               <li><a href={anchor('how')} className={FOOT_LINK}>How it works</a></li>
-              <li><a href={anchor('faq')} className={FOOT_LINK}>Questions</a></li>
               <li><a href={anchor('apply')} className={FOOT_LINK}>Apply now</a></li>
-              <li><Link to="/amani/cover/terms" className={FOOT_LINK}>Cover terms</Link></li>
+              <li><Link to="/amani/cover/terms" className={FOOT_LINK}>Policy terms</Link></li>
               <li><Link to="/amani/cover/refer" className={FOOT_LINK}>Refer a friend</Link></li>
             </ul>
           </nav>
@@ -237,10 +236,14 @@ export function AmaniFooter() {
             <h2 className={FOOT_HEADING}>Support</h2>
             <ul className="mt-5 flex flex-col gap-4 text-[0.95rem]">
               {SUPPORT_LINKS.map((link) => (
+                /* `to:`, not an anchor hash. These were switched from landing
+                   anchors to real routes, but the markup kept reading
+                   `link.hash` - which is undefined on every entry - so all four
+                   links rendered as "#undefined" and went nowhere. */
                 <li key={link.label}>
-                  <a href={anchor(link.hash)} className={FOOT_LINK}>
+                  <Link to={link.to} className={FOOT_LINK}>
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -252,14 +255,14 @@ export function AmaniFooter() {
               <a href={CONTACT.phoneHref} className={`flex items-start gap-3 ${FOOT_LINK}`}>
                 <Phone className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
-                  <span className="block text-ac-onprimary font-medium">24/7 family line</span>
+                  <span className="block text-ac-onprimary font-medium">Call us, day or night</span>
                   {CONTACT.phone}
                 </span>
               </a>
               <a href={CONTACT.emailHref} className={`flex items-start gap-3 ${FOOT_LINK}`}>
                 <Mail className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
-                  <span className="block text-ac-onprimary font-medium">Email</span>
+                  <span className="block text-ac-onprimary font-medium">Write to us</span>
                   {CONTACT.email}
                 </span>
               </a>
@@ -273,7 +276,7 @@ export function AmaniFooter() {
               <p className="flex items-start gap-3 text-ac-onprimary/70">
                 <Clock className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
-                  <span className="block text-ac-onprimary font-medium">Office hours</span>
+                  <span className="block text-ac-onprimary font-medium">Opening hours</span>
                   {CONTACT.hours}
                 </span>
               </p>

@@ -17,8 +17,8 @@ export const CONTACT = {
   phoneHref: 'tel:+254722268566',
   email: 'monte2lisa@yahoo.com',
   emailHref: 'mailto:monte2lisa@yahoo.com',
-  address: 'Nairobi Branch Mbagathi Way, Opp. Forces Memorial Hospital',
-  hours: 'Open 24 hours · call us day or night',
+  address: 'Nairobi Branch, Mbagathi Way, opposite Forces Memorial Hospital',
+  hours: 'Open 24 hours, day or night',
 };
 
 /* Local images copied out of the redesign's public/images. Every photo the
@@ -48,21 +48,21 @@ export const moments = [
     src: PHOTOS.familyTable,
     alt: 'A large multigenerational family sharing a meal and laughing around a dining table',
     label: 'Together',
-    caption: 'For the gatherings that keep a family whole.',
+    caption: 'The people around your table are worth protecting.',
     sizes: '(max-width: 768px) 100vw, 66vw',
   },
   {
     src: PHOTOS.fatherSon,
     alt: 'A father gently hugging his young son outdoors',
     label: 'Protected',
-    caption: 'For the little ones who look to you.',
+    caption: 'So the little ones who look up to you are always looked after.',
     sizes: '(max-width: 1024px) 50vw, 33vw',
   },
   {
     src: PHOTOS.motherDaughter,
     alt: 'A mother and her adult daughter leaning foreheads together, smiling',
     label: 'Remembered',
-    caption: 'For the bonds that last beyond a lifetime.',
+    caption: 'Love lasts a lifetime. So should your care for them.',
     sizes: '(max-width: 1024px) 50vw, 33vw',
   },
 ];
@@ -70,9 +70,9 @@ export const moments = [
 /* Promise band. Exactly THREE entries — the band is a 3-column grid
    (sm:grid-cols-3) so a fourth item would break the row. */
 export const promises = [
-  { title: 'Simple', text: 'An easy application, with clear guidance at every step.' },
-  { title: 'Flexible', text: 'Cover shaped around the size and needs of your family.' },
-  { title: 'Supportive', text: 'A caring team beside you when you need us most.' },
+  { title: 'Simple', text: 'An easy application, and someone to guide you through every step.' },
+  { title: 'Flexible', text: 'Choose cover for just yourself, your household or a whole group.' },
+  { title: 'Supportive', text: 'A real person to talk to, whenever you need us.' },
 ];
 
 /* How it works. THREE steps. `num` is the "01 / 02 / 03" marker rendered in the
@@ -81,52 +81,31 @@ export const steps = [
   {
     num: '01',
     title: 'Tell us about yourself',
-    desc: 'Share a few details so we can understand what protection feels right for you.',
+    desc: 'Share a few simple details so we can understand who you want to protect.',
   },
   {
     num: '02',
     title: 'Choose your cover',
-    desc: 'Explore a plan and contribution that fits your family and your budget.',
+    desc: 'Pick the plan and contribution that fits your family and your budget.',
   },
   {
     num: '03',
-    title: 'Feel prepared',
-    desc: 'Apply securely and keep your loved ones protected for the years ahead.',
+    title: 'Rest easier',
+    desc: 'Apply securely, and your family will never have to face the cost of a funeral alone.',
   },
 ];
 
 /* About section bullet points. THREE items, matching the three-tall stat/point
    block beneath the About copy. */
 export const aboutPoints = [
-  'Dignified service -   support for a respectful farewell',
-  'Family flexibility  -  choose protection that fits your household',
-  'Personal guidance  -   a dedicated care team, not a call centre',
+  'A dignified send-off - the cost of a respectful farewell is taken care of',
+  'Fits your family - cover for one person, a household or a group',
+  'Real people - a dedicated care team, not a call centre',
 ];
 
-/* FAQ. The accordion grows vertically, so the COUNT is free — this is the full
-   set of questions, in the order they appear. */
-export const faqs = [
-  {
-    q: 'Who can apply for Amani Cover?',
-    a: 'Adults seeking funeral protection for themselves or their family can apply. Our care team will help you choose the most suitable level of cover — kindly and without pressure.',
-  },
-  {
-    q: 'Can I cover members of my family?',
-    a: 'Yes. Our Family and Legacy options are designed to protect multiple family members under one easy-to-manage plan.',
-  },
-  {
-    q: 'When does my cover begin?',
-    a: 'Once your application is approved and your first contribution is received, your Amani Cover is active from day one. We will confirm everything to you in writing.',
-  },
-  {
-    q: 'How do I make a claim?',
-    a: 'Call our support line at any time. A dedicated care coordinator will explain the next steps and support your family throughout the process.',
-  },
-  {
-    q: 'What happens after I submit my application?',
-    a: 'We review your details, confirm your options, and contact you with clear next steps. There is no obligation to continue at any point.',
-  },
-];
+/* The FAQ set was removed from the landing page on request, so it is not kept
+   here as dead data: nothing renders it, and leaving an orphaned export
+   invites it being wired back up by accident. */
 
 /* Cover options offered in the apply form. These are the three real Amani
    products (NOT the old Essential/Family/Legacy marketing tiers):
@@ -140,12 +119,12 @@ export const faqs = [
    with defaultValue="Family"; Family is still the middle option, so that
    placeholder stays valid. */
 export const coverOptions = [
-  { value: 'Solo', label: 'Amani Solo', hint: 'Cover for one person.' },
-  { value: 'Family', label: 'Amani Family', hint: 'Cover for you and your household.' },
+  { value: 'Solo', label: 'Amani Solo', hint: 'Funeral cover for just you.' },
+  { value: 'Family', label: 'Amani Family', hint: 'Funeral cover for you and your household.' },
   {
     value: 'Group',
     label: 'Amani Group',
-    hint: 'One shared policy for 5 or more people.',
+    hint: 'One shared policy for a group of 5 or more people.',
     minMembers: 5,
   },
 ];
@@ -160,9 +139,9 @@ export const MIN_GROUP_MEMBERS = 5;
 
 /* Referral flow (its own route). THREE steps — rendered as a connected rail. */
 export const referSteps = [
-  { num: '01', title: 'Send their name', desc: 'A name and number is all we need to get started.' },
-  { num: '02', title: 'We reach out', desc: 'Our care team calls them kindly no hard sell, ever.' },
-  { num: '03', title: 'They choose', desc: 'They pick the cover that feels right for their own family.' },
+  { num: '01', title: 'Send their name', desc: 'A name and a phone number is all we need.' },
+  { num: '02', title: 'We get in touch', desc: 'Our care team will call them kindly. No pressure, no hard sell.' },
+  { num: '03', title: 'They decide', desc: 'They choose the cover that feels right for their own family.' },
 ];
 
 /* ------------------------------------------------------------------
@@ -173,13 +152,13 @@ export const referSteps = [
    publishing, since exclusions are contractually sensitive.
 ------------------------------------------------------------------ */
 export const vision =
-  'Driven by our vision and mission, we saw the need to bring the most elusive peace of mind in the case of demise of a loved one in family and society by offering a relevant and pocket-friendly insurance solution that allows loved ones and society as a whole the peace of mind in arranging for the send off of the departed loved one.';
+  'Amani means peace. We started Amani Cover because losing someone is hard enough without worrying about how to pay for the funeral. We wanted to offer simple, affordable funeral insurance, so that families and communities can say goodbye to the people they love with dignity, and with peace of mind.';
 
-export const eligibility = ['Residents of Kenya'];
+export const eligibility = ['Anyone living in Kenya'];
 
 export const waitingPeriods = [
-  { cover: 'Accidents & acute ailments', period: '0 days' },
-  { cover: 'Chronic & natural ailments', period: '1 month' },
+  { cover: 'Accidents & sudden illness', period: 'No waiting period (0 days)' },
+  { cover: 'Chronic illness & natural causes', period: '1 month' },
 ];
 
 export const exclusions = [
@@ -191,9 +170,9 @@ export const exclusions = [
 ];
 
 export const claimDocuments = [
-  'Death Notification',
-  'Burial permit & police abstract in case of accidental death',
-  'Copy of ID / Birth Certificate of the deceased',
-  'Copy of ID of registered beneficiary',
-  'Completed Claim form',
+  'Death notification',
+  'Burial permit and police abstract (accidental deaths only)',
+  "Copy of the deceased's ID or birth certificate",
+  "Copy of the registered beneficiary's ID",
+  'Completed claim form',
 ];
