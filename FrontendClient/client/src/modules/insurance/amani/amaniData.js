@@ -128,15 +128,35 @@ export const faqs = [
   },
 ];
 
-/* Cover options offered in the apply form <select>. THREE plan levels — the
-   select height is fixed (h-12), so the count does not affect layout.
-   NOTE: AmaniCover's <select> uses defaultValue="Family" to match the middle
-   option below; if you rename a value, update that defaultValue too. */
+/* Cover options offered in the apply form. These are the three real Amani
+   products (NOT the old Essential/Family/Legacy marketing tiers):
+     • Amani Solo   — one person
+     • Amani Family — the applicant plus their household
+     • Amani Group  — a shared policy for a group, MINIMUM 5 individuals
+   `minMembers` is what the form enforces: picking Group reveals an "add
+   another individual" repeater and blocks submit until the policy has at
+   least that many people on it.
+   NOTE: the dead insurance/mani/ folder still renders these in a <select>
+   with defaultValue="Family"; Family is still the middle option, so that
+   placeholder stays valid. */
 export const coverOptions = [
-  { value: 'Essential', label: 'Essential  simple, dependable support' },
-  { value: 'Family', label: 'Family  cover for the people closest to you' },
-  { value: 'Legacy', label: 'Legacy  our most complete care' },
+  { value: 'Solo', label: 'Amani Solo', hint: 'Cover for one person.' },
+  { value: 'Family', label: 'Amani Family', hint: 'Cover for you and your household.' },
+  {
+    value: 'Group',
+    label: 'Amani Group',
+    hint: 'One shared policy for 5 or more people.',
+    minMembers: 5,
+  },
 ];
+
+/* The value that switches the form into "add the rest of the group" mode. */
+export const GROUP_COVER_VALUE = 'Group';
+
+/* Smallest number of individuals an Amani Group policy may cover. The
+   applicant is themselves one of them, so the repeater must supply the
+   remaining MIN_GROUP_MEMBERS - 1 people. */
+export const MIN_GROUP_MEMBERS = 5;
 
 /* Referral flow (its own route). THREE steps — rendered as a connected rail. */
 export const referSteps = [

@@ -57,9 +57,14 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
 
   return (
     <header className="sticky top-0 z-40  border-ac-border/70 bg-ac-bg/85 backdrop-blur-md">
-      <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-6 lg:px-10">
-        <Link to="/amani/cover" className="flex items-baseline gap-2" aria-label="Amani Cover home">
-          <span className="font-serif text-2xl font-semibold tracking-tight text-ac-primary">Amani</span>
+      {/* Mobile fix: the bar used to be h-18 px-6 with two full-size CTA
+          buttons side by side. On a 360-390px screen that overflowed, the two
+          buttons wrapped onto the logo line and the "Get covered" label was
+          clipped. Now: smaller horizontal padding, a shorter bar on phones,
+          and compact buttons that only grow to full size from `sm` up. */}
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-18 sm:gap-6 sm:px-6 lg:px-10">
+        <Link to="/amani/cover" className="flex shrink-0 items-baseline gap-2" aria-label="Amani Cover home">
+          <span className="font-serif text-xl font-semibold tracking-tight text-ac-primary sm:text-2xl">Amani</span>
 
         </Link>
 
@@ -75,7 +80,7 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <a
             href={CONTACT.phoneHref}
             className="hidden items-center gap-2 text-sm font-medium text-ac-primary xl:flex"
@@ -84,17 +89,20 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
             {CONTACT.phone}
           </a>
 
-          {/* Existing members: claims, not a new application. */}
+          {/* Existing members: claims, not a new application. RED because this
+              is the urgent, time-sensitive action for a bereaved family and it
+              was previously a low-contrast outline that read as disabled next
+              to the solid blue "Get covered" button. */}
           <Link
             to="/amani/claims"
-            className="inline-flex h-10 items-center rounded-xl border border-ac-accent/40 px-4 text-sm font-medium text-ac-accent transition-colors hover:bg-ac-accent/5"
+            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-red-600 px-3 text-[0.8125rem] font-semibold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:h-10 sm:px-4 sm:text-sm"
           >
             Submit claim
           </Link>
 
           <Link
             to="/amani/cover/apply"
-            className="inline-flex h-10 items-center rounded-xl bg-ac-primary px-5 text-sm font-medium text-white transition-colors hover:bg-ac-primary/90"
+            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-ac-primary px-3.5 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-ac-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-primary sm:h-10 sm:px-5 sm:text-sm"
           >
             Get covered
           </Link>

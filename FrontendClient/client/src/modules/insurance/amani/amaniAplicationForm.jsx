@@ -22,14 +22,18 @@
    ========================================================================== */
 
 import { useState } from 'react';
-import { coverOptions } from './amaniData';
+import { GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions } from './amaniData';
 
 /* One object drives the initial state, the reset AND the field list, so a field
    can never end up validated-but-uninitialised — the bug that made the previous
    version call .trim() on undefined.
    `confirmAccepted` is a BOOLEAN; it was string-typed, so it could never equal
-   `true` and the checkbox could never validate. */
-const INITIAL = {
+   `true` and the checkbox could never validate.
+   `members` holds the OTHER people on an Amani Group policy — the applicant is
+   themselves one of the minimum, so this repeater supplies the rest. It is a
+   factory (not a shared object literal) so `handleReset` can never hand React
+   back the same array reference it already mutated. */
+const createInitial = () => ({
   fullName: '',
   idNumber: '',
   age: '',
@@ -37,8 +41,15 @@ const INITIAL = {
   phone: '',
   email: '',
   cover: '',
+  members: [],
   confirmAccepted: false,
-};
+});
+
+/* Stable React keys for the repeater rows. A plain array index cannot be the
+   key: deleting row 1 of 5 would make React reuse row 2's DOM node for row 1's
+   data, which silently shifts every value down one box. */
+let memberKeySeq = 0;
+const newMember = () => ({ key: `af-member-${++memberKeySeq}`, fullName: '', phone: '' });
 
 /* Required fields, in document order. `email` is deliberately absent — it is
    optional and is only validated when the visitor actually fills it in. */
@@ -111,14 +122,26 @@ const TickSvg = () => (
 );
 
 export default function AmaniApplicationForm() {
-  const [formData, setFormData] = useState(INITIAL);
+  const [formData, setFormData] = useState(createInitial);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  /* Repeater state. Keyed by the row's stable `key`, never by array index, so
+     deleting a middle row does not make one person's error message appear on
+     somebody else's input. */
+  const [memberErrors, setMemberErrors] = useState({});
+  const [memberTouched, setMemberTouched] = useState({});
+  const [groupTouched, setGroupTouched] = useState(false);
+  const [groupError, setGroupError] = useState(undefined);
   /* Frozen at mount so the "Filling Date & Time" stamp cannot drift between
      renders while the visitor is typing. */
   const [fillStamp] = useState(() => formatStamp(new Date()));
+
+  /* The applicant counts toward the Amani Group minimum, so the total on the
+     policy is always one more than the number of repeater rows. */
+  const groupSize = formData.members.length + 1;
+  const isGroup = formData.cover === GROUP_COVER_VALUE;
 
   const handleChange = (event) => {
     const { name, type, checked, value } = event.target;
@@ -136,6 +159,90 @@ export default function AmaniApplicationForm() {
     }
   };
 
+  /* ---- Amani Group repeater -------------------------------------------
+     These live outside the generic handleChange because they edit one row of
+     an array rather than a top-level form field. `key` is never rewritten —
+     only the named property is replaced, so React keeps the row's DOM node
+     (and therefore its focus and caret position) while you type. */
+  const addMember = () => {
+    setFormData((prev) => ({ ...prev, members: [...prev.members, newMember()] }));
+    /* A freshly added, empty row has no errors of its own — but the group as a
+       whole may still be short of the minimum, so re-evaluate that. */
+    setGroupTouched(false);
+  };
+
+  const updateMember = (key, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      members: prev.members.map((m) => (m.key === key ? { ...m, [field]: value } : m)),
+    }));
+
+    if (memberTouched[key]?.[field]) {
+      setMemberErrors((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [field]: memberFieldValid(field, value) ? undefined : memberErrorFor(field),
+        },
+      }));
+    }
+  };
+
+  const removeMember = (key) => {
+    setFormData((prev) => ({ ...prev, members: prev.members.filter((m) => m.key !== key) }));
+    setMemberErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setMemberTouched((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  /* Switching away from Group must take the repeater with it, otherwise a
+     Solo/Family application would still submit the leftover member rows. */
+  const handleCoverChange = (event) => {
+    const { value } = event.target;
+    setFormData((prev) => ({ ...prev, cover: value }));
+    setGroupTouched(false);
+    setGroupError(undefined);
+
+    if (value !== GROUP_COVER_VALUE) {
+      setFormData((prev) => ({ ...prev, members: [] }));
+      setMemberErrors({});
+      setMemberTouched({});
+      return;
+    }
+
+    /* Pre-seed with the minimum minus the applicant so the visitor is never
+       staring at a completely empty section wondering what is missing. */
+    setFormData((prev) => {
+      const needed = MIN_GROUP_MEMBERS - 1 - prev.members.length;
+      if (needed <= 0) return prev;
+      const seeded = Array.from({ length: needed }, newMember);
+      return { ...prev, members: [...prev.members, ...seeded] };
+    });
+  };
+
+  /* Blur handler for a repeater field — marks it touched so the error only
+     appears after the visitor has actually interacted with that box. */
+  const handleMemberBlur = (key, field) => {
+    const member = formData.members.find((m) => m.key === key);
+    const value = member ? member[field] : '';
+
+    setMemberTouched((prev) => ({ ...prev, [key]: { ...prev[key], [field]: true } }));
+    setMemberErrors((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        [field]: memberFieldValid(field, value) ? undefined : memberErrorFor(field),
+      },
+    }));
+  };
+
   const handleBlur = (event) => {
     const { name, type, checked, value } = event.target;
     const nextValue = type === 'checkbox' ? checked : value;
@@ -148,9 +255,13 @@ export default function AmaniApplicationForm() {
   };
 
   const handleReset = () => {
-    setFormData(INITIAL);
+    setFormData(createInitial());
     setErrors({});
     setTouched({});
+    setMemberErrors({});
+    setMemberTouched({});
+    setGroupTouched(false);
+    setGroupError(undefined);
   };
 
   const handleSubmit = (event) => {
@@ -183,6 +294,53 @@ export default function AmaniApplicationForm() {
         if (typeof node.focus === 'function') node.focus({ preventScroll: true });
       }
       return;
+    }
+
+    /* Amani Group only: enforce the minimum headcount and validate every
+       additional person. Checked AFTER the main fields so a visitor who has
+       not filled in their own name is not also told their group is too small. */
+    if (isGroup) {
+      const nextMemberErrors = {};
+      const nextMemberTouched = {};
+
+      formData.members.forEach((member) => {
+        const rowErrors = {};
+        const rowTouched = {};
+        ['fullName', 'phone'].forEach((field) => {
+          rowTouched[field] = true;
+          if (!memberFieldValid(field, member[field])) {
+            rowErrors[field] = memberErrorFor(field);
+          }
+        });
+        if (Object.keys(rowErrors).length) nextMemberErrors[member.key] = rowErrors;
+        nextMemberTouched[member.key] = rowTouched;
+      });
+
+      setMemberErrors(nextMemberErrors);
+      setMemberTouched(nextMemberTouched);
+      setGroupTouched(true);
+
+      if (groupSize < MIN_GROUP_MEMBERS) {
+        setGroupError(
+          `Amani Group needs at least ${MIN_GROUP_MEMBERS} people. You have added ${groupSize}.`,
+        );
+      } else {
+        setGroupError(undefined);
+      }
+
+      /* Focus the first offending repeater row, falling back to the first
+         member box when the group is simply too small. */
+      const badMemberKey = Object.keys(nextMemberErrors)[0] || formData.members[0]?.key;
+      if (groupSize < MIN_GROUP_MEMBERS || badMemberKey) {
+        const node = badMemberKey
+          ? document.querySelector(`[data-af-member="${badMemberKey}"]`)
+          : null;
+        if (node) {
+          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (typeof node.focus === 'function') node.focus({ preventScroll: true });
+        }
+        return;
+      }
     }
 
     setIsSubmitting(true);
