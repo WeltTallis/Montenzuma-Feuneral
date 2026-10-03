@@ -12,6 +12,47 @@
 
 
 /* ==========================================================================
+   Amani Cover colour tokens  (/amani/cover, /amani/cover/terms, /amani/cover/refer)
+
+   WHY AN "ac-" PREFIX INSTEAD OF THE ORIGINAL shadcn NAMES:
+   The redesign's globals.css maps the palette to the stock shadcn names --
+   --color-primary, --color-accent, --color-card … -- so the components can use
+   `bg-primary`, `text-accent`, `border-border`.
+
+   Those names CANNOT be reused here. Bootstrap already owns .text-primary and
+   .bg-primary, and ~100 places in this app rely on them (invoices, deceased
+   selectors, forms, tables). Bootstrap ships UNLAYERED, and unlayered CSS beats
+   anything in a cascade layer, so a Tailwind `bg-primary` utility would either
+   be dead on arrival on the Amani pages or — worse — recolour every Bootstrap
+   primary button in the product navy.
+
+   So the same palette is exposed under an `ac-` (Amani Cover) prefix instead.
+   Identical hex values, identical rendering, and no collision with anything
+   else in the app. Every `bg-primary` in the redesign becomes `bg-ac-primary`.
+
+   The raw values themselves are declared on .amani-cover in
+   src/modules/insurance/amani/AmaniCover.css, so they stay scoped to those
+   pages. `inline` makes each utility emit var(--ac-*) directly, so the value
+   resolves at the element — which is always inside .amani-cover.
+   ========================================================================== */
+@theme inline {
+  --color-ac-primary: var(--ac-primary);
+  --color-ac-ink: var(--ac-ink);
+  --color-ac-accent: var(--ac-accent);
+  --color-ac-highlight: var(--ac-highlight);
+  --color-ac-border: var(--ac-border);
+  --color-ac-input: var(--ac-input);
+  --color-ac-mutedfg: var(--ac-mutedfg);
+  --color-ac-bg: var(--ac-bg);
+  --color-ac-card: var(--ac-card);
+  --color-ac-onprimary: var(--ac-onprimary);
+  --color-ac-onaccent: var(--ac-onaccent);
+  --color-ac-oncard: var(--ac-oncard);
+  --color-ac-ring: var(--ac-ring);
+}
+
+
+/* ==========================================================================
    FONTS — the single source of truth for the whole app.
    Every Google Font the app uses is requested in ONE combined URL below, so
    the browser makes a single round-trip instead of one per component. Do NOT

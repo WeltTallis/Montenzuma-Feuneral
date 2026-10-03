@@ -491,7 +491,11 @@ export default function App() {
       else if (serviceName === "Body Release") redirectPath = `/${tenantSlug}/release-form/new`;
       else if (serviceName === "Flower Arrangements") redirectPath = `/${tenantSlug}/flower-samples`;
       else if (serviceName === "Postmortem Records") redirectPath = `/${tenantSlug}/postmortem-request`;
-      else if (serviceName === "Amani Insurance") redirectPath = "/insurance";
+      // Amani Insurance opens the public Amani Cover landing page (/amani/cover),
+      // NOT /insurance — that route is the Rest Point B2B insurance page and is
+      // still used by the main website. Deliberately NOT prefixed with
+      // tenantSlug: the reception portal is public, and this page is public.
+      else if (serviceName === "Amani Insurance") redirectPath = "/amani/cover";
       navigate(redirectPath);
       setShowOverlay(false);
       setSelectedService(null);

@@ -3,12 +3,12 @@ import React, { useEffect, useState, Suspense, lazy } from 'react';
 
 
 const NotificationBell = lazy(() => import('../components/notifications/NotificationBell'))
-const FooterComponent = lazy(() => import('../components/layout/globalFooter'))
 import { shouldShowNotificationBell } from '../components/notifications/bellVisibility';
+const FooterComponent = lazy(() => import('../components/layout/globalFooter'))
 import { useTenantStore } from '../modules/seo/useTenantStore';
 import ModernSidebar from '../components/layout/ModernSidebar';
-import { useAuth } from '../utils/context/AuthContext';
 import { hasSession, getTenantSlug } from '../utils/globalAuth';
+import { useAuth } from '../utils/context/AuthContext';
 import Loader from '../components/loader/loader';
 import { tenantApi } from '../api/tenant.api';
 
@@ -19,6 +19,15 @@ const ChurchFuneralWelfare = lazy(() => import('../modules/landing/ChurchFuneral
 const FuneralHomeSoftware = lazy(() => import('../modules/landing/FuneralHomeSoftware'));
 const OnboardingFlow = lazy(() => import('../modules/onboarding/OnboardingFlow'));
 const InsurancePage = lazy(() => import('../modules/insurance/insurance'));
+// Amani Cover (Montenzuma Monalisa) — the public funeral-insurance site, split
+// across three routes so no single page becomes a wall of text:
+//   /amani/cover        → landing (what it is + how to apply)
+//   /amani/cover/terms  → eligibility, waiting periods, exclusions, claims
+//   /amani/cover/refer  → referral pitch + referral form
+// /insurance is untouched and still serves the Rest Point B2B page.
+const AmaniCoverPage = lazy(() => import('../modules/insurance/amani/AmaniCover'));
+const AmaniTermsPage = lazy(() => import('../modules/insurance/amani/AmaniTerms'));
+const AmaniReferPage = lazy(() => import('../modules/insurance/amani/AmaniRefer'));
 const MemorialPage = lazy(() => import('../modules/memorial/MemorialPage'));
 const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 
@@ -524,7 +533,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           </Suspense>
         } />
 
-        
+
         {/* Deceased Management - All authenticated users */}
         <Route path="all-deceased" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><DeceasedList /></Layout>
@@ -635,7 +644,7 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><PublicMemorialPage /></Layout>
         } />
 
-  
+
 
         {/* Flower Booking - All authenticated users */}
         <Route path="flowers" element={
@@ -937,6 +946,9 @@ const AppRouter = () => (
       <Route path="/portal" element={<Navigate to="/portal/login" replace />} />
       <Route path="/reception" element={<ReceptionPortal />} />
       <Route path="/insurance" element={<InsurancePage />} />
+      <Route path="/amani/cover" element={<AmaniCoverPage />} />
+      <Route path="/amani/cover/terms" element={<AmaniTermsPage />} />
+      <Route path="/amani/cover/refer" element={<AmaniReferPage />} />
       <Route path="/memorial" element={<MemorialPage />} />
       <Route path="/portal/login" element={<PortalLoginPage />} />
       <Route path="/integrations" element={<UpcomingIntegrations />} />
