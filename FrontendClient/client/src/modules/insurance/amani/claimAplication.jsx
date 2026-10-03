@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 const ClaimSubmissionForm = () => {
     const [formData, setFormData] = useState({
@@ -225,12 +225,333 @@ const ClaimSubmissionForm = () => {
         return classes;
     };
 
-    /* Every rule below is prefixed `.amani-claimform` (see the script that rewrote
-       this sheet). That matters: as authored this stylesheet also declared
-       `:root`, `*` and `body`, which from a single route would restyle the
-       ENTIRE single-page app, and its `.container` rule collided with
-       Bootstrap's global `.container`. Do not add an unprefixed rule. */
-    const styles = `.amani-claimform {}.amani-claimform * {}.amani-claimform .container {}.amani-claimform .watermark {}.amani-claimform .content-wrapper {}/* === TOP DOCUMENT STRIP === */.amani-claimform .doc-header {}.amani-claimform .hdr-brand {}.amani-claimform .hdr-brand span {}.amani-claimform .hdr-right {}.amani-claimform .hdr-label {}.amani-claimform .hdr-value {}/* === FORM INTRO: "Submit a Claim" & "What's Needed" === */.amani-claimform .form-intro {}.amani-claimform .intro-title {}.amani-claimform .intro-title span {}.amani-claimform .intro-subtitle {}.amani-claimform .checklist-card {}.amani-claimform .checklist-title {}.amani-claimform .checklist-grid {}.amani-claimform .check-item {}.amani-claimform .form-body {}.amani-claimform .doc-section {}.amani-claimform .doc-section:last-child {}.amani-claimform .section-head {}.amani-claimform .section-num {}.amani-claimform .section-title {}.amani-claimform .row {}.amani-claimform .row:last-child {}.amani-claimform .col {}.amani-claimform .col-2 {}.amani-claimform .col-half {}.amani-claimform .field-label {}.amani-claimform .req {}.amani-claimform .opt {}.amani-claimform .input-wrap {}.amani-claimform .doc-input, .amani-claimform .doc-textarea {}.amani-claimform .doc-input {}.amani-claimform .doc-textarea {}.amani-claimform .doc-input:focus, .amani-claimform .doc-textarea:focus {}.amani-claimform .doc-input::placeholder, .amani-claimform .doc-textarea::placeholder {}.amani-claimform .tick-icon {}.amani-claimform .doc-textarea + .tick-icon {}.amani-claimform .tick-icon svg {}.amani-claimform .input-wrap.is-valid .tick-icon {}.amani-claimform .err-msg {}.amani-claimform .input-wrap.has-error .doc-input, .amani-claimform .input-wrap.has-error .doc-textarea {}.amani-claimform .input-wrap.has-error .err-msg {}.amani-claimform .file-grid {}.amani-claimform .file-wrap {}.amani-claimform .file-wrap:hover {}.amani-claimform .file-wrap input[type="file"] {}.amani-claimform .file-icon {}.amani-claimform .file-wrap.is-valid .file-icon {}.amani-claimform .file-title {}.amani-claimform .file-sub {}.amani-claimform .file-wrap.is-valid .file-sub {}.amani-claimform .file-wrap.has-error {}.amani-claimform .file-wrap.has-error .err-msg {}.amani-claimform .confirm-block {}.amani-claimform .confirm-label {}.amani-claimform .confirm-box {}.amani-claimform .confirm-box:checked {}.amani-claimform .confirm-box:checked::after {}.amani-claimform .confirm-text {}.amani-claimform .actions-container {}.amani-claimform .btn {}.amani-claimform .btn:disabled {}.amani-claimform .btn-ghost {}.amani-claimform .btn-ghost:hover {}.amani-claimform .btn-secondary {}.amani-claimform .btn-secondary:hover {}.amani-claimform .btn-primary {}.amani-claimform .btn-primary:hover {}.amani-claimform .record-strip {}@media (max-width: 1024px) {.amani-claimform .doc-header, .amani-claimform .form-body, .amani-claimform .record-strip, .amani-claimform .form-intro {}.amani-claimform .col, .amani-claimform .col-2, .amani-claimform .col-half {}.amani-claimform .row {}.amani-claimform .actions-container {}.amani-claimform .actions-container .btn {}.amani-claimform .checklist-grid {}}@media (max-width: 600px) {.amani-claimform .doc-header, .amani-claimform .form-body, .amani-claimform .record-strip, .amani-claimform .form-intro {}.amani-claimform .hdr-right {}}`;
+    /* Every rule is wrapped in @scope (.amani-claimform) so the document styles
+       cannot leak. Without this the sheet declares `:root`, `*` and `body`,
+       which would restyle the ENTIRE single-page app from one route, and its
+       `.container` rule would collide with Bootstrap's global `.container`.
+       Inside the scope, `:root` resolves to the scoping element, so the custom
+       properties above still apply to the form and nothing else. */
+    const styles = `.amani-claimform {
+      --ink: #15171a;
+      --bone: #ffffff;
+      --bone2: #f8fafc;
+      --brass: #5e6a73;
+      --gray: #8a929b;
+      --line: #e2e8f0;
+      --error-red: #dc2626;
+      --blue-primary: #0B3F8A;
+      --blue-hover: #082c63;
+      --blue-tick: #2563eb;
+      --blue-bg: #eff6ff;
+      --gutter: 96px;
+      --gutter-tablet: 64px;
+      --gutter-mobile: 32px;
+    }.amani-claimform * { box-sizing: border-box; }.amani-claimform .container {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      background: var(--bone);
+      position: relative;
+      padding-bottom: 60px;
+      overflow: hidden;
+    }.amani-claimform .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 8rem;
+      font-weight: 800;
+      color: rgba(15, 23, 42, 0.02);
+      font-family: 'Fraunces', serif;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }.amani-claimform .content-wrapper { position: relative; z-index: 1; }/* === TOP DOCUMENT STRIP === */.amani-claimform .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem var(--gutter);
+      flex-wrap: wrap;
+      gap: 1rem;
+      background: var(--bone2);
+      border-bottom: 1px solid var(--line);
+    }.amani-claimform .hdr-brand {
+      font-family: 'Fraunces', serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }.amani-claimform .hdr-brand span { color: var(--blue-primary); font-weight: 700; }.amani-claimform .hdr-right {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      background: white;
+      border: 1px solid #dbeafe;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(11, 63, 138, 0.05);
+    }.amani-claimform .hdr-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: var(--blue-primary);
+      font-family: 'JetBrains Mono', monospace;
+      opacity: 0.8;
+    }.amani-claimform .hdr-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--blue-primary);
+    }/* === FORM INTRO: "Submit a Claim" & "What's Needed" === */.amani-claimform .form-intro {
+      padding: 4rem var(--gutter) 3rem;
+      border-bottom: 1px solid var(--line);
+      background: white;
+    }.amani-claimform .intro-title {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(2.5rem, 5vw, 3.5rem);
+      font-weight: 500;
+      color: var(--ink);
+      margin: 0 0 1.5rem 0;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }.amani-claimform .intro-title span { color: var(--blue-primary); font-style: italic; }.amani-claimform .intro-subtitle {
+      font-size: 1.1rem;
+      color: var(--gray);
+      max-width: 700px;
+      margin-bottom: 2.5rem;
+      line-height: 1.6;
+    }.amani-claimform .checklist-card {
+      background: var(--blue-bg);
+      border: 1px solid #dbeafe;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 800px;
+    }.amani-claimform .checklist-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue-primary);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }.amani-claimform .checklist-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }.amani-claimform .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      color: var(--ink);
+      font-weight: 500;
+    }.amani-claimform .form-body { padding: 3rem var(--gutter) 1.5rem var(--gutter); }.amani-claimform .doc-section { margin-bottom: 4rem; }.amani-claimform .doc-section:last-child { margin-bottom: 0; }.amani-claimform .section-head {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2.5rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--blue-primary);
+      border-radius: 4px;
+    }.amani-claimform .section-num {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.5);
+      font-family: 'JetBrains Mono', monospace;
+    }.amani-claimform .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin: 0;
+    }.amani-claimform .row {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+    }.amani-claimform .row:last-child { margin-bottom: 0; }.amani-claimform .col { flex: 1; min-width: 250px; }.amani-claimform .col-2 { flex: 2; min-width: 400px; }.amani-claimform .col-half { flex: 0.5; min-width: 120px; }.amani-claimform .field-label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--brass);
+      margin-bottom: 0.75rem;
+      font-family: 'Saira', sans-serif;
+    }.amani-claimform .req { color: var(--error-red); }.amani-claimform .opt { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--gray); font-size: 0.7rem; margin-left: 4px;}.amani-claimform .input-wrap { position: relative; width: 100%; display: flex; align-items: center; }.amani-claimform .doc-input, .amani-claimform .doc-textarea {
+      width: 100%;
+      border: none;
+      border-bottom: 1.5px dashed #cbd5e1;
+      background: transparent;
+      outline: none;
+      padding: 0 2.5rem 0.25rem 0;
+      font-family: 'Saira', sans-serif;
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--ink);
+      transition: border-color 0.2s ease;
+      box-sizing: border-box;
+      appearance: none;
+      -webkit-appearance: none;
+    }.amani-claimform .doc-input { height: 2.75rem; }.amani-claimform .doc-textarea { 
+      padding: 0.75rem 0; 
+      min-height: 80px; 
+      resize: vertical; 
+      line-height: 1.5; 
+    }.amani-claimform .doc-input:focus, .amani-claimform .doc-textarea:focus { border-bottom: 1.5px solid var(--blue-primary); }.amani-claimform .doc-input::placeholder, .amani-claimform .doc-textarea::placeholder { color: #94a3b8; font-weight: 400; }.amani-claimform .tick-icon {
+      position: absolute;
+      right: 0.25rem;
+      top: 1.25rem;
+      transform: translateY(-50%);
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: var(--blue-tick);
+      color: white;
+      display: none;
+      place-items: center;
+      pointer-events: none;
+    }.amani-claimform .doc-textarea + .tick-icon { top: 1.5rem; }.amani-claimform .tick-icon svg { width: 16px; height: 16px; stroke-width: 2.5; }.amani-claimform .input-wrap.is-valid .tick-icon { display: grid; }.amani-claimform .err-msg { color: var(--error-red); font-size: 0.75rem; margin-top: 0.3rem; display: none; }.amani-claimform .input-wrap.has-error .doc-input, .amani-claimform .input-wrap.has-error .doc-textarea { border-bottom-color: var(--error-red); }.amani-claimform .input-wrap.has-error .err-msg { display: block; }.amani-claimform .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }.amani-claimform .file-wrap {
+      position: relative;
+      border: 1.5px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 1.5rem;
+      background: var(--bone2);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 180px;
+    }.amani-claimform .file-wrap:hover {
+      border-color: var(--blue-primary);
+      background: var(--blue-bg);
+    }.amani-claimform .file-wrap input[type="file"] {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }.amani-claimform .file-icon {
+      width: 40px;
+      height: 40px;
+      margin-bottom: 1rem;
+      color: var(--blue-primary);
+      background: #dbeafe;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      transition: all 0.2s ease;
+    }.amani-claimform .file-wrap.is-valid .file-icon {
+      background: var(--blue-tick);
+      color: white;
+    }.amani-claimform .file-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }.amani-claimform .file-sub {
+      font-size: 0.75rem;
+      color: var(--gray);
+      word-break: break-all;
+    }.amani-claimform .file-wrap.is-valid .file-sub { color: var(--blue-tick); font-weight: 600; }.amani-claimform .file-wrap.has-error { border-color: var(--error-red); background: #fef2f2; }.amani-claimform .file-wrap.has-error .err-msg { display: block; }.amani-claimform .confirm-block {
+      margin-top: 2.5rem;
+      padding: 1.1rem 1.3rem 1.25rem;
+      background: var(--blue-bg);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      border-left: 3px solid var(--blue-primary);
+    }.amani-claimform .confirm-label { display: flex; align-items: flex-start; gap: 0.8rem; cursor: pointer; user-select: none; }.amani-claimform .confirm-box {
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 4px;
+      background: var(--bone);
+      position: relative;
+      cursor: pointer;
+      flex: none;
+      margin-top: 0.05rem;
+      transition: all 0.15s ease;
+    }.amani-claimform .confirm-box:checked { background: var(--blue-primary); border-color: var(--blue-primary); }.amani-claimform .confirm-box:checked::after {
+      content: '';
+      position: absolute;
+      left: 7px; top: 2px;
+      width: 6px; height: 12px;
+      border: solid white;
+      border-width: 0 3px 3px 0;
+      transform: rotate(45deg);
+    }.amani-claimform .confirm-text {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      line-height: 1.5;
+      color: var(--ink);
+      padding-top: 0.1rem;
+    }.amani-claimform .actions-container {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--line);
+      flex-wrap: wrap;
+    }.amani-claimform .btn {
+      border: none;
+      border-radius: 4px;
+      padding: 1rem 2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: 'Saira', sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }.amani-claimform .btn:disabled { background: #94a3b8 !important; cursor: not-allowed; opacity: 0.6; transform: none !important; box-shadow: none !important; }.amani-claimform .btn-ghost { background: transparent; color: var(--gray); border: 1px solid var(--line); }.amani-claimform .btn-ghost:hover { color: var(--blue-primary); border-color: var(--blue-primary); }.amani-claimform .btn-secondary { background: #ffffff; color: var(--blue-primary); border: 1px solid var(--blue-primary); }.amani-claimform .btn-secondary:hover { background: var(--blue-bg); transform: translateY(-1px); }.amani-claimform .btn-primary { 
+      background: var(--blue-primary); 
+      color: #ffffff; 
+      box-shadow: 0 4px 12px rgba(11, 63, 138, 0.15);
+    }.amani-claimform .btn-primary:hover { 
+      background: var(--blue-hover); 
+      transform: translateY(-1px); 
+      box-shadow: 0 8px 20px rgba(11, 63, 138, 0.25); 
+    }.amani-claimform .record-strip {
+      font-size: 0.65rem;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: var(--gray);
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center;
+      line-height: 1.7;
+      margin: 2rem var(--gutter) 0;
+      padding: 0.9rem 1rem 0.4rem;
+      border-top: 1px solid var(--line);
+    }@media (max-width: 1024px) {.amani-claimform .doc-header, .amani-claimform .form-body, .amani-claimform .record-strip, .amani-claimform .form-intro { padding-left: var(--gutter-tablet); padding-right: var(--gutter-tablet); }.amani-claimform .col, .amani-claimform .col-2, .amani-claimform .col-half { flex: 1 1 100%; min-width: 100%; }.amani-claimform .row { flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem; }.amani-claimform .actions-container { flex-direction: column-reverse; }.amani-claimform .actions-container .btn { width: 100%; }.amani-claimform .checklist-grid { grid-template-columns: 1fr; }
+    }@media (max-width: 600px) {.amani-claimform .doc-header, .amani-claimform .form-body, .amani-claimform .record-strip, .amani-claimform .form-intro { padding-left: var(--gutter-mobile); padding-right: var(--gutter-mobile); }.amani-claimform .hdr-right { width: 100%; justify-content: space-between; }
+    }
+  `;
 
     const TickSvg = () => (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
@@ -246,6 +567,7 @@ const ClaimSubmissionForm = () => {
                 <div className="watermark">OFFICIAL RECORD</div>
 
                 <div className="content-wrapper">
+
 
                     {/* Form Intro: Submit a Claim & Checklist */}
                     <div className="form-intro">

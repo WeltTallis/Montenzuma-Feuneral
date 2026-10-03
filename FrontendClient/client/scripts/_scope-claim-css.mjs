@@ -79,7 +79,9 @@ while (i < css.length) {
   }
 
   if (ch === '}') {
-    out += '}';
+    /* CRITICAL: emit the buffered declarations before the closing brace. The
+       first version of this script dropped them, collapsing every rule to `{}`. */
+    out += buf + '}';
     buf = '';
     i++;
     continue;
