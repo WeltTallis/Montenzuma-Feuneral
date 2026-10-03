@@ -225,14 +225,12 @@ const ClaimSubmissionForm = () => {
         return classes;
     };
 
-    /* Every rule is wrapped in @scope (.amani-claimform) so the document styles
-       cannot leak. Without this the sheet declares `:root`, `*` and `body`,
-       which would restyle the ENTIRE single-page app from one route, and its
-       `.container` rule would collide with Bootstrap's global `.container`.
-       Inside the scope, `:root` resolves to the scoping element, so the custom
-       properties above still apply to the form and nothing else. */
+    /* Every rule below is prefixed `.amani-claimform` (see the script that rewrote
+       this sheet). That matters: as authored this stylesheet also declared
+       `:root`, `*` and `body`, which from a single route would restyle the
+       ENTIRE single-page app, and its `.container` rule collided with
+       Bootstrap's global `.container`. Do not add an unprefixed rule. */
     const styles = `
-    @scope (.amani-claimform) {
     :root {
       --ink: #15171a;
       --bone: #ffffff;
@@ -684,7 +682,6 @@ const ClaimSubmissionForm = () => {
       .doc-header, .form-body, .record-strip, .form-intro { padding-left: var(--gutter-mobile); padding-right: var(--gutter-mobile); }
       .hdr-right { width: 100%; justify-content: space-between; }
     }
-    }
   `;
 
     const TickSvg = () => (
@@ -701,17 +698,6 @@ const ClaimSubmissionForm = () => {
                 <div className="watermark">OFFICIAL RECORD</div>
 
                 <div className="content-wrapper">
-
-                    {/* Top Document Strip */}
-                    <header className="doc-header">
-                        <div className="hdr-brand">
-                            Amani <span>Cover</span> · Montenzuma Monalisa Funeral
-                        </div>
-                        <div className="hdr-right">
-                            <span className="hdr-label">Filing Date:</span>
-                            <span className="hdr-value">{fillStamp}</span>
-                        </div>
-                    </header>
 
                     {/* Form Intro: Submit a Claim & Checklist */}
                     <div className="form-intro">
