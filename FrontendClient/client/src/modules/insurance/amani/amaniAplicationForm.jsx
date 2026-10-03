@@ -1,0 +1,709 @@
+/* ==========================================================================
+   Amani Cover — APPLICATION FORM  (/amani/cover  →  #apply)
+
+   WHY THIS FILE LOOKS DIFFERENT FROM THE OTHER AMANI MODULES:
+   The other Amani pages are Tailwind + the shared `ac-*` colour tokens (see
+   src/index.css). This form is a fixed "official record" document, so it
+   carries its own stylesheet in the STYLES constant instead of utility classes.
+
+   Every rule below is namespaced under `.amani-appform` and every class is
+   prefixed `af-`. That is deliberate and load-bearing:
+     • a bare `.container` rule would collide with Bootstrap's global
+       `.container`, and a bare `body { … }` or `* { box-sizing }` rule would
+       restyle the ENTIRE single-page app from inside one component;
+     • the fonts this document uses (Fraunces, JetBrains Mono, Saira,
+       Cormorant Garamond, Karla) are ALREADY requested by the single combined
+       Google Fonts URL in src/index.css, so this file must NOT add its own
+       <link> tags — each extra one is another sequential network request that
+       delays first paint.
+
+   The cover choices are imported from amaniData.coverOptions so this form can
+   never drift from the plan list used elsewhere on the site.
+   ========================================================================== */
+
+import { useState } from 'react';
+import { coverOptions } from './amaniData';
+
+/* One object drives the initial state, the reset AND the field list, so a field
+   can never end up validated-but-uninitialised — the bug that made the previous
+   version call .trim() on undefined.
+   `confirmAccepted` is a BOOLEAN; it was string-typed, so it could never equal
+   `true` and the checkbox could never validate. */
+const INITIAL = {
+  fullName: '',
+  idNumber: '',
+  age: '',
+  employment: '',
+  phone: '',
+  email: '',
+  cover: '',
+  confirmAccepted: false,
+};
+
+/* Required fields, in document order. `email` is deliberately absent — it is
+   optional and is only validated when the visitor actually fills it in. */
+const REQUIRED_FIELDS = ['fullName', 'idNumber', 'age', 'employment', 'phone', 'cover'];
+
+const EMPLOYMENT_OPTIONS = [
+  { value: 'employed', label: 'Employed' },
+  { value: 'self-employed', label: 'Self-employed' },
+  { value: 'business', label: 'Business person' },
+  { value: 'unemployed', label: 'Unemployed' },
+  { value: 'student', label: 'Student' },
+  { value: 'retired', label: 'Retired' },
+];
+
+/* SINGLE SOURCE OF TRUTH for validity. Every caller — onChange, onBlur,
+   handleSubmit, and the green tick — routes through this. The previous version
+   copy-pasted these rules into three places that slowly drifted apart. */
+function isFieldValid(name, value) {
+  switch (name) {
+    case 'fullName':
+      return value.trim().length > 1;
+    case 'idNumber':
+      return value.trim().length >= 4;
+    case 'age': {
+      const age = parseInt(value, 10);
+      return value !== '' && Number.isFinite(age) && age >= 18 && age <= 120;
+    }
+    case 'employment':
+    case 'cover':
+      return value != null && value !== '';
+    case 'phone':
+      return value.replace(/\D/g, '').length >= 9;
+    case 'email':
+      /* Optional: empty is valid, filled-in must match. */
+      return value.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    case 'confirmAccepted':
+      return value === true;
+    default:
+      return true;
+  }
+}
+
+function errorMessageFor(name) {
+  switch (name) {
+    case 'fullName': return 'Full name is required.';
+    case 'idNumber': return 'Valid ID number is required.';
+    case 'age': return 'You must be 18 or older.';
+    case 'employment': return 'Please select your employment status.';
+    case 'phone': return 'Enter a valid phone number.';
+    case 'email': return 'Enter a valid email address.';
+    case 'cover': return 'Please choose a cover type.';
+    case 'confirmAccepted': return 'Please tick the box to confirm before continuing.';
+    default: return 'This field is required.';
+  }
+}
+
+/* Guarded: an invalid Date would otherwise render "Invalid Date" straight into
+   the document header. */
+function formatStamp(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+const TickSvg = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+export default function AmaniApplicationForm() {
+  const [formData, setFormData] = useState(INITIAL);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  /* Frozen at mount so the "Filling Date & Time" stamp cannot drift between
+     renders while the visitor is typing. */
+  const [fillStamp] = useState(() => formatStamp(new Date()));
+
+  const handleChange = (event) => {
+    const { name, type, checked, value } = event.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
+
+    /* Re-validate on every keystroke, but only once the field has been blurred
+       — otherwise a red error flashes up while typing the first character. */
+    if (touched[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: isFieldValid(name, nextValue) ? undefined : errorMessageFor(name),
+      }));
+    }
+  };
+
+  const handleBlur = (event) => {
+    const { name, type, checked, value } = event.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => ({
+      ...prev,
+      [name]: isFieldValid(name, nextValue) ? undefined : errorMessageFor(name),
+    }));
+  };
+
+  const handleReset = () => {
+    setFormData(INITIAL);
+    setErrors({});
+    setTouched({});
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    const nextErrors = {};
+    const nextTouched = {};
+    /* Required first so the error summary reads in document order, then the
+       optional email and the declaration. */
+    const fields = [...REQUIRED_FIELDS, 'email', 'confirmAccepted'];
+
+    fields.forEach((field) => {
+      nextTouched[field] = true;
+      if (!isFieldValid(field, formData[field])) {
+        nextErrors[field] = errorMessageFor(field);
+      }
+    });
+
+    setTouched(nextTouched);
+    setErrors(nextErrors);
+
+    const firstBad = fields.find((field) => nextErrors[field]);
+    if (firstBad) {
+      /* Focus the offending control directly. The old code relied on
+         querySelector('.has-error'), a class React may not have committed to the
+         DOM yet on the same tick. */
+      const node = document.querySelector(`[data-af-field="${firstBad}"]`);
+      if (node) {
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof node.focus === 'function') node.focus({ preventScroll: true });
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
+    /* No backend is wired up yet — the landing page's own form behaves the same
+       way. Swap this timeout for the real POST once the endpoint exists. */
+    window.setTimeout(() => {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }, 1200);
+  };
+
+  /* Wrapper class: green tick once valid, red once touched AND invalid. */
+  const getInputWrapClass = (name) => {
+    const value = formData[name];
+    let classes = 'af-input-wrap';
+    if (value !== '' && value != null && isFieldValid(name, value)) classes += ' is-valid';
+    if (touched[name] && errors[name]) classes += ' has-error';
+    return classes;
+  };
+
+  /* ------------------------------------------------------------------
+     Document stylesheet. Every selector is scoped under .amani-appform and
+     prefixed `af-`, so nothing here can reach the rest of the SPA. The global
+     reset (`*`, `body`, `:root`) that the previous version injected has been
+     dropped on purpose — the host app already owns those in src/index.css.
+     ------------------------------------------------------------------ */
+  const STYLES = `
+    .amani-appform {
+      --af-line: #e2e8f0;
+      --af-gray: #64748b;
+      --af-muted: #94a3b8;
+      --af-error: #dc2626;
+      --af-blue: #0b3f8a;
+      --af-blue-hover: #082c63;
+      --af-tick: #2563eb;
+      --af-gutter: 96px;
+      --af-gutter-tablet: 64px;
+      --af-gutter-mobile: 32px;
+
+      position: relative;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      overflow: hidden;
+      color: #15171a;
+      font-family: 'Saira', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .af-watermark {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-family: 'Fraunces', Georgia, serif; font-size: 8rem; font-weight: 800;
+      color: rgba(15, 23, 42, 0.02); white-space: nowrap; pointer-events: none;
+      z-index: 0; letter-spacing: 0.2em; text-transform: uppercase;
+    }
+
+    .af-content { position: relative; z-index: 1; }
+
+    .af-doc-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 2rem;
+      padding: 3rem var(--af-gutter) 2rem;
+      border-bottom: 1px solid var(--af-line);
+    }
+    .af-hdr-left { flex: 1; min-width: 300px; }
+    .af-hdr-welcome {
+      font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem;
+      font-weight: 500; margin-bottom: 1.5rem;
+    }
+    .af-hdr-facility { display: flex; flex-direction: column; gap: 0.5rem; }
+    .af-fac-line {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.8rem; color: var(--af-gray);
+    }
+    .af-fac-line svg { width: 14px; height: 14px; stroke: var(--af-blue); flex: none; }
+
+    .af-hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+    .af-hdr-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
+    }
+    .af-hdr-value {
+      font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 500;
+      color: var(--af-blue); background: #eff6ff;
+      padding: 0.2rem 0.8rem; border: 1px solid #dbeafe; border-radius: 4px;
+    }
+
+    .af-form-body { padding: 3rem var(--af-gutter) 1.5rem; }
+    .af-doc-section { margin-bottom: 3rem; }
+    .af-doc-section:last-child { margin-bottom: 0; }
+
+    .af-section-head {
+      display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;
+      padding: 0.75rem 1.25rem; background: var(--af-blue); border-radius: 4px;
+    }
+    .af-section-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+      font-weight: 500; color: rgba(255, 255, 255, 0.55);
+    }
+    .af-section-title {
+      font-family: 'Fraunces', Georgia, serif; font-size: 1.05rem;
+      font-weight: 500; color: #fff; margin: 0;
+    }
+
+    .af-row { display: flex; gap: 2rem; margin-bottom: 1.75rem; }
+    .af-row:last-child { margin-bottom: 0; }
+    .af-col { flex: 1 1 0; min-width: 0; }
+    .af-field-label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; }
+    .af-req { color: var(--af-error); font-size: 0.7rem; margin-left: 4px; }
+
+    .af-input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
+    .af-doc-input, .af-doc-select {
+      width: 100%; height: 2.75rem; border: none;
+      border-bottom: 1.5px dashed #cbd5e1; background: transparent; outline: none;
+      padding: 0 2.5rem 0.25rem 0; font-family: 'Saira', system-ui, sans-serif;
+      font-size: 1rem; font-weight: 400; color: #15171a;
+      transition: border-color 0.2s ease;
+      appearance: none; -webkit-appearance: none;
+    }
+    .af-doc-input:focus, .af-doc-select:focus { border-bottom: 1.5px solid var(--af-blue); }
+    .af-doc-input::placeholder { color: var(--af-muted); font-weight: 400; }
+    .af-doc-select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.25rem center;
+    }
+
+    .af-tick-icon {
+      position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%);
+      width: 1.5rem; height: 1.5rem; border-radius: 50%;
+      background: var(--af-tick); color: #fff;
+      display: none; place-items: center; pointer-events: none;
+    }
+    .af-tick-icon svg { width: 16px; height: 16px; }
+    .af-input-wrap.is-valid .af-tick-icon { display: grid; }
+
+    .af-err-msg { display: block; color: var(--af-error); font-size: 0.75rem; margin-top: 0.3rem; }
+    .af-input-wrap.has-error .af-doc-input,
+    .af-input-wrap.has-error .af-doc-select { border-bottom-color: var(--af-error); }
+
+    .af-radio-group { display: flex; flex-wrap: wrap; gap: 1rem 2rem; padding-top: 0.5rem; }
+    .af-radio-opt { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+    .af-radio-opt input {
+      appearance: none; -webkit-appearance: none; width: 20px; height: 20px;
+      border: 1.5px solid #cbd5e1; border-radius: 50%; position: relative;
+      cursor: pointer; margin: 0; transition: all 0.2s; flex: none;
+    }
+    .af-radio-opt input:checked { border-color: var(--af-blue); }
+    .af-radio-opt input:checked::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 10px; height: 10px; border-radius: 50%; background: var(--af-blue);
+    }
+    .af-radio-opt input:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
+    .af-radio-opt span { font-size: 1rem; }
+    .af-input-wrap.has-error .af-radio-group {
+      padding-left: 4px; border-left: 2px solid var(--af-error);
+    }
+
+    .af-confirm-block {
+      margin-top: 1.5rem; padding: 1.1rem 1.3rem 1.25rem; background: #eff6ff;
+      border-radius: 4px; display: flex; flex-direction: column; gap: 0.55rem;
+      border-left: 3px solid var(--af-blue);
+    }
+    .af-confirm-label { display: flex; align-items: flex-start; gap: 0.8rem; cursor: pointer; }
+    .af-confirm-box {
+      appearance: none; -webkit-appearance: none; width: 22px; height: 22px;
+      border: 1.5px solid #cbd5e1; border-radius: 4px; background: #fff;
+      position: relative; cursor: pointer; margin: 0; flex: none;
+    }
+    .af-confirm-box:checked { background: var(--af-blue); border-color: var(--af-blue); }
+    .af-confirm-box:checked::after {
+      content: ''; position: absolute; top: 2px; left: 7px;
+      width: 5px; height: 10px; border: solid #fff;
+      border-width: 0 2px 2px 0; transform: rotate(45deg);
+    }
+    .af-confirm-box:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
+    .af-confirm-label span { font-size: 0.85rem; line-height: 1.5; }
+
+    .af-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; }
+    .af-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      height: 2.75rem; padding: 0 1.75rem; border: none; border-radius: 4px;
+      font-family: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .af-btn-primary { background: var(--af-blue); color: #fff; box-shadow: 0 4px 12px rgba(11, 63, 138, 0.15); }
+    .af-btn-primary:hover:not(:disabled) { background: var(--af-blue-hover); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(11, 63, 138, 0.25); }
+    .af-btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
+    .af-btn-ghost { background: transparent; color: var(--af-blue); box-shadow: inset 0 0 0 1.5px var(--af-blue); }
+    .af-btn-ghost:hover { background: #eff6ff; }
+
+    .af-record-strip {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
+      text-align: center; line-height: 1.7; margin: 2rem var(--af-gutter) 0;
+      padding: 0.9rem 1rem 0.4rem; border-top: 1px solid var(--af-line);
+    }
+
+    .af-done { padding: 3rem 0; text-align: center; }
+    .af-done h3 { font-family: 'Fraunces', Georgia, serif; font-size: 1.75rem; margin: 1rem 0 0.5rem; }
+    .af-done p { color: var(--af-gray); margin: 0 auto; max-width: 32rem; }
+    .af-done-mark {
+      display: grid; place-items: center; width: 4rem; height: 4rem; margin: 0 auto;
+      border-radius: 50%; background: var(--af-tick); color: #fff;
+    }
+    .af-done-mark svg { width: 28px; height: 28px; }
+
+    @media (max-width: 1024px) {
+      .af-doc-header, .af-form-body, .af-record-strip {
+        padding-left: var(--af-gutter-tablet); padding-right: var(--af-gutter-tablet);
+      }
+      .af-row { flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem; }
+      .af-actions { flex-direction: column-reverse; }
+      .af-actions .af-btn { width: 100%; }
+    }
+    @media (max-width: 600px) {
+      .af-doc-header, .af-form-body, .af-record-strip {
+        padding-left: var(--af-gutter-mobile); padding-right: var(--af-gutter-mobile);
+      }
+      .af-hdr-right { align-items: flex-start; width: 100%; }
+      .af-watermark { font-size: 4rem; }
+    }
+  `;
+
+  return (
+    <div className="amani-appform">
+      <style>{STYLES}</style>
+      <div className="af-watermark" aria-hidden="true">OFFICIAL RECORD</div>
+
+      <div className="af-content">
+        {/* Document header */}
+        <header className="af-doc-header">
+          <div className="af-hdr-left">
+            <div className="af-hdr-welcome"> Amani  Cover  Apllication Form Montenzuma</div>
+            <div className="af-hdr-facility">
+              <div className="af-fac-line">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                (020) 2346928/9
+              </div>
+              <div className="af-fac-line">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,6 12,13 2,6" /></svg>
+                monte2lisa@yahoo.com
+              </div>
+              <div className="af-fac-line">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                Mbagathi Way, Opp. Forces Memorial Hospital
+              </div>
+            </div>
+          </div>
+          <div className="af-hdr-right">
+            <div className="af-hdr-label">Filling Date &amp; Time</div>
+            <div className="af-hdr-value">{fillStamp}</div>
+          </div>
+        </header>
+
+        <div className="af-form-body">
+          {submitted ? (
+            <div className="af-done" role="status">
+              <span className="af-done-mark"><TickSvg /></span>
+              <h3>Thank you.</h3>
+              <p>
+                We&rsquo;ve received your application. A caring member of our team will call you
+                within one working day to explain your options and next steps.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Section 01 — personal information */}
+              <section className="af-doc-section">
+                <div className="af-section-head">
+                  <span className="af-section-num">01</span>
+                  <h2 className="af-section-title">Personal Information</h2>
+                </div>
+
+                <div className="af-row">
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-fullName">
+                      Full Name <span className="af-req">*</span>
+                    </label>
+                    <div className={getInputWrapClass('fullName')}>
+                      <input
+                        id="af-fullName"
+                        data-af-field="fullName"
+                        className="af-doc-input"
+                        type="text"
+                        name="fullName"
+                        placeholder="Enter full legal name"
+                        value={formData.fullName}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.fullName && errors.fullName)}
+                        required
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.fullName && errors.fullName && (
+                        <span className="af-err-msg">{errors.fullName}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-idNumber">
+                      ID Number <span className="af-req">*</span>
+                    </label>
+                    <div className={getInputWrapClass('idNumber')}>
+                      <input
+                        id="af-idNumber"
+                        data-af-field="idNumber"
+                        className="af-doc-input"
+                        type="text"
+                        name="idNumber"
+                        placeholder="National ID / Passport"
+                        value={formData.idNumber}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.idNumber && errors.idNumber)}
+                        required
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.idNumber && errors.idNumber && (
+                        <span className="af-err-msg">{errors.idNumber}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="af-row">
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-age">
+                      Age <span className="af-req">*</span>
+                    </label>
+                    <div className={getInputWrapClass('age')}>
+                      <input
+                        id="af-age"
+                        data-af-field="age"
+                        className="af-doc-input"
+                        type="number"
+                        name="age"
+                        min="18"
+                        max="120"
+                        placeholder="Years"
+                        value={formData.age}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.age && errors.age)}
+                        required
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.age && errors.age && (
+                        <span className="af-err-msg">{errors.age}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-employment">
+                      Employment Status <span className="af-req">*</span>
+                    </label>
+                    <div className={getInputWrapClass('employment')}>
+                      <select
+                        id="af-employment"
+                        data-af-field="employment"
+                        className="af-doc-select"
+                        name="employment"
+                        value={formData.employment}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.employment && errors.employment)}
+                        required
+                      >
+                        <option value="">Select status&hellip;</option>
+                        {EMPLOYMENT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.employment && errors.employment && (
+                        <span className="af-err-msg">{errors.employment}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Section 02 — cover selection. Options come from amaniData.coverOptions so
+                  this form and the landing page's <select> can never disagree. */}
+              <section className="af-doc-section">
+                <div className="af-section-head">
+                  <span className="af-section-num">02</span>
+                  <h2 className="af-section-title">Insurance &amp; Cover Selection</h2>
+                </div>
+
+                <div className="af-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <label className="af-field-label">
+                    Choose Cover Type <span className="af-req">*</span>
+                  </label>
+                  <div className={getInputWrapClass('cover')} style={{ width: '100%' }}>
+                    <div className="af-radio-group" role="radiogroup" aria-label="Choose cover type">
+                      {coverOptions.map((option) => (
+                        <label className="af-radio-opt" key={option.value}>
+                          <input
+                            type="radio"
+                            name="cover"
+                            value={option.value}
+                            checked={formData.cover === option.value}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {touched.cover && errors.cover && (
+                      <span className="af-err-msg">{errors.cover}</span>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Section 03 — contact */}
+              <section className="af-doc-section">
+                <div className="af-section-head">
+                  <span className="af-section-num">03</span>
+                  <h2 className="af-section-title">Contact Details</h2>
+                </div>
+
+                <div className="af-row">
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-phone">
+                      Phone Number <span className="af-req">*</span>
+                    </label>
+                    <div className={getInputWrapClass('phone')}>
+                      <input
+                        id="af-phone"
+                        data-af-field="phone"
+                        className="af-doc-input"
+                        type="tel"
+                        name="phone"
+                        placeholder="e.g. 0722 268 566"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.phone && errors.phone)}
+                        required
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.phone && errors.phone && (
+                        <span className="af-err-msg">{errors.phone}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-email">
+                      Email Address <span style={{ fontWeight: 400, color: 'var(--af-muted)' }}>(optional)</span>
+                    </label>
+                    <div className={getInputWrapClass('email')}>
+                      <input
+                        id="af-email"
+                        data-af-field="email"
+                        className="af-doc-input"
+                        type="email"
+                        name="email"
+                        placeholder="you@example.com"
+                        value={formData.email}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.email && errors.email)}
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.email && errors.email && (
+                        <span className="af-err-msg">{errors.email}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Declaration */}
+              <div className={touched.confirmAccepted && errors.confirmAccepted ? 'has-error' : undefined}>
+                <div className="af-confirm-block">
+                  <label className="af-confirm-label">
+                    <input
+                      className="af-confirm-box"
+                      type="checkbox"
+                      name="confirmAccepted"
+                      checked={formData.confirmAccepted}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                    <span>
+                      I confirm that the details above are true and correct, and I understand that
+                      Amani Cover is arranged by Montenzuma Monalisa Funeral Home. I have read the
+                      cover terms and agree to be contacted about my application.
+                    </span>
+                  </label>
+                  {touched.confirmAccepted && errors.confirmAccepted && (
+                    <span className="af-err-msg">{errors.confirmAccepted}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="af-actions">
+                <button type="button" className="af-btn af-btn-ghost" onClick={handleReset}>
+                  Clear form
+                </button>
+                <button type="submit" className="af-btn af-btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Submitting…' : 'Submit application'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {!submitted && (
+          <p className="af-record-strip">
+            Montenzuma Monalisa Funeral Home · Amani Cover · Nairobi Branch
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

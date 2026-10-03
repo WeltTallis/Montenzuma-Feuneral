@@ -519,7 +519,7 @@ export default function App() {
         .map-truck { position: absolute; left: 40%; background: ${C.ink}; padding: 0.5rem; border-radius: 6px; border: 1px solid ${C.lineDark}; z-index: 3; animation: truckMove 3s infinite alternate ease-in-out; }
 
         /* -- Features section (professional) -- */
-        .features-head { text-align: center; margin-bottom: 5rem; }
+        .features-head { text-align: center; margin-bottom: 3rem; }
         .features-pill { display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.5rem 1.15rem; border: 1px solid ${C.line}; border-radius: 999px; background: ${C.bone2}; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: ${C.brass}; margin-bottom: 1.6rem; }
         .features-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: ${C.verdigris}; animation: subtle-pulse 2.4s infinite; }
         .features-heading { font-size: clamp(2.1rem, 4.5vw, 3.1rem); line-height: 1.12; max-width: 760px; margin: 0 auto 1.1rem; }

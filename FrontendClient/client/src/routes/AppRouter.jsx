@@ -20,14 +20,20 @@ const FuneralHomeSoftware = lazy(() => import('../modules/landing/FuneralHomeSof
 const OnboardingFlow = lazy(() => import('../modules/onboarding/OnboardingFlow'));
 const InsurancePage = lazy(() => import('../modules/insurance/insurance'));
 // Amani Cover (Montenzuma Monalisa) — the public funeral-insurance site, split
-// across three routes so no single page becomes a wall of text:
+// across several routes so no single page becomes a wall of text:
 //   /amani/cover        → landing (what it is + how to apply)
+//   /amani/cover/apply  → the application document on its own page
 //   /amani/cover/terms  → eligibility, waiting periods, exclusions, claims
 //   /amani/cover/refer  → referral pitch + referral form
+//   /amani/claims       → submit a claim (for people who already hold cover)
+//   /amani/payments     → how to make a contribution
 // /insurance is untouched and still serves the Rest Point B2B page.
 const AmaniCoverPage = lazy(() => import('../modules/insurance/amani/AmaniCover'));
 const AmaniTermsPage = lazy(() => import('../modules/insurance/amani/AmaniTerms'));
 const AmaniReferPage = lazy(() => import('../modules/insurance/amani/AmaniRefer'));
+const AmaniApplyPage = lazy(() => import('../modules/insurance/amani/AmaniApply'));
+const AmaniClaimsPage = lazy(() => import('../modules/insurance/amani/AmaniClaims'));
+const AmaniPaymentsPage = lazy(() => import('../modules/insurance/amani/AmaniPayments'));
 const MemorialPage = lazy(() => import('../modules/memorial/MemorialPage'));
 const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 
@@ -947,8 +953,11 @@ const AppRouter = () => (
       <Route path="/reception" element={<ReceptionPortal />} />
       <Route path="/insurance" element={<InsurancePage />} />
       <Route path="/amani/cover" element={<AmaniCoverPage />} />
+      <Route path="/amani/cover/apply" element={<AmaniApplyPage />} />
       <Route path="/amani/cover/terms" element={<AmaniTermsPage />} />
       <Route path="/amani/cover/refer" element={<AmaniReferPage />} />
+      <Route path="/amani/claims" element={<AmaniClaimsPage />} />
+      <Route path="/amani/payments" element={<AmaniPaymentsPage />} />
       <Route path="/memorial" element={<MemorialPage />} />
       <Route path="/portal/login" element={<PortalLoginPage />} />
       <Route path="/integrations" element={<UpcomingIntegrations />} />

@@ -131,7 +131,7 @@ export default function AmaniTerms() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
                 href="/amani/cover#apply"
-                className="inline-flex h-13 items-center justify-center rounded-xl bg-ac-primary px-7 text-base font-medium text-ac-onprimary transition-colors hover:bg-ac-primary/90"
+                className="inline-flex h-13 items-center justify-center rounded-xl bg-ac-primary px-7 text-base font-medium text-white transition-colors hover:bg-ac-primary/90"
               >
                 Start an application
               </a>

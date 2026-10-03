@@ -1,14 +1,9 @@
 
 
-import { useState } from 'react';
 import {
   ArrowRight,
   Check,
-  Clock,
-  FileCheck2,
-  LockKeyhole,
   Phone,
-  PhoneCall,
   Plus,
   ShieldCheck,
   Star,
@@ -17,12 +12,12 @@ import {
   CONTACT,
   PHOTOS,
   aboutPoints,
-  coverOptions,
   faqs,
   moments,
   promises,
   steps,
 } from './amaniData';
+import AmaniApplicationForm from './amaniAplicationForm';
 import { AmaniFooter, AmaniNav, FillImage } from './AmaniUi';
 import './AmaniCover.css';
 
@@ -43,10 +38,10 @@ export default function AmaniCover() {
         <PromiseBand />
         <Moments />
         <About />
-        <CareTeam />
         <HowItWorks />
         <Faq />
-        <ApplyForm />
+        <ApplySection />
+        <ClaimBand />
       </main>
 
       <AmaniFooter />
@@ -74,23 +69,26 @@ function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            Amani Cover helps your family honour a life with dignity  without carrying the
-            financial burden alone. Prepare today, so tomorrow they can simply be together.
+            Amani Cover helps your family honour a life with dignity without carrying the
+            financial burden alone. Arranged with care by Montenzuma Monalisa Funeral Home.
           </p>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
             <a
               href="#apply"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-base font-medium text-ac-onprimary shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-base font-medium text-white shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
             >
               Find your cover
               <ArrowRight className="size-4" aria-hidden="true" />
             </a>
+            {/* Second CTA. There is no /amani/payment route yet, so this dials the
+                branch line — replace href with the real payment URL once it exists. */}
             <a
               href={CONTACT.phoneHref}
-              className="inline-flex h-13 items-center justify-center rounded-xl border border-ac-primary/20 px-7 text-base font-medium text-ac-primary transition-colors hover:bg-ac-primary/5"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-accent px-7 text-base font-medium text-white shadow-lg shadow-ac-accent/20 transition-colors hover:bg-ac-accent/90"
             >
-              Speak to someone
+              Make a payment
+              <ArrowRight className="size-4" aria-hidden="true" />
             </a>
           </div>
 
@@ -112,7 +110,7 @@ function Hero() {
                 ))}
                 <span className="ml-2 text-sm font-semibold text-ac-primary">4.9</span>
               </div>
-              <p className="mt-1 text-sm text-ac-mutedfg">Trusted by 12,000+ families</p>
+              <p className="mt-1 text-sm text-ac-mutedfg">Trusted by families across Kenya</p>
             </div>
           </div>
         </div>
@@ -245,7 +243,7 @@ function Moments() {
 }
 
 
-/* ── about.tsx ────────────────────────────────────────────────── */
+/* ── about.tsx ─────── */
 function About() {
   return (
     <section id="about" className="scroll-mt-20 px-6 py-20 lg:px-10 lg:py-28">
@@ -272,7 +270,7 @@ function About() {
                 the brand's meaning reads clearly against the white page. */}
             <div className="rounded-2xl bg-ac-primary p-5 text-center shadow-sm sm:p-7">
               <p className="font-serif text-xl text-ac-onprimary sm:text-2xl">Amani</p>
-              <p className="text-sm italic text-ac-onprimary/85">Peace  You Deserve</p>
+              <p className="text-sm italic text-ac-onprimary/85">Peace — You Deserve</p>
             </div>
           </div>
         </div>
@@ -286,7 +284,7 @@ function About() {
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-ac-mutedfg text-pretty">
             For over 25 years, Montenzuma Monalisa Funeral Home has walked beside families in their
-            hardest moments. Amani Cover brings that same care forward  so the people you love are
+            hardest moments. Amani Cover brings that same care forward so the people you love are
             never left to face it alone.
           </p>
           <ul className="mt-8 flex flex-col gap-4">
@@ -305,92 +303,48 @@ function About() {
   );
 }
 
-/* ── care-team.tsx ────────────────────────────────────────────── */
-const CARE_FEATURES = [
-  { icon: PhoneCall, title: 'One call, day or night', text: 'A real person answers our family line, 24 hours a day.' },
-  { icon: FileCheck2, title: 'We handle the paperwork', text: 'Your dedicated planner coordinates every arrangement.' },
-  { icon: Clock, title: 'Support that stays', text: 'We check in with your family long after the service.' },
-];
-
-function CareTeam() {
-  return (
-    <section aria-labelledby="care-title" className="px-6 lg:px-10">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-ac-primary text-ac-onprimary">
-        <div className="grid lg:grid-cols-2">
-          <div className="relative min-h-[22rem] lg:min-h-full">
-            <FillImage
-              src={PHOTOS.consultant}
-              alt="A caring Amani advisor talking with a mother and her adult daughter at home"
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-          </div>
-          <div className="p-8 sm:p-12 lg:p-16">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-highlight">
-              Your family planner
-            </p>
-            <h2
-              id="care-title"
-              className="mt-4 font-serif text-[clamp(2.25rem,4vw,3.25rem)] font-medium leading-[1.05] tracking-tight text-balance"
-            >
-              Someone who knows your name  and your family&rsquo;s wishes.
-            </h2>
-            <p className="mt-6 leading-relaxed text-ac-onprimary/75 text-pretty">
-              Every Amani member is paired with a trained planner who listens first, explains
-              everything plainly, and stands beside your family when it matters most.
-            </p>
-
-            <ul className="mt-10 flex flex-col gap-6">
-              {CARE_FEATURES.map(({ icon: Icon, title, text }) => (
-                <li key={title} className="flex gap-4">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-ac-onprimary/10 ring-1 ring-ac-onprimary/15">
-                    <Icon className="size-5 text-ac-highlight" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3 className="font-serif text-xl">{title}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-ac-onprimary/70">{text}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            <a
-              href={CONTACT.phoneHref}
-              className="mt-10 inline-flex h-12 items-center justify-center rounded-xl bg-ac-bg px-7 text-sm font-semibold text-ac-primary transition-colors hover:bg-ac-bg/90"
-            >
-              Call {CONTACT.phone}
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-
 /* ── how-it-works.tsx ─────────────────────────────────────────── */
 function HowItWorks() {
   return (
     <section id="how" className="scroll-mt-20 px-6 py-20 lg:px-10 lg:py-28">
       <div className="mx-auto max-w-7xl">
-        <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
-            A gentler process
-          </p>
-          <h2 className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
-            Three simple steps to peace of mind.
-          </h2>
-        </div>
+        {/* Two columns: the pitch on the left, the numbered rows on the right. */}
+        <div className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
+              A gentler process
+            </p>
+            <h2 className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
+              Protection, in three simple steps.
+            </h2>
+            <p className="mt-5 max-w-sm leading-relaxed text-ac-mutedfg">
+              You do not have to figure it all out at once. We make each part clear, personal and
+              easy to understand.
+            </p>
+            <a
+              href="#apply"
+              className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-sm font-semibold text-white shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
+            >
+              Explore your options
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </a>
+          </div>
 
-        <ol className="mt-14 grid gap-10 md:grid-cols-3">
-          {steps.map((step, index) => (
-            <li key={step.title} className="border-t-2 border-ac-primary pt-6">
-              <span className="font-serif text-5xl text-ac-accent">{index + 1}</span>
-              <h3 className="mt-4 font-serif text-2xl text-ac-primary">{step.title}</h3>
-              <p className="mt-2 leading-relaxed text-ac-mutedfg">{step.desc}</p>
-            </li>
-          ))}
-        </ol>
+          {/* Rows rather than cards: number · title · description on one line,
+              separated by hairlines so the block reads as a single list. */}
+          <div className="grid gap-0 border-t border-ac-border">
+            {steps.map((step) => (
+              <div
+                key={step.num}
+                className="grid gap-3 border-b border-ac-border py-6 sm:grid-cols-[64px_1fr] sm:gap-6 lg:grid-cols-[64px_minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center"
+              >
+                <span className="font-serif text-2xl italic text-ac-accent">{step.num}</span>
+                <h3 className="font-serif text-2xl leading-snug text-ac-primary">{step.title}</h3>
+                <p className="text-sm leading-6 text-ac-mutedfg">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <figure className="relative mt-20 overflow-hidden rounded-[2rem]">
           <div className="relative aspect-[16/10] sm:aspect-[21/9]">
@@ -456,155 +410,56 @@ function Faq() {
 }
 
 
+
+
 /* ── apply-form.tsx ───────────────────────────────────────────── */
-const fieldClass =
-  'mt-2 h-12 w-full rounded-xl border border-ac-input bg-ac-bg px-4 text-base text-ac-primary placeholder:text-ac-mutedfg/70 outline-none transition focus:border-ac-accent focus:ring-3 focus:ring-ac-accent/20';
-const labelClass = 'block text-sm font-medium text-ac-primary';
-
-function ApplyForm() {
-  const [submitted, setSubmitted] = useState(false);
-
+/* The real application document lives in its own module — see
+   amaniAplicationForm.jsx. This section is only the page shell: it owns the
+   #apply anchor that every "Find your cover" / "Get covered" CTA links to, and
+   supplies the page background + vertical rhythm. All form markup, validation
+   and styling belong to the child. */
+function ApplySection() {
   return (
-    <section id="apply" className="scroll-mt-20 bg-ac-bg px-6 py-20 text-ac-ink lg:px-10 lg:py-28">
-      <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
-            Ready when you are
-          </p>
-          <h2 className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.75rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
-            Your family&rsquo;s peace <em className="text-ac-accent">begins here.</em>
-          </h2>
-          <p className="mt-6 max-w-lg text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            Leave your details and a member of our team will call to explain your options —
-            clearly, kindly, and with no pressure at all.
-          </p>
-
-          <div className="relative mt-10 pb-10 sm:pb-8">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem]">
-              <FillImage
-                src={PHOTOS.applying}
-                alt="A mother calmly applying for cover on her laptop at home while her daughter rests a hand on her shoulder"
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 45vw"
-              />
-            </div>
-            <a
-              href={CONTACT.phoneHref}
-              className="absolute bottom-0 left-4 right-4 flex items-center gap-4 rounded-2xl border border-ac-border bg-ac-card p-4 text-ac-oncard shadow-xl transition-transform hover:-translate-y-0.5 sm:left-6 sm:right-auto sm:p-5"
-            >
-              <span className="grid size-12 shrink-0 place-items-center rounded-full bg-ac-primary text-ac-onprimary">
-                <Phone className="size-5" aria-hidden="true" />
-              </span>
-              <span>
-                <span className="block text-sm text-ac-mutedfg">Prefer to talk now?</span>
-                <span className="block font-serif text-2xl text-ac-primary">{CONTACT.phone}</span>
-              </span>
-            </a>
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-ac-border bg-ac-card p-7 text-ac-oncard shadow-2xl sm:p-10">
-          {submitted ? (
-            <div className="flex flex-col items-center py-10 text-center" role="status">
-              <span className="grid size-16 place-items-center rounded-full bg-ac-primary/10 text-ac-primary">
-                <Check className="size-7" aria-hidden="true" />
-              </span>
-              <h3 className="mt-6 font-serif text-3xl text-ac-primary">Thank you.</h3>
-              <p className="mt-3 max-w-sm leading-relaxed text-ac-mutedfg">
-                We&rsquo;ve received your request. A caring member of our team will call you
-                within one working day.
-              </p>
-            </div>
-          ) : (
-            <ApplyFields onDone={() => setSubmitted(true)} />
-          )}
-        </div>
-      </div>
+    <section id="apply" className="scroll-mt-20 bg-ac-bg py-20 text-ac-ink lg:py-28">
+      <AmaniApplicationForm />
     </section>
   );
 }
 
-
-/* Split out so ApplyForm stays readable — same markup as the redesign. */
-function ApplyFields({ onDone }) {
+/* ── claim.tsx ────────────────────────────────────────────────── */
+/* Members who already hold cover must not be pushed through the application
+   form, and the page previously had NO way to start a claim at all. Claims are
+   handled by the family line rather than a second form, so this is a call to
+   action — wired to tel: for the same reason the hero's "Make a payment" is.
+   Swap in a real claim URL once a claims endpoint exists. */
+function ClaimBand() {
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        onDone();
-      }}
+    <section
+      id="claim"
+      className="scroll-mt-20 border-t border-ac-border bg-ac-card px-6 py-16 lg:px-10 lg:py-20"
     >
-      <h3 className="font-serif text-3xl text-ac-primary">Begin your Amani Cover</h3>
-      <p className="mt-1 text-sm text-ac-mutedfg">
-        Takes about 2 minutes. We will guide you from here.
-      </p>
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 rounded-[2rem] bg-ac-primary p-8 text-white sm:p-10 lg:flex-row lg:items-center lg:justify-between lg:p-12">
+        <div className="max-w-xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-highlight">
+            Already covered?
+          </p>
+          <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-4xl">
+            Make a claim.
+          </h2>
+          <p className="mt-3 leading-relaxed text-ac-onprimary/80">
+            You do not need to fill in any forms. Call our family line and a dedicated
+            coordinator will explain the next steps and stand beside you through the process.
+          </p>
+        </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        <label className={`${labelClass} sm:col-span-2`}>
-          Full name
-          <input
-            required
-            name="name"
-            autoComplete="name"
-            className={fieldClass}
-            placeholder="Your name"
-          />
-        </label>
-        <label className={labelClass}>
-          Phone number
-          <input
-            required
-            type="tel"
-            name="phone"
-            autoComplete="tel"
-            className={fieldClass}
-            placeholder="Your phone"
-          />
-        </label>
-        <label className={labelClass}>
-          Email <span className="font-normal text-ac-mutedfg">(optional)</span>
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            className={fieldClass}
-            placeholder="you@example.com"
-          />
-        </label>
-        <label className={`${labelClass} sm:col-span-2`}>
-          Cover you&rsquo;re interested in
-          {/* defaultValue on <select> rather than `selected` on an <option> —
-              the latter leaves the field uncontrolled and logs a React warning. */}
-          <select name="cover" defaultValue="Spouse and children" className={fieldClass}>
-            {coverOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <a
+          href={CONTACT.phoneHref}
+          className="inline-flex h-13 shrink-0 items-center justify-center gap-2.5 rounded-xl bg-ac-accent px-8 text-base font-medium text-white shadow-lg shadow-ac-accent/25 transition-colors hover:bg-ac-accent/90"
+        >
+          <Phone className="size-5" aria-hidden="true" />
+          Call {CONTACT.phone}
+        </a>
       </div>
-
-      <button
-        type="submit"
-        className="mt-8 inline-flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-ac-primary text-base font-medium text-ac-onprimary transition-colors hover:bg-ac-primary/90"
-      >
-        Request a call
-        <ArrowRight className="size-4" aria-hidden="true" />
-      </button>
-
-      <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-ac-border pt-5 text-xs text-ac-mutedfg">
-        <li className="flex items-center gap-1.5">
-          <LockKeyhole className="size-3.5" aria-hidden="true" /> Secure enquiry
-        </li>
-        <li className="flex items-center gap-1.5">
-          <Check className="size-3.5" aria-hidden="true" /> No obligation
-        </li>
-        <li className="flex items-center gap-1.5">
-          <ShieldCheck className="size-3.5" aria-hidden="true" /> Confidential
-        </li>
-      </ul>
-    </form>
+    </section>
   );
 }
-

@@ -151,7 +151,7 @@ export default function AmaniRefer() {
 
                   <button
                     type="submit"
-                    className="mt-2 inline-flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-ac-primary text-base font-medium text-ac-onprimary transition-colors hover:bg-ac-primary/90"
+                    className="mt-2 inline-flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-ac-primary text-base font-medium text-white transition-colors hover:bg-ac-primary/90"
                   >
                     Send referral
                     <UserPlus className="size-4" aria-hidden="true" />

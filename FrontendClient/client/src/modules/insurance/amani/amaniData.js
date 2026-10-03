@@ -6,14 +6,19 @@
    so the landing / terms / referral copy can never drift apart.
    ========================================================================== */
 
-/* Contact details — from the redesign's lib/site.ts CONTACT. */
+/* Contact details — Nairobi Branch of Montenzuma Monalisa Funeral Home, the
+   provider behind Amani Cover. These are the real branch details: address,
+   both mobile lines, the landline and the branch email.
+   Note: the CONSUMERS of this object (nav, hero, care team, faq, apply, refer,
+   terms and the footer address block) read exactly these six keys, so the
+   shape is kept identical — changing a value updates every page at once. */
 export const CONTACT = {
-  phone: '0800 26 26 4',
-  phoneHref: 'tel:0800262640',
-  email: 'care@amanicover.com',
-  emailHref: 'mailto:care@amanicover.com',
-  address: '14 Peace Avenue, City Centre',
-  hours: 'Mon–Fri 8:00–17:00 · Sat 9:00–13:00',
+  phone: '+254 722 268 566',
+  phoneHref: 'tel:+254722268566',
+  email: 'monte2lisa@yahoo.com',
+  emailHref: 'mailto:monte2lisa@yahoo.com',
+  address: 'Nairobi Branch Mbagathi Way, Opp. Forces Memorial Hospital',
+  hours: 'Open 24 hours · call us day or night',
 };
 
 /* Local images copied out of the redesign's public/images. Every photo the
@@ -30,10 +35,10 @@ export const PHOTOS = {
   motherDaughter: '/amani/images/mother-daughter.png',
   fatherSon: '/amani/images/father-son.png',
   familyTable: '/amani/family-hero.png',
-  grandmotherChild: '/amani/images/grandmother-child.png',
+  grandmotherChild: '/amani/familycovered.png',
   hands: '/amani/images/hands.png',
-  familyWalk: '/amani/images/family-walk.png',
-  consultant: '/amani/images/consultant.png',
+  familyWalk: '/amani/insurance.png',
+  consultant: '/amani/support-guide.png',
   applying: '/amani/images/applying.png',
 };
 
@@ -62,68 +67,81 @@ export const moments = [
   },
 ];
 
-/* Promise band. */
+/* Promise band. Exactly THREE entries — the band is a 3-column grid
+   (sm:grid-cols-3) so a fourth item would break the row. */
 export const promises = [
-  { title: 'Dignity', text: 'A farewell that honours every life and story.' },
-  { title: 'Certainty', text: 'Clear cover, clear terms, no surprises.' },
-  { title: 'Presence', text: 'A caring person beside your family, day or night.' },
+  { title: 'Simple', text: 'An easy application, with clear guidance at every step.' },
+  { title: 'Flexible', text: 'Cover shaped around the size and needs of your family.' },
+  { title: 'Supportive', text: 'A caring team beside you when you need us most.' },
 ];
 
-/* How it works. */
+/* How it works. THREE steps. `num` is the "01 / 02 / 03" marker rendered in the
+   left cell of the HowItWorks row — keep it in sync with array order. */
 export const steps = [
   {
-    title: 'Tell us about your family',
-    desc: 'Share a few details and we will call you back — no forms to wrestle with.',
+    num: '01',
+    title: 'Tell us about yourself',
+    desc: 'Share a few details so we can understand what protection feels right for you.',
   },
   {
+    num: '02',
     title: 'Choose your cover',
-    desc: 'We explain each option in plain language so you can decide with confidence.',
+    desc: 'Explore a plan and contribution that fits your family and your budget.',
   },
   {
-    title: 'Rest easy',
-    desc: 'Your cover is active. When the time comes, one call is all it takes.',
+    num: '03',
+    title: 'Feel prepared',
+    desc: 'Apply securely and keep your loved ones protected for the years ahead.',
   },
 ];
 
-/* About section bullet points. */
+/* About section bullet points. THREE items, matching the three-tall stat/point
+   block beneath the About copy. */
 export const aboutPoints = [
-  'One trusted team, from planning to farewell',
-  'Plain-language terms your whole family understands',
-  'Fast, caring claims — often settled within 48 hours',
+  'Dignified service -   support for a respectful farewell',
+  'Family flexibility  -  choose protection that fits your household',
+  'Personal guidance  -   a dedicated care team, not a call centre',
 ];
 
-/* FAQ. */
+/* FAQ. The accordion grows vertically, so the COUNT is free — this is the full
+   set of questions, in the order they appear. */
 export const faqs = [
   {
-    q: 'Who can be covered under Amani Cover?',
-    a: 'You can cover yourself, your spouse, your children, and even your parents and in-laws. Our team will help you choose the right members for your family.',
+    q: 'Who can apply for Amani Cover?',
+    a: 'Adults seeking funeral protection for themselves or their family can apply. Our care team will help you choose the most suitable level of cover — kindly and without pressure.',
   },
   {
-    q: 'Is there a waiting period?',
-    a: 'Yes. Natural causes have a short waiting period after your first payment, while accidental death is covered from day one. We will explain the exact terms on your call.',
+    q: 'Can I cover members of my family?',
+    a: 'Yes. Our Family and Legacy options are designed to protect multiple family members under one easy-to-manage plan.',
   },
   {
-    q: 'What happens when I need to make a claim?',
-    a: 'Call our 24/7 family line. A dedicated planner will guide you through every step and coordinate the funeral directly, so your family is not left handling paperwork alone.',
+    q: 'When does my cover begin?',
+    a: 'Once your application is approved and your first contribution is received, your Amani Cover is active from day one. We will confirm everything to you in writing.',
   },
   {
-    q: 'Can I change my cover later?',
-    a: 'Of course. As your family grows or changes, you can upgrade or adjust your cover at any time by speaking with our team.',
+    q: 'How do I make a claim?',
+    a: 'Call our support line at any time. A dedicated care coordinator will explain the next steps and support your family throughout the process.',
+  },
+  {
+    q: 'What happens after I submit my application?',
+    a: 'We review your details, confirm your options, and contact you with clear next steps. There is no obligation to continue at any point.',
   },
 ];
 
-/* Cover options offered in the apply form. */
+/* Cover options offered in the apply form <select>. THREE plan levels — the
+   select height is fixed (h-12), so the count does not affect layout.
+   NOTE: AmaniCover's <select> uses defaultValue="Family" to match the middle
+   option below; if you rename a value, update that defaultValue too. */
 export const coverOptions = [
-  { value: 'Just me', label: 'Just me' },
-  { value: 'Me and my spouse', label: 'Me and my spouse' },
-  { value: 'Spouse and children', label: 'My spouse and children' },
-  { value: 'Extended family', label: 'My extended family, parents included' },
+  { value: 'Essential', label: 'Essential  simple, dependable support' },
+  { value: 'Family', label: 'Family  cover for the people closest to you' },
+  { value: 'Legacy', label: 'Legacy  our most complete care' },
 ];
 
-/* Referral flow (its own route). */
+/* Referral flow (its own route). THREE steps — rendered as a connected rail. */
 export const referSteps = [
   { num: '01', title: 'Send their name', desc: 'A name and number is all we need to get started.' },
-  { num: '02', title: 'We reach out', desc: 'Our care team calls them kindly — no hard sell, ever.' },
+  { num: '02', title: 'We reach out', desc: 'Our care team calls them kindly no hard sell, ever.' },
   { num: '03', title: 'They choose', desc: 'They pick the cover that feels right for their own family.' },
 ];
 

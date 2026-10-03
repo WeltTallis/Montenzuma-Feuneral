@@ -82,7 +82,7 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
           </a>
           <a
             href={applyHref}
-            className="inline-flex h-10 items-center rounded-xl bg-ac-primary px-5 text-sm font-medium text-ac-onprimary transition-colors hover:bg-ac-primary/90"
+            className="inline-flex h-10 items-center rounded-xl bg-ac-primary px-5 text-sm font-medium text-white transition-colors hover:bg-ac-primary/90"
           >
             Get covered
           </a>
@@ -117,11 +117,10 @@ export function PageHeader({ eyebrow, title, accent, intro }) {
 
 
 /* Footer, ported from the redesign's site-footer.tsx. Shared by all three
-   Amani routes, so the CTA / Explore / Support anchors resolve to the landing
-   page when we are not already on it. */
+   Amani routes. */
 const SUPPORT_LINKS = [
   { hash: 'apply', label: 'Request a call' },
-  { hash: 'faq', label: 'Making a claim' },
+  { hash: 'claim', label: 'Making a claim' },
   { hash: 'faq', label: 'Waiting periods' },
   { hash: 'apply', label: 'Update my cover' },
 ];
@@ -131,8 +130,9 @@ const LEGAL_LINKS = [
   { href: '#', label: 'Complaints' },
 ];
 
-const FOOT_HEADING = 'text-xs font-semibold uppercase tracking-[0.22em] text-ac-onprimary';
-const FOOT_LINK = 'text-ac-onprimary/70 transition-colors hover:text-ac-onprimary';
+// Slightly larger typography for headings and links
+const FOOT_HEADING = ' uppercase font-medium text-ac-onprimary';
+const FOOT_LINK = 'text-ac-onprimary/70 transition-colors hover:text-ac-onprimary text-[0.95rem]';
 
 export function AmaniFooter() {
   const { pathname } = useLocation();
@@ -142,53 +142,27 @@ export function AmaniFooter() {
   return (
     <footer className="bg-ac-primary text-ac-onprimary">
       <div className="px-6 lg:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 border-b border-ac-onprimary/10 py-12 md:flex-row md:items-center md:justify-between lg:py-16">
-          <div className="max-w-xl">
-            <p className="font-serif text-[clamp(1.75rem,3.5vw,2.75rem)] font-medium leading-tight text-balance">
-              Peace of mind for your family, <em className="text-ac-highlight">starting today.</em>
-            </p>
-            <p className="mt-3 text-ac-onprimary/70">
-              Speak to a caring member of our team  any time, day or night.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <a
-              href={anchor('apply')}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ac-onprimary px-6 text-sm font-medium text-ac-primary transition-colors hover:bg-ac-onprimary/90"
-            >
-              Get covered
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </a>
-            <a
-              href={CONTACT.phoneHref}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-ac-onprimary/25 px-6 text-sm font-medium transition-colors hover:bg-ac-onprimary/10"
-            >
-              <Phone className="size-4" aria-hidden="true" />
-              {CONTACT.phone}
-            </a>
-          </div>
-        </div>
+        {/* CTA Section completely removed as requested */}
 
-
-        <div className="mx-auto grid max-w-7xl gap-12 py-14 sm:grid-cols-2 lg:grid-cols-12 lg:gap-10 lg:py-16">
+        <div className="mx-auto grid max-w-7xl gap-10 pt-12 pb-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8 lg:pt-16 lg:pb-12">
           <div className="sm:col-span-2 lg:col-span-4">
             <p className="flex items-baseline gap-2">
               <span className="font-serif text-3xl font-semibold">Amani</span>
-              <span className="text-xs font-medium uppercase tracking-[0.25em] text-ac-highlight">Cover</span>
+              <span className="text-xs font-medium uppercase tracking-[0.25em] text-ac-accent">Cover</span>
             </p>
-            <p className="mt-4 max-w-sm leading-relaxed text-ac-onprimary/70">
+            <p className="mt-4 max-w-sm text-[0.95rem] leading-relaxed text-ac-onprimary/70">
               Funeral cover from Montenzuma Monalisa Funeral Home. For over 25 years we have honoured
               every life with dignity, and stood beside the families left behind.
             </p>
             <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-ac-onprimary/15 px-4 py-2 text-sm text-ac-onprimary/80">
-              <span className="size-2 rounded-full bg-ac-highlight" aria-hidden="true" />
-              Trusted by 12,000+ families
+              <span className="size-2.5 rounded-full bg-ac-highlight" aria-hidden="true" />
+              Trusted by families across Kenya
             </p>
           </div>
 
           <nav aria-label="Explore" className="lg:col-span-2">
             <h2 className={FOOT_HEADING}>Explore</h2>
-            <ul className="mt-5 flex flex-col gap-3 text-sm">
+            <ul className="mt-5 flex flex-col gap-4 text-[0.95rem]">
               <li><a href={anchor('about')} className={FOOT_LINK}>About</a></li>
               <li><a href={anchor('how')} className={FOOT_LINK}>How it works</a></li>
               <li><a href={anchor('faq')} className={FOOT_LINK}>Questions</a></li>
@@ -200,7 +174,7 @@ export function AmaniFooter() {
 
           <nav aria-label="Support" className="lg:col-span-2">
             <h2 className={FOOT_HEADING}>Support</h2>
-            <ul className="mt-5 flex flex-col gap-3 text-sm">
+            <ul className="mt-5 flex flex-col gap-4 text-[0.95rem]">
               {SUPPORT_LINKS.map((link) => (
                 <li key={link.label}>
                   <a href={anchor(link.hash)} className={FOOT_LINK}>
@@ -213,32 +187,32 @@ export function AmaniFooter() {
 
           <div className="sm:col-span-2 lg:col-span-4">
             <h2 className={FOOT_HEADING}>Contact us</h2>
-            <address className="mt-5 flex flex-col gap-4 text-sm not-italic">
+            <address className="mt-5 flex flex-col gap-5 text-[0.95rem] not-italic">
               <a href={CONTACT.phoneHref} className={`flex items-start gap-3 ${FOOT_LINK}`}>
-                <Phone className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
+                <Phone className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
-                  <span className="block text-ac-onprimary">24/7 family line</span>
+                  <span className="block text-ac-onprimary font-medium">24/7 family line</span>
                   {CONTACT.phone}
                 </span>
               </a>
               <a href={CONTACT.emailHref} className={`flex items-start gap-3 ${FOOT_LINK}`}>
-                <Mail className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
+                <Mail className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
-                  <span className="block text-ac-onprimary">Email</span>
+                  <span className="block text-ac-onprimary font-medium">Email</span>
                   {CONTACT.email}
                 </span>
               </a>
               <p className="flex items-start gap-3 text-ac-onprimary/70">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
+                <MapPin className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
-                  <span className="block text-ac-onprimary">Visit us</span>
+                  <span className="block text-ac-onprimary font-medium">Visit us</span>
                   {CONTACT.address}
                 </span>
               </p>
               <p className="flex items-start gap-3 text-ac-onprimary/70">
-                <Clock className="mt-0.5 size-4 shrink-0 text-ac-highlight" aria-hidden="true" />
+                <Clock className="mt-0.5 size-5 shrink-0 text-ac-highlight" aria-hidden="true" />
                 <span>
-                  <span className="block text-ac-onprimary">Office hours</span>
+                  <span className="block text-ac-onprimary font-medium">Office hours</span>
                   {CONTACT.hours}
                 </span>
               </p>
@@ -246,7 +220,7 @@ export function AmaniFooter() {
           </div>
         </div>
 
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 border-t border-ac-onprimary/10 py-6 text-xs text-ac-onprimary/60 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 border-t border-ac-onprimary/10 py-6 text-sm text-ac-onprimary/60 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} Montenzuma Monalisa Funeral Home. All rights reserved.</p>
           <ul className="flex flex-wrap gap-x-6 gap-y-2">
             {LEGAL_LINKS.map((link) => (
@@ -262,4 +236,3 @@ export function AmaniFooter() {
     </footer>
   );
 }
-
