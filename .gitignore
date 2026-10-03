@@ -16,6 +16,14 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+# Compiled service output. Each service builds inside its own image, so the
+# JS tsc emits is never committed. Insurance-service in particular emits to
+# dist/services/insurance-service/** (rootDir is ../..) and its dist/ holds a
+# full copy of shared/ - a few hundred KB of pure build artefact per commit.
+**/dist/**/*.js
+**/dist/**/*.d.ts
+**/dist/**/*.map
+**/dist/**/*.tsbuildinfo
 
 # ---- Next.js (FrontendClient/client/src/components/insurance/.next) ------
 # This is a Next.js app that is NOT part of the Vite SPA build. Its dev

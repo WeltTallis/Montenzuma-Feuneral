@@ -1,27 +1,39 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { submitClaim } from '../../../api/insuranceApi';
+
+/**
+ * The blank claim. A factory, not a shared object literal, so a reset (or a
+ * successful submit) can never hand React back the same array/object
+ * references it already mutated.
+ */
+const createEmptyClaim = () => ({
+    fullName: '',
+    idNumber: '',
+    phone: '',
+    relationship: '',
+    policyNumber: '',
+    deceasedName: '',
+    deathDate: '',
+    causeDeath: '',
+    placeDeath: '',
+    notes: '',
+    docDeathCert: null,
+    docClaimantId: null,
+    docBurialPermit: null,
+    confirm_accepted: false,
+});
 
 const ClaimSubmissionForm = () => {
-    const [formData, setFormData] = useState({
-        fullName: '',
-        idNumber: '',
-        phone: '',
-        relationship: '',
-        policyNumber: '',
-        deceasedName: '',
-        deathDate: '',
-        causeDeath: '',
-        placeDeath: '',
-        notes: '',
-        docDeathCert: null,
-        docClaimantId: null,
-        docBurialPermit: null,
-        confirm_accepted: false,
-    });
+    const [formData, setFormData] = useState(createEmptyClaim);
 
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fillStamp, setFillStamp] = useState('—');
+    /* Outcome of the last submit, shown as a banner. Replaces the old
+       `alert(...)`, which blocked the page and was invisible to a screen
+       reader once dismissed. */
+    const [submitStatus, setSubmitStatus] = useState(null);
 
     // Auto-update Date & Time
     useEffect(() => {
@@ -170,23 +182,68 @@ const ClaimSubmissionForm = () => {
         }
 
         setIsSubmitting(true);
-        setTimeout(() => {
-            alert('Claim submitted successfully!');
-            setIsSubmitting(false);
-            handleReset();
-        }, 1500);
+        /* Real submit to insurance-service. The backend re-validates, looks the
+           policy up by policy number (== the holder's national ID number) and
+           returns a per-field `errors` map on a 400, which is merged into the
+           local errors so the message lands beside the right input.
+
+           NOTE: the three required documents are file objects held in state.
+           They are NOT uploaded by this call - the schema has the path columns
+           but no multipart endpoint yet, so the claim is recorded and the
+           documents still have to be brought in by the office. Sending a
+           FormData payload to a JSON route would silently drop them, which is
+           worse than being explicit about it in a comment. */
+        submitClaim({
+            fullName: formData.fullName,
+            idNumber: formData.idNumber,
+            phone: formData.phone,
+            relationship: formData.relationship,
+            policyNumber: formData.policyNumber,
+            deceasedName: formData.deceasedName,
+            deathDate: formData.deathDate,
+            causeDeath: formData.causeDeath,
+            placeDeath: formData.placeDeath,
+            notes: formData.notes,
+            confirm_accepted: formData.confirm_accepted,
+        })
+            .then(() => {
+                setSubmitStatus({
+                    kind: 'ok',
+                    message: 'Your claim has been received. A member of our family line will call you within one working day.',
+                });
+                setFormData(createEmptyClaim());
+                setErrors({});
+                setTouched({});
+            })
+            .catch((err) => {
+                /* A 5xx is our fault, not the visitor's - do not paint the form
+                   red for it, just tell them we could not save it. */
+                if (err.status >= 500) {
+                    setSubmitStatus({
+                        kind: 'error',
+                        message: 'We could not save your claim just now. Please try again, or call the family line on (020) 2346928.',
+                    });
+                    return;
+                }
+
+                setErrors((prev) => ({ ...prev, ...(err.errors || {}) }));
+                setSubmitStatus({ kind: 'error', message: err.message });
+
+                const firstField = Object.keys(err.errors || {})[0];
+                const node = firstField ? document.querySelector(`[name="${firstField}"]`) : null;
+                if (node) {
+                    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (typeof node.focus === 'function') node.focus({ preventScroll: true });
+                }
+            })
+            .finally(() => setIsSubmitting(false));
     };
 
     const handleReset = () => {
-        setFormData({
-            fullName: '', idNumber: '', phone: '', relationship: '',
-            policyNumber: '', deceasedName: '', deathDate: '',
-            causeDeath: '', placeDeath: '', notes: '',
-            docDeathCert: null, docClaimantId: null, docBurialPermit: null,
-            confirm_accepted: false,
-        });
+        setFormData(createEmptyClaim());
         setErrors({});
         setTouched({});
+        setSubmitStatus(null);
     };
 
     // Helper to determine input wrapper class
@@ -647,6 +704,26 @@ const ClaimSubmissionForm = () => {
     .btn-secondary { background: #ffffff; color: var(--blue-primary); border: 1px solid var(--blue-primary); }
     .btn-secondary:hover { background: var(--blue-bg); transform: translateY(-1px); }
 
+    /* Submit outcome banner - replaces the old window.alert() call. */
+    .claim-alert {
+      margin: 0 0 1.5rem;
+      padding: 1rem 1.15rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      border-radius: 8px;
+      border-left: 4px solid transparent;
+    }
+    .claim-alert-ok {
+      color: #14532d;
+      background: #f0fdf4;
+      border-left-color: #16a34a;
+    }
+    .claim-alert-error {
+      color: #991b1b;
+      background: #fef2f2;
+      border-left-color: var(--error-red);
+    }
+
     .btn-primary { 
       background: var(--blue-primary); 
       color: #ffffff; 
@@ -1031,6 +1108,23 @@ const ClaimSubmissionForm = () => {
                                     )}
                                 </div>
                             </section>
+
+                            {/* Submit outcome. Replaces the old window.alert(), which blocked the
+                                page, could not be styled, and was unreadable
+                                to a screen reader once dismissed. role=alert /
+                                role=status so the result is announced. */}
+                            {submitStatus && (
+                                <div
+                                    className={
+                                        submitStatus.kind === 'ok'
+                                            ? 'claim-alert claim-alert-ok'
+                                            : 'claim-alert claim-alert-error'
+                                    }
+                                    role={submitStatus.kind === 'ok' ? 'status' : 'alert'}
+                                >
+                                    {submitStatus.message}
+                                </div>
+                            )}
 
                             {/* Action Buttons */}
                             <div className="actions-container">

@@ -92,6 +92,7 @@ const DOCKER_SERVICE_DEFAULTS = {
   notification: 'http://restpoint_socketio_service:5000',
   documents: 'http://restpoint_documents_service:5000',
   analytics: 'http://restpoint_analytics_service:5000',
+  insurance: 'http://restpoint_insurance_service:5000',
   bodycheckout: 'http://restpoint_bodycheckout_service:5000',
   edocuments: 'http://restpoint_edocuments_service:5000',
   calendar: 'http://restpoint_calender_service:5000', // (sic) container name
@@ -130,6 +131,7 @@ const HOST_SERVICE_DEFAULTS = {
   coffin: 'http://127.0.0.1:5006',
   documents: 'http://127.0.0.1:5007',
   analytics: 'http://127.0.0.1:5009',
+  insurance: 'http://127.0.0.1:5013',
   socketio: 'http://127.0.0.1:5018',
   // Notification REST is served by the socketio-service, so in host mode it
   // uses the same host-published port as socketio.
@@ -292,6 +294,7 @@ const SERVICE_URLS = {
   notification: resolveServiceUrl('NOTIFICATION_SERVICE_URL', 'notification'),
   documents: resolveServiceUrl('DOCUMENTS_SERVICE_URL', 'documents'),
   analytics: resolveServiceUrl('ANALYTICS_SERVICE_URL', 'analytics'),
+  insurance: resolveServiceUrl('INSURANCE_SERVICE_URL', 'insurance'),
   bodycheckout: resolveServiceUrl('BODYCHECKOUT_SERVICE_URL', 'bodycheckout'),
   edocuments: resolveServiceUrl('EDOCUMENTS_SERVICE_URL', 'edocuments'),
   calendar: resolveServiceUrl('CALENDAR_SERVICE_URL', 'calendar'),
@@ -647,6 +650,10 @@ const SERVICE_ROUTES = {
   'edocuments': SERVICE_URLS.edocuments,
   'leaves': SERVICE_URLS.leave,
   'analytics': SERVICE_URLS.analytics,
+  // Amani Cover policies and claims. The two PUBLIC write endpoints
+  // (/insurance/applications, /insurance/claims) are proxied here unauthenticated
+  // because the Amani forms are filled in by bereaved families with no account.
+  'insurance': SERVICE_URLS.insurance,
   'bodycheckout': SERVICE_URLS.bodycheckout,
   'body-release': SERVICE_URLS.bodycheckout,
   'extra': SERVICE_URLS.extra,

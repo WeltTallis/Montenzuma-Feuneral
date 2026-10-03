@@ -128,6 +128,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://restpoint_socketio_service:5000
       DOCUMENTS_SERVICE_URL: http://restpoint_documents_service:5000
       ANALYTICS_SERVICE_URL: http://restpoint_analytics_service:5000
+      INSURANCE_SERVICE_URL: http://restpoint_insurance_service:5000
       BODYCHECKOUT_SERVICE_URL: http://restpoint_bodycheckout_service:5000
       CALENDAR_SERVICE_URL: http://restpoint_calender_service:5000
       CHEMICALS_SERVICE_URL: http://restpoint_chemical_service:5000
@@ -446,6 +447,48 @@ services:
       - restpoint_network
     healthcheck:
       test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Amani Cover insurance: policies, group members and claims.
+  # Own database (INSURANCE_DATABASE) because these rows carry national ID
+  # numbers - see services/insurance-service/knexfile.js.
+  insurance-service:
+    build:
+      context: .
+      dockerfile: services/insurance-service/Dockerfile
+    image: restpoint-insurance-service:latest
+    container_name: restpoint_insurance_service
+    restart: always
+    ports:
+      - '${INSURANCE_SERVICE_EXTERNAL_PORT:-5013}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: insurance-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      # The DB_USER in .env.production already holds the grant this needs to
+      # CREATE DATABASE on first boot.
+      INSURANCE_DATABASE: ${INSURANCE_DATABASE:-restpoint_insurance}
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - restpoint_network
+    healthcheck:
+      # busybox wget has NO --no-verbose / --tries / --spider flags; those are
+      # GNU-only and made the analytics healthcheck above fail forever.
+      # `wget -q -O /dev/null <url>` is the form busybox actually supports and
+      # performs a real GET, so this only passes on a 200.
+      test: [ 'CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3

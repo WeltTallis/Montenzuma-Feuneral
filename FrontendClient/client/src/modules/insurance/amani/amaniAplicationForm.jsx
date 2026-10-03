@@ -1,29 +1,8 @@
-/* ==========================================================================
-   Amani Cover — APPLICATION FORM  (/amani/cover  →  #apply)
-
-   WHY THIS FILE LOOKS DIFFERENT FROM THE OTHER AMANI MODULES:
-   The other Amani pages are Tailwind + the shared `ac-*` colour tokens (see
-   src/index.css). This form is a fixed "official record" document, so it
-   carries its own stylesheet in the STYLES constant instead of utility classes.
-
-   Every rule below is namespaced under `.amani-appform` and every class is
-   prefixed `af-`. That is deliberate and load-bearing:
-     • a bare `.container` rule would collide with Bootstrap's global
-       `.container`, and a bare `body { … }` or `* { box-sizing }` rule would
-       restyle the ENTIRE single-page app from inside one component;
-     • the fonts this document uses (Fraunces, JetBrains Mono, Saira,
-       Cormorant Garamond, Karla) are ALREADY requested by the single combined
-       Google Fonts URL in src/index.css, so this file must NOT add its own
-       <link> tags — each extra one is another sequential network request that
-       delays first paint.
-
-   The cover choices are imported from amaniData.coverOptions so this form can
-   never drift from the plan list used elsewhere on the site.
-   ========================================================================== */
 
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions } from './amaniData';
+import { InsuranceApiError, submitApplication } from '../../../api/insuranceApi';
 
 /* One object drives the initial state, the reset AND the field list, so a field
    can never end up validated-but-uninitialised — the bug that made the previous
@@ -160,6 +139,11 @@ export default function AmaniApplicationForm() {
   const [memberTouched, setMemberTouched] = useState({});
   const [groupTouched, setGroupTouched] = useState(false);
   const [groupError, setGroupError] = useState(undefined);
+  /* Submit outcome: an error banner (server fault or a rejected payload) and
+     a notice for the duplicate-application case. Both are cleared on the next
+     attempt so a stale "could not save" never sits above a fresh form. */
+  const [submitError, setSubmitError] = useState('');
+  const [submitNotice, setSubmitNotice] = useState('');
   /* Frozen at mount so the "Filling Date & Time" stamp cannot drift between
      renders while the visitor is typing. */
   const [fillStamp] = useState(() => formatStamp(new Date()));
@@ -288,9 +272,13 @@ export default function AmaniApplicationForm() {
     setMemberTouched({});
     setGroupTouched(false);
     setGroupError(undefined);
+    setSubmitError('');
+    setSubmitNotice('');
   };
 
-  const handleSubmit = (event) => {
+  /* async: the submit is a real network call to insurance-service now, not the
+       old local setTimeout. */
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const nextErrors = {};
@@ -370,12 +358,65 @@ export default function AmaniApplicationForm() {
     }
 
     setIsSubmitting(true);
-    /* No backend is wired up yet — the landing page's own form behaves the same
-       way. Swap this timeout for the real POST once the endpoint exists. */
-    window.setTimeout(() => {
-      setIsSubmitting(false);
+    /* Real submit to insurance-service. The backend validates the same rules
+       this form does and returns a per-field `errors` map, which is merged
+       into the local error state so a server-side rejection (a stale cover
+       list, an ID that fails the plausibility check) is shown next to the
+       right input rather than swallowed.
+       NOTE: `members` carries a `key` used only for React reconciliation; it
+       is stripped here so it never reaches the API. */
+    try {
+      /* Static import (not a dynamic await import) so the API client is part of
+         this lazy route's own chunk rather than fetched again on first submit. */
+      const result = await submitApplication({
+        fullName: formData.fullName,
+        idNumber: formData.idNumber,
+        age: formData.age,
+        employment: formData.employment,
+        phone: formData.phone,
+        email: formData.email,
+        cover: formData.cover,
+        confirmAccepted: formData.confirmAccepted,
+        members: formData.members.map(({ fullName: n, phone: p }) => ({ fullName: n, phone: p })),
+      });
+
       setSubmitted(true);
-    }, 1200);
+
+      /* A duplicate submission returns 200 with `duplicate: true`. That is
+         still a success from the family's point of view, but they should be
+         told they already applied rather than left wondering. */
+      if (result?.duplicate) {
+        setSubmitNotice(result.message);
+      }
+    } catch (err) {
+      if (err instanceof InsuranceApiError) {
+        if (err.status >= 500) {
+          /* A server fault is not the visitor's fault: do NOT paint their
+             form red, just say we could not save it and let them retry. */
+          setSubmitError(
+            'We could not save your application just now. Please try again, or call us on (020) 2346928.',
+          );
+        } else {
+          setErrors((prev) => ({ ...prev, ...err.errors }));
+          setSubmitError(err.message);
+
+          const firstField = Object.keys(err.errors || {})[0];
+          if (firstField) {
+            const node = document.querySelector(`[data-af-field="${firstField}"]`);
+            if (node) {
+              node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              if (typeof node.focus === 'function') node.focus({ preventScroll: true });
+            }
+          }
+        }
+      } else {
+        setSubmitError(
+          'We could not save your application just now. Please try again, or call us on (020) 2346928.',
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   /* Wrapper class: green tick once valid, red once touched AND invalid. */
@@ -636,6 +677,23 @@ export default function AmaniApplicationForm() {
     .af-group-summary {
       display: flex; align-items: center; gap: 0.5rem;
       font-size: 0.78rem; color: var(--af-gray); margin: 0.85rem 0 0;
+    }
+
+    /* Submit outcome banners. Error is red-tinted, the duplicate-application
+       notice is blue-tinted and informational - a duplicate is NOT a failure
+       from the visitor's point of view, so it must not look like one. */
+    .af-alerts { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.5rem; }
+    .af-alert {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      margin: 0; padding: 0.85rem 1rem;
+      font-size: 0.9rem; line-height: 1.5;
+      border-radius: 4px; border-left: 3px solid transparent;
+    }
+    .af-alert-error {
+      color: #991b1b; background: #fef2f2; border-left-color: var(--af-error);
+    }
+    .af-alert-info {
+      color: #1e40af; background: var(--af-blue-bg, #eff6ff); border-left-color: var(--af-blue);
     }
 
     .af-confirm-block {
@@ -1140,6 +1198,24 @@ export default function AmaniApplicationForm() {
                   )}
                 </div>
               </div>
+
+              {/* Server outcome banners. Both are announced (role=alert / role=status) so
+                  a screen-reader user hears the result of the submit, not just
+                  sees the form disappear. */}
+              {(submitError || submitNotice) && (
+                <div className="af-alerts">
+                  {submitError && (
+                    <p className="af-alert af-alert-error" role="alert">
+                      {submitError}
+                    </p>
+                  )}
+                  {submitNotice && (
+                    <p className="af-alert af-alert-info" role="status">
+                      {submitNotice}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="af-actions">
                 <button type="button" className="af-btn af-btn-ghost" onClick={handleReset}>

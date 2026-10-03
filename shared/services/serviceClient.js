@@ -11,6 +11,9 @@ const SERVICE_URLS = {
   'chemical-service': process.env.CHEMICAL_SERVICE_URL || 'http://chemical-service:5003',
   'workshop-service': process.env.WORKSHOP_SERVICE_URL || 'http://workshop-service:5004',
   'analytics-service': process.env.ANALYTICS_SERVICE_URL || 'http://analytics-service:5005',
+  // Amani Cover insurance. The two public write endpoints are reached through
+  // the API gateway, not this client.
+  'insurance-service': process.env.INSURANCE_SERVICE_URL || 'http://insurance-service:5013',
 };
 
 const TIMEOUT = process.env.SERVICE_CALL_TIMEOUT || 30000;
