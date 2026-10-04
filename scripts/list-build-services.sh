@@ -42,14 +42,32 @@ for arg in "$@"; do
   esac
 done
 
+# Compose's own stderr is CAPTURED, not discarded. The `2>/dev/null` that used to
+# sit on these calls threw away the only useful part of the failure: when
+# `docker compose config` fails it prints the real reason ("env file ... not
+# found", a YAML error, an unknown interpolation variable) and then this script
+# replaced it with a generic "'docker compose config' failed". On a production
+# host that cost a full diagnostic round-trip to discover a missing
+# .env.production, so compose's message is now echoed verbatim.
+COMPOSE_ERR="$(mktemp 2>/dev/null || echo /tmp/restpoint-compose-err.$$)"
+trap 'rm -f "${COMPOSE_ERR}"' EXIT INT TERM
+
 if [ -n "${COMPOSE_FILE}" ]; then
-  CONFIG="$(docker compose -f "${COMPOSE_FILE}" config 2>/dev/null)" || {
+  CONFIG="$(docker compose -f "${COMPOSE_FILE}" config 2>"${COMPOSE_ERR}")" || {
     echo "list-build-services: 'docker compose -f ${COMPOSE_FILE} config' failed" >&2
+    if [ -s "${COMPOSE_ERR}" ]; then
+      echo "--- docker compose said ---" >&2
+      sed 's/^/  /' "${COMPOSE_ERR}" >&2
+    fi
     exit 1
   }
 else
-  CONFIG="$(docker compose config 2>/dev/null)" || {
+  CONFIG="$(docker compose config 2>"${COMPOSE_ERR}")" || {
     echo "list-build-services: 'docker compose config' failed" >&2
+    if [ -s "${COMPOSE_ERR}" ]; then
+      echo "--- docker compose said ---" >&2
+      sed 's/^/  /' "${COMPOSE_ERR}" >&2
+    fi
     exit 1
   }
 fi

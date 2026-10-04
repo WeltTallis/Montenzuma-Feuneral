@@ -463,7 +463,10 @@ services:
     container_name: restpoint_insurance_service
     restart: always
     ports:
-      - '${INSURANCE_SERVICE_EXTERNAL_PORT:-5013}:5000'
+      # Host 3030, NOT 5013 — see the note in docker-compose.yml. This block was
+      # copied from socketio-service and kept its `:-5013` default, colliding
+      # with socketio on the same host port.
+      - '${INSURANCE_SERVICE_EXTERNAL_PORT:-3030}:5000'
     env_file:
       - .env.production
     environment:

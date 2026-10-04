@@ -453,7 +453,13 @@ services:
     container_name: restpoint_insurance_service
     restart: always
     ports:
-      - '${INSURANCE_SERVICE_EXTERNAL_PORT:-5013}:5000'
+      # Host 3030, NOT 5013. This block was copied from socketio-service and
+      # kept its `:-5013` default, so insurance and socketio both bound 5013
+      # and docker refused to start insurance with "port is already allocated"
+      # (socketio won the race because .env.production sets its port
+      # explicitly, while this var was never set there and fell back to the
+      # default). 3030 is unused by every other service.
+      - '${INSURANCE_SERVICE_EXTERNAL_PORT:-3030}:5000'
     env_file:
       - .env.production
     environment:
