@@ -22,6 +22,12 @@ import './AmaniCover.css';
 const NAV_LINKS = [
   { href: '#about', label: 'About' },
   { href: '#how', label: 'How it works' },
+  /* A real route, not a landing anchor. This array is passed as `inPageLinks`,
+     which OVERRIDES LANDING_ANCHORS entirely inside AmaniNav — so the landing
+     header renders these entries and nothing else. Adding the link only to
+     LANDING_ANCHORS in AmaniUi.jsx therefore had no effect here, which is why
+     it never appeared on the home page. */
+  { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 
 export default function AmaniCover() {
@@ -390,25 +396,49 @@ function HowItWorks() {
           </div>
         </div>
 
-        <figure className="relative mt-20 overflow-hidden rounded-[2rem]">
-          <div className="relative aspect-[16/10] sm:aspect-[21/9]">
+        {/* The promise: the photo is the BACKGROUND of this whole section and
+            the words travel across it as you scroll.
+
+            How it is built, because the layering is doing two jobs at once:
+              • the image + scrim are `absolute inset-0`, so they fill the FULL
+                height of the section rather than sitting in a fixed 21/9 box;
+              • the text lives in a tall (`min-h-[190vh]`) flex column with a
+                `sticky top-0 h-screen` child, so the words stay centred on
+                screen for the whole scroll while the photograph moves behind
+                them.
+
+            No `overflow-hidden` anywhere on this section or its ancestors — a
+            single `overflow` clip anywhere up the tree silently disables
+            `position: sticky`, which is what would leave the text stuck at the
+            bottom looking exactly like the old static version. */}
+        <section className="relative mt-20" aria-label="The Montenzuma Monalisa promise">
+          <div className="absolute inset-0">
             <FillImage
               src={PHOTOS.familyWalk}
               alt="Three generations of a family walking hand in hand through a park at sunset"
-              className="object-cover"
-              sizes="(max-width: 1280px) 100vw, 1280px"
+              className="h-full object-cover"
+              sizes="100vw"
+              priority
             />
+            {/* Scrim: heavier top and bottom than the old single bottom-up
+                gradient, so the serif line stays readable whether it is centred
+                over the bright middle of the photo or near either edge. */}
+            <div className="absolute inset-0 bg-gradient-to-b from-ac-primary/85 via-ac-primary/55 to-ac-primary/90" />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-ac-primary/85 via-ac-primary/25 to-transparent" />
-          <figcaption className="absolute inset-x-0 bottom-0 p-8 sm:p-12">
-            <p className="max-w-2xl font-serif text-[clamp(1.5rem,3vw,2.5rem)] leading-tight text-ac-onprimary text-balance">
-              &ldquo;Care that respects every life, every story, every family.&rdquo;
-            </p>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-ac-onprimary/70">
-              The Montenzuma Monalisa promise
-            </p>
-          </figcaption>
-        </figure>
+
+          <div className="relative flex min-h-[190vh] items-center justify-center">
+            <div className="sticky top-0 flex h-screen w-full items-center">
+              <figcaption className="mx-auto max-w-3xl px-6 text-center">
+                <p className="font-serif text-[clamp(1.6rem,3.4vw,2.75rem)] leading-tight text-ac-onprimary text-balance">
+                  &ldquo;Care that respects every life, every story, every family.&rdquo;
+                </p>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-ac-onprimary/75">
+                  The Montenzuma Monalisa promise
+                </p>
+              </figcaption>
+            </div>
+          </div>
+        </section>
       </div>
     </section>
   );

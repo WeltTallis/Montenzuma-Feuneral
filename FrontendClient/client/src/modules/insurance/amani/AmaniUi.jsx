@@ -78,10 +78,21 @@ export function FillImage({ src, alt, className = '', priority = false, sizes, w
 const LANDING_ANCHORS = [
   { href: '#about', label: 'About' },
   { href: '#how', label: 'How it works' },
+  /* A real route, not a landing anchor, so it works from every page. Someone who
+     has already filed a claim comes to the site with one question — where is it
+     — and burying that in a footer column meant the most urgent link on the
+     whole page was the hardest one to reach. */
+  { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 const SUB_ANCHORS = [
   { href: '/amani/cover#about', label: 'About' },
   { href: '/amani/cover#how', label: 'How it works' },
+  /* A bereaved family looking for an existing claim should reach the tracker
+     from the sticky header on EVERY page, not only from a footer column they
+     have to scroll to the bottom of. It sits beside the two content anchors
+     because it is the third thing a visitor to any of these pages is actually
+     looking for: what is this, how does it work, and where is my claim. */
+  { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 
 /* Sticky header. The two right-hand CTAs are real client-side routes, not
@@ -155,7 +166,7 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
               never more than one tap away and nothing is orphaned. */}
           <Link
             to="/amani/claims"
-            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-red-600 px-3.5 text-[0.8125rem] font-semibold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:h-10 sm:px-5 sm:text-sm"
+            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-ac-ink px-3.5 text-[0.8125rem] font-semibold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:h-10 sm:px-5 sm:text-sm"
           >
             Make a claim
           </Link>

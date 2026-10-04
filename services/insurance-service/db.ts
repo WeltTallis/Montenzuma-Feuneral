@@ -76,6 +76,20 @@ export async function ensureDatabase(): Promise<void> {
  * the log line alone instead of guessing at directory depths.
  */
 function resolveServiceDir(): string {
+  /* A candidate must have BOTH knexfile.js and a migrations/ directory holding
+     migration files.
+
+     Requiring knexfile.js alone is not enough, and it actively picked the wrong
+     directory: tsconfig.json sets "allowJs": true and lists "knexfile.js" in
+     "include", so tsc COPIES knexfile.js into
+     dist/services/insurance-service/. That dist copy won the probe — but
+     "migrations" is in tsconfig "exclude" and is never copied, so knex was
+     pointed at dist/services/insurance-service/migrations and every boot logged
+         migration failed: ENOENT ... scandir '.../dist/services/insurance-service/migrations'
+
+     Requiring the migrations to actually be present is what makes the probe
+     pick the real service directory, which is the one the Dockerfile copies the
+     migrations into. */
   const candidates = [
     __dirname,
     path.join(__dirname, '..'),
@@ -84,11 +98,18 @@ function resolveServiceDir(): string {
   ];
 
   for (const candidate of candidates) {
-    if (fs.existsSync(path.join(candidate, 'knexfile.js'))) return candidate;
+    if (!fs.existsSync(path.join(candidate, 'knexfile.js'))) continue;
+
+    try {
+      const migrations = path.join(candidate, 'migrations');
+      if (fs.readdirSync(migrations).some((f) => f.endsWith('.js'))) return candidate;
+    } catch {
+      /* No migrations here - try the next candidate. */
+    }
   }
 
   throw new Error(
-    'Could not locate the insurance-service directory (no knexfile.js). Looked in:\n  ' +
+    'Could not locate the insurance-service directory (need knexfile.js AND migrations/*.js). Looked in:\n  ' +
       candidates.join('\n  '),
   );
 }
@@ -128,22 +149,21 @@ export function getKnex(): Knex {
 export async function runMigrations(): Promise<boolean> {
   const knex = getKnex();
   try {
-    /* Log the directory actually in use and how many migration files knex sees
-       in it. The directory used to resolve to '/usr/src/app/migrations' (a
-       path that does not exist) because knex resolves a relative
-       `migrations.directory` against process.cwd(), not the service — and the
-       only symptom was a boot line that scrolled away, leaving "503 and no
-       tables" with nothing to act on. This makes it visible in one place. */
-    const dir = (knex as any).migrations?.config?.directory;
-    let seen = 0;
+    /* Log the directory we resolved and how many migration files are in it.
+       The previous diagnostic read `knex.migrations.config.directory`, which is
+       an internal path that does not exist on this knex version — it printed
+       `directory=undefined` while knex was in fact using a different value, so
+       the log contradicted the ENOENT two lines below it. Resolving it here,
+       from the same value handed to knex, cannot drift. */
+    const dir = resolveServiceDir();
+    const migrationsDir = path.join(dir, 'migrations');
+    let files = 0;
     try {
-      seen = fs.readdirSync(dir).filter((f: string) => f.endsWith('.js')).length;
+      files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.js')).length;
     } catch {
-      /* readdir failure is reported by the migrate call below. */
+      /* reported by migrate below */
     }
-    console.log(
-      `[insurance] migrating using directory=${dir} (${seen} migration file(s) visible) db=${DB_NAME}`,
-    );
+    console.log(`[insurance] migrating directory=${migrationsDir} (${files} file(s)) db=${DB_NAME}`);
 
     const [batch, applied] = await knex.migrate.latest();
     if (applied && applied.length) {

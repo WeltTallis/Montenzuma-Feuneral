@@ -9,6 +9,13 @@ import { Link } from 'react-router-dom';
 import { Phone, ArrowLeft } from 'lucide-react';
 import { CONTACT } from './amaniData';
 import { InsuranceApiError, trackClaim } from '../../../api/insuranceApi';
+/* The page chrome. It previously returned a bare fragment, so this route had no
+   header or footer and looked like a broken standalone page — a visitor could
+   not get back to anything. AmaniNav highlights itself active on this route,
+   and AmaniCover.css is imported so the nav/footer resolve their --ac-* tokens
+   (the block styles below are self-contained and unaffected). */
+import { AmaniFooter, AmaniNav } from './AmaniUi';
+import './AmaniCover.css';
 
 const CLAIM_STAGES = ['Received', 'Under review', 'Approved', 'Funds released'];
 
@@ -58,7 +65,8 @@ export default function AmaniTrackClaim() {
   const rejected = claim?.status === 'rejected';
 
   return (
-    <>
+    <div className="amani-cover">
+      <AmaniNav active="/amani/claims/track" />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap');
         
@@ -361,6 +369,7 @@ export default function AmaniTrackClaim() {
           </div>
         )}
       </div>
-    </>
+      <AmaniFooter />
+    </div>
   );
 }

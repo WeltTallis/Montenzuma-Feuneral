@@ -13,7 +13,7 @@ const Ic = ({ children, s = 16 }) => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth="1"
     strokeLinecap="round"
     strokeLinejoin="round"
   >
@@ -34,14 +34,6 @@ const Icons = {
       <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" />
     </Ic>
   ),
-  clear: (
-    <Ic>
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </Ic>
-  ),
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -52,14 +44,26 @@ const Icons = {
    ════════════════════════════════════════════════════════════════ */
 
 const ENGINE = {
-  streamline: 0.65,      /* exponential lag — removes hand jitter  */
-  tension: 0.72,         /* Bézier curvature strength              */
-  steps: 16,             /* resamples per segment                  */
-  thinning: 0.62,        /* nib thick/thin contrast                */
-  ffStreamline: 0.05,
-  taperStart: 24,
-  taperEnd: 36,
+  streamline: 0.78,      /* exponential lag — strong jitter removal (higher = smoother) */
+  tension: 0.5,          /* Catmull-Rom curvature: smooth, no overshoot loops           */
+  steps: 20,             /* resamples per segment                                       */
+  thinning: 0.45,        /* gentle thick/thin contrast, keeps the line bold & visible   */
+  smoothing: 0.9,        /* perfect-freehand outline smoothing                          */
+  ffStreamline: 0.55,    /* perfect-freehand point streamlining                         */
 };
+
+/* Ink weight.
+   The pad draws a FILLED outline polygon, so the visible line width is simply
+   `size`. It used to be penWidth * 0.45 (about 1px at the default pen), which
+   is why the signature looked faint or invisible. With sizeMul 1 the ink is as
+   wide as penWidth, which is a medium-bold signing pen. */
+const INK = {
+  sizeMul: 1,
+};
+
+/* Taper lengths are multiples of `size`. Kept short so the stroke stays bold
+   along most of its length and only thins at the very start and end. */
+const TAPER = { startMul: 2, endMul: 3 };
 
 const STAMP_COLOR = '#a39d90';   /* faint mono timestamp */
 
@@ -123,14 +127,16 @@ function drawStroke(ctx, stroke, color) {
   const pts = processPoints(stroke.points);
   if (!pts.length) return;
 
+  const size = stroke.w * INK.sizeMul;
+
   const outline = getStroke(pts, {
-    size: stroke.w * 3,
+    size,
     thinning: ENGINE.thinning,
-    smoothing: 0.5,
+    smoothing: ENGINE.smoothing,
     streamline: ENGINE.ffStreamline,
     simulatePressure: true,
-    start: { cap: true, taper: ENGINE.taperStart },
-    end: { cap: true, taper: ENGINE.taperEnd },
+    start: { cap: true, taper: size * TAPER.startMul },
+    end: { cap: true, taper: size * TAPER.endMul },
   });
 
   if (outline.length > 1) {
@@ -147,7 +153,7 @@ function drawStroke(ctx, stroke, color) {
   ctx.strokeStyle = color;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = stroke.w * 2.2;
+  ctx.lineWidth = size;
   ctx.beginPath();
   ctx.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
@@ -163,8 +169,9 @@ function drawTimestamp(ctx, w, h, signedAt) {
 
   ctx.save();
   ctx.fillStyle = STAMP_COLOR;
-  ctx.font = '500 9px "JetBrains Mono", monospace';
-  try { ctx.letterSpacing = '1.5px'; } catch (e) { /* older browsers */ }
+  /* 3px was too small to read at all; 10px is legible but still faint. */
+  ctx.font = '500 10px "JetBrains Mono", monospace';
+  try { ctx.letterSpacing = '1px'; } catch (e) { /* older browsers */ }
   ctx.textAlign = 'right';
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(`SIGNED · ${date} · ${time}`, w - 28, h - 16);
@@ -188,13 +195,12 @@ const getPoint = (event, canvas) => {
 const ReusableSignaturePad = forwardRef((props, ref) => {
   const {
     penColor = '#0f33e7',       /* ink — blue */
-    penWidth = 2.5,             /* medium — locked default */
+    penWidth = 5,             /* medium-bold — clearly visible */
     backgroundColor = '#ffffff',
     placeholder = 'Sign here',
     disabled = false,
     showControls = true,
     showUndo = true,
-    showClear = true,
     showTimestamp = true,
     onChange,
     canvasProps = {},
@@ -317,6 +323,9 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
     emitChange();
   }, [disabled, isClient, redraw, emitChange]);
 
+  /* Clearing is no longer a button under the pad. It stays available to the
+     parent through the ref (`ref.current.clear()`), and Undo falls back to it
+     when there is no history left. */
   const handleClear = useCallback(() => {
     if (!isClient) return;
     strokesRef.current = [];
@@ -396,18 +405,11 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
             <span>{placeholder}</span>
           </div>
         </div>
-        {showControls && (
+        {showControls && showUndo && (
           <div className="sp-controls">
-            {showUndo && (
-              <button type="button" className="sp-btn sp-btn-secondary" disabled>
-                {Icons.undo} Undo
-              </button>
-            )}
-            {showClear && (
-              <button type="button" className="sp-btn sp-btn-danger" disabled>
-                {Icons.clear} Clear
-              </button>
-            )}
+            <button type="button" className="sp-btn sp-btn-secondary" disabled>
+              {Icons.undo} Undo
+            </button>
           </div>
         )}
       </div>
@@ -447,7 +449,7 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
             if (!activeStrokeRef.current) return;
             const p = getPoint(event, event.currentTarget);
             const last = activeStrokeRef.current.points[activeStrokeRef.current.points.length - 1];
-            if (Math.abs(p[0] - last[0]) < .5 && Math.abs(p[1] - last[1]) < .5) return; /* dedupe jitter */
+            if (Math.abs(p[0] - last[0]) < 1 && Math.abs(p[1] - last[1]) < 1) return; /* dedupe jitter */
             activeStrokeRef.current.points.push(p);
             redraw();
           }}
@@ -456,31 +458,18 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
         />
       </div>
 
-      {/* ── sleek controls ── */}
-      {showControls && (
+      {/* ── controls: Undo only (Clear button removed) ── */}
+      {showControls && showUndo && (
         <div className="sp-controls">
-          {showUndo && (
-            <button
-              type="button"
-              className="sp-btn sp-btn-secondary"
-              onClick={handleUndo}
-              disabled={!hasContent}
-              title="Undo last stroke (Ctrl+Z)"
-            >
-              {Icons.undo} Undo
-            </button>
-          )}
-          {showClear && (
-            <button
-              type="button"
-              className="sp-btn sp-btn-danger"
-              onClick={handleClear}
-              disabled={!hasContent}
-              title="Clear signature"
-            >
-              {Icons.clear} Clear
-            </button>
-          )}
+          <button
+            type="button"
+            className="sp-btn sp-btn-secondary"
+            onClick={handleUndo}
+            disabled={!hasContent}
+            title="Undo last stroke (Ctrl+Z)"
+          >
+            {Icons.undo} Undo
+          </button>
         </div>
       )}
     </div>

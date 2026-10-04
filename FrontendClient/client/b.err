@@ -1,8 +1,3 @@
-[33m[PLUGIN_TIMINGS] [0mYour build spent 94% of 3.2s inside plugin hooks (3.0s).
-Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
-  - externalize-deps resolveId (93%, 3.0s, 6 calls)
-See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
-
 Found 1 warning while optimizing generated CSS:
 
 [2m│   }[22m
@@ -18,16 +13,16 @@ Found 1 warning while optimizing generated CSS:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
-[33m[33m[PLUGIN_TIMINGS] [0mYour build spent 100% of 151.9s inside plugin hooks (175.9s).
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent 100% of 81.9s inside plugin hooks (94.2s).
 Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
-  - vite:build-import-analysis generateBundle (41%, 62.9s, 1 call)
-  - vite:prepare-out-dir renderStart (19%, 29.1s, 1 call)
-  - vite-plugin-compression closeBundle (13%, 19.2s, 1 call)
-  - vite-plugin-compression closeBundle (7%, 11.3s, 1 call)
-  - vite:css transform (2%, 3.3s, 13 calls)
-Those rows are 83% of the build; the rest of the 100% is below.
+  - vite:build-import-analysis generateBundle (40%, 33.2s, 1 call)
+  - vite:prepare-out-dir renderStart (18%, 14.5s, 1 call)
+  - vite-plugin-compression closeBundle (12%, 9.7s, 1 call)
+  - vite-plugin-compression closeBundle (11%, 8.7s, 1 call)
+  - vite:css transform (3%, 2.5s, 13 calls)
+Those rows are 84% of the build; the rest of the 100% is below.
 Not measurable — 2 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
-  - vite:esbuild-transpile renderChunk (130 calls)
+  - vite:esbuild-transpile renderChunk (129 calls)
   - @tailwindcss/vite:generate:build transform (13 calls)
 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
 [39m
