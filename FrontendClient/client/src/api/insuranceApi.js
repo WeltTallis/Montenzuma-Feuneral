@@ -68,6 +68,25 @@ export async function submitClaim(payload) {
   }
 }
 
+/**
+ * Confirm whether an Amani Cover exists for a policy number.
+ *
+ * Public: used by the payments page, where a member with no account types the
+ * number off their policy card. The response deliberately carries no holder
+ * details - only `found`, the cover type, status and how many people are
+ * covered - so it cannot be used to look someone up.
+ */
+export async function checkCover(payload) {
+  try {
+    const { data } = await api.post(`${BASE}/cover-check`, {
+      policyNumber: payload?.policyNumber,
+    });
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
 /** Staff: list policies. */
 export async function listPolicies(params = {}) {
   const query = new URLSearchParams(
@@ -107,6 +126,7 @@ export async function getStats() {
 export const insuranceApi = {
   submitApplication,
   submitClaim,
+  checkCover,
   listPolicies,
   getPolicy,
   listClaims,

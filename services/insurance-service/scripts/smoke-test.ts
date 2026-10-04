@@ -197,5 +197,28 @@ check(
   true,
 );
 
+console.log('\ncover-check input handling');
+/* The payments page posts whatever the visitor typed off their policy card,
+   so the lookup must normalise exactly the way the application form does -
+   otherwise "AMNI-29384716" would miss a policy stored as "29384716". */
+check(
+  'cover-check normalises an AMNI- prefixed number',
+  normalisePolicyNumber('AMNI-29384716'),
+  '29384716',
+);
+check(
+  'cover-check normalises a padded number',
+  normalisePolicyNumber('  29384716 '),
+  '29384716',
+);
+check(
+  'cover-check accepts an empty string as not-a-number',
+  isPlausiblePolicyNumber(''),
+  false,
+);
+/* A short/garbage number must never reach the database as a lookup key. */
+check('garbage rejected as a policy number', isPlausiblePolicyNumber('!!!'), false);
+check('single char rejected as a policy number', isPlausiblePolicyNumber('5'), false);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

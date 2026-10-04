@@ -20,6 +20,7 @@ import { Router } from 'express';
 import {
   createApplication,
   createClaim,
+  checkCover,
   listPolicies,
   getPolicy,
   listClaims,
@@ -32,6 +33,9 @@ const router = Router();
 /* ---- public writes (no auth) ---- */
 router.post('/applications', createApplication);
 router.post('/claims', createClaim);
+/* Public cover lookup for the payments page. Returns only whether cover
+   exists and its type/status - never the holder's details. See the handler. */
+router.post('/cover-check', checkCover);
 
 /* ---- staff reads ---- */
 router.get('/policies', listPolicies);

@@ -222,6 +222,87 @@ export async function createClaim(req: Request, res: Response) {
   }
 }
 
+/* ==========================================================================
+   POST /insurance/cover-check   (PUBLIC)
+   Confirm whether an Amani Cover exists for a given policy number.
+
+   WHY THIS EXISTS SEPARATELY FROM GET /insurance/policies/:policyNumber
+   That endpoint is for staff: it returns the holder's name, phone, email,
+   age, every group member and every claim, and it is scoped to the caller's
+   tenant. A member of the public paying a contribution has no account and no
+   tenant, so it is useless to them - and exposing it publicly would hand out
+   a full profile for anyone who typed an ID number.
+
+   So this returns the MINIMUM needed to let someone proceed to pay, and
+   deliberately never returns:
+     • the holder's name, phone, email or age
+     • group members or claims
+     • any tenant or branch detail
+   A wrong guess yields `found: false` and nothing else, so the endpoint
+   cannot be used to enumerate who holds cover beyond what the visitor
+   already supplied.
+   ========================================================================== */
+export async function checkCover(req: Request, res: Response) {
+  const policyNumber = normalisePolicyNumber(req.body?.policyNumber ?? req.body?.idNumber);
+
+  if (!policyNumber) {
+    return res.status(400).json({
+      success: false,
+      message: 'Enter your Amani Cover policy number.',
+      errors: { policyNumber: 'Enter your policy number.' },
+    });
+  }
+
+  const knex = getKnex();
+
+  try {
+    /* Public Amani submissions live under the public tenant, so an unpaid
+       policy applied for through the public site is found here. Tenant-scoped
+       lookups still work when the caller sends its own tenant headers, which
+       is how a staff member checks a policy on the back office. */
+    const scope = req.tenantSlug && req.tenantSlug !== 'system_shared'
+      ? [req.tenantSlug, 'system_shared']
+      : ['system_shared'];
+
+    const policy = await knex('insurance_policies')
+      .whereIn('tenant_slug', scope)
+      .where('policy_number', policyNumber)
+      .where('is_deleted', false)
+      .first();
+
+    if (!policy) {
+      /* Same reasoning as the claim endpoint: no confirmation that this
+         particular ID exists or does not. */
+      return res.json({
+        success: true,
+        found: false,
+        message:
+          'We could not find an Amani Cover policy for that number. ' +
+          'Please check the number on your policy card, or call the family line on (020) 2346928.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      found: true,
+      /* Deliberately no name / phone / email / members / claims. */
+      coverType: policy.cover_type,
+      status: policy.status,
+      coveredCount: policy.covered_count,
+      openedAt: policy.created_at,
+      message:
+        policy.status === 'active'
+          ? 'We found your Amani Cover. You can make a contribution below.'
+          : policy.status === 'pending'
+            ? 'We found your application. It is still being reviewed — you can record a contribution now and we will allocate it once your cover is active.'
+            : 'We found your policy, but it is currently not active. Please call the family line so we can help.',
+    });
+  } catch (err) {
+    console.error('[insurance] checkCover failed:', err);
+    return res.status(500).json({ success: false, message: 'Could not check that policy number.' });
+  }
+}
+
 /** GET /insurance/policies - list, newest first, with optional filters. */
 export async function listPolicies(req: Request, res: Response) {
   const knex = getKnex();
