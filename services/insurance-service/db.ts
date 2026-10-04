@@ -59,7 +59,7 @@ export async function ensureDatabase(): Promise<void> {
 }
 
 /**
- * Locate knexfile.js.
+ * Locate the service directory.
  *
  * WHY THIS EXISTS
  * knexfile.js is plain JavaScript and is NOT emitted by tsc — it stays beside
@@ -68,33 +68,28 @@ export async function ensureDatabase(): Promise<void> {
  * compiled files to `dist/services/insurance-service/`. A hardcoded
  * `path.join(__dirname, '..', 'knexfile.js')` therefore resolved to
  * `dist/services/knexfile.js`, which does not exist, so getKnex() threw
- * MODULE_NOT_FOUND on the FIRST request — and because that call sat outside the
- * handlers' try/catch, the exception escaped the route, the process died, and
- * every submit came back as "socket hang up".
+ * MODULE_NOT_FOUND on the FIRST request.
  *
  * The output depth is a tsc implementation detail that can change between
- * compiler versions, so we probe the known layouts instead of hardcoding one:
- *   1. beside the compiled file   (if the layout ever changes to compile in place)
- *   2. one level up               (the layout knexfile.js was originally written for)
- *   3. the service dir via cwd    (what the container actually ships)
- *   4. the service dir itself     (running from the service folder)
+ * compiler versions, so we probe the known layouts instead of hardcoding one.
  * The error lists every path tried, so a future failure is diagnosable from
  * the log line alone instead of guessing at directory depths.
  */
-function resolveKnexfile(): string {
+function resolveServiceDir(): string {
   const candidates = [
-    path.join(__dirname, 'knexfile.js'),
-    path.join(__dirname, '..', 'knexfile.js'),
-    path.join(process.cwd(), 'services', 'insurance-service', 'knexfile.js'),
-    path.join(process.cwd(), 'knexfile.js'),
+    __dirname,
+    path.join(__dirname, '..'),
+    path.join(process.cwd(), 'services', 'insurance-service'),
+    process.cwd(),
   ];
 
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(path.join(candidate, 'knexfile.js'))) return candidate;
   }
 
   throw new Error(
-    'knexfile.js not found. Looked in:\n  ' + candidates.join('\n  '),
+    'Could not locate the insurance-service directory (no knexfile.js). Looked in:\n  ' +
+      candidates.join('\n  '),
   );
 }
 
@@ -102,13 +97,24 @@ function resolveKnexfile(): string {
 export function getKnex(): Knex {
   if (instance) return instance;
 
-  const config = require(resolveKnexfile()).production;
+  const serviceDir = resolveServiceDir();
+  const config = require(path.join(serviceDir, 'knexfile.js')).production;
+
+  /* knexfile.js declares `migrations: { directory: './migrations' }`, and knex
+     resolves that RELATIVE TO process.cwd() — not to the service. In the
+     container cwd is /usr/src/app, so knex scanned /usr/src/app/migrations,
+     which does not exist:
+         [insurance] migration failed: ENOENT ... scandir '/usr/src/app/migrations'
+     and because the tables were never created, every query then failed with
+         Table 'restpoint_insurance.insurance_policies' doesn't exist
+     Pinning the directory to the real service dir fixes both. */
+  const migrationsDir = path.join(serviceDir, 'migrations');
 
   instance = knexLib({
     client: 'mysql2',
     connection: { ...config.connection, database: DB_NAME },
     pool: config.pool,
-    migrations: config.migrations,
+    migrations: { ...config.migrations, directory: migrationsDir },
   });
 
   return instance;

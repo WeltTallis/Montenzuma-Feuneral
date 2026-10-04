@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { getStroke } from 'perfect-freehand';
 import './SignaturePad.css';
 
@@ -7,14 +7,14 @@ import './SignaturePad.css';
    ════════════════════════════════════════════════════════════════ */
 
 const Ic = ({ children, s = 16 }) => (
-  <svg 
-    width={s} 
-    height={s} 
-    viewBox="0 0 24 24" 
+  <svg
+    width={s}
+    height={s}
+    viewBox="0 0 24 24"
     fill="none"
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
     strokeLinejoin="round"
   >
     {children}
@@ -44,41 +44,158 @@ const Icons = {
   ),
 };
 
+/* ═══════════════════════════════════════════════════════════════
+   THE CURVE ENGINE — always on
+   Raw pointer points are refit through cubic Hermite (Bézier)
+   curves — the same mathematics fonts are built from — before
+   ink is laid down. Every stroke flows like a glyph.
+   ════════════════════════════════════════════════════════════════ */
+
+const ENGINE = {
+  streamline: 0.65,      /* exponential lag — removes hand jitter  */
+  tension: 0.72,         /* Bézier curvature strength              */
+  steps: 16,             /* resamples per segment                  */
+  thinning: 0.62,        /* nib thick/thin contrast                */
+  ffStreamline: 0.05,
+  taperStart: 24,
+  taperEnd: 36,
+};
+
+const STAMP_COLOR = '#a39d90';   /* faint mono timestamp */
+
+/* ── pass 1: streamline (exponential lag removes hand jitter) ── */
+function streamline(points, t) {
+  if (points.length < 2 || t <= 0) return points.map(p => [...p]);
+  const out = [[...points[0]]];
+  let px = points[0][0], py = points[0][1], pp = points[0][2];
+  const k = 1 - t;
+  for (let i = 1; i < points.length; i++) {
+    const p = points[i];
+    px += (p[0] - px) * k;
+    py += (p[1] - py) * k;
+    pp += (p[2] - pp) * k;
+    out.push([px, py, pp]);
+  }
+  /* keep the true endpoint so the stroke ends where the pen lifted */
+  out.push([...points[points.length - 1]]);
+  return out;
+}
+
+/* ── pass 2: cubic Hermite (Bézier) refit + resampling ── */
+function hermiteResample(points, tension, steps) {
+  const n = points.length;
+  if (n < 3) return points.map(p => [...p]);
+  const out = [];
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(n - 1, i + 2)];
+    const m1x = (p2[0] - p0[0]) * tension;
+    const m1y = (p2[1] - p0[1]) * tension;
+    const m2x = (p3[0] - p1[0]) * tension;
+    const m2y = (p3[1] - p1[1]) * tension;
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps;
+      const t2 = t * t, t3 = t2 * t;
+      const h00 = 2 * t3 - 3 * t2 + 1;
+      const h10 = t3 - 2 * t2 + t;
+      const h01 = -2 * t3 + 3 * t2;
+      const h11 = t3 - t2;
+      out.push([
+        h00 * p1[0] + h10 * m1x + h01 * p2[0] + h11 * m2x,
+        h00 * p1[1] + h10 * m1y + h01 * p2[1] + h11 * m2y,
+        p1[2] + (p2[2] - p1[2]) * t,   /* pressure interpolated along the curve */
+      ]);
+    }
+  }
+  out.push([...points[n - 1]]);
+  return out;
+}
+
+function processPoints(points) {
+  if (points.length < 3) return points.map(p => [...p]);
+  return hermiteResample(streamline(points, ENGINE.streamline), ENGINE.tension, ENGINE.steps);
+}
+
+/* ── ink: perfect-freehand variable-width outline ── */
+function drawStroke(ctx, stroke, color) {
+  const pts = processPoints(stroke.points);
+  if (!pts.length) return;
+
+  const outline = getStroke(pts, {
+    size: stroke.w * 3,
+    thinning: ENGINE.thinning,
+    smoothing: 0.5,
+    streamline: ENGINE.ffStreamline,
+    simulatePressure: true,
+    start: { cap: true, taper: ENGINE.taperStart },
+    end: { cap: true, taper: ENGINE.taperEnd },
+  });
+
+  if (outline.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(outline[0][0], outline[0][1]);
+    for (let i = 1; i < outline.length; i++) ctx.lineTo(outline[i][0], outline[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    return;
+  }
+
+  /* fallback: the processed points are already smooth — stroke them */
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = stroke.w * 2.2;
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.stroke();
+}
+
+/* ── sleek timestamp — under the line, right-aligned ── */
+function drawTimestamp(ctx, w, h, signedAt) {
+  if (!signedAt) return;
+  const d = new Date(signedAt);
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
+
+  ctx.save();
+  ctx.fillStyle = STAMP_COLOR;
+  ctx.font = '500 9px "JetBrains Mono", monospace';
+  try { ctx.letterSpacing = '1.5px'; } catch (e) { /* older browsers */ }
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`SIGNED · ${date} · ${time}`, w - 28, h - 16);
+  ctx.restore();
+}
+
+/* pointer point in CSS-pixel space (DPR handled via canvas transform) */
 const getPoint = (event, canvas) => {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
   return [
-    (event.clientX - rect.left) * scaleX,
-    (event.clientY - rect.top) * scaleY,
+    event.clientX - rect.left,
+    event.clientY - rect.top,
     event.pressure > 0 ? event.pressure : 0.5,
   ];
 };
 
-const drawStroke = (ctx, points, options) => {
-  const outline = getStroke(points, options);
-  if (outline.length < 2) return;
-  ctx.beginPath();
-  ctx.moveTo(outline[0][0], outline[0][1]);
-  outline.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
-  ctx.closePath();
-  ctx.fill();
-};
-
 /* ═══════════════════════════════════════════════════════════════
-   EXECUTIVE-LEVEL SIGNATURE PAD - ULTRA SMOOTH
+   SIGNATURE PAD — full width · Bézier engine · ink blue
    ════════════════════════════════════════════════════════════════ */
 
 const ReusableSignaturePad = forwardRef((props, ref) => {
   const {
-    penColor = '#0f33e7',
-    penWidth = 2.5,
+    penColor = '#0f33e7',       /* ink — blue */
+    penWidth = 2.5,             /* medium — locked default */
     backgroundColor = '#ffffff',
     placeholder = 'Sign here',
     disabled = false,
     showControls = true,
     showUndo = true,
     showClear = true,
+    showTimestamp = true,
     onChange,
     canvasProps = {},
     className = '',
@@ -86,116 +203,130 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
   } = props;
 
   const wrapperRef = useRef(null);
-  const canvasContainerRef = useRef(null);
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
-  const strokesRef = useRef([]);
+
+  const strokesRef = useRef([]);        /* raw: [{ w, points:[[x,y,p],...] }] */
   const activeStrokeRef = useRef(null);
+  const historyRef = useRef([]);
+  const signedAtRef = useRef(null);     /* timestamp of last completed stroke */
+  const sizeRef = useRef({ w: 0, h: 0 });
+
   const [isClient, setIsClient] = useState(false);
+  const [hasContent, setHasContent] = useState(false);
+  const [size, setSize] = useState({ w: 0, h: 0 });   /* CSS px */
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const historyRef = useRef([]);
-  const [hasContent, setHasContent] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 400 });
-
+  /* ── measure stage (CSS px) + observe resizes ── */
   useEffect(() => {
     if (!isClient) return;
 
-   const measure = () => {
-  if (!canvasContainerRef.current) return;
-  const rect = canvasContainerRef.current.getBoundingClientRect();
-  const dpr = Math.max(window.devicePixelRatio || 1, 1);
-  const w = Math.floor(rect.width) || 800;
-  const h = Math.floor(rect.height) || 400;
-
-  if (w > 0 && h > 0 && (w !== canvasSize.width || h !== canvasSize.height)) {
-    setCanvasSize({ width: w * dpr, height: h * dpr });
-    // Note: You'll also need to ensure the CSS width/height remains w/h
-    // The CSS provided above uses width: 100%; height: 100%; which handles this automatically!
-  }
-};
+    const measure = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const w = Math.floor(rect.width);
+      const h = Math.floor(rect.height);
+      if (w > 0 && h > 0 && (w !== sizeRef.current.w || h !== sizeRef.current.h)) {
+        sizeRef.current = { w, h };
+        setSize({ w, h });
+      }
+    };
 
     measure();
 
     let observer = null;
     if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(() => measure());
-      if (canvasContainerRef.current) {
-        observer.observe(canvasContainerRef.current);
-      }
+      observer = new ResizeObserver(measure);
+      if (containerRef.current) observer.observe(containerRef.current);
     }
-
     window.addEventListener('resize', measure);
 
     return () => {
       window.removeEventListener('resize', measure);
       if (observer) observer.disconnect();
     };
-  }, [canvasSize.width, canvasSize.height, isClient]);
+  }, [isClient]);
 
-  const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  const strokeOptions = {
-    size: penWidth * 2.8 * pixelRatio,
-    thinning: 0.15,
-    smoothing: 0.85,
-    streamline: 0.7,
-    simulatePressure: true,
-    start: { cap: true },
-    end: { cap: true },
-  };
-
+  /* ── redraw: strokes (Bézier engine) + timestamp ── */
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const { w, h } = sizeRef.current;
+    if (!w || !h) return;
+
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = penColor;
-    strokesRef.current.forEach(stroke => drawStroke(ctx, stroke, strokeOptions));
-    if (activeStrokeRef.current) drawStroke(ctx, activeStrokeRef.current, strokeOptions);
-  }, [penColor, penWidth]);
+    const dpr = canvas.width / w;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
 
+    strokesRef.current.forEach(s => drawStroke(ctx, s, penColor));
+    if (activeStrokeRef.current) drawStroke(ctx, activeStrokeRef.current, penColor);
+    if (showTimestamp) drawTimestamp(ctx, w, h, signedAtRef.current);
+  }, [penColor, showTimestamp]);
+
+  /* ── size the canvas at device resolution ── */
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isClient || !size.w || !size.h) return;
+    const dpr = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = Math.round(size.w * dpr);
+    canvas.height = Math.round(size.h * dpr);
     redraw();
-  }, [canvasSize, redraw]);
+  }, [size, isClient, redraw]);
 
+  /* re-render once the mono font is actually loaded */
+  useEffect(() => {
+    if (!isClient || !document.fonts?.ready) return;
+    document.fonts.ready.then(() => redraw()).catch(() => {});
+  }, [isClient, redraw]);
+
+  /* ── handlers ── */
   const handleBegin = useCallback(() => {
     if (disabled || !isClient) return;
     try {
-      historyRef.current.push(strokesRef.current.map(stroke => stroke.map(point => [...point])));
+      historyRef.current.push(
+        strokesRef.current.map(s => ({ w: s.w, points: s.points.map(p => [...p]) }))
+      );
     } catch (e) {
       console.warn('Signature Pad: Could not save history state', e);
     }
   }, [disabled, isClient]);
 
+  const emitChange = useCallback(() => {
+    if (!onChange) return;
+    try {
+      onChange(canvasRef.current?.toDataURL('image/png') ?? null);
+    } catch (e) {
+      console.warn('Signature Pad: Error generating data URL', e);
+    }
+  }, [onChange]);
+
   const handleEnd = useCallback(() => {
     if (disabled || !isClient) return;
     const stroke = activeStrokeRef.current;
-    if (!stroke?.length) return;
+    if (!stroke?.points.length) return;
     strokesRef.current.push(stroke);
     activeStrokeRef.current = null;
+    signedAtRef.current = new Date();   /* stamp refreshes to the last stroke */
     redraw();
     setHasContent(true);
-    if (onChange) {
-      try {
-        const data = canvasRef.current?.toDataURL() ?? null;
-        onChange(data);
-      } catch (e) {
-        console.warn('Signature Pad: Error generating data URL', e);
-      }
-    }
-  }, [disabled, onChange, isClient]);
+    emitChange();
+  }, [disabled, isClient, redraw, emitChange]);
 
   const handleClear = useCallback(() => {
     if (!isClient) return;
     strokesRef.current = [];
     activeStrokeRef.current = null;
-    redraw();
     historyRef.current = [];
+    signedAtRef.current = null;
+    redraw();
     setHasContent(false);
     if (onChange) onChange(null);
-  }, [onChange, isClient]);
+  }, [isClient, redraw, onChange]);
 
   const handleUndo = useCallback(() => {
     if (!isClient) return;
@@ -204,31 +335,51 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
       return;
     }
     strokesRef.current = historyRef.current.pop();
+    if (strokesRef.current.length === 0) signedAtRef.current = null;
     redraw();
     const empty = strokesRef.current.length === 0;
     setHasContent(!empty);
-    if (onChange) onChange(empty ? null : canvasRef.current?.toDataURL() ?? null);
-  }, [handleClear, onChange, isClient]);
+    emitChange();
+  }, [handleClear, isClient, redraw, emitChange]);
 
+  /* Ctrl/Cmd + Z */
+  useEffect(() => {
+    if (!isClient) return;
+    const onKey = e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && strokesRef.current.length) {
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isClient, handleUndo]);
+
+  /* ── public API ── */
   useImperativeHandle(ref, () => ({
     clear: handleClear,
+    undo: handleUndo,
     isEmpty: () => strokesRef.current.length === 0,
     toDataURL: mime => canvasRef.current?.toDataURL(mime || 'image/png') ?? null,
     toBlob: (cb, mime, q) => canvasRef.current?.toBlob(cb, mime, q),
     getTrimmedCanvas: () => canvasRef.current,
+    getSignedAt: () => signedAtRef.current,
     fromDataURL: (url, opts) => {
       const image = new Image();
       image.onload = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+        const { w, h } = sizeRef.current;
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, opts?.width || canvas.width, opts?.height || canvas.height);
+        const dpr = canvas.width / Math.max(w, 1);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(image, 0, 0, opts?.width || w, opts?.height || h);
         setHasContent(true);
+        if (!signedAtRef.current) signedAtRef.current = new Date();
       };
       image.src = url;
     },
-    undo: handleUndo,
   }), [handleClear, handleUndo]);
 
   if (!isClient) {
@@ -238,12 +389,27 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
         className={`sp-wrapper ${disabled ? 'sp-disabled' : ''} ${className}`}
         style={style}
       >
-        <div className="sp-canvas-container" ref={canvasContainerRef}>
+        <div className="sp-stage" ref={containerRef}>
+          <div className="sp-line" aria-hidden="true" />
           <div className="sp-placeholder">
             {Icons.pen}
             <span>{placeholder}</span>
           </div>
         </div>
+        {showControls && (
+          <div className="sp-controls">
+            {showUndo && (
+              <button type="button" className="sp-btn sp-btn-secondary" disabled>
+                {Icons.undo} Undo
+              </button>
+            )}
+            {showClear && (
+              <button type="button" className="sp-btn sp-btn-danger" disabled>
+                {Icons.clear} Clear
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -254,40 +420,35 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
       className={`sp-wrapper ${disabled ? 'sp-disabled' : ''} ${className}`}
       style={style}
     >
-      {/* Header */}
-      <div className="sp-header">
-        <div className="sp-header-label">
-          {Icons.pen}
-          <span>Signature</span>
-        </div>
-        <div className="sp-header-hint">Draw above</div>
-      </div>
-
-      {/* Canvas Area - Perfect Freehand rendering */}
-      <div className="sp-canvas-container" ref={canvasContainerRef}>
+      {/* ── full-width signing stage ── */}
+      <div className="sp-stage" ref={containerRef}>
         {!hasContent && (
-          <div className="sp-placeholder">
+          <div className="sp-placeholder" aria-hidden="true">
             {Icons.pen}
             <span>{placeholder}</span>
           </div>
         )}
 
+        <div className="sp-line" aria-hidden="true" />
+
         <canvas
+          {...canvasProps}
           ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
           className="sp-canvas"
           style={{ backgroundColor, ...canvasProps.style }}
           onPointerDown={event => {
             if (disabled) return;
             event.currentTarget.setPointerCapture(event.pointerId);
             handleBegin();
-            activeStrokeRef.current = [getPoint(event, event.currentTarget)];
+            activeStrokeRef.current = { w: penWidth, points: [getPoint(event, event.currentTarget)] };
             redraw();
           }}
           onPointerMove={event => {
             if (!activeStrokeRef.current) return;
-            activeStrokeRef.current.push(getPoint(event, event.currentTarget));
+            const p = getPoint(event, event.currentTarget);
+            const last = activeStrokeRef.current.points[activeStrokeRef.current.points.length - 1];
+            if (Math.abs(p[0] - last[0]) < .5 && Math.abs(p[1] - last[1]) < .5) return; /* dedupe jitter */
+            activeStrokeRef.current.points.push(p);
             redraw();
           }}
           onPointerUp={handleEnd}
@@ -295,13 +456,7 @@ const ReusableSignaturePad = forwardRef((props, ref) => {
         />
       </div>
 
-      {/* Bottom Label */}
-      <div className="sp-line-label">
-        <span>Signature</span>
-        <span>—</span>
-      </div>
-
-      {/* Controls */}
+      {/* ── sleek controls ── */}
       {showControls && (
         <div className="sp-controls">
           {showUndo && (

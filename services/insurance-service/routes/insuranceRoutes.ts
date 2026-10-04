@@ -38,6 +38,14 @@ router.post('/claims', createClaim);
    exists and its type/status - never the holder's details. See the handler. */
 router.post('/cover-check', checkCover);
 
+/* Public: a family checking on a claim they have already filed. Registered here
+   as a sibling of /cover-check because it uses the same credential (the policy
+   number off the policy card) and the same deliberately thin payload.
+   NOTE: importing trackClaim without registering it here is what made every
+   POST /insurance/claim-track return "No route" — the handler existed but was
+   never mounted. Import and registration must always move together. */
+router.post('/claim-track', trackClaim);
+
 /* ---- staff reads ---- */
 router.get('/policies', listPolicies);
 router.get('/policies/:policyNumber', getPolicy);
