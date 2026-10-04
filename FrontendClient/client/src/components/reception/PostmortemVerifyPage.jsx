@@ -1,467 +1,484 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
-import { ShieldCheck, Search, AlertCircle, Loader, Phone, Lock, EyeOff, Clock } from 'lucide-react';
+import { ShieldCheck, Search, AlertCircle, Lock, EyeOff, Clock } from 'lucide-react';
 import api from '../../api/axios';
-import { getTenantHeaders } from '../../api/endpoints';
 
-// ─── Google Fonts ────────────────────────────────────────────
+// ─── Fonts (same as the request form) ──────────────────────
 const GlobalStyles = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  img, svg { display: block; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
 `;
 
-// ─── Design tokens (new palette) ────────────────────────────
+// ─── Design tokens (matches PostmortemRequestForm) ─────────
 const C = {
-  paper: '#f3efe5',
-  paper2: '#f7f4ec',
-  paper3: '#fdfbf5',
-  ink: '#211d17',
-  ink2: '#5d554a',
-  hair: 'rgba(33, 29, 23, .16)',
-  hair2: 'rgba(33, 29, 23, .38)',
+  ink: '#1a1611',
+  ink2: '#5f584c',
+  inkFaint: '#a39d90',
+  line: '#e6e2d8',
+  lineSoft: '#f1efe9',
+  paper: '#faf9f6',
   ox: '#7c2b23',
-  moss: '#4d5f42',
-  mossDeep: '#2f3d28',
-  och: '#9a6a1e',
+  oxDeep: '#6a241e',
+  green: '#3f5138',
+  red: '#b91c1c',
   ease: 'cubic-bezier(.32, .72, .24, 1)',
+  sans: "'Saira', system-ui, sans-serif",
+  mono: "'JetBrains Mono', monospace",
 };
 
-// ─── Animations ──────────────────────────────────────────────
+// ─── Animations ────────────────────────────────────────────
+const fadeIn = keyframes`from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}`;
+const fadeUp = keyframes`from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}`;
 const spin = keyframes`to{transform:rotate(360deg)}`;
 const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}`;
-const fadeIn = keyframes`from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}`;
 
-// ─── Page Wrapper (full width, background matches card) ────
-const PageWrapper = styled.div`
+// ─── Layout ────────────────────────────────────────────────
+const Shell = styled.div`
+  font-family: ${C.sans};
+  background: #fff;
+  color: ${C.ink};
   min-height: 100vh;
-  background: ${C.paper3};  /* background matches card */
-  font-family: 'Saira', sans-serif;
-  color: ${C.ink};
-  padding: 0;               /* no padding — full width */
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
+  align-items: center;
   -webkit-font-smoothing: antialiased;
-  position: relative;
-  overflow: hidden;
-
-  /* Watermark behind content */
-  &::before {
-    content: 'VERIFIED';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-25deg);
-    font-family: 'Fraunces', serif;
-    font-size: 14rem;
-    font-weight: 900;
-    color: rgba(77, 95, 66, .035);
-    white-space: nowrap;
-    pointer-events: none;
-    letter-spacing: .05em;
-    z-index: 0;
-  }
+  overflow-wrap: anywhere;
 `;
 
-// ─── Top accent strip (thin moss line, no thick bars) ──────
-const TopRule = styled.div`
+const Card = styled.div`
   width: 100%;
-  height: 1px;
-  background: ${C.mossDeep};
-  position: relative;
-  z-index: 2;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 1px;
-    background: ${C.och};
-  }
-`;
-
-// ─── Sheet (full width, no radius) ─────────────────────────
-const Sheet = styled.div`
-  width: 100%;
-  background: transparent;  /* card same as page bg — seamless */
-  position: relative;
-  z-index: 1;
-  flex: 1;
+  max-width: 860px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(26,22,17,.04), 0 24px 60px -24px rgba(26,22,17,.14);
+  animation: ${fadeIn} .5s ${C.ease} both;
   display: flex;
   flex-direction: column;
-  animation: ${fadeIn} .55s ${C.ease} both;
+
+  @media (max-width: 600px) { min-height: 100vh; }
 `;
 
-const SheetInner = styled.div`
-  width: 100%;
-  max-width: 540px;
-  margin: 0 auto;
-  padding: 56px 24px 48px;
-  position: relative;
-  flex: 1;
+const AccentLine = styled.div`
+  height: 3px;
+  background: linear-gradient(90deg, ${C.ox} 0 60%, ${C.ink} 60% 100%);
+`;
+
+// ─── Document header (logo · title · live meta) ────────────
+const DocHeader = styled.header`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 40px;
+  border-bottom: 1px solid ${C.lineSoft};
+
+  @media (max-width: 640px) { gap: 12px; padding: 16px 20px; }
+`;
+
+const HeaderLeft = styled.div`
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+`;
+
+const Brand = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+`;
+
+// ─── FUNERAL HOME LOGO SLOT ────────────────────────────────
+const LogoBox = styled.div`
+  width: 64px;
+  height: 64px;
+  flex: none;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  border: 1px solid ${C.line};
+  background: #fff;
+  padding: 6px;
 
-  @media (min-height: 700px) {
-    padding-top: 72px;
-    padding-bottom: 64px;
-  }
+  img { width: 100%; height: 100%; object-fit: contain; }
+  svg  { width: 100%; height: 100%; }
+
+  @media (max-width: 640px) { width: 52px; height: 52px; padding: 5px; }
 `;
 
-// ─── Seal ──────────────────────────────────────────────────
-const Seal = styled.div`
-  width: 84px;
-  height: 84px;
-  margin: 0 auto 24px;
-  border: 2px solid ${C.mossDeep};
-  border-radius: 50%;
-  background: ${C.paper2};
-  display: grid;
-  place-items: center;
-  color: ${C.mossDeep};
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 5px;
-    border: 1px solid rgba(77, 95, 66, .35);
-    border-radius: 50%;
-  }
-
-  svg {
-    width: 32px;
-    height: 32px;
-    color: ${C.mossDeep};
-  }
-`;
-
-const SealStamp = styled.div`
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 32px;
-  height: 32px;
-  background: ${C.ox};
-  color: ${C.paper};
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 700;
-  border: 2px solid ${C.paper3};
-  transform: rotate(12deg);
-`;
-
-// ─── Eyebrow ───────────────────────────────────────────────
-const Eyebrow = styled.div`
-  text-align: center;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .3em;
-  color: ${C.och};
-  font-weight: 700;
-  margin-bottom: 14px;
-  position: relative;
-  z-index: 1;
-
-  &::before, &::after {
-    content: '';
-    display: inline-block;
-    width: 32px;
-    height: 1px;
-    background: ${C.och};
-    vertical-align: middle;
-    margin: 0 12px;
-    opacity: .5;
-  }
-`;
-
-// ─── Title & Subtitle ───────────────────────────────────────
-const Title = styled.h1`
-  font-family: 'Fraunces', serif;
-  font-size: 2.2rem;
+const DhTitle = styled.div`
+  font-size: 17px;
   font-weight: 600;
-  margin: 0 0 12px;
   letter-spacing: -.01em;
-  color: ${C.ink};
-  text-align: center;
-  line-height: 1.15;
+  @media (max-width: 640px) { font-size: 15px; }
+`;
 
-  .accent {
-    color: ${C.mossDeep};
-    font-style: italic;
+const DhSub = styled.div`
+  font-family: ${C.mono};
+  font-size: .62rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: ${C.inkFaint};
+  margin-top: 3px;
+  @media (max-width: 640px) { display: none; }
+`;
+
+const DhMeta = styled.div`
+  font-family: ${C.mono};
+  font-size: .68rem;
+  letter-spacing: .08em;
+  color: ${C.inkFaint};
+
+  b { color: ${C.ink2}; font-weight: 500; font-variant-numeric: tabular-nums; }
+`;
+
+// replaces the QR code — confidential badge
+const SecureWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+`;
+
+const SecureBox = styled.div`
+  width: 92px;
+  height: 92px;
+  padding: 8px;
+  border: 1px solid ${C.lineSoft};
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${C.ox};
+
+  svg { width: 34px; height: 34px; }
+  @media (max-width: 640px) { width: 70px; height: 70px; svg { width: 26px; height: 26px; } }
+`;
+
+const SecureLabel = styled.span`
+  font-family: ${C.mono};
+  font-size: .56rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: ${C.ox};
+  text-align: center;
+  @media (max-width: 640px) { font-size: 8px; letter-spacing: .12em; }
+`;
+
+// ─── Title ─────────────────────────────────────────────────
+const TitleSection = styled.div`
+  padding: 30px 40px 26px;
+  text-align: center;
+
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+  h1 em { font-style: italic; color: ${C.ox}; }
+  p { font-size: 13.5px; color: ${C.ink2}; margin-top: 6px; }
+
+  @media (max-width: 640px) {
+    padding: 24px 20px 20px;
+    h1 { font-size: 21px; }
   }
 `;
 
-const Subtitle = styled.p`
-  color: ${C.ink2};
-  font-family: 'Fraunces', serif;
-  font-size: .95rem;
-  margin: 0 auto 32px;
-  line-height: 1.65;
-  text-align: center;
-  max-width: 40ch;
-  font-style: italic;
+// ─── Section bar (dark ink + mono label) ───────────────────
+const SBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: 1.6rem;
+  padding: .72rem 1.15rem;
+  background: ${C.ink};
+  border-radius: 3px;
+
+  .n { font-family: ${C.mono}; font-size: .68rem; font-weight: 500; color: rgba(250,248,244,.42); }
+  .t { font-family: ${C.mono}; font-size: .78rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #faf8f4; }
 `;
 
-// ─── Toggle Group ──────────────────────────────────────────
+// ─── Body / footer ─────────────────────────────────────────
+const Body = styled.div`
+  padding: 28px 40px;
+  @media (max-width: 640px) { padding: 22px 20px; }
+`;
+
+const FormFooter = styled.div`
+  border-top: 1px solid ${C.lineSoft};
+  padding: 18px 40px;
+  background: #fff;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+
+  @media (max-width: 640px) {
+    padding: 14px 20px;
+    flex-direction: column-reverse;
+    button { width: 100%; justify-content: center; }
+  }
+`;
+
+// ─── Toggle group (styled like the request form's Seg) ─────
 const ToggleGroup = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 1px solid ${C.hair};
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid ${C.line};
+  margin-bottom: 26px;
 `;
 
 const ToggleBtn = styled.button`
-  background: none;
-  border: none;
-  padding: 14px 8px;
-  font-family: 'Saira', sans-serif;
-  font-size: .78rem;
-  font-weight: 700;
-  color: ${p => p.$active ? C.ink : C.ink2};
-  cursor: pointer;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-bottom: 2px solid ${p => p.$active ? C.mossDeep : 'transparent'};
-  margin-bottom: -1px;
-  transition: all .2s ${C.ease};
+  padding: 13px 6px;
+  font-family: ${C.sans};
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  letter-spacing: .08em;
+  color: ${p => (p.$active ? C.ink : C.inkFaint)};
+  transition: color .2s ${C.ease};
 
-  svg {
-    width: 13px;
-    height: 13px;
-    color: ${p => p.$active ? C.mossDeep : C.ink2};
-    transition: color .2s ${C.ease};
-  }
+  & + & { border-left: 1px solid ${C.lineSoft}; }
 
-  &:hover {
+  svg { width: 13px; height: 13px; flex: none; }
+
+  &:hover { color: ${C.ink2}; }
+
+  ${p => p.$active && `
     color: ${C.ink};
-    svg { color: ${C.och}; }
-  }
+    &::after {
+      content: '';
+      position: absolute;
+      left: 14%; right: 14%; bottom: -1px;
+      height: 2px;
+      background: ${C.ox};
+    }
+  `}
 
   @media (max-width: 480px) {
     font-size: .68rem;
     padding: 12px 4px;
     gap: 4px;
-    span { display: ${p => p.$active ? 'inline' : 'none'}; }
+    span { display: ${p => (p.$active ? 'inline' : 'none')}; }
   }
 `;
 
-// ─── Input Group ───────────────────────────────────────────
-const InputGroup = styled.div`
-  text-align: left;
-  margin-bottom: 16px;
-  position: relative;
-  z-index: 1;
+// ─── Underline-only field (same as request form) ───────────
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 26px;
+  &:last-child { margin-bottom: 0; }
 `;
 
 const Label = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .13em;
   text-transform: uppercase;
-  letter-spacing: .15em;
-  color: ${C.moss};
-  margin-bottom: 10px;
+  color: ${C.ink2};
 `;
 
-const LabelIcon = styled.span`
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  background: rgba(154, 106, 30, .10);
-  color: ${C.och};
-  font-size: 10px;
-`;
-
-const InputWrapper = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-
-  > svg {
-    position: absolute;
-    left: 16px;
-    color: ${C.ink2};
-    pointer-events: none;
-    width: 16px;
-    height: 16px;
-  }
-
-  input {
-    width: 100%;
-    padding: 16px 16px 16px 46px;
-    border: 1px solid ${C.hair};
-    background: ${C.paper2};
-    font-family: 'Saira', sans-serif;
-    font-size: 15px;
-    color: ${C.ink};
-    outline: none;
-    transition: all .2s ${C.ease};
-    border-radius: 0;
-
-    &::placeholder { color: #a7a294; }
-    &:focus {
-      background: #fff;
-      border-color: ${C.moss};
-      box-shadow: 0 0 0 4px rgba(77, 95, 66, .12);
-    }
-    &.error {
-      border-color: ${C.ox};
-      background: rgba(124, 43, 35, .04);
-      animation: ${shake} .4s ease;
-    }
-    &:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-  }
-`;
-
-// ─── Error Box ─────────────────────────────────────────────
-const ErrorBox = styled.div`
-  background: rgba(124, 43, 35, .08);
-  border: 1px solid rgba(124, 43, 35, .25);
-  border-left: 4px solid ${C.ox};
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: #5a1f1a;
-  margin-top: 16px;
-  text-align: left;
-  line-height: 1.5;
+const Field = styled.input`
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #ccc;
   border-radius: 0;
+  padding: 10px 2px;
+  font-size: 15px;
+  color: ${C.ink};
+  outline: none;
+  transition: border-color .2s ${C.ease};
 
-  svg {
-    flex-shrink: 0;
-    color: ${C.ox};
-    width: 16px;
-    height: 16px;
-    margin-top: 1px;
-  }
+  &::placeholder { color: ${C.inkFaint}; font-weight: 400; }
+  &:hover { border-bottom-color: ${C.ink}; }
+  &:focus { border-bottom-color: ${C.ox}; }
+  &:disabled { opacity: .6; cursor: not-allowed; }
+
+  ${p => p.$error && `
+    border-bottom-color: ${C.red};
+    animation: ${shake} .4s ease;
+  `}
 `;
 
-// ─── Action Button ────────────────────────────────────────
-const ActionButton = styled.button`
-  background: ${C.ox};
-  color: ${C.paper};
-  border: 1px solid ${C.ox};
-  padding: 16px;
-  font-family: 'Saira', sans-serif;
-  font-size: .82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  cursor: pointer;
+// ─── Error note (request-form style) ───────────────────────
+const NoteErr = styled.p`
   display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: ${C.red};
+  margin-bottom: 26px;
+  animation: ${fadeUp} .25s ease both;
+
+  svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+`;
+
+// ─── Buttons ───────────────────────────────────────────────
+const Btn = styled.button`
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  padding: 12px 24px;
+  font-family: ${C.sans};
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
   transition: all .2s ${C.ease};
-  width: 100%;
-  margin-top: 20px;
-  border-radius: 0;
-  box-shadow: 0 6px 16px -4px rgba(124, 43, 35, .35);
 
-  &:hover:not(:disabled) {
-    background: #6a241e;
-    transform: translateY(-1px);
-    box-shadow: 0 10px 22px -4px rgba(124, 43, 35, .45);
-  }
+  &:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
 
-  svg {
-    width: 14px;
-    height: 14px;
-    color: rgba(243, 239, 229, .9);
-  }
+  ${p => p.$ghost && `
+    background: #fff;
+    border-color: ${C.line};
+    color: ${C.ink2};
+    &:hover:not(:disabled) { border-color: ${C.ink2}; color: ${C.ink}; }
+  `}
 
-  &:disabled {
-    background: ${C.ink2};
-    border-color: ${C.ink2};
-    cursor: not-allowed;
-    box-shadow: none;
-    opacity: .7;
-  }
+  ${p => p.$primary && `
+    background: ${C.ox};
+    color: #fff;
+    box-shadow: 0 6px 16px -4px rgba(124,43,35,.4);
+    &:hover:not(:disabled) {
+      background: ${C.oxDeep};
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px -4px rgba(124,43,35,.5);
+    }
+  `}
 `;
 
 const Spinner = styled.div`
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(243, 239, 229, .35);
-  border-top-color: ${C.paper};
+  flex: none;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
   animation: ${spin} .7s linear infinite;
-  display: inline-block;
 `;
 
-// ─── Trust Footer ──────────────────────────────────────────
-const TrustFooter = styled.div`
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px dashed ${C.hair};
+// ─── Dark footer (request form) ────────────────────────────
+const ElegantFooter = styled.footer`
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  margin-top: auto;
+  background: #14110d;
+  color: #f3efe5;
   text-align: center;
+  padding: 52px 24px 0;
+
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  &::before { bottom: -240px; width: 480px; height: 480px; border: 1.5px solid rgba(243,239,229,.08); }
+  &::after  { bottom: -300px; width: 640px; height: 640px; border: 1px solid rgba(243,239,229,.05); }
+
+  @media (max-width: 640px) { padding: 44px 20px 0; }
+`;
+
+const FooterTagline = styled.p`
   position: relative;
   z-index: 1;
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: rgba(243,239,229,.88);
+  max-width: 44ch;
+  margin: 0 auto;
 `;
 
-const TrustRow = styled.div`
+const FooterValues = styled.div`
+  position: relative;
+  z-index: 1;
   display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
-  gap: 24px;
+  gap: 16px;
   flex-wrap: wrap;
-`;
+  max-width: 460px;
+  margin: 24px auto 0;
 
-const TrustItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: ${C.ink2};
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: .12em;
+  &::before, &::after { content: ''; flex: 1; height: 1px; background: rgba(243,239,229,.15); }
 
-  svg {
-    width: 11px;
-    height: 11px;
-    color: ${C.moss};
+  span {
+    font-family: ${C.mono};
+    font-weight: 700;
+    font-size: .58rem;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(243,239,229,.6);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+
+    svg { width: 11px; height: 11px; flex: none; color: rgba(243,239,229,.55); }
   }
 `;
 
-const TrustTagline = styled.p`
-  margin-top: 16px;
-  font-family: 'Fraunces', serif;
-  font-style: italic;
-  font-size: .82rem;
-  color: ${C.ink2};
-  line-height: 1.5;
-  max-width: 38ch;
-  margin-left: auto;
-  margin-right: auto;
+const FooterBar = styled.div`
+  position: relative;
+  z-index: 1;
+  margin-top: 40px;
+  border-top: 1px solid rgba(243,239,229,.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 18px 32px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(243,239,229,.5);
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 20px;
+    text-align: center;
+  }
 `;
 
-// ─── Component ──────────────────────────────────────────────
+// ─── Component ─────────────────────────────────────────────
 const PostmortemVerifyPage = () => {
   const navigate = useNavigate();
   const [searchType, setSearchType] = useState('phone');
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // live date / time — same header meta as the request form
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const liveDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
+  const liveTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   const tenantSlug = 'montenzuma-monalisa-feuneral-home-nairobi';
 
@@ -546,116 +563,143 @@ const PostmortemVerifyPage = () => {
   return (
     <>
       <GlobalStyles />
-      <PageWrapper>
-        <TopRule />
+      <Shell>
+        <Card>
 
-        <Sheet>
-          <SheetInner>
+          <AccentLine aria-hidden="true" />
 
-            {/* ─── Seal ─── */}
-            <Seal>
-              <ShieldCheck size={32} />
-              <SealStamp>★</SealStamp>
-            </Seal>
+          {/* ── Document header: logo · title · live meta · confidential badge ── */}
+          <DocHeader>
+            <HeaderLeft>
+              <Brand>
+                {/* ══ FUNERAL HOME LOGO SLOT — replace placeholder with your image ══
+                    <img src="/logos/montezuma-monalisa.png" alt="Montezuma Monalisa Funeral Home" />
+                    (LogoBox sizes any image to 64×64 with object-fit: contain)
+                ═══════════════════════════════════════════════════════ */}
+                <LogoBox>
+                  <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                    <circle cx="24" cy="24" r="22.5" stroke="#7c2b23" strokeWidth="1.6" />
+                    <circle cx="24" cy="24" r="19" stroke="#7c2b23" strokeWidth=".8" opacity=".35" />
+                    <g transform="translate(12 12)" stroke="#7c2b23" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                    </g>
+                  </svg>
+                </LogoBox>
+                <div>
+                  <DhTitle>Postmortem Report Verification</DhTitle>
+                  <DhSub>Montezuma Monalisa Funeral Home · Nairobi</DhSub>
+                </div>
+              </Brand>
+              <DhMeta>DATE <b>{liveDate}</b> · TIME <b>{liveTime}</b></DhMeta>
+            </HeaderLeft>
 
-            <Eyebrow>Confidential Access</Eyebrow>
+            {/* replaces the QR code — keeps the confidential badge */}
+            <SecureWrap>
+              <SecureBox><ShieldCheck size={34} strokeWidth={1.5} /></SecureBox>
+              <SecureLabel>Confidential Access</SecureLabel>
+            </SecureWrap>
+          </DocHeader>
 
-            <Title>Identity <span className="accent">Verification</span></Title>
-            <Subtitle>
-              Enter your details to verify your identity and securely access the postmortem report.
-            </Subtitle>
+          <TitleSection>
+            <h1>Identity <em>Verification</em></h1>
+            <p>Enter your details to verify your identity and securely access the postmortem report.</p>
+          </TitleSection>
 
-            {/* ─── Toggle Group ─── */}
-            <ToggleGroup>
-              <ToggleBtn
-                $active={searchType === 'phone'}
-                onClick={() => handleToggle('phone')}
-              >
-                <Search size={13} /> <span>Phone</span>
-              </ToggleBtn>
-              <ToggleBtn
-                $active={searchType === 'id'}
-                onClick={() => handleToggle('id')}
-              >
-                <ShieldCheck size={13} /> <span>ID Number</span>
-              </ToggleBtn>
-              <ToggleBtn
-                $active={searchType === 'deceased_id'}
-                onClick={() => handleToggle('deceased_id')}
-              >
-                <AlertCircle size={13} /> <span>Deceased ID</span>
-              </ToggleBtn>
-            </ToggleGroup>
+          <form onSubmit={handleVerify} noValidate>
+            <Body>
+              <SBar><span className="n">01</span><span className="t">Verify Identity</span></SBar>
 
-            {/* ─── Form ─── */}
-            <form onSubmit={handleVerify}>
-              <InputGroup>
+              {error && (
+                <NoteErr role="alert">
+                  <AlertCircle size={14} />
+                  <span>{error}</span>
+                </NoteErr>
+              )}
+
+              {/* ── Toggle group ── */}
+              <ToggleGroup>
+                <ToggleBtn
+                  type="button"
+                  $active={searchType === 'phone'}
+                  onClick={() => handleToggle('phone')}
+                >
+                  <Search size={13} /> <span>Phone</span>
+                </ToggleBtn>
+                <ToggleBtn
+                  type="button"
+                  $active={searchType === 'id'}
+                  onClick={() => handleToggle('id')}
+                >
+                  <ShieldCheck size={13} /> <span>ID Number</span>
+                </ToggleBtn>
+                <ToggleBtn
+                  type="button"
+                  $active={searchType === 'deceased_id'}
+                  onClick={() => handleToggle('deceased_id')}
+                >
+                  <AlertCircle size={13} /> <span>Deceased ID</span>
+                </ToggleBtn>
+              </ToggleGroup>
+
+              {/* ── Input ── */}
+              <FormGroup>
                 <Label htmlFor="verifyInput">
-                  <LabelIcon><i className="fas fa-hashtag"></i></LabelIcon>
                   {searchType === 'phone' ? 'Phone Number' :
                     searchType === 'id' ? 'ID Number' : 'Deceased ID'}
                 </Label>
-                <InputWrapper>
-                  {searchType === 'phone' && <Search size={16} />}
-                  {searchType === 'id' && <ShieldCheck size={16} />}
-                  {searchType === 'deceased_id' && <AlertCircle size={16} />}
-                  <input
-                    id="verifyInput"
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => {
-                      setInputValue(e.target.value);
-                      setError('');
-                    }}
-                    placeholder={
-                      searchType === 'phone' ? '0712345678' :
-                        searchType === 'id' ? '12345678' : 'MON-PET-XXXXXX-XXXXXX'
-                    }
-                    className={error ? 'error' : ''}
-                    required
-                    disabled={loading}
-                    autoFocus
-                  />
-                </InputWrapper>
-              </InputGroup>
+                <Field
+                  id="verifyInput"
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => {
+                    setInputValue(e.target.value);
+                    setError('');
+                  }}
+                  placeholder={
+                    searchType === 'phone' ? '0712345678' :
+                      searchType === 'id' ? '12345678' : 'MON-PET-XXXXXX-XXXXXX'
+                  }
+                  $error={!!error}
+                  required
+                  disabled={loading}
+                  autoFocus
+                />
+              </FormGroup>
+            </Body>
 
-              {error && (
-                <ErrorBox>
-                  <AlertCircle size={16} />
-                  <span>{error}</span>
-                </ErrorBox>
-              )}
-
-              <ActionButton type="submit" disabled={loading}>
+            <FormFooter>
+              <Btn type="button" $ghost onClick={() => navigate(-1)}>Cancel</Btn>
+              <Btn type="submit" $primary disabled={loading}>
                 {loading ? (
                   <>
                     <Spinner />
                     Verifying…
                   </>
                 ) : (
-                  <>
-                    <ShieldCheck size={14} />
-                    Verify Identity
-                  </>
+                  'Verify Identity'
                 )}
-              </ActionButton>
-            </form>
+              </Btn>
+            </FormFooter>
+          </form>
 
-            {/* ─── Trust Footer ─── */}
-            <TrustFooter>
-              <TrustRow>
-                <TrustItem><Lock size={11} /> Encrypted</TrustItem>
-                <TrustItem><EyeOff size={11} /> Private</TrustItem>
-                <TrustItem><Clock size={11} /> Session-Bound</TrustItem>
-              </TrustRow>
-              <TrustTagline>
-                Your information is used solely for verification and is never stored beyond this session.
-              </TrustTagline>
-            </TrustFooter>
+          {/* ── Dark footer — trust row lives here, like the request form values ── */}
+          <ElegantFooter>
+            <FooterTagline>
+              Your information is used solely for verification and is never stored beyond this session.
+            </FooterTagline>
+            <FooterValues>
+              <span><Lock size={11} /> Encrypted</span>
+              <span><EyeOff size={11} /> Private</span>
+              <span><Clock size={11} /> Session-Bound</span>
+            </FooterValues>
+            <FooterBar>
+              <span>© {new Date().getFullYear()} RestPoint Funeral Management</span>
+              <span>Official Postmortem Verification</span>
+            </FooterBar>
+          </ElegantFooter>
 
-          </SheetInner>
-        </Sheet>
-      </PageWrapper>
+        </Card>
+      </Shell>
     </>
   );
 };

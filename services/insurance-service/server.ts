@@ -1,5 +1,4 @@
 import express, { Request, Response, NextFunction } from 'express';
-require('dotenv').config({ path: path.join(__dirname, '.env') });
 import { init, isSchemaReady, close, DB_NAME } from './db';
 import { validateTenantActive } from '../../shared/tenancy';
 import insuranceRoutes from './routes/insuranceRoutes';
@@ -9,6 +8,19 @@ import path from 'path';
 import http from 'http';
 import cors from 'cors';
 
+/* dotenv MUST be loaded here, after every import, and never at the top of the
+   file. It used to sit on line 2, above `import path`, and this service is the
+   only one in the repo compiled with plain `tsc` rather than run under `tsx`:
+   esbuild hoists imports (so every other service tolerated the ordering), but
+   tsc preserves source order for top-level statements and emits imports as
+   `const path_1 = require(...)`. The result was
+       require('dotenv').config({ path: path_1.default.join(__dirname, '.env') })
+   running BEFORE `path_1` was initialised, so every boot died instantly with
+       ReferenceError: Cannot access 'path_1' before initialization
+   and the container crash-looped on /health, taking apply/claim-track with it.
+
+   Keep this block directly below the imports and never above them. */
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = Number.parseInt(process.env.PORT || '5013', 10);
