@@ -107,6 +107,36 @@ export const aboutPoints = [
    here as dead data: nothing renders it, and leaving an orphaned export
    invites it being wired back up by accident. */
 
+/* MONTHLY CONTRIBUTIONS — the single source of truth for what a plan costs.
+
+   These are REAL amounts, not placeholders. Every surface that quotes a price
+   reads them from here so the apply form, the cover page and the payment
+   portal can never disagree about what someone owes:
+
+     • Amani Solo   — KES 500 / month, one person
+     • Amani Family — KES 1,000 / month, applicant + household
+     • Amani Group  — from KES 10,000 / month, 5+ people
+
+   Why this replaced a single flat figure: the portal used to default every
+   member to a hardcoded KES 2,000 contribution regardless of which plan they
+   had actually applied for. That was guess work — a Solo member was quoted
+   four times their real premium, and a Group policy (10k+) was under-quoted.
+   The amount shown on the payments page is now the amount stored on the
+   policy record itself (insurance_policies.monthly_premium, written at
+   application time from `monthly` below and echoed back by
+   POST /insurance/cover-check), falling back to `monthly` only if an older
+   policy predates that column.
+
+   `from: true` marks Group as a floor rather than a fixed price — group
+   pricing scales with how many people are on the policy, so the UI must not
+   present it as "exactly 10,000". */
+export const PLANS = {
+  Solo: { monthly: 500, from: false, covers: '1 person' },
+  Family: { monthly: 1000, from: false, covers: 'You + your household' },
+  FamilyGroup: { monthly: 10000, from: true, covers: 'Family + extended family' },
+  Group: { monthly: 10000, from: true, covers: '5 or more people' },
+};
+
 /* Cover options offered in the apply form. These are the three real Amani
    products (NOT the old Essential/Family/Legacy marketing tiers):
      • Amani Solo   — one person
@@ -115,19 +145,52 @@ export const aboutPoints = [
    `minMembers` is what the form enforces: picking Group reveals an "add
    another individual" repeater and blocks submit until the policy has at
    least that many people on it.
+   `monthly` is copied from PLANS so the price lives in exactly one place.
    NOTE: the dead insurance/mani/ folder still renders these in a <select>
    with defaultValue="Family"; Family is still the middle option, so that
    placeholder stays valid. */
 export const coverOptions = [
-  { value: 'Solo', label: 'Amani Solo', hint: 'Funeral cover for just you.' },
-  { value: 'Family', label: 'Amani Family', hint: 'Funeral cover for you and your household.' },
+  {
+    value: 'Solo',
+    label: 'Amani Solo',
+    hint: 'Funeral cover for just you.',
+    monthly: PLANS.Solo.monthly,
+  },
+  {
+    value: 'Family',
+    label: 'Amani Family',
+    hint: 'Funeral cover for you and your household.',
+    monthly: PLANS.Family.monthly,
+  },
+  {
+    value: 'FamilyGroup',
+    label: 'Amani Family Group',
+    hint: 'Cover for your family and your extended family.',
+    monthly: PLANS.FamilyGroup.monthly,
+  },
   {
     value: 'Group',
     label: 'Amani Group',
     hint: 'One shared policy for a group of 5 or more people.',
     minMembers: 5,
+    monthly: PLANS.Group.monthly,
   },
 ];
+
+/* Look up a plan's details by its cover value. Falls back to Solo so a
+   policy row with an unexpected cover_type still renders a real price
+   instead of NaN. */
+export function planFor(coverType) {
+  return PLANS[coverType] || PLANS.Solo;
+}
+
+/* Format a monthly contribution for display: "KES 500" or "from KES 10,000". */
+export function formatPlanAmount(coverType, amount) {
+  const plan = planFor(coverType);
+  const value = Number(amount || plan.monthly);
+  const formatted = `KES ${value.toLocaleString('en-KE')}`;
+  return plan.from ? `from ${formatted}` : formatted;
+}
 
 /* The value that switches the form into "add the rest of the group" mode. */
 export const GROUP_COVER_VALUE = 'Group';

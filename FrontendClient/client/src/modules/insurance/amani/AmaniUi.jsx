@@ -210,9 +210,15 @@ const LEGAL_LINKS = [
    still reading too large next to the page content, so the headings and links
    are now set in explicit rem values below Tailwind's `sm` step (12px and
    13px) rather than a named scale size. */
-const FOOT_HEADING = 'text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-ac-onprimary/50';
-const FOOT_LINK = 'text-ac-onprimary/70 transition-colors hover:text-ac-onprimary text-[0.8125rem]';
-const FOOT_COLUMN = 'flex flex-col gap-2.5 text-[0.8125rem]';
+const FOOT_HEADING =
+  '!text-[14px] !leading-4 !font-medium uppercase tracking-[0.08em] text-ac-onprimary/45';
+
+const FOOT_LINK =
+  'text-[13px] leading-5 transition-colors text-ac-onprimary/70 hover:text-ac-onprimary';
+
+const FOOT_COLUMN =
+  'flex flex-col gap-2.5 text-[13px]';
+
 
 export function AmaniFooter() {
   const { pathname } = useLocation();

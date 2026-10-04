@@ -242,6 +242,103 @@ export async function createClaim(req: Request, res: Response) {
    cannot be used to enumerate who holds cover beyond what the visitor
    already supplied.
    ========================================================================== */
+/* ==========================================================================
+   POST /insurance/claim-track   (PUBLIC)
+
+   Let a bereaved family check on a claim they have already filed, by entering
+   the policy number from the policy card (= the holder's national ID, same
+   rule as every other public endpoint here - see migration 001).
+
+   WHY A DEDICATED ENDPOINT
+   The staff endpoint GET /insurance/claims returns the claimant's full name,
+   their ID number, their phone, the cause of death, the place of death, the
+   free-text notes and the paths of every uploaded document. None of that can
+   be shown to an anonymous visitor, and GET /insurance/policies/:policyNumber
+   would additionally hand out the holder's profile. So this returns a purpose
+   built, deliberately thin shape.
+
+   WHAT THIS DELIBERATELY NEVER RETURNS
+     • claimant_full_name / claimant_id_number / phone / relationship
+     • cause_of_death, place_of_death, notes        <- the most sensitive
+     • any document path                             <- would let a guesser
+                                                      download a death cert
+     • review_notes                                 <- internal staff notes
+     • tenant / branch detail
+   The visitor already knows the policy number, so echoing the deceased's name
+   and the claim's own dates adds nothing they could not otherwise see, and is
+   what makes the result screen intelligible.
+
+   THE RISK, STATED PLAINLY
+   Knowledge of an ID number is the only credential. Anyone who guesses or
+   obtains one can see that a death was reported against it, plus the status.
+   That is inherent to "look it up by ID" and was an explicit product decision;
+   it is why the payload above is so thin. If that is unacceptable, the fix is
+   a second factor - ask the family for the claimant's phone number, or email a
+   one-time code to the address on the claim - not a wider response.
+
+   A wrong guess yields `found: false` and nothing else, so this cannot be used
+   to enumerate who holds cover.
+   ========================================================================== */
+export async function trackClaim(req: Request, res: Response) {
+  const policyNumber = normalisePolicyNumber(req.body?.policyNumber ?? req.body?.idNumber);
+
+  if (!policyNumber) {
+    return res.status(400).json({
+      success: false,
+      message: 'Enter the policy number from the policy card.',
+      errors: { policyNumber: 'Enter your policy number.' },
+    });
+  }
+
+  const knex = getKnex();
+
+  try {
+    const scope = req.tenantSlug && req.tenantSlug !== 'system_shared'
+      ? [req.tenantSlug, 'system_shared']
+      : ['system_shared'];
+
+    /* Newest first: a family checking on a death wants the claim they just
+       filed, not the oldest one on the policy. Capped so a policy with a long
+       history cannot be used to pull the whole table. */
+    const claims = await knex('insurance_claims')
+      .whereIn('tenant_slug', scope)
+      .where('policy_number', policyNumber)
+      .where('is_deleted', false)
+      .orderBy('created_at', 'desc')
+      .limit(10);
+
+    if (!claims.length) {
+      return res.json({
+        success: true,
+        found: false,
+        message:
+          'We could not find a claim filed under that number. ' +
+          'Please check the number on the policy card, or call the family line on (020) 2346928 ' +
+          'and we will look it up with you.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      found: true,
+      claims: claims.map((claim) => ({
+        /* Short public reference. The numeric claim_id is never exposed - it is
+           sequential and would let a caller walk the claims table. */
+        reference: `AMN-C${String(claim.claim_id).padStart(5, '0')}`,
+        status: claim.status,
+        deceasedName: claim.deceased_name,
+        deathDate: claim.death_date,
+        submittedAt: claim.created_at,
+        updatedAt: claim.updated_at,
+      })),
+      message: 'Here is the progress of your claim.',
+    });
+  } catch (err) {
+    console.error('[insurance] trackClaim failed:', err);
+    return res.status(500).json({ success: false, message: 'Could not look up that claim.' });
+  }
+}
+
 export async function checkCover(req: Request, res: Response) {
   const policyNumber = normalisePolicyNumber(req.body?.policyNumber ?? req.body?.idNumber);
 

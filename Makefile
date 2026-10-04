@@ -59,10 +59,20 @@ NC     := \033[0m # No Color
 # An empty derived list turns every build loop into a no-op that still prints
 # "✓ Build complete" — that is how broken/unbuilt images silently reached
 # production before. Wire these in as prerequisites so the failure is loud.
+#
+# The list itself is captured with `2>/dev/null` so a transient compose error
+# does not spam stderr on every `make help`. But that ALSO means the real
+# reason is thrown away, and the guard used to report only "No buildable
+# services" — which is true but useless: it is indistinguishable from a broken
+# compose file, a missing Dockerfile, a missing .env.production, or Docker not
+# being installed at all. So on failure we re-run the detector WITH stderr and
+# print whatever compose actually said.
 # ------------------------------------------------------------
 check-build-list:
 	@if [ -z "$(strip $(BUILD_SERVICES))" ]; then \
 		echo "$(RED)✗ No buildable services found in docker-compose.yml$(NC)"; \
+		echo "$(YELLOW)  Underlying error from the compose file:$(NC)"; \
+		sh scripts/list-build-services.sh 2>&1 1>/dev/null | sed 's/^/    /'; \
 		echo "$(YELLOW)  Diagnose with: sh scripts/list-build-services.sh$(NC)"; \
 		exit 1; \
 	fi
@@ -70,6 +80,8 @@ check-build-list:
 check-build-list-prod:
 	@if [ -z "$(strip $(BUILD_SERVICES_PROD))" ]; then \
 		echo "$(RED)✗ No buildable services found in docker-compose.prod.yml$(NC)"; \
+		echo "$(YELLOW)  Underlying error from the compose file:$(NC)"; \
+		sh scripts/list-build-services.sh docker-compose.prod.yml 2>&1 1>/dev/null | sed 's/^/    /'; \
 		echo "$(YELLOW)  Diagnose with: sh scripts/list-build-services.sh docker-compose.prod.yml$(NC)"; \
 		exit 1; \
 	fi

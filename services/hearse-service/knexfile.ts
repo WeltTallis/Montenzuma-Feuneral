@@ -1,9 +1,5 @@
-// ============================================
-// HEARSE SERVICE - Knex Configuration
-// ============================================
-// Self-contained within hearse service
-// Uses environment variables from .env or docker-compose
 
+//  Knex Configuration
 import { Knex } from 'knex';
 import * as dotenv from 'dotenv';
 

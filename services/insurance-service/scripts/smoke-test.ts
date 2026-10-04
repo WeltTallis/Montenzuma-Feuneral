@@ -220,5 +220,30 @@ check(
 check('garbage rejected as a policy number', isPlausiblePolicyNumber('!!!'), false);
 check('single char rejected as a policy number', isPlausiblePolicyNumber('5'), false);
 
+console.log('\nclaim-track input handling');
+/* Claim tracking reuses the SAME credential and the SAME normaliser as
+   cover-check: the bereaved family reads the number off the same policy card.
+   If these ever diverge, a family could pay against a policy but be told their
+   claim does not exist (or worse, the reverse). */
+check(
+  'claim-track normalises an AMNI- prefixed number',
+  normalisePolicyNumber('AMNI-29384716'),
+  normalisePolicyNumber('29384716'),
+);
+check(
+  'claim-track normalises a padded number',
+  normalisePolicyNumber('  29384716 '),
+  normalisePolicyNumber('29384716'),
+);
+check(
+  'claim-track and cover-check agree on the same typed input',
+  normalisePolicyNumber('AMNI- 29384716 ') === normalisePolicyNumber(' amni-29384716'),
+  true,
+);
+/* Tracking a claim is the more sensitive of the two lookups - it reveals that
+   a death was reported - so the same plausibility gate must apply. */
+check('claim-track rejects garbage as a policy number', isPlausiblePolicyNumber('!!!'), false);
+check('claim-track rejects a blank number', isPlausiblePolicyNumber('   '), false);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

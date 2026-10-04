@@ -109,6 +109,17 @@ export const IMAGE_VARIANTS = {
     ],
     "lqip": "data:image/webp;base64,UklGRmwAAABXRUJQVlA4IGAAAAAwBACdASoYAA0APxF2slEsJySisAgBgCIJQBfnA3XMgO5n3pcWTUPOZSQA9ybxIc9qFg5Hr0YFHSu3zmcTJL44Y8TH1chu2+ZIJB8n+w/dXpuXdMZ7ZBAv6xVWRZcYgAA="
   },
+  "/amani/images/family-protection.png": {
+    "width": 768,
+    "height": 1376,
+    "variants": [
+      {
+        "width": 640,
+        "file": "/amani/responsive/family-protection-640.webp"
+      }
+    ],
+    "lqip": "data:image/webp;base64,UklGRvQAAABXRUJQVlA4IOgAAACQBwCdASoYACsAPv1orFArJiSiurZoAWAfiWYAnTNPfTAb+1HfvYOlcygG5W3YZe/jn0BbC1BwmRrIAvhabcGql8CauAAA/tHb6OUJ2golAncsNwEjtUUego9HOiDWHOVmCMGcC/rFTzTIlFb0Ww8rA9y4pMP1UqKV3Olq8tmelLHHcRSoaoG2TKw5g43+BgW1D3Kizob9L0b/xzQZnN727+rrV5c4JKV+UHgketB7cejNzi7syw9HcH8O3jBnssTrbrUwzr/LlfTA6eOExdiouGTG8lpA32hgyfI1cVSNc4uWrkux5AAA"
+  },
   "/amani/images/family-table.png": {
     "width": 1408,
     "height": 768,
@@ -294,4 +305,4 @@ export const IMAGE_VARIANTS = {
   }
 };
 
-export const OPTIMISED_IMAGE_COUNT = 21;
+export const OPTIMISED_IMAGE_COUNT = 22;

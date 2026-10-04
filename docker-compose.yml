@@ -62,7 +62,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis123}', 'ping' ]
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis123}', 'ping']
       interval: 15s
       timeout: 10s
       retries: 5
@@ -141,7 +141,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -181,7 +181,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -234,7 +234,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -273,7 +273,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -310,7 +310,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -362,7 +362,7 @@ services:
       mariadb:
         condition: service_healthy
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -405,7 +405,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -436,7 +436,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -475,7 +475,7 @@ services:
       # busybox wget has NO --no-verbose / --tries / --spider flags (GNU-only),
       # which is why the analytics healthcheck above can never pass.
       # `wget -q -O /dev/null <url>` is the busybox form and does a real GET.
-      test: [ 'CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -522,7 +522,13 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'node', '-e', "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" ]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -551,7 +557,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -592,7 +598,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -620,7 +626,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -652,7 +658,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -680,7 +686,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -716,7 +722,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -749,7 +755,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -788,7 +794,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -818,7 +824,8 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health' ]
+      test:
+        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -853,7 +860,7 @@ services:
     networks:
       - restpoint_network
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -899,7 +906,7 @@ services:
       # busybox wget, not GNU wget — `nginx:alpine` ships no `wget` package, so
       # `wget` is busybox's and supports neither `--no-verbose` nor `--tries`.
       # See the identical note in docker-compose.prod.yml.
-      test: [ 'CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost/' ]
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost/']
       interval: 30s
       timeout: 10s
       retries: 3

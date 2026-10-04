@@ -1,18 +1,9 @@
 
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions } from './amaniData';
+import { GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlanAmount, planFor } from './amaniData';
 import { InsuranceApiError, submitApplication } from '../../../api/insuranceApi';
 
-/* One object drives the initial state, the reset AND the field list, so a field
-   can never end up validated-but-uninitialised — the bug that made the previous
-   version call .trim() on undefined.
-   `confirmAccepted` is a BOOLEAN; it was string-typed, so it could never equal
-   `true` and the checkbox could never validate.
-   `members` holds the OTHER people on an Amani Group policy — the applicant is
-   themselves one of the minimum, so this repeater supplies the rest. It is a
-   factory (not a shared object literal) so `handleReset` can never hand React
-   back the same array reference it already mutated. */
 const createInitial = () => ({
   fullName: '',
   idNumber: '',
@@ -23,7 +14,22 @@ const createInitial = () => ({
   cover: '',
   members: [],
   confirmAccepted: false,
+  /* How often they intend to pay. Recorded at application time so the care
+     team and the payments page agree on the schedule from day one. Defaults
+     to monthly — the plan every member can afford — rather than leaving it
+     blank and guessing later. */
+  frequency: 'monthly',
 });
+
+/* Payment frequencies offered on the application form. `months` is how many
+   monthly contributions one payment covers. Quarterly is 3 months at the
+   monthly rate with NO discount: there is no pricing engine in this codebase,
+   so promising a saving the backend cannot honour would be a false claim.
+   A real multi-month discount belongs in PLANS as an explicit rate. */
+export const PAY_FREQUENCIES = [
+  { value: 'monthly', label: 'Monthly', months: 1, hint: 'Every month' },
+  { value: 'quarterly', label: 'Quarterly', months: 3, hint: 'Every 3 months' },
+];
 
 /* Stable React keys for the repeater rows. A plain array index cannot be the
    key: deleting row 1 of 5 would make React reuse row 2's DOM node for row 1's
@@ -152,6 +158,11 @@ export default function AmaniApplicationForm() {
      policy is always one more than the number of repeater rows. */
   const groupSize = formData.members.length + 1;
   const isGroup = formData.cover === GROUP_COVER_VALUE;
+
+  /* The chosen plan's real rate, or null until a cover type is picked. Used to
+     price the frequency options, so the amounts a member sees are the amounts
+     PLANS actually defines rather than a number typed into the markup. */
+  const selectedPlan = formData.cover ? planFor(formData.cover) : null;
 
   const handleChange = (event) => {
     const { name, type, checked, value } = event.target;
@@ -376,6 +387,7 @@ export default function AmaniApplicationForm() {
         phone: formData.phone,
         email: formData.email,
         cover: formData.cover,
+        frequency: formData.frequency,
         confirmAccepted: formData.confirmAccepted,
         members: formData.members.map(({ fullName: n, phone: p }) => ({ fullName: n, phone: p })),
       });
@@ -613,6 +625,28 @@ export default function AmaniApplicationForm() {
     .af-cover-card input { margin-top: 0.15rem; }
     .af-cover-card-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
     .af-cover-card-title { font-size: 1rem; font-weight: 600; color: var(--af-blue); }
+
+  /* Real price, shown on the card itself so nobody has to guess what a plan
+     costs. "from" wording for the plans priced as a floor (FamilyGroup/Group). */
+  .af-cover-card-price { display: inline-flex; align-items: baseline; gap: 0.2rem; margin-left: 0.5rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #eaf2ff; color: var(--af-blue); font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .af-cover-card-price small { font-size: 0.62rem; font-weight: 600; opacity: 0.75; }
+
+  /* Payment-frequency picker on the application form. */
+  .af-freq-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.5rem; width: 100%; }
+  .af-freq-card { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.8rem 0.9rem; border: 1px solid var(--af-line, #d7e0ea); border-radius: 0.7rem; background: #fff; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s; }
+  .af-freq-card:hover { border-color: #94a3b8; background: #fcfdff; }
+  .af-freq-card.is-active { border-color: var(--af-blue); background: #f5f9ff; box-shadow: 0 0 0 3px rgba(11, 63, 138, 0.1); }
+  .af-freq-card input { margin-top: 0.15rem; accent-color: var(--af-blue); }
+  .af-freq-card-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .af-freq-card-label { font-size: 0.92rem; font-weight: 600; color: var(--af-blue); }
+  .af-freq-card-hint { font-size: 0.7rem; color: var(--af-muted, #64748b); }
+  .af-freq-card-amount { margin-top: 0.2rem; font-size: 0.85rem; font-weight: 700; color: var(--af-blue); }
+  .af-freq-card-amount small { font-size: 0.68rem; font-weight: 500; color: var(--af-muted, #64748b); }
+  .af-hint { margin-top: 0.4rem; font-size: 0.72rem; color: var(--af-muted, #64748b); }
+
+  @media (max-width: 560px) {
+    .af-freq-cards { grid-template-columns: 1fr; }
+  }
     .af-cover-card-hint { font-size: 0.8rem; color: var(--af-gray); line-height: 1.45; }
     .af-cover-card-badge {
       display: inline-block; margin-top: 0.3rem; font-family: 'JetBrains Mono', monospace;
@@ -982,7 +1016,13 @@ export default function AmaniApplicationForm() {
                             onBlur={handleBlur}
                           />
                           <span className="af-cover-card-body">
-                            <span className="af-cover-card-title">{option.label}</span>
+                            <span className="af-cover-card-title">
+                              {option.label}
+                              <span className="af-cover-card-price">
+                                {formatPlanAmount(option.value, option.monthly)}
+                                <small>/month</small>
+                              </span>
+                            </span>
                             <span className="af-cover-card-hint">{option.hint}</span>
                             {option.minMembers && (
                               <span className="af-cover-card-badge">
@@ -997,6 +1037,51 @@ export default function AmaniApplicationForm() {
                       <span className="af-err-msg">{errors.cover}</span>
                     )}
                   </div>
+                </div>
+
+                {/* How often they want to pay. Optional and pre-set to monthly,
+                    so it can never be the reason a form fails to submit. */}
+                <div className="af-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <label className="af-field-label">How would you like to pay?</label>
+                  <div className="af-freq-cards" role="radiogroup" aria-label="Payment frequency">
+                    {PAY_FREQUENCIES.map((option) => (
+                      <label
+                        className={`af-freq-card${formData.frequency === option.value ? ' is-active' : ''}`}
+                        key={option.value}
+                      >
+                        <input
+                          type="radio"
+                          name="frequency"
+                          value={option.value}
+                          checked={formData.frequency === option.value}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, frequency: e.target.value }))
+                          }
+                        />
+                        <span className="af-freq-card-body">
+                          <span className="af-freq-card-label">{option.label}</span>
+                          <span className="af-freq-card-hint">{option.hint}</span>
+                          {selectedPlan && (
+                            <span className="af-freq-card-amount">
+                              KES{' '}
+                              {(
+                                selectedPlan.monthly * option.months
+                              ).toLocaleString('en-KE')}
+                              <small>
+                                {' '}
+                                {option.months > 1
+                                  ? `(${option.months} months)`
+                                  : 'per month'}
+                              </small>
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {!selectedPlan && (
+                    <span className="af-hint">Choose a cover type above to see your amounts.</span>
+                  )}
                 </div>
 
                 {/* Amani Group only — the repeater for everyone else on the

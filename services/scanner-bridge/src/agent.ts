@@ -1,4 +1,4 @@
-// ── runtime imports — MUST come first: the constants below run at load time ──
+
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
@@ -9,10 +9,7 @@ const APP_VERSION = '1.0.0';
 
 const truthy = (v?: string): boolean => /^(1|true|yes|on)$/i.test(String(v || '').trim());
 
-// ── load .env / .env.local if present (doesn't need dotenv package) ──────────
-// A real environment variable always wins over the file, so one-off runs / the
-// tests can override anything (BRIDGE_PORT, MOCK_SCAN, NAPS2_PATH, …) without
-// editing the file.
+
 (function loadEnv() {
 
   const candidates: string[] = [];
@@ -27,7 +24,7 @@ const truthy = (v?: string): boolean => /^(1|true|yes|on)$/i.test(String(v || ''
   // Portable / USB-stick deployments that ship a .env next to the EXE.
   try {
     candidates.push(path.dirname(process.execPath));
-  } catch { /* ignore */ }
+  } catch { }
   // Dev fallback: `npm run dev` from the repo.
   candidates.push(process.cwd());
 
@@ -50,24 +47,14 @@ const truthy = (v?: string): boolean => /^(1|true|yes|on)$/i.test(String(v || ''
         }
         loadedAny = true;
         console.log(`[BRIDGE] config loaded from ${p}`);
-      } catch { /* unreadable file - try the next candidate */ }
+      } catch {}
     }
   }
   if (!loadedAny) console.log('[BRIDGE] no configuration file found - using defaults.');
 })();
 
-// ── desktop app: persistent identity + single-instance guard ──────────────
-// This ships as a standalone Windows EXE, so two things that are irrelevant
-// for a dev service become correctness requirements:
-//
-//  * Identity. The cloud needs to tell *this machine* apart from every other
-//    reception PC, and the id must survive restarts and app upgrades. It is
-//    generated once and kept in the per-user data folder. Losing it would
-//    re-register the machine as a brand new bridge on every launch.
-//  * Single instance. A desktop user double-clicking the icon, or an
-//    auto-start entry plus a manual launch, would otherwise start a second
-//    server that fights the first one for port 8081 and crashes with a
-//    confusing EADDRINUSE. We detect that and exit quietly.
+//  desktop app: persistent identity + single-instance guard
+
 const DATA_DIR = process.env.APPDATA
   ? path.join(process.env.APPDATA, 'Restpoint', 'ScannerBridge')
   : path.join(process.cwd(), '.bridge-data');
@@ -80,14 +67,14 @@ function resolveBridgeId(): string {
       const existing = fs.readFileSync(file, 'utf8').trim();
       if (existing) return existing;
     }
-  } catch { /* fall through and mint a new one */ }
+  } catch {  }
 
   const minted = randomBytes(16).toString('hex');
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(file, minted, 'utf8');
   } catch (e) {
-    // A read-only install is not fatal: the id is just regenerated next launch.
+
     console.warn(`[BRIDGE] could not persist bridge id: ${(e as Error).message}`);
   }
   return minted;
@@ -95,16 +82,11 @@ function resolveBridgeId(): string {
 
 const BRIDGE_ID = resolveBridgeId();
 
-// ─ NAPS2 path discovery ────────────────────────────────────────────────────
-// On Windows the real binary is NAPS2.Console.exe (the old naps2.exe alias was
-// removed in 6.x+). NAPS2_PATH may point at the executable OR at its install
-// folder — e.g. NAPS2_PATH="C:\Program Files\NAPS2" is enough, because a folder
-// is probed for every known binary name below. When NAPS2_PATH is unset the
-// usual install locations are auto-discovered, and only then does the bridge
-// fall back to a bare `naps2.exe` / `naps2` (PATH lookup).
+// ─ NAPS2 path discovery 
+
 const NAPS2_CANDIDATES_WIN = [
-  'NAPS2.Console.exe',   // 6.x / 7.x / 8.x default
-  'NAPS2.exe',           // older installs / aliases
+  'NAPS2.Console.exe',   
+  'NAPS2.exe',          
   'NAPS2Console.exe',
 ];
 const NAPS2_SEARCH_DIRS_WIN = [
@@ -116,23 +98,19 @@ const NAPS2_SEARCH_DIRS_WIN = [
 ];
 const isWin = process.platform === 'win32';
 
-/** First NAPS2 binary that exists inside `dir`, or null when there is none. */
+/** First NAPS2 binary that exists insinull when there is none. */
 function pickBinaryInDir(dir: string): string | null {
   for (const name of NAPS2_CANDIDATES_WIN) {
     const candidate = path.join(dir, name);
     try {
       if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
-    } catch { /* unreadable path — keep probing */ }
+    } catch { }
   }
   return null;
 }
 
-/**
- * Resolve the NAPS2 CLI this bridge invokes:
- *   1. NAPS2_PATH — explicit override; a FILE or a FOLDER. On Windows the
- *      ".exe" suffix may be omitted.
- *   2. Auto-discovery in the usual Windows install folders.
- *   3. A bare `naps2.exe` / `naps2`, which relies on PATH.
+/*
+ * Resolve the NAPS2 CLI this bridge 
  */
 function findNaps2Binary(): string {
   const envRaw = String(process.env.NAPS2_PATH || '').trim();
@@ -155,7 +133,9 @@ function findNaps2Binary(): string {
           return envRaw;
         }
       }
-    } catch { /* unreadable — fall through to the ".exe" probe */ }
+    } catch { 
+
+    }
 
     // Allow NAPS2_PATH to omit the ".exe" extension on Windows.
     if (isWin && !/\.exe$/i.test(envRaw)) {
@@ -189,22 +169,17 @@ function findNaps2Binary(): string {
   return fallback;
 }
 
-/** The concrete NAPS2 binary this bridge runs — resolved exactly once, at start-up. */
+
 const NAPS2_BIN = findNaps2Binary();
-/**
- * Alias kept so the custom SCAN_COMMAND `{NAPS2}` token and the log lines keep
- * working; it always points at the resolved binary above.
- */
 const NAPS2_PATH = NAPS2_BIN;
-/** Surfaced by PING so the web app / support can see what this bridge will run. */
 export const resolvedNaps2Path = NAPS2_BIN;
-// ─ Network ─────────────────────────────────────────────────────────────────
+//  Network 
 const BRIDGE_HOST = process.env.BRIDGE_HOST || '127.0.0.1'; // Bind locally for security
 const BRIDGE_PORT = Number(process.env.BRIDGE_PORT || 8081);
 const MOCK_MODE = truthy(process.env.MOCK_SCAN);
 const ALLOW_SHUTDOWN = truthy(process.env.BRIDGE_ALLOW_SHUTDOWN);
 
-// ── Scanner settings ────────────────────────────────────────────────────────
+//  Scanner setting
 const SCANNER_NAME = (process.env.SCANNER_NAME || '').trim();
 const DEFAULT_FORMAT = (process.env.SCANNER_DEFAULT_FORMAT || 'pdf').toLowerCase();
 const DEFAULT_RESOLUTION = Number(process.env.SCANNER_DEFAULT_DPI || 300);
@@ -215,17 +190,9 @@ const SCAN_COMMAND = (process.env.SCAN_COMMAND || '').trim();
 const SCAN_COMMAND_EXTRA = (process.env.SCAN_COMMAND_EXTRA || '').trim();
 const SCANNER_STDIO = process.env.SCANNER_STDIO === 'inherit' ? 'inherit' : 'pipe';
 const SCAN_TIMEOUT_MS = Math.max(10000, Number(process.env.SCAN_TIMEOUT_MS || 120000));
-// ── Origin allow-list (fail-closed) ─────────────────────────────────────────
-// The bridge binds 127.0.0.1, so it is reachable by ANY web page the reception
-// computer happens to have open: a page can open ws://127.0.0.1:8081 and send
-// START_SCAN, physically running the scanner (and occupying the single-flight
-// lock) without the user touching anything. The old check was
-// `if (ALLOWED_ORIGINS.length && origin && …)` — with BRIDGE_ALLOWED_ORIGINS
-// unset (the default) ALLOWED_ORIGINS.length was 0, so the whole condition was
-// false and the guard never ran at all.
-//
-// Defaults now cover the real deployment plus local dev. Set
-// BRIDGE_ALLOWED_ORIGINS to override, e.g.
+//  Origin allow-list (fail-closed
+
+
 //   BRIDGE_ALLOWED_ORIGINS=https://restpoint.co.ke,https://app.restpoint.co.ke
 const DEFAULT_ALLOWED_ORIGINS = [
     'https://restpoint.co.ke',
@@ -239,25 +206,15 @@ const ALLOWED_ORIGINS = (() => {
     return configured.length ? configured : DEFAULT_ALLOWED_ORIGINS;
 })();
 
-// ── Restpoint Cloud address used for grant verification ────────────────────
-// This is deliberately NOT taken from the START_SCAN message. If the agent
-// verified grants against a client-supplied apiBase, the entire scheme would
-// collapse: a hostile client could point the bridge at a server it controls and
-// have that server answer "valid: true" for any string. The URL is therefore
-// fixed on the bridge machine at install time and the agent only ever talks to
-// that one host.
+//  Restpoint Cloud address used for grant verification 
+
 const CLOUD_URL = String(
     process.env.BRIDGE_CLOUD_URL || 'https://restpoint.co.ke'
 ).replace(/\/+$/, '');
 
 const GRANT_TOLERANCE_MS = 90_000;   // session outlives the 60s grant a little
 
-// ── NAPS2 6.x–8.x CLI options ───────────────────────────────────────────────
-// The installed NAPS2 has NO "scan" / "list" verbs — the console tool is purely
-// flag driven:
-//   NAPS2.Console.exe -o out.pdf --dpi 300 --bitdepth color
-//                     [--source glass|feeder|duplex] [--driver wia] [--device "…"]
-//                     [--noprofile | -p "profile"] [-n pages] -v -f
+
 const SCANNER_DRIVER = (process.env.SCANNER_DRIVER || (isWin ? 'wia' : '')).trim().toLowerCase();
 const SCANNER_SOURCE = (process.env.SCANNER_SOURCE || (DEFAULT_DUPLEX ? 'duplex' : '')).trim().toLowerCase();
 /** Optional named NAPS2 profile; when empty the bridge uses --noprofile (deterministic flags). */
@@ -268,7 +225,7 @@ const SCANNER_AUTO_DETECT = process.env.SCANNER_AUTO_DETECT === undefined ? true
 const SCANNER_DRIVERS = (process.env.SCANNER_DRIVERS || (SCANNER_DRIVER ? `${SCANNER_DRIVER},twain` : 'wia,twain'))
   .split(',').map((d) => d.trim().toLowerCase()).filter((d) => /^(wia|twain|escl|sane|apple)$/.test(d));
 
-/** Map the app's colour words onto NAPS2's --bitdepth values (color|gray|bw). */
+/** Map the app'svalues (color|gray|bw). */
 function bitDepthFor(mode?: string): string {
   const m = String(mode || '').toLowerCase();
   if (m === 'gray' || m === 'grey' || m === 'grayscale' || m === 'greyscale') return 'gray';
@@ -291,7 +248,7 @@ function ensureDir(dir: string): string {
 
 const SCAN_DIR = ensureDir(process.env.SCANNER_WORK_DIR || path.join(systemTempDir(), 'restpoint-scanner-bridge'));
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// helper
 function decodeOut(buf: unknown): string {
     if (buf === undefined || buf === null) return '';
     if (typeof buf === 'string') return buf;

@@ -87,6 +87,25 @@ export async function checkCover(payload) {
   }
 }
 
+/* Public: look up the progress of a claim already filed against a policy.
+ *
+ * Takes the same policy number as checkCover (the holder's national ID, read
+ * off the policy card) and returns a deliberately thin payload: a short public
+ * reference, the status, the deceased's name and the claim's own dates. It
+ * never returns the claimant's identity, the cause or place of death, the
+ * internal review notes or any document path - see the controller for why.
+ */
+export async function trackClaim(payload) {
+  try {
+    const { data } = await api.post(`${BASE}/claim-track`, {
+      policyNumber: payload?.policyNumber,
+    });
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
 /** Staff: list policies. */
 export async function listPolicies(params = {}) {
   const query = new URLSearchParams(

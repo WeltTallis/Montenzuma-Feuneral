@@ -21,6 +21,7 @@ import {
   createApplication,
   createClaim,
   checkCover,
+  trackClaim,
   listPolicies,
   getPolicy,
   listClaims,

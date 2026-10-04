@@ -1,19 +1,12 @@
-// ============================================
-// HEARSE SERVICE - Local Database Configuration
-// ============================================
-// Self-contained within hearse service - no external imports
-// Uses environment variables from .env or docker-compose
-// Uses knex for migrations
+
 
 import mysql, { Pool, PoolConnection, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import knex, { Knex } from 'knex';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
-// Load the service .env first, then the repo-root .env. These paths resolve
-// for BOTH source (`services/hearse-service`) and compiled
-// (`dist/services/hearse-service`) layouts, so the DB credentials from the repo
-// root .env are always available.
+// Load the service .env 
+
 for (const envPath of [
   path.resolve(__dirname, '.env'),            // service folder (source layout)
   path.resolve(__dirname, '../../../.env'),     // service folder (dist layout)
@@ -23,9 +16,9 @@ for (const envPath of [
   dotenv.config({ path: envPath });
 }
 
-// ============================================
+
 // Type Definitions
-// ============================================
+
 
 export interface DatabaseConfig {
   host: string;
@@ -58,9 +51,8 @@ export interface KnexMigrationConfig {
   };
 }
 
-// ============================================
 // Configuration
-// ============================================
+
 
 const HEARSE_DB_CONFIG: DatabaseConfig = {
   host: process.env.DB_HOST || '127.0.0.1',
@@ -73,9 +65,9 @@ const HEARSE_DB_CONFIG: DatabaseConfig = {
   queueLimit: 0
 };
 
-// ============================================
+
 // Database Connection Pool
-// ============================================
+
 
 let hearsePool: Pool | null = null;
 

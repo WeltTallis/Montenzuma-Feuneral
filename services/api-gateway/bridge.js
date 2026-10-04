@@ -1,33 +1,6 @@
 'use strict';
 
-/**
- * Restpoint Cloud <-> Scanner Bridge authorisation
- * ================================================
- *
- * WHY THIS EXISTS
- * ---------------
- * The bridge is a desktop app running a WebSocket server on
- * ws://127.0.0.1:8081. Anything that can open a socket to loopback could send
- * START_SCAN and make the machine physically pull paper through the scanner.
- * The agent's Origin allow-list stops hostile *web pages*, but it does nothing
- * about a local process, another user on the PC, or malware. The agent also had
- * no way to tell a genuine Restpoint tab from any other local client - it just
- * obeyed whatever arrived.
- *
- * The fix makes the CLOUD the authority, so nothing secret has to be written to
- * the reception computer:
- *
- *   1. Browser -> cloud  POST /bridge/grant         (authenticated as the user)
- *                 returns a short-lived, single-use, scope-limited grant.
- *   2. Browser -> agent  HELLO { grant }
- *   3. Agent   -> cloud  POST /bridge/verify-grant  (the cloud burns the grant)
- *   4. Agent   -> browser HELLO_OK { sessionId, bridgeId, expiresAt }
- *   5. Browser -> agent  START_SCAN { sessionId }   (required on every scan)
- *
- * A replayed grant is worthless (single-use, 60s), a local attacker with no
- * Restpoint session cannot obtain one, and the agent only ever contacts the
- * cloud URL configured on its own machine.
- */
+// Restpoint Cloud  Scanner Bridge authorisation
 
 const jwt = require('jsonwebtoken');
 const crypto = require('node:crypto');
@@ -37,9 +10,7 @@ const GRANT_TTL_SECONDS = 60;
 const GRANT_SCOPE = 'bridge:scan';
 
 // In-memory replay guard: a grant is single-use, so we remember its jti until
-// it would have expired anyway. A restart clears the set; the worst case is
-// that a grant issued just before a restart is replayable once, and it still
-// has to pass signature + expiry.
+
 const usedGrants = new Map();
 
 function pruneUsedGrants() {
