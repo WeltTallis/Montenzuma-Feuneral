@@ -7,14 +7,15 @@
    PageHeader or repeat that document list — doing so stacked three headings
    and duplicated the document checklist above the form.
 
-   Below the form sits <AmaniClaimTracker>, so a family who has ALREADY filed a
-   claim can look up its progress instead of having to phone the branch. It is
-   placed after the form, not before, because the overwhelmingly common reason
-   to land here is to submit a first claim.
+   Below the form sits nothing: claim TRACKING now lives on its own page,
+   /amani/claims/track (AmaniTrackClaim), linked from the top nav. It used to be
+   appended to this page as <AmaniClaimTracker>, but a member checking on a
+   death should not have to scroll past a whole submission form to reach it, and
+   one page doing two unrelated jobs read as confusing. The old component file
+   has been removed - do not re-add it alongside the new page.
    ========================================================================== */
 
 import ClaimSubmissionForm from './claimAplication';
-import AmaniClaimTracker from './AmaniClaimTracker';
 import { AmaniFooter, AmaniNav } from './AmaniUi';
 import './AmaniCover.css';
 
@@ -25,7 +26,6 @@ export default function AmaniClaims() {
 
       <main className="bg-ac-bg">
         <ClaimSubmissionForm />
-        <AmaniClaimTracker />
       </main>
 
       <AmaniFooter />

@@ -128,6 +128,23 @@ export function getKnex(): Knex {
 export async function runMigrations(): Promise<boolean> {
   const knex = getKnex();
   try {
+    /* Log the directory actually in use and how many migration files knex sees
+       in it. The directory used to resolve to '/usr/src/app/migrations' (a
+       path that does not exist) because knex resolves a relative
+       `migrations.directory` against process.cwd(), not the service — and the
+       only symptom was a boot line that scrolled away, leaving "503 and no
+       tables" with nothing to act on. This makes it visible in one place. */
+    const dir = (knex as any).migrations?.config?.directory;
+    let seen = 0;
+    try {
+      seen = fs.readdirSync(dir).filter((f: string) => f.endsWith('.js')).length;
+    } catch {
+      /* readdir failure is reported by the migrate call below. */
+    }
+    console.log(
+      `[insurance] migrating using directory=${dir} (${seen} migration file(s) visible) db=${DB_NAME}`,
+    );
+
     const [batch, applied] = await knex.migrate.latest();
     if (applied && applied.length) {
       console.log(`[insurance] applied ${applied.length} migration(s) (batch ${batch})`);
@@ -136,7 +153,7 @@ export async function runMigrations(): Promise<boolean> {
     }
     return true;
   } catch (err: any) {
-    console.error('[insurance] migration failed:', err?.message || err);
+    console.error('[insurance] migration failed:', err?.stack || err?.message || err);
     return false;
   }
 }

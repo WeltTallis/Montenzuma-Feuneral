@@ -197,6 +197,7 @@ export function PageHeader({ eyebrow, title, accent, intro }) {
 const SUPPORT_LINKS = [
   { to: '/amani/cover/apply', label: 'Talk to our team' },
   { to: '/amani/claims', label: 'Make a claim' },
+  { to: '/amani/claims/track', label: 'Track a claim' },
   { to: '/amani/cover/terms', label: 'Waiting periods' },
   { to: '/amani/payments', label: 'Pay your contribution' },
 ];

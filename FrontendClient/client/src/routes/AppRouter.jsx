@@ -33,6 +33,7 @@ const AmaniTermsPage = lazy(() => import('../modules/insurance/amani/AmaniTerms'
 const AmaniReferPage = lazy(() => import('../modules/insurance/amani/AmaniRefer'));
 const AmaniApplyPage = lazy(() => import('../modules/insurance/amani/AmaniApply'));
 const AmaniClaimsPage = lazy(() => import('../modules/insurance/amani/AmaniClaims'));
+const AmaniTrackClaimPage = lazy(() => import('../modules/insurance/amani/AmaniTrackClaim'));
 const AmaniPaymentsPage = lazy(() => import('../modules/insurance/amani/AmaniPayments'));
 const MemorialPage = lazy(() => import('../modules/memorial/MemorialPage'));
 const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
@@ -957,6 +958,7 @@ const AppRouter = () => (
       <Route path="/amani/cover/terms" element={<AmaniTermsPage />} />
       <Route path="/amani/cover/refer" element={<AmaniReferPage />} />
       <Route path="/amani/claims" element={<AmaniClaimsPage />} />
+      <Route path="/amani/claims/track" element={<AmaniTrackClaimPage />} />
       <Route path="/amani/payments" element={<AmaniPaymentsPage />} />
       <Route path="/memorial" element={<MemorialPage />} />
       <Route path="/portal/login" element={<PortalLoginPage />} />
