@@ -14,6 +14,25 @@ const app = express();
 const PORT = Number.parseInt(process.env.PORT || '5013', 10);
 const server = http.createServer(app);
 
+/* LAST-RESORT SAFETY NET
+   Without this, ANY unhandled error in an async route kills the process: node
+   prints the stack and exits, Docker restarts the container, and the user sees
+   "socket hang up" at the gateway rather than a useful 500. That is exactly
+   what happened when getKnex() threw MODULE_NOT_FOUND — the whole service
+   crash-looped on the first application submit.
+   Express 4 does not forward rejected promises from async handlers to the
+   error middleware, so these two listeners are what actually keep the service
+   alive. They LOG rather than swallow silently: an unhandled rejection is a
+   real bug and must be visible in the logs.
+   Note the process is NOT exited here — exiting is what caused the outage. */
+process.on('unhandledRejection', (reason) => {
+  console.error('[insurance] UNHANDLED REJECTION (service kept alive):', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[insurance] UNCAUGHT EXCEPTION (service kept alive):', err);
+});
+
 app.use(
   cors({
     origin: true,

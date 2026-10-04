@@ -15,6 +15,7 @@
  * Both are idempotent, so restarting the container is always safe.
  */
 import mysql from 'mysql2/promise';
+import fs from 'fs';
 import path from 'path';
 import knexLib, { Knex } from 'knex';
 
@@ -57,11 +58,51 @@ export async function ensureDatabase(): Promise<void> {
   }
 }
 
+/**
+ * Locate knexfile.js.
+ *
+ * WHY THIS EXISTS
+ * knexfile.js is plain JavaScript and is NOT emitted by tsc — it stays beside
+ * the TypeScript sources. But this tsconfig sets `"rootDir": "../.."` (it has
+ * to, because server.ts imports ../../shared/tenancy.js), so tsc emits the
+ * compiled files to `dist/services/insurance-service/`. A hardcoded
+ * `path.join(__dirname, '..', 'knexfile.js')` therefore resolved to
+ * `dist/services/knexfile.js`, which does not exist, so getKnex() threw
+ * MODULE_NOT_FOUND on the FIRST request — and because that call sat outside the
+ * handlers' try/catch, the exception escaped the route, the process died, and
+ * every submit came back as "socket hang up".
+ *
+ * The output depth is a tsc implementation detail that can change between
+ * compiler versions, so we probe the known layouts instead of hardcoding one:
+ *   1. beside the compiled file   (if the layout ever changes to compile in place)
+ *   2. one level up               (the layout knexfile.js was originally written for)
+ *   3. the service dir via cwd    (what the container actually ships)
+ *   4. the service dir itself     (running from the service folder)
+ * The error lists every path tried, so a future failure is diagnosable from
+ * the log line alone instead of guessing at directory depths.
+ */
+function resolveKnexfile(): string {
+  const candidates = [
+    path.join(__dirname, 'knexfile.js'),
+    path.join(__dirname, '..', 'knexfile.js'),
+    path.join(process.cwd(), 'services', 'insurance-service', 'knexfile.js'),
+    path.join(process.cwd(), 'knexfile.js'),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  throw new Error(
+    'knexfile.js not found. Looked in:\n  ' + candidates.join('\n  '),
+  );
+}
+
 /** Shared knex instance bound to the insurance database. */
 export function getKnex(): Knex {
   if (instance) return instance;
 
-  const config = require(path.join(__dirname, '..', 'knexfile.js')).production;
+  const config = require(resolveKnexfile()).production;
 
   instance = knexLib({
     client: 'mysql2',
