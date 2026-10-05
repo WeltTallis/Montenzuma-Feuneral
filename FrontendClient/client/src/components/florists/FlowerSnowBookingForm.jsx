@@ -10,6 +10,7 @@ import api from '../../api/axios'
 import Snowfall from './Snowfall'
 import notify from '../../utils/notify';
 import { resolveTenantLogoSrc, getTenantBrandingFromStorage, firstNonEmptyString } from '../../utils/tenantResolver/tenantBranding';
+import { getBranchSlug, getBranchId } from '../../utils/globalAuth';
 /* ─────────────────────────────────────────────────────────────────────────────
    Flower booking panel — "intake sheet" design language.
    Palette + component treatment follow the approved reference: paper-white
