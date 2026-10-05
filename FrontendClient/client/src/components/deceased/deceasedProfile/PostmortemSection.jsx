@@ -219,18 +219,21 @@ const PostmortemSection = ({ deceasedId, deceasedData, onUpdate }) => {
             socket.emit('join-tenant', tenantSlug);
         });
         
-        socket.on('postmortem:updated', (data) => {
-            console.log('[SOCKET] Postmortem updated:', data);
-            if (data.deceasedId === deceasedId) {
-                // Refresh postmortem data when updated
-                fetchPostmortemData();
-                fetchPostmortemRequests();
-                onUpdate?.();
-                
-                // Show notification
-                showToast.info('Postmortem record has been updated');
-            }
-        });
+        // The socket bus re-emits the URL segment verbatim, so the deceased-service
+        // publish to `/emit/postmortem-updated` arrives as `postmortem-updated`
+        // (hyphen). This listener used to ask for `postmortem:updated` (colon),
+        // which nothing ever emits — so the live refresh never fired and a saved
+        // postmortem still read as pending until a manual reload. Listen to both
+        // so a future rename of either side cannot silently break it again.
+        const onPostmortemUpdated = (data) => {
+            if (data?.deceasedId !== deceasedId) return;
+            fetchPostmortemData();
+            fetchPostmortemRequests();
+            onUpdate?.();
+            showToast.info('Postmortem record has been updated');
+        };
+        socket.on('postmortem-updated', onPostmortemUpdated);
+        socket.on('postmortem:updated', onPostmortemUpdated);
         
         socket.on('disconnect', () => {
             console.log('[SOCKET] Disconnected from server');

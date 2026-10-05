@@ -8,6 +8,8 @@ import {
 import {
   PHOTOS,
   aboutPoints,
+  coverOptions,
+  formatPlanAmount,
   moments,
   promises,
   steps,
@@ -37,6 +39,7 @@ export default function AmaniCover() {
 
       <main id="top">
         <Hero />
+        <PlanOptions />
         <PromiseBand />
         <Moments />
         <About />
@@ -70,31 +73,19 @@ function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            Amani means peace. Amani Cover is funeral insurance that lets your family say goodbye
+             Amani Cover is funeral insurance that lets your family say goodbye
             with dignity, without worrying about the cost. Offered by Montenzuma Monalisa Funeral
             Home, trusted by families for over 25 years.
           </p>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
-            {/* Now a real client-side route to /amani/cover/apply rather than an
-                #apply jump. The #apply anchor scrolls to the embedded form on
-                this same page; the standalone application page is the fuller
-                document and is what the button promises. Matches the header CTA
-                wording - "Get covered" names the action instead of describing
-                what the button does. */}
-            <Link
-              to="/amani/cover/apply"
+            <a
+              href="#plans"
               className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-base font-medium text-white shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
             >
-              Get covered
+              Choose a cover
               <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-            {/* Real client-side route — see /amani/payments in AppRouter.
-                Was bg-ac-accent (#1f56c4) - a brighter blue that read as a
-                lighter tier next to the navy "Get covered". Now bg-ac-ink
-                (#0f3040), the dark desaturated teal-navy already in the Amani
-                palette, so the pair is clearly two different colours without
-                introducing a hue that is not part of the brand. */}
+            </a>
             <Link
               to="/amani/payments"
               className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-ink px-7 text-base font-medium text-white shadow-lg shadow-ac-ink/20 transition-colors hover:bg-ac-ink/90"
@@ -194,12 +185,10 @@ function Hero() {
     sm:w-[24rem]
   "
           >
-            <blockquote className="font-serif text-lg leading-snug text-ac-primary">
-              &ldquo;When Mama passed, our cover took care of everything. We could simply grieve together.&rdquo;
-            </blockquote>
+       <blockquote className="font-serif text-lg leading-snug text-ac-primary"> &ldquo;You may never know when you will need it, but when the unexpected happens, having a plan can make the difference.&rdquo; </blockquote>
 
             <figcaption className="mt-3 text-xs text-ac-mutedfg">
-              Grace W., Amani Cover member
+              AMANI COVER
             </figcaption>
           </figure>
 
@@ -209,6 +198,39 @@ function Hero() {
             <span className="text-sm font-medium">Covered by Montenzuma Funeral</span>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PlanOptions() {
+  return (
+    <section id="plans" className="scroll-mt-20 border-y border-ac-border bg-ac-card px-6 py-14 lg:px-10 lg:py-18">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ac-accent">Choose your cover</p>
+          <h2 className="mt-3 font-serif text-3xl font-medium leading-tight text-ac-primary sm:text-4xl">Know the contribution before you apply.</h2>
+          <p className="mt-3 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect. Group cover starts at five people.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {coverOptions.map((option) => (
+            <article key={option.value} className="flex min-h-52 flex-col rounded-2xl border border-ac-border bg-ac-bg p-5 shadow-sm">
+              <h3 className="font-serif text-2xl text-ac-primary">{option.label}</h3>
+              <p className="mt-2 min-h-10 text-sm leading-relaxed text-ac-mutedfg">{option.hint}</p>
+              <p className="mt-4 text-2xl font-semibold text-ac-primary">
+                {formatPlanAmount(option.value, option.monthly)}
+                <span className="ml-1 text-sm font-normal text-ac-mutedfg">/ month</span>
+              </p>
+              <Link
+                to={`/amani/cover/apply?plan=${encodeURIComponent(option.value)}`}
+                className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ac-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring"
+              >
+                Apply for this cover <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </article>
+          ))}
+        </div>
+        <p className="mt-5 text-xs leading-relaxed text-ac-mutedfg">Submitting an application does not activate cover. Our team will confirm your application and explain payment and start dates.</p>
       </div>
     </section>
   );

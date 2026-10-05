@@ -49,7 +49,7 @@ const initDatabase = async () => {
         const DB_HOST = process.env.DB_HOST || 'localhost';
         const DB_USER = process.env.DB_USER || 'root';
         const DB_PASSWORD = process.env.DB_PASSWORD || '';
-                const DB_NAME = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+        const DB_NAME = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
 
 
         floristKnex = knex({
@@ -64,7 +64,7 @@ const initDatabase = async () => {
         });
 
         console.log('[FLORIST] Database connection initialized');
-        
+
         // Run migrations using Knex
         await runMigrations();
     } catch (error: any) {
@@ -79,11 +79,11 @@ const runMigrations = async () => {
         // Get the directory path for knexfile
         const knexfilePath = path.resolve(__dirname, './knexfile.ts');
         console.log(`[FLORIST] Loading knexfile from: ${knexfilePath}`);
-        
+
         // Dynamic import for knexfile
         const knexConfig = await import(pathToFileURL(knexfilePath).href);
         const migrationKnex = knex(knexConfig.default?.development || knexConfig.development);
-        
+
         // Check if migrations table exists
         const hasMigrationsTable = await migrationKnex.schema.hasTable('knex_migrations');
         if (!hasMigrationsTable) {
@@ -106,7 +106,7 @@ const runMigrations = async () => {
                 }
             }
         }
-        
+
         await migrationKnex.destroy();
     } catch (error: any) {
         console.error('[FLORIST] Migration failed:', error.message);
@@ -136,59 +136,59 @@ async function resolveFlowerDatabase(tenantSlug: string): Promise<{ dbName: stri
 // TENANT RESOLUTION MIDDLEWARE
 // ============================================
 app.use(async (req: any, res: any, next: any) => {
-  const tenantSlug = (req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared') as string;
-  const branchId = req.headers['x-branch-id'] || null;
+    const tenantSlug = (req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared') as string;
+    const branchId = req.headers['x-branch-id'] || null;
 
-  req.tenantSlug = tenantSlug;
-  req.tenantId = req.headers['x-tenant-id'] || req.headers['x-tenant_id'] || null;
-  req.branchId = branchId;
+    req.tenantSlug = tenantSlug;
+    req.tenantId = req.headers['x-tenant-id'] || req.headers['x-tenant_id'] || null;
+    req.branchId = branchId;
 
-  console.log(`[FLORIST] Request: ${req.method} ${req.path}`);
-  console.log(`[FLORIST] Tenant: ${tenantSlug}, Branch: ${branchId}`);
+    console.log(`[FLORIST] Request: ${req.method} ${req.path}`);
+    console.log(`[FLORIST] Tenant: ${tenantSlug}, Branch: ${branchId}`);
 
-  if (tenantSlug === 'system_shared') {
-    console.log('[FLORIST] Using system_shared tenant (bypassing validation)');
-    req.tenant = {
+    if (tenantSlug === 'system_shared') {
+        console.log('[FLORIST] Using system_shared tenant (bypassing validation)');
+        req.tenant = {
             db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
 
-      tenant_id: 1,
-      name: 'System Shared'
-    };
-    return next();
-  }
-
-  try {
-        // Resolve the central operations database for flower data.
-    // All florist data lives in the ONE central `restpoint_operations` DB.
-    const { dbName, deploymentType } = await resolveFlowerDatabase(tenantSlug);
-
-    req.tenant = {
-      db_name: dbName,
-      tenant_slug: tenantSlug,
-      name: tenantSlug,
-      deployment_type: deploymentType
-    };
-    console.log(`[FLORIST] Tenant resolved → db: ${dbName} [${deploymentType}]`);
-
-    // Ensure florist tables exist in the flower database
-    if (dbName) {
-      try {
-        await ensureFloristTables(dbName);
-      } catch (tableError: any) {
-        console.error(`[FLORIST] Warning: Could not ensure tables in ${dbName}:`, tableError.message);
-      }
+            tenant_id: 1,
+            name: 'System Shared'
+        };
+        return next();
     }
-  } catch (err: any) {
-    console.error('[FLORIST] Tenant resolution error:', err.message);
-    req.tenant = {
-            db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
-      tenant_slug: tenantSlug,
-      name: tenantSlug,
-      deployment_type: 'single'
-    };
-  }
 
-  next();
+    try {
+        // Resolve the central operations database for flower data.
+        // All florist data lives in the ONE central `restpoint_operations` DB.
+        const { dbName, deploymentType } = await resolveFlowerDatabase(tenantSlug);
+
+        req.tenant = {
+            db_name: dbName,
+            tenant_slug: tenantSlug,
+            name: tenantSlug,
+            deployment_type: deploymentType
+        };
+        console.log(`[FLORIST] Tenant resolved → db: ${dbName} [${deploymentType}]`);
+
+        // Ensure florist tables exist in the flower database
+        if (dbName) {
+            try {
+                await ensureFloristTables(dbName);
+            } catch (tableError: any) {
+                console.error(`[FLORIST] Warning: Could not ensure tables in ${dbName}:`, tableError.message);
+            }
+        }
+    } catch (err: any) {
+        console.error('[FLORIST] Tenant resolution error:', err.message);
+        req.tenant = {
+            db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
+            tenant_slug: tenantSlug,
+            name: tenantSlug,
+            deployment_type: 'single'
+        };
+    }
+
+    next();
 });
 
 // ============================================
@@ -202,8 +202,8 @@ app.use('/florist/flower-arrangements', flowerSampleRoutes);
 
 // Health check
 app.get('/health', (_req: any, res: any) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'florist-service',
         version: '1.0.0',
@@ -289,6 +289,7 @@ async function ensureFloristTables(dbName: string) {
             table.index(['customer'], 'idx_customer');
             table.index(['branch'], 'idx_branch');
             table.index(['created_at'], 'idx_created_at');
+            table.string('deceased_gender', 40); // Add the new column for deceased gender
         });
 
         // flower_samples — must expose `arrangement_id` (used by controllers)
@@ -362,12 +363,16 @@ async function ensureFloristTables(dbName: string) {
         // fails with "Unknown column 'ribbon_color' in 'INSERT INTO'".
         // This guard is idempotent and mirrors the tenant_id column pattern above.
         const bookingExtraColumns = [
-            { name: 'quantity',       sqlType: 'INT DEFAULT 1' },
-            { name: 'arrangements',   sqlType: 'TEXT' },
-            { name: 'primary_color',  sqlType: 'VARCHAR(100)' },
-            { name: 'accent_color',   sqlType: 'VARCHAR(100)' },
-            { name: 'ribbon_color',   sqlType: 'VARCHAR(100)' },
-            { name: 'size',           sqlType: 'VARCHAR(50)' },
+            { name: 'quantity', sqlType: 'INT DEFAULT 1' },
+            { name: 'arrangements', sqlType: 'TEXT' },
+            { name: 'primary_color', sqlType: 'VARCHAR(100)' },
+            { name: 'accent_color', sqlType: 'VARCHAR(100)' },
+            { name: 'ribbon_color', sqlType: 'VARCHAR(100)' },
+            { name: 'size', sqlType: 'VARCHAR(50)' },
+            { name: 'ribbon_message', sqlType: 'TEXT' },
+            { name: 'special_instructions', sqlType: 'TEXT' },
+            { name: 'funeral_date', sqlType: 'DATE' },
+            { name: 'deceased_gender', sqlType: 'VARCHAR(40)' },
         ];
         for (const col of bookingExtraColumns) {
             if (!(await tenantKnex.schema.hasColumn('flower_bookings', col.name))) {
@@ -397,8 +402,8 @@ async function startServer() {
     console.log(`[FLORIST] Starting Florist Service...`);
     console.log(`[FLORIST] Working directory: ${__dirname}`);
     console.log(`[FLORIST] Project root: ${path.resolve(__dirname, '../..')}`);
-    
-        const mainDb = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+
+    const mainDb = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
     console.log(`[FLORIST] Running auto-migration for florist tables in: ${mainDb}`);
     await ensureFloristTables(mainDb);
 
@@ -408,9 +413,9 @@ async function startServer() {
     const HOST = process.env.HOST || '0.0.0.0';
 
     app.listen(PORT, HOST, () => {
-                console.log(`   DB: ${process.env.OPERATIONS_DATABASE || 'restpoint_operations'}`);
+        console.log(`   DB: ${process.env.OPERATIONS_DATABASE || 'restpoint_operations'}`);
         console.log(`   Storage: ${process.env.STORAGE_PATH || '/opt/storage/uploads'}`);
-     
+
     });
 }
 
@@ -433,7 +438,7 @@ process.on('SIGTERM', () => {
         floristKnex.destroy();
     }
     process.exit(0);
-    
+
 });
 
 process.on('SIGINT', () => {
@@ -443,9 +448,9 @@ process.on('SIGINT', () => {
         floristKnex.destroy();
     }
     process.exit(0);
-     
+
 });
-   
+
 // Initialize and start
 startServer();
 

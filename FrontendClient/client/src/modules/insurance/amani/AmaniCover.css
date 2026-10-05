@@ -20,19 +20,19 @@
   /* Palette — verbatim from the redesign's app/globals.css :root.
      Values are prefixed `ac-` and consumed via the @theme inline block in
      src/index.css, so they stay scoped to these pages and cannot leak. */
-  --ac-primary: #00296b;
-  --ac-ink: #0f3040;
-  --ac-accent: #1f56c4;
-  --ac-highlight: #9fbcff;
-  --ac-border: #dde5f0;
-  --ac-input: #cfd9e8;
-  --ac-mutedfg: #0f3040;
-  --ac-bg: #ffffff;
+  --ac-primary: #173c5a;
+  --ac-ink: #293946;
+  --ac-accent: #547895;
+  --ac-highlight: #c1a978;
+  --ac-border: #dce4e8;
+  --ac-input: #c6d2d9;
+  --ac-mutedfg: #596b78;
+  --ac-bg: #f7f8f7;
   --ac-card: #ffffff;
   --ac-onprimary: #ffffff;
   --ac-onaccent: #ffffff;
-  --ac-oncard: #0f3040;
-  --ac-ring: #1f56c4;
+  --ac-oncard: #293946;
+  --ac-ring: #547895;
 
   color-scheme: light;
   background: var(--ac-bg);
@@ -43,7 +43,7 @@
      Next, but the host app already requests BOTH families in the single combined
      Google Fonts URL in src/index.css, so they are referenced by name here and
      fall back to the system stack if the font fails to load. */
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
   /* next/font applied `antialiased` on <body>; apply it locally instead. */
   -webkit-font-smoothing: antialiased;
@@ -62,7 +62,7 @@
 }
 
 .amani-cover .font-sans {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* next/image `fill` equivalent, used by <FillImage>.

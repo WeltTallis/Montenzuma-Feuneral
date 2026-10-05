@@ -229,6 +229,12 @@ function Sidebar({
   const pillList = pillsFor(section);
   const activeCount = filters.length;
 
+  /* Money for the charge panels. The currency comes from the records themselves
+     (a USD home shows USD) — never a hard-coded "KES". */
+  const ccy = calc.charges?.currency || "KES";
+  const money = (n) => `${ccy} ${(Number(n) || 0).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
+  const morgue = calc.morgue || { held: 0, avg: 0, median: 0, longest: 0, top: [] };
+
   /* The event counter only means something once the schedule is scoped to a
      single day or week; a whole month already has its own totals on screen. */
   const isPeriod = view === "day" || view === "week";
@@ -383,9 +389,81 @@ function Sidebar({
           )) : <div className="bigsub">No branch data.</div>}
         </div>
 
+        {/* Days in morgue — the deceased-profile sidebar's "Days in Morgue"
+            row, aggregated across every body currently held. */}
         <div className="san-card">
           <div className="side-h">
             <span className="side-h-ic"><Ic n="clock" s={12} /></span>
+            <span>Days in Morgue</span>
+            <em>{morgue.held} held</em>
+          </div>
+          <div className="sgrid3">
+            <div className="sstat"><b>{morgue.avg}</b><span>Avg days</span></div>
+            <div className="sstat"><b>{morgue.median}</b><span>Median</span></div>
+            <div className="sstat"><b>{morgue.longest}</b><span>Longest</span></div>
+          </div>
+          {morgue.top.length ? (
+            <div className="stop">
+              {morgue.top.map(({ p, d }) => (
+                <div className="srow" key={p.uid || p.adm} {...tipProps(p.name || "—", `${d} ${d === 1 ? "day" : "days"} in morgue`, "Click to open the case")}>
+                  <span className="sn">{p.name || "—"}</span>
+                  <b className={d >= morgue.avg && d > 0 ? "warn" : ""}>{d}d</b>
+                </div>
+              ))}
+            </div>
+          ) : <div className="bigsub">No bodies currently in the morgue.</div>}
+        </div>
+
+        {/* Body storage status — "In Storage" vs "Released", per the deceased
+            sidebar's "Body Storage Status" row. */}
+        <div className="san-card">
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="file" s={12} /></span>
+            <span>Body Storage</span>
+            <em>{morgue.held} in storage</em>
+          </div>
+          <div className="stop">
+            {segs.map((s) => (
+              <div className="srow" key={s.k} onClick={() => onOpenModal(`status:${s.k}`)} {...tipProps(s.l, `${s.v} cases`, "Click for the case list")}>
+                <span className="sd" style={{ background: s.c }} />
+                <span className="sn">{s.l}</span>
+                <b>{s.v}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Charges so far — billed totals from the records plus the holding cost
+            accrued on bodies that are still in the morgue. */}
+        <div className="san-card">
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="clip" s={12} /></span>
+            <span>Charges</span>
+            <em>{calc.charges?.rated || 0} rated</em>
+          </div>
+          <div className="stop">
+            <div className="srow">
+              <span className="sn">Billed to date</span>
+              <b>{money(calc.charges?.billed)}</b>
+            </div>
+            <div className="srow">
+              <span className="sn">Extra charges</span>
+              <b>{money(calc.charges?.extraOnly)}</b>
+            </div>
+            <div className="srow">
+              <span className="sn">Storage accrued</span>
+              <b>{money(calc.charges?.accrued)}</b>
+            </div>
+            <div className="srow">
+              <span className="sn">Total so far</span>
+              <b className="tot">{money((calc.charges?.billed || 0) + (calc.charges?.accrued || 0))}</b>
+            </div>
+          </div>
+        </div>
+
+        <div className="san-card">
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="bed" s={12} /></span>
             <span>Storage Accrual</span>
           </div>
           <div className="bigpct">{fmtK(calc.accrual)}</div>

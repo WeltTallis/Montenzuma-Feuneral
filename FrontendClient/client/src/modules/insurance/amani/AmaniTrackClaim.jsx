@@ -68,52 +68,49 @@ export default function AmaniTrackClaim() {
     <div className="amani-cover">
       <AmaniNav active="/amani/claims/track" />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap');
-        
         .amani-track-page {
           max-width: 800px;
           margin: 0 auto;
           padding: 4rem 1.5rem;
-          font-family: 'Inter', sans-serif;
-    
-          color: #0F172A;
+          font-family: 'DM Sans', sans-serif;
+          color: var(--ac-ink);
           min-height: 80vh;
         }
         .amani-back-link {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
-          color: #64748B;
+          color: var(--ac-mutedfg);
           text-decoration: none;
           font-size: 0.9rem;
           font-weight: 500;
           margin-bottom: 2rem;
           transition: color 0.2s;
         }
-        .amani-back-link:hover { color: #0B3F8A; }
+        .amani-back-link:hover { color: var(--ac-primary); }
         
         .amani-eyebrow {
           font-size: 0.75rem;
           font-weight: 600;
           letter-spacing: 0.2em;
           text-transform: uppercase;
-          color: #2563EB;
+          color: var(--ac-accent);
           margin-bottom: 1rem;
         }
         .amani-title {
-          font-family: 'Fraunces', serif;
+          font-family: 'Cormorant Garamond', Georgia, serif;
           font-size: clamp(2.2rem, 5vw, 3.2rem);
           line-height: 1.05;
           font-weight: 500;
-          letter-spacing: -0.02em;
-          color: #0B3F8A;
+          letter-spacing: 0;
+          color: var(--ac-primary);
           margin-bottom: 1.5rem;
         }
-        .amani-title em { font-style: italic; color: #2563EB; }
+        .amani-title em { font-style: italic; color: var(--ac-accent); }
         .amani-subtitle {
           max-width: 600px;
           line-height: 1.6;
-          color: #64748B;
+          color: var(--ac-mutedfg);
           font-size: 1rem;
           margin-bottom: 3rem;
         }
@@ -124,32 +121,32 @@ export default function AmaniTrackClaim() {
           display: block;
           font-size: 0.9rem;
           font-weight: 500;
-          color: #0B3F8A;
+          color: var(--ac-primary);
           margin-bottom: 0.75rem;
         }
         .amani-input {
           width: 100%;
           height: 56px;
           padding: 0 1.25rem;
-          border: 1px solid #CBD5E1;
+          border: 1px solid var(--ac-input);
           border-radius: 12px;
           background: #FFFFFF;
           font-size: 1rem;
-          color: #0F172A;
-          font-family: 'Inter', sans-serif;
+          color: var(--ac-ink);
+          font-family: 'DM Sans', sans-serif;
           transition: all 0.2s;
           outline: none;
           box-sizing: border-box;
         }
         .amani-input:focus {
-          border-color: #2563EB;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+          border-color: var(--ac-accent);
+          box-shadow: 0 0 0 3px rgba(84, 120, 149, 0.15);
         }
         
         .amani-submit-btn {
           height: 52px;
           padding: 0 2rem;
-          background: #0B3F8A;
+          background: var(--ac-primary);
           color: white;
           border: none;
           border-radius: 12px;
@@ -157,12 +154,12 @@ export default function AmaniTrackClaim() {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
-          box-shadow: 0 4px 12px rgba(11, 63, 138, 0.2);
+          box-shadow: 0 4px 12px rgba(23, 60, 90, 0.18);
           display: inline-flex;
           align-items: center;
           justify-content: center;
         }
-        .amani-submit-btn:hover { background: #072E63; transform: translateY(-1px); }
+        .amani-submit-btn:hover { background: #102f49; transform: translateY(-1px); }
         .amani-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         
         .amani-alert-error {
@@ -178,20 +175,20 @@ export default function AmaniTrackClaim() {
         
         .amani-card {
           background: #FFFFFF;
-          border: 1px solid #E2E8F0;
+          border: 1px solid var(--ac-border);
           border-radius: 32px;
           padding: 2.5rem;
-          box-shadow: 0 10px 30px rgba(11, 63, 138, 0.08);
+          box-shadow: 0 10px 30px rgba(23, 60, 90, 0.08);
         }
         .amani-card-title {
-          font-family: 'Fraunces', serif;
+          font-family: 'Cormorant Garamond', Georgia, serif;
           font-size: 1.8rem;
-          color: #0B3F8A;
+          color: var(--ac-primary);
           margin-bottom: 0.5rem;
         }
         .amani-card-sub {
           font-size: 0.9rem;
-          color: #64748B;
+          color: var(--ac-mutedfg);
           margin-bottom: 2rem;
         }
         
@@ -214,7 +211,7 @@ export default function AmaniTrackClaim() {
           top: 24px;
           bottom: -8px;
           width: 2px;
-          background: #E2E8F0;
+          background: var(--ac-border);
         }
         .amani-t-item:last-child .amani-t-line { display: none; }
         
@@ -225,33 +222,33 @@ export default function AmaniTrackClaim() {
           height: 24px;
           border-radius: 50%;
           background: #FFFFFF;
-          border: 2px solid #E2E8F0;
+          border: 2px solid var(--ac-border);
           flex-shrink: 0;
           margin-top: 4px;
         }
-        .amani-t-dot.done { background: #2563EB; border-color: #2563EB; }
+        .amani-t-dot.done { background: var(--ac-primary); border-color: var(--ac-primary); }
         .amani-t-dot.current { 
-          background: #2563EB; 
-          border-color: #2563EB; 
-          box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.2); 
+          background: var(--ac-primary);
+          border-color: var(--ac-primary);
+          box-shadow: 0 0 0 5px rgba(84, 120, 149, 0.18);
         }
         
         .amani-t-content { padding-top: 2px; }
         .amani-t-stage {
           font-size: 1rem;
           font-weight: 600;
-          color: #0F172A;
+          color: var(--ac-ink);
           margin-bottom: 0.25rem;
         }
         .amani-t-stage.pending { color: #94A3B8; font-weight: 500; }
-        .amani-t-stage.current { color: #0B3F8A; }
-        .amani-t-meta { font-size: 0.85rem; color: #64748B; }
+        .amani-t-stage.current { color: var(--ac-primary); }
+        .amani-t-meta { font-size: 0.85rem; color: var(--ac-mutedfg); }
         .amani-current-tag {
           display: inline-block;
           margin-left: 0.5rem;
           font-size: 0.75rem;
           font-weight: 500;
-          color: #2563EB;
+          color: var(--ac-accent);
         }
       `}</style>
 
@@ -306,7 +303,7 @@ export default function AmaniTrackClaim() {
             <p className="amani-card-sub">
               Double-check the number on the policy card. If it still doesn&rsquo;t match, call our
               24-hour line at{' '}
-              <a href={CONTACT.phoneHref} style={{ color: '#2563EB', fontWeight: '500', textDecoration: 'none' }}>
+              <a href={CONTACT.phoneHref} style={{ color: 'var(--ac-accent)', fontWeight: '500', textDecoration: 'none' }}>
                 {CONTACT.phone}
               </a>{' '}
               and we will find it together.
@@ -356,12 +353,12 @@ export default function AmaniTrackClaim() {
               })}
             </ol>
 
-            <p style={{ marginTop: '2rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', fontSize: '0.9rem', color: '#64748B' }}>
-              <Phone size={16} style={{ marginTop: '2px', color: '#2563EB', flexShrink: 0 }} />
+            <p style={{ marginTop: '2rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', fontSize: '0.9rem', color: 'var(--ac-mutedfg)' }}>
+              <Phone size={16} style={{ marginTop: '2px', color: 'var(--ac-accent)', flexShrink: 0 }} />
               <span>
                 Your coordinator will call the number on the claim with updates. Any questions, call
                 our 24-hour line at{' '}
-                <a href={CONTACT.phoneHref} style={{ color: '#2563EB', fontWeight: '500', textDecoration: 'none' }}>
+                <a href={CONTACT.phoneHref} style={{ color: 'var(--ac-accent)', fontWeight: '500', textDecoration: 'none' }}>
                   {CONTACT.phone}
                 </a>.
               </span>

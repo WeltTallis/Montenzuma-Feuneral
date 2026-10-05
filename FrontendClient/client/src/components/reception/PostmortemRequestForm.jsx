@@ -8,8 +8,6 @@ import notify from '../../utils/notify';
 
 // ─── Fonts ──────────────────────────────────────────────────────
 const GlobalStyles = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   img, svg { display: block; }
@@ -23,19 +21,20 @@ const GlobalStyles = createGlobalStyle`
 
 // ─── Design tokens ──────────────────────────────────────────────
 const C = {
-    ink: '#1a1611',
-    ink2: '#5f584c',
-    inkFaint: '#a39d90',
-    line: '#e6e2d8',
-    lineSoft: '#f1efe9',
-    paper: '#faf9f6',
-    ox: '#7c2b23',
-    oxDeep: '#6a241e',
-    green: '#3f5138',
-    amber: '#a16207',
-    red: '#b91c1c',
+    ink: '#252923',
+    ink2: '#62675f',
+    inkFaint: '#92968d',
+    line: '#e3e2d9',
+    lineSoft: '#f0efe9',
+    paper: '#f7f6f1',
+    ox: '#405548',
+    oxDeep: '#304438',
+    green: '#71805f',
+    amber: '#9b8050',
+    red: '#a64f49',
     ease: 'cubic-bezier(.32, .72, .24, 1)',
-    sans: "'Saira', system-ui, sans-serif",
+    sans: "'DM Sans', system-ui, sans-serif",
+    serif: "'Cormorant Garamond', Georgia, serif",
     mono: "'JetBrains Mono', monospace",
 };
 
@@ -50,7 +49,7 @@ const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX
 // ─── Layout ─────────────────────────────────────────────────────
 const Shell = styled.div`
     font-family: ${C.sans};
-    background: #fff;
+    background: ${C.paper};
     color: ${C.ink};
     min-height: 100vh;
     display: flex;
@@ -64,7 +63,7 @@ const Card = styled.div`
     width: 100%;
     max-width: 860px;
     background: #fff;
-    box-shadow: 0 2px 6px rgba(26,22,17,.04), 0 24px 60px -24px rgba(26,22,17,.14);
+    box-shadow: 0 2px 8px rgba(37,41,35,.04), 0 22px 54px -26px rgba(37,41,35,.18);
     animation: ${fadeIn} .5s ${C.ease} both;
     display: flex;
     flex-direction: column;
@@ -74,7 +73,7 @@ const Card = styled.div`
 
 const AccentLine = styled.div`
     height: 3px;
-    background: linear-gradient(90deg, ${C.ox} 0 60%, ${C.ink} 60% 100%);
+    background: linear-gradient(90deg, ${C.ox} 0 68%, ${C.amber} 68% 100%);
 `;
 
 // ─── Condolence (plain white — no background, no border) ────────
@@ -109,8 +108,9 @@ const HeaderLeft = styled.div`
 `;
 
 const DhTitle = styled.div`
-    font-size: 17px; font-weight: 600; letter-spacing: -.01em;
-    @media (max-width: 640px) { font-size: 15px; }
+    font-family: ${C.serif};
+    font-size: 21px; font-weight: 600;
+    @media (max-width: 640px) { font-size: 19px; }
 `;
 
 const DhMeta = styled.div`
@@ -140,7 +140,7 @@ const QrLabel = styled.span`
     font-family: ${C.mono};
     font-size: .56rem; font-weight: 700;
     letter-spacing: .18em; text-transform: uppercase;
-    color: ${C.ox};
+    color: ${C.amber};
     text-align: center;
     @media (max-width: 640px) { font-size: 8px; letter-spacing: .12em; }
 `;
@@ -150,13 +150,13 @@ const TitleSection = styled.div`
     padding: 30px 40px 26px;
     text-align: center;
 
-    h1 { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+    h1 { font-family: ${C.serif}; font-size: 32px; font-weight: 600; line-height: 1.1; }
     h1 em { font-style: italic; color: ${C.ox}; }
     p { font-size: 13.5px; color: ${C.ink2}; margin-top: 6px; }
 
     @media (max-width: 640px) {
         padding: 24px 20px 20px;
-        h1 { font-size: 21px; }
+        h1 { font-size: 27px; }
     }
 `;
 
@@ -274,9 +274,10 @@ const CaseId = styled.div`
 `;
 
 const CaseName = styled.h2`
-    font-size: 26px; font-weight: 600;
-    letter-spacing: -.01em; line-height: 1.2;
-    @media (max-width: 640px) { font-size: 22px; }
+    font-family: ${C.serif};
+    font-size: 30px; font-weight: 600;
+    line-height: 1.15;
+    @media (max-width: 640px) { font-size: 25px; }
 `;
 
 const CaseAdm = styled.div`
@@ -372,10 +373,10 @@ const Btn = styled.button`
     `}
     ${p => p.$primary && `
         background: ${C.ox}; color: #fff;
-        box-shadow: 0 6px 16px -4px rgba(124,43,35,.4);
+        box-shadow: 0 6px 16px -4px rgba(64,85,72,.28);
         &:hover:not(:disabled) {
             background: ${C.oxDeep}; transform: translateY(-1px);
-            box-shadow: 0 10px 24px -4px rgba(124,43,35,.5);
+            box-shadow: 0 10px 24px -4px rgba(48,68,56,.34);
         }
     `}
 `;
@@ -391,7 +392,7 @@ const Spinner = styled.div`
 const Confirm = styled.div`
     text-align: center; padding: 14px 0 10px;
 
-    h2 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    h2 { font-family: ${C.serif}; font-size: 30px; font-weight: 600; margin-bottom: 8px; }
     > p { font-size: 14.5px; color: ${C.ink2}; }
 
     .ref {
@@ -419,7 +420,7 @@ const ElegantFooter = styled.footer`
     position: relative;
     width: 100%; overflow: hidden;
     margin-top: auto;
-    background: #14110d; color: #f3efe5;
+    background: #26332b; color: #f6f4ed;
     text-align: center;
     padding: 52px 24px 0;
 

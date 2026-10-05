@@ -290,17 +290,17 @@ const ClaimSubmissionForm = () => {
        properties above still apply to the form and nothing else. */
     const styles = `
     :root {
-      --ink: #15171a;
+            --ink: #293946;
       --bone: #ffffff;
-      --bone2: #f8fafc;
-      --brass: #5e6a73;
-      --gray: #8a929b;
-      --line: #e2e8f0;
-      --error-red: #dc2626;
-      --blue-primary: #0B3F8A;
-      --blue-hover: #082c63;
-      --blue-tick: #2563eb;
-      --blue-bg: #eff6ff;
+            --bone2: #f4f7f8;
+            --brass: #92764c;
+            --gray: #697985;
+            --line: #dce4e8;
+            --error-red: #ad5750;
+            --blue-primary: #173c5a;
+            --blue-hover: #102f49;
+            --blue-tick: #547895;
+            --blue-bg: #edf3f7;
       --gutter: 96px;
       --gutter-tablet: 64px;
       --gutter-mobile: 32px;
@@ -312,7 +312,7 @@ const ClaimSubmissionForm = () => {
       margin: 0;
       padding: 0;
       background: var(--bone);
-      font-family: 'Saira', sans-serif;
+    font-family: 'DM Sans', sans-serif;
       color: var(--ink);
       font-size: 15px;
       line-height: 1.5;
@@ -337,7 +337,7 @@ const ClaimSubmissionForm = () => {
       font-size: 8rem;
       font-weight: 800;
       color: rgba(15, 23, 42, 0.02);
-      font-family: 'Fraunces', serif;
+    font-family: 'Cormorant Garamond', serif;
       white-space: nowrap;
       pointer-events: none;
       z-index: 0;
@@ -366,7 +366,7 @@ const ClaimSubmissionForm = () => {
       border-bottom: 1px solid var(--line);
     }
     .hdr-brand {
-      font-family: 'Fraunces', serif;
+    font-family: 'Cormorant Garamond', serif;
       font-size: 0.8rem;
       font-weight: 600;
       letter-spacing: 0.08em;
@@ -411,7 +411,7 @@ const ClaimSubmissionForm = () => {
       background: white;
     }
     .intro-title {
-      font-family: 'Fraunces', serif;
+    font-family: 'Cormorant Garamond', serif;
       font-size: clamp(2.5rem, 5vw, 3.5rem);
       font-weight: 500;
       color: var(--ink);
@@ -513,7 +513,7 @@ const ClaimSubmissionForm = () => {
       text-transform: uppercase;
       color: var(--brass);
       margin-bottom: 0.75rem;
-      font-family: 'Saira', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     }
     .req { color: var(--error-red); }
     .opt { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--gray); font-size: 0.7rem; margin-left: 4px;}
@@ -527,7 +527,7 @@ const ClaimSubmissionForm = () => {
       background: transparent;
       outline: none;
       padding: 0 2.5rem 0.25rem 0;
-      font-family: 'Saira', sans-serif;
+    font-family: 'DM Sans', sans-serif;
       font-size: 1rem;
       font-weight: 400;
       color: var(--ink);
@@ -671,7 +671,7 @@ const ClaimSubmissionForm = () => {
       transform: rotate(45deg);
     }
     .confirm-text {
-      font-family: 'Fraunces', Georgia, serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
       font-size: 0.95rem;
       font-weight: 500;
       line-height: 1.5;
@@ -695,7 +695,7 @@ const ClaimSubmissionForm = () => {
       padding: 1rem 2rem;
       font-size: 0.85rem;
       font-weight: 600;
-      font-family: 'Saira', sans-serif;
+    font-family: 'DM Sans', sans-serif;
       cursor: pointer;
       display: inline-flex;
       align-items: center;

@@ -1,25 +1,52 @@
 
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlanAmount, planFor } from './amaniData';
+import { CONTACT, GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlanAmount, planFor } from './amaniData';
 import { InsuranceApiError, submitApplication } from '../../../api/insuranceApi';
 
-const createInitial = () => ({
+const AF = {
+  ink: '#293946',
+  inkMuted: '#596b78',
+  inkFaint: '#8997a0',
+  navy: '#173c5a',
+  navyDeep: '#102f49',
+  blue: '#547895',
+  bluePale: '#edf3f7',
+  brass: '#92764c',
+  border: '#dce4e8',
+  error: '#ad5750',
+  success: '#557565',
+  sans: "'DM Sans', system-ui, sans-serif",
+  serif: "'Cormorant Garamond', Georgia, serif",
+};
+
+const getInitialCover = () => {
+  if (typeof window === 'undefined') return '';
+  const requested = new URLSearchParams(window.location.search).get('plan');
+  return coverOptions.some(option => option.value === requested) ? requested : '';
+};
+
+const createInitial = () => {
+  const cover = getInitialCover();
+  return ({
   fullName: '',
   idNumber: '',
   age: '',
   employment: '',
   phone: '',
   email: '',
-  cover: '',
-  members: [],
+  cover,
+  members: cover === GROUP_COVER_VALUE
+    ? Array.from({ length: MIN_GROUP_MEMBERS - 1 }, () => newMember())
+    : [],
   confirmAccepted: false,
   /* How often they intend to pay. Recorded at application time so the care
      team and the payments page agree on the schedule from day one. Defaults
      to monthly — the plan every member can afford — rather than leaving it
      blank and guessing later. */
   frequency: 'monthly',
-});
+  });
+};
 
 /* Payment frequencies offered on the application form. `months` is how many
    monthly contributions one payment covers. Quarterly is 3 months at the
@@ -448,13 +475,13 @@ export default function AmaniApplicationForm() {
      ------------------------------------------------------------------ */
   const STYLES = `
     .amani-appform {
-      --af-line: #e2e8f0;
-      --af-gray: #64748b;
-      --af-muted: #94a3b8;
-      --af-error: #dc2626;
-      --af-blue: #0b3f8a;
-      --af-blue-hover: #082c63;
-      --af-tick: #2563eb;
+      --af-line: ${AF.border};
+      --af-gray: ${AF.inkMuted};
+      --af-muted: ${AF.inkFaint};
+      --af-error: ${AF.error};
+      --af-blue: ${AF.navy};
+      --af-blue-hover: ${AF.navyDeep};
+      --af-tick: ${AF.blue};
       --af-gutter: 96px;
       --af-gutter-tablet: 64px;
       /* 32px of padding on EACH side cost a 360px phone 64px of its width —
@@ -468,8 +495,8 @@ export default function AmaniApplicationForm() {
       max-width: 1400px;
       margin: 0 auto;
       overflow: hidden;
-      color: #15171a;
-      font-family: 'Saira', system-ui, sans-serif;
+      color: ${AF.ink};
+      font-family: ${AF.sans};
       font-size: 15px;
       line-height: 1.5;
     }
@@ -477,8 +504,8 @@ export default function AmaniApplicationForm() {
     .af-watermark {
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%) rotate(-35deg);
-      font-family: 'Fraunces', Georgia, serif; font-size: 8rem; font-weight: 800;
-      color: rgba(15, 23, 42, 0.02); white-space: nowrap; pointer-events: none;
+      font-family: ${AF.serif}; font-size: 8rem; font-weight: 700;
+      color: rgba(23, 60, 90, 0.025); white-space: nowrap; pointer-events: none;
       z-index: 0; letter-spacing: 0.2em; text-transform: uppercase;
     }
 
@@ -496,7 +523,7 @@ export default function AmaniApplicationForm() {
        contact info rather than as the title of the form. Now larger, bolder,
        in the accent blue, with a tight leading and a real <h1> above it. */
     .af-hdr-welcome {
-      font-family: 'Fraunces', Georgia, serif;
+      font-family: ${AF.serif};
       font-size: clamp(1.75rem, 6vw, 2.5rem);
       font-weight: 600;
       line-height: 1.12;
@@ -508,7 +535,7 @@ export default function AmaniApplicationForm() {
        the title, but darker than the contact lines so the hierarchy is
        title > provider > contact. */
     .af-hdr-provider {
-      font-family: 'Saira', system-ui, sans-serif;
+      font-family: ${AF.sans};
       font-size: 0.9rem;
       font-weight: 600;
       color: #334155;
@@ -528,8 +555,8 @@ export default function AmaniApplicationForm() {
     }
     .af-hdr-value {
       font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 500;
-      color: var(--af-blue); background: #eff6ff;
-      padding: 0.2rem 0.8rem; border: 1px solid #dbeafe; border-radius: 4px;
+      color: var(--af-blue); background: #f3f6f1;
+      padding: 0.2rem 0.8rem; border: 1px solid #d7dfd4; border-radius: 4px;
     }
 
     .af-form-body { padding: 3rem var(--af-gutter) 1.5rem; }
@@ -545,7 +572,7 @@ export default function AmaniApplicationForm() {
       font-weight: 500; color: rgba(255, 255, 255, 0.55);
     }
     .af-section-title {
-      font-family: 'Fraunces', Georgia, serif; font-size: 1.05rem;
+      font-family: ${AF.serif}; font-size: 1.2rem;
       font-weight: 500; color: #fff; margin: 0;
     }
 
@@ -559,8 +586,8 @@ export default function AmaniApplicationForm() {
     .af-doc-input, .af-doc-select {
       width: 100%; height: 2.75rem; border: none;
       border-bottom: 1.5px dashed #cbd5e1; background: transparent; outline: none;
-      padding: 0 2.5rem 0.25rem 0; font-family: 'Saira', system-ui, sans-serif;
-      font-size: 1rem; font-weight: 400; color: #15171a;
+      padding: 0 2.5rem 0.25rem 0; font-family: ${AF.sans};
+      font-size: 1rem; font-weight: 400; color: ${AF.ink};
       transition: border-color 0.2s ease;
       appearance: none; -webkit-appearance: none;
     }
@@ -617,10 +644,10 @@ export default function AmaniApplicationForm() {
       border-radius: 6px; background: #fff; cursor: pointer;
       transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
     }
-    .af-cover-card:hover { border-color: #94a3b8; background: #fcfdff; }
+    .af-cover-card:hover { border-color: #9fb1bf; background: #fbfcfd; }
     .af-cover-card:has(input:checked) {
-      border-color: var(--af-blue); background: #eff6ff;
-      box-shadow: 0 1px 3px rgba(11, 63, 138, 0.12);
+      border-color: var(--af-blue); background: #edf3f7;
+      box-shadow: 0 1px 3px rgba(23, 60, 90, 0.12);
     }
     .af-cover-card input { margin-top: 0.15rem; }
     .af-cover-card-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
@@ -628,14 +655,14 @@ export default function AmaniApplicationForm() {
 
   /* Real price, shown on the card itself so nobody has to guess what a plan
      costs. "from" wording for the plans priced as a floor (FamilyGroup/Group). */
-  .af-cover-card-price { display: inline-flex; align-items: baseline; gap: 0.2rem; margin-left: 0.5rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #eaf2ff; color: var(--af-blue); font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .af-cover-card-price { display: inline-flex; align-items: baseline; gap: 0.2rem; margin-left: 0.5rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #f3efe7; color: #765f3e; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
   .af-cover-card-price small { font-size: 0.62rem; font-weight: 600; opacity: 0.75; }
 
   /* Payment-frequency picker on the application form. */
   .af-freq-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.5rem; width: 100%; }
   .af-freq-card { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.8rem 0.9rem; border: 1px solid var(--af-line, #d7e0ea); border-radius: 0.7rem; background: #fff; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s; }
-  .af-freq-card:hover { border-color: #94a3b8; background: #fcfdff; }
-  .af-freq-card.is-active { border-color: var(--af-blue); background: #f5f9ff; box-shadow: 0 0 0 3px rgba(11, 63, 138, 0.1); }
+  .af-freq-card:hover { border-color: #9fb1bf; background: #fbfcfd; }
+  .af-freq-card.is-active { border-color: var(--af-blue); background: #f5f8fa; box-shadow: 0 0 0 3px rgba(23, 60, 90, 0.1); }
   .af-freq-card input { margin-top: 0.15rem; accent-color: var(--af-blue); }
   .af-freq-card-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
   .af-freq-card-label { font-size: 0.92rem; font-weight: 600; color: var(--af-blue); }
@@ -651,7 +678,7 @@ export default function AmaniApplicationForm() {
     .af-cover-card-badge {
       display: inline-block; margin-top: 0.3rem; font-family: 'JetBrains Mono', monospace;
       font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
-      color: #92400e; background: #fef3c7; border: 1px solid #fde68a;
+      color: #765f3e; background: #f5f0e4; border: 1px solid #e4d8bd;
       border-radius: 3px; padding: 0.15rem 0.45rem; align-self: flex-start;
     }
     .af-cover-card:focus-within { outline: 2px solid var(--af-tick); outline-offset: 2px; }
@@ -659,14 +686,14 @@ export default function AmaniApplicationForm() {
     /* Member rows */
     .af-group-block {
       margin-top: 1.5rem; padding: 1.25rem 1.15rem 1.35rem;
-      background: #f8fafc; border: 1px solid var(--af-line); border-radius: 6px;
+      background: #f6f8f8; border: 1px solid var(--af-line); border-radius: 6px;
     }
     .af-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
-    .af-group-title { font-size: 0.95rem; font-weight: 600; color: #15171a; }
+    .af-group-title { font-size: 0.95rem; font-weight: 600; color: ${AF.ink}; }
     .af-group-count {
       font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500;
       letter-spacing: 0.06em; text-transform: uppercase; color: var(--af-blue);
-      background: #eff6ff; border: 1px solid #dbeafe; border-radius: 999px;
+      background: #edf3f7; border: 1px solid #d7e2e9; border-radius: 999px;
       padding: 0.25rem 0.65rem; white-space: nowrap;
     }
     .af-group-count.is-short { color: var(--af-error); background: #fef2f2; border-color: #fecaca; }
@@ -704,7 +731,7 @@ export default function AmaniApplicationForm() {
       border-radius: 4px; font-family: inherit; font-size: 0.9rem;
       font-weight: 600; cursor: pointer; transition: all 0.2s ease;
     }
-    .af-add-member:hover { background: #eff6ff; }
+    .af-add-member:hover { background: #edf3f7; }
     .af-add-member:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
     .af-add-member svg { width: 15px; height: 15px; }
 
@@ -727,11 +754,11 @@ export default function AmaniApplicationForm() {
       color: #991b1b; background: #fef2f2; border-left-color: var(--af-error);
     }
     .af-alert-info {
-      color: #1e40af; background: var(--af-blue-bg, #eff6ff); border-left-color: var(--af-blue);
+      color: #294b63; background: #edf3f7; border-left-color: var(--af-blue);
     }
 
     .af-confirm-block {
-      margin-top: 1.5rem; padding: 1.1rem 1.3rem 1.25rem; background: #eff6ff;
+      margin-top: 1.5rem; padding: 1.1rem 1.3rem 1.25rem; background: #edf3f7;
       border-radius: 4px; display: flex; flex-direction: column; gap: 0.55rem;
       border-left: 3px solid var(--af-blue);
     }
@@ -757,11 +784,11 @@ export default function AmaniApplicationForm() {
       font-family: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer;
       transition: all 0.2s ease;
     }
-    .af-btn-primary { background: var(--af-blue); color: #fff; box-shadow: 0 4px 12px rgba(11, 63, 138, 0.15); }
-    .af-btn-primary:hover:not(:disabled) { background: var(--af-blue-hover); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(11, 63, 138, 0.25); }
+    .af-btn-primary { background: var(--af-blue); color: #fff; box-shadow: 0 4px 12px rgba(23, 60, 90, 0.16); }
+    .af-btn-primary:hover:not(:disabled) { background: var(--af-blue-hover); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(16, 47, 73, 0.24); }
     .af-btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
     .af-btn-ghost { background: transparent; color: var(--af-blue); box-shadow: inset 0 0 0 1.5px var(--af-blue); }
-    .af-btn-ghost:hover { background: #eff6ff; }
+    .af-btn-ghost:hover { background: #edf3f7; }
 
     .af-record-strip {
       font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
@@ -771,13 +798,19 @@ export default function AmaniApplicationForm() {
     }
 
     .af-done { padding: 3rem 0; text-align: center; }
-    .af-done h3 { font-family: 'Fraunces', Georgia, serif; font-size: 1.75rem; margin: 1rem 0 0.5rem; }
+    .af-done h3 { font-family: ${AF.serif}; font-size: 2rem; margin: 1rem 0 0.5rem; }
     .af-done p { color: var(--af-gray); margin: 0 auto; max-width: 32rem; }
+    .af-done-contact { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 1.25rem; padding: 0.65rem 1rem; border-radius: 6px; background: var(--af-blue); color: #fff; font-weight: 600; text-decoration: none; }
+    .af-done-contact:hover { background: var(--af-blue-hover); }
     .af-done-mark {
       display: grid; place-items: center; width: 4rem; height: 4rem; margin: 0 auto;
       border-radius: 50%; background: var(--af-tick); color: #fff;
     }
     .af-done-mark svg { width: 28px; height: 28px; }
+    .af-selected-plan { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; padding: 1rem 1.1rem; border: 1px solid #d7e2e9; border-radius: 6px; background: #edf3f7; color: var(--af-blue); }
+    .af-selected-plan div { display: flex; flex-direction: column; gap: 0.15rem; }
+    .af-selected-plan span { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--af-gray); }
+    .af-selected-plan strong:last-child { white-space: nowrap; }
 
     @media (max-width: 1024px) {
       .af-doc-header, .af-form-body, .af-record-strip {
@@ -817,6 +850,7 @@ export default function AmaniApplicationForm() {
       .af-section-head { padding: 0.65rem 1rem; margin-bottom: 1.25rem; }
       .af-group-block { padding: 1rem 0.85rem 1.1rem; }
       .af-member-row { padding: 0.85rem 0.8rem 0.95rem; }
+      .af-selected-plan { align-items: flex-start; flex-direction: column; }
     }
   `;
 
@@ -866,14 +900,25 @@ export default function AmaniApplicationForm() {
           {submitted ? (
             <div className="af-done" role="status">
               <span className="af-done-mark"><TickSvg /></span>
-              <h3>Thank you.</h3>
+              <h3>Application received</h3>
               <p>
-                We&rsquo;ve received your application. A caring member of our team will call you
-                within one working day to explain your options and next steps.
+                Your application is pending review; cover is not active yet. Our team will call you
+                within one working day to confirm your details, explain payment and agree when
+                cover can begin.
               </p>
+              <a className="af-done-contact" href={CONTACT.phoneHref}>Talk to our team · {CONTACT.phone}</a>
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate>
+              {selectedPlan && (
+                <div className="af-selected-plan" role="status">
+                  <div>
+                    <span>Your selected cover</span>
+                    <strong>{coverOptions.find(option => option.value === formData.cover)?.label}</strong>
+                  </div>
+                  <strong>{formatPlanAmount(formData.cover, selectedPlan.monthly)} / month</strong>
+                </div>
+              )}
               {/* Section 01 — personal information */}
               <section className="af-doc-section">
                 <div className="af-section-head">

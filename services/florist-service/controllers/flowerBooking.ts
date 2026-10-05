@@ -170,7 +170,7 @@ export const getBookings = async (req: any, res: any) => {
                 try {
                     const arrangementQuery = `SELECT title, CAST(types AS CHAR) AS types, CAST(images AS CHAR) AS images FROM flower_samples WHERE arrangement_id = ? AND (tenant_id = ? OR tenant_slug = ?) LIMIT 1`;
                     const arrangements = await safeQuery(arrangementQuery, [booking.arrangement_id, tenantId, tenantSlug]);
-                    
+
                     if (arrangements && arrangements.length > 0) {
                         const arr = arrangements[0];
                         return {
@@ -242,7 +242,8 @@ export const createBooking = async (req: any, res: any) => {
             arrangement_name, arrangement_id, deceased_name, booked_by,
             funeral_home, date, time, notes, phone, email, branch: branchFromPayload,
             ribbon_color, size, arrangements, flower_type: flowerTypeFromBody,
-            flower_description: flowerDescriptionFromBody
+            flower_description: flowerDescriptionFromBody, quantity, primary_color,
+            accent_color, ribbon_message, special_instructions, funeral_date, deceased_gender
         } = req.body;
 
         // Map frontend fields to backend schema
@@ -250,7 +251,7 @@ export const createBooking = async (req: any, res: any) => {
         // through flower_type so a booking always names a real arrangement
         // instead of a bare "Custom Arrangement".
         const flower_type = arrangement_name || flowerTypeFromBody || 'Custom Arrangement';
-        const flower_description = notes || flowerDescriptionFromBody || '';
+        const flower_description = flowerDescriptionFromBody || '';
         const customer = booked_by || 'Guest';
         const customer_phone = phone || '';
         const customer_email = email || '';
@@ -263,16 +264,22 @@ export const createBooking = async (req: any, res: any) => {
         // them as real line items instead of guessing from a single name.
         const normalisedArrangements = (Array.isArray(arrangements) ? arrangements : [])
             .map(item => {
-                if (typeof item === 'string') return { arrangement_id: null, name: item };
+                if (typeof item === 'string') return { arrangement_id: null, name: item, quantity: 1, types: [], colors: [] };
                 return {
                     arrangement_id: item?.arrangement_id ?? null,
-                    name: item?.name || item?.title || null
+                    name: item?.name || item?.title || null,
+                    types: Array.isArray(item?.types) ? item.types : [],
+                    colors: Array.isArray(item?.colors) ? item.colors : [],
+                    quantity: Math.max(1, Number(item?.quantity) || 1)
                 };
             })
             .filter(item => item.name);
         const arrangementsJson = normalisedArrangements.length
             ? JSON.stringify(normalisedArrangements)
             : null;
+        const totalQuantity = normalisedArrangements.length
+            ? normalisedArrangements.reduce((total, item) => total + item.quantity, 0)
+            : Math.max(1, Number(quantity) || 1);
 
         // Validation - "Expected By" (date/time) is NOT a must
         if (!customer) {
@@ -282,20 +289,23 @@ export const createBooking = async (req: any, res: any) => {
             });
         }
 
-                // Generate a globally-unique booking ID
+        // Generate a globally-unique booking ID
         const booking_id = generateBookingId();
 
         const result = await safeExecute(
             `INSERT INTO flower_bookings
             (booking_id, tenant_slug, tenant_id, flower_type, flower_description, customer,
-             customer_phone, customer_email, deceased_name, branch,
-             arrangement_id, date, time, status, notes, created_by, ribbon_color, size, arrangements)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+             customer_phone, customer_email, deceased_name, deceased_gender, branch,
+             arrangement_id, date, time, status, notes, created_by, ribbon_color, size, arrangements,
+             quantity, primary_color, accent_color, ribbon_message, special_instructions, funeral_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
             [
                 booking_id, tenantSlug, tenantId, flower_type, flower_description, customer,
-                customer_phone || '', customer_email || '', deceased_name || '', branch,
+                customer_phone || '', customer_email || '', deceased_name || '', deceased_gender || null, branch,
                 arrangement_id || null, date || null, time || null, notes || '', req.tenantSlug || 'system',
-                ribbon_color || null, size || null, arrangementsJson
+                ribbon_color || null, size || null, arrangementsJson, totalQuantity,
+                primary_color || null, accent_color || null, ribbon_message || null,
+                special_instructions || null, funeral_date || null
             ]
         );
 

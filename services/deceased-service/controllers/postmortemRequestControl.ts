@@ -60,10 +60,11 @@ export const ensurePostmortemRequestsTable = async (dbName: string): Promise<voi
             requesting_authority VARCHAR(200) NULL,
             reason TEXT,
             notes TEXT,
-            status ENUM('initiated', 'sent', 'cancelled') DEFAULT 'initiated',
+            status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated',
             initiated_by VARCHAR(150) NULL,
             sent_at VARCHAR(255) NULL,
             cancelled_at VARCHAR(255) NULL,
+            completed_at VARCHAR(255) NULL,
             created_at VARCHAR(255) NULL,
             updated_at VARCHAR(255) NULL,
             INDEX idx_pmr_deceased_id (deceased_id),
@@ -73,21 +74,124 @@ export const ensurePostmortemRequestsTable = async (dbName: string): Promise<voi
     await safeTenantExecute(dbName, sql, []);
 };
 
-const ensurePostmortemTable = async (dbName: string): Promise<void> => {
-    const sql = `
-        CREATE TABLE IF NOT EXISTS postmortem (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            deceased_id VARCHAR(100) NOT NULL,
-            status VARCHAR(50) DEFAULT 'pending',
-            requested_by VARCHAR(150),
-            requested_at VARCHAR(255),
-            requesting_authority TEXT,
-            examination_summary TEXT,
-            created_at VARCHAR(255),
-            updated_at VARCHAR(255)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `;
-    await safeTenantExecute(dbName, sql, []);
+/**
+ * The columns the postmortem controllers read and write.
+ *
+ * A previous revision of `ensurePostmortemTable` created a *stub* table with
+ * only nine columns — no `pathologist_name`, `findings`, `completed_at` and so
+ * on. Any tenant whose table was created by that revision therefore failed
+ * `savePostmortem` with "Unknown column 'pathologist_name'" and failed
+ * `getPostmortemRequests` on `p.completed_at`, which is part of why cases sat
+ * on "Postmortem Pending" forever. The CREATE below now uses the full set, and
+ * the repair pass adds anything an existing table is still missing.
+ */
+const POSTMORTEM_TABLE_SQL = `
+    CREATE TABLE IF NOT EXISTS postmortem (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        deceased_id VARCHAR(100) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        requested_by VARCHAR(255) NULL,
+        requested_at VARCHAR(255) NULL,
+        requesting_authority VARCHAR(255) NULL,
+        examination_summary TEXT NULL,
+        pathologist_name VARCHAR(255) NULL,
+        external_pathologist_name VARCHAR(255) NULL,
+        external_pathologist_mobile VARCHAR(20) NULL,
+        external_pathologist_id VARCHAR(50) NULL,
+        cause_of_death TEXT NULL,
+        immediate_cause_of_death TEXT NULL,
+        underlying_cause_of_death TEXT NULL,
+        contributing_conditions TEXT NULL,
+        manner_of_death VARCHAR(50) NULL,
+        findings JSON NULL,
+        head_findings TEXT NULL,
+        chest_findings TEXT NULL,
+        abdomen_findings TEXT NULL,
+        extremities_findings TEXT NULL,
+        toxicology_findings TEXT NULL,
+        custom_findings JSON NULL,
+        signature LONGTEXT NULL,
+        report_pdf_url VARCHAR(500) NULL,
+        staff_username VARCHAR(255) NULL,
+        mortuary_name VARCHAR(255) NULL,
+        completed_at VARCHAR(255) NULL,
+        created_at VARCHAR(255) NULL,
+        updated_at VARCHAR(255) NULL,
+        INDEX idx_pm_deceased_id (deceased_id),
+        INDEX idx_pm_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+
+/** Columns the repair pass adds to a pre-existing `postmortem` table. */
+const POSTMORTEM_REPAIR_COLUMNS: Record<string, string> = {
+    status: "VARCHAR(50) NOT NULL DEFAULT 'pending'",
+    requested_by: 'VARCHAR(255) NULL',
+    requested_at: 'VARCHAR(255) NULL',
+    requesting_authority: 'VARCHAR(255) NULL',
+    examination_summary: 'TEXT NULL',
+    pathologist_name: 'VARCHAR(255) NULL',
+    external_pathologist_name: 'VARCHAR(255) NULL',
+    external_pathologist_mobile: 'VARCHAR(20) NULL',
+    external_pathologist_id: 'VARCHAR(50) NULL',
+    cause_of_death: 'TEXT NULL',
+    immediate_cause_of_death: 'TEXT NULL',
+    underlying_cause_of_death: 'TEXT NULL',
+    contributing_conditions: 'TEXT NULL',
+    manner_of_death: 'VARCHAR(50) NULL',
+    findings: 'JSON NULL',
+    head_findings: 'TEXT NULL',
+    chest_findings: 'TEXT NULL',
+    abdomen_findings: 'TEXT NULL',
+    extremities_findings: 'TEXT NULL',
+    toxicology_findings: 'TEXT NULL',
+    custom_findings: 'JSON NULL',
+    signature: 'LONGTEXT NULL',
+    report_pdf_url: 'VARCHAR(500) NULL',
+    staff_username: 'VARCHAR(255) NULL',
+    mortuary_name: 'VARCHAR(255) NULL',
+    completed_at: 'VARCHAR(255) NULL',
+    created_at: 'VARCHAR(255) NULL',
+    updated_at: 'VARCHAR(255) NULL',
+};
+
+const addMissingColumns = async (dbName: string, table: string, columns: Record<string, string>): Promise<void> => {
+    let present: Set<string>;
+    try {
+        const rows: any = (await safeTenantQuery(dbName,
+            `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+            [dbName, table])) || [];
+        present = new Set(rows.map((r: any) => String(r.COLUMN_NAME).toLowerCase()));
+    } catch {
+        return; // table is missing entirely — nothing to repair
+    }
+    for (const [column, definition] of Object.entries(columns)) {
+        if (present.has(column)) continue;
+        try {
+            // ADD COLUMN IF NOT EXISTS needs MySQL 8.0.29+; guarded so older
+            // servers log instead of failing the whole request.
+            await safeTenantExecute(dbName, `ALTER TABLE \`${table}\` ADD COLUMN IF NOT EXISTS \`${column}\` ${definition}`, []);
+        } catch (e: any) {
+            Logger.warn({ message: `Could not add ${table}.${column}`, error: e?.message });
+        }
+    }
+};
+
+export const ensurePostmortemTable = async (dbName: string): Promise<void> => {
+    await safeTenantExecute(dbName, POSTMORTEM_TABLE_SQL, []);
+    await addMissingColumns(dbName, 'postmortem', POSTMORTEM_REPAIR_COLUMNS);
+};
+
+/**
+ * `deceased.postmortem_requested` / `postmortem_completed` are read by
+ * analytics-service (deceasedAnalytics.controller.ts) but were never part of
+ * migration 010, so those panels always came back empty or errored. Added
+ * defensively here, in the same spirit as the postmortem repair above.
+ */
+export const ensureDeceasedPostmortemFlags = async (dbName: string): Promise<void> => {
+    await addMissingColumns(dbName, 'deceased', {
+        postmortem_requested: 'TINYINT(1) NOT NULL DEFAULT 0',
+        postmortem_completed: 'TINYINT(1) NOT NULL DEFAULT 0',
+    });
 };
 
 /**
@@ -130,9 +234,13 @@ export const createPostmortemRequest = async (req: TenantRequest, res: Response)
 
         Logger.info({ message: 'Postmortem request initiated', requestRef, deceased_id });
 
-        // Sync the deceased record: the body is now awaiting postmortem examination
+        // Sync the deceased record: the body is now awaiting postmortem examination.
+        // `postmortem_requested` is the flag analytics-service counts on.
         try {
-            await safeTenantExecute(dbName, `UPDATE deceased SET body_status = 'Postmortem Requested', updated_at = ? WHERE deceased_id = ?`, [now, deceased_id]);
+            await ensureDeceasedPostmortemFlags(dbName);
+            await safeTenantExecute(dbName,
+                `UPDATE deceased SET body_status = 'Postmortem Requested', postmortem_requested = 1, postmortem_completed = 0, updated_at = ? WHERE deceased_id = ?`,
+                [now, deceased_id]);
         } catch (statusErr: any) {
             console.warn('Failed to set deceased body_status to Postmortem Requested:', statusErr?.message);
         }
@@ -192,8 +300,10 @@ export const updatePostmortemRequestStatus = async (req: TenantRequest, res: Res
     try {
         const { id } = req.params;
         const { status } = req.body || {};
-        if (!['initiated', 'sent', 'cancelled'].includes(status)) {
-            return res.status(400).json({ success: false, message: "status must be one of 'initiated', 'sent', 'cancelled'" });
+        // 'completed' is a real terminal state: it is written when the examination is
+        // filed, so the request register stops showing a finished case as open.
+        if (!['initiated', 'sent', 'cancelled', 'completed'].includes(status)) {
+            return res.status(400).json({ success: false, message: "status must be one of 'initiated', 'sent', 'cancelled', 'completed'" });
         }
 
         await ensurePostmortemRequestsTable(dbName);
@@ -203,6 +313,7 @@ export const updatePostmortemRequestStatus = async (req: TenantRequest, res: Res
         const params: any[] = [status, now];
         if (status === 'sent') { sql += ', sent_at = ?'; params.push(now); }
         if (status === 'cancelled') { sql += ', cancelled_at = ?'; params.push(now); }
+        if (status === 'completed') { sql += ', completed_at = ?'; params.push(now); }
         sql += ' WHERE id = ?';
         params.push(id);
 
@@ -216,7 +327,11 @@ export const updatePostmortemRequestStatus = async (req: TenantRequest, res: Res
         // Keep the deceased body_status in sync with the request lifecycle:
         // cancelled → back to 'In Morgue'; re-initiated/sent → 'Postmortem Requested'
         try {
-            const newBodyStatus = status === 'cancelled' ? 'In Morgue' : 'Postmortem Requested';
+            const newBodyStatus = status === 'cancelled'
+                ? 'In Morgue'
+                : status === 'completed'
+                    ? 'Postmortem Done'
+                    : 'Postmortem Requested';
             await safeTenantExecute(dbName, `UPDATE deceased SET body_status = ?, updated_at = ? WHERE deceased_id = ?`, [newBodyStatus, now, rows[0].deceased_id]);
         } catch (syncErr: any) {
             console.warn('Failed to sync deceased body_status:', syncErr?.message);

@@ -109,3 +109,7 @@ ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS primary_color VARCHAR(100) 
 ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS accent_color VARCHAR(100) AFTER primary_color;
 ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(100) AFTER accent_color;
 ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS size VARCHAR(50) AFTER ribbon_color;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS ribbon_message TEXT;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS special_instructions TEXT;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS funeral_date DATE;
+ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS deceased_gender VARCHAR(40);

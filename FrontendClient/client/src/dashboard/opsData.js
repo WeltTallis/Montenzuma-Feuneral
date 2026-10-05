@@ -1,18 +1,4 @@
-/* ══════════════════════════════════════════════════════════════════════════
-   Operations Dashboard — data layer.
 
-   Two jobs:
-     1. Turn the REAL API payloads (deceased register · body-release feed ·
-        postmortem-request feed) into the flat "case" model the dashboard
-        renders.
-     2. All derived figures — care status, day/week/month grouping, the
-        analytics aggregates and the automated insights.
-
-   Nothing here touches React; the components import these helpers so the
-   visual layer stays declarative.
-   ══════════════════════════════════════════════════════════════════════════ */
-
-/* ── calendar constants ─────────────────────────────────────────────────── */
 export const MO = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -26,20 +12,15 @@ export const DOWF = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fr
    Kept as a single constant so the business rate is easy to change. */
 const STORAGE_FEE_PER_DAY = 500;
 
-/* ── date helpers ───────────────────────────────────────────────────────── */
+
 export const pad = (n) => (String(n).length < 2 ? `0${n}` : String(n));
 
-/* A string carrying a clock time is a stored *instant* (usually a UTC
-   timestamp), so it must be read on the viewer's clock — a case registered at
-   00:30 EAT is stored as 21:30Z the previous day and still belongs to today.
-   A bare `YYYY-MM-DD` is already a calendar date: use it exactly as written. */
+
 const CLOCK = /\d{1,2}:\d{2}/;
-/* DATE columns are commonly serialised as midnight UTC ("2026-09-24T00:00:00.000Z").
-   Those carry no time of day, so they are read as the written calendar date. */
+
 const MIDNIGHT_UTC = /^\d{4}-\d{2}-\d{2}T00:00:00(?:\.0+)?Z$/;
 const keyOfDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-/** Anything date-ish → local `YYYY-MM-DD` (no timezone shift), else null. */
 function keyOf(v) {
   if (v == null || v === "") return null;
   if (typeof v === "string") {
@@ -346,6 +327,11 @@ const money = (v, cur) => {
   if (!Number.isFinite(n) || n <= 0) return null;
   return `${cur || "KES"} ${n.toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
 };
+/** Raw money as a number (0 when unset) — for summing, never for display. */
+const num = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
 const chargesOf = (r) => {
   const cur = or(r?.currency || r?.charge_currency, "KES");
   return {
@@ -354,6 +340,18 @@ const chargesOf = (r) => {
     extra: money(r?.extra_charges_amount, cur),
     perDay: money(r?.per_day_charge, cur),
     perHour: money(r?.per_hour_charge, cur),
+    // The numeric twins of the four fields above. `money()` returns display TEXT
+    // ("KES 12,000") or null, so the sidebar could not total anything from it —
+    // the "charges so far" panel needs actual arithmetic, not strings.
+    totalNum: num(r?.total_mortuary_charge),
+    extraNum: num(r?.extra_charges_amount),
+    perDayNum: num(r?.per_day_charge),
+    perHourNum: num(r?.per_hour_charge),
+    // Which basis the record is billed on. `per_hour_charge` present on its own
+    // is not proof: a row can carry both, so the declared basis wins.
+    basis: /hour/i.test(String(r?.charge_type || r?.charge_basis || r?.billing_basis || ""))
+      ? "hour"
+      : "day",
   };
 };
 
@@ -409,6 +407,14 @@ function mapDeceased(r) {
     place: r?.place_of_death || "—",
     permit: r?.permit_number || "—",
     prepared: Boolean(r?.prepared || r?.embalmed) || /embalm|prepared/.test(body),
+    // Body storage status, kept verbatim from the register. The dashboard sidebar
+    // reports it per case ("In Storage" / "Released"), so it has to survive here
+    // rather than being re-derived downstream from the release feed alone.
+    bodyStatus: or(r?.body_status || r?.body_condition, "In Morgue"),
+    // Charge block, hoisted to the top level. `intake.charges` already carries it,
+    // but the sidebar aggregates across every case, so the values are read straight
+    // off the case instead of through `intake` at each call site.
+    charges: chargesOf(r),
     pm: null,
     release: null,
     nok: {
@@ -998,6 +1004,50 @@ export function calcStats(scoped, searched, calM, calY) {
     })
     .reduce((sum, p) => sum + (daysInCare(p) || 0) * STORAGE_FEE_PER_DAY, 0);
 
+  /* ── sidebar: days in morgue + charges so far ───────────────────────────── */
+  const held = searched.filter((p) => {
+    const c = careOf(p);
+    return c !== "released" && c !== "transferred" && p.admDate && p.admDate <= today;
+  });
+
+  /* Days in morgue per held body. `daysInCare` is already null for a
+     future-dated admission, so that never reaches this map. */
+  const heldDays = held.map((p) => ({ p, d: daysInCare(p) || 0 }));
+  const dayNums = heldDays.map((x) => x.d);
+  const daySorted = dayNums.slice().sort((a, b) => a - b);
+  const morgue = {
+    held: held.length,
+    avg: dayNums.length ? Math.round(dayNums.reduce((a, b) => a + b, 0) / dayNums.length) : 0,
+    median: daySorted.length ? daySorted[Math.floor(daySorted.length / 2)] : 0,
+    longest: daySorted.length ? daySorted[daySorted.length - 1] : 0,
+    // Longest-held first — the bodies most likely to need a family decision.
+    top: heldDays.slice().sort((a, b) => b.d - a.d).slice(0, 5),
+  };
+
+  /* Charges so far. Billed figures are summed exactly as recorded; the accrual
+     above covers held bodies with no configured rate. A case that HAS a rate is
+     excluded from the accrual so the same day is never counted twice. */
+  const bills = searched.filter((p) => p.charges);
+  const billed = bills.reduce((sum, p) => sum + (p.charges.totalNum || 0) + (p.charges.extraNum || 0), 0);
+  const extraOnly = bills.reduce((sum, p) => sum + (p.charges.extraNum || 0), 0);
+  const chargeCcy = (bills.find((p) => p.charges.currency) || {}).charges?.currency || "KES";
+  const charges = {
+    currency: chargeCcy,
+    billed,
+    extraOnly,
+    // Held bodies that carry no configured daily rate, so their holding cost is
+    // the accrual estimate rather than a real invoice.
+    unbilled: held.filter((p) => !p.charges || !p.charges.perDayNum).length,
+    rated: bills.filter((p) => p.charges.perDayNum || p.charges.perHourNum).length,
+    // What the held bodies have cost so far: a configured daily rate multiplied
+    // by the days held, and the storage estimate for the ones with no rate.
+    accrued: held.reduce((sum, p) => {
+      const days = daysInCare(p) || 0;
+      const rate = p.charges?.perDayNum || 0;
+      return sum + (rate ? days * rate : days * STORAGE_FEE_PER_DAY);
+    }, 0),
+  };
+
   /* busiest weekday + busiest month */
   const dowCount = {};
   searched.forEach((p) => {
@@ -1046,6 +1096,8 @@ export function calcStats(scoped, searched, calM, calY) {
     staff,
     buckets,
     accrual,
+    morgue,
+    charges,
     insights,
     total: searched.length,
     inCare: care.inCare + care.pmReq + care.pmDone,

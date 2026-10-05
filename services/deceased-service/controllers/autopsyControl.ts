@@ -1,7 +1,7 @@
 import { safeTenantExecute, safeTenantQuery, resolveDatabase, getRootPool } from '../../../shared/dbConfig';
 import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps';
 import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
-import { ensurePostmortemRequestsTable } from './postmortemRequestControl';
+import { ensurePostmortemRequestsTable, ensurePostmortemTable, ensureDeceasedPostmortemFlags } from './postmortemRequestControl';
 import { tableColumns, pickAs } from '../utils/tenantSchema';
 import Logger from '../../../packages/shared-logger/src/index';
 import { Request, Response } from 'express';
@@ -536,8 +536,13 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
             Logger.warn({ message: 'Failed to mirror postmortem request into postmortem_requests', error: trackErr?.message });
         }
 
+        // Sync the deceased record: the body is now awaiting postmortem examination.
+        // `postmortem_requested` is the flag analytics-service counts on.
         try {
-            await safeTenantExecute(dbName, `UPDATE deceased SET body_status = 'Postmortem Requested', updated_at = ? WHERE deceased_id = ?`, [now, deceased_id]);
+            await ensureDeceasedPostmortemFlags(dbName);
+            await safeTenantExecute(dbName,
+                `UPDATE deceased SET body_status = 'Postmortem Requested', postmortem_requested = 1, postmortem_completed = 0, updated_at = ? WHERE deceased_id = ?`,
+                [now, deceased_id]);
         } catch (statusErr: any) {
             Logger.warn({ message: 'Failed to set deceased body_status to Postmortem Requested', error: statusErr?.message });
         }
@@ -602,6 +607,53 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
     }
 };
 
+/**
+ * Mirror the examination state onto everything else that tracks it.
+ *
+ * `savePostmortem` used to write only the findings columns, so the row's
+ * `status` stayed 'pending' forever — every read path (profile sidebar,
+ * deceased timeline, dashboard "Pending Postmortem" card, analytics counters)
+ * kept reporting a finished case as outstanding. The deceased row was equally
+ * stale: `body_status` was pinned to 'Postmortem Requested' with nothing ever
+ * moving it on.
+ *
+ * Every write is guarded independently so a tenant missing a column — or one
+ * whose `postmortem_requests` predates the `completed` state — still receives
+ * the parts it can accept.
+ */
+const syncPostmortemCompletion = async (
+    dbName: string,
+    deceasedId: string,
+    now: string,
+    completed: boolean,
+): Promise<void> => {
+    // 1. Close out the tracked request so it stops showing as outstanding.
+    try {
+        await ensurePostmortemRequestsTable(dbName);
+        await safeTenantExecute(
+            dbName,
+            `UPDATE postmortem_requests SET status = ?, completed_at = ?, updated_at = ?
+             WHERE deceased_id = ? AND status <> 'completed'`,
+            [completed ? 'completed' : 'pending', completed ? now : null, now, deceasedId],
+        );
+    } catch (e: any) {
+        Logger.warn({ message: 'Could not close postmortem_requests after examination', error: e?.message });
+    }
+
+    // 2. The deceased row — flags analytics-service reads, plus body_status.
+    try {
+        await ensureDeceasedPostmortemFlags(dbName);
+        const sets: string[] = ['updated_at = ?', 'postmortem_requested = 1', `postmortem_completed = ${completed ? 1 : 0}`];
+        if (completed) {
+            // Only advance the body_status when it is still awaiting the exam —
+            // a body released since the postmortem must not be dragged back.
+            sets.push("body_status = CASE WHEN body_status = 'Postmortem Requested' THEN 'Postmortem Done' ELSE body_status END");
+        }
+        await safeTenantExecute(dbName, `UPDATE deceased SET ${sets.join(', ')} WHERE deceased_id = ?`, [now, deceasedId]);
+    } catch (e: any) {
+        Logger.warn({ message: 'Could not sync deceased postmortem flags', error: e?.message });
+    }
+};
 // ═══════════════════════════════════════════════════════════════
 // EXPORT: savePostmortem (unchanged)
 // ═══════════════════════════════════════════════════════════════
@@ -622,11 +674,21 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
 
         if (!deceased_id) return res.status(400).json({ success: false, message: 'deceased_id is required' });
 
+        // The examination form always submits `status: 'completed'`, but an
+        // amended/incomplete save may legitimately send 'in_progress'. Anything
+        // else is treated as completed — filing findings IS the examination
+        // being carried out, and that is what the UI asserts on success.
+        const requestedStatus = String(req.body.status || 'completed').trim().toLowerCase();
+        const finalStatus: string = requestedStatus === 'in_progress' ? 'in_progress' : 'completed';
+        const isCompleted = finalStatus === 'completed';
+
         const dbName = await resolveDatabase(tenantSlug);
         if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
 
         const rawSignature = (req.body as any).signature_base64;
         const signature_base64 = rawSignature ? await normalizeSignatureToInkBlue(rawSignature) : null;
+
+        await ensurePostmortemTable(dbName);
 
         const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
         const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
@@ -639,7 +701,8 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                     examination_summary = ?, cause_of_death = ?, immediate_cause_of_death = ?, underlying_cause_of_death = ?,
                     contributing_conditions = ?, manner_of_death = ?, requesting_authority = ?, findings = ?, head_findings = ?,
                     chest_findings = ?, abdomen_findings = ?, extremities_findings = ?, toxicology_findings = ?, custom_findings = ?,
-                    signature = ?, staff_username = ?, mortuary_name = ?, updated_at = ?
+                    signature = ?, staff_username = ?, mortuary_name = ?,
+                    status = ?, completed_at = COALESCE(completed_at, ?), updated_at = ?
                 WHERE deceased_id = ?`;
 
             await safeTenantExecute(dbName, updateQuery, [
@@ -649,9 +712,17 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 typeof findings === 'string' ? findings : JSON.stringify(findings),
                 head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
                 toxicology_findings || null, custom_findings || null, signature_base64,
-                staff_username || null, mortuary_name || null, now, deceased_id]);
+                staff_username || null, mortuary_name || null,
+                // THE FIX: this status used to be announced over the socket but
+                // never written to the row, so the record stayed 'pending' in the
+                // database and every reload showed "Postmortem Pending". COALESCE
+                // keeps the FIRST completion timestamp, so amending a report
+                // never rewrites when the examination was actually carried out.
+                finalStatus, isCompleted ? now : null, now, deceased_id]);
 
-            emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'completed', pathologist_name, cause_of_death, manner_of_death, completed_at: now });
+            await syncPostmortemCompletion(dbName, deceased_id, now, isCompleted);
+
+            emitPostmortemUpdate(tenantSlug, deceased_id, { status: finalStatus, pathologist_name, cause_of_death, manner_of_death, completed_at: isCompleted ? now : null });
 
             try {
                 let deceasedName = '';
@@ -683,8 +754,8 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                     deceased_id, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
                     examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
                     manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
-                    toxicology_findings, custom_findings, staff_username, mortuary_name, signature, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                    toxicology_findings, custom_findings, staff_username, mortuary_name, signature, status, completed_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
             const result = await safeTenantExecute(dbName, insertQuery, [
                 deceased_id, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
@@ -693,9 +764,11 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 typeof findings === 'string' ? findings : JSON.stringify(findings),
                 head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
                 toxicology_findings || null, custom_findings || null, staff_username || null, mortuary_name || null,
-                signature_base64, now, now]);
+                signature_base64, finalStatus, isCompleted ? now : null, now, now]);
 
-            emitPostmortemUpdate(tenantSlug, deceased_id, { status: 'completed', pathologist_name, cause_of_death, manner_of_death, completed_at: now });
+            await syncPostmortemCompletion(dbName, deceased_id, now, isCompleted);
+
+            emitPostmortemUpdate(tenantSlug, deceased_id, { status: finalStatus, pathologist_name, cause_of_death, manner_of_death, completed_at: isCompleted ? now : null });
 
             try {
                 let deceasedName = '';
@@ -815,36 +888,66 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
         const dbName = await resolveDatabase(tenantSlug);
         if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
 
+        await ensurePostmortemTable(dbName);
+
         const updates = req.body;
+        // `status` and `completed_at` used to be missing from this allow-list,
+        // so a record could never be closed through this endpoint — it could
+        // only ever stay pending. Accept them now, and stamp completed_at on the
+        // transition so the caller does not have to supply it.
         const allowedFields = [
             'pathologist_name', 'external_pathologist_name', 'external_pathologist_mobile', 'external_pathologist_id',
             'examination_summary', 'cause_of_death', 'immediate_cause_of_death', 'underlying_cause_of_death',
             'contributing_conditions', 'manner_of_death', 'requesting_authority', 'findings', 'report_pdf_url',
-            'signature'];
+            'signature', 'status', 'completed_at'];
 
+        const VALID_STATUSES = ['pending', 'in_progress', 'completed'];
+        const requestedStatus = updates.status !== undefined ? String(updates.status).trim().toLowerCase() : null;
+        if (requestedStatus !== null && !VALID_STATUSES.includes(requestedStatus)) {
+            return res.status(400).json({ success: false, message: `status must be one of: ${VALID_STATUSES.join(', ')}` });
+        }
+
+        const now = getKenyaTimeISO();
         const fields: string[] = [];
         const values: any[] = [];
 
         for (const field of allowedFields) {
-            if (updates[field] !== undefined) {
-                fields.push(`${field} = ?`);
-                const value = field === 'findings' && typeof updates[field] === 'object'
-                    ? JSON.stringify(updates[field])
-                    : field === 'signature' && typeof updates[field] === 'string' && updates[field].startsWith('data:image')
-                        ? await normalizeSignatureToInkBlue(updates[field])
-                        : updates[field];
-                values.push(value);
-            }
+            if (updates[field] === undefined) continue;
+            // completed_at is stamped below so the transition itself dates the row.
+            if (field === 'completed_at' && requestedStatus === 'completed') continue;
+            fields.push(`${field} = ?`);
+            const value = field === 'findings' && typeof updates[field] === 'object'
+                ? JSON.stringify(updates[field])
+                : field === 'signature' && typeof updates[field] === 'string' && updates[field].startsWith('data:image')
+                    ? await normalizeSignatureToInkBlue(updates[field])
+                    : updates[field];
+            values.push(value);
+        }
+
+        if (requestedStatus === 'completed') {
+            fields.push('completed_at = COALESCE(completed_at, ?)');
+            values.push(now);
         }
 
         if (fields.length === 0) return res.status(400).json({ success: false, message: 'No fields to update' });
 
         fields.push('updated_at = ?');
-        values.push(getKenyaTimeISO());
+        values.push(now);
         values.push(id);
 
         const updateQuery = `UPDATE postmortem SET ${fields.join(', ')} WHERE id = ?`;
         await safeTenantExecute(dbName, updateQuery, values);
+
+        // Keep the surrounding records in step with the new state, otherwise the
+        // timeline / dashboard / analytics keep reporting the old one.
+        if (requestedStatus) {
+            const owner: any[] = (await safeTenantQuery(dbName, 'SELECT deceased_id FROM postmortem WHERE id = ?', [id])) || [];
+            const deceasedId = owner[0]?.deceased_id;
+            if (deceasedId) {
+                await syncPostmortemCompletion(dbName, deceasedId, now, requestedStatus === 'completed');
+                emitPostmortemUpdate(tenantSlug, deceasedId, { status: requestedStatus, completed_at: requestedStatus === 'completed' ? now : null });
+            }
+        }
 
         return res.status(200).json({ success: true, message: 'Postmortem record updated successfully' });
     } catch (error: any) {

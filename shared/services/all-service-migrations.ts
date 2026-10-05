@@ -149,7 +149,23 @@ WHERE (d.is_deleted = 0 OR d.is_deleted IS NULL)
   },
   {
     name: '013a_create_postmortem_requests_table',
-    sql: `CREATE TABLE IF NOT EXISTS postmortem_requests (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, request_ref VARCHAR(60) NULL, requested_by VARCHAR(150) NULL, requesting_authority VARCHAR(200) NULL, reason TEXT, notes TEXT, status ENUM('initiated', 'sent', 'cancelled') DEFAULT 'initiated', initiated_by VARCHAR(150) NULL, sent_at VARCHAR(255) NULL, cancelled_at VARCHAR(255) NULL, created_at VARCHAR(255) NULL, updated_at VARCHAR(255) NULL, INDEX idx_pmr_deceased_id (deceased_id), INDEX idx_pmr_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    sql: `CREATE TABLE IF NOT EXISTS postmortem_requests (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, request_ref VARCHAR(60) NULL, requested_by VARCHAR(150) NULL, requesting_authority VARCHAR(200) NULL, reason TEXT, notes TEXT, status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated', initiated_by VARCHAR(150) NULL, sent_at VARCHAR(255) NULL, cancelled_at VARCHAR(255) NULL, completed_at VARCHAR(255) NULL, created_at VARCHAR(255) NULL, updated_at VARCHAR(255) NULL, INDEX idx_pmr_deceased_id (deceased_id), INDEX idx_pmr_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  },
+  {
+    // A finished examination has to be recordable, otherwise the tracked
+    // request stays 'sent'/'initiated' forever and the PM register keeps
+    // listing an already-completed case as outstanding. Widens the ENUM and
+    // adds the timestamp column the controller writes.
+    name: '013d_postmortem_requests_completed_state',
+    sql: `ALTER TABLE postmortem_requests ADD COLUMN IF NOT EXISTS completed_at VARCHAR(255) NULL AFTER cancelled_at;
+          ALTER TABLE postmortem_requests MODIFY COLUMN status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated'`,
+  },
+  {
+    // analytics-service reads deceased.postmortem_requested / postmortem_completed
+    // for its "awaiting autopsy" and "postmortem completion" panels, but neither
+    // column has ever existed — those queries threw or silently returned zeros.
+    name: '013e_deceased_postmortem_flags',
+    sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS postmortem_requested TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS postmortem_completed TINYINT(1) NOT NULL DEFAULT 0`,
   },
   {
     name: '013c_create_charge_settings_table',

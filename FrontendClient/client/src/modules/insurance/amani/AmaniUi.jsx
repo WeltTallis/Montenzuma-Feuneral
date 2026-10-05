@@ -9,8 +9,9 @@
    src/index.css for why the stock shadcn names cannot be used.
    ========================================================================== */
 
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Clock, Mail, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, Mail, MapPin, Menu, Phone, X } from 'lucide-react';
 import { CONTACT } from './amaniData';
 import { IMAGE_VARIANTS } from './imageManifest';
 import './AmaniCover.css';
@@ -95,22 +96,77 @@ const SUB_ANCHORS = [
   { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 
-/* Sticky header. The two right-hand CTAs are real client-side routes, not
-   anchors: "Get covered" opens the application form on its own page
-   (/amani/cover/apply) and "Submit claim" opens /amani/claims for members who
-   already hold cover. On the landing route they stay links so a stray
-   middle-click still works the same. */
+/* Sticky header: the primary action always opens the claims route. The mobile
+  drawer carries the full navigation, payment and support links. */
 export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
   const isLanding = active === '/amani/cover';
   const links = inPageLinks && inPageLinks.length ? inPageLinks : isLanding ? LANDING_ANCHORS : SUB_ANCHORS;
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const headerRef = useRef(null);
+  const mobileLinks = [
+    { href: '/amani/cover', label: 'Amani Cover' },
+    { href: isLanding ? '#plans' : '/amani/cover#plans', label: 'Choose cover' },
+    { href: '/amani/cover/apply', label: 'Apply now' },
+    { href: isLanding ? '#about' : '/amani/cover#about', label: 'About Amani' },
+    { href: isLanding ? '#how' : '/amani/cover#how', label: 'How it works' },
+    { href: '/amani/cover/terms', label: 'Policy terms' },
+    { href: '/amani/cover/refer', label: 'Refer a friend' },
+    { href: '/amani/payments', label: 'Make a payment' },
+    { href: '/amani/claims', label: 'Make a claim' },
+    { href: '/amani/claims/track', label: 'Track a claim' },
+  ];
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      setHeaderVisible(true);
+      return undefined;
+    }
+
+    let previousY = window.scrollY;
+    let idleTimer;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const headerHasFocus = headerRef.current?.contains(document.activeElement);
+
+      if (headerHasFocus || currentY < 72 || currentY < previousY - 4) {
+        setHeaderVisible(true);
+      } else if (currentY > previousY + 4) {
+        setHeaderVisible(false);
+      }
+
+      previousY = currentY;
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => setHeaderVisible(true), 480);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.clearTimeout(idleTimer);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [mobileOpen]);
 
   return (
-    <header className="sticky top-0 z-40  border-ac-border/70 bg-ac-bg/85 backdrop-blur-md">
-      {/* Mobile fix: the bar used to be h-18 px-6 with two full-size CTA
-          buttons side by side. On a 360-390px screen that overflowed, the two
-          buttons wrapped onto the logo line and the "Get covered" label was
-          clipped. Now: smaller horizontal padding, a shorter bar on phones,
-          and compact buttons that only grow to full size from `sm` up. */}
+    <header
+      ref={headerRef}
+      className={`sticky top-0 z-40 border-ac-border/70 bg-ac-bg/90 backdrop-blur-md transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}
+    >
+        {/* Keep the compact claim action and menu trigger side by side on phones. */}
       <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-18 sm:gap-6 sm:px-6 lg:px-10">
         {/* Logo and section links share the LEFT group. They were separate
             justify-between children before, which put the links in the middle
@@ -119,7 +175,17 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
             the middle of the bar genuinely free. */}
         <div className="flex shrink-0 items-center gap-8">
           <Link to="/amani/cover" className="flex items-baseline gap-2" aria-label="Amani Cover home">
-            <span className="font-serif text-xl font-semibold tracking-tight text-ac-primary sm:text-2xl">Amani</span>
+            <span className="flex items-center gap-2.5">
+              <img
+                src="https://montezumamonalisa.com/wp-content/uploads/2020/01/logo.png"
+                alt="Montenzuma Monalisa Funeral Home"
+                className="h-8 w-10 object-contain sm:h-9 sm:w-16"
+              />
+              <span className="flex flex-col leading-none">
+                <span className="font-serif text-xl font-semibold tracking-tight text-ac-primary sm:text-2xl">Amani</span>
+                <span className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-ac-mutedfg">Funeral cover</span>
+              </span>
+            </span>
 
           </Link>
 
@@ -154,24 +220,73 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
         </a>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          {/* Existing members: claims, not a new application. RED because this
-              is the urgent, time-sensitive action for a bereaved family and it
-              was previously a low-contrast outline that read as disabled next
-              to the solid blue "Get covered" button.
-
-              "Get covered" was REMOVED from the header on request — with two
-              buttons the bar overflowed on a 360px phone. New applicants still
-              reach the form from the hero's "Find your cover" CTA, the footer's
-              "Apply now", or any in-page #apply link, so /amani/cover/apply is
-              never more than one tap away and nothing is orphaned. */}
           <Link
             to="/amani/claims"
-            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-ac-ink px-3.5 text-[0.8125rem] font-semibold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:h-10 sm:px-5 sm:text-sm"
+            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-ac-primary px-3.5 text-[0.8125rem] font-semibold text-white shadow-sm transition-colors hover:bg-ac-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring sm:h-10 sm:px-5 sm:text-sm"
           >
             Make a claim
           </Link>
+          <button
+            type="button"
+            className="grid size-10 place-items-center rounded-lg border border-ac-border text-ac-primary transition-colors hover:bg-ac-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring md:hidden"
+            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileOpen}
+            aria-controls="amani-mobile-menu"
+            onClick={() => setMobileOpen(open => !open)}
+          >
+            {mobileOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
+          </button>
         </div>
       </div>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 size-full bg-black/35"
+            aria-label="Close navigation menu"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside
+            id="amani-mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Amani navigation"
+            className="absolute right-0 top-0 flex h-dvh w-[min(88vw,22rem)] flex-col overflow-y-auto bg-ac-bg p-5 shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-ac-border pb-4">
+              <span className="font-serif text-2xl font-semibold text-ac-primary">Amani</span>
+              <button
+                type="button"
+                className="grid size-10 place-items-center rounded-lg text-ac-primary hover:bg-ac-card focus-visible:outline-2 focus-visible:outline-ac-ring"
+                aria-label="Close navigation menu"
+                onClick={() => setMobileOpen(false)}
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+            <nav aria-label="Amani mobile" className="flex flex-col py-3">
+              {mobileLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="flex min-h-12 items-center justify-between border-b border-ac-border/70 px-2 text-sm font-medium text-ac-ink transition-colors hover:bg-ac-card hover:text-ac-primary"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                  <ArrowRight className="size-4 text-ac-accent" aria-hidden="true" />
+                </a>
+              ))}
+            </nav>
+            <a
+              href={CONTACT.phoneHref}
+              className="mt-auto flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 font-semibold text-white"
+            >
+              <Phone className="size-4" aria-hidden="true" />
+              Call {CONTACT.phone}
+            </a>
+          </aside>
+        </div>
+      )}
     </header>
   );
 }

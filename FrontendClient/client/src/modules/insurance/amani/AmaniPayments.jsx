@@ -37,10 +37,10 @@ export default function AmaniPayments() {
       <AmaniNav active="/amani/payments" />
 
       <PageHeader
-        eyebrow="Already covered?"
-        title="Make a"
-        accent="payment."
-        intro="Keeping your Amani Cover up to date is simple. Check your policy below and we will show you how to contribute — or if you are unsure, call us and we will walk you through it."
+        eyebrow="Current members"
+        title="Check your"
+        accent="contribution."
+        intro="Verify your registered cover and monthly contribution. Online payment is not available yet; our team can confirm the current payment steps by phone."
       />
 
       <main className="px-4 pb-16 pt-10 sm:px-6 lg:px-10 lg:pb-20">

@@ -1007,6 +1007,102 @@
    margin-bottom: 0
 }
 
+/* ── sidebar data rows ── */
+/* A tidy figure row: label on the left, value right-aligned in tabular figures,
+   with the dashed rule from the deceased sidebar's `ChargeRow` between rows. This
+   is what makes "days in morgue" / "charges so far" legible instead of a wall of
+   numbers — each line reads as one fact. */
+.rpd .side .stop {
+   display: flex;
+   flex-direction: column
+}
+
+.rpd .side .srow {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   min-width: 0;
+   padding: 8px 0
+}
+
+.rpd .side .srow+.srow {
+   border-top: 1px dashed var(--brdl)
+}
+
+.rpd .side .sn {
+   flex: 1;
+   min-width: 0;
+   font-size: 11.5px;
+   color: var(--tx2);
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis
+}
+
+.rpd .side .srow b {
+   font: 700 11.5px var(--sans);
+   color: var(--tx);
+   font-variant-numeric: tabular-nums;
+   white-space: nowrap;
+   flex-shrink: 0
+}
+
+/* A held body running at or above the average stay — the ones worth chasing. */
+.rpd .side .srow b.warn {
+   color: var(--warn)
+}
+
+/* The grand total line, so the panel has a clear answer at a glance. */
+.rpd .side .srow b.tot {
+   color: var(--acc);
+   font-size: 12.5px
+}
+
+.rpd .side .sd {
+   width: 8px;
+   height: 8px;
+   border-radius: 3px;
+   flex-shrink: 0
+}
+
+/* Three headline figures (avg / median / longest) sitting above the detail rows.
+   Each tile is tinted like the deceased sidebar's badge blocks. */
+.rpd .side .sgrid3 {
+   display: grid;
+   grid-template-columns: repeat(3, minmax(0, 1fr));
+   gap: 6px;
+   margin-bottom: 11px
+}
+
+.rpd .side .sstat {
+   background: var(--sect);
+   border: 1px solid var(--brdl);
+   border-radius: 8px;
+   padding: 9px 8px;
+   text-align: center;
+   min-width: 0
+}
+
+.rpd .side .sstat b {
+   display: block;
+   font: 800 17px/1.1 var(--serif);
+   color: var(--tx);
+   font-variant-numeric: tabular-nums
+}
+
+.rpd .side .sstat span {
+   display: block;
+   margin-top: 3px;
+   font-size: 9px;
+   font-weight: 700;
+   color: var(--tx3);
+   text-transform: uppercase;
+   letter-spacing: .5px;
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis
+}
+
 .rpd .san-leg {
    display: flex;
    flex-direction: column;

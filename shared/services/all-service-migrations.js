@@ -117,6 +117,25 @@ const DECEASED_SERVICE_MIGRATIONS = [
         sql: `CREATE TABLE IF NOT EXISTS postmortem (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, pathologist_name VARCHAR(255), external_pathologist_name VARCHAR(255), external_pathologist_mobile VARCHAR(20), external_pathologist_id VARCHAR(50), examination_summary TEXT, cause_of_death TEXT, immediate_cause_of_death TEXT, underlying_cause_of_death TEXT, contributing_conditions TEXT, manner_of_death VARCHAR(50), requesting_authority VARCHAR(100), findings JSON, head_findings TEXT, chest_findings TEXT, abdomen_findings TEXT, extremities_findings TEXT, toxicology_findings TEXT, custom_findings JSON, report_pdf_url VARCHAR(500), staff_username VARCHAR(255), mortuary_name VARCHAR(255), status VARCHAR(50) DEFAULT 'pending', requested_by VARCHAR(255), requested_at VARCHAR(255), completed_at VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), created_by INT, updated_by INT, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_status (status), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
     {
+        // A finished examination has to be recordable, otherwise the tracked request stays
+        // 'sent'/'initiated' forever and the PM register keeps listing a completed case as
+        // outstanding. Widens the ENUM and adds the timestamp the controller writes.
+        name: '013a_create_postmortem_requests_table',
+        sql: `CREATE TABLE IF NOT EXISTS postmortem_requests (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, request_ref VARCHAR(60) NULL, requested_by VARCHAR(150) NULL, requesting_authority VARCHAR(200) NULL, reason TEXT, notes TEXT, status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated', initiated_by VARCHAR(150) NULL, sent_at VARCHAR(255) NULL, cancelled_at VARCHAR(255) NULL, completed_at VARCHAR(255) NULL, created_at VARCHAR(255) NULL, updated_at VARCHAR(255) NULL, INDEX idx_pmr_deceased_id (deceased_id), INDEX idx_pmr_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
+    {
+        name: '013d_postmortem_requests_completed_state',
+        sql: `ALTER TABLE postmortem_requests ADD COLUMN IF NOT EXISTS completed_at VARCHAR(255) NULL AFTER cancelled_at;
+              ALTER TABLE postmortem_requests MODIFY COLUMN status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated'`,
+    },
+    {
+        // analytics-service reads deceased.postmortem_requested / postmortem_completed for its
+        // "awaiting autopsy" and "postmortem completion" panels, but neither column has ever
+        // existed — those queries threw or silently returned zeros.
+        name: '013e_deceased_postmortem_flags',
+        sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS postmortem_requested TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS postmortem_completed TINYINT(1) NOT NULL DEFAULT 0`,
+    },
+    {
         name: '014_create_charges_table',
         sql: `CREATE TABLE IF NOT EXISTS charges (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(50) NOT NULL, charge_type VARCHAR(100) NOT NULL, description TEXT, amount DECIMAL(10, 2) NOT NULL, status ENUM('pending', 'paid', 'waived', 'cancelled') DEFAULT 'pending', created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_deceased_id (deceased_id), INDEX idx_charge_type (charge_type), INDEX idx_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
