@@ -45,14 +45,14 @@ const CSS = `:root{
 .mg-btn:hover{transform:translateY(-1px);background:#6d4447}
 .mg-btn svg{width:22px;height:22px}
 .mg-btn.selected{background:#f6f0eb;border-color:#f6f0eb;color:#171310;box-shadow:0 12px 20px rgba(246,240,235,.2)}
-.mg-recommendations{position:fixed;right:24px;bottom:120px;z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
+.mg-recommendations{position:fixed;right:24px;bottom:calc(120px + var(--mg-tray-h,0px));z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
 .mg-recommendations-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;margin-bottom:10px}
 .mg-recommendations-head span{font:700 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)}
-.mg-recommendations-head button{border:none;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:7px 10px;font:700 9px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
-/* Nothing is selected, so there is nothing to complete. Selection is explicit
-   now (the "+" on a card), which makes this button's disabled state honest
-   instead of silently falling back to whatever slide is on screen. */
-.mg-recommendations-head button:disabled{opacity:.4;cursor:not-allowed}
+/* The head used to hold a "Complete booking" button whose :disabled state stood
+   in for "nothing picked". There is exactly ONE continue CTA now — the selection
+   tray — which only ever renders once arrangements have actually been added, so
+   the button styling below is gone. */
+.mg-rec-count{font:700 9px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
 .mg-recommendations-grid{display:flex;flex-direction:column;gap:8px}
 .mg-recommendation-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px;transition:background .15s,border-color .15s}
 .mg-recommendation-item.picked{background:rgba(255,255,255,.16);border-color:rgba(246,240,235,.55)}
@@ -68,10 +68,27 @@ const CSS = `:root{
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
-.mg-cart-bar{position:absolute;right:20px;bottom:118px;z-index:12;display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(15,12,14,.52);backdrop-filter:blur(10px);box-shadow:0 18px 28px rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.24);border-radius:0}
-.mg-cart-chip{font:700 8px 'Inter',sans-serif;color:#f6f0eb;letter-spacing:.12em;text-transform:uppercase}
-.mg-cart-button{padding:7px 12px;border:none;background:#f6f0eb;color:#191612;font:800 8px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0;box-shadow:none}
-.mg-cart-button:disabled{opacity:.5;cursor:not-allowed}
+/* ── Selection tray ────────────────────────────────────────────────────────────
+   This REPLACED the old floating ".mg-cart-bar". That bar was position:absolute
+   at right:20px/bottom:118px — the exact same corner as .mg-recommendations
+   (right:24px/bottom:120px) — so the two permanently overlapped and the
+   "Continue booking" button fought the "Complete booking" button for the same
+   pixels. The tray now lives INSIDE .mg-bottom, in normal flow, so it pushes the
+   rest of the bar up instead of hovering on top of anything. Nothing is rendered
+   until the visitor actually adds an arrangement, which is what "no floating bar
+   by default" means in practice. */
+.mg-tray{margin:0 0 14px;padding:12px;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(15,12,14,.42);backdrop-filter:blur(10px)}
+.mg-tray-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.mg-tray-title{font:700 10px 'Inter',sans-serif;color:#f6f0eb;letter-spacing:.12em;text-transform:uppercase}
+.mg-tray-clear{border:none;background:none;color:rgba(246,240,235,.6);font:700 9px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:2px 4px}
+.mg-tray-clear:hover{color:#f6f0eb}
+.mg-tray-list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto}
+.mg-tray-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 6px 4px 4px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(255,255,255,.1);color:#f6f0eb}
+.mg-tray-chip img{width:22px;height:22px;flex:0 0 22px;border-radius:50%;object-fit:cover}
+.mg-tray-chip span{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px 'Inter',sans-serif}
+.mg-tray-remove{flex:0 0 18px;width:18px;height:18px;display:grid;place-items:center;border:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font:700 13px/1 'Inter',sans-serif;cursor:pointer;padding:0}
+.mg-tray-remove:hover{background:#8b4557}
+.mg-tray-cta{width:100%;padding:13px 16px;border:none;border-radius:999px;background:#f6f0eb;color:#191612;font:800 10px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
 .mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at top, rgba(255,255,255,.96), rgba(242,236,231,.92) 38%, rgba(228,220,214,.94) 100%);text-align:center;padding:40px}
 .mg-empty-icon{opacity:.45;margin-bottom:16px;color:#8b4557}
 .mg-empty h3{font:400 26px var(--serif);color:#4d3a38;margin:0 0 8px}
@@ -102,6 +119,7 @@ export default function Samples() {
   const dragging = useRef(false);
   const viewedStories = useRef(new Set());
   const storyRailRef = useRef(null);
+  const trayRef = useRef(null);
 
   const pickPrimaryImage = useCallback((entry) => {
     const list = Array.isArray(entry?.images) ? entry.images : [];
@@ -122,6 +140,21 @@ export default function Samples() {
     const chosen = sorted.find((img) => typeof img?.url === 'string' && img.url.trim()) || sorted[0];
     return chosen?.url || entry?.image || entry?.img || entry?.portrait || '';
   }, []);
+
+  /* THE one canonical id for a sample.
+     flower_samples has BOTH `arrangement_id` (VARCHAR, e.g. "ARR-123456-A1B2C3")
+     and `id` (INT AUTO_INCREMENT). The gallery stored selections as STRINGS but
+     several read sites compared the RAW value, so any row that fell back to the
+     numeric `id` never matched: the "+" stayed looking un-picked, the visitor
+     tapped it again, and the item was toggled back OFF. That is exactly the
+     "I can only ever seem to select one" behaviour. Everything that keys off a
+     sample now goes through here so the two representations can never diverge. */
+  const sampleKey = useCallback((a) => String(a?.arrangement_id || a?.id || ''), []);
+
+  const isPicked = useCallback((a) => {
+    const key = sampleKey(a);
+    return !!key && selectedIds.includes(key);
+  }, [sampleKey, selectedIds]);
 
   const toggleCart = useCallback((id) => {
     const arrangementId = String(id || '');
@@ -174,7 +207,7 @@ export default function Samples() {
   const stories = arrangements.map((a, i) => ({
     id: a.id || a.arrangement_id || i,
     label: (a.title || a.name || 'Arrangement').split(' ')[0],
-    arrangementId: a.arrangement_id || a.id,
+    arrangementId: sampleKey(a),
     img: pickPrimaryImage(a),
     viewed: viewedStories.current.has(a.id || a.arrangement_id || i),
   }));
@@ -239,7 +272,7 @@ export default function Samples() {
 
   const handleStoryClick = (s) => {
     viewedStories.current.add(s.id);
-    const idx = arrangements.findIndex(a => (a.arrangement_id || a.id) === s.arrangementId);
+    const idx = arrangements.findIndex(a => sampleKey(a) === s.arrangementId);
     if (idx >= 0) {
       setCurrent(idx);
     }
@@ -266,14 +299,16 @@ export default function Samples() {
     portrait: pickPrimaryImage(a),
   }));
 
-  /* The full sample records behind the current cart selection — these ride into
-     the booking form so the booking keeps the real arrangement (id, photos,
-     types/colors) instead of degrading to "Custom Arrangement". */
+  /* The full sample records behind the current selection — these ride into the
+     booking form so the booking keeps the real arrangement (id, photos,
+     types/colors) instead of degrading to "Custom Arrangement". Keyed with the
+     same sampleKey the "+" buttons use, so what the visitor picked is exactly
+     what the booking receives — and EVERY pick survives, not just one. */
   const selectedArrangements = useMemo(() => {
     if (!selectedIds.length) return [];
     const picked = new Set(selectedIds.map(String));
-    return arrangements.filter(a => picked.has(String(a.arrangement_id || a.id)));
-  }, [arrangements, selectedIds]);
+    return arrangements.filter(a => picked.has(sampleKey(a)));
+  }, [arrangements, selectedIds, sampleKey]);
 
   /* Opening the booking flow must NEVER pick an arrangement on the user's behalf.
      It used to fall back to whatever slide happened to be on screen, so someone
@@ -283,6 +318,32 @@ export default function Samples() {
   const openBookingFlow = useCallback(() => {
     setShowBooking(true);
   }, []);
+
+  /* The tray grows as chips wrap onto more lines, so the fixed "Most booked now"
+     panel is lifted by the tray's REAL measured height (published as a CSS
+     variable) instead of a hard-coded guess. This is what stops the two panels
+     from stacking on top of each other now that the floating bar is gone. */
+  useEffect(() => {
+    const root = document.documentElement;
+    const publish = () => {
+      const h = trayRef.current?.offsetHeight || 0;
+      root.style.setProperty('--mg-tray-h', `${h}px`);
+    };
+    publish();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', publish);
+      return () => {
+        window.removeEventListener('resize', publish);
+        root.style.removeProperty('--mg-tray-h');
+      };
+    }
+    const ro = new ResizeObserver(publish);
+    if (trayRef.current) ro.observe(trayRef.current);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--mg-tray-h');
+    };
+  }, [selectedArrangements.length]);
 
   return (
     <>
@@ -325,7 +386,7 @@ export default function Samples() {
             {arrangements.map((a, i) => {
               const img = pickPrimaryImage(a);
               return (
-                <div key={a.arrangement_id || a.id} className="mg-slide" style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? "auto" : "none", transform: i === current ? 'scale(1)' : 'scale(1.02)' }}>
+                <div key={sampleKey(a) || i} className="mg-slide" style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? "auto" : "none", transform: i === current ? 'scale(1)' : 'scale(1.02)' }}>
                   <img src={img} alt={a.title || a.name || 'Arrangement'} draggable={false} loading="eager" decoding="async" />
                 </div>
               );
@@ -354,29 +415,64 @@ export default function Samples() {
               })}
             </div>
 
-            {selectedIds.length > 0 && (
-              <div className="mg-cart-bar">
-                <span className="mg-cart-chip">{selectedIds.length} selected</span>
-                <button className="mg-cart-button" type="button" onClick={() => setShowBooking(true)}>Continue booking</button>
-              </div>
-            )}
-
             <div className="mg-bottom">
+              {/* ── Selection tray (replaces the old floating "Continue booking"
+                  bar). It renders INSIDE this bottom bar, in normal flow, so it
+                  can never hover over the "+" button, the dots or the
+                  recommendations panel — the two used to share the exact same
+                  corner. It is also absent entirely until the visitor adds their
+                  first arrangement, so there is no floating CTA by default. */}
+              {selectedArrangements.length > 0 && (
+                <div className="mg-tray" ref={trayRef} role="group" aria-label="Arrangements added to your booking">
+                  <div className="mg-tray-head">
+                    <span className="mg-tray-title">
+                      {selectedArrangements.length} arrangement{selectedArrangements.length === 1 ? '' : 's'} added
+                    </span>
+                    <button type="button" className="mg-tray-clear" onClick={() => setSelectedIds([])}>Clear all</button>
+                  </div>
+                  <ul className="mg-tray-list">
+                    {selectedArrangements.map((a, i) => {
+                      const thumb = pickPrimaryImage(a);
+                      const title = a.title || a.name || 'Arrangement';
+                      return (
+                        <li className="mg-tray-chip" key={sampleKey(a) || `sel-${i}`}>
+                          {thumb ? <img src={thumb} alt="" /> : null}
+                          <span title={title}>{title}</span>
+                          <button
+                            type="button"
+                            className="mg-tray-remove"
+                            onClick={() => toggleCart(sampleKey(a))}
+                            aria-label={`Remove ${title} from booking`}
+                            title={`Remove ${title}`}
+                          >
+                            &times;
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <button type="button" className="mg-tray-cta" onClick={openBookingFlow}>
+                    Continue booking
+                  </button>
+                </div>
+              )}
+
               {arr?.tag && (<div className={`mg-badge ${arr.tag === "Premium" ? "premium" : "standard"}`}>{arr.tag}</div>)}
               <p className="mg-type">{arr?.types?.[0] || arr?.type || 'Flower Arrangement'}</p>
               <h2 className="mg-name">{arr?.title || arr?.name || 'Arrangement'}</h2>
               <div className="mg-actions">
                 <button
-                  className={`mg-btn ${selectedIds.includes(arr?.arrangement_id || arr?.id) ? "selected" : ""}`}
+                  className={`mg-btn ${isPicked(arr) ? "selected" : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleCart(arr?.arrangement_id || arr?.id);
+                    toggleCart(sampleKey(arr));
                   }}
-                  aria-label={selectedIds.includes(arr?.arrangement_id || arr?.id) ? "Remove from cart" : "Add to cart"}
-                  title={selectedIds.includes(arr?.arrangement_id || arr?.id) ? "Remove from cart" : "Add to cart"}
+                  aria-label={isPicked(arr) ? `Remove ${arr?.title || 'arrangement'} from booking` : `Add ${arr?.title || 'arrangement'} to booking`}
+                  title={isPicked(arr) ? "Remove from booking" : "Add to booking"}
+                  aria-pressed={isPicked(arr)}
                   style={{ transition: 'all 0.12s ease-out' }}
                 >
-                  {selectedIds.includes(arr?.arrangement_id || arr?.id) ? (
+                  {isPicked(arr) ? (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12.5l4.1 4.1L19 2.5" /></svg>
                   ) : (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
@@ -396,16 +492,21 @@ export default function Samples() {
             <div className="mg-recommendations">
               <div className="mg-recommendations-head">
                 <span>Most booked now</span>
-                <button onClick={openBookingFlow} disabled={selectedIds.length === 0}>Complete booking</button>
+                {/* The "continue" CTA now lives ONCE, on the selection tray. It used
+                    to be duplicated here, and this copy sat under the floating bar
+                    in the same corner — two buttons fighting for the same pixels. */}
+                {selectedArrangements.length > 0 && (
+                  <span className="mg-rec-count">{selectedArrangements.length} added</span>
+                )}
               </div>
               <div className="mg-recommendations-grid">
-                {recommendations.map((item) => {
-                  const recId = String(item.arrangement_id || item.id || '');
-                  const isPicked = selectedIds.includes(recId);
+                {recommendations.map((item, ri) => {
+                  const recId = sampleKey(item);
+                  const picked = !!recId && selectedIds.includes(recId);
                   return (
                     <div
-                      key={recId}
-                      className={`mg-recommendation-item${isPicked ? ' picked' : ''}`}
+                      key={recId || `rec-${ri}`}
+                      className={`mg-recommendation-item${picked ? ' picked' : ''}`}
                     >
                       {/* Tapping the card itself still browses it; only the "+"
                           adds. Keeping these separate means a client can study
@@ -414,7 +515,7 @@ export default function Samples() {
                         type="button"
                         className="mg-recommendation-open"
                         onClick={() => {
-                          const idx = arrangements.findIndex((a) => String(a.arrangement_id || a.id) === recId);
+                          const idx = arrangements.findIndex((a) => sampleKey(a) === recId);
                           if (idx >= 0) setCurrent(idx);
                         }}
                       >
@@ -428,10 +529,11 @@ export default function Samples() {
                         type="button"
                         className="mg-recommendation-add"
                         onClick={() => toggleCart(recId)}
-                        aria-label={isPicked ? `Remove ${item.title || item.name} from booking` : `Add ${item.title || item.name} to booking`}
-                        title={isPicked ? 'Remove from booking' : 'Add to booking'}
+                        aria-label={picked ? `Remove ${item.title || item.name} from booking` : `Add ${item.title || item.name} to booking`}
+                        aria-pressed={picked}
+                        title={picked ? 'Remove from booking' : 'Add to booking'}
                       >
-                        {isPicked ? (
+                        {picked ? (
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12.5l4.1 4.1L19 2.5" /></svg>
                         ) : (
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
