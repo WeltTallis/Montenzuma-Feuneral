@@ -263,9 +263,12 @@
           <i class="fas fa-download text-[10px]"></i>
           <span class="hidden lg:inline">Download</span>
         </button>
-        <button id="printBtn" class="btn-print px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium transition-all">
+        <button id="printBtn" class="btn-print px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium transition-all" title="Print this document">
           <i class="fas fa-print text-[10px]"></i>
           <span class="hidden lg:inline">Print</span>
+        </button>
+        <button id="printOptionsBtn" class="btn-print px-2 py-2 rounded-md text-xs font-medium transition-all hidden" title="Choose a printer">
+          <i class="fas fa-chevron-down text-[10px]"></i>
         </button>
         <button id="deleteBtn" class="btn-delete px-3 py-2 rounded-md text-xs flex items-center gap-2 font-medium transition-all" title="Delete document">
           <i class="fas fa-trash-can text-[10px]"></i>
@@ -391,6 +394,74 @@
         </div>
         <div id="thumbnailList" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
       </aside>
+    </div>
+  </div>
+
+  <!-- PRINT DIALOG ──────────────────────────────────────────────────────── -->
+  <div id="printDialog" class="fixed inset-0 z-[60] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[#E5E7EB]">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-[#1e293b] truncate">Print</p>
+          <p id="printDocName" class="text-[11px] text-[#6B7280] mt-0.5 truncate"></p>
+        </div>
+        <button id="printCloseBtn" class="w-7 h-7 rounded-md hover:bg-[#F7F9FB] text-[#6B7280] flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto">
+        <!-- No bridge on this machine -->
+        <div id="printNoBridge" class="hidden text-center py-4">
+          <div class="w-12 h-12 rounded-full bg-[#fef3c7] text-[#F39C12] text-lg flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-plug"></i>
+          </div>
+          <p class="text-sm font-semibold text-[#1e293b]">No printer bridge found</p>
+          <p id="printNoBridgeMsg" class="text-xs text-[#6B7280] mt-1.5 leading-relaxed"></p>
+          <button id="printBrowserFallback" class="mt-4 w-full px-4 py-2.5 rounded-lg text-xs font-semibold" style="background:var(--blue);color:#fff">
+            Open the browser print dialog instead
+          </button>
+        </div>
+
+        <!-- Bridge found: printer list -->
+        <div id="printPicker">
+          <label class="block text-[10px] uppercase tracking-widest text-[#6B7280] mb-1.5">Printer</label>
+          <div id="printPrinterList" class="space-y-1.5 max-h-56 overflow-y-auto"></div>
+
+          <!-- One-click setup for a printer the OS can see but has no queue for -->
+          <div id="printDiscoveredBlock" class="hidden mt-4 pt-4 border-t border-[#E5E7EB]">
+            <p class="text-[10px] uppercase tracking-widest text-[#6B7280] mb-2">Available to connect</p>
+            <div id="printDiscoveredList" class="space-y-1.5"></div>
+            <p class="text-[10px] text-[#6B7280] mt-2 leading-relaxed">
+              Turn the printer on and connect it to this computer over Bluetooth or Wi-Fi, then reconnect it here.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <div>
+              <label class="block text-[10px] uppercase tracking-widest text-[#6B7280] mb-1.5" for="printCopies">Copies</label>
+              <input id="printCopies" type="number" min="1" max="50" value="1" class="shell-input w-full" />
+            </div>
+            <div class="flex items-end">
+              <label class="flex items-center gap-2 text-xs text-[#1e293b] pb-2.5 cursor-pointer select-none">
+                <input id="printDuplex" type="checkbox" class="accent-[#6a0572] w-4 h-4" />
+                Double-sided
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div id="printStatus" class="hidden mt-4 px-3 py-2.5 rounded-lg text-xs font-medium"></div>
+      </div>
+
+      <div class="px-5 py-4 border-t border-[#E5E7EB] bg-[#F7F9FB] flex gap-2">
+        <button id="printCancelBtn" class="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold bg-white border border-[#E5E7EB] text-[#1e293b] hover:border-[#cbd5e1]">
+          Cancel
+        </button>
+        <button id="printConfirmBtn" class="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style="background:var(--green)">
+          <i class="fas fa-print mr-1.5"></i>Print
+        </button>
+      </div>
     </div>
   </div>
 
@@ -630,6 +701,8 @@
     $id('docUploadedAt').textContent = doc ? formatDate(doc.uploadedAt) : '—';
     $id('docSizeText').textContent = doc && doc.sizeKB > 0 ? formatSize(doc.sizeKB) : '—';
     $id('deceasedIdLabel').textContent = DECEASED_ID || '—';
+    // The caret only makes sense once we know a bridge is actually there.
+    $id('printOptionsBtn').classList.toggle('hidden', !ls(LAST_PRINTER_KEY));
   }
 
   async function openDocument(doc) {
@@ -933,7 +1006,427 @@
   }
 
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  PRINTING — the local Restpoint Bridge
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Clicking Print talks to the Scanner Bridge agent on this computer
+  //  (ws://localhost:8081), exactly like the scanner does. The bridge holds the
+  //  real printer queue, so the job goes straight to paper with no system print
+  //  dialog. If the bridge is not running we fall back to the browser dialog, so
+  //  printing never becomes impossible.
+  //
+  //  This page is served as a static file and cannot import the app's
+  //  scannerBridge module, so the slice of that protocol it needs lives here.
+  //  Keep the two in step.
+
+  const BRIDGE_URL_KEY = 'restpoint.scannerBridgeUrl';
+  const LAST_PRINTER_KEY = 'restpoint.lastPrinter';
+
+  /** Candidate bridge URLs, best first (mirrors utils/scannerBridge.js). */
+  function getBridgeUrls() {
+    const urls = [];
+    const custom = ls(BRIDGE_URL_KEY);
+    if (custom) urls.push(custom);
+    urls.push('ws://localhost:8081');
+    if (location.protocol === 'https:') urls.push('wss://localhost:8081');
+    return urls;
+  }
+
+  /** Ping each candidate bridge; resolve with the first that answers. */
+  function probeBridge(timeoutMs = 2500) {
+    const urls = getBridgeUrls();
+    let idx = 0;
+    return new Promise((resolve) => {
+      const tryNext = () => {
+        if (idx >= urls.length) return resolve({ ok: false });
+        const url = urls[idx++];
+        const ws = new WebSocket(url);
+        let settled = false;
+        let info = null;
+        const done = (ok) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          try { ws.close(); } catch (e) { }
+          ok ? resolve({ ok: true, url: url, info: info }) : tryNext();
+        };
+        const timer = setTimeout(() => done(false), timeoutMs);
+        ws.onopen = () => { try { ws.send(JSON.stringify({ action: 'PING' })); } catch (e) { } };
+        ws.onmessage = (ev) => {
+          try {
+            const data = JSON.parse(ev.data);
+            if (data && data.type === 'pong') { info = data; done(true); }
+          } catch (e) { }
+        };
+        ws.onerror = () => done(false);
+        ws.onclose = () => done(false);
+      };
+      tryNext();
+    });
+  }
+
+  /** Ask the bridge for its printers. */
+  function fetchPrinters(url, timeoutMs = 8000) {
+    return new Promise((resolve) => {
+      let ws = null, settled = false;
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try { if (ws) ws.close(); } catch (e) { }
+        resolve(result);
+      };
+      try { ws = new WebSocket(url); } catch (e) { return done({ ok: false }); }
+      const timer = setTimeout(() => done({ ok: false }), timeoutMs);
+      ws.onopen = () => { try { ws.send(JSON.stringify({ action: 'GET_PRINTERS' })); } catch (e) { done({ ok: false }); } };
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (!Array.isArray(data.printers)) return;
+          done({
+            ok: true,
+            printers: data.printers,
+            discovered: Array.isArray(data.discovered) ? data.discovered : [],
+            default: data.default || ''
+          });
+        } catch (e) { }
+      };
+      ws.onerror = () => done({ ok: false });
+      ws.onclose = () => done({ ok: false });
+    });
+  }
+
+  /**
+   * Ask Restpoint for a single-use grant scoped to printing. The bridge refuses
+   * to print without one - that is what stops anything else on this machine
+   * from driving the printer just by opening a socket.
+   */
+  async function fetchPrintGrant(timeoutMs = 10000) {
+    if (!AUTH.token) return { ok: false, reason: 'You need to sign in to Restpoint before printing.' };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(CONFIG.gateway + '/bridge/grant', {
+        method: 'POST',
+        headers: authHeaders(true),
+        credentials: 'include',
+        body: JSON.stringify({ scope: 'bridge:print' }),
+        signal: controller.signal
+      });
+      if (!res.ok) return { ok: false, reason: 'Restpoint returned HTTP ' + res.status + '.' };
+      const body = await res.json();
+      const grant = body && body.data && body.data.grant;
+      if (!grant) return { ok: false, reason: 'Restpoint did not issue a print grant.' };
+      return { ok: true, grant: grant };
+    } catch (e) {
+      return { ok: false, reason: 'Could not reach Restpoint to authorise printing. Check your internet connection.' };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** ArrayBuffer → base64, chunked so a large document cannot blow the stack. */
+  function bytesToBase64(buffer) {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    let binary = '';
+    const CHUNK = 0x8000; // 32k keeps String.fromCharCode's argument list safe
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(binary);
+  }
+
+  /** Human label + icon for how a printer is attached. */
+  function connectionLabel(connection) {
+    switch (String(connection || '').toLowerCase()) {
+      case 'wifi': return 'Wi-Fi';
+      case 'bluetooth': return 'Bluetooth';
+      case 'usb': return 'USB';
+      case 'network': return 'Network';
+      case 'serial': return 'Serial';
+      case 'virtual': return 'Virtual';
+      default: return '';
+    }
+  }
+  function connectionIcon(connection) {
+    switch (String(connection || '').toLowerCase()) {
+      case 'wifi': return 'fa-wifi';
+      case 'bluetooth': return 'fa-bluetooth-b';
+      case 'usb': return 'fa-usb';
+      default: return 'fa-print';
+    }
+  }
+
+  // ---------------- Print dialog state ----------------
+  let printState = { bridgeUrl: '', printers: [], discovered: [], selected: '' };
+
+  function setPrintStatus(message, kind) {
+    const el = $id('printStatus');
+    if (!message) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.textContent = message;
+    if (kind === 'error') { el.style.background = '#fef3f2'; el.style.color = '#C0392B'; }
+    else if (kind === 'success') { el.style.background = '#ecfdf5'; el.style.color = '#059669'; }
+    else { el.style.background = '#eff6ff'; el.style.color = '#2563eb'; }
+  }
+
+  function showNoBridge(message) {
+    $id('printPicker').classList.add('hidden');
+    $id('printConfirmBtn').classList.add('hidden');
+    $id('printNoBridgeMsg').textContent = message;
+    $id('printNoBridge').classList.remove('hidden');
+  }
+
+  function closePrintDialog() {
+    $id('printDialog').classList.add('hidden');
+    $id('printDialog').classList.remove('flex');
+  }
+
+  function openPrintDialog() {
+    if (!currentDoc) return;
+    $id('printDocName').textContent = currentDoc.name;
+    $id('printDialog').classList.remove('hidden');
+    $id('printDialog').classList.add('flex');
+    setPrintStatus('');
+    $id('printNoBridge').classList.add('hidden');
+    $id('printPicker').classList.remove('hidden');
+    $id('printConfirmBtn').classList.remove('hidden');
+    $id('printConfirmBtn').disabled = false;
+    $id('printCancelBtn').textContent = 'Cancel';
+    renderPrinters();
+    setPrintStatus('Looking for printers on this computer…', 'info');
+
+    probeBridge().then(async (probe) => {
+      if (!probe.ok) return showNoBridge('No bridge is running on this computer, so Restpoint cannot print directly.');
+      printState.bridgeUrl = probe.url;
+      if (probe.info && probe.info.printing === false) {
+        return showNoBridge('Printing is switched off for the bridge on this computer.');
+      }
+      const res = await fetchPrinters(probe.url);
+      if (!res.ok) return showNoBridge('The printer bridge did not answer.');
+      printState.printers = res.printers;
+      printState.discovered = res.discovered;
+      // Remember the last printer this user chose; else the system default.
+      const remembered = ls(LAST_PRINTER_KEY);
+      printState.selected =
+        (remembered && res.printers.some(p => p.name === remembered) ? remembered : '') ||
+        res.default || (res.printers[0] ? res.printers[0].name : '');
+      setPrintStatus('');
+      renderPrinters();
+    });
+  }
+
+  function renderPrinters() {
+    const list = $id('printPrinterList');
+    const printers = printState.printers;
+    const selected = printState.selected;
+    if (!printers.length) {
+      list.innerHTML = '<p class="text-xs text-[#6B7280] py-3">No printers are installed on this computer. Add one in Windows Settings, then reopen this dialog.</p>';
+      $id('printConfirmBtn').disabled = true;
+      return;
+    }
+    list.innerHTML = printers.map(p => {
+      const sub = [connectionLabel(p.connection), p.isDefault ? 'default' : '', p.offline ? 'offline' : '']
+        .filter(Boolean).join(' · ');
+      const active = p.name === selected;
+      return `
+        <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${active
+          ? 'border-[#6a0572] bg-[#f3e8ff]'
+          : 'border-[#E5E7EB] hover:border-[#cbd5e1] bg-white'}">
+          <input type="radio" name="printerPick" value="${escapeAttr(p.name)}" ${active ? 'checked' : ''} class="accent-[#6a0572] w-3.5 h-3.5 flex-shrink-0" />
+          <i class="fas ${connectionIcon(p.connection)} text-[#6a0572] text-xs w-4 text-center flex-shrink-0"></i>
+          <span class="min-w-0 flex-1">
+            <span class="block text-xs font-semibold text-[#1e293b] truncate">${escapeHtml(p.name)}</span>
+            <span class="block text-[10px] text-[#6B7280] truncate">${escapeHtml(sub)}</span>
+          </span>
+        </label>`;
+    }).join('');
+    list.querySelectorAll('input[name="printerPick"]').forEach(radio => {
+      radio.addEventListener('change', () => { printState.selected = radio.value; renderPrinters(); });
+    });
+
+    // One-click setup for a Bluetooth/Wi-Fi printer the OS can already see but
+    // that has no queue yet — this is where "connect to my printer" happens.
+    const found = printState.discovered || [];
+    if (found.length) {
+      $id('printDiscoveredBlock').classList.remove('hidden');
+      $id('printDiscoveredList').innerHTML = found.map((d, i) => `
+        <button type="button" data-idx="${i}" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-dashed border-[#cbd5e1] bg-white hover:border-[#6a0572] transition-all text-left">
+          <i class="fas ${connectionIcon(d.connection)} text-[#3498DB] text-xs w-4 text-center flex-shrink-0"></i>
+          <span class="min-w-0 flex-1">
+            <span class="block text-xs font-semibold text-[#1e293b] truncate">${escapeHtml(d.name)}</span>
+            <span class="block text-[10px] text-[#6B7280]">${escapeHtml(connectionLabel(d.connection) || 'Not connected yet')}</span>
+          </span>
+          <span class="text-[10px] font-semibold text-[#6a0572] flex-shrink-0">Connect</span>
+        </button>`).join('');
+      $id('printDiscoveredList').querySelectorAll('button[data-idx]').forEach(btn => {
+        btn.addEventListener('click', () => connectDiscoveredPrinter(printState.discovered[parseInt(btn.dataset.idx, 10)]));
+      });
+    } else {
+      $id('printDiscoveredBlock').classList.add('hidden');
+    }
+  }
+
+  /** Install a queue for a Bluetooth/Wi-Fi printer the OS can already see. */
+  async function connectDiscoveredPrinter(printer) {
+    if (!printer) return;
+    setPrintStatus('Connecting ' + printer.name + '…', 'info');
+    const grantRes = await fetchPrintGrant();
+    if (!grantRes.ok) return setPrintStatus(grantRes.reason, 'error');
+
+    let ws;
+    try { ws = new WebSocket(printState.bridgeUrl); } catch (e) { }
+    if (!ws) return setPrintStatus('Could not reach the printer bridge.', 'error');
+    ws.onopen = () => ws.send(JSON.stringify({ action: 'HELLO', grant: grantRes.grant }));
+    ws.onmessage = (ev) => {
+      let data;
+      try { data = JSON.parse(ev.data); } catch (e) { return; }
+      if (data.type === 'hello_ok') {
+        ws.send(JSON.stringify({
+          action: 'CONNECT_PRINTER', sessionId: data.sessionId,
+          name: printer.name, instanceId: printer.instanceId
+        }));
+      } else if (data.status === 'CONNECTED') {
+        setPrintStatus(printer.name + ' connected.', 'success');
+        try { ws.close(); } catch (e) { }
+        fetchPrinters(printState.bridgeUrl).then(res => {
+          if (!res.ok) return;
+          printState.printers = res.printers;
+          printState.discovered = res.discovered;
+          printState.selected = printer.name;
+          renderPrinters();
+        });
+      } else if (data.status === 'ERROR') {
+        setPrintStatus(data.message || 'Could not connect that printer.', 'error');
+        try { ws.close(); } catch (e) { }
+      }
+    };
+    ws.onerror = () => setPrintStatus('Lost the connection to the bridge.', 'error');
+  }
+
+  /**
+   * Send the current document to the bridge, which prints it silently. The bytes
+   * are already in memory (the page just rendered them), so they travel inline —
+   * which also means printing still works if the bridge cannot reach the API.
+   */
+  async function printViaBridge(printerName) {
+    if (!printState.bridgeUrl) return { ok: false, reason: 'No printer bridge is running.' };
+
+    setPrintStatus('Authorising…', 'info');
+    const grantRes = await fetchPrintGrant();
+    if (!grantRes.ok) return { ok: false, reason: grantRes.reason };
+
+    let dataBase64;
+    try {
+      const bytes = lastBytes || (await fetchBytesFor(currentDoc));
+      dataBase64 = bytesToBase64(bytes);
+    } catch (e) {
+      return { ok: false, reason: 'Could not read the document: ' + e.message };
+    }
+
+    return new Promise((resolve) => {
+      let ws;
+      try { ws = new WebSocket(printState.bridgeUrl); } catch (e) { }
+      if (!ws) return resolve({ ok: false, reason: 'Could not reach the printer bridge.' });
+
+      let finished = false;
+      const finish = (result) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        try { ws.close(); } catch (e) { }
+        resolve(result);
+      };
+      // A printer can take a while to accept the job; do not hang forever.
+      const timer = setTimeout(() => {
+        setPrintStatus('The printer did not respond in time.', 'error');
+        finish({ ok: false, reason: 'The printer did not respond in time.' });
+      }, 120000);
+
+      ws.onopen = () => ws.send(JSON.stringify({ action: 'HELLO', grant: grantRes.grant }));
+
+      ws.onmessage = (ev) => {
+        let data;
+        try { data = JSON.parse(ev.data); } catch (e) { return; }
+
+        if (data.type === 'hello_ok') {
+          ws.send(JSON.stringify({
+            action: 'PRINT',
+            sessionId: data.sessionId,
+            documentName: currentDoc.name,
+            printer: printerName || printState.selected,
+            copies: Math.max(1, Math.min(50, parseInt($id('printCopies').value, 10) || 1)),
+            duplex: !!$id('printDuplex').checked,
+            dataBase64: dataBase64,
+            apiBase: CONFIG.apiBase,
+            token: AUTH.token || undefined,
+            tenantSlug: AUTH.tenantSlug || undefined
+          }));
+          return;
+        }
+        if (data.type === 'hello_rejected') {
+          setPrintStatus(data.message || 'This computer could not be authorised to print.', 'error');
+          return finish({ ok: false, reason: data.message || 'This computer could not be authorised to print.' });
+        }
+        if (data.status === 'PRINTING') { setPrintStatus(data.message || 'Printing…', 'info'); return; }
+        if (data.status === 'PRINTED') {
+          setPrintStatus(data.message || 'Sent to the printer.', 'success');
+          // Remember it, so the next click is a single click with no dialog.
+          try { localStorage.setItem(LAST_PRINTER_KEY, data.printer || printerName || ''); } catch (e) { }
+          return finish({ ok: true, printer: data.printer, message: data.message });
+        }
+        if (data.status === 'ERROR') {
+          setPrintStatus(data.message || 'The print failed.', 'error');
+          return finish({ ok: false, reason: data.message || 'The print failed.' });
+        }
+      };
+
+      ws.onerror = () => finish({ ok: false, reason: 'Lost the connection to the printer bridge.' });
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  The Print button
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  One click should mean one printed document, so the fast path prints
+  //  straight to the remembered printer with no dialog at all. The picker only
+  //  appears when a single click genuinely cannot decide: no bridge is running,
+  //  or no printer has been chosen yet.
   async function handlePrint() {
+    if (!currentDoc) return;
+
+    const remembered = ls(LAST_PRINTER_KEY);
+
+    // Reuse a bridge we already found this session; otherwise go looking.
+    const probe = printState.bridgeUrl
+      ? { ok: true, url: printState.bridgeUrl }
+      : await probeBridge();
+
+    if (probe.ok) {
+      printState.bridgeUrl = probe.url;
+      // A bridge is present, so the printer picker is worth offering directly.
+      $id('printOptionsBtn').classList.remove('hidden');
+      // Without a remembered printer we must let the user pick (or accept the
+      // system default) before putting paper in a machine.
+      if (!remembered) return openPrintDialog();
+
+      showLoading(true, 'Sending to ' + remembered + '…');
+      const result = await printViaBridge(remembered);
+      showLoading(false);
+      if (result.ok) return showToast(result.message || ('Sent to ' + result.printer), 'success');
+      // The remembered printer may have been removed since the last print, so
+      // fall back to the picker rather than failing the same way twice.
+      printState.selected = '';
+      showToast(result.reason, 'error');
+      return openPrintDialog();
+    }
+
+    // No bridge at all — explain, and keep the browser dialog one click away.
+    openPrintDialog();
+  }
+
+  /** The original browser-dialog print, kept as the no-bridge fallback. */
+  async function browserPrint() {
     if (!currentDoc) return;
     showLoading(true, 'Preparing print…');
     try {
@@ -988,6 +1481,30 @@
     
     $id('downloadBtn').addEventListener('click', handleDownload);
     $id('printBtn').addEventListener('click', handlePrint);
+    // The caret is the explicit "choose a printer" affordance.
+    $id('printOptionsBtn').addEventListener('click', openPrintDialog);
+    $id('printCloseBtn').addEventListener('click', closePrintDialog);
+    $id('printCancelBtn').addEventListener('click', closePrintDialog);
+    $id('printConfirmBtn').addEventListener('click', async () => {
+      if (!printState.selected) return showToast('Choose a printer first.', 'error');
+      const btn = $id('printConfirmBtn');
+      btn.disabled = true;
+      setPrintStatus('Sending…', 'info');
+      const result = await printViaBridge(printState.selected);
+      btn.disabled = false;
+      if (result.ok) {
+        showToast(result.message || ('Sent to ' + result.printer), 'success');
+        setTimeout(closePrintDialog, 1200);
+      }
+    });
+    $id('printBrowserFallback').addEventListener('click', () => {
+      closePrintDialog();
+      browserPrint();
+    });
+    // Clicking the backdrop cancels, matching the rest of the app's panels.
+    $id('printDialog').addEventListener('click', (e) => {
+      if (e.target === $id('printDialog')) closePrintDialog();
+    });
     $id('deleteBtn').addEventListener('click', handleDelete);
     $id('unsupportedDownloadBtn').addEventListener('click', handleDownload);
     $id('unsupportedOpenBtn').addEventListener('click', () => openCurrentDocumentExternally({ print: false }));
@@ -1007,6 +1524,7 @@
   }
 
   function wireSplash() {
+    
     $id('splashDeceasedId').value = DECEASED_ID;
     $id('connectBtn').addEventListener('click', () => {
       const deceasedId = ($id('splashDeceasedId').value || '').trim();

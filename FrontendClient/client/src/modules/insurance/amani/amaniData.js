@@ -30,11 +30,11 @@ export const PHOTOS = {
      `const familyPhoto = '/family-hero.png'`, and that file ships at the root
      of client/public/amani rather than inside images/. */
   familyHero: '/amani/family-hero.png',
-  whiteLilies: '/amani/images/white-lilies.png',
+  whiteLilies: 'https://montezumamonalisa.com/wp-content/uploads/2020/01/DSC_4205-768x511.jpg',
   elderlyCouple: '/amani/images/elderly-couple.png',
   motherDaughter: '/amani/images/mother-daughter.png',
   fatherSon: '/amani/images/father-son.png',
-  familyTable: '/amani/family-hero.png',
+  familyTable: '/public/Funeral_Plan_hero.webp',
   grandmotherChild: '/amani/familycovered.png',
   hands: '/amani/images/hands.png',
   familyWalk: '/amani/insurance.png',
@@ -47,8 +47,9 @@ export const moments = [
   {
     src: PHOTOS.familyTable,
     alt: 'A large multigenerational family sharing a meal and laughing around a dining table',
-    label: 'Together',
-    caption: 'The people around your table are worth protecting.',
+    label: 'The  Montenzuma Promise',
+    caption: 'Care that respects every life, every story, every family.',
+
     sizes: '(max-width: 768px) 100vw, 66vw',
   },
   {

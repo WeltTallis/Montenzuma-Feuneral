@@ -458,7 +458,7 @@ const fBool = (b, y = "Yes", n = "No") => (b === true ? y : b === false ? n : "�
  * inline and is by far the most common shape, and it must never be prefixed
  * with UPLOADS_URL.
  */
-function SignatureImage({ path, label = "Signature" }) {
+function SignatureImage({ path, label = "Signature", maxHeight = 180 }) {
   const [failed, setFailed] = useState(false);
 
   const src = (() => {
@@ -497,7 +497,7 @@ function SignatureImage({ path, label = "Signature" }) {
       loading="lazy"
       onError={() => setFailed(true)}
       style={{
-        maxWidth: "100%", maxHeight: 180, marginTop: 6, background: "#fff",
+        maxWidth: "100%", maxHeight, marginTop: 6, background: "#fff",
         padding: 6, borderRadius: 6, objectFit: "contain",
         border: "1px solid rgba(255,255,255,0.12)",
       }}
@@ -525,6 +525,26 @@ function IntakePane({ p }) {
   // The register row is `SELECT *`, so it is the fallback source for anything
   // the normalised map does not carry.
   const raw = p.raw || {};
+
+  /* The signature image itself.
+   *
+   * This panel used to render ONLY a boolean "Signature Captured: Yes/No" tile,
+   * so an operator could never see the signature from the dashboard — the image
+   * was in the payload the whole time (intakeOf().signature, and the same
+   * column again on p.nok.signature) and simply was never drawn. The Release
+   * pane already rendered it through <SignatureImage/>, which handles the three
+   * shapes a capture can take (inline data-URI, absolute URL, relative upload
+   * path) and degrades to a clear "could not be loaded" warning rather than
+   * pretending a link works. Read every source the register uses so a capture
+   * made under any of the column names is found. */
+  const sigPath = first(
+    it.signature,
+    nok.signature,
+    raw.signature,
+    raw.nok_signature,
+    raw.next_of_kin_signature,
+    raw.received_by_signature,
+  );
 
   return (
     <div className="cp-pane">
@@ -592,13 +612,10 @@ function IntakePane({ p }) {
       <div className="cgrid">
         <Card l="Body Status" v={it.bodyStatus} hl />
         <Card l="Preservation" v={p.prepared ? "Embalmed / Prepared" : "Not yet prepared"} />
-        {/* Read the NORMALISED signature first. `intakeOf()` already resolves it
-            from the register row; the panel used to read `raw.signature` only,
-            which is blank on most rows, so this always read "No" even when a
-            signature had actually been captured. */}
         <Card
           l="Signature Captured"
-          v={fBool(Boolean(first(it.signature, raw.signature)))}
+          v={fBool(Boolean(sigPath))}
+          tag={sigPath ? "View below" : undefined}
         />
         {/* Mortuary tenure is the single most operationally important number
             on this panel, so it is a full-width highlight rather than a
@@ -623,12 +640,33 @@ function IntakePane({ p }) {
         <Card l="Address" v={first(nok.address, raw.address)} />
       </div>
 
-      {/* Authorisation Signature — REMOVED.
-          The register row carries a `signature` column that is empty for most
-          cases, so this section rendered either an empty tile or a broken image,
-          and the same value was already shown under "Signature Captured" in the
-          Body Status section above. If the signature is needed operationally it
-          belongs on the deceased profile's Overview tab, not in the dashboard. */}
+      {/* Intake signature — the actual image.
+          This section used to be removed on the grounds that the register's
+          `signature` column is empty for most cases, so it "rendered an empty
+          tile or a broken image". But removing it did not solve anything: the
+          panel then showed a bare "Signature Captured: Yes" with nothing to look
+          at, which is worse than useless during a dispute. Now that the panel
+          is wider, the capture is drawn here at a readable size, and a missing
+          capture says so explicitly instead of leaving the operator guessing. */}
+      <DrawerSection title="Intake Signature" />
+      <div className="cgrid">
+        {sigPath ? (
+          <div className="ccard wide cp-sig">
+            <SignatureImage path={sigPath} label="Intake signature" maxHeight={200} />
+            <div className="ccsub">
+              Signed at intake by the next of kin or receiving officer. This is the
+              authorisation for the body to be received into your care.
+            </div>
+          </div>
+        ) : (
+          <Card
+            l="Intake Signature"
+            v="Not captured"
+            keepEmpty
+            sub="No signature was recorded against this admission. Re-take it at the counter if this body was received without authorisation."
+          />
+        )}
+      </div>
 
       <DrawerSection title="Charges" />
       <div className="cgrid">

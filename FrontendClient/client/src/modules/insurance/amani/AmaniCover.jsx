@@ -155,12 +155,14 @@ function Hero() {
                 />
               </div>
               <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mt-10 lg:aspect-auto">
-                <FillImage
-                  src={PHOTOS.whiteLilies}
-                  alt="White lilies and roses in a glass vase beside a framed family photo"
-                  className="object-cover"
-                  sizes="(max-width: 1023px) 46vw, 18vw"
-                />
+<FillImage
+  src={PHOTOS.whiteLilies}
+  alt="White lilies and roses in a glass vase beside a framed family photo"
+  className="object-cover object-left"
+  sizes="(max-width: 1023px) 46vw, 18vw"
+/>
+
+
               </div>
               <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mb-10 lg:aspect-auto">
                 <FillImage
@@ -396,49 +398,7 @@ function HowItWorks() {
           </div>
         </div>
 
-        {/* The promise: the photo is the BACKGROUND of this whole section and
-            the words travel across it as you scroll.
-
-            How it is built, because the layering is doing two jobs at once:
-              • the image + scrim are `absolute inset-0`, so they fill the FULL
-                height of the section rather than sitting in a fixed 21/9 box;
-              • the text lives in a tall (`min-h-[190vh]`) flex column with a
-                `sticky top-0 h-screen` child, so the words stay centred on
-                screen for the whole scroll while the photograph moves behind
-                them.
-
-            No `overflow-hidden` anywhere on this section or its ancestors — a
-            single `overflow` clip anywhere up the tree silently disables
-            `position: sticky`, which is what would leave the text stuck at the
-            bottom looking exactly like the old static version. */}
-        <section className="relative mt-20" aria-label="The Montenzuma Monalisa promise">
-          <div className="absolute inset-0">
-            <FillImage
-              src={PHOTOS.familyWalk}
-              alt="Three generations of a family walking hand in hand through a park at sunset"
-              className="h-full object-cover"
-              sizes="100vw"
-              priority
-            />
-            {/* Scrim: heavier top and bottom than the old single bottom-up
-                gradient, so the serif line stays readable whether it is centred
-                over the bright middle of the photo or near either edge. */}
-            <div className="absolute inset-0 bg-gradient-to-b from-ac-primary/85 via-ac-primary/55 to-ac-primary/90" />
-          </div>
-
-          <div className="relative flex min-h-[190vh] items-center justify-center">
-            <div className="sticky top-0 flex h-screen w-full items-center">
-              <figcaption className="mx-auto max-w-3xl px-6 text-center">
-                <p className="font-serif text-[clamp(1.6rem,3.4vw,2.75rem)] leading-tight text-ac-onprimary text-balance">
-                  &ldquo;Care that respects every life, every story, every family.&rdquo;
-                </p>
-                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-ac-onprimary/75">
-                  The Montenzuma Monalisa promise
-                </p>
-              </figcaption>
-            </div>
-          </div>
-        </section>
+ 
       </div>
     </section>
   );

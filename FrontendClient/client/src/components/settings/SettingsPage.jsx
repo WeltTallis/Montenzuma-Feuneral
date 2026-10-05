@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ENDPOINTS } from '../../api/endpoints';
-import env from '../../utils/config/env';
 import api from '../../api/axios';
-import { getTenantBrandingFromStorage, rebaseUploadUrl } from '../../utils/tenantResolver/tenantBranding';
+import { getTenantBrandingFromStorage, resolveTenantLogoSrc } from '../../utils/tenantResolver/tenantBranding';
 import { useTenantStore } from '../../modules/seo/useTenantStore';
 
 // Read the raw stored user from either storage (state can be stale/null).
@@ -356,12 +355,13 @@ export default function SettingsPage() {
     }, [activeTab, isManager]);
 
     const storedBranding = getTenantBrandingFromStorage();
-    const rawLogoUrl = settings?.logoUrl || settings?.logo_url || settings?.logo || storedBranding.logoUrl;
-    const companyLogo = rawLogoUrl
-        ? rebaseUploadUrl(rawLogoUrl.startsWith('http') || rawLogoUrl.startsWith('data:')
-            ? rawLogoUrl
-            : `${env.UPLOADS_URL.replace(/\/$/, '')}/${rawLogoUrl.replace(/^\/+/, '')}`)
-        : '';
+    // resolveTenantLogoSrc() is the shared form of exactly this rule (absolute
+    // URL kept, relative path prefixed with UPLOADS_URL, internal origin
+    // rebased) — the public postmortem pages use it too, so the logo they print
+    // is resolved identically to the one shown here.
+    const companyLogo = resolveTenantLogoSrc(
+        settings?.logoUrl || settings?.logo_url || settings?.logo || storedBranding.logoUrl
+    );
     const displayPhone = settings?.phone || storedBranding.phone || '';
 
     // Mirror the loaded tenant record into the editable Organization form.

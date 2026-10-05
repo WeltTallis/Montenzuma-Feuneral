@@ -197,9 +197,6 @@ const Hero = styled.div`
   height: 100vh;
   min-height: 640px;
   max-height: 1100px;
-  /* Fallback backdrop, visible until /portal.webp decodes and permanently if it
-     is missing. Without it a missing/renamed image left the whole hero solid
-     black, so the first thing a receptionist saw was an empty screen. */
   background:
     radial-gradient(80% 60% at 70% 20%, rgba(74, 143, 212, 0.14), transparent 60%),
     radial-gradient(70% 60% at 20% 80%, rgba(255, 0, 110, 0.1), transparent 60%),

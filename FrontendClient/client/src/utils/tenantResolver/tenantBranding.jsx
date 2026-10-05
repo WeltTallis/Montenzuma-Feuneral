@@ -68,6 +68,41 @@ export const rebaseUploadUrl = (rawUrl) => {
   return rawUrl;
 };
 
+/**
+ * First non-empty string among the candidates (trimmed), or ''.
+ * The tenant record exposes the same field under several aliases
+ * (`logoUrl` / `logo_url` / `logo`), so every reader needs this.
+ */
+export const firstNonEmptyString = (...candidates) => {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim() !== '') return candidate.trim();
+  }
+  return '';
+};
+
+/**
+ * Turn whatever the tenant record stores into a URL the browser can actually
+ * load, using EXACTLY the rule Settings → Organization applies:
+ *   - an http(s) or data: URL is kept as-is,
+ *   - a stored relative path (`/uploads/tenants/<slug>/logos/x.png`) is prefixed
+ *     with the public uploads origin,
+ *   - and the result is rebased off any internal docker origin (see above).
+ *
+ * The public postmortem portal pages call this so the logo printed on the
+ * verify / results documents is the one the admin uploaded in Settings, rather
+ * than a placeholder or a broken image. Idempotent: an already-resolved URL is
+ * returned unchanged.
+ */
+export const resolveTenantLogoSrc = (rawUrl) => {
+  const value = firstNonEmptyString(rawUrl);
+  if (!value) return '';
+  if (value.startsWith('data:') || value.startsWith('http')) return rebaseUploadUrl(value);
+
+  const base = firstNonEmptyString(env.UPLOADS_URL).replace(/\/+$/, '');
+  const path = value.replace(/^\/+/, '');
+  return rebaseUploadUrl(base ? `${base}/${path}` : `/${path}`);
+};
+
 /*
  * Get tenant branding details from localStorage.
  * These are stored by AuthContext at login time.

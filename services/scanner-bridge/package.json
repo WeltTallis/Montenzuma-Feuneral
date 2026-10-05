@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node test/e2e-mock.mjs",
     "test:real": "node test/real-mode.mjs",
+    "test:print": "node test/print-path.mjs",
     "build:exe": "npm run build && pkg dist/agent.js --targets node18-win-x64 --output dist/agent.exe --compress GZip",
     "build:installer": "node scripts/build-installer.mjs",
     "build:mac": "node scripts/build-macos.mjs"

@@ -3,7 +3,8 @@ import { useParams, useLocation } from 'react-router-dom';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { Download, AlertCircle } from 'lucide-react';
 import notify from '../../utils/notify';
-import { resolveTenantBranding } from '../../utils/tenantResolver/tenantBranding';
+import { resolveTenantBranding, resolveTenantLogoSrc, firstNonEmptyString } from '../../utils/tenantResolver/tenantBranding';
+import usePublicTenantBranding from '../../utils/tenantResolver/usePublicTenantBranding';
 import { useTenantStore } from '../../modules/seo/useTenantStore';
 
 // Fonts (Saira, Fraunces, JetBrains Mono, Mr Dafoe) are already served from the
@@ -598,7 +599,7 @@ const CenterBox = styled.div`
 
 // ─── Component ─────────────────────────────────────────────
 const PostmortemResultsPage = () => {
-  const { sessionId } = useParams();
+  const { sessionId, slug: urlSlug } = useParams();
   const location = useLocation();
   const { tenantData } = useTenantStore();
   const [reportData, setReportData] = useState(null);
@@ -612,6 +613,19 @@ const PostmortemResultsPage = () => {
   // Branding fallback is resolved BEFORE the early returns below — calling
   // useMemo after a conditional return breaks React's hook ordering.
   const brand = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
+
+  // ── Public tenant branding ────────────────────────────────────
+  // This route is PUBLIC (a family member opens it from the link on the QR
+  // card), so the tenant store and localStorage are both empty here and
+  // `brand` has nothing to read. The session payload also carries no logo —
+  // the public search selects only name/address/phone/email. Fetch the tenant
+  // record directly so the report is letterheaded with the logo the admin
+  // uploaded in Settings. Slug priority: URL → session.
+  const publicBranding = usePublicTenantBranding(urlSlug || reportData?.tenantSlug);
+
+  // A different tenant's logo arriving must re-arm the image, otherwise a stale
+  // logoError would permanently suppress it.
+  useEffect(() => { setLogoError(false); }, [publicBranding.logoUrl]);
 
   useEffect(() => {
     if (location.state) {
@@ -665,8 +679,15 @@ const PostmortemResultsPage = () => {
     }
   };
 
+  // Keep the tenant slug in the URL. The legacy alias `/postmortem-verify` has no
+  // slug, so the verify page could not know whose logo/name to show and had to
+  // fall back to a placeholder — every "verify again" click threw the branding away.
+  const verifyPath = publicBranding.slug
+    ? `/${publicBranding.slug}/postmortem-verify`
+    : '/postmortem-verify';
+
   const handleBackToVerify = () => {
-    window.location.href = '/postmortem-verify';
+    window.location.href = verifyPath;
   };
 
   if (loading) {
@@ -706,39 +727,54 @@ const PostmortemResultsPage = () => {
   const status = postmortem?.status || 'completed';
 
   // ── Letterhead data ──────────────────────────────────────────
-  // The report payload is authoritative; resolveTenantBranding() is the fallback
-  // (it merges the tenant store over login-time localStorage and, importantly,
-  // REBASES the logo URL onto the public gateway origin so a stored
+  // The report payload is authoritative for the RECORD; the tenant record
+  // fetched for this page's slug is authoritative for the LETTERHEAD (it is the
+  // same GET /tenant/:slug/settings payload, with the same logo URL
+  // normalisation, that Settings → Organization displays). resolveTenantBranding()
+  // remains the last-resort chain (it merges the tenant store over login-time
+  // localStorage and rebases the logo onto the public gateway origin so a stored
   // "http://api-gateway:5000/..." logo actually loads instead of failing as
   // mixed content). Nothing is invented here — a missing value renders blank.
   const apiTenant = reportData?.tenant || {};
   const apiDec = reportData?.deceased || {};
 
-  const tenantName = apiTenant.name
-    || apiTenant.tenantName
-    || apiDec.tenant_name
-    || brand.name
-    || '';
+  const tenantName = firstNonEmptyString(
+    apiTenant.name,
+    apiTenant.tenantName,
+    apiDec.tenant_name,
+    publicBranding.name,
+    brand.name
+  );
   const tenantAddress = apiTenant.address
     || apiDec.tenant_address
+    || publicBranding.location
     || brand.displayAddress
     || brand.location
     || '';
   const tenantPhone = apiTenant.phone
     || apiDec.tenant_phone
+    || publicBranding.phone
     || brand.displayPhone
     || '';
   // resolveTenantBranding() pads a non-email string with "@restpoint.co.ke".
   // Harmless for an input, wrong on an official document, so validate.
-  const emailCandidate = apiTenant.email || apiDec.tenant_email || brand.displayEmail || '';
+  const emailCandidate = apiTenant.email || apiDec.tenant_email || publicBranding.email || brand.displayEmail || '';
   const tenantEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCandidate) ? emailCandidate : '';
-  const tenantCountry = apiTenant.country || apiDec.tenant_country || brand.country || '';
-  const tenantLogo = apiTenant.logoUrl
-    || apiTenant.logo_url
-    || apiTenant.logo
-    || apiDec.tenant_logo
-    || brand.tenantLogoUrl
-    || '';
+  const tenantCountry = apiTenant.country || apiDec.tenant_country || publicBranding.country || brand.country || '';
+  // Priority: the tenant record fetched for THIS slug (same source + same URL
+  // normalisation as Settings → Organization) → anything the session payload
+  // carried → the store/localStorage chain. resolveTenantLogoSrc() turns a
+  // stored relative path into a loadable URL and rebases internal origins, so a
+  // "/uploads/tenants/<slug>/logos/x.png" or an "http://api-gateway:5000/..."
+  // value actually loads instead of silently degrading to the monogram.
+  const tenantLogo = resolveTenantLogoSrc(
+    publicBranding.logoUrl
+      || apiTenant.logoUrl
+      || apiTenant.logo_url
+      || apiTenant.logo
+      || apiDec.tenant_logo
+      || brand.tenantLogoUrl
+  );
 
   // Initials for the crest fallback, e.g. "Lee Funeral Home" → "L".
   const tenantInitial = (tenantName || '').trim().charAt(0).toUpperCase();

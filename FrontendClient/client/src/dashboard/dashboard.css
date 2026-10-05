@@ -2529,6 +2529,22 @@
    grid-column: 1/-1
 }
 
+/* Signature capture inside the drawer.
+   A signature is evidence, so it needs to look like one: a defined sheet with
+   its own surface and edge, not an image floating on the panel. `contain`
+   stops a long thin capture from stretching, and the inner frame keeps the
+   white paper visible against a dark theme. */
+.rpd .cp-sig {
+   display: block
+}
+
+.rpd .cp-sig img {
+   display: block;
+   width: auto;
+   max-width: 100%;
+   object-fit: contain
+}
+
 .rpd .ccl {
    font-size: 8.5px;
    font-weight: 700;
@@ -2549,8 +2565,15 @@
    font-weight: 800
 }
 
+/* The comprehensive case drawer — the "intake side panel".
+   It was 560px, which squeezed every value into a ~250px column: email
+   addresses wrapped, "Receiving Officer / Staff" wrapped, and the signature
+   capture had nowhere to sit at a legible size. 720px gives each column real
+   room, which is the whole point of widening it — more of the record visible
+   per screen, not just more whitespace. `max-width:94vw` is inherited from
+   .cpanel, so this still collapses safely on a laptop or tablet. */
 .rpd .cpanel.cp-comprehensive {
-   width: 560px
+   width: 720px
 }
 
 .rpd .cph-left {

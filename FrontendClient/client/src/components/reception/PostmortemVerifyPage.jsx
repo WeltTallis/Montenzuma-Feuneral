@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { ShieldCheck, Search, AlertCircle, Lock, EyeOff, Clock } from 'lucide-react';
 import api from '../../api/axios';
+import usePublicTenantBranding from '../../utils/tenantResolver/usePublicTenantBranding';
 
 // ─── Fonts (same as the request form) ──────────────────────
 const GlobalStyles = createGlobalStyle`
@@ -98,6 +99,10 @@ const Brand = styled.div`
 `;
 
 // ─── FUNERAL HOME LOGO SLOT ────────────────────────────────
+// Tenant logo → monogram initial → flame placeholder, so the slot is never
+// empty (and never shows a broken-image glyph) on a document a family keeps.
+// The tenant logo itself comes from usePublicTenantBranding(), which reads the
+// same GET /tenant/:slug/settings payload Settings → Organization displays.
 const LogoBox = styled.div`
   width: 64px;
   height: 64px;
@@ -113,6 +118,19 @@ const LogoBox = styled.div`
   svg  { width: 100%; height: 100%; }
 
   @media (max-width: 640px) { width: 52px; height: 52px; padding: 5px; }
+`;
+
+const LogoImg = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+`;
+
+const LogoMonogram = styled.span`
+  font-weight: 700;
+  font-size: 1.6rem;
+  color: ${C.ox};
+  line-height: 1;
 `;
 
 const DhTitle = styled.div`
@@ -466,10 +484,30 @@ const FooterBar = styled.div`
 // ─── Component ─────────────────────────────────────────────
 const PostmortemVerifyPage = () => {
   const navigate = useNavigate();
+  const { slug: urlSlug } = useParams();
   const [searchType, setSearchType] = useState('phone');
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // ── Tenant branding ──────────────────────────────────────────
+  // This is a PUBLIC page (a family member opens it from a QR code), so the
+  // Zustand tenant store and localStorage are both empty and the slug comes from
+  // the URL. Fetch the real tenant record so the crest, the name and the tenant
+  // the lookup runs against all belong to the funeral home that issued it —
+  // instead of the previously hardcoded Montezuma Monalisa placeholder.
+  const branding = usePublicTenantBranding(urlSlug);
+  const tenantSlug = branding.slug;
+  const tenantName = branding.name;
+  // A stored logo URL can still 404 (the tenant deleted the file, or it was
+  // never uploaded under that key). Dropping to the monogram on error stops the
+  // crest showing a broken-image glyph.
+  const [logoError, setLogoError] = useState(false);
+  const tenantInitial = tenantName.trim().charAt(0).toUpperCase();
+
+  // A different tenant's logo arriving (slug change / refetch) must re-arm the
+  // image, otherwise the stale logoError would suppress the new logo forever.
+  useEffect(() => { setLogoError(false); }, [branding.logoUrl]);
 
   // live date / time — same header meta as the request form
   const [now, setNow] = useState(() => new Date());
@@ -479,8 +517,6 @@ const PostmortemVerifyPage = () => {
   }, []);
   const liveDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
   const liveTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-  const tenantSlug = 'montenzuma-monalisa-feuneral-home-nairobi';
 
   const handleToggle = (type) => {
     setSearchType(type);
@@ -509,6 +545,13 @@ const PostmortemVerifyPage = () => {
         params.deceased_id = value;
       }
 
+      // Without a slug the lookup would run against the service default tenant
+      // and return the wrong (or no) record, so refuse rather than guess.
+      if (!tenantSlug) {
+        setError('This verification link is incomplete. Please use the link provided by your funeral home.');
+        return;
+      }
+
       const response = await api.get('/deceased/public/postmortem/search', {
         params,
         headers: {
@@ -520,7 +563,6 @@ const PostmortemVerifyPage = () => {
         const { deceased, postmortem } = response.data.data;
 
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const slugLocal = 'montenzuma-monalisa-feuneral-home-nairobi';
 
         const sessionData = {
           deceased: {
@@ -531,7 +573,11 @@ const PostmortemVerifyPage = () => {
           postmortem,
           verifiedAt: new Date().toISOString(),
           searchType,
-          searchValue: value
+          searchValue: value,
+          // Carry the resolved slug into the results page so it keeps printing
+          // THIS tenant's crest even after a full page reload (when React Router
+          // state and the in-memory branding hook are both gone).
+          tenantSlug
         };
         console.log('Storing session data with signature:', {
           signature: sessionData.deceased.signature,
@@ -539,7 +585,7 @@ const PostmortemVerifyPage = () => {
         });
         sessionStorage.setItem(`postmortem_session_${sessionId}`, JSON.stringify(sessionData));
 
-        navigate(`/${slugLocal}/postmortem/results/${sessionId}`, {
+        navigate(`/${tenantSlug}/postmortem/results/${sessionId}`, {
           state: sessionData
         });
       } else {
@@ -572,22 +618,36 @@ const PostmortemVerifyPage = () => {
           <DocHeader>
             <HeaderLeft>
               <Brand>
-                {/* ══ FUNERAL HOME LOGO SLOT — replace placeholder with your image ══
-                    <img src="/logos/montezuma-monalisa.png" alt="Montezuma Monalisa Funeral Home" />
+                {/* ══ FUNERAL HOME LOGO SLOT ══
+                    Renders THIS tenant's uploaded logo (the same one Settings →
+                    Organization shows), then their initial, then the generic flame.
                     (LogoBox sizes any image to 64×64 with object-fit: contain)
                 ═══════════════════════════════════════════════════════ */}
                 <LogoBox>
-                  <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
-                    <circle cx="24" cy="24" r="22.5" stroke="#7c2b23" strokeWidth="1.6" />
-                    <circle cx="24" cy="24" r="19" stroke="#7c2b23" strokeWidth=".8" opacity=".35" />
-                    <g transform="translate(12 12)" stroke="#7c2b23" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-                    </g>
-                  </svg>
+                  {branding.logoUrl && !logoError ? (
+                    <LogoImg
+                      src={branding.logoUrl}
+                      alt={`${tenantName || 'Organisation'} logo`}
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : tenantInitial ? (
+                    <LogoMonogram>{tenantInitial}</LogoMonogram>
+                  ) : (
+                    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                      <circle cx="24" cy="24" r="22.5" stroke="#7c2b23" strokeWidth="1.6" />
+                      <circle cx="24" cy="24" r="19" stroke="#7c2b23" strokeWidth=".8" opacity=".35" />
+                      <g transform="translate(12 12)" stroke="#7c2b23" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                      </g>
+                    </svg>
+                  )}
                 </LogoBox>
                 <div>
                   <DhTitle>Postmortem Report Verification</DhTitle>
-                  <DhSub>Montezuma Monalisa Funeral Home · Nairobi</DhSub>
+                  <DhSub>
+                    {[tenantName, branding.location || branding.country].filter(Boolean).join(' · ')
+                      || 'Official Verification Portal'}
+                  </DhSub>
                 </div>
               </Brand>
               <DhMeta>DATE <b>{liveDate}</b> · TIME <b>{liveTime}</b></DhMeta>

@@ -8,6 +8,19 @@ const { getJwtSecret } = require('./tenantIdentity');
 
 const GRANT_TTL_SECONDS = 60;
 const GRANT_SCOPE = 'bridge:scan';
+// A second scope for the other physical action the bridge can take: putting a
+// document on paper. Kept separate from the scan scope so a grant handed out for
+// a print cannot also drive the scanner (and vice versa) - the bridge records
+// the scope of the session it authorised and enforces it per action.
+const PRINT_GRANT_SCOPE = 'bridge:print';
+const KNOWN_GRANT_SCOPES = [GRANT_SCOPE, PRINT_GRANT_SCOPE];
+
+/** Map what a client may ask for onto a real scope; anything else is a scan. */
+function normaliseScope(requested) {
+  const value = String(requested || '').trim().toLowerCase();
+  if (value === PRINT_GRANT_SCOPE || value === 'print' || value === 'bridge:printer') return PRINT_GRANT_SCOPE;
+  return GRANT_SCOPE;
+}
 
 // In-memory replay guard: a grant is single-use, so we remember its jti until
 
@@ -20,17 +33,18 @@ function pruneUsedGrants() {
   }
 }
 
-/** Sign a short-lived scan grant for the authenticated caller. */
+/** Sign a short-lived bridge grant for the authenticated caller. */
 function issueGrant(user, opts = {}) {
   const secret = getJwtSecret();
   pruneUsedGrants();
 
   const jti = crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
+  const scope = normaliseScope(opts.scope);
 
   const payload = {
     jti,
-    scope: GRANT_SCOPE,
+    scope,
     sub: String(user.id || user.userId || user.email || 'unknown'),
     role: user.role || 'staff',
     tenant: user.tenantSlug || user.tenant_slug || user.tenantId || 'system_shared',
@@ -61,7 +75,7 @@ function verifyGrant(presented) {
       return { valid: false, reason };
     }
 
-    if (decoded.scope !== GRANT_SCOPE) return { valid: false, reason: 'wrong scope' };
+    if (!KNOWN_GRANT_SCOPES.includes(decoded.scope)) return { valid: false, reason: 'wrong scope' };
 
     pruneUsedGrants();
     if (usedGrants.has(decoded.jti)) return { valid: false, reason: 'grant already used' };
@@ -72,6 +86,7 @@ function verifyGrant(presented) {
       tenant: decoded.tenant,
       subject: decoded.sub,
       role: decoded.role,
+      scope: decoded.scope,
       origin: decoded.origin || '',
       expiresAt: decoded.exp * 1000,
     };
@@ -110,16 +125,19 @@ function registerBridgeRoutes(app, Logger, { requireAuth: injected } = {}) {
   // A caller may supply its own auth middleware; otherwise use the platform-JWT
   // check defined above.
   const auth = typeof injected === 'function' ? injected : requireAuth;
-  // Browser asks the cloud for permission to scan.
+  // Browser asks the cloud for permission to drive the bridge (scan or print).
+  // `scope` in the body selects which physical action the grant unlocks.
   app.post('/bridge/grant', auth, (req, res) => {
     try {
+      const scope = normaliseScope(req.body?.scope);
       const { grant, expiresAt, ttlSeconds } = issueGrant(req.user || {}, {
         origin: req.headers.origin || '',
+        scope,
       });
-      res.json({ success: true, data: { grant, expiresAt, ttlSeconds } });
+      res.json({ success: true, data: { grant, expiresAt, ttlSeconds, scope } });
     } catch (e) {
       Logger.error(`[bridge] grant failed: ${e.message}`);
-      res.status(500).json({ success: false, message: 'Could not issue scan grant' });
+      res.status(500).json({ success: false, message: 'Could not issue bridge grant' });
     }
   });
 
@@ -135,7 +153,7 @@ function registerBridgeRoutes(app, Logger, { requireAuth: injected } = {}) {
       res.json({
         success: true,
         data: result.valid
-          ? { valid: true, tenant: result.tenant, subject: result.subject, role: result.role, expiresAt: result.expiresAt }
+          ? { valid: true, tenant: result.tenant, subject: result.subject, role: result.role, scope: result.scope, expiresAt: result.expiresAt }
           : { valid: false, reason: result.reason },
       });
     } catch (e) {
@@ -147,4 +165,13 @@ function registerBridgeRoutes(app, Logger, { requireAuth: injected } = {}) {
   Logger.info('[bridge] grant + verify-grant endpoints registered');
 }
 
-module.exports = { registerBridgeRoutes, issueGrant, verifyGrant, requireAuth, GRANT_TTL_SECONDS, GRANT_SCOPE };
+module.exports = {
+  registerBridgeRoutes,
+  issueGrant,
+  verifyGrant,
+  requireAuth,
+  normaliseScope,
+  GRANT_TTL_SECONDS,
+  GRANT_SCOPE,
+  PRINT_GRANT_SCOPE,
+};
