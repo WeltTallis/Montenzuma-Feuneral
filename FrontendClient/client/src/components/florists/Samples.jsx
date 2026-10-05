@@ -45,7 +45,7 @@ const CSS = `:root{
 .mg-btn:hover{transform:translateY(-1px);background:#6d4447}
 .mg-btn svg{width:22px;height:22px}
 .mg-btn.selected{background:#f6f0eb;border-color:#f6f0eb;color:#171310;box-shadow:0 12px 20px rgba(246,240,235,.2)}
-.mg-recommendations{position:fixed;right:24px;bottom:calc(120px + var(--mg-tray-h,0px));z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
+.mg-recommendations{position:fixed;right:24px;bottom:120px;z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
 .mg-recommendations-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;margin-bottom:10px}
 .mg-recommendations-head span{font:700 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)}
 /* The head used to hold a "Complete booking" button whose :disabled state stood
@@ -68,27 +68,16 @@ const CSS = `:root{
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
-/* ── Selection tray ────────────────────────────────────────────────────────────
-   This REPLACED the old floating ".mg-cart-bar". That bar was position:absolute
-   at right:20px/bottom:118px — the exact same corner as .mg-recommendations
-   (right:24px/bottom:120px) — so the two permanently overlapped and the
-   "Continue booking" button fought the "Complete booking" button for the same
-   pixels. The tray now lives INSIDE .mg-bottom, in normal flow, so it pushes the
-   rest of the bar up instead of hovering on top of anything. Nothing is rendered
-   until the visitor actually adds an arrangement, which is what "no floating bar
-   by default" means in practice. */
-.mg-tray{margin:0 0 14px;padding:12px;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(15,12,14,.42);backdrop-filter:blur(10px)}
-.mg-tray-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
-.mg-tray-title{font:700 10px 'Inter',sans-serif;color:#f6f0eb;letter-spacing:.12em;text-transform:uppercase}
-.mg-tray-clear{border:none;background:none;color:rgba(246,240,235,.6);font:700 9px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:2px 4px}
-.mg-tray-clear:hover{color:#f6f0eb}
-.mg-tray-list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto}
-.mg-tray-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 6px 4px 4px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(255,255,255,.1);color:#f6f0eb}
-.mg-tray-chip img{width:22px;height:22px;flex:0 0 22px;border-radius:50%;object-fit:cover}
-.mg-tray-chip span{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px 'Inter',sans-serif}
-.mg-tray-remove{flex:0 0 18px;width:18px;height:18px;display:grid;place-items:center;border:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font:700 13px/1 'Inter',sans-serif;cursor:pointer;padding:0}
-.mg-tray-remove:hover{background:#8b4557}
-.mg-tray-cta{width:100%;padding:13px 16px;border:none;border-radius:999px;background:#f6f0eb;color:#191612;font:800 10px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+/* ── Continue booking ──────────────────────────────────────────────────────────
+   An INLINE button that sits in the normal-flow bottom bar beside the single "+".
+   There is deliberately NO floating tray / chip list here any more: browsing the
+   gallery should show nothing but the arrangement, the one "+", and — once
+   something is actually added — this button. The old floating cart bar
+   (position:absolute; right:20px; bottom:118px) also permanently collided with
+   the recommendations panel at right:24px/bottom:120px, which is why both were
+   overlapping and stealing each other's clicks. */
+.mg-continue{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 20px;border:none;border-radius:0;background:#f6f0eb;color:#191612;font:800 9px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .18s ease;white-space:nowrap}
+.mg-continue:hover{background:#8b4557;color:#fff}
 .mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at top, rgba(255,255,255,.96), rgba(242,236,231,.92) 38%, rgba(228,220,214,.94) 100%);text-align:center;padding:40px}
 .mg-empty-icon{opacity:.45;margin-bottom:16px;color:#8b4557}
 .mg-empty h3{font:400 26px var(--serif);color:#4d3a38;margin:0 0 8px}
@@ -119,7 +108,6 @@ export default function Samples() {
   const dragging = useRef(false);
   const viewedStories = useRef(new Set());
   const storyRailRef = useRef(null);
-  const trayRef = useRef(null);
 
   const pickPrimaryImage = useCallback((entry) => {
     const list = Array.isArray(entry?.images) ? entry.images : [];
@@ -319,32 +307,6 @@ export default function Samples() {
     setShowBooking(true);
   }, []);
 
-  /* The tray grows as chips wrap onto more lines, so the fixed "Most booked now"
-     panel is lifted by the tray's REAL measured height (published as a CSS
-     variable) instead of a hard-coded guess. This is what stops the two panels
-     from stacking on top of each other now that the floating bar is gone. */
-  useEffect(() => {
-    const root = document.documentElement;
-    const publish = () => {
-      const h = trayRef.current?.offsetHeight || 0;
-      root.style.setProperty('--mg-tray-h', `${h}px`);
-    };
-    publish();
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', publish);
-      return () => {
-        window.removeEventListener('resize', publish);
-        root.style.removeProperty('--mg-tray-h');
-      };
-    }
-    const ro = new ResizeObserver(publish);
-    if (trayRef.current) ro.observe(trayRef.current);
-    return () => {
-      ro.disconnect();
-      root.style.removeProperty('--mg-tray-h');
-    };
-  }, [selectedArrangements.length]);
-
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -416,51 +378,19 @@ export default function Samples() {
             </div>
 
             <div className="mg-bottom">
-              {/* ── Selection tray (replaces the old floating "Continue booking"
-                  bar). It renders INSIDE this bottom bar, in normal flow, so it
-                  can never hover over the "+" button, the dots or the
-                  recommendations panel — the two used to share the exact same
-                  corner. It is also absent entirely until the visitor adds their
-                  first arrangement, so there is no floating CTA by default. */}
-              {selectedArrangements.length > 0 && (
-                <div className="mg-tray" ref={trayRef} role="group" aria-label="Arrangements added to your booking">
-                  <div className="mg-tray-head">
-                    <span className="mg-tray-title">
-                      {selectedArrangements.length} arrangement{selectedArrangements.length === 1 ? '' : 's'} added
-                    </span>
-                    <button type="button" className="mg-tray-clear" onClick={() => setSelectedIds([])}>Clear all</button>
-                  </div>
-                  <ul className="mg-tray-list">
-                    {selectedArrangements.map((a, i) => {
-                      const thumb = pickPrimaryImage(a);
-                      const title = a.title || a.name || 'Arrangement';
-                      return (
-                        <li className="mg-tray-chip" key={sampleKey(a) || `sel-${i}`}>
-                          {thumb ? <img src={thumb} alt="" /> : null}
-                          <span title={title}>{title}</span>
-                          <button
-                            type="button"
-                            className="mg-tray-remove"
-                            onClick={() => toggleCart(sampleKey(a))}
-                            aria-label={`Remove ${title} from booking`}
-                            title={`Remove ${title}`}
-                          >
-                            &times;
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <button type="button" className="mg-tray-cta" onClick={openBookingFlow}>
-                    Continue booking
-                  </button>
-                </div>
-              )}
+              {/* No tray / chip list / floating modal here. The bottom bar carries
+                  only the arrangement, the single "+" and — once at least one
+                  arrangement is added — the inline "Continue booking (N)" button
+                  beside it. */}
 
               {arr?.tag && (<div className={`mg-badge ${arr.tag === "Premium" ? "premium" : "standard"}`}>{arr.tag}</div>)}
               <p className="mg-type">{arr?.types?.[0] || arr?.type || 'Flower Arrangement'}</p>
               <h2 className="mg-name">{arr?.title || arr?.name || 'Arrangement'}</h2>
               <div className="mg-actions">
+                {/* The ONE add control. Swipe/browse, tap "+" on each arrangement
+                    you want — every tap adds, a tap on an added one removes it.
+                    Multiple arrangements can be held at once; this is a toggle,
+                    not a radio. */}
                 <button
                   className={`mg-btn ${isPicked(arr) ? "selected" : ""}`}
                   onClick={(e) => {
@@ -478,6 +408,13 @@ export default function Samples() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                   )}
                 </button>
+                {/* Plain inline text button — same row as the "+", no chips, no
+                    floating modal. Appears only once something has been added. */}
+                {selectedArrangements.length > 0 && (
+                  <button type="button" className="mg-continue" onClick={openBookingFlow}>
+                    Continue booking ({selectedArrangements.length})
+                  </button>
+                )}
               </div>
 
               <div className="mg-dots">
@@ -492,9 +429,10 @@ export default function Samples() {
             <div className="mg-recommendations">
               <div className="mg-recommendations-head">
                 <span>Most booked now</span>
-                {/* The "continue" CTA now lives ONCE, on the selection tray. It used
-                    to be duplicated here, and this copy sat under the floating bar
-                    in the same corner — two buttons fighting for the same pixels. */}
+                {/* The "continue" CTA lives ONCE, inline beside the "+". It used to
+                    be duplicated here, sitting in the same corner as the floating
+                    cart bar — two buttons fighting for the same pixels. This is now
+                    just a read-only count. */}
                 {selectedArrangements.length > 0 && (
                   <span className="mg-rec-count">{selectedArrangements.length} added</span>
                 )}

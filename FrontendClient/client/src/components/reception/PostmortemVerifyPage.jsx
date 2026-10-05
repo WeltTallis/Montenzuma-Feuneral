@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import styled, { createGlobalStyle, keyframes } from 'styled-components';
+import styled, { createGlobalStyle, css, keyframes } from 'styled-components';
 import { ShieldCheck, Search, AlertCircle, Lock, EyeOff, Clock } from 'lucide-react';
 import api from '../../api/axios';
 import usePublicTenantBranding from '../../utils/tenantResolver/usePublicTenantBranding';
@@ -327,7 +327,16 @@ const Field = styled.input`
   &:focus { border-bottom-color: ${C.ox}; }
   &:disabled { opacity: .6; cursor: not-allowed; }
 
-  ${p => p.$error && `
+  /* MUST use the css helper tag — not a bare backtick string. A plain string is
+     an UNTAGGED template, so interpolating the shake keyframe calls String() on
+     the Keyframes object outside a styled-components tag, which throws
+     styled-components error #12 ("interpolating a keyframe declaration into an
+     untagged string"). Because the interpolation is guarded by the p.$error
+     check, it was only ever evaluated while an error was shown — so the page
+     rendered fine, then the moment a search returned 404 this threw mid-render
+     and the App Error Boundary replaced the whole screen with "Something went
+     wrong". */
+  ${p => p.$error && css`
     border-bottom-color: ${C.red};
     animation: ${shake} .4s ease;
   `}
@@ -593,10 +602,21 @@ const PostmortemVerifyPage = () => {
       }
     } catch (err) {
       console.error('Verification error:', err);
-      const errMsg = err.response?.data?.message;
-      if (errMsg) {
-        setError(errMsg);
-      } else if (err.response?.status === 404) {
+      const status = err.response?.status;
+      const serverMsg = String(err.response?.data?.message || '');
+      // The service answers 404 for THREE very different situations. They used to
+      // all collapse into the same friendly "No record found", which hid a
+      // genuinely mis-routed or mis-tenanted request behind an honest "this person
+      // isn't in the system" — impossible to diagnose from the screen.
+      if (status === 404 && /^Route\s/i.test(serverMsg)) {
+        // deceased-service's catch-all: the endpoint itself did not match.
+        console.error('[PostmortemVerify] endpoint not deployed/routed:', serverMsg);
+        setError('The verification service is unavailable. Please contact the funeral home.');
+      } else if (status === 404 && /tenant/i.test(serverMsg)) {
+        console.error('[PostmortemVerify] tenant resolution failed:', serverMsg);
+        setError('This verification link is incomplete. Please use the link provided by your funeral home.');
+      } else if (status === 404 || serverMsg) {
+        // Expected business answer: no row matched what was typed.
         setError('No record found. Please verify your details and try again.');
       } else {
         setError('Unable to verify at this time. Please try again later.');

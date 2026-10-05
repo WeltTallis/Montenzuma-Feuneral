@@ -1,5 +1,6 @@
 
-import { Flower2, MapPin, User, Calendar, X, Check, Home, Package } from '../../utils/icons/icons';
+// MapPin was only used by the removed "Flowers Coming From" tile.
+import { Flower2, User, Calendar, X, Check, Home, Package } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -1801,7 +1802,7 @@ const FlowerBookingsNew = () => {
             </div>
 
             <h2 className="flower-detail-title" style={styles.detailTitle}>{product.title}{lineItems.length > 1 ? ` +${lineItems.length - 1} more` : ''}</h2>
-            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#9C9389' }}>
+            <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#8A8178' }}>
               {asList(product.types).join(' · ') || 'Custom Arrangement'}
             </p>
 
@@ -1862,56 +1863,56 @@ const FlowerBookingsNew = () => {
 
             <div className="flower-detail-grid" style={styles.detailGrid}>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
+                <div style={styles.detailItemIcon}><Flower2 size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Color Preference</div>
                   <div style={styles.detailValue}>{colourText || '—'}</div>
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
+                <div style={styles.detailItemIcon}><Flower2 size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Ribbon / Banner Wording</div>
                   <div style={styles.detailValue}>{ribbonMessage}</div>
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
+                <div style={styles.detailItemIcon}><Flower2 size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Flowers</div>
                   <div style={styles.detailValue}>{flowerText}</div>
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><Package size={22} /></div>
+                <div style={styles.detailItemIcon}><Package size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Flower Size</div>
                   <div style={styles.detailValue}>{b.size || asList(product.sizes).join(', ') || sizeNote || '—'}</div>
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><User size={22} /></div>
+                <div style={styles.detailItemIcon}><User size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Deceased Name</div>
                   <div style={styles.detailValue}>{b.deceased_name || '—'}</div>
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><Calendar size={22} /></div>
+                <div style={styles.detailItemIcon}><Calendar size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Funeral / Service Date</div>
                   <div style={styles.detailValue}>{b.funeral_date ? fmtDateOnly(b.funeral_date) : 'Not specified'}</div>
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><User size={22} /></div>
+                <div style={styles.detailItemIcon}><User size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Deceased Gender</div>
                   <div style={styles.detailValue}>{b.deceased_gender || 'Not specified'}</div>
                 </div>
               </div>
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><Package size={22} /></div>
+                <div style={styles.detailItemIcon}><Package size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Total Quantity</div>
                   <div style={styles.detailValue}>{Number(b.quantity) || lineItems.reduce((total, item) => total + item.quantity, 0)}</div>
@@ -1921,7 +1922,7 @@ const FlowerBookingsNew = () => {
                   always resolved to the literal "Not specified", which is noise
                   rather than information on an order card. */}
               <div style={styles.detailItem}>
-                <div style={styles.detailItemIcon}><User size={22} /></div>
+                <div style={styles.detailItemIcon}><User size={26} /></div>
                 <div style={styles.detailItemInfo}>
                   <div style={styles.detailLabel}>Booked By</div>
                   <div style={styles.detailValue}>{b.booked_by || b.customer || '—'}</div>
@@ -1929,7 +1930,7 @@ const FlowerBookingsNew = () => {
               </div>
               {instructionText && (
                 <div style={{ ...styles.detailItem, gridColumn: '1 / -1', alignItems: 'flex-start' }}>
-                  <div style={styles.detailItemIcon}><Flower2 size={22} /></div>
+                  <div style={styles.detailItemIcon}><Flower2 size={26} /></div>
                   <div style={styles.detailItemInfo}>
                     <div style={styles.detailLabel}>Special Remarks</div>
                     <div style={{ ...styles.detailValue, fontWeight: 500, whiteSpace: 'pre-wrap' }}>
@@ -2034,7 +2035,7 @@ const FlowerBookingsNew = () => {
         .flower-carousel-arrow.next { right: 10px; }
         .flower-detail-sample-thumb { width: 44px; height: 44px; flex: 0 0 44px; overflow: hidden; border-radius: 8px; background: #FDF1F6; }
         .flower-detail-sample-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
-        .flower-detail-title { font-size: 23px !important; line-height: 1.25; }
+        .flower-detail-title { font-size: 26px !important; line-height: 1.25; }
         .flower-detail-panel .trackRow { flex-wrap: wrap; }
         .flower-detail-grid { grid-template-columns: minmax(0, 1fr) !important; }
         .flower-booking-avatar { display: grid; place-items: center; width: 52px; height: 52px; flex: 0 0 52px; border: 1px solid rgba(0,0,0,.05); border-radius: 12px; font: 600 22px 'Playfair Display', Georgia, serif; }
