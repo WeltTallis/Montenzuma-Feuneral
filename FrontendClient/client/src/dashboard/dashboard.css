@@ -1103,6 +1103,103 @@
    text-overflow: ellipsis
 }
 
+/* ── "At a glance" stat tiles ── */
+/* A 2x2 grid of headline counts. Each tile carries its own share-of-caseload bar
+   so the proportion is readable without a tooltip, which the donut legend's bare
+   percentage could not do. They are real <button>s so they open the same
+   drill-down modal the legend rows do.
+
+   These are deliberately `skpi*`, NOT `kpi*`: `.rpd .kpi` (dashboard.css, the
+   analytics section) is a much larger card that carries `box-shadow: var(--shs)`
+   and expects `.lbl` / `.big` / `.sub` children. Reusing that name here would
+   inherit the shadow inside an already-shadowed `.san-card` and fight the
+   `.lbl` styling for the label. A separate namespace keeps both intact. */
+.rpd .side .skpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px
+}
+
+.rpd .side .skpi {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 9px 9px 8px;
+    border: 1px solid var(--brdl);
+    border-radius: 8px;
+    background: var(--sect);
+    text-align: left;
+    cursor: pointer;
+    min-width: 0;
+    transition: border-color .15s, background .15s
+}
+
+.rpd .side .skpi:hover {
+    border-color: var(--tx4);
+    background: var(--card)
+}
+
+.rpd .side .skpi b {
+    font: 800 18px/1.1 var(--serif);
+    color: var(--tx);
+    font-variant-numeric: tabular-nums
+}
+
+/* `.skpi-lbl` is scoped rather than a bare `.skpi span`: the tile also contains
+   the `.skpi-bar` / `.skpi-fill` pair, and an unqualified rule would uppercase
+   and ellipsis them along with the label. */
+.rpd .side .skpi .skpi-lbl {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--tx3);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+/* The share bar: a fixed 3px track so all four tiles stay aligned whatever the
+   value, with the filled portion inline-coloured per status. */
+.rpd .side .skpi-bar {
+    display: block;
+    height: 3px;
+    margin-top: 4px;
+    border-radius: 3px;
+    background: var(--brd);
+    overflow: hidden
+}
+
+.rpd .side .skpi-fill {
+    display: block;
+    height: 100%;
+    border-radius: 3px
+}
+
+/* The grand total line inside a financial panel. A solid rule above it separates
+   the subtotal from the answer, mirroring the `ChargeRow` treatment. No
+   `!important`: `.srow+.srow` sets the same property at the SAME specificity
+   (0,3,0), and this rule comes later in the file, so it wins on source order. */
+.rpd .side .srow-sum {
+    margin-top: 2px;
+    border-top: 1px solid var(--brd);
+    padding-top: 9px
+}
+
+/* A short provenance note under a figure the reader should not mistake for an
+   invoiced amount. Styled like the deceased sidebar's `ChargeNote`. */
+.rpd .side .snote {
+    margin: 10px 0 0;
+    padding: 8px 9px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--tx3);
+    background: var(--sect);
+    border: 1px solid var(--brdl);
+    border-radius: 7px
+}
+
+
 .rpd .san-leg {
    display: flex;
    flex-direction: column;

@@ -7,7 +7,7 @@ import { fetchReleasesFeed, fetchPostmortemsFeed } from "../api/dashboardFeedApi
 import { useSocket } from "../utils/context/socketContext";
 
 import {
-  DOWF, DOWM, MO, TYPE_C, addDays, baseList, buildCases, calcStats, eventsOf, fmtK, initials, isReleased,
+  DOWF, DOWM, MO, TYPE_C, addDays, baseList, buildCases, calcStats, eventsOf, initials, isReleased,
   matchPill, nowClock, pad, pillsFor, searchMatch, todayKey,
 } from "./opsData";
 import { TipBox, tipProps, useTooltip } from "./opsBits";
@@ -229,11 +229,31 @@ function Sidebar({
   const pillList = pillsFor(section);
   const activeCount = filters.length;
 
-  /* Money for the charge panels. The currency comes from the records themselves
-     (a USD home shows USD) — never a hard-coded "KES". */
+  /* Money for the financial panel. The currency comes from the records themselves
+     (a USD home shows USD) — never a hard-coded "KES". A zero renders as a muted
+     dash rather than "KES 0", so a column of untouched figures still reads as
+     deliberate instead of broken. */
   const ccy = calc.charges?.currency || "KES";
-  const money = (n) => `${ccy} ${(Number(n) || 0).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
+  const money = (n) => {
+    const v = Number(n) || 0;
+    return v > 0 ? `${ccy} ${v.toLocaleString("en-KE", { maximumFractionDigits: 0 })}` : "—";
+  };
   const morgue = calc.morgue || { held: 0, avg: 0, median: 0, longest: 0, top: [] };
+
+  /* Headline counts for the "At a glance" strip. Read from `calc.care`, which is
+     branch-scoped rather than search-scoped, so these four numbers stay put while
+     the user types in the toolbar search — the strip answers "how are we doing"
+     before anything is filtered. */
+  const careTotal = Math.max(
+    calc.care.inCare + calc.care.pmReq + calc.care.pmDone + calc.care.released,
+    1
+  );
+  const kpis = [
+    { id: "in-care", label: "In Care", v: calc.care.inCare, c: "var(--blue)" },
+    { id: "pm-req", label: "PM Open", v: calc.care.pmReq, c: "var(--orange)" },
+    { id: "pm-done", label: "PM Done", v: calc.care.pmDone, c: "var(--plum)" },
+    { id: "released", label: "Released", v: calc.care.released, c: "var(--teal)" },
+  ].map((k) => ({ ...k, pct: Math.round((k.v / careTotal) * 100) }));
 
   /* The event counter only means something once the schedule is scoped to a
      single day or week; a whole month already has its own totals on screen. */
@@ -331,6 +351,33 @@ function Sidebar({
       ) : null}
 
       <div className="san">
+        {/* At a glance — the four headline counts, each with the share of the
+            caseload it represents, so the rail answers "how are we doing" in one
+            glance instead of making the reader add the donut legend up. */}
+        <div className="san-card">
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="grid" s={12} /></span>
+            <span>At a Glance</span>
+            <em>{calc.total} total</em>
+          </div>
+          <div className="skpis">
+            {kpis.map((k) => (
+              <button
+                className="skpi"
+                key={k.id}
+                onClick={() => onOpenModal(`status:${k.id}`)}
+                title={`${k.label} — ${k.v} case${k.v === 1 ? "" : "s"} (${k.pct}%)`}
+              >
+                <b>{k.v}</b>
+                <span className="skpi-lbl">{k.label}</span>
+                <span className="skpi-bar">
+                  <span className="skpi-fill" style={{ width: `${k.pct}%`, background: k.c }} />
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="san-card">
           <div className="side-h">
             <span className="side-h-ic"><Ic n="grid" s={12} /></span>
@@ -433,41 +480,49 @@ function Sidebar({
           </div>
         </div>
 
-        {/* Charges so far — billed totals from the records plus the holding cost
-            accrued on bodies that are still in the morgue. */}
+        {/* Financials — ONE card for every money figure on the rail. The old
+            layout split this across "Charges" and a separate "Storage Accrual"
+            card, and the two disagreed: `charges.accrued` honours each body's
+            own daily rate while `calc.accrual` was a flat KES 500 estimate for
+            every held body, so the rail showed two different holding costs for
+            the same thing. The breakdown below adds up honestly:
+            mortuaryOnly + extraOnly = billed, billed + accrued = total. */}
         <div className="san-card">
           <div className="side-h">
             <span className="side-h-ic"><Ic n="clip" s={12} /></span>
-            <span>Charges</span>
-            <em>{calc.charges?.rated || 0} rated</em>
+            <span>Financials</span>
+            <em>{ccy}</em>
           </div>
           <div className="stop">
             <div className="srow">
-              <span className="sn">Billed to date</span>
-              <b>{money(calc.charges?.billed)}</b>
+              <span className="sn">Mortuary charges</span>
+              <b>{money(calc.charges?.mortuaryOnly)}</b>
             </div>
             <div className="srow">
               <span className="sn">Extra charges</span>
               <b>{money(calc.charges?.extraOnly)}</b>
             </div>
             <div className="srow">
+              <span className="sn">Billed to date</span>
+              <b>{money(calc.charges?.billed)}</b>
+            </div>
+            <div className="srow">
               <span className="sn">Storage accrued</span>
               <b>{money(calc.charges?.accrued)}</b>
             </div>
-            <div className="srow">
+            <div className="srow srow-sum">
               <span className="sn">Total so far</span>
               <b className="tot">{money((calc.charges?.billed || 0) + (calc.charges?.accrued || 0))}</b>
             </div>
           </div>
-        </div>
-
-        <div className="san-card">
-          <div className="side-h">
-            <span className="side-h-ic"><Ic n="bed" s={12} /></span>
-            <span>Storage Accrual</span>
-          </div>
-          <div className="bigpct">{fmtK(calc.accrual)}</div>
-          <div className="bigsub">Holding fees · {calc.inCare} bodies in care</div>
+          {/* Say where the storage figure comes from. Without this the number is
+              indistinguishable from a real invoice, and it silently mixes
+              configured rates with the standard estimate. */}
+          <p className="snote">
+            {calc.charges?.unbilled
+              ? `${calc.charges.unbilled} held ${calc.charges.unbilled === 1 ? "body has" : "bodies have"} no daily rate — storage for ${calc.charges.unbilled === 1 ? "it is" : "them is"} estimated at the standard rate.`
+              : "Every held body carries a configured daily rate."}
+          </p>
         </div>
       </div>
     </>

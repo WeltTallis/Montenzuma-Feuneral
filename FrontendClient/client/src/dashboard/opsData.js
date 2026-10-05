@@ -453,6 +453,10 @@ function mapReleaseRow(q) {
     prepared: true,
     pm: null,
     release: releaseFromFeed(q),
+    // Mirror `mapDeceased`: every case carries a charge block. Without this a
+    // release-only row has `charges === undefined`, so the sidebar's financial
+    // card dropped it from `bills` and every `p.charges.*` read fell back to "—".
+    charges: chargesOf(q),
     nok: {
       name: q?.next_kin || "—",
       rel: q?.relationship || "—",
@@ -1035,6 +1039,13 @@ export function calcStats(scoped, searched, calM, calY) {
     currency: chargeCcy,
     billed,
     extraOnly,
+    // `billed` above ALREADY contains the extras (totalNum and extraNum are
+    // summed together), so the sidebar could not list "Billed to date" and
+    // "Extra charges" as neighbouring rows — the second read as though it were
+    // being added on top of the first and the panel's arithmetic looked wrong.
+    // The base charge on its own makes the breakdown honest:
+    //   mortuaryOnly + extraOnly = billed,  billed + accrued = total.
+    mortuaryOnly: billed - extraOnly,
     // Held bodies that carry no configured daily rate, so their holding cost is
     // the accrual estimate rather than a real invoice.
     unbilled: held.filter((p) => !p.charges || !p.charges.perDayNum).length,
