@@ -45,26 +45,11 @@ const CSS = `:root{
 .mg-btn:hover{transform:translateY(-1px);background:#6d4447}
 .mg-btn svg{width:22px;height:22px}
 .mg-btn.selected{background:#f6f0eb;border-color:#f6f0eb;color:#171310;box-shadow:0 12px 20px rgba(246,240,235,.2)}
-.mg-recommendations{position:fixed;right:24px;bottom:120px;z-index:12;width:min(320px,calc(100vw - 32px));background:rgba(20,15,16,0.52);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:0 24px 55px rgba(0,0,0,.25)}
-.mg-recommendations-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;margin-bottom:10px}
-.mg-recommendations-head span{font:700 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)}
-/* The head used to hold a "Complete booking" button whose :disabled state stood
-   in for "nothing picked". There is exactly ONE continue CTA now — the selection
-   tray — which only ever renders once arrangements have actually been added, so
-   the button styling below is gone. */
-.mg-rec-count{font:700 9px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
-.mg-recommendations-grid{display:flex;flex-direction:column;gap:8px}
-.mg-recommendation-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px;transition:background .15s,border-color .15s}
-.mg-recommendation-item.picked{background:rgba(255,255,255,.16);border-color:rgba(246,240,235,.55)}
-.mg-recommendation-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;background:none;border:none;padding:0;color:#fff;cursor:pointer;text-align:left}
-.mg-recommendation-item img{width:52px;height:52px;flex:0 0 52px;object-fit:cover;border-radius:10px}
-.mg-recommendation-body{display:flex;flex-direction:column;gap:4px;min-width:0}
-.mg-recommendation-body strong{font:600 12px 'Inter',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mg-recommendation-body span{font:400 10px 'Inter',sans-serif;color:rgba(255,255,255,.7)}
-.mg-recommendation-add{flex:0 0 32px;width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;cursor:pointer;transition:background .15s,transform .12s}
-.mg-recommendation-add:hover{background:#8b4557;transform:translateY(-1px)}
-.mg-recommendation-add svg{width:15px;height:15px}
-.mg-recommendation-item.picked .mg-recommendation-add{background:#f6f0eb;border-color:#f6f0eb;color:#171310}
+/* The "Most booked now" recommendations block was removed — it floated a fixed
+   overlay over the bottom bar and duplicated every card (title twice + "Booked
+   N times" + its own + button), exactly the rubbish the user asked to delete.
+   It is intentionally dead now; keeping the comment (not the rules) so nobody
+   re-adds them. */
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
@@ -98,7 +83,7 @@ export default function Samples() {
   const { slug } = useParams();
   const tenantSlug = slug || getTenantSlug();
   const [arrangements, setArrangements] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
+  const [recommendations, setRecommendations] = useState([]); // kept (empty) so the booking flow's data shape is untouched — the floating "Most booked now" panel that consumed it is gone
   const [current, setCurrent] = useState(0);
   const [showBooking, setShowBooking] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -157,19 +142,13 @@ export default function Samples() {
     });
   }, []);
 
+  /* The floating "Most booked now" panel was removed entirely: it duplicated the
+     gallery cards (same titles twice, "Booked N times" under each) and hovered as
+     a fixed overlay over the bottom bar. No fetch is needed any more — the state
+     above stays an empty placeholder so nothing downstream breaks. */
   const loadRecommendations = useCallback(async () => {
-    try {
-      const tenantId = getTenantId();
-      const res = await api.get('/florist/flower-samples/recommendations', {
-        params: { tenant_id: tenantId || undefined, limit: 4 },
-        headers: tenantSlug ? { 'x-tenant-slug': tenantSlug } : undefined,
-      });
-      setRecommendations(res.data?.data || []);
-    } catch (error) {
-      console.warn('Failed to load recommendations:', error);
-      setRecommendations([]);
-    }
-  }, [tenantSlug]);
+    setRecommendations([]);
+  }, []);
 
   // Load arrangements from API
   useEffect(() => {
@@ -425,64 +404,11 @@ export default function Samples() {
             </div>
           </div>
 
-          {recommendations.length > 0 && (
-            <div className="mg-recommendations">
-              <div className="mg-recommendations-head">
-                <span>Most booked now</span>
-                {/* The "continue" CTA lives ONCE, inline beside the "+". It used to
-                    be duplicated here, sitting in the same corner as the floating
-                    cart bar — two buttons fighting for the same pixels. This is now
-                    just a read-only count. */}
-                {selectedArrangements.length > 0 && (
-                  <span className="mg-rec-count">{selectedArrangements.length} added</span>
-                )}
-              </div>
-              <div className="mg-recommendations-grid">
-                {recommendations.map((item, ri) => {
-                  const recId = sampleKey(item);
-                  const picked = !!recId && selectedIds.includes(recId);
-                  return (
-                    <div
-                      key={recId || `rec-${ri}`}
-                      className={`mg-recommendation-item${picked ? ' picked' : ''}`}
-                    >
-                      {/* Tapping the card itself still browses it; only the "+"
-                          adds. Keeping these separate means a client can study
-                          the recommendation and pick it deliberately. */}
-                      <button
-                        type="button"
-                        className="mg-recommendation-open"
-                        onClick={() => {
-                          const idx = arrangements.findIndex((a) => sampleKey(a) === recId);
-                          if (idx >= 0) setCurrent(idx);
-                        }}
-                      >
-                        <img src={pickPrimaryImage(item) || ''} alt={item.title || item.name || 'Recommended arrangement'} loading="eager" decoding="async" />
-                        <span className="mg-recommendation-body">
-                          <strong>{item.title || item.name}</strong>
-                          <span>{item.recommendation_reason || 'Popular choice'}</span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className="mg-recommendation-add"
-                        onClick={() => toggleCart(recId)}
-                        aria-label={picked ? `Remove ${item.title || item.name} from booking` : `Add ${item.title || item.name} to booking`}
-                        aria-pressed={picked}
-                        title={picked ? 'Remove from booking' : 'Add to booking'}
-                      >
-                        {picked ? (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12.5l4.1 4.1L19 2.5" /></svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* The floating "Most booked now" panel used to live here. It was a
+              fixed overlay that duplicated the gallery and cluttered the screen
+              with repeated titles plus its own add buttons — removed entirely at
+              the user's request. Selection now happens only through the single
+              "+" in the bottom bar. */}
 
           {showBooking && (
             <FlowerSnowBookingForm

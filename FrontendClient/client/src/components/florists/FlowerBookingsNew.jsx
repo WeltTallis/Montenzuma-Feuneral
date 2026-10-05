@@ -328,8 +328,6 @@ const FlowerBookingsNew = () => {
   const [activeBookingId, setActiveBookingId] = useState(null);
   const imageCarouselRef = useRef(null);
   const [newBooking, setNewBooking] = useState({
-    selected_sample_ids: [],
-    sample_quantities: {},
     arrangement_type: '',
     flower_details: '',
     color_preference: '',
@@ -534,38 +532,27 @@ const FlowerBookingsNew = () => {
     // Re-entry guard — a double-click must NEVER place the order twice
     if (placingRef.current) return;
     if (!newBooking.deceased_name?.trim()) return showToast('Please enter the deceased name', 'error');
-    if (!newBooking.time) return showToast('Ready-at time is required', 'error');
 
-    const selectedIds = Array.isArray(newBooking.selected_sample_ids) ? newBooking.selected_sample_ids.map(String) : [];
-    const selectedSamples = arrangements.filter(sample => selectedIds.includes(String(sample.arrangement_id || sample.id)));
+    // DIRECT BOOKING: staff pick an Arrangement Type and finish the form — there
+    // is no sample-picking step on this screen any more. Samples live in the
+    // public gallery; the dashboard path is for people who know what they want.
     const arrangementType = String(newBooking.arrangement_type || '').trim();
-    if (!selectedSamples.length && !arrangementType) return showToast('Please select an arrangement type or florist sample', 'error');
+    if (!arrangementType) return showToast('Please select an arrangement type', 'error');
 
     const typedTypes = String(newBooking.flower_details || '')
       .split(/[\n,]+/)
       .map(s => s.trim())
       .filter(Boolean);
-    if (typedTypes.length === 0 && !selectedSamples.length) return showToast('Please enter the flowers for this arrangement', 'error');
+    if (typedTypes.length === 0) return showToast('Please enter the flowers for this arrangement', 'error');
     const colors = String(newBooking.color_preference || '').split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-    const items = selectedSamples.length
-      ? selectedSamples.map(sample => ({
-        arrangement_id: sample.arrangement_id || sample.id,
-        name: sample.title || sample.name || 'Flower arrangement',
-        types: asList(sample.types),
-        colors: newBooking.any_color || colors.length === 0 ? asList(sample.colors) : colors,
-        quantity: Math.max(1, Number(newBooking.sample_quantities?.[String(sample.arrangement_id || sample.id)]) || 1),
-      }))
-      : [{
-        arrangement_id: null,
-        name: arrangementType,
-        types: typedTypes,
-        colors: newBooking.any_color ? [] : colors,
-        quantity: Math.max(1, Number(newBooking.quantity) || 1),
-      }];
-    /* The headline is the arrangement TYPE when the user picked one — samples and
-       type are now independent fields, so a typed order keeps its real type
-       instead of silently inheriting the first sample's title. */
-    const headline = arrangementType || selectedSamples[0]?.title || selectedSamples[0]?.name || 'Flower arrangement';
+    const items = [{
+      arrangement_id: null,
+      name: arrangementType,
+      types: typedTypes,
+      colors: newBooking.any_color ? [] : colors,
+      quantity: Math.max(1, Number(newBooking.quantity) || 1),
+    }];
+    const headline = arrangementType;
     placingRef.current = true;
     setPlacingOrder(true);
 
@@ -583,9 +570,9 @@ const FlowerBookingsNew = () => {
       ].filter(Boolean).join(' ');
       await api.post('/florist/bookings', {
         arrangement_name: headline.slice(0, 255),
-        arrangement_id: selectedSamples[0]?.arrangement_id || selectedSamples[0]?.id || null,
+        arrangement_id: null,
         flower_type: headline.slice(0, 100),
-        flower_description: typedTypes.join(', ') || [...new Set(selectedSamples.flatMap(sample => asList(sample.types)))].join(', '),
+        flower_description: typedTypes.join(', '),
         arrangements: items,
         ribbon_color: newBooking.any_color ? null : colors[0] || null,
         primary_color: newBooking.any_color ? 'Any color (florist choice)' : colors[0] || null,
@@ -610,8 +597,6 @@ const FlowerBookingsNew = () => {
       await loadBookings();
       setView('list');
       setNewBooking({
-        selected_sample_ids: [],
-        sample_quantities: {},
         arrangement_type: '',
         flower_details: '',
         color_preference: '',
@@ -706,21 +691,18 @@ const FlowerBookingsNew = () => {
     // Build the payload explicitly with trimmed values so a spaces-only input
     // can't slip past HTML validation and trip the server's non-empty checks.
     const title = String(fd.get('title') || '').trim();
-    const description = String(fd.get('description') || '').trim();
     const types = String(fd.get('types') || '').trim();
-    const colors = String(fd.get('colors') || '').trim();
-    const sizes = String(fd.get('sizes') || '').trim();
 
-    // Client-side validation with SPECIFIC messages — the backend's 400s
-    // ("Missing required fields…", "Types must be a non-empty array") would
+    // Client-side validation with SPECIFIC messages — the backend's 400s would
     // otherwise be swallowed by the generic catch toast below. Whitespace-only
     // or comma-only values pass HTML `required` but produce empty arrays
-    // server-side, so trim and check everything here.
+    // server-side, so trim and check here.
+    //
+    // Description / Colors / Sizes were removed from this form at the user's
+    // request. The backend accepts them as optional (description defaults to '',
+    // colors/sizes stringify to NULL), so omitting them entirely is safe.
     if (!title) return showToast('Please enter an arrangement title', 'error');
-    if (!description) return showToast('Please enter a description', 'error');
     if (!types) return showToast('Please enter at least one flower type (comma-separated)', 'error');
-    if (!colors) return showToast('Please enter at least one color (comma-separated)', 'error');
-    if (!sizes) return showToast('Please enter at least one size (comma-separated)', 'error');
 
     // Preflight the photos BEFORE anything is sent, so an oversized file never
     // costs the user their typed details (see inspectImages for the why).
@@ -729,10 +711,9 @@ const FlowerBookingsNew = () => {
 
     const payload = new FormData();
     payload.append('title', title);
-    payload.append('description', description);
     payload.append('types', types);
-    payload.append('colors', colors);
-    payload.append('sizes', sizes);
+    // description / colors / sizes are no longer collected — the backend treats
+    // them as optional, so they are simply left off the payload.
     const files = fd.getAll('images').filter(f => f && f.size > 0);
     files.forEach(f => payload.append('images', f));
 
@@ -1355,41 +1336,6 @@ const FlowerBookingsNew = () => {
     // Shared styling tokens — mirror the Create Arrangement panel exactly
     const lbl = { display: 'block', fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '8px' };
     const inp = { width: '100%', padding: '12px 14px', border: '1px solid #EAE7E2', borderRadius: '8px', fontSize: '13px', fontFamily: "'DM Sans', system-ui, sans-serif", background: '#FAF9F7', color: '#1C1A17', outline: 'none' };
-    /* ONE canonical key per sample. `arrangement_id` is a VARCHAR but `id` is an
-       INT, so a row that falls back to `id` never matched the string list that
-       selection is stored in — the chip stayed unpicked and the next tap removed
-       it again, which made the grid look like it would only ever hold one. */
-    const sampleKey = item => String(item?.arrangement_id || item?.id || '');
-    const chooseSample = sample => {
-      const sampleId = sampleKey(sample);
-      if (!sampleId) return;
-      setNewBooking(prev => {
-        const ids = Array.isArray(prev.selected_sample_ids) ? prev.selected_sample_ids.map(String) : [];
-        const wasSelected = ids.includes(sampleId);
-        // Multi-select: add when absent, remove when present. Every other pick
-        // is preserved, so you can build up a whole set before booking.
-        const selectedIds = wasSelected ? ids.filter(id => id !== sampleId) : [...ids, sampleId];
-        const selectedSamples = arrangements.filter(item => selectedIds.includes(sampleKey(item)));
-        const quantities = { ...prev.sample_quantities };
-        if (wasSelected) delete quantities[sampleId];
-        else quantities[sampleId] = 1;
-        return {
-          ...prev,
-          selected_sample_ids: selectedIds,
-          sample_quantities: quantities,
-          // Flowers auto-fill from the picked samples, but only while the field is
-          // still empty — a florist's own typing must never be wiped out by
-          // tapping another sample.
-          flower_details: prev.flower_details?.trim()
-            ? prev.flower_details
-            : [...new Set(selectedSamples.flatMap(item => asList(item.types)))].join(', '),
-          // `arrangement_type` is deliberately NOT written here. It used to be
-          // overwritten with the joined sample titles ("A, B"), so the dropdown
-          // held a value that was not an arrangement type at all and the two
-          // fields fought over one slot.
-        };
-      });
-    };
 
     return (
       <div style={styles.formContainer}>
@@ -1404,85 +1350,20 @@ const FlowerBookingsNew = () => {
         </div>
 
         <form onSubmit={submitBooking} style={{ padding: '24px 28px 40px' }}>
-          <section className="flx-sample-picker" aria-label="Choose a florist sample">
-            <div className="flx-sample-picker-heading">
-              Not sure what to choose? Pick a florist sample
-              {newBooking.selected_sample_ids.length > 0 && (
-                <button
-                  type="button"
-                  className="flx-sample-clear"
-                  onClick={() => setNewBooking(prev => ({ ...prev, selected_sample_ids: [], sample_quantities: {} }))}
-                >
-                  Clear selection
-                </button>
-              )}
-            </div>
-            {arrangements.length > 0 ? (
-              <div className="flx-sample-options">
-                {arrangements.map((sample, si) => {
-                  const sampleId = sampleKey(sample);
-                  const sampleImage = sample.images?.[0]?.url || sample.images?.[0] || '';
-                  const selected = !!sampleId && newBooking.selected_sample_ids.includes(sampleId);
-                  return (
-                    <div className="flx-sample-choice" key={sampleId || sample.title || si}>
-                      <button
-                        type="button"
-                        className={`flx-sample-option${selected ? ' selected' : ''}`}
-                        aria-pressed={selected}
-                        onClick={() => chooseSample(sample)}
-                      >
-                        {sampleImage
-                          ? <img src={sampleImage} alt="" loading="lazy" />
-                          : <span className="flx-sample-initial">{(sample.title || 'F').charAt(0)}</span>}
-                        <span className="flx-sample-option-copy">
-                          <strong>{sample.title || sample.name || 'Flower arrangement'}</strong>
-                          <small>{asList(sample.types).slice(0, 2).join(', ') || 'Florist sample'}</small>
-                        </span>
-                        <span className="flx-sample-check" aria-hidden="true">{selected ? '✓' : '+'}</span>
-                      </button>
-                      {selected && (
-                        <label className="flx-sample-quantity">
-                          Quantity
-                          <input
-                            type="number"
-                            min="1"
-                            max="99"
-                            value={newBooking.sample_quantities[sampleId] || 1}
-                            onChange={event => setNewBooking(prev => ({
-                              ...prev,
-                              sample_quantities: { ...prev.sample_quantities, [sampleId]: event.target.value },
-                            }))}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="flx-no-samples">No uploaded samples yet. Choose an arrangement type below.</p>
-            )}
-            {newBooking.selected_sample_ids.length > 0 && (
-              <p className="flx-sample-summary">
-                {newBooking.selected_sample_ids.length} sample{newBooking.selected_sample_ids.length === 1 ? '' : 's'} selected — keep tapping to add more, then place the order.
-              </p>
-            )}
-          </section>
+          {/* "Not sure what to choose? Pick a florist sample" — removed. Staff on
+              the dashboard book directly by Arrangement Type below; sample cards
+              (with their per-card + buttons) stay in the public gallery only. */}
 
-          {/* Arrangement type is INDEPENDENT of the samples above. Choosing it
-              used to clear every picked sample, so the two could never be
-              combined; it is only required when no sample was chosen. */}
-          <label style={lbl}>
-            Arrangement Type
-            <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>
-              {newBooking.selected_sample_ids.length > 0 ? 'optional' : ' required'}
-            </span>
-          </label>
+          {/* DIRECT booking — no sample step: pick the type, fill the details. */}
+
+          {/* DIRECT booking path: Arrangement Type is now the primary (required)
+              field — there is no sample picker to fall back on any more. */}
+          <label style={lbl}>Arrangement Type *</label>
           <select
             style={{ ...inp, marginBottom: '22px' }}
             value={newBooking.arrangement_type}
             onChange={e => setNewBooking(prev => ({ ...prev, arrangement_type: e.target.value }))}
-            required={!newBooking.selected_sample_ids.length}
+            required
           >
             <option value="">Select arrangement type</option>
             {['Wreath', 'Casket Spray', 'Standing Spray', 'Funeral Basket', 'Sympathy Bouquet', 'Cross / Heart Arrangement'].map(type => (
@@ -1494,7 +1375,7 @@ const FlowerBookingsNew = () => {
           <label style={{ ...lbl, marginBottom: '12px' }}>Flowers *</label>
           <textarea
             rows={3}
-            required={!newBooking.selected_sample_ids.length}
+            required
             style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
             placeholder="Enter flowers separated by commas, e.g. Red Roses, White Lilies, Gypsophila"
             value={newBooking.flower_details}
@@ -1546,19 +1427,15 @@ const FlowerBookingsNew = () => {
             {['Small', 'Medium', 'Large'].map(size => <option key={size} value={size}>{size}</option>)}
           </select>
 
-          {newBooking.selected_sample_ids.length === 0 && (
-            <>
-              <label style={lbl}>Quantity</label>
-              <input
-                type="number"
-                min="1"
-                max="99"
-                style={{ ...inp, marginBottom: '22px' }}
-                value={newBooking.quantity}
-                onChange={e => setNewBooking(prev => ({ ...prev, quantity: e.target.value }))}
-              />
-            </>
-          )}
+          <label style={lbl}>Quantity</label>
+          <input
+            type="number"
+            min="1"
+            max="99"
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.quantity}
+            onChange={e => setNewBooking(prev => ({ ...prev, quantity: e.target.value }))}
+          />
 
           {/* ── Special instructions ── */}
           <label style={lbl}>Special Remarks</label>
@@ -2028,7 +1905,9 @@ const FlowerBookingsNew = () => {
           .flower-bookings-main { padding: 0 12px 40px; }
           .flower-detail-empty { display: none; }
           .flower-detail-backdrop { position: fixed; inset: 0; z-index: 1000; display: block; background: rgba(20,18,15,.32); }
-          .flower-detail-panel { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; width: min(420px, 92vw); height: 100dvh; border: 0; border-radius: 16px 0 0 16px; box-shadow: -12px 0 40px rgba(0,0,0,.12); transform: translateX(105%); transition: transform .3s cubic-bezier(.32,.72,.28,1); }
+          .flower-detail-panel { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; width: min(420px, 92vw); height: 100dvh; border: 0; border-radius: 16px 0 0 16px; box-shadow: -12px 0 40px rgba(0,0,0,.12); transform: translateX(105%); transition: transform .3s cubic-bezier(.32,.72,.28,1); padding: 0 2px 24px; }
+          .flower-detail-panel-head { margin: 0 -2px 12px; padding: 12px 8px; }
+          .flower-detail-hero { margin: 0 -2px 16px; }
           .flower-detail-panel.open { transform: translateX(0); }
         }
         .flower-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid #F0E4EA; }
@@ -2046,25 +1925,8 @@ const FlowerBookingsNew = () => {
         .fb-card[data-status="completed"] .flower-quantity-chip { background: #D8F4E4; color: #0E7A54; }
         .flower-funeral-date { display: inline-flex; margin-top: 4px; padding: 2px 8px; border: 1px solid #E7D9F6; border-radius: 999px; background: #F5EEFB; color: #7E3FA1; font-size: 10px; font-weight: 700; }
         .flx-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .flx-sample-picker { margin-bottom: 24px; }
-        .flx-sample-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: #6E675E; font-size: 12px; font-weight: 700; }
-        /* Confirms multi-select is working and gives a one-tap escape hatch. */
-        .flx-sample-clear { border: 1px solid #F0E4EA; background: #fff; color: #BE185D; border-radius: 999px; padding: 5px 10px; font: 700 10px 'DM Sans', system-ui, sans-serif; letter-spacing: .04em; cursor: pointer; white-space: nowrap; }
-        .flx-sample-clear:hover { background: #FDF1F6; }
-        .flx-sample-summary { margin: 10px 0 0; color: #6E675E; font-size: 11px; }
-        .flx-sample-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-        .flx-sample-choice { min-width: 0; }
-        .flx-sample-option { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px; border: 1px solid #F0E4EA; border-radius: 8px; background: #fff; color: #1F1D1A; text-align: left; }
-        .flx-sample-option.selected { border-color: #D6336C; background: #FDF1F6; box-shadow: 0 0 0 1px #D6336C; }
-        .flx-sample-option > img, .flx-sample-initial { width: 54px; height: 54px; flex: 0 0 54px; border-radius: 6px; object-fit: cover; background: #FCE0EC; }
-        .flx-sample-initial { display: grid; place-items: center; color: #BE185D; font: 600 22px 'Playfair Display', Georgia, serif; }
-        .flx-sample-option-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-        .flx-sample-option-copy strong, .flx-sample-option-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .flx-sample-option-copy strong { font-size: 12px; }
-        .flx-sample-option-copy small, .flx-no-samples { color: #8A8178; font-size: 10px; }
-        .flx-sample-check { display: grid; place-items: center; width: 22px; height: 22px; margin-left: auto; flex: 0 0 22px; border-radius: 50%; background: #FCE0EC; color: #BE185D; font-size: 14px; font-weight: 800; }
-        .flx-sample-quantity { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px 0; color: #6E675E; font-size: 11px; font-weight: 700; }
-        .flx-sample-quantity input { width: 72px; min-height: 34px; padding: 4px 8px; border: 1px solid #F0E4EA; border-radius: 6px; background: #fff; color: #1F1D1A; }
+        /* The sample-picker (flx-sample-*) styles were removed along with the
+           picker section — the booking screen books DIRECT by Arrangement Type. */
         .flx-any-color { display: flex; align-items: center; gap: 8px; margin: -2px 0 10px; color: #6E675E; font-size: 12px; font-weight: 600; }
         .flx-any-color input { accent-color: #D6336C; }
 
@@ -2093,7 +1955,6 @@ const FlowerBookingsNew = () => {
           .flower-status-tabs { width: 100%; }
           .flower-status-tabs button { flex: 1; padding-left: 6px; padding-right: 6px; }
           .flx-form-grid { grid-template-columns: 1fr; }
-          .flx-sample-options { grid-template-columns: 1fr; }
         }
 
         /* ── Split layout: sticky mini-calendar rail beside the list ── */
@@ -2235,35 +2096,8 @@ const FlowerBookingsNew = () => {
                 />
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '9px',
-                  fontWeight: 600,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: '#9C9389',
-                  marginBottom: '8px'
-                }}>Description *</label>
-                <textarea
-                  name="description"
-                  required
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    border: '1px solid #EAE7E2',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: '#FAF9F7',
-                    color: '#1C1A17',
-                    outline: 'none',
-                    resize: 'vertical'
-                  }}
-                  placeholder="Describe the arrangement..."
-                />
-              </div>
+              {/* Description / Colors / Sizes fields removed — not needed for the
+                  direct arrangement flow (backend keeps them optional). */}
 
               <div style={{ marginBottom: '20px' }}>
                 <label style={{
@@ -2291,64 +2125,6 @@ const FlowerBookingsNew = () => {
                     outline: 'none'
                   }}
                   placeholder="e.g., Wreath, Spray, Bouquet"
-                />
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '9px',
-                  fontWeight: 600,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: '#9C9389',
-                  marginBottom: '8px'
-                }}>Colors (comma-separated)</label>
-                <input
-                  type="text"
-                  name="colors"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    border: '1px solid #EAE7E2',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: '#FAF9F7',
-                    color: '#1C1A17',
-                    outline: 'none'
-                  }}
-                  placeholder="e.g., White, Red, Pink"
-                />
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '9px',
-                  fontWeight: 600,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: '#9C9389',
-                  marginBottom: '8px'
-                }}>Sizes (comma-separated)</label>
-                <input
-                  type="text"
-                  name="sizes"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    border: '1px solid #EAE7E2',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontFamily: "'DM Sans', system-ui, sans-serif",
-                    background: '#FAF9F7',
-                    color: '#1C1A17',
-                    outline: 'none'
-                  }}
-                  placeholder="e.g., Small, Medium, Large"
                 />
               </div>
 

@@ -285,22 +285,16 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
   try {
     // Extract fields with multiple key variations to handle form-data naming
     const rawTitle = req.body.title || req.body.name || 'Untitled Sample';
-    const rawDescription = req.body.description || req.body.desc || '';
 
+    // description / colors / sizes were REMOVED from the arrangement form (and
+    // therefore this endpoint). Only `title`, `types` and `images` are accepted.
+    // The columns stay in the table so historical rows keep their values; new
+    // rows simply omit them.
     const types = toArray(req.body.types || req.body['types[]']);
-    const colors = toArray(req.body.colors || req.body['colors[]']);
-    const sizes = toArray(req.body.sizes || req.body['sizes[]']);
 
     const cleanTitle = String(rawTitle).trim() || 'Untitled Sample';
-    const cleanDescription = String(rawDescription).trim();
 
-    console.log('[FLOWERS CREATE] Parsed Data:', {
-      cleanTitle,
-      cleanDescription,
-      types,
-      colors,
-      sizes
-    });
+    console.log('[FLOWERS CREATE] Parsed Data:', { cleanTitle, types });
 
     // Generate unique arrangement ID
     const arrangementId = generateArrangementId();
@@ -342,20 +336,17 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
       });
     }
 
-    // Prepare data for DB insertion
+    // Prepare data for DB insertion (only the fields the form still collects)
     const data = stringifyJSONFields({
       title: cleanTitle,
-      description: cleanDescription,
       types,
-      colors,
-      sizes,
       images
     });
 
     const sql = `
       INSERT INTO flower_samples 
-      (arrangement_id, title, description, types, colors, sizes, images, tenant_slug, tenant_id, created_at, updated_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      (arrangement_id, title, types, images, tenant_slug, tenant_id, created_at, updated_at) 
+      VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
 
     console.log('[FLOWERS CREATE] Executing SQL insertion for arrangement ID:', arrangementId);
@@ -364,10 +355,7 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     await safeExecuteWithRetry(sql, [
       arrangementId,
       cleanTitle,
-      cleanDescription,
       data.types,
-      data.colors,
-      data.sizes,
       data.images,
       tenantSlug,
       tenantId
@@ -390,10 +378,10 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
         id: null,
         arrangement_id: arrangementId,
         title: cleanTitle,
-        description: cleanDescription,
+        description: '',
         types,
-        colors,
-        sizes,
+        colors: [],
+        sizes: [],
         images,
         tenant_slug: tenantSlug,
         tenant_id: tenantId,
@@ -502,16 +490,13 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
     }
 
     const updates: any = {};
-    const { title, description } = req.body;
+    const { title } = req.body;
 
     if (title) updates.title = title;
-    if (description) updates.description = description;
+    // description / colors / sizes are no longer editable — removed from the
+    // arrangement form. Only `types` (plus images/title below) can change.
     const types = toArray(req.body.types || req.body['types[]']);
-    const colors = toArray(req.body.colors || req.body['colors[]']);
-    const sizes = toArray(req.body.sizes || req.body['sizes[]']);
     if (types.length) updates.types = JSON.stringify(types);
-    if (colors.length) updates.colors = JSON.stringify(colors);
-    if (sizes.length) updates.sizes = JSON.stringify(sizes);
 
     let images = [...existingArrangement.images];
     let providedImages = req.body.images;
