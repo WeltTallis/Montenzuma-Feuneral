@@ -181,7 +181,6 @@ const parseJSONFields = (record: any): any => {
     arrangement_id: record.arrangement_id,
     title: record.title,
     description: record.description,
-    price: record.price ?? null,
     like_count: Number(record.like_count ?? 0) || 0,
     types: parseValue(record.types),
     colors: parseValue(record.colors),
@@ -235,7 +234,7 @@ const toArray = (value: any): any[] => {
 const ensureLikeSchema = async (): Promise<void> => {
   try {
     await safeExecute(
-      'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS like_count INT NOT NULL DEFAULT 0 AFTER price',
+      'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS like_count INT NOT NULL DEFAULT 0 AFTER sizes',
       []
     );
   } catch (err: any) {
@@ -258,28 +257,6 @@ const ensureLikeSchema = async (): Promise<void> => {
     );
   } catch (err: any) {
     console.warn('[FLOWERS] flower_sample_likes guard skipped:', err?.message);
-  }
-};
-
-/**
- * Self-healing guard so older installs never 500 on the UPDATE endpoint when a
- * price is supplied. Adds the `price` column to flower_samples if the global
- * migration 164 hasn't applied yet. Idempotent — safe to run on every update.
- * Takes `req` for call-site symmetry with ensureLikeSchema, but the ALTER is a
- * table-level DDL operation that doesn't depend on tenant context.
- */
-const ensurePriceColumn = async (req: any): Promise<void> => {
-  try {
-    await safeExecute(
-      'ALTER TABLE flower_samples ADD COLUMN IF NOT EXISTS price DECIMAL(12,2) DEFAULT NULL AFTER sizes',
-      []
-    );
-  } catch (err: any) {
-    // Column already exists on some MySQL variants, or the table was
-    // created via a different path — both are fine, swallow them.
-    if (err?.code !== 'ER_DUP_FIELDNAME' && !/duplicate/i.test(err?.message || '')) {
-      console.warn('[FLOWERS] price column guard skipped:', err?.message);
-    }
   }
 };
 
@@ -471,7 +448,7 @@ export const getFlowerArrangementById = async (req: any, res: any): Promise<any>
 // Kept in sync with the SELECT in getAllFlowerArrangements so every
 // arrangement shape is identical across endpoints. JSON columns are CAST to
 // CHAR so mysql2 returns them as strings, which parseValue handles below.
-const columns = `id, arrangement_id, title, description, price,
+const columns = `id, arrangement_id, title, description,
   COALESCE(like_count, 0) AS like_count,
   CAST(types AS CHAR) AS types,
   CAST(colors AS CHAR) AS colors,
@@ -524,17 +501,11 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
       });
     }
 
-    await ensurePriceColumn(req);
-
     const updates: any = {};
     const { title, description } = req.body;
 
     if (title) updates.title = title;
     if (description) updates.description = description;
-    if (req.body.price !== undefined && req.body.price !== null && req.body.price !== '') {
-      const parsedPrice = parseFloat(req.body.price);
-      if (!isNaN(parsedPrice)) updates.price = parsedPrice;
-    }
     const types = toArray(req.body.types || req.body['types[]']);
     const colors = toArray(req.body.colors || req.body['colors[]']);
     const sizes = toArray(req.body.sizes || req.body['sizes[]']);
@@ -795,7 +766,6 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
            CAST(colors AS CHAR) AS colors,
            CAST(sizes  AS CHAR) AS sizes,
            CAST(images AS CHAR) AS images,
-           price,
            COALESCE(like_count, 0) AS like_count,
            tenant_slug, tenant_id, created_at, updated_at
     FROM flower_samples WHERE ${tenantScope.clause}`;
@@ -881,7 +851,7 @@ export const getRecommendedFlowerArrangements = async (req: any, res: any): Prom
              CAST(colors AS CHAR) AS colors,
              CAST(sizes AS CHAR) AS sizes,
              CAST(images AS CHAR) AS images,
-             price, COALESCE(like_count, 0) AS like_count,
+             COALESCE(like_count, 0) AS like_count,
              tenant_slug, tenant_id, created_at, updated_at
       FROM flower_samples
       WHERE arrangement_id IN (${placeholders}) AND ${tenantScope.clause}
