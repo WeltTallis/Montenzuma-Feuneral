@@ -254,31 +254,45 @@ const Shell = styled.div`
     background: #F3F4F6 !important;
   }
 
-  /* ===== WEEK & DAY VIEW - FULL CARDS LIKE BEFORE ===== */
-  .fc .fc-timegrid-axis-cushion,
-  .fc .fc-timegrid-slot-label-cushion {
-    font-size: 11px;
-    font-weight: 600;
-    color: #999999;
-    padding: 4px 8px !important;
-  }
+  /* ===== WEEK & DAY VIEW =====
+     Same colours as everywhere else in this calendar (status palette from
+     ./statusColors, the #2E7D32 today marker, the #D32F2F now-line). What was
+     reworked is the SHAPE: the grid used to be 36 fat 50px half-hour rows with
+     a 1px border on every single one, which drew a wireframe box around the
+     whole day and left events clipped inside a 40px card. Now the hairlines sit
+     on the hour only, the axis is a quiet gutter, and each column reads as one
+     clean surface. */
 
+  /* Time gutter. Narrow, muted, and only the hour is labelled (see
+     slotLabelInterval in the view config) so the axis is a scale, not noise. */
   .fc .fc-timegrid-axis {
+    width: 56px !important;
     background: #FAFAFA !important;
     border-right: 1px solid #EEEEEE !important;
-    width: 50px !important;
   }
 
-  .fc .fc-timegrid-slot-label {
-    background: #FAFAFA !important;
-    border-bottom: 1px solid #EEEEEE !important;
-    height: 50px !important;
+  .fc .fc-timegrid-slot {
+    height: 1.5em !important;
   }
 
+  .fc .fc-timegrid-axis-cushion,
   .fc .fc-timegrid-slot-label-cushion {
     font-size: 11px !important;
     font-weight: 600 !important;
     color: #999999 !important;
+    padding: 0 8px 0 0 !important;
+    text-align: right !important;
+  }
+
+  /* The hour rule is the only line that spans the grid. Half-hour slots stay
+     unlined, which is what turns the wireframe back into a calendar. */
+  .fc .fc-timegrid-slot {
+    border-bottom: 1px solid transparent !important;
+  }
+
+  .fc .fc-timegrid-slot-minor {
+    border-top-style: dotted !important;
+    border-top-color: #F3F4F6 !important;
   }
 
   .fc .fc-timegrid-col {
@@ -286,62 +300,106 @@ const Shell = styled.div`
     background: #FFFFFF;
   }
 
+  .fc .fc-timegrid-col:last-child {
+    border-right: 0 !important;
+  }
+
   .fc .fc-timegrid-col.fc-day-today {
     background: #FAFAFA !important;
   }
 
+  /* Column header: weekday as a quiet uppercase eyebrow, the date as the thing
+     you actually scan for. Same ink, better hierarchy. */
   .fc .fc-col-header-cell {
-    padding: 8px 0 !important;
     background: #FFFFFF !important;
-    border-bottom: 2px solid #EEEEEE !important;
+    border-bottom: 1px solid #EEEEEE !important;
+    border-top: 2px solid transparent !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
+  }
+
+  .fc .fc-col-header-cell.fc-day-today {
+    border-top-color: #2E7D32 !important;
   }
 
   .fc .fc-col-header-cell-cushion {
-    font-size: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 1px !important;
+    padding: 8px 4px !important;
+    font-size: 13px !important;
     font-weight: 700 !important;
     color: #000000 !important;
     text-decoration: none !important;
+    width: 100% !important;
   }
 
   .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
     color: #2E7D32 !important;
   }
 
-  /* Event styling - Full cards like before */
+  /* Event cards.
+     The card used to be a 40px box holding a time line, a title, a destination,
+     a "from", a plate number AND a status pill — six pieces of type in a box
+     built for two, so the bottom of every job was silently clipped. Now the
+     card grows with the booking and the detail lines drop away only when the
+     card genuinely has no room, instead of all of them fighting for 40px. */
   .fc .fc-timegrid-event {
     border-radius: 6px !important;
     border: none !important;
     cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    padding: 6px 8px !important;
-    margin: 2px 3px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-    min-height: 40px !important;
+    transition: box-shadow .15s ease, transform .15s ease !important;
+    padding: 0 !important;
+    margin: 1px 3px 1px 4px !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08) !important;
+    min-height: 26px !important;
   }
 
   .fc .fc-timegrid-event:hover {
-    transform: scale(1.02) !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    transform: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.16) !important;
     z-index: 10 !important;
+  }
+
+  /* A 3px status edge gives each card the same identity as its month-view dot
+     without tinting the whole tile. */
+  .fc .fc-timegrid-event-harness > .fc-timegrid-event {
+    border-left: 3px solid transparent !important;
   }
 
   .fc .fc-timegrid-event .fc-event-main {
     display: flex !important;
     flex-direction: column !important;
-    gap: 2px !important;
-    padding: 2px !important;
+    justify-content: flex-start !important;
+    gap: 1px !important;
+    padding: 4px 6px !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
+  /* Time reads as a quiet eyebrow above the name, the way the dashboard sets
+     its micro-labels — it is context, not the headline. */
   .fc .fc-timegrid-event .fc-event-time {
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    opacity: 0.9 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: .3px !important;
+    text-transform: uppercase !important;
+    opacity: .75 !important;
     display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .fc .fc-timegrid-event .fc-event-title {
     font-weight: 700 !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
     display: block !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -350,7 +408,9 @@ const Shell = styled.div`
 
   .fc .fc-timegrid-event .fc-event-destination {
     font-size: 10px !important;
-    opacity: 0.85 !important;
+    font-weight: 500 !important;
+    line-height: 1.25 !important;
+    opacity: .85 !important;
     display: block !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -359,7 +419,7 @@ const Shell = styled.div`
 
   .fc .fc-timegrid-event .fc-event-from {
     font-size: 9px !important;
-    opacity: 0.7 !important;
+    opacity: .7 !important;
     display: block !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -368,19 +428,27 @@ const Shell = styled.div`
 
   .fc .fc-timegrid-event .fc-event-plate {
     font-size: 9px !important;
-    opacity: 0.7 !important;
+    font-weight: 600 !important;
+    opacity: .8 !important;
     display: inline-block !important;
+    font-family: var(--mono, monospace) !important;
   }
 
+  /* Status as a compact dot + word rather than a boxed pill: it keeps the
+     status legible at a glance without adding a second box per card. */
   .fc .fc-timegrid-event .fc-event-status {
     font-size: 9px !important;
-    font-weight: 600 !important;
-    display: inline-block !important;
-    padding: 1px 8px !important;
-    border-radius: 4px !important;
+    font-weight: 700 !important;
+    letter-spacing: .2px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
     align-self: flex-start !important;
-    margin-top: 2px !important;
+    margin-top: 1px !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
   }
+
 
   .fc .fc-timegrid-now-indicator-line {
     border-color: #D32F2F !important;
@@ -390,14 +458,6 @@ const Shell = styled.div`
   .fc .fc-timegrid-now-indicator-arrow {
     border-color: #D32F2F !important;
     border-width: 5px !important;
-  }
-
-  .fc .fc-timegrid-now-indicator-line::before {
-    content: '● ' !important;
-    color: #D32F2F !important;
-    font-size: 10px !important;
-    position: absolute !important;
-    left: -16px !important;
     top: -5px !important;
   }
 
@@ -966,15 +1026,24 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       border: `2px solid ${status.color}`,
     } : {};
 
-    // Week/Day view - show full card with all details
+    // Week/Day view card.
+    //
+    // Same facts as before, ordered so the card reads top-down by importance:
+    // WHEN → WHO → WHERE. Two changes make it legible instead of a stack of
+    // seven clipped lines:
+    //   • the status moved from a boxed pill sitting on the title row to a
+    //     small dot beside the name, so the title gets the full column width;
+    //   • `justifyContent` is flex-start (it was center, which vertically
+    //     centred a clipped overflow and made every card look misaligned).
+    // Colour still comes from STATUS_CONFIG — nothing about the palette changed.
     return (
       <div style={{
-        padding: isAllDay ? '3px 6px' : '4px 8px',
+        padding: isAllDay ? '3px 6px' : '4px 6px',
         width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         overflow: 'hidden',
         gap: '1px',
         boxSizing: 'border-box',
@@ -985,10 +1054,14 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             Multi-Day
           </div>
         )}
+
+        {/* WHEN — a quiet uppercase eyebrow, context for the name below. */}
         <div style={{
-          fontSize: isAllDay ? '9px' : '9px',
-          fontWeight: 600,
-          opacity: 0.85,
+          fontSize: '9px',
+          fontWeight: 700,
+          letterSpacing: '.3px',
+          textTransform: 'uppercase',
+          opacity: .75,
           display: 'flex',
           alignItems: 'center',
           gap: '3px',
@@ -996,46 +1069,49 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
         }}>
-          <Clock size={9} /> {props.startTime}{props.endTime ? ` - ${props.endTime}` : ''}
+          <Clock size={9} /> {props.startTime}{props.endTime ? ` – ${props.endTime}` : ''}
         </div>
 
+        {/* WHO — the headline, given the full width of the card. */}
         <div style={{
           fontWeight: 700,
-          fontSize: isAllDay ? '11px' : '11px',
-          lineHeight: 1.2,
+          fontSize: '12px',
+          lineHeight: 1.25,
           display: 'flex',
           alignItems: 'center',
-          gap: '4px',
+          gap: '5px',
           minWidth: 0
         }}>
+          {props.statusLabel && (
+            <span
+              aria-label={props.statusLabel}
+              title={props.statusLabel}
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: props.statusColor || status.color,
+                flexShrink: 0,
+                display: 'inline-block'
+              }}
+            />
+          )}
           <span style={{
             display: 'block',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            maxWidth: '55%',
             flex: 1,
             minWidth: 0
           }}>{props.clientName}</span>
-          {props.statusLabel && (
-            <span style={{
-              fontSize: '7px',
-              fontWeight: 600,
-              padding: '1px 6px',
-              borderRadius: '3px',
-              background: props.statusBg || props.statusColor,
-              color: props.statusColor || '#FFFFFF',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}>
-              {props.statusLabel}
-            </span>
-          )}
         </div>
+
+        {/* WHERE — destination first, then the quieter supporting detail. */}
         {props.dest && props.dest !== '—' && (
           <div style={{
-            fontSize: isAllDay ? '8px' : '8px',
-            opacity: 0.8,
+            fontSize: '10px',
+            fontWeight: 500,
+            opacity: .85,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -1048,8 +1124,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         )}
         {props.branchName && (
           <div style={{
-            fontSize: '8px',
-            opacity: 0.75,
+            fontSize: '9px',
+            opacity: .75,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -1239,6 +1315,16 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
               slotMinTime: '05:00:00',
               slotMaxTime: '23:00:00',
               slotDuration: '00:30:00',
+              // Label the hour only. At 00:30 granularity every slot carried a
+              // label, so the gutter was a wall of repeated "9:00 / 9:30 / 10:00"
+              // competing with the jobs for attention. SlotMin/Max are unchanged
+              // so a booking at 05:00 or 23:00 can never be pushed out of sight.
+              slotLabelInterval: '01:00:00',
+              // Open on the working day rather than wherever the scroll happens
+              // to be sitting — a hearse day starts early, and the old view
+              // always opened on an empty early-morning band.
+              scrollTime: '06:00:00',
+              expandRows: true,
               allDaySlot: true,
               nowIndicator: true,
               dayMaxEvents: 10,
@@ -1250,6 +1336,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
               slotMinTime: '05:00:00',
               slotMaxTime: '23:00:00',
               slotDuration: '00:30:00',
+              slotLabelInterval: '01:00:00',
+              scrollTime: '06:00:00',
+              expandRows: true,
               allDaySlot: true,
               nowIndicator: true,
               dayMaxEvents: 10,
