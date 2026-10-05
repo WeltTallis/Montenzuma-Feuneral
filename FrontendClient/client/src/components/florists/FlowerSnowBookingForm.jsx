@@ -552,6 +552,10 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
         flower_type: headline.slice(0, 255),
         flower_description: flowerNames.join(', ') || null,
         arrangements: lineItems,
+        // Which branch fulfils the order. Without this the server falls back to
+        // the literal 'Not specified', so the booking's "Flowers Coming From"
+        // read as blank even though the visitor's branch was known here.
+        branch: getBranchSlug() || getBranchId() || null,
         date: bookedDate,
         funeral_date: form.funeralDate || null,
         deceased_gender: form.gender || null,
