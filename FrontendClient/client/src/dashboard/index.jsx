@@ -226,6 +226,9 @@ function Sidebar({
   ];
   const bMax = Math.max(...calc.bmix.map((b) => b.n), 1);
 
+  const pillList = pillsFor(section);
+  const activeCount = filters.length;
+
   /* The event counter only means something once the schedule is scoped to a
      single day or week; a whole month already has its own totals on screen. */
   const isPeriod = view === "day" || view === "week";
@@ -233,7 +236,15 @@ function Sidebar({
 
   return (
     <>
+      {/* Each block below is its own panel card on the rail, opened by a
+          `.side-h` heading — the dashboard's counterpart of the deceased
+          sidebar's uppercase section headings. */}
       <div className="smc">
+        <div className="side-h">
+          <span className="side-h-ic"><Ic n="cal" s={12} /></span>
+          <span>Schedule</span>
+        </div>
+
         {/* The schedule controls live here, at the top of the calendar. Stepping
             the period always carries calM/calY with it, so this single ‹ › pair
             also walks the displayed month. */}
@@ -284,31 +295,42 @@ function Sidebar({
         <div className="smc-g">{cells}</div>
       </div>
 
-      <div className="sfilters">
-        {pillsFor(section).map(([key, label, color]) => {
-          const n = base.filter((p) => matchPill(p, section, key)).length;
-          const on = filters.includes(key);
-          return (
-            <div
-              className={`fc${on ? " on" : ""}`}
-              key={key}
-              onClick={() => onTogglePill(key)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter") onTogglePill(key); }}
-            >
-              <span className="fc-dot" style={{ background: color }} />{label}
-              <span className="fc-ct">{n}</span>
-            </div>
-          );
-        })}
-      </div>
+      {/* The pills are hidden entirely when a section has none, so an empty
+          "Filters" card never appears. */}
+      {pillList.length ? (
+        <div className="sfilters">
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="clip" s={12} /></span>
+            <span>Filters</span>
+            <em>{activeCount ? `${activeCount} active` : `${base.length} total`}</em>
+          </div>
+          {pillList.map(([key, label, color]) => {
+            const n = base.filter((p) => matchPill(p, section, key)).length;
+            const on = filters.includes(key);
+            return (
+              <div
+                className={`fc${on ? " on" : ""}`}
+                key={key}
+                onClick={() => onTogglePill(key)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") onTogglePill(key); }}
+              >
+                <span className="fc-dot" style={{ background: color }} />{label}
+                <span className="fc-ct">{n}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="san">
-        <div className="san-t"><Ic n="grid" s={11} /> Analytics</div>
-
         <div className="san-card">
-          <div className="san-t" style={{ marginBottom: 9 }}>Status Breakdown</div>
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="grid" s={12} /></span>
+            <span>Status Breakdown</span>
+            <em>{calc.total} total</em>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
             <Donut segs={segs} size={104} stroke={16} onOpenModal={onOpenModal} />
             <div className="san-leg" style={{ flex: 1 }}>
@@ -333,7 +355,11 @@ function Sidebar({
         </div>
 
         <div className="san-card">
-          <div className="san-t" style={{ marginBottom: 9 }}>Load by Branch</div>
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="bed" s={12} /></span>
+            <span>Load by Branch</span>
+            <em>{calc.bmix.length} {calc.bmix.length === 1 ? "branch" : "branches"}</em>
+          </div>
           {calc.bmix.length ? calc.bmix.map((b, i) => (
             <div
               className="hb"
@@ -358,7 +384,10 @@ function Sidebar({
         </div>
 
         <div className="san-card">
-          <div className="san-t" style={{ marginBottom: 6 }}>Storage Accrual</div>
+          <div className="side-h">
+            <span className="side-h-ic"><Ic n="clock" s={12} /></span>
+            <span>Storage Accrual</span>
+          </div>
           <div className="bigpct">{fmtK(calc.accrual)}</div>
           <div className="bigsub">Holding fees · {calc.inCare} bodies in care</div>
         </div>

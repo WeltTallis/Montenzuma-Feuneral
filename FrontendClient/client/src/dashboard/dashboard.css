@@ -533,20 +533,39 @@
    animation: rpdOvIn .25s ease
 }
 
-/* `overflow-x:hidden` is explicit: with only `overflow-y:auto` the x-axis
-   computes to `auto` as well, so any sideways escape inside the sidebar showed
-   up as a stray horizontal scrollbar. */
+/* The rail is now the app surface (`--bg`), not a card, and every block inside it
+   is an individual white panel card — the same card language the deceased-profile
+   sidebar uses (`SidebarCard`: white, 1px light border, 12px radius, soft
+   shadow). Previously the rail itself was white and the blocks were separated by
+   nothing but `border-bottom` hairlines, so the calendar, the filters and the
+   analytics all ran together as one undifferentiated strip.
+   `overflow-x:hidden` is still explicit: with only `overflow-y:auto` the x-axis
+   computes to `auto` as well, so any sideways escape would show up as a stray
+   horizontal scrollbar. */
 .rpd .side {
-   width: 300px;
+   width: 312px;
    flex-shrink: 0;
    min-width: 0;
-   background: var(--card);
+   background: var(--bg);
    border-right: 1px solid var(--brd);
    position: sticky;
    top: 52px;
    max-height: calc(100vh - 52px);
    overflow-y: auto;
-   overflow-x: hidden
+   overflow-x: hidden;
+   padding: 14px 12px 24px;
+   display: flex;
+   flex-direction: column;
+   gap: 12px;
+   scrollbar-gutter: stable
+}
+
+/* Flex children default to `min-width:auto`, which let a wide legend row push
+   the rail past its track; `flex-shrink:0` keeps each card at its natural
+   height inside the scrolling column. */
+.rpd .side>* {
+   flex-shrink: 0;
+   min-width: 0
 }
 
 .rpd .mains {
@@ -571,12 +590,11 @@
 }
 
 /* ── redesigned sidebar calendar ── */
-/* The schedule controls (Today · ‹ › · period · events · Day/Week/Month) live
-   here, at the top of the calendar — the dashboard toolbar keeps only the
-   global controls (sections, search, branch, theme, refresh, avatar). */
+/* The schedule controls (Today · ‹ › · period · Day/Week/Month) live here, at the
+   top of the calendar — the dashboard toolbar keeps only the global controls
+   (sections, search, branch, theme, refresh, avatar). */
 .rpd .smc {
-   padding: 16px 16px;
-   border-bottom: 1px solid var(--brdl)
+   padding: 14px
 }
 
 .rpd .smc-ctrl {
@@ -825,9 +843,79 @@
    flex-shrink: 0
 }
 
+/* ── sidebar panel cards ── */
+/* One shared card recipe for every block in the rail — the calendar, the filters
+   and each analytics panel. It mirrors the deceased-profile `SidebarCard`
+   (white, 1px light border, 12px radius, soft shadow) so the two sidebars read
+   as one system, and it is what makes the rail legible: the panels now sit
+   apart on the `--bg` rail instead of merging into a single white column. */
+.rpd .side .smc,
+.rpd .side .sfilters,
+.rpd .side .san-card {
+   background: var(--card);
+   border: 1px solid var(--brd);
+   border-radius: 12px;
+   box-shadow: var(--shs)
+}
+
+/* The group heading that opens each block — the dashboard's counterpart of the
+   deceased sidebar's uppercase `SidebarSection h3`. The small square icon tile
+   echoes the `NotifIcon` tile from that sidebar. */
+.rpd .side-h {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   margin-bottom: 13px;
+   min-width: 0
+}
+
+/* `:not(.side-h-ic)` is load-bearing: a bare `.side-h span` also matches the
+   icon tile, and at a higher specificity (0,2,1 vs 0,2,0) it would repaint the
+   tile's colour and add ellipsis handling to an icon. */
+.rpd .side-h span:not(.side-h-ic) {
+   font-size: 10.5px;
+   font-weight: 700;
+   color: var(--tx2);
+   text-transform: uppercase;
+   letter-spacing: 1.1px;
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis
+}
+
+.rpd .side-h-ic {
+   width: 24px;
+   height: 24px;
+   border-radius: 7px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   flex-shrink: 0;
+   background: var(--acclt);
+   color: var(--acc)
+}
+
+.rpd .side-h em {
+   margin-left: auto;
+   padding: 3px 8px;
+   border-radius: 20px;
+   background: var(--sect);
+   border: 1px solid var(--brdl);
+   font: 700 10px/1.4 var(--sans);
+   font-style: normal;
+   color: var(--tx3);
+   white-space: nowrap;
+   flex-shrink: 0
+}
+
+/* Inside the filter block the pills wrap, so the heading must claim the whole
+   row first — left as a shrink-to-fit item it could drop onto the pill grid. */
+.rpd .side .sfilters .side-h {
+   flex: 1 0 100%
+}
+
 .rpd .sfilters {
-   padding: 13px 16px;
-   border-bottom: 1px solid var(--brdl);
+   padding: 14px;
    display: flex;
    flex-wrap: wrap;
    gap: 5px
@@ -872,30 +960,51 @@
    opacity: .6
 }
 
+/* A plain grouping column on the rail — the cards inside it are spaced by the
+   rail's own `gap`, so this wrapper only has to stack them. */
 .rpd .san {
-   padding: 14px 16px 20px;
    display: flex;
    flex-direction: column;
    gap: 12px
 }
 
-.rpd .san-t {
-   font-size: 9px;
-   font-weight: 700;
-   color: var(--tx4);
-   text-transform: uppercase;
-   letter-spacing: 1.2px;
-   display: flex;
-   align-items: center;
-   gap: 6px
+.rpd .side .san-card {
+   padding: 13px
 }
 
-.rpd .san-card {
-   background: var(--card);
-   border: 1px solid var(--brd);
-   border-radius: 12px;
-   padding: 13px;
-   box-shadow: var(--shs)
+/* Rows inside a sidebar panel — the status legend and the branch bars. They carry
+   the dashed separator used by `ChargeRow` in the deceased sidebar, so a column
+   of figures reads as a tidy list instead of an unseparated block of text.
+   `tabular-nums` keeps the numbers in a clean vertical column when they differ
+   in digit count. */
+.rpd .side .san-lr {
+   padding: 7px 6px;
+   margin: 0;
+   border-radius: 6px;
+   font-variant-numeric: tabular-nums
+}
+
+.rpd .side .san-lr+.san-lr {
+   border-top: 1px dashed var(--brdl)
+}
+
+.rpd .side .san-lr:hover {
+   background: var(--sect)
+}
+
+.rpd .side .hb {
+   padding: 5px 6px;
+   margin: 0 0 2px;
+   border-radius: 6px;
+   font-variant-numeric: tabular-nums
+}
+
+.rpd .side .hb:hover {
+   background: var(--sect)
+}
+
+.rpd .side .hb:last-child {
+   margin-bottom: 0
 }
 
 .rpd .san-leg {

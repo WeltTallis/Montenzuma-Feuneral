@@ -3,8 +3,9 @@
 // Connects to real flower-samples API and flower-bookings flow
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import api from "../../api/axios";
-import { getTenantId } from "../../utils/globalAuth";
+import { getTenantId, getTenantSlug } from "../../utils/globalAuth";
 import { Flower2 } from "../../utils/icons/icons";
 import Snowfall from "./Snowfall";
 import FlowerSnowBookingForm from "./FlowerSnowBookingForm";
@@ -78,6 +79,8 @@ const CSS = `:root{
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 export default function Samples() {
+  const { slug } = useParams();
+  const tenantSlug = slug || getTenantSlug();
   const [arrangements, setArrangements] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -128,13 +131,14 @@ export default function Samples() {
       const tenantId = getTenantId();
       const res = await api.get('/florist/flower-samples/recommendations', {
         params: { tenant_id: tenantId || undefined, limit: 4 },
+        headers: tenantSlug ? { 'x-tenant-slug': tenantSlug } : undefined,
       });
       setRecommendations(res.data?.data || []);
     } catch (error) {
       console.warn('Failed to load recommendations:', error);
       setRecommendations([]);
     }
-  }, []);
+  }, [tenantSlug]);
 
   // Load arrangements from API
   useEffect(() => {
@@ -143,6 +147,7 @@ export default function Samples() {
         const tenantId = getTenantId();
         const res = await api.get('/florist/flower-samples/', {
           params: { tenant_id: tenantId || undefined },
+          headers: tenantSlug ? { 'x-tenant-slug': tenantSlug } : undefined,
         });
         const data = res.data?.data || [];
         setArrangements(data);
@@ -153,7 +158,7 @@ export default function Samples() {
     };
     load();
     loadRecommendations();
-  }, [loadRecommendations]);
+  }, [loadRecommendations, tenantSlug]);
 
   // Build stories from actual arrangements
   const stories = arrangements.map((a, i) => ({
@@ -172,7 +177,7 @@ export default function Samples() {
     setCurrent(looped);
   }, [arrangements.length]);
 
-    const arr = arrangements[current] || null;
+  const arr = arrangements[current] || null;
 
   const onPointerDown = (e) => {
     dragStart.current = e.clientX;
@@ -261,8 +266,12 @@ export default function Samples() {
   }, [arrangements, selectedIds]);
 
   const openBookingFlow = useCallback(() => {
+    if (selectedIds.length === 0 && arr) {
+      const currentId = arr.arrangement_id || arr.id;
+      if (currentId) setSelectedIds([String(currentId)]);
+    }
     setShowBooking(true);
-  }, []);
+  }, [arr, selectedIds]);
 
   return (
     <>
@@ -273,11 +282,11 @@ export default function Samples() {
         <div className="load-container">
           <div className="load-icon-wrapper">
             <svg className="load-flower" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2C13.5 5 13.5 8 12 11C10.5 8 10.5 5 12 2Z" stroke="#FF3D7F"/>
-              <path d="M12 22C10.5 19 10.5 16 12 13C13.5 16 13.5 19 12 22Z" stroke="#FF3D7F"/>
-              <path d="M2 12C5 10.5 8 10.5 11 12C8 13.5 5 13.5 2 12Z" stroke="#00E676"/>
-              <path d="M22 12C19 13.5 16 13.5 13 12C16 10.5 19 10.5 22 12Z" stroke="#00E676"/>
-              <circle cx="12" cy="12" r="2" fill="#FFC107" stroke="none"/>
+              <path d="M12 2C13.5 5 13.5 8 12 11C10.5 8 10.5 5 12 2Z" stroke="#FF3D7F" />
+              <path d="M12 22C10.5 19 10.5 16 12 13C13.5 16 13.5 19 12 22Z" stroke="#FF3D7F" />
+              <path d="M2 12C5 10.5 8 10.5 11 12C8 13.5 5 13.5 2 12Z" stroke="#00E676" />
+              <path d="M22 12C19 13.5 16 13.5 13 12C16 10.5 19 10.5 22 12Z" stroke="#00E676" />
+              <circle cx="12" cy="12" r="2" fill="#FFC107" stroke="none" />
             </svg>
           </div>
           <h3>Loading Feed</h3>
@@ -404,6 +413,7 @@ export default function Samples() {
           {showBooking && (
             <FlowerSnowBookingForm
               open={showBooking}
+              tenantSlug={tenantSlug}
               selectedArrangements={selectedArrangements}
               onBooked={() => { setShowBooking(false); setSelectedIds([]); }}
               onClose={() => setShowBooking(false)}

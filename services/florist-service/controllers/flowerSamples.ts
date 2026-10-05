@@ -261,7 +261,7 @@ const ensureLikeSchema = async (): Promise<void> => {
       []
     );
   } catch (err: any) {
-        console.warn('[FLOWERS] flower_sample_likes guard skipped:', err?.message);
+    console.warn('[FLOWERS] flower_sample_likes guard skipped:', err?.message);
   }
 };
 
@@ -781,8 +781,9 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
   try {
     await ensureLikeSchema();
     const { color, type, size } = req.query;
+    const tenantScope = buildTenantScope(req);
 
-    const cacheKey = `all_arrangements_${tenantSlug}_${color || 'all'}_${type || 'all'}_${size || 'all'}`;
+    const cacheKey = `all_arrangements_${tenantSlug}_${tenantScope.clause}_${tenantScope.params.join('_')}_${color || 'all'}_${type || 'all'}_${size || 'all'}`;
     let cached = getCached(cacheKey);
 
     if (cached) {
@@ -792,7 +793,6 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
       });
     }
 
-    const tenantScope = buildTenantScope(req);
     let sql = `
     SELECT id, arrangement_id, title, description,
            CAST(types  AS CHAR) AS types,
@@ -844,7 +844,7 @@ export const getAllFlowerArrangements = async (req: any, res: any): Promise<any>
 
 export const getRecommendedFlowerArrangements = async (req: any, res: any): Promise<any> => {
   const tenantSlug = tenantSlugOf(req) || 'default';
-  const limit = Math.min(8, Math.max(1, Number(req.query?.limit || 4))); 
+  const limit = Math.min(8, Math.max(1, Number(req.query?.limit || 4)));
 
   try {
     await ensureLikeSchema();

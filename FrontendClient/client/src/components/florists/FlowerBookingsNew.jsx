@@ -203,7 +203,7 @@ const FLX_RESPONSIVE = `
 
      
   .flx-strip {
-    overflow-x: hidden !important;
+    overflow-x: auto !important;
     overflow-y: hidden !important;
     scrollbar-width: none !important;
     width: 100% !important;
@@ -212,7 +212,7 @@ const FLX_RESPONSIVE = `
     box-sizing: border-box !important;
   }
   .flx-strip::-webkit-scrollbar { display: none !important; }
-  .flx-strip > button { flex: 1 1 0 !important; min-width: 0 !important; padding-left: 2px !important; padding-right: 2px !important; }
+  .flx-strip > button { flex: 0 0 42px !important; min-width: 42px !important; padding-left: 2px !important; padding-right: 2px !important; }
 
   /* Full calendar: 7-col grid is too tight → stack as 3-cols so labels+events read */
   .flx-cal-weekdays { grid-template-columns: repeat(3, 1fr) !important; }
@@ -350,10 +350,6 @@ const FlowerBookingsNew = () => {
   const placingRef = useRef(false);
   // Auto-scrolls the mobile date strip so today's chip is in view
   const stripRef = useRef(null);
-  // Day-chips that fit the rail's width — measured on mount/resize so the
-  // horizontal calendar never overflows the phone screen (default = 7, the
-  // same fallback listDeceased's rail uses before measuring).
-  const [stripCount, setStripCount] = useState(7);
 
   const loadArrangements = useCallback(async () => {
     try {
@@ -435,9 +431,7 @@ const FlowerBookingsNew = () => {
   }, [loadBookings, loadArrangements]);
 
   // Auto-scroll the mobile date strip so today's chip is in view.
-  // The rail is clipped (overflow-x: hidden) and always starts at today, so
-  // we scroll the rail ITSELF — never scrollIntoView, which would drag the
-  // whole page sideways on a phone.
+  // The rail starts at today; scroll it directly without moving the page.
   useEffect(() => {
     if (view !== 'list') return;
     const t = setTimeout(() => {
@@ -446,25 +440,6 @@ const FlowerBookingsNew = () => {
     }, 80);
     return () => clearTimeout(t);
   }, [view, calDate]);
-
-  // How many day-chips actually fit in the rail. Measured (not guessed) so the
-  // strip is always exactly one screen wide — phones, tablets and desktop.
-  useEffect(() => {
-    if (view !== 'list') return undefined;
-    const el = stripRef.current;
-    if (!el) return undefined;
-    const measure = () => {
-      const w = el.clientWidth;
-      if (!w) return;                       // rail hidden (desktop) — keep default
-      const fit = Math.floor(w / 46);       // ~46px per chip keeps the label readable
-      setStripCount(Math.max(3, Math.min(fit, 45)));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    window.addEventListener('resize', measure);
-    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
-  }, [view]);
 
   // The API returns the expected date in `date` (older rows may carry it as
   // `delivery_date`, sometimes as a full DATETIME) — always normalise to a
@@ -992,11 +967,14 @@ const FlowerBookingsNew = () => {
           maxWidth: '100%',
           minWidth: 0,
           boxSizing: 'border-box',
-          overflowX: 'hidden',
+          overflowX: 'auto',
           overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorX: 'contain',
+          touchAction: 'pan-x',
         }}
       >
-        {strip.slice(0, stripCount).map(day => {
+        {strip.map(day => {
           const ds = fmtDateStr(day);
           const cnt = evCountByDate[ds] || 0;
           const sel = selectedDate === ds;
@@ -1716,11 +1694,12 @@ const FlowerBookingsNew = () => {
             display: flex; gap: 4px;
             width: 100%; max-width: 100%; min-width: 0;
             box-sizing: border-box;
-            overflow-x: hidden; overflow-y: hidden;
+            overflow-x: auto; overflow-y: hidden;
+            -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; touch-action: pan-x;
             padding: 2px 2px 14px; margin-bottom: 8px;
             scrollbar-width: none;
           }
-          .flx-strip > button { flex: 1 1 0; min-width: 0; }
+          .flx-strip > button { flex: 0 0 42px; min-width: 42px; }
           .flx-strip::-webkit-scrollbar { display: none; }
         }
       `}</style>
@@ -2927,12 +2906,8 @@ const styles = {
     background: '#2F4F3E',
   },
   stripDay: {
-    // `1 1 0` — the rail only renders the chips that fit (stripCount) AND
-    // every chip may shrink from a 0 basis, so the row is always exactly the
-    // rail's width. `1 0 …` (no shrink) is what overflowed phones: 45 chips ×
-    // 38px ≈ 1900px of unshrinkable content.
-    flex: '1 1 0',
-    minWidth: '0',
+    flex: '0 0 42px',
+    minWidth: '42px',
     boxSizing: 'border-box',
     padding: '10px 4px 12px',
     borderRadius: 0,

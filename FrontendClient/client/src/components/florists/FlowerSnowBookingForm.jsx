@@ -282,7 +282,7 @@ const fmtTime = (t) => {
 
 /* main component */
 
-export default function FlowerSnowBookingForm({ open, onBooked, onClose, selectedArrangements = [] }) {
+export default function FlowerSnowBookingForm({ open, onBooked, onClose, selectedArrangements = [], tenantSlug }) {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)          // 1 arrangement, 2 details, 3 confirmation
   const [form, setForm] = useState(BLANK)
@@ -384,6 +384,8 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
         notes: notesParts || null,
         booked_by: form.name.trim() || null,
         phone: form.phone.trim() || null,
+      }, {
+        headers: tenantSlug ? { 'x-tenant-slug': tenantSlug } : undefined,
       })
       const ref = 'MH-' + Math.random().toString(36).slice(2, 6).toUpperCase()
       setConfirm({
