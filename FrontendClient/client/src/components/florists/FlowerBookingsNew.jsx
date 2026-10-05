@@ -1983,7 +1983,7 @@ const FlowerBookingsNew = () => {
         .flower-list-tools { margin: 10px 0 20px; }
         .flower-place-booking { background: linear-gradient(135deg, #EC5E93, #D6336C) !important; box-shadow: 0 5px 14px rgba(214,51,108,.2); }
         .flower-place-booking:hover { background: linear-gradient(135deg, #E04B85, #C42A61) !important; }
-        .flower-bookings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 100vh; background: #fff; }
+        .flower-bookings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 520px; min-height: 100vh; background: #fff; }
         .flower-bookings-main { min-width: 0; padding: 0 28px 48px; }
         .flower-bookings-layout .flx-split { grid-template-columns: minmax(0, 1fr) !important; }
         .flower-bookings-layout .flx-rail { display: none !important; }

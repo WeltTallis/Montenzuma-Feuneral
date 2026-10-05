@@ -49,12 +49,22 @@ const CSS = `:root{
 .mg-recommendations-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#fff;margin-bottom:10px}
 .mg-recommendations-head span{font:700 10px 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)}
 .mg-recommendations-head button{border:none;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:7px 10px;font:700 9px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+/* Nothing is selected, so there is nothing to complete. Selection is explicit
+   now (the "+" on a card), which makes this button's disabled state honest
+   instead of silently falling back to whatever slide is on screen. */
+.mg-recommendations-head button:disabled{opacity:.4;cursor:not-allowed}
 .mg-recommendations-grid{display:flex;flex-direction:column;gap:8px}
-.mg-recommendation-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px;cursor:pointer;text-align:left;color:#fff}
-.mg-recommendation-item img{width:52px;height:52px;object-fit:cover;border-radius:10px}
+.mg-recommendation-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px;transition:background .15s,border-color .15s}
+.mg-recommendation-item.picked{background:rgba(255,255,255,.16);border-color:rgba(246,240,235,.55)}
+.mg-recommendation-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;background:none;border:none;padding:0;color:#fff;cursor:pointer;text-align:left}
+.mg-recommendation-item img{width:52px;height:52px;flex:0 0 52px;object-fit:cover;border-radius:10px}
 .mg-recommendation-body{display:flex;flex-direction:column;gap:4px;min-width:0}
 .mg-recommendation-body strong{font:600 12px 'Inter',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mg-recommendation-body span{font:400 10px 'Inter',sans-serif;color:rgba(255,255,255,.7)}
+.mg-recommendation-add{flex:0 0 32px;width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;cursor:pointer;transition:background .15s,transform .12s}
+.mg-recommendation-add:hover{background:#8b4557;transform:translateY(-1px)}
+.mg-recommendation-add svg{width:15px;height:15px}
+.mg-recommendation-item.picked .mg-recommendation-add{background:#f6f0eb;border-color:#f6f0eb;color:#171310}
 .mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
 .mg-dot.active{width:22px;background:var(--gold)}
@@ -265,13 +275,14 @@ export default function Samples() {
     return arrangements.filter(a => picked.has(String(a.arrangement_id || a.id)));
   }, [arrangements, selectedIds]);
 
+  /* Opening the booking flow must NEVER pick an arrangement on the user's behalf.
+     It used to fall back to whatever slide happened to be on screen, so someone
+     who merely browsed the gallery and tapped "Complete booking" silently
+     ordered that slide. Selection is now explicit — the "+" on a slide or on a
+     recommendation card — so an empty selection really is empty. */
   const openBookingFlow = useCallback(() => {
-    if (selectedIds.length === 0 && arr) {
-      const currentId = arr.arrangement_id || arr.id;
-      if (currentId) setSelectedIds([String(currentId)]);
-    }
     setShowBooking(true);
-  }, [arr, selectedIds]);
+  }, []);
 
   return (
     <>
@@ -385,27 +396,50 @@ export default function Samples() {
             <div className="mg-recommendations">
               <div className="mg-recommendations-head">
                 <span>Most booked now</span>
-                <button onClick={openBookingFlow}>Complete booking</button>
+                <button onClick={openBookingFlow} disabled={selectedIds.length === 0}>Complete booking</button>
               </div>
               <div className="mg-recommendations-grid">
-                {recommendations.map((item) => (
-                  <button
-                    key={item.arrangement_id || item.id}
-                    className="mg-recommendation-item"
-                    onClick={() => {
-                      const idx = arrangements.findIndex((a) => (a.arrangement_id || a.id) === (item.arrangement_id || item.id));
-                      if (idx >= 0) {
-                        setCurrent(idx);
-                      }
-                    }}
-                  >
-                    <img src={pickPrimaryImage(item) || ''} alt={item.title || item.name || 'Recommended arrangement'} loading="eager" decoding="async" />
-                    <div className="mg-recommendation-body">
-                      <strong>{item.title || item.name}</strong>
-                      <span>{item.recommendation_reason || 'Popular choice'}</span>
+                {recommendations.map((item) => {
+                  const recId = String(item.arrangement_id || item.id || '');
+                  const isPicked = selectedIds.includes(recId);
+                  return (
+                    <div
+                      key={recId}
+                      className={`mg-recommendation-item${isPicked ? ' picked' : ''}`}
+                    >
+                      {/* Tapping the card itself still browses it; only the "+"
+                          adds. Keeping these separate means a client can study
+                          the recommendation and pick it deliberately. */}
+                      <button
+                        type="button"
+                        className="mg-recommendation-open"
+                        onClick={() => {
+                          const idx = arrangements.findIndex((a) => String(a.arrangement_id || a.id) === recId);
+                          if (idx >= 0) setCurrent(idx);
+                        }}
+                      >
+                        <img src={pickPrimaryImage(item) || ''} alt={item.title || item.name || 'Recommended arrangement'} loading="eager" decoding="async" />
+                        <span className="mg-recommendation-body">
+                          <strong>{item.title || item.name}</strong>
+                          <span>{item.recommendation_reason || 'Popular choice'}</span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="mg-recommendation-add"
+                        onClick={() => toggleCart(recId)}
+                        aria-label={isPicked ? `Remove ${item.title || item.name} from booking` : `Add ${item.title || item.name} to booking`}
+                        title={isPicked ? 'Remove from booking' : 'Add to booking'}
+                      >
+                        {isPicked ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12.5l4.1 4.1L19 2.5" /></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                        )}
+                      </button>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
