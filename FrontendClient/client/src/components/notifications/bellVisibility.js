@@ -12,7 +12,10 @@
  *   • /dashboard          — the main dashboard
  *   • /analytics          — the same dashboard component, under its 2nd route
  *   • /receptionist       — reception portal
- *   • /flower-samples, /flowers/new — public-facing flower screens
+ *   • /flower-samples     — public flower gallery
+ *   • /flowers            — the whole flower bookings area: list, /flowers/new
+ *                           form and /flowers/order/:id detail (one prefix
+ *                           match covers all three)
  *
  * Entries are tenant-relative paths WITHOUT a leading tenant segment, e.g.
  * "/dashboard" matches /acme/dashboard but never hides the bell because
@@ -26,7 +29,7 @@ export const BELL_HIDDEN_ROUTES = [
   '/analytics', // same dashboard component under the analytics route
   '/receptionist', // reception portal
   '/flower-samples', // public flower gallery
-  '/flowers/new', // flower booking form
+  '/flowers', // whole flower bookings area: list, /flowers/new form, /flowers/order/:id detail (prefix match covers all three)
 ];
 
 /** Strip the tenant segment (and any trailing slash) so matching is slug-proof.
