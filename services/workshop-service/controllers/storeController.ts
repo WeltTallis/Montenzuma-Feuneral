@@ -27,6 +27,60 @@ const emitNotification = async (event: string, data: any, tenantSlug: string) =>
  * no tenant_slug column is needed here.
  */
 
+/**
+ * Add the pickup/driver columns to `store_transactions` if they are missing.
+ *
+ * MySQL has no `ADD COLUMN IF NOT EXISTS`, so the column list is read once
+ * and each missing column is added individually. Failures are swallowed:
+ * a database that already has the column, or a user without ALTER rights,
+ * must not take the whole Store page down — the store still works, it just
+ * does not offer driver assignment.
+ */
+const ensureStoreColumns = async (tenantDb: string) => {
+    const wanted: Array<[string, string]> = [
+        ['driver_id', 'VARCHAR(64) NULL'],
+        ['driver_name', 'VARCHAR(200) NULL'],
+        ['destination', 'VARCHAR(255) NULL'],
+        ['pickup_status', "ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending'"],
+        ['responded_at', 'VARCHAR(255) NULL'],
+    ];
+
+    try {
+        const existing: any = await safeTenantQuery(tenantDb, 'SHOW COLUMNS FROM store_transactions');
+        const present = new Set<string>(
+            (existing || []).map((c: any) => String(c.Field || '').toLowerCase())
+        );
+
+        for (const [name, definition] of wanted) {
+            if (present.has(name)) continue;
+            try {
+                await safeTenantExecute(
+                    tenantDb,
+                    `ALTER TABLE store_transactions ADD COLUMN \`${name}\` ${definition}`
+                );
+            } catch (err: any) {
+                // ER_DUP_FIELDNAME simply means a concurrent request won the race.
+                if (!/ER_DUP_FIELDNAME|Duplicate column/i.test(String(err?.code || err?.message || ''))) {
+                    console.warn(`[WORKSHOP] Could not add '${name}' to store_transactions: ${err?.message}`);
+                }
+            }
+        }
+
+        // Index for the driver-scoped pickup feed. Guarded the same way.
+        try {
+            const idx: any = await safeTenantQuery(tenantDb, 'SHOW INDEX FROM store_transactions');
+            const hasDriverIdx = (idx || []).some((i: any) => String(i.Key_name || '').toLowerCase() === 'idx_txn_driver');
+            if (!hasDriverIdx) {
+                await safeTenantExecute(tenantDb, 'CREATE INDEX idx_txn_driver ON store_transactions (driver_id)');
+            }
+        } catch (err: any) {
+            console.warn(`[WORKSHOP] Could not index store_transactions.driver_id: ${err?.message}`);
+        }
+    } catch (err: any) {
+        console.warn(`[WORKSHOP] Could not inspect store_transactions columns: ${err?.message}`);
+    }
+};
+
 const ensureStoreTables = async (tenantDb: string) => {
     await safeTenantExecute(tenantDb, `
         CREATE TABLE IF NOT EXISTS store_items (
@@ -59,6 +113,19 @@ const ensureStoreTables = async (tenantDb: string) => {
             INDEX idx_txn_date (txn_date),
             INDEX idx_item_key (item_key)
         ) ENGINE=InnoDB`);
+    /* ── Pickup / driver assignment columns ───────────────────────────────
+
+       A DISPATCH row is what the workshop physically pulls off the store
+       shelf. Historically the driver was typed into a free-text `Driver:`
+       fragment inside `notes`, which made it impossible to answer the only
+       question that matters: "what has been assigned to ME, and have I
+       acknowledged it?". These columns give that row a first-class driver,
+       a route and a response state so the Driver Portal can list them.
+
+       Added idempotently (CREATE TABLE IF NOT EXISTS is a no-op on an
+       existing table) so live databases pick them up on the next request
+       without a separate migration step. */
+    await ensureStoreColumns(tenantDb);
     /* Monthly workshop output target, per calendar month.
 
        Keyed by year-month ("2026-10") rather than one global number, because the
@@ -429,11 +496,21 @@ const dispatchItem = async (req: Request, res: Response) => {
         if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
         await ensureStoreTables(tenantDb);
 
-        const { item_key, item_type, item_name, item_sub, unit, qty, date, picked_by, notes } = req.body;
+        const {
+            item_key, item_type, item_name, item_sub, unit, qty, date, picked_by, notes,
+            driver_id, driver_name, destination,
+        } = req.body;
         if (!item_key) return res.status(400).json({ error: 'item_key is required' });
         const q = Number(qty) || 0;
         if (q <= 0) return res.status(400).json({ error: 'Quantity must be greater than 0' });
         const txnDate = date || new Date().toISOString().slice(0, 10);
+
+        // The driver is optional — an internal branch-to-branch transfer may not
+        // involve one. When present, both the id and the display name are stored
+        // so the Driver Portal can match on either.
+        const dId = driver_id != null && driver_id !== '' ? String(driver_id) : null;
+        const dName = String(driver_name || '').trim() || null;
+        const dest = String(destination || '').trim() || null;
 
         let row: any = null;
         const existing: any = await safeTenantQuery(tenantDb, 'SELECT id, quantity FROM store_items WHERE item_key = ?', [item_key]);
@@ -451,8 +528,20 @@ const dispatchItem = async (req: Request, res: Response) => {
 
         await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = quantity - ? WHERE item_key = ?', [q, item_key]);
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO store_transactions (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-            [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 'DISPATCH', q, txnDate, picked_by || '', notes || '', new Date().toISOString()]);
+            `INSERT INTO store_transactions
+                (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes,
+                 driver_id, driver_name, destination, pickup_status, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+                item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs',
+                'DISPATCH', q, txnDate, picked_by || '', notes || '',
+                dId, dName, dest,
+                // Only ever 'pending' here — the Driver Portal's pickup feed is
+                // filtered to rows that actually have a driver, so a driverless
+                // dispatch never reaches a driver's queue.
+                'pending',
+                new Date().toISOString(),
+            ]);
 
         const updated: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items WHERE item_key = ?', [item_key]);
         const txn: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [insertResult.insertId]);
@@ -538,11 +627,127 @@ const getHistory = async (req: Request, res: Response) => {
     }
 };
 
+/* ─── DRIVER PICKUP FEED ────────────────────────────────────────────────────
+   The Driver Portal's "Pickups" tab. A pickup is a DISPATCH row that was
+   assigned to a driver: "collect N coffins from the store and take them
+   to <destination>". Only driver-bearing dispatches are returned — a
+   branch-to-branch internal move has nobody waiting on it. */
+const getDriverPickups = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+        await ensureStoreColumns(tenantDb);
+
+        const params: any[] = [];
+        const conditions: string[] = ["action = 'DISPATCH'"];
+
+        // Match on id when we have one, otherwise fall back to the name. The
+        // portal knows who it is by name; the workshop assigns by id, and a
+        // driver who re-registers keeps working through the name match.
+        const driverId = String(req.query.driver_id ?? '').trim();
+        const driverName = String(req.query.driver_name ?? '').trim();
+        if (driverId) {
+            conditions.push('driver_id = ?');
+            params.push(driverId);
+        } else if (driverName) {
+            conditions.push('LOWER(driver_name) = LOWER(?)');
+            params.push(driverName);
+        } else {
+            // No identity supplied — return nothing rather than the whole
+            // tenant's dispatch history to whoever asked.
+            return res.json([]);
+        }
+
+        const status = String(req.query.status ?? '').trim().toLowerCase();
+        if (status && ['pending', 'accepted', 'declined'].includes(status)) {
+            conditions.push('pickup_status = ?');
+            params.push(status);
+        }
+
+        const pickups: any = await safeTenantQuery(
+            tenantDb,
+            `SELECT * FROM store_transactions
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY txn_date DESC, id DESC
+             LIMIT 100`,
+            params
+        );
+
+        // Only rows that actually name a driver are pickups.
+        res.json((pickups || []).filter((p: any) => p.driver_id || p.driver_name));
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * PATCH /store/pickups/:id — the driver accepts or declines a pickup.
+ *
+ * `accepted` means "I will collect this"; `declined` means the dispatch desk
+ * needs to reassign it. Neither touches stock — the coffin has already left
+ * the shelf, this only records who is responsible for the movement.
+ */
+const respondToPickup = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+        await ensureStoreColumns(tenantDb);
+
+        const id = String(req.params.id || '');
+        const status = String(req.body?.status || '').trim().toLowerCase();
+        if (!id) return res.status(400).json({ error: 'Pickup id is required' });
+        if (!['accepted', 'declined'].includes(status)) {
+            return res.status(400).json({ error: 'status must be either "accepted" or "declined"' });
+        }
+
+        const rows: any = await safeTenantQuery(
+            tenantDb,
+            'SELECT * FROM store_transactions WHERE id = ? AND action = ?',
+            [id, 'DISPATCH']
+        );
+        if (!rows?.length) return res.status(404).json({ error: 'Pickup not found' });
+
+        await safeTenantExecute(
+            tenantDb,
+            'UPDATE store_transactions SET pickup_status = ?, responded_at = ? WHERE id = ?',
+            [status, new Date().toISOString(), id]
+        );
+
+        const updated: any = await safeTenantQuery(
+            tenantDb,
+            'SELECT * FROM store_transactions WHERE id = ?',
+            [id]
+        );
+
+        try { const io = getIO(); if (io) io.emit('store:pickup_response', updated[0]); } catch { /* socket optional */ }
+
+        await emitNotification('store-pickup-response', {
+            id: `store-pickup-${id}-${Date.now()}`,
+            transactionId: id,
+            itemName: updated[0]?.item_name || '',
+            driverName: updated[0]?.driver_name || '',
+            status,
+            title: status === 'accepted' ? 'Pickup Accepted' : 'Pickup Declined',
+            message: `${updated[0]?.driver_name || 'Driver'} ${status} the pickup of ${updated[0]?.item_name || 'item'}`,
+            type: 'store-dispatch',
+            priority: 'medium',
+        }, (req as any).tenantSlug || 'system');
+
+        res.json({ success: true, pickup: updated[0] });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 export {
     getInventory,
     dispatchItem,
     restockItem,
     getHistory,
     getTargets,
-    setTarget
+    setTarget,
+    getDriverPickups,
+    respondToPickup
 };

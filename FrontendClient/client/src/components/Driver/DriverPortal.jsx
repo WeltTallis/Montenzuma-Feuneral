@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Car, RefreshCw, CheckCircle, Phone, LogOut, Calendar, Clock,
-    AlertCircle, Truck, Loader2, Zap, Navigation, ArrowRight, Route,
-    Sun, Moon, CloudSun, User, Shield, Timer, CalendarDays, MapPin,
-    Plus
+    RefreshCw, LogOut, Calendar, Clock, AlertCircle, CheckCircle,
+    MapPin, Route as RouteIcon, Loader2, Info, Plus,
 } from '../../utils/icons/icons';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
@@ -18,14 +16,6 @@ const getUser = () => {
     try { const u = localStorage.getItem('user'); return u ? JSON.parse(u) : {}; }
     catch { return {}; }
 };
-
-const fmtTime = (d) =>
-    d ? new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--:--';
-
-const fmtDateShort = (d) =>
-    d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A';
-
-const genId = (id) => `BK-${String(id).padStart(4, '0')}`;
 
 // Resolve the TENANT-level id (never branch-scoped) — hearses & hearse
 // bookings live in ONE shared operations DB and must be scoped by tenant id
@@ -66,36 +56,37 @@ function getNairobiNow() {
     return new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
 }
 
-function relativeDate(dateStr) {
-    if (!dateStr) return null;
-    const target = new Date(dateStr);
-    const now = getNairobiNow();
-
-    const tStart = new Date(target.getFullYear(), target.getMonth(), target.getDate());
-    const nStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffMs = tStart - nStart;
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-    const timeStr = (/\d+:\d{2}/.test(String(dateStr)) || String(dateStr).includes('T'))
-        ? target.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-        : '';
-    const fullDate = target.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-    if (diffDays === 0) return { label: 'Today', sub: timeStr, urgency: 'now', full: fullDate, color: '#10B981' };
-    if (diffDays === 1) return { label: 'Tomorrow', sub: timeStr, urgency: 'soon', full: fullDate, color: '#3B82F6' };
-    if (diffDays > 1 && diffDays <= 4) return { label: `In ${diffDays} days`, sub: fullDate + ' · ' + timeStr, urgency: 'upcoming', full: fullDate, color: '#8B5CF6' };
-    if (diffDays > 4) return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#64748B' };
-    if (diffDays === -1) return { label: 'Yesterday', sub: timeStr, urgency: 'past', full: fullDate, color: '#64748B' };
-    if (diffDays < -1) return { label: `${Math.abs(diffDays)} days ago`, sub: fullDate, urgency: 'past', full: fullDate, color: '#475569' };
-
-    return { label: fullDate, sub: timeStr, urgency: 'later', full: fullDate, color: '#64748B' };
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+/* ─── date helpers ──────────────────────────────────────────────────────── */
 const pad2 = (n) => String(n).padStart(2, '0');
+const dayKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
-// Nairobi date key for a Date object → 'YYYY-MM-DD'
-const todayKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const addDays = (n, from) => {
+    const d = from ? new Date(from) : getNairobiNow();
+    d.setDate(d.getDate() + n);
+    return dayKey(d);
+};
+
+// 'YYYY-MM-DD' → { mo: 'Oct', dy: 5 } for the date cube
+const fmtDay = (ds) => {
+    const [y, m, d] = String(ds).split('-').map(Number);
+    if (!y || !m || !d) return { mo: '--', dy: '--' };
+    return {
+        mo: new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short' }),
+        dy: d,
+    };
+};
+
+// 'YYYY-MM-DD' → 'Mon, Oct 5'
+const fmtFull = (ds) =>
+    new Date(`${ds}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+const fmtTime = (d) =>
+    d ? new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+
+const fmtDateShort = (d) =>
+    d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A';
+
+const genId = (id) => `BK-${String(id ?? '').padStart(4, '0')}`;
 
 // Extract every scheduled day (YYYY-MM-DD) for a booking. booking_dates is a
 // JSON array of day strings — normalize every legacy shape we may encounter.
@@ -123,20 +114,21 @@ function bookingDateKeys(b) {
     return [];
 }
 
+const CLOSED_STATUSES = ['completed', 'cancelled', 'postponed'];
+
 // Classify a booking for the driver trip feed:
 //   'upcoming' → any scheduled day is inside the next-24h window (today/tomorrow)
 //   'overdue'  → every scheduled day has passed but the trip is still open
 //   null       → not relevant (too far out, or done / cancelled / postponed)
 function tripKind(b, now) {
     const st = String(b.status || '').toLowerCase();
-    if (['completed', 'cancelled', 'postponed'].includes(st)) return null;
+    if (CLOSED_STATUSES.includes(st)) return null;
 
     const keys = bookingDateKeys(b);
     if (!keys.length) return null;
 
-    const today = todayKey(now);
-    const [y, m, d] = today.split('-').map(Number);
-    const tomorrow = todayKey(new Date(y, m - 1, d + 1));
+    const today = dayKey(now);
+    const tomorrow = addDays(1, now);
 
     let upcoming = false;
     let allPast = true;
@@ -154,506 +146,685 @@ function tripTimeMs(b) {
     return keys.length ? new Date(`${keys[0]}T00:00:00`).getTime() : Infinity;
 }
 
-// Primary trip date — always the real scheduled day when available.
-function getTripDate(b) {
-    const keys = bookingDateKeys(b);
-    if (keys.length) return keys[0];
-    return b.created_at || null;
-}
-
-const useGreeting = () => {
-    const [now, setNow] = useState(() => getNairobiNow());
-    useEffect(() => {
-        const i = setInterval(() => setNow(getNairobiNow()), 20000);
-        return () => clearInterval(i);
-    }, []);
-
-    const h = now.getHours();
-    let text, icon, sub;
-    if (h >= 5 && h < 12) { text = 'Good Morning'; icon = Sun; sub = 'Ready for a safe drive today'; }
-    else if (h >= 12 && h < 17) { text = 'Good Afternoon'; icon = CloudSun; sub = 'Keep the momentum going'; }
-    else if (h >= 17 && h < 20) { text = 'Good Evening'; icon = Moon; sub = 'Wrapping up the day'; }
-    else if (h >= 20 && h < 23) { text = 'Good Evening'; icon = Moon; sub = 'Safe travels home'; }
-    else { text = 'Working Late'; icon = Moon; sub = 'Take care on the road'; }
-
-    return {
-        text, icon, sub,
-        timeStr: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-        dateStr: now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
-        dayNum: now.getDate(),
-        monthShort: now.toLocaleDateString('en-US', { month: 'short' }),
-    };
+// Earliest scheduled day of a booking ('YYYY-MM-DD').
+const tripDay = (b) => {
+    const keys = bookingDateKeys(b).sort();
+    return keys[0] || null;
 };
 
-/* ─── DESIGN SYSTEM (Dark Command Center) ───────────────────────────────── */
+// Departure time for the trip card — the first time-bearing column the row has.
+function tripTimeLabel(b) {
+    const raw = b.estimated_departure_time || b.start_time || b.from_timestamp || b.event_time;
+    if (!raw) return '';
+    // A date-only column would render as a misleading "12:00 AM".
+    if (!/[T ]\d{1,2}:\d{2}/.test(String(raw))) return '';
+    return fmtTime(raw);
+}
+
+/* ─── PICKUPS (workshop store dispatches) ─────────────────────────────────
+   A "pickup" is a coffin that left the workshop Store shelf and was assigned
+   to this driver — see workshop-service storeController (getDriverPickups).
+   Rows arrive as raw `store_transactions`; these helpers turn one into the
+   shape the card renders. */
+const PICK_STATUS = {
+    pending: 'pending',
+    accepted: 'accepted',
+    declined: 'declined',
+};
+
+// Which accent the card wears, by what was pulled off the shelf.
+const pickAccent = (p) => {
+    if (String(p.item_type || '').toLowerCase() === 'material') return 'blue';
+    return 'teal';
+};
+
+const pickKindTxt = (p) =>
+    String(p.item_type || '').toLowerCase() === 'material' ? 'Material Pickup' : 'Coffin Pickup';
+
+// The dispatch log packs the route and purpose into one free-text string.
+// It is written by the workshop and never structured, so every field is
+// optional and falls back to something readable.
+function parseDispatchLog(notes) {
+    const out = {};
+    const src = String(notes || '');
+    const m = src.match(/DISPATCH LOG:\s*(.*)/);
+    const body = m ? m[1] : src;
+    for (const part of body.split('|')) {
+        const idx = part.indexOf(':');
+        if (idx === -1) continue;
+        const key = part.slice(0, idx).trim().toLowerCase();
+        const val = part.slice(idx + 1).trim();
+        if (key && val) out[key] = val;
+    }
+    return out;
+}
+
+// Store transactions → pickup card model.
+function toPickup(row) {
+    const log = parseDispatchLog(row.notes);
+    const qty = Number(row.qty) || 0;
+    const unit = row.unit || 'pcs';
+    const item = row.item_name || row.item_key || 'Item';
+
+    const day = row.txn_date ? String(row.txn_date).slice(0, 10) : null;
+    const time = (log.time || '').trim();
+    const when = day
+        ? `${day === dayKey(getNairobiNow()) ? 'Today' : day === addDays(1) ? 'Tomorrow' : fmtFull(day)}${time ? ` · ${time}` : ''}`
+        : (time || 'Date to be confirmed');
+
+    return {
+        id: `PR-${String(row.id)}`,
+        rowId: row.id,
+        kind: pickKindTxt(row),
+        accent: pickAccent(row),
+        task: `Collect ${qty} ${unit} of ${item} from the store${row.item_sub ? ` (${row.item_sub})` : ''}`,
+        from: log.from && log.from !== 'N/A' ? log.from : 'Workshop Store',
+        to: row.destination || log.destination || 'To be confirmed',
+        by: row.txn_by || log['dispatched by'] || 'Workshop',
+        when,
+        contact: log['received by'] && log['received by'] !== 'None' ? log['received by'] : (row.driver_name || ''),
+        note: [log.purpose, log.remarks].filter(Boolean).join(' — ') || '',
+        status: PICK_STATUS[String(row.pickup_status || '').toLowerCase()] || 'pending',
+    };
+}
+
+/* ─── DESIGN TOKENS (pure black, teal/plum/blue/orange) ────────────────────
+   Mirrors the :root block of the reference design. Exposed as an object as
+   well so inline styles and the stylesheet can never drift apart. */
 const T = {
-    bg: '#08090A',
-    surface: '#111315',
-    surface2: '#18191C',
-    border: 'rgba(255,255,255,0.06)',
-    borderStrong: 'rgba(255,255,255,0.12)',
-    text: '#F8FAFC',
-    textDim: '#94A3B8',
-    textMute: '#64748B',
-    primary: '#6366F1',     // Indigo
-    success: '#10B981',     // Emerald
-    warning: '#F59E0B',     // Amber
-    danger: '#EF4444',       // Red
-    info: '#3B82F6',        // Blue
-    glow: 'rgba(99, 102, 241, 0.3)',
-    successGlow: 'rgba(16, 185, 129, 0.3)',
+    bg: '#000000',
+    card: '#000000',
+    card2: '#101215',
+    line: 'rgba(255,255,255,.08)',
+    line2: 'rgba(255,255,255,.16)',
+    text: '#F5F7F8',
+    dim: '#A0A8AF',
+    faint: '#6E757C',
+    teal: '#134B5F',
+    plum: '#5F0F40',
+    blue: '#00296B',
+    orange: '#E36414',
+    tealB: '#4FA8C4',
+    blueB: '#7FA6FF',
+    orangeB: '#FF8A3D',
+    plumB: '#D4699F',
+    red: '#FF5C47',
+    disp: "'Space Grotesk',sans-serif",
+    mono: "'JetBrains Mono',monospace",
+    ease: 'cubic-bezier(.22,1,.36,1)',
 };
 
 const STATUS = {
-    booked: { label: 'Booked', color: T.warning, bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)' },
-    in_transit: { label: 'In Transit', color: T.info, bg: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)' },
-    completed: { label: 'Completed', color: T.success, bg: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)' },
-    cancelled: { label: 'Cancelled', color: T.danger, bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)' },
-    postponed: { label: 'Postponed', color: T.primary, bg: 'rgba(99, 102, 241, 0.1)', border: 'rgba(99, 102, 241, 0.2)' },
+    booked: { label: 'Booked', pill: 'pill-blue' },
+    in_transit: { label: 'In Transit', pill: 'pill-orange' },
+    pending: { label: 'Pending', pill: 'pill-gray' },
+    confirmed: { label: 'Confirmed', pill: 'pill-teal' },
+    in_progress: { label: 'In Progress', pill: 'pill-orange' },
+    dispatched: { label: 'Dispatched', pill: 'pill-teal' },
+    on_hold: { label: 'On Hold', pill: 'pill-plum' },
+    completed: { label: 'Completed', pill: 'pill-teal' },
+    cancelled: { label: 'Cancelled', pill: 'pill-gray' },
+    postponed: { label: 'Postponed', pill: 'pill-plum' },
 };
 
 const LEAVE = {
-    approved: { color: T.success, label: 'Approved', bg: 'rgba(16, 185, 129, 0.1)' },
-    rejected: { color: T.danger, label: 'Rejected', bg: 'rgba(239, 68, 68, 0.1)' },
-    pending: { color: T.warning, label: 'Pending', bg: 'rgba(245, 158, 11, 0.1)' },
+    approved: { cls: 'pill-teal', c: T.tealB },
+    rejected: { cls: 'pill-orange', c: T.red },
+    pending: { cls: 'pill-gray', c: T.orangeB },
 };
 
+/* Every rule is namespaced under #rp-driver. The portal renders outside the
+   app Layout, but its <style> tag still lands in the document head — an
+   unscoped `.card` or `.btn` would restyle every other route in the app. */
 const css = `
-
-@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-@keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); } 50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); } }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
-@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-
-* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; margin: 0; padding: 0; }
-.anim-up { animation: slideUp .5s cubic-bezier(0.22, 1, 0.36, 1) forwards; opacity: 0; }
-.anim-spin { animation: spin 0.8s linear infinite; }
-.anim-pulse-glow { animation: pulseGlow 2s infinite; }
-.anim-ping { animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
-.anim-press { transition: transform 0.15s ease, background 0.2s ease; }
-.anim-press:active { transform: scale(0.97); }
-
-input, select, textarea, button { font-family: 'Inter', sans-serif; }
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: ${T.borderStrong}; border-radius: 2px; }
-
-.glass-header {
-    background: rgba(8, 9, 10, 0.7);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid ${T.border};
+#rp-driver{
+  --bg:#000000; --card:#000000; --card2:#101215;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --text:#F5F7F8; --dim:#A0A8AF; --faint:#6E757C;
+  --teal:#134B5F; --plum:#5F0F40; --blue:#00296B; --orange:#E36414;
+  --teal-b:#4FA8C4; --blue-b:#7FA6FF; --orange-b:#FF8A3D; --plum-b:#D4699F; --red:#FF5C47;
+  --disp:'Space Grotesk',sans-serif; --mono:'JetBrains Mono',monospace;
+  --ease:cubic-bezier(.22,1,.36,1);
+  min-height:100vh; background:var(--bg); color:var(--text);
+  font:400 15px/1.5 'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
 }
-.route-line {
-    background: linear-gradient(to bottom, ${T.info} 0%, ${T.primary} 50%, ${T.success} 100%);
+#rp-driver *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+#rp-driver button{ font:inherit; cursor:pointer; color:inherit; background:none; border:0; }
+#rp-driver svg{ display:block; }
+#rp-driver :focus-visible{ outline:2px solid var(--teal-b); outline-offset:2px; }
+
+@keyframes rpUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+@keyframes rpSpin{ to{ transform:rotate(360deg); } }
+#rp-driver .anim-up{ animation:rpUp .4s var(--ease) both; }
+#rp-driver .anim-spin{ animation:rpSpin .8s linear infinite; }
+#rp-driver .press{ transition:transform .12s ease; }
+#rp-driver .press:active{ transform:scale(.98); }
+@media (prefers-reduced-motion:reduce){
+  #rp-driver .anim-up{ animation:none; }
+  #rp-driver .anim-spin{ animation:none; }
+  #rp-driver .press:active{ transform:none; }
+}
+
+/* ═══ nav — name + date ═══ */
+#rp-driver .hdr{ position:sticky; top:0; z-index:50; background:rgba(0,0,0,.92);
+  backdrop-filter:blur(10px); border-bottom:1px solid rgba(255,255,255,.06); }
+#rp-driver .hdr-in{ max-width:640px; margin:0 auto; padding:12px 18px;
+  display:flex; align-items:center; justify-content:space-between; }
+#rp-driver .who b{ font:700 1.05rem var(--disp); letter-spacing:-.01em; display:block; line-height:1.15; }
+#rp-driver .who small{ font:500 .72rem 'Inter'; color:var(--faint); letter-spacing:.02em; }
+#rp-driver .hnav{ display:flex; gap:8px; align-items:center; }
+#rp-driver .gbtn{ width:34px; height:34px; border-radius:8px; display:grid; place-items:center;
+  color:var(--faint); transition:.15s; }
+#rp-driver .gbtn:hover{ background:rgba(255,255,255,.07); color:var(--text); }
+#rp-driver .exit-btn{ height:34px; padding:0 13px; border-radius:8px; display:flex; align-items:center; gap:6px;
+  background:rgba(255,92,71,.1); border:1px solid rgba(255,92,71,.4); color:var(--red);
+  font:600 .74rem 'Inter'; letter-spacing:.03em; transition:.15s; }
+#rp-driver .exit-btn:hover{ background:rgba(255,92,71,.2); }
+
+/* ═══ page ═══ */
+#rp-driver main{ max-width:640px; margin:0 auto; padding:22px 18px 90px; }
+
+/* notice */
+#rp-driver .notice{ display:flex; align-items:center; gap:9px; margin-bottom:18px; padding:11px 13px;
+  border:1px solid var(--line); border-radius:10px; font:500 .82rem 'Inter'; color:var(--dim); background:var(--card); }
+#rp-driver .notice.hot{ border-color:rgba(255,138,61,.3); background:rgba(227,100,20,.06); color:var(--text); }
+#rp-driver .notice .nd{ width:8px; height:8px; border-radius:50%; background:var(--orange-b); flex-shrink:0; }
+#rp-driver .notice.hot .nd{ background:var(--red); }
+
+/* ═══ stats — pure black cards ═══ */
+#rp-driver .stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:22px; }
+#rp-driver .stat{ background:var(--card); border:1px solid var(--line); border-radius:13px;
+  padding:15px 8px; text-align:center; }
+#rp-driver .stat .num{ font:700 1.7rem/1 var(--disp); font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em; display:flex; align-items:center; justify-content:center; gap:7px; }
+#rp-driver .stat .num i{ width:7px; height:7px; border-radius:50%; flex:none; }
+#rp-driver .stat .lbl{ font:600 .56rem 'Inter'; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--dim); margin-top:7px; }
+#rp-driver .stat.c-orange .num{ color:var(--orange-b); }
+#rp-driver .stat.c-orange .num i{ background:var(--orange-b); }
+#rp-driver .stat.c-blue .num{ color:var(--blue-b); }
+#rp-driver .stat.c-blue .num i{ background:var(--blue-b); }
+#rp-driver .stat.c-red .num{ color:var(--red); }
+#rp-driver .stat.c-red .num i{ background:var(--red); }
+
+/* ═══ tabs ═══ */
+#rp-driver .tabs{ display:flex; gap:22px; border-bottom:1px solid var(--line); margin-bottom:18px; }
+#rp-driver .tabs button{ padding:9px 1px 11px; color:var(--faint); font:600 .88rem var(--disp);
+  display:flex; align-items:center; gap:7px; border-bottom:2px solid transparent;
+  margin-bottom:-1px; transition:.15s; }
+#rp-driver .tabs button:hover{ color:var(--dim); }
+#rp-driver .tabs button.on{ color:var(--text); border-bottom-color:var(--teal-b); }
+#rp-driver .tabs button.on.k-orange{ border-bottom-color:var(--orange-b); }
+#rp-driver .tabs .n{ font:700 .62rem var(--mono); padding:2px 8px; border-radius:6px;
+  background:rgba(255,255,255,.09); color:var(--dim); }
+#rp-driver .tabs button.on .n{ background:rgba(79,168,196,.18); color:var(--teal-b); }
+#rp-driver .tabs button.on.k-orange .n{ background:rgba(255,138,61,.16); color:var(--orange-b); }
+
+/* ═══ card ═══ */
+#rp-driver .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:12px; }
+#rp-driver .card-bd{ padding:16px 17px; }
+#rp-driver .c-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+#rp-driver .c-code{ font:700 .9rem var(--mono); letter-spacing:.02em; }
+#rp-driver .c-chip{ display:inline-flex; align-items:center; gap:5px; margin-top:7px; padding:3px 9px;
+  border-radius:6px; background:rgba(255,255,255,.07); border:1px solid var(--line);
+  font:500 .62rem var(--mono); letter-spacing:.02em; color:var(--dim); }
+#rp-driver .c-chip svg{ opacity:.7; }
+
+#rp-driver .pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:7px;
+  font:700 .62rem 'Inter'; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+#rp-driver .pill i{ width:6px; height:6px; border-radius:50%; flex:none; background:#fff; }
+#rp-driver .pill-blue{ background:var(--blue); color:#D7E3FF; }
+#rp-driver .pill-blue i{ background:var(--blue-b); }
+#rp-driver .pill-orange{ background:var(--orange); color:#fff; }
+#rp-driver .pill-orange i{ background:#fff; }
+#rp-driver .pill-plum{ background:var(--plum); color:#F3D7E6; }
+#rp-driver .pill-plum i{ background:var(--plum-b); }
+#rp-driver .pill-teal{ background:var(--teal); color:#D9EEF5; }
+#rp-driver .pill-teal i{ background:var(--teal-b); }
+#rp-driver .pill-gray{ background:rgba(255,255,255,.12); color:var(--dim); }
+#rp-driver .pill-gray i{ background:var(--faint); }
+#rp-driver .tag-over{ display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px;
+  background:rgba(255,92,71,.14); border:1px solid rgba(255,92,71,.35); color:var(--red);
+  font:700 .56rem 'Inter'; letter-spacing:.06em; text-transform:uppercase; margin-top:6px; }
+
+/* date strip */
+#rp-driver .dstrip{ display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:10px;
+  background:var(--card2); border:1px solid var(--line); margin-bottom:12px; }
+#rp-driver .dstrip.hot{ background:rgba(227,100,20,.08); border-color:rgba(227,100,20,.3); }
+#rp-driver .dstrip.cool{ background:rgba(0,41,107,.32); border-color:rgba(127,166,255,.28); }
+#rp-driver .dcube{ width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,.05);
+  border:1px solid var(--line); display:flex; flex-direction:column; align-items:center;
+  justify-content:center; flex-shrink:0; }
+#rp-driver .dcube .mo{ font:700 .48rem 'Inter'; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); }
+#rp-driver .dcube .dy{ font:700 1rem/1.15 var(--disp); }
+#rp-driver .dstrip.hot .dcube{ color:var(--orange-b); border-color:rgba(255,138,61,.32); }
+#rp-driver .dstrip.cool .dcube{ color:var(--blue-b); border-color:rgba(127,166,255,.32); }
+#rp-driver .d-main{ font:600 .92rem var(--disp); }
+#rp-driver .d-main .tm{ color:var(--dim); font-weight:500; }
+#rp-driver .d-sub{ font:500 .7rem 'Inter'; color:var(--faint); margin-top:1px; }
+#rp-driver .d-tag{ margin-left:auto; padding:4px 9px; border-radius:5px; font:700 .54rem 'Inter';
+  letter-spacing:.08em; text-transform:uppercase; flex-shrink:0; }
+#rp-driver .d-tag.due{ background:var(--orange); color:#fff; }
+#rp-driver .d-tag.soon{ background:var(--blue); color:#D7E3FF; }
+#rp-driver .d-tag.past{ background:rgba(255,255,255,.1); color:var(--faint); }
+
+/* labeled rows */
+#rp-driver .kv{ border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:12px; background:var(--card2); }
+#rp-driver .kv-row{ display:flex; gap:12px; padding:10px 13px; border-bottom:1px solid var(--line); align-items:baseline; }
+#rp-driver .kv-row:last-child{ border-bottom:0; }
+#rp-driver .kv-row .k{ font:600 .55rem 'Inter'; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--faint); width:84px; flex-shrink:0; }
+#rp-driver .kv-row .v{ font:500 .92rem 'Inter'; color:var(--text); min-width:0; overflow-wrap:anywhere; }
+#rp-driver .kv-row .v.big{ font:600 1rem var(--disp); }
+#rp-driver .kv-row .v.mono{ font:600 .8rem var(--mono); letter-spacing:.02em; }
+#rp-driver .kv-row .v.o{ color:var(--orange-b); }
+#rp-driver .kv-row .v.t{ color:var(--teal-b); }
+#rp-driver .kv-row .v.it{ font-style:italic; color:var(--dim); }
+
+/* route */
+#rp-driver .route{ border:1px solid var(--line); border-radius:10px; padding:12px 14px;
+  margin-bottom:12px; background:var(--card2); }
+#rp-driver .rt-line{ display:flex; gap:12px; }
+#rp-driver .rt-rail{ display:flex; flex-direction:column; align-items:center; padding-top:4px; }
+#rp-driver .rt-dot{ width:11px; height:11px; border-radius:50%; border:2.5px solid; flex-shrink:0; background:#000; }
+#rp-driver .rt-dot.a{ border-color:var(--orange-b); }
+#rp-driver .rt-dot.b{ border-color:var(--teal-b); }
+#rp-driver .rt-rail .bar{ width:0; flex:1; min-height:30px; margin:4px 0; border-left:1.5px dashed var(--line2); }
+#rp-driver .rt-pts{ flex:1; display:flex; flex-direction:column; justify-content:space-between; gap:11px; }
+#rp-driver .rp .k{ font:600 .54rem 'Inter'; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:2px; }
+#rp-driver .rp .v{ font:600 .93rem 'Inter'; line-height:1.35; }
+
+/* task strip */
+#rp-driver .task{ display:flex; align-items:flex-start; gap:9px; padding:10px 12px; border-radius:9px;
+  margin-bottom:12px; background:rgba(227,100,20,.09); border:1px solid rgba(227,100,20,.28); }
+#rp-driver .task .tk{ font:700 .52rem 'Inter'; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--faint); padding-top:3px; flex-shrink:0; }
+#rp-driver .task .tv{ font:600 .86rem var(--disp); color:var(--orange-b); line-height:1.4; }
+#rp-driver .task.blue{ background:rgba(0,41,107,.3); border-color:rgba(127,166,255,.26); }
+#rp-driver .task.blue .tv{ color:var(--blue-b); }
+#rp-driver .task.teal{ background:rgba(19,75,95,.4); border-color:rgba(79,168,196,.3); }
+#rp-driver .task.teal .tv{ color:var(--teal-b); }
+#rp-driver .task.done{ background:rgba(255,255,255,.04); border-color:var(--line); }
+#rp-driver .task.done .tv{ color:var(--dim); }
+
+/* actions */
+#rp-driver .acts{ display:flex; gap:10px; margin-top:14px; }
+#rp-driver .btn{ flex:1; padding:13px; border-radius:9px; font:600 .88rem var(--disp);
+  color:#fff; text-align:center; transition:.15s; }
+#rp-driver .btn:hover{ filter:brightness(1.25); }
+#rp-driver .btn.teal{ background:var(--teal); }
+#rp-driver .btn.plum{ background:var(--plum); }
+#rp-driver .btn.ghost{ flex:0 0 36%; background:transparent; border:1px solid var(--line2); color:var(--dim); }
+#rp-driver .btn.ghost:hover{ border-color:var(--red); color:var(--red); filter:none; }
+#rp-driver .btn:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
+#rp-driver .done-strip{ display:flex; align-items:center; justify-content:center; gap:8px; padding:12px;
+  border-radius:9px; background:rgba(95,15,64,.3); border:1px solid rgba(212,105,159,.3);
+  color:var(--plum-b); font:600 .85rem var(--disp); margin-top:14px; }
+#rp-driver .done-strip.teal{ background:rgba(19,75,95,.5); border-color:rgba(79,168,196,.35); color:var(--teal-b); }
+
+/* leave */
+#rp-driver .leave{ background:var(--card); border:1px solid var(--line); border-radius:12px;
+  padding:13px 15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+#rp-driver .leave .lt{ font:600 .92rem var(--disp); margin-bottom:3px; }
+#rp-driver .leave .ld{ font:500 .75rem 'Inter'; color:var(--dim); display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+#rp-driver .leave .ld b{ padding:1px 7px; border-radius:5px; font:700 .6rem 'Inter'; }
+
+/* empty */
+#rp-driver .empty{ text-align:center; padding:52px 26px; border:1px dashed var(--line2); border-radius:14px; }
+#rp-driver .empty .ei{ font-size:1.7rem; margin-bottom:12px; }
+#rp-driver .empty h3{ font:700 1rem var(--disp); margin-bottom:5px; }
+#rp-driver .empty p{ font:400 .82rem/1.6 'Inter'; color:var(--faint); max-width:300px; margin:0 auto; }
+#rp-driver .empty .ea{ margin-top:16px; display:flex; justify-content:center; }
+
+
+#rp-driver .toast{ position:fixed; top:16px; left:16px; right:16px; z-index:9999; max-width:420px; margin:0 auto;
+  padding:12px 16px; border-radius:11px; background:#101215; border:1px solid var(--line2);
+  display:flex; align-items:center; gap:11px; font:500 .87rem 'Inter';
+  box-shadow:0 12px 34px rgba(0,0,0,.7); animation:rpUp .3s var(--ease) both; }
+#rp-driver .toast .ti{ width:30px; height:30px; border-radius:8px; display:grid; place-items:center; flex-shrink:0; }
+#rp-driver .toast.ok .ti{ background:rgba(79,168,196,.15); color:var(--teal-b); }
+#rp-driver .toast.err .ti{ background:rgba(255,92,71,.12); color:var(--red); }
+#rp-driver .toast.info .ti{ background:rgba(127,166,255,.12); color:var(--blue-b); }
+
+@media(max-width:430px){
+  #rp-driver .stat .num{ font-size:1.45rem; }
+  #rp-driver .kv-row .k{ width:72px; }
+  #rp-driver .tabs{ gap:16px; }
+  #rp-driver .exit-btn span{ display:none; }
+  #rp-driver .exit-btn{ width:34px; padding:0; justify-content:center; }
 }
 `;
 
-/* ─── UI COMPONENTS ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   UI COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════ */
 
 const Toast = ({ type, message, onClose }) => {
+    useEffect(() => {
+        if (!message) return undefined;
+        const t = setTimeout(() => onClose?.(), 3200);
+        return () => clearTimeout(t);
+    }, [message, onClose]);
+
     if (!message) return null;
-    const err = type === 'error';
-    const c = err ? T.danger : T.success;
-    const Icon = err ? AlertCircle : CheckCircle;
-    useEffect(() => { const t = setTimeout(() => onClose?.(), 3200); return () => clearTimeout(t); }, [message, onClose]);
+    const Icon = type === 'error' ? AlertCircle : type === 'info' ? Info : CheckCircle;
     return (
-        <div className="anim-up" style={{
-            position: 'fixed', top: 20, left: 20, right: 20, zIndex: 9999,
-            padding: '16px 20px', borderRadius: 16, background: T.surface,
-            border: `1px solid ${c}30`, color: T.text, fontSize: '.9rem', fontWeight: 500,
-            display: 'flex', alignItems: 'center', gap: 12,
-            boxShadow: `0 10px 30px rgba(0,0,0,0.5), 0 0 20px ${c}20`,
-            maxWidth: 420, margin: '0 auto',
-        }}>
-            <div style={{ width: 32, height: 32, borderRadius: 10, background: `${c}20`, color: c, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon size={18} strokeWidth={2.5} />
-            </div>
-            <span style={{ flex: 1 }}>{message}</span>
+        <div className={`toast ${type === 'error' ? 'err' : type === 'info' ? 'info' : 'ok'}`} role="status">
+            <span className="ti"><Icon size={15} strokeWidth={2.5} /></span>
+            <span>{message}</span>
         </div>
     );
 };
 
-const Plate = ({ number, model }) => {
-    if (!number) return null;
-    const n = number.replace(/\s+/g, '').toUpperCase();
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <div style={{
-                background: '#0F172A', border: '1px solid #334155',
-                borderRadius: 6, padding: '4px 10px', position: 'relative',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            }}>
-                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '.75rem', fontWeight: 700, color: '#F8FAFC', letterSpacing: '.12em', textAlign: 'center', minWidth: 48 }}>{n}</div>
-            </div>
-            {model && <span style={{ fontSize: '.55rem', color: T.textMute, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{model}</span>}
+const StatCard = ({ value, label, tone }) => (
+    <div className={`stat c-${tone}`}>
+        <div className="num">
+            {/* The dot dims to 25% at zero so a quiet stat reads as quiet. */}
+            <i style={{ opacity: value > 0 ? 1 : .25 }} />
+            <span>{value}</span>
         </div>
-    );
-};
-
-const Pill = ({ status }) => {
-    const s = STATUS[status] || { label: status || '?', color: T.textMute, bg: 'rgba(255,255,255,0.05)', border: T.border };
-    return (
-        <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 8,
-            background: s.bg, border: `1px solid ${s.border}`,
-            color: s.color, fontSize: '.65rem', fontWeight: 600,
-            letterSpacing: '.05em', textTransform: 'uppercase',
-        }}>
-            <span style={{
-                width: 6, height: 6, borderRadius: '50%', background: s.color,
-                boxShadow: `0 0 8px ${s.color}`,
-                className: status === 'in_transit' ? 'anim-pulse-glow' : undefined,
-            }} />
-            {s.label}
-        </span>
-    );
-};
-
-const StatCard = ({ value, label, color, icon: Icon, pulse }) => (
-    <div style={{
-        flex: 1, padding: '18px 12px', textAlign: 'center',
-        background: T.surface, borderRadius: 16,
-        border: `1px solid ${T.border}`,
-        position: 'relative', overflow: 'hidden'
-    }}>
-        <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: `${color}15`, border: `1px solid ${color}25`,
-            color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 12px', position: 'relative',
-        }}>
-            <Icon size={18} strokeWidth={2} />
-            {pulse && (
-                <span style={{
-                    position: 'absolute', top: -2, right: -2,
-                    width: 10, height: 10, borderRadius: '50%',
-                    background: color, border: `2px solid ${T.surface}`,
-                }} />
-            )}
-        </div>
-        <div style={{
-            fontSize: '1.75rem', fontWeight: 700, color: T.text,
-            lineHeight: 1, marginBottom: 6, fontFamily: "'Space Grotesk', sans-serif",
-            fontVariantNumeric: 'tabular-nums', letterSpacing: '-.03em',
-        }}>{value}</div>
-        <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</div>
+        <div className="lbl">{label}</div>
     </div>
 );
 
-const DateBadge = ({ booking }) => {
-    const dateStr = getTripDate(booking);
-    const rel = relativeDate(dateStr);
-    if (!rel) return null;
-
-    const isUrgent = rel.urgency === 'now';
-    const isSoon = rel.urgency === 'soon';
-    const isPast = rel.urgency === 'past';
-
-    return (
-        <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 14px',
-            background: isUrgent ? `${T.success}08` : isSoon ? `${T.info}06` : T.surface2,
-            borderRadius: 12,
-            border: `1px solid ${isUrgent ? T.success + '30' : isSoon ? T.info + '30' : T.border}`,
-            marginBottom: 16,
-        }}>
-            <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: isUrgent ? `${T.success}15` : isSoon ? `${T.info}15` : `${T.textMute}10`,
-                border: `1px solid ${isUrgent ? T.success + '30' : isSoon ? T.info + '30' : T.border}`,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-                {dateStr && (
-                    <>
-                        <span style={{ fontSize: '.5rem', fontWeight: 700, color: rel.color, textTransform: 'uppercase', lineHeight: 1, letterSpacing: '.05em' }}>
-                            {new Date(dateStr).toLocaleDateString('en-US', { month: 'short' })}
-                        </span>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, color: rel.color, lineHeight: 1.1, fontFamily: "'Space Grotesk', sans-serif" }}>
-                            {new Date(dateStr).getDate()}
-                        </span>
-                    </>
-                )}
-            </div>
-            <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '.85rem', fontWeight: 600, color: T.text, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {isUrgent && <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.success, boxShadow: `0 0 10px ${T.success}` }} />}
-                    {rel.label}
-                </div>
-                <div style={{ fontSize: '.7rem', color: T.textMute, fontWeight: 500 }}>{rel.sub}</div>
-            </div>
-            {isUrgent && (
-                <div style={{ padding: '5px 10px', borderRadius: 8, background: `${T.success}15`, border: `1px solid ${T.success}30`, color: T.success, fontSize: '.55rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Timer size={10} /> Due
-                </div>
-            )}
-            {isSoon && (
-                <div style={{ padding: '5px 10px', borderRadius: 8, background: `${T.info}15`, border: `1px solid ${T.info}30`, color: T.info, fontSize: '.55rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <CalendarDays size={10} /> Soon
-                </div>
-            )}
-            {isPast && (
-                <div style={{ padding: '5px 10px', borderRadius: 8, background: `${T.textMute}10`, border: `1px solid ${T.border}`, color: T.textMute, fontSize: '.55rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-                    Past
-                </div>
-            )}
-        </div>
-    );
+const Pill = ({ status }) => {
+    const s = STATUS[String(status || '').toLowerCase()]
+        || { label: status || 'Unknown', pill: 'pill-gray' };
+    return <span className={`pill ${s.pill}`}><i />{s.label}</span>;
 };
 
-const TripCard = ({ booking, onStatusChange, i, overdue }) => {
-    const b = booking;
-    const sc = STATUS[b.status] || {};
-    const accent = sc.color || T.primary;
-
-    return (
-        <div className="anim-up" style={{
-            background: T.surface, borderRadius: 20,
-            marginBottom: 16, overflow: 'hidden',
-            border: `1px solid ${T.border}`,
-            animationDelay: `${(i || 0) * .05}s`,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-        }}>
-            <div style={{ height: 4, background: `linear-gradient(90deg, ${accent}, transparent)` }} />
-            <div style={{ padding: '20px 18px' }}>
-
-                {/* Header Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: `${accent}15`, border: `1px solid ${accent}25`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Truck size={18} strokeWidth={2} />
-                        </div>
-                        <div>
-                            <div style={{ color: T.text, fontSize: '.9rem', fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-.01em' }}>{genId(b.booking_id)}</div>
-                            <div style={{ fontSize: '.65rem', color: T.textMute, marginTop: 2, fontWeight: 500 }}>
-                                Created {fmtDateShort(b.created_at)} at {fmtTime(b.created_at)}
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        <Pill status={b.status} />
-                        {overdue && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 8, background: `${T.danger}12`, border: `1px solid ${T.danger}35`, color: T.danger, fontSize: '.55rem', fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                                <AlertCircle size={10} strokeWidth={2.5} /> Overdue
-                            </span>
-                        )}
-                    </div>
+const RouteBlock = ({ from, to, fromLabel = 'Pickup', toLabel = 'Destination' }) => (
+    <div className="route">
+        <div className="rt-line">
+            <div className="rt-rail">
+                <span className="rt-dot a" />
+                <span className="bar" />
+                <span className="rt-dot b" />
+            </div>
+            <div className="rt-pts">
+                <div className="rp">
+                    <div className="k">{fromLabel}</div>
+                    <div className="v">{from || 'N/A'}</div>
                 </div>
-
-                <DateBadge booking={b} />
-
-                {/* Client Info */}
-                <div style={{
-                    marginBottom: 16, padding: '14px 16px',
-                    background: T.surface2, borderRadius: 14,
-                    border: `1px solid ${T.border}`,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Client</div>
-                        <div style={{ fontWeight: 600, fontSize: '1rem', color: T.text, marginBottom: 4, fontFamily: "'Space Grotesk', sans-serif" }}>{b.client_name}</div>
-                        {b.client_phone && (
-                            <div style={{ fontSize: '.75rem', color: T.textDim, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
-                                <Phone size={11} style={{ color: T.textMute }} /> {b.client_phone}
-                            </div>
-                        )}
-                    </div>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: `${accent}10`, border: `1px solid ${accent}20`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
-                        <User size={16} />
-                    </div>
+                <div className="rp">
+                    <div className="k">{toLabel}</div>
+                    <div className="v">{to || 'N/A'}</div>
                 </div>
-
-                {/* Route Timeline */}
-                <div style={{ marginBottom: 16, padding: '16px', background: T.surface2, borderRadius: 14, border: `1px solid ${T.border}` }}>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
-                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: `${T.danger}20`, border: `2px solid ${T.danger}`, boxShadow: `0 0 8px ${T.danger}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <div style={{ width: 4, height: 4, borderRadius: '50%', background: T.danger }} />
-                            </div>
-                            <div className="route-line" style={{ width: 2, flex: 1, minHeight: 40, margin: '4px 0' }} />
-                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: `${T.success}20`, border: `2px solid ${T.success}`, boxShadow: `0 0 8px ${T.success}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <div style={{ width: 4, height: 4, borderRadius: '50%', background: T.success }} />
-                            </div>
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 12 }}>
-                            <div>
-                                <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 3 }}>Pickup</div>
-                                <div style={{ fontSize: '.85rem', color: T.text, fontWeight: 500, lineHeight: 1.3 }}>{b.from_location || b.destination || 'N/A'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 3 }}>Destination</div>
-                                <div style={{ fontSize: '.85rem', color: T.text, fontWeight: 500, lineHeight: 1.3 }}>{b.destination || 'N/A'}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{ height: 1, background: T.border, margin: '14px 0' }} />
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${accent}10`, border: `1px solid ${accent}20`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Car size={15} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '.55rem', color: T.textMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Vehicle</div>
-                                <div style={{ fontSize: '.8rem', color: T.text, fontWeight: 600, marginTop: 2, fontFamily: "'Space Grotesk', sans-serif" }}>{b.vehicle_name || b.model || 'Assigned'}</div>
-                            </div>
-                        </div>
-                        <Plate number={b.plate_number || b.number_plate} model={b.model} />
-                    </div>
-                </div>
-
-                {/* Actions */}
-                {b.status === 'booked' && (
-                    <button onClick={() => onStatusChange(b.booking_id, 'in_transit')} className="anim-press" style={{
-                        width: '100%', padding: '16px', border: 'none', borderRadius: 14, cursor: 'pointer',
-                        background: `linear-gradient(135deg, ${T.primary}, #4F46E5)`,
-                        color: '#FFFFFF', fontWeight: 700, fontSize: '.9rem',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: `0 4px 20px ${T.glow}`, transition: 'all .2s', fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-.01em'
-                    }}>
-                        <Zap size={18} strokeWidth={2.5} /> Accept Trip
-                        <ArrowRight size={15} style={{ opacity: .8 }} />
-                    </button>
-                )}
-                {b.status === 'in_transit' && (
-                    <button onClick={() => onStatusChange(b.booking_id, 'completed')} className="anim-press" style={{
-                        width: '100%', padding: '16px', border: 'none', borderRadius: 14, cursor: 'pointer',
-                        background: `linear-gradient(135deg, ${T.success}, #059669)`,
-                        color: '#FFFFFF', fontWeight: 700, fontSize: '.9rem',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: `0 4px 20px ${T.successGlow}`, transition: 'all .2s', fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-.01em'
-                    }}>
-                        <CheckCircle size={18} strokeWidth={2.5} /> Complete Trip
-                    </button>
-                )}
             </div>
         </div>
-    );
-};
-
-const LeaveCard = ({ leave }) => {
-    const s = (leave.status || 'pending').toLowerCase();
-    const c = LEAVE[s] || LEAVE.pending;
-
-    const startDate = leave.start_date ? new Date(leave.start_date) : null;
-    const endDate = leave.end_date ? new Date(leave.end_date) : null;
-    const relStart = relativeDate(leave.start_date);
-
-    const daysCount = startDate && endDate ? Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1 : null;
-
-    return (
-        <div style={{
-            background: T.surface, borderRadius: 16, padding: '16px 18px',
-            marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            border: `1px solid ${T.border}`, boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: c.bg, border: `1px solid ${c.color}30`, color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Calendar size={18} />
-                </div>
-                <div>
-                    <div style={{ fontWeight: 600, fontSize: '.9rem', color: T.text, marginBottom: 4, fontFamily: "'Space Grotesk', sans-serif" }}>{leave.leave_type || 'Leave'}</div>
-                    <div style={{ fontSize: '.7rem', color: T.textMute, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
-                        <Clock size={11} />
-                        {startDate ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
-                        {' — '}
-                        {endDate ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                        {daysCount && daysCount > 0 && (
-                            <span style={{ padding: '2px 7px', borderRadius: 6, background: c.bg, color: c.color, fontSize: '.6rem', fontWeight: 700, marginLeft: 4 }}>{daysCount}d</span>
-                        )}
-                    </div>
-                    {relStart && <div style={{ fontSize: '.65rem', color: relStart.color, fontWeight: 600, marginTop: 3 }}>{relStart.label}</div>}
-                </div>
-            </div>
-            <span style={{ padding: '5px 12px', borderRadius: 8, background: c.bg, border: `1px solid ${c.color}30`, color: c.color, fontSize: '.6rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{c.label}</span>
-        </div>
-    );
-};
-
-const ApplyLeaveBtn = ({ children, onClick }) => (
-    <button
-        onClick={onClick}
-        style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 16px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 600,
-            fontSize: '.78rem',
-            cursor: 'pointer',
-            fontFamily: 'Inter, sans-serif',
-            boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2), 0 2px 4px -1px rgba(59, 130, 246, 0.1)', // Completed boxShadow
-            transition: 'all 0.2s ease-in-out'
-        }}
-    >
-        {children}
-    </button>
+    </div>
 );
 
-
-
-const Empty = ({ icon: Icon, title, sub }) => (
-    <div style={{ textAlign: 'center', padding: '64px 28px', background: T.surface, borderRadius: 20, border: `1px dashed ${T.border}` }}>
-        <div style={{ width: 60, height: 60, borderRadius: '50%', background: T.surface2, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', color: T.textMute }}>
-            <Icon size={26} />
-        </div>
-        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: T.text, marginBottom: 6, fontFamily: "'Space Grotesk', sans-serif" }}>{title}</div>
-        <div style={{ fontSize: '.8rem', color: T.textMute, lineHeight: 1.6, maxWidth: 280, margin: '0 auto' }}>{sub}</div>
+const Empty = ({ emoji, title, sub, action }) => (
+    <div className="empty">
+        <div className="ei">{emoji}</div>
+        <h3>{title}</h3>
+        <p>{sub}</p>
+        {action && <div className="ea">{action}</div>}
     </div>
 );
 
 const Loading = ({ text }) => (
-    <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <div style={{ width: 48, height: 48, margin: '0 auto 16px', borderRadius: 14, background: T.surface, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Loader2 size={22} className="anim-spin" style={{ color: T.primary }} />
+    <div className="empty" style={{ borderStyle: 'solid' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+            <Loader2 size={26} className="anim-spin" style={{ color: T.tealB }} />
         </div>
-        <div style={{ fontSize: '.85rem', fontWeight: 600, color: T.textMute, fontFamily: "'Inter',sans-serif" }}>{text}</div>
+        <p style={{ margin: 0 }}>{text}</p>
     </div>
 );
 
-/* ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════
+   CARDS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const clockIcon = <Clock size={10} strokeWidth={2.4} />;
+
+const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
+    const now = getNairobiNow();
+    const ds = tripDay(b);
+    const today = dayKey(now);
+    const tomorrow = addDays(1, now);
+
+    const urgent = ds === today;
+    const soon = ds === tomorrow;
+    const f = ds ? fmtDay(ds) : { mo: '--', dy: '--' };
+    const stripCls = urgent ? 'hot' : soon ? 'cool' : '';
+    const time = tripTimeLabel(b);
+
+    const vehicle = b.vehicle_name || b.hearse_name || b.model || 'Assigned';
+    const plate = b.plate_number || b.number_plate || '';
+
+    const action = b.status === 'in_transit'
+        ? <button className="btn plum press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'completed')}>✓&nbsp; Complete Trip</button>
+        : <button className="btn teal press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'in_transit')}>Accept Trip →</button>;
+
+    return (
+        <article className="card anim-up" style={{ animationDelay: `${i * .05}s` }}>
+            <div className="card-bd">
+                <div className="c-top">
+                    <div>
+                        <div className="c-code">{genId(b.booking_id)}</div>
+                        <span className="c-chip">{clockIcon} Created {fmtDateShort(b.created_at)}{b.created_at ? ` · ${fmtTime(b.created_at)}` : ''}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <Pill status={b.status} />
+                        {overdue && <span className="tag-over">⚠ Overdue</span>}
+                    </div>
+                </div>
+
+                {ds && (
+                    <div className={`dstrip ${stripCls}`}>
+                        <div className="dcube">
+                            <span className="mo">{f.mo}</span>
+                            <span className="dy">{f.dy}</span>
+                        </div>
+                        <div>
+                            <div className="d-main">
+                                {urgent ? 'Today' : soon ? 'Tomorrow' : fmtFull(ds)}
+                                {time && <span className="tm"> · {time}</span>}
+                            </div>
+                            <div className="d-sub">{fmtFull(ds)}</div>
+                        </div>
+                        <span className={`d-tag ${urgent ? 'due' : soon ? 'soon' : 'past'}`}>
+                            {urgent ? 'Due' : soon ? 'Soon' : 'Date'}
+                        </span>
+                    </div>
+                )}
+
+                <div className="kv">
+                    <div className="kv-row">
+                        <span className="k">Client</span>
+                        <span className="v big">{b.client_name || 'N/A'}</span>
+                    </div>
+                    {b.client_phone && (
+                        <div className="kv-row">
+                            <span className="k">Phone</span>
+                            <span className="v mono">{b.client_phone}</span>
+                        </div>
+                    )}
+                </div>
+
+                <RouteBlock
+                    from={b.from_location || b.origin || b.departure_point}
+                    to={b.destination || b.to_location}
+                />
+
+                <div className="kv" style={{ marginBottom: 0 }}>
+                    <div className="kv-row">
+                        <span className="k">Vehicle</span>
+                        <span className="v">{vehicle}</span>
+                    </div>
+                    {plate && (
+                        <div className="kv-row">
+                            <span className="k">Plate</span>
+                            <span className="v mono t">{plate}</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="acts">{action}</div>
+            </div>
+        </article>
+    );
+};
+
+const PickupCard = ({ pickup: p, onRespond, i, busy }) => {
+    const done = p.status !== 'pending';
+
+    const pillCls = done
+        ? (p.status === 'accepted' ? 'pill-teal' : 'pill-gray')
+        : (p.accent === 'blue' ? 'pill-blue' : 'pill-teal');
+
+    const body = done ? (
+        <div className={`done-strip ${p.status === 'accepted' ? 'teal' : ''}`}>
+            ✓&nbsp; {p.status === 'accepted' ? 'Accepted — dispatch notified' : 'Declined — dispatch notified'}
+        </div>
+    ) : (
+        <div className="acts">
+            <button className="btn ghost press" disabled={busy} onClick={() => onRespond(p.rowId, 'declined')}>Decline</button>
+            <button className="btn teal press" disabled={busy} onClick={() => onRespond(p.rowId, 'accepted')}>✓&nbsp; Confirm</button>
+        </div>
+    );
+
+    return (
+        <article className="card anim-up" style={{ animationDelay: `${i * .05}s` }}>
+            <div className="card-bd">
+                <div className="c-top">
+                    <div>
+                        <div className="c-code">{p.id}</div>
+                        <span className="c-chip">{clockIcon} Dispatched by {p.by}</span>
+                    </div>
+                    <span className={`pill ${pillCls}`}><i />{done ? p.status : p.kind}</span>
+                </div>
+
+                <div className={`task ${done ? 'done' : p.accent}`}>
+                    <span className="tk">Task</span>
+                    <span className="tv">{p.task}</span>
+                </div>
+
+                <div className="kv">
+                    <div className="kv-row">
+                        <span className="k">When</span>
+                        <span className="v big o">{p.when}</span>
+                    </div>
+                    {p.contact && (
+                        <div className="kv-row">
+                            <span className="k">Contact</span>
+                            <span className="v mono">{p.contact}</span>
+                        </div>
+                    )}
+                </div>
+
+                <RouteBlock from={p.from} to={p.to} fromLabel="From" toLabel="To" />
+
+                {p.note && (
+                    <div className="kv" style={{ marginBottom: 0 }}>
+                        <div className="kv-row">
+                            <span className="k">Note</span>
+                            <span className="v it">{p.note}</span>
+                        </div>
+                    </div>
+                )}
+
+                {body}
+            </div>
+        </article>
+    );
+};
+
+const LeaveCard = ({ leave: l, i }) => {
+    const s = String(l.status || 'pending').toLowerCase();
+    const meta = LEAVE[s] || LEAVE.pending;
+
+    const start = l.start_date ? new Date(l.start_date) : null;
+    const end = l.end_date ? new Date(l.end_date) : null;
+    const days = start && end && !Number.isNaN(start) && !Number.isNaN(end)
+        ? Math.round((end - start) / 86400000) + 1
+        : null;
+
+    return (
+        <div className="leave anim-up" style={{ animationDelay: `${i * .05}s` }}>
+            <div>
+                <div className="lt">{l.leave_type || l.type || 'Leave'}</div>
+                <div className="ld">
+                    🕐 {start ? start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+                    {' — '}
+                    {end ? end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                    {days > 0 && (
+                        <b style={{ background: `${meta.c}1f`, color: meta.c }}>{days}d</b>
+                    )}
+                </div>
+            </div>
+            <span className={`pill ${meta.cls}`}>
+                <i style={{ background: meta.c }} />
+                {meta === LEAVE.pending ? 'pending' : s}
+            </span>
+        </div>
+    );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
-   ═══════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════════════ */
 const DriverPortal = () => {
     const navigate = useNavigate();
     const { socket, connected } = useSocket();
+
     const [bookings, setBookings] = useState([]);
+    const [pickups, setPickups] = useState([]);
     const [leaves, setLeaves] = useState([]);
     const [loadingB, setLoadingB] = useState(true);
+    const [loadingP, setLoadingP] = useState(true);
     const [loadingL, setLoadingL] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [tab, setTab] = useState('bookings');
+    const [info, setInfo] = useState('');
+    const [tab, setTab] = useState('trips');
     const [refreshing, setRefreshing] = useState(false);
+    const [busy, setBusy] = useState(false);
 
     const slug = getTenantSlug();
     const user = getUser();
-    const g = useGreeting();
-    const GI = g.icon;
+    const driverName = user?.name || user?.full_name || user?.driver_name || '';
+    const first = driverName ? String(driverName).trim().split(' ')[0] : 'Driver';
 
+    const say = useCallback((setter, msg) => {
+        setter(msg);
+        if (msg) setTimeout(() => setter(''), 3200);
+    }, []);
+
+    /* ─── data ─── */
     const loadB = useCallback(async (silent = false) => {
         if (silent) setRefreshing(true); else setLoadingB(true);
-        setError('');
         try {
             const r = await fetch(`${API_BASE_URL}/hearse-bookings?t=${Date.now()}`, { headers: getAuthHeaders() });
-            const t = await r.text();
-            try {
-                const d = JSON.parse(t);
-                if (d.status === 'success' || d.bookings) setBookings(d.bookings || []);
-                else setError(d.message || 'Failed to load');
-            } catch { setError('Invalid response'); }
-        } catch (e) { setError(e.message || 'Network error'); }
-        finally { setLoadingB(false); setRefreshing(false); }
+            const d = JSON.parse(await r.text());
+            if (d.status === 'success' || d.bookings) setBookings(d.bookings || []);
+            else if (!silent) setError(d.message || 'Failed to load trips');
+        } catch (e) {
+            if (!silent) setError(e.message || 'Network error');
+        } finally { setLoadingB(false); setRefreshing(false); }
     }, []);
+
+    const loadP = useCallback(async (silent = false) => {
+        if (silent) setRefreshing(true); else setLoadingP(true);
+        // Without a name there is nothing to scope to, and the endpoint
+        // refuses anyway — so skip rather than ask for the whole tenant's log.
+        if (!driverName) { setPickups([]); setLoadingP(false); return; }
+        try {
+            const r = await fetch(
+                `${API_BASE_URL}/workshop/store/pickups?driver_name=${encodeURIComponent(driverName)}&t=${Date.now()}`,
+                { headers: getAuthHeaders() }
+            );
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const rows = await r.json();
+            setPickups(Array.isArray(rows) ? rows.map(toPickup) : []);
+        } catch (e) {
+            // A missing pickup feed must not take down the whole portal.
+            console.warn('[DriverPortal] Pickups unavailable:', e.message);
+            setPickups([]);
+        } finally { setLoadingP(false); setRefreshing(false); }
+    }, [driverName]);
 
     const loadL = useCallback(async () => {
         setLoadingL(true);
@@ -668,10 +839,10 @@ const DriverPortal = () => {
 
     useEffect(() => {
         if (!slug || slug === 'default') { setError('No tenant configured.'); return; }
-        loadB(); loadL();
-    }, [slug, loadB, loadL]);
+        loadB(); loadP(); loadL();
+    }, [slug, loadB, loadP, loadL]);
 
-    useEffect(() => {
+useEffect(() => {
         if (!socket || !connected) return;
         const handleNewBooking = (data) => {
             if (data.booking) setBookings(prev => [data.booking, ...prev]);
@@ -680,35 +851,76 @@ const DriverPortal = () => {
         };
         const handleStatusUpdate = (data) => {
             if (data.booking_id && data.status) {
-                setBookings(prev => prev.map(b => b.booking_id === data.booking_id ? { ...b, status: data.status, ...(data.booking || {}) } : b));
+                setBookings(prev => prev.map(b => b.booking_id === data.booking_id
+                    ? { ...b, status: data.status, ...(data.booking || {}) }
+                    : b));
             } else loadB(true);
             setRefreshing(false);
         };
+        const handlePickup = () => loadP(true);
         socket.on('new_booking', handleNewBooking);
         socket.on('booking_status_updated', handleStatusUpdate);
-        socket.on('booking_postponed', () => loadB(true));
+        socket.on('booking_postponed', handlePickup);
+        socket.on('store:dispatch', handlePickup);
+        socket.on('store:pickup_response', handlePickup);
         return () => {
             socket.off('new_booking', handleNewBooking);
             socket.off('booking_status_updated', handleStatusUpdate);
-            socket.off('booking_postponed');
+            socket.off('booking_postponed', handlePickup);
+            socket.off('store:dispatch', handlePickup);
+            socket.off('store:pickup_response', handlePickup);
         };
-    }, [loadB, socket, connected]);
+    }, [loadB, loadP, socket, connected]);
 
-    // Keep the 24h trip feed fresh automatically.
+    // Keep the feeds fresh without the driver having to pull-to-refresh.
     useEffect(() => {
-        const t = setInterval(() => loadB(true), 5 * 60 * 1000);
+        const t = setInterval(() => { loadB(true); loadP(true); }, 5 * 60 * 1000);
         return () => clearInterval(t);
-    }, [loadB]);
+    }, [loadB, loadP]);
 
+    /* ─── actions ─── */
     const changeStatus = async (id, s) => {
+        setBusy(true);
         try {
             const h = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-            const r = await fetch(`${API_BASE_URL}/hearse-bookings/${id}/status`, { method: 'PUT', headers: h, body: JSON.stringify({ status: s }) });
+            const r = await fetch(`${API_BASE_URL}/hearse-bookings/${id}/status`, {
+                method: 'PUT', headers: h, body: JSON.stringify({ status: s }),
+            });
             if (!r.ok) throw new Error();
-            setSuccess(`Trip ${STATUS[s]?.label || s}`);
-            setTimeout(() => setSuccess(''), 3000);
+            say(setSuccess, s === 'in_transit'
+                ? `Trip ${genId(id)} accepted — you're en route`
+                : `Trip ${genId(id)} completed. Well done.`);
             loadB(true);
-        } catch { setError('Failed to update.'); setTimeout(() => setError(''), 3500); }
+        } catch {
+            say(setError, 'Failed to update the trip.');
+        } finally { setBusy(false); }
+    };
+
+    const respondPickup = async (id, status) => {
+        setBusy(true);
+        // Optimistic: the card flips immediately, and a failure reloads the
+        // truth so the driver is never left looking at a lie.
+        setPickups(prev => prev.map(p => (p.rowId === id ? { ...p, status } : p)));
+        try {
+            const r = await fetch(`${API_BASE_URL}/workshop/store/pickups/${id}`, {
+                method: 'PATCH',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            say(setSuccess, status === 'accepted'
+                ? 'Pickup confirmed — dispatch notified'
+                : 'Pickup declined — dispatch notified');
+            loadP(true);
+        } catch {
+            say(setError, 'Could not update the pickup.');
+            loadP(true);
+        } finally { setBusy(false); }
+    };
+
+    const refresh = () => {
+        setRefreshing(true);
+        setTimeout(() => { loadB(true); loadP(true); loadL(); }, 700);
     };
 
     const logout = () => {
@@ -717,176 +929,158 @@ const DriverPortal = () => {
         sessionStorage.clear(); navigate('/login');
     };
 
-    // Only trips that matter to the driver RIGHT NOW:
-    //   • scheduled inside the next-24h window, or
-    //   • past bookings whose status is still open (not completed).
+    /* ─── derived ─── */
     const nowN = getNairobiNow();
     const rated = bookings
         .map(b => ({ b, kind: tripKind(b, nowN) }))
         .filter(x => x.kind)
         .sort((a, z) => (a.kind === z.kind ? tripTimeMs(a.b) - tripTimeMs(z.b) : a.kind === 'upcoming' ? -1 : 1));
+
     const active = rated.map(x => x.b);
     const upcomingCount = rated.filter(x => x.kind === 'upcoming').length;
     const overdueCount = rated.filter(x => x.kind === 'overdue').length;
     const overdueIds = new Set(rated.filter(x => x.kind === 'overdue').map(x => x.b.booking_id));
     const transit = bookings.filter(b => b.status === 'in_transit').length;
-    const first = user?.name ? user.name.split(' ')[0] : 'Driver';
+    const pendingPicks = pickups.filter(p => p.status === 'pending').length;
 
-    return (
-        <div style={{
-            minHeight: '100vh', background: T.bg,
-            fontFamily: "'Inter',sans-serif", color: T.text,
-            WebkitFontSmoothing: 'antialiased',
-            backgroundImage: `radial-gradient(circle at 80% -20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%)`
-        }}>
+    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    const TABS = [
+        { k: 'trips', l: 'Trips', Icon: RouteIcon, n: active.length, cls: '' },
+        { k: 'pickups', l: 'Pickups', Icon: MapPin, n: pendingPicks, cls: 'k-orange' },
+        { k: 'leaves', l: 'Leaves', Icon: Calendar, n: leaves.length, cls: '' },
+    ];
+
+return (
+        <div id="rp-driver">
             <style>{css}</style>
+
             <Toast type="error" message={error} onClose={() => setError('')} />
             <Toast type="success" message={success} onClose={() => setSuccess('')} />
 
-            {/* ─── HEADER ─── */}
-            <header className="glass-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-                <div style={{ maxWidth: 520, margin: '0 auto', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg, ${T.primary}, #4F46E5)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 12px ${T.glow}` }}>
-                            <Car size={18} color="#FFFFFF" strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '1rem', fontWeight: 700, color: T.text, letterSpacing: '-.02em', fontFamily: "'Space Grotesk',sans-serif" }}>RestPoint</div>
-                            <div style={{ fontSize: '.65rem', color: T.textMute, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' }}>Driver Portal</div>
-                        </div>
+            {/* ─── NAV : name + date ─── */}
+            <header className="hdr">
+                <div className="hdr-in">
+                    <div className="who">
+                        <b>{first}</b>
+                        <small>{todayStr}</small>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <button onClick={() => loadB(true)} disabled={refreshing} className="anim-press" style={{
-                            width: 40, height: 40, borderRadius: 12, background: T.surface, border: `1px solid ${T.border}`,
-                            color: T.textDim, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                        }}>
-                            <RefreshCw size={16} className={refreshing ? 'anim-spin' : ''} />
+                    <nav className="hnav">
+                        <button className="gbtn press" onClick={refresh} title="Refresh" aria-label="Refresh">
+                            <RefreshCw size={16} strokeWidth={2.2} className={refreshing ? 'anim-spin' : ''} />
                         </button>
-                        <button onClick={logout} className="anim-press" style={{
-                            padding: '0 16px', height: 40, borderRadius: 12, background: `${T.danger}10`,
-                            border: `1px solid ${T.danger}20`, color: T.danger, fontSize: '.75rem', fontWeight: 600,
-                            display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer'
-                        }}>
-                            <LogOut size={14} /><span>Exit</span>
+                        <button className="exit-btn press" onClick={logout} title="Exit">
+                            <LogOut size={13} strokeWidth={2.4} />
+                            <span>Exit</span>
                         </button>
-                    </div>
+                    </nav>
                 </div>
             </header>
 
-            <main style={{ maxWidth: 520, margin: '0 auto', padding: '24px 18px 120px' }}>
-
-                {/* ─── GREETING ─── */}
-                <div className="anim-up" style={{ marginBottom: 28 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                        <div style={{ padding: '6px 12px', borderRadius: 10, background: T.surface, border: `1px solid ${T.border}`, color: T.primary, fontSize: '.7rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <GI size={12} />{g.text}
-                        </div>
-                        <div style={{ padding: '6px 12px', borderRadius: 10, background: T.surface, border: `1px solid ${T.border}`, color: T.textDim, fontSize: '.7rem', fontWeight: 500 }}>
-                            {g.timeStr}
-                        </div>
+            <main>
+                {(upcomingCount > 0 || overdueCount > 0) && (
+                    <div className={`notice anim-up ${overdueCount > 0 ? 'hot' : ''}`}>
+                        <span className="nd" />
+                        <span>
+                            <strong>{upcomingCount}</strong> trip{upcomingCount !== 1 ? 's' : ''} in the next 24h
+                            {overdueCount > 0 && (
+                                <> · <strong style={{ color: 'var(--red)' }}>{overdueCount}</strong> past &amp; still open</>
+                            )}
+                        </span>
                     </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-.03em', color: T.text, marginBottom: 8, fontFamily: "'Space Grotesk',sans-serif" }}>{first}</h1>
-                            <div style={{ fontSize: '.8rem', color: T.textDim, fontWeight: 500, marginBottom: 4 }}>{g.dateStr}</div>
-                            <div style={{ fontSize: '.75rem', color: T.textMute, fontWeight: 500, fontStyle: 'italic' }}>{g.sub}</div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 14 }}>
-                            <div style={{ width: 60, height: 60, borderRadius: 20, background: `linear-gradient(145deg, ${T.primary}, #4F46E5)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', boxShadow: `0 8px 24px ${T.glow}`, position: 'relative' }}>
-                                <span style={{ fontSize: '.45rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', opacity: .9, lineHeight: 1 }}>{g.monthShort}</span>
-                                <span style={{ fontSize: '1.4rem', fontWeight: 700, lineHeight: 1.1, marginTop: 0, fontFamily: "'Space Grotesk',sans-serif" }}>{g.dayNum}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {active.length > 0 && (
-                        <div style={{ marginTop: 20, padding: '14px 16px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: upcomingCount > 0 ? T.warning : T.danger, flexShrink: 0, boxShadow: `0 0 10px ${upcomingCount > 0 ? T.warning : T.danger}` }} />
-                            <span style={{ fontSize: '.8rem', color: T.text, fontWeight: 500 }}>
-                                <strong>{upcomingCount}</strong> trip{upcomingCount !== 1 ? 's' : ''} in the next 24h
-                                {overdueCount > 0 && (
-                                    <span style={{ color: T.textDim }}> · <strong style={{ color: T.danger }}>{overdueCount}</strong> past open</span>
-                                )}
-                            </span>
-                            <ArrowRight size={14} style={{ color: T.textMute, marginLeft: 'auto' }} />
-                        </div>
-                    )}
-                </div>
+                )}
 
                 {/* ─── STATS ─── */}
-                <div className="anim-up" style={{ display: 'flex', gap: 12, marginBottom: 28, animationDelay: '.06s' }}>
-                    <StatCard value={upcomingCount} label="Next 24h" color={T.warning} icon={Zap} pulse={upcomingCount > 0} />
-                    <StatCard value={transit} label="En Route" color={T.info} icon={Navigation} />
-                    <StatCard value={overdueCount} label="Overdue Open" color={T.danger} icon={AlertCircle} pulse={overdueCount > 0} />
+                <div className="stats anim-up" style={{ animationDelay: '.05s' }}>
+                    <StatCard value={upcomingCount} label="Next 24h" tone="orange" />
+                    <StatCard value={transit} label="En Route" tone="blue" />
+                    <StatCard value={overdueCount} label="Overdue" tone="red" />
                 </div>
 
                 {/* ─── TABS ─── */}
-                <div className="anim-up" style={{ display: 'flex', gap: 4, marginBottom: 20, padding: 4, background: T.surface, borderRadius: 14, border: `1px solid ${T.border}`, animationDelay: '.09s' }}>
-                    {[
-                        { k: 'bookings', l: 'Trips', icon: Route, n: active.length, c: T.primary },
-                        { k: 'leaves', l: 'Leaves', icon: Calendar, n: leaves.length, c: T.info },
-                    ].map(t => {
-                        const on = tab === t.k;
-                        const Icon = t.icon;
-                        // "Leaves" is a dead-end for a driver: the portal has no
-                        // way to SUBMIT a request, only to read the ones already
-                        // filed. Clicking it now takes the driver straight to the
-                        // Apply for Leave form — the one action they actually come
-                        // here for — instead of a list they cannot add to.
-                        const go = () => {
-                            if (t.k === 'leaves') navigate(`/${slug}/leaves/apply`);
-                            else setTab(t.k);
-                        };
-                        return (
-                            <button key={t.k} onClick={go} title={t.k === 'leaves' ? 'Apply for leave' : undefined} className="anim-press" style={{
-                                flex: 1, padding: '12px 8px', borderRadius: 11, background: on ? T.surface2 : 'transparent',
-                                border: '1px solid transparent', color: on ? T.text : T.textMute,
-                                fontWeight: 600, fontSize: '.8rem', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                transition: 'all .2s', fontFamily: "'Space Grotesk',sans-serif"
-                            }}>
-                                <Icon size={14} style={{ color: on ? t.c : undefined }} />
-                                {t.l}
-                                {t.n > 0 && <span style={{ fontSize: '.6rem', fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: on ? `${t.c}20` : `${T.textMute}15`, color: on ? t.c : T.textMute }}>{t.n}</span>}
-                            </button>
-                        );
-                    })}
+                <div className="tabs anim-up" style={{ animationDelay: '.1s' }} role="tablist">
+                    {TABS.map(t => (
+                        <button
+                            key={t.k}
+                            role="tab"
+                            aria-selected={tab === t.k}
+                            className={tab === t.k ? `on ${t.cls}`.trim() : ''}
+                            onClick={() => setTab(t.k)}
+                        >
+                            <t.Icon size={14} strokeWidth={2.3} />
+                            {t.l} <span className="n">{t.n}</span>
+                        </button>
+                    ))}
                 </div>
 
                 {/* ─── CONTENT ─── */}
-                <div className="anim-up" style={{ animationDelay: '.12s' }}>
-                    {tab === 'bookings' ? (
-                        loadingB ? <Loading text="Loading trips..." /> :
-                            active.length === 0 ? <Empty icon={Car} title="All Clear" sub="No trips in the next 24 hours and no open past trips right now. You'll be notified when a new one is assigned." /> :
-                                active.map((b, i) => <TripCard key={b.booking_id} booking={b} onStatusChange={changeStatus} i={i} overdue={overdueIds.has(b.booking_id)} />)
-                    ) : (
-                        loadingL ? <Loading text="Loading leaves..." /> :
-                            leaves.length === 0 ? (
-                                <Empty icon={Calendar} title="No Leaves" sub="No leave requests submitted yet." extra={
-                                    <ApplyLeaveBtn onClick={() => navigate(`/${slug}/leaves/apply`)}>
-                                        <Plus size={14} /> Apply for Leave
-                                    </ApplyLeaveBtn>
-                                } />
-                            ) : (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                    <span style={{ fontSize: '.8rem', fontWeight: 600, color: T.textMute, fontFamily: "'Inter',sans-serif" }}>Your Leave Requests</span>
-                                    <ApplyLeaveBtn onClick={() => navigate(`/${slug}/leaves/apply`)}>
-                                        <Plus size={14} /> Apply for Leave
-                                    </ApplyLeaveBtn>
-                                </div>
-                            ) |
-                            leaves.map((l, i) => <div key={l.id || i} className="anim-up" style={{ animationDelay: `${i * .04}s` }}><LeaveCard leave={l} /></div>)
-                    )}
-                </div>
+                <div className="anim-up" style={{ animationDelay: '.15s' }}>
 
-                {/* ─── FOOTER ─── */}
-                <div style={{ textAlign: 'center', padding: '40px 0 0', borderTop: `1px solid ${T.border}`, marginTop: 40 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 6 }}>
-                        <Shield size={11} style={{ color: T.textMute }} />
-                        <span style={{ fontSize: '.65rem', color: T.textMute, fontWeight: 600 }}>Secure · Encrypted</span>
-                    </div>
-                    <div style={{ fontSize: '.6rem', color: T.textMute, fontWeight: 500 }}>RestPoint v2.0 · {slug} · Nairobi</div>
+{tab === 'trips' && (
+                        loadingB ? <Loading text="Loading trips…" /> :
+                            active.length === 0 ? (
+                                <Empty
+                                    emoji="🚗"
+                                    title="All Clear"
+                                    sub="No trips in the next 24 hours and no open past trips right now. You'll be notified when one is assigned."
+                                />
+                            ) : active.map((b, i) => (
+                                <TripCard
+                                    key={b.booking_id}
+                                    booking={b}
+                                    onStatusChange={changeStatus}
+                                    i={i}
+                                    overdue={overdueIds.has(b.booking_id)}
+                                    busy={busy}
+                                />
+                            ))
+                    )}
+
+                    {tab === 'pickups' && (
+                        loadingP ? <Loading text="Loading pickups…" /> :
+                            pickups.length === 0 ? (
+                                <Empty
+                                    emoji="📍"
+                                    title="No Pickup Requests"
+                                    sub="Coffin pickups assigned to you at the workshop store will appear here for confirmation."
+                                />
+                            ) : pickups.map((p, i) => (
+                                <PickupCard key={p.rowId} pickup={p} onRespond={respondPickup} i={i} busy={busy} />
+                            ))
+                    )}
+
+                    {tab === 'leaves' && (
+                        loadingL ? <Loading text="Loading leaves…" /> :
+                            leaves.length === 0 ? (
+                                <Empty
+                                    emoji="🗓️"
+                                    title="No Leaves"
+                                    sub="Your leave requests will appear here once you submit one."
+                                    action={(
+                                        <button
+                                            className="btn teal press"
+                                            style={{ flex: '0 0 auto', padding: '11px 20px' }}
+                                            onClick={() => navigate(`/${slug}/leaves/apply`)}
+                                        >
+                                            <Plus size={14} strokeWidth={2.5} />&nbsp; Apply for Leave
+                                        </button>
+                                    )}
+                                />
+                            ) : (
+                                <>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+                                        <button
+                                            className="btn teal press"
+                                            style={{ flex: '0 0 auto', padding: '9px 16px', fontSize: '.8rem' }}
+                                            onClick={() => navigate(`/${slug}/leaves/apply`)}
+                                        >
+                                            <Plus size={13} strokeWidth={2.5} />&nbsp; Apply for Leave
+                                        </button>
+                                    </div>
+                                    {leaves.map((l, i) => <LeaveCard key={l.id || l.leave_id || i} leave={l} i={i} />)}
+                                </>
+                            )
+                    )}
                 </div>
             </main>
         </div>

@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { formatDate as fmtDate, parseDate, toDateKey } from '../../../utils/dates/parseDates';
 import { workshopService } from '../services/workshopService';
+import api from '../../../api/axios';
 import { getTenantSlug } from '../../../utils/globalAuth';
 import { Ctx } from './WorkshopDashboard';
 
@@ -71,6 +72,27 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
   const [loading, setLoading] = useState(false);
   const [previewDispatchId, setPreviewDispatchId] = useState('');
 
+  /* Drivers live in the hearse service's operations DB, so they are fetched
+     over the gateway rather than from the workshop service. The list is only
+     used to populate the driver picker on the dispatch modal. A failure here
+     must NOT block dispatching — the operator can still type a name. */
+  const [drivers, setDrivers] = useState([]);
+
+  const loadDrivers = useCallback(async () => {
+    try {
+      const r = await api.get('/all-drivers');
+      const list = r?.data?.drivers || [];
+      setDrivers(list.map(d => ({
+        id: String(d.driver_id ?? d.id ?? ''),
+        name: d.driver_name || d.full_name || '',
+      })).filter(d => d.id && d.name));
+    } catch (e) {
+      console.warn('[StoreTab] Could not load driver list:', e?.message);
+    }
+  }, []);
+
+  useEffect(() => { loadDrivers(); }, [loadDrivers]);
+
   const [form, setForm] = useState({ qty: 1, date: toKey(new Date()), pickedBy: '', notes: '' });
 
   const [showDispatchModal, setShowDispatchModal] = useState(false);
@@ -84,6 +106,10 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
     dispatchedBy: '',
 
     receivedBy: '',
+
+    // `driverId` is the real assignment (from the drivers roster);
+    // `driver` stays as the typed/display name for free-text fallback.
+    driverId: '',
 
     driver: '',
 
@@ -215,6 +241,8 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
       receivedBy: '',
 
+      driverId: '',
+
       driver: '',
 
       destination: '',
@@ -318,6 +346,16 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
           date: dispatchForm.date,
 
           picked_by: dispatchForm.dispatchedBy,
+
+          /* The driver assignment proper. These land in their own columns so
+             the dispatch becomes a pickup the driver can see and answer in
+             the Driver Portal — the notes string below stays a human-readable
+             log and is never parsed for this. */
+          driver_id: dispatchForm.driverId || null,
+
+          driver_name: dispatchForm.driver || null,
+
+          destination: dispatchForm.destination || null,
 
           notes: 'DISPATCH LOG: Dispatch ID: ' + dispatchId + ' | Dispatched By: ' + dispatchForm.dispatchedBy + ' | Received By: ' + (dispatchForm.receivedBy || 'None') + ' | Driver: ' + dispatchForm.driver + ' | From: ' + (dispatchForm.from || 'N/A') + ' | Destination: ' + dispatchForm.destination + ' | Purpose: ' + dispatchForm.purpose + ' | Remarks: ' + dispatchForm.remarks + ' | Time: ' + dispatchForm.time + (item.assignedToName ? ' | Assigned To: ' + item.assignedToName : ''),
 
@@ -816,6 +854,10 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
                       <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{dispatchForm.destination || '—'}</div>
                     </div>
                     <div style={{ background: T.bg, border: `1px solid ${T.borderLight}`, borderRadius: 8, padding: '8px 12px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 2 }}>Driver</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: dispatchForm.driver ? T.text : T.textMuted }}>{dispatchForm.driver || 'Unassigned'}</div>
+                    </div>
+                    <div style={{ background: T.bg, border: `1px solid ${T.borderLight}`, borderRadius: 8, padding: '8px 12px' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 2 }}>Dispatch Date</div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{dispatchForm.date ? fmtDate(dispatchForm.date) : '—'}</div>
                     </div>
@@ -854,7 +896,21 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
                     </div>
                     <div>
                       <label style={labelS}>Driver</label>
-                      <input value={dispatchForm.driver} onChange={setDF('driver')} style={inputS} placeholder="Driver Name" />
+                      {drivers.length > 0 ? (
+                        <select
+                          value={dispatchForm.driverId}
+                          onChange={(e) => {
+                            const picked = drivers.find(d => d.id === e.target.value);
+                            setDispatchForm(f => ({ ...f, driverId: e.target.value, driver: picked ? picked.name : '' }));
+                          }}
+                          style={inputS}
+                        >
+                          <option value="">Select a driver…</option>
+                          {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      ) : (
+                        <input value={dispatchForm.driver} onChange={setDF('driver')} style={inputS} placeholder="Driver Name" />
+                      )}
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={labelS}>Purpose</label>

@@ -12,10 +12,6 @@ import type {
 // Import your local database utilities (direct restpoint_operations pool)
 import { safeQuery, safeExecute } from '../database.ts';
 import crypto from 'crypto';
-// Global uploader — the SAME centralized upload service the deceased, coffin,
-// invoice and tenant services use. It writes directly into the one shared
-// uploads folder (GLOBAL_UPLOADS_DIR / UPLOADS_BASE_DIR) that is bind-mounted
-// in production and served to browsers at /uploads/... by the tenant-service.
 import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService.js';
 
 // TENANT HELPERS

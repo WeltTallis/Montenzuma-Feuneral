@@ -29,7 +29,7 @@ export const PHOTOS = {
      the redesign's newer renders. The pre-redesign Amani page declared
      `const familyPhoto = '/family-hero.png'`, and that file ships at the root
      of client/public/amani rather than inside images/. */
-  familyHero: '/amani/family-hero.png',
+  familyHero: '/amani/top-hero.jpg',
   whiteLilies: 'https://montezumamonalisa.com/wp-content/uploads/2020/01/DSC_4205-768x511.jpg',
   elderlyCouple: '/amani/images/elderly-couple.png',
   motherDaughter: '/amani/images/mother-daughter.png',

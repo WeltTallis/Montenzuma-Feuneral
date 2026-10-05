@@ -186,6 +186,19 @@ export const workshopService = {
     dispatchStoreItem: (data) =>
         handleResponse(workshopApi.post('/workshop/store/dispatch', data)),
 
+    // Driver pickups — store dispatches that were assigned to a driver.
+    // `identity` is `{ driver_id }` or `{ driver_name }`; the endpoint refuses
+    // to list anything without one so a tenant's whole dispatch history is
+    // never handed to an unidentified caller.
+    getDriverPickups: (identity = {}, params = {}) =>
+        handleResponse(workshopApi.get('/workshop/store/pickups', {
+            params: { ...identity, ...params },
+        })),
+
+    // status: 'accepted' | 'declined'
+    respondToPickup: (id, status) =>
+        handleResponse(workshopApi.patch(`/workshop/store/pickups/${id}`, { status })),
+
     restockStoreItem: (data) =>
         handleResponse(workshopApi.post('/workshop/store/restock', data)),
 };

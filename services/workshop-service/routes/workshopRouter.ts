@@ -62,7 +62,9 @@ import {
     restockItem,
     getHistory,
     getTargets,
-    setTarget
+    setTarget,
+    getDriverPickups,
+    respondToPickup
 } from '../controllers/storeController'
 
 const workshopRouter = express.Router()
@@ -138,6 +140,13 @@ workshopRouter.get('/store/inventory', getInventory)
 workshopRouter.get('/store/history', getHistory)
 workshopRouter.post('/store/dispatch', dispatchItem)
 workshopRouter.post('/store/restock', restockItem)
+
+// Driver pickup feed. A "pickup" is a store dispatch that was assigned to a
+// driver — coffin collection assigned at the workshop counter and confirmed
+// from the Driver Portal. Both paths are literal/unique, so they cannot be
+// shadowed by the /store/:something routes above.
+workshopRouter.get('/store/pickups', getDriverPickups)
+workshopRouter.patch('/store/pickups/:id', respondToPickup)
 
 // Monthly coffin output target. GET is open to any workshop user (the analytics
 // read it to draw the progress bars); PUT changes the target, so it is gated to
