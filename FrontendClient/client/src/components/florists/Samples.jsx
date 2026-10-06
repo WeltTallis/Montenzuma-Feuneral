@@ -2,6 +2,8 @@
 // Haute floral gallery: carousel + stories + detailed expanded view + snow booking form
 // Connects to real flower-samples API and flower-bookings flow
 
+
+
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../api/axios";
