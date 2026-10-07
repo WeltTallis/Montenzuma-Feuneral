@@ -330,6 +330,7 @@ const FlowerBookingsNew = () => {
   const [newBooking, setNewBooking] = useState({
     arrangement_type: '',
     flower_details: '',
+    flower_design: '',
     color_preference: '',
     any_color: true,
     ribbon_message: '',
@@ -340,6 +341,7 @@ const FlowerBookingsNew = () => {
     remarks: '',
     deceased_name: '',
     booked_by: getLocalUserName(),
+    branch: '',
     date: fmtDateStr(new Date()),   // the day the order was placed — calendar tracks it
     time: '10:00',
     priority: 'Normal'
@@ -565,6 +567,7 @@ const FlowerBookingsNew = () => {
       const notesValue = [
         `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
         `[WHEN:${bookedOn} ${newBooking.time}]`,
+        newBooking.flower_design ? `[DESIGN:${clean(newBooking.flower_design)}]` : '',
         newBooking.priority?.trim() ? `Priority: ${newBooking.priority.trim()}` : '',
         newBooking.remarks?.trim() || ''
       ].filter(Boolean).join(' ');
@@ -599,6 +602,7 @@ const FlowerBookingsNew = () => {
       setNewBooking({
         arrangement_type: '',
         flower_details: '',
+        flower_design: '',
         color_preference: '',
         any_color: true,
         ribbon_message: '',
@@ -609,6 +613,7 @@ const FlowerBookingsNew = () => {
         remarks: '',
         deceased_name: '',
         booked_by: getLocalUserName(),
+        branch: '',
         date: fmtDateStr(new Date()),
         time: '10:00',
         priority: 'Normal'
@@ -812,7 +817,6 @@ const FlowerBookingsNew = () => {
           <div className="flx-toggle" style={styles.viewToggle}>
             <button style={styles.viewBtn(view === 'list')} onClick={() => setView('list')}>List</button>
             <button style={styles.viewBtn(view === 'calendar')} onClick={() => setView('calendar')}>Calendar</button>
-            <button style={styles.viewBtn(view === 'samples')} onClick={() => setView('samples')}>Samples</button>
           </div>
           <div className="flx-actions" style={{ display: 'flex', gap: '8px' }}>
             <button
@@ -1144,6 +1148,11 @@ const FlowerBookingsNew = () => {
             )}
             <div style={styles.metaRow}><User size={14} /> {b.deceased_name}</div>
             <div style={styles.metaRow}><User size={14} /> Booked by {b.booked_by || b.customer}</div>
+            {(b.branch || b.funeral_home) && getBranches().length > 1 && (
+              <div style={styles.metaRow}>
+                <Home size={14} /> {resolveBranchName(b.branch || b.funeral_home)}
+              </div>
+            )}
             {b.funeral_date && <div className="flower-funeral-date">Funeral {fmtDateOnly(b.funeral_date)}</div>}
           </div>
         </div>
@@ -1366,10 +1375,62 @@ const FlowerBookingsNew = () => {
             required
           >
             <option value="">Select arrangement type</option>
+            <option value="Sample">Sample (browse arrangements)</option>
             {['Wreath', 'Casket Spray', 'Standing Spray', 'Funeral Basket', 'Sympathy Bouquet', 'Cross / Heart Arrangement'].map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
+
+          {/* ── Flower Design ── */}
+          <label style={{ ...lbl, marginBottom: '12px' }}>Flower Design</label>
+          <select
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.flower_design}
+            onChange={e => setNewBooking(prev => ({ ...prev, flower_design: e.target.value }))}
+          >
+            <option value="">Select flower design</option>
+            <option value="Roses">🌹 Roses</option>
+            <option value="Lilies">🌸 Lilies</option>
+            <option value="Chrysanthemums">🌼 Chrysanthemums</option>
+            <option value="Carnations">🌷 Carnations</option>
+            <option value="Mixed Flowers">💐 Mixed flowers</option>
+            <option value="White Flowers">🤍 White flowers</option>
+            <option value="Florist's Choice">🌿 Florist's choice</option>
+          </select>
+
+          {/* ── Branch (auto-detected) ── */}
+          {/* The booking is automatically assigned to the logged-in user's
+              current branch — no manual selection needed. For multi-branch
+              setups (e.g. Nairobi, Machakos, Thika), this ensures the order
+              is tagged with the correct branch DB without extra clicks. */}
+          <label style={{ ...lbl, marginBottom: '12px', fontWeight: 500 }}>Branch<span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}> — auto-detected</span></label>
+          <div
+            style={{
+              ...inp,
+              background: '#F7F4EF',
+              borderColor: '#E3DCD2',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 12px'
+            }}
+          >
+            <Home style={{
+              width: '14px',
+              height: '14px',
+              color: '#9C9389',
+              flexShrink: 0
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: '#3D352D', fontSize: '13px' }}>
+                {resolveBranchName() || getBranchSlug() || '—'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#A39A8E', fontWeight: 400 }}>
+                Detected from your account — no selection needed
+              </div>
+            </div>
+          </div>
 
           {/* ── Flowers ── */}
           <label style={{ ...lbl, marginBottom: '12px' }}>Flowers *</label>
@@ -1465,10 +1526,8 @@ const FlowerBookingsNew = () => {
             onChange={e => setNewBooking(prev => ({ ...prev, deceased_gender: e.target.value }))}
           >
             <option value="">Not specified</option>
-            <option value="Woman">Woman</option>
-            <option value="Man">Man</option>
-            <option value="Non-binary">Non-binary</option>
-            <option value="Prefer not to say">Prefer not to say</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
           </select>
           <p style={{ margin: '-14px 0 20px', color: '#8A8178', fontSize: '11px' }}>Optional context for the florist; it does not determine the arrangement.</p>
 
@@ -1579,7 +1638,7 @@ const FlowerBookingsNew = () => {
     }).filter(image => typeof image.src === 'string' && image.src.trim());
     const uniqueBookingImages = [...new Map(bookingImages.map(image => [image.src, image])).values()];
     // Strip machine tokens before splitting human notes.
-    const humanNotes = String(b.notes || '').replace(/\[(?:TYPES|WHEN):[^\]]*\]/gi, '');
+    const humanNotes = String(b.notes || '').replace(/\[(?:TYPES|WHEN|DESIGN):[^\]]*\]/gi, '');
     const noteParts = humanNotes.split('|').map(s => s.trim()).filter(Boolean);
     let sizeNote = '';
     const remarksList = [];
@@ -1598,6 +1657,9 @@ const FlowerBookingsNew = () => {
     const colourText = [...new Set(colorValues)].join(', ') || "Any color · florist's choice";
     const ribbonMessage = b.ribbon_message || ribbonNote || '—';
     const flowerText = b.flower_description || [...new Set(lineItems.flatMap(item => item.types || []))].join(', ') || asList(product.types).join(', ') || 'Florist’s choice';
+    // [DESIGN:…] carries the Flower Design dropdown value (Roses, Lilies, …).
+    const designMatch = /\[DESIGN:([^\]]+)\]/i.exec(String(b.notes || ''));
+    const designText = designMatch ? designMatch[1].trim() : '';
     const instructionText = b.special_instructions || remarksList.join('\n');
     const currentStatusIdx = STATUS_FLOW.indexOf(normStatus(b.status));
 
@@ -1759,6 +1821,12 @@ const FlowerBookingsNew = () => {
                   <dt style={styles.specLabel}>Flowers</dt>
                   <dd style={styles.specValue}>{flowerText || '—'}</dd>
                 </div>
+                {designText && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Flower Design</dt>
+                    <dd style={styles.specValue}>{designText}</dd>
+                  </div>
+                )}
                 <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Flower Size</dt>
                   <dd style={styles.specValue}>{b.size || asList(product.sizes).join(', ') || sizeNote || '—'}</dd>
@@ -1782,6 +1850,14 @@ const FlowerBookingsNew = () => {
                 <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Booked By</dt>
                   <dd style={styles.specValue}>{b.booked_by || b.customer || '—'}</dd>
+                </div>
+                <div style={styles.specRow}>
+                  <dt style={styles.specLabel}>Branch</dt>
+                  <dd style={styles.specValue}>
+                    {(b.branch || b.funeral_home)
+                      ? resolveBranchName(b.branch || b.funeral_home)
+                      : '—'}
+                  </dd>
                 </div>
                 {instructionText && (
                   <div style={styles.specRow}>
@@ -1845,7 +1921,36 @@ const FlowerBookingsNew = () => {
       {view === 'new' && (
         <>
           <div style={styles.panelScrim} onClick={() => setView('list')} />
-          {renderNewBooking()}
+          {newBooking.arrangement_type === 'Sample' ? (
+            <div style={styles.formContainer}>
+              {/* Browse-only gallery: staff can look at the samples on offer,
+                  then jump straight back to the order form — sampling is
+                  optional and never blocks the booking flow. */}
+              <div style={{ padding: '16px 28px', borderBottom: '1px solid #EAE7E2', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setNewBooking(prev => ({ ...prev, arrangement_type: '' }))}
+                  style={{
+                    background: '#F1EDE6',
+                    border: '1px solid #E3DCD2',
+                    borderRadius: '10px',
+                    padding: '9px 16px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#574F47',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ← Back to order form
+                </button>
+              </div>
+              <div style={{ padding: '24px 28px 40px' }}>
+                {renderSamples()}
+              </div>
+            </div>
+          ) : (
+            renderNewBooking()
+          )}
         </>
       )}
 

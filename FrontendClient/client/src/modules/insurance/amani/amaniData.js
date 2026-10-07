@@ -1,17 +1,4 @@
-/* ==========================================================================
-   Amani Cover — shared content.
 
-   Ported from the redesign's lib/site.ts, plus the policy terms and referral
-   flow that live on their own routes. One source of truth for all three pages
-   so the landing / terms / referral copy can never drift apart.
-   ========================================================================== */
-
-/* Contact details — Nairobi Branch of Montenzuma Monalisa Funeral Home, the
-   provider behind Amani Cover. These are the real branch details: address,
-   both mobile lines, the landline and the branch email.
-   Note: the CONSUMERS of this object (nav, hero, care team, faq, apply, refer,
-   terms and the footer address block) read exactly these six keys, so the
-   shape is kept identical — changing a value updates every page at once. */
 export const CONTACT = {
   phone: '+254 722 268 566',
   phoneHref: 'tel:+254722268566',
@@ -21,14 +8,9 @@ export const CONTACT = {
   hours: 'Open 24 hours, day or night',
 };
 
-/* Local images copied out of the redesign's public/images. Every photo the
-   landing page references lives here so the paths never drift from the files
-   shipped in client/public/amani/images. */
+
 export const PHOTOS = {
-  /* Hero photo — deliberately the ORIGINAL landing-page image and not one of
-     the redesign's newer renders. The pre-redesign Amani page declared
-     `const familyPhoto = '/family-hero.png'`, and that file ships at the root
-     of client/public/amani rather than inside images/. */
+
   familyHero: '/amani/top-hero.jpg',
   whiteLilies: 'https://montezumamonalisa.com/wp-content/uploads/2020/01/DSC_4205-768x511.jpg',
   elderlyCouple: '/amani/images/elderly-couple.png',
@@ -104,33 +86,7 @@ export const aboutPoints = [
   'Real people - a dedicated care team, not a call centre',
 ];
 
-/* The FAQ set was removed from the landing page on request, so it is not kept
-   here as dead data: nothing renders it, and leaving an orphaned export
-   invites it being wired back up by accident. */
 
-/* MONTHLY CONTRIBUTIONS — the single source of truth for what a plan costs.
-
-   These are REAL amounts, not placeholders. Every surface that quotes a price
-   reads them from here so the apply form, the cover page and the payment
-   portal can never disagree about what someone owes:
-
-     • Amani Solo   — KES 500 / month, one person
-     • Amani Family — KES 1,000 / month, applicant + household
-     • Amani Group  — from KES 10,000 / month, 5+ people
-
-   Why this replaced a single flat figure: the portal used to default every
-   member to a hardcoded KES 2,000 contribution regardless of which plan they
-   had actually applied for. That was guess work — a Solo member was quoted
-   four times their real premium, and a Group policy (10k+) was under-quoted.
-   The amount shown on the payments page is now the amount stored on the
-   policy record itself (insurance_policies.monthly_premium, written at
-   application time from `monthly` below and echoed back by
-   POST /insurance/cover-check), falling back to `monthly` only if an older
-   policy predates that column.
-
-   `from: true` marks Group as a floor rather than a fixed price — group
-   pricing scales with how many people are on the policy, so the UI must not
-   present it as "exactly 10,000". */
 export const PLANS = {
   Solo: { monthly: 500, from: false, covers: '1 person' },
   Family: { monthly: 1000, from: false, covers: 'You + your household' },
@@ -138,36 +94,28 @@ export const PLANS = {
   Group: { monthly: 10000, from: true, covers: '5 or more people' },
 };
 
-/* Cover options offered in the apply form. These are the three real Amani
-   products (NOT the old Essential/Family/Legacy marketing tiers):
-     • Amani Solo   — one person
-     • Amani Family — the applicant plus their household
-     • Amani Group  — a shared policy for a group, MINIMUM 5 individuals
-   `minMembers` is what the form enforces: picking Group reveals an "add
-   another individual" repeater and blocks submit until the policy has at
-   least that many people on it.
-   `monthly` is copied from PLANS so the price lives in exactly one place.
-   NOTE: the dead insurance/mani/ folder still renders these in a <select>
-   with defaultValue="Family"; Family is still the middle option, so that
-   placeholder stays valid. */
+
 export const coverOptions = [
   {
     value: 'Solo',
     label: 'Amani Solo',
     hint: 'Funeral cover for just you.',
     monthly: PLANS.Solo.monthly,
+    features: [`Covers ${PLANS.Solo.covers}`, 'Fixed monthly contribution', 'Digital application'],
   },
   {
     value: 'Family',
     label: 'Amani Family',
     hint: 'Funeral cover for you and your household.',
     monthly: PLANS.Family.monthly,
+    features: [PLANS.Family.covers, 'One simple monthly premium', 'Digital application'],
   },
   {
     value: 'FamilyGroup',
     label: 'Amani Family Group',
     hint: 'Cover for your family and your extended family.',
     monthly: PLANS.FamilyGroup.monthly,
+    features: [PLANS.FamilyGroup.covers, 'One shared policy', 'Scales with your group'],
   },
   {
     value: 'Group',
@@ -175,6 +123,7 @@ export const coverOptions = [
     hint: 'One shared policy for a group of 5 or more people.',
     minMembers: 5,
     monthly: PLANS.Group.monthly,
+    features: [PLANS.Group.covers, 'Shared contributions', 'Flexible group size'],
   },
 ];
 

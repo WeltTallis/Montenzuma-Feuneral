@@ -73,7 +73,7 @@ function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ac-mutedfg text-pretty">
-             Amani Cover is funeral insurance that lets your family say goodbye
+            Amani Cover is funeral insurance that lets your family say goodbye
             with dignity, without worrying about the cost. Offered by Montenzuma Monalisa Funeral
             Home, trusted by families for over 25 years.
           </p>
@@ -129,41 +129,41 @@ function Hero() {
             and a huge empty scroll before the copy. It now collapses to one
             hero photo on phones, which is the only one that matters, and the
             two supporting photos sit side by side underneath it. */}
-          <div className="relative">
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:aspect-[5/5.4] lg:grid-cols-6 lg:grid-rows-6">
-              {/* FillImage is position:absolute, so every frame needs an explicit
+        <div className="relative">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:aspect-[5/5.4] lg:grid-cols-6 lg:grid-rows-6">
+            {/* FillImage is position:absolute, so every frame needs an explicit
                   ratio or the grid row collapses to 0px tall on mobile. */}
-              <div className="relative col-span-2 row-span-1 aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-ac-primary/15 sm:aspect-[16/11] sm:rounded-t-[999px] sm:rounded-b-[2.5rem] lg:col-span-4 lg:row-span-6 lg:aspect-auto lg:rounded-t-[999px] lg:rounded-b-[2.5rem]">
-                <FillImage
-                  src={PHOTOS.familyHero}
-                  alt="A multigenerational family embracing together on a sofa in warm afternoon light"
-                  priority
-                  className="object-cover"
-                  /* One column on phones, the 4-of-6 collage slot from lg up.
-                     Getting this right is what makes the browser pick the 640w
-                     file on a small screen instead of the 1024w one. */
-                  sizes="(max-width: 1023px) 92vw, 38vw"
-                />
-              </div>
-              <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mt-10 lg:aspect-auto">
-<FillImage
-  src={PHOTOS.whiteLilies}
-  alt="White lilies and roses in a glass vase beside a framed family photo"
-  className="object-cover object-left"
-  sizes="(max-width: 1023px) 46vw, 18vw"
-/>
-
-
-              </div>
-              <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mb-10 lg:aspect-auto">
-                <FillImage
-                  src={PHOTOS.elderlyCouple}
-                  alt="An elderly couple holding hands and smiling on their porch"
-                  className="object-cover"
-                  sizes="(max-width: 1023px) 46vw, 18vw"
-                />
-              </div>
+            <div className="relative col-span-2 row-span-1 aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-ac-primary/15 sm:aspect-[16/11] sm:rounded-t-[999px] sm:rounded-b-[2.5rem] lg:col-span-4 lg:row-span-6 lg:aspect-auto lg:rounded-t-[999px] lg:rounded-b-[2.5rem]">
+              <FillImage
+                src={PHOTOS.familyHero}
+                alt="A multigenerational family embracing together on a sofa in warm afternoon light"
+                priority
+                className="object-cover"
+                /* One column on phones, the 4-of-6 collage slot from lg up.
+                   Getting this right is what makes the browser pick the 640w
+                   file on a small screen instead of the 1024w one. */
+                sizes="(max-width: 1023px) 92vw, 38vw"
+              />
             </div>
+            <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mt-10 lg:aspect-auto">
+              <FillImage
+                src={PHOTOS.whiteLilies}
+                alt="White lilies and roses in a glass vase beside a framed family photo"
+                className="object-cover object-left"
+                sizes="(max-width: 1023px) 46vw, 18vw"
+              />
+
+
+            </div>
+            <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mb-10 lg:aspect-auto">
+              <FillImage
+                src={PHOTOS.elderlyCouple}
+                alt="An elderly couple holding hands and smiling on their porch"
+                className="object-cover"
+                sizes="(max-width: 1023px) 46vw, 18vw"
+              />
+            </div>
+          </div>
 
           <figure
             className="
@@ -185,7 +185,7 @@ function Hero() {
     sm:w-[24rem]
   "
           >
-       <blockquote className="font-serif text-lg leading-snug text-ac-primary"> &ldquo;You may never know when you will need it, but when the unexpected happens, having a plan can make the difference.&rdquo; </blockquote>
+            <blockquote className="font-serif text-lg leading-snug text-ac-primary"> &ldquo;You may never know when you will need it, but when the unexpected happens, having a plan can make the difference.&rdquo; </blockquote>
 
             <figcaption className="mt-3 text-xs text-ac-mutedfg">
               AMANI COVER
@@ -203,29 +203,61 @@ function Hero() {
   );
 }
 
+
+
 function PlanOptions() {
   return (
-    <section id="plans" className="scroll-mt-20 border-y border-ac-border bg-ac-card px-6 py-14 lg:px-10 lg:py-18">
+    <section id="plans" className="scroll-mt-20  bg-ac-bg px-2 py-10 lg:px-10 lg:py-18">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ac-accent">Choose your cover</p>
           <h2 className="mt-3 font-serif text-3xl font-medium leading-tight text-ac-primary sm:text-4xl">Know the contribution before you apply.</h2>
           <p className="mt-3 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect. Group cover starts at five people.</p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-stretch gap-5 pt-2 sm:grid-cols-2 xl:grid-cols-4">
           {coverOptions.map((option) => (
-            <article key={option.value} className="flex min-h-52 flex-col rounded-2xl border border-ac-border bg-ac-bg p-5 shadow-sm">
-              <h3 className="font-serif text-2xl text-ac-primary">{option.label}</h3>
-              <p className="mt-2 min-h-10 text-sm leading-relaxed text-ac-mutedfg">{option.hint}</p>
-              <p className="mt-4 text-2xl font-semibold text-ac-primary">
+            <article
+              key={option.value}
+              className={
+                option.value === 'Family'
+                  ? 'relative flex min-h-52 flex-col rounded-2xl bg-ac-primary p-5 shadow-lg shadow-ac-primary/30 transition hover:-translate-y-1 xl:-translate-y-2 xl:hover:-translate-y-3'
+                  : 'relative flex min-h-52 flex-col rounded-2xl bg-ac-card p-3 shadow-sm transition hover:-translate-y-1 hover:border-ac-accent hover:shadow-md'
+              }
+            >
+              {option.value === 'Family' && (
+                <span className="absolute -top-3 left-5 rounded-md bg-ac-highlight px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-ac-primary">
+                  Most popular
+                </span>
+              )}
+              <h3 className={`font-serif text-2xl ${option.value === 'Family' ? 'text-white' : 'text-ac-primary'}`}>{option.label}</h3>
+              <p className={`mt-1.5 min-h-10 text-sm leading-relaxed ${option.value === 'Family' ? 'text-white/70' : 'text-ac-mutedfg'}`}>{option.hint}</p>
+              <p className={`mt-3 border-t pt-3 text-2xl font-semibold tracking-tight tabular-nums ${option.value === 'Family' ? 'border-white/15 text-white' : 'border-ac-border text-ac-primary'}`}>
                 {formatPlanAmount(option.value, option.monthly)}
-                <span className="ml-1 text-sm font-normal text-ac-mutedfg">/ month</span>
+                <span className={`ml-1 text-sm font-normal ${option.value === 'Family' ? 'text-white/70' : 'text-ac-mutedfg'}`}>/ month</span>
               </p>
+              <ul className="mb-4 mt-3 space-y-1.5">
+                {option.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className={`flex items-start gap-1.5 text-xs leading-snug ${option.value === 'Family' ? 'text-white/85' : 'text-ac-primary'}`}
+                  >
+                    <Check
+                      className={`mt-0.5 size-3.5 shrink-0 ${option.value === 'Family' ? 'text-ac-highlight' : 'text-ac-accent'}`}
+                      aria-hidden="true"
+                    />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
               <Link
                 to={`/amani/cover/apply?plan=${encodeURIComponent(option.value)}`}
-                className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ac-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring"
+                className={
+                  option.value === 'Family'
+                    ? 'mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ac-highlight px-4 py-2 text-sm font-semibold text-ac-primary transition-colors hover:bg-ac-highlight/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring'
+                    : 'mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ac-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring'
+                }
               >
-                Apply for this cover <ArrowRight className="size-4" aria-hidden="true" />
+                Apply  this cover <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </article>
           ))}
@@ -236,7 +268,7 @@ function PlanOptions() {
   );
 }
 
-/* ── promise-band.tsx ─────────────────────────────────────────── */
+/* ── promise-band.tsx ─ */
 function PromiseBand() {
   return (
     <section aria-label="Our promises" className="bg-ac-primary text-ac-onprimary">
@@ -420,7 +452,7 @@ function HowItWorks() {
           </div>
         </div>
 
- 
+
       </div>
     </section>
   );

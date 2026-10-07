@@ -1,13 +1,3 @@
-/* ==========================================================================
-   Amani Cover — shared UI used by the landing, terms and referral routes.
-
-   These are the pieces the redesign splits into components (site-header,
-   site-footer) plus the two Next-only pieces that need replacing here:
-     • next/image → FillImage (a plain <img> that fills its parent)
-     • next/link  → react-router <Link>
-   Every colour utility uses the `ac-` prefix — see the long note in
-   src/index.css for why the stock shadcn names cannot be used.
-   ========================================================================== */
 
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -16,33 +6,7 @@ import { CONTACT } from './amaniData';
 import { IMAGE_VARIANTS } from './imageManifest';
 import './AmaniCover.css';
 
-/* Plain <img> that fills its (position:relative) parent, matching what the
-   redesign's next/image `fill` prop did.
 
-   PERFORMANCE
-   Every Amani photo used to be a ~1.5-2.4 MB PNG. With a plain `src` the
-   browser downloads the full file on every device, so a phone pulled ~27 MB
-   before the page was usable — and it re-downloaded those huge files on every
-   navigation because <img> gives the browser no width hint to cache against.
-
-   Now:
-     • srcSet + sizes  → the browser fetches ONE correctly-sized WebP
-                          (a 390px phone gets the 640w file, ~40 KB, not
-                          the 1.7 MB PNG). Without `sizes` the browser would
-                          assume 100vw and grab the largest variant, so the
-                          two attributes only work as a pair.
-     • loading="lazy"  → below-the-fold photos are not fetched until they are
-                         near the viewport. `priority` opts the LCP hero out.
-     • fetchPriority    → only the LCP hero gets "high"; everything else is
-                          left alone so it cannot compete with it.
-     • decoding="async" → decode off the main thread.
-     • LQIP background  → a 24px blurred WebP is painted instantly behind the
-                          photo, so there is never a blank white box while the
-                          real file loads. This is what removes the "flash".
-
-   IMAGES NOT IN THE MANIFEST (e.g. an avatar added without re-running the
-   generator) fall back to the original `src` — this is an optimisation, never
-   a hard dependency. */
 export function FillImage({ src, alt, className = '', priority = false, sizes, width, height }) {
   const entry = IMAGE_VARIANTS[src];
 
@@ -79,20 +43,11 @@ export function FillImage({ src, alt, className = '', priority = false, sizes, w
 const LANDING_ANCHORS = [
   { href: '#about', label: 'About' },
   { href: '#how', label: 'How it works' },
-  /* A real route, not a landing anchor, so it works from every page. Someone who
-     has already filed a claim comes to the site with one question — where is it
-     — and burying that in a footer column meant the most urgent link on the
-     whole page was the hardest one to reach. */
   { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 const SUB_ANCHORS = [
   { href: '/amani/cover#about', label: 'About' },
   { href: '/amani/cover#how', label: 'How it works' },
-  /* A bereaved family looking for an existing claim should reach the tracker
-     from the sticky header on EVERY page, not only from a footer column they
-     have to scroll to the bottom of. It sits beside the two content anchors
-     because it is the third thing a visitor to any of these pages is actually
-     looking for: what is this, how does it work, and where is my claim. */
   { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 
@@ -166,25 +121,18 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
       ref={headerRef}
       className={`sticky top-0 z-40 border-ac-border/70 bg-ac-bg/90 backdrop-blur-md transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
-        {/* Keep the compact claim action and menu trigger side by side on phones. */}
-      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-18 sm:gap-6 sm:px-6 lg:px-10">
-        {/* Logo and section links share the LEFT group. They were separate
-            justify-between children before, which put the links in the middle
-            of the bar - exactly where the centred phone number now sits, so
-            the number was landing on top of them. Grouping them left leaves
-            the middle of the bar genuinely free. */}
+      {/* Keep the compact claim action and menu trigger side by side on phones. */}
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-9 h-18 sm:gap-6 sm:px-6 lg:px-10">
+
         <div className="flex shrink-0 items-center gap-8">
           <Link to="/amani/cover" className="flex items-baseline gap-2" aria-label="Amani Cover home">
             <span className="flex items-center gap-2.5">
               <img
                 src="https://montezumamonalisa.com/wp-content/uploads/2020/01/logo.png"
                 alt="Montenzuma Monalisa Funeral Home"
-                className="h-8 w-10 object-contain sm:h-9 sm:w-16"
+                className="h-38 w-48 object-contain h-16 w-16"
               />
-              <span className="flex flex-col leading-none">
-                <span className="font-serif text-xl font-semibold tracking-tight text-ac-primary sm:text-2xl">Amani</span>
-                <span className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-ac-mutedfg">Funeral cover</span>
-              </span>
+
             </span>
 
           </Link>
