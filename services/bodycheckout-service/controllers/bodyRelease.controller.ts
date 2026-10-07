@@ -312,7 +312,6 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
         tenantSlug,
         data: {
           id: `body-release-${releaseId}-${Date.now()}`,
-          releaseId: releaseId,
           admissionNumber: validatedData.admission_number || '',
           nameOfDeceased: validatedData.name_of_deceased || '',
           nextOfKin: validatedData.next_kin,
@@ -405,20 +404,6 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
         release_id: releaseData.release_id,
         admission_number: releaseData.admission_number,
         name_of_deceased: releaseData.name_of_deceased,
-        next_kin: releaseData.next_kin,
-        id_number: releaseData.id_number,
-        tell_number: releaseData.tell_number,
-        relationship: releaseData.relationship,
-        date_of_removal: releaseData.date_of_removal,
-        time_of_removal: releaseData.time_of_removal,
-        permit_number: releaseData.permit_number,
-        mode_of_transport: releaseData.mode_of_transport,
-        final_destination: releaseData.final_destination,
-        plate_number: releaseData.plate_number,
-        terms_accepted: !!releaseData.terms_accepted,
-        everything_paid: !!releaseData.everything_paid,
-        signature: releaseData.signature,
-        staff_signature: releaseData.staff_signature,
         created_at: releaseData.created_at
       }
     });
