@@ -104,7 +104,7 @@ svg{display:block}
 /* ── dashed-underline fields ── */
 .frow{display:flex;gap:1.5rem;flex-wrap:wrap}
 .frow>.field{flex:1 1 200px;min-width:0}
-@media(max-width:560px){.frow{flex-direction:column;gap:1.25rem}}
+@media(max-width:560px){.frow{flex-direction:column;gap:0}}
 .field{margin-bottom:1.5rem}
 .field:last-child{margin-bottom:0}
 .field>label{display:block;font:600 .68rem var(--sans);letter-spacing:.12em;text-transform:uppercase;
@@ -169,11 +169,16 @@ svg{display:block}
 .chosenInfo{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
 .chosenInfo b{font:600 1rem/1.25 var(--sans);color:var(--ink)}
 .chosenInfo span{font:500 .7rem/1.35 var(--sans);letter-spacing:.04em;color:var(--faint)}
-.chosenQty{display:flex;flex-direction:column;gap:4px;align-items:center;
-  font:700 .58rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
-.chosenQty input{width:68px;height:2.2rem;padding:0 4px;border:none;border-bottom:1.5px dashed var(--dash);
-  background:transparent;color:var(--ink);font:600 .9rem var(--sans);text-align:center}
-.chosenQty input:focus{outline:none;border-bottom:1.5px solid var(--berry)}
+.chosenQty{display:flex;align-items:center;gap:.45rem;flex:none}
+/* quantity stepper — the −/+ buttons are ALWAYS visible (no number spinner) */
+.fbp-panel .qtybtn{width:36px;height:36px;flex:none;padding:0;border:1.5px solid var(--dash);border-radius:4px;
+  background:#fff;color:var(--ink);font:600 1.15rem/1 var(--sans);display:grid;place-items:center;
+  transition:.15s var(--ease)}
+.fbp-panel .qtybtn:hover:not(:disabled){border-color:var(--ink);background:var(--bone)}
+.fbp-panel .qtybtn:active:not(:disabled){background:var(--bone2);transform:translateY(1px)}
+.fbp-panel .qtybtn:disabled{opacity:.38;cursor:not-allowed}
+.qtyval{min-width:2.4rem;text-align:center;font:700 .95rem var(--mono);color:var(--ink);
+  font-variant-numeric:tabular-nums}
 /* flower-type multi-select */
 .flower-choice-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.6rem}
 .flower-choice-list label{display:inline-flex;align-items:center;gap:7px;padding:.45rem .7rem;
@@ -192,17 +197,6 @@ svg{display:block}
 .rv dt{font:700 .56rem var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding-top:4px;flex:none}
 .rv dd{font:500 .92rem var(--sans);color:var(--ink);text-align:right;min-width:0;overflow-wrap:anywhere;
   font-variant-numeric:tabular-nums}
-/* ── confirm gate ── */
-.confirm-block{margin:2.2rem 0 0;padding:1.05rem 1.2rem 1.15rem;border-radius:4px;scroll-margin-top:2rem;
-  background:var(--bone2)}
-.confirm-block:focus-within{box-shadow:0 0 0 2px rgba(169,143,110,.16)}
-.confirm-block.checked:focus-within{box-shadow:none}
-.confirm-label{display:flex;align-items:flex-start;gap:.8rem;cursor:pointer;user-select:none}
-.confirm-label .sqbox{width:22px;height:22px;margin-top:.05rem}
-.confirm-label .sqbox:checked::after{left:7.5px;top:3px;width:6px;height:11px;border-width:0 3px 3px 0}
-.confirm-text{font:500 .95rem/1.5 var(--serif);color:var(--ink);padding-top:.1rem}
-.confirm-err{display:none;align-items:center;gap:.4rem;margin:.5rem 0 0 2.1rem;font:500 .78rem var(--sans);color:var(--red)}
-.confirm-block.bad .confirm-err{display:flex}
 /* ── actions — berry only ── */
 .actions{display:flex;gap:1rem;justify-content:flex-end;margin-top:2.6rem;padding-top:1.6rem;
   border-top:1px solid var(--line);flex-wrap:wrap}
@@ -251,6 +245,38 @@ svg{display:block}
 .values::before,.values::after{content:"";flex:1;height:1px;background:rgba(245,239,227,.22)}
 .values span{font:700 .6rem var(--karla);letter-spacing:.26em;text-transform:uppercase;color:rgba(245,239,227,.65)}
 @media(max-width:600px){.site-foot{padding:40px 20px 36px}}
+/* ── phone: the intake sheet as one tidy column ──────────────────────────── */
+@media(max-width:600px){
+  .fbp-panel{width:100vw;box-shadow:none}
+  .watermark{display:none}
+  .doc-head{padding:58px 18px 0}
+  .doc-head h1{font-size:1.24rem}
+  .doc-sub{font-size:.9rem}
+  .doc-meta{font-size:.6rem;letter-spacing:.08em}
+  .doc-rule{margin:16px 18px 0}
+  .stepstrip{gap:16px;padding:14px 18px 4px}
+  .stepstrip li::after{width:16px;margin-left:16px}
+  .panes{padding:12px 16px 8px}
+  .section{margin-bottom:1.9rem}
+  .section-head{padding:.6rem .9rem;margin-bottom:1.1rem}
+  .field{margin-bottom:1.3rem}
+  /* iOS focus-zooms anything under 16px and shoves the whole panel around */
+  .fbp-panel input,.fbp-panel select,.fbp-panel textarea{font-size:16px}
+  .inwrap input,.inwrap select{height:3rem}
+  .frow{flex-direction:column;gap:0}
+  .frow>.field{flex:1 1 auto}
+  .chosenRow{flex-wrap:wrap;gap:8px 10px;padding:11px}
+  .chosenInfo{flex:1 1 55%}
+  .chosenQty{flex:1 1 100%;width:100%;justify-content:flex-end;
+    padding-top:8px;border-top:1px dashed var(--line)}
+  .fbp-panel .qtybtn{width:42px;height:42px}
+  .rv{flex-direction:column;gap:3px;align-items:flex-start;padding:.6rem 0}
+  .rv dt{padding-top:0}
+  .rv dd{text-align:left}
+  .cref{gap:14px;padding:.75rem 1.1rem}
+  .conf{padding:1.8rem .5rem 1rem}
+}
+@media(max-width:460px){.sizecard:last-child{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){
   .fbp-panel *,.fbp-scrim{animation:none!important;transition:none!important}
   .fbp-panel .snowfall{display:none}
@@ -308,7 +334,7 @@ const FbSymbols = () => (
 
 /* helpers */
 
-const BLANK = { time: '', dep: '', funeralDate: '', gender: '', ribbon: '', colors: '', anyColor: true, size: '', quantities: {}, flowers: '', notes: '', name: '', phone: '', confirm: false }
+const BLANK = { time: '', dep: '', funeralDate: '', ribbon: '', colors: '', anyColor: true, size: '', quantities: {}, flowers: '', notes: '', name: '', phone: '' }
 const SIZES = [
   ['Small', 'Thoughtful tribute'],
   ['Medium', 'Classic tribute'],
@@ -358,13 +384,8 @@ const nowTimeStr = () => {
   const d = new Date()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
-const fmtTime = (t) => {
-  if (!t) return ''
-  const [h, m] = t.split(':').map(Number)
-  const ap = h >= 12 ? 'pm' : 'am'
-  const hh = ((h + 11) % 12) + 1
-  return `${hh}:${String(m).padStart(2, '0')} ${ap}`
-}
+/* (Ready-at time removed from the form — the booking still records the time
+   it was logged, filled automatically from `nowTimeStr()` below.) */
 const localDateKey = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -416,6 +437,12 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
   const branding = useFuneralHomeBranding(tenantSlug)
   const showLogo = !!branding.logoUrl && !logoBroken
   const showMonogram = !showLogo && !!branding.name
+
+  /* The crest used to "disappear sometimes": one failed image load left
+     `logoBroken` stuck for the life of the panel. Re-arm it whenever the
+     resolved logo URL changes or the panel is reopened so a transient blip
+     can never hide the tenant's logo permanently. */
+  useEffect(() => { setLogoBroken(false) }, [branding.logoUrl, open])
 
   /* Live date/time line on the document header (the reference ticks it every
      30s so a panel left open overnight doesn't show yesterday). */
@@ -486,29 +513,28 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
       : [...current, flower])
   }
 
+  /* quantity stepper — clamped 1…99, driven by the always-visible −/+ buttons */
+  const qtyOf = (id) => Math.max(1, Math.min(99, Number(form.quantities[id]) || 1))
+  const bumpQty = (id, delta) => setForm(f => ({
+    ...f,
+    quantities: { ...f.quantities, [id]: Math.max(1, Math.min(99, (Number(f.quantities[id]) || 1) + delta)) },
+  }))
+
   const dep = form.dep.trim()
 
-  /* step 1 to step 2: the service time is required */
-  const goDetails = () => {
-    const b = {}
-    if (!form.time) b.time = true
-    setBad(prev => ({ ...prev, ...b }))
-    if (Object.keys(b).length) return
-    setStep(2)
-  }
+  /* step 1 → step 2: nothing on the arrangement step is required any more */
+  const goDetails = () => setStep(2)
 
   const submit = async () => {
     const b = {}
     if (form.name.trim().length < 2) b.name = true
     if (!/^[+\d][\d\s().-]{6,}$/.test(form.phone.trim())) b.phone = true
-    if (!form.confirm) b.confirm = true
     setBad(prev => ({ ...prev, ...b }))
     if (Object.keys(b).length) {
       // Focus the FIRST offending control so keyboard/screen-reader users are
       // taken straight to it rather than just seeing a red border.
       const target = Object.keys(b)[0]
       const el = document.querySelector(`#f${target.charAt(0).toUpperCase()}${target.slice(1)}`)
-        || document.getElementById('fConfirm')
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         el.focus({ preventScroll: true })
@@ -537,7 +563,7 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
         name: arrangement.title,
         types: arrangement.types.filter(flower => selectedFlowers.includes(flower)),
         colors: preferredColors.length ? preferredColors : arrangement.colors,
-        quantity: Math.max(1, Number(form.quantities[arrangement.id]) || 1),
+        quantity: qtyOf(arrangement.id),
       }))
       const totalQuantity = lineItems.reduce((total, item) => total + item.quantity, 0)
       const notesParts = [
@@ -558,7 +584,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
         branch: getBranchSlug() || getBranchId() || null,
         date: bookedDate,
         funeral_date: form.funeralDate || null,
-        deceased_gender: form.gender || null,
         quantity: totalQuantity,
         time: form.time || null,
         deceased_name: dep || null,
@@ -577,7 +602,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
       const ref = 'MH-' + Math.random().toString(36).slice(2, 6).toUpperCase()
       setConfirm({
         ref,
-        whenStr: form.time ? fmtTime(form.time) : '',
         size: form.size || '',
         mem: dep ? `Flowers for ${dep}, arranged with care.` : "We'll confirm by phone within two hours.",
       })
@@ -606,12 +630,10 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
       ['Flowers', [...new Set([...selectedFlowers, ...form.flowers.split(/[\n,]+/).map(item => item.trim()).filter(Boolean)])].join(', ')],
       ['Departed', dep],
       ['Funeral date', form.funeralDate],
-      ['Gender', form.gender],
-      ['Ready at', form.time ? fmtTime(form.time) : ''],
       ['Color preference', form.anyColor ? "Any color · florist's choice" : form.colors],
       ['Ribbon wording', form.ribbon.trim()],
       ['Size', form.size],
-      ['Quantities', chosen.map(c => `${c.title} ×${Math.max(1, Number(form.quantities[c.id]) || 1)}`).join(', ')],
+      ['Quantities', chosen.map(c => `${c.title} ×${qtyOf(c.id)}`).join(', ')],
       ['Notes', form.notes.trim()],
     ].filter(r => r[1])
   })()
@@ -639,7 +661,7 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                     missing image degrades instead of showing a broken icon. */}
                 <div className={'logo-wrap' + (!showLogo && !showMonogram ? ' fallback' : '')}>
                   {showLogo && (
-                    <img src={branding.logoUrl} alt={`${branding.name} logo`} onError={() => setLogoBroken(true)} />
+                    <img key={branding.logoUrl} src={branding.logoUrl} alt={`${branding.name} logo`} onError={() => setLogoBroken(true)} />
                   )}
                   {showMonogram && (
                     <div className="logo-mono" aria-label={branding.name}>{branding.monogram}</div>
@@ -676,14 +698,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                         <div className="section-head"><span className="n">01</span><span className="t">Service &amp; Tribute</span></div>
 
                         <div className="frow">
-                          <div className={'field' + (bad.time ? ' bad' : '')}>
-                            <label htmlFor="fTime">Ready at <span className="req">*</span></label>
-                            <div className={'inwrap' + (form.time ? ' has-val' : '')}>
-                              <input type="time" id="fTime" {...set('time')} />
-                              <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                            </div>
-                            <p className="err">Ready-at time is required</p>
-                          </div>
                           <div className="field">
                             <label htmlFor="fFuneralDate">Funeral date <span className="opt">(optional)</span></label>
                             <div className={'inwrap' + (form.funeralDate ? ' has-val' : '')}>
@@ -691,29 +705,10 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                               <span className="tickbadge"><svg><use href="#tick" /></svg></span>
                             </div>
                           </div>
-                        </div>
-                        <p className="autofilled" style={{ marginTop: '-0.7rem', marginBottom: '1.4rem' }}>
-                          Set to now. Adjust if the flowers are needed later.
-                        </p>
-
-                        <div className="frow">
                           <div className="field">
                             <label htmlFor="fDep">Departed name <span className="opt">(optional)</span></label>
                             <div className={'inwrap' + (form.dep ? ' has-val' : '')}>
                               <input type="text" id="fDep" placeholder="e.g. Mary Wanjiku" autoComplete="off" {...set('dep')} />
-                              <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                            </div>
-                          </div>
-                          <div className="field">
-                            <label htmlFor="fGender">Gender <span className="opt">(optional)</span></label>
-                            <div className={'inwrap' + (form.gender ? ' has-val' : '')}>
-                              <select id="fGender" {...set('gender')}>
-                                <option value="">Not specified</option>
-                                <option value="Woman">Woman</option>
-                                <option value="Man">Man</option>
-                                <option value="Non-binary">Non-binary</option>
-                                <option value="Prefer not to say">Prefer not to say</option>
-                              </select>
                               <span className="tickbadge"><svg><use href="#tick" /></svg></span>
                             </div>
                           </div>
@@ -734,20 +729,23 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                                 <b>{c.title}</b>
                                 <span>{[c.types[0], c.colors.slice(0, 2).join(', '), c.sizes[0]].filter(Boolean).join(' · ') || 'Custom arrangement'}</span>
                               </div>
-                              <label className="chosenQty">
-                                Qty
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="99"
-                                  value={form.quantities[c.id] || 1}
-                                  onChange={event => setForm(current => ({
-                                    ...current,
-                                    quantities: { ...current.quantities, [c.id]: event.target.value },
-                                  }))}
-                                  aria-label={`Quantity for ${c.title}`}
-                                />
-                              </label>
+                              <div className="chosenQty" role="group" aria-label={`Quantity for ${c.title}`}>
+                                <button
+                                  type="button"
+                                  className="qtybtn"
+                                  onClick={() => bumpQty(c.id, -1)}
+                                  disabled={qtyOf(c.id) <= 1}
+                                  aria-label={`Decrease quantity of ${c.title}`}
+                                >−</button>
+                                <span className="qtyval">{qtyOf(c.id)}</span>
+                                <button
+                                  type="button"
+                                  className="qtybtn"
+                                  onClick={() => bumpQty(c.id, 1)}
+                                  disabled={qtyOf(c.id) >= 99}
+                                  aria-label={`Increase quantity of ${c.title}`}
+                                >+</button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -865,29 +863,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                           </div>
                           <p className="err">Enter a valid phone number</p>
                         </div>
-
-                        {/* Confirmation gate — the reference requires an explicit
-                            authorisation, so an unreviewed request can never
-                            reach the florist. */}
-                        <div className={'confirm-block' + (bad.confirm ? ' bad' : form.confirm ? ' checked' : '')}>
-                          <label className="confirm-label">
-                            <input
-                              type="checkbox"
-                              id="fConfirm"
-                              className="sqbox"
-                              checked={form.confirm}
-                              onChange={event => {
-                                const next = event.target.checked;
-                                setForm(current => ({ ...current, confirm: next }));
-                                setBad(prev => ({ ...prev, confirm: next ? undefined : prev.confirm }));
-                              }}
-                            />
-                            <span className="confirm-text">
-                              I confirm the details above are correct and authorise the florist to proceed with this arrangement.
-                            </span>
-                          </label>
-                          <p className="confirm-err">Please confirm the details are correct to continue</p>
-                        </div>
                       </div>
 
                       <div className="actions">
@@ -908,7 +883,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                         <p className="csub">{confirm.mem}</p>
                         <div className="cref">
                           {confirm.ref && <span>Ref · {confirm.ref}</span>}
-                          {confirm.whenStr && <span>Ready · {confirm.whenStr}</span>}
                         </div>
                         <div className="conf-meta">
                           {clock.date && <span>Logged · <b>{clock.date}</b></span>}

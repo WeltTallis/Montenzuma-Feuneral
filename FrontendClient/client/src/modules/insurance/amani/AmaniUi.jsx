@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Clock, Mail, MapPin, Menu, Phone, X } from 'lucide-react';
@@ -6,6 +5,28 @@ import { CONTACT } from './amaniData';
 import { IMAGE_VARIANTS } from './imageManifest';
 import './AmaniCover.css';
 
+/* ==========================================================================
+   KISWAHILI ACCENTS — the page stays in English; these are the ONLY Swahili
+   phrases, dropped into warm/friendly spots (drawer, footer) the way Kenyan
+   brands actually mix. Each one is glossed so future edits keep the meaning:
+     • "Uko covered?"                — "Are you covered?" (Sheng hybrid)
+     • "Tuko pamoja nawe."           — "We're together with you."
+     • "Tuko hapa 24/7, mchana na usiku." — "We're here 24/7, day and night."
+     • "Piga simu"                   — "Make the call" (everyday Kenyan phrase)
+     • "Amani ya kweli ni kujua familia yako iko salama."
+                                     — "True peace is knowing your family is safe."
+     • "Imetengenezwa Kenya, kwa Wakenya." — "Made in Kenya, for Kenyans."
+   Urgent actions (Make a claim, form buttons, labels) stay English on purpose.
+   ========================================================================== */
+
+const SW = {
+  drawerTagline: 'Uko covered? Tuko pamoja nawe.',
+  drawerCallNote: 'Tuko hapa 24/7, mchana na usiku.',
+  drawerCall: 'Call',
+  footerQuote: 'Amani ya kweli ni kujua familia yako iko salama.',
+  footerPill: 'Tuko pamoja — trusted by families across Kenya',
+  madeIn: 'Imetengenezwa Kenya, kwa Wakenya.',
+};
 
 export function FillImage({ src, alt, className = '', priority = false, sizes, width, height }) {
   const entry = IMAGE_VARIANTS[src];
@@ -52,24 +73,41 @@ const SUB_ANCHORS = [
 ];
 
 /* Sticky header: the primary action always opens the claims route. The mobile
-  drawer carries the full navigation, payment and support links. */
+   drawer carries the full navigation, payment and support links. */
+
 export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
   const isLanding = active === '/amani/cover';
   const links = inPageLinks && inPageLinks.length ? inPageLinks : isLanding ? LANDING_ANCHORS : SUB_ANCHORS;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const headerRef = useRef(null);
-  const mobileLinks = [
-    { href: '/amani/cover', label: 'Amani Cover' },
-    { href: isLanding ? '#plans' : '/amani/cover#plans', label: 'Choose cover' },
-    { href: '/amani/cover/apply', label: 'Apply now' },
-    { href: isLanding ? '#about' : '/amani/cover#about', label: 'About Amani' },
-    { href: isLanding ? '#how' : '/amani/cover#how', label: 'How it works' },
-    { href: '/amani/cover/terms', label: 'Policy terms' },
-    { href: '/amani/cover/refer', label: 'Refer a friend' },
-    { href: '/amani/payments', label: 'Make a payment' },
-    { href: '/amani/claims', label: 'Make a claim' },
-    { href: '/amani/claims/track', label: 'Track a claim' },
+
+  /* Drawer links, grouped so ten rows become three scannable sections. */
+  const drawerGroups = [
+    {
+      label: 'Cover',
+      links: [
+        { href: '/amani/cover', label: 'Amani Cover' },
+        { href: isLanding ? '#plans' : '/amani/cover#plans', label: 'Choose cover' },
+        { href: isLanding ? '#about' : '/amani/cover#about', label: 'About Amani' },
+      ],
+    },
+    {
+      label: 'Payments & claims',
+      links: [
+        { href: '/amani/payments', label: 'Make a payment' },
+        { href: '/amani/claims', label: 'Make a claim' },
+        { href: '/amani/claims/track', label: 'Track a claim' },
+      ],
+    },
+    {
+      label: 'More',
+      links: [
+        { href: '/amani/cover/apply', label: 'Apply now' },
+        { href: '/amani/cover/terms', label: 'Policy terms' },
+        { href: '/amani/cover/refer', label: 'Refer a friend' },
+      ],
+    },
   ];
 
   useEffect(() => {
@@ -86,6 +124,8 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
     };
   }, [mobileOpen]);
 
+  /* Hide when scrolling down past the hero, reveal on scroll up or when the
+     header itself has keyboard focus (so its links stay reachable). */
   useEffect(() => {
     if (mobileOpen) {
       setHeaderVisible(true);
@@ -93,7 +133,6 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
     }
 
     let previousY = window.scrollY;
-    let idleTimer;
     const handleScroll = () => {
       const currentY = window.scrollY;
       const headerHasFocus = headerRef.current?.contains(document.activeElement);
@@ -105,43 +144,49 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
       }
 
       previousY = currentY;
-      window.clearTimeout(idleTimer);
-      idleTimer = window.setTimeout(() => setHeaderVisible(true), 480);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.clearTimeout(idleTimer);
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [mobileOpen]);
+
+  /* Underline-on-hover link; the active link keeps a gold underline. */
+  const linkClass = (href) => {
+    const isActive = href === active;
+    return [
+      'relative py-0.5 text-sm transition-colors',
+      isActive ? 'font-semibold text-ac-primary' : 'text-ac-mutedfg hover:text-ac-primary',
+      'after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:origin-left after:rounded-full after:transition-transform after:duration-200',
+      isActive
+        ? 'after:scale-x-100 after:bg-ac-highlight'
+        : 'after:scale-x-0 after:bg-ac-accent hover:after:scale-x-100',
+    ].join(' ');
+  };
 
   return (
     <header
       ref={headerRef}
-      className={`sticky top-0 z-40 border-ac-border/70 bg-ac-bg/90 backdrop-blur-md transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}
+      className={`sticky top-0 z-40 border-b border-ac-border/70 bg-ac-bg/90 backdrop-blur-md transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
-      {/* Keep the compact claim action and menu trigger side by side on phones. */}
-      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-9 h-18 sm:gap-6 sm:px-6 lg:px-10">
-
-        <div className="flex shrink-0 items-center gap-8">
-          <Link to="/amani/cover" className="flex items-baseline gap-2" aria-label="Amani Cover home">
-            <span className="flex items-center gap-2.5">
-              <img
-                src="https://montezumamonalisa.com/wp-content/uploads/2020/01/logo.png"
-                alt="Montenzuma Monalisa Funeral Home"
-                className="h-38 w-48 object-contain h-16 w-16"
-              />
-
-            </span>
-
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:px-10">
+        <div className="flex min-w-0 items-center gap-8">
+          <Link
+            to="/amani/cover"
+            className="flex shrink-0 items-center"
+            aria-label="Amani Cover home"
+          >
+            <img
+              src="https://montezumamonalisa.com/wp-content/uploads/2020/01/logo.png"
+              alt="Montenzuma Monalisa Funeral Home"
+              className="!h-[42px] !w-auto !max-w-[100px] object-contain"
+            />
           </Link>
 
-          <nav aria-label="Main" className="hidden md:block">
-            <ul className="flex items-center gap-6 text-sm text-ac-mutedfg lg:gap-7">
+          <nav aria-label="Main" className="hidden lg:block">
+            <ul className="flex items-center gap-7">
               {links.map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className="transition-colors hover:text-ac-primary">
+                  <a href={link.href} className={linkClass(link.href)}>
                     {link.label}
                   </a>
                 </li>
@@ -150,44 +195,39 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
           </nav>
         </div>
 
-        {/* The 24/7 family line, centred in the bar on request - previously it
-            sat in the right-hand group next to the CTA, where it read as one
-            more button rather than as the number to call.
-
-            Absolutely positioned rather than a flex sibling, because the bar is
-            justify-between: a third flex child would be pushed toward the right
-            edge by the width of the CTA, not centred. Hidden until `lg`, which is
-            where the links above and the CTA leave enough room for it without
-            overlapping either. */}
-        <a
-          href={CONTACT.phoneHref}
-          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 whitespace-nowrap text-sm font-medium text-ac-primary lg:flex"
-        >
-          <Phone className="size-4 text-ac-accent" aria-hidden="true" />
-          {CONTACT.phone}
-        </a>
-
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          {/* The 24/7 family line as plain text, not a third button. Only
+              shown at xl, where links + CTA are guaranteed to leave room. */}
+          <a
+            href={CONTACT.phoneHref}
+            className="hidden items-center gap-2 whitespace-nowrap text-sm font-semibold text-ac-primary hover:underline hover:underline-offset-4 xl:inline-flex"
+          >
+            <Phone className="size-4 text-ac-accent" aria-hidden="true" />
+            {CONTACT.phone}
+          </a>
+
           <Link
             to="/amani/claims"
-            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-ac-primary px-3.5 text-[0.8125rem] font-semibold text-white shadow-sm transition-colors hover:bg-ac-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring sm:h-10 sm:px-5 sm:text-sm"
+            className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-ac-primary px-3.5 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-ac-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring sm:h-10 sm:px-5 sm:text-sm"
           >
             Make a claim
           </Link>
+
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-lg border border-ac-border text-ac-primary transition-colors hover:bg-ac-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring md:hidden"
+            className="grid size-10 place-items-center rounded-lg border border-ac-border text-ac-primary transition-colors hover:bg-ac-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring lg:hidden"
             aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileOpen}
             aria-controls="amani-mobile-menu"
-            onClick={() => setMobileOpen(open => !open)}
+            onClick={() => setMobileOpen((open) => !open)}
           >
             {mobileOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
           </button>
         </div>
       </div>
+
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
             className="absolute inset-0 size-full bg-black/35"
@@ -199,39 +239,56 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
             role="dialog"
             aria-modal="true"
             aria-label="Amani navigation"
-            className="absolute right-0 top-0 flex h-dvh w-[min(88vw,22rem)] flex-col overflow-y-auto bg-ac-bg p-5 shadow-2xl"
+            className="absolute right-0 top-0 flex h-dvh w-[min(88vw,22rem)] flex-col overflow-y-auto bg-ac-bg shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-ac-border pb-4">
-              <span className="font-serif text-2xl font-semibold text-ac-primary">Amani</span>
-              <button
-                type="button"
-                className="grid size-10 place-items-center rounded-lg text-ac-primary hover:bg-ac-card focus-visible:outline-2 focus-visible:outline-ac-ring"
-                aria-label="Close navigation menu"
-                onClick={() => setMobileOpen(false)}
-              >
-                <X className="size-5" aria-hidden="true" />
-              </button>
-            </div>
-            <nav aria-label="Amani mobile" className="flex flex-col py-3">
-              {mobileLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className="flex min-h-12 items-center justify-between border-b border-ac-border/70 px-2 text-sm font-medium text-ac-ink transition-colors hover:bg-ac-card hover:text-ac-primary"
+            <div className="border-b border-ac-border px-5 py-4">
+              <div className="flex items-center justify-between">
+                <span className="font-serif text-xl font-semibold text-ac-primary">Amani Cover</span>
+                <button
+                  type="button"
+                  className="grid size-10 place-items-center rounded-lg text-ac-primary hover:bg-ac-card focus-visible:outline-2 focus-visible:outline-ac-ring"
+                  aria-label="Close navigation menu"
                   onClick={() => setMobileOpen(false)}
                 >
-                  {link.label}
-                  <ArrowRight className="size-4 text-ac-accent" aria-hidden="true" />
-                </a>
+                  <X className="size-5" aria-hidden="true" />
+                </button>
+              </div>
+              {/* Kiswahili accent — a warm hello under the drawer title */}
+              <p className="mt-1 text-xs italic text-ac-accent">{SW.drawerTagline}</p>
+            </div>
+
+            <nav aria-label="Amani mobile" className="flex flex-1 flex-col gap-5 px-5 pt-5">
+              {drawerGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-ac-accent">
+                    {group.label}
+                  </p>
+                  {group.links.map((link) => (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      className="flex min-h-11 items-center justify-between gap-3 rounded-lg px-2.5 text-sm font-medium text-ac-ink transition-colors hover:bg-ac-card hover:text-ac-primary focus-visible:outline-2 focus-visible:outline-ac-ring"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {link.label}
+                      <ArrowRight className="size-4 shrink-0 text-ac-accent" aria-hidden="true" />
+                    </a>
+                  ))}
+                </div>
               ))}
             </nav>
-            <a
-              href={CONTACT.phoneHref}
-              className="mt-auto flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 font-semibold text-white"
-            >
-              <Phone className="size-4" aria-hidden="true" />
-              Call {CONTACT.phone}
-            </a>
+
+            <div className="mt-auto border-t border-ac-border p-5">
+              {/* Kiswahili accent — availability reassurance above the number */}
+              <p className="mb-2 text-center text-[0.6875rem] text-ac-mutedfg">{SW.drawerCallNote}</p>
+              <a
+                href={CONTACT.phoneHref}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 font-semibold text-white transition-colors hover:bg-ac-primary-hover"
+              >
+                <Phone className="size-4" aria-hidden="true" />
+                {SW.drawerCall} {CONTACT.phone}
+              </a>
+            </div>
           </aside>
         </div>
       )}
@@ -261,7 +318,6 @@ export function PageHeader({ eyebrow, title, accent, intro }) {
     </header>
   );
 }
-
 
 /* Footer, ported from the redesign's site-footer.tsx. Shared by all three
    Amani routes. */
@@ -294,7 +350,6 @@ const FOOT_LINK =
 const FOOT_COLUMN =
   'flex flex-col gap-2.5 text-[13px]';
 
-
 export function AmaniFooter() {
   const { pathname } = useLocation();
   const isLanding = pathname === '/amani/cover';
@@ -311,16 +366,19 @@ export function AmaniFooter() {
           <div className="sm:col-span-2 lg:col-span-4">
             <p className="flex items-baseline gap-2">
               <span className="font-serif text-2xl font-semibold">Amani</span>
-
             </p>
             <p className="mt-3 max-w-sm text-[0.8125rem] leading-relaxed text-ac-onprimary/65">
               Amani Cover is funeral insurance from Montenzuma Monalisa Funeral
               Home, so your family never has to worry about money while they say goodbye. We&rsquo;ve
               been with Kenyan families for over 25 years, and we&rsquo;re here for yours.
             </p>
+            {/* Kiswahili accent — the brand promise in the language of the name */}
+            <p className="mt-3 max-w-sm font-serif text-sm italic leading-relaxed text-ac-highlight/90">
+              &ldquo;{SW.footerQuote}&rdquo;
+            </p>
             <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-ac-onprimary/15 px-3 py-1 text-[0.6875rem] text-ac-onprimary/75">
               <span className="size-1.5 rounded-full bg-ac-highlight" aria-hidden="true" />
-              Trusted by families across Kenya
+              {SW.footerPill}
             </p>
           </div>
 
@@ -401,7 +459,11 @@ export function AmaniFooter() {
         </div>
 
         <div className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-ac-onprimary/10 py-4 text-xs text-ac-onprimary/60 md:flex-row md:items-center md:justify-between">
-          <p>© {new Date().getFullYear()} Montenzuma Monalisa Funeral Home. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} Montenzuma Monalisa Funeral Home. All rights reserved.
+            {/* Kiswahili accent — quiet national pride on the last line */}
+            <span className="ml-2 italic text-ac-onprimary/45">{SW.madeIn}</span>
+          </p>
           <ul className="flex flex-wrap gap-x-5 gap-y-1.5">
             {LEGAL_LINKS.map((link) => (
               <li key={link.label}>

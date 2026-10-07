@@ -14,33 +14,33 @@ import notify from '../../utils/notify';
 
 /* ═══════════════════════ DESIGN TOKENS ═══════════════════════ */
 const C = {
-  ink: '#0a0a0a', mid: '#444444', gray: '#777777', lgray: '#a8a8a3',
-  line: '#e3e1db', line2: '#efede8',
-  field: '#f7f6f3', card: '#ffffff', app: '#edece8',
-  navy: '#00296B', navyDeep: '#001d4d',
-  orange: '#E36414', plum: '#5F0F40', pink: '#DD2D4A', deep: '#0F3040',
+  ink: '#111827', mid: '#374151', gray: '#6b7280', lgray: '#9ca3af',
+  line: '#e5e7eb', line2: '#f3f4f6',
+  field: '#f9fafb', card: '#ffffff', app: '#f7f8fa',
+  navy: '#111827', navyDeep: '#0b1220',
+  orange: '#111827', plum: '#111827', pink: '#dc2626', deep: '#111827',
   success: '#047857', successBg: '#ecfdf5',
   warning: '#b45309', warningBg: '#fffbeb',
   danger: '#dc2626', dangerBg: '#fef2f2',
-  sel: 'rgba(0,41,107,.09)',
-  accent: '#DD2D4A',
+  sel: 'rgba(17,24,39,.08)',
+  accent: '#dc2626',
 };
 
 const LEAVE_TYPES = [
-  { value: 'annual', label: 'Annual', icon: 'cal', color: '#00296B' },
-  { value: 'sick', label: 'Sick', icon: 'med', color: '#dc2626' },
-  { value: 'maternity', label: 'Maternity', icon: 'users', color: '#5F0F40' },
-  { value: 'paternity', label: 'Paternity', icon: 'users', color: '#E36414' },
-  { value: 'compassionate', label: 'Compassionate', icon: 'heart', color: '#DD2D4A' },
-  { value: 'study', label: 'Study', icon: 'book', color: '#0F3040' },
-  { value: 'unpaid', label: 'Unpaid', icon: 'wallet', color: '#777777' },
+  { value: 'annual', label: 'Annual', icon: 'cal', color: '#111827' },
+  { value: 'sick', label: 'Sick', icon: 'med', color: '#111827' },
+  { value: 'maternity', label: 'Maternity', icon: 'users', color: '#111827' },
+  { value: 'paternity', label: 'Paternity', icon: 'users', color: '#111827' },
+  { value: 'compassionate', label: 'Compassionate', icon: 'heart', color: '#111827' },
+  { value: 'study', label: 'Study', icon: 'book', color: '#111827' },
+  { value: 'unpaid', label: 'Unpaid', icon: 'wallet', color: '#111827' },
 ];
 
 const PRIORITIES = [
-  { value: 'low', label: 'Low', color: '#777777' },
-  { value: 'medium', label: 'Medium', color: '#00296B' },
-  { value: 'high', label: 'High', color: '#E36414' },
-  { value: 'emergency', label: 'Emergency', color: '#DD2D4A' },
+  { value: 'low', label: 'Low', color: '#111827' },
+  { value: 'medium', label: 'Medium', color: '#111827' },
+  { value: 'high', label: 'High', color: '#111827' },
+  { value: 'emergency', label: 'Emergency', color: '#111827' },
 ];
 
 const STATUS_META = {
@@ -255,8 +255,8 @@ const StepNo = styled.span`
 `;
 const HeadChip = styled.span`
   margin-left: auto; font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
-  text-transform: uppercase; color: ${C.mid}; background: ${C.field};
-  border: 1px solid ${C.line}; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  text-transform: uppercase; color: ${C.mid}; background: #fff;
+  border: 1px solid ${C.line}; padding: 4px 10px; border-radius: 6px; white-space: nowrap;
   &.warn { color: ${C.warning}; background: ${C.warningBg}; border-color: rgba(180,83,9,.3); }
 `;
 
@@ -280,11 +280,11 @@ const RangeStrip = styled.div`
   .rs-ico { color: ${C.navy}; display: flex; }
   b { font-weight: 800; color: ${C.navy}; }
   .arrow { color: ${C.lgray}; }
-  &.on { background: #eef2f9; border: 1px solid rgba(0,41,107,.3); border-style: solid; }
+  &.on { background: #fff; border: 1px solid ${C.line}; border-style: solid; }
 `;
 const RsDays = styled.span`
   margin-left: auto; font-size: 11.5px; font-weight: 800; color: #fff;
-  background: ${C.navy}; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  background: ${C.navy}; padding: 4px 10px; border-radius: 6px; white-space: nowrap;
 `;
 const RsClear = styled.button`
   font-size: 12px; font-weight: 700; color: ${C.gray}; border: 1px solid ${C.line};
@@ -302,7 +302,7 @@ const NavBtn = styled.button`
   width: 34px; height: 34px; display: grid; place-items: center;
   border: 1px solid ${C.line}; background: #fff; border-radius: 9px;
   color: ${C.gray}; cursor: pointer; transition: .15s;
-  &:hover { border-color: ${C.navy}; color: ${C.navy}; background: #f2f5fb; }
+  &:hover { border-color: ${C.navy}; color: ${C.navy}; background: #f3f4f6; }
   &.today { width: auto; padding: 0 12px; font-size: 12px; font-weight: 700; }
   @media (max-width: 420px) { width: 30px; height: 30px; }
 `;
@@ -327,7 +327,7 @@ const Cell = styled.div`
   background: ${C.field}; border: 1px solid transparent; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   transition: background .12s;
-  ${(p) => p.$weekend && `background: #f1efea;`}
+  ${(p) => p.$weekend && `background: #f3f4f6;`}
   ${(p) => p.$past && `.dnum { color: #b6b3ac; }`}
   ${(p) => p.$inRange && `background: ${C.sel}; border-radius: 0;`}
   ${(p) => p.$isStart && `border-radius: 10px 0 0 10px;`}
@@ -341,7 +341,7 @@ const Cell = styled.div`
   }
   ${(p) => p.$today && `.dnum { box-shadow: inset 0 0 0 2px ${C.navy}; color: ${C.navy}; font-weight: 800; }`}
   ${(p) => p.$anchor && `.dnum { background: ${C.navy}; color: #fff; font-weight: 700;
-       box-shadow: 0 3px 8px -2px rgba(0,41,107,.5); }`}
+       box-shadow: 0 3px 8px -2px rgba(17,24,39,.4); }`}
   @media (max-width: 640px) {
     min-height: 42px; border-radius: 8px;
     .dnum { width: 26px; height: 26px; font-size: 12.5px; }
@@ -390,9 +390,9 @@ const Required = styled.span` color: ${C.accent}; margin-left: 2px; `;
 const Chips = styled.div` display: flex; flex-wrap: wrap; gap: 7px; `;
 const TypeChip = styled.button`
   border: 1px solid ${(p) => (p.$on ? p.$color : C.line)};
-  background: ${(p) => (p.$on ? p.$color : C.field)};
+  background: ${(p) => (p.$on ? p.$color : '#fff')};
   color: ${(p) => (p.$on ? '#fff' : C.mid)};
-  border-radius: 99px; padding: 7px 14px; font-size: 13px; font-weight: 700;
+  border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 700;
   cursor: pointer; transition: .14s; display: inline-flex; align-items: center; gap: 7px;
   &:hover { border-color: ${(p) => p.$color}; }
   ${(p) => p.$on && `box-shadow: 0 4px 10px -4px ${p.$color}88;`}
@@ -407,19 +407,19 @@ const Seg = styled.div`
     font-size: 12.5px; font-weight: 700; color: ${C.gray}; cursor: pointer;
     transition: .14s; white-space: nowrap;
     &:hover { color: ${C.ink}; }
-    &.on { color: #fff; box-shadow: 0 2px 6px -2px rgba(0,0,0,.35); }
+    &.on { color: #fff; }
   }
   @media (max-width: 420px) { button { font-size: 11px; padding: 7px 2px; } }
 `;
 
 const RangeBox = styled.div`
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 11px 13px; background: #eef2f9;
-  border: 1px solid rgba(0,41,107,.35); border-radius: 10px;
+  padding: 11px 13px; background: #fff;
+  border: 1px solid ${C.line}; border-radius: 10px;
   .rt { font-size: 14px; font-weight: 800; color: ${C.navy}; }
   .wd { font-size: 11.5px; color: ${C.gray}; font-weight: 600; }
   .days-badge { margin-left: auto; font-size: 11.5px; font-weight: 800; color: #fff;
-    background: ${C.navy}; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+    background: ${C.navy}; padding: 4px 10px; border-radius: 6px; white-space: nowrap; }
   @media (max-width: 420px) { .rt { font-size: 12.5px; } }
 `;
 const SelEmpty = styled.div`
@@ -432,7 +432,7 @@ const ReasonArea = styled.textarea`
   background: ${C.field}; font: inherit; font-size: 14px; color: ${C.ink};
   resize: vertical; min-height: 104px; transition: .15s;
   &:focus { outline: none; border-color: ${C.navy}; background: #fff;
-            box-shadow: 0 0 0 3px rgba(0,41,107,.1); }
+            box-shadow: 0 0 0 3px rgba(17,24,39,.1); }
 `;
 const CharCount = styled.span`
   font-size: 11px; color: ${C.lgray}; text-align: right; font-weight: 700;
@@ -442,7 +442,7 @@ const CharCount = styled.span`
 const Drop = styled.div`
   border: 2px dashed ${(p) => (p.$drag ? C.navy : C.line)}; border-radius: 12px;
   padding: ${(p) => (p.$compact ? '14px' : '22px')}; text-align: center; cursor: pointer;
-  background: ${(p) => (p.$drag ? '#eef2f9' : C.field)}; transition: .15s;
+  background: ${(p) => (p.$drag ? '#ffffff' : C.field)}; transition: .15s;
   &:hover { border-color: ${C.gray}; }
   .up { color: ${C.gray}; margin: 0 auto 6px; }
   p { font-size: 13.5px; color: ${C.gray}; font-weight: 600; margin: 0; }
@@ -473,8 +473,8 @@ const Btn = styled.button`
   &.secondary { background: #fff; border-color: ${C.line}; color: ${C.mid};
     &:hover { background: ${C.field}; color: ${C.ink}; } }
   &.primary { background: ${C.deep}; color: #fff;
-    box-shadow: 0 6px 14px -6px rgba(15,48,64,.55);
-    &:hover { background: #0a2430; } }
+    box-shadow: 0 6px 14px -6px rgba(17,24,39,.45);
+    &:hover { background: #000; } }
   &:disabled { opacity: .65; cursor: not-allowed; }
 `;
 const Spin = styled.span`
@@ -493,7 +493,7 @@ const GaugeBox = styled.div`
   .g-arc { fill: none; stroke-width: 13; stroke-linecap: round;
     transition: stroke-dasharray .9s cubic-bezier(.22,.8,.24,1),
                 stroke-dashoffset .9s cubic-bezier(.22,.8,.24,1); }
-  .g-track { fill: none; stroke: #e9e7e1; stroke-width: 13; }
+  .g-track { fill: none; stroke: #e5e7eb; stroke-width: 13; }
   @media (max-width: 640px) { width: 158px; height: 158px;
     .g-arc, .g-track { stroke-width: 11; } }
 `;
@@ -516,8 +516,8 @@ const GaugeOf = styled.span`
 `;
 
 const Stack = styled.div`
-  display: flex; height: 11px; border-radius: 99px; overflow: hidden;
-  background: #e9e7e1; margin-top: 18px; width: 100%;
+  display: flex; height: 11px; border-radius: 4px; overflow: hidden;
+  background: #e5e7eb; margin-top: 18px; width: 100%;
   span { display: block; transition: flex .6s; }
   .s-taken { background: ${C.navy}; }
   .s-pend  { background: ${C.warning}; }
@@ -548,9 +548,9 @@ const LowNote = styled.div`
 /* ═══════════════════════ REQUESTS ═══════════════════════ */
 const Req = styled.div`
   display: flex; gap: 11px;
-  border: 1px solid ${(p) => `${STATUS_META[p.$status]?.fg || C.warning}33`};
+  border: 1px solid ${C.line};
   border-left: 3px solid ${(p) => STATUS_META[p.$status]?.fg || C.warning};
-  background: ${(p) => STATUS_META[p.$status]?.bg || C.warningBg};
+  background: #fff;
   border-radius: 10px; padding: 12px 13px; margin-bottom: 10px; transition: .14s;
   &:hover { box-shadow: 0 1px 2px rgba(10,10,10,.05), 0 10px 24px -18px rgba(10,10,10,.3); }
   &:last-child { margin-bottom: 0; }
@@ -568,8 +568,11 @@ const ReqTop = styled.div`
 const StatusBadge = styled.span`
   margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
   font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
-  padding: 3.5px 9px; border-radius: 99px; color: #fff; white-space: nowrap;
-  i { width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+  padding: 3.5px 9px; border-radius: 6px; white-space: nowrap;
+  color: ${(p) => STATUS_META[p.$status]?.fg || C.warning};
+  background: ${(p) => STATUS_META[p.$status]?.bg || C.warningBg};
+  border: 1px solid ${(p) => `${STATUS_META[p.$status]?.fg || C.warning}40`};
+  i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 `;
 const ReqMeta = styled.div`
   font-size: 12.5px; color: ${C.mid}; font-weight: 600; margin-top: 3px;
@@ -1009,10 +1012,7 @@ const ApplyLeave = () => {
       <GlobalStyle />
       <Container>
         <Header>
-          /* min-width: 0, NOT 220. This flex child held a 220px floor, so on a 320px
-            phone the title block plus the Back button exceeded the row and the
-            header pushed the page sideways. min-width:0 lets the text wrap. */
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <Crumb>Leave · Self-service</Crumb>
             <Title>Apply for Leave</Title>
             <Subtitle>Hi <b>{userName}</b> — pick your dates on the calendar, add the details, submit.</Subtitle>
@@ -1209,7 +1209,7 @@ const ApplyLeave = () => {
 
                     <Break>
                       <Brow>
-                        <span className="dot" style={{ background: '#e9e7e1' }} />
+                        <span className="dot" style={{ background: '#e5e7eb' }} />
                         <span className="k">Total entitlement</span>
                         <span className="v">{initial}</span>
                         <span className="pct">100%</span>
@@ -1227,7 +1227,7 @@ const ApplyLeave = () => {
                         <span className="pct">{Math.round((pending / (initial || 1)) * 100)}%</span>
                       </Brow>
                       <Brow className="strong">
-                        <span className="dot" style={{ background: C.navy, boxShadow: '0 0 0 3px rgba(0,41,107,.15)' }} />
+                        <span className="dot" style={{ background: C.navy, boxShadow: '0 0 0 3px rgba(17,24,39,.15)' }} />
                         <span className="k">Remaining</span>
                         <span className="v">{available}</span>
                         <span className="pct">{Math.round(remainPct)}%</span>
@@ -1267,7 +1267,7 @@ const ApplyLeave = () => {
                           <ReqMain>
                             <ReqTop>
                               <b>{String(l.leave_type || 'leave').replace('_', ' ')}</b>
-                              <StatusBadge>
+                              <StatusBadge $status={l.status}>
                                 <i />
                                 {(STATUS_META[l.status] || STATUS_META.pending).label}
                               </StatusBadge>

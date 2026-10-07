@@ -498,7 +498,8 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   // Hide the notification bell on the standalone / public-facing screens where
   // the floating overlay would cover page content or simply isn't wanted:
   // body intake form, body release form, drivers portal, the dashboard (and
-  // its analytics twin), the reception portal and the flower screens.
+  // its analytics twin), the reception portal, the flower screens, the
+  // workshop and the mini store.
   // The matcher strips the tenant slug first, so a tenant slug that happens to
   // be called "dashboard" can never hide the bell by accident.
   const showNotificationBell = shouldShowNotificationBell(location.pathname);

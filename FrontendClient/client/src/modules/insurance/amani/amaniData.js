@@ -1,4 +1,24 @@
+/* ==========================================================================
+   Amani Cover — shared content.
 
+   Ported from the redesign's lib/site.ts, plus the policy terms and referral
+   flow that live on their own routes. One source of truth for all three pages
+   so the landing / terms / referral copy can never drift apart.
+
+   KISWAHILI ACCENTS: the site stays in English — the `SW` export below (and
+   the optional `sw:` lines on moments) are the ONLY Swahili on the pages.
+   They are warm flourishes dropped into friendly spots, the way Kenyan brands
+   actually mix. Every phrase is glossed right where it is written so future
+   edits never lose the meaning. Functional copy (prices, form labels, urgent
+   actions) is never translated.
+   ========================================================================== */
+
+/* Contact details — Nairobi Branch of Montenzuma Monalisa Funeral Home, the
+   provider behind Amani Cover. These are the real branch details: address,
+   both mobile lines, the landline and the branch email.
+   Note: the CONSUMERS of this object (nav, hero, care team, faq, apply, refer,
+   terms and the footer address block) read exactly these six keys, so the
+   shape is kept identical — changing a value updates every page at once. */
 export const CONTACT = {
   phone: '+254 722 268 566',
   phoneHref: 'tel:+254722268566',
@@ -8,30 +28,77 @@ export const CONTACT = {
   hours: 'Open 24 hours, day or night',
 };
 
-
+/* Local images copied out of the redesign's public/images. Every photo the
+   landing page references lives here so the paths never drift from the files
+   shipped in client/public/amani/images. */
 export const PHOTOS = {
-
-  familyHero: '/amani/top-hero.jpg',
+  /* Hero photo — deliberately the ORIGINAL landing-page image and not one of
+     the redesign's newer renders. The pre-redesign Amani page declared
+     `const familyPhoto = '/family-hero.png'`, and that file ships at the root
+     of client/public/amani rather than inside images/. */
+  familyHero: '/amani/images/hero.jpg',
   whiteLilies: 'https://montezumamonalisa.com/wp-content/uploads/2020/01/DSC_4205-768x511.jpg',
   elderlyCouple: '/amani/images/elderly-couple.png',
   motherDaughter: '/amani/images/mother-daughter.png',
   fatherSon: '/amani/images/father-son.png',
-  familyTable: '/public/Funeral_Plan_hero.webp',
-  grandmotherChild: '/amani/familycovered.png',
-  hands: '/amani/images/hands.png',
+  familyTable: '/amani/images/insured.jpg',
+  grandmotherChild: '/amani/images/mum.jpg',
+  hands: '/amani/insurance.png',
   familyWalk: '/amani/insurance.png',
   consultant: '/amani/support-guide.png',
   applying: '/amani/images/applying.png',
 };
 
-/* Moments gallery — from the redesign's components/moments.tsx. */
+/* ------------------------------------------------------------------
+   KISWAHILI ACCENTS — one place for every Swahili flourish on the site.
+   The pages stay English; components pull from here so the phrases can
+   never drift apart. Glosses are inline so the meaning travels with the
+   copy. Delete any line and remove where it renders — nothing else breaks.
+------------------------------------------------------------------ */
+export const SW = {
+  /* "Are you covered?" — Je = question particle, uko = "you are" (Sheng hybrid,
+     exactly how Kenyans say it). The hero hook. */
+  heroHook: 'Je, uko covered?',
+
+  /* "I am covered." — the confident reply, for a confirmation chip / badge. */
+  coveredChip: 'Niko covered',
+
+  /* "Funeral cover from KES 500 a month — your family, safe." — price whisper
+     under the hero hook. */
+  heroPriceLine: 'Bima ya mazishi kuanzia KES 500 kwa mwezi.',
+
+  /* "Start now" — small accent CTA, for links that are not urgent actions. */
+  cta: 'Anza sasa',
+
+  /* "We are here 24/7, day and night." — reassurance near any phone number. */
+  alwaysHere: 'Tuko hapa 24/7, mchana na usiku.',
+
+  /* "True peace is knowing your family is safe." — footer brand quote; the
+     word Amani literally means peace, so the name finishes the sentence. */
+  footerQuote: 'Amani ya kweli ni kujua familia yako iko salama.',
+
+  /* "Together — trusted by families across Kenya." — footer trust pill. */
+  footerPill: 'Tuko pamoja — trusted by families across Kenya',
+
+  /* "Made in Kenya, for Kenyans." — quiet national pride, bottom line. */
+  madeIn: 'Imetengenezwa Kenya, kwa Wakenya.',
+};
+
+/* Moments gallery — from the redesign's components/moments.tsx.
+   `sw` is the optional Kiswahili accent line for each slide (a short proverb
+   or whisper under the English caption). Components that don't read `sw`
+   simply ignore it — adding it breaks nothing.
+     • "Ahadi ni deni."            — a promise is a debt (a Swahili proverb:
+                                     a promise must be kept)
+     • "Watoto wetu, jukumu letu." — our children, our responsibility
+     • "Upendo haufi."             — love does not die */
 export const moments = [
   {
     src: PHOTOS.familyTable,
     alt: 'A large multigenerational family sharing a meal and laughing around a dining table',
     label: 'The  Montenzuma Promise',
     caption: 'Care that respects every life, every story, every family.',
-
+    sw: 'Ahadi ni deni.',
     sizes: '(max-width: 768px) 100vw, 66vw',
   },
   {
@@ -39,6 +106,7 @@ export const moments = [
     alt: 'A father gently hugging his young son outdoors',
     label: 'Protected',
     caption: 'So the little ones who look up to you are always looked after.',
+    sw: 'Watoto wetu, jukumu letu.',
     sizes: '(max-width: 1024px) 50vw, 33vw',
   },
   {
@@ -46,6 +114,7 @@ export const moments = [
     alt: 'A mother and her adult daughter leaning foreheads together, smiling',
     label: 'Remembered',
     caption: 'Love lasts a lifetime. So should your care for them.',
+    sw: 'Upendo haufi.',
     sizes: '(max-width: 1024px) 50vw, 33vw',
   },
 ];
@@ -86,7 +155,29 @@ export const aboutPoints = [
   'Real people - a dedicated care team, not a call centre',
 ];
 
+/* MONTHLY CONTRIBUTIONS — the single source of truth for what a plan costs.
 
+   These are REAL amounts, not placeholders. Every surface that quotes a price
+   reads them from here so the apply form, the cover page and the payment
+   portal can never disagree about what someone owes:
+
+     • Amani Solo   — KES 500 / month, one person
+     • Amani Family — KES 1,000 / month, applicant + household
+     • Amani Group  — from KES 10,000 / month, 5+ people
+
+   Why this replaced a single flat figure: the portal used to default every
+   member to a hardcoded KES 2,000 contribution regardless of which plan they
+   had actually applied for. That was guess work — a Solo member was quoted
+   four times their real premium, and a Group policy (10k+) was under-quoted.
+   The amount shown on the payments page is now the amount stored on the
+   policy record itself (insurance_policies.monthly_premium, written at
+   application time from `monthly` below and echoed back by
+   POST /insurance/cover-check), falling back to `monthly` only if an older
+   policy predates that column.
+
+   `from: true` marks Group as a floor rather than a fixed price — group
+   pricing scales with how many people are on the policy, so the UI must not
+   present it as "exactly 10,000". */
 export const PLANS = {
   Solo: { monthly: 500, from: false, covers: '1 person' },
   Family: { monthly: 1000, from: false, covers: 'You + your household' },
@@ -94,7 +185,23 @@ export const PLANS = {
   Group: { monthly: 10000, from: true, covers: '5 or more people' },
 };
 
-
+/* Cover options offered in the apply form AND rendered as plan cards on the
+   cover page. These are the three real Amani products (NOT the old
+   Essential/Family/Legacy marketing tiers):
+     • Amani Solo   — one person
+     • Amani Family — the applicant plus their household
+     • Amani Group  — a shared policy for a group, MINIMUM 5 individuals
+   `minMembers` is what the form enforces: picking Group reveals an "add
+   another individual" repeater and blocks submit until the policy has at
+   least that many people on it.
+   `monthly` is copied from PLANS so the price lives in exactly one place.
+   `features` is the card checklist shown under the price on the plan cards.
+   The FIRST feature is derived from PLANS[...].covers so the "who is covered"
+   line can never contradict the plan data; the remaining lines are card
+   marketing copy and live only here.
+   NOTE: the dead insurance/mani/ folder still renders these in a <select>
+   with defaultValue="Family"; Family is still the middle option, so that
+   placeholder stays valid. */
 export const coverOptions = [
   {
     value: 'Solo',

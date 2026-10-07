@@ -16,6 +16,11 @@
  *   • /flowers            — the whole flower bookings area: list, /flowers/new
  *                           form and /flowers/order/:id detail (one prefix
  *                           match covers all three)
+ *   • /workshop           — the workshop area (WorkshopDashboard), including
+ *                           legacy sub-paths such as /workshop/store-journal
+ *   • /mini-store         — the mini store area (StoreDashboard)
+ *   • /store              — the mini store under its alias path (also
+ *                           StoreDashboard, tenant "store" route)
  *
  * Entries are tenant-relative paths WITHOUT a leading tenant segment, e.g.
  * "/dashboard" matches /acme/dashboard but never hides the bell because
@@ -30,6 +35,9 @@ export const BELL_HIDDEN_ROUTES = [
   '/receptionist', // reception portal
   '/flower-samples', // public flower gallery
   '/flowers', // whole flower bookings area: list, /flowers/new form, /flowers/order/:id detail (prefix match covers all three)
+  '/workshop', // workshop area (WorkshopDashboard) + sub-paths like /workshop/store-journal
+  '/mini-store', // mini store area (StoreDashboard)
+  '/store', // mini store under its alias path (same StoreDashboard component)
 ];
 
 /** Strip the tenant segment (and any trailing slash) so matching is slug-proof.

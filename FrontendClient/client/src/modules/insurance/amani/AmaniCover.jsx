@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import {
   PHOTOS,
+  SW,
   aboutPoints,
   coverOptions,
   formatPlanAmount,
@@ -65,10 +66,16 @@ function Hero() {
     <section className="relative overflow-hidden">
       <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 pt-10 pb-20 lg:grid-cols-[1fr_1.1fr] lg:gap-16 lg:px-10 lg:pt-16 lg:pb-28">
         <div>
-          {/* The "By Montenzuma Monalisa Funeral Home" eyebrow pill that used to
-              sit above this headline was removed on request — that attribution
-              now lives on the hero photo badge ("Covered by Montenzuma"). */}
-          <h1 className="font-serif text-[clamp(2.75rem,6vw,5rem)] font-medium leading-[1.02] tracking-tight text-balance text-ac-primary">
+          {/* Kiswahili accent — the Kenyan hook the page opens with. "Je, uko
+              covered?" = "Are you covered?". This sits where the old "By
+              Montenzuma" eyebrow used to be; that attribution now lives on the
+              hero photo badge. */}
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-ac-accent">
+            <span className="size-1.5 rounded-full bg-ac-highlight" aria-hidden="true" />
+            {SW.heroHook}
+          </p>
+
+          <h1 className="mt-4 font-serif text-[clamp(2.75rem,6vw,5rem)] font-medium leading-[1.02] tracking-tight text-balance text-ac-primary">
             Peace of mind for the ones you <em className="text-ac-accent">love most.</em>
           </h1>
 
@@ -94,6 +101,10 @@ function Hero() {
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           </div>
+
+          {/* Kiswahili accent — the price whisper, so the KES 500 entry point
+              is heard in the same breath as the CTAs. */}
+          <p className="mt-4 text-sm italic text-ac-mutedfg">{SW.heroPriceLine}</p>
 
           <div className="mt-12 flex items-center gap-5 border-t border-ac-border pt-8">
             <div className="flex -space-x-3">
@@ -338,6 +349,14 @@ function Moments() {
                   >
                     {moment.caption}
                   </p>
+                  {/* Kiswahili accent — the proverb under the English caption:
+                      "Ahadi ni deni" / "Watoto wetu, jukumu letu" / "Upendo haufi".
+                      Renders only when a moment carries an `sw` line. */}
+                  {moment.sw && (
+                    <p className="mt-1 font-serif text-sm italic text-ac-highlight/90 sm:text-base">
+                      {moment.sw}
+                    </p>
+                  )}
                 </figcaption>
               </figure>
             );
@@ -484,8 +503,10 @@ function ClaimBand() {
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-8 rounded-[2rem] bg-ac-primary p-8 text-white sm:p-10 lg:flex-row lg:items-center lg:justify-between lg:p-12">
         <div className="max-w-xl">
+          {/* Kiswahili accent — "Ndiyo" = "Yes", a warm answer to the question
+              the eyebrow asks. Everything after stays English. */}
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-highlight">
-            Already covered?
+            Already covered? Ndiyo, tuko pamoja.
           </p>
           <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-4xl">
             Make a claim.
