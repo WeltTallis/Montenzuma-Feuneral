@@ -1,21 +1,12 @@
-﻿// WorkshopPanel.jsx
-// Workshop surface embedded in the Operations dashboard. Owns the single
-// fetch (store inventory + orders + workers) and hands the payloads to the
-// Store and Analytics views, so neither makes its own requests.
-//
-// The module owns a real header — back-to-Operations, title, live status and
-// refresh — so the dashboard never leaves the user stranded on a page with a
-// bare strip of tabs and no way out.
-
+﻿"use  strict"
+import { workshopService } from "../components/workshop/services/workshopService";
+import ModalRouter from "../components/workshop/pages/ModalRouter";
 import { useCallback, useEffect, useState } from "react";
 import { useSocket } from "../utils/context/socketContext";
-import { workshopService } from "../components/workshop/services/workshopService";
-import { Ic } from "./opsIcons";
+import { isWorkshopAdmin } from "../utils/workshopRole";
 import WorkshopAnalytics from "./WorkshopAnalytics";
 import StoreView from "./StoreView";
-import ModalRouter from "../components/workshop/pages/ModalRouter";
-// "Register Worker" adds people to the workshop roster — an admin action.
-import { isWorkshopAdmin } from "../utils/workshopRole";
+import { Ic } from "./opsIcons";
 
 /* Sub-tabs inside the dashboard's Workshop module. Analytics was moved here
    from the workshop app, and the Store now has a dashboard view of its own.
@@ -24,6 +15,7 @@ import { isWorkshopAdmin } from "../utils/workshopRole";
    the reason an owner opens this module — it answers "are we on track, and who
    is producing" — whereas the Store is a look-up ("did that coffin leave yet")
    that most visits never need. */
+
 const TABS = [
   { id: "analytics", label: "Analytics", icon: "fa-chart-line" },
   { id: "store", label: "Store", icon: "fa-warehouse" },

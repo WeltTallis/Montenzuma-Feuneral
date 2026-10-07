@@ -1,22 +1,24 @@
+import { runBodyCheckoutMigrations } from './utilities/migrate';
+import Logger from '../../packages/shared-logger/dist/index';
+import bodyReleaseRoutes from './routes/bodyRelease.routes';
+
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import Logger from '../../packages/shared-logger/dist/index';
-import bodyReleaseRoutes from './routes/bodyRelease.routes';
-import { runBodyCheckoutMigrations } from './utilities/migrate';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8115', 10);
 
 // Middleware
+app.use(express.json({ limit: '10mb' }));
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'X-tenant-slug']
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'X-tenant-slug']
 }));
-app.use(express.json({ limit: '10mb' }));
+
 
 // Tenant Resolution Middleware
 app.use((req: any, res: any, next: any) => {
