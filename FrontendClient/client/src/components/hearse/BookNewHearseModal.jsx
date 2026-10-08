@@ -29,7 +29,7 @@ const C = {
   danger: '#ef4444',
   purple: '#8b5cf6',
   cardBg: '#03071E',
-  // ─── HTML-template status badge colors 
+  // ─── HTML-template status badge colors
   stActiveColor: '#00296B',
   stPmReqColor: '#E36414',
   stPmDoneColor: '#5F0F40',
@@ -42,6 +42,8 @@ const formatDateStr = (d) => {
   const dt = new Date(d);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 };
+
+const pad = (n) => String(n).padStart(2, '0');
 
 const getTenantSlug = () => {
   const direct = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
@@ -84,6 +86,8 @@ const getLocalUserName = () => {
   try { const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}'); return u?.full_name || u?.username || u?.name || u?.email || ''; } catch { return ''; }
 };
 
+const safeUser = () => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } };
+
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`;
 const spinKf = keyframes`to{transform:rotate(360deg)}`;
 const popIn = keyframes`from{opacity:0;transform:scale(.96) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}`;
@@ -124,70 +128,7 @@ const Chip = styled.span`display:inline-flex;align-items:center;gap:.15rem;paddi
 
 const Divider = styled.div`height:1px;background:${C.border};margin:.85rem 0`;
 
-const ScrollWrap = styled.div`position:relative;margin:0 -1.15rem;padding:0 2rem`;
-
-const ScrollTrack = styled.div`
-  display:flex;gap:.5rem;overflow-x:auto;scroll-behavior:smooth;
-  scroll-snap-type:x mandatory;padding:.3rem .1rem .4rem;
-  -webkit-overflow-scrolling:touch;
-  &::-webkit-scrollbar{display:none}-ms-overflow-style:none;scrollbar-width:none;
-`;
-
-const Arrow = styled.button`
-  position:absolute;top:50%;transform:translateY(-50%);z-index:5;
-  width:28px;height:28px;border-radius:50%;border:1px solid ${C.border};
-  background:#fff;color:${C.textSec};cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 1px 6px rgba(0,0,0,.1);transition:all .15s;
-  &:hover{background:${C.primary};color:#fff;border-color:${C.primary}}
-  &:disabled{opacity:0;pointer-events:none}
-  ${p => p.$dir === 'left' ? 'left:5px' : 'right:5px'}
-`;
-
-/* ─── Card ─── */
-const Card = styled.button`
-  flex-shrink:0;
-  width:148px;
-  scroll-snap-align:start;
-  padding:0;
-  border-radius:8px;
-  border:1.5px solid ${p => p.$sel ? 'rgba(44,138,201,.5)' : p.$bk ? '#dc2626' : 'rgba(3,7,30,.6)'};
-  background:${p => p.$bk ? C.danger : C.cardBg};
-  cursor:${p => p.$off ? 'not-allowed' : 'pointer'};
-  transition:border-color .15s,opacity .15s,background .15s;
-  opacity:${p => p.$bk ? '0.85' : p.$off ? '0.35' : '1'};
-  text-align:left;
-  display:flex;
-  flex-direction:column;
-  position:relative;
-`;
-
-const CardIn = styled.div`padding:.45rem .5rem;display:flex;flex-direction:column;flex:1`;
-
-const CN = styled.div`font-size:.66rem;font-weight:700;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.08rem;`;
-
-const CP = styled.div`font-size:.58rem;font-weight:600;color:rgba(255,255,255,.38);display:flex;align-items:center;gap:.15rem;letter-spacing:.03em;margin-bottom:.12rem;`;
-
-const CM = styled.div`display:flex;gap:.12rem;flex-wrap:wrap`;
-
-const CT = styled.span`padding:.02rem .22rem;border-radius:3px;font-size:.48rem;font-weight:600;background:rgba(255,255,255,.08);color:rgba(255,255,255,.42);`;
-
-const CR = styled.div`margin-top:auto;padding-top:.18rem;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;`;
-
-const CD = styled.span`
-  display:flex;align-items:center;gap:.12rem;
-  font-size:.48rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;
-  color:${p => p.$c};
-  &::before{content:'';width:4px;height:4px;border-radius:50%;background:${p => p.$d};flex-shrink:0}
-`;
-
-const CS = styled.span`font-size:.48rem;font-weight:700;color:rgba(44,138,201,.9)`;
-
-const CC = styled.div`position:absolute;top:.22rem;right:.22rem;width:14px;height:14px;border-radius:50%;background:${C.primary};color:#fff;display:flex;align-items:center;justify-content:center;font-size:.45rem;font-weight:800;`;
-
-const CB = styled.div`margin-top:.12rem;font-size:.42rem;font-weight:500;color:rgba(255,255,255,.18);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
-
-/* ───────── HTML-TEMPLATE CARD DESIGN ───────── */
+/* ─── HTML-TEMPLATE CARD DESIGN ───────── */
 
 const StepHeader = styled.div`
   display:flex;align-items:center;gap:.6rem;margin-bottom:1.25rem;
@@ -386,9 +327,6 @@ function HearseCardTpl({ h, state, hasD, selected, onPick }) {
 
 const Warn = styled.div`padding:.55rem .7rem;border-radius:5px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:.72rem;font-weight:600;display:flex;align-items:center;gap:.35rem;animation:${fadeIn}.15s;`;
 
-const SBar = styled.div`display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem;`;
-const SD = styled.span`display:inline-flex;align-items:center;gap:.2rem;font-size:.65rem;font-weight:600;color:${C.textSec};&::before{content:'';width:5px;height:5px;border-radius:50%;background:${p => p.$c}}`;
-
 const Sp = styled.div`width:18px;height:18px;border:2.5px solid ${C.border};border-top-color:${C.primary};border-radius:50%;animation:${spinKf}.6s linear infinite;margin:0 auto .35rem;`;
 const SS = styled.span`width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:${spinKf}.6s linear infinite;display:inline-block;`;
 
@@ -398,17 +336,28 @@ const PkHead = styled.div`padding:.85rem 1rem;display:flex;justify-content:space
 const PkClose = styled.button`width:26px;height:26px;border-radius:5px;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;&:hover{background:rgba(255,255,255,.2)}`;
 const PkBody = styled.div`padding:.9rem 1rem`;
 const PkNav = styled.button`width:26px;height:26px;border-radius:5px;border:1px solid ${C.border};background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:${C.textSec};font-size:14px;&:hover{background:${C.bg}}`;
-const PkFoot = styled.div`display:flex;gap:.5rem;justify-content:flex-end;margin-top:.85rem;border-top:1px solid ${C.border};padding-top:.85rem`;
+const PkFoot = styled.div`display:flex;gap:.5rem;justify-content:flex-end;align-items:center;margin-top:.85rem;border-top:1px solid ${C.border};padding-top:.85rem`;
+
+const PkDay = styled.button`
+  aspect-ratio:1;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;
+  font-size:.76rem;font-weight:600;color:${C.text};
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background .12s,color .12s;
+  ${p => p.$sel
+    ? `background:${C.primary};color:#fff;font-weight:700;`
+    : p.$past
+      ? `color:${C.textMuted};cursor:not-allowed;text-decoration:line-through;text-decoration-color:${C.border};`
+      : p.$today
+        ? `border-color:${C.success};color:${C.success};&:hover{background:rgba(16,185,129,.08);}`
+        : `&:hover{background:rgba(26,95,122,.08);}`}
+`;
 
 // ═══════════════════════════════════════════════════════
 export default function BookNewHearseModal({
-  open = false, initialDates = [], hearses = [], branches = [],
+  open = false, initialDates = [], hearses = [], branches = [], // branches: kept for API compat, never displayed — detected internally
   onClose, onCreated, showToast,
 }) {
-  const scrollRef = useRef(null);
-  const [sL, setSL] = useState(false);
-  const [sR, setSR] = useState(false);
-  const [form, setForm] = useState({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: '', service_charge: 0 });
+  const [form, setForm] = useState({ hearse_id: '', client_name: '', client_phone: '', deceased_name: '', from_location: '', to_location: '', destination: '', booking_dates: [], branch_id: '', booking_date: '', service_charge: 0 });
   const [dates, setDates] = useState([]);
   const [pkOpen, setPkOpen] = useState(false);
   const [tmpDates, setTmpDates] = useState([]);
@@ -419,35 +368,26 @@ export default function BookNewHearseModal({
   const [fleet, setFleet] = useState({});
   const [checkError, setCheckError] = useState(null);
 
-  const updArrows = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setSL(el.scrollLeft > 3);
-    setSR(el.scrollLeft < el.scrollWidth - el.clientWidth - 3);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    updArrows();
-    el.addEventListener('scroll', updArrows, { passive: true });
-    window.addEventListener('resize', updArrows);
-    return () => { el.removeEventListener('scroll', updArrows); window.removeEventListener('resize', updArrows); };
-  }, [updArrows, dates, fleet]);
-
-  useEffect(() => { const t = setTimeout(updArrows, 50); return () => clearTimeout(t); }, [fleet, updArrows]);
-
-  const doScroll = (dir) => { const el = scrollRef.current; if (el) el.scrollBy({ left: dir === 'l' ? -155 : 155, behavior: 'smooth' }); };
+  /* initialDates is frequently a NEW array on every parent render — depending on
+     it directly re-ran the reset effect while the officer was typing, wiping the
+     form. Read it through a ref so the reset only happens when `open` flips. */
+  const initialDatesRef = useRef(initialDates);
+  useEffect(() => { initialDatesRef.current = initialDates; }, [initialDates]);
 
   useEffect(() => {
     if (!open) return;
-    const d = Array.isArray(initialDates) ? initialDates.filter(Boolean) : [];
+    const d = Array.isArray(initialDatesRef.current) ? initialDatesRef.current.filter(Boolean) : [];
     setDates(d);
-    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    const u = safeUser();
     const db = u?.dbName || u?.branchDbName || '';
-    setForm({ hearse_id: '', client_name: '', client_phone: '', from_location: '', to_location: '', destination: '', booking_dates: d, branch_id: u?.branch_id || '', branch_code: db.split('-').pop() || '', booking_date: d[0] || '', service_charge: 0 });
-    setTmpDates([]); setAnchor(null); setPkOpen(false); setFleet({}); setSL(false); setSR(false); setCheckError(null);
-  }, [open, initialDates]);
+    setForm({ hearse_id: '', client_name: '', client_phone: '', deceased_name: '', from_location: '', to_location: '', destination: '', booking_dates: d, branch_id: u?.branch_id || '', branch_code: db.split('-').pop() || '', booking_date: d[0] || '', service_charge: 0 });
+    setTmpDates([]); setAnchor(null); setFleet({}); setCheckError(null);
+    setPkM(d[0] ? new Date(d[0] + 'T00:00:00').getMonth() : new Date().getMonth());
+    setPkY(d[0] ? new Date(d[0] + 'T00:00:00').getFullYear() : new Date().getFullYear());
+    // Calendar opens on its own so booking starts immediately —
+    // unless the panel was opened with pre-filled dates.
+    if (!d.length) setPkOpen(true); else setPkOpen(false);
+  }, [open]);
 
   // Guard so an older, slower response can never overwrite a newer one.
   const fleetReqRef = useRef(0);
@@ -674,7 +614,7 @@ export default function BookNewHearseModal({
     });
   };
 
-  // Abort the in-progress range without changing the days already selected.
+  // Abort the in-progress range and clear the picker's working selection.
   const cancelRange = () => { setAnchor(null); setTmpDates([]); };
 
   const confirmDates = () => {
@@ -689,14 +629,14 @@ export default function BookNewHearseModal({
 
   const submit = useCallback(async (e) => {
     e.preventDefault();
-    if (!form.hearse_id || !form.client_name || !form.from_location || !form.to_location || !dates.length) { showToast('Please fill all required fields and select at least one date', 'error'); return; }
+    if (!form.hearse_id || !form.client_name || !form.deceased_name || !form.from_location || !form.to_location || !dates.length) { showToast('Please fill all required fields and select at least one date', 'error'); return; }
     if (checking) { showToast('Still checking availability for the selected dates — try again in a moment.', 'error'); return; }
     const s = fleet[String(form.hearse_id)];
     if (s && s.status !== 'available') { showToast(`This hearse is already booked for: ${s.bookedFor.map(b => `${b.date} (${b.client})`).join(', ') || 'the selected date(s)'}.`, 'error'); return; }
     setLoading(true);
     try {
       const hdr = getAuthHeaders(); hdr['Content-Type'] = 'application/json';
-      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = safeUser();
       if (u?.branch_id) hdr['x-branch-id'] = u.branch_id;
       if (u?.email) hdr['x-user-email'] = u.email;
       hdr['x-user-name'] = u?.full_name || u?.username || u?.name || 'System';
@@ -704,7 +644,7 @@ export default function BookNewHearseModal({
       // OPTIONAL total service charge (KSH) for the whole booking — sent as
       // entered; 0 is perfectly valid and the booking still completes.
       const svcCharge = Math.round((Number(form.service_charge) || 0) * 100) / 100;
-      const body = { hearse_id: form.hearse_id, client_name: form.client_name, client_phone: form.client_phone || '', from_location: form.from_location, to_location: form.to_location, destination: form.to_location, from_timestamp: fd, booking_date: fd, booking_dates: dates, booked_by: getLocalUserName() || u?.email || 'System', branch_id: form.branch_id || u?.branch_id || '', branch_code: form.branch_code || u?.branch_code || '', service_charge: svcCharge };
+      const body = { hearse_id: form.hearse_id, client_name: form.client_name, client_phone: form.client_phone || '', deceased_name: (form.deceased_name || '').trim(), from_location: form.from_location, to_location: form.to_location, destination: form.to_location, from_timestamp: fd, booking_date: fd, booking_dates: dates, booked_by: getLocalUserName() || u?.email || 'System', branch_id: form.branch_id || u?.branch_id || '', branch_code: form.branch_code || u?.branch_code || '', service_charge: svcCharge };
       const r = await fetch(`${API_BASE_URL}/hearse-bookings`, { method: 'POST', headers: hdr, body: JSON.stringify(body) });
       if (!r.ok) { const ed = await r.json().catch(() => ({})); if (r.status === 409) throw new Error(ed.message || 'Just booked by another user.'); throw new Error(ed.message || `HTTP ${r.status}`); }
       showToast(svcCharge > 0 ? `Booking created — Total Service Charge KSH ${svcCharge.toLocaleString()}!` : 'Booking created!', 'success'); setFleet({}); if (onClose) onClose(); if (onCreated) await onCreated();
@@ -712,15 +652,12 @@ export default function BookNewHearseModal({
     setLoading(false);
   }, [form, dates, fleet, hearses, checking, showToast, onClose, onCreated]);
 
-  const bOpts = branches.length > 0 ? branches : [];
   const hasD = dates.length > 0;
   const hasHearses = hearses.length > 0;
 
   // Day-availability counts across the fleet map
   const fleetVals = Object.values(fleet);
   const avCount = fleetVals.filter(s => s.status === 'available').length;
-  const bkCount = fleetVals.filter(s => s.status === 'booked').length;
-  const mtCount = fleetVals.filter(s => s.status === 'maintenance').length;
 
   // Split the fleet for the two-section (Available / Booked) layout.
   // ALL hearses are shown — booked ones are visible but not selectable,
@@ -772,9 +709,14 @@ export default function BookNewHearseModal({
             </div>
 
             <div style={{ marginBottom: '.85rem' }}>
+              <Label>Deceased Name *<Hint>(name of the deceased)</Hint></Label>
+              <Input placeholder="e.g., John Kamau" value={form.deceased_name} onChange={e => setForm(p => ({ ...p, deceased_name: e.target.value }))} required />
+            </div>
+
+            <div style={{ marginBottom: '.85rem' }}>
               <Label>Booking Dates *<Hint>(click to select)</Hint></Label>
-              <div style={{ width: '100%', padding: '.45rem .65rem', border: `1.5px solid ${hasD ? C.primary : C.border}`, borderRadius: '5px', fontSize: '.78rem', color: C.text, background: C.white, cursor: 'pointer', minHeight: '34px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.25rem', transition: 'border-color .15s' }} onClick={() => { setTmpDates([...dates]); setPkM(new Date().getMonth()); setPkY(new Date().getFullYear()); setPkOpen(true) }}>
-                {hasD ? dates.map(d => { const dt = new Date(d + 'T00:00:00'); return <Chip key={d}><Calendar size={9} />{dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Chip> }) : <span style={{ color: C.textMuted, display: 'flex', alignItems: 'center', gap: '.2rem', fontSize: '.76rem' }}><Calendar size={11} />Click to select dates...</span>}
+              <div style={{ width: '100%', padding: '.45rem .65rem', border: `1.5px solid ${hasD ? C.primary : C.border}`, borderRadius: '5px', fontSize: '.78rem', color: C.text, background: C.white, cursor: 'pointer', minHeight: '34px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.25rem', transition: 'border-color .15s' }} onClick={() => { setTmpDates([...dates]); setPkM(dates[0] ? new Date(dates[0] + 'T00:00:00').getMonth() : new Date().getMonth()); setPkY(dates[0] ? new Date(dates[0] + 'T00:00:00').getFullYear() : new Date().getFullYear()); setAnchor(null); setPkOpen(true); }}>
+                {hasD ? dates.map(d => { const dt = new Date(d + 'T00:00:00'); return <Chip key={d}><Calendar size={9} />{dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Chip>; }) : <span style={{ color: C.textMuted, display: 'flex', alignItems: 'center', gap: '.2rem', fontSize: '.76rem' }}><Calendar size={11} />Click to select dates...</span>}
               </div>
               {hasD && <div style={{ fontSize: '.65rem', color: C.textMuted, marginTop: '.15rem', fontWeight: 500 }}>{dates.length} date{dates.length !== 1 ? 's' : ''} selected{checking ? ' · Checking…' : ` · ${avCount} of ${hearses.length} available`}</div>}
             </div>
@@ -847,6 +789,7 @@ export default function BookNewHearseModal({
               {hasD && !!form.hearse_id && (
                 <ServiceChargeBox>
                   <ChargeRow><span>Hearse</span><span>{selHearse.hearse_name || '—'} ({selHearse.plate_number || '—'})</span></ChargeRow>
+                  <ChargeRow><span>Deceased</span><span>{form.deceased_name || '—'}</span></ChargeRow>
                   <ChargeRow><span>Days booked</span><span>{dates.length} — {dates.join(', ')}</span></ChargeRow>
                   <ChargeRow>
                     <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>Total Service Charge</span>
@@ -863,15 +806,14 @@ export default function BookNewHearseModal({
               <div><Label>To Location *</Label><Input placeholder="e.g., Karen Memorial Park" value={form.to_location} onChange={e => setForm(p => ({ ...p, to_location: e.target.value }))} required /></div>
             </div>
 
-            <div style={{ marginBottom: '.85rem' }}>
+            <div style={{ marginBottom: '1.2rem' }}>
               <Label>Total Service Charge (KSH)<Hint>(optional — one amount for the whole booking)</Hint></Label>
               <Input type="number" min="0" step="0.01" placeholder="e.g., 15000 (leave blank if not set)" value={form.service_charge || ''} onChange={e => setForm(p => ({ ...p, service_charge: e.target.value }))} />
             </div>
 
-            <div style={{ marginBottom: '1.2rem' }}>
-              <Label>Branch<Hint>(auto-filled)</Hint></Label>
-              <Input value={form.branch_id ? (bOpts.find(b => String(b.branch_id) === String(form.branch_id))?.branch_name || `Branch #${form.branch_id}`) : 'Auto-filled from your profile'} disabled readOnly />
-            </div>
+            {/* Branch is detected internally from your auth headers / user profile —
+                form.branch_id & form.branch_code are auto-filled and sent with the
+                booking, so there is nothing to ask or display here. */}
 
             <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
               <BtnGhost type="button" onClick={onClose}>Cancel</BtnGhost>
@@ -881,12 +823,13 @@ export default function BookNewHearseModal({
         </PanelBody>
       </Panel>
 
+      {/* ─── date picker popover (START → END range selection) ─── */}
       {pkOpen && (
-        <PkOv onClick={() => setPkOpen(false)}>
+        <PkOv onClick={() => { setAnchor(null); setPkOpen(false); }}>
           <PkBox onClick={e => e.stopPropagation()}>
             <PkHead>
               <div><div style={{ fontSize: '.9rem', fontWeight: 700, color: '#fff' }}>Select Booking Dates</div><div style={{ fontSize: '.66rem', color: 'rgba(255,255,255,.55)' }}>{anchor ? 'Now pick the END date' : 'Click a START date, then an END date'}</div></div>
-              <PkClose onClick={() => setPkOpen(false)}><X size={13} /></PkClose>
+              <PkClose onClick={() => { setAnchor(null); setPkOpen(false); }}><X size={13} /></PkClose>
             </PkHead>
             <PkBody>
               {/* Days picked so far, and how that compares with the fleet size —
@@ -896,33 +839,46 @@ export default function BookNewHearseModal({
                 <span style={{ color: C.textMuted, fontWeight: 500 }}>· {avCount || 0} of {(hearses || []).length} hearse{(hearses || []).length === 1 ? '' : 's'} available</span>
                 {anchor
                   ? <span style={{ color: C.textMuted, fontWeight: 500 }}>· start {new Date(anchor + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — now pick the end</span>
-                  : tmpDates.length > 0 && <span style={{ color: C.textMuted, fontWeight: 500 }}>· click another day to extend</span>}
+                  : tmpDates.length > 0 && <span style={{ color: C.textMuted, fontWeight: 500 }}>· click another day to start a new range</span>}
               </div>
-              {tmpDates.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem', marginBottom: '.6rem' }}>{tmpDates.map(d => { const dt = new Date(d + 'T00:00:00'); return <Chip key={d}>{dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Chip> })}</div>}
+              {tmpDates.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem', marginBottom: '.6rem' }}>{tmpDates.map(d => { const dt = new Date(d + 'T00:00:00'); return <Chip key={d}>{dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Chip>; })}</div>}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.55rem' }}>
-                <PkNav type="button" onClick={() => { if (pkM === 0) { setPkM(11); setPkY(p => p - 1) } else setPkM(p => p - 1) }}></PkNav>
-                <div style={{ fontSize: '.85rem', fontWeight: 700, color: C.text }}>{['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][pkM]} {pkY}</div>
-                <PkNav type="button" onClick={() => { if (pkM === 11) { setPkM(0); setPkY(p => p + 1) } else setPkM(p => p + 1) }}></PkNav>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px' }}>
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(w => <div key={w} style={{ textAlign: 'center', fontSize: '.6rem', fontWeight: 700, color: C.textMuted, padding: '.3rem 0' }}>{w}</div>)}
-                {(() => { const { d: days, ts } = calDays(); const last = tmpDates[tmpDates.length - 1]; return days.map((day, i) => { if (day === null) return <div key={`e${i}`} />; const ds = `${pkY}-${String(pkM + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isT = ds === ts; const isS = tmpDates.includes(ds); const isP = new Date(ds + 'T00:00:00') < new Date(ts + 'T00:00:00'); const isAnchor = anchor === ds; const inRange = !!anchor && ds > anchor && (!last || ds <= last); return <div key={ds} title={isS ? ds : ''} style={{ textAlign: 'center', padding: '.38rem 0', cursor: isP ? 'not-allowed' : 'pointer', borderRadius: '5px', fontSize: '.78rem', fontWeight: isS || isAnchor ? 700 : 500, background: isS ? C.primary : isAnchor ? 'rgba(199,138,58,.16)' : inRange ? 'rgba(199,138,58,.08)' : isT ? '#f0fdf4' : 'transparent', color: isS ? '#fff' : isP ? '#ccc' : isAnchor || inRange ? C.primary : isT ? '#059669' : C.text, border: isAnchor ? '1px dashed ' + C.primary : isT && !isS ? '1px solid ' + '#10b981' : '1px solid transparent', transition: 'all .1s' }} onClick={() => !isP && togDate(ds)}>{day}</div> }) })()}
-              </div>
-              {/* Live feedback — the availability request now fires on EVERY date
-                  tick (debounced), so this line updates while days are toggled. */}
-              {tmpDates.length > 0 && (
-                <div style={{ marginTop: '.6rem', padding: '.45rem .55rem', borderRadius: '6px', background: checking ? '#f8fafc' : avCount > 0 ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)', fontSize: '.68rem', fontWeight: 600, color: checking ? C.textMuted : avCount > 0 ? '#047857' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
-                  {checking
-                    ? <><Sp />Checking availability…</>
-                    : <>✓ {avCount} of {(hearses || []).length} hearse{(hearses || []).length === 1 ? '' : 's'} free on the selected date{tmpDates.length === 1 ? '' : 's'}</>}
+                <PkNav type="button" aria-label="Previous month" onClick={() => { if (pkM === 0) { setPkM(11); setPkY(p => p - 1); } else setPkM(p => p - 1); }}><ChevronLeft size={13} /></PkNav>
+                <div style={{ fontSize: '.9rem', fontWeight: 700, color: C.text }}>
+                  {new Date(pkY, pkM, 1).toLocaleString('en-US', { month: 'long' })} {pkY}
                 </div>
-              )}
-              <PkFoot>
-                <BtnGhost type="button" onClick={() => setPkOpen(false)}>Cancel</BtnGhost>
-                <BtnGhost type="button" onClick={cancelRange} disabled={!tmpDates.length} style={{ opacity: tmpDates.length ? 1 : .5 }}>Clear</BtnGhost>
-                <BtnPrimary type="button" onClick={confirmDates} disabled={!tmpDates.length}>{tmpDates.length} day{tmpDates.length !== 1 ? 's' : ''} selected{anchor ? ' — or keep 1 day' : ''}</BtnPrimary>
-              </PkFoot>
+                <PkNav type="button" aria-label="Next month" onClick={() => { if (pkM === 11) { setPkM(0); setPkY(p => p + 1); } else setPkM(p => p + 1); }}><ChevronRight size={13} /></PkNav>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '3px', marginBottom: '.35rem' }}>
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((w, i) => (
+                  <div key={i} style={{ textAlign: 'center', fontSize: '.58rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', padding: '.2rem 0' }}>{w}</div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '3px' }}>
+                {(() => {
+                  const { d: dayList, ts } = calDays();
+                  return dayList.map((day, i) => {
+                    if (!day) return <div key={'e' + i} />;
+                    const ds = pkY + '-' + pad(pkM + 1) + '-' + pad(day);
+                    const past = ds < ts;
+                    return (
+                      <PkDay key={ds} type="button" $past={past} $sel={tmpDates.includes(ds)} $today={ds === ts}
+                        disabled={past}
+                        onClick={() => { if (!past) togDate(ds); }}>
+                        {day}
+                      </PkDay>
+                    );
+                  });
+                })()}
+              </div>
             </PkBody>
+            <PkFoot>
+              <div style={{ marginRight: 'auto' }}>
+                <BtnGhost type="button" onClick={cancelRange}>Clear</BtnGhost>
+              </div>
+              <BtnGhost type="button" onClick={() => { setAnchor(null); setPkOpen(false); }}>Close</BtnGhost>
+              <BtnPrimary type="button" onClick={confirmDates} disabled={tmpDates.length === 0}>Confirm ({tmpDates.length})</BtnPrimary>
+            </PkFoot>
           </PkBox>
         </PkOv>
       )}

@@ -103,8 +103,7 @@ function monthTargetMap(targets) {
  *  "Coffins per Worker" and the whole trend chart permanently blank no matter
  *  how much the florists actually produced. `orders` is still the right source
  *  for IN-PROGRESS work (the in-progress list and the live counts), so it is
- *  kept for those.
- */
+ *  kept for those. */
 function useWorkerStats(orders, workers, production) {
   return useMemo(() => {
     const now = new Date();
@@ -525,15 +524,12 @@ function ProductionGrid({ production, targets }) {
   const peak = Math.max(1, ...rows.flatMap((r) => months.map((m) => Number(r.monthly?.[m]) || 0)));
   const grand = rows.reduce((s, r) => s + (Number(r.total) || 0), 0);
 
+  const tMap = monthTargetMap(targets);
   /* Months where every worker crossed the shared target, keyed "YYYY-MM" so the
      month header can mark them inline. Months with no target — or where at least
      one worker fell short — are absent from this set and left unmarked rather
      than being shown as a miss. */
-  const tMap = monthTargetMap(targets);
-  const hitMonths = new Set(
-    rows.filter((r) => r.monthly).flatMap(() => []) // placeholder no-op, real logic below
-  );
-  hitMonths.clear();
+  const hitMonths = new Set();
   if (rows.length > 0) {
     for (const [mk, t] of tMap) {
       if (rows.every((r) => (Number(r.monthly?.[mk]) || 0) >= t)) hitMonths.add(mk);
@@ -690,12 +686,15 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
 
   /* The workshop's shared monthly target (one number for every worker), keyed
      "YYYY-MM". Read by the worker cards to colour everyone who crossed it and
-     by the leaderboard to flag the workers who exceeded it. */
+     by the leaderboard to flag the workers who exceeded it.
+
+     FIXED: this const was previously declared TWICE in a row (build lines
+     683/686 — a copy/paste leftover), which crashed the production build with
+     "[PARSE_ERROR] Identifier `tMap` has already been declared". */
   const tMap = useMemo(() => monthTargetMap(targets), [targets]);
   const sharedTargetOf = (monthKey) => tMap.get(String(monthKey)) || 0;
 
   const currentMonthKey = monthKeyOf(new Date());
-  const tMap = useMemo(() => monthTargetMap(targets), [targets]);
   /* Exceeding the target is worth celebrating outright: a star on the rank row
      so a worker who BEAT the number stands out from one who merely matched it. */
   const sharedTarget = tMap.get(currentMonthKey) || 0;
@@ -825,9 +824,9 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
             return r.perMonth[monthKeyOf(d)] || 0;
           });
           const sparkMax = Math.max(1, ...spark);
-          {/* This month's shared number — the same target for every card. Only
-              rendered when one has been set, so cards without a target keep
-              their old shape instead of showing an empty 0/0 bar. */}
+          // This month's shared number — the same target for every card. Only
+          // rendered when one has been set, so cards without a target keep
+          // their old shape instead of showing an empty 0/0 bar.
           const mt = sharedTargetOf(monthKey);
           const mtPct = mt > 0 ? Math.min(100, Math.round((r.month / mt) * 100)) : 0;
           const mtMet = mt > 0 && r.month >= mt;
