@@ -84,6 +84,9 @@ const baseApp = {
   employment: 'employed',
   phone: '0712345678',
   email: 'wanjiku@example.com',
+  nextOfKinName: 'Joseph Kamau',
+  nextOfKinPhone: '0722334455',
+  nextOfKinRelationship: 'Spouse',
   cover: 'Solo',
   confirmAccepted: true,
 };
@@ -109,6 +112,16 @@ check(
   validateApplication({ ...baseApp, confirmAccepted: false }).valid,
   false,
 );
+
+/* NEXT OF KIN — required name + phone, optional relationship. */
+check('missing next of kin name rejected', validateApplication({ ...baseApp, nextOfKinName: '' }).valid, false);
+check('missing next of kin phone rejected', validateApplication({ ...baseApp, nextOfKinPhone: '' }).valid, false);
+check('next of kin relationship is optional', validateApplication({ ...baseApp, nextOfKinRelationship: '' }).valid, true);
+
+/* The cover types the form offers must all be accepted server-side. */
+check('Diaspora cover accepted', validateApplication({ ...baseApp, cover: 'Diaspora' }).valid, true);
+check('Diaspora covers 5 people', validateApplication({ ...baseApp, cover: 'Diaspora' }).value.coveredCount, 5);
+check('FamilyGroup cover accepted', validateApplication({ ...baseApp, cover: 'FamilyGroup' }).valid, true);
 
 /* Amani Group minimum of 5 */
 const groupApp = { ...baseApp, cover: 'Group' };

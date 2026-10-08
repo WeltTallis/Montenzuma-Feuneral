@@ -751,7 +751,6 @@ const StatIcon = styled.span`
 // ===== MAIN CALENDAR COMPONENT =====
 const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick, month, onMonthChange }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
-  const [selectedMultiDay, setSelectedMultiDay] = useState(null);
   const calendarRef = useRef(null);
   // Last month reported to the parent. A view switch (Month -> Week -> Day)
   // also fires datesSet, and we must not treat that as a month change.
@@ -995,13 +994,15 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     if (onDateClick) onDateClick(dateStr);
   }, [onDateSelect, onDateClick]);
 
-  // Handle event click - show multi-day overlay for multi-day bookings
+  // Handle event click — open ONLY the booking details side panel (the parent
+  // passes openDrawer). This used to ALSO pop a centered MultiDayOverlay modal
+  // whenever `isMultiDay` was set, so a single click opened the modal AND the
+  // drawer stacked on top of each other. The drawer already shows everything
+  // the modal showed (status, client, the full date list with per-day chips,
+  // route, hearse, service charge, branch and the status actions), so the
+  // modal was deleted — side panel only, for every booking.
   const handleEventClick = useCallback((info) => {
-    const booking = info.event.extendedProps;
-    if (booking.isMultiDay) {
-      setSelectedMultiDay(booking);
-    }
-    if (onItemClick) onItemClick(booking);
+    if (onItemClick) onItemClick(info.event.extendedProps);
   }, [onItemClick]);
 
   // Handle view change
@@ -1389,71 +1390,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           forceEventDuration={true}
         />
       </CalendarWrapper>
-      <MultiDayOverlay booking={selectedMultiDay} onClose={() => setSelectedMultiDay(null)} />
     </Shell>
-  );
-};
-
-// ===== MULTI-DAY BOOKING OVERLAY =====
-const MULTI_DAY_PALETTE = ['#7C3AED', '#DB2777', '#0891B2', '#CA8A04', '#4F46E5', '#059669', '#DC2626', '#EA580C'];
-const getMultiDayColor = (id) => {
-  const hash = String(id || '0').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return MULTI_DAY_PALETTE[hash % MULTI_DAY_PALETTE.length];
-};
-
-const MultiDayOverlay = ({ booking, onClose }) => {
-  if (!booking) return null;
-  const dates = booking.multiDayDates || [];
-  const sc = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
-  // Use a distinct multi-day color based on booking ID (not the status color)
-  const multiDayColor = getMultiDayColor(booking.bookingId || booking.id);
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }} onClick={onClose}>
-      <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '20px 24px', background: multiDayColor, borderRadius: '16px 16px 0 0', color: '#fff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px' }}>Multi-Day Booking</div>
-              <div style={{ fontSize: '20px', fontWeight: 700 }}>{booking.clientName || 'Unknown'}</div>
-            </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#fff' }}>✕</button>
-          </div>
-        </div>
-        <div style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <span style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: sc.bg || sc.color + '20', color: sc.color }}>{sc.label || booking.status}</span>
-            {booking.branchName && <span style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: '#f3f4f6', color: '#374151' }}>📍 {booking.branchName}</span>}
-          </div>
-          <div style={{ background: '#f9fafb', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '8px' }}>Booking Period</div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>
-              {dates.length > 1 ? `${new Date(dates[0]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} — ${new Date(dates[dates.length - 1]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : new Date(dates[0]).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            </div>
-            <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>{dates.length} day{dates.length > 1 ? 's' : ''} total</div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            {booking.dest && booking.dest !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Destination</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.dest}</div></div>}
-            {booking.from && booking.from !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>From</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.from}</div></div>}
-            {booking.plate && booking.plate !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Vehicle</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.plate}</div></div>}
-            {booking.hearseName && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Hearse</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.hearseName}</div></div>}
-            {booking.phone && booking.phone !== '—' && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Phone</div><div style={{ fontSize: '14px', color: '#111827' }}>{booking.phone}</div></div>}
-            {booking.bookingCode && <div><div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '4px' }}>Code</div><div style={{ fontSize: '14px', color: '#111827', fontFamily: 'monospace' }}>{booking.bookingCode}</div></div>}
-          </div>
-          {dates.length > 1 && (
-            <div style={{ marginTop: '20px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9ca3af', marginBottom: '8px' }}>Daily Breakdown</div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {dates.map((d, i) => (
-                  <div key={i} style={{ padding: '8px 12px', borderRadius: '8px', background: i === 0 ? multiDayColor : i === dates.length - 1 ? multiDayColor + 'cc' : multiDayColor + '22', color: i === 0 || i === dates.length - 1 ? '#fff' : multiDayColor, fontSize: '11px', fontWeight: 600, border: `1px solid ${multiDayColor}44` }}>
-                    Day {i + 1}: {new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 };
 export default HearseCalendar;

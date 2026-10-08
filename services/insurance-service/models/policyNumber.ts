@@ -78,8 +78,12 @@ export const now = (): string => new Date().toISOString();
 /** Amani Group policies must cover at least this many individuals. */
 export const MIN_GROUP_MEMBERS = 5;
 
-/** The three real Amani products (see amaniData.js coverOptions). */
-export const VALID_COVER_TYPES = ['Solo', 'Family', 'Group'] as const;
+/** The real Amani products (see amaniData.js coverOptions). FamilyGroup is
+    here because the form has always offered it — the validator previously
+    rejected it, so that card's submissions could never succeed. Diaspora is
+    the abroad-paid plan (KES 2,000/month) behind the landing page's
+    diaspora section. */
+export const VALID_COVER_TYPES = ['Solo', 'Family', 'FamilyGroup', 'Group', 'Diaspora'] as const;
 export type CoverType = (typeof VALID_COVER_TYPES)[number];
 
 /** Claim lifecycle. */
@@ -108,6 +112,11 @@ export interface NormalisedApplication {
   cover: string;
   coveredCount: number;
   members: MemberInput[];
+  /* Next of kin captured on the application: who the care team calls. The
+     relationship is optional context; name and phone are required. */
+  nextOfKinName: string;
+  nextOfKinPhone: string;
+  nextOfKinRelationship: string | null;
   confirmAccepted: boolean;
 }
 

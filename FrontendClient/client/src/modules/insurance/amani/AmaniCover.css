@@ -34,6 +34,14 @@
   scroll-behavior: smooth;
 }
 
+/* Fixed on desktop so the photo stays put while the page scrolls; phones
+   keep it scrolling with the content (iOS paints fixed backgrounds badly). */
+@media (min-width: 768px) {
+  .amani-cover {
+    background-attachment: fixed;
+  }
+}
+
 .amani-cover .font-serif {
   font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
 }

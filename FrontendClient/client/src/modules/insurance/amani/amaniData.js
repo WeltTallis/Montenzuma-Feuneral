@@ -183,14 +183,22 @@ export const PLANS = {
   Family: { monthly: 1000, from: false, covers: 'You + your household' },
   FamilyGroup: { monthly: 10000, from: true, covers: 'Family + extended family' },
   Group: { monthly: 10000, from: true, covers: '5 or more people' },
+  /* Amani Diaspora — paid from abroad, covers the family back home.
+     Fixed KES 2,000/month per the product sheet (the same figure shown on
+     the landing page's diaspora card); NOT "from", the price does not scale. */
+  Diaspora: { monthly: 2000, from: false, covers: '5 people back home' },
 };
 
 /* Cover options offered in the apply form AND rendered as plan cards on the
-   cover page. These are the three real Amani products (NOT the old
+   cover page. These are the real Amani products (NOT the old
    Essential/Family/Legacy marketing tiers):
-     • Amani Solo   — one person
-     • Amani Family — the applicant plus their household
-     • Amani Group  — a shared policy for a group, MINIMUM 5 individuals
+     • Amani Solo         — one person
+     • Amani Family       — the applicant plus their household
+     • Amani Family Group — family plus extended family
+     • Amani Diaspora     — paid from abroad for the family back home (KES 2,000)
+   NOTE: 'Amani Group' was removed from the CARDS (product decision) but stays
+   in PLANS and in the backend's VALID_COVER_TYPES, so existing Group policies
+   and their payment pages still resolve a real price.
    `minMembers` is what the form enforces: picking Group reveals an "add
    another individual" repeater and blocks submit until the policy has at
    least that many people on it.
@@ -225,12 +233,11 @@ export const coverOptions = [
     features: [PLANS.FamilyGroup.covers, 'One shared policy', 'Scales with your group'],
   },
   {
-    value: 'Group',
-    label: 'Amani Group',
-    hint: 'One shared policy for a group of 5 or more people.',
-    minMembers: 5,
-    monthly: PLANS.Group.monthly,
-    features: [PLANS.Group.covers, 'Shared contributions', 'Flexible group size'],
+    value: 'Diaspora',
+    label: 'Amani Diaspora',
+    hint: 'Cover for your family back home, paid from abroad.',
+    monthly: PLANS.Diaspora.monthly,
+    features: [`Covers ${PLANS.Diaspora.covers}`, 'Pay securely from abroad', 'Digital application'],
   },
 ];
 

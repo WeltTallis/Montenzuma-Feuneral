@@ -30,6 +30,9 @@ export function validateApplication(body: any = {}): ValidationResult<Normalised
   const cover = String(body.cover || '').trim();
   const employment = String(body.employment || '').trim();
   const age = Number.parseInt(body.age, 10);
+  const nextOfKinName = String(body.nextOfKinName || '').trim();
+  const nextOfKinPhone = String(body.nextOfKinPhone || '').trim();
+  const nextOfKinRelationship = String(body.nextOfKinRelationship || '').trim();
 
   if (fullName.length < 2) errors.fullName = 'Full name is required.';
   if (!isPlausiblePolicyNumber(idNumber)) {
@@ -40,6 +43,10 @@ export function validateApplication(body: any = {}): ValidationResult<Normalised
   }
   if (!isValidPhone(phone)) errors.phone = 'Enter a valid phone number.';
   if (!isValidEmail(email)) errors.email = 'Enter a valid email address.';
+  /* Next of kin — the person the care team calls when it matters. Required
+     on every application; the relationship is optional context. */
+  if (nextOfKinName.length < 2) errors.nextOfKinName = 'Next of kin full name is required.';
+  if (!isValidPhone(nextOfKinPhone)) errors.nextOfKinPhone = 'Enter a valid next of kin phone number.';
   if (!(VALID_COVER_TYPES as readonly string[]).includes(cover)) {
   errors.cover = 'Please choose a cover type.';
 }
@@ -99,8 +106,14 @@ export function validateApplication(body: any = {}): ValidationResult<Normalised
       phone,
       email: email || null,
       cover,
-      coveredCount: cover === 'Group' ? members.length + 1 : 1,
+      /* Group: applicant + repeater. Diaspora is a FIXED 5-person product
+         (matches PLANS.Diaspora and the landing page's "5 people" card);
+         Solo/Family/FamilyGroup: one named applicant. */
+      coveredCount: cover === 'Group' ? members.length + 1 : cover === 'Diaspora' ? 5 : 1,
       members,
+      nextOfKinName,
+      nextOfKinPhone,
+      nextOfKinRelationship: nextOfKinRelationship || null,
       confirmAccepted: body.confirmAccepted === true,
     },
   };

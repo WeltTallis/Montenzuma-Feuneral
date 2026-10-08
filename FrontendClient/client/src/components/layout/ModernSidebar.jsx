@@ -792,8 +792,8 @@ const ModernSidebar = ({
         { icon: Package, label: 'Coffins', path: `/${tenantSlug}/coffins` },
         { icon: Beaker, label: 'Chemicals', path: `/${tenantSlug}/chemicals` },
         { icon: Hammer, label: 'Workshop', path: `/${tenantSlug}/workshop` },
-        { icon: ShoppingCart, label: 'Flower Bookings', path: `/${tenantSlug}/flowers` },
-        { icon: Box, label: 'Lichene Store', path: `/${tenantSlug}/mini-store` },
+        { icon: ShoppingCart, label: 'Flowers', path: `/${tenantSlug}/flowers` },
+        { icon: Box, label: 'Mini Store', path: `/${tenantSlug}/mini-store` },
         { icon: LayoutDashboard, label: 'Dashboard', path: `/${tenantSlug}/dashboard` },
       ]
     },
@@ -801,7 +801,7 @@ const ModernSidebar = ({
       section: 'Extra',
       items: [
         { icon: Settings, label: 'Settings', path: `/${tenantSlug}/settings` },
-        { icon: Calendar, label: 'Leaves Dashboard', path: `/${tenantSlug}/leaves` },
+        { icon: Calendar, label: 'Leaves', path: `/${tenantSlug}/leaves` },
         { icon: FileText, label: 'Apply Leave', path: `/${tenantSlug}/leaves/apply` },
         { icon: LifeBuoy, label: 'Support', path: `/${tenantSlug}/support` },
         // "Store Journal" used to sit HERE as its own admin-only nav item. It is

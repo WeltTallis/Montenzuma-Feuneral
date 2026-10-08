@@ -35,6 +35,11 @@ const createInitial = () => {
   employment: '',
   phone: '',
   email: '',
+  /* Next of kin — who the care team calls when it matters. Name + phone are
+     required (mirrored server-side); relationship is optional context. */
+  nextOfKinName: '',
+  nextOfKinPhone: '',
+  nextOfKinRelationship: '',
   cover,
   members: cover === GROUP_COVER_VALUE
     ? Array.from({ length: MIN_GROUP_MEMBERS - 1 }, () => newMember())
@@ -64,9 +69,10 @@ export const PAY_FREQUENCIES = [
 let memberKeySeq = 0;
 const newMember = () => ({ key: `af-member-${++memberKeySeq}`, fullName: '', phone: '' });
 
-/* Required fields, in document order. `email` is deliberately absent — it is
-   optional and is only validated when the visitor actually fills it in. */
-const REQUIRED_FIELDS = ['fullName', 'idNumber', 'age', 'employment', 'phone', 'cover'];
+/* Required fields, in document order. `email` and `nextOfKinRelationship`
+   are deliberately absent — both are optional and only validated when the
+   visitor actually fills them in. */
+const REQUIRED_FIELDS = ['fullName', 'idNumber', 'age', 'employment', 'phone', 'nextOfKinName', 'nextOfKinPhone', 'cover'];
 
 const EMPLOYMENT_OPTIONS = [
   { value: 'employed', label: 'Employed' },
@@ -94,7 +100,13 @@ function isFieldValid(name, value) {
     case 'cover':
       return value != null && value !== '';
     case 'phone':
+    case 'nextOfKinPhone':
       return value.replace(/\D/g, '').length >= 9;
+    case 'nextOfKinName':
+      return value.trim().length > 1;
+    case 'nextOfKinRelationship':
+      /* Optional: empty is valid, anything filled in is accepted. */
+      return true;
     case 'email':
       /* Optional: empty is valid, filled-in must match. */
       return value.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -112,6 +124,8 @@ function errorMessageFor(name) {
     case 'age': return 'You must be 18 or older.';
     case 'employment': return 'Please select your employment status.';
     case 'phone': return 'Enter a valid phone number.';
+    case 'nextOfKinName': return 'Next of kin full name is required.';
+    case 'nextOfKinPhone': return 'Enter a valid next of kin phone number.';
     case 'email': return 'Enter a valid email address.';
     case 'cover': return 'Please choose a cover type.';
     case 'confirmAccepted': return 'Please tick the box to confirm before continuing.';
@@ -413,6 +427,9 @@ export default function AmaniApplicationForm() {
         employment: formData.employment,
         phone: formData.phone,
         email: formData.email,
+        nextOfKinName: formData.nextOfKinName,
+        nextOfKinPhone: formData.nextOfKinPhone,
+        nextOfKinRelationship: formData.nextOfKinRelationship,
         cover: formData.cover,
         frequency: formData.frequency,
         confirmAccepted: formData.confirmAccepted,
@@ -1030,6 +1047,86 @@ export default function AmaniApplicationForm() {
                       <div className="af-tick-icon"><TickSvg /></div>
                       {touched.employment && errors.employment && (
                         <span className="af-err-msg">{errors.employment}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Next of kin — name + phone are required (the care team
+                    calls THIS person), relationship is optional context.
+                    Mirrored server-side in validateApplication. */}
+                <div className="af-row">
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-nextOfKinName">
+                      Next of Kin Full Name <span className="af-req">*</span>
+                    </label>
+                    <div className={getInputWrapClass('nextOfKinName')}>
+                      <input
+                        id="af-nextOfKinName"
+                        data-af-field="nextOfKinName"
+                        className="af-doc-input"
+                        type="text"
+                        name="nextOfKinName"
+                        placeholder="Full name of your next of kin"
+                        value={formData.nextOfKinName}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.nextOfKinName && errors.nextOfKinName)}
+                        required
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.nextOfKinName && errors.nextOfKinName && (
+                        <span className="af-err-msg">{errors.nextOfKinName}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-nextOfKinPhone">
+                      Next of Kin Phone <span className="af-req">*</span>
+                    </label>
+                    <div className={getInputWrapClass('nextOfKinPhone')}>
+                      <input
+                        id="af-nextOfKinPhone"
+                        data-af-field="nextOfKinPhone"
+                        className="af-doc-input"
+                        type="tel"
+                        name="nextOfKinPhone"
+                        placeholder="0712 345 678"
+                        value={formData.nextOfKinPhone}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.nextOfKinPhone && errors.nextOfKinPhone)}
+                        required
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.nextOfKinPhone && errors.nextOfKinPhone && (
+                        <span className="af-err-msg">{errors.nextOfKinPhone}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="af-row">
+                  <div className="af-col">
+                    <label className="af-field-label" htmlFor="af-nextOfKinRelationship">
+                      Relationship to Applicant
+                    </label>
+                    <div className={getInputWrapClass('nextOfKinRelationship')}>
+                      <input
+                        id="af-nextOfKinRelationship"
+                        data-af-field="nextOfKinRelationship"
+                        className="af-doc-input"
+                        type="text"
+                        name="nextOfKinRelationship"
+                        placeholder="e.g., Spouse, Parent, Sibling"
+                        value={formData.nextOfKinRelationship}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        aria-invalid={Boolean(touched.nextOfKinRelationship && errors.nextOfKinRelationship)}
+                      />
+                      <div className="af-tick-icon"><TickSvg /></div>
+                      {touched.nextOfKinRelationship && errors.nextOfKinRelationship && (
+                        <span className="af-err-msg">{errors.nextOfKinRelationship}</span>
                       )}
                     </div>
                   </div>

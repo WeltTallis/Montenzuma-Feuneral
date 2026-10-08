@@ -2,6 +2,7 @@
 import styled, { keyframes } from 'styled-components';
 import env from '../../utils/config/env';
 import { X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
+import { mergeFleetAvailability } from './hearseFleetAvailability';
 
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://restpoint.co.ke/api/v1/restpoint'
@@ -349,24 +350,16 @@ export default function BookNewHearseModal({
 
       if (reqId !== fleetReqRef.current) return; // superseded by a newer check
 
-      // Build fleet map from the full hearse list (prop carries model + status)
-      const m = {};
-      (hearses || []).forEach(h => {
-        m[String(h.id)] = {
-          status: 'available',
-          bookedFor: [],
-          hearse: {
-            id: h.id,
-            hearse_code: h.hearse_code,
-            hearse_name: h.hearse_name || h.plate_number || '',
-            plate_number: h.plate_number || '',
-            model: h.model || '',
-            capacity: h.capacity,
-            status: h.status || 'available',
-            service_charge_ksh: Number(h.service_charge_ksh ?? h.service_charge) || 0,
-          }
-        };
-      });
+      // Build the fleet map: seed from the full hearse list (prop carries model
+      // + status), then merge every day's buckets. The merge lives in a pure
+      // helper so the multi-date rule — a booking on ANY selected date makes the
+      // hearse unavailable for the WHOLE selection — is unit-testable outside
+      // the panel (./hearseFleetAvailability.test.js).
+      // It runs in TWO passes because one interleaved day-by-day loop let a
+      // later day's `avail` list overwrite an earlier day's booking: with
+      // "3 dates selected, 1 already booked" the row used to show "Free" when
+      // the conflict fell on the first or middle date.
+      const m = mergeFleetAvailability(hearses, dayResults, EXCLUDED);
 
       if (dayResults.length === 0) {
         const msg = serverError
@@ -375,31 +368,6 @@ export default function BookNewHearseModal({
         if (showToast) showToast(msg, 'error');
         setCheckError(msg);
       }
-
-      dayResults.forEach(day => {
-        if (!day) return;
-        (day.avail || []).forEach(a => {
-          const key = String(a.id);
-          if (!m[key]) m[key] = { status: 'available', bookedFor: [], hearse: {} };
-          m[key].hearse = { ...m[key].hearse, ...a };
-          if (m[key].status !== 'maintenance') m[key].status = 'available';
-        });
-        (day.booked || []).forEach(bh => {
-          const id = String(bh.hearse_id || bh.id);
-          if (!m[id]) m[id] = { status: 'booked', bookedFor: [], hearse: { ...bh } };
-          m[id].status = 'booked';
-          if (!m[id].bookedFor.some(x => x.date === day.date)) {
-            m[id].bookedFor.push({ date: day.date, client: bh.client_name || bh.booking_code || 'Booked' });
-          }
-          m[id].hearse = { ...m[id].hearse, ...bh };
-        });
-      });
-
-      // Maintenance / out-of-service hearses are never bookable
-      (hearses || []).forEach(h => {
-        const key = String(h.id);
-        if (m[key] && EXCLUDED.includes(h.status)) m[key].status = 'maintenance';
-      });
 
       setFleet(m);
     } catch (e) {

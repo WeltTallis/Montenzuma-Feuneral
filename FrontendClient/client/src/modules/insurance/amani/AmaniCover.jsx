@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Check,
-  ShieldCheck,
-  Star,
+  Plane,
+  Users,
 } from 'lucide-react';
 import {
   PHOTOS,
@@ -12,7 +12,6 @@ import {
   coverOptions,
   formatPlanAmount,
   moments,
-  promises,
   steps,
 } from './amaniData';
 import AmaniApplicationForm from './amaniAplicationForm';
@@ -25,6 +24,7 @@ import './AmaniCover.css';
 const NAV_LINKS = [
   { href: '#about', label: 'About' },
   { href: '#how', label: 'How it works' },
+  { href: '#diaspora', label: 'Diaspora' },
   /* A real route, not a landing anchor. This array is passed as `inPageLinks`,
      which OVERRIDES LANDING_ANCHORS entirely inside AmaniNav — so the landing
      header renders these entries and nothing else. Adding the link only to
@@ -41,10 +41,13 @@ export default function AmaniCover() {
       <main id="top">
         <Hero />
         <PlanOptions />
-        <PromiseBand />
-        <Moments />
+        {/* About now sits where the Promise band used to be: the band was
+            deleted and its slot became the About section ("Promise became
+            About"), so the page reads Hero → Plans → About → Moments → How. */}
         <About />
+        <Moments />
         <HowItWorks />
+        <Diaspora />
         <ApplySection />
         <ClaimBand />
       </main>
@@ -55,161 +58,72 @@ export default function AmaniCover() {
 }
 
 /* ── hero.tsx ─────────────────────────────────────────────────── */
-const AVATARS = [
-  { src: PHOTOS.motherDaughter, alt: '' },
-  { src: PHOTOS.elderlyCouple, alt: '' },
-  { src: PHOTOS.fatherSon, alt: '' },
-];
-
+/* download.webp IS the hero: full-bleed photo with a left-weighted scrim,
+   the Montenzuma cover name and both CTAs set as ONE straight left-aligned
+   column, and the quote card hanging off the bottom edge. */
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 pt-10 pb-20 lg:grid-cols-[1fr_1.1fr] lg:gap-16 lg:px-10 lg:pt-16 lg:pb-28">
-        <div>
-          {/* Kiswahili accent — the Kenyan hook the page opens with. "Je, uko
-              covered?" = "Are you covered?". This sits where the old "By
-              Montenzuma" eyebrow used to be; that attribution now lives on the
-              hero photo badge. */}
-          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-ac-accent">
+    <section className="relative isolate flex min-h-[75vh] flex-col justify-center overflow-hidden px-6 pb-28 pt-16 lg:min-h-[82vh] lg:px-10 lg:pb-32 lg:pt-20">
+      {/* The hero photo — download.webp ONLY, full-bleed and crisp. Tailwind
+          bg-cover/bg-center sizes it correctly (the old `.hero-slide` class was
+          never defined in CSS, so the image rendered at natural size and tiled). */}
+      <div
+        className="absolute inset-0 -z-10 bg-cover bg-center"
+        style={{ backgroundImage: "url('/download.webp')" }}
+        aria-hidden="true"
+      />
+      {/* A light left-weighted scrim keeps the white text legible WITHOUT the
+          heavy navy wash that used to dull the whole photo. */}
+      <div
+        className="absolute inset-0 -z-10"
+        style={{ background: 'linear-gradient(100deg, rgba(16,45,67,0.45) 0%, rgba(16,45,67,0.18) 45%, rgba(16,45,67,0) 78%)' }}
+        aria-hidden="true"
+      />
+
+      {/* Name + buttons — one straight column, hard to the left. */}
+      <div className="relative z-10 mx-auto w-full max-w-7xl">
+        <div className="max-w-2xl">
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/25 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-white backdrop-blur-sm">
             <span className="size-1.5 rounded-full bg-ac-highlight" aria-hidden="true" />
             {SW.heroHook}
           </p>
 
-          <h1 className="mt-4 font-serif text-[clamp(2.75rem,6vw,5rem)] font-medium leading-[1.02] tracking-tight text-balance text-ac-primary">
-            Peace of mind for the ones you <em className="text-ac-accent">love most.</em>
-          </h1>
-
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            Amani Cover is funeral insurance that lets your family say goodbye
-            with dignity, without worrying about the cost. Offered by Montenzuma Monalisa Funeral
-            Home, trusted by families for over 25 years.
+          <p className="mt-5 font-serif text-2xl font-medium leading-snug text-white drop-shadow-sm sm:text-3xl">
+            Montenzuma Monalisa Funeral Home
+            <span className="mt-1.5 block text-base font-normal italic text-white/80 sm:text-lg">
+              Serving Kenyan families with dignity for over 25 years.
+            </span>
           </p>
 
-          <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
+          {/* Buttons — same straight left edge as the name. */}
+          <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row">
             <a
               href="#plans"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-base font-medium text-white shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-white px-8 text-base font-semibold text-ac-primary shadow-xl shadow-black/25 transition-colors hover:bg-white/90"
             >
               Choose a cover
               <ArrowRight className="size-4" aria-hidden="true" />
             </a>
             <Link
               to="/amani/payments"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-ink px-7 text-base font-medium text-white shadow-lg shadow-ac-ink/20 transition-colors hover:bg-ac-ink/90"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/20 px-8 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15"
             >
               Make a payment
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           </div>
-
-          {/* Kiswahili accent — the price whisper, so the KES 500 entry point
-              is heard in the same breath as the CTAs. */}
-          <p className="mt-4 text-sm italic text-ac-mutedfg">{SW.heroPriceLine}</p>
-
-          <div className="mt-12 flex items-center gap-5 border-t border-ac-border pt-8">
-            <div className="flex -space-x-3">
-              {AVATARS.map((avatar) => (
-                <span
-                  key={avatar.src}
-                  className="relative size-12 overflow-hidden rounded-full ring-4 ring-ac-bg"
-                >
-                  {/* These avatars render at size-12 (48px). An explicit
-                      `sizes="48px"` makes the browser pick the smallest
-                      variant; without a correct value it would assume 100vw
-                      and download a full-size photo for a 48px circle. */}
-                  <FillImage src={avatar.src} alt={avatar.alt} sizes="48px" className="object-cover" />
-                </span>
-              ))}
-            </div>
-            <div>
-              <div className="flex items-center gap-0.5 text-ac-accent" aria-label="Rated 4.9 out of 5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="size-4 fill-current" aria-hidden="true" />
-                ))}
-                <span className="ml-2 text-sm font-semibold text-ac-primary">4.9</span>
-              </div>
-              <p className="mt-1 text-sm text-ac-mutedfg">Trusted by families across Kenya</p>
-            </div>
-          </div>
-        </div>
-
-
-        {/* MOBILE: this was `aspect-[5/5.4] grid-cols-6 grid-rows-6` at every width, so
-            a 390px phone got a 6-column collage squeezed into ~350px (each
-            photo ~55px wide) inside a box 380px TALL — unreadable thumbnails
-            and a huge empty scroll before the copy. It now collapses to one
-            hero photo on phones, which is the only one that matters, and the
-            two supporting photos sit side by side underneath it. */}
-        <div className="relative">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:aspect-[5/5.4] lg:grid-cols-6 lg:grid-rows-6">
-            {/* FillImage is position:absolute, so every frame needs an explicit
-                  ratio or the grid row collapses to 0px tall on mobile. */}
-            <div className="relative col-span-2 row-span-1 aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-ac-primary/15 sm:aspect-[16/11] sm:rounded-t-[999px] sm:rounded-b-[2.5rem] lg:col-span-4 lg:row-span-6 lg:aspect-auto lg:rounded-t-[999px] lg:rounded-b-[2.5rem]">
-              <FillImage
-                src={PHOTOS.familyHero}
-                alt="A multigenerational family embracing together on a sofa in warm afternoon light"
-                priority
-                className="object-cover"
-                /* One column on phones, the 4-of-6 collage slot from lg up.
-                   Getting this right is what makes the browser pick the 640w
-                   file on a small screen instead of the 1024w one. */
-                sizes="(max-width: 1023px) 92vw, 38vw"
-              />
-            </div>
-            <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mt-10 lg:aspect-auto">
-              <FillImage
-                src={PHOTOS.whiteLilies}
-                alt="White lilies and roses in a glass vase beside a framed family photo"
-                className="object-cover object-left"
-                sizes="(max-width: 1023px) 46vw, 18vw"
-              />
-
-
-            </div>
-            <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mb-10 lg:aspect-auto">
-              <FillImage
-                src={PHOTOS.elderlyCouple}
-                alt="An elderly couple holding hands and smiling on their porch"
-                className="object-cover"
-                sizes="(max-width: 1023px) 46vw, 18vw"
-              />
-            </div>
-          </div>
-
-          <figure
-            className="
-    absolute
-    -bottom-14
-    left-[-2rem]
-    w-[24rem]
-    max-w-[calc(100vw-1.5rem)]
-    rounded-2xl
-    border
-    border-ac-border
-    bg-ac-card
-    p-3
-    shadow-xl
-    shadow-ac-primary/10
-
-    sm:-bottom-8
-    sm:left-[-9.8rem]
-    sm:w-[24rem]
-  "
-          >
-            <blockquote className="font-serif text-lg leading-snug text-ac-primary"> &ldquo;You may never know when you will need it, but when the unexpected happens, having a plan can make the difference.&rdquo; </blockquote>
-
-            <figcaption className="mt-3 text-xs text-ac-mutedfg">
-              AMANI COVER
-            </figcaption>
-          </figure>
-
-
-          <div className="absolute top-8 left-4 flex items-center rounded-2xl  gap-3  bg-ac-primary px-4 py-2.5 text-ac-onprimary shadow-lg sm:left-[-1rem]">
-            <ShieldCheck className="size-5 text-ac-highlight" aria-hidden="true" />
-            <span className="text-sm font-medium">Covered by Montenzuma Funeral</span>
-          </div>
         </div>
       </div>
+
+      {/* The quote — hanging off the bottom edge, clear of the left column. */}
+      <figure className="absolute -bottom-8 left-1/2 z-20 w-[min(92vw,30rem)] -translate-x-1/2 rounded-2xl border border-ac-border bg-ac-card p-4 text-center shadow-2xl shadow-black/20 sm:left-auto sm:right-8 sm:translate-x-0 lg:-bottom-10 lg:right-12">
+        <blockquote className="font-serif text-base italic leading-snug text-ac-primary sm:text-lg">
+          &ldquo;You may never know when you will need it, but when the unexpected happens, having a plan can make the difference.&rdquo;
+        </blockquote>
+        <figcaption className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-ac-mutedfg">
+          Amani Cover
+        </figcaption>
+      </figure>
     </section>
   );
 }
@@ -218,12 +132,12 @@ function Hero() {
 
 function PlanOptions() {
   return (
-    <section id="plans" className="scroll-mt-20  bg-ac-bg px-2 py-10 lg:px-10 lg:py-18">
+    <section id="plans" className="scroll-mt-20 px-2 py-10 lg:px-10 lg:py-18">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ac-accent">Choose your cover</p>
           <h2 className="mt-3 font-serif text-3xl font-medium leading-tight text-ac-primary sm:text-4xl">Know the contribution before you apply.</h2>
-          <p className="mt-3 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect. Group cover starts at five people.</p>
+          <p className="mt-3 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect.</p>
         </div>
         <div className="grid items-stretch gap-5 pt-2 sm:grid-cols-2 xl:grid-cols-4">
           {coverOptions.map((option) => (
@@ -244,7 +158,7 @@ function PlanOptions() {
               <p className={`mt-1.5 min-h-10 text-sm leading-relaxed ${option.value === 'Family' ? 'text-white/70' : 'text-ac-mutedfg'}`}>{option.hint}</p>
               <p className={`mt-3 border-t pt-3 text-2xl font-semibold tracking-tight tabular-nums ${option.value === 'Family' ? 'border-white/15 text-white' : 'border-ac-border text-ac-primary'}`}>
                 {formatPlanAmount(option.value, option.monthly)}
-                <span className={`ml-1 text-sm font-normal ${option.value === 'Family' ? 'text-white/70' : 'text-ac-mutedfg'}`}>/ month</span>
+                <span className={`text-sm font-normal ${option.value === 'Family' ? 'text-white/70' : 'text-ac-mutedfg'}`}>/ month</span>
               </p>
               <ul className="mb-4 mt-3 space-y-1.5">
                 {option.features.map((feature) => (
@@ -268,7 +182,7 @@ function PlanOptions() {
                     : 'mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ac-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring'
                 }
               >
-                Apply  this cover <ArrowRight className="size-4" aria-hidden="true" />
+                Apply this cover <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </article>
           ))}
@@ -279,24 +193,9 @@ function PlanOptions() {
   );
 }
 
-/* ── promise-band.tsx ─ */
-function PromiseBand() {
-  return (
-    <section aria-label="Our promises" className="bg-ac-primary text-ac-onprimary">
-      <div className="mx-auto grid max-w-7xl divide-y divide-ac-onprimary/10 px-6 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:px-10">
-        {promises.map((item, index) => (
-          <div key={item.title} className="flex gap-5 py-9 sm:px-8 first:sm:pl-0">
-            <span className="font-serif text-2xl italic text-ac-highlight">0{index + 1}</span>
-            <div>
-              <h2 className="font-serif text-2xl">{item.title}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-ac-onprimary/70">{item.text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+/* The Promise band (Simple / Flexible / Supportive) was removed: its slot in
+   <main> now renders the About section instead ("Promise became About").
+   The `promises` data stays in amaniData.js in case it is ever wanted back. */
 
 /* ── moments.tsx ──────────────────────────────────────────────── */
 function Moments() {
@@ -477,6 +376,122 @@ function HowItWorks() {
   );
 }
 
+/* ── diaspora.tsx ─────────────────────────────────────────────── */
+/* Amani Diaspora — cover paid from abroad (GB → KE): a dark pitch panel
+   with a live product card beside it.
+
+   The design arrived as generic class names (page-width / dark-tag /
+   diaspora-panel / country-card / route-line / metric-icon …) and a
+   generic <Icon name="…" /> component, NONE of which exist in this app —
+   pasted raw it would render unstyled with empty icon slots. It is rebuilt
+   with this page's conventions instead: Tailwind + ac-* tokens, the serif
+   display face, lucide-react icons (Plane / ArrowRight / Users).
+
+   The CTA originally pointed at #contact — an anchor that exists nowhere
+   in the codebase (a dead jump, like the #faq link removed from
+   NAV_LINKS). "Cover family from abroad" now targets #apply, which is what
+   it actually leads to; "See how it works" keeps #how, which does exist. */
+function Diaspora() {
+  return (
+    <section id="diaspora" className="scroll-mt-20 px-6 py-16 lg:px-10 lg:py-20">
+      <div className="mx-auto flex max-w-7xl flex-col gap-10 rounded-[2rem] bg-ac-primary p-8 text-white sm:p-10 lg:grid lg:grid-cols-2 lg:items-center lg:gap-14 lg:p-12">
+
+        {/* ── copy ── */}
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-ac-highlight">
+            <Plane className="size-4" aria-hidden="true" />
+            Amani Diaspora
+          </p>
+
+          <h2 className="mt-5 font-serif text-[clamp(2rem,4vw,3rem)] font-medium leading-[1.05] tracking-tight text-balance">
+            You may be far away.<br />Your care doesn’t have to be.
+          </h2>
+
+          <p className="mt-5 max-w-xl leading-relaxed text-ac-onprimary/80 text-pretty">
+            Protect the people you love back in Kenya. Pay securely from abroad while our local
+            team handles every detail with dignity.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              to="/amani/cover/apply?plan=Diaspora"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-white px-7 text-base font-medium text-ac-primary shadow-lg shadow-black/10 transition-colors hover:bg-white/90"
+            >
+              Cover family from abroad
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+            <a
+              href="#how"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl border border-white/25 px-7 text-base font-medium text-white transition-colors hover:bg-white/10"
+            >
+              See how it works
+            </a>
+          </div>
+        </div>
+
+        {/* ── product card: the "International cover" live widget ── */}
+        <div className="overflow-hidden rounded-3xl bg-ac-card text-ac-ink shadow-xl shadow-black/20">
+          <div className="flex items-center justify-between border-b border-ac-border px-6 py-5">
+            <span className="text-sm font-extrabold text-ac-ink">International cover</span>
+            <span className="flex items-center gap-2 text-xs font-bold text-emerald-600">
+              <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
+              Live
+            </span>
+          </div>
+
+          <div className="p-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ac-mutedfg">
+              Send care home
+            </p>
+
+            {/* GB (you) → plane → KE (family) */}
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <span className="flex flex-col items-center gap-0.5 rounded-2xl border border-ac-border bg-ac-bg px-5 py-3">
+                <span className="text-xl leading-none" aria-hidden="true">🇬🇧</span>
+                <span className="text-lg font-extrabold text-ac-primary">GB</span>
+                <small className="text-[10px] font-bold uppercase tracking-wider text-ac-mutedfg">You</small>
+              </span>
+              <span className="flex flex-1 items-center gap-2 text-ac-accent" aria-hidden="true">
+                <span className="h-px flex-1 bg-ac-border" />
+                <Plane className="size-4 shrink-0" />
+                <span className="h-px flex-1 bg-ac-border" />
+              </span>
+              <span className="flex flex-col items-center gap-0.5 rounded-2xl border border-ac-primary bg-ac-primary px-5 py-3">
+                <span className="text-xl leading-none" aria-hidden="true">🇰🇪</span>
+                <span className="text-lg font-extrabold text-white">KE</span>
+                <small className="text-[10px] font-bold uppercase tracking-wider text-white/70">Family</small>
+              </span>
+            </div>
+
+            {/* monthly cover + price */}
+            <div className="mt-6 rounded-2xl bg-ac-bg p-4">
+              <div className="flex items-center justify-between text-xs font-semibold text-ac-mutedfg">
+                <span>Monthly cover</span>
+                <span>5 people</span>
+              </div>
+              <div className="mt-3 flex items-end justify-between">
+                <strong className="text-2xl font-extrabold text-ac-primary">KES 2,000<span className="ml-1 text-sm font-normal text-ac-mutedfg">/ month</span></strong>
+                <span className="text-xs font-bold text-emerald-600">Ready to activate</span>
+              </div>
+            </div>
+
+            {/* care-team metric */}
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-ac-border p-4">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ac-primary/10 text-ac-accent">
+                <Users className="size-5" aria-hidden="true" />
+              </span>
+              <span>
+                <strong className="block text-sm text-ac-ink">Local care team</strong>
+                <small className="text-xs text-ac-mutedfg">Available anywhere in Kenya</small>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── apply-form.tsx ───────────────────────────────────────────── */
 /* The real application document lives in its own module — see
    amaniAplicationForm.jsx. This section is only the page shell: it owns the
@@ -485,7 +500,7 @@ function HowItWorks() {
    and styling belong to the child. */
 function ApplySection() {
   return (
-    <section id="apply" className="scroll-mt-20 bg-ac-bg py-20 text-ac-ink lg:py-28">
+    <section id="apply" className="scroll-mt-20 py-20 text-ac-ink lg:py-28">
       <AmaniApplicationForm />
     </section>
   );
