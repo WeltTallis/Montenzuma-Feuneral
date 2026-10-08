@@ -58,6 +58,12 @@ const initials = (name) =>
 
 const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
+/* "2025-10" -> "Oct" — month names instead of raw numbers in labels */
+const monthShort = (key) => {
+  const m = Number(String(key).split("-")[1]);
+  return MONTHS[m - 1] || String(key);
+};
+
 /** Which orders belong to a worker — matches on the raw assignment rows, the
     order's own assigned_to, and (as a fallback) the name, because older rows
     were written before assignments were recorded. */
@@ -211,20 +217,21 @@ const IX = ({ size = 11 }) => <Svg size={size} sw={2.4}><path d="M18 6L6 18M6 6l
 /* ══════════════════════════ STYLES ══════════════════════════ */
 const Root = styled.div`
   display:flex;flex-direction:column;gap:14px;color:${C.ink};
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:tabular-nums;min-width:0;
 `;
 const Card = styled.div`
   background:${C.card};border:1px solid ${C.line};border-radius:16px;
-  box-shadow:0 1px 2px rgba(16,24,40,.05);
+  box-shadow:0 1px 2px rgba(16,24,40,.05);min-width:0;
 `;
-const CardHead = styled.div`padding:15px 18px 0;
+const CardHead = styled.div`
+  padding:15px 18px 0;
   h2{font-size:.92rem;font-weight:800;letter-spacing:-.01em;margin:0;cursor:default;}
 `;
-const CardBody = styled.div`padding:13px 18px 17px;`;
+const CardBody = styled.div`padding:13px 18px 17px;min-width:0;`;
 
 const Kpis = styled.div`
-  display:grid;grid-template-columns:repeat(4,1fr);gap:14px;
-  @media(max-width:980px){grid-template-columns:repeat(2,1fr);}
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
+  @media(max-width:980px){grid-template-columns:repeat(2,minmax(0,1fr));}
   @media(max-width:520px){grid-template-columns:1fr;}
 `;
 const Kpi = styled(Card)`padding:15px 17px;`;
@@ -244,11 +251,11 @@ const Delta = styled.span`
 `;
 
 const Main = styled.div`
-  display:grid;grid-template-columns:1fr 330px;gap:14px;
+  display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;
   @media(max-width:980px){grid-template-columns:1fr;}
 `;
 
-/* trend chips — quiet text buttons, no pills */
+/* trend chips — quiet text buttons */
 const ChipRow = styled.div`display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin-bottom:8px;`;
 const ChipLbl = styled.span`
   font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
@@ -258,7 +265,7 @@ const Chip = styled.button`
   display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .65rem;
   border:1px solid ${p => (p.$on ? C.navy : C.line)};border-radius:999px;
   background:${p => (p.$on ? C.navy : "#fff")};color:${p => (p.$on ? "#fff" : C.muted)};
-  font-size:.71rem;font-weight:600;cursor:pointer;transition:.15s;
+  font-size:.71rem;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit;
   &:hover{border-color:${C.navy};color:${p => (p.$on ? "#fff" : C.ink)};}
 `;
 const Cdot = styled.span`width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${p => p.$c};`;
@@ -266,7 +273,7 @@ const Cdot = styled.span`width:8px;height:8px;border-radius:50%;flex-shrink:0;ba
 const ChartBox = styled.div`svg{width:100%;height:auto;display:block;}`;
 
 /* target ring */
-const RingRow = styled.div`display:flex;align-items:center;gap:15px;`;
+const RingRow = styled.div`display:flex;align-items:center;gap:15px;min-width:0;`;
 const Ring = styled.div`
   position:relative;width:100px;height:100px;flex-shrink:0;cursor:default;
   svg{transform:rotate(-90deg);display:block;}
@@ -277,15 +284,21 @@ const RingVal = styled.div`
   small{font-size:.55rem;font-weight:700;color:${C.muted};text-transform:uppercase;letter-spacing:.05em;}
 `;
 const RingInfo = styled.div`
+  min-width:0;
   .big{font-size:1rem;font-weight:800;}
   .ratio{font-size:.68rem;font-weight:600;color:${C.muted};margin-top:.1rem;}
 `;
 const Strip = styled.div`
   display:flex;gap:5px;margin-top:13px;padding-top:13px;border-top:1px dashed ${C.line};
 `;
-const TCol = styled.div`flex:1;text-align:center;min-width:0;cursor:default;`;
-const TBar = styled.div`height:42px;display:flex;align-items:flex-end;justify-content:center;
-  span{display:block;width:100%;max-width:15px;border-radius:4px 4px 2px 2px;background:#E2E8F0;}
+const TCol = styled.div`
+  flex:1;min-width:0;cursor:default;border-radius:6px;
+  ${p => (p.$now ? `outline:2px solid ${C.navy};outline-offset:2px;` : "")}
+`;
+const TBar = styled.div`
+  height:42px;display:flex;align-items:flex-end;justify-content:center;
+  span{display:block;width:100%;max-width:15px;border-radius:4px 4px 2px 2px;
+    background:${p => (p.$hit ? C.ok : "#E2E8F0")};}
 `;
 const TM = styled.div`
   margin-top:4px;font-size:.58rem;font-weight:700;color:${p => (p.$hit ? C.ok : C.muted)};
@@ -302,19 +315,22 @@ const TStat = styled.div`
 `;
 
 /* worker table */
-const TableWrap = styled.div`padding:0 6px 6px;overflow-x:auto;`;
-const WTable = styled.table`width:100%;border-collapse:collapse;min-width:640px;
+const TableWrap = styled.div`
+  padding:0 6px 6px;overflow-x:auto;border-radius:0 0 16px 16px;
+`;
+const WTable = styled.table`
+  width:100%;border-collapse:collapse;min-width:640px;
   th{font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${C.faint};
      text-align:left;padding:10px 14px;border-bottom:1px solid ${C.line};}
   th.num,td.num{text-align:right;}
   td{padding:11px 14px;border-bottom:1px solid ${C.line};font-size:.79rem;vertical-align:middle;}
-  tr:last-child td{border-bottom:none;}
+  tbody tr:last-child td{border-bottom:none;}
 `;
 const WRow = styled.tr`
   transition:background .12s;
   &:hover{background:#FAFBFD;}
-  &:hover ${"" /* remove button revealed on hover */}
-   .wa-rm{opacity:1;pointer-events:auto;}
+  /* remove button is revealed on row hover — plain selector, no interpolation */
+  &:hover .rm-btn{opacity:1;pointer-events:auto;}
 `;
 const Who = styled.div`display:flex;align-items:center;gap:.6rem;min-width:0;`;
 const Ava = styled.span`
@@ -322,7 +338,8 @@ const Ava = styled.span`
   display:grid;place-items:center;flex-shrink:0;background:${p => p.$c};
 `;
 const WhoTxt = styled.span`min-width:0;
-  b{display:block;font-size:.79rem;font-weight:700;line-height:1.2;}
+  b{display:block;font-size:.79rem;font-weight:700;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   small{font-size:.65rem;color:${C.muted};}
 `;
 const Rm = styled.button`
@@ -333,40 +350,45 @@ const Rm = styled.button`
 `;
 const MiniTrack = styled.span`
   width:78px;height:6px;border-radius:99px;background:#F1F5F9;overflow:hidden;
-  display:inline-block;vertical-align:middle;
+  display:inline-block;vertical-align:middle;flex-shrink:0;
   span{display:block;height:100%;border-radius:99px;background:${p => (p.$met ? C.ok : C.plum)};}
 `;
-const TgtCell = styled.div`display:flex;align-items:center;gap:.5rem;justify-content:flex-end;cursor:default;
-  em{font-style:normal;font-size:.7rem;font-weight:700;color:${C.muted};min-width:46px;text-align:right;
-     ${p => (p.$met ? `color:${C.ok};` : "")}}
+const TgtCell = styled.div`
+  display:flex;align-items:center;gap:.5rem;justify-content:flex-end;cursor:default;min-width:0;
+  em{font-style:normal;font-size:.7rem;font-weight:700;color:${C.muted};min-width:46px;text-align:right;}
+  em.met{color:${C.ok};}
 `;
-const Spark = styled.div`display:flex;align-items:flex-end;gap:2px;height:24px;
+const Spark = styled.div`
+  display:flex;align-items:flex-end;gap:2px;height:24px;cursor:default;
   i{width:5px;border-radius:2px 2px 1px 1px;background:#D8DEE7;}
   i:last-child{background:${C.navy};}
 `;
-const Share = styled.span`display:inline-flex;align-items:center;gap:.4rem;font-size:.71rem;font-weight:700;color:${C.muted};
-  .bar{width:46px;height:5px;border-radius:99px;background:#F1F5F9;overflow:hidden;}
+const Share = styled.span`
+  display:inline-flex;align-items:center;gap:.4rem;font-size:.71rem;font-weight:700;color:${C.muted};cursor:default;
+  .bar{width:46px;height:5px;border-radius:99px;background:#F1F5F9;overflow:hidden;flex-shrink:0;}
   .bar span{display:block;height:100%;border-radius:99px;background:${C.orange};}
 `;
 
 /* floor pipeline */
 const Floor = styled.div`
-  display:grid;grid-template-columns:repeat(5,1fr);gap:10px;
-  @media(max-width:980px){grid-template-columns:repeat(2,1fr);}
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;
+  @media(max-width:980px){grid-template-columns:repeat(2,minmax(0,1fr));}
   @media(max-width:520px){grid-template-columns:1fr;}
 `;
 const Stage = styled.div`
   border:1px solid ${C.line};border-top:3px solid ${p => p.$c};border-radius:12px;
-  padding:10px 11px;background:#FCFDFE;
+  padding:10px 11px;background:#FCFDFE;min-width:0;
 `;
-const StageTop = styled.div`display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;
-  b{font-size:.67rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.muted};}
+const StageTop = styled.div`
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:.4rem;
+  b{font-size:.67rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.muted};
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .n{min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:${p => p.$c};color:#fff;
-     font-size:.63rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+     font-size:.63rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 `;
 const StageItem = styled.div`
   display:flex;justify-content:space-between;gap:.5rem;font-size:.69rem;padding:3px 0;cursor:default;
-  span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
   em{font-style:normal;color:${C.faint};font-weight:600;flex-shrink:0;}
   em.late{color:${C.red};}
 `;
@@ -385,6 +407,9 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
   const made = production?.totals?.produced ?? totals.made;
   const madeThisMonth = production?.totals?.thisMonth ?? totals.month;
   const workerCount = production?.totals?.workers ?? totals.workers;
+
+  /* previous month short name for the KPI delta ("vs Sep") */
+  const prevMonthLabel = monthShort(monthKeyOf(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)));
 
   /* shared-target months for the strip + ring (months with no target are never
      shown as a miss — they are simply unmarked) */
@@ -434,13 +459,11 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
       monthKeyOf(new Date(now.getFullYear(), now.getMonth() - (5 - i), 1))
     );
   }, []);
+  const thisMonthTarget = tMap.get(monthKey) || 0;
 
   if (rows.length === 0 && !production) {
     return <Empty>No workers registered yet.</Empty>;
   }
-
-  /* ── trend chart ── */
-  const trend = <TrendPanel rows={rows} />;
 
   return (
     <Root>
@@ -451,23 +474,28 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
           <KpiNum>{made}</KpiNum>
           <KpiFoot>
             <Delta $up={madeThisMonth - totals.lastMonth > 0}>
-              {madeThisMonth - totals.lastMonth > 0 ? "▲" : "—"} {madeThisMonth - totals.lastMonth > 0 ? `+${madeThisMonth - totals.lastMonth}` : ""}
-            </Delta>{" "}this month
+              {madeThisMonth - totals.lastMonth > 0
+                ? `▲ +${madeThisMonth - totals.lastMonth}`
+                : "— flat"}
+            </Delta>{" "}vs {prevMonthLabel}
           </KpiFoot>
         </Kpi>
         <Kpi>
           <KpiTop><KpiIc $bg={C.navyBg} $fg={C.navy}><IUsers /></KpiIc><KpiLabel>Workers</KpiLabel></KpiTop>
           <KpiNum>{workerCount}</KpiNum>
-          <KpiFoot>{floor.length} stages</KpiFoot>
+          <KpiFoot>across {floor.length} stages</KpiFoot>
         </Kpi>
         <Kpi>
           <KpiTop><KpiIc $bg={C.orangeBg} $fg={C.orange}><IPulse /></KpiIc><KpiLabel>In Progress</KpiLabel></KpiTop>
           <KpiNum>{totals.inProgress}</KpiNum>
-          <KpiFoot>on the floor</KpiFoot>
+          <KpiFoot>on the floor now</KpiFoot>
         </Kpi>
         <Kpi>
           <KpiTop><KpiIc $bg={C.tealBg} $fg={C.teal}><IClock /></KpiIc><KpiLabel>Labor Hours</KpiLabel></KpiTop>
-          <KpiNum>{totals.hours.toFixed(1)}<small style={{ fontSize: ".85rem", fontWeight: 700, color: C.faint }}>h</small></KpiNum>
+          <KpiNum>
+            {totals.hours.toFixed(1)}
+            <small style={{ fontSize: ".85rem", fontWeight: 700, color: C.faint }}>h</small>
+          </KpiNum>
           <KpiFoot>{made > 0 ? `${(totals.hours / made).toFixed(1)}h per coffin` : "—"}</KpiFoot>
         </Kpi>
       </Kpis>
@@ -478,7 +506,9 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
           <CardHead>
             <h2 title="Coffins finished per month. Click a worker to isolate their line.">Production Trend</h2>
           </CardHead>
-          <CardBody>{trend}</CardBody>
+          <CardBody>
+            <TrendPanel rows={rows} />
+          </CardBody>
         </Card>
 
         {/* ── target ── */}
@@ -526,18 +556,13 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
                   const pct = Math.min(100, Math.round(((Number(m.produced) || 0) / Number(m.target)) * 100));
                   const isNow = m.month === currentMonthKey;
                   return (
-                    <TCol key={m.month}
+                    <TCol key={m.month} $now={isNow}
                       title={`${m.month}: ${m.produced || 0} of ${m.target} coffins${hit ? " — target hit" : ""}${isNow ? " (current month)" : ""}`}>
-                      <TBar>
-                        <span style={{
-                          height: `${Math.max(5, pct)}%`,
-                          background: hit ? C.ok : "#E2E8F0",
-                          outline: isNow ? `2px solid ${C.navy}` : "none",
-                          outlineOffset: "1px",
-                        }} />
+                      <TBar $hit={hit}>
+                        <span style={{ height: `${Math.max(5, pct)}%` }} />
                       </TBar>
                       <TM $hit={hit}>
-                        {m.month.slice(5)}{hit ? <ICheck size={8} /> : null}
+                        {monthShort(m.month)}{hit ? <ICheck size={8} /> : null}
                       </TM>
                     </TCol>
                   );
@@ -547,8 +572,14 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
 
             {scoredMonths.length > 0 && (
               <TStats>
-                <TStat><div className="k">Best</div><div className="v">{bestI >= 0 ? `${scoredMonths[bestI].month.slice(5)} · ${stripVals[bestI]}` : "—"}</div></TStat>
-                <TStat><div className="k">Avg</div><div className="v">{stripAvg}</div></TStat>
+                <TStat>
+                  <div className="k">Best</div>
+                  <div className="v">{bestI >= 0 ? `${monthShort(scoredMonths[bestI].month)} · ${stripVals[bestI]}` : "—"}</div>
+                </TStat>
+                <TStat>
+                  <div className="k">Avg / month</div>
+                  <div className="v">{stripAvg}</div>
+                </TStat>
               </TStats>
             )}
           </CardBody>
@@ -578,8 +609,7 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
             <tbody>
               {ranked.map((r, i) => {
                 const mo = r.month;
-                const mt = tMap.get(monthKey) || 0;
-                const met = mt > 0 && mo >= mt;
+                const met = thisMonthTarget > 0 && mo >= thisMonthTarget;
                 const spark = last6Keys.map((k) => r.perMonth[k] || 0);
                 const sMax = Math.max(1, ...spark);
                 return (
@@ -590,7 +620,8 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
                         <Ava $c={r.color}>{initials(r.name)}</Ava>
                         <WhoTxt><b>{r.name}</b><small>{r.role}</small></WhoTxt>
                         {onRemoveWorker && (
-                          <Rm className="wa-rm" title="Remove worker" onClick={() => onRemoveWorker(r.id)}>
+                          <Rm className="rm-btn" type="button" title="Remove worker"
+                            onClick={() => onRemoveWorker(r.id)}>
                             <IX />
                           </Rm>
                         )}
@@ -598,18 +629,17 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
                     </td>
                     <td className="num" style={{ fontSize: ".92rem", fontWeight: 800 }}>{mo}</td>
                     <td>
-                      {mt > 0 ? (
-                        <TgtCell $met={met}
-                          title={`${mo} of ${mt} this month${met ? " — target met" : ""}`}>
-                          <em className={met ? "met" : ""}>{mo}/{mt}{met ? " ✓" : ""}</em>
+                      {thisMonthTarget > 0 ? (
+                        <TgtCell title={`${mo} of ${thisMonthTarget} this month${met ? " — target met" : ""}`}>
+                          <em className={met ? "met" : ""}>{mo}/{thisMonthTarget}{met ? " ✓" : ""}</em>
                           <MiniTrack $met={met}>
-                            <span style={{ width: `${Math.min(100, Math.round((mo / mt) * 100))}%` }} />
+                            <span style={{ width: `${Math.min(100, Math.round((mo / thisMonthTarget) * 100))}%` }} />
                           </MiniTrack>
                         </TgtCell>
                       ) : <span style={{ color: C.faint }}>—</span>}
                     </td>
                     <td>
-                      <Spark title={last6Keys.map((k, idx) => `${k.slice(5)}: ${spark[idx]}`).join(" · ")}>
+                      <Spark title={last6Keys.map((k, idx) => `${monthShort(k)}: ${spark[idx]}`).join(" · ")}>
                         {spark.map((v, idx) => (
                           <i key={idx} style={{ height: `${Math.max(3, Math.round((v / sMax) * 24))}px` }} />
                         ))}
@@ -695,16 +725,19 @@ function TrendPanel({ rows }) {
   const yMax = rawMax % 2 === 0 ? rawMax : rawMax + 1;
   const y = (v) => padT + ih - (v / yMax) * ih;
 
+  /* gridline step adapts to the scale — a busy month no longer draws 25+ lines */
+  const step = yMax <= 8 ? 2 : yMax <= 20 ? 5 : 10;
   const gridLines = [];
-  for (let g = 0; g <= yMax; g += 2) gridLines.push(g);
+  for (let g = 0; g <= yMax; g += step) gridLines.push(g);
 
   return (
     <>
       <ChipRow>
         <ChipLbl>Worker</ChipLbl>
-        <Chip $on={isAll} onClick={() => setSelWorker("All Workers")}>All</Chip>
+        <Chip type="button" $on={isAll} onClick={() => setSelWorker("All Workers")}>All</Chip>
         {rows.map((r) => (
-          <Chip key={r.id} $on={!isAll && selWorker === r.name} onClick={() => setSelWorker(r.name)}
+          <Chip key={r.id} type="button" $on={!isAll && selWorker === r.name}
+            onClick={() => setSelWorker(r.name)}
             title={`Show only ${r.name}`}>
             <Cdot $c={r.color} />{r.name.split(" ")[0]}
           </Chip>
@@ -713,7 +746,7 @@ function TrendPanel({ rows }) {
           <>
             <ChipLbl style={{ marginLeft: ".5rem" }}>Year</ChipLbl>
             {years.map((yr) => (
-              <Chip key={yr} $on={activeYear === yr} onClick={() => setSelYear(yr)}>{yr}</Chip>
+              <Chip key={yr} type="button" $on={activeYear === yr} onClick={() => setSelYear(yr)}>{yr}</Chip>
             ))}
           </>
         )}
@@ -731,7 +764,7 @@ function TrendPanel({ rows }) {
           {MONTHS.map((m, i) => (
             <text key={m} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10"
               fontWeight={i === lastMonth ? 700 : 400}
-              fill={i === lastMonth ? C.ink : C.faint}>{m}</text>
+              fill={i > lastMonth ? "#CBD5E1" : i === lastMonth ? C.ink : C.faint}>{m}</text>
           ))}
 
           {series.map((s) => {
