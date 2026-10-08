@@ -21,10 +21,6 @@ const C = {
    (targets, production report, worker cards). */
 const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-/* "YYYY-MM" for a date — the key format every month bucket in this file uses
-   (targets, production report, worker cards). */
-const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-
 /* One colour per worker, cycled in a fixed order so a worker's line keeps the
    same colour across every chart and chip. */
 const PALETTE = [C.navy, C.orange, C.plum, C.amber, C.green, "#7C3AED", "#0D9488", "#B45309"];
