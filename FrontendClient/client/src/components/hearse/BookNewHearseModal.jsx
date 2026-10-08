@@ -142,12 +142,6 @@ const Day = styled.button`
         ? `box-shadow:inset 0 0 0 1.5px ${C.ok};color:${C.ok};`
         : `&:hover{background:#eaf4fa;}`}
 `;
-const Quick = styled.div`display:flex;gap:.4rem;margin-top:.6rem`;
-const QuickBtn = styled.button`
-  flex:1;padding:.4rem;border:1px solid ${C.line};border-radius:8px;background:#fff;
-  font-size:.7rem;font-weight:700;color:${C.muted2};cursor:pointer;transition:.15s;font-family:inherit;
-  &:hover{border-color:${C.primary};color:${C.primary}}
-`;
 const SelLine = styled.div`display:flex;align-items:center;justify-content:space-between;margin-top:.65rem;min-height:1rem;gap:.5rem`;
 const SelTxt = styled.span`font-size:.72rem;font-weight:600;color:${C.muted2};${p => (p.$has ? `color:${C.primary};` : '')}`;
 const ClearBtn = styled.button`background:none;border:none;font-size:.7rem;font-weight:700;color:${C.bad};cursor:pointer;padding:2px 4px;flex-shrink:0`;
@@ -174,10 +168,16 @@ const St = styled.span`display:flex;align-items:center;gap:.35rem;flex-shrink:0;
   em{font-style:normal;font-size:.66rem;font-weight:700;color:${C.muted2}}
   em.free{color:${C.ok}}
 `;
+/* FIX (styled-components error #12): a keyframes object may only be interpolated
+   STATICALLY in the styled template. Interpolating ${pulse} inside a function
+   that returns a plain string throws "error 12" at render time. So the
+   animation is declared statically here, and the dynamic part only overrides
+   it with the plain-text `animation:none` when the dot is not waiting. */
 const Dot = styled.span`
   width:8px;height:8px;border-radius:50%;flex-shrink:0;
   background:${p => (p.$kind === 'free' ? C.ok : p.$kind === 'busy' ? C.bad : '#cbd5e1')};
-  ${p => (p.$kind === 'wait' ? `animation:${pulse} 1s infinite;` : '')}
+  animation:${pulse} 1s infinite;
+  ${p => (p.$kind === 'wait' ? '' : 'animation:none;')}
 `;
 const Radio = styled.span`
   width:16px;height:16px;border-radius:50%;border:2px solid #cbd5e1;flex-shrink:0;
@@ -434,9 +434,9 @@ export default function BookNewHearseModal({
     return () => clearTimeout(t);
   }, [open, datesKey]);
 
-  /* ── Range date selection (kept from your version): 1st click = start,
-     2nd click = end (every day between is selected), same day twice = one day.
-     It now runs on the always-open calendar instead of a popover. */
+  /* ── Range date selection: 1st click = start, 2nd click = end (every day
+     between is selected), same day twice = one day. Runs on the always-open
+     calendar. */
   const expandRange = (startKey, endKey) => {
     const out = [];
     const cur = new Date(startKey + 'T00:00:00');
@@ -458,13 +458,7 @@ export default function BookNewHearseModal({
     const [s, e] = anchor <= ds ? [anchor, ds] : [ds, anchor];
     setAnchor(null);
     setDates(expandRange(s, e));
-    clearHearse(); // dates changed → hearse pick resets (matches the reference behaviour)
-  };
-
-  const quickDay = (offset) => {
-    const d = new Date(); d.setDate(d.getDate() + offset);
-    const ds = formatDateStr(d);
-    if (!dates.includes(ds)) togDate(ds);
+    clearHearse(); // dates changed → hearse pick resets
   };
 
   const clearDates = () => { setAnchor(null); setDates([]); clearHearse(); setErr(''); };
@@ -656,10 +650,6 @@ export default function BookNewHearseModal({
                 );
               })}
             </CalGrid>
-            <Quick>
-              <QuickBtn type="button" onClick={() => quickDay(0)}>Today</QuickBtn>
-              <QuickBtn type="button" onClick={() => quickDay(1)}>Tomorrow</QuickBtn>
-            </Quick>
             <SelLine>
               <SelTxt $has={dates.length > 0}>{selText}</SelTxt>
               {(dates.length > 0 || anchor != null) && (
