@@ -8,13 +8,6 @@ import WorkshopAnalytics from "./WorkshopAnalytics";
 import StoreView from "./StoreView";
 import { Ic } from "./opsIcons";
 
-/* Sub-tabs inside the dashboard's Workshop module. Analytics was moved here
-   from the workshop app, and the Store now has a dashboard view of its own.
-
-   ORDER MATTERS: Analytics is first and is also the landing view. Analytics is
-   the reason an owner opens this module — it answers "are we on track, and who
-   is producing" — whereas the Store is a look-up ("did that coffin leave yet")
-   that most visits never need. */
 
 const TABS = [
   { id: "analytics", label: "Analytics", icon: "fa-chart-line" },
@@ -43,20 +36,14 @@ function TabBar({ active, onChange }) {
 }
 
 function TargetModal({ months, workerTargets, workers, production, onSave, onClose }) {
-  /* Whose target is being edited: "workshop", or a worker id. Both live in the
-     same 12-month grid so the admin sees one screen whichever scope they pick. */
   const [scope, setScope] = useState("workshop");
   const [err, setErr] = useState("");
-
   const workerOptions = (workers || []).map((w) => ({
     id: String(w.user_id ?? w.id),
     name: String(w.full_name || `${w.first_name || ""} ${w.last_name || ""}`.trim() || "Worker"),
   }));
 
-  /* Which "made" figure belongs to the chosen scope. Workshop scope reads the
-     server's per-month `produced`; a worker scope reads that worker's own
-     per-month bucket from the worker-production report — so the "N made" beside
-     each input is always the number the target will actually be judged against. */
+
   const producedFor = (monthKey) => {
     if (scope === "workshop") {
       return Number((months || []).find((m) => m.month === monthKey)?.produced) || 0;
@@ -324,7 +311,7 @@ export default function WorkshopPanel({ onExit }) {
           type="button"
           className="wp-addworker"
           onClick={() => setTargetOpen(true)}
-          title="Set how many coffins the workshop aims to finish each month"
+          title="Set the number of coffins every worker must finish this month"
         >
           <i className="fas fa-bullseye" aria-hidden="true" style={{ fontSize: 11 }} />
           Set Target
@@ -413,8 +400,6 @@ export default function WorkshopPanel({ onExit }) {
       {targetOpen && (
         <TargetModal
           months={targets?.months || []}
-          workerTargets={targets?.workerTargets || []}
-          workers={workers}
           production={production}
           onSave={saveTarget}
           onClose={() => { setTargetSaved(""); setTargetOpen(false); }}

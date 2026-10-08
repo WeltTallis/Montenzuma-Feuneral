@@ -1,13 +1,11 @@
-import { Request, Response } from "express";
-import { NextOfKinModel } from "../models/NextOfKin";
-import Logger from "../../../packages/shared-logger/src/index";
 import redisService from "../../../packages/shared-services/dist/redisService";
+import Logger from "../../../packages/shared-logger/src/index";
+import { NextOfKinModel } from "../models/NextOfKin";
+import { Request, Response } from "express";
 
 const SERVICE_NAME = 'nextofkin-service';
 
-// ============================================
 // VALIDATION
-// ============================================
 
 const validateNextOfKinData = (data: any): string[] => {
     const errors: string[] = [];
@@ -35,9 +33,9 @@ const validateNextOfKinData = (data: any): string[] => {
     return errors;
 };
 
-// ============================================
+
 // REGISTER NEXT OF KIN
-// ============================================
+
 
 export const nextOfKinRegister = async (
     req: Request,
@@ -84,9 +82,9 @@ export const nextOfKinRegister = async (
             });
         }
 
-        // ==============================
+
         // INVALIDATE CACHE
-        // ==============================
+
         if (tenantSlug && tenantId) {
             await redisService.serviceDel('deceased-service', tenantSlug, `nextofkin:deceased:${deceased_id}`);
             await redisService.serviceDel('deceased-service', tenantSlug, `nextofkin:list:${tenantId}`);
@@ -113,9 +111,8 @@ export const nextOfKinRegister = async (
     }
 };
 
-// ============================================
+
 // GET NEXT OF KIN BY DECEASED ID
-// ============================================
 
 export const getNextOfKinByDeceasedId = async (
     req: Request,
@@ -132,9 +129,9 @@ export const getNextOfKinByDeceasedId = async (
             });
         }
 
-        // ==============================
+
         // CHECK CACHE
-        // ==============================
+
         const cacheKey = `nextofkin:deceased:${deceased_id}`;
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
@@ -167,9 +164,9 @@ export const getNextOfKinByDeceasedId = async (
             created_at: item.created_at
         }));
 
-        // ==============================
+
         // STORE IN CACHE
-        // ==============================
+
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,
@@ -194,9 +191,9 @@ export const getNextOfKinByDeceasedId = async (
     }
 };
 
-// ============================================
+
 // UPDATE NEXT OF KIN
-// ============================================
+
 
 export const updateNextOfKin = async (
     req: Request,
@@ -242,9 +239,8 @@ export const updateNextOfKin = async (
             });
         }
 
-        // ==============================
         // INVALIDATE CACHE
-        // ==============================
+
         if (tenantSlug && tenantId) {
             // Get the deceased_id from the result to invalidate specific cache
             const record = await NextOfKinModel.getById(req, Number(id));
@@ -269,9 +265,9 @@ export const updateNextOfKin = async (
     }
 };
 
-// ============================================
+
 // DELETE NEXT OF KIN
-// ============================================
+
 
 export const deleteNextOfKin = async (
     req: Request,
@@ -301,9 +297,9 @@ export const deleteNextOfKin = async (
             });
         }
 
-        // ==============================
+
         // INVALIDATE CACHE
-        // ==============================
+
         if (tenantSlug && tenantId) {
             if (record && record.deceased_id) {
                 await redisService.serviceDel('deceased-service', tenantSlug, `nextofkin:deceased:${record.deceased_id}`);
@@ -326,9 +322,9 @@ export const deleteNextOfKin = async (
     }
 };
 
-// ============================================
+
 // MARK AS NOTIFIED
-// ============================================
+
 
 export const markAsNotified = async (
     req: Request,
@@ -356,9 +352,10 @@ export const markAsNotified = async (
             });
         }
 
-        // ==============================
+
+
         // INVALIDATE CACHE
-        // ==============================
+
         if (tenantSlug && tenantId) {
             const record = await NextOfKinModel.getById(req, Number(id));
             if (record && record.deceased_id) {

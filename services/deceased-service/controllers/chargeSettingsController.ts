@@ -1,7 +1,9 @@
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../shared/dbConfig';
-import { Request, Response } from 'express';
-import Logger from '../../../packages/shared-logger/src/index';
 import redisService from '../../../packages/shared-services/dist/redisService';
+import Logger from '../../../packages/shared-logger/src/index';
+import { Request, Response } from 'express';
+
+
 
 interface TenantRequest extends Request {
     tenantSlug?: string;

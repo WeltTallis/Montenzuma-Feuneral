@@ -1,6 +1,7 @@
-const fs = require('fs');
 const ExcelJS = require('exceljs');
 const path = require('path');
+const fs = require('fs');
+
 
 // Create workbook and worksheet
 const workbook = new ExcelJS.Workbook();
@@ -83,7 +84,7 @@ const sampleData = [
 sampleData.forEach((item, index) => {
     const rowNumber = 5 + index;
     const row = worksheet.getRow(rowNumber);
-    
+
     row.getCell('A').value = item.fileId;
     row.getCell('B').value = item.fullName;
     row.getCell('C').value = item.dob;
@@ -93,7 +94,7 @@ sampleData.forEach((item, index) => {
     row.getCell('G').value = item.status;
     row.getCell('H').value = item.releaseDate;
     row.getCell('I').value = item.signature;
-    
+
     // Style status cells
     const statusCell = row.getCell('G');
     if (item.status === 'Released') {
@@ -106,22 +107,22 @@ sampleData.forEach((item, index) => {
         statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
         statusCell.font = { bold: true, color: { argb: 'FF721C24' } };
     }
-    
+
     // Style file ID
     row.getCell('A').font = { bold: true, color: { argb: 'FF8B7355' } };
-    
+
     // Style dates
     row.getCell('C').font = { color: { argb: 'FF555555' } };
     row.getCell('D').font = { color: { argb: 'FF555555' } };
     row.getCell('H').font = { color: { argb: 'FF555555' } };
-    
+
     // Style signature cell (italic)
     row.getCell('I').font = { italic: true, size: 12 };
-    
+
     // Row styling
     row.height = 45;
     row.alignment = { vertical: 'middle' };
-    
+
     // Alternate row colors
     if (index % 2 === 0) {
         row.eachCell((cell) => {
@@ -136,7 +137,7 @@ sampleData.forEach((item, index) => {
 const exportDataToExcel = async (req, res) => {
     try {
         const buffer = await workbook.xlsx.writeBuffer();
-        
+
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=Deceased_Records_Export.xlsx');
         res.send(buffer);

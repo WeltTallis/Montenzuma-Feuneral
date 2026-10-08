@@ -12,15 +12,9 @@ const SERVICE_NAME = 'deceased-service';
 // One-time guard: tracks which tenant DBs have already had charge_settings
 // created this process lifetime — avoids a DDL roundtrip on every profile load.
 const chargeSettingsInitialized = new Set<string>();
-
-// The tenant-wide "home default" charge row is stored in `charge_settings` under
-// this sentinel key (never a real deceased id). Kept identical to the value used
-// by chargeSettingsController — a divergence here meant a profile silently lost
-// the home-default fallback.
 const HOME_DEFAULT_KEY = '__DEFAULT__';
 
 // TYPES
-
 interface TenantRequest extends Request {
     tenantSlug?: string;
     dbName?: string | null;
@@ -37,11 +31,6 @@ export const getAllDeceased = async (
     try {
         const dbName = (req as any).tenant?.db_name;
         // Namespace the cache by the DATABASE, not by a tenant id. The tenant
-        // middleware used to hand every request `tenant_id: 0`, so all branches
-        // produced the identical key `deceased:list:0:page:1:...` and Redis
-        // happily served one branch's rows to another — the list looked frozen
-        // on whichever branch loaded first. `dbName` is the resolved, per-branch
-        // database, so it is the only value that actually separates them.
         const tenantId = (req as any).tenant?.tenant_id ?? (req as any).tenant?.id;
         const cacheScope = dbName || tenantId;
         const tenantSlug = (req as any).tenantSlug || "unknown";
@@ -56,8 +45,8 @@ export const getAllDeceased = async (
         const {
             search = "",
             q = "",
-            page = "1",
-            limit = "50",
+            page = "2",
+            limit = "200",
             year = "",
             month = ""
         } = req.query;
@@ -65,19 +54,15 @@ export const getAllDeceased = async (
         // Optional calendar scoping (horizontal calendar fetches per year)
         const yearParam = year && Number.isFinite(Number(year)) ? Number(year) : null;
         const monthParam = month && Number.isFinite(Number(month)) ? Number(month) : null;
-
-        const pageNumber = Math.max(Number(page) || 1, 1);
-        const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
-
+        const pageNumber = Math.max(Number(page) || 2, 2);
+        const limitNumber = Math.min(Math.max(Number(limit) || 200, 2), 200);
         // deceasedApi.search() sends ?q=, other callers send ?search= — support both.
         const searchTerm = (typeof search === "string" && search.trim())
             ? search
             : (typeof q === "string" ? q : "");
 
         // REDIS CACHE KEY
-
         const cacheKey = `deceased:list:${cacheScope}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}:year:${yearParam}:month:${monthParam}`;
-
         // Try to get from cache
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
@@ -119,20 +104,7 @@ export const getAllDeceased = async (
         const total = Number((countResult as any)[0]?.total || 0);
 
         // The list intentionally does NOT ship the raw `signature` column value.
-        // `deceased.signature` is a TEXT column that older rows filled with inline
-        // `data:image/png;base64,...` blobs (newer registrations store a path via
-        // the centralized upload service, and autopsyControl re-normalizes to
-        // base64). A single 50-row page therefore serialized to megabytes, which
-        // tripped the MAX_CACHE_VALUE_BYTES guard in serviceSet() — the write was
-        // REFUSED, so the key was never created and every list request fell
-        // through to MySQL (the symptom: no `service:*` keys in Redis at all).
-        //
-        // Inline images collapse to a short "[inline-image:N]" marker, which keeps
-        // the field TRUTHY so consumers still treat the row as "documented" (e.g.
-        // dashboardDataApi's `!r?.permit_number && !r?.signature` alert filter)
-        // while the cached payload stays small. Real stored paths pass through
-        // untouched. The single-record detail endpoint (getDeceasedById) still
-        // returns the untouched value, so the profile view renders the signature.
+
         const listQuery = `
             SELECT *,
                 CASE
@@ -256,16 +228,7 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
 
         // ─── LIVE CHARGE SETTINGS MERGE ──────────────────────────────────────
         // The frontend sidebar/profile shows "daily storage rate" from
-        // deceased.charges.storage_rate. Without this merge it always falls
-        // back to the hard-coded KES 500/day no matter what was saved under
-        // Charge Settings.
-        //
-        // PERFORMANCE FIX: `CREATE TABLE IF NOT EXISTS` is a DDL statement that
-        // acquires a metadata lock and writes to the binary log EVEN when the
-        // table already exists. Running it on every profile load caused severe
-        // latency (100-300ms per request). We now use a per-process Set to
-        // remember which tenant DBs have had the table created, so the CREATE
-        // only fires once per process lifetime (i.e., once after a cold deploy).
+
         try {
             let chargeRows: any[];
             if (!chargeSettingsInitialized.has(dbName)) {

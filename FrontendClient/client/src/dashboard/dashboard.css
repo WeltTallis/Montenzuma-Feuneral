@@ -5026,9 +5026,9 @@
    font-size: 8px
 }
 
-/* A single worker crossing THEIR OWN target for that month. Green tint on the
-   cell plus a tick, matching the workshop-level month header so "met" reads the
-   same wherever it appears. */
+/* A single worker exceeding THEIR month's target (the shared workshop figure).
+   Green tint on the cell plus a tick, matching the workshop-level month header
+   so "met" reads the same wherever it appears. */
 .rpd .wa-pm-cell.met {
    background: var(--green-bg);
    box-shadow: inset 0 0 0 1px var(--green)
@@ -5041,8 +5041,8 @@
 }
 
 /* ── Set monthly target modal ──────────────────────────────────────────────
-   Overlay + dialog. The grid is auto-fit so it reflows from four columns on a
-   desktop to two and then one on a phone without a media query. */
+   Overlay + dialog. The single-value layout (month select + one number) keeps
+   the dialog narrow: one shared target for every worker, not a grid of cells. */
 .rpd .wp-modal-ov {
    position: fixed;
    inset: 0;
@@ -5056,7 +5056,7 @@
    top: 50%;
    left: 50%;
    transform: translate(-50%, -50%);
-   width: min(720px, calc(100vw - 28px));
+   width: min(460px, calc(100vw - 28px));
    max-height: calc(100vh - 40px);
    display: flex;
    flex-direction: column;
@@ -5092,7 +5092,7 @@
 
 /* min-height:0 lets the body actually shrink and scroll. Without it a flex child
    refuses to go below its content height, so the footer would be pushed off the
-   bottom of a short screen instead of the grid scrolling. */
+   bottom of a short screen instead of the content scrolling. */
 .rpd .wp-target-body {
    padding: 16px 20px;
    overflow-y: auto;
@@ -5105,13 +5105,11 @@
    margin: 0 0 14px
 }
 
-.rpd .wp-target-grid {
-   display: grid;
-   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-   gap: 12px
+.rpd .wp-target-scope {
+   margin-bottom: 14px
 }
 
-.rpd .wp-target-cell label {
+.rpd .wp-target-scope label {
    display: block;
    font: 700 10.5px var(--sans);
    letter-spacing: .06em;
@@ -5120,9 +5118,9 @@
    margin-bottom: 4px
 }
 
-.rpd .wp-target-cell input {
+.rpd .wp-target-scope select {
    width: 100%;
-   padding: 8px 10px;
+   padding: 9px 10px;
    border: 1px solid var(--brd);
    border-radius: 7px;
    font: 700 13px var(--sans);
@@ -5131,9 +5129,73 @@
    box-sizing: border-box
 }
 
-.rpd .wp-target-cell input:focus {
+.rpd .wp-target-scope select:focus {
    outline: none;
    border-color: var(--acc)
+}
+
+.rpd .wp-target-scope {
+   display: flex;
+   flex-direction: column;
+   gap: 5px;
+   margin-bottom: 14px
+}
+
+.rpd .wp-target-scope label {
+   font: 700 10.5px var(--sans);
+   letter-spacing: .06em;
+   text-transform: uppercase;
+   color: var(--tx3)
+}
+
+.rpd .wp-target-scope select {
+   padding: 9px 10px;
+   border: 1px solid var(--brd);
+   border-radius: 7px;
+   font: 700 13px var(--sans);
+   color: var(--tx);
+   background: var(--bg)
+}
+
+.rpd .wp-target-scope select:focus {
+   outline: none;
+   border-color: var(--acc)
+}
+
+.rpd .wp-target-single label {
+   display: block;
+   font: 700 10.5px var(--sans);
+   letter-spacing: .06em;
+   text-transform: uppercase;
+   color: var(--tx3);
+   margin-bottom: 5px
+}
+
+.rpd .wp-target-single-row {
+   display: flex;
+   align-items: center;
+   gap: 10px
+}
+
+.rpd .wp-target-single input {
+   width: 150px;
+   padding: 10px 12px;
+   border: 1px solid var(--brd);
+   border-radius: 8px;
+   font: 800 17px var(--sans);
+   color: var(--tx);
+   background: var(--bg);
+   box-sizing: border-box
+}
+
+.rpd .wp-target-single input:focus {
+   outline: none;
+   border-color: var(--acc)
+}
+
+.rpd .wp-target-unit {
+   font-size: 12px;
+   color: var(--tx3)
 }
 
 .rpd .wp-target-actual {
@@ -5142,7 +5204,7 @@
    gap: 6px;
    font: 600 11px var(--sans);
    color: var(--tx3);
-   margin-top: 5px
+   margin-top: 10px
 }
 
 .rpd .wp-target-actual .met {
@@ -5155,22 +5217,11 @@
    color: var(--warn)
 }
 
-.rpd .wp-target-track {
-   height: 5px;
-   border-radius: 99px;
-   background: var(--sect);
-   overflow: hidden;
-   margin-top: 5px
-}
-
-.rpd .wp-target-track span {
-   display: block;
-   height: 100%;
-   background: var(--warn)
-}
-
-.rpd .wp-target-track span.met {
-   background: var(--green)
+.rpd .wp-target-err {
+   margin: 10px 0 0;
+   font-size: 12px;
+   font-weight: 600;
+   color: var(--red)
 }
 
 .rpd .wp-target-foot {
@@ -5345,6 +5396,8 @@
    letter-spacing: .04em
 }
 
+/* "over" rows use their own rule further down so the green tint wins over the
+   default row background without a specificity fight. */
 .rpd .wa-rank-row {
    display: flex;
    align-items: center;
@@ -5433,6 +5486,32 @@
    font-size: 10px;
    color: var(--tx3);
    margin-top: 1px
+}
+
+/* "12 over target" chip beside a leaderboard entry that BEAT the shared
+   monthly number — the explicit highlight for workers who exceeded it. */
+.rpd .wa-rank-flag {
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   margin-top: 3px;
+   font: 800 9.5px var(--sans);
+   letter-spacing: .05em;
+   text-transform: uppercase;
+   color: var(--green);
+   background: var(--green-bg);
+   border: 1px solid var(--green);
+   border-radius: 999px;
+   padding: 1px 8px;
+   width: max-content;
+   margin-left: auto
+}
+
+/* Whole row tinted when that worker is over target, so the highlight is
+   readable without scanning the number column. Declared AFTER the base
+   .wa-rank-row rule above so the tint is what lands. */
+.rpd .wa-rank-row.over {
+   background: var(--green-bg)
 }
 
 /* worker cards */
@@ -5637,8 +5716,8 @@
 }
 
 /* ── Worker monthly-target progress on the worker card ──────────────────────
-   Sits between "coffins made" and the mini stats. Only rendered when the admin
-   has set a target for that worker, so a card without one keeps its old shape. */
+   Sits between "coffins made" and the mini stats. Only rendered when a target
+   has been set for the month, so a card without one keeps its old shape. */
 .rpd .wa-mt {
    display: flex;
    flex-direction: column;
@@ -5690,6 +5769,31 @@
    background: var(--green)
 }
 
+/* "+4 over" appended when a worker beat the target outright, so EXCEEDING
+   reads as more than merely matching. Green, not amber — beating the number
+   is good news. */
+.rpd .wa-mt-val em.wa-mt-over {
+   font-style: normal;
+   font-size: 9.5px;
+   font-weight: 800;
+   letter-spacing: .03em;
+   color: var(--green);
+   background: var(--green-bg);
+   border: 1px solid var(--green);
+   border-radius: 999px;
+   padding: 1px 6px;
+   margin-left: 4px
+}
+
+/* How far PAST the target a worker went ("24 / 20 +4 over"). Green-on-green
+   so it reads as good news, not as an overflow error. */
+.rpd .wa-mt-over {
+   font: 800 9.5px var(--sans);
+   letter-spacing: .04em;
+   color: var(--green);
+   margin-left: 4px
+}
+
 /* The whole card goes green once the worker has crossed their monthly number,
    because "who hit target" is the question a manager scans this row for — a
    single coloured bar is too easy to miss across a grid of cards. */
@@ -5697,6 +5801,24 @@
    border-color: var(--green);
    background: var(--green-bg);
    box-shadow: 0 0 0 1px var(--green) inset
+}
+
+/* ── Top Producers: over-target flag ───────────────────────────────────────
+   A starred chip on the leaderboard row for anyone who BEAT the shared target.
+   Amber-on-cream so it pops against the plain rows without shouting. */
+.rpd .wa-rank-row.over {
+   background: var(--green-bg)
+}
+
+.rpd .wa-rank-flag {
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   margin-top: 2px;
+   font: 800 9px var(--sans);
+   letter-spacing: .05em;
+   text-transform: uppercase;
+   color: var(--green)
 }
 
 .rpd .wa-link-btn {

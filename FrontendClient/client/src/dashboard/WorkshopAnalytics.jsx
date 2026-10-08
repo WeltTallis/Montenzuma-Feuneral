@@ -17,6 +17,14 @@ const C = {
   ink: "#0C0B0F",
 };
 
+/* "YYYY-MM" for a date — the key format every month bucket in this file uses
+   (targets, production report, worker cards). */
+const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+/* "YYYY-MM" for a date — the key format every month bucket in this file uses
+   (targets, production report, worker cards). */
+const monthKeyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
 /* One colour per worker, cycled in a fixed order so a worker's line keeps the
    same colour across every chart and chip. */
 const PALETTE = [C.navy, C.orange, C.plum, C.amber, C.green, "#7C3AED", "#0D9488", "#B45309"];
@@ -73,20 +81,20 @@ function ownsOrder(w, o) {
   return !!name && String(o.assigned_to_name || "").trim().toLowerCase() === name;
 }
 
-/** workerId -> { "YYYY-MM": target } from the monthly-targets payload.
+/* "YYYY-MM" -> the workshop's shared monthly target.
  *
- *  Kept flat on the wire and indexed here so a card or a grid cell can ask "what
- *  is this worker's target for this month" in O(1) instead of walking the array
- *  on every render. A worker with no target for a month is simply absent, which
- *  the callers read as "no target" rather than "target of zero". */
-function workerTargetMap(targets) {
-  const byWorker = new Map();
-  (Array.isArray(targets?.workerTargets) ? targets.workerTargets : []).forEach((t) => {
-    const wid = String(t.worker_id);
-    if (!byWorker.has(wid)) byWorker.set(wid, new Map());
-    byWorker.get(wid).set(String(t.month), Number(t.target) || 0);
+ *  There is ONE number now — every worker is measured against the same figure
+ *  for a given month — so the map is keyed by month only, not by worker. A
+ *  month with no target is simply absent, which callers read as "no target"
+ *  rather than "target of zero". */
+function monthTargetMap(targets) {
+  const byMonth = new Map();
+  (Array.isArray(targets?.months) ? targets.months : []).forEach((t) => {
+    if (!t || !t.month) return;
+    const qty = Number(t.target) || 0;
+    if (qty > 0) byMonth.set(String(t.month), qty);
   });
-  return byWorker;
+  return byMonth;
 }
 
 /** Build every derived number the view needs, once.
@@ -524,19 +532,25 @@ function ProductionGrid({ production, targets }) {
   const peak = Math.max(1, ...rows.flatMap((r) => months.map((m) => Number(r.monthly?.[m]) || 0)));
   const grand = rows.reduce((s, r) => s + (Number(r.total) || 0), 0);
 
-  /* Which months the workshop hit its target, keyed "YYYY-MM" so the header can
-     mark them inline. Months with no target set are absent from this map and so
-     are left unmarked rather than being shown as a miss. */
+  /* Months where every worker crossed the shared target, keyed "YYYY-MM" so the
+     month header can mark them inline. Months with no target — or where at least
+     one worker fell short — are absent from this set and left unmarked rather
+     than being shown as a miss. */
+  const tMap = monthTargetMap(targets);
   const hitMonths = new Set(
-    (Array.isArray(targets?.months) ? targets.months : [])
-      .filter((m) => Number(m.target) > 0 && m.produced >= m.target)
-      .map((m) => m.month)
+    rows.filter((r) => r.monthly).flatMap(() => []) // placeholder no-op, real logic below
   );
+  hitMonths.clear();
+  if (rows.length > 0) {
+    for (const [mk, t] of tMap) {
+      if (rows.every((r) => (Number(r.monthly?.[mk]) || 0) >= t)) hitMonths.add(mk);
+    }
+  }
 
-  /* Per-worker targets, so a cell can be marked the moment THAT worker crossed
-     THEIR OWN number — which is a different question from the workshop's month
-     header above it. */
-  const wTargets = workerTargetMap(targets);
+  /* The shared figure each cell is judged against: "did this worker finish the
+     workshop's number for that month?" — the same number for everybody, from
+     the single Set Target dialog. */
+  const sharedTargetOf = (monthKey) => tMap.get(String(monthKey)) || 0;
 
   if (!rows.length) {
     return (
@@ -583,7 +597,7 @@ function ProductionGrid({ production, targets }) {
                 </th>
                 {months.map((m) => {
                   const v = Number(r.monthly?.[m]) || 0;
-                  const t = wTargets.get(String(r.worker_id))?.get(String(m)) || 0;
+                  const t = sharedTargetOf(m);
                   // Met only when a target was actually set for that worker+month,
                   // so an unset month is never painted as a success.
                   const hit = t > 0 && v >= t;
@@ -681,11 +695,17 @@ function ProductionMix({ byType }) {
 export default function WorkshopAnalytics({ orders = [], workers = [], production = null, targets = null, onRemoveWorker }) {
   const { rows, totals, monthKey } = useWorkerStats(orders, workers, production);
 
-  /* Per-worker monthly targets: worker id -> "YYYY-MM" -> target. Read by the
-     worker cards to colour the ones that have crossed their own number. */
-  const wTargets = useMemo(() => workerTargetMap(targets), [targets]);
-  const targetOf = (wid, month) => wTargets.get(String(wid))?.get(String(month)) || 0;
+  /* The workshop's shared monthly target (one number for every worker), keyed
+     "YYYY-MM". Read by the worker cards to colour everyone who crossed it and
+     by the leaderboard to flag the workers who exceeded it. */
+  const tMap = useMemo(() => monthTargetMap(targets), [targets]);
+  const sharedTargetOf = (monthKey) => tMap.get(String(monthKey)) || 0;
 
+  const currentMonthKey = monthKeyOf(new Date());
+  const tMap = useMemo(() => monthTargetMap(targets), [targets]);
+  /* Exceeding the target is worth celebrating outright: a star on the rank row
+     so a worker who BEAT the number stands out from one who merely matched it. */
+  const sharedTarget = tMap.get(currentMonthKey) || 0;
   const maxBar = Math.max(1, ...rows.map((r) => r.completed + r.active));
   // Top producers: this month only, matching the reference's "Sep 2025" chip.
   const monthly = useMemo(
@@ -812,8 +832,10 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
             return r.perMonth[monthKeyOf(d)] || 0;
           });
           const sparkMax = Math.max(1, ...spark);
-          // This worker's target for the CURRENT month, and whether they hit it.
-          const mt = targetOf(r.id, monthKey);
+          {/* This month's shared number — the same target for every card. Only
+              rendered when one has been set, so cards without a target keep
+              their old shape instead of showing an empty 0/0 bar. */}
+          const mt = sharedTargetOf(monthKey);
           const mtPct = mt > 0 ? Math.min(100, Math.round((r.month / mt) * 100)) : 0;
           const mtMet = mt > 0 && r.month >= mt;
           return (
@@ -852,6 +874,7 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
                     <span className="wa-mt-val">
                       {mtMet ? <i className="fas fa-check" aria-hidden="true" /> : null}
                       {r.month} / {mt}
+                      {mtMet && r.month > mt ? <span className="wa-mt-over">+{r.month - mt} over</span> : null}
                     </span>
                   </div>
                   <div className="wa-mt-track">

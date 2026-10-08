@@ -232,10 +232,13 @@ const api = {
       return r.ok ? (await r.json()).data || [] : [];
     } catch { return []; }
   },
+
+  //get   all  herases
   getAllHearses: async () => {
     const r = await fetch(`${API_BASE_URL}/hearses`, { headers: { ...getTenantHeaders(), ...getAuthHeaders() } });
     return r.ok ? (await r.json()).hearses || [] : [];
   },
+  //updates    hearses
   updateStatus: async (id, status, reason) => {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
     const body = { status };
@@ -244,6 +247,8 @@ const api = {
     if (!r.ok) throw new Error('Failed');
     return r.json();
   },
+
+  //     register   hearse  ..
   registerHearse: async (data) => {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
     const r = await fetch(`${API_BASE_URL}/hearses`, { method: 'POST', headers: h, body: JSON.stringify(data) });

@@ -1,16 +1,12 @@
-import { Request, Response } from 'express';
-import crypto from 'crypto';
-import ExcelJS from 'exceljs';
-import fs from 'fs';
-import path from 'path';
-import { safeTenantQuery } from '../../../shared/dbConfig';
-import Logger from '../../../packages/shared-logger/src/index';
-import { centralizedUploadService } from '../../../shared/centralizedUploadService';
 
-// ============================================
-// SYNCHRONOUS STYLED EXCEL EXPORT
-// Exactly matches the approved HTML/CSS preview.
-// ============================================
+import { centralizedUploadService } from '../../../shared/centralizedUploadService';
+import Logger from '../../../packages/shared-logger/src/index';
+import { safeTenantQuery } from '../../../shared/dbConfig';
+import { Request, Response } from 'express';
+import ExcelJS from 'exceljs';
+import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
 
 /* ---------------- DESIGN TOKENS (COLORS) ---------------- */
 const COLORS = {
@@ -43,8 +39,6 @@ const COLORS = {
 const FONT_SERIF = 'Georgia';
 const FONT_MONO = 'Consolas';
 const FONT_SANS = 'Calibri';
-
-const VERIFY_BASE = 'https://lf.services/verify';
 const EXPIRY_DAYS = 7;
 
 /* ---------------- SMALL HELPERS ---------------- */
