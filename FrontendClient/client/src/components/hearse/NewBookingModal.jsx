@@ -8,11 +8,15 @@ const API_BASE_URL = import.meta.env.PROD
     : (env.FULL_API_URL || 'http://localhost:5000/api/v1/restpoint');
 
 const C = {
-    primary: '#1a5f7a', primaryLight: '#2c8ac9', primarySoft: '#e6f1f5',
-    bgSoft: '#f8fafc',
-    text: '#111827', textMuted: '#94a3b8', textMuted2: '#64748b',
-    successDark: '#059669', successLight: '#d1fae5',
-    dangerLight: '#fee2e2', dangerDark: '#dc2626',
+    primary: '#1a5f7a', primaryDark: '#155067', primaryLight: '#2c8ac9', primarySoft: '#e6f1f5', primaryHair: '#dbeafe',
+    bgSoft: '#f8fafc', bgElev: '#ffffff',
+    text: '#111827', textSoft: '#334155', textMuted: '#94a3b8', textMuted2: '#64748b',
+    ok: '#059669', okSoft: '#d1fae5', okHair: '#bbf7d0',
+    bad: '#dc2626', badSoft: '#fee2e2', badHair: '#fecaca',
+    warn: '#b45309', warnSoft: '#fef3c7',
+    card: '#ffffff', line: '#e2e8f0', lineStrong: '#cbd5e1',
+    shadow: '0 20px 50px -12px rgba(15,23,42,.22)',
+    radius: '12px',
 };
 
 const getTenantSlug = () => {
@@ -62,8 +66,10 @@ const fmtMoney = (n) => 'KES ' + Number(n || 0).toLocaleString('en-US');
 /* ════════════════════════ STYLES ════════════════════════ */
 const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 const popIn = keyframes`from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); }`;
-const pulse = keyframes`0%,100% { opacity: .4; } 50% { opacity: 1; }`;
+const pulse = keyframes`0%,100% { opacity: .35; } 50% { opacity: 1; }`;
 const rot = keyframes`to { transform: rotate(360deg); }`;
+const hatch = keyframes`0% { background-position: 0 0; } 100% { background-position: 40px 40px; }`;
+const chirp = keyframes`0%,100% { box-shadow: 0 0 0 0 rgba(26,95,122,.45); } 50% { box-shadow: 0 0 0 6px rgba(26,95,122,0); }`;
 
 const Scrim = styled.div`
   position: fixed; inset: 0; z-index: 6000; background: rgba(15,23,42,.45);
@@ -80,8 +86,9 @@ const Drawer = styled.aside`
   transition: transform .38s cubic-bezier(.32,.72,0,1), visibility 0s linear ${(p) => (p.$open ? '0s' : '.38s')};
 `;
 const PHead = styled.header`
-  flex-shrink: 0; display: flex; align-items: center; gap: .8rem;
-  padding: 1rem 1.2rem; background: ${C.primary}; color: #fff;
+  flex-shrink: 0; display: flex; align-items: center; gap: .85rem;
+  padding: .95rem 1.25rem; background: linear-gradient(180deg, ${C.primary} 0%, ${C.primaryDark} 100%); color: #fff; position: relative; overflow: hidden;
+  &::after{ content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 80% at left , rgba(255,255,255,.16), transparent 55%); }
 `;
 const HeadText = styled.div`flex: 1; min-width: 0;`;
 const Title = styled.h1`font-size: .98rem; font-weight: 800; letter-spacing: -.01em;`;
@@ -93,21 +100,23 @@ const XBtn = styled.button`
   &:hover { background: rgba(255,255,255,.3); }
 `;
 const PBody = styled.div`
-  flex: 1; overflow-y: auto; padding: 1rem 1.2rem 1.2rem;
+  flex: 1; overflow-y: auto; padding: 1rem 1.25rem 1.2rem;
   &::-webkit-scrollbar { width: 8px; }
   &::-webkit-scrollbar-thumb { background: #dbe3ec; border-radius: 8px; border: 2px solid #fff; }
+  &::-webkit-scrollbar-track { background: transparent; }
 `;
 const Sec = styled.section`
   padding: 1rem 0;
-  & + & { border-top: 1px solid #e5e7eb; }
+  & + & { border-top: 1px solid ${C.line}; }
   &:first-child { padding-top: .2rem; }
 `;
 const SecTop = styled.div`
-  display: flex; align-items: baseline; justify-content: space-between; margin-bottom: .6rem;
-  h2 { font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: ${C.textMuted2}; }
+  display: flex; align-items: baseline; justify-content: space-between; margin-bottom: .8rem;
+  @media (max-width: 560px) { margin-bottom: .6rem; }
+  h2 { font-size: .7rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: ${C.textMuted2}; }
 `;
-const Num = styled.i`font-style: normal; color: ${C.primary}; margin-right: .35rem;`;
-const Hint = styled.small`font-size: .68rem; color: ${C.textMuted}; font-weight: 600;`;
+const Num = styled.i`font-style: normal; color: ${C.primary}; margin-right: .4rem;`;
+const Hint = styled.small`font-size: .66rem; color: ${C.textMuted2}; font-weight: 700;`;
 
 /* calendar — always open, tap = select */
 const CalTop = styled.div`
@@ -131,70 +140,75 @@ const DayCell = styled.button`
   border: none; border-radius: 8px; background: transparent; color: ${C.text};
   cursor: ${(p) => (p.$past ? 'not-allowed' : 'pointer')}; transition: .12s;
   ${(p) => (!p.$past && !p.$sel ? '&:hover { background: #eaf4fa; }' : '')}
-  background: ${(p) => (p.$sel ? C.primary : 'transparent')};
+  background: ${(p) => (p.$sel ? C.primary : p.$today ? '#d1fae5' : 'transparent')};
   color: ${(p) => (p.$sel ? '#fff' : p.$past ? '#cbd5e1' : C.text)};
   font-weight: ${(p) => (p.$sel ? 800 : 600)};
-  box-shadow: ${(p) => (p.$today && !p.$sel ? 'inset 0 0 0 1.5px ' + C.successDark : 'none')};
-  color: ${(p) => (p.$today && !p.$sel ? C.successDark : undefined)};
+  box-shadow: ${(p) => (p.$today && !p.$sel ? 'inset 0 0 0 2px ' + C.ok : 'none')};
   text-decoration: ${(p) => (p.$past ? 'line-through' : 'none')};
+  ${(p) => (p.$today && !p.$sel ? '&:focus-visible{ box-shadow: 0 0 0 3px rgba(5,150,105,.3); }' : '')}
 `;
 const SelLine = styled.div`
-  display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem;
-  margin-top: .7rem; min-height: 1rem;
+  display: flex; align-items: center; justify-content: space-between; gap: .7rem;
+  margin-top: .8rem; padding: .55rem .6rem; border-radius: 10px;
+  background: ${C.primarySoft}; border: 1px solid #dbeafe;
 `;
 const SelTxt = styled.span`
-  font-size: .72rem; font-weight: 600; line-height: 1.55; color: ${C.textMuted2};
-  ${(p) => (p.$has ? `color: ${C.primary}; font-weight: 700;` : '')}
+  font-size: .72rem; font-weight: 700; line-height: 1.5; color: ${C.primary};
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 const ClearBtn = styled.button`
-  background: none; border: none; font-size: .7rem; font-weight: 700; color: ${C.dangerDark};
-  cursor: pointer; padding: 2px 4px; flex-shrink: 0;
+  background: none; border: none; font-size: .66rem; font-weight: 800; color: ${C.bad};
+  cursor: pointer; padding: 2px 5px; flex-shrink: 0; border-radius: 6px;
+  transition: color .15s, background .15s;
+  &:hover{ color: #b91c1c; background: ${C.badSoft}; }
 `;
 
 /* fleet — dot status, no pills */
 const FleetList = styled.div`display: flex; flex-direction: column; gap: .45rem;`;
 const HearseRow = styled.button`
   width: 100%; display: flex; align-items: center; gap: .6rem; text-align: left;
-  padding: .55rem .65rem; border: 1.5px solid #e5e7eb; border-radius: 11px; background: #fff;
+  padding: .6rem .7rem; border: 1.5px solid ${C.lineStrong}; border-radius: ${C.radius}; background: #fff;
   cursor: ${(p) => (p.$off || p.$dim ? 'not-allowed' : 'pointer')};
-  transition: border-color .15s, background .15s;
-  ${(p) => (p.$sel ? `border-color: ${C.primary}; background: #f0f9ff;` : '')}
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  ${(p) => (p.$sel ? `border-color: ${C.primary}; background: #f0f9ff; box-shadow: 0 0 0 3px rgba(26,95,122,.08);` : '')}
   ${(p) => (p.$off ? 'opacity: .55;' : '')}
   ${(p) => (!p.$off && !p.$dim ? `&:hover { border-color: ${C.primary}; }` : '')}
+  &:focus-visible{ outline: none; box-shadow: 0 0 0 3px rgba(26,95,122,.16); }
 `;
 const Ava = styled.span`
-  width: 34px; height: 34px; border-radius: 9px; background: ${C.primarySoft}; color: ${C.primary};
-  font-weight: 800; font-size: .9rem; display: grid; place-items: center; flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 10px; background: ${C.primarySoft}; color: ${C.primary};
+  font-weight: 900; font-size: .95rem; display: grid; place-items: center; flex-shrink: 0;
 `;
 const HInfo = styled.span`flex: 1; min-width: 0;`;
 const HName = styled.b`
-  display: block; font-size: .8rem; font-weight: 700; color: ${C.text};
+  display: block; font-size: .8rem; font-weight: 800; color: ${C.text};
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 const HMeta = styled.small`
-  display: block; font-size: .67rem; color: ${C.textMuted2}; margin-top: .1rem;
+  display: block; font-size: .66rem; color: ${C.textMuted2}; margin-top: .1rem;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 const St = styled.span`display: flex; align-items: center; gap: .35rem; flex-shrink: 0;`;
 const StLabel = styled.em`
-  font-style: normal; font-size: .66rem; font-weight: 700; color: ${C.textMuted2};
-  ${(p) => (p.$free ? `color: ${C.successDark};` : '')}
+  font-style: normal; font-size: .66rem; font-weight: 800;
+  ${(p) => (p.$free ? `color: ${C.ok}` : p.$busy ? `color: ${C.bad}` : `color: ${C.textMuted2}`)};
 `;
 const Dot = styled.span`
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  background: ${(p) => (p.$kind === 'free' ? C.successDark : p.$kind === 'busy' ? C.dangerDark : '#cbd5e1')};
-  ${(p) => (p.$kind === 'wait' ? `animation: ${pulse} 1s infinite;` : '')}
+  background: ${(p) => (p.$kind === 'free' ? C.ok : p.$kind === 'busy' ? C.bad : C.textMuted2)};
+  ${(p) => (p.$kind === 'wait' ? `animation: ${pulse} 1.1s infinite;` : '')}
 `;
 const Radio = styled.span`
   width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
-  border: 2px solid ${(p) => (p.$on ? C.primary : '#cbd5e1')};
+  border: 2px solid ${C.lineStrong}; background: #fff;
   display: grid; place-items: center; transition: .15s;
   &::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: ${C.primary};
     transform: ${(p) => (p.$on ? 'scale(1)' : 'scale(0)')}; transition: transform .15s; }
 `;
 const EmptyNote = styled.p`
   font-size: .73rem; color: ${C.textMuted}; background: ${C.bgSoft};
-  border-radius: 10px; padding: .7rem .8rem;
+  border: 1px dashed ${C.lineStrong}; border-radius: ${C.radius}; padding: .75rem .85rem;
+  cursor: default; transition: border-color .15s;
 `;
 
 /* details */
@@ -204,64 +218,67 @@ const Row2 = styled.div`
 `;
 const Fld = styled.div`margin-bottom: .6rem;`;
 const Label = styled.label`
-  display: block; font-size: .7rem; font-weight: 700; color: ${C.textMuted2}; margin-bottom: .25rem;
-  em { color: ${C.dangerDark}; font-style: normal; }
+  display: block; font-size: .68rem; font-weight: 800; color: ${C.textMuted2}; margin-bottom: .25rem;
+  em { color: ${C.bad}; font-style: normal; }
 `;
 const Input = styled.input`
-  width: 100%; padding: .5rem .65rem; font: inherit; font-size: .8rem; color: ${C.text};
-  border: 1px solid #d1d5db; border-radius: 9px; outline: none; transition: .15s; background: #fff;
-  &:focus { border-color: ${C.primary}; box-shadow: 0 0 0 3px rgba(26,95,122,.12); }
+  width: 100%; padding: .55rem .7rem; font: inherit; font-size: .82rem; color: ${C.text};
+  border: 1.5px solid ${C.lineStrong}; border-radius: 10px; outline: none; transition: .16s; background: #fff;
+  &::placeholder{ color: #cbd5e1; }
+  &:focus{ border-color: ${C.primary}; box-shadow: 0 0 0 4px rgba(26,95,122,.12); }
 `;
 const ChargeWrap = styled.div`
-  display: flex; align-items: stretch; border: 1px solid #d1d5db; border-radius: 9px;
-  overflow: hidden; transition: .15s;
-  &:focus-within { border-color: ${C.primary}; box-shadow: 0 0 0 3px rgba(26,95,122,.12); }
-  span { display: flex; align-items: center; padding: 0 .55rem; background: ${C.bgSoft};
+  display: flex; align-items: stretch; border: 1.5px solid ${C.lineStrong}; border-radius: 10px; overflow: hidden; transition: .16s; background: #fff;
+  &:focus-within { border-color: ${C.primary}; box-shadow: 0 0 0 4px rgba(26,95,122,.12); }
+  span { display: flex; align-items: center; padding: .55rem .7rem; background: ${C.bgSoft};
     font-size: .7rem; font-weight: 800; color: ${C.textMuted2}; border-right: 1px solid #e5e7eb; }
   input { border: none; box-shadow: none; flex: 1; min-width: 0;
-    &:focus { box-shadow: none; } }
+    &:focus { box-shadow: none; } &::placeholder{ color: #cbd5e1; } }
 `;
 const ErrBox = styled.div`
-  display: ${(p) => (p.$show ? 'block' : 'none')}; margin-top: .5rem; padding: .5rem .65rem;
-  border-radius: 9px; background: ${C.dangerLight}; color: ${C.dangerDark};
-  font-size: .72rem; font-weight: 600;
+  display: ${(p) => (p.$show ? 'block' : 'none')}; margin-top: .6rem; padding: .55rem .7rem;
+  border-radius: 10px; background: ${C.badSoft}; color: ${C.bad};
+  font-size: .72rem; font-weight: 700; border: 1px solid ${C.badHair};
 `;
 
 /* footer */
 const PFoot = styled.footer`
-  flex-shrink: 0; border-top: 1px solid #e5e7eb; padding: .75rem 1.2rem; background: ${C.bgSoft};
+  flex-shrink: 0; border-top: 1px solid ${C.line}; padding: .8rem 1.2rem; background: ${C.bgSoft};
 `;
 const Sum = styled.div`
-  font-size: .72rem; font-weight: 600; color: ${C.textMuted2}; margin-bottom: .6rem;
-  min-height: 1rem; line-height: 1.5;
-  ${(p) => (p.$ok ? `color: ${C.successDark};` : '')}
-  ${(p) => (p.$bad ? `color: ${C.dangerDark};` : '')}
+  font-size: .72rem; font-weight: 800; color: ${C.textMuted2}; margin-bottom: .7rem;
+  min-height: 1rem; line-height: 1.5; padding: .5rem .7rem; border-radius: 9px;
+  ${(p) => (p.$ok ? `color: ${C.ok}; background: ${C.okSoft}; border: 1px solid ${C.okHair};` : '')}
+  ${(p) => (p.$bad ? `color: ${C.bad}; background: ${C.badSoft}; border: 1px solid ${C.badHair};` : '')}
 `;
 const Acts = styled.div`display: flex; gap: .55rem;`;
 const GhostBtn = styled.button`
-  border: none; border-radius: 9px; font-size: .78rem; font-weight: 700; cursor: pointer;
-  padding: .6rem 1rem; background: #fff; border: 1px solid #d1d5db; color: ${C.textMuted2};
-  transition: .15s;
-  &:hover { background: #eef2f6; }
+  border: none; border-radius: 10px; font-size: .8rem; font-weight: 800; cursor: pointer;
+  padding: .65rem 1rem; background: #fff; border: 1.5px solid ${C.lineStrong}; color: ${C.textMuted2};
+  transition: .16s;
+  &:hover { background: #eef2f6; border-color: ${C.textMuted2}; }
+  &:focus-visible{ outline: none; box-shadow: 0 0 0 4px rgba(26,95,122,.16); }
 `;
 const GoBtn = styled.button`
-  flex: 1; border: none; border-radius: 9px; font-size: .78rem; font-weight: 700; cursor: pointer;
-  padding: .6rem 1rem; background: ${C.primary}; color: #fff; transition: .15s;
-  &:hover:not(:disabled) { background: #155067; }
-  &:disabled { opacity: .5; cursor: not-allowed; }
+  flex: 1; border: none; border-radius: 10px; font-size: .8rem; font-weight: 800; cursor: pointer;
+  padding: .65rem 1rem; background: ${C.primary}; color: #fff; transition: .16s;
+  &:hover:not(:disabled) { background: ${C.primaryDark}; }
+  &:disabled{ opacity: .45; cursor: not-allowed; filter: saturate(.8); }
+  &:focus-visible{ outline: none; box-shadow: 0 0 0 4px rgba(26,95,122,.2); }
 `;
 const Spin = styled.span`
-  display: inline-block; width: 12px; height: 12px;
-  border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%;
-  vertical-align: -2px; margin-right: 6px; animation: ${rot} .7s linear infinite;
+  display: inline-block; width: 13px; height: 13px;
+  border: 2.5px solid rgba(255,255,255,.32); border-top-color: #fff; border-radius: 50%;
+  vertical-align: -2px; animation: ${rot} .7s linear infinite;
 `;
 
 /* toast */
 const Toast = styled.div`
-  position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, ${(p) => (p.$show ? '0' : '14px')});
-  z-index: 9000; background: #0f172a; color: #fff; padding: .7rem 1.1rem; border-radius: 10px;
-  font-size: .78rem; font-weight: 600; opacity: ${(p) => (p.$show ? 1 : 0)};
+  position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, ${(p) => (p.$show ? '0' : '14px')});
+  z-index: 9000; background: #0f172a; color: #fff; padding: .75rem 1.2rem; border-radius: 12px;
+  font-size: .78rem; font-weight: 700; opacity: ${(p) => (p.$show ? 1 : 0)};
   pointer-events: none; transition: .25s; max-width: 90vw;
+  box-shadow: 0 14px 28px -8px rgba(15,23,42,.35);
 `;
 
 /* ════════════════════════ COMPONENT ════════════════════════ */
@@ -468,7 +485,7 @@ export default function NewBookingModal({ open, onClose, hearses = [], prefillDa
                     <Sec>
                         <SecTop>
                             <h2><Num>1</Num>Dates</h2>
-                            <Hint>{dates.length === 0 ? 'tap a day to add' : dates.length + (dates.length > 1 ? ' dates selected' : ' date selected')}</Hint>
+                            <Hint>{dates.length === 0 ? 'Tap a day to add' : dates.length + (dates.length > 1 ? ' dates selected' : ' date selected')}</Hint>
                         </SecTop>
                         <CalTop>
                             <b>{MONTHS[pm]} {py}</b>

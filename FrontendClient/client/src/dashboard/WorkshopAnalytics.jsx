@@ -1,22 +1,24 @@
 // WorkshopAnalytics.jsx
-// Production analytics for the dashboard's Workshop module: per-worker output,
-// live stage breakdown, and a multi-worker monthly trend line chart.
-// Self-contained — it takes `orders` + `workers` as props so the dashboard
-// panel owns the single fetch.
+// Production analytics for the dashboard's Workshop module — clean white layout,
+// minimal on-screen wording (explanations live in hover tooltips).
+// Self-contained: takes `orders` + `workers` + `production` + `targets` as props.
 
 import { useMemo, useState } from "react";
+import styled from "styled-components";
 
-/* status palette (matches the reference) */
+/* status palette */
 const C = {
-  navy: "#00296B", navyBg: "#EFF6FF",
-  orange: "#E36414", orangeBg: "#FFEDD5",
-  plum: "#5F0F40", plumBg: "#FCE7F3",
-  green: "#132A13", greenBg: "#E8F5E9",
-  amber: "#D97706", amberBg: "#FFFBEB",
-  red: "#DD2D4A", redBg: "#FEE2E2",
-  ink: "#0C0B0F",
+  navy: "#00296B", navyBg: "#EBF1FA",
+  orange: "#E36414", orangeBg: "#FDEFE4",
+  plum: "#5F0F40", plumBg: "#F7EAF1",
+  green: "#132A13",
+  amber: "#D97706", amberBg: "#FCF3E3",
+  teal: "#0D9488", tealBg: "#E6F4F2",
+  ok: "#0E9F6E", okBg: "#E5F5EE",
+  red: "#DD2D4A",
+  ink: "#0F172A", muted: "#64748B", faint: "#94A3B8",
+  line: "#E8ECF1", bg: "#F5F7FA", card: "#FFFFFF",
 };
-
 
 /* One colour per worker, cycled in a fixed order so a worker's line keeps the
    same colour across every chart and chip. */
@@ -38,15 +40,8 @@ const STATUS_TO_STAGE = {
   completed: 4, delivered: 4, store: 4,
 };
 
-// A coffin counts as PRODUCED once it reaches the Store stage.
-//
-// "store" is deliberately in this list. It maps to stage 4 below (the final
-// stage, alongside completed/delivered) but was MISSING here, so every coffin a
-// worker had moved up to Store — the normal end of the workshop pipeline — was
-// treated as still-in-progress. The result: "Coffins per Worker", the per-month
-// counts and the totals all read 0, which is why the dashboard analytics showed
-// nothing at all. `cancelled` is kept for completeness: it is not real output,
-// so it is excluded from the per-worker totals below.
+// A coffin counts as PRODUCED once it reaches the Store stage. `cancelled` is
+// finished but is NOT output, so it is excluded from per-worker totals.
 const FINISHED = ["completed", "delivered", "store", "dispatched", "collected"];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -74,12 +69,7 @@ function ownsOrder(w, o) {
   return !!name && String(o.assigned_to_name || "").trim().toLowerCase() === name;
 }
 
-/* "YYYY-MM" -> the workshop's shared monthly target.
- *
- *  There is ONE number now — every worker is measured against the same figure
- *  for a given month — so the map is keyed by month only, not by worker. A
- *  month with no target is simply absent, which callers read as "no target"
- *  rather than "target of zero". */
+/* "YYYY-MM" -> the workshop's shared monthly target (one number for everyone). */
 function monthTargetMap(targets) {
   const byMonth = new Map();
   (Array.isArray(targets?.months) ? targets.months : []).forEach((t) => {
@@ -91,19 +81,9 @@ function monthTargetMap(targets) {
 }
 
 /** Build every derived number the view needs, once.
- *
- *  `production` is the source of truth for anything measuring FINISHED work
- *  (coffins made, per-month counts, totals). It comes from
- *  GET /workshop/reports/worker-production, which aggregates finished orders in
- *  SQL.
- *
- *  WHY IT CANNOT COME FROM `orders` ANY MORE: the live board deliberately
- *  excludes completed/delivered orders (workshopService.getActiveOrders), so
- *  every `done` branch below was structurally unreachable — which left
- *  "Coffins per Worker" and the whole trend chart permanently blank no matter
- *  how much the florists actually produced. `orders` is still the right source
- *  for IN-PROGRESS work (the in-progress list and the live counts), so it is
- *  kept for those. */
+ *  `production` (GET /workshop/reports/worker-production) is the source of truth
+ *  for FINISHED work; `orders` (live board, excludes finished) is the source for
+ *  IN-PROGRESS work. */
 function useWorkerStats(orders, workers, production) {
   return useMemo(() => {
     const now = new Date();
@@ -111,7 +91,6 @@ function useWorkerStats(orders, workers, production) {
     const weekAgo = now.getTime() - 7 * 86400000;
     const lastMonthKey = monthKeyOf(new Date(now.getFullYear(), now.getMonth() - 1, 1));
 
-    // Server-side per-worker production, indexed by the same stable user id.
     const prodById = new Map();
     (Array.isArray(production?.workers) ? production.workers : []).forEach((p) => {
       prodById.set(String(p.worker_id), p);
@@ -123,7 +102,6 @@ function useWorkerStats(orders, workers, production) {
       let completed = 0, active = 0, hours = 0, month = 0, week = 0, lastMonth = 0;
       const inProgress = [];
 
-      // ── FINISHED work: prefer the SQL aggregation ──
       const prod = prodById.get(String(w.user_id ?? w.id));
       if (prod) {
         completed = Number(prod.total) || 0;
@@ -138,12 +116,10 @@ function useWorkerStats(orders, workers, production) {
         const done = isFinished(o.status);
 
         if (done) {
-          // Only count locally when the SQL aggregate is unavailable (the
-          // endpoint failed), otherwise the same coffin would be counted twice.
+          // Only count locally when the SQL aggregate is unavailable, otherwise
+          // the same coffin would be counted twice.
           if (!prod) {
-            // A cancelled order is finished but is NOT output — counting it as a
-            // coffin made would inflate every worker's numbers.
-            const isReal = String(o.status || '').toLowerCase() !== 'cancelled';
+            const isReal = String(o.status || "").toLowerCase() !== "cancelled";
             if (isReal) completed += 1;
             if (createdMs) {
               const k = monthKeyOf(new Date(createdMs));
@@ -155,7 +131,6 @@ function useWorkerStats(orders, workers, production) {
               if (createdMs >= weekAgo) week += 1;
             }
           } else if (createdMs && createdMs >= weekAgo) {
-            // "This week" is a rolling window the month buckets cannot express.
             week += 1;
           }
         } else {
@@ -199,18 +174,498 @@ function useWorkerStats(orders, workers, production) {
   }, [orders, workers, production]);
 }
 
+/* ── Catmull-Rom → cubic Bézier. Interpolating: the curve passes exactly
+   through every real data point, so no month is visually distorted. ── */
+function smoothPath(pts, tension = 0.5) {
+  if (!pts.length) return "";
+  if (pts.length < 3) {
+    return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p[0]} ${p[1]}`).join(" ");
+  }
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1[0] + ((p2[0] - p0[0]) / 6) * tension * 2;
+    const c1y = p1[1] + ((p2[1] - p0[1]) / 6) * tension * 2;
+    const c2x = p2[0] - ((p3[0] - p1[0]) / 6) * tension * 2;
+    const c2y = p2[1] - ((p3[1] - p1[1]) / 6) * tension * 2;
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+}
 
-/* ── Multi-worker trend line chart ──────────────────────────────────────
-   Hand-rolled SVG rather than a chart library: the reference needs exact
-   control over per-series colours, an area fill only in single-worker mode,
-   and dots/labels that stop at the last month that actually happened. */
-function TrendChart({ rows }) {
+/* ── inline icons (no Font Awesome dependency) ── */
+const Svg = ({ children, size = 15, sw = 2 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+);
+const IBox = () => <Svg><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" /><path d="M3 8l9 5 9-5M12 13v8" /></Svg>;
+const IUsers = () => <Svg><circle cx="9" cy="8" r="3.2" /><path d="M2.8 19c.7-3 3.2-4.6 6.2-4.6s5.5 1.6 6.2 4.6" /><circle cx="17.5" cy="9" r="2.4" /><path d="M16.5 14.6c2.4.2 4.2 1.6 4.7 4.1" /></Svg>;
+const IPulse = () => <Svg><path d="M3 12h4l2.5-7 4 14L16 12h5" /></Svg>;
+const IClock = () => <Svg><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></Svg>;
+const ICheck = ({ size = 10 }) => <Svg size={size} sw={3}><path d="M20 6L9 17l-5-5" /></Svg>;
+const IX = ({ size = 11 }) => <Svg size={size} sw={2.4}><path d="M18 6L6 18M6 6l12 12" /></Svg>;
+
+/* ══════════════════════════ STYLES ══════════════════════════ */
+const Root = styled.div`
+  display:flex;flex-direction:column;gap:14px;color:${C.ink};
+  font-variant-numeric:tabular-nums;
+`;
+const Card = styled.div`
+  background:${C.card};border:1px solid ${C.line};border-radius:16px;
+  box-shadow:0 1px 2px rgba(16,24,40,.05);
+`;
+const CardHead = styled.div`padding:15px 18px 0;
+  h2{font-size:.92rem;font-weight:800;letter-spacing:-.01em;margin:0;cursor:default;}
+`;
+const CardBody = styled.div`padding:13px 18px 17px;`;
+
+const Kpis = styled.div`
+  display:grid;grid-template-columns:repeat(4,1fr);gap:14px;
+  @media(max-width:980px){grid-template-columns:repeat(2,1fr);}
+  @media(max-width:520px){grid-template-columns:1fr;}
+`;
+const Kpi = styled(Card)`padding:15px 17px;`;
+const KpiTop = styled.div`display:flex;align-items:center;gap:.5rem;margin-bottom:11px;`;
+const KpiIc = styled.span`
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;
+  background:${p => p.$bg};color:${p => p.$fg};
+`;
+const KpiLabel = styled.span`
+  font-size:.66rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${C.muted};
+`;
+const KpiNum = styled.div`font-size:1.85rem;font-weight:800;letter-spacing:-.03em;line-height:1;`;
+const KpiFoot = styled.div`margin-top:9px;font-size:.69rem;font-weight:600;color:${C.muted};`;
+const Delta = styled.span`
+  display:inline-flex;align-items:center;gap:.25rem;font-weight:700;
+  color:${p => (p.$up ? C.ok : C.faint)};
+`;
+
+const Main = styled.div`
+  display:grid;grid-template-columns:1fr 330px;gap:14px;
+  @media(max-width:980px){grid-template-columns:1fr;}
+`;
+
+/* trend chips — quiet text buttons, no pills */
+const ChipRow = styled.div`display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin-bottom:8px;`;
+const ChipLbl = styled.span`
+  font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:${C.faint};margin-right:.2rem;
+`;
+const Chip = styled.button`
+  display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .65rem;
+  border:1px solid ${p => (p.$on ? C.navy : C.line)};border-radius:999px;
+  background:${p => (p.$on ? C.navy : "#fff")};color:${p => (p.$on ? "#fff" : C.muted)};
+  font-size:.71rem;font-weight:600;cursor:pointer;transition:.15s;
+  &:hover{border-color:${C.navy};color:${p => (p.$on ? "#fff" : C.ink)};}
+`;
+const Cdot = styled.span`width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${p => p.$c};`;
+
+const ChartBox = styled.div`svg{width:100%;height:auto;display:block;}`;
+
+/* target ring */
+const RingRow = styled.div`display:flex;align-items:center;gap:15px;`;
+const Ring = styled.div`
+  position:relative;width:100px;height:100px;flex-shrink:0;cursor:default;
+  svg{transform:rotate(-90deg);display:block;}
+`;
+const RingVal = styled.div`
+  position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+  b{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;line-height:1;display:block;}
+  small{font-size:.55rem;font-weight:700;color:${C.muted};text-transform:uppercase;letter-spacing:.05em;}
+`;
+const RingInfo = styled.div`
+  .big{font-size:1rem;font-weight:800;}
+  .ratio{font-size:.68rem;font-weight:600;color:${C.muted};margin-top:.1rem;}
+`;
+const Strip = styled.div`
+  display:flex;gap:5px;margin-top:13px;padding-top:13px;border-top:1px dashed ${C.line};
+`;
+const TCol = styled.div`flex:1;text-align:center;min-width:0;cursor:default;`;
+const TBar = styled.div`height:42px;display:flex;align-items:flex-end;justify-content:center;
+  span{display:block;width:100%;max-width:15px;border-radius:4px 4px 2px 2px;background:#E2E8F0;}
+`;
+const TM = styled.div`
+  margin-top:4px;font-size:.58rem;font-weight:700;color:${p => (p.$hit ? C.ok : C.muted)};
+  display:flex;align-items:center;justify-content:center;gap:2px;
+`;
+const TStats = styled.div`
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px;padding-top:13px;
+  border-top:1px dashed ${C.line};
+`;
+const TStat = styled.div`
+  background:#FAFBFD;border:1px solid ${C.line};border-radius:10px;padding:8px 11px;
+  .k{font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${C.faint};}
+  .v{font-size:.9rem;font-weight:800;margin-top:2px;}
+`;
+
+/* worker table */
+const TableWrap = styled.div`padding:0 6px 6px;overflow-x:auto;`;
+const WTable = styled.table`width:100%;border-collapse:collapse;min-width:640px;
+  th{font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${C.faint};
+     text-align:left;padding:10px 14px;border-bottom:1px solid ${C.line};}
+  th.num,td.num{text-align:right;}
+  td{padding:11px 14px;border-bottom:1px solid ${C.line};font-size:.79rem;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+`;
+const WRow = styled.tr`
+  transition:background .12s;
+  &:hover{background:#FAFBFD;}
+  &:hover ${"" /* remove button revealed on hover */}
+   .wa-rm{opacity:1;pointer-events:auto;}
+`;
+const Who = styled.div`display:flex;align-items:center;gap:.6rem;min-width:0;`;
+const Ava = styled.span`
+  width:32px;height:32px;border-radius:9px;color:#fff;font-weight:800;font-size:.74rem;
+  display:grid;place-items:center;flex-shrink:0;background:${p => p.$c};
+`;
+const WhoTxt = styled.span`min-width:0;
+  b{display:block;font-size:.79rem;font-weight:700;line-height:1.2;}
+  small{font-size:.65rem;color:${C.muted};}
+`;
+const Rm = styled.button`
+  opacity:0;pointer-events:none;transition:.15s;margin-left:.4rem;flex-shrink:0;
+  width:20px;height:20px;border:none;border-radius:6px;background:transparent;color:${C.faint};
+  display:inline-grid;place-items:center;cursor:pointer;
+  &:hover{background:${C.plumBg};color:${C.plum};}
+`;
+const MiniTrack = styled.span`
+  width:78px;height:6px;border-radius:99px;background:#F1F5F9;overflow:hidden;
+  display:inline-block;vertical-align:middle;
+  span{display:block;height:100%;border-radius:99px;background:${p => (p.$met ? C.ok : C.plum)};}
+`;
+const TgtCell = styled.div`display:flex;align-items:center;gap:.5rem;justify-content:flex-end;cursor:default;
+  em{font-style:normal;font-size:.7rem;font-weight:700;color:${C.muted};min-width:46px;text-align:right;
+     ${p => (p.$met ? `color:${C.ok};` : "")}}
+`;
+const Spark = styled.div`display:flex;align-items:flex-end;gap:2px;height:24px;
+  i{width:5px;border-radius:2px 2px 1px 1px;background:#D8DEE7;}
+  i:last-child{background:${C.navy};}
+`;
+const Share = styled.span`display:inline-flex;align-items:center;gap:.4rem;font-size:.71rem;font-weight:700;color:${C.muted};
+  .bar{width:46px;height:5px;border-radius:99px;background:#F1F5F9;overflow:hidden;}
+  .bar span{display:block;height:100%;border-radius:99px;background:${C.orange};}
+`;
+
+/* floor pipeline */
+const Floor = styled.div`
+  display:grid;grid-template-columns:repeat(5,1fr);gap:10px;
+  @media(max-width:980px){grid-template-columns:repeat(2,1fr);}
+  @media(max-width:520px){grid-template-columns:1fr;}
+`;
+const Stage = styled.div`
+  border:1px solid ${C.line};border-top:3px solid ${p => p.$c};border-radius:12px;
+  padding:10px 11px;background:#FCFDFE;
+`;
+const StageTop = styled.div`display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;
+  b{font-size:.67rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.muted};}
+  .n{min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:${p => p.$c};color:#fff;
+     font-size:.63rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+`;
+const StageItem = styled.div`
+  display:flex;justify-content:space-between;gap:.5rem;font-size:.69rem;padding:3px 0;cursor:default;
+  span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  em{font-style:normal;color:${C.faint};font-weight:600;flex-shrink:0;}
+  em.late{color:${C.red};}
+`;
+const StageEmpty = styled.div`font-size:.64rem;color:${C.faint};font-style:italic;padding:2px 0;`;
+
+const Empty = styled(Card)`padding:26px;text-align:center;font-size:.8rem;color:${C.muted};`;
+
+/* ══════════════════════════ COMPONENT ══════════════════════════ */
+export default function WorkshopAnalytics({ orders = [], workers = [], production = null, targets = null, onRemoveWorker }) {
+  const { rows, totals, monthKey } = useWorkerStats(orders, workers, production);
+
+  const tMap = useMemo(() => monthTargetMap(targets), [targets]);
+  const currentMonthKey = monthKeyOf(new Date());
+
+  /* headline figures — SQL aggregation first, local derivation as fallback */
+  const made = production?.totals?.produced ?? totals.made;
+  const madeThisMonth = production?.totals?.thisMonth ?? totals.month;
+  const workerCount = production?.totals?.workers ?? totals.workers;
+
+  /* shared-target months for the strip + ring (months with no target are never
+     shown as a miss — they are simply unmarked) */
+  const scoredMonths = useMemo(
+    () => (Array.isArray(targets?.months) ? targets.months : []).filter((m) => Number(m.target) > 0),
+    [targets]
+  );
+  const thisMonthRow = scoredMonths.find((m) => m.month === currentMonthKey);
+  const ringProd = thisMonthRow ? Number(thisMonthRow.produced) || 0 : madeThisMonth;
+  const ringTarget = thisMonthRow ? Number(thisMonthRow.target) || 0 : (tMap.get(currentMonthKey) || 0);
+  const hasTarget = ringTarget > 0;
+  const ringMet = hasTarget && ringProd >= ringTarget;
+  const pctRaw = hasTarget ? Math.round((ringProd / ringTarget) * 100) : 0;
+  const pctArc = Math.min(100, pctRaw);
+  const monthsHit = scoredMonths.filter((m) => (Number(m.produced) || 0) >= Number(m.target)).length;
+
+  /* strip stats */
+  const stripVals = scoredMonths.map((m) => Number(m.produced) || 0);
+  const stripGrand = stripVals.reduce((a, b) => a + b, 0);
+  const bestI = stripVals.length ? stripVals.indexOf(Math.max(...stripVals)) : -1;
+  const activeMonths = stripVals.filter((v) => v > 0).length;
+  const stripAvg = activeMonths ? (stripGrand / activeMonths).toFixed(1) : "0";
+
+  /* live floor pipeline — group in-progress orders by stage */
+  const floor = useMemo(() => {
+    const cols = STAGES.map((s) => ({ ...s, items: [] }));
+    (Array.isArray(orders) ? orders : []).forEach((o) => {
+      if (isFinished(o.status)) return;
+      const created = o.order_date || o.created_at || o.createdAt || null;
+      const ms = created ? new Date(created).getTime() : null;
+      const days = ms ? Math.max(0, Math.floor((Date.now() - ms) / 86400000)) : 0;
+      cols[stageIndexOf(o.status)].items.push({ name: o.coffin_name || o.name || "Coffin", days });
+    });
+    cols.forEach((c) => c.items.sort((a, b) => b.days - a.days));
+    return cols;
+  }, [orders]);
+
+  /* table helpers */
+  const ranked = useMemo(
+    () => [...rows].sort((a, b) => b.month - a.month || b.completed - a.completed),
+    [rows]
+  );
+  const shareDenom = made || 1;
+  const last6Keys = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) =>
+      monthKeyOf(new Date(now.getFullYear(), now.getMonth() - (5 - i), 1))
+    );
+  }, []);
+
+  if (rows.length === 0 && !production) {
+    return <Empty>No workers registered yet.</Empty>;
+  }
+
+  /* ── trend chart ── */
+  const trend = <TrendPanel rows={rows} />;
+
+  return (
+    <Root>
+      {/* ── KPIs ── */}
+      <Kpis>
+        <Kpi>
+          <KpiTop><KpiIc $bg={C.plumBg} $fg={C.plum}><IBox /></KpiIc><KpiLabel>Coffins Made</KpiLabel></KpiTop>
+          <KpiNum>{made}</KpiNum>
+          <KpiFoot>
+            <Delta $up={madeThisMonth - totals.lastMonth > 0}>
+              {madeThisMonth - totals.lastMonth > 0 ? "▲" : "—"} {madeThisMonth - totals.lastMonth > 0 ? `+${madeThisMonth - totals.lastMonth}` : ""}
+            </Delta>{" "}this month
+          </KpiFoot>
+        </Kpi>
+        <Kpi>
+          <KpiTop><KpiIc $bg={C.navyBg} $fg={C.navy}><IUsers /></KpiIc><KpiLabel>Workers</KpiLabel></KpiTop>
+          <KpiNum>{workerCount}</KpiNum>
+          <KpiFoot>{floor.length} stages</KpiFoot>
+        </Kpi>
+        <Kpi>
+          <KpiTop><KpiIc $bg={C.orangeBg} $fg={C.orange}><IPulse /></KpiIc><KpiLabel>In Progress</KpiLabel></KpiTop>
+          <KpiNum>{totals.inProgress}</KpiNum>
+          <KpiFoot>on the floor</KpiFoot>
+        </Kpi>
+        <Kpi>
+          <KpiTop><KpiIc $bg={C.tealBg} $fg={C.teal}><IClock /></KpiIc><KpiLabel>Labor Hours</KpiLabel></KpiTop>
+          <KpiNum>{totals.hours.toFixed(1)}<small style={{ fontSize: ".85rem", fontWeight: 700, color: C.faint }}>h</small></KpiNum>
+          <KpiFoot>{made > 0 ? `${(totals.hours / made).toFixed(1)}h per coffin` : "—"}</KpiFoot>
+        </Kpi>
+      </Kpis>
+
+      <Main>
+        {/* ── trend ── */}
+        <Card>
+          <CardHead>
+            <h2 title="Coffins finished per month. Click a worker to isolate their line.">Production Trend</h2>
+          </CardHead>
+          <CardBody>{trend}</CardBody>
+        </Card>
+
+        {/* ── target ── */}
+        <Card>
+          <CardHead>
+            <h2 title={`Shared monthly goal. ${monthsHit} of ${scoredMonths.length || 0} months hit this year.`}>
+              Monthly Target
+            </h2>
+          </CardHead>
+          <CardBody>
+            <RingRow
+              title={
+                !hasTarget
+                  ? "No target set for this month."
+                  : ringMet
+                    ? `Target hit — +${ringProd - ringTarget} over. ${monthsHit} of ${scoredMonths.length} months hit this year.`
+                    : `${ringTarget - ringProd} more to hit the goal. ${monthsHit} of ${scoredMonths.length} months hit this year.`
+              }
+            >
+              <Ring>
+                <svg width="100" height="100" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#EDF1F6" strokeWidth="9" />
+                  <circle cx="50" cy="50" r="42" fill="none"
+                    stroke={!hasTarget ? "#CBD5E1" : ringMet ? C.ok : C.orange}
+                    strokeWidth="9" strokeLinecap="round"
+                    strokeDasharray={`${(pctArc / 100) * 2 * Math.PI * 42} ${2 * Math.PI * 42}`} />
+                </svg>
+                <RingVal>
+                  <div>
+                    <b>{hasTarget ? `${pctRaw}%` : "—"}</b>
+                    <small>{hasTarget ? (ringMet ? "hit" : "of target") : "no target"}</small>
+                  </div>
+                </RingVal>
+              </Ring>
+              <RingInfo>
+                <div className="big">{ringProd} / {hasTarget ? ringTarget : "—"}</div>
+                <div className="ratio">{MONTHS[new Date().getMonth()]} coffins</div>
+              </RingInfo>
+            </RingRow>
+
+            {scoredMonths.length > 0 && (
+              <Strip>
+                {scoredMonths.map((m) => {
+                  const hit = (Number(m.produced) || 0) >= Number(m.target);
+                  const pct = Math.min(100, Math.round(((Number(m.produced) || 0) / Number(m.target)) * 100));
+                  const isNow = m.month === currentMonthKey;
+                  return (
+                    <TCol key={m.month}
+                      title={`${m.month}: ${m.produced || 0} of ${m.target} coffins${hit ? " — target hit" : ""}${isNow ? " (current month)" : ""}`}>
+                      <TBar>
+                        <span style={{
+                          height: `${Math.max(5, pct)}%`,
+                          background: hit ? C.ok : "#E2E8F0",
+                          outline: isNow ? `2px solid ${C.navy}` : "none",
+                          outlineOffset: "1px",
+                        }} />
+                      </TBar>
+                      <TM $hit={hit}>
+                        {m.month.slice(5)}{hit ? <ICheck size={8} /> : null}
+                      </TM>
+                    </TCol>
+                  );
+                })}
+              </Strip>
+            )}
+
+            {scoredMonths.length > 0 && (
+              <TStats>
+                <TStat><div className="k">Best</div><div className="v">{bestI >= 0 ? `${scoredMonths[bestI].month.slice(5)} · ${stripVals[bestI]}` : "—"}</div></TStat>
+                <TStat><div className="k">Avg</div><div className="v">{stripAvg}</div></TStat>
+              </TStats>
+            )}
+          </CardBody>
+        </Card>
+      </Main>
+
+      {/* ── worker performance ── */}
+      <Card>
+        <CardHead>
+          <h2 title="Ranked by this month. Hover a row for the remove option; bars compare against the shared monthly target.">
+            Worker Performance
+          </h2>
+        </CardHead>
+        <TableWrap>
+          <WTable>
+            <thead>
+              <tr>
+                <th style={{ width: 30 }}>#</th>
+                <th>Worker</th>
+                <th className="num" title="Coffins finished this month">Month</th>
+                <th className="num" title="Against the shared monthly target">Target</th>
+                <th title="Last 6 months">Trend</th>
+                <th className="num">Total</th>
+                <th className="num">Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranked.map((r, i) => {
+                const mo = r.month;
+                const mt = tMap.get(monthKey) || 0;
+                const met = mt > 0 && mo >= mt;
+                const spark = last6Keys.map((k) => r.perMonth[k] || 0);
+                const sMax = Math.max(1, ...spark);
+                return (
+                  <WRow key={r.id}>
+                    <td style={{ color: C.faint, fontWeight: 700 }}>{i + 1}</td>
+                    <td>
+                      <Who>
+                        <Ava $c={r.color}>{initials(r.name)}</Ava>
+                        <WhoTxt><b>{r.name}</b><small>{r.role}</small></WhoTxt>
+                        {onRemoveWorker && (
+                          <Rm className="wa-rm" title="Remove worker" onClick={() => onRemoveWorker(r.id)}>
+                            <IX />
+                          </Rm>
+                        )}
+                      </Who>
+                    </td>
+                    <td className="num" style={{ fontSize: ".92rem", fontWeight: 800 }}>{mo}</td>
+                    <td>
+                      {mt > 0 ? (
+                        <TgtCell $met={met}
+                          title={`${mo} of ${mt} this month${met ? " — target met" : ""}`}>
+                          <em className={met ? "met" : ""}>{mo}/{mt}{met ? " ✓" : ""}</em>
+                          <MiniTrack $met={met}>
+                            <span style={{ width: `${Math.min(100, Math.round((mo / mt) * 100))}%` }} />
+                          </MiniTrack>
+                        </TgtCell>
+                      ) : <span style={{ color: C.faint }}>—</span>}
+                    </td>
+                    <td>
+                      <Spark title={last6Keys.map((k, idx) => `${k.slice(5)}: ${spark[idx]}`).join(" · ")}>
+                        {spark.map((v, idx) => (
+                          <i key={idx} style={{ height: `${Math.max(3, Math.round((v / sMax) * 24))}px` }} />
+                        ))}
+                      </Spark>
+                    </td>
+                    <td className="num" style={{ fontWeight: 700 }}>{r.completed}</td>
+                    <td className="num">
+                      <Share title={`${r.completed} of ${made} all-time coffins`}>
+                        {Math.round((r.completed / shareDenom) * 100)}%
+                        <span className="bar"><span style={{ width: `${((r.completed / shareDenom) * 100).toFixed(1)}%` }} /></span>
+                      </Share>
+                    </td>
+                  </WRow>
+                );
+              })}
+            </tbody>
+          </WTable>
+        </TableWrap>
+      </Card>
+
+      {/* ── live floor ── */}
+      <Card>
+        <CardHead>
+          <h2 title="Live stage pipeline. ⚠ = waiting more than 5 days.">On the Floor</h2>
+        </CardHead>
+        <CardBody>
+          <Floor>
+            {floor.map((st) => (
+              <Stage key={st.name} $c={st.color}>
+                <StageTop $c={st.color}>
+                  <b>{st.name}</b>
+                  <span className="n">{st.items.length}</span>
+                </StageTop>
+                {st.items.length === 0 && <StageEmpty>Empty</StageEmpty>}
+                {st.items.map((it, i) => (
+                  <StageItem key={`${it.name}-${i}`}
+                    title={`${it.name} · ${st.name} · ${it.days} day${it.days === 1 ? "" : "s"}${it.days > 5 ? " — waiting long" : ""}`}>
+                    <span>{it.name}</span>
+                    <em className={it.days > 5 ? "late" : ""}>{it.days}d{it.days > 5 ? " ⚠" : ""}</em>
+                  </StageItem>
+                ))}
+              </Stage>
+            ))}
+          </Floor>
+        </CardBody>
+      </Card>
+    </Root>
+  );
+}
+
+/* ── Trend panel (chart + worker chips) ─────────────────────────────── */
+function TrendPanel({ rows }) {
   const now = new Date();
   const [selWorker, setSelWorker] = useState("All Workers");
   const [selYear, setSelYear] = useState(String(now.getFullYear()));
 
-  // Years that actually have data, newest first. Keeps the chip row honest
-  // instead of offering years with no orders at all.
   const years = useMemo(() => {
     const set = new Set();
     rows.forEach((r) => Object.keys(r.perMonth).forEach((k) => set.add(k.slice(0, 4))));
@@ -230,10 +685,10 @@ function TrendChart({ rows }) {
     return isAll ? rows.map(build) : rows.filter((r) => r.name === selWorker).map(build);
   }, [rows, isAll, selWorker, activeYear]);
 
-  // Months that have actually happened — future months are not plotted.
+  // Future months are never plotted — no invented declines.
   const lastMonth = activeYear === String(now.getFullYear()) ? now.getMonth() : 11;
 
-  const W = 760, H = 280, padL = 40, padR = 20, padT = 24, padB = 34;
+  const W = 760, H = 270, padL = 36, padR = 14, padT = 16, padB = 28;
   const iw = W - padL - padR, ih = H - padT - padB;
   const x = (i) => padL + (i * iw) / 11;
   const rawMax = Math.max(4, ...series.flatMap((s) => s.values));
@@ -243,125 +698,68 @@ function TrendChart({ rows }) {
   const gridLines = [];
   for (let g = 0; g <= yMax; g += 2) gridLines.push(g);
 
-  const summary = useMemo(() => {
-    const totals = MONTHS.map((_, i) =>
-      series.reduce((s, ser) => s + (i <= lastMonth ? ser.values[i] : 0), 0)
-    );
-    const grand = totals.reduce((a, b) => a + b, 0);
-    const bestI = totals.indexOf(Math.max(...totals));
-    const activeMonths = totals.filter((v) => v > 0).length;
-    return {
-      grand,
-      best: { label: MONTHS[bestI], value: totals[bestI] },
-      avg: activeMonths ? (grand / activeMonths).toFixed(1) : "0",
-      lines: series.length,
-    };
-  }, [series, lastMonth]);
-
-
   return (
-    <div className="wa-trend">
-      <div className="wa-trend-head">
-        <div>
-          <h2>Production Trend</h2>
-          <div className="wa-sub">
-            Coffins made per month · All Workers shows every worker as its own
-            line — click a worker to isolate
-          </div>
-        </div>
-      </div>
-
-      {/* selectors double as the legend */}
-      <div className="wa-pickers">
-        <div className="wa-chips">
-          <span className="wa-chips-label">Worker</span>
-          <button className={`wa-chip${isAll ? " active" : ""}`} onClick={() => setSelWorker("All Workers")}>
-            All Workers
-          </button>
-          {rows.map((r) => (
-            <button
-              key={r.id}
-              className={`wa-chip${!isAll && selWorker === r.name ? " active" : ""}`}
-              onClick={() => setSelWorker(r.name)}
-            >
-              <span className="wa-cdot" style={{ background: r.color }} />
-              {r.name}
-            </button>
-          ))}
-        </div>
+    <>
+      <ChipRow>
+        <ChipLbl>Worker</ChipLbl>
+        <Chip $on={isAll} onClick={() => setSelWorker("All Workers")}>All</Chip>
+        {rows.map((r) => (
+          <Chip key={r.id} $on={!isAll && selWorker === r.name} onClick={() => setSelWorker(r.name)}
+            title={`Show only ${r.name}`}>
+            <Cdot $c={r.color} />{r.name.split(" ")[0]}
+          </Chip>
+        ))}
         {years.length > 1 && (
-          <div className="wa-chips">
-            <span className="wa-chips-label">Year</span>
-            {years.map((y) => (
-              <button
-                key={y}
-                className={`wa-chip wa-chip--year${activeYear === y ? " active" : ""}`}
-                onClick={() => setSelYear(y)}
-              >
-                {y}
-              </button>
+          <>
+            <ChipLbl style={{ marginLeft: ".5rem" }}>Year</ChipLbl>
+            {years.map((yr) => (
+              <Chip key={yr} $on={activeYear === yr} onClick={() => setSelYear(yr)}>{yr}</Chip>
             ))}
-          </div>
+          </>
         )}
-      </div>
+      </ChipRow>
 
-      <div className="wa-chart">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Coffins made per month line chart">
+      <ChartBox>
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Coffins made per month">
           {gridLines.map((g) => (
             <g key={g}>
               <line x1={padL} x2={W - padR} y1={y(g)} y2={y(g)}
-                stroke={g === 0 ? "#D1D5DB" : "#F3F4F6"} strokeWidth="1" />
-              <text x={padL - 8} y={y(g) + 4} textAnchor="end" fontSize="10" fill="#9CA3AF">{g}</text>
+                stroke={g === 0 ? "#D8DEE7" : "#F1F4F8"} strokeWidth="1" />
+              <text x={padL - 7} y={y(g) + 3.5} textAnchor="end" fontSize="10" fill={C.faint}>{g}</text>
             </g>
           ))}
           {MONTHS.map((m, i) => (
-            <text key={m} x={x(i)} y={H - 10} textAnchor="middle" fontSize="10" fill="#9CA3AF">{m}</text>
+            <text key={m} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10"
+              fontWeight={i === lastMonth ? 700 : 400}
+              fill={i === lastMonth ? C.ink : C.faint}>{m}</text>
           ))}
 
           {series.map((s) => {
-            /* Only the months that have actually happened get plotted. Drawing a
-               curve out to December when it is only February would invent a
-               decline that never occurred, and a smoothed curve exaggerates
-               that kind of fiction far more than a straight line does — so the
-               series is cut at the last real month first, then smoothed. */
             const drawn = s.values.slice(0, lastMonth + 1);
             const pts = drawn.map((v, i) => [x(i), y(v)]);
             const linePath = smoothPath(pts);
-
             return (
               <g key={s.name}>
-                {/* area fill only when a single worker is isolated */}
                 {!isAll && linePath && (
-                  <path
-                    /* Closed along the baseline rather than following the curve
-                       back, so the fill hugs the floor instead of bowing under it. */
-                    d={`${linePath} L ${x(drawn.length - 1)} ${y(0)} L ${x(0)} ${y(0)} Z`}
-                    fill={s.color}
-                    opacity="0.07"
-                  />
+                  <path d={`${linePath} L ${x(drawn.length - 1)} ${y(0)} L ${x(0)} ${y(0)} Z`}
+                    fill={s.color} opacity="0.07" />
                 )}
                 {linePath && (
-                  <path
-                    d={linePath}
-                    fill="none"
-                    stroke={s.color}
-                    strokeWidth={isAll ? 2 : 2.5}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    opacity={isAll ? 0.9 : 1}
-                  />
+                  <path d={linePath} fill="none" stroke={s.color}
+                    strokeWidth={isAll ? 2 : 2.5} strokeLinejoin="round" strokeLinecap="round"
+                    opacity={isAll ? 0.9 : 1} />
                 )}
                 {s.values.map((v, i) => {
                   if (i > lastMonth) return null;
                   return (
                     <g key={i}>
-                      <circle cx={x(i)} cy={y(v)} r={isAll ? 3 : 4} fill="#fff" stroke={s.color} strokeWidth="2">
+                      <circle cx={x(i)} cy={y(v)} r={isAll ? 3 : 4} fill="#fff" stroke={s.color} strokeWidth="2"
+                        style={{ cursor: "default" }}>
                         <title>{`${MONTHS[i]} ${activeYear} · ${s.name}: ${v} coffin${v === 1 ? "" : "s"}`}</title>
                       </circle>
                       {!isAll && (
-                        <text x={x(i)} y={y(v) - 10} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#111827">
-                          {v}
-                        </text>
+                        <text x={x(i)} y={y(v) - 9} textAnchor="middle" fontSize="10"
+                          fontWeight="700" fill={C.ink}>{v}</text>
                       )}
                     </g>
                   );
@@ -370,554 +768,7 @@ function TrendChart({ rows }) {
             );
           })}
         </svg>
-      </div>
-
-      <div className="wa-trend-summary">
-        <div><span className="k">View</span><b>{isAll ? "All Workers" : selWorker}</b></div>
-        <div><span className="k">{activeYear} total</span><b>{summary.grand} coffins</b></div>
-        <div><span className="k">Best month</span><b>{summary.best.label} · {summary.best.value}</b></div>
-        <div><span className="k">Avg / active month</span><b>{summary.avg}</b></div>
-        <div><span className="k">Lines shown</span><b>{summary.lines}</b></div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Smooth curve for the trend line ───────────────────────────────────────
-   Turns a list of points into a cubic Bézier path that passes exactly through
-   every one of them (Catmull-Rom converted to Bézier).
-
-   Why not just a <polyline> or a chain of "L" commands: those draw hard
-   angular corners, so a month where production dipped read as a cliff and a
-   recovery read as a spike. Monthly coffin counts are small integers and the
-   shape between two real months is interpolation, not data — a smooth curve
-   makes that honest instead of implying a sharp change that never happened.
-
-   Catmull-Rom specifically because it is INTERPOLATING: the curve is
-   guaranteed to pass through the real data points rather than near them, so no
-   month is visually distorted by the smoothing. A plain Bézier through the
-   points would pull them off and understate a genuine peak.
-
-   `tension` is the 0.5 Catmull-Rom constant, which is what keeps the curve
-   from overshooting. Raising it makes the line balloon between a high and a
-   low month — bad for integer counts, because it can dip below zero and draw a
-   "negative" month that is not in the data. */
-function smoothPath(pts, tension = 0.5) {
-  if (!pts.length) return "";
-  if (pts.length < 3) {
-    // Two points have no interior tangent to blend, so a curve would add
-    // nothing and could look skewed. A straight line is the honest shape.
-    return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p[0]} ${p[1]}`).join(" ");
-  }
-
-  let d = `M ${pts[0][0]} ${pts[0][1]}`;
-
-  for (let i = 0; i < pts.length - 1; i += 1) {
-    // p0/p3 are the neighbours that set the tangent at each end of this
-    // segment; p1/p2 are the two points being joined. They are clamped at the
-    // ends so the first and last segments do not invent a phantom point.
-    const p0 = pts[i - 1] || pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] || p2;
-
-    const c1x = p1[0] + ((p2[0] - p0[0]) / 6) * tension * 2;
-    const c1y = p1[1] + ((p2[1] - p0[1]) / 6) * tension * 2;
-    const c2x = p2[0] - ((p3[0] - p1[0]) / 6) * tension * 2;
-    const c2y = p2[1] - ((p3[1] - p1[1]) / 6) * tension * 2;
-
-    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2[0]} ${p2[1]}`;
-  }
-
-  return d;
-}
-
-/* Monthly attainment strip: one column per month, showing how many coffins were
-   made against the month's target, with the months that were hit called out.
-
-   This is the "who crossed the target" view at workshop level. It sits above the
-   per-worker grid because the question is asked at two levels: did the workshop
-   hit its number, and then which worker carried it.
-
-   A month with NO target set is deliberately not shown as a miss. There was
-   nothing to hit, so it is simply left unmarked — painting an unset month red
-   would report a failure that was never in question. */
-function TargetAttainment({ targets }) {
-  const months = Array.isArray(targets?.months) ? targets.months : [];
-  const scored = months.filter((m) => Number(m.target) > 0);
-  if (!scored.length) return null;
-
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const met = scored.filter((m) => m.produced >= m.target);
-
-  return (
-    <div className="wa-panel">
-      <h2>
-        Monthly Target
-        {met.length > 0 && (
-          <span className="wa-month-chip">{met.length} of {scored.length} hit</span>
-        )}
-      </h2>
-      <div className="wa-sub">
-        Coffins finished against the number the workshop aimed for that month
-      </div>
-
-      <div className="wa-target-strip">
-        {scored.map((m) => {
-          const hit = m.produced >= m.target;
-          const pct = Math.min(100, Math.round((m.produced / m.target) * 100));
-          const isNow = m.month === currentMonth;
-          return (
-            <div
-              key={m.month}
-              className={`wa-target-col${hit ? " hit" : ""}${isNow ? " now" : ""}`}
-              title={
-                `${m.month}: ${m.produced} of ${m.target} coffins` +
-                `${isNow ? " (current month)" : ""}`
-              }
-            >
-              <div className="wa-target-bar">
-                <span style={{ height: `${Math.max(4, pct)}%` }} />
-              </div>
-              <div className="wa-target-pct">{pct}%</div>
-              <div className="wa-target-n">{m.produced}/{m.target}</div>
-              <div className="wa-target-m">{m.month.slice(5)}</div>
-              {hit ? <i className="fas fa-check" aria-hidden="true" /> : null}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* Month header. A month the workshop HIT its target gets a tick and a green tint,
-   so a manager reading down the column can see at a glance which months were
-   good ones without cross-referencing the attainment strip above. */
-function MonthHead({ keyStr, hit }) {
-  const [y, m] = String(keyStr).split("-").map(Number);
-  return (
-    <th className={`wa-pm-cell${hit ? " hit" : ""}`}>
-      {y && m ? `${MONTHS[m - 1]} ${String(y).slice(2)}` : keyStr}
-      {hit ? <i className="fas fa-check" aria-hidden="true" /> : null}
-    </th>
-  );
-}
-
-/* ── Production per worker per month ────────────────────────────────────────
-   The explicit "how many has each worker produced each month" grid.
-
-   The rest of this file derives its numbers from the LIVE order payload, which
-   by design no longer contains finished orders — so every derived figure reads
-   0. This grid is driven by GET /workshop/reports/worker-production instead,
-   which aggregates finished orders in SQL, and is the authoritative answer. */
-function ProductionGrid({ production, targets }) {
-  const months = Array.isArray(production?.months) ? production.months : [];
-  const rows = Array.isArray(production?.workers) ? production.workers : [];
-
-  // The month heading is now rendered by <MonthHead>, which also carries the
-  // "target hit" tick, so the old local monthLabel formatter is no longer used.
-
-  // The highest single cell decides the heat scale, so one busy month does not
-  // wash every other month out to zero colour.
-  const peak = Math.max(1, ...rows.flatMap((r) => months.map((m) => Number(r.monthly?.[m]) || 0)));
-  const grand = rows.reduce((s, r) => s + (Number(r.total) || 0), 0);
-
-  const tMap = monthTargetMap(targets);
-  /* Months where every worker crossed the shared target, keyed "YYYY-MM" so the
-     month header can mark them inline. Months with no target — or where at least
-     one worker fell short — are absent from this set and left unmarked rather
-     than being shown as a miss. */
-  const hitMonths = new Set();
-  if (rows.length > 0) {
-    for (const [mk, t] of tMap) {
-      if (rows.every((r) => (Number(r.monthly?.[mk]) || 0) >= t)) hitMonths.add(mk);
-    }
-  }
-
-  /* The shared figure each cell is judged against: "did this worker finish the
-     workshop's number for that month?" — the same number for everybody, from
-     the single Set Target dialog. */
-  const sharedTargetOf = (monthKey) => tMap.get(String(monthKey)) || 0;
-
-  if (!rows.length) {
-    return (
-      <div className="wa-panel">
-        <h2>Production per Worker, per Month</h2>
-        <div className="wa-sub">Coffins finished, credited to the month they were completed</div>
-        <div className="wa-empty">No workers registered yet.</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="wa-panel wa-pm-panel">
-      <h2>
-        Production per Worker, per Month
-        {grand > 0 && <span className="wa-month-chip">{grand} total</span>}
-      </h2>
-      <div className="wa-sub">
-        Coffins finished, credited to the month they were completed — not the month they were ordered
-      </div>
-
-      {/* Horizontally scrollable so a 12-month window stays readable on a phone
-          instead of being crushed into unreadable 3-character columns. */}
-      <div className="wa-pm-scroll">
-        <table className="wa-pm">
-          <thead>
-            <tr>
-              <th className="wa-pm-name">Worker</th>
-              {months.map((m) => (
-                <MonthHead key={m} keyStr={m} hit={hitMonths.has(m)} />
-              ))}
-              <th className="wa-pm-total">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.worker_id}>
-                <th scope="row" className="wa-pm-name">
-                  <span className="wa-avatar">{initials(r.name)}</span>
-                  <span className="wa-pm-who">
-                    <b>{r.name}</b>
-                    <small>{r.role}</small>
-                  </span>
-                </th>
-                {months.map((m) => {
-                  const v = Number(r.monthly?.[m]) || 0;
-                  const t = sharedTargetOf(m);
-                  // Met only when a target was actually set for that worker+month,
-                  // so an unset month is never painted as a success.
-                  const hit = t > 0 && v >= t;
-                  const intensity = v / peak;
-                  return (
-                    <td
-                      key={m}
-                      className={`wa-pm-cell${v === 0 ? " zero" : ""}${hit ? " met" : ""}`}
-                      title={t > 0 ? `${r.name} · ${m}: ${v} of ${t} coffins${hit ? " — target met" : ""}` : undefined}
-                    >
-                      {/* Opacity ramps with the value so the eye lands on the
-                          productive months without needing a colour scale. */}
-                      <span style={v ? { background: `rgba(95, 15, 64, ${0.12 + intensity * 0.55})` } : undefined}>
-                        {v}
-                      </span>
-                      {hit ? <i className="fas fa-check" aria-hidden="true" /> : null}
-                    </td>
-                  );
-                })}
-                <td className="wa-pm-total">{r.total || 0}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <th scope="row" className="wa-pm-name">All workers</th>
-              {months.map((m) => (
-                <td key={m} className="wa-pm-cell">
-                  {rows.reduce((s, r) => s + (Number(r.monthly?.[m]) || 0), 0)}
-                </td>
-              ))}
-              <td className="wa-pm-total">{grand}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/* ── Production mix: what was actually made ──────────────────────────────
-   Coffin type + colour, straight from the SQL aggregate.
-
-   This exists because "2 workers on carrier caskets" is ambiguous on a
-   spreadsheet of totals: it could be one shared job or two separate coffins.
-   It is two. Grouping by type AND colour makes that visible — the same type in
-   two colours shows up as two rows, which is exactly the physical reality on
-   the floor. */
-function ProductionMix({ byType }) {
-  const rows = Array.isArray(byType) ? byType.filter((r) => Number(r.produced) > 0) : [];
-  const total = rows.reduce((s, r) => s + Number(r.produced || 0), 0);
-
-  if (!rows.length) {
-    return (
-      <div className="wa-panel">
-        <h2>What Was Produced</h2>
-        <div className="wa-sub">Completed coffins by type and colour</div>
-        <div className="wa-empty">No completed coffins for this year yet.</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="wa-panel">
-      <h2>
-        What Was Produced
-        {total > 0 && <span className="wa-month-chip">{total} total</span>}
-      </h2>
-      <div className="wa-sub">
-        Each finished coffin counted once — the same type in two colours is two coffins
-      </div>
-
-      <div className="wa-mix">
-        {rows.map((r, i) => (
-          <div className="wa-mix-row" key={`${r.coffin_type}-${r.color}-${i}`}>
-            <div className="wa-mix-name">
-              <b>{r.coffin_type}</b>
-              <small>{r.color}</small>
-            </div>
-            <div className="wa-mix-bar">
-              <span style={{ width: `${(Number(r.produced) / total) * 100}%` }} />
-            </div>
-            <div className="wa-mix-num">
-              {r.produced}
-              {Number(r.workers) > 1 && <small>{r.workers} workers</small>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── Main view ─────────────────────────────────────────────────────────── */
-export default function WorkshopAnalytics({ orders = [], workers = [], production = null, targets = null, onRemoveWorker }) {
-  const { rows, totals, monthKey } = useWorkerStats(orders, workers, production);
-
-  /* The workshop's shared monthly target (one number for every worker), keyed
-     "YYYY-MM". Read by the worker cards to colour everyone who crossed it and
-     by the leaderboard to flag the workers who exceeded it.
-
-     FIXED: this const was previously declared TWICE in a row (build lines
-     683/686 — a copy/paste leftover), which crashed the production build with
-     "[PARSE_ERROR] Identifier `tMap` has already been declared". */
-  const tMap = useMemo(() => monthTargetMap(targets), [targets]);
-  const sharedTargetOf = (monthKey) => tMap.get(String(monthKey)) || 0;
-
-  const currentMonthKey = monthKeyOf(new Date());
-  /* Exceeding the target is worth celebrating outright: a star on the rank row
-     so a worker who BEAT the number stands out from one who merely matched it. */
-  const sharedTarget = tMap.get(currentMonthKey) || 0;
-  const maxBar = Math.max(1, ...rows.map((r) => r.completed + r.active));
-  // Top producers: this month only, matching the reference's "Sep 2025" chip.
-  const monthly = useMemo(
-    () => [...rows].filter((r) => r.month > 0).sort((a, b) => b.month - a.month),
-    [rows]
-  );
-  const monthLabel = (() => {
-    const d = new Date();
-    return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
-  })();
-
-  // The headline figures must come from the SQL aggregation, not from the live
-  // order payload: the live payload deliberately excludes finished orders, so
-  // every derived total there is structurally 0. `production` is the fallback
-  // for the one case the endpoint cannot cover — no workers registered at all.
-  const made = production?.totals?.produced ?? totals.made;
-  const madeThisMonth = production?.totals?.thisMonth ?? totals.month;
-  const workerCount = production?.totals?.workers ?? totals.workers;
-
-  // With no workers there is nothing else to show; the grid handles its own empty state.
-  if (rows.length === 0 && !production) {
-    return (
-      <div className="wa-panel">
-        <div className="wa-empty">No workers registered yet.</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="wa">
-      {/* The module header (back-to-Operations, title, live status and
-          refresh) now lives in WorkshopPanel. A second <h1> here used to
-          leave the Analytics tab looking completely different from the
-          Store tab, which had no header at all. */}
-
-      {/* ── the answer, first: what each worker produced each month ── */}
-      <TargetAttainment targets={targets} />
-      <ProductionMix byType={production?.by_type} />
-      <ProductionGrid production={production} targets={targets} />
-
-      {/* ── stats ── */}
-      <div className="wa-stats">
-        <div className="wa-stat">
-          <div className="wa-label">Workers</div>
-          <div className="wa-num">{workerCount}</div>
-        </div>
-        <div className="wa-stat wa-stat--plum">
-          <div className="wa-label">Coffins Made</div>
-          <div className="wa-num">{made}</div>
-          <span className={`wa-delta${madeThisMonth - totals.lastMonth > 0 ? "" : " flat"}`}>
-            <i className={`fas ${madeThisMonth - totals.lastMonth > 0 ? "fa-arrow-up" : "fa-minus"}`} />
-            {" "}{madeThisMonth - totals.lastMonth > 0 ? `+${madeThisMonth - totals.lastMonth} this month` : "no change"}
-          </span>
-        </div>
-        <div className="wa-stat">
-          <div className="wa-label">In Progress</div>
-          <div className="wa-num">{totals.inProgress}</div>
-        </div>
-        <div className="wa-stat wa-stat--navy">
-          <div className="wa-label">Labor Hours</div>
-          <div className="wa-num">{totals.hours.toFixed(1)}<small>h</small></div>
-        </div>
-      </div>
-
-      {/* ── bars + this-month leaderboard ── */}
-      <div className="wa-duo">
-        <div className="wa-panel">
-          <h2>Coffins per Worker</h2>
-          <div className="wa-sub">Completed (plum) + in progress (amber), all time</div>
-
-          {rows.map((r) => {
-            const done = (r.completed / maxBar) * 100;
-            const act = (r.active / maxBar) * 100;
-            return (
-              <div className="wa-bar-row" key={r.id}>
-                <div className="wa-bar-top">
-                  <span className="wa-bar-name">{r.name}</span>
-                  <span className="wa-bar-count"><b>{r.completed}</b> made · {r.active} active</span>
-                </div>
-                <div className="wa-bar-track">
-                  <span className="wa-bar-fill" style={{ width: `${done}%`, background: C.plum }} />
-                  <span className="wa-bar-fill wa-bar-fill--active" style={{ width: `${act}%`, background: C.amberBg }} />
-                </div>
-              </div>
-            );
-          })}
-
-          <div className="wa-legend">
-            <span><i style={{ background: C.plum }} /> Completed</span>
-            <span><i style={{ background: C.amberBg, border: "1px solid #FDE68A" }} /> In progress</span>
-          </div>
-        </div>
-
-        <div className="wa-panel">
-          <h2>Top Producers <span className="wa-month-chip">{monthLabel}</span></h2>
-          <div className="wa-sub">Ranked by coffins completed this month</div>
-
-          {monthly.length === 0 && <div className="wa-empty">No completions yet this month.</div>}
-
-          {monthly.map((r, i) => (
-            <div className="wa-rank-row" key={r.id}>
-              <span className="wa-rank">{i + 1}</span>
-              <span className="wa-avatar">{initials(r.name)}</span>
-              <div className="wa-rank-info">
-                <div className="wa-rank-name">{r.name}</div>
-                <div className="wa-rank-role">{r.role}</div>
-              </div>
-              <div className="wa-rank-made">
-                <b>{r.month}</b><span>made</span>
-                <div className="wa-rank-all">{r.completed} all-time</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── worker cards ── */}
-      <div className="wa-workers">
-        {rows.map((r) => {
-          // 6-month spark from the same perMonth data the trend chart uses.
-          const now = new Date();
-          const spark = Array.from({ length: 6 }, (_, i) => {
-            const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-            return r.perMonth[monthKeyOf(d)] || 0;
-          });
-          const sparkMax = Math.max(1, ...spark);
-          // This month's shared number — the same target for every card. Only
-          // rendered when one has been set, so cards without a target keep
-          // their old shape instead of showing an empty 0/0 bar.
-          const mt = sharedTargetOf(monthKey);
-          const mtPct = mt > 0 ? Math.min(100, Math.round((r.month / mt) * 100)) : 0;
-          const mtMet = mt > 0 && r.month >= mt;
-          return (
-            <div className={`wa-wcard${mtMet ? " wa-wcard--met" : ""}`} key={r.id}>
-              <div className="wa-wcard-top">
-                <span className="wa-avatar wa-avatar--lg">{initials(r.name)}</span>
-                <div>
-                  <div className="wa-wname">{r.name}</div>
-                  <div className="wa-wrole">{r.role}</div>
-                </div>
-              </div>
-
-              <div className="wa-wmade">
-                <b style={{ color: C.plum }}>{r.completed}</b>
-                <span className="wa-cap">coffins<br />made</span>
-                <div className="wa-spark">
-                  {spark.map((v, i) => (
-                    <i
-                      key={i}
-                      style={{
-                        height: `${Math.max(8, Math.round((v / sparkMax) * 100))}%`,
-                        background: i === spark.length - 1 ? C.navy : C.navyBg,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* This worker's own monthly number. Only rendered when a target
-                  has actually been set, so cards without one keep their old
-                  shape instead of showing an empty 0/0 bar. */}
-              {mt > 0 && (
-                <div className={`wa-mt${mtMet ? " met" : ""}`}>
-                  <div className="wa-mt-top">
-                    <span className="wa-mt-label">{monthLabel} target</span>
-                    <span className="wa-mt-val">
-                      {mtMet ? <i className="fas fa-check" aria-hidden="true" /> : null}
-                      {r.month} / {mt}
-                      {mtMet && r.month > mt ? <span className="wa-mt-over">+{r.month - mt} over</span> : null}
-                    </span>
-                  </div>
-                  <div className="wa-mt-track">
-                    <span style={{ width: `${Math.max(4, mtPct)}%` }} />
-                  </div>
-                </div>
-              )}
-
-              <div className="wa-wmini">
-                <div><b>{r.active}</b><span>active</span></div>
-                <div><b>{r.hours.toFixed(1)}</b><span>hours</span></div>
-                <div><b>{r.month}</b><span>this mo</span></div>
-              </div>
-
-              <div className="wa-ip">
-                <div className="wa-ip-head">
-                  <span className="wa-ip-title">In Progress</span>
-                  <span className={`wa-ip-count${r.active === 0 ? " zero" : ""}`}>{r.active}</span>
-                </div>
-                {r.inProgress.length === 0 && (
-                  <div className="wa-ip-empty">Nothing in progress right now</div>
-                )}
-                {r.inProgress.map((it, i) => (
-                  <div className="wa-ip-row" key={`${it.name}-${i}`}>
-                    <span className="wa-ip-dot" style={{ background: it.color }} />
-                    <span className="wa-ip-name">{it.name}</span>
-                    <span className="wa-ip-meta">
-                      <span className="wa-ip-stage">{it.stage}</span>
-                      {it.days > 5 ? <span className="wa-ip-late"> · {it.days}d ⚠</span> : ` · ${it.days}d`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="wa-wcard-foot">
-                <span className="wa-wperiod"><b>{r.week}</b> this week</span>
-                {onRemoveWorker && (
-                  <button className="wa-link-btn" onClick={() => onRemoveWorker(r.id)}>
-                    <i className="fas fa-trash" style={{ fontSize: 9 }} /> Remove
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── trend lines ── */}
-      <div className="wa-panel wa-trend-panel">
-        <TrendChart rows={rows} />
-      </div>
-    </div>
+      </ChartBox>
+    </>
   );
 }
