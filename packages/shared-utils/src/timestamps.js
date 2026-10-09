@@ -27,7 +27,7 @@ function getKenyaTimeISO() {
             return luxonTime;
     }
     catch (err) {
-        console.error('⚠️ Luxon failed in getKenyaTimeISO:', err.message);
+        console.error(' Luxon failed in getKenyaTimeISO:', err.message);
     }
     // Native fallback
     try {
@@ -47,7 +47,9 @@ function getKenyaTimeISO() {
         return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
     }
     catch (err) {
-        console.error('⚠️ Native TZ fallback failed:', err.message);
+
+        console.error('Native TZ fallback failed:', err.message);
+
     }
     // Manual Kenya time (UTC + 3)
     try {
@@ -58,8 +60,10 @@ function getKenyaTimeISO() {
         return `${kenyaDate.getUTCFullYear()}-${pad(kenyaDate.getUTCMonth() + 1)}-${pad(kenyaDate.getUTCDate())} ${pad(kenyaDate.getUTCHours())}:${pad(kenyaDate.getUTCMinutes())}:${pad(kenyaDate.getUTCSeconds())}`;
     }
     catch (err) {
-        console.error('❌ Manual Kenya fallback failed:', err.message);
+
+        console.error(' Manual Kenya fallback failed:', err.message);
         return new Date().toISOString().replace('T', ' ').split('.')[0];
+
     }
 }
 /**
@@ -67,6 +71,7 @@ function getKenyaTimeISO() {
  */
 function getKenyaTimeFormatted(format = 'dd-LLL-yyyy HH:mm:ss') {
     try {
+        
         return luxon_1.DateTime.now().setZone(DEFAULT_TZ).toFormat(format);
     }
     catch {

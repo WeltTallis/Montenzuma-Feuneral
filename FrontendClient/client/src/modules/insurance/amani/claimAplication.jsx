@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { submitClaim } from '../../../api/insuranceApi';
 
 /**
@@ -290,17 +290,17 @@ const ClaimSubmissionForm = () => {
        properties above still apply to the form and nothing else. */
     const styles = `
     :root {
-            --ink: #293946;
+            --ink: #12233a;
       --bone: #ffffff;
-            --bone2: #f4f7f8;
-            --brass: #92764c;
-            --gray: #697985;
-            --line: #dce4e8;
-            --error-red: #ad5750;
-            --blue-primary: #173c5a;
-            --blue-hover: #102f49;
-            --blue-tick: #547895;
-            --blue-bg: #edf3f7;
+            --bone2: #f5f8fa;
+            --brass: #2b78b8;
+            --gray: #64748b;
+            --line: #d9e3eb;
+            --error-red: #b4524b;
+            --blue-primary: #123e78;
+            --blue-hover: #0d2f5e;
+            --blue-tick: #2b78b8;
+            --blue-bg: #dcecf5;
       --gutter: 96px;
       --gutter-tablet: 64px;
       --gutter-mobile: 32px;
@@ -312,7 +312,7 @@ const ClaimSubmissionForm = () => {
       margin: 0;
       padding: 0;
       background: var(--bone);
-    font-family: 'DM Sans', sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
       color: var(--ink);
       font-size: 15px;
       line-height: 1.5;
@@ -337,7 +337,7 @@ const ClaimSubmissionForm = () => {
       font-size: 8rem;
       font-weight: 800;
       color: rgba(15, 23, 42, 0.02);
-    font-family: 'Cormorant Garamond', serif;
+    font-family: Georgia, 'Times New Roman', serif;
       white-space: nowrap;
       pointer-events: none;
       z-index: 0;
@@ -366,7 +366,7 @@ const ClaimSubmissionForm = () => {
       border-bottom: 1px solid var(--line);
     }
     .hdr-brand {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: Georgia, 'Times New Roman', serif;
       font-size: 0.8rem;
       font-weight: 600;
       letter-spacing: 0.08em;
@@ -394,11 +394,11 @@ const ClaimSubmissionForm = () => {
       letter-spacing: 0.11em;
       text-transform: uppercase;
       color: var(--gray);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: Arial, Helvetica, sans-serif;
       opacity: 0.7;
     }
     .hdr-value {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: Arial, Helvetica, sans-serif;
       font-size: 0.68rem;
       font-weight: 500;
       color: var(--gray);
@@ -411,7 +411,7 @@ const ClaimSubmissionForm = () => {
       background: white;
     }
     .intro-title {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: Georgia, 'Times New Roman', serif;
       font-size: clamp(2.5rem, 5vw, 3.5rem);
       font-weight: 500;
       color: var(--ink);
@@ -431,13 +431,13 @@ const ClaimSubmissionForm = () => {
 
     .checklist-card {
       background: var(--blue-bg);
-      border: 1px solid #dbeafe;
+      border: 1px solid #dcecf5;
       border-radius: 16px;
       padding: 2rem;
       max-width: 800px;
     }
     .checklist-title {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: Arial, Helvetica, sans-serif;
       font-size: 0.75rem;
       font-weight: 600;
       letter-spacing: 0.1em;
@@ -480,11 +480,11 @@ const ClaimSubmissionForm = () => {
       font-size: 0.75rem;
       font-weight: 500;
       color: rgba(255, 255, 255, 0.5);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     .section-title {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: Arial, Helvetica, sans-serif;
       font-size: 0.85rem;
       font-weight: 500;
       letter-spacing: 0.08em;
@@ -513,7 +513,7 @@ const ClaimSubmissionForm = () => {
       text-transform: uppercase;
       color: var(--brass);
       margin-bottom: 0.75rem;
-    font-family: 'DM Sans', sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     }
     .req { color: var(--error-red); }
     .opt { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--gray); font-size: 0.7rem; margin-left: 4px;}
@@ -527,7 +527,7 @@ const ClaimSubmissionForm = () => {
       background: transparent;
       outline: none;
       padding: 0 2.5rem 0.25rem 0;
-    font-family: 'DM Sans', sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
       font-size: 1rem;
       font-weight: 400;
       color: var(--ink);
@@ -610,7 +610,7 @@ const ClaimSubmissionForm = () => {
       height: 40px;
       margin-bottom: 1rem;
       color: var(--blue-primary);
-      background: #dbeafe;
+      background: #dcecf5;
       border-radius: 50%;
       display: grid;
       place-items: center;
@@ -671,7 +671,7 @@ const ClaimSubmissionForm = () => {
       transform: rotate(45deg);
     }
     .confirm-text {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: Georgia, 'Times New Roman', serif;
       font-size: 0.95rem;
       font-weight: 500;
       line-height: 1.5;
@@ -695,7 +695,7 @@ const ClaimSubmissionForm = () => {
       padding: 1rem 2rem;
       font-size: 0.85rem;
       font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -749,7 +749,7 @@ const ClaimSubmissionForm = () => {
       letter-spacing: 0.11em;
       text-transform: uppercase;
       color: var(--gray);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: Arial, Helvetica, sans-serif;
       text-align: center;
       line-height: 1.7;
       margin: 2rem var(--gutter) 0;

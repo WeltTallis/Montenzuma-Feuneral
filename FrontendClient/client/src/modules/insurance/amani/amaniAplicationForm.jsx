@@ -5,19 +5,19 @@ import { CONTACT, GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlan
 import { InsuranceApiError, submitApplication } from '../../../api/insuranceApi';
 
 const AF = {
-  ink: '#293946',
-  inkMuted: '#596b78',
-  inkFaint: '#8997a0',
-  navy: '#173c5a',
-  navyDeep: '#102f49',
-  blue: '#547895',
-  bluePale: '#edf3f7',
-  brass: '#92764c',
-  border: '#dce4e8',
-  error: '#ad5750',
-  success: '#557565',
-  sans: "'DM Sans', system-ui, sans-serif",
-  serif: "'Cormorant Garamond', Georgia, serif",
+  ink: '#12233a',
+  inkMuted: '#64748b',
+  inkFaint: '#94a3b8',
+  navy: '#123e78',
+  navyDeep: '#0d2f5e',
+  blue: '#2b78b8',
+  bluePale: '#dcecf5',
+  brass: '#2b78b8',
+  border: '#d9e3eb',
+  error: '#b4524b',
+  success: '#2f7d68',
+  sans: "Arial, Helvetica, sans-serif",
+  serif: "Georgia, 'Times New Roman', serif",
 };
 
 const getInitialCover = () => {
@@ -567,11 +567,11 @@ export default function AmaniApplicationForm() {
 
     .af-hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
     .af-hdr-label {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      font-family: Arial, Helvetica, sans-serif; font-size: 0.65rem;
       letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
     }
     .af-hdr-value {
-      font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 500;
+      font-family: Arial, Helvetica, sans-serif; font-size: 1rem; font-weight: 500;
       color: var(--af-blue); background: #f3f6f1;
       padding: 0.2rem 0.8rem; border: 1px solid #d7dfd4; border-radius: 4px;
     }
@@ -585,7 +585,7 @@ export default function AmaniApplicationForm() {
       padding: 0.75rem 1.25rem; background: var(--af-blue); border-radius: 4px;
     }
     .af-section-num {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+      font-family: Arial, Helvetica, sans-serif; font-size: 0.75rem;
       font-weight: 500; color: rgba(255, 255, 255, 0.55);
     }
     .af-section-title {
@@ -693,7 +693,7 @@ export default function AmaniApplicationForm() {
   }
     .af-cover-card-hint { font-size: 0.8rem; color: var(--af-gray); line-height: 1.45; }
     .af-cover-card-badge {
-      display: inline-block; margin-top: 0.3rem; font-family: 'JetBrains Mono', monospace;
+      display: inline-block; margin-top: 0.3rem; font-family: Arial, Helvetica, sans-serif;
       font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
       color: #765f3e; background: #f5f0e4; border: 1px solid #e4d8bd;
       border-radius: 3px; padding: 0.15rem 0.45rem; align-self: flex-start;
@@ -708,7 +708,7 @@ export default function AmaniApplicationForm() {
     .af-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
     .af-group-title { font-size: 0.95rem; font-weight: 600; color: ${AF.ink}; }
     .af-group-count {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500;
+      font-family: Arial, Helvetica, sans-serif; font-size: 0.7rem; font-weight: 500;
       letter-spacing: 0.06em; text-transform: uppercase; color: var(--af-blue);
       background: #edf3f7; border: 1px solid #d7e2e9; border-radius: 999px;
       padding: 0.25rem 0.65rem; white-space: nowrap;
@@ -726,7 +726,7 @@ export default function AmaniApplicationForm() {
       margin-bottom: 0.85rem;
     }
     .af-member-num {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      font-family: Arial, Helvetica, sans-serif; font-size: 0.65rem;
       letter-spacing: 0.1em; text-transform: uppercase; color: var(--af-gray);
     }
     .af-member-remove {
@@ -808,7 +808,7 @@ export default function AmaniApplicationForm() {
     .af-btn-ghost:hover { background: #edf3f7; }
 
     .af-record-strip {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      font-family: Arial, Helvetica, sans-serif; font-size: 0.65rem;
       letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
       text-align: center; line-height: 1.7; margin: 2rem var(--af-gutter) 0;
       padding: 0.9rem 1rem 0.4rem; border-top: 1px solid var(--af-line);
