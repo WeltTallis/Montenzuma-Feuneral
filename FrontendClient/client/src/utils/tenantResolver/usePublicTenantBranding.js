@@ -1,19 +1,4 @@
-/**
- * PUBLIC tenant branding for the unauthenticated postmortem portal.
- * =============================================================================
- * The verify page and the results page are PUBLIC routes — they are NOT wrapped
- * in <ProtectedRoute>/<TenantResolver>, so the Zustand tenant store stays null
- * for the family member who opened the link, and localStorage holds nothing
- * either. resolveTenantBranding() therefore has no source to read, which is why
- * both pages used to fall through to a hardcoded placeholder logo.
- *
- * The tenant-service exposes `GET /tenant/:slug/settings` with NO auth
- * middleware (services/tenant-service/server.ts), it returns `logoUrl` /
- * `logo_url`, and the gateway forwards the `tenant` prefix as a pre-auth route
- * — so this works for an anonymous visitor. This hook fetches it with the SAME
- * rule Settings → Organization uses to display the logo, so what the family sees
- * is the exact logo the admin uploaded.
- */
+
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../api/axios';
 import { getTenantSlug } from '../globalAuth';
