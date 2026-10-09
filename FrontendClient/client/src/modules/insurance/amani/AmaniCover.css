@@ -26,9 +26,18 @@
   --ac-ring: #668A9A;
 
   color-scheme: light;
-  background: var(--ac-bg);
+  /* Warm ivory backdrop: a champagne-gold glow top-left and a cool navy wash
+     top-right layered over the base ivory, so the page never reads as flat
+     white. On desktop the washes are fixed, giving subtle depth on scroll. */
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(183, 154, 104, 0.16), rgba(183, 154, 104, 0) 62%),
+    radial-gradient(900px 520px at 100% 0%, rgba(24, 59, 86, 0.10), rgba(24, 59, 86, 0) 58%),
+    var(--ac-bg);
   color: var(--ac-ink);
-  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Body / UI face is now SAIRA — a clean geometric sans. Headings use
+     Fraunces (see .font-serif below). Both are already in the combined
+     Google Fonts import in src/index.css, so no extra network request. */
+  font-family: "Saira", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
@@ -43,11 +52,62 @@
 }
 
 .amani-cover .font-serif {
-  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
 }
 
 .amani-cover .font-sans {
-  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Saira", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Section eyebrow ("Choose your cover", "A gentler process", …) ──────────
+   The dusty-blue on ivory was low-contrast and read grey. This renders the
+   label in the deep navy with a short champagne-gold rule beside it, so every
+   section opens with a premium, high-contrast marker. */
+.amani-cover .ac-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--ac-primary);
+}
+.amani-cover .ac-eyebrow::before {
+  content: "";
+  width: 2rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ac-highlight), rgba(183, 154, 104, 0.15));
+}
+
+/* Gold underline that sits under a section heading. */
+.amani-cover .ac-heading-rule {
+  display: block;
+  width: 3.25rem;
+  height: 3px;
+  margin-top: 1rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ac-highlight), rgba(183, 154, 104, 0.1));
+}
+
+/* Softer, deeper card shadow used by the plan cards so they lift off the warm
+   backdrop instead of sitting flat. */
+.amani-cover .ac-card {
+  box-shadow:
+    0 1px 2px rgba(24, 59, 86, 0.04),
+    0 12px 32px -12px rgba(24, 59, 86, 0.18);
+}
+
+/* A quiet hairline accent along the top of a card, in champagne gold. */
+.amani-cover .ac-card-toprule::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+  border-radius: 2rem 2rem 0 0;
+  background: linear-gradient(90deg, var(--ac-highlight), rgba(183, 154, 104, 0.25));
 }
 
 .amani-cover .amani-fill {
@@ -55,6 +115,35 @@
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+
+/* ==========================================================================
+   BOLD / HIGH-CONTRAST ACCENTS
+   Reusable gold-gradient helpers so the "premium highlight" look is defined
+   once instead of a long Tailwind class string on every element. Kept scoped
+   to .amani-cover so nothing leaks into the rest of the app.
+   ========================================================================== */
+
+/* Champagne-gold gradient clipped to the glyphs — for emphasis words in
+   headings (renders as gold text). */
+.amani-cover .ac-gradient-text {
+  background-image: linear-gradient(100deg, #e7d3a4 0%, #b79a68 55%, #96794a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Gold gradient fill — for the primary / featured buttons. */
+.amani-cover .ac-gold-btn {
+  background-image: linear-gradient(100deg, #dcc28c 0%, #b79a68 55%, #9d8049 100%);
+  color: #102d43;
+}
+
+/* A short gradient rule used as a section divider / eyebrow underline. */
+.amani-cover .ac-rule {
+  background-image: linear-gradient(90deg, #b79a68 0%, rgba(183, 154, 104, 0) 100%);
 }
 
 

@@ -83,23 +83,26 @@ function Hero() {
       {/* Name + buttons — one straight column, hard to the left. */}
       <div className="relative z-10 mx-auto w-full max-w-7xl">
         <div className="max-w-2xl">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/25 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-white backdrop-blur-sm">
+          <p className="inline-flex items-center gap-2 rounded-full border border-ac-highlight/40 bg-black/25 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-ac-highlight shadow-sm shadow-black/20 backdrop-blur-sm">
             <span className="size-1.5 rounded-full bg-ac-highlight" aria-hidden="true" />
             {SW.heroHook}
           </p>
 
-          <p className="mt-5 font-serif text-2xl font-medium leading-snug text-white drop-shadow-sm sm:text-3xl">
-            Montenzuma Monalisa Funeral Home
-            <span className="mt-1.5 block text-base font-normal italic text-white/80 sm:text-lg">
+          <div className="ac-rule mt-5 h-1 w-16 rounded-full" aria-hidden="true" />
+
+          <h1 className="mt-6 font-serif text-[clamp(2.75rem,7vw,5.25rem)] font-semibold leading-[0.98] tracking-tight text-white drop-shadow-lg">
+            Montenzuma Monalisa
+            <span className="block ac-gradient-text">Funeral Home</span>
+            <span className="mt-3 block text-lg font-normal italic leading-snug text-white/85 drop-shadow-sm sm:text-xl">
               Serving Kenyan families with dignity for over 25 years.
             </span>
-          </p>
+          </h1>
 
           {/* Buttons — same straight left edge as the name. */}
-          <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row">
+          <div className="mt-9 flex flex-col items-start gap-4 sm:flex-row">
             <a
               href="#plans"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-white px-8 text-base font-semibold text-ac-primary shadow-xl shadow-black/25 transition-colors hover:bg-white/90"
+              className="ac-gold-btn inline-flex h-14 items-center justify-center gap-2 rounded-xl px-8 text-base font-bold shadow-2xl shadow-black/30 transition-transform hover:-translate-y-0.5 hover:brightness-105"
             >
               Choose a cover
               <ArrowRight className="size-4" aria-hidden="true" />
@@ -116,7 +119,7 @@ function Hero() {
       </div>
 
       {/* The quote — hanging off the bottom edge, clear of the left column. */}
-      <figure className="absolute -bottom-8 left-1/2 z-20 w-[min(92vw,30rem)] -translate-x-1/2 rounded-2xl border border-ac-border bg-ac-card p-4 text-center shadow-2xl shadow-black/20 sm:left-auto sm:right-8 sm:translate-x-0 lg:-bottom-10 lg:right-12">
+      <figure className="ac-card-toprule absolute -bottom-8 left-1/2 z-20 w-[min(92vw,30rem)] -translate-x-1/2 rounded-2xl border border-ac-border bg-ac-card p-4 text-center shadow-2xl shadow-black/20 sm:left-auto sm:right-8 sm:translate-x-0 lg:-bottom-10 lg:right-12">
         <blockquote className="font-serif text-base italic leading-snug text-ac-primary sm:text-lg">
           &ldquo;You may never know when you will need it, but when the unexpected happens, having a plan can make the difference.&rdquo;
         </blockquote>
@@ -135,9 +138,10 @@ function PlanOptions() {
     <section id="plans" className="scroll-mt-20 px-2 py-10 lg:px-10 lg:py-18">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ac-accent">Choose your cover</p>
+          <p className="ac-eyebrow">Choose your cover</p>
           <h2 className="mt-3 font-serif text-3xl font-medium leading-tight text-ac-primary sm:text-4xl">Know the contribution before you apply.</h2>
-          <p className="mt-3 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect.</p>
+          <span className="ac-heading-rule" aria-hidden="true" />
+          <p className="mt-4 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect.</p>
         </div>
         <div className="grid items-stretch gap-5 pt-2 sm:grid-cols-2 xl:grid-cols-4">
           {coverOptions.map((option) => (
@@ -145,8 +149,8 @@ function PlanOptions() {
               key={option.value}
               className={
                 option.value === 'Family'
-                  ? 'relative flex min-h-52 flex-col rounded-2xl bg-ac-primary p-5 shadow-lg shadow-ac-primary/30 transition hover:-translate-y-1 xl:-translate-y-2 xl:hover:-translate-y-3'
-                  : 'relative flex min-h-52 flex-col rounded-2xl bg-ac-card p-3 shadow-sm transition hover:-translate-y-1 hover:border-ac-accent hover:shadow-md'
+                  ? 'ac-card relative flex min-h-52 flex-col rounded-2xl bg-ac-primary p-5 ring-2 ring-ac-highlight/60 transition hover:-translate-y-1 xl:-translate-y-2 xl:hover:-translate-y-3'
+                  : 'ac-card ac-card-toprule relative flex min-h-52 flex-col rounded-2xl border border-ac-border bg-ac-card p-5 transition hover:-translate-y-1 hover:border-ac-accent'
               }
             >
               {option.value === 'Family' && (
@@ -178,7 +182,7 @@ function PlanOptions() {
                 to={`/amani/cover/apply?plan=${encodeURIComponent(option.value)}`}
                 className={
                   option.value === 'Family'
-                    ? 'mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ac-highlight px-4 py-2 text-sm font-semibold text-ac-primary transition-colors hover:bg-ac-highlight/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring'
+                    ? 'ac-gold-btn mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-lg shadow-ac-highlight/30 transition-transform hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring'
                     : 'mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ac-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ac-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ac-ring'
                 }
               >
@@ -204,14 +208,14 @@ function Moments() {
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
+            <p className="ac-eyebrow">
               Why families choose Amani
             </p>
             <h2
               id="moments-title"
               className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary"
             >
-              Because every family deserves to <em className="text-ac-accent">simply be together.</em>
+              Because every family deserves to <em className="ac-gradient-text not-italic">simply be together.</em>
             </h2>
           </div>
           <p className="max-w-sm leading-relaxed text-ac-mutedfg text-pretty">
@@ -300,12 +304,13 @@ function About() {
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
+          <p className="ac-eyebrow">
             A cover born from care
           </p>
           <h2 className="mt-5 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
-            More than a policy. <em className="text-ac-accent">A promise to your family.</em>
+            More than a policy. <em className="ac-gradient-text not-italic">A promise to your family.</em>
           </h2>
+          <span className="ac-heading-rule" aria-hidden="true" />
           <p className="mt-6 text-lg leading-relaxed text-ac-mutedfg text-pretty">
             Amani means peace. For over 25 years, Montenzuma Monalisa Funeral Home has walked
             beside families through loss. Amani Cover is our funeral insurance, built so the
@@ -335,19 +340,20 @@ function HowItWorks() {
         {/* Two columns: the pitch on the left, the numbered rows on the right. */}
         <div className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
+            <p className="ac-eyebrow">
               A gentler process
             </p>
             <h2 className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
               Protection, in three simple steps.
             </h2>
+            <span className="ac-heading-rule" aria-hidden="true" />
             <p className="mt-5 max-w-sm leading-relaxed text-ac-mutedfg">
               You do not have to figure it all out at once. We make every part of your funeral
               cover clear, personal and easy to understand.
             </p>
             <a
               href="#apply"
-              className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-sm font-semibold text-white shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
+              className="ac-gold-btn mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl px-7 text-sm font-bold shadow-lg shadow-ac-highlight/30 transition-transform hover:-translate-y-0.5 hover:brightness-105"
             >
               Explore your options
               <ArrowRight className="size-4" aria-hidden="true" />
@@ -362,7 +368,7 @@ function HowItWorks() {
                 key={step.num}
                 className="grid gap-3 border-b border-ac-border py-6 sm:grid-cols-[64px_1fr] sm:gap-6 lg:grid-cols-[64px_minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center"
               >
-                <span className="font-serif text-2xl italic text-ac-accent">{step.num}</span>
+                <span className="ac-gradient-text font-serif text-3xl font-semibold not-italic">{step.num}</span>
                 <h3 className="font-serif text-2xl leading-snug text-ac-primary">{step.title}</h3>
                 <p className="text-sm leading-6 text-ac-mutedfg">{step.desc}</p>
               </div>

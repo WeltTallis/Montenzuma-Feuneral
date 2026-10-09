@@ -1,3 +1,20 @@
+/* ==========================================================================
+   FONTS — the single source of truth for the whole app.
+   Every Google Font the app uses is requested in ONE combined URL below, so
+   the browser makes a single round-trip instead of one per component. Do NOT
+   add @import url('https://fonts.googleapis.com/...') to any component, CSS
+   module or <style> block: each one is a sequential network request that
+   delays first paint, and duplicates here silently over-fetch.
+   To add a family: extend the list below and delete nothing.
+
+   THIS @import MUST STAY AT THE TOP, ABOVE EVERY RULE (only @charset and
+   @layer may legally precede it). It used to sit below the @theme block,
+   which the CSS spec forbids — the bundler then silently DROPPED it, so no
+   web font ever loaded and the whole app fell back to system fonts.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=DM+Sans:ital,wght@0,300..900;1,300..900&family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Instrument+Sans:wght@400;500;600;700&family=Inter:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Julius+Sans+One&family=Karla:ital,wght@0,400..700;1,400..700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&family=Mr+Dafoe&family=Roboto+Condensed:ital,wght@0,300..700;1,300..700&family=Saira:ital,wght@0,100..900;1,100..900&family=Share+Tech+Mono&family=Source+Sans+3:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@300..700&display=swap');
+
+
 /* Tailwind v4 utility layer (DeceasedSidePanel on the dashboard and other
    components are styled with Tailwind classes, but Tailwind was never
    imported into the app bundle, so every utility class resolved to NOTHING
@@ -52,16 +69,10 @@
 }
 
 
-/* ==========================================================================
-   FONTS — the single source of truth for the whole app.
-   Every Google Font the app uses is requested in ONE combined URL below, so
-   the browser makes a single round-trip instead of one per component. Do NOT
-   add @import url('https://fonts.googleapis.com/...') to any component, CSS
-   module or <style> block: each one is a sequential network request that
-   delays first paint, and duplicates here silently over-fetch.
-   To add a family: extend the list below and delete nothing.
-   ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=DM+Sans:ital,wght@0,300..900;1,300..900&family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Instrument+Sans:wght@400;500;600;700&family=Inter:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Julius+Sans+One&family=Karla:ital,wght@0,400..700;1,400..700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&family=Mr+Dafoe&family=Roboto+Condensed:ital,wght@0,300..700;1,300..700&family=Saira:ital,wght@0,100..900;1,100..900&family=Share+Tech+Mono&family=Source+Sans+3:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@300..700&display=swap');
+/* (The Google Fonts @import that used to sit here was moved to the very top
+   of this file — see the FONTS note above the Tailwind imports. An @import
+   placed after the @theme block is invalid per the CSS spec and the bundler
+   silently drops it, so the web fonts never loaded.) */
 
 
 
