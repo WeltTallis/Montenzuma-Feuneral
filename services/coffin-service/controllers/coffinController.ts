@@ -1,54 +1,16 @@
-﻿
-
-import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
-import { serviceGet, serviceSet, serviceDel, clearServiceCache, registerService } from '@montezuma/shared-services';
-import { publishTask } from '@montezuma/shared-services';
-import CoffinModel from '../models/coffinModel.js';
-import logger from '@montezuma/shared-logger';
-import { Request, Response } from 'express';
-import { coffinQuery } from '../db.js';
+﻿import { Request, Response } from 'express';
 import axios from 'axios';
-
+import CoffinModel from '../models/coffinModel.js';
+import { coffinQuery } from '../db.js';
+import { serviceGet, serviceSet, serviceDel, clearServiceCache } from '@montezuma/shared-services';
+import { publishTask } from '@montezuma/shared-services';
+import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
+import logger from '@montezuma/shared-logger';
 
 const SERVICE_NAME = 'coffin-service';
 const CACHE_TTL = 300; // 5 minutes
 
-// ─── Redis memory budget ────────────────────────────────────────────────
-// Coffin rows are HEAVY: every inventory row carries GROUP_CONCAT(image_url) and
-// coffin bookings embed notes/signature data, so a single cached list is orders
-// of magnitude larger than a typical notification payload.
-//
-// Without this registration getServiceConfig() falls back to the shared DEFAULT
-// of 10MB max / 8MB soft for the WHOLE "coffin-service" namespace. Once a
-// tenant's cached lists crossed that soft limit, checkAndBalance() — which runs
-// after every serviceSet() — started evicting keys by ascending TTL. The entry
-// just written has the LONGEST ttl, so it survived while shorter-lived keys went
-// first, and once the hard limit (85% of max) was reached even TTL'd keys were
-// dropped. Net effect: the cache was written, then immediately evicted, so every
-// request fell through to the database and the Redis hit rate stayed at zero.
-//
-// Raising the ceiling to the 20MB the registerService() cap allows gives the
-// inventory lists room to live for their full TTL. Raise further via
-// REDIS_SERVICE_MAX_MEMORY_MB only if you also raise the cap in registerService().
-const envNum = (v: string | undefined, fallback: number): number => {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-};
-const COFFIN_REDIS_MAX_MB = envNum(process.env.COFFIN_REDIS_MAX_MEMORY_MB, 20);
-const COFFIN_REDIS_SOFT_MB = envNum(
-  process.env.COFFIN_REDIS_SOFT_LIMIT_MB,
-  Math.round(COFFIN_REDIS_MAX_MB * 0.8)
-);
-
-registerService({
-  name: SERVICE_NAME,
-  maxMemoryMB: COFFIN_REDIS_MAX_MB,
-  softLimitMB: COFFIN_REDIS_SOFT_MB,
-  notificationTTL: 86400,
-  balanceTTL: 300,
-});
-
-// ─── Notification Emission via Socket.IO service 
+// ─── Notification Emission via Socket.IO service ────────────────────────
 const SOCKETIO_SERVICE_URL =
   process.env.SOCKETIO_SERVICE_URL ||
   process.env.SOCKETIO_URL ||
@@ -74,26 +36,15 @@ async function emitSocketNotification(event: string, data: any, tenantSlug: stri
 
 // ─── Cache Helpers ──────────────────────────────────────────────────────
 
-// Hit/miss counters. Without these the only way to tell "Redis is down" from
-// "Redis works but the entry keeps getting evicted" was to read docker logs and
-// count "served from Redis" lines by hand. Surfaced on /coffins/health/redis.
-const cacheStats = { hits: 0, misses: 0, writes: 0, clears: 0 };
-
 async function getCached(tenantSlug: string, key: string) {
-  const value = await serviceGet(SERVICE_NAME, tenantSlug, key);
-  if (value === null || value === undefined) cacheStats.misses++;
-  else cacheStats.hits++;
-  return value;
+  return serviceGet(SERVICE_NAME, tenantSlug, key);
 }
 
 async function setCached(tenantSlug: string, key: string, value: any, ttl: number = CACHE_TTL) {
-  const ok = await serviceSet(SERVICE_NAME, tenantSlug, key, value, ttl);
-  if (ok) cacheStats.writes++;
-  return ok;
+  return serviceSet(SERVICE_NAME, tenantSlug, key, value, ttl);
 }
 
 async function clearCoffinCache(tenantSlug: string) {
-  cacheStats.clears++;
   await clearServiceCache(SERVICE_NAME, tenantSlug);
 }
 
@@ -289,32 +240,10 @@ export const getAllCoffins = async (req: Request, res: Response) => {
     const effectiveBranchSlug = String(branchSlug || headerBranchSlug || '');
     const effectiveBranchId = branchId || headerBranchId || null;
 
-    // ─── CACHE — read on EVERY path ────────────────────────────────────────
-    // The frontend ALWAYS sends x-branch-id / x-branch-slug for multi-branch
-    // tenants, and both branch-specific paths below used to `return` BEFORE
-    // reaching the cache lookup at the bottom of this function. The result:
-    // `service:coffin-service:*` keys were never written, so the Inventory
-    // page never produced a cache hit — the Redis "hit rate" only ever showed
-    // BullMQ/notification traffic. One entry per tenant + branch (the tenant is
-    // already part of the Redis key namespace) and create/update/delete wipe
-    // the whole namespace through clearCoffinCache(), so this stays correct.
-    const cacheKey = effectiveBranchId ? `branchCoffins_${effectiveBranchId}` : 'allCoffins';
-
-    const noStore = () => {
+    if (effectiveBranchSlug) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-    };
-
-    const cachedCoffins: any = await getCached(tenantSlug, cacheKey);
-    if (cachedCoffins) {
-      logger.info({ msg: 'Coffins served from Redis', tenantSlug, cacheKey, count: cachedCoffins.length });
-      if (effectiveBranchSlug || effectiveBranchId) noStore();
-      return res.status(200).json({ success: true, data: cachedCoffins, count: cachedCoffins.length });
-    }
-
-    if (effectiveBranchSlug) {
-      noStore();
 
       // All coffin inventory lives in ONE central coffin DB, scoped by tenant slug.
       // A branch slug (x-branch-slug) narrows to the current branch whenever a branch
@@ -343,8 +272,6 @@ export const getAllCoffins = async (req: Request, res: Response) => {
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
-      await setCached(tenantSlug, cacheKey, coffins);
-
       return res.status(200).json({ success: true, data: coffins, count: coffins.length });
     }
 
@@ -363,18 +290,32 @@ export const getAllCoffins = async (req: Request, res: Response) => {
 
       const coffins = rows.map(row => CoffinModel.mapRow(row));
 
-      await setCached(tenantSlug, cacheKey, coffins);
-
       return res.status(200).json({ success: true, data: coffins, count: coffins.length });
     }
 
-    // No branch context at all (single-branch tenants + the dashboard):
-    // whole tenant inventory, already mapped (name, price, stock, ...).
-    // Branch-aware requests were served above — with the cache — so this is
-    // the only path that still needs a DB round trip here.
-    const coffins: any[] = await CoffinModel.getAll(tenantSlug, tenantParam);
+    // Default = MY branch's inventory first (multi-branch tenants send x-branch-id).
+    // Single-branch / no branch context = the whole tenant inventory (tenant_slug).
+    const cacheKey = effectiveBranchId ? `branchCoffins_${effectiveBranchId}` : 'allCoffins';
+    let coffins: any = await getCached(tenantSlug, cacheKey);
 
-    await setCached(tenantSlug, cacheKey, coffins);
+    if (!coffins) {
+      if (effectiveBranchId) {
+        const sql = `
+          SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+            GROUP_CONCAT(ci.image_url) as image_urls
+          FROM coffins c
+          LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
+          WHERE ${tenantClause} AND (c.branch_id = ? OR c.branch_id IS NULL) AND c.is_deleted = FALSE
+          GROUP BY c.coffin_id
+          ORDER BY c.created_at DESC
+        `;
+        const rows: any[] = await coffinQuery(sql, [...tenantParams, String(effectiveBranchId)]);
+        coffins = rows.map(row => CoffinModel.mapRow(row));
+      } else {
+        coffins = await CoffinModel.getAll(tenantSlug, tenantParam); // already mapped (name, price, stock, ...)
+      }
+      await setCached(tenantSlug, cacheKey, coffins);
+    }
 
     return res.status(200).json({ success: true, data: coffins, count: coffins.length });
   } catch (error: any) {
@@ -411,20 +352,6 @@ export const getAllCoffinsAllBranches = async (req: Request, res: Response) => {
       : 'c.tenant_slug = ?';
     const params: any[] = tenantParam ? [String(parentSlug), tenantParam] : [String(parentSlug)];
 
-    // ── REDIS CACHE ─────────────────────────────────────────────────────
-    // The inventory page hits THIS endpoint on every load (the /coffins
-    // fallbacks are already cached — this one was not). The namespace must be
-    // the same tenant slug clearCoffinCache() wipes on every coffin/order write,
-    // so create/update/delete invalidate this key automatically. The key carries
-    // parent_slug + tenant id because the SQL below filters on both.
-    const cacheTenantSlug = (req as any).tenantSlug || String(parentSlug);
-    const cacheKey = `allBranches:${parentSlug}:${tenantParam || 'none'}`;
-    const cachedPayload: any = await getCached(cacheTenantSlug, cacheKey);
-    if (cachedPayload) {
-      logger.info({ msg: 'All-branch coffins served from Redis', tenantSlug: cacheTenantSlug, cacheKey, count: cachedPayload.count });
-      return res.status(200).json(cachedPayload);
-    }
-
     const rows: any[] = await coffinQuery(`
       SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
@@ -444,15 +371,12 @@ export const getAllCoffinsAllBranches = async (req: Request, res: Response) => {
       branch_name: String(parentSlug)
     }));
 
-    const payload = {
+    return res.status(200).json({
       success: true,
       data: allCoffins,
       count: allCoffins.length,
       branches: 1
-    };
-    await setCached(cacheTenantSlug, cacheKey, payload);
-
-    return res.status(200).json(payload);
+    });
   } catch (error: any) {
     logger.error({ msg: 'Get all branch coffins error', parentSlug, error: error.message });
     return res.status(500).json({ success: false, message: error.message });
@@ -517,18 +441,7 @@ export const updateCoffin = async (req: Request, res: Response) => {
       quantity, supplier, origin, color, size, category, currency
     } = (req as any).body;
 
-    // Same tenant/branch context the create + read paths use, so the UPDATE
-    // resolves the same row the inventory list showed.
-    const headerOf = (name: string): string | null => {
-      const v = (req.headers as any)[name];
-      return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
-    };
-    const tenantIdVal = (() => {
-      const v = headerOf('x-tenant-id') || (req as any).tenantId || (req as any).body?.tenant_id || null;
-      return (v != null && String(v).trim() !== '') ? String(v).trim() : null;
-    })();
-
-    const affectedRows = await CoffinModel.update(tenantSlug, id, {
+    await CoffinModel.update(tenantSlug, id, {
       type,
       name,
       material,
@@ -540,19 +453,7 @@ export const updateCoffin = async (req: Request, res: Response) => {
       color,
       size,
       category
-    }, tenantIdVal);
-
-    // 0 rows means the id did not resolve to a coffin this tenant can write.
-    // Previously this fell through to a 200 "updated successfully", so the UI
-    // showed "Added N units" and then re-read the SAME unchanged quantity —
-    // which is exactly the "says out of stock after adding" symptom.
-    if (affectedRows === 0) {
-      logger.warn({ msg: 'Coffin update matched no row', tenantSlug, id, tenantId: tenantIdVal });
-      return res.status(404).json({
-        success: false,
-        message: 'Coffin not found for this branch — the quantity was not changed. Refresh the inventory and try again.'
-      });
-    }
+    });
 
     // Handle new images
     if ((req as any).files && (req as any).files.length > 0) {
@@ -567,9 +468,9 @@ export const updateCoffin = async (req: Request, res: Response) => {
 
     await clearCoffinCache(tenantSlug);
 
-    logger.info({ msg: 'Coffin updated', tenantSlug, id, affectedRows });
+    logger.info({ msg: 'Coffin updated', tenantSlug, id });
 
-    return res.status(200).json({ success: true, message: 'Coffin updated successfully', quantity: quantity !== undefined ? parseInt(quantity) : undefined });
+    return res.status(200).json({ success: true, message: 'Coffin updated successfully' });
   } catch (error: any) {
     logger.error({ msg: 'Update coffin error', tenantSlug, id, error: error.message });
     return res.status(500).json({ success: false, message: error.message });
@@ -721,9 +622,6 @@ export const createOrder = async (req: Request, res: Response) => {
       client_phone: ((req as any).body?.client_phone || '').toString().trim() || null,
       service_time: ((req as any).body?.service_time || '').toString().trim() || null,
       paid: !!((req as any).body?.paid),
-      // Reservation note typed in the "New Reservation" sidebar — must be
-      // persisted or the detail sidebar has nothing to show after refresh.
-      notes: ((req as any).body?.notes || '').toString().trim() || null,
       service_date: service_date || null,
       tenant_id: rTenantId,
       branch_id: rBranchId
@@ -793,57 +691,12 @@ export const getAllOrders = async (req: Request, res: Response) => {
     (req as any).branchId ||
     null;
 
-  // ── Month scoping ──────────────────────────────────────────────────────
-  // The reservations dashboard now fetches ONE month at a time instead of the
-  // whole booking history. `from`/`to` are inclusive ISO dates (YYYY-MM-DD);
-  // without them the endpoint still returns everything, so any other caller
-  // keeps working unchanged.
-  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-  const rawFrom = String(req.query.from ?? '').trim();
-  const rawTo = String(req.query.to ?? '').trim();
-  let fromDate = ISO_DATE.test(rawFrom) ? rawFrom : null;
-  let toDate = ISO_DATE.test(rawTo) ? rawTo : null;
-  // A reversed range (from > to) would silently match nothing; flip it so the
-  // caller still gets the month it asked for.
-  if (fromDate && toDate && fromDate > toDate) {
-    const swap = fromDate; fromDate = toDate; toDate = swap;
-  }
-
   try {
-    // ── REDIS CACHE ─────────────────────────────────────────────────────
-    // The reservations dashboard polls this on every render; it was hitting
-    // MySQL each time. The key carries the branch scope BECAUSE the SQL below
-    // filters on it, and it must equally carry the date range — without the
-    // range in the key, navigating from September to October would serve the
-    // September rows straight out of Redis.
-    // The namespace is the same tenant slug clearCoffinCache() wipes, so
-    // createOrder/updateOrderStatus (and the stock-request paths that
-    // synthesize transfer rows) invalidate this key.
-    const rangeKey = fromDate && toDate ? `:${fromDate}_${toDate}` : '';
-    const cacheKey = `orders:list:branch:${branchId || 'all'}${rangeKey}`;
-    const cachedOrders: any = await getCached(tenantSlug, cacheKey);
-    if (cachedOrders) {
-      logger.info({ msg: 'Orders served from Redis', tenantSlug, cacheKey, count: cachedOrders.length });
-      return res.status(200).json({ success: true, data: cachedOrders, count: cachedOrders.length });
-    }
-
     const params: any[] = [tenantSlug];
     let branchClause = '';
     if (branchId) {
       branchClause = ' AND (cb.branch_id = ? OR cb.branch_id IS NULL)';
       params.push(String(branchId));
-    }
-
-    // Filter on the RAW service_date column, not the DATE_FORMAT() alias in the
-    // SELECT list — comparing a formatted string is both slower and unreliable
-    // across locales. COALESCE(service_date, DATE(created_at)) mirrors the
-    // value the UI actually displays, so a booking with no explicit service
-    // date still lands in the month its creation date falls in rather than
-    // vanishing from the calendar.
-    let dateClause = '';
-    if (fromDate && toDate) {
-      dateClause = ' AND DATE(COALESCE(cb.service_date, cb.created_at)) BETWEEN ? AND ?';
-      params.push(fromDate, toDate);
     }
 
     const sql = `
@@ -852,14 +705,14 @@ export const getAllOrders = async (req: Request, res: Response) => {
              booked_by AS client_name, booked_for AS deceased_name,
              client_phone,
              branch_id,
+             source_request_id,
              status,
              paid,
              DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
              service_time,
-             notes,
              created_at
       FROM coffin_bookings cb
-      WHERE cb.tenant_slug = ?${branchClause}${dateClause}
+      WHERE cb.tenant_slug = ?${branchClause}
       ORDER BY cb.created_at DESC
     `;
 
@@ -870,10 +723,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
     // 'client'), the request must show up in Reservations immediately — not
     // only after delivery. Synthesize pending reservation rows from the
     // branch's OUTGOING stock requests that are still pending/approved. Once
-    // the transfer is delivered, the real coffin_bookings row (created by
-    // createTransferOrder on the delivered action) replaces the synthesized
-    // one: delivered/rejected requests drop out of this query, so a transfer
-    // can never appear twice.
+    // delivered, the linked real coffin_bookings row replaces the synthesized
+    // one. Keeping the request linked to that booking prevents it from being
+    // lost when the transfer action completes.
     try {
       const orgSlugForTransfers = await resolveOrgSlug(tenantSlug);
       const transferParams: any[] = [orgSlugForTransfers, orgSlugForTransfers];
@@ -881,14 +733,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
       if (branchId) {
         transferBranchClause = ' AND sr.to_branch_id = ?';
         transferParams.push(String(branchId));
-      }
-      // Synthesized transfer rows must obey the SAME month window as real
-      // bookings, otherwise navigating to October would still surface a
-      // September transfer as a phantom reservation.
-      let transferDateClause = '';
-      if (fromDate && toDate) {
-        transferDateClause = ' AND DATE(COALESCE(sr.service_date, sr.created_at)) BETWEEN ? AND ?';
-        transferParams.push(fromDate, toDate);
       }
       const transferRows: any[] = await coffinQuery(
         `SELECT sr.request_id, sr.coffin_id, sr.coffin_name, sr.color, sr.size, sr.quantity,
@@ -898,12 +742,12 @@ export const getAllOrders = async (req: Request, res: Response) => {
          FROM stock_requests sr
          WHERE (sr.tenant_slug = ? OR sr.tenant_slug LIKE CONCAT(?, '-%'))
            AND sr.req_type = 'client'
-           AND sr.status IN ('pending', 'approved')${transferBranchClause}${transferDateClause}
+           AND sr.status IN ('pending', 'approved')${transferBranchClause}
          ORDER BY sr.created_at DESC`,
         transferParams
       );
 
-      // Dedupe against real bookings that already exist for the same transfer
+    // Dedupe against real bookings that already exist for the same transfer
       // (e.g. the inter-branch reservation flow creates BOTH a booking and a
       // stock request): same coffin + client + service date = same order.
       const existingKeys = new Set(
@@ -949,8 +793,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
       logger.warn({ msg: 'Could not synthesize pending transfer reservations', tenantSlug, error: transferErr?.message });
     }
 
-    await setCached(tenantSlug, cacheKey, orders);
-
     return res.status(200).json({ success: true, data: orders, count: orders.length });
   } catch (error: any) {
     logger.error({ msg: 'Get all orders error', tenantSlug, error: error.message });
@@ -980,7 +822,6 @@ export const getOrderById = async (req: Request, res: Response) => {
              paid,
              DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
              service_time,
-             notes,
              created_at, updated_at
       FROM coffin_bookings
       WHERE order_id = ? AND tenant_slug = ?
@@ -1290,10 +1131,6 @@ export const createStockRequest = async (req: Request, res: Response) => {
       image_url: imageUrl
     });
 
-    // getAllOrders() synthesizes pending transfer reservations FROM
-    // stock_requests, so a new request must drop the cached orders list.
-    await clearCoffinCache(tenantSlug);
-
     logger.info({ msg: 'Stock request created', tenantSlug, requestId: result.request_id });
 
     // Notify the destination branch that a transfer/stock request was created.
@@ -1442,10 +1279,6 @@ export const updateStockRequestStatus = async (req: Request, res: Response) => {
     const sql = `UPDATE stock_requests SET status = ?, updated_at = NOW() WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`;
     await coffinQuery(sql, [status, id, orgSlug, orgSlug]);
 
-    // Pending transfer reservations in getAllOrders() are derived from
-    // stock_requests — a status change must drop the cached orders list.
-    await clearCoffinCache(tenantSlug);
-
     logger.info({ msg: 'Stock request status updated', tenantSlug, requestId: id, status });
 
     return res.status(200).json({ success: true, message: `Stock request ${status} successfully` });
@@ -1501,8 +1334,10 @@ export const updateStockRequestAction = async (req: Request, res: Response) => {
   try {
     // Fetch the request row first so we know who should be notified on status change.
     const reqRows: any[] = await coffinQuery(
-      `SELECT request_id, coffin_name, quantity, requested_by, requesting_branch,
-              from_branch_id, to_branch_id, from_branch_name, to_branch_name, status
+      `SELECT request_id, tenant_id, coffin_id, coffin_name, color, size, quantity,
+              requested_by, booked_for, requesting_branch, from_branch_id, to_branch_id,
+              from_branch_name, to_branch_name, client_name, client_phone, deceased_name,
+              service_date, notes, req_type, status
        FROM stock_requests WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`,
       [id, orgSlug, orgSlug]
     );
@@ -1510,10 +1345,26 @@ export const updateStockRequestAction = async (req: Request, res: Response) => {
     const sql = `UPDATE stock_requests SET status = ? WHERE request_id = ? AND (tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%'))`;
     await coffinQuery(sql, [status, id, orgSlug, orgSlug]);
 
-    // Pending transfer reservations in getAllOrders() are derived from
-    // stock_requests — an action (approve/reject/delivered) must drop the
-    // cached orders list so the synthesized rows refresh immediately.
-    await clearCoffinCache(tenantSlug);
+    // A delivered client transfer is also a reservation. Create it in the
+    // receiving branch's tenant scope and link it to the request so repeated
+    // clicks are idempotent and the reservation list remains populated.
+    if (status === 'delivered' && String(reqRows[0]?.req_type || '').toLowerCase() === 'client') {
+      const transfer = reqRows[0];
+      await CoffinModel.createTransferOrder(tenantSlug, {
+        source_request_id: transfer.request_id,
+        tenant_id: transfer.tenant_id || (req as any).tenantId || null,
+        branch_id: transfer.to_branch_id || (req as any).branchId || null,
+        coffin_id: transfer.coffin_id,
+        coffin_name: transfer.coffin_name,
+        color: transfer.color,
+        size: transfer.size,
+        quantity: transfer.quantity,
+        client_name: transfer.client_name || transfer.requested_by,
+        booked_for: transfer.deceased_name || transfer.booked_for,
+        client_phone: transfer.client_phone,
+        service_date: transfer.service_date,
+      });
+    }
 
     logger.info({ msg: 'Stock request action applied', tenantSlug, requestId: id, action, status });
 
@@ -1580,39 +1431,4 @@ export const healthCheck = async (req: Request, res: Response) => {
     service: 'coffin-service',
     timestamp: new Date().toISOString()
   });
-};
-
-/**
- * GET /coffins/health/redis — is the Redis cache reachable from THIS container?
- *
- * Inventory reads are cached under `service:coffin-service:tenant:<slug>:*`
- * (see getAllCoffins). When the shared client cannot connect, serviceGet()
- * returns null and the endpoint silently serves from MySQL on every request,
- * which looks exactly like "Redis is not working". This reports the live state.
- */
-export const redisHealthCheck = async (req: Request, res: Response) => {
-  try {
-    const { redisHealth, getServiceConfig } = require('@montezuma/shared-services');
-    const redis = await redisHealth();
-    const total = cacheStats.hits + cacheStats.misses;
-    return res.status(redis.status === 'UP' ? 200 : 503).json({
-      service: SERVICE_NAME,
-      redis,
-      // A 0% hit rate with redis.status === 'UP' means the entry is being
-      // written then evicted (budget too small) or the key namespace is wrong —
-      // not that Redis is unreachable.
-      cache: {
-        ...cacheStats,
-        hitRate: total > 0 ? Math.round((cacheStats.hits / total) * 100) + '%' : 'n/a',
-        budget: getServiceConfig(SERVICE_NAME),
-        ttlSeconds: CACHE_TTL,
-      }
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      service: SERVICE_NAME,
-      redis: { status: 'ERROR', error: error?.message || String(error) },
-      cache: { ...cacheStats }
-    });
-  }
 };

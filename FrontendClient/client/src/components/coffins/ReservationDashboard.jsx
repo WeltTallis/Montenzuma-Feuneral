@@ -265,18 +265,21 @@ export default function ReservationDashboard(props) {
       var date = parseServiceDate(b.service_date); var cn = String(b.coffin_name || '').toLowerCase(); var c = null; var cA = liveCoffins || [];
       for (var i = 0; i < cA.length; i++) { if (String(cA[i].coffin_id || cA[i].id) == b.coffin_id) { c = cA[i]; break; } }
       if (!c && cn) { for (var j = 0; j < cA.length; j++) { if (cA[j].name && String(cA[j].name).toLowerCase() === cn) { c = cA[j]; break; } } }
-      return { id: b.id, clientName: b.client_name || '\u2014', deceasedName: b.deceased_name || '', phone: b.client_phone || b.phone || '', coffinType: (c && c.name) || b.coffin_name || '\u2014', date: date || new Date(), time: b.service_time || extractTime(b.service_date), status: mapStatus(b.status), price: Number(b.coffin_price || b.price || (c ? c.exact_price || c.price : 0) || 0), paid: !!b.paid, notes: b.notes || '', pendingTransfer: !!b.pending_transfer, transferStatus: b.transfer_status || '', sourceRequestId: b.source_request_id || '' };
+      return { id: b.id, clientName: b.client_name || '\u2014', deceasedName: b.deceased_name || '', phone: b.client_phone || b.phone || '', coffinType: (c && c.name) || b.coffin_name || '\u2014', date: date || new Date(), time: b.service_time || extractTime(b.service_date), status: mapStatus(b.status), price: Number(b.coffin_price || b.price || (c ? c.exact_price || c.price : 0) || 0), paid: !!b.paid, notes: b.notes || '', pendingTransfer: !!b.pending_transfer, transferReservation: !!b.pending_transfer || !!b.source_request_id, transferStatus: b.transfer_status || (b.source_request_id ? 'delivered' : ''), sourceRequestId: b.source_request_id || '' };
     }).sort(function (a, b) { return a.date.getTime() - b.date.getTime(); });
   }, [liveBookings, liveCoffins]);
 
-  /* Calendar dots — array of status colors per day */
+  /* Calendar dots — keep a dedicated transfer marker so a requested coffin is
+     impossible to miss even while the synthetic reservation is pending. */
   var perDayDots = useMemo(function () {
     var m = {};
     mapped.forEach(function (b) {
       var k = format(b.date, 'yyyy-MM-dd');
       if (!m[k]) m[k] = [];
       var c = ST[b.status].bar;
-      if (m[k].indexOf(c) === -1) m[k].push(c);
+      var existing = m[k].find(function (dot) { return dot.color === c; });
+      if (existing) existing.transfer = existing.transfer || b.transferReservation;
+      else m[k].push({ color: c, transfer: !!b.transferReservation });
     });
     return m;
   }, [mapped]);
@@ -382,6 +385,7 @@ export default function ReservationDashboard(props) {
     '::-webkit-scrollbar-track{background:transparent}',
     '::-webkit-scrollbar-thumb{background:' + BRD + ';border-radius:4px}',
     '@keyframes cbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}',
+    '@keyframes cbTransferPulse{0%,100%{opacity:1;transform:scale(1);box-shadow:0 0 0 1px rgba(220,38,38,.15)}50%{opacity:.45;transform:scale(.68);box-shadow:0 0 0 4px rgba(220,38,38,.18)}}',
     '@keyframes cbTIn{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}',
     '@keyframes cbTOut{to{opacity:0;transform:translateY(8px)}}',
     '@keyframes cbPanelIn{from{transform:translateX(100%)}to{transform:translateX(0)}}',
@@ -405,7 +409,8 @@ export default function ReservationDashboard(props) {
     '.cb-mc-day.today{font-weight:800;color:' + ACC + ';background:' + ACCLT + '}',
     '.cb-mc-day.selected{background:' + ACC + ';color:#fff;font-weight:700}',
     '.cb-cal-dots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:1.5px}',
-    '.cb-cal-dot{width:3.5px;height:3.5px;border-radius:50%;flex-shrink:0}',
+    '.cb-cal-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0}',
+    '.cb-cal-dot.transfer{width:9px;height:9px;margin-top:-3px;z-index:2;animation:cbTransferPulse 1.35s ease-in-out infinite}',
 
     '.cb-filters{padding:10px 20px;border-bottom:1px solid ' + BRDL + ';display:flex;flex-wrap:wrap;gap:5px}',
     '.cb-fc{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;transition:all .12s;border:1.5px solid ' + BRD + ';background:' + CARD + ';color:' + TX3 + ';user-select:none}',
@@ -602,8 +607,8 @@ export default function ReservationDashboard(props) {
                         {format(day, 'd')}
                         {hasEv && (
                           <span className="cb-cal-dots">
-                            {dayDots.slice(0, 3).map(function (c, i) {
-                              return <span key={i} className="cb-cal-dot" style={{ background: isSel ? 'rgba(255,255,255,.75)' : c }} />;
+                            {dayDots.slice(0, 3).map(function (dot, i) {
+                              return <span key={i} className={'cb-cal-dot' + (dot.transfer ? ' transfer' : '')} style={{ background: isSel ? 'rgba(255,255,255,.9)' : dot.color }} title={dot.transfer ? 'Coffin transfer requested' : undefined} />;
                             })}
                           </span>
                         )}
