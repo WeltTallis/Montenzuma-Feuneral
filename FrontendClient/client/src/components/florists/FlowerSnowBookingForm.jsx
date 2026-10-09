@@ -101,34 +101,24 @@ svg{display:block}
   background:var(--ink);border-radius:3px}
 .section-head .n{font:500 .7rem var(--mono);color:rgba(250,248,244,.42)}
 .section-head .t{font:500 .76rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#FAF8F2}
-/* ── dashed-underline fields ── */
-.frow{display:flex;gap:1.5rem;flex-wrap:wrap}
-.frow>.field{flex:1 1 200px;min-width:0}
-@media(max-width:560px){.frow{flex-direction:column;gap:0}}
-.field{margin-bottom:1.5rem}
+/* ── floating-label fields ── */
+.field{margin-bottom:1.2rem}
 .field:last-child{margin-bottom:0}
-.field>label{display:block;font:600 .68rem var(--sans);letter-spacing:.12em;text-transform:uppercase;
-  color:var(--brass);margin-bottom:.5rem}
+.field label{display:block;font:600 .68rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin-bottom:.4rem}
 .req{color:var(--red)}
-.opt{display:inline;text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint);font-style:italic}
-.inwrap{position:relative;display:flex;align-items:center}
+.opt{display:inline;font:500 .62rem var(--karla);letter-spacing:.06em;text-transform:none;font-style:normal;color:var(--faint)}
+.inwrap{position:relative;display:flex;align-items:center;overflow:hidden}
 .inwrap input,.inwrap select,.inwrap textarea{
-  width:100%;height:2.75rem;background:transparent;border:none;border-radius:0;outline:none;
-  border-bottom:1.5px dashed var(--dash);padding:0 2.1rem .35rem 0;
-  font:400 .95rem var(--sans);color:var(--ink);transition:border-color .2s var(--ease)}
-.inwrap textarea{height:auto;min-height:5.4rem;line-height:1.6;padding-top:.5rem;padding-bottom:1.7rem;resize:vertical}
-.inwrap input:hover,.inwrap select:hover,.inwrap textarea:hover{border-bottom:1.5px solid var(--ink)}
-.inwrap input:focus,.inwrap select:focus,.inwrap textarea:focus{border-bottom:1.5px solid var(--berry)}
-.inwrap ::placeholder{color:var(--faint);font-weight:400}
-.inwrap select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:2.4rem;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%235F584C' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 2px center}
-.inwrap input:disabled{color:var(--faint);cursor:not-allowed;border-bottom-color:var(--line)}
-.field.bad .inwrap input,.field.bad .inwrap select,.field.bad .inwrap textarea{border-bottom:1.5px solid var(--red)}
-.field.bad>label{color:var(--red)}
-.err{display:none;font:500 .75rem var(--sans);color:var(--red);margin:.35rem 0 0}
-.field.bad .err{display:block}
-.autofilled{font:italic 500 .82rem var(--serif);color:var(--faint);margin:.4rem 0 0}
+  width:100%;height:2.6rem;background:transparent;border:0;border-radius:0;outline:0;
+  padding:0 .2rem .35rem 0;flex:1 1 auto;font:inherit;color:var(--ink);
+  min-width:0;transition:none}
+.inwrap textarea{height:auto;min-height:5.2rem;line-height:1.6;padding-top:.5rem;padding-bottom:1.7rem;resize:vertical}
+.inwrap input::placeholder,.inwrap select::placeholder,.inwrap textarea::placeholder{color:transparent}
+.inwrap input:focus,.inwrap select:focus,.inwrap textarea:focus{border:0;background:transparent;box-shadow:0 0 0 3px rgba(169,143,110,.32), 0 0 0 5px rgba(21,23,26,.05)}
+.inwrap select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:2.2rem;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%235F584C' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .85rem center}
+.inwrap select option{background:#fff;color:var(--ink)}
+.inwrap input:disabled,.inwrap select:disabled,.inwrap textarea:disabled{color:var(--faint);cursor:not-allowed}
+@media(max-width:600px){.fbp-panel input,.fbp-panel select,.fbp-panel textarea{font-size:16px}.inwrap input,.inwrap select{height:3rem}}
 .tareawrap{position:relative;width:100%}
 .counter{position:absolute;bottom:.55rem;right:0;font:700 .62rem var(--mono);color:var(--faint)}
 /* verdigris tick badge — appears when the field holds a value */
