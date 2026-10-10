@@ -1,10 +1,11 @@
 package main
 
 import (
-	"context"
-	"strings"
+    "context"
+    "strconv"
+    "strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+    "github.com/jackc/pgx/v5/pgxpool"
 )
 
 func migrate(ctx context.Context, db *pgxpool.Pool) error {
@@ -12,6 +13,7 @@ func migrate(ctx context.Context, db *pgxpool.Pool) error {
 CREATE TABLE IF NOT EXISTS insurance_policies (
   policy_id BIGSERIAL PRIMARY KEY,
   policy_number TEXT NOT NULL UNIQUE,
+  public_code TEXT UNIQUE,
   id_number TEXT NOT NULL,
   tenant_slug TEXT NOT NULL DEFAULT 'system_shared',
   tenant_id BIGINT,
@@ -34,6 +36,9 @@ CREATE TABLE IF NOT EXISTS insurance_policies (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS public_code TEXT;
+UPDATE insurance_policies SET public_code='PC-' || LPAD(policy_id::text,5,'0') WHERE public_code IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS insurance_policies_public_code_idx ON insurance_policies(public_code);
 CREATE TABLE IF NOT EXISTS insurance_policy_members (
   member_id BIGSERIAL PRIMARY KEY,
   policy_id BIGINT NOT NULL REFERENCES insurance_policies(policy_id) ON DELETE CASCADE,
@@ -103,13 +108,16 @@ func normalize(s string) string {
 }
 
 func intVal(v any) int {
-	switch n := v.(type) {
-	case float64:
-		return int(n)
-	case int:
-		return n
-	}
-	return 0
+    switch n := v.(type) {
+    case float64:
+        return int(n)
+    case int:
+        return n
+    case string:
+        parsed, _ := strconv.Atoi(strings.TrimSpace(n))
+        return parsed
+    }
+    return 0
 }
 
 func floatVal(v any) float64 {

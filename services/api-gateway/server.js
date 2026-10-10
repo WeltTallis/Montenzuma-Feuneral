@@ -338,9 +338,15 @@ if ((process.env.TRUST_PROXY || 'false').toString().toLowerCase() === 'true') {
 }
 
 // CORS
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
+const allowedOrigins = [...new Set([
+  'https://restpoint.co.ke',
+  'https://www.restpoint.co.ke',
+  'https://paymontenzuma.restpoint.co.ke',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5174',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) : []),
+])];
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -854,6 +860,10 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
   }
 
   let rewrittenUrl = req.url;
+  // Insurance payment creation, callbacks, and status checks retain their native /insurance prefix.
+  if (firstSegment === 'insurance' && pathParts[1] === 'payments') {
+    rewrittenUrl = req.url;
+  }
   if (firstSegment === 'auth' || firstSegment === 'login' ||
     firstSegment === 'register' || firstSegment === 'logout' ||
     firstSegment === 'refresh' || firstSegment === 'users' ||

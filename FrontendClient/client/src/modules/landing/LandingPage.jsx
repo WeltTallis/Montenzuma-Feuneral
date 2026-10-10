@@ -654,55 +654,6 @@ export default function App() {
 
         <NewsroomSection />
 
-        {/* ── Lock-in CTA ── */}
-        <section className="lockin-section">
-          <div className="lockin-bg" style={{ backgroundImage: "url('/lockin.webp')" }} />
-          <div className="wrap lockin-content">
-            <Reveal>
-              <h2 className="lockin-title">Start using Rest Point.</h2>
-              <p className="lockin-sub">Grief is heavy enough. Running the operations behind it shouldn't be.</p>
-              <p className="lockin-desc">
-                Imagine the modern flow of your home: A family walks in, and instead of drowning in carbon copy paper,
-                they sign admission forms directly on an iPad. At the front desk, they browse real, high-resolution images
-                of floral arrangements on a tablet, select the perfect tribute, and book it instantly no physical
-                catalogs or messy ledgers required. Down the hall, body releases are processed seamlessly on the same screen.
-              </p>
-              <p className="lockin-desc">
-                You step in to provide families with dignity and a seamless send off. Rest Point steps in to power how
-                you do it.
-              </p>
-              <p className="lockin-desc">
-                This is high end technology engineered specifically for the death care industry. We give you the
-                infrastructure to digitize operations, eliminate the paperwork bottleneck, and deliver a flawless,
-                premium experience from the front door to the final farewell.
-              </p>
-              <p className="lockin-sub">Your next case can run on one clear workflow. Start setting up Rest Point today.</p>
-              <div className="lockin-grid">
-                <div className="lockin-card">
-                  <div className="lockin-card-icon"><Layers size={22} color="#4D9B7F" /></div>
-                  <h3>One Platform.</h3>
-                  <p>Case management, smart dispatch, family portals, and front desk tablet booking unified in one secure command center.</p>
-                </div>
-                <div className="lockin-card">
-                  <div className="lockin-card-icon"><ShieldCheck size={22} color="#4D9B7F" /></div>
-                  <h3>Protected Details.</h3>
-                  <p>Every record, document, and digital signature. Paperless, accurate, encrypted, and fully auditable.</p>
-                </div>
-                <div className="lockin-card">
-                  <div className="lockin-card-icon"><Zap size={22} color="#4D9B7F" /></div>
-                  <h3>Move Faster.</h3>
-                  <p>From intake to release, eliminate the manual admin and give your team their time back to focus on what actually matters: care.</p>
-                </div>
-              </div>
-              <button className="btn btn-brass" onClick={goStart} style={{ marginTop: '2.5rem', padding: '0.9rem 2rem', fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                Start your Rest Point setup <ArrowRight size={16} />
-              </button>
-              <p style={{ fontSize: '0.9rem', color: 'rgba(250,248,244,0.5)', marginTop: '1.5rem' }}>
-                Bring your team, your cases, and your families into one place.
-              </p>
-            </Reveal>
-          </div>
-        </section>
 
         <Footer />
         <FloatingCTA />

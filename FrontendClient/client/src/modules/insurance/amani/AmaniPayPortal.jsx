@@ -13,9 +13,8 @@
    plus its type/status/count — never the holder's name, phone, email, group
    members or claims — so this portal cannot be used to look a person up.
 
-   There is no Daraja / Safaricom payment endpoint in this codebase. The portal
-   shows the verified contribution and hands off to the care team instead of
-   pretending to send an M-Pesa prompt or confirm a payment.
+   Payment links and the M-Pesa STK flow are connected to the insurance and
+   M-Pesa services. Payment status is confirmed by the provider callback.
 
    THE AMOUNT IS NOT A GUESS
    This portal used to default every member to a hardcoded KES 2,000 whatever
@@ -39,14 +38,21 @@
      is plain white so the layout reads clean edge-to-edge.
    ========================================================================== */
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { LockKeyhole, Phone, Search, ShieldCheck } from 'lucide-react';
 import { CONTACT, formatPlanAmount, planFor } from './amaniData';
 import { FillImage } from './AmaniUi';
-import { InsuranceApiError, checkCover } from '../../../api/insuranceApi';
+import { InsuranceApiError, checkCover, startPayment, getPaymentStatus, getPaymentLink } from '../../../api/insuranceApi';
 
 const formatKes = (value) => Number(value || 0).toLocaleString('en-KE');
+
+function normalizeKenyanPhone(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (/^0[17]\d{8}$/.test(digits)) return '254' + digits.slice(1);
+  if (/^254[17]\d{8}$/.test(digits)) return digits;
+  return '';
+}
 
 /* How often a member may pay. `months` is how many monthly contributions one
    payment covers. Quarterly is three months at the monthly rate and carries NO
@@ -239,9 +245,26 @@ const PAY_STYLES = `
 `;
 
 export default function AmaniPayPortal() {
+  const { code: paymentCode } = useParams();
   const [idNumber, setIdNumber] = useState('');
   const [status, setStatus] = useState('lookup');
   const [frequency, setFrequency] = useState('monthly');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [paymentState, setPaymentState] = useState('idle');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentDetails, setPaymentDetails] = useState(null);
+  const [paymentError, setPaymentError] = useState('');
+
+  useEffect(() => {
+    if (!paymentCode) return undefined;
+    let active = true;
+    getPaymentLink(paymentCode).then((result) => {
+      if (!active) return;
+      setPolicy({ policyCode: result.publicCode, coverType: result.coverType, monthlyPremium: result.monthlyPremium, coverStatus: result.status, coveredCount: result.coveredCount });
+      setStatus('plan');
+    }).catch((err) => { if (active) { setStatus('lookup'); setError(err?.message || 'This payment link could not be found.'); } });
+    return () => { active = false; };
+  }, [paymentCode]);
 
   /* What cover-check returned for this number. Null until a hit. */
   const [policy, setPolicy] = useState(null);
@@ -254,7 +277,7 @@ export default function AmaniPayPortal() {
      real plan) rather than an invented middle-of-the-road number. */
   const plan = planFor(policy?.coverType);
   const monthsCovered = FREQUENCIES.find((f) => f.value === frequency)?.months || 1;
-  const monthlyRate = plan.monthly;
+  const monthlyRate = Number(policy?.monthlyPremium) || plan.monthly;
   const dueNow = monthlyRate * monthsCovered;
 
   /* ---- lookup: the ONE real call in this component ---- */
@@ -295,10 +318,78 @@ export default function AmaniPayPortal() {
     }
   }
 
+  async function beginPayment(event) {
+    event.preventDefault();
+    const normalizedPhone = normalizeKenyanPhone(phoneNumber);
+    if (!normalizedPhone) {
+      setPaymentError('Enter a valid Kenyan mobile number, such as 0712 345 678.');
+      return;
+    }
+    if (policyInactive) {
+      setPaymentError('Your application must be approved before you can pay.');
+      return;
+    }
+
+    setPaymentState('starting');
+    setPaymentError('');
+    setPaymentReference('');
+    setPaymentDetails(null);
+    try {
+      const result = await startPayment({
+        policyNumber: policy.policyNumber,
+        policyCode: paymentCode || policy.policyCode,
+        phoneNumber: normalizedPhone,
+        months: monthsCovered,
+      });
+      if (!result?.reference) throw new Error('The payment service did not return a payment reference.');
+      setPaymentReference(result.reference);
+      setPaymentDetails(result);
+      setPaymentState('pending');
+    } catch (err) {
+      setPaymentState('idle');
+      setPaymentError(
+        err instanceof InsuranceApiError && err.message
+          ? err.message
+          : 'We could not start the M-Pesa request. Please try again or call ' + CONTACT.phone + '.',
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (paymentState !== 'pending' || !paymentReference) return undefined;
+    let active = true;
+    let attempts = 0;
+    let timer;
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const result = await getPaymentStatus(paymentReference);
+        if (!active) return;
+        setPaymentDetails(result);
+        if (result.status === 'paid') setPaymentState('paid');
+        if (result.status === 'failed') setPaymentState('failed');
+      } catch {
+        // Keep polling through temporary gateway or network errors.
+      }
+      if (attempts >= 75 && timer) clearInterval(timer);
+    };
+    timer = setInterval(poll, 4000);
+    poll();
+    return () => {
+      active = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [paymentReference, paymentState]);
+
   function reset() {
     setStatus('lookup');
     setIdNumber('');
     setFrequency('monthly');
+    setPhoneNumber('');
+    setPaymentState('idle');
+    setPaymentReference('');
+    setPaymentDetails(null);
+    setPaymentError('');
     setPolicy(null);
     setError('');
   }
@@ -308,6 +399,7 @@ export default function AmaniPayPortal() {
   const memberRef = idNumber.length >= 4 ? idNumber.slice(-4) : '';
   const coverLabel = policy ? `Amani ${policy.coverType} Cover` : 'Amani Solo Cover';
   const applicationPending = String(policy?.coverStatus || '').toLowerCase() === 'pending';
+  const policyInactive = policy && String(policy.coverStatus || '').toLowerCase() !== 'active';
 
   return (
     <div className="amani-pay">
@@ -434,7 +526,7 @@ export default function AmaniPayPortal() {
                     {applicationPending ? 'APPLICATION PENDING' : 'PLAN FOUND'}
                   </div>
                   <h2>{applicationPending ? 'Application under review' : 'Contribution details'}</h2>
-                  <p>Review your plan and contribution. Our team can confirm your payment steps.</p>
+                  <p>Review your contribution, then request a secure M-Pesa prompt on your phone.</p>
                 </div>
 
                 <div className="plan-summary plan-summary--large">
@@ -488,22 +580,53 @@ export default function AmaniPayPortal() {
                   </div>
                 </fieldset>
 
-                <div className="payment-contact-card" role="note">
-                  <strong>{applicationPending ? 'Your application is under review' : 'Need to make a contribution?'}</strong>
-                  <p>
-                    {applicationPending
-                      ? 'This application is not active cover yet. Call our team to confirm its status and next steps.'
-                      : 'Online payment is not available here yet. No payment has been taken. Call our team for the current payment steps.'}
-                  </p>
-                  <a className="pay-button" href={CONTACT.phoneHref}>
-                    <Phone size={18} aria-hidden="true" />
-                    Call {CONTACT.phone}
-                  </a>
-                </div>
+                {policyInactive ? (
+                  <div className="payment-contact-card" role="note">
+                    <strong>{applicationPending ? 'Your application is under review' : 'This policy is not active'}</strong>
+                    <p>This application is not active cover yet. Our team must approve it before a contribution can be paid.</p>
+                    <a className="pay-button" href={CONTACT.phoneHref}><Phone size={18} aria-hidden="true" />Call {CONTACT.phone}</a>
+                  </div>
+                ) : paymentState === 'pending' ? (
+                  <div className="payment-contact-card" role="status" aria-live="polite">
+                    <strong>Approve the M-Pesa prompt on your phone</strong>
+                    <p>Enter your M-Pesa PIN to complete this contribution. We are checking for confirmation automatically.</p>
+                    <small>Payment reference: {paymentReference}</small>
+                    {paymentDetails?.receipt && <p>M-Pesa receipt: <strong>{paymentDetails.receipt}</strong></p>}
+                  </div>
+                ) : paymentState === 'paid' ? (
+                  <div className="payment-contact-card" role="status" aria-live="polite">
+                    <strong>Payment received</strong>
+                    <p>Your contribution has been confirmed.</p>
+                    <small>Payment reference: {paymentReference}</small>
+                    {paymentDetails?.receipt && <p>M-Pesa receipt: <strong>{paymentDetails.receipt}</strong></p>}
+                  </div>
+                ) : paymentState === 'failed' ? (
+                  <div className="payment-contact-card" role="alert">
+                    <strong>Payment was not completed</strong>
+                    <p>{paymentDetails?.resultDescription || 'The M-Pesa request was cancelled or could not be completed.'}</p>
+                    <button className="pay-button" type="button" onClick={() => setPaymentState('idle')}>Try again</button>
+                  </div>
+                ) : (
+                  <form className="payment-form" onSubmit={beginPayment}>
+                    <label className="field">
+                      <span>M-Pesa phone number</span>
+                      <input required type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber}
+                        onChange={(event) => setPhoneNumber(event.target.value)}
+                        placeholder="e.g. 0712 345 678" aria-label="M-Pesa phone number"
+                        aria-invalid={Boolean(paymentError)} />
+                    </label>
+                    {paymentError && <p className="pay-error" role="alert">{paymentError}</p>}
+                    <button className="pay-button" type="submit" disabled={paymentState === 'starting'}>
+                      <Phone size={18} aria-hidden="true" />
+                      {paymentState === 'starting' ? 'Requesting M-Pesa prompt…' : 'Pay ' + formatPlanAmount(policy?.coverType, dueNow) + ' with M-Pesa'}
+                    </button>
+                    <p className="form-note">An STK prompt will be sent to this number. Your PIN is entered only on your phone.</p>
+                  </form>
+                )}
 
-                <button className="text-button" type="button" onClick={reset}>
+                {!paymentCode && <button className="text-button" type="button" onClick={reset}>
                   Use a different ID
-                </button>
+                </button>}
               </div>
             )}
 

@@ -15,6 +15,7 @@ const defaultOrigins: string[] = [
   'http://localhost:8080',
   'www.restpoint.co.ke',
   'https://restpoint.co.ke',
+  'https://paymontenzuma.restpoint.co.ke',
   ...getEnvironmentOrigins(),
 ];
 

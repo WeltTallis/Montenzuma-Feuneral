@@ -95,6 +95,7 @@ func main() {
 	mux.Handle("GET /insurance/claims", a.cacheFor(10*time.Second, a.listClaims))
 	mux.HandleFunc("PATCH /insurance/claims/{claimId}/status", a.updateClaim)
 	mux.Handle("GET /insurance/stats", a.cacheFor(15*time.Second, a.stats))
+	mux.HandleFunc("GET /insurance/payment-links/{code}", a.getPaymentLink)
 	mux.HandleFunc("POST /insurance/payments/stk-push", a.stkPush)
 	mux.HandleFunc("POST /insurance/payments/callback", a.paymentCallback)
 	mux.HandleFunc("GET /insurance/payments/{reference}", a.paymentStatus)

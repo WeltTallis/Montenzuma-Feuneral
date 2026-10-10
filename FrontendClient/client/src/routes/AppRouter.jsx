@@ -961,6 +961,7 @@ const AppRouter = () => (
       <Route path="/amani/claims" element={<AmaniClaimsPage />} />
       <Route path="/amani/claims/track" element={<AmaniTrackClaimPage />} />
       <Route path="/amani/payments" element={<AmaniPaymentsPage />} />
+      <Route path="/p/:code" element={<AmaniPaymentsPage />} />
       <Route path="/memorial" element={<MemorialPage />} />
       <Route path="/portal/login" element={<PortalLoginPage />} />
       <Route path="/integrations" element={<UpcomingIntegrations />} />

@@ -35,7 +35,7 @@ function toApiError(err) {
   const status = err?.response?.status ?? 0;
   const data = err?.response?.data ?? {};
   return new InsuranceApiError(
-    data.message || 'Something went wrong. Please try again.',
+    data.message || data.error || 'Something went wrong. Please try again.',
     data.errors || {},
     status,
   );
@@ -78,8 +78,23 @@ export async function submitClaim(payload) {
  */
 export async function checkCover(payload) {
   try {
-    const { data } = await api.post(`${BASE}/cover-check`, {
+    const { data } = await api.post(BASE + '/cover-check', {
       policyNumber: payload?.policyNumber,
+    });
+    return { ...data, found: typeof data.found === 'boolean' ? data.found : Boolean(data.coverType) };
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
+/** Public: send an M-Pesa STK prompt for an active policy contribution. */
+export async function startPayment(payload) {
+  try {
+    const { data } = await api.post(BASE + '/payments/stk-push', {
+      policyNumber: payload?.policyNumber,
+      policyCode: payload?.policyCode,
+      phoneNumber: payload?.phoneNumber,
+      months: payload?.months,
     });
     return data;
   } catch (err) {
@@ -87,6 +102,25 @@ export async function checkCover(payload) {
   }
 }
 
+/** Public: load safe plan details for a payment URL. */
+export async function getPaymentLink(code) {
+  try {
+    const { data } = await api.get(BASE + `/payment-links/${encodeURIComponent(code)}`);
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
+/** Public: read the status of the payment reference returned by startPayment. */
+export async function getPaymentStatus(reference) {
+  try {
+    const { data } = await api.get(BASE + '/payments/' + encodeURIComponent(reference));
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
 /* Public: look up the progress of a claim already filed against a policy.
  *
  * Takes the same policy number as checkCover (the holder's national ID, read
@@ -146,6 +180,9 @@ export const insuranceApi = {
   submitApplication,
   submitClaim,
   checkCover,
+  startPayment,
+  getPaymentStatus,
+  getPaymentLink,
   listPolicies,
   getPolicy,
   listClaims,

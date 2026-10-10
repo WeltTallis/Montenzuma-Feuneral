@@ -23,15 +23,16 @@
    amaniData.js is unchanged and still feeds the landing page, the portal's
    error copy and <AmaniFooter>'s address block.
 
-   THERE IS STILL NO PAYMENT GATEWAY WIRED UP - see the note at the top of
-   AmaniPayPortal.jsx.
+   Payment links use a public PC code and open at /p/:code.
    ========================================================================== */
 
+import { useParams } from 'react-router-dom';
 import { AmaniFooter, AmaniNav, PageHeader } from './AmaniUi';
 import AmaniPayPortal from './AmaniPayPortal';
 import './AmaniCover.css';
 
 export default function AmaniPayments() {
+  const { code } = useParams();
   return (
     <div className="amani-cover">
       <AmaniNav active="/amani/payments" />
@@ -40,7 +41,7 @@ export default function AmaniPayments() {
         eyebrow="Current members"
         title="Check your"
         accent="contribution."
-        intro="Verify your registered cover and monthly contribution. Online payment is not available yet; our team can confirm the current payment steps by phone."
+        intro={code ? "Use your secure Amani payment link to pay this policy by M-Pesa." : "Verify your registered cover and monthly contribution, then pay securely by M-Pesa."}
       />
 
       <main className="px-4 pb-16 pt-10 sm:px-6 lg:px-10 lg:pb-20">
