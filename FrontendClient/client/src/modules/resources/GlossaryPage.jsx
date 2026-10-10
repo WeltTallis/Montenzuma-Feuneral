@@ -188,9 +188,9 @@ const GlossaryPage = () => {
                         }}>
                             {[
                                 {
-                                    title: 'Funeral Welfare Guide',
-                                    desc: 'Complete guide to managing funeral welfare programs',
-                                    path: '/blog/funeral-welfare-management'
+                                    title: 'Future of Death Care',
+                                    desc: 'How modern funeral homes are going fully automated',
+                                    path: '/blog/future-of-death-care-software-restpoint'
                                 },
                                 {
                                     title: 'Templates & Forms',

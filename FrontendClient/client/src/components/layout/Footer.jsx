@@ -585,9 +585,8 @@ const Footer = ({ goTerms }) => {
 
                     <div className="footer-col">
                         <h4>Resources</h4>
-                        <FooterLink onClick={() => handleNav('/blog/funeral-welfare-management')}>Welfare Guide</FooterLink>
-                        <FooterLink onClick={() => handleNav('/blog/bereavement-management')}>Bereavement Ops</FooterLink>
-                        <FooterLink onClick={() => handleNav('/blog/member-contributions')}>Contributions</FooterLink>
+                        <FooterLink onClick={() => handleNav('/blog/future-of-death-care-software-restpoint')}>Future of Death Care</FooterLink>
+                        <FooterLink onClick={() => handleNav('/blog/architecture-of-blooms')}>Architecture of Blooms</FooterLink>
                         <FooterLink onClick={() => handleNav('/templates')}>Free Templates</FooterLink>
                         <FooterLink onClick={() => handleNav('/calculators')}>Calculators</FooterLink>
                     </div>

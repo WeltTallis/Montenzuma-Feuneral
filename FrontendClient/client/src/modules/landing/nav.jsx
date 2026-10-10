@@ -617,9 +617,6 @@ export default function Header() {
   const blogLinks = [
     { label: 'All Stories', path: '/blog/stories' },
     { label: 'The Architecture of Blooms', path: '/blog/architecture-of-blooms' },
-    { label: 'Funeral Welfare, A Modern Guide', path: '/blog/funeral-welfare-management' },
-    { label: 'Member Contributions', path: '/blog/member-contributions' },
-    { label: 'Bereavement Management', path: '/blog/bereavement-management' },
     { label: 'The Future of Death Care', path: '/blog/future-of-death-care-software-restpoint' },
   ];
 

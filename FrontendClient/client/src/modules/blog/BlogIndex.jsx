@@ -44,36 +44,6 @@ const POSTS = [
     excerpt: 'From QR-scanned intake and digital release to hearse self-booking, coffin marketplaces and 24/7 family portals — how modern funeral homes are going fully automated.',
     author: 'Peter Mumo',
   },
-  {
-    to: '/blog/bereavement-management',
-    category: 'Management Guide',
-    read: '12 min read',
-    date: 'January 2026',
-    title: 'Bereavement Management,',
-    accent: 'Done Right.',
-    excerpt: 'Streamline funeral claims, member benefits and welfare programs with modern software — best practices for churches, SACCOs and chamas.',
-    author: 'Restpoint Editorial',
-  },
-  {
-    to: '/blog/member-contributions',
-    category: 'Welfare Guide',
-    read: '10 min read',
-    date: 'February 2026',
-    title: 'Member Contributions,',
-    accent: 'Without the Chaos.',
-    excerpt: 'End cash-handling chaos and keep the welfare fund audit-ready — a practical contribution system for committees of any size.',
-    author: 'Restpoint Editorial',
-  },
-  {
-    to: '/blog/funeral-welfare-management',
-    category: 'Field Guide',
-    read: '8 min read',
-    date: 'March 2026',
-    title: 'Funeral Welfare,',
-    accent: 'A Modern Guide.',
-    excerpt: 'How welfare funds actually work — from member registration to benefit disbursement — and how to run one digitally.',
-    author: 'Restpoint Editorial',
-  },
 ];
 
 const INDEX_CSS = `
