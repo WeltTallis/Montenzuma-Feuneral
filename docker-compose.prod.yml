@@ -546,11 +546,14 @@ services:
       REDIS_ADDR: restpoint_redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       MPESA_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:?Set INSURANCE_CALLBACK_SECRET in production}
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     depends_on:
       insurance-postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - /opt/storage:/opt/storage
     networks:
       - restpoint_network
     healthcheck:
