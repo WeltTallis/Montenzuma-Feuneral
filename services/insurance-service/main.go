@@ -97,7 +97,7 @@ func main() {
 	mux.Handle("GET /insurance/stats", a.cacheFor(15*time.Second, a.stats))
 	mux.HandleFunc("POST /insurance/payments/stk-push", a.stkPush)
 	mux.HandleFunc("POST /insurance/payments/callback", a.paymentCallback)
-	mux.Handle("GET /insurance/payments/{reference}", a.paymentStatus)
+	mux.HandleFunc("GET /insurance/payments/{reference}", a.paymentStatus)
 
 	addr := ":" + env("PORT", "5050")
 	log.Printf("insurance service listening on %s", addr)
