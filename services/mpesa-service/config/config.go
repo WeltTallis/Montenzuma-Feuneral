@@ -20,6 +20,7 @@ type EnvCofig struct {
 	ConsumerSecret string `env:"MPESA_CONSUMER_SECRET,required"`
 	PassKey        string `env:"MPESA_PASSKEY,required"`
 	ShortCode      string `env:"MPESA_SHORTCODE,required"`
+	TillNumber     string `env:"MPESA_TILL_NUMBER"`
 	MpesaUrl       string `env:"MPESA_URL,required"`
 	MPesaTokenUrl  string `env:"MPESA_OAUTH_URL,required"`
 	CallbackUrl    string `env:"CALL_BACK_URL,required"`

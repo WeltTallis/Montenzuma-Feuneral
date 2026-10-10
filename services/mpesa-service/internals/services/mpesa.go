@@ -63,29 +63,38 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
 
     logrus.Infof("Generated callback URL: %s", callbackURL)
 
-    // Determine if we are using a Till or Paybill
-    // For STK Push, BusinessShortCode and PartyB MUST BE EXACTLY THE SAME.
-    shortCode := enConfig.ShortCode
+    // Till vs Paybill wiring (this is what decides 2029 vs prompt):
+    //  - Paybill: MPESA_TILL_NUMBER empty -> CustomerPayBillOnline,
+    //    BusinessShortCode == PartyB == MPESA_SHORTCODE (the paybill).
+    //  - Till (Buy Goods): MPESA_TILL_NUMBER set -> CustomerBuyGoodsOnline,
+    //    BusinessShortCode == MPESA_SHORTCODE (store/head-office that owns the
+    //    passkey), PartyB == MPESA_TILL_NUMBER (the till).
+    // Password is ALWAYS base64(BusinessShortCode + PassKey + Timestamp) where
+    // BusinessShortCode is the store/paybill above -- never the till.
+    businessShortCode := strings.TrimSpace(enConfig.ShortCode)
+    till := strings.TrimSpace(enConfig.TillNumber)
+    if till == "" {
+        till = strings.TrimSpace(os.Getenv("MPESA_TILL_NUMBER"))
+    }
+    partyB := businessShortCode
     transactionType := "CustomerPayBillOnline"
-
-    // If MPESA_TILL_NUMBER is set, we override the shortcode and transaction type
-    if till := strings.TrimSpace(os.Getenv("MPESA_TILL_NUMBER")); till != "" {
-        shortCode = till
+    if till != "" {
+        partyB = till
         transactionType = "CustomerBuyGoodsOnline"
     }
 
-    // Password is generated using the exact ShortCode/Till and Passkey
-    password := utils.GeneratePassword(shortCode, enConfig.PassKey, timeStamp)
+    // Password is generated using the store/paybill ShortCode and Passkey
+    password := utils.GeneratePassword(businessShortCode, enConfig.PassKey, timeStamp)
 
     // request body
     reqPayload := map[string]interface{}{
-        "BusinessShortCode": shortCode, // Must be the same as PartyB
+        "BusinessShortCode": businessShortCode, // store/paybill that owns the passkey
         "Password":          password,
         "Timestamp":         timeStamp,
         "TransactionType":   transactionType,
         "Amount":            request.Amount,
         "PartyA":            request.PhoneNumber,
-        "PartyB":            shortCode, // Must be the same as BusinessShortCode
+        "PartyB":            partyB, // till for BuyGoods, paybill for PayBill
         "PhoneNumber":       request.PhoneNumber,
         "CallBackURL":       callbackURL,
         "AccountReference":  request.AccountReference,
