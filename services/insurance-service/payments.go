@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"os"
@@ -144,6 +145,7 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 		write(w, 500, map[string]any{"error": "Could not start payment"})
 		return
 	}
+	log.Printf("[STK] reference=%s policy=%s phone=%s amount=%.0f", ref, policy, phone, amount)
 	payload, _ := json.Marshal(map[string]any{"Amount": fmt.Sprintf("%.0f", amount), "PhoneNumber": phone, "AccountReference": ref, "TransactionDesc": "Insurance contribution"})
 	req, e := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(env("MPESA_SERVICE_URL", "http://restpoint_mpesa_service:4040"), "/")+"/api/v1/stkpush", strings.NewReader(string(payload)))
 	if e != nil {
@@ -177,6 +179,7 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET merchant_request_id=$1,checkout_request_id=$2,updated_at=now() WHERE reference=$3`, result["MerchantRequestID"], result["CheckoutRequestID"], ref)
+	log.Printf("[STK] sent reference=%s CheckoutRequestID=%v ResponseCode=%v phone=%s", ref, result["CheckoutRequestID"], result["ResponseCode"], phone)
 	result["reference"], result["status"], result["amount"] = ref, "pending", amount
 	write(w, 200, result)
 }
@@ -191,6 +194,7 @@ func (a *app) paymentCallback(w http.ResponseWriter, r *http.Request) {
 		write(w, 400, map[string]any{"error": "Invalid request body"})
 		return
 	}
+	log.Printf("[CALLBACK] received: %v", m)
 	ref := str(m, "AccountReference")
 	if ref == "" {
 		ref = str(m, "reference")

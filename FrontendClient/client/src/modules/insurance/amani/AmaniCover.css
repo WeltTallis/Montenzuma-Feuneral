@@ -1,45 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
 .amani-cover {
-  /* Amani Cover — Funeral Insurance */
-  --ac-primary: #183B56;
-  /* Deep Blue — trust, protection */
-  --ac-primary-hover: #102D43;
-  /* Deeper Blue — hover / active */
-  --ac-ink: #263943;
-  /* Charcoal Blue — primary text */
-  --ac-accent: #668A9A;
-  /* Dusty Blue — secondary actions */
-  --ac-highlight: #B79A68;
-  /* Champagne Gold — dignity / premium accent */
-  --ac-bg: #F6F7F5;
-  /* Soft Ivory — page background */
-  --ac-card: #FFFFFF;
-  /* Clean White — cards / forms */
-  --ac-border: #D9E1E3;
-  /* Cool Mist — borders */
-  --ac-input: #BCCBD1;
-  /* Soft Slate — input borders */
-  --ac-mutedfg: #65757D;
-  /* Slate Gray — secondary text */
-  --ac-onprimary: #FFFFFF;
-  --ac-onaccent: #FFFFFF;
-  --ac-oncard: #263943;
-  --ac-ring: #668A9A;
+  /* Amani Cover — Executive Dignity & Protection */
+  --ac-primary: #0a0a0a;
+  /* Deep Solid Black / Charcoal */
+  --ac-primary-hover: #1a1a1a;
+  --ac-ink: #1a1a1a;
+  /* Charcoal Body Text */
+  --ac-accent: #334155;
+  /* Slate Accent */
+  --ac-highlight: #475569;
+  /* Cool Gray Accent */
+  --ac-bg: #f8fafc;
+  /* Crisp Modern Light Slate BG */
+  --ac-card: #ffffff;
+  /* Pure White */
+  --ac-border: #e2e8f0;
+  /* Subtle, crisp border */
+  --ac-input: #cbd5e1;
+  /* Soft Slate input border */
+  --ac-mutedfg: #64748b;
+  /* Secondary text */
+  --ac-onprimary: #ffffff;
+  --ac-onaccent: #ffffff;
+  --ac-oncard: #1a1a1a;
+  --ac-ring: #0a0a0a;
+  --ac-success: #16a34a;
+  --ac-success-bg: #f0fdf4;
+  --ac-danger: #dc2626;
 
   color-scheme: light;
   background: var(--ac-bg);
   color: var(--ac-ink);
-  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
 }
 
 .amani-cover .font-serif {
-  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-family: 'Merriweather', Georgia, 'Times New Roman', serif;
 }
 
 .amani-cover .font-sans {
-  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .amani-cover .amani-fill {
@@ -48,7 +52,6 @@
   width: 100%;
   height: 100%;
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   .amani-cover {
