@@ -1,4 +1,4 @@
-# PRODUCTION Docker Compose - Single Network Configuration
+﻿# PRODUCTION Docker Compose - Single Network Configuration
 # All internal services run on port 5000
 # All services have health checks and proper dependencies
 
@@ -38,8 +38,8 @@ services:
       # but the `healthcheck` SQL account did not is stuck permanently:
       #     ERROR 1045 (28000): Access denied for user 'healthcheck'@'localhost'
       #     healthcheck innodb_initialized failed
-      # Note the server itself was completely fine — only the PROBE could not
-      # authenticate — yet `condition: service_healthy` on api-gateway then blocked
+      # Note the server itself was completely fine â€” only the PROBE could not
+      # authenticate â€” yet `condition: service_healthy` on api-gateway then blocked
       # the entire stack, including the UI.
       #
       # This probe therefore talks to the server DIRECTLY as root, so it depends on
@@ -124,7 +124,7 @@ services:
       INVOICES_SERVICE_URL: http://restpoint_invoice_service:5000
       COFFIN_SERVICE_URL: http://restpoint_coffin_service:5000
       # Notification REST (bell list / mark-read / delete) is implemented by the
-      # socketio-service — there is no notification-service container in this repo.
+      # socketio-service â€” there is no notification-service container in this repo.
       NOTIFICATION_SERVICE_URL: http://restpoint_socketio_service:5000
       DOCUMENTS_SERVICE_URL: http://restpoint_documents_service:5000
       ANALYTICS_SERVICE_URL: http://restpoint_analytics_service:5000
@@ -229,10 +229,10 @@ services:
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
       - tenant_service_data:/usr/src/app/data
-      # The ONE shared uploads folder — HOST DIRECTORY /opt/storage (bind mount,
+      # The ONE shared uploads folder â€” HOST DIRECTORY /opt/storage (bind mount,
       # host path == container path). Every service writes signatures/logos/
       # documents here and this service serves it to browsers at /uploads/...
-      # NOTE: the host dir must be writable by container uid 1001 — run
+      # NOTE: the host dir must be writable by container uid 1001 â€” run
       # scripts/setup-production-storage.sh (chown -R 1001:1001 /opt/storage).
       - /opt/storage:/opt/storage
     depends_on:
@@ -279,7 +279,7 @@ services:
       # (single source of truth). Bind mount: host == container path.
       - /opt/storage:/opt/storage
       # Legacy mount kept for old code paths that still write to
-      # /usr/src/app/uploads — now redirected INTO the shared storage.
+      # /usr/src/app/uploads â€” now redirected INTO the shared storage.
       - /opt/storage/uploads/_legacy/deceased:/usr/src/app/uploads
     networks:
       - restpoint_network
@@ -358,7 +358,7 @@ services:
     volumes:
       - coffin_service_data:/usr/src/app/data
       # Coffin-service imports @montezuma/shared-services, whose barrel
-      # immediately inits FileStorageService → mkdir /opt/storage/uploads.
+      # immediately inits FileStorageService â†’ mkdir /opt/storage/uploads.
       # Without this mount the non-root container crashes with EACCES.
       # Bind mount to the HOST /opt/storage directory (uid 1001 writable).
       - /opt/storage:/opt/storage
@@ -408,7 +408,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - documents_service_data:/usr/src/app/data
-      # Documents service serves /uploads AND writes to it — use the shared
+      # Documents service serves /uploads AND writes to it â€” use the shared
       # HOST directory /opt/storage (host path == container path)
       - /opt/storage:/opt/storage
       # Legacy mount redirected INTO the shared storage as well
@@ -499,6 +499,7 @@ services:
       DB_SSL_MODE: ${MPESA_DB_SSL_MODE:-disable}
       MPESA_URL: ${MPESA_URL:-https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest}
       MPESA_OAUTH_URL: ${MPESA_OAUTH_URL:-https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials}
+      MPESA_TILL_NUMBER: ${MPESA_TILL_NUMBER:-}
       CALL_BACK_URL: https://restpoint.co.ke/api/v1/restpoint/mpesa/stkcallback
       INSURANCE_CALLBACK_URL: http://restpoint_insurance_service:5050/insurance/payments/callback
       INSURANCE_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:-insurance-mpesa-callback-local}
@@ -533,7 +534,7 @@ services:
     container_name: restpoint_insurance_service
     restart: always
     ports:
-      # Host 3030, NOT 5013 — see the note in docker-compose.yml. This block was
+      # Host 3030, NOT 5013 â€” see the note in docker-compose.yml. This block was
       # copied from socketio-service and kept its `:-5013` default, colliding
       # with socketio on the same host port.
       - '5050:5050'
@@ -571,7 +572,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # NOTE: No notification-service container — and none is needed. The
+  # NOTE: No notification-service container â€” and none is needed. The
   # notification REST endpoints used by the UI bell (list / mark-read / delete)
   # are implemented by the socketio-service below, and the gateway's
   # NOTIFICATION_SERVICE_URL points at that container. Do NOT re-add a
@@ -579,7 +580,7 @@ services:
   # every `docker compose up --build` would fail with
   #   resolve: lstat .../services/notification-service: no such file or directory
 
-  # Mini Store — persistent inventory + stock module. Backed by the operations
+  # Mini Store â€” persistent inventory + stock module. Backed by the operations
   # DB (mini_store_items / mini_store_transactions), so items survive refreshes.
   store-service:
     build:
@@ -665,7 +666,7 @@ services:
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       # The release flow writes the Released status straight into the tenant DB
       # and then pokes deceased-service so its Redis list/detail caches are
-      # invalidated. 5000 is the port INSIDE the container — 5003 is only the
+      # invalidated. 5000 is the port INSIDE the container â€” 5003 is only the
       # host mapping, which is why status updates used to fail silently.
       DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
@@ -677,7 +678,7 @@ services:
     volumes:
       - bodycheckout_service_data:/usr/src/app/data
       # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
-      # (HOST bind mount — host path == container path)
+      # (HOST bind mount â€” host path == container path)
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
@@ -800,7 +801,7 @@ services:
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
       # Flower-sample images go to the SAME host /opt/storage as every other
-      # service (was a separate florist-only volume before — data migrated by
+      # service (was a separate florist-only volume before â€” data migrated by
       # scripts/setup-production-storage.sh)
       - /opt/storage:/opt/storage
     networks:
@@ -961,13 +962,13 @@ services:
     container_name: restpoint_frontend
     restart: always
     ports:
-      # The UI is PINNED to host port 8080 — deliberately NOT configurable.
+      # The UI is PINNED to host port 8080 â€” deliberately NOT configurable.
       # It was previously '${FRONTEND_EXTERNAL_PORT:-8080}:80', and
       # .env.production set FRONTEND_EXTERNAL_PORT=8082, so production served the
       # UI on 8082 while nginx-host.conf reverse-proxies the SPA to
       # http://127.0.0.1:8080. Pinning to 8080 keeps both in sync.
       - '8080:80'
-    # NO depends_on HERE — DELIBERATELY.
+    # NO depends_on HERE â€” DELIBERATELY.
     #
     # An earlier version gated the UI on the gateway:
     #     depends_on: { api-gateway: { condition: service_healthy } }
@@ -979,7 +980,7 @@ services:
     #                        -> frontend waits forever ("Container ... Waiting")
     # The UI is a static nginx bundle that serves index.html and its hashed assets
     # from its own container; it does not need the gateway to answer `GET /`.
-    # Its own Dockerfile already handles an absent gateway correctly — the
+    # Its own Dockerfile already handles an absent gateway correctly â€” the
     # `/monitoring` and `/socket.io` proxy_pass targets go through the
     # `resolver 127.0.0.11` + variable form precisely so nginx does not refuse to
     # start when the gateway is not resolvable yet, and it resolves the name
@@ -987,7 +988,7 @@ services:
     # omitting the block is what makes the UI genuinely independent.
     #
     # Consequence: the SPA is reachable during a backend outage and its own
-    # API calls fail visibly, which is the correct behaviour — far better than
+    # API calls fail visibly, which is the correct behaviour â€” far better than
     # the browser getting connection-refused for the entire application.
     networks:
       - restpoint_network
@@ -1002,13 +1003,13 @@ services:
       # visible because the HOST nginx proxied /uploads/ -> tenant-service;
       # any request that reached this container directly got HTML.
       #
-      # `:ro` — this container only ever READS uploads. Every service that
+      # `:ro` â€” this container only ever READS uploads. Every service that
       # WRITES them mounts /opt/storage read-write instead; keeping the
       # frontend read-only means a compromised web tier cannot delete or
       # overwrite tenant documents.
       #
       # Permissions: files are written by the backend containers as uid 1001
-      # while nginx's workers run as `nginx`, so the tree must be readable —
+      # while nginx's workers run as `nginx`, so the tree must be readable â€”
       # `chmod -R a+rX /opt/storage/uploads` (setup-production-storage.sh).
       # Files that are present but unreadable still resolve through the
       # tenant-service fallback in the nginx config.
@@ -1016,7 +1017,7 @@ services:
     healthcheck:
       # busybox wget, not GNU wget. `nginx:alpine` ships no `wget` package, so
       # `wget` is busybox's, which supports neither `--no-verbose` nor `--tries`
-      # and exited non-zero on every probe — marking a perfectly healthy SPA
+      # and exited non-zero on every probe â€” marking a perfectly healthy SPA
       # `unhealthy`. `-q -O /dev/null` are supported and exit 0 only on a 200.
       test: [ 'CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost/' ]
       interval: 30s
@@ -1056,7 +1057,7 @@ volumes:
     driver: local
   documents_service_data:
     driver: local
-  # NOTE: uploads are NOT a docker named volume anymore — every service
+  # NOTE: uploads are NOT a docker named volume anymore â€” every service
   # bind-mounts the HOST directory /opt/storage (host path == container
   # path), so all tenant uploads (signatures, logos, documents, hearse
   # images, scans, invoices) physically live in /opt/storage on the server.
@@ -1085,3 +1086,4 @@ volumes:
     driver: local
   leave_service_data:
     driver: local
+

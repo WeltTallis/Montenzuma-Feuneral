@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"os"
 
 	"github.com/go-mpesa-integration/config"
 	"github.com/go-mpesa-integration/interfacex"
@@ -67,20 +68,27 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
 	logrus.Infof("Generated callback URL: %s", callbackURL)
 
 	
-	// request body
-	reqPayload := map[string]interface{}{
-		"BusinessShortCode": enConfig.ShortCode,
-		"Password":          password,
-		"Timestamp":         timeStamp,
-		"TransactionType":   "CustomerPayBillOnline",
-		"Amount":            request.Amount,
-		"PartyA":            request.PhoneNumber,
-		"PartyB":            enConfig.ShortCode,
-		"PhoneNumber":       request.PhoneNumber,
-		"CallBackURL":    	 callbackURL,
-		"AccountReference":  request.AccountReference,
-		"TransactionDesc":   request.TransactionDesc,
-	}
+	partyB := enConfig.ShortCode
+transactionType := "CustomerPayBillOnline"
+if till := strings.TrimSpace(os.Getenv("MPESA_TILL_NUMBER")); till != "" {
+	partyB = till
+	transactionType = "CustomerBuyGoodsOnline"
+}
+
+// request body
+reqPayload := map[string]interface{}{
+	"BusinessShortCode": enConfig.ShortCode,
+	"Password":          password,
+	"Timestamp":         timeStamp,
+	"TransactionType":   transactionType,
+	"Amount":            request.Amount,
+	"PartyA":            request.PhoneNumber,
+	"PartyB":            partyB,
+	"PhoneNumber":       request.PhoneNumber,
+	"CallBackURL":       callbackURL,
+	"AccountReference":  request.AccountReference,
+	"TransactionDesc":   request.TransactionDesc,
+}
 	// make a post request to the mpesa api
 
 	url := enConfig.MpesaUrl
@@ -144,3 +152,5 @@ func (s *mpesaService) SaveCallbackRequest(request *model.CallbackRequest)  {
         }
 	}()
 }
+
+
