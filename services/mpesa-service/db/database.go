@@ -28,7 +28,7 @@ func Init(config *config.EnvCofig, DBMigrator func(db *gorm.DB) error) *gorm.DB 
 
 	// URL encoding keeps passwords containing @, :, #, %, or whitespace from
 	// being misparsed by PostgreSQL's keyword/value DSN parser.
-	databaseURI := url.URL{
+	databaseURI := &url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(config.DBUser, config.DBPassword),
 		Host:   net.JoinHostPort(config.DBHost, config.DBPort),
@@ -37,9 +37,10 @@ func Init(config *config.EnvCofig, DBMigrator func(db *gorm.DB) error) *gorm.DB 
 			"sslmode":  {config.DBSSLMode},
 			"timezone": {"UTC"},
 		}.Encode(),
-	}.String()
+	}
+	dsn := databaseURI.String()
 
-	db, err := gorm.Open(postgres.Open(databaseURI), &gorm.Config{
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
