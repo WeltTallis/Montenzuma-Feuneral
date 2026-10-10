@@ -19,6 +19,7 @@ const ChurchFuneralWelfare = lazy(() => import('../modules/landing/ChurchFuneral
 const FuneralHomeSoftware = lazy(() => import('../modules/landing/FuneralHomeSoftware'));
 const OnboardingFlow = lazy(() => import('../modules/onboarding/OnboardingFlow'));
 const InsurancePage = lazy(() => import('../modules/insurance/insurance'));
+const InsuranceDashboard = lazy(() => import('../components/insuranceDashbord/dashBoard'));
 // Amani Cover (Montenzuma Monalisa) — the public funeral-insurance site, split
 // across several routes so no single page becomes a wall of text:
 //   /amani/cover        → landing (what it is + how to apply)
@@ -517,6 +518,13 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
             <Suspense fallback={<RouteLoadingFallback />}>
               <DashboardRoleGate tenantSlug={slug} tenantData={tenantData} />
             </Suspense>
+          </Layout>
+        } />
+
+        {/* Insurance member directory and operations dashboard */}
+        <Route path="insurance" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}>
+            <Suspense fallback={<RouteLoadingFallback />}><InsuranceDashboard /></Suspense>
           </Layout>
         } />
 

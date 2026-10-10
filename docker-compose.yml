@@ -451,12 +451,12 @@ services:
     restart: always
     environment:
       POSTGRES_DB: ${MPESA_DB_NAME:-mpesa}
-      POSTGRES_USER: ${MPESA_DB_USER:-mpesa}
+      POSTGRES_USER: ${MPESA_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
     volumes:
       - mpesa_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${MPESA_DB_USER:-mpesa} -d ${MPESA_DB_NAME:-mpesa}']
+      test: ['CMD-SHELL', 'pg_isready -U ${MPESA_DB_USER:-postgres} -d ${MPESA_DB_NAME:-mpesa}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -479,7 +479,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       DB_HOST: mpesa-postgres
       DB_PORT: 5432
-      DB_USER: ${MPESA_DB_USER:-mpesa}
+      DB_USER: ${MPESA_DB_USER:-postgres}
       DB_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
       DB_NAME: ${MPESA_DB_NAME:-mpesa}
       DB_SSL_MODE: ${MPESA_DB_SSL_MODE:-disable}

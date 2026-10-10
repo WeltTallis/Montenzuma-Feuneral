@@ -6,7 +6,6 @@ import LandingPageSEO from '../seo/LandingPageSEO';
 import Footer from '../../components/layout/Footer';
 import C from '../../utils/colors/index'
 import FloatingCTA from './FloatingCTA';
-import DemoRequestPanel from './DemoRequestPanel';
 import MissionSection from './Mission';
 import SiteNav from './nav';
 import Hero from './hero';
@@ -657,7 +656,6 @@ export default function App() {
 
         <Footer />
         <FloatingCTA />
-        <DemoRequestPanel />
       </main>
     </>
   );
