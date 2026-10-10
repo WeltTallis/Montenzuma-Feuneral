@@ -164,6 +164,12 @@ export async function listClaims(params = {}) {
   return data;
 }
 
+/** Staff: load a complete claim file with policy and contribution history. */
+export async function getClaim(claimId) {
+  const { data } = await api.get(`${BASE}/claims/${encodeURIComponent(claimId)}`);
+  return data;
+}
+
 /** Staff: move a claim along its lifecycle. */
 export async function updateClaimStatus(claimId, status, reviewNotes) {
   const { data } = await api.patch(`${BASE}/claims/${claimId}/status`, { status, reviewNotes });
@@ -173,6 +179,12 @@ export async function updateClaimStatus(claimId, status, reviewNotes) {
 /** Staff: dashboard counts. */
 export async function getStats() {
   const { data } = await api.get(`${BASE}/stats`);
+  return data;
+}
+
+/** Staff: live contribution totals and monthly insurance activity. */
+export async function getAnalytics() {
+  const { data } = await api.get(`${BASE}/analytics`);
   return data;
 }
 
@@ -186,8 +198,10 @@ export const insuranceApi = {
   listPolicies,
   getPolicy,
   listClaims,
+  getClaim,
   updateClaimStatus,
   getStats,
+  getAnalytics,
 };
 
 export default insuranceApi;

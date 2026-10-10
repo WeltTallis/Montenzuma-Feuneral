@@ -203,9 +203,9 @@ const GlossaryPage = () => {
                                     path: '/calculators'
                                 },
                                 {
-                                    title: 'Best Practices',
-                                    desc: 'Learn from successful welfare programs',
-                                    path: '/blog/best-practices'
+                                    title: 'Architecture of Blooms',
+                                    desc: 'Inside the floral marketplace for funeral homes',
+                                    path: '/blog/architecture-of-blooms'
                                 }
                             ].map((resource, idx) => (
                                 <div

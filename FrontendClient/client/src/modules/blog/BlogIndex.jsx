@@ -118,7 +118,7 @@ const BlogIndex = () => {
     <>
       <Helmet>
         <title>Restpoint Journal — Field Notes on Death Care Technology | RestPoint</title>
-        <meta name="description" content="Field notes and deep dives on death care technology: fully automated funeral homes, bereavement management, member contributions and funeral welfare — from the Restpoint team." />
+        <meta name="description" content="Field notes and deep dives on death care technology: fully automated funeral homes and the floral marketplace — from the Restpoint team." />
         <link rel="canonical" href="https://restpoint.co.ke/blog/stories" />
       </Helmet>
 

@@ -93,6 +93,8 @@ func main() {
 	mux.Handle("GET /insurance/policies", a.cacheFor(30*time.Second, a.listPolicies))
 	mux.Handle("GET /insurance/policies/{policyNumber}", a.cacheFor(30*time.Second, a.getPolicy))
 	mux.Handle("GET /insurance/claims", a.cacheFor(10*time.Second, a.listClaims))
+	mux.Handle("GET /insurance/claims/{claimId}", a.cacheFor(10*time.Second, a.claimDetail))
+	mux.Handle("GET /insurance/analytics", a.cacheFor(30*time.Second, a.analytics))
 	mux.HandleFunc("PATCH /insurance/claims/{claimId}/status", a.updateClaim)
 	mux.Handle("GET /insurance/stats", a.cacheFor(15*time.Second, a.stats))
 	mux.HandleFunc("GET /insurance/payment-links/{code}", a.getPaymentLink)
