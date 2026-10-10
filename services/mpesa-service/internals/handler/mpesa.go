@@ -1,4 +1,4 @@
-package handler
+﻿package handler
 
 import (
 	"bytes"
@@ -131,11 +131,17 @@ func (h *MpesaHandler) STKCallback(c *gin.Context) {
     if resultCode == "0" {
         logrus.Infof("STK Push successful. MerchantRequestID: %s, CheckoutRequestID: %s, Amount: %s, MpesaReceiptNumber: %s, TransactionDate: %s, PhoneNumber: %s, OrderID: %s, BusinessNumber: %s",
             merchantRequestID, checkoutRequestID, amount, mpesaReceiptNumber, transactionDate, phoneNumber, orderID, businessNumber)
-        c.JSON(http.StatusOK, gin.H{"message": "STK Push successful"})
     } else {
         // Failure
         logrus.Errorf("STK Push failed. MerchantRequestID: %s, CheckoutRequestID: %s, ResultCode: %s, ResultDesc: %s",
             merchantRequestID, checkoutRequestID, resultCode, resultDesc)
-        c.JSON(http.StatusBadRequest, gin.H{"message": "STK Push failed"})
     }
+
+    // Safaricom expects an HTTP 200 OK and a JSON response with ResultCode 0 for ALL callbacks.
+    c.JSON(http.StatusOK, gin.H{
+        "ResultCode": 0,
+        "ResultDesc": "Accepted",
+    })
 }
+
+

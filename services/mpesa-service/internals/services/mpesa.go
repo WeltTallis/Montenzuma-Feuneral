@@ -46,7 +46,7 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
 
 	//generate timestamps && password
 	timeStamp := utils.GenerateTimeStamp()
-	password := utils.GeneratePassword(enConfig.ShortCode, enConfig.PassKey, timeStamp)
+	// Password will be generated after we determine partyB
 
 
 
@@ -68,12 +68,17 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
 	logrus.Infof("Generated callback URL: %s", callbackURL)
 
 	
+	// Determine if we are using a Till or Paybill
+	// For STK Push, BusinessShortCode and PartyB MUST BE EXACTLY THE SAME.
 	partyB := enConfig.ShortCode
 transactionType := "CustomerPayBillOnline"
 if till := strings.TrimSpace(os.Getenv("MPESA_TILL_NUMBER")); till != "" {
 	partyB = till
 	transactionType = "CustomerBuyGoodsOnline"
 }
+
+	// Password is generated from the Store Number (ShortCode) where the passkey is registered
+	password := utils.GeneratePassword(enConfig.ShortCode, enConfig.PassKey, timeStamp)
 
 // request body
 reqPayload := map[string]interface{}{
@@ -136,6 +141,12 @@ reqPayload := map[string]interface{}{
 
 	//save transaction to db using repository
 
+	request.BusinessShortCode = enConfig.ShortCode
+	request.TransactionType = transactionType
+	request.PartyB = partyB
+	request.CallBackURL = callbackURL
+	request.PartyA = request.PhoneNumber
+
 	if err := s.mpesaRepo.SaveSTKPush(ctx, request, &response); err != nil {
 		logrus.Errorf("Error saving transaction to db: %v", err)
 		return nil, err
@@ -152,5 +163,10 @@ func (s *mpesaService) SaveCallbackRequest(request *model.CallbackRequest)  {
         }
 	}()
 }
+
+
+
+
+
 
 
