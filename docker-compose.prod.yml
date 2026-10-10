@@ -464,7 +464,9 @@ services:
       # The existing production database volume was initialized with the
       # `mpesa` role. Keep the app and the database bootstrap defaults aligned.
       POSTGRES_USER: ${MPESA_DB_USER:-mpesa}
-      POSTGRES_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
+      # Reuse the configured DB_PASSWORD only when the dedicated M-Pesa secret
+      # is absent. Both containers resolve this exact same value.
+      POSTGRES_PASSWORD: ${MPESA_DB_PASSWORD:-${DB_PASSWORD:?Set DB_PASSWORD or MPESA_DB_PASSWORD in .env.production}}
     volumes:
       - mpesa_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -492,7 +494,7 @@ services:
       DB_HOST: mpesa-postgres
       DB_PORT: 5432
       DB_USER: ${MPESA_DB_USER:-mpesa}
-      DB_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
+      DB_PASSWORD: ${MPESA_DB_PASSWORD:-${DB_PASSWORD:?Set DB_PASSWORD or MPESA_DB_PASSWORD in .env.production}}
       DB_NAME: ${MPESA_DB_NAME:-mpesa}
       DB_SSL_MODE: ${MPESA_DB_SSL_MODE:-disable}
       MPESA_URL: ${MPESA_URL:-https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest}
