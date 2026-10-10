@@ -1,11 +1,11 @@
 package main
 
 import (
-    "context"
-    "strconv"
-    "strings"
+	"context"
+	"strconv"
+	"strings"
 
-    "github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func migrate(ctx context.Context, db *pgxpool.Pool) error {
@@ -108,16 +108,16 @@ func normalize(s string) string {
 }
 
 func intVal(v any) int {
-    switch n := v.(type) {
-    case float64:
-        return int(n)
-    case int:
-        return n
-    case string:
-        parsed, _ := strconv.Atoi(strings.TrimSpace(n))
-        return parsed
-    }
-    return 0
+	switch n := v.(type) {
+	case float64:
+		return int(n)
+	case int:
+		return n
+	case string:
+		parsed, _ := strconv.Atoi(strings.TrimSpace(n))
+		return parsed
+	}
+	return 0
 }
 
 func floatVal(v any) float64 {
@@ -126,6 +126,12 @@ func floatVal(v any) float64 {
 }
 
 func truth(v any) bool {
-	b, _ := v.(bool)
-	return b
+	switch value := v.(type) {
+	case bool:
+		return value
+	case string:
+		return strings.EqualFold(strings.TrimSpace(value), "true") || strings.TrimSpace(value) == "1" || strings.EqualFold(strings.TrimSpace(value), "yes")
+	default:
+		return false
+	}
 }

@@ -414,6 +414,8 @@ export default function AmaniApplicationForm() {
         phone: formData.phone,
         email: formData.email,
         cover: formData.cover,
+        coverType: formData.cover,
+        coveredCount: formData.members.length + 1,
         frequency: formData.frequency,
         confirmAccepted: formData.confirmAccepted,
         members: formData.members.map(({ fullName: n, phone: p }) => ({ fullName: n, phone: p })),
