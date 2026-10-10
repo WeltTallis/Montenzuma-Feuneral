@@ -1,4 +1,4 @@
-﻿# PRODUCTION Docker Compose - Single Network Configuration
+# PRODUCTION Docker Compose - Single Network Configuration
 # All internal services run on port 5000
 # All services have health checks and proper dependencies
 
@@ -523,8 +523,8 @@ services:
 
   insurance-service:
     build:
-      context: .
-      dockerfile: services/insurance-service/Dockerfile
+      context: ./services/insurance-service
+      dockerfile: Dockerfile
     image: restpoint-insurance-service:latest
     container_name: restpoint_insurance_service
     restart: always

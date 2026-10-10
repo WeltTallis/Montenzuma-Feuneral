@@ -4,7 +4,6 @@ import NewsroomSection from '../newsroom/NewsroomSection';
 import HardwareRequirementSection from './hardwareRequirement';
 import LandingPageSEO from '../seo/LandingPageSEO';
 import Footer from '../../components/layout/Footer';
-import ModuleGridSection from './imageCard';
 import C from '../../utils/colors/index'
 import FloatingCTA from './FloatingCTA';
 import DemoRequestPanel from './DemoRequestPanel';
@@ -96,21 +95,6 @@ const AnimatedNumber = ({ end, suffix = '', duration = 2000 }) => {
    SHARED COMPONENTS
    --------------------------------------- */
 
-const AppWindow = ({ title, children, dark = false }) => (
-  <div className={`app-window ${dark ? 'dark' : 'light'}`}>
-    <div className="window-header">
-      <div style={{ display: 'flex', gap: '0.4rem' }}>
-        <span className="window-dot" style={{ background: '#FF5F57' }} />
-        <span className="window-dot" style={{ background: '#FEBC2E' }} />
-        <span className="window-dot" style={{ background: '#28C840' }} />
-      </div>
-      <span className="window-title">{title}</span>
-      <div style={{ width: '40px' }} />
-    </div>
-    <div className="window-body">{children}</div>
-  </div>
-);
-
 const Marquee = ({ items, speed = 35 }) => (
   <div className="marquee-strip">
     <div className="marquee-track" style={{ animationDuration: `${speed}s` }}>
@@ -126,48 +110,6 @@ const Marquee = ({ items, speed = 35 }) => (
 /* ---------------------------------------
    MOCK COMPONENTS
    --------------------------------------- */
-const MockDocuments = () => {
-  const docs = [
-    { n: 'Death certificate.pdf', c: C.verdigris, s: 'verified', meta: 'Uploaded 12 Sep · 1.2 MB' },
-    { n: 'Burial permit.pdf', c: C.brass, s: 'pending', meta: 'Awaiting county registry · 410 KB' },
-    { n: 'Police abstract.pdf', c: C.accent, s: 'missing', meta: 'Requested 14 Sep · with next of kin' },
-  ];
-  const verifiedCount = docs.filter((d) => d.s === 'verified').length;
-  return (
-    <div className="mock-inner">
-      <div className="case-head">
-        <div>
-          <div className="mono-label" style={{ color: C.verdigris }}>Case File</div>
-          <div className="case-name">Otieno, J.</div>
-          <div className="case-meta">RP-2481 · Opened 10 Sep · Nairobi</div>
-        </div>
-        <div className="avatar" style={{ background: C.verdigris }}>JO</div>
-      </div>
-      <div className="compliance">
-        <div className="compliance-row"><span>Document compliance</span><span className="compliance-count">{verifiedCount} of {docs.length} verified</span></div>
-        <div className="compliance-track">{docs.map((d, i) => <span key={i} className={`compliance-seg ${d.s}`} />)}</div>
-      </div>
-      <div className="mock-list-header"><span>Document</span><span>Status</span></div>
-      {docs.map((d, i) => (
-        <div key={i} className="mock-row" style={{ borderBottom: i < docs.length - 1 ? `1px solid ${C.line}` : 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <div className="file-icon"><FileText size={16} color={d.c} /></div>
-            <div>
-              <div className="doc-name">{d.n}</div>
-              <div className="doc-meta">{d.meta}</div>
-            </div>
-          </div>
-          <span className={`status-badge ${d.s}`}>{d.s.charAt(0).toUpperCase() + d.s.slice(1)}</span>
-        </div>
-      ))}
-      <div className="doc-actions">
-        <span className="doc-action primary"><FilePlus size={13} /> Request document</span>
-        <span className="doc-action"><Bell size={13} /> Notify family</span>
-      </div>
-    </div>
-  );
-};
-
 const MockDispatch = () => {
   const [distance, setDistance] = useState(38);
   const [rate, setRate] = useState(195);
@@ -660,53 +602,9 @@ export default function App() {
 
         <Marquee items={marqueeItems} />
 
-        <ModuleGridSection />
-
         {/* -- Features -- */}
         <section id="features" className="section">
           <div className="wrap">
-            <Reveal>
-              <div className="features-head">
-                <div className="features-pill"><span className="features-pill-dot" />Platform Features</div>
-                <h2 className="features-heading">Everything you need to operate <em>with dignity</em></h2>
-                <p className="features-sub">From case management to funeral insurance integration, Rest Point provides the tools funeral homes and welfare organizations need to serve families efficiently.</p>
-                <div className="features-trust">
-                  <span>First call to final settlement</span>
-                  <span className="features-trust-sep" />
-                  <span>Verified documents &amp; compliance</span>
-                  <span className="features-trust-sep" />
-                  <span>Families kept informed</span>
-                </div>
-              </div>
-            </Reveal>
-            <Showcase
-              no="01"
-              title="Case management that respects your workflow"
-              desc="Track every detail from first call to final settlement. Rest Point keeps case files organized, documents verified, and families informed."
-              reverse={false}
-              points={[
-                'One timeline for every case, from first call to burial',
-                'Document verification with live compliance tracking',
-                'Automatic family updates at every milestone',
-              ]}
-              cta="Explore case management"
-            >
-              <AppWindow title="restpoint.app/cases"><MockDocuments /></AppWindow>
-            </Showcase>
-            <Showcase
-              no="02"
-              title="Smart dispatch & billing"
-              desc="Optimize hearse routes, calculate costs automatically, and bill with precision. Rest Point turns logistics into a competitive advantage."
-              reverse={true}
-              points={[
-                'Live dispatch board with assigned hearses and drivers',
-                'Transparent, auto-calculated trip costing',
-                'Invoices drafted and linked to the case instantly',
-              ]}
-              cta="Explore dispatch & billing"
-            >
-              <AppWindow title="restpoint.app/dispatch" dark><MockDispatch /></AppWindow>
-            </Showcase>
             <PremiumReporting />
             <Showcase no="03" floral title="The Right Flowers. Right in Front of Them." reverse={false} cta="Discover the floral concierge" desc={
               <>
