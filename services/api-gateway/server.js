@@ -348,22 +348,27 @@ const allowedOrigins = [...new Set([
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) : []),
 ])];
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  // Payment links are opened from tenant subdomains (*.restpoint.co.ke) and
+  // the standalone pay subdomain — both are first-party Restpoint hosts, so
+  // accept any restpoint.co.ke origin (apex or subdomain) even if it was
+  // never added to ALLOWED_ORIGINS. Everything else is still rejected in
+  // production so the allowlist keeps its meaning.
+  try {
+    const hostname = new URL(origin).hostname.toLowerCase();
+    if (hostname === 'restpoint.co.ke' || hostname.endsWith('.restpoint.co.ke')) {
+      return true;
+    }
+  } catch (e) { /* malformed Origin -> fall through to reject */ }
+  if (process.env.NODE_ENV !== 'production') return true;
+  return false;
+}
+
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    // Payment links are opened from tenant subdomains (*.restpoint.co.ke) and
-    // the standalone pay subdomain — both are first-party Restpoint hosts, so
-    // accept any restpoint.co.ke origin (apex or subdomain) even if it was
-    // never added to ALLOWED_ORIGINS. Everything else is still rejected in
-    // production so the allowlist keeps its meaning.
-    try {
-      const hostname = new URL(origin).hostname.toLowerCase();
-      if (hostname === 'restpoint.co.ke' || hostname.endsWith('.restpoint.co.ke')) {
-        return callback(null, true);
-      }
-    } catch (e) { /* malformed Origin -> fall through to reject */ }
-    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+    if (isAllowedOrigin(origin)) return callback(null, true);
     callback(null, false);
   },
   credentials: true,
@@ -756,7 +761,7 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
         proxyRes: (proxyRes, req, res) => {
           Logger.debug(`[PROXY] ${req.method} ${req.originalUrl} → ${proxyRes.statusCode}`);
           const origin = req.headers.origin;
-          if (origin && allowedOrigins.includes(origin)) {
+          if (origin && isAllowedOrigin(origin)) {
             proxyRes.headers['Access-Control-Allow-Origin'] = origin;
             proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
             if (proxyRes.headers['Access-Control-Allow-Origin'] === '*') {
@@ -827,6 +832,11 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
 
           Logger.error(`[PROXY ERROR] ${req.method} ${req.originalUrl}: ${err.message}`);
           if (!res.headersSent) {
+            const origin = req.headers.origin;
+            if (origin && isAllowedOrigin(origin)) {
+              res.setHeader('Access-Control-Allow-Origin', origin);
+              res.setHeader('Access-Control-Allow-Credentials', 'true');
+            }
             const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
             const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
 
