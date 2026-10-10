@@ -10,7 +10,7 @@ import DemoRequestPanel from './DemoRequestPanel';
 import MissionSection from './Mission';
 import SiteNav from './nav';
 import Hero from './hero';
-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, FileText, MapPin, Truck, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, LifeBuoy, FilePlus, Bell } from '../../utils/icons/icons';
+import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, LifeBuoy } from '../../utils/icons/icons';
 import PremiumReporting from './PremiumReporting';
 
 /* 
@@ -110,43 +110,6 @@ const Marquee = ({ items, speed = 35 }) => (
 /* ---------------------------------------
    MOCK COMPONENTS
    --------------------------------------- */
-const MockDispatch = () => {
-  const [distance, setDistance] = useState(38);
-  const [rate, setRate] = useState(195);
-  const BASE_FARE = 2500;
-  const MILEAGE_RATE = 85;
-  const mileage = distance * MILEAGE_RATE;
-  const fuel = Math.round((distance / 12) * rate);
-  const total = BASE_FARE + mileage + fuel;
-  return (
-    <div className="mock-inner">
-      <div className="case-head">
-        <div>
-          <div className="mono-label" style={{ color: C.brassLight }}>Smart Dispatch</div>
-          <div className="case-name" style={{ color: C.bone }}>Route Optimization</div>
-          <div className="case-meta" style={{ color: C.grayLight }}>Hearse KDA 471B · Mortuary → service venue</div>
-        </div>
-        <div className="live-chip"><span className="live-dot" />3 units on route</div>
-      </div>
-      <div className="map-visual"><div className="map-pin"><MapPin size={16} color={C.bone} /></div><div className="map-line" /><div className="map-pin" style={{ background: C.accent }}><MapPin size={16} color={C.bone} /></div><div className="map-truck"><Truck size={20} color={C.brass} /></div></div>
-      <div className="slider-group"><div className="slider-row"><span>Distance (km)</span><span className="slider-value">{distance}</span></div><input type="range" min="2" max="120" value={distance} onChange={(e) => setDistance(+e.target.value)} className="custom-range" /></div>
-      <div className="slider-group"><div className="slider-row"><span>Fuel rate (KES/L)</span><span className="slider-value">{rate}</span></div><input type="range" min="150" max="250" value={rate} onChange={(e) => setRate(+e.target.value)} className="custom-range" /></div>
-      <div className="cost-lines">
-        <div className="cost-line"><span>Base fare</span><span>KES {BASE_FARE.toLocaleString()}</span></div>
-        <div className="cost-line"><span>Mileage · {distance} km × KES {MILEAGE_RATE}</span><span>KES {mileage.toLocaleString()}</span></div>
-        <div className="cost-line"><span>Fuel estimate · {distance} km</span><span>KES {fuel.toLocaleString()}</span></div>
-      </div>
-      <div className="dispatch-footer">
-        <div>
-          <div className="billed-label">Auto-billed to Case RP-2481</div>
-          <div className="billed-sub">Invoice drafted in real time</div>
-        </div>
-        <span className="cost-value">KES {total.toLocaleString()}</span>
-      </div>
-    </div>
-  );
-};
-
 /* -- Floral Preview -- */
 const FLP_FLOWERS = [
   {

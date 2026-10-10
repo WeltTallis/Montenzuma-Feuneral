@@ -462,7 +462,7 @@ services:
     environment:
       POSTGRES_DB: ${MPESA_DB_NAME:-mpesa}
       POSTGRES_USER: ${MPESA_DB_USER:-mpesa}
-      POSTGRES_PASSWORD: ${MPESA_DB_PASSWORD:?Set MPESA_DB_PASSWORD in production}
+      POSTGRES_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
     volumes:
       - mpesa_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -490,14 +490,14 @@ services:
       DB_HOST: mpesa-postgres
       DB_PORT: 5432
       DB_USER: ${MPESA_DB_USER:-mpesa}
-      DB_PASSWORD: ${MPESA_DB_PASSWORD:?Set MPESA_DB_PASSWORD in production}
+      DB_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
       DB_NAME: ${MPESA_DB_NAME:-mpesa}
       DB_SSL_MODE: ${MPESA_DB_SSL_MODE:-disable}
       MPESA_URL: ${MPESA_URL:-https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest}
       MPESA_OAUTH_URL: ${MPESA_OAUTH_URL:-https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials}
       CALL_BACK_URL: https://restpoint.co.ke/api/v1/restpoint/mpesa
       INSURANCE_CALLBACK_URL: http://restpoint_insurance_service:5050/insurance/payments/callback
-      INSURANCE_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:?Set INSURANCE_CALLBACK_SECRET in production}
+      INSURANCE_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:-insurance-mpesa-callback-local}
     depends_on:
       mpesa-postgres:
         condition: service_healthy
@@ -510,7 +510,7 @@ services:
     environment:
       POSTGRES_DB: ${INSURANCE_PG_DATABASE:-insurance}
       POSTGRES_USER: ${INSURANCE_PG_USER:-insurance}
-      POSTGRES_PASSWORD: ${INSURANCE_PG_PASSWORD:?Set INSURANCE_PG_PASSWORD in production}
+      POSTGRES_PASSWORD: ${INSURANCE_PG_PASSWORD:-40045355insurace}
     volumes:
       - insurance_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -541,11 +541,11 @@ services:
       PGPORT: 5432
       PGDATABASE: ${INSURANCE_PG_DATABASE:-insurance}
       PGUSER: ${INSURANCE_PG_USER:-insurance}
-      PGPASSWORD: ${INSURANCE_PG_PASSWORD:?Set INSURANCE_PG_PASSWORD in production}
+      PGPASSWORD: ${INSURANCE_PG_PASSWORD:-40045355insurace}
       MPESA_SERVICE_URL: http://restpoint_mpesa_service:4040
       REDIS_ADDR: restpoint_redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
-      MPESA_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:?Set INSURANCE_CALLBACK_SECRET in production}
+      MPESA_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:-insurance-mpesa-callback-local}
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     depends_on:
       insurance-postgres:
