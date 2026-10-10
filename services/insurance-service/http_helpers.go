@@ -18,6 +18,9 @@ func body(r *http.Request) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if v == nil {
+		return make(map[string]any), nil
+	}
 	if _, ok := v["phone"]; !ok {
 		for _, key := range []string{"phoneNumber", "mobileNumber"} {
 			if value, exists := v[key]; exists {
