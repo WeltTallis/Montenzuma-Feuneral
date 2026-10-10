@@ -1,4 +1,4 @@
-﻿# PRODUCTION Docker Compose - Single Network Configuration
+# PRODUCTION Docker Compose - Single Network Configuration
 # All internal services run on port 5000
 # All services have health checks and proper dependencies
 
@@ -485,7 +485,7 @@ services:
       DB_SSL_MODE: ${MPESA_DB_SSL_MODE:-disable}
       MPESA_URL: ${MPESA_URL:-https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest}
       MPESA_OAUTH_URL: ${MPESA_OAUTH_URL:-https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials}
-      CALL_BACK_URL: https://restpoint.co.ke/api/v1/restpoint/mpesa
+      CALL_BACK_URL: https://restpoint.co.ke/api/v1/restpoint/mpesa/stkcallback
       INSURANCE_CALLBACK_URL: http://restpoint_insurance_service:5050/insurance/payments/callback
       INSURANCE_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:-}
     depends_on:

@@ -1,0 +1,443 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
+:root {
+  --amani-black: #0a0a0a;
+  --amani-dark: #1a1a1a;
+  --amani-mid: #444444;
+  --amani-gray: #777777;
+  --amani-light-gray: #cbd5e1;
+  --amani-border: #e0e0e0;
+  --amani-border-light: #f1f5f9;
+  --amani-bg-field: #f7f7f5;
+  --amani-bg-section: #f9fafb;
+  --amani-white: #ffffff;
+  --amani-danger: #dc2626;
+  --amani-success: #16a34a;
+  --amani-success-bg: #f0fdf4;
+}
+
+.amani-split-page {
+  font-family: 'Source Sans 3', sans-serif;
+  color: var(--amani-dark);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  width: 100vw;
+  background: var(--amani-white);
+  display: flex;
+}
+
+.amani-split-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+}
+
+/* ─── LEFT BRANDING PANEL ─── */
+.amani-brand-panel {
+  flex: 1;
+  background: var(--amani-black);
+  background-image: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.03) 0%, transparent 40%);
+  color: var(--amani-white);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid #333;
+}
+
+.amani-brand-logo h1 {
+  font-family: 'Merriweather', serif;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.amani-brand-logo span {
+  font-size: 12px;
+  color: var(--amani-light-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  display: block;
+  margin-top: 4px;
+}
+
+.amani-brand-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.amani-brand-quote {
+  font-family: 'Merriweather', serif;
+  font-size: 34px;
+  line-height: 1.4;
+  max-width: 85%;
+  color: #ffffff;
+}
+
+.amani-brand-sub {
+  margin-top: 24px;
+  font-size: 16px;
+  color: var(--amani-light-gray);
+  max-width: 70%;
+  line-height: 1.6;
+}
+
+.amani-brand-footer {
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.amani-security-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #999;
+}
+
+/* ─── RIGHT ACTION PANEL ─── */
+.amani-action-panel {
+  flex: 1;
+  background: var(--amani-white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 32px;
+  position: relative;
+  overflow-y: auto;
+}
+
+.amani-action-container {
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+}
+
+.amani-state-section {
+  display: block;
+  animation: amaniFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes amaniFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.amani-status-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amani-gray);
+  margin-bottom: 16px;
+  display: block;
+}
+
+.amani-amount-due {
+  font-family: 'Merriweather', serif;
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--amani-black);
+  margin-bottom: 8px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.amani-policy-info {
+  font-size: 15px;
+  color: var(--amani-mid);
+  margin-bottom: 32px;
+}
+
+/* ─── FORM CONTROLS ─── */
+.amani-input-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.amani-input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--amani-mid);
+  margin-bottom: 6px;
+}
+
+.amani-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-family: 'Source Sans 3', sans-serif;
+  border: 1px solid var(--amani-border);
+  background: var(--amani-bg-field);
+  border-radius: 4px;
+  color: var(--amani-dark);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  outline: none;
+}
+
+.amani-input:focus {
+  border-color: var(--amani-black);
+  background: #ffffff;
+}
+
+.amani-duration-pill-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.amani-pill-btn {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px solid var(--amani-border);
+  background: var(--amani-bg-field);
+  color: var(--amani-mid);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.amani-pill-btn.active {
+  background: var(--amani-black);
+  color: var(--amani-white);
+  border-color: var(--amani-black);
+}
+
+/* ─── BUTTONS ─── */
+.amani-btn {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  border: 1px solid var(--amani-border);
+  background: var(--amani-white);
+  color: var(--amani-dark);
+  transition: 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'Source Sans 3', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.amani-btn:hover:not(:disabled) {
+  background: var(--amani-bg-field);
+  border-color: var(--amani-gray);
+}
+
+.amani-btn-primary {
+  background: var(--amani-black);
+  color: var(--amani-white);
+  border-color: var(--amani-black);
+}
+
+.amani-btn-primary:hover:not(:disabled) {
+  background: var(--amani-dark);
+}
+
+.amani-btn-success {
+  background: var(--amani-success);
+  color: var(--amani-white);
+  border-color: var(--amani-success);
+}
+
+.amani-btn-success:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.amani-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.amani-error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: var(--amani-danger);
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+/* ─── PROCESSING STATE ─── */
+.amani-spinner-container {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 32px;
+  position: relative;
+}
+
+.amani-spinner {
+  width: 100%;
+  height: 100%;
+  border: 3px solid var(--amani-border-light);
+  border-top-color: var(--amani-black);
+  border-radius: 50%;
+  animation: amaniSpin 0.8s linear infinite;
+}
+
+@keyframes amaniSpin {
+  to { transform: rotate(360deg); }
+}
+
+.amani-processing-title {
+  font-family: 'Merriweather', serif;
+  font-size: 28px;
+  color: var(--amani-black);
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.amani-processing-text {
+  font-size: 16px;
+  color: var(--amani-mid);
+  line-height: 1.6;
+  margin-bottom: 32px;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.amani-phone-placeholder {
+  font-weight: 700;
+  color: var(--amani-black);
+  border-bottom: 2px solid var(--amani-black);
+  padding-bottom: 2px;
+}
+
+.amani-ref-subtext {
+  font-size: 12px;
+  color: var(--amani-gray);
+  margin-top: 14px;
+}
+
+/* ─── SUCCESS STATE ─── */
+.amani-success-icon-wrap {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--amani-success);
+  border-radius: 50%;
+  background: var(--amani-success-bg);
+}
+
+.amani-checkmark {
+  width: 40px;
+  height: 40px;
+  stroke: var(--amani-success);
+  stroke-width: 4;
+  fill: none;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: amaniDraw 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+@keyframes amaniDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+.amani-success-title {
+  font-family: 'Merriweather', serif;
+  font-size: 32px;
+  color: var(--amani-black);
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.amani-success-text {
+  font-size: 16px;
+  color: var(--amani-mid);
+  line-height: 1.6;
+  margin-bottom: 36px;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.amani-receipt-box {
+  background: var(--amani-bg-section);
+  border: 1px solid var(--amani-border-light);
+  padding: 24px;
+  border-radius: 4px;
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.amani-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--amani-border-light);
+}
+
+.amani-receipt-row:last-child {
+  border-bottom: none;
+}
+
+.amani-receipt-label {
+  color: var(--amani-gray);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.amani-receipt-value {
+  color: var(--amani-black);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.amani-cancel-link {
+  background: none;
+  border: none;
+  color: var(--amani-gray);
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 16px;
+  display: inline-block;
+}
+
+.amani-cancel-link:hover {
+  color: var(--amani-black);
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  .amani-split-layout {
+    flex-direction: column;
+  }
+  .amani-brand-panel {
+    display: none;
+  }
+  .amani-action-panel {
+    padding: 32px 20px;
+    justify-content: flex-start;
+    padding-top: 6vh;
+  }
+}

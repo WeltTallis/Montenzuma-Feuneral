@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -111,11 +112,18 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
 
 	var response interfacex.STKPushResponse
 
-	err = json.NewDecoder(res.Body).Decode(&response)
+	bodyBytes, _ := io.ReadAll(res.Body)
+	logrus.Infof("Safaricom STK Response status: %d body: %s", res.StatusCode, string(bodyBytes))
+	err = json.Unmarshal(bodyBytes, &response)
 
 	if err != nil {
 		logrus.Errorf("Error decoding response: %v", err)
 		return nil, err
+	}
+
+	if res.StatusCode >= 400 || (response.ResponseCode != "" && response.ResponseCode != "0") {
+		logrus.Errorf("Safaricom STK Push failed: ResponseCode=%s, Desc=%s", response.ResponseCode, response.ResponseDescription)
+		return nil, fmt.Errorf("M-Pesa rejected request: %s (%s)", response.ResponseDescription, response.CustomerMessage)
 	}
 
 	//save transaction to db using repository

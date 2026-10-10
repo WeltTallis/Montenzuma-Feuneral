@@ -164,6 +164,18 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 		write(w, 502, map[string]any{"error": "Payment request was rejected", "reference": ref})
 		return
 	}
+	if respCode, ok := result["ResponseCode"].(string); ok && respCode != "0" {
+		errMsg := str(result, "ResponseDescription")
+		if errMsg == "" {
+			errMsg = str(result, "CustomerMessage")
+		}
+		if errMsg == "" {
+			errMsg = "Payment request was rejected by M-Pesa"
+		}
+		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_description=$1,updated_at=now() WHERE reference=$2`, errMsg, ref)
+		write(w, 400, map[string]any{"error": errMsg, "reference": ref})
+		return
+	}
 	_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET merchant_request_id=$1,checkout_request_id=$2,updated_at=now() WHERE reference=$3`, result["MerchantRequestID"], result["CheckoutRequestID"], ref)
 	result["reference"], result["status"], result["amount"] = ref, "pending", amount
 	write(w, 200, result)
@@ -224,7 +236,7 @@ func (a *app) paymentCallback(w http.ResponseWriter, r *http.Request) {
 func (a *app) paymentStatus(w http.ResponseWriter, r *http.Request) {
 	var ref, policy, status, receipt, description string
 	var amount float64
-	e := a.db.QueryRow(r.Context(), `SELECT reference,policy_number,status,mpesa_receipt,amount,COALESCE(result_description,'') FROM insurance_payments WHERE reference=$1 AND (tenant_slug=$2 OR tenant_slug='system_shared')`, r.PathValue("reference"), tenant(r)).Scan(&ref, &policy, &status, &receipt, &amount, &description)
+	e := a.db.QueryRow(r.Context(), `SELECT reference,policy_number,status,COALESCE(mpesa_receipt,''),amount,COALESCE(result_description,'') FROM insurance_payments WHERE reference=$1`, r.PathValue("reference")).Scan(&ref, &policy, &status, &receipt, &amount, &description)
 	if e != nil {
 		write(w, 404, map[string]any{"error": "Payment not found"})
 		return
