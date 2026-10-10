@@ -38,7 +38,7 @@
      is plain white so the layout reads clean edge-to-edge.
    ========================================================================== */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { LockKeyhole, Phone, Search, ShieldCheck } from 'lucide-react';
 import { CONTACT, formatPlanAmount, planFor } from './amaniData';
@@ -246,6 +246,7 @@ const PAY_STYLES = `
 
 export default function AmaniPayPortal() {
   const { code: paymentCode } = useParams();
+  const automaticPaymentStarted = useRef(false);
   const [idNumber, setIdNumber] = useState('');
   const [status, setStatus] = useState('lookup');
   const [frequency, setFrequency] = useState('monthly');
@@ -260,7 +261,8 @@ export default function AmaniPayPortal() {
     let active = true;
     getPaymentLink(paymentCode).then((result) => {
       if (!active) return;
-      setPolicy({ policyCode: result.publicCode, coverType: result.coverType, monthlyPremium: result.monthlyPremium, coverStatus: result.status, coveredCount: result.coveredCount });
+      setPolicy({ policyCode: result.publicCode, policyNumber: result.policyNumber, coverType: result.coverType, monthlyPremium: result.monthlyPremium, coverStatus: result.status, coveredCount: result.coveredCount });
+      setIdNumber(result.policyNumber || '');
       setStatus('plan');
     }).catch((err) => { if (active) { setStatus('lookup'); setError(err?.message || 'This payment link could not be found.'); } });
     return () => { active = false; };
@@ -319,9 +321,13 @@ export default function AmaniPayPortal() {
   }
 
   async function beginPayment(event) {
-    event.preventDefault();
-    const normalizedPhone = normalizeKenyanPhone(phoneNumber);
-    if (!normalizedPhone) {
+    event?.preventDefault();
+    const normalizedPhone = phoneNumber ? normalizeKenyanPhone(phoneNumber) : '';
+    if (phoneNumber && !normalizedPhone) {
+      setPaymentError('Enter a valid Kenyan mobile number, such as 0712 345 678.');
+      return;
+    }
+    if (!paymentCode && !normalizedPhone) {
       setPaymentError('Enter a valid Kenyan mobile number, such as 0712 345 678.');
       return;
     }
@@ -354,6 +360,12 @@ export default function AmaniPayPortal() {
       );
     }
   }
+
+  useEffect(() => {
+    if (!paymentCode || status !== 'plan' || !policy || automaticPaymentStarted.current) return;
+    automaticPaymentStarted.current = true;
+    beginPayment();
+  }, [paymentCode, status, policy]);
 
   useEffect(() => {
     if (paymentState !== 'pending' || !paymentReference) return undefined;
@@ -399,7 +411,7 @@ export default function AmaniPayPortal() {
   const memberRef = idNumber.length >= 4 ? idNumber.slice(-4) : '';
   const coverLabel = policy ? `Amani ${policy.coverType} Cover` : 'Amani Solo Cover';
   const applicationPending = String(policy?.coverStatus || '').toLowerCase() === 'pending';
-  const policyInactive = policy && String(policy.coverStatus || '').toLowerCase() !== 'active';
+  const policyInactive = policy && !['active', 'pending'].includes(String(policy.coverStatus || '').toLowerCase());
 
   return (
     <div className="amani-pay">
@@ -526,13 +538,14 @@ export default function AmaniPayPortal() {
                     {applicationPending ? 'APPLICATION PENDING' : 'PLAN FOUND'}
                   </div>
                   <h2>{applicationPending ? 'Application under review' : 'Contribution details'}</h2>
-                  <p>Review your contribution, then request a secure M-Pesa prompt on your phone.</p>
+                  <p>{paymentCode ? 'We are sending a secure M-Pesa prompt to the phone number on your application.' : 'Review your contribution, then request a secure M-Pesa prompt on your phone.'}</p>
                 </div>
 
                 <div className="plan-summary plan-summary--large">
                   <div>
                     <span className="summary-label">YOUR PLAN</span>
                     <strong>{coverLabel}</strong>
+                    {policy?.policyNumber && <small>Policy number: {policy.policyNumber}</small>}
                     {policy?.coveredCount > 1 && (
                       <small>
                         {policy.coveredCount} people covered
@@ -608,19 +621,19 @@ export default function AmaniPayPortal() {
                   </div>
                 ) : (
                   <form className="payment-form" onSubmit={beginPayment}>
-                    <label className="field">
+                    {!paymentCode && <label className="field">
                       <span>M-Pesa phone number</span>
                       <input required type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber}
                         onChange={(event) => setPhoneNumber(event.target.value)}
                         placeholder="e.g. 0712 345 678" aria-label="M-Pesa phone number"
                         aria-invalid={Boolean(paymentError)} />
-                    </label>
+                    </label>}
                     {paymentError && <p className="pay-error" role="alert">{paymentError}</p>}
                     <button className="pay-button" type="submit" disabled={paymentState === 'starting'}>
                       <Phone size={18} aria-hidden="true" />
-                      {paymentState === 'starting' ? 'Requesting M-Pesa prompt…' : 'Pay ' + formatPlanAmount(policy?.coverType, dueNow) + ' with M-Pesa'}
+                      {paymentState === 'starting' ? 'Requesting M-Pesa prompt…' : paymentCode ? 'Send M-Pesa prompt again' : 'Pay ' + formatPlanAmount(policy?.coverType, dueNow) + ' with M-Pesa'}
                     </button>
-                    <p className="form-note">An STK prompt will be sent to this number. Your PIN is entered only on your phone.</p>
+                    <p className="form-note">An STK prompt will be sent to your registered M-Pesa number. Your PIN is entered only on your phone.</p>
                   </form>
                 )}
 

@@ -19,11 +19,11 @@ func paymentLinkURL(code string) string {
 	return strings.TrimRight(env("PUBLIC_PAYMENT_BASE_URL", "https://paymontenzuma.restpoint.co.ke"), "/") + "/p/" + code
 }
 func (a *app) getPaymentLink(w http.ResponseWriter, r *http.Request) {
-	var cover, status string
+	var policyNumber, cover, status string
 	var premium float64
 	var count int
 	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
-	err := a.db.QueryRow(r.Context(), `SELECT cover_type,status,monthly_premium,covered_count FROM insurance_policies WHERE public_code=$1 AND is_deleted=false`, code).Scan(&cover, &status, &premium, &count)
+	err := a.db.QueryRow(r.Context(), `SELECT policy_number,cover_type,status,monthly_premium,covered_count FROM insurance_policies WHERE public_code=$1 AND is_deleted=false`, code).Scan(&policyNumber, &cover, &status, &premium, &count)
 	if err != nil {
 		write(w, 404, map[string]any{"error": "Payment link not found"})
 		return
@@ -31,7 +31,7 @@ func (a *app) getPaymentLink(w http.ResponseWriter, r *http.Request) {
 	if premium <= 0 {
 		premium = premiumForCover(cover)
 	}
-	write(w, 200, map[string]any{"success": true, "publicCode": code, "coverType": cover, "status": status, "monthlyPremium": premium, "coveredCount": count})
+	write(w, 200, map[string]any{"success": true, "publicCode": code, "policyNumber": policyNumber, "coverType": cover, "status": status, "monthlyPremium": premium, "coveredCount": count})
 }
 func normalizeCover(cover string) string {
 	key := strings.ToLower(strings.TrimSpace(cover))
@@ -90,8 +90,9 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	}
 	policy := normalize(str(m, "policyNumber"))
 	publicCode := strings.ToUpper(strings.TrimSpace(str(m, "policyCode")))
-	phone := normalizeKenyanPhone(str(m, "phoneNumber"))
-	if phone == "" {
+	requestedPhone := str(m, "phoneNumber")
+	phone := normalizeKenyanPhone(requestedPhone)
+	if requestedPhone != "" && phone == "" {
 		write(w, 400, map[string]any{"error": "Enter a valid Kenyan mobile number"})
 		return
 	}
@@ -104,10 +105,21 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var premium float64
-	var status, cover string
-	e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type FROM insurance_policies WHERE (($1<>'' AND public_code=$1) OR ($1='' AND policy_number=$2)) AND is_deleted=false AND (tenant_slug=$3 OR tenant_slug='system_shared')`, publicCode, policy, tenant(r)).Scan(&policy, &premium, &status, &cover)
+	var status, cover, registeredPhone string
+	if publicCode != "" {
+		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone FROM insurance_policies WHERE public_code=$1 AND is_deleted=false`, publicCode).Scan(&policy, &premium, &status, &cover, &registeredPhone)
+	} else {
+		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone FROM insurance_policies WHERE policy_number=$1 AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')`, policy, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone)
+	}
 	if e != nil {
 		write(w, 404, map[string]any{"error": "Policy not found"})
+		return
+	}
+	if phone == "" {
+		phone = normalizeKenyanPhone(registeredPhone)
+	}
+	if phone == "" {
+		write(w, 400, map[string]any{"error": "No valid M-Pesa phone number is registered for this policy"})
 		return
 	}
 	if !strings.EqualFold(status, "active") {

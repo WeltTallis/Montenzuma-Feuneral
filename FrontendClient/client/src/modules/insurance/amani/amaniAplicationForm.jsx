@@ -165,6 +165,7 @@ export default function AmaniApplicationForm() {
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [applicationResult, setApplicationResult] = useState(null);
   /* Repeater state. Keyed by the row's stable `key`, never by array index, so
      deleting a middle row does not make one person's error message appear on
      somebody else's input. */
@@ -312,6 +313,8 @@ export default function AmaniApplicationForm() {
     setGroupError(undefined);
     setSubmitError('');
     setSubmitNotice('');
+    setApplicationResult(null);
+    setSubmitted(false);
   };
 
   /* async: the submit is a real network call to insurance-service now, not the
@@ -421,6 +424,7 @@ export default function AmaniApplicationForm() {
         members: formData.members.map(({ fullName: n, phone: p }) => ({ fullName: n, phone: p })),
       });
 
+      setApplicationResult(result);
       setSubmitted(true);
 
       /* A duplicate submission returns 200 with `duplicate: true`. That is
@@ -904,10 +908,17 @@ export default function AmaniApplicationForm() {
               <span className="af-done-mark"><TickSvg /></span>
               <h3>Application received</h3>
               <p>
-                Your application is pending review; cover is not active yet. Our team will call you
-                within one working day to confirm your details, explain payment and agree when
-                cover can begin.
+                Your cover is active. Select Pay Now to send an M-Pesa prompt to the phone number
+                on your application.
               </p>
+              {applicationResult?.policyNumber && (
+                <p><strong>Policy number (your ID): {applicationResult.policyNumber}</strong></p>
+              )}
+              {applicationResult?.paymentLink && (
+                <a className="af-done-contact" href={applicationResult.paymentLink}>
+                  Pay now with M-Pesa
+                </a>
+              )}
               <a className="af-done-contact" href={CONTACT.phoneHref}>Talk to our team · {CONTACT.phone}</a>
             </div>
           ) : (
