@@ -38,13 +38,13 @@ const env = {
   // This tells the client to connect to /socket.io/ endpoint
   SOCKET_PATH: import.meta.env.VITE_SOCKET_PATH || '/socket.io/',
 
-  // Centralized uploads folder - served by the API gateway
-  UPLOADS_URL: import.meta.env.VITE_UPLOADS_URL || (import.meta.env.PROD ? 'https://restpoint.co.ke' : 'http://localhost:5000'),
+  // Centralized uploads folder - served by the API gateway (same origin)
+  UPLOADS_URL: import.meta.env.VITE_UPLOADS_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000'),
 
   // Mini Store service - inventory + pick/restock
   STORE_SERVICE_API: import.meta.env.VITE_STORE_SERVICE_API ||
     (import.meta.env.PROD
-      ? 'https://restpoint.co.ke/api/v1/restpoint/store'
+      ? '/api/v1/restpoint/store'
       : 'http://localhost:5000/api/v1/restpoint/store'),
 
   // Feature flags

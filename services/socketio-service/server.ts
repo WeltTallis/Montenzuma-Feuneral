@@ -86,6 +86,15 @@ const corsOptions: cors.CorsOptions = {
     if (ALLOWED_ORIGINS.includes(origin) || process.env.SOCKETIO_CORS_ORIGIN === '*') {
       return callback(null, true);
     }
+    // Payment links run on tenant subdomains (*.restpoint.co.ke) and the
+    // standalone pay subdomain — accept any restpoint.co.ke origin so the
+    // socket handshake from a payment link is never CORS-rejected.
+    try {
+      const hostname = new URL(origin).hostname.toLowerCase();
+      if (hostname === 'restpoint.co.ke' || hostname.endsWith('.restpoint.co.ke')) {
+        return callback(null, true);
+      }
+    } catch (e) { /* malformed Origin -> fall through */ }
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }

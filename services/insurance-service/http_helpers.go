@@ -68,8 +68,13 @@ func tenant(r *http.Request) string {
 
 func cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Slug, X-Tenant-Id, X-Mpesa-Callback-Secret")
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Vary", "Origin")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Slug, X-Tenant-Id, X-Mpesa-Callback-Secret, X-Branch-Slug, X-Branch-Id, X-Branch-Db, X-User-Id, X-User-Email, X-User-Name, X-Slug, Origin, X-Requested-With, Accept")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(204)

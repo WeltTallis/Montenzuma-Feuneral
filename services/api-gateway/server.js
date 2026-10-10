@@ -352,6 +352,17 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Payment links are opened from tenant subdomains (*.restpoint.co.ke) and
+    // the standalone pay subdomain — both are first-party Restpoint hosts, so
+    // accept any restpoint.co.ke origin (apex or subdomain) even if it was
+    // never added to ALLOWED_ORIGINS. Everything else is still rejected in
+    // production so the allowlist keeps its meaning.
+    try {
+      const hostname = new URL(origin).hostname.toLowerCase();
+      if (hostname === 'restpoint.co.ke' || hostname.endsWith('.restpoint.co.ke')) {
+        return callback(null, true);
+      }
+    } catch (e) { /* malformed Origin -> fall through to reject */ }
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
     callback(null, false);
   },
