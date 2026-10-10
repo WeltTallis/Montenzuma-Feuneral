@@ -54,7 +54,10 @@ func GenerateAccessToken(consumerKey string, consumerSecret string) (string, err
 
 
 func  GenerateTimeStamp() string {
-	return time.Now().Format("20060102150405")
+	// Safaricom expects Africa/Nairobi wall time (UTC+3, no DST).
+	// The mpesa container runs on UTC, so formatting time.Now() directly is
+	// ~3h behind and can push the password/timestamp out of the accepted window.
+	return time.Now().In(time.FixedZone("Africa/Nairobi", 3*60*60)).Format("20060102150405")
 }
 
 func GeneratePassword(businessshortcode string , passKey string, timeStamp string) string {

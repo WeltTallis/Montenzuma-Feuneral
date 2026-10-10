@@ -146,12 +146,14 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
     }
 
     // save transaction to db using repository
-    // Ensure we save the overridden values to the database
-    request.BusinessShortCode = shortCode
+    // Ensure we save exactly what was sent to Safaricom.
+    request.BusinessShortCode = businessShortCode
     request.TransactionType = transactionType
-    request.PartyB = shortCode
+    request.PartyB = partyB
     request.CallBackURL = callbackURL
     request.PartyA = request.PhoneNumber
+    logrus.Infof("STK mode=%s BusinessShortCode=%s PartyB=%s Phone=%s Amount=%s Ref=%s",
+        transactionType, businessShortCode, partyB, request.PhoneNumber, request.Amount, request.AccountReference)
 
     if err := s.mpesaRepo.SaveSTKPush(ctx, request, &response); err != nil {
         logrus.Errorf("Error saving transaction to db: %v", err)
