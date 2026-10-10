@@ -46,23 +46,6 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
     // Generate timestamp
     timeStamp := utils.GenerateTimeStamp()
 
-    // callback url -> /api/v1/stkcallback
-    callbackBase := strings.TrimSpace(enConfig.CallbackUrl)
-    if callbackBase == "" {
-        return nil, fmt.Errorf("CALL_BACK_URL must be configured")
-    }
-    callback, err := url.Parse(callbackBase)
-    if err != nil {
-        return nil, fmt.Errorf("invalid CALL_BACK_URL: %w", err)
-    }
-    query := callback.Query()
-    query.Set("businessnumber", strings.TrimSpace(enConfig.ShortCode))
-    query.Set("reference", strings.TrimSpace(request.AccountReference))
-    callback.RawQuery = query.Encode()
-    callbackURL := callback.String()
-
-    logrus.Infof("Generated callback URL: %s", callbackURL)
-
     // Till vs Paybill wiring (this is what decides 2029 vs prompt):
     //  - Paybill: MPESA_TILL_NUMBER empty -> CustomerPayBillOnline,
     //    BusinessShortCode == PartyB == MPESA_SHORTCODE (the paybill).
@@ -71,6 +54,8 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
     //    passkey), PartyB == MPESA_TILL_NUMBER (the till).
     // Password is ALWAYS base64(BusinessShortCode + PassKey + Timestamp) where
     // BusinessShortCode is the store/paybill above -- never the till.
+    // Example: MPESA_SHORTCODE=7278225 (HO/store), MPESA_TILL_NUMBER=5570316
+    //    -> BusinessShortCode=7278225, PartyB=5570316, CustomerBuyGoodsOnline.
     businessShortCode := strings.TrimSpace(enConfig.ShortCode)
     till := strings.TrimSpace(enConfig.TillNumber)
     if till == "" {
@@ -82,6 +67,26 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
         partyB = till
         transactionType = "CustomerBuyGoodsOnline"
     }
+
+    // callback url -> /api/v1/stkcallback
+    // businessnumber tracks the actual money destination (PartyB: till for
+    // BuyGoods, paybill otherwise) so callback_requests.business_id matches
+    // where Safaricom sent the funds.
+    callbackBase := strings.TrimSpace(enConfig.CallbackUrl)
+    if callbackBase == "" {
+        return nil, fmt.Errorf("CALL_BACK_URL must be configured")
+    }
+    callback, err := url.Parse(callbackBase)
+    if err != nil {
+        return nil, fmt.Errorf("invalid CALL_BACK_URL: %w", err)
+    }
+    query := callback.Query()
+    query.Set("businessnumber", partyB)
+    query.Set("reference", strings.TrimSpace(request.AccountReference))
+    callback.RawQuery = query.Encode()
+    callbackURL := callback.String()
+
+    logrus.Infof("Generated callback URL: %s", callbackURL)
 
     // Password is generated using the store/paybill ShortCode and Passkey
     password := utils.GeneratePassword(businessShortCode, enConfig.PassKey, timeStamp)
