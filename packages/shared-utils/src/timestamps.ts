@@ -1,7 +1,7 @@
 /**
  * @file packages/shared-utils/src/timestamps.ts
  * CENTRALIZED: All services MUST use this for timestamps
- * Uses Luxon with Africa/Nairobi timezone
+ * Persists timestamps in UTC; Nairobi time is reserved for display formatting.
  * All DB timestamp fields should be nullable; values set here at application level
  */
 
@@ -10,14 +10,12 @@ import { DateTime } from 'luxon';
 const DEFAULT_TZ = 'Africa/Nairobi';
 
 /**
- * Get current Kenya time as ISO string (YYYY-MM-DD HH:mm:ss)
+ * Get current UTC time as SQL-friendly ISO string (YYYY-MM-DD HH:mm:ss)
  * This is the ONE source of truth for all timestamps across all services
  */
 export function getKenyaTimeISO(): string {
   try {
-    const luxonTime = DateTime.now()
-      .setZone(DEFAULT_TZ)
-      .toFormat('yyyy-LL-dd HH:mm:ss');
+    const luxonTime = DateTime.utc().toFormat('yyyy-LL-dd HH:mm:ss');
 
     if (luxonTime) return luxonTime;
   } catch (err) {
@@ -27,8 +25,8 @@ export function getKenyaTimeISO(): string {
   // Native fallback
   try {
     const date = new Date();
-    const fmt = new Intl.DateTimeFormat('en-KE', {
-      timeZone: DEFAULT_TZ,
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'UTC',
       hour12: false,
       year: 'numeric',
       month: '2-digit',
@@ -38,25 +36,12 @@ export function getKenyaTimeISO(): string {
       second: '2-digit',
     }).format(date);
 
-    const [d, m, y] = fmt.split(',')[0].split('/');
-    const [hh, mm, ss] = fmt.split(', ')[1].split(':');
-    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+    return fmt.replace(',', '');
   } catch (err) {
     console.error('⚠️ Native TZ fallback failed:', (err as Error).message);
   }
 
-  // Manual Kenya time (UTC + 3)
-  try {
-    const now = new Date();
-    const kenyaMs = now.getTime() + 3 * 60 * 60 * 1000;
-    const kenyaDate = new Date(kenyaMs);
-    const pad = (n: number): string => (n < 10 ? '0' + n : n.toString());
-
-    return `${kenyaDate.getUTCFullYear()}-${pad(kenyaDate.getUTCMonth() + 1)}-${pad(kenyaDate.getUTCDate())} ${pad(kenyaDate.getUTCHours())}:${pad(kenyaDate.getUTCMinutes())}:${pad(kenyaDate.getUTCSeconds())}`;
-  } catch (err) {
-    console.error('❌ Manual Kenya fallback failed:', (err as Error).message);
-    return new Date().toISOString().replace('T', ' ').split('.')[0];
-  }
+  return new Date().toISOString().replace('T', ' ').split('.')[0];
 }
 
 /**

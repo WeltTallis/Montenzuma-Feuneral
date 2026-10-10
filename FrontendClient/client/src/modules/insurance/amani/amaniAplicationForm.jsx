@@ -5,19 +5,19 @@ import { CONTACT, GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlan
 import { InsuranceApiError, submitApplication } from '../../../api/insuranceApi';
 
 const AF = {
-  ink: '#12233a',
-  inkMuted: '#64748b',
-  inkFaint: '#94a3b8',
-  navy: '#123e78',
-  navyDeep: '#0d2f5e',
-  blue: '#2b78b8',
-  bluePale: '#dcecf5',
-  brass: '#2b78b8',
-  border: '#d9e3eb',
-  error: '#b4524b',
-  success: '#2f7d68',
-  sans: "Arial, Helvetica, sans-serif",
-  serif: "Georgia, 'Times New Roman', serif",
+  ink: '#293946',
+  inkMuted: '#596b78',
+  inkFaint: '#8997a0',
+  navy: '#173c5a',
+  navyDeep: '#102f49',
+  blue: '#547895',
+  bluePale: '#edf3f7',
+  brass: '#92764c',
+  border: '#dce4e8',
+  error: '#ad5750',
+  success: '#557565',
+  sans: "'DM Sans', system-ui, sans-serif",
+  serif: "'Cormorant Garamond', Georgia, serif",
 };
 
 const getInitialCover = () => {
@@ -35,11 +35,6 @@ const createInitial = () => {
   employment: '',
   phone: '',
   email: '',
-  /* Next of kin — who the care team calls when it matters. Name + phone are
-     required (mirrored server-side); relationship is optional context. */
-  nextOfKinName: '',
-  nextOfKinPhone: '',
-  nextOfKinRelationship: '',
   cover,
   members: cover === GROUP_COVER_VALUE
     ? Array.from({ length: MIN_GROUP_MEMBERS - 1 }, () => newMember())
@@ -69,10 +64,9 @@ export const PAY_FREQUENCIES = [
 let memberKeySeq = 0;
 const newMember = () => ({ key: `af-member-${++memberKeySeq}`, fullName: '', phone: '' });
 
-/* Required fields, in document order. `email` and `nextOfKinRelationship`
-   are deliberately absent — both are optional and only validated when the
-   visitor actually fills them in. */
-const REQUIRED_FIELDS = ['fullName', 'idNumber', 'age', 'employment', 'phone', 'nextOfKinName', 'nextOfKinPhone', 'cover'];
+/* Required fields, in document order. `email` is deliberately absent — it is
+   optional and is only validated when the visitor actually fills it in. */
+const REQUIRED_FIELDS = ['fullName', 'idNumber', 'age', 'employment', 'phone', 'cover'];
 
 const EMPLOYMENT_OPTIONS = [
   { value: 'employed', label: 'Employed' },
@@ -100,13 +94,7 @@ function isFieldValid(name, value) {
     case 'cover':
       return value != null && value !== '';
     case 'phone':
-    case 'nextOfKinPhone':
       return value.replace(/\D/g, '').length >= 9;
-    case 'nextOfKinName':
-      return value.trim().length > 1;
-    case 'nextOfKinRelationship':
-      /* Optional: empty is valid, anything filled in is accepted. */
-      return true;
     case 'email':
       /* Optional: empty is valid, filled-in must match. */
       return value.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -124,8 +112,6 @@ function errorMessageFor(name) {
     case 'age': return 'You must be 18 or older.';
     case 'employment': return 'Please select your employment status.';
     case 'phone': return 'Enter a valid phone number.';
-    case 'nextOfKinName': return 'Next of kin full name is required.';
-    case 'nextOfKinPhone': return 'Enter a valid next of kin phone number.';
     case 'email': return 'Enter a valid email address.';
     case 'cover': return 'Please choose a cover type.';
     case 'confirmAccepted': return 'Please tick the box to confirm before continuing.';
@@ -427,9 +413,6 @@ export default function AmaniApplicationForm() {
         employment: formData.employment,
         phone: formData.phone,
         email: formData.email,
-        nextOfKinName: formData.nextOfKinName,
-        nextOfKinPhone: formData.nextOfKinPhone,
-        nextOfKinRelationship: formData.nextOfKinRelationship,
         cover: formData.cover,
         frequency: formData.frequency,
         confirmAccepted: formData.confirmAccepted,
@@ -567,11 +550,11 @@ export default function AmaniApplicationForm() {
 
     .af-hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
     .af-hdr-label {
-      font-family: Arial, Helvetica, sans-serif; font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
       letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
     }
     .af-hdr-value {
-      font-family: Arial, Helvetica, sans-serif; font-size: 1rem; font-weight: 500;
+      font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 500;
       color: var(--af-blue); background: #f3f6f1;
       padding: 0.2rem 0.8rem; border: 1px solid #d7dfd4; border-radius: 4px;
     }
@@ -585,7 +568,7 @@ export default function AmaniApplicationForm() {
       padding: 0.75rem 1.25rem; background: var(--af-blue); border-radius: 4px;
     }
     .af-section-num {
-      font-family: Arial, Helvetica, sans-serif; font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
       font-weight: 500; color: rgba(255, 255, 255, 0.55);
     }
     .af-section-title {
@@ -693,7 +676,7 @@ export default function AmaniApplicationForm() {
   }
     .af-cover-card-hint { font-size: 0.8rem; color: var(--af-gray); line-height: 1.45; }
     .af-cover-card-badge {
-      display: inline-block; margin-top: 0.3rem; font-family: Arial, Helvetica, sans-serif;
+      display: inline-block; margin-top: 0.3rem; font-family: 'JetBrains Mono', monospace;
       font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
       color: #765f3e; background: #f5f0e4; border: 1px solid #e4d8bd;
       border-radius: 3px; padding: 0.15rem 0.45rem; align-self: flex-start;
@@ -708,7 +691,7 @@ export default function AmaniApplicationForm() {
     .af-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
     .af-group-title { font-size: 0.95rem; font-weight: 600; color: ${AF.ink}; }
     .af-group-count {
-      font-family: Arial, Helvetica, sans-serif; font-size: 0.7rem; font-weight: 500;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500;
       letter-spacing: 0.06em; text-transform: uppercase; color: var(--af-blue);
       background: #edf3f7; border: 1px solid #d7e2e9; border-radius: 999px;
       padding: 0.25rem 0.65rem; white-space: nowrap;
@@ -726,7 +709,7 @@ export default function AmaniApplicationForm() {
       margin-bottom: 0.85rem;
     }
     .af-member-num {
-      font-family: Arial, Helvetica, sans-serif; font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
       letter-spacing: 0.1em; text-transform: uppercase; color: var(--af-gray);
     }
     .af-member-remove {
@@ -808,7 +791,7 @@ export default function AmaniApplicationForm() {
     .af-btn-ghost:hover { background: #edf3f7; }
 
     .af-record-strip {
-      font-family: Arial, Helvetica, sans-serif; font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
       letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
       text-align: center; line-height: 1.7; margin: 2rem var(--af-gutter) 0;
       padding: 0.9rem 1rem 0.4rem; border-top: 1px solid var(--af-line);
@@ -1047,86 +1030,6 @@ export default function AmaniApplicationForm() {
                       <div className="af-tick-icon"><TickSvg /></div>
                       {touched.employment && errors.employment && (
                         <span className="af-err-msg">{errors.employment}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Next of kin — name + phone are required (the care team
-                    calls THIS person), relationship is optional context.
-                    Mirrored server-side in validateApplication. */}
-                <div className="af-row">
-                  <div className="af-col">
-                    <label className="af-field-label" htmlFor="af-nextOfKinName">
-                      Next of Kin Full Name <span className="af-req">*</span>
-                    </label>
-                    <div className={getInputWrapClass('nextOfKinName')}>
-                      <input
-                        id="af-nextOfKinName"
-                        data-af-field="nextOfKinName"
-                        className="af-doc-input"
-                        type="text"
-                        name="nextOfKinName"
-                        placeholder="Full name of your next of kin"
-                        value={formData.nextOfKinName}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        aria-invalid={Boolean(touched.nextOfKinName && errors.nextOfKinName)}
-                        required
-                      />
-                      <div className="af-tick-icon"><TickSvg /></div>
-                      {touched.nextOfKinName && errors.nextOfKinName && (
-                        <span className="af-err-msg">{errors.nextOfKinName}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="af-col">
-                    <label className="af-field-label" htmlFor="af-nextOfKinPhone">
-                      Next of Kin Phone <span className="af-req">*</span>
-                    </label>
-                    <div className={getInputWrapClass('nextOfKinPhone')}>
-                      <input
-                        id="af-nextOfKinPhone"
-                        data-af-field="nextOfKinPhone"
-                        className="af-doc-input"
-                        type="tel"
-                        name="nextOfKinPhone"
-                        placeholder="0712 345 678"
-                        value={formData.nextOfKinPhone}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        aria-invalid={Boolean(touched.nextOfKinPhone && errors.nextOfKinPhone)}
-                        required
-                      />
-                      <div className="af-tick-icon"><TickSvg /></div>
-                      {touched.nextOfKinPhone && errors.nextOfKinPhone && (
-                        <span className="af-err-msg">{errors.nextOfKinPhone}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="af-row">
-                  <div className="af-col">
-                    <label className="af-field-label" htmlFor="af-nextOfKinRelationship">
-                      Relationship to Applicant
-                    </label>
-                    <div className={getInputWrapClass('nextOfKinRelationship')}>
-                      <input
-                        id="af-nextOfKinRelationship"
-                        data-af-field="nextOfKinRelationship"
-                        className="af-doc-input"
-                        type="text"
-                        name="nextOfKinRelationship"
-                        placeholder="e.g., Spouse, Parent, Sibling"
-                        value={formData.nextOfKinRelationship}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        aria-invalid={Boolean(touched.nextOfKinRelationship && errors.nextOfKinRelationship)}
-                      />
-                      <div className="af-tick-icon"><TickSvg /></div>
-                      {touched.nextOfKinRelationship && errors.nextOfKinRelationship && (
-                        <span className="af-err-msg">{errors.nextOfKinRelationship}</span>
                       )}
                     </div>
                   </div>

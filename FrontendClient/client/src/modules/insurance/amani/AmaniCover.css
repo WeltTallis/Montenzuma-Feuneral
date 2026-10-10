@@ -1,113 +1,45 @@
 .amani-cover {
   /* Amani Cover — Funeral Insurance */
-  --ac-primary: #123e78;
-  /* Royal Blue — trust, protection */
-  --ac-primary-hover: #0d2f5e;
-  /* Deeper Royal — hover / active */
-  --ac-ink: #12233a;
+  --ac-primary: #183B56;
+  /* Deep Blue — trust, protection */
+  --ac-primary-hover: #102D43;
+  /* Deeper Blue — hover / active */
+  --ac-ink: #263943;
   /* Charcoal Blue — primary text */
-  --ac-accent: #2b78b8;
-  /* Sky Blue — secondary actions */
-  --ac-highlight: #2b78b8;
-  /* Sky Blue — accent / premium marker */
-  --ac-bg: #f5f8fa;
-  /* Soft Mist — page background */
+  --ac-accent: #668A9A;
+  /* Dusty Blue — secondary actions */
+  --ac-highlight: #B79A68;
+  /* Champagne Gold — dignity / premium accent */
+  --ac-bg: #F6F7F5;
+  /* Soft Ivory — page background */
   --ac-card: #FFFFFF;
   /* Clean White — cards / forms */
-  --ac-border: #d9e3eb;
-  /* Cool Line — borders */
-  --ac-input: #b8ccd9;
-  /* Soft Steel — input borders */
-  --ac-mutedfg: #64748b;
-  /* Muted Gray — secondary text */
+  --ac-border: #D9E1E3;
+  /* Cool Mist — borders */
+  --ac-input: #BCCBD1;
+  /* Soft Slate — input borders */
+  --ac-mutedfg: #65757D;
+  /* Slate Gray — secondary text */
   --ac-onprimary: #FFFFFF;
   --ac-onaccent: #FFFFFF;
-  --ac-oncard: #12233a;
-  --ac-ring: #2b78b8;
+  --ac-oncard: #263943;
+  --ac-ring: #668A9A;
 
   color-scheme: light;
-  /* Soft mist backdrop: a sky-blue glow top-left and a cool navy wash
-     top-right layered over the base mist, so the page never reads as flat
-     white. On desktop the washes are fixed, giving subtle depth on scroll. */
-  background:
-    radial-gradient(1100px 620px at 12% -8%, rgba(43, 120, 184, 0.14), rgba(43, 120, 184, 0) 62%),
-    radial-gradient(900px 520px at 100% 0%, rgba(24, 59, 86, 0.10), rgba(24, 59, 86, 0) 58%),
-    var(--ac-bg);
+  background: var(--ac-bg);
   color: var(--ac-ink);
-  /* Body / UI face is now Arial — a neutral system sans. Headings use
-     Georgia (see .font-serif below). Both are system
-     fonts, so there is no extra network request. */
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
 }
 
-/* Fixed on desktop so the photo stays put while the page scrolls; phones
-   keep it scrolling with the content (iOS paints fixed backgrounds badly). */
-@media (min-width: 768px) {
-  .amani-cover {
-    background-attachment: fixed;
-  }
-}
-
 .amani-cover .font-serif {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
 }
 
 .amani-cover .font-sans {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* ── Section eyebrow ("Choose your cover", "A gentler process", …) ──────────
-   The mid-blue on mist was low-contrast and read grey. This renders the
-   label in the deep navy with a short sky-blue rule beside it, so every
-   section opens with a premium, high-contrast marker. */
-.amani-cover .ac-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-  color: var(--ac-primary);
-}
-.amani-cover .ac-eyebrow::before {
-  content: "";
-  width: 2rem;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--ac-highlight), rgba(43, 120, 184, 0.15));
-}
-
-/* Blue underline that sits under a section heading. */
-.amani-cover .ac-heading-rule {
-  display: block;
-  width: 3.25rem;
-  height: 3px;
-  margin-top: 1rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--ac-highlight), rgba(43, 120, 184, 0.1));
-}
-
-/* Softer, deeper card shadow used by the plan cards so they lift off the warm
-   backdrop instead of sitting flat. */
-.amani-cover .ac-card {
-  box-shadow:
-    0 1px 2px rgba(24, 59, 86, 0.04),
-    0 12px 32px -12px rgba(24, 59, 86, 0.18);
-}
-
-/* A quiet hairline accent along the top of a card, in sky blue. */
-.amani-cover .ac-card-toprule::before {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 3px;
-  border-radius: 2rem 2rem 0 0;
-  background: linear-gradient(90deg, var(--ac-highlight), rgba(43, 120, 184, 0.25));
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 .amani-cover .amani-fill {
@@ -115,35 +47,6 @@
   inset: 0;
   width: 100%;
   height: 100%;
-}
-
-
-/* ==========================================================================
-   BOLD / HIGH-CONTRAST ACCENTS
-   Reusable blue-gradient helpers so the "premium highlight" look is defined
-   once instead of a long Tailwind class string on every element. Kept scoped
-   to .amani-cover so nothing leaks into the rest of the app.
-   ========================================================================== */
-
-/* Blue gradient clipped to the glyphs — for emphasis words in
-   headings (renders as blue text). */
-.amani-cover .ac-gradient-text {
-  background-image: linear-gradient(100deg, #7fb2dd 0%, #2b78b8 55%, #123e78 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Blue gradient fill — for the primary / featured buttons. */
-.amani-cover .ac-blue-btn {
-  background-image: linear-gradient(100deg, #4f97d6 0%, #2b78b8 55%, #123e78 100%);
-  color: #ffffff;
-}
-
-/* A short gradient rule used as a section divider / eyebrow underline. */
-.amani-cover .ac-rule {
-  background-image: linear-gradient(90deg, #2b78b8 0%, rgba(43, 120, 184, 0) 100%);
 }
 
 

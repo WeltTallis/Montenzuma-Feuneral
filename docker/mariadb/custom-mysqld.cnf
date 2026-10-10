@@ -14,6 +14,10 @@
 
 [mysqld]
 
+# All SQL-generated timestamps are stored and returned in UTC. Application
+# clients can convert to a user's display timezone at the presentation layer.
+default-time-zone = '+00:00'
+
 # --- Performance Schema (required by the perf_schema scrapers) ---------------
 # The exporter's perf_schema collectors read from performance_schema tables
 # (events_statements_summary_by_digest, table_io_waits_*, file/memory events).

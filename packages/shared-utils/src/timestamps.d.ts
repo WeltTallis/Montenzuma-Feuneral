@@ -1,7 +1,7 @@
 /**
  * @file packages/shared-utils/src/timestamps.ts
  * CENTRALIZED: All services MUST use this for timestamps
- * Uses Luxon with Africa/Nairobi timezone
+ * Timestamps written for persistence are UTC; display formatting can use Nairobi time.
  * All DB timestamp fields should be nullable; values set here at application level
  */
 import { DateTime } from 'luxon';

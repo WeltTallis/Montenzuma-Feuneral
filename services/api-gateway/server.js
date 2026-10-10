@@ -92,7 +92,8 @@ const DOCKER_SERVICE_DEFAULTS = {
   notification: 'http://restpoint_socketio_service:5000',
   documents: 'http://restpoint_documents_service:5000',
   analytics: 'http://restpoint_analytics_service:5000',
-  insurance: 'http://restpoint_insurance_service:5000',
+  insurance: 'http://restpoint_insurance_service:5050',
+  mpesa: 'http://restpoint_mpesa_service:4040',
   bodycheckout: 'http://restpoint_bodycheckout_service:5000',
   edocuments: 'http://restpoint_edocuments_service:5000',
   calendar: 'http://restpoint_calender_service:5000', // (sic) container name
@@ -131,7 +132,8 @@ const HOST_SERVICE_DEFAULTS = {
   coffin: 'http://127.0.0.1:5006',
   documents: 'http://127.0.0.1:5007',
   analytics: 'http://127.0.0.1:5009',
-  insurance: 'http://127.0.0.1:5013',
+  insurance: 'http://127.0.0.1:5050',
+  mpesa: 'http://127.0.0.1:4040',
   socketio: 'http://127.0.0.1:5018',
   // Notification REST is served by the socketio-service, so in host mode it
   // uses the same host-published port as socketio.
@@ -295,6 +297,7 @@ const SERVICE_URLS = {
   documents: resolveServiceUrl('DOCUMENTS_SERVICE_URL', 'documents'),
   analytics: resolveServiceUrl('ANALYTICS_SERVICE_URL', 'analytics'),
   insurance: resolveServiceUrl('INSURANCE_SERVICE_URL', 'insurance'),
+  mpesa: resolveServiceUrl('MPESA_SERVICE_URL', 'mpesa'),
   bodycheckout: resolveServiceUrl('BODYCHECKOUT_SERVICE_URL', 'bodycheckout'),
   edocuments: resolveServiceUrl('EDOCUMENTS_SERVICE_URL', 'edocuments'),
   calendar: resolveServiceUrl('CALENDAR_SERVICE_URL', 'calendar'),
@@ -654,6 +657,8 @@ const SERVICE_ROUTES = {
   // (/insurance/applications, /insurance/claims) are proxied here unauthenticated
   // because the Amani forms are filled in by bereaved families with no account.
   'insurance': SERVICE_URLS.insurance,
+  // Safaricom posts collection results through this public gateway path.
+  'mpesa': SERVICE_URLS.mpesa,
   'bodycheckout': SERVICE_URLS.bodycheckout,
   'body-release': SERVICE_URLS.bodycheckout,
   'extra': SERVICE_URLS.extra,
@@ -860,6 +865,9 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
 
   if (firstSegment === 'store' || firstSegment === 'store-service') {
     rewrittenUrl = '/api' + req.url;
+  }
+  if (firstSegment === 'mpesa') {
+    rewrittenUrl = '/api/v1' + req.url.slice('/mpesa'.length);
   }
 
   Logger.debug(`[ROUTE] ${req.method} ${req.originalUrl} → ${targetUrl}${rewrittenUrl}`);
