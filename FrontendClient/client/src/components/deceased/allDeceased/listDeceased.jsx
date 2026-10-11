@@ -8,6 +8,7 @@ import { ToastContainer } from 'react-toastify';
 import {
   formatDate, daysFromNow, todayKey,
 } from '../../../utils/dates/parseDates';
+import { normalizeYM, ymQueryParams, ymFromDate, monthLabel, MONTH_NAMES } from '../../../utils/dates/ym';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
 
@@ -492,7 +493,12 @@ const DeceasedListPage = () => {
   const [search, setSearch] = useState(() => { const s = searchParams.get('search'); return s ? String(s) : ''; });
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
-  const [calYear, setCalYear] = useState(() => { const y = Number(searchParams.get('year')); return Number.isInteger(y) && y >= 1900 && y <= 2200 ? y : today.getFullYear(); });
+  // Unified year/month — the shared helper validates both values from the URL,
+  // so a bad ?year= or ?month= can never break the page: year falls back to the
+  // current Nairobi year, month stays null ("All months") until picked.
+  const initYM = normalizeYM({ year: searchParams.get('year'), month: searchParams.get('month') });
+  const [calYear, setCalYear] = useState(initYM.year);
+  const [calMonth, setCalMonth] = useState(initYM.month); // 1..12 or null = all months
   const [selectedDate, setSelectedDate] = useState(null);
   const setSearchParamsRef = useRef(null);
   setSearchParamsRef.current = setSearchParams;
@@ -530,9 +536,12 @@ const DeceasedListPage = () => {
       // moment the list loads.
       const bust = Date.now();
       while (pageNum <= totalPages && pageNum <= 12) {
-        const params = { year: calYear, page: pageNum, limit: pageSize, _t: bust };
+        // Unified year/month — both travel together via ymQueryParams, so the
+        // request can never ship a year without a valid month (or month="").
+        const ymParams = ymQueryParams({ year: calYear, month: calMonth });
+        const params = { ...ymParams, page: pageNum, limit: pageSize, _t: bust };
         if (search) params.search = search;
-        if (setSearchParamsRef.current) { setSearchParamsRef.current({ year: calYear, page: pageNum, limit: pageSize }, { replace: true }); }
+        if (setSearchParamsRef.current) { setSearchParamsRef.current({ ...ymParams, page: pageNum, limit: pageSize }, { replace: true }); }
         const res = await axios.get(`${BASE_URL}/deceased-all`, { params, headers, cache: 'no-store' });
         const data = res.data?.data || res.data || [];
         const rows = Array.isArray(data) ? data : [];
@@ -548,7 +557,7 @@ const DeceasedListPage = () => {
       if (err.friendlyMessage) { setServiceUnavailable(true); setUnavailableMessage(err.friendlyMessage); }
       return false;
     } finally { setLoading(false); }
-  }, [search, calYear]);
+  }, [search, calYear, calMonth]);
 
   useEffect(() => { fetchDeceased(); }, [fetchDeceased]);
 
@@ -761,6 +770,16 @@ const DeceasedListPage = () => {
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>
 
+            {/* Unified month selector — the picked month is ALWAYS what travels
+                on the fetch (see ymQueryParams); "All months" omits it. */}
+            <FilterWrapper $year>
+              <FilterSelect value={calMonth == null ? '' : calMonth} onChange={e => setCalMonth(e.target.value === '' ? null : Number(e.target.value))}>
+                <option value="">All months</option>
+                {MONTH_NAMES.map((name, i) => (<option key={name} value={i + 1}>{name}</option>))}
+              </FilterSelect>
+              <SelectArrow className="fas fa-chevron-down" />
+            </FilterWrapper>
+
             <FilterWrapper $year>
               <FilterSelect value={calYear} onChange={e => setCalYear(Number(e.target.value))}>
                 {Array.from({ length: 7 }, (_, i) => today.getFullYear() - 3 + i).map(y => (<option key={y} value={y}>{y}</option>))}
@@ -789,7 +808,16 @@ const DeceasedListPage = () => {
 
         {/* Calendar */}
         <div style={{ marginBottom: '24px' }}>
-          <HorizontalCalendar eventsData={eventsData} selectedDate={selectedDate} onDateSelect={(date) => { if (selectedDate && toDateString(date) === toDateString(selectedDate)) { setSelectedDate(null); } else { setSelectedDate(date); } }} />
+          <HorizontalCalendar eventsData={eventsData} selectedDate={selectedDate} onDateSelect={(date) => {
+            if (selectedDate && toDateString(date) === toDateString(selectedDate)) { setSelectedDate(null); }
+            else {
+              setSelectedDate(date);
+              // Unified: picking a day also pins year+month to that day, so the
+              // month actually travels with the fetch instead of being dropped.
+              const ym = ymFromDate(date);
+              setCalYear(ym.year); setCalMonth(ym.month);
+            }
+          }} />
         </div>
 
         {/* List Card */}

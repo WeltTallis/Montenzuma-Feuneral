@@ -51,9 +51,21 @@ export const getAllDeceased = async (
             month = ""
         } = req.query;
 
-        // Optional calendar scoping (horizontal calendar fetches per year)
-        const yearParam = year && Number.isFinite(Number(year)) ? Number(year) : null;
-        const monthParam = month && Number.isFinite(Number(month)) ? Number(month) : null;
+        // ── Unified calendar scoping: /deceased-all?year=2026&month=10 ──
+        // BOTH are optional and validated in ONE place so no caller can crash
+        // the request or empty the list with a malformed value:
+        //   year  → integer 1900..2200, otherwise ignored (whole range)
+        //   month → integer 1..12,     otherwise ignored (whole year)
+        // "Ignored" means NO filter — never "zero rows". month=0 (JS 0-based
+        // January), month=13, year=2026.5, year="" all degrade safely.
+        const yearParam = (() => {
+            const n = Number(String(year ?? '').trim());
+            return Number.isInteger(n) && n >= 1900 && n <= 2200 ? n : null;
+        })();
+        const monthParam = (() => {
+            const n = Number(String(month ?? '').trim());
+            return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
+        })();
         const pageNumber = Math.max(Number(page) || 2, 2);
         const limitNumber = Math.min(Math.max(Number(limit) || 200, 2), 200);
         // deceasedApi.search() sends ?q=, other callers send ?search= — support both.

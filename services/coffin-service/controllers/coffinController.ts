@@ -668,6 +668,41 @@ export const createOrder = async (req: Request, res: Response) => {
 };
 
 /**
+ * Unified calendar scoping for GET /coffins/orders (mirrors deceased-service).
+ * Accepts, in priority order:
+ *   from / to (or from_date / to_date) — strict YYYY-MM-DD; a malformed side is
+ *     ignored rather than throwing, so a bad URL never 500s.
+ *   year / month — integers (year 1900..2200, month 1..12) expanded to full
+ *     month / full-year bounds.
+ * Returns { from: string|null, to: string|null }. Both null means "no
+ * scoping" — the historical behaviour every un-parameterised caller (ops
+ * dashboards, rawCoffinOrders) relies on, so nothing that works today changes.
+ */
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+const isRealYmd = (s: string): boolean => {
+  if (!YMD_RE.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+};
+export const resolveOrderDateRange = (q: Record<string, unknown>): { from: string | null; to: string | null } => {
+  const pick = (v: unknown): string | null => {
+    const s = String(v ?? '').trim();
+    return isRealYmd(s) ? s : null;
+  };
+  const from = pick(q.from) ?? pick(q.from_date);
+  const to = pick(q.to) ?? pick(q.to_date);
+  if (from || to) return { from, to };
+  const hasY = (() => { const n = Number(String(q.year ?? '').trim()); return Number.isInteger(n) && n >= 1900 && n <= 2200 ? n : null; })();
+  const hasM = (() => { const n = Number(String(q.month ?? '').trim()); return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null; })();
+  if (!hasY && !hasM) return { from: null, to: null };
+  const y = hasY ?? new Date().getFullYear();
+  if (!hasM) return { from: `${y}-01-01`, to: `${y}-12-31` };
+  const last = new Date(Date.UTC(y, hasM as number, 0)).getUTCDate();
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  return { from: `${y}-${p2(hasM as number)}-01`, to: `${y}-${p2(hasM as number)}-${p2(last)}` };
+};
+
+/**
  * GET /coffins/orders - Get all orders
  */
 export const getAllOrders = async (req: Request, res: Response) => {
@@ -699,6 +734,14 @@ export const getAllOrders = async (req: Request, res: Response) => {
       params.push(String(branchId));
     }
 
+    // Unified month/year scoping. The reservation dashboard always sends
+    // from/to (first/last day of the visible month); other callers may send
+    // year+month or nothing. Absent bounds keep the legacy "everything" view.
+    const dateRange = resolveOrderDateRange((req.query ?? {}) as Record<string, unknown>);
+    let dateClause = '';
+    if (dateRange.from) { dateClause += ' AND DATE(COALESCE(cb.service_date, cb.created_at)) >= ?'; params.push(dateRange.from); }
+    if (dateRange.to) { dateClause += ' AND DATE(COALESCE(cb.service_date, cb.created_at)) <= ?'; params.push(dateRange.to); }
+
     const sql = `
       SELECT order_id, order_id AS id, coffin_id, coffin_name, color, size, quantity,
              booked_by, booked_for,
@@ -712,7 +755,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
              service_time,
              created_at
       FROM coffin_bookings cb
-      WHERE cb.tenant_slug = ?${branchClause}
+      WHERE cb.tenant_slug = ?${branchClause}${dateClause}
       ORDER BY cb.created_at DESC
     `;
 
@@ -750,6 +793,17 @@ export const getAllOrders = async (req: Request, res: Response) => {
     // Dedupe against real bookings that already exist for the same transfer
       // (e.g. the inter-branch reservation flow creates BOTH a booking and a
       // stock request): same coffin + client + service date = same order.
+      // Honour the same month bounds on synthesized transfer rows: their
+      // service_date is a 'YYYY-MM-DD' string, so a lexicographic compare is
+      // exact. Undated rows stay visible rather than silently vanishing.
+      const inRange = (d: unknown): boolean => {
+        const s = String(d ?? '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return true;
+        if (dateRange.from && s < dateRange.from) return false;
+        if (dateRange.to && s > dateRange.to) return false;
+        return true;
+      };
+
       const existingKeys = new Set(
         orders.map((o) =>
           `${String(o.coffin_id ?? '')}|${String(o.client_name ?? o.booked_by ?? '').toLowerCase().trim()}|${String(o.service_date ?? '')}`,
@@ -757,6 +811,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
       );
 
       for (const t of transferRows) {
+        if (!inRange(t.service_date)) continue;
         const key = `${String(t.coffin_id ?? '')}|${String(t.client_name ?? '').toLowerCase().trim()}|${String(t.service_date ?? '')}`;
         if (existingKeys.has(key)) continue;
         existingKeys.add(key);

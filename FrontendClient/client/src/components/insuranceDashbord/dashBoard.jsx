@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { insuranceApi } from '../../api/insuranceApi';
-import { planFor } from '../insurance/amani/amaniData';
+import { planFor } from '../../modules/insurance/amani/amaniData';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import './crmDashboard.css';
