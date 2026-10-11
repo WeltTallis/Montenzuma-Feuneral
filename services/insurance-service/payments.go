@@ -155,14 +155,14 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, e := (&http.Client{Timeout: 20 * time.Second}).Do(req)
 	if e != nil {
-		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_description='Payment service unavailable',updated_at=now() WHERE reference=$1`, ref)
+		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_code='gateway_error',result_description='Payment service unavailable',failure_reason='Payment service unavailable. Please try again.',retryable=true,updated_at=now() WHERE reference=$1`, ref)
 		write(w, 502, map[string]any{"error": "Payment service unavailable", "reference": ref})
 		return
 	}
 	defer resp.Body.Close()
 	var result map[string]any
 	if json.NewDecoder(resp.Body).Decode(&result) != nil || resp.StatusCode >= 300 || result["success"] == false {
-		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_description='Payment request was rejected',updated_at=now() WHERE reference=$1`, ref)
+		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_code='gateway_error',result_description='Payment request was rejected',failure_reason='Payment request was rejected. Please try again.',retryable=true,updated_at=now() WHERE reference=$1`, ref)
 		write(w, 502, map[string]any{"error": "Payment request was rejected", "reference": ref})
 		return
 	}
@@ -174,7 +174,7 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 		if errMsg == "" {
 			errMsg = "Payment request was rejected by M-Pesa"
 		}
-		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_description=$1,updated_at=now() WHERE reference=$2`, errMsg, ref)
+		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_code='rejected',result_description=$1,failure_reason=$1,retryable=true,updated_at=now() WHERE reference=$2`, errMsg, ref)
 		write(w, 400, map[string]any{"error": errMsg, "reference": ref})
 		return
 	}
@@ -226,7 +226,46 @@ func (a *app) paymentCallback(w http.ResponseWriter, r *http.Request) {
 	if code == "0" || code == "0.0" {
 		state = "paid"
 	}
-	tag, e := a.db.Exec(r.Context(), `UPDATE insurance_payments SET status=$1,result_code=$2,result_description=$3,mpesa_receipt=NULLIF($4,''),updated_at=now() WHERE reference=$5`, state, code, description, receipt, ref)
+	// Human-readable reason shown to the payer + operations dashboard, plus
+	// whether retrying later can succeed. Safaricom ResultCodes:
+	//  0    paid | 1 insufficient funds (retryable) | 1032 cancelled by user
+	//  1038 expired/no response | 1025/2001 wrong PIN/locked | 2029 shortcode/type
+	//  1019 duplicate request. Anything else keeps the raw ResultDesc.
+	friendly := description
+	retryable := false
+	switch code {
+	case "0", "0.0":
+		friendly = "Payment received."
+	case "1":
+		friendly = "Insufficient M-Pesa balance. Please top up and try again."
+		retryable = true
+	case "1032":
+		friendly = "You cancelled the M-Pesa request. Start a new payment when ready."
+		retryable = true
+	case "1038":
+		friendly = "The M-Pesa prompt expired before approval. Please try again."
+		retryable = true
+	case "1025", "2001":
+		friendly = "Wrong M-Pesa PIN or account locked. Check your PIN and try again."
+		retryable = true
+	case "1019":
+		friendly = "A payment request is already in progress for this phone. Wait a minute, then try again."
+		retryable = true
+	case "2029":
+		friendly = "Payment could not be routed. Please contact support and quote your payment reference."
+	case "":
+		code = "unknown"
+		if friendly == "" {
+			friendly = "No confirmation was received from M-Pesa. Check your balance, then try again."
+			retryable = true
+		}
+	default:
+		if friendly == "" {
+			friendly = "The M-Pesa request was not completed. Please try again."
+			retryable = true
+		}
+	}
+	tag, e := a.db.Exec(r.Context(), `UPDATE insurance_payments SET status=$1,result_code=$2,result_description=$3,mpesa_receipt=NULLIF($4,''),failure_reason=$5,retryable=$6,updated_at=now() WHERE reference=$7`, state, code, friendly, receipt, friendly, retryable, ref)
 	if e != nil {
 		write(w, 500, map[string]any{"error": "Could not record payment result"})
 		return
@@ -238,12 +277,13 @@ func (a *app) paymentCallback(w http.ResponseWriter, r *http.Request) {
 	write(w, 200, map[string]any{"success": true})
 }
 func (a *app) paymentStatus(w http.ResponseWriter, r *http.Request) {
-	var ref, policy, status, receipt, description string
+	var ref, policy, status, receipt, description, code, reason string
+	var retryable bool
 	var amount float64
-	e := a.db.QueryRow(r.Context(), `SELECT reference,policy_number,status,COALESCE(mpesa_receipt,''),amount,COALESCE(result_description,'') FROM insurance_payments WHERE reference=$1`, r.PathValue("reference")).Scan(&ref, &policy, &status, &receipt, &amount, &description)
+	e := a.db.QueryRow(r.Context(), `SELECT reference,policy_number,status,COALESCE(mpesa_receipt,''),amount,COALESCE(result_description,''),COALESCE(result_code,''),COALESCE(failure_reason,result_description,''),COALESCE(retryable,false) FROM insurance_payments WHERE reference=$1`, r.PathValue("reference")).Scan(&ref, &policy, &status, &receipt, &amount, &description, &code, &reason, &retryable)
 	if e != nil {
 		write(w, 404, map[string]any{"error": "Payment not found"})
 		return
 	}
-	write(w, 200, map[string]any{"success": true, "reference": ref, "policyNumber": policy, "status": status, "receipt": receipt, "amount": amount, "resultDescription": description})
+	write(w, 200, map[string]any{"success": true, "reference": ref, "policyNumber": policy, "status": status, "receipt": receipt, "amount": amount, "resultDescription": description, "resultCode": code, "failureReason": reason, "retryable": retryable})
 }

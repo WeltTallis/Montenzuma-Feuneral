@@ -24,6 +24,8 @@ export default function InsuranceDashboard() {
   const [error, setError] = useState('');
   
   const [query, setQuery] = useState('');
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [claimDetail, setClaimDetail] = useState(null);
@@ -39,6 +41,11 @@ export default function InsuranceDashboard() {
       setMembers(rows(policyRes));
       setStats({ ...unwrap(statsRes), ...unwrap(analyticsRes) });
       setClaims(rows(claimRes));
+      try {
+        const payRes = await insuranceApi.listPayments({ limit: 100 });
+        const list = unwrap(payRes)?.payments || [];
+        setPaymentHistory(Array.isArray(list) ? list : []);
+      } catch { /* history is advisory — keep dashboard up if it fails */ }
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || 'Could not load data.');
     } finally { setLoading(false); }
@@ -124,6 +131,17 @@ export default function InsuranceDashboard() {
   const allContributions = useMemo(() => {
     return members.flatMap(m => (m.contributions || []).map(c => ({ ...c, memberName: m.fullName, policyNumber: m.policyNumber }))).sort((a, b) => new Date(b.paidAt || b.createdAt || 0) - new Date(a.paidAt || a.createdAt || 0));
   }, [members]);
+
+  // --- Full attempt history (paid + failed + pending) for ops follow-up ---
+  const visiblePayments = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return paymentHistory.filter(p => {
+      if (paymentFilter !== 'all' && String(p.status || '').toLowerCase() !== paymentFilter) return false;
+      if (!q) return true;
+      return [p.memberName, p.policyNumber, p.reference, p.phone, p.failureReason].some(v => String(v || '').toLowerCase().includes(q));
+    });
+  }, [paymentHistory, paymentFilter, query]);
+  const failedPayments = useMemo(() => paymentHistory.filter(p => String(p.status || '').toLowerCase() === 'failed'), [paymentHistory]);
 
   return (
     <div className="crm-dash">
@@ -257,21 +275,29 @@ export default function InsuranceDashboard() {
                 </div>
                 <div className="kpi-grid">
                   <div className="kpi-card"><span className="kpi-label">Total Collected</span><span className="kpi-value">{money(paidTotal)}</span><span className="kpi-sub up">All time</span></div>
-                  <div className="kpi-card"><span className="kpi-label">Transactions</span><span className="kpi-value">{allContributions.length}</span></div>
-                  <div className="kpi-card"><span className="kpi-label">Active Payers</span><span className="kpi-value">{activeCount}</span></div>
+                  <div className="kpi-card"><span className="kpi-label">Transactions</span><span className="kpi-value">{paymentHistory.length || allContributions.length}</span></div>
+                  <div className="kpi-card"><span className="kpi-label">Failed Attempts</span><span className="kpi-value">{failedPayments.length}</span><span className="kpi-sub down">Needs follow-up / retry</span></div>
                   <div className="kpi-card"><span className="kpi-label">Defaulters</span><span className="kpi-value">{defaulterCount}</span><span className="kpi-sub down">No recent payment</span></div>
                 </div>
                 <div className="card">
-                  <div className="card-header"><h3>Transaction Log</h3></div>
-                  <div className="table-wrap"><table><thead><tr><th>Member</th><th>Policy</th><th>Amount</th><th>Reference</th><th>Date</th><th>Status</th></tr></thead><tbody>
-                    {allContributions.length > 0 ? allContributions.slice(0, 50).map((c, i) => (
-                      <tr key={i}>
+                  <div className="card-header">
+                    <h3>Transaction Log</h3>
+                    <div style={{display:'flex',gap:'8px'}}>
+                      {['all','paid','failed','pending'].map(f => (
+                        <button key={f} className="btn" style={{padding:'4px 10px',fontWeight:paymentFilter===f?'700':'400'}} onClick={() => setPaymentFilter(f)}>{f[0].toUpperCase()+f.slice(1)}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="table-wrap"><table><thead><tr><th>Member</th><th>Policy</th><th>Amount</th><th>Reference</th><th>Date</th><th>Status</th><th>Reason / Next step</th></tr></thead><tbody>
+                    {visiblePayments.length > 0 ? visiblePayments.slice(0, 100).map((c, i) => (
+                      <tr key={c.reference || i}>
                         <td>{c.memberName || '—'}</td><td>{c.policyNumber || '—'}</td><td>{money(c.amount)}</td>
-                        <td>{c.mpesaRef || c.reference || '—'}</td><td>{dateText(c.paidAt || c.createdAt)}</td>
-                        <td><span className={`badge ${getStatusClass(c.status)}`}>{c.status || 'Paid'}</span></td>
+                        <td>{c.receipt || c.reference || '—'}</td><td>{dateText(c.createdAt)}</td>
+                        <td><span className={`badge ${getStatusClass(c.status)}`}>{c.status || 'Pending'}</span></td>
+                        <td style={{maxWidth:'280px'}}>{c.status === 'failed' ? (<span>{c.failureReason || 'Not completed.'}{c.retryable ? ' — safe to retry.' : ''}</span>) : c.status === 'pending' ? 'Waiting for M-Pesa approval…' : (c.receipt ? `Receipt ${c.receipt}` : '—')}</td>
                       </tr>
                     )) : (
-                      <tr><td colSpan="6" className="empty-state">No payment transactions found. Contributions will appear here after members pay via M-Pesa.</td></tr>
+                      <tr><td colSpan="7" className="empty-state">No payment transactions found. Contributions will appear here after members pay via M-Pesa.</td></tr>
                     )}
                   </tbody></table></div>
                 </div>

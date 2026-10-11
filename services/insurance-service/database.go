@@ -92,6 +92,9 @@ CREATE TABLE IF NOT EXISTS insurance_payments (
 );
 CREATE INDEX IF NOT EXISTS insurance_claims_policy_idx ON insurance_claims(policy_number);
 CREATE INDEX IF NOT EXISTS insurance_payments_policy_idx ON insurance_payments(policy_number);
+ALTER TABLE insurance_payments ADD COLUMN IF NOT EXISTS failure_reason TEXT;
+ALTER TABLE insurance_payments ADD COLUMN IF NOT EXISTS retryable BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS insurance_payments_status_idx ON insurance_payments(status);
 `)
 	return err
 }

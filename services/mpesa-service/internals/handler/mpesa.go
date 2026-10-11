@@ -132,12 +132,35 @@ func (h *MpesaHandler) STKCallback(c *gin.Context) {
     h.mpesaService.SaveCallbackRequest(callbackRequest)
 
     // Forward the normalized result to insurance so contribution statuses are
-    // updated after Safaricom confirms the STK request.
+    // updated after Safaricom confirms the STK request. Map the raw ResultDesc
+    // to the same friendly reason shown to the payer, so the insurance copy
+    // matches even if its own mapper is behind.
+    friendly := resultDesc
+    switch resultCode {
+    case "0":
+        friendly = "Payment received."
+    case "1":
+        friendly = "Insufficient M-Pesa balance. Please top up and try again."
+    case "1032":
+        friendly = "You cancelled the M-Pesa request. Start a new payment when ready."
+    case "1038":
+        friendly = "The M-Pesa prompt expired before approval. Please try again."
+    case "1025", "2001":
+        friendly = "Wrong M-Pesa PIN or account locked. Check your PIN and try again."
+    case "1019":
+        friendly = "A payment request is already in progress for this phone. Wait a minute, then try again."
+    case "2029":
+        friendly = "Payment could not be routed. Please contact support and quote your payment reference."
+    default:
+        if friendly == "" {
+            friendly = "The M-Pesa request was not completed. Please try again."
+        }
+    }
     if target := os.Getenv("INSURANCE_CALLBACK_URL"); target != "" {
         forward, _ := json.Marshal(map[string]string{
             "reference":           orderID,
             "ResultCode":          resultCode,
-            "ResultDesc":          resultDesc,
+            "ResultDesc":          friendly,
             "MpesaReceiptNumber":  mpesaReceiptNumber,
         })
         

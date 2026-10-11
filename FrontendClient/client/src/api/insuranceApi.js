@@ -121,6 +121,19 @@ export async function getPaymentStatus(reference) {
     throw toApiError(err);
   }
 }
+
+/** Staff: list recent payment attempts incl. failed ones (reason + retry flag). */
+export async function listPayments(params = {}) {
+  try {
+    const query = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
+    ).toString();
+    const { data } = await api.get(BASE + '/payments' + (query ? `?${query}` : ''));
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
 /* Public: look up the progress of a claim already filed against a policy.
  *
  * Takes the same policy number as checkCover (the holder's national ID, read
@@ -194,6 +207,7 @@ export const insuranceApi = {
   checkCover,
   startPayment,
   getPaymentStatus,
+  listPayments,
   getPaymentLink,
   listPolicies,
   getPolicy,

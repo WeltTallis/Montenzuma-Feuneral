@@ -100,6 +100,7 @@ func main() {
 	mux.HandleFunc("GET /insurance/payment-links/{code}", a.getPaymentLink)
 	mux.HandleFunc("POST /insurance/payments/stk-push", a.stkPush)
 	mux.HandleFunc("POST /insurance/payments/callback", a.paymentCallback)
+	mux.Handle("GET /insurance/payments", a.cacheFor(10*time.Second, a.listPayments))
 	mux.HandleFunc("GET /insurance/payments/{reference}", a.paymentStatus)
 
 	addr := ":" + env("PORT", "5050")

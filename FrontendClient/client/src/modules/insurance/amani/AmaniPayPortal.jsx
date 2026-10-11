@@ -40,9 +40,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { LockKeyhole, Phone, Search, ShieldCheck } from 'lucide-react';
+import { Clock, LockKeyhole, Phone, Search, ShieldCheck } from 'lucide-react';
 import { CONTACT, formatPlanAmount, planFor } from './amaniData';
-import { FillImage } from './AmaniUi';
 import { InsuranceApiError, checkCover, startPayment, getPaymentStatus, getPaymentLink } from '../../../api/insuranceApi';
 
 const formatKes = (value) => Number(value || 0).toLocaleString('en-KE');
@@ -52,6 +51,14 @@ function normalizeKenyanPhone(value) {
   if (/^0[17]\d{8}$/.test(digits)) return '254' + digits.slice(1);
   if (/^254[17]\d{8}$/.test(digits)) return digits;
   return '';
+}
+
+/* Display-only mask for the processing state: 254740045355 -> "0740 *** 355".
+   Never used to send anything — the raw number stays in `phoneNumber`. */
+function maskPhone(value) {
+  const digits = normalizeKenyanPhone(value);
+  if (!digits) return '';
+  return '0' + digits.slice(3, 6) + ' *** ' + digits.slice(-3);
 }
 
 /* How often a member may pay. `months` is how many monthly contributions one
@@ -64,182 +71,161 @@ const FREQUENCIES = [
   { value: 'quarterly', label: 'Quarterly', months: 3, hint: 'Every 3 months' },
 ];
 
-/* The prototype's stylesheet, scoped. Colours are its own design tokens
-   (--pay-navy/...), deliberately NOT the Amani ac-* palette: this screen is a
-   member payment portal with its own identity. Page background is white. */
+/* iPay-now split layout — BLUISH palette like the original portal:
+   navy #173c5a / deep #102f49 / cobalt #547895 / slate #596b78 / line #dce4e8.
+   Scoped under .amani-pay. The backend flow below is untouched — lookup,
+   cover-check, startPayment and status polling all stay as they were. */
 const PAY_STYLES = `
-  .amani-pay {
-    --pay-navy: #173c5a;
-    --pay-navy-deep: #102f49;
-    --pay-cobalt: #547895;
-    --pay-ink: #293946;
-    --pay-slate: #596b78;
-    --pay-line: #dce4e8;
-    --pay-wash: #f4f7f8;
-    --pay-white: #ffffff;
-    --pay-green: #557565;
-    --pay-brass: #92764c;
+  @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+  .amani-pay { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box; padding: 20px; min-height: 100vh; min-height: 100svh; background: #ffffff; color: #293946; font-family: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  /* Whole-page padding: the shell (all page content) sits inset inside the
+     white page with a light frame, so nothing runs to the viewport edge. */
+  .amani-pay .payment-shell { box-sizing: border-box; display: flex; width: 100%; height: calc(100vh - 40px); height: calc(100svh - 40px); overflow: hidden; background: #ffffff; color: #293946; border: 1px solid #dce4e8; border-radius: 8px; }
 
-    /* ---- FULL-BLEED + WHITE PAGE ----
-       Breaks out of any parent max-width / padding so the portal always
-       occupies the full viewport width, and sits on a white background. */
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    min-height: 100vh;
-    min-height: 100svh;
-    background: #ffffff;
-  }
-
-  .amani-pay .payment-shell {
-    display: grid;
-    width: 100%;
-    min-height: 100vh;
-    min-height: 100svh;
-    grid-template-columns: minmax(360px, 0.95fr) minmax(460px, 1.05fr);
-    overflow: hidden;
-
-    /* Full-bleed: no rounded corners, no floating-card shadow. */
-    border-radius: 0;
-    background: var(--pay-white);
-    color: var(--pay-ink);
-    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  }
-
-  .amani-pay .brand-panel {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-
-    color: white;
-  }
-  .amani-pay .brand-panel__content { position: relative; z-index: 2; display: flex; min-height: 100%; flex-direction: column; padding: clamp(2rem, 5vw, 4.25rem); }
-  .amani-pay .brand-panel__image { position: absolute; inset: 0; z-index: -3; width: 100%; height: 100%; object-fit: cover; object-position: 58% center; opacity: .82; }
-  .amani-pay .brand-panel__shade { position: absolute; inset: 0; z-index: -2; background: linear-gradient(90deg, rgba(16,47,73,.94) 0%, rgba(23,60,90,.82) 48%, rgba(23,60,90,.48) 100%), linear-gradient(0deg, rgba(16,47,73,.66), transparent 60%); }
+  .amani-pay .brand-panel { position: relative; isolation: isolate; flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 48px; background: #173c5a; background-image: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 40%); color: #ffffff; border-right: 1px solid #102f49; }
+  /* Navy brand panel — the old photo is hidden, not deleted. */
+  .amani-pay .brand-panel__image, .amani-pay .brand-panel__shade { display: none; }
+  .amani-pay .brand-panel__content { position: relative; z-index: 2; display: flex; min-height: 100%; flex-direction: column; justify-content: space-between; padding: 0; }
+  .amani-pay .brand-logo h1, .amani-pay .brand-mark__name { font-family: 'Merriweather', Georgia, serif; font-size: 24px; font-weight: 700; line-height: 1.2; }
+  .amani-pay .brand-logo span { display: block; margin-top: 4px; font-size: 12px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.15em; }
   .amani-pay .brand-mark { display: flex; align-items: center; gap: .7rem; }
-  .amani-pay .brand-mark__name { font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; }
-  .amani-pay .hero-copy { max-width: 33rem; margin: auto 0; padding: 0rem 0; }
-  .amani-pay .eyebrow,
-  .amani-pay .form-heading__kicker { display: flex; align-items: center; gap: .45rem; color: #ddcba5; font-size: .67rem; font-weight: 800; letter-spacing: .16em; }
-  .amani-pay .hero-copy h1,
-  .amani-pay .form-heading h2 { font-family: 'Cormorant Garamond', Georgia, serif; letter-spacing: 0; }
-  .amani-pay .hero-copy h1 { margin: 1.5rem 0 1.45rem; font-size: 3.55rem; font-weight: 500; line-height: 1.02; }
-  .amani-pay .hero-copy h1 em { color: #dfd0ad; font-style: italic; }
-  .amani-pay .hero-copy p { max-width: 30rem; color: #e0e8ed; font-size: 1rem; line-height: 1.75; }
-  .amani-pay .secure-pill { display: inline-flex; align-items: center; gap: .55rem; margin-top: 2.2rem; border: 1px solid #ffffff2d; border-radius: 999px; background: #ffffff0d; color: #e3efff; font-size: .75rem; backdrop-filter: blur(10px); }
-  .amani-pay .secure-pill svg { color: #d5c19a; }
-  .amani-pay .brand-panel__footer { display: flex; align-items: center; gap: .75rem; color: #a8bdd9; font-size: .7rem; letter-spacing: .02em; }
-  .amani-pay .footer-dot { width: 3px; height: 3px; border-radius: 50%; background: #7f9abd; }
+  .amani-pay .hero-copy { max-width: 34rem; margin: auto 0; }
+  .amani-pay .eyebrow, .amani-pay .form-heading__kicker { display: flex; align-items: center; gap: .45rem; color: #cbd5e1; font-size: 12px; font-weight: 700; letter-spacing: 0.15em; }
+  .amani-pay .hero-copy h1, .amani-pay .form-heading h2 { font-family: 'Merriweather', Georgia, serif; font-weight: 700; letter-spacing: 0; }
+  .amani-pay .hero-copy h1 { margin: 1.5rem 0 1.45rem; font-size: 36px; font-weight: 400; line-height: 1.4; }
+  .amani-pay .hero-copy h1 em { color: #ffffff; font-style: normal; }
+  .amani-pay .hero-copy p { max-width: 34rem; color: #cbd5e1; font-size: 16px; line-height: 1.6; }
+  .amani-pay .secure-pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 2rem; color: #a8bdd9; font-size: 13px; }
+  .amani-pay .secure-pill svg { color: #a8bdd9; }
+  .amani-pay .brand-panel__footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: #a8bdd9; font-size: 12px; }
+  .amani-pay .footer-dot { display: none; }
 
-  .amani-pay .form-panel { display: flex; align-items: center; justify-content: center; background: #ffffff; padding: clamp(2rem, 5vw, 5rem); }
-  .amani-pay .form-panel__inner { width: min(100%, 34rem); }
+  .amani-pay .form-panel { display: flex; align-items: center; justify-content: center; background: #ffffff; padding: 48px; overflow-y: auto; }
+  .amani-pay .form-panel__inner { width: min(100%, 440px); text-align: center; }
   .amani-pay .state-view { width: 100%; }
-  .amani-pay .form-heading { max-width: 31rem; }
-  .amani-pay .form-heading h2 { margin: .7rem 0 .65rem; color: var(--pay-navy-deep); font-size: 2.45rem; font-weight: 500; line-height: 1.08; }
-  .amani-pay .form-heading p { max-width: 29rem; color: var(--pay-slate); font-size: .92rem; line-height: 1.6; }
-  .amani-pay .form-heading__kicker { color: var(--pay-brass); }
-  .amani-pay .form-heading__kicker--green { color: var(--pay-green); }
-  .amani-pay .payment-form { display: flex; flex-direction: column; gap: 1.2rem; margin-top: 2.4rem; }
-  .amani-pay .field { display: flex; flex-direction: column; gap: .55rem; color: var(--pay-ink); font-size: .72rem; font-weight: 800; }
-  .amani-pay .field input { width: 100%; height: 3.35rem; border: 1px solid var(--pay-line); border-radius: .65rem; background: var(--pay-wash); padding: 0 1rem; color: var(--pay-ink); font: 500 .95rem 'DM Sans', ui-sans-serif, system-ui, sans-serif; transition: border-color .2s, box-shadow .2s, background .2s; }
+  .amani-pay .form-heading { max-width: 31rem; margin-left: auto; margin-right: auto; }
+  .amani-pay .form-heading h2 { margin: .7rem 0 .65rem; color: #173c5a; font-size: 34px; font-weight: 700; line-height: 1.15; }
+  .amani-pay .form-heading p { max-width: 29rem; margin: 0 auto; color: #596b78; font-size: 16px; line-height: 1.6; }
+  .amani-pay .form-heading__kicker { color: #596b78; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .amani-pay .form-heading__kicker--green { color: #557565; }
+  .amani-pay .payment-form { display: flex; flex-direction: column; gap: 16px; margin-top: 32px; text-align: left; }
+  .amani-pay .field { display: flex; flex-direction: column; gap: 8px; color: #596b78; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; text-align: left; }
+  .amani-pay .field input { width: 100%; height: 52px; border: 1px solid #dce4e8; border-radius: 4px; background: #f4f7f8; padding: 0 16px; color: #173c5a; font: 500 16px 'Source Sans 3', ui-sans-serif, system-ui, sans-serif; letter-spacing: 0; text-transform: none; transition: border-color .15s, background .15s; }
   .amani-pay .field input::placeholder { color: #9aa9ba; }
-  .amani-pay .field input:focus { outline: none; border-color: var(--pay-cobalt); background: white; box-shadow: 0 0 0 4px rgba(84,120,149,.14); }
-  .amani-pay .field input[aria-invalid="true"] { border-color: #d64545; }
-
-  .amani-pay .pay-error { display: flex; gap: .45rem; margin-top: 1rem; color: #b42318; font-size: .78rem; line-height: 1.5; }
-  .amani-pay .amount-input { display: flex; align-items: center; height: 3.35rem; border: 1px solid var(--pay-line); border-radius: .65rem; background: var(--pay-wash); padding-left: 1rem; transition: border-color .2s, box-shadow .2s, background .2s; }
-  .amani-pay .amount-input:focus-within { border-color: var(--pay-cobalt); background: white; box-shadow: 0 0 0 4px rgba(84,120,149,.14); }
-  .amani-pay .amount-input span { color: var(--pay-slate); font-size: .82rem; font-weight: 800; }
-  .amani-pay .amount-input input { height: 100%; border: 0; background: transparent; padding-left: .7rem; }
-  .amani-pay .amount-input input:focus { box-shadow: none; }
-
-  .amani-pay .pay-button { display: flex; align-items: center; justify-content: center; gap: .65rem; width: 100%; height: 3.45rem; margin-top: .35rem; border: 0; border-radius: .65rem; background: var(--pay-navy); color: white; cursor: pointer; font-size: .92rem; font-weight: 800; transition: transform .2s, background .2s, box-shadow .2s; }
-  .amani-pay .pay-button:hover:not(:disabled) { background: var(--pay-cobalt); box-shadow: 0 10px 22px rgba(23,60,90,.2); transform: translateY(-2px); }
-  .amani-pay .pay-button:disabled { opacity: .6; cursor: not-allowed; }
+  .amani-pay .field input:focus { outline: none; border-color: #173c5a; background: #ffffff; }
+  .amani-pay .field input[aria-invalid="true"] { border-color: #dc2626; }
+  .amani-pay .pay-error { color: #dc2626; font-size: 14px; line-height: 1.5; margin: 0; text-align: left; }
+  .amani-pay .pay-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; padding: 14px 24px; border: 1px solid #173c5a; border-radius: 4px; background: #173c5a; color: #ffffff; cursor: pointer; font: 700 16px 'Source Sans 3', sans-serif; letter-spacing: .02em; transition: background .15s, border-color .15s; }
+  .amani-pay .pay-button:hover:not(:disabled) { background: #102f49; border-color: #293946; }
+  .amani-pay .pay-button:disabled { opacity: .5; cursor: not-allowed; }
   .amani-pay a.pay-button { text-decoration: none; }
-  .amani-pay .payment-apply-link { display: block; margin-top: 1.2rem; color: var(--pay-cobalt); font-size: .82rem; font-weight: 800; text-align: center; text-decoration: underline; text-underline-offset: 3px; }
-  .amani-pay .payment-contact-card { margin-top: 1.5rem; padding: 1.1rem; border: 1px solid var(--pay-line); border-radius: .85rem; background: var(--pay-wash); }
-  .amani-pay .payment-contact-card strong { color: var(--pay-navy); font-size: .9rem; }
-  .amani-pay .payment-contact-card p { margin: .45rem 0 1rem; color: var(--pay-slate); font-size: .78rem; line-height: 1.55; }
+  .amani-pay a.pay-button:hover { background: #102f49; }
+  .amani-pay .payment-apply-link { display: block; margin-top: 16px; color: #596b78; font-size: 14px; font-weight: 600; text-align: center; text-decoration: underline; text-underline-offset: 3px; }
+  .amani-pay .payment-contact-card { margin-top: 24px; padding: 24px; border: 1px solid #dce4e8; border-radius: 4px; background: #f4f7f8; text-align: center; }
+  .amani-pay .payment-contact-card strong { display: block; color: #173c5a; font-family: 'Merriweather', Georgia, serif; font-size: 20px; font-weight: 700; }
+  .amani-pay .payment-contact-card p { margin: 10px 0 12px; color: #596b78; font-size: 15px; line-height: 1.6; }
+  .amani-pay .payment-contact-card small { color: #596b78; font-size: 13px; }
 
-  .amani-pay .form-note { display: flex; align-items: center; justify-content: center; gap: .45rem; margin-top: 1.25rem; color: #8593a4; font-size: .7rem; }
-  .amani-pay .form-note svg { color: var(--pay-green); }
-  .amani-pay .payment-trust { display: flex; align-items: center; justify-content: center; gap: .8rem; margin-top: 2.8rem; color: #a0adbb; font-size: .59rem; font-weight: 800; letter-spacing: .12em; }
-  .amani-pay .payment-trust strong { color: #18a875; font-size: .7rem; letter-spacing: .04em; }
-  .amani-pay .trust-divider { width: 1px; height: .85rem; background: var(--pay-line); }
+  .amani-pay .form-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 20px; color: #596b78; font-size: 13px; text-align: center; }
+  .amani-pay .form-note svg { color: #557565; }
+  .amani-pay .payment-trust { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 28px; color: #596b78; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .amani-pay .payment-trust strong { color: #557565; font-size: 12px; letter-spacing: .04em; }
+  .amani-pay .trust-divider { width: 1px; height: 14px; background: #dce4e8; }
 
   .amani-pay .centered-state { display: flex; align-items: center; flex-direction: column; text-align: center; }
-  .amani-pay .form-heading--center { margin-top: 2rem; }
-  .amani-pay .form-heading--center p { max-width: 25rem; }
-  .amani-pay .pending-orbit { display: grid; width: 100%; height: 6rem; place-items: center; border: 1px solid #cfe0f5; border-radius: 50%; box-shadow: 0 0 0 12px #f5f9ff; animation: amanipay-pulse 1.8s ease-in-out infinite; }
-  .amani-pay .pending-orbit__dot { width: 2.1rem; height: 2.1rem; border: 3px solid #d8e5f5; border-top-color: var(--pay-cobalt); border-radius: 50%; animation: amanipay-spin 1s linear infinite; }
+  .amani-pay .form-heading--center { margin-top: 32px; }
+  .amani-pay .form-heading--center p { max-width: 400px; }
+  /* Mock-style waiting ring: gray track, black arc (like .spinner). */
+  .amani-pay .pending-orbit { display: grid; width: 64px; height: 64px; margin: 0 auto 32px; place-items: center; border: 3px solid #f1f5f9; border-top-color: #547895; border-radius: 50%; animation: amanipay-spin .8s linear infinite; box-shadow: none; }
+  .amani-pay .pending-orbit__dot { width: 0; height: 0; border: 0; animation: none; }
   @keyframes amanipay-spin { to { transform: rotate(360deg); } }
-  @keyframes amanipay-pulse { 50% { box-shadow: 0 0 0 20px #f5f9ff; } }
 
-  /* Plan-found summary, receipt, history, secondary button */
-  .amani-pay .plan-summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2rem; padding: 1.1rem 1.25rem; border: 1px solid #e1eee8; border-radius: .85rem; background: #f7fcf9; }
-  .amani-pay .summary-label { display: block; color: #719080; font-size: .62rem; font-weight: 800; letter-spacing: .14em; }
-  .amani-pay .plan-summary strong { display: block; margin-top: .3rem; color: var(--pay-ink); font-size: 1rem; }
-  .amani-pay .plan-summary small { display: block; margin-top: .2rem; color: var(--pay-slate); font-size: .7rem; }
+  /* Plan-found summary + receipt + history — sharp corners, gray/black tokens */
+  .amani-pay .plan-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 32px; padding: 24px; border: 1px solid #dce4e8; border-radius: 4px; background: #f4f7f8; text-align: left; }
+  .amani-pay .summary-label { display: block; color: #596b78; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .amani-pay .plan-summary strong { display: block; margin-top: 4px; color: #173c5a; font-size: 16px; }
+  .amani-pay .plan-summary small { display: block; margin-top: 4px; color: #596b78; font-size: 13px; }
   .amani-pay .summary-amount { text-align: right; }
-  .amani-pay .summary-amount strong { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.65rem; font-weight: 600; }
+  .amani-pay .summary-amount strong { font-family: 'Merriweather', Georgia, serif; font-size: 34px; font-weight: 700; }
 
-  .amani-pay .success-badge { display: grid; width: 5.75rem; height: 5.75rem; place-items: center; border-radius: 50%; background: #dff7ec; color: var(--pay-green); }
-  .amani-pay .receipt-card { display: flex; align-items: center; flex-direction: column; gap: .35rem; width: 100%; margin: 2rem 0; padding: 1.2rem; border: 1px solid #e1eee8; border-radius: .75rem; background: #f7fcf9; }
-  .amani-pay .receipt-card span { color: #719080; font-size: .62rem; font-weight: 800; letter-spacing: .14em; }
-  .amani-pay .receipt-card strong { color: var(--pay-ink); font-family: Georgia, serif; font-size: 2rem; font-weight: 400; }
-  .amani-pay .receipt-card small { color: #8aa395; font-family: monospace; font-size: .7rem; }
+  .amani-pay .success-badge { display: grid; width: 80px; height: 80px; margin: 0 auto 24px; place-items: center; border: 2px solid #557565; border-radius: 50%; background: #edf3ef; color: #557565; }
+  .amani-pay .receipt-card { display: flex; align-items: center; flex-direction: column; gap: 6px; width: 100%; margin: 32px 0; padding: 24px; border: 1px solid #f1f5f9; border-radius: 4px; background: #f4f7f8; text-align: left; }
+  .amani-pay .receipt-card span { color: #596b78; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .amani-pay .receipt-card strong { color: #173c5a; font-family: 'Merriweather', Georgia, serif; font-size: 32px; font-weight: 700; }
+  .amani-pay .receipt-card small { color: #596b78; font-family: monospace; font-size: 13px; }
 
-  .amani-pay .contribution-history { width: 100%; margin-top: .35rem; padding: 1rem; border: 1px solid var(--pay-line); border-radius: .85rem; background: #fbfcfe; text-align: left; }
-  .amani-pay .history-heading { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: .75rem; border-bottom: 1px solid var(--pay-line); }
-  .amani-pay .history-heading h3 { margin-top: .22rem; color: var(--pay-ink); font-family: Georgia, serif; font-size: 1.15rem; font-weight: 400; }
-  .amani-pay .history-heading svg { color: var(--pay-cobalt); }
-  .amani-pay .history-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem 0; border-bottom: 1px solid #edf1f5; }
+  .amani-pay .contribution-history { width: 100%; margin-top: 6px; padding: 16px; border: 1px solid #dce4e8; border-radius: 4px; background: #f4f7f8; text-align: left; }
+  .amani-pay .history-heading { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
+  .amani-pay .history-heading h3 { margin-top: 4px; color: #173c5a; font-family: 'Merriweather', Georgia, serif; font-size: 18px; font-weight: 700; }
+  .amani-pay .history-heading svg { color: #596b78; }
+  .amani-pay .history-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
   .amani-pay .history-row div:last-child { text-align: right; }
-  .amani-pay .history-row strong { display: block; color: var(--pay-ink); font-size: .78rem; }
-  .amani-pay .history-row small { display: block; margin-top: .2rem; color: var(--pay-slate); font-size: .68rem; }
-  .amani-pay .history-row--current strong:first-child { color: var(--pay-green); }
-  .amani-pay .history-total { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: .85rem; color: var(--pay-slate); font-size: .72rem; }
-  .amani-pay .history-total strong { color: var(--pay-navy); font-size: .9rem; }
+  .amani-pay .history-row strong { display: block; color: #173c5a; font-size: 13px; }
+  .amani-pay .history-row small { display: block; margin-top: 3px; color: #596b78; font-size: 11px; }
+  .amani-pay .history-row--current strong:first-child { color: #557565; }
+  .amani-pay .history-total { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; color: #596b78; font-size: 12px; }
+  .amani-pay .history-total strong { color: #173c5a; font-size: 14px; }
 
-  .amani-pay .text-button { display: block; width: 100%; margin-top: 1.1rem; border: 0; background: none; color: var(--pay-slate); cursor: pointer; font-size: .78rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-  .amani-pay .text-button:hover { color: var(--pay-cobalt); }
-  .amani-pay .secondary-button { width: 100%; height: 3.2rem; margin-top: 2rem; border: 1px solid var(--pay-line); border-radius: .65rem; background: white; color: var(--pay-navy); cursor: pointer; font-weight: 800; }
-  .amani-pay .secondary-button:hover { border-color: var(--pay-cobalt); background: var(--pay-wash); }
-  .amani-pay .mock-note { margin-top: 1rem; padding: .7rem .9rem; border: 1px dashed #e0b64a; border-radius: .5rem; background: #fffaeb; color: #7a5a08; font-size: .72rem; line-height: 1.5; }
+  .amani-pay .text-button { display: block; width: 100%; margin-top: 16px; border: 0; background: none; color: #596b78; cursor: pointer; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .amani-pay .text-button:hover { color: #173c5a; }
+  .amani-pay .secondary-button { width: 100%; min-height: 54px; margin-top: 32px; border: 1px solid #dce4e8; border-radius: 4px; background: #ffffff; color: #173c5a; cursor: pointer; font: 700 16px 'Source Sans 3', sans-serif; }
+  .amani-pay .secondary-button:hover { border-color: #173c5a; background: #f4f7f8; }
+  .amani-pay .mock-note { margin-top: 16px; padding: 12px 14px; border: 1px dashed #e0b64a; border-radius: 4px; background: #fffaeb; color: #7a5a08; font-size: 12px; line-height: 1.5; }
 
   /* Payment frequency picker — two big tap targets, monthly / quarterly. */
-  .amani-pay .freq { margin-top: 1.4rem; padding: 0; border: 0; }
-  .amani-pay .field-legend { margin-bottom: .55rem; color: var(--pay-ink); font-size: .72rem; font-weight: 800; }
-  .amani-pay .freq-options { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
-  .amani-pay .freq-option { position: relative; display: flex; flex-direction: column; gap: .18rem; padding: .85rem .95rem; border: 1px solid var(--pay-line); border-radius: .65rem; background: var(--pay-wash); cursor: pointer; transition: border-color .2s, background .2s, box-shadow .2s; }
-  .amani-pay .freq-option:hover { border-color: #b9cde6; background: white; }
-  .amani-pay .freq-option.is-active { border-color: var(--pay-cobalt); background: white; box-shadow: 0 0 0 3px #1f5fca14; }
+  .amani-pay .freq { margin-top: 24px; padding: 0; border: 0; text-align: left; }
+  .amani-pay .field-legend { display: block; margin-bottom: 10px; color: #596b78; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .amani-pay .freq-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .amani-pay .freq-option { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px; border: 1px solid #dce4e8; border-radius: 4px; background: #f4f7f8; cursor: pointer; transition: border-color .15s, background .15s; }
+  .amani-pay .freq-option:hover { border-color: #596b78; background: #ffffff; }
+  .amani-pay .freq-option.is-active { border-color: #173c5a; background: #ffffff; box-shadow: 0 0 0 2px rgba(84,120,149,.18); }
   .amani-pay .freq-option input { position: absolute; opacity: 0; pointer-events: none; }
   /* Keyboard focus still needs a visible ring, since the input is invisible. */
-  .amani-pay .freq-option:has(input:focus-visible) { outline: 2px solid var(--pay-cobalt); outline-offset: 2px; }
-  .amani-pay .freq-option__label { color: var(--pay-ink); font-size: .82rem; font-weight: 800; }
-  .amani-pay .freq-option__hint { color: var(--pay-slate); font-size: .66rem; }
-  .amani-pay .freq-option__amount { margin-top: .3rem; color: var(--pay-navy); font-size: .88rem; font-weight: 800; }
-  .amani-pay .freq-option.is-active .freq-option__amount { color: var(--pay-cobalt); }
+  .amani-pay .freq-option:has(input:focus-visible) { outline: 2px solid #547895; outline-offset: 2px; }
+  .amani-pay .freq-option__label { color: #173c5a; font-size: 14px; font-weight: 700; }
+  .amani-pay .freq-option__hint { color: #596b78; font-size: 12px; }
+  .amani-pay .freq-option__amount { margin-top: 4px; color: #596b78; font-size: 14px; font-weight: 700; }
+  .amani-pay .freq-option.is-active .freq-option__amount { color: #173c5a; }
 
-  /* The two-panel grid needs ~820px of CONTENT width (360 + 460). Below 900px
-     of viewport the columns squeeze, so we stack: photo panel on top, form
-     below — both still full-bleed on the white page. */
-  @media (max-width: 900px) {
-    .amani-pay .payment-shell { display: block; min-height: 0; }
-    .amani-pay .brand-panel { min-height: 21rem; }
-    .amani-pay .brand-panel__content { padding: 1.7rem 1.5rem; }
-    .amani-pay .hero-copy { padding: 2.5rem 0 1.75rem; }
-    .amani-pay .hero-copy h1 { margin: 1rem 0; font-size: 2.7rem; }
-    .amani-pay .hero-copy p { display: none; }
-    .amani-pay .secure-pill { margin-top: 1.4rem; }
-    .amani-pay .brand-panel__footer { display: none; }
-    /* min-height:0 - the stacked form should be exactly as tall as its content. */
-    .amani-pay .form-panel { min-height: 0; padding: 2.75rem 1.5rem; }
-    .amani-pay .plan-summary { flex-direction: column; align-items: flex-start; gap: .75rem; }
+  /* ─── MOCK STATE BLOCKS (idle / processing / success / failure) ─── */
+  .amani-pay .status-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #596b78; margin-bottom: 16px; }
+  .amani-pay .amount-due { font-family: 'Merriweather', Georgia, serif; font-size: 54px; font-weight: 700; color: #173c5a; line-height: 1; letter-spacing: -.02em; margin-bottom: 8px; }
+  .amani-pay .policy-info { font-size: 15px; color: #596b78; margin-bottom: 32px; }
+  .amani-pay .btn { width: 100%; min-height: 54px; padding: 14px 24px; border-radius: 4px; font: 700 16px 'Source Sans 3', sans-serif; letter-spacing: .02em; cursor: pointer; border: 1px solid #dce4e8; background: #ffffff; color: #293946; display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: .15s; }
+  .amani-pay .btn:hover:not(:disabled) { background: #f4f7f8; border-color: #596b78; }
+  .amani-pay .btn-primary { background: #173c5a; color: #ffffff; border-color: #173c5a; }
+  .amani-pay .btn-primary:hover:not(:disabled) { background: #102f49; }
+  .amani-pay .btn-success { background: #557565; color: #ffffff; border-color: #557565; }
+  .amani-pay .btn-success:hover:not(:disabled) { background: #456454; }
+  .amani-pay .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .amani-pay .spinner-container { width: 64px; height: 64px; margin: 0 auto 32px; }
+  .amani-pay .spinner { width: 100%; height: 100%; border: 3px solid #f1f5f9; border-top-color: #547895; border-radius: 50%; animation: amanipay-spin .8s linear infinite; }
+  .amani-pay .processing-title { font-family: 'Merriweather', Georgia, serif; font-size: 28px; font-weight: 700; color: #173c5a; margin-bottom: 16px; }
+  .amani-pay .processing-text { font-size: 16px; color: #596b78; line-height: 1.6; margin: 0 auto 32px; max-width: 380px; }
+  .amani-pay .phone-placeholder { font-weight: 700; color: #173c5a; border-bottom: 2px solid #173c5a; padding-bottom: 2px; }
+  .amani-pay .success-icon-wrap { width: 80px; height: 80px; margin: 0 auto 32px; display: flex; align-items: center; justify-content: center; border: 2px solid #557565; border-radius: 50%; background: #edf3ef; }
+  .amani-pay .checkmark { width: 40px; height: 40px; stroke: #557565; stroke-width: 4; fill: none; stroke-dasharray: 50; stroke-dashoffset: 50; animation: amanipay-draw .6s cubic-bezier(.65,0,.45,1) forwards; }
+  @keyframes amanipay-draw { to { stroke-dashoffset: 0; } }
+  .amani-pay .success-title { font-family: 'Merriweather', Georgia, serif; font-size: 32px; font-weight: 700; color: #173c5a; margin-bottom: 16px; }
+  .amani-pay .success-text { font-size: 16px; color: #596b78; line-height: 1.6; margin: 0 auto 32px; max-width: 380px; }
+  .amani-pay .fail-icon-wrap { width: 80px; height: 80px; margin: 0 auto 32px; display: flex; align-items: center; justify-content: center; border: 2px solid #dc2626; border-radius: 50%; background: #fef2f2; color: #dc2626; font-size: 36px; font-weight: 700; }
+  .amani-pay .fail-title { font-family: 'Merriweather', Georgia, serif; font-size: 30px; font-weight: 700; color: #173c5a; margin-bottom: 16px; }
+  .amani-pay .receipt-box { background: #f4f7f8; border: 1px solid #f1f5f9; padding: 24px; border-radius: 4px; margin-bottom: 32px; text-align: left; }
+  .amani-pay .receipt-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+  .amani-pay .receipt-row:last-child { border-bottom: none; }
+  .amani-pay .receipt-label { color: #596b78; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; font-weight: 700; }
+  .amani-pay .receipt-value { color: #173c5a; font-weight: 600; font-size: 15px; text-align: right; }
+  .amani-pay .retry-hint { font-size: 13px; color: #557565; margin-top: 12px; }
+  .amani-pay .ref-line { font-size: 13px; color: #596b78; margin-top: 16px; }
+
+  /* Mock: brand panel hidden on mobile; action panel starts near the top. */
+  @media (max-width: 768px) {
+    .amani-pay { padding: 12px; }
+    .amani-pay .payment-shell { display: block; height: auto; min-height: calc(100svh - 24px); }
+    .amani-pay .brand-panel { display: none; }
+    .amani-pay .form-panel { padding: 24px; justify-content: flex-start; padding-top: 8vh; }
+    .amani-pay .plan-summary { flex-direction: column; align-items: flex-start; gap: 12px; }
     .amani-pay .summary-amount { text-align: left; }
-    .amani-pay .form-heading h2 { font-size: 2rem; }
     .amani-pay .freq-options { grid-template-columns: 1fr; }
   }
 `;
@@ -418,39 +404,27 @@ export default function AmaniPayPortal() {
       <style>{PAY_STYLES}</style>
 
       <div className="payment-shell">
-        {/* ---------- LEFT: branded photo panel ---------- */}
-        <section className="brand-panel" aria-label="Amani Cover information">
-          <FillImage
-            className="brand-panel__image"
-            src="/amani/images/family-protection.png"
-            alt="Family holding hands in a warm, reassuring moment"
-            sizes="(max-width: 760px) 100vw, 46vw"
-          />
-          <div className="brand-panel__shade" />
-
+        {/* ---------- LEFT: solid-black brand panel (ipay mock layout) ---------- */}
+        <section className="brand-panel" aria-label="Montenzuma Mona Lisa information">
           <div className="brand-panel__content">
-            <div className="brand-mark">
-              <span className="brand-mark__name">Amani Cover</span>
+            <div className="brand-logo">
+              <h1>Montenzuma</h1>
+              <span>Mona Lisa Funeral Home</span>
             </div>
 
             <div className="hero-copy">
-              <div className="eyebrow">FUNERAL INSURANCE</div>
               <h1>
-                Protect what
-                <br />
-                <em>matters most.</em>
+                &ldquo;Providing dignity, respect, and peace of mind for your family&rsquo;s future.&rdquo;
               </h1>
-              <p>Simple, dignified cover for your family, with clear contributions and a real team to help.</p>
+              <p>Your Amani Cover ensures that during difficult times, financial burdens are the last thing your family needs to worry about.</p>
               <div className="secure-pill">
-                <ShieldCheck size={17} aria-hidden="true" />
-                <span>Trusted family protection</span>
+                <ShieldCheck size={16} aria-hidden="true" />
+                <span>256-bit Secured Payment</span>
               </div>
             </div>
 
             <div className="brand-panel__footer">
-              <span>Montenzuma Monalisa Funeral Home</span>
-              <span className="footer-dot" />
-              <span>Since 1998</span>
+              <span>&copy; {new Date().getFullYear()} Montenzuma Mona Lisa</span>
             </div>
           </div>
         </section>
@@ -601,23 +575,61 @@ export default function AmaniPayPortal() {
                   </div>
                 ) : paymentState === 'pending' ? (
                   <div className="payment-contact-card" role="status" aria-live="polite">
-                    <strong>Approve the M-Pesa prompt on your phone</strong>
-                    <p>Enter your M-Pesa PIN to complete this contribution. We are checking for confirmation automatically.</p>
+                    <div className="spinner-container" aria-hidden="true"><div className="spinner" /></div>
+                    <strong>Awaiting PIN Entry</strong>
+                    <p>
+                      An M-Pesa prompt has been sent to your phone. Please enter your M-Pesa PIN to
+                      authorize the payment for policy <strong>{policy?.policyNumber || idNumber}</strong>.
+                    </p>
+                    {maskPhone(phoneNumber)
+                      ? <p>Waiting for your response on <span className="phone-placeholder">{maskPhone(phoneNumber)}</span>&hellip;</p>
+                      : <p>Check the prompt on your registered M-Pesa number&hellip;</p>}
                     <small>Payment reference: {paymentReference}</small>
-                    {paymentDetails?.receipt && <p>M-Pesa receipt: <strong>{paymentDetails.receipt}</strong></p>}
+                    <button className="pay-button" type="button" disabled style={{ marginTop: 16 }}>
+                      <Clock size={18} aria-hidden="true" /> Processing Payment
+                    </button>
                   </div>
                 ) : paymentState === 'paid' ? (
-                  <div className="payment-contact-card" role="status" aria-live="polite">
-                    <strong>Payment received</strong>
-                    <p>Your contribution has been confirmed.</p>
-                    <small>Payment reference: {paymentReference}</small>
-                    {paymentDetails?.receipt && <p>M-Pesa receipt: <strong>{paymentDetails.receipt}</strong></p>}
+                  <div role="status" aria-live="polite">
+                    <div className="success-icon-wrap" aria-hidden="true">
+                      <svg className="checkmark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                    </div>
+                    <div className="success-title">Payment Complete</div>
+                    <p className="success-text">
+                      Your Amani Cover premium has been received. Your family is protected for this period.
+                    </p>
+                    <div className="receipt-box">
+                      <div className="receipt-row">
+                        <span className="receipt-label">Amount Paid</span>
+                        <span className="receipt-value">KES {formatKes(paymentDetails?.amount || dueNow)}</span>
+                      </div>
+                      <div className="receipt-row">
+                        <span className="receipt-label">M-Pesa Ref</span>
+                        <span className="receipt-value">{paymentDetails?.receipt || '—'}</span>
+                      </div>
+                      <div className="receipt-row">
+                        <span className="receipt-label">Policy Number</span>
+                        <span className="receipt-value">{policy?.policyNumber || idNumber}</span>
+                      </div>
+                      <div className="receipt-row">
+                        <span className="receipt-label">Payment Reference</span>
+                        <span className="receipt-value">{paymentReference}</span>
+                      </div>
+                    </div>
+                    <button className="btn btn-success" type="button" onClick={reset}>Finish</button>
                   </div>
                 ) : paymentState === 'failed' ? (
-                  <div className="payment-contact-card" role="alert">
-                    <strong>Payment was not completed</strong>
-                    <p>{paymentDetails?.resultDescription || 'The M-Pesa request was cancelled or could not be completed.'}</p>
-                    <button className="pay-button" type="button" onClick={() => setPaymentState('idle')}>Try again</button>
+                  <div role="alert">
+                    <div className="fail-icon-wrap" aria-hidden="true">!</div>
+                    <div className="fail-title">Payment Not Completed</div>
+                    <p className="success-text">
+                      {paymentDetails?.failureReason || paymentDetails?.resultDescription || 'The M-Pesa request was cancelled or could not be completed.'}
+                    </p>
+                    {paymentDetails?.retryable && <p className="retry-hint">You can safely try again &mdash; you were not charged.</p>}
+                    <p className="ref-line">Payment reference: {paymentReference}</p>
+                    <button className="pay-button" type="button" onClick={() => setPaymentState('idle')}>
+                      {paymentDetails?.retryable ? 'Try again' : 'Start a new payment'}
+                    </button>
                   </div>
                 ) : (
                   <form className="payment-form" onSubmit={beginPayment}>
