@@ -1487,3 +1487,23 @@ export const healthCheck = async (req: Request, res: Response) => {
     timestamp: new Date().toISOString()
   });
 };
+
+export const redisHealthCheck = async (req: Request, res: Response) => {
+  try {
+    await serviceSet(SERVICE_NAME, 'health', '__ping__', { ok: true }, 5);
+    return res.status(200).json({
+      status: 'UP',
+      service: 'coffin-service',
+      redis: 'UP',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    return res.status(200).json({
+      status: 'UP',
+      service: 'coffin-service',
+      redis: 'DOWN',
+      error: error?.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};

@@ -957,7 +957,7 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
               res.setHeader('Access-Control-Allow-Origin', origin);
               res.setHeader('Access-Control-Allow-Credentials', 'true');
             }
-            const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[2] || 'unknown';
+            const firstSegment = (req.originalUrl || req.url || '').split('/').filter(Boolean)[3] || 'unknown';
             const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
 
             // FIX: Use targetUrl from the closure - this is now properly captured
@@ -965,16 +965,23 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
             // EAI_AGAIN from Docker's embedded DNS) from a genuinely-down
             // service so operators don't restart healthy backends. The
             // description carries the real outcome of THIS request.
-            const isDnsFailure = ['EAI_AGAIN', 'ENOTFOUND', 'EAI_NONAME'].includes(err && err.code);
+            // ECONNREFUSED after DNS resolved = the container exists but nothing
+            // is listening (crashed / still migrating / wrong PORT) — say so.
+            const isDnsFailure = DNS_TRANSIENT_CODES.includes(err && err.code);
+            const isRefused = err && err.code === 'ECONNREFUSED';
             res.status(503).json({
               success: false,
-              message: isDnsFailure ? `Unable to reach ${friendlyName} service (DNS resolution failed)` : 'Now API Gateway is Down',
+              message: isDnsFailure ? `Unable to reach ${friendlyName} service (DNS resolution failed)` : isRefused ? `Unable to reach ${friendlyName} service (connection refused)` : 'Now API Gateway is Down',
               description: isDnsFailure
                 ? `The gateway could not resolve the ${friendlyName} service hostname. The service itself may be healthy — Docker DNS inside the gateway container is failing.`
-                : 'Unable to connect to the API Gateway.',
+                : isRefused
+                  ? `The ${friendlyName} service hostname resolved, but nothing is listening at ${targetUrl}. The container is likely crashed, still starting, or listening on a different port — check \`docker ps\` and \`docker logs\` for that service.`
+                  : 'Unable to connect to the API Gateway.',
               details: isDnsFailure
                 ? 'Check `docker logs restpoint_api_gateway` for [DNS] warnings and confirm the gateway shares restpoint_network with the services.'
-                : 'No services can be reached at the moment.',
+                : isRefused
+                  ? `Run \`docker ps\` and \`docker logs\` for the coffin container to see the crash/migration error.`
+                  : 'No services can be reached at the moment.',
               action: 'Please contact the System Administrator.',
               service: firstSegment,
               serviceName: friendlyName,
