@@ -369,8 +369,11 @@ export default function InsuranceDashboard() {
                   <div className="card"><div className="card-header"><h3>Premium Trend</h3></div><div style={{padding:'24px',height:'300px',position:'relative'}}>{trendData.labels.length > 0 ? <Line data={trendData} options={{responsive:true,maintainAspectRatio:false}} /> : <div className="empty-state">No data</div>}</div></div>
                   <div className="card"><div className="card-header"><h3>Claims Distribution</h3></div><div style={{padding:'24px',height:'300px',position:'relative'}}>{claims.length > 0 ? <Doughnut data={claimsChartData} options={{responsive:true,maintainAspectRatio:false,cutout:'60%'}} /> : <div className="empty-state">No claims</div>}</div></div>
                 </div>
-                {/* ── ADDED: small activity calendar showing every day's activity ── */}
-                <div style={{ marginBottom: '24px' }}>{renderCalendarCard(false)}</div>
+                {/* ── Sleek COMPACT activity calendar (was a huge full-width card) ──
+                     Same real data (claims red / premiums blue / failed amber dots,
+                     click a day for its activity list) in a small centered widget,
+                     so the overview keeps its clean look. */}
+                <div style={{ maxWidth: '460px', margin: '0 auto 24px' }}>{renderCalendarCard(true)}</div>
                 {/* ── ADDED: failed payments — whose cover, how much, why ── */}
                 {failedPayments.length > 0 && (
                   <div className="card" style={{ marginBottom: '24px' }}>

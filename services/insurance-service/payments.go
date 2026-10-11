@@ -46,6 +46,8 @@ func normalizeCover(cover string) string {
 		return "FamilyGroup"
 	case "group", "communitygroup":
 		return "Group"
+	case "test", "testcover":
+		return "Test"
 	default:
 		return strings.TrimSpace(cover)
 	}
@@ -59,6 +61,10 @@ func premiumForCover(cover string) float64 {
 		return 1000
 	case "FamilyGroup", "Group":
 		return 10000
+	case "Test":
+		// Developer test cover — a real KES 1 policy so the whole STK flow
+		// can be exercised in production for one shilling.
+		return 1
 	default:
 		return 0
 	}

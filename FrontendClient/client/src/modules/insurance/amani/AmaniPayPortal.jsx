@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, LockKeyhole } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import { formatPlanAmount, planFor } from './amaniData';
 import { InsuranceApiError, startPayment, getPaymentStatus, getPaymentLink } from '../../../api/insuranceApi';
 
@@ -150,21 +151,51 @@ export default function AmaniPayPortal() {
   const [paymentDetails, setPaymentDetails] = useState(null);
   const [paymentError, setPaymentError] = useState('');
   const [policy, setPolicy] = useState(null);
+  const [linkLoading, setLinkLoading] = useState(true);
 
-  // Dummy paymentCode for UI rendering. In production, this comes from useParams()
-  const paymentCode = 'PC-10045';
+  // REAL payment-link code from the URL — /p/<code> (AmaniPayments reads the
+  // same param). No code = the link is broken and nothing can be paid.
+  const { code } = useParams();
+  const paymentCode = String(code || '').trim();
 
+  // Resolve the REAL policy behind this payment link. The backend answers
+  // { publicCode, policyNumber, coverType, status, monthlyPremium, ... } —
+  // a hardcoded policy number here would just 404 in stk-push ("Policy not
+  // found"), which is exactly what broke before.
   useEffect(() => {
-    // Simulate fetching payment link details on load
-    // In production: getPaymentLink(paymentCode).then(setPolicy)
-    setPolicy({
-      policyNumber: 'AMANI-10045',
-      monthlyPremium: 500,
-      coverType: 'Solo'
-    });
+    let active = true;
+    setLinkLoading(true);
+    setPolicy(null);
+    setPaymentError('');
+    if (!paymentCode) {
+      setLinkLoading(false);
+      setPaymentError('This payment link is invalid. Open it from your Amani Cover payment message, or call the care team.');
+      return undefined;
+    }
+    getPaymentLink(paymentCode)
+      .then((res) => {
+        if (!active) return;
+        setPolicy({
+          policyNumber: res.policyNumber,
+          coverType: res.coverType,
+          monthlyPremium: Number(res.monthlyPremium || planFor(res.coverType).monthly),
+          status: res.status,
+          publicCode: res.publicCode || paymentCode,
+        });
+        if (String(res.status || '').toLowerCase() !== 'active') {
+          setPaymentError('This policy is not active yet. Our team must approve it before a contribution can be paid.');
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setPaymentError('Payment link not found. Please check the link or call the care team.');
+      })
+      .finally(() => { if (active) setLinkLoading(false); });
+    return () => { active = false; };
   }, [paymentCode]);
 
-  const dueNow = policy?.monthlyPremium || 500;
+  // Real amount from the policy's stored premium (KES 1 for the Test cover).
+  const dueNow = Number(policy?.monthlyPremium || 0);
 
   async function beginPayment() {
     setPaymentState('starting');
@@ -172,12 +203,19 @@ export default function AmaniPayPortal() {
     setPaymentReference('');
     setPaymentDetails(null);
 
+    if (!policy?.policyNumber && !paymentCode) {
+      setPaymentError('No policy is linked to this page.');
+      setPaymentState('idle');
+      return;
+    }
     try {
-      // Call your actual API
+      // Real STK push: the backend resolves the policy via policyCode (link)
+      // or policyNumber, and sends the prompt to the policy's registered
+      // M-Pesa number when no phone is given.
       const result = await startPayment({
-        policyNumber: policy.policyNumber,
-        policyCode: paymentCode,
-        months: 1, // hardcoded to monthly for the simplified UI
+        policyNumber: policy?.policyNumber || '',
+        policyCode: paymentCode || undefined,
+        months: 1, // monthly contribution (KES 1 on the Test cover)
       });
 
       if (!result?.reference) throw new Error('The payment service did not return a payment reference.');
@@ -269,11 +307,11 @@ export default function AmaniPayPortal() {
               <div className="state-section active">
                 <span className="status-label">Premium Due</span>
                 <div className="amount-due">Ksh {formatKes(dueNow)}</div>
-                <div className="policy-info">Policy No: {policy?.policyNumber || 'Loading...'}</div>
+                <div className="policy-info">Policy No: {policy?.policyNumber || (linkLoading ? 'Loading…' : '—')}</div>
 
-                <button className="btn btn-primary" onClick={beginPayment} disabled={!policy}>
+                <button className="btn btn-primary" onClick={beginPayment} disabled={!policy || linkLoading || !!paymentError}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M2 10h20M6 14h4" /></svg>
-                  Pay Ksh {formatKes(dueNow)} with M-Pesa
+                  {linkLoading ? 'Loading policy…' : <>Pay Ksh {formatKes(dueNow)} with M-Pesa</>}
                 </button>
 
                 {paymentError && (
@@ -332,7 +370,7 @@ export default function AmaniPayPortal() {
                   </div>
                   <div className="receipt-row">
                     <span className="receipt-label">Cover Status</span>
-                    <span className="receipt-value" style={{ color: '#557565' }}>Active Until Nov 1</span>
+                    <span className="receipt-value" style={{ color: '#557565' }}>Active · {policy?.coverType || 'Amani'} Cover</span>
                   </div>
                 </div>
 

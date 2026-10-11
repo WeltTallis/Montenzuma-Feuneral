@@ -183,6 +183,10 @@ export const PLANS = {
   Family: { monthly: 1000, from: false, covers: 'You + your household' },
   FamilyGroup: { monthly: 10000, from: true, covers: 'Family + extended family' },
   Group: { monthly: 10000, from: true, covers: '5 or more people' },
+  /* Developer test product: a REAL policy priced at KES 1 so the whole
+     M-Pesa STK flow (prompt → PIN → callback → dashboard row) can be
+     exercised in production for the cost of one shilling. */
+  Test: { monthly: 1, from: false, covers: 'Test cover — KES 1 (testing only)' },
 };
 
 /* Cover options offered in the apply form AND rendered as plan cards on the
@@ -231,6 +235,13 @@ export const coverOptions = [
     minMembers: 5,
     monthly: PLANS.Group.monthly,
     features: [PLANS.Group.covers, 'Shared contributions', 'Flexible group size'],
+  },
+  {
+    value: 'Test',
+    label: 'Amani Test Cover',
+    hint: 'KES 1 a month — developer testing only.',
+    monthly: PLANS.Test.monthly,
+    features: ['Covers ' + PLANS.Test.covers, 'Real STK push at KES 1', 'Digital application'],
   },
 ];
 
