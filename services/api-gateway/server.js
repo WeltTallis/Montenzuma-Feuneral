@@ -197,6 +197,48 @@ const DNS_CACHE_TTL_MS = 60000;
 const dnsCache = new Map(); // "<host>|<family>|all|one" -> { expires, address?, family?, results? }
 const dnsInFlight = new Map(); // same key -> Promise
 
+// Fail fast but clearly: attempt to resolve a Docker service hostname at
+// startup. Logs a warning and returns the error if resolution fails, so the
+// operator can see exactly what's wrong rather than discovering it later via
+// 503 responses on every request.
+async function verifyDockerDNS() {
+  const serviceUrls = Object.values(DOCKER_SERVICE_DEFAULTS);
+  const results = await Promise.allSettled(
+    serviceUrls.map(async (url) => {
+      const hostname = new URL(url).hostname;
+      try {
+        await new Promise((resolve, reject) => {
+          dns.lookup(hostname, { all: true }, (err, addresses) => {
+            if (err) return reject(err);
+            if (!Array.isArray(addresses) || addresses.length === 0) {
+              return reject(new Error(`DNS lookup for ${hostname} returned no addresses`));
+            }
+            resolve(addresses);
+          });
+        });
+        return { hostname, status: 'resolved' };
+      } catch (err) {
+        return { hostname, status: 'ERROR', error: err.message };
+      }
+    })
+  );
+
+  const errors = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value.status !== 'resolved'));
+  if (errors.length > 0) {
+    Logger.warn(`[DNS] Docker service hostname resolution failures detected at startup:`);
+    for (const entry of errors) {
+      if (entry.status === 'rejected') {
+        Logger.warn(`  - Failed to resolve ${entry.reason?.hostname || 'unknown'}: ${entry.reason?.error || entry.reason}`);
+      } else {
+        Logger.warn(`  - ${entry.value.hostname}: ${entry.value.status}`);
+      }
+    }
+    Logger.warn('[DNS] Docker services may be unreachable. Ensure the gateway container is on the same Docker network as the services and that Docker Desktop/DNS is running.');
+  } else {
+    Logger.info('[DNS] All Docker service hostnames resolved successfully at startup.');
+  }
+}
+
 function cachedLookup(hostname, options, callback) {
   if (typeof options === 'function') {
     callback = options;
@@ -250,6 +292,10 @@ function cachedLookup(hostname, options, callback) {
       resolve({ address, family: resolvedFamily });
     });
   });
+  // NOTE: failed lookups are deliberately NOT cached — the rejection above
+  // leaves the cache untouched so the next request retries the lookup. This
+  // is what lets the gateway recover on its own after a transient Docker
+  // DNS blip (EAI_AGAIN) instead of pinning every service DOWN.
   dnsInFlight.set(cacheKey, lookupPromise);
   lookupPromise.then(
     (result) => {
@@ -841,11 +887,20 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
             const friendlyName = firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
 
             // FIX: Use targetUrl from the closure - this is now properly captured
+            // Distinguish a DNS failure (gateway-side name resolution, e.g.
+            // EAI_AGAIN from Docker's embedded DNS) from a genuinely-down
+            // service so operators don't restart healthy backends. The
+            // description carries the real outcome of THIS request.
+            const isDnsFailure = ['EAI_AGAIN', 'ENOTFOUND', 'EAI_NONAME'].includes(err && err.code);
             res.status(503).json({
               success: false,
-              message: 'Now API Gateway is Down',
-              description: 'Unable to connect to the API Gateway.',
-              details: 'No services can be reached at the moment.',
+              message: isDnsFailure ? `Unable to reach ${friendlyName} service (DNS resolution failed)` : 'Now API Gateway is Down',
+              description: isDnsFailure
+                ? `The gateway could not resolve the ${friendlyName} service hostname. The service itself may be healthy — Docker DNS inside the gateway container is failing.`
+                : 'Unable to connect to the API Gateway.',
+              details: isDnsFailure
+                ? 'Check `docker logs restpoint_api_gateway` for [DNS] warnings and confirm the gateway shares restpoint_network with the services.'
+                : 'No services can be reached at the moment.',
               action: 'Please contact the System Administrator.',
               service: firstSegment,
               serviceName: friendlyName,
@@ -1089,6 +1144,16 @@ const server = app.listen(PORT, HOST, () => {
   Logger.info(' Resolved service routing table:');
   for (const [name, url] of Object.entries(SERVICE_URLS)) {
     Logger.info(`   ${name} → ${url}`);
+  }
+
+  // Verify Docker DNS can actually resolve the backends. If the gateway
+  // container was (re)started while the embedded DNS was unavailable, every
+  // lookup throws EAI_AGAIN and every service reads as DOWN — this surfaces
+  // that immediately in `docker logs` instead of surfacing as 503s on the UI.
+  if (isRunningInContainer) {
+    verifyDockerDNS().catch((err) => {
+      Logger.warn(`[DNS] startup verification threw: ${err && err.message ? err.message : err}`);
+    });
   }
 });
 

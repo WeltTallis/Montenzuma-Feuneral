@@ -29,16 +29,29 @@ export const getAllDeceased = async (
     res: Response
 ): Promise<Response> => {
     try {
-        const dbName = (req as any).tenant?.db_name;
-        // Namespace the cache by the DATABASE, not by a tenant id. The tenant
-        const tenantId = (req as any).tenant?.tenant_id ?? (req as any).tenant?.id;
-        const cacheScope = dbName || tenantId;
-        const tenantSlug = (req as any).tenantSlug || "unknown";
+        // Determine database name for the tenant. Prefer the resolved tenant from middleware.
+    let dbName = (req as any).tenant?.db_name;
+    // If middleware didn't set dbName (e.g., public request), fall back to header slug.
+    const tenantSlugHeader = (req as any).tenantSlug || req.headers['x-tenant-slug'] as string;
+    const tenantSlug = tenantSlugHeader || "unknown";
+    if (!dbName && tenantSlug && tenantSlug !== "unknown") {
+        // Resolve the database name based on the tenant slug.
+        try {
+            dbName = await resolveDatabase(tenantSlug);
+        } catch (e) {
+            console.error('[DECEASED] resolveDatabase error:', e);
+        }
+    }
+    // Namespace the cache by the DATABASE, not by a tenant id. Fallback to tenantSlug if dbName missing.
+    const tenantId = (req as any).tenant?.tenant_id ?? (req as any).tenant?.id;
+    const cacheScope = dbName || tenantId || tenantSlug;
 
-        if (!dbName || tenantId === undefined || tenantId === null) {
+
+        // If we still lack a database name, respond with a clear error.
+        if (!dbName) {
             return res.status(400).json({
                 success: false,
-                message: "Tenant information missing"
+                message: "Database name could not be resolved for the request"
             });
         }
 
