@@ -193,7 +193,10 @@ function resolveServiceUrl(envKey, serviceKey) {
 // traffic returned 503 while local routes (e.g. /health) kept working.
 // This version honors the caller's options, returns the exact shape Node
 // asked for, and validates every result before caching/forwarding it.
-const DNS_CACHE_TTL_MS = 60000;
+const DNS_CACHE_TTL_MS = Number(process.env.GATEWAY_DNS_CACHE_TTL_MS || 300000);
+const DNS_RETRY_ATTEMPTS = Number(process.env.GATEWAY_DNS_RETRIES || 3);
+const DNS_RETRY_DELAY_MS = Number(process.env.GATEWAY_DNS_RETRY_MS || 250);
+const DNS_TRANSIENT_CODES = ['EAI_AGAIN', 'EAI_NONAME', 'ENOTFOUND'];
 const dnsCache = new Map(); // "<host>|<family>|all|one" -> { expires, address?, family?, results? }
 const dnsInFlight = new Map(); // same key -> Promise
 
@@ -239,6 +242,35 @@ async function verifyDockerDNS() {
   }
 }
 
+function dnsLookupOnce(hostname, options) {
+  return new Promise((resolve, reject) => {
+    dns.lookup(hostname, { ...options }, (err, address, resolvedFamily) => {
+      if (err) return reject(err);
+
+      if (options && options.all) {
+        // options.all === true → dns.lookup hands back an array of results
+        // (the second callback argument), which is what autoSelectFamily
+        // net.connect() requires. Never cache/forward an empty answer.
+        const results = Array.isArray(address) ? address : [];
+        if (results.length === 0) {
+          return reject(new Error(`DNS lookup for ${hostname} returned no addresses`));
+        }
+        return resolve({ results });
+      }
+
+      // Single-result form: net.js converts a missing address or a family
+      // outside 4/6 into ERR_INVALID_IP_ADDRESS, so reject instead of
+      // caching or forwarding anything malformed.
+      if (!address || (resolvedFamily !== 4 && resolvedFamily !== 6)) {
+        return reject(new Error(`DNS lookup for ${hostname} returned an invalid address/family`));
+      }
+      resolve({ address, family: resolvedFamily });
+    });
+  });
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 function cachedLookup(hostname, options, callback) {
   if (typeof options === 'function') {
     callback = options;
@@ -250,9 +282,13 @@ function cachedLookup(hostname, options, callback) {
 
   const cached = dnsCache.get(cacheKey);
   if (cached && cached.expires > Date.now()) {
-    if (wantsAll) return callback(null, cached.results);
+    if (wantsAll) {
+      if (Array.isArray(cached.results)) return callback(null, cached.results.slice());
+      return callback(null, cached.results);
+    }
     return callback(null, cached.address, cached.family);
   }
+  const stale = cached || null;
 
   if (dnsInFlight.has(cacheKey)) {
     dnsInFlight.get(cacheKey).then(
@@ -265,32 +301,42 @@ function cachedLookup(hostname, options, callback) {
     return;
   }
 
-  const lookupPromise = new Promise((resolve, reject) => {
-    dns.lookup(hostname, { ...options }, (err, address, resolvedFamily) => {
-      dnsInFlight.delete(cacheKey);
-      if (err) return reject(err);
-
-      if (wantsAll) {
-        // options.all === true → dns.lookup hands back an array of results
-        // (the second callback argument), which is what autoSelectFamily
-        // net.connect() requires. Never cache/forward an empty answer.
-        const results = Array.isArray(address) ? address : [];
-        if (results.length === 0) {
-          return reject(new Error(`DNS lookup for ${hostname} returned no addresses`));
+  const lookupPromise = (async () => {
+    let lastErr = null;
+    for (let attempt = 1; attempt <= DNS_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const result = await dnsLookupOnce(hostname, options);
+        if (wantsAll) {
+          dnsCache.set(cacheKey, { results: result.results, expires: Date.now() + DNS_CACHE_TTL_MS });
+        } else {
+          dnsCache.set(cacheKey, { address: result.address, family: result.family, expires: Date.now() + DNS_CACHE_TTL_MS });
         }
-        dnsCache.set(cacheKey, { results, expires: Date.now() + DNS_CACHE_TTL_MS });
-        return resolve({ results });
+        return result;
+      } catch (err) {
+        lastErr = err;
+        // Only transient Docker-DNS blips (EAI_AGAIN/ENOTFOUND/EAI_NONAME) are
+        // worth retrying — a refused socket or a 500 from the app must NOT be
+        // retried here. Sleep between attempts so the embedded DNS can recover.
+        const retryable = err && DNS_TRANSIENT_CODES.includes(err.code);
+        if (!retryable || attempt >= DNS_RETRY_ATTEMPTS) break;
+        Logger.warn(`[DNS] lookup ${hostname} attempt ${attempt}/${DNS_RETRY_ATTEMPTS} failed (${err.code || err.message}) — retrying in ${DNS_RETRY_DELAY_MS}ms`);
+        await sleep(DNS_RETRY_DELAY_MS * attempt);
       }
-
-      // Single-result form: net.js converts a missing address or a family
-      // outside 4/6 into ERR_INVALID_IP_ADDRESS, so reject instead of
-      // caching or forwarding anything malformed.
-      if (!address || (resolvedFamily !== 4 && resolvedFamily !== 6)) {
-        return reject(new Error(`DNS lookup for ${hostname} returned an invalid address/family`));
-      }
-      dnsCache.set(cacheKey, { address, family: resolvedFamily, expires: Date.now() + DNS_CACHE_TTL_MS });
-      resolve({ address, family: resolvedFamily });
-    });
+    }
+    // Last resort: serve a STALE cached address rather than failing the
+    // request outright. The IP is stable for the life of the container, so a
+    // 4-minute-old entry is far more likely correct than EAI_AGAIN is truthful.
+    if (stale) {
+      Logger.warn(`[DNS] lookup ${hostname} failed (${lastErr && (lastErr.code || lastErr.message)}) — serving stale cached entry`);
+      return stale.results ? { results: stale.results } : { address: stale.address, family: stale.family };
+    }
+    throw lastErr;
+  })();
+  lookupPromise.then(
+    undefined,
+    () => {}
+  ).finally(() => {
+    dnsInFlight.delete(cacheKey);
   });
   // NOTE: failed lookups are deliberately NOT cached — the rejection above
   // leaves the cache untouched so the next request retries the lookup. This
@@ -816,6 +862,34 @@ for (const [routeKey, targetUrl] of Object.entries(SERVICE_ROUTES)) {
           }
         },
         error: (err, req, res) => {
+          const isDnsFailure = err && DNS_TRANSIENT_CODES.includes(err.code);
+          // Self-heal: a transient Docker-DNS blip (EAI_AGAIN) fails only the
+          // NEW socket for this request — the backend itself is healthy.
+          // Purge any cached entry for this hostname and retry the SAME
+          // request once after a short pause so the embedded DNS can recover,
+          // instead of surfacing a 503 for a live service.
+          if (isDnsFailure && !req._dnsRetried && !res.headersSent && !res.writableEnded) {
+            req._dnsRetried = true;
+            try {
+              const failedHost = new URL(targetUrl).hostname;
+              for (const key of [...dnsCache.keys()]) {
+                if (key.startsWith(`${failedHost}|`)) dnsCache.delete(key);
+              }
+            } catch { /* targetUrl always parses — ignore */ }
+            Logger.warn(`[PROXY DNS-RETRY] ${req.method} ${req.originalUrl} (${err.code}) — retrying once in 600ms`);
+            setTimeout(() => {
+              if (res.headersSent || res.writableEnded) return;
+              const retryProxy = proxyCache[targetUrl];
+              if (retryProxy) {
+                retryProxy(req, res, (retryErr) => {
+                  if (retryErr && !res.headersSent) {
+                    Logger.error(`[PROXY DNS-RETRY ERROR] ${req.method} ${req.originalUrl}: ${retryErr.message}`);
+                  }
+                });
+              }
+            }, 600);
+            return;
+          }
           // Determine the service key from the target URL for fallback lookup
           const serviceEntry = Object.entries(SERVICE_URLS).find(([key, val]) => val === targetUrl);
           const serviceKey = serviceEntry ? serviceEntry[0] : null;

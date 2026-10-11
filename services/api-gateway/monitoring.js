@@ -164,19 +164,32 @@ function memorySnapshot() {
  */
 async function probeOne(name, url) {
   const started = Date.now();
-  try {
-    const target = new URL('/', url).toString();
-    await fetch(target, { method: 'GET', signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
-    return { name, url, up: true, latencyMs: Date.now() - started, error: null };
-  } catch (err) {
-    return {
-      name,
-      url,
-      up: false,
-      latencyMs: Date.now() - started,
-      error: (err && (err.cause?.code || err.code || err.name)) || 'unreachable',
-    };
+  const attempts = Math.max(1, Number(process.env.MONITOR_PROBE_RETRIES || 2));
+  let lastErr = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const target = new URL('/', url).toString();
+      await fetch(target, { method: 'GET', signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+      return { name, url, up: true, latencyMs: Date.now() - started, error: null };
+    } catch (err) {
+      lastErr = err;
+      // A single EAI_AGAIN during a probe sweep must not flip a healthy
+      // service to DOWN on the dashboard — retry transient DNS once after a
+      // short pause. Only the FINAL outcome is reported.
+      const code = (err && (err.cause?.code || err.code)) || '';
+      const transient = ['EAI_AGAIN', 'ENOTFOUND', 'EAI_NONAME'].includes(code);
+      if (!transient || attempt >= attempts) break;
+      await new Promise((r) => setTimeout(r, 400 * attempt));
+    }
   }
+  const err = lastErr;
+  return {
+    name,
+    url,
+    up: false,
+    latencyMs: Date.now() - started,
+    error: (err && (err.cause?.code || err.code || err.name)) || 'unreachable',
+  };
 }
 
 /** Probe every service with bounded concurrency so a dead host cannot stall us. */

@@ -477,6 +477,7 @@ services:
     environment:
       APP_PORT: ':4040'
       APP_ENV: ${APP_ENV:-production}
+      GIN_MODE: release
       DB_HOST: mpesa-postgres
       DB_PORT: 5432
       DB_USER: ${MPESA_DB_USER:-mpesa}
