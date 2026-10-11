@@ -8,7 +8,7 @@ import { ToastContainer } from 'react-toastify';
 import {
   formatDate, daysFromNow, todayKey,
 } from '../../../utils/dates/parseDates';
-import { normalizeYM, ymQueryParams, ymFromDate, monthLabel, MONTH_NAMES, nairobiNow } from '../../../utils/dates/ym';
+import { normalizeYM, ymFromDate } from '../../../utils/dates/ym';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
 
@@ -493,13 +493,12 @@ const DeceasedListPage = () => {
   const [search, setSearch] = useState(() => { const s = searchParams.get('search'); return s ? String(s) : ''; });
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
-  // Unified year/month — the shared helper validates both values from the URL,
-  // so a bad ?year= or ?month= can never break the page: year falls back to the
-  // current Nairobi year, month stays null ("All months") until picked.
-  const initYM = normalizeYM({ year: searchParams.get('year'), month: searchParams.get('month') });
+  // Year-only scoping — NO month filter on this list. The page always fetches
+  // ONE full calendar year (current Nairobi year by default); a bad ?year=
+  // falls back to the current year via normalizeYM, and a stale ?month= in
+  // the URL is ignored entirely.
+  const initYM = normalizeYM({ year: searchParams.get('year') });
   const [calYear, setCalYear] = useState(initYM.year);
-  // Default month to current month (Nairobi timezone) if none is provided – guarantees a valid month is always sent.
-  const [calMonth, setCalMonth] = useState(initYM.month ?? nairobiNow().month);
   const [selectedDate, setSelectedDate] = useState(null);
   const setSearchParamsRef = useRef(null);
   setSearchParamsRef.current = setSearchParams;
@@ -537,13 +536,11 @@ const DeceasedListPage = () => {
       // moment the list loads.
       const bust = Date.now();
       while (pageNum <= totalPages && pageNum <= 12) {
-        // Unified year/month — both travel together via ymQueryParams, so the
-        // request can never ship a year without a valid month (or month="").
-        const ymParams = ymQueryParams({ year: calYear, month: calMonth });
-        // `ymQueryParams` will include month because we ensured it is always defined.
+        // Year-only fetch — NO month param travels on this list.
+        const ymParams = { year: String(calYear) };
         const params = { ...ymParams, page: pageNum, limit: pageSize, _t: bust };
         if (search) params.search = search;
-        if (setSearchParamsRef.current) { setSearchParamsRef.current({ ...ymParams, page: pageNum, limit: pageSize }, { replace: true }); }
+        if (setSearchParamsRef.current) { setSearchParamsRef.current({ year: String(calYear), page: pageNum, limit: pageSize }, { replace: true }); }
         const res = await axios.get(`${BASE_URL}/deceased-all`, { params, headers, cache: 'no-store' });
         const data = res.data?.data || res.data || [];
         const rows = Array.isArray(data) ? data : [];
@@ -559,7 +556,7 @@ const DeceasedListPage = () => {
       if (err.friendlyMessage) { setServiceUnavailable(true); setUnavailableMessage(err.friendlyMessage); }
       return false;
     } finally { setLoading(false); }
-  }, [search, calYear, calMonth]);
+  }, [search, calYear]);
 
   useEffect(() => { fetchDeceased(); }, [fetchDeceased]);
 
@@ -772,16 +769,8 @@ const DeceasedListPage = () => {
               <SelectArrow className="fas fa-chevron-down" />
             </FilterWrapper>
 
-            {/* Unified month selector — the picked month is ALWAYS what travels
-                on the fetch (see ymQueryParams); "All months" omits it. */}
-            <FilterWrapper $year>
-              <FilterSelect value={calMonth == null ? '' : calMonth} onChange={e => setCalMonth(e.target.value === '' ? null : Number(e.target.value))}>
-                <option value="">All months</option>
-                {MONTH_NAMES.map((name, i) => (<option key={name} value={i + 1}>{name}</option>))}
-              </FilterSelect>
-              <SelectArrow className="fas fa-chevron-down" />
-            </FilterWrapper>
-
+            {/* Year filter only — the month filter is removed: this list always
+                shows the full selected year (current year by default). */}
             <FilterWrapper $year>
               <FilterSelect value={calYear} onChange={e => setCalYear(Number(e.target.value))}>
                 {Array.from({ length: 7 }, (_, i) => today.getFullYear() - 3 + i).map(y => (<option key={y} value={y}>{y}</option>))}
@@ -814,10 +803,11 @@ const DeceasedListPage = () => {
             if (selectedDate && toDateString(date) === toDateString(selectedDate)) { setSelectedDate(null); }
             else {
               setSelectedDate(date);
-              // Unified: picking a day also pins year+month to that day, so the
-              // month actually travels with the fetch instead of being dropped.
+              // Year-only list: pin the fetch year to the picked day's year so
+              // a day in another year still shows its year's records. The day
+              // itself is only a client-side highlight — no month is ever sent.
               const ym = ymFromDate(date);
-              setCalYear(ym.year); setCalMonth(ym.month);
+              setCalYear(ym.year);
             }
           }} />
         </div>

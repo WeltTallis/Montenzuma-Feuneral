@@ -211,7 +211,10 @@ export const fetchAllBranchDeceased = async (forceRefresh = false) => {
           // `_t` is only added on a forced refresh — it defeats any
           // browser/proxy HTTP cache that would otherwise answer with the
           // pre-registration list and make the dashboard look stale.
-          params: stamp ? { page, limit: 100, _t: stamp } : { page, limit: 100 },
+          // year=all: dashboards need the WHOLE history, while the deceased
+          // LIST defaults to the current year. Never let this inherit the
+          // list's year scoping or trends/history truncate to this year.
+          params: stamp ? { page, limit: 100, year: 'all', _t: stamp } : { page, limit: 100, year: 'all' },
           // `x-tenant-slug` alone is NOT enough to address another branch: the
           // shared axios interceptor stamps the SIGNED-IN user's `x-branch-db`
           // on every request, and deceased-service prefers that header when
@@ -304,12 +307,12 @@ const parseBookingDates = (raw) => {
 // Raw record fetchers (shared plumbing — not component loaders).
 // -------------------------------------------------------------
 
-/** GET /deceased/deceased-all — paginate everything. */
+/** GET /deceased/deceased-all — paginate everything (whole history for dashboards). */
 const rawDeceased = () =>
   cachedGet('deceased:all', async () => {
     const collected = [];
     for (let page = 1; page <= 100; page++) {
-      const r = await api.get('/deceased/deceased-all', { params: { page, limit: 100 } });
+      const r = await api.get('/deceased/deceased-all', { params: { page, limit: 100, year: 'all' } });
       const chunk = arr(r?.data?.data || r?.data);
       if (!chunk.length) break;
       collected.push(...chunk);

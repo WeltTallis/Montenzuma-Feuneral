@@ -58,41 +58,42 @@ export const getAllDeceased = async (
         const {
             search = "",
             q = "",
-            page = "2",
+            page = "1",
             limit = "200",
             year = "",
-            month = ""
         } = req.query;
 
-        // ── Unified calendar scoping: /deceased-all?year=2026&month=10 ──
-        // BOTH are optional and validated in ONE place so no caller can crash
-        // the request or empty the list with a malformed value:
-        //   year  → integer 1900..2200, otherwise ignored (whole range)
-        //   month → integer 1..12,     otherwise ignored (whole year)
-        // "Ignored" means NO filter — never "zero rows". month=0 (JS 0-based
-        // January), month=13, year=2026.5, year="" all degrade safely.
-        const yearParam = (() => {
-            const n = Number(String(year ?? '').trim());
+        // ── Year scoping: /deceased-all?year=2026 ─────────────────────────
+        // The deceased LIST always shows ONE full calendar year (current year
+        // by default). There is deliberately NO month filter — month scoping
+        // used to empty the list whenever the URL carried a stale ?month=.
+        //   year → integer 1900..2200. Missing/invalid → current year.
+        //   year=all → whole range (dashboards / analytics / exports).
+        //   month  → IGNORED entirely (kept out of the SQL + cache key) so a
+        //            stale ?month=10 can never narrow the list again.
+        const rawYear = String(year ?? '').trim().toLowerCase();
+        // year=all → whole range (dashboards / analytics / exports opt in).
+        const explicitAll = rawYear === 'all';
+        const parsedYear = (() => {
+            if (!rawYear || explicitAll) return null;
+            const n = Number(rawYear);
             return Number.isInteger(n) && n >= 1900 && n <= 2200 ? n : null;
         })();
+        // Missing/invalid → current calendar year so the LIST opens on
+        // "this year's deceased". Only an explicit year=all skips the filter.
+        const yearFilter: number | null = explicitAll
+            ? null
+            : (parsedYear ?? new Date().getFullYear());
 
-
-        const monthParam = (() => {
-            const raw = String(month ?? '').trim().toLowerCase();
-            if (!raw || raw === 'null') return null;
-            const n = Number(raw);
-            return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
-        })();
-
-        const pageNumber = Math.max(Number(page) || 2, 2);
-        const limitNumber = Math.min(Math.max(Number(limit) || 200, 2), 200);
+        const pageNumber = Math.max(Number(page) || 1, 1);
+        const limitNumber = Math.min(Math.max(Number(limit) || 200, 1), 200);
         // deceasedApi.search() sends ?q=, other callers send ?search= — support both.
         const searchTerm = (typeof search === "string" && search.trim())
             ? search
             : (typeof q === "string" ? q : "");
 
-        // REDIS CACHE KEY
-        const cacheKey = `deceased:list:${cacheScope}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}:year:${yearParam}:month:${monthParam}`;
+        // REDIS CACHE KEY — year-only (no month: the month filter is removed).
+        const cacheKey = `deceased:list:${cacheScope}:page:${pageNumber}:limit:${limitNumber}:search:${searchTerm}:year:${yearFilter === null ? 'all' : yearFilter}`;
         // Try to get from cache
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
@@ -115,18 +116,15 @@ export const getAllDeceased = async (
             params.push(keyword, keyword);
         }
 
-        // Calendar scoping: /deceased-all?year=2025&month=3
-        if (yearParam) {
+        // Year scoping: one full calendar year (current year when the caller
+        // sends no/invalid year). month is deliberately ignored — it is never
+        // read and never narrows this list. year=all skips the filter for
+        // dashboards/analytics that need the whole history.
+        if (yearFilter !== null) {
             whereClause += whereClause
                 ? ` AND YEAR(COALESCE(date_admitted, created_at)) = ?`
                 : `WHERE YEAR(COALESCE(date_admitted, created_at)) = ?`;
-            params.push(yearParam);
-        }
-        if (monthParam) {
-            whereClause += whereClause
-                ? ` AND MONTH(COALESCE(date_admitted, created_at)) = ?`
-                : `WHERE MONTH(COALESCE(date_admitted, created_at)) = ?`;
-            params.push(monthParam);
+            params.push(yearFilter);
         }
 
         const countQuery = `SELECT COUNT(*) total FROM deceased ${whereClause}`;

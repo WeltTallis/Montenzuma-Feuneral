@@ -72,11 +72,12 @@ export const analyticsApi = {
     let coffins = [];
     let branchNames = [];
 
-    // 1) Deceased records (paginate through EVERYTHING, not just 5 pages)
+    // 1) Deceased records (paginate through EVERYTHING, not just 5 pages).
+    // year=all: analytics needs the whole history, not the list's current-year default.
     try {
       let collected = [];
       for (let page = 1; page <= 200; page++) {
-        const r = await api.get(ENDPOINTS.DECEASED.LIST, { params: { page, limit: 100 } });
+        const r = await api.get(ENDPOINTS.DECEASED.LIST, { params: { page, limit: 100, year: 'all' } });
         const d = r?.data?.data || r?.data || [];
         const arr = Array.isArray(d) ? d : [];
         if (arr.length === 0) break;
@@ -120,7 +121,7 @@ export const analyticsApi = {
    * Fetch all branches for a tenant
    * GET /api/v1/restpoint/tenant/{slug}/branches
    */
-    getTenantBranches: async (tenantSlug) => {
+  getTenantBranches: async (tenantSlug) => {
     const slug = tenantSlug || localStorage.getItem('tenantSlug');
     const response = await api.get(`/tenant/${slug}/branches`);
     return response.data;
