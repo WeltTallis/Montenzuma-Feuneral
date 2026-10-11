@@ -78,6 +78,9 @@ func main() {
 		defer cache.Close()
 	}
 
+	// Start automated background cron for monthly payment link reminders
+	a.startMonthlyReminderCron(ctx)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		if err := db.Ping(r.Context()); err != nil {
@@ -96,12 +99,16 @@ func main() {
 	mux.Handle("GET /insurance/claims/{claimId}", a.cacheFor(10*time.Second, a.claimDetail))
 	mux.Handle("GET /insurance/analytics", a.cacheFor(30*time.Second, a.analytics))
 	mux.HandleFunc("PATCH /insurance/claims/{claimId}/status", a.updateClaim)
+	mux.HandleFunc("POST /insurance/claims/{claimId}/disburse", a.disburseClaim)
 	mux.Handle("GET /insurance/stats", a.cacheFor(15*time.Second, a.stats))
 	mux.HandleFunc("GET /insurance/payment-links/{code}", a.getPaymentLink)
 	mux.HandleFunc("POST /insurance/payments/stk-push", a.stkPush)
 	mux.HandleFunc("POST /insurance/payments/callback", a.paymentCallback)
 	mux.Handle("GET /insurance/payments", a.cacheFor(10*time.Second, a.listPayments))
 	mux.HandleFunc("GET /insurance/payments/{reference}", a.paymentStatus)
+	mux.HandleFunc("POST /insurance/policies/{policyNumber}/send-sms", a.sendPolicySMS)
+	mux.HandleFunc("POST /insurance/send-monthly-reminders", a.sendMonthlyReminders)
+	mux.HandleFunc("POST /insurance/send-sms", a.sendDirectSMS)
 
 	addr := ":" + env("PORT", "5050")
 	log.Printf("insurance service listening on %s", addr)

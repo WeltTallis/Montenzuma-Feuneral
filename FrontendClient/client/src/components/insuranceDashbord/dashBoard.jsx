@@ -49,6 +49,54 @@ export default function InsuranceDashboard() {
   const [busyClaim, setBusyClaim] = useState(false);
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
   const [selectedDay, setSelectedDay] = useState('');
+  const [sendingSms, setSendingSms] = useState(false);
+  const [smsFeedback, setSmsFeedback] = useState(null);
+  const [monthlyBatchSending, setMonthlyBatchSending] = useState(false);
+
+  const handleSendMonthlyPaymentLink = async (member) => {
+    if (!member || !member.policyNumber) return;
+    setSendingSms(true);
+    setSmsFeedback(null);
+    try {
+      const res = await insuranceApi.sendPolicySms(member.policyNumber, {
+        phone: member.phone,
+        type: 'monthly_payment',
+      });
+      setSmsFeedback({
+        type: 'success',
+        text: `Monthly payment link sent to ${member.fullName || 'member'} (${member.phone})!`,
+      });
+    } catch (err) {
+      setSmsFeedback({
+        type: 'error',
+        text: err?.message || 'Failed to send SMS.',
+      });
+    } finally {
+      setSendingSms(false);
+    }
+  };
+
+  const handleSendAllMonthlyReminders = async () => {
+    const active = members.filter(m => String(m.status).toLowerCase() === 'active');
+    if (!active.length) {
+      alert('No active members to send reminders to.');
+      return;
+    }
+    if (!window.confirm(`Send monthly payment links via SMS to ${active.length} active member(s)?`)) {
+      return;
+    }
+    setMonthlyBatchSending(true);
+    try {
+      const res = await insuranceApi.sendMonthlyReminders({
+        policyNumbers: active.map(m => m.policyNumber),
+      });
+      alert(`Success! Sent monthly payment link reminders to ${res?.sentCount ?? active.length} member(s).`);
+    } catch (err) {
+      alert('Could not send batch reminders: ' + (err?.message || 'Error'));
+    } finally {
+      setMonthlyBatchSending(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -403,20 +451,41 @@ export default function InsuranceDashboard() {
               <>
                 <div className="page-header">
                   <div><h1 className="page-title">All Members</h1><p className="page-subtitle">{filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''} found</p></div>
-                  <button className="btn btn-primary" onClick={() => navigate('/amani/cover/apply')}>+ New Member</button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn"
+                      style={{ background: '#0284c7', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      onClick={handleSendAllMonthlyReminders}
+                      disabled={monthlyBatchSending}
+                    >
+                      <span>📢</span>
+                      {monthlyBatchSending ? 'Sending Reminders…' : 'Send Monthly Links (All Active SMS)'}
+                    </button>
+                    <button className="btn btn-primary" onClick={() => navigate('/amani/cover/apply')}>+ New Member</button>
+                  </div>
                 </div>
                 <div className="card">
                   {/* ── ADDED: A–Z strip on View All — click a letter to list all members starting with it ── */}
                   {renderAzStrip()}
-                  <div className="table-wrap"><table><thead><tr><th>Name</th><th>Policy No.</th><th>ID Number</th><th>Phone</th><th>Plan</th><th>Premium</th><th>Status</th></tr></thead><tbody>
+                  <div className="table-wrap"><table><thead><tr><th>Name</th><th>Policy No.</th><th>ID Number</th><th>Phone</th><th>Plan</th><th>Premium</th><th>Status</th><th>Monthly Link</th></tr></thead><tbody>
                     {filteredMembers.map(m => (
                       <tr key={m.policyNumber} onClick={() => openProfile(m, 'member')}>
                         <td><div className="mem-info"><div className="mem-avatar">{(m.fullName || 'U').charAt(0)}</div><div><div className="mem-name">{m.fullName || 'Unnamed'}</div><div className="mem-meta">{m.phone || '—'}</div></div></div></td>
                         <td>{m.policyNumber}</td><td>{m.idNumber || '—'}</td><td>{m.phone || '—'}</td><td>{m.coverType || '—'}</td><td>{money(m.monthlyPremium)}</td>
                         <td><span className={`badge ${getStatusClass(m.status)}`}>{m.status || 'Pending'}</span></td>
+                        <td>
+                          <button
+                            className="btn"
+                            style={{ padding: '3px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            onClick={(e) => { e.stopPropagation(); handleSendMonthlyPaymentLink(m); }}
+                            title="Send Monthly Payment Link via SMS"
+                          >
+                            <span>📱</span> SMS Link
+                          </button>
+                        </td>
                       </tr>
                     ))}
-                    {!filteredMembers.length && <tr><td colSpan="7" className="empty-state">No members match your search</td></tr>}
+                    {!filteredMembers.length && <tr><td colSpan="8" className="empty-state">No members match your search</td></tr>}
                   </tbody></table></div>
                 </div>
               </>
@@ -628,8 +697,25 @@ export default function InsuranceDashboard() {
                 </>
               )}
             </div>
-            <div className="drawer-footer">
-              <a href={selectedRecord.phone ? `sms:${String(selectedRecord.phone).replace(/[^+\d]/g, '')}?body=Hello ${selectedRecord.fullName}, this is Amani Cover...` : '#'} className="btn" style={{flex:1,justifyContent:'center'}}>Send SMS</a>
+            {smsFeedback && (
+              <div style={{ margin: '0 24px 12px', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, background: smsFeedback.type === 'success' ? '#e8f5e9' : '#ffebee', color: smsFeedback.type === 'success' ? '#1b5e20' : '#c62828' }}>
+                {smsFeedback.text}
+              </div>
+            )}
+            <div className="drawer-footer" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, minWidth: '200px', justifyContent: 'center', background: '#0284c7' }}
+                onClick={() => handleSendMonthlyPaymentLink(selectedRecord)}
+                disabled={sendingSms}
+              >
+                {sendingSms ? 'Sending SMS…' : '📱 Send Monthly Payment Link (SMS)'}
+              </button>
+              {selectedRecord.paymentLink && (
+                <a href={selectedRecord.paymentLink} target="_blank" rel="noreferrer" className="btn" style={{ justifyContent: 'center' }}>
+                  Open Link ↗
+                </a>
+              )}
             </div>
           </>
         )}

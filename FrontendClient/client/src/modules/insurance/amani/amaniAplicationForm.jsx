@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Smartphone, Send, CheckCircle2, Copy, RefreshCw, Calendar, ArrowRight, MessageSquare } from 'lucide-react';
 import { CONTACT, GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlanAmount, planFor } from './amaniData';
-import { InsuranceApiError, submitApplication } from '../../../api/insuranceApi';
+import { InsuranceApiError, submitApplication, sendPolicySms } from '../../../api/insuranceApi';
 
 const AF = {
   ink: '#293946',
@@ -178,9 +177,47 @@ export default function AmaniApplicationForm() {
      attempt so a stale "could not save" never sits above a fresh form. */
   const [submitError, setSubmitError] = useState('');
   const [submitNotice, setSubmitNotice] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendStatus, setResendStatus] = useState(null);
+  const [showAltPhone, setShowAltPhone] = useState(false);
+  const [altPhone, setAltPhone] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
   /* Frozen at mount so the "Filling Date & Time" stamp cannot drift between
      renders while the visitor is typing. */
   const [fillStamp] = useState(() => formatStamp(new Date()));
+
+  const handleResendSms = async (targetPhone) => {
+    const phoneToSend = targetPhone || formData.phone;
+    if (!phoneToSend) return;
+    setResendLoading(true);
+    setResendStatus(null);
+    try {
+      const polNum = applicationResult?.policyNumber || applicationResult?.publicCode || formData.idNumber;
+      await sendPolicySms(polNum, {
+        phone: phoneToSend,
+        type: 'registration',
+      });
+      setResendStatus({
+        type: 'success',
+        text: `SMS successfully dispatched to ${phoneToSend}!`,
+      });
+    } catch (err) {
+      setResendStatus({
+        type: 'error',
+        text: err?.message || 'Could not send SMS at this moment. Please try again.',
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleCopyPaymentLink = () => {
+    if (applicationResult?.paymentLink) {
+      navigator.clipboard.writeText(applicationResult.paymentLink);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    }
+  };
 
   /* The applicant counts toward the Amani Group minimum, so the total on the
      policy is always one more than the number of repeater rows. */
@@ -803,20 +840,110 @@ export default function AmaniApplicationForm() {
       padding: 0.9rem 1rem 0.4rem; border-top: 1px solid var(--af-line);
     }
 
-    .af-done { padding: 3rem 0; text-align: center; }
-    .af-done h3 { font-family: ${AF.serif}; font-size: 2rem; margin: 1rem 0 0.5rem; }
-    .af-done p { color: var(--af-gray); margin: 0 auto; max-width: 32rem; }
-    .af-done-contact { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 1.25rem; padding: 0.65rem 1rem; border-radius: 6px; background: var(--af-blue); color: #fff; font-weight: 600; text-decoration: none; }
-    .af-done-contact:hover { background: var(--af-blue-hover); }
-    .af-done-mark {
-      display: grid; place-items: center; width: 4rem; height: 4rem; margin: 0 auto;
-      border-radius: 50%; background: var(--af-tick); color: #fff;
+    .af-done { padding: 2.5rem 0; text-align: center; }
+    .af-done h3 { font-family: ${AF.serif}; font-size: 2.2rem; margin: 1rem 0 0.5rem; color: var(--af-blue); }
+    .af-done p { color: var(--af-gray); margin: 0 auto; max-width: 36rem; }
+    .af-done-policy-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: #edf3f7; border: 1px solid #c9dbe6; padding: 0.5rem 1.25rem;
+      border-radius: 9999px; font-weight: 700; color: var(--af-blue); margin: 1rem 0 1.5rem;
+      font-size: 0.95rem; letter-spacing: 0.03em;
     }
-    .af-done-mark svg { width: 28px; height: 28px; }
-    .af-selected-plan { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; padding: 1rem 1.1rem; border: 1px solid #d7e2e9; border-radius: 6px; background: #edf3f7; color: var(--af-blue); }
-    .af-selected-plan div { display: flex; flex-direction: column; gap: 0.15rem; }
-    .af-selected-plan span { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--af-gray); }
-    .af-selected-plan strong:last-child { white-space: nowrap; }
+    .af-done-cards {
+      display: flex; flex-direction: column; gap: 1.5rem;
+      max-width: 680px; margin: 2rem auto; text-align: left;
+    }
+    .af-sms-box {
+      background: #ffffff; border: 1.5px solid #d0dfe9; border-radius: 12px;
+      padding: 1.5rem; box-shadow: 0 4px 18px rgba(23, 60, 90, 0.06);
+    }
+    .af-sms-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+    }
+    .af-sms-head-title {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-weight: 700; font-size: 1rem; color: var(--af-blue);
+    }
+    .af-sms-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: #e8f5e9; color: #1b5e20; padding: 0.25rem 0.75rem;
+      border-radius: 9999px; font-size: 0.75rem; font-weight: 700;
+    }
+    .af-sms-preview-phone {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 1rem 1.25rem; margin-bottom: 1.25rem; position: relative;
+    }
+    .af-sms-preview-top {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.72rem; color: #64748b; font-weight: 600; margin-bottom: 0.5rem;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .af-sms-bubble {
+      background: #173c5a; color: #ffffff; padding: 0.9rem 1.1rem;
+      border-radius: 14px 14px 14px 2px; font-size: 0.9rem; line-height: 1.5;
+      box-shadow: 0 2px 8px rgba(23, 60, 90, 0.15); word-break: break-word;
+    }
+    .af-sms-bubble a { color: #8bc34a; font-weight: 700; text-decoration: underline; }
+    .af-sms-actions {
+      display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+    }
+    .af-action-btn {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.55rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+      border: 1px solid #cbd5e1; background: #fff; color: var(--af-blue);
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .af-action-btn:hover { background: #f1f5f9; border-color: var(--af-blue); }
+    .af-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .af-alt-phone-row {
+      display: flex; gap: 0.5rem; margin-top: 0.75rem; width: 100%;
+    }
+    .af-alt-input {
+      flex: 1; padding: 0.55rem 0.85rem; border: 1px solid #cbd5e1;
+      border-radius: 6px; font-size: 0.9rem; font-family: inherit;
+    }
+    .af-monthly-card {
+      background: linear-gradient(135deg, #173c5a 0%, #102f49 100%);
+      color: #fff; border-radius: 12px; padding: 1.6rem;
+      box-shadow: 0 6px 20px rgba(23, 60, 90, 0.18);
+    }
+    .af-monthly-head {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; color: #fff;
+    }
+    .af-monthly-desc {
+      font-size: 0.85rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 1.25rem;
+    }
+    .af-paylink-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem;
+    }
+    .af-paylink-url {
+      font-family: monospace; font-size: 0.85rem; color: #e2e8f0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .af-paylink-copy {
+      background: rgba(255, 255, 255, 0.2); border: none; color: #fff;
+      padding: 0.4rem 0.75rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0;
+    }
+    .af-paylink-copy:hover { background: rgba(255, 255, 255, 0.3); }
+    .af-cta-paynow {
+      display: inline-flex; width: 100%; align-items: center; justify-content: center;
+      gap: 0.6rem; padding: 0.9rem 1.5rem; background: #00a86b; color: #fff;
+      border-radius: 8px; font-weight: 700; font-size: 1rem; text-decoration: none;
+      box-shadow: 0 4px 14px rgba(0, 168, 107, 0.3); transition: all 0.2s ease;
+    }
+    .af-cta-paynow:hover { background: #008f5a; transform: translateY(-1px); }
+    .af-done-contact { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 1rem; padding: 0.65rem 1.2rem; border-radius: 6px; background: #edf3f7; color: var(--af-blue); font-weight: 600; text-decoration: none; border: 1px solid #cbd5e1; }
+    .af-done-contact:hover { background: #e2e8f0; }
+    .af-done-mark {
+      display: grid; place-items: center; width: 4.5rem; height: 4.5rem; margin: 0 auto;
+      border-radius: 50%; background: #00a86b; color: #fff;
+    }
+    .af-done-mark svg { width: 32px; height: 32px; }
 
     @media (max-width: 1024px) {
       .af-doc-header, .af-form-body, .af-record-strip {
@@ -906,20 +1033,160 @@ export default function AmaniApplicationForm() {
           {submitted ? (
             <div className="af-done" role="status">
               <span className="af-done-mark"><TickSvg /></span>
-              <h3>Application received</h3>
+              <h3>Application Received &amp; Cover Active</h3>
               <p>
-                Your cover is active. Select Pay Now to send an M-Pesa prompt to the phone number
-                on your application.
+                Welcome to Amani Cover. Your insurance application has been registered, and an instant confirmation SMS has been dispatched to your phone.
               </p>
-              {applicationResult?.policyNumber && (
-                <p><strong>Policy number (your ID): {applicationResult.policyNumber}</strong></p>
+
+              {(applicationResult?.publicCode || applicationResult?.policyNumber) && (
+                <div className="af-done-policy-badge">
+                  Policy Number: <strong>{applicationResult.publicCode || applicationResult.policyNumber}</strong>
+                </div>
               )}
-              {applicationResult?.paymentLink && (
-                <a className="af-done-contact" href={applicationResult.paymentLink}>
-                  Pay now with M-Pesa
+
+              <div className="af-done-cards">
+                {/* ── 01: Instant SMS Confirmation Card ── */}
+                <div className="af-sms-box">
+                  <div className="af-sms-head">
+                    <div className="af-sms-head-title">
+                      <MessageSquare size={18} color="var(--af-blue)" />
+                      <span>Instant SMS Confirmation</span>
+                    </div>
+                    <span className="af-sms-badge">
+                      <CheckCircle2 size={13} />
+                      Sent to {applicationResult?.smsPhone || formData.phone}
+                    </span>
+                  </div>
+
+                  <div className="af-sms-preview-phone">
+                    <div className="af-sms-preview-top">
+                      <span>SMS Gateway · Africa&apos;s Talking</span>
+                      <span>Delivered Just Now</span>
+                    </div>
+                    <div className="af-sms-bubble">
+                      {applicationResult?.smsPreview || (
+                        <>
+                          Montenzuma Monalisa Funeral Home: Thank you for registering for the Amani Cover. Your application has been received. Your Policy No is {applicationResult?.publicCode || applicationResult?.policyNumber || formData.idNumber}. We are honored to protect your family&apos;s future. Pay premium:{' '}
+                          <a href={applicationResult?.paymentLink || '#'}>{applicationResult?.paymentLink || 'https://paymontenzuma.restpoint.co.ke'}</a>. For assistance, call 0740045355.
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="af-sms-actions">
+                    <button
+                      type="button"
+                      className="af-action-btn"
+                      onClick={() => handleResendSms(formData.phone)}
+                      disabled={resendLoading}
+                    >
+                      <RefreshCw size={14} />
+                      {resendLoading ? 'Sending SMS…' : 'Resend SMS to My Phone'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="af-action-btn"
+                      onClick={() => setShowAltPhone(!showAltPhone)}
+                    >
+                      <Smartphone size={14} />
+                      Send to Alternate Phone
+                    </button>
+                  </div>
+
+                  {showAltPhone && (
+                    <div className="af-alt-phone-row">
+                      <input
+                        type="tel"
+                        className="af-alt-input"
+                        placeholder="Enter phone number (e.g. 07XX XXX XXX)"
+                        value={altPhone}
+                        onChange={(e) => setAltPhone(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="af-action-btn"
+                        style={{ background: 'var(--af-blue)', color: '#fff', borderColor: 'var(--af-blue)' }}
+                        disabled={resendLoading || !altPhone.trim()}
+                        onClick={() => handleResendSms(altPhone)}
+                      >
+                        <Send size={14} />
+                        Send Now
+                      </button>
+                    </div>
+                  )}
+
+                  {resendStatus && (
+                    <div
+                      style={{
+                        marginTop: '0.85rem',
+                        padding: '0.65rem 0.9rem',
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        background: resendStatus.type === 'success' ? '#e8f5e9' : '#ffebee',
+                        color: resendStatus.type === 'success' ? '#1b5e20' : '#c62828',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      {resendStatus.type === 'success' ? <CheckCircle2 size={16} /> : null}
+                      <span>{resendStatus.text}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── 02: Monthly Payment Link & Schedule Card ── */}
+                <div className="af-monthly-card">
+                  <div className="af-monthly-head">
+                    <Calendar size={18} />
+                    <span>Monthly Payment Link &amp; Automatic Reminders</span>
+                  </div>
+                  <div className="af-monthly-desc">
+                    Your personal M-Pesa payment link is active. We will automatically send this link via SMS to your phone every month before your premium due date so you never miss a contribution.
+                  </div>
+
+                  {applicationResult?.paymentLink && (
+                    <div className="af-paylink-row">
+                      <span className="af-paylink-url">{applicationResult.paymentLink}</span>
+                      <button
+                        type="button"
+                        className="af-paylink-copy"
+                        onClick={handleCopyPaymentLink}
+                      >
+                        <Copy size={13} />
+                        {copiedLink ? 'Copied!' : 'Copy Link'}
+                      </button>
+                    </div>
+                  )}
+
+                  {applicationResult?.paymentLink && (
+                    <a
+                      className="af-cta-paynow"
+                      href={applicationResult.paymentLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Pay First Month Now with M-Pesa <ArrowRight size={18} />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                <a className="af-done-contact" href={CONTACT.phoneHref}>
+                  Talk to our team · {CONTACT.phone}
                 </a>
-              )}
-              <a className="af-done-contact" href={CONTACT.phoneHref}>Talk to our team · {CONTACT.phone}</a>
+                <button
+                  type="button"
+                  className="af-done-contact"
+                  style={{ background: 'transparent', cursor: 'pointer' }}
+                  onClick={handleReset}
+                >
+                  Register Another Member
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate>

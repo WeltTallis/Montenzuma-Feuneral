@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -41,15 +43,18 @@ func body(r *http.Request) (map[string]any, error) {
 	if cover == "" {
 		cover = str(v, "cover_type")
 	}
+
 	if cover == "" {
 		cover = str(v, "cover")
 	}
+
 	if cover != "" {
 		cover = normalizeCover(cover)
 		v["coverType"] = cover
 		v["cover_type"] = cover
 		v["cover"] = cover
 	}
+
 	if _, ok := v["coveredCount"]; !ok {
 		count := 1
 		if members, ok := v["members"].([]any); ok && len(members) > 0 {
@@ -62,11 +67,49 @@ func body(r *http.Request) (map[string]any, error) {
 
 func str(m map[string]any, k string) string { v, _ := m[k].(string); return strings.TrimSpace(v) }
 
+/*
+first returns the first non-empty value among the given keys. The claim
+
+	form historically sent short keys (fullName/idNumber/causeDeath/placeDeath)
+	while the backend expected long ones, so we accept both spellings here and
+	keep old and new callers working.
+*/
+func first(m map[string]any, keys ...string) string {
+	for _, k := range keys {
+		if v := str(m, k); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+/* numVal reads a numeric field that may arrive as a JSON number or string. */
+func numVal(m map[string]any, k string) float64 {
+	switch v := m[k].(type) {
+	case float64:
+		return v
+	case int:
+		return float64(v)
+	case string:
+		var n float64
+		fmt.Sscanf(strings.TrimSpace(v), "%g", &n)
+		return n
+	}
+	return 0
+}
+
 func tenant(r *http.Request) string {
 	if t := r.Header.Get("x-tenant-slug"); t != "" {
 		return t
 	}
 	return "system_shared"
+}
+
+/* money formats a float as a Kenya-shilling string, e.g. 1250.5 -> "KES 1,251". */
+
+func money(n float64) string {
+	rounded := int64(n + 0.5)
+	return "KES " + strconv.FormatInt(rounded, 10)
 }
 
 func cors(next http.Handler) http.Handler {

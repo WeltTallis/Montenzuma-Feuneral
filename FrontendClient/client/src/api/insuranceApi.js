@@ -201,6 +201,36 @@ export async function getAnalytics() {
   return data;
 }
 
+/** Send SMS confirmation or reminder for a policy */
+export async function sendPolicySms(policyNumber, payload = {}) {
+  try {
+    const { data } = await api.post(`${BASE}/policies/${encodeURIComponent(policyNumber)}/send-sms`, payload);
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
+/** Send monthly payment links via SMS to active policy holders */
+export async function sendMonthlyReminders(payload = {}) {
+  try {
+    const { data } = await api.post(`${BASE}/send-monthly-reminders`, payload);
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
+/** Direct SMS dispatch */
+export async function sendDirectSms(payload) {
+  try {
+    const { data } = await api.post(`${BASE}/send-sms`, payload);
+    return data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+}
+
 export const insuranceApi = {
   submitApplication,
   submitClaim,
@@ -216,6 +246,10 @@ export const insuranceApi = {
   updateClaimStatus,
   getStats,
   getAnalytics,
+  sendPolicySms,
+  sendMonthlyReminders,
+  sendDirectSms,
 };
 
 export default insuranceApi;
+

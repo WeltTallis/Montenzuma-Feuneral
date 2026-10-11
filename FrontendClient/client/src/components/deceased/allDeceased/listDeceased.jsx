@@ -8,7 +8,7 @@ import { ToastContainer } from 'react-toastify';
 import {
   formatDate, daysFromNow, todayKey,
 } from '../../../utils/dates/parseDates';
-import { normalizeYM, ymQueryParams, ymFromDate, monthLabel, MONTH_NAMES } from '../../../utils/dates/ym';
+import { normalizeYM, ymQueryParams, ymFromDate, monthLabel, MONTH_NAMES, nairobiNow } from '../../../utils/dates/ym';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
 
@@ -498,7 +498,8 @@ const DeceasedListPage = () => {
   // current Nairobi year, month stays null ("All months") until picked.
   const initYM = normalizeYM({ year: searchParams.get('year'), month: searchParams.get('month') });
   const [calYear, setCalYear] = useState(initYM.year);
-  const [calMonth, setCalMonth] = useState(initYM.month); // 1..12 or null = all months
+  // Default month to current month (Nairobi timezone) if none is provided – guarantees a valid month is always sent.
+  const [calMonth, setCalMonth] = useState(initYM.month ?? nairobiNow().month);
   const [selectedDate, setSelectedDate] = useState(null);
   const setSearchParamsRef = useRef(null);
   setSearchParamsRef.current = setSearchParams;
@@ -539,6 +540,7 @@ const DeceasedListPage = () => {
         // Unified year/month — both travel together via ymQueryParams, so the
         // request can never ship a year without a valid month (or month="").
         const ymParams = ymQueryParams({ year: calYear, month: calMonth });
+        // `ymQueryParams` will include month because we ensured it is always defined.
         const params = { ...ymParams, page: pageNum, limit: pageSize, _t: bust };
         if (search) params.search = search;
         if (setSearchParamsRef.current) { setSearchParamsRef.current({ ...ymParams, page: pageNum, limit: pageSize }, { replace: true }); }

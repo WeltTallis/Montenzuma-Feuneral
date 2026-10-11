@@ -16,14 +16,15 @@ func (a *app) claimDetail(w http.ResponseWriter, r *http.Request) {
 	var people int
 	var monthlyPremium float64
 	var policyCreated time.Time
+	var disbursedAmount, disbursementMethod, disbursementReference, disbursedAtStr, approvedAt, rejectedAt string
 	err := a.db.QueryRow(r.Context(), `
 		SELECT c.claim_id,c.policy_number,c.claimant_full_name,c.claimant_id_number,c.phone,c.relationship,
 		 c.deceased_name,c.death_date::text,c.cause_of_death,c.place_of_death,COALESCE(c.notes,''),
 		 COALESCE(c.doc_death_cert_path,''),COALESCE(c.doc_claimant_id_path,''),COALESCE(c.doc_burial_permit_path,''),
-		 c.status,COALESCE(c.review_notes,''),c.created_at,c.updated_at,
-		 COALESCE(p.full_name,''),COALESCE(p.phone,''),COALESCE(p.id_number,''),COALESCE(p.cover_type,''),
-		 COALESCE(p.covered_count,0),COALESCE(p.monthly_premium,0)::float8,COALESCE(p.status,''),COALESCE(p.created_at,c.created_at)
-		FROM insurance_claims c LEFT JOIN insurance_policies p ON p.policy_id=c.policy_id AND p.is_deleted=false
+		 c.status,COALESCE(c.review_notes,''),c.created_at,c.updated_at,COALESCE(c.disbursed_amount,0)::float8,COALESCE(c.disbursement_method,''),COALESCE(c.disbursement_reference,''),COALESCE(c.disbursed_at::text,''),COALESCE(c.approved_at::text,''),COALESCE(c.rejected_at::text),'
+		 COALESCE(p.covered_count,0),COALESCE(p.monthly_premium,0)::float8,COALESCE(p.status,''),COALESCE(p.created_at,c.created_at),
+	 c.disbursed_amount,COALESCE(c.disbursement_method,''),COALESCE(c.disbursement_reference,''),COALESCE(c.disbursed_at::text,''),COALESCE(c.approved_at::text,''),COALESCE(c.rejected_at::text)
+	 FROM insurance_claims c LEFT JOIN insurance_policies p ON p.policy_id=c.policy_id AND p.is_deleted=false
 		WHERE c.claim_id=$1 AND c.is_deleted=false AND (c.tenant_slug=$2 OR c.tenant_slug='system_shared')`,
 		r.PathValue("claimId"), tenant(r)).Scan(&id, &policyNumber, &claimant, &claimantID, &phone, &relationship, &deceased, &deathDate, &cause, &place, &notes, &deathCert, &claimantIDDoc, &burialPermit, &status, &reviewNotes, &submitted, &updated, &holder, &holderPhone, &holderID, &cover, &people, &monthlyPremium, &policyStatus, &policyCreated)
 	if err != nil {
@@ -32,6 +33,25 @@ func (a *app) claimDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	payments := []map[string]any{}
 	var totalContributions float64
+    // Fetch related claim events
+    var events []map[string]any
+    eventRows, err := a.db.Query(r.Context(), `SELECT event_id, event_type, description, created_at FROM insurance_claim_events WHERE claim_id=$1 ORDER BY created_at`, id)
+    if err == nil {
+        defer eventRows.Close()
+        for eventRows.Next() {
+            var evID int64
+            var evType, evDesc string
+            var evCreated time.Time
+            if eventRows.Scan(&evID, &evType, &evDesc, &evCreated) == nil {
+                events = append(events, map[string]any{
+                    "eventId": evID,
+                    "type": evType,
+                    "description": evDesc,
+                    "createdAt": evCreated,
+                })
+            }
+        }
+    }
 	rows, err := a.db.Query(r.Context(), `SELECT payment_id,reference,amount::float8,status,COALESCE(mpesa_receipt,''),created_at FROM insurance_payments WHERE policy_number=$1 AND (tenant_slug=$2 OR tenant_slug='system_shared') ORDER BY created_at DESC`, policyNumber, tenant(r))
 	if err == nil {
 		defer rows.Close()
@@ -55,6 +75,10 @@ func (a *app) claimDetail(w http.ResponseWriter, r *http.Request) {
 		"burialPermitPath": burialPermit, "status": status, "reviewNotes": reviewNotes, "createdAt": submitted, "updatedAt": updated,
 		"policy":        map[string]any{"fullName": holder, "phone": holderPhone, "idNumber": holderID, "coverType": cover, "coveredCount": people, "monthlyPremium": monthlyPremium, "status": policyStatus, "createdAt": policyCreated},
 		"contributions": payments, "totalContributions": totalContributions,
+		"disbursedAmount": disbursedAmount, "disbursementMethod": disbursementMethod, "disbursementReference": disbursementReference,
+		"disbursedAt": disbursedAtStr, "approvedAt": approvedAt, "rejectedAt": rejectedAt,
+		"events": events,
+
 	}})
 }
 

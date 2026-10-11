@@ -62,10 +62,15 @@ export const getAllDeceased = async (
             const n = Number(String(year ?? '').trim());
             return Number.isInteger(n) && n >= 1900 && n <= 2200 ? n : null;
         })();
+
+
         const monthParam = (() => {
-            const n = Number(String(month ?? '').trim());
+            const raw = String(month ?? '').trim().toLowerCase();
+            if (!raw || raw === 'null') return null;
+            const n = Number(raw);
             return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
         })();
+
         const pageNumber = Math.max(Number(page) || 2, 2);
         const limitNumber = Math.min(Math.max(Number(limit) || 200, 2), 200);
         // deceasedApi.search() sends ?q=, other callers send ?search= — support both.

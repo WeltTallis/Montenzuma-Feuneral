@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"strconv"
 	"strings"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func migrate(ctx context.Context, db *pgxpool.Pool) error {
@@ -36,6 +35,8 @@ CREATE TABLE IF NOT EXISTS insurance_policies (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+
 ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS public_code TEXT;
 UPDATE insurance_policies SET public_code='PC-' || LPAD(policy_id::text,5,'0') WHERE public_code IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS insurance_policies_public_code_idx ON insurance_policies(public_code);
@@ -95,6 +96,22 @@ CREATE INDEX IF NOT EXISTS insurance_payments_policy_idx ON insurance_payments(p
 ALTER TABLE insurance_payments ADD COLUMN IF NOT EXISTS failure_reason TEXT;
 ALTER TABLE insurance_payments ADD COLUMN IF NOT EXISTS retryable BOOLEAN NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS insurance_payments_status_idx ON insurance_payments(status);
+ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS disbursed_amount NUMERIC(12,2);
+ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS disbursement_method TEXT;
+ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS disbursement_reference TEXT;
+ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS disbursed_at TIMESTAMPTZ;
+ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ;
+CREATE TABLE IF NOT EXISTS claim_events (
+  event_id BIGSERIAL PRIMARY KEY,
+  claim_id BIGINT NOT NULL,
+  event_type TEXT NOT NULL,
+  message TEXT,
+  amount NUMERIC(12,2),
+  tenant_slug TEXT NOT NULL DEFAULT 'system_shared',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS claim_events_claim_idx ON claim_events(claim_id);
 `)
 	return err
 }
