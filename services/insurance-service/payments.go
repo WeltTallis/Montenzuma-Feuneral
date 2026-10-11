@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/big"
 	"net/http"
 	"os"
 	"regexp"
@@ -76,12 +75,20 @@ func normalizeKenyanPhone(value string) string {
 	}
 	return digits
 }
+/* Reference shown to the payer and stored on the payment:
+   "INS" + 5 letters/digits + HHMM, e.g. INSK7M2Q1930 — the format you asked
+   for. Stays within Daraja's 12-character AccountReference limit while
+   embedding the time so two payments on the same day never collide. */
 func paymentReference() (string, error) {
-	n, e := rand.Int(rand.Reader, big.NewInt(900000000))
-	if e != nil {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	buf := make([]byte, 5)
+	if _, e := rand.Read(buf); e != nil {
 		return "", e
 	}
-	return fmt.Sprintf("INS%09d", n.Int64()+100000000), nil
+	for i := range buf {
+		buf[i] = alphabet[int(buf[i])%len(alphabet)]
+	}
+	return "INS" + string(buf) + time.Now().Format("1504"), nil
 }
 func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	m, e := body(r)

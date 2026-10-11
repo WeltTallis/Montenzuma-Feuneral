@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { insuranceApi } from '../../api/insuranceApi';
+import { planFor } from '../insurance/amani/amaniData';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import './crmDashboard.css';
@@ -11,6 +12,21 @@ const money = value => new Intl.NumberFormat('en-KE', { style: 'currency', curre
 const dateText = value => value ? new Date(value).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const unwrap = response => response?.data && !Array.isArray(response.data) ? response.data : response;
 const rows = response => { const value = unwrap(response); return Array.isArray(value) ? value : value?.policies || value?.claims || []; };
+
+/* 'YYYY-MM-DD' in the browser's timezone — buckets claims/payments onto
+   calendar days so the small calendar can dot each day with its activity. */
+const dayKey = (value) => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/* "Jan 2024"-style label for the drawer's "Active Member Since …" line. */
+const monthYear = (value) => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-KE', { month: 'short', year: 'numeric' });
+};
 
 const TABS = ['Dashboard', 'Members', 'Claims', 'Payments', 'Analytics', 'Calendar'];
 
@@ -26,11 +42,13 @@ export default function InsuranceDashboard() {
   const [query, setQuery] = useState('');
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [azLetter, setAzLetter] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [claimDetail, setClaimDetail] = useState(null);
   const [busyClaim, setBusyClaim] = useState(false);
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
+  const [selectedDay, setSelectedDay] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -56,8 +74,10 @@ export default function InsuranceDashboard() {
   // --- Derived data ---
   const filteredMembers = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? members.filter(m => [m.fullName, m.policyNumber, m.phone, m.coverType, m.idNumber].some(v => String(v || '').toLowerCase().includes(q))) : members;
-  }, [members, query]);
+    let list = q ? members.filter(m => [m.fullName, m.policyNumber, m.phone, m.coverType, m.idNumber].some(v => String(v || '').toLowerCase().includes(q))) : members;
+    if (azLetter) list = list.filter(m => String(m.fullName || '').trim().toUpperCase().startsWith(azLetter));
+    return [...list].sort((a, b) => String(a.fullName || '').localeCompare(String(b.fullName || '')));
+  }, [members, query, azLetter]);
 
   const filteredClaims = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,6 +113,101 @@ export default function InsuranceDashboard() {
     if (['lapsed', 'defaulter', 'rejected', 'failed'].includes(s)) return 'badge-danger';
     if (['pending', 'submitted', 'under_review'].includes(s)) return 'badge-warning';
     return 'badge-info';
+  };
+
+  /* ── ADDITIONS (nothing removed) ──────────────────────────────────────
+     A–Z strip: click a letter to list every member whose name starts with
+     it ("view all"); letters with no members are dimmed and inert.        */
+  const renderAzStrip = () => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '12px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-section)' }}>
+      <button className="btn" style={{ padding: '0', height: '28px', minWidth: '36px', justifyContent: 'center', fontWeight: azLetter ? '400' : '700' }} onClick={() => setAzLetter(null)}>All</button>
+      {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(L => {
+        const has = memberLetters.has(L);
+        const active = azLetter === L;
+        return (
+          <button
+            key={L}
+            className="btn"
+            style={{ padding: '0', width: '28px', height: '28px', justifyContent: 'center', fontWeight: active ? '700' : '400', background: active ? 'var(--black)' : undefined, color: active ? 'var(--white)' : undefined, opacity: has ? 1 : 0.35, cursor: has ? 'pointer' : 'not-allowed' }}
+            onClick={() => { if (has) setAzLetter(active ? null : L); }}
+            title={has ? `Show members whose name starts with ${L}` : `No members start with ${L}`}
+          >{L}</button>
+        );
+      })}
+    </div>
+  );
+
+  const dayColor = (type) => (type === 'claim' ? '#dc2626' : type === 'paid' ? '#0284c7' : type === 'failed' ? '#d97706' : '#777777');
+
+  /* Small calendar for the overview: month nav, today highlight, one dot per
+     activity (red claim / blue premium / amber failed payment) and the
+     selected day's full activity list underneath. */
+  const renderCalendarCard = (compact) => {
+    const todayKey = dayKey(today);
+    const eventsForSelected = selectedDay ? (calendarEvents[selectedDay] || []) : [];
+    return (
+      <div className="card">
+        <div className="card-header">
+          <h3>{calMonthName}</h3>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button className="btn" style={{ padding: '4px 10px' }} onClick={() => { setCalMonth(p => { const d = new Date(p.year, p.month - 1); return { year: d.getFullYear(), month: d.getMonth() }; }); setSelectedDay(''); }}>‹</button>
+            <button className="btn" style={{ padding: '4px 10px' }} onClick={() => { setCalMonth(p => { const d = new Date(p.year, p.month + 1); return { year: d.getFullYear(), month: d.getMonth() }; }); setSelectedDay(''); }}>›</button>
+          </div>
+        </div>
+        <div style={{ padding: compact ? '16px' : '24px' }}>
+          <div className="cal-grid" style={{ marginBottom: '8px', textAlign: 'center', fontWeight: '700', fontSize: '11px', color: 'var(--gray)' }}>
+            <div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div><div>SUN</div>
+          </div>
+          <div className="cal-grid">
+            {calDays.map((day, i) => {
+              if (!day) return <div key={`off-${i}`} className="cal-day off"></div>;
+              const key = `${calMonth.year}-${String(calMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const evs = calendarEvents[key] || [];
+              const isToday = key === todayKey;
+              const hasClaim = evs.some(e => e.type === 'claim');
+              const isSelected = selectedDay === key;
+              return (
+                <div
+                  key={key}
+                  className={`cal-day ${isToday ? 'today' : ''} ${hasClaim ? 'event' : ''}`}
+                  style={{ cursor: 'pointer', ...(isSelected ? { outline: '2px solid var(--black)', outlineOffset: '1px' } : {}) }}
+                  title={evs.map(e => e.label).join(' · ') || 'No activities'}
+                  onClick={() => setSelectedDay(isSelected ? '' : key)}
+                >
+                  <span>{day}</span>
+                  {evs.length > 0 && (
+                    <div className="cal-dots">
+                      {evs.slice(0, 4).map((e, j) => <div key={j} className="cal-dot" style={{ background: dayColor(e.type) }}></div>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--mid)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', background: '#dc2626', borderRadius: '50%' }}></span> Claim filed</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', background: '#0284c7', borderRadius: '50%' }}></span> Premium received</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', background: '#d97706', borderRadius: '50%' }}></span> Payment failed</div>
+          </div>
+          <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-light)', paddingTop: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: '8px' }}>
+              {selectedDay ? `Activities on ${selectedDay}` : 'Select a day to see its activities'}
+            </div>
+            {selectedDay ? (
+              eventsForSelected.length ? eventsForSelected.map((e, i) => (
+                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px 0', borderBottom: i < eventsForSelected.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                  <span style={{ width: '8px', height: '8px', marginTop: '6px', flexShrink: '0', borderRadius: '50%', background: dayColor(e.type) }}></span>
+                  <div style={{ minWidth: '0' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--dark)' }}>{e.label}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--gray)' }}>{e.detail}</div>
+                  </div>
+                </div>
+              )) : <div className="empty-state" style={{ padding: '8px 0' }}>No activities recorded on this day</div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // --- Calendar ---
@@ -143,6 +258,44 @@ export default function InsuranceDashboard() {
   }, [paymentHistory, paymentFilter, query]);
   const failedPayments = useMemo(() => paymentHistory.filter(p => String(p.status || '').toLowerCase() === 'failed'), [paymentHistory]);
 
+  /* ── ADDITIONS (nothing removed) ──────────────────────────────────────
+     A–Z index: which letters actually have members, and the members under
+     the letter currently picked on the overview / View All tables.        */
+  const memberLetters = useMemo(() => new Set(members.map(m => String(m.fullName || '').trim()[0]?.toUpperCase()).filter(Boolean)), [members]);
+  const azMembers = useMemo(() => {
+    if (!azLetter) return members;
+    return members.filter(m => String(m.fullName || '').trim().toUpperCase().startsWith(azLetter))
+      .sort((a, b) => String(a.fullName || '').localeCompare(String(b.fullName || '')));
+  }, [members, azLetter]);
+  /* Daily activity for the small calendar: claims filed (red), premiums
+     received (blue), failed payments (amber) — real data, keyed by day.  */
+  const calendarEvents = useMemo(() => {
+    const map = {};
+    const push = (key, ev) => { if (!key) return; (map[key] = map[key] || []).push(ev); };
+    claims.forEach(c => push(dayKey(c.createdAt), { type: 'claim', label: `Claim filed — ${c.reference || `#${c.claimId}`}`, detail: `${c.deceasedName || 'Deceased'} · ${String(c.status || 'submitted').replace(/_/g, ' ')}` }));
+    paymentHistory.forEach(p => {
+      const st = String(p.status || '').toLowerCase();
+      push(dayKey(p.createdAt), {
+        type: st === 'paid' ? 'paid' : st === 'failed' ? 'failed' : 'pending',
+        label: st === 'paid' ? 'Premium received' : st === 'failed' ? 'Payment failed' : 'Payment pending',
+        detail: `${p.memberName || p.policyNumber || '—'} · ${money(p.amount)}${p.failureReason ? ` — ${p.failureReason}` : ''}`,
+      });
+    });
+    return map;
+  }, [claims, paymentHistory]);
+
+  /* ── ADDITIONS (nothing removed) ──────────────────────────────────────
+     Member-drawer figures: this policy's payments from the loaded history,
+     the paid total, and an estimated next due date (last payment + 30 days). */
+  const memberPayments = selectedRecord && selectedType === 'member'
+    ? paymentHistory.filter(p => p.policyNumber === selectedRecord.policyNumber)
+    : [];
+  const memberContributed = memberPayments
+    .filter(p => String(p.status || '').toLowerCase() === 'paid')
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const memberLastPaid = memberPayments.find(p => String(p.status || '').toLowerCase() === 'paid');
+  const memberNextPayment = memberLastPaid ? new Date(new Date(memberLastPaid.createdAt).getTime() + 30 * 86400000) : null;
+
   return (
     <div className="crm-dash">
       {/* ─── TOP NAVIGATION ─── */}
@@ -186,8 +339,10 @@ export default function InsuranceDashboard() {
                 <div className="grid-2">
                   <div className="card">
                     <div className="card-header"><h3>Recent Members</h3><button className="btn" style={{padding:'6px 12px',fontSize:'12px'}} onClick={() => setTab('Members')}>View All</button></div>
+                    {/* ── ADDED: A–Z strip — click a letter to see every member starting with it ── */}
+                    {renderAzStrip()}
                     <div className="table-wrap"><table><thead><tr><th>Name</th><th>Policy</th><th>Plan</th><th>Premium</th><th>Status</th></tr></thead><tbody>
-                      {members.slice(0, 5).map(m => (
+                      {(azLetter ? azMembers : members.slice(0, 5)).map(m => (
                         <tr key={m.policyNumber} onClick={() => openProfile(m, 'member')}>
                           <td><div className="mem-info"><div className="mem-avatar">{(m.fullName || 'U').charAt(0)}</div><div><div className="mem-name">{m.fullName || 'Unnamed'}</div><div className="mem-meta">{m.phone || '—'}</div></div></div></td>
                           <td>{m.policyNumber}</td><td>{m.coverType || '—'}</td><td>{money(m.monthlyPremium)}</td>
@@ -214,6 +369,29 @@ export default function InsuranceDashboard() {
                   <div className="card"><div className="card-header"><h3>Premium Trend</h3></div><div style={{padding:'24px',height:'300px',position:'relative'}}>{trendData.labels.length > 0 ? <Line data={trendData} options={{responsive:true,maintainAspectRatio:false}} /> : <div className="empty-state">No data</div>}</div></div>
                   <div className="card"><div className="card-header"><h3>Claims Distribution</h3></div><div style={{padding:'24px',height:'300px',position:'relative'}}>{claims.length > 0 ? <Doughnut data={claimsChartData} options={{responsive:true,maintainAspectRatio:false,cutout:'60%'}} /> : <div className="empty-state">No claims</div>}</div></div>
                 </div>
+                {/* ── ADDED: small activity calendar showing every day's activity ── */}
+                <div style={{ marginBottom: '24px' }}>{renderCalendarCard(false)}</div>
+                {/* ── ADDED: failed payments — whose cover, how much, why ── */}
+                {failedPayments.length > 0 && (
+                  <div className="card" style={{ marginBottom: '24px' }}>
+                    <div className="card-header">
+                      <h3>Failed Payments — Needs Follow-up ({failedPayments.length})</h3>
+                      <button className="btn" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setTab('Payments')}>View All</button>
+                    </div>
+                    <div className="table-wrap"><table><thead><tr><th>Member</th><th>Policy / Cover</th><th>Amount</th><th>Date</th><th>Why it failed</th><th>Retry</th></tr></thead><tbody>
+                      {failedPayments.slice(0, 10).map((p, i) => (
+                        <tr key={p.reference || i}>
+                          <td><b>{p.memberName || '—'}</b></td>
+                          <td>{p.policyNumber || '—'}</td>
+                          <td>{money(p.amount)}</td>
+                          <td>{dateText(p.createdAt)}</td>
+                          <td style={{ maxWidth: '340px' }}>{p.failureReason || 'Not completed.'}</td>
+                          <td><span className={`badge ${p.retryable ? 'badge-warning' : 'badge-danger'}`}>{p.retryable ? 'Safe to retry' : 'Contact support'}</span></td>
+                        </tr>
+                      ))}
+                    </tbody></table></div>
+                  </div>
+                )}
               </>
             )}
 
@@ -225,6 +403,8 @@ export default function InsuranceDashboard() {
                   <button className="btn btn-primary" onClick={() => navigate('/amani/cover/apply')}>+ New Member</button>
                 </div>
                 <div className="card">
+                  {/* ── ADDED: A–Z strip on View All — click a letter to list all members starting with it ── */}
+                  {renderAzStrip()}
                   <div className="table-wrap"><table><thead><tr><th>Name</th><th>Policy No.</th><th>ID Number</th><th>Phone</th><th>Plan</th><th>Premium</th><th>Status</th></tr></thead><tbody>
                     {filteredMembers.map(m => (
                       <tr key={m.policyNumber} onClick={() => openProfile(m, 'member')}>
@@ -370,14 +550,39 @@ export default function InsuranceDashboard() {
         {selectedRecord && selectedType === 'member' && (
           <>
             <div className="drawer-header">
-              <div>
-                <div className="avatar-lg">{(selectedRecord.fullName || 'U').charAt(0)}</div>
-                <h2 className="drawer-name">{selectedRecord.fullName}</h2>
-                <div className="drawer-meta">{selectedRecord.policyNumber} · {selectedRecord.coverType}</div>
+              {/* ── Mock-style header: member since · policy · avatar · status ── */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--gray)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {String(selectedRecord.status).toLowerCase() === 'active' ? 'Active Member Since' : 'Member Since'} {monthYear(selectedRecord.createdAt)}
+                  </span>
+                  <span style={{ fontSize: '14px', color: 'var(--mid)', fontWeight: 500 }}>Policy: {selectedRecord.policyNumber}</span>
+                </div>
+                <button className="drawer-close" onClick={closeProfile}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               </div>
-              <button className="drawer-close" onClick={closeProfile}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div className="avatar-lg" style={{ width: '56px', height: '56px', fontSize: '22px' }}>{(selectedRecord.fullName || 'U').charAt(0)}</div>
+                <div>
+                  <div className="drawer-name">{selectedRecord.fullName}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--gray)', marginTop: '2px' }}>{selectedRecord.idNumber || selectedRecord.policyNumber} · {selectedRecord.coverType || '—'}</div>
+                  <div className={`badge ${getStatusClass(selectedRecord.status)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }}></span>
+                    {selectedRecord.status || 'Active'}
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="drawer-body">
+              {/* ── ADDED: Coverage Details (mock section) — real data only ── */}
+              <div className="section-head primary">Coverage Details</div>
+              <div className="detail-grid">
+                <div className="detail-item"><span className="detail-label">Plan Type</span><div className="detail-value">{selectedRecord.coverType || '—'}</div></div>
+                <div className="detail-item"><span className="detail-label">Who Is Covered</span><div className="detail-value" style={{ color: '#92764c', fontFamily: "'Merriweather', serif", fontSize: '17px' }}>{planFor(selectedRecord.coverType).covers}</div></div>
+                <div className="detail-item"><span className="detail-label">Premium</span><div className="detail-value">{money(selectedRecord.monthlyPremium)} / Month</div></div>
+                <div className="detail-item"><span className="detail-label">Covered People</span><div className="detail-value">{selectedRecord.coveredCount || '—'}</div></div>
+                <div className="detail-item" style={{ gridColumn: '1 / -1' }}><span className="detail-label">Total Contribution So Far</span><div className="detail-value" style={{ fontFamily: "'Merriweather', serif", fontSize: '18px' }}>{money(memberContributed)}</div></div>
+                <div className="detail-item" style={{ gridColumn: '1 / -1' }}><span className="detail-label">Next Payment (from last payment + 30 days)</span><div className="detail-value">{memberNextPayment ? dateText(memberNextPayment) : 'No successful payment recorded yet'}</div></div>
+              </div>
               <div className="section-head primary"><span>01</span> Personal Information</div>
               <div className="detail-grid">
                 <div className="detail-item"><span className="detail-label">National ID</span><div className="detail-value">{selectedRecord.idNumber || '—'}</div></div>
@@ -392,6 +597,23 @@ export default function InsuranceDashboard() {
                 <div className="detail-item"><span className="detail-label">Premium</span><div className="detail-value">{money(selectedRecord.monthlyPremium)}</div></div>
                 <div className="detail-item"><span className="detail-label">Status</span><div className="detail-value"><span className={`badge ${getStatusClass(selectedRecord.status)}`}>{selectedRecord.status}</span></div></div>
               </div>
+              {/* ── ADDED: Beneficiaries (mock section) — next of kin on record ── */}
+              <div className="section-head primary">Beneficiaries</div>
+              {selectedRecord.nextOfKinName ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '1px solid var(--border-light)', borderRadius: '4px', background: 'var(--white)' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '4px', background: 'var(--bg-field)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mid)', fontWeight: 700, fontSize: '14px', fontFamily: "'Merriweather', serif" }}>{(selectedRecord.nextOfKinName || '?').charAt(0)}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)' }}>{selectedRecord.nextOfKinName}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--gray)' }}>{selectedRecord.nextOfKinRelationship || 'Next of kin'}</div>
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--dark)', background: 'var(--bg-field)', padding: '4px 8px', borderRadius: '4px' }}>Primary</div>
+                  </div>
+                  {Number(selectedRecord.coveredCount) > 1 && <div style={{ fontSize: '12px', color: 'var(--gray)' }}>This policy covers {selectedRecord.coveredCount} people in total.</div>}
+                </div>
+              ) : (
+                <div style={{ fontSize: '13px', color: 'var(--gray)', marginBottom: '32px' }}>Next of kin not recorded{Number(selectedRecord.coveredCount) > 1 ? ` — this policy covers ${selectedRecord.coveredCount} people in total` : ''}.</div>
+              )}
               {(selectedRecord.contributions || []).length > 0 && (
                 <>
                   <div className="section-head primary"><span>03</span> Contribution History</div>
@@ -422,8 +644,8 @@ export default function InsuranceDashboard() {
               <div className="section-head primary"><span>01</span> Claim Information</div>
               <div className="detail-grid">
                 <div className="detail-item"><span className="detail-label">Claimant</span><div className="detail-value">{selectedRecord.claimantFullName || '—'}</div></div>
-                <div className="detail-item"><span className="detail-label">Phone</span><div className="detail-value">{selectedRecord.phone || '—'}</div></div>
-                <div className="detail-item"><span className="detail-label">Cause of Death</span><div className="detail-value">{selectedRecord.causeOfDeath || '—'}</div></div>
+                <div className="detail-item"><span className="detail-label">Phone</span><div className="detail-value">{selectedRecord.phone || claimDetail?.phone || '—'}</div></div>
+                <div className="detail-item"><span className="detail-label">Cause of Death</span><div className="detail-value">{selectedRecord.causeOfDeath || claimDetail?.causeOfDeath || '—'}</div></div>
                 <div className="detail-item"><span className="detail-label">Date of Death</span><div className="detail-value">{dateText(selectedRecord.deathDate)}</div></div>
               </div>
               <div className="section-head primary"><span>02</span> Documents</div>
