@@ -1,0 +1,68 @@
+@import "https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;500;600;700&display=swap";
+
+/* src/modules/insurance/amani/AmaniCover.css */
+.amani-cover {
+  --ac-primary: #0a0a0a;
+  --ac-primary-hover: #1a1a1a;
+  --ac-ink: #1a1a1a;
+  --ac-accent: #334155;
+  --ac-highlight: #475569;
+  --ac-bg: #f8fafc;
+  --ac-card: #ffffff;
+  --ac-border: #e2e8f0;
+  --ac-input: #cbd5e1;
+  --ac-mutedfg: #64748b;
+  --ac-onprimary: #ffffff;
+  --ac-onaccent: #ffffff;
+  --ac-oncard: #1a1a1a;
+  --ac-ring: #0a0a0a;
+  --ac-success: #16a34a;
+  --ac-success-bg: #f0fdf4;
+  --ac-danger: #dc2626;
+  color-scheme: light;
+  background: var(--ac-bg);
+  color: var(--ac-ink);
+  font-family:
+    "Source Sans 3",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+.amani-cover .font-serif {
+  font-family:
+    "Merriweather",
+    Georgia,
+    "Times New Roman",
+    serif;
+}
+.amani-cover .font-sans {
+  font-family:
+    "Source Sans 3",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+.amani-cover .amani-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .amani-cover {
+    scroll-behavior: auto;
+  }
+  .amani-cover *,
+  .amani-cover *::before,
+  .amani-cover *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
