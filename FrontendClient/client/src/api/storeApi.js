@@ -1,5 +1,6 @@
 import axios from 'axios';
 import env from '../utils/config/env';
+import { getAuthToken, getTenantSlug, getBranchSlug, getBranchId } from '../utils/globalAuth';
 
 /**
  * Mini Store service API client.
@@ -15,6 +16,34 @@ const storeApi = axios.create({
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
+
+// Every /store route runs `protect` (JWT) + `authorizeAny`, and the API gateway
+// only forwards what the browser actually sends. Without an Authorization
+// header the service answers 401 "Not authorized, no token provided", which the
+// dashboard surfaces as "Store service unreachable" and pushes all edits into
+// the offline queue — the service was up, the request just wasn't authenticated.
+// Same header set the shared axios instance sends (see api/axios.js).
+storeApi.interceptors.request.use(
+  (config) => {
+    const token = getAuthToken();
+    const slug = getTenantSlug();
+    if (token) config.headers['Authorization'] = `Bearer ${token}`;
+    if (slug) config.headers['x-tenant-slug'] = slug;
+
+    // Branch context, kept consistent with the rest of the app.
+    const branchSlug = getBranchSlug();
+    const branchId = getBranchId();
+    const branchDbName = localStorage.getItem('branchDbName');
+    if (branchSlug) config.headers['x-branch-slug'] = branchSlug;
+    if (branchId) config.headers['x-branch-id'] = branchId;
+    if (branchDbName && branchDbName !== 'undefined' && branchDbName !== 'null') {
+      config.headers['x-branch-db'] = branchDbName;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Friendly errors + unwrap success=false payloads
 storeApi.interceptors.response.use(
