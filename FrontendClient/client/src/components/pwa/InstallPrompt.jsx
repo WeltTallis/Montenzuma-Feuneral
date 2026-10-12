@@ -1,23 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, X, Smartphone, MoreVertical, Share2, Plus } from '../../utils/icons/icons';
+import { Download, X, Smartphone } from '../../utils/icons/icons';
 
 /* ══════════════════════════════════════════════════════════════════════════
    PWA install prompt — built to actually appear on phones.
 
-   Three paths, because no single API covers every mobile browser:
-
-     1. NATIVE — Chromium (Android Chrome / Edge / Brave / Samsung, desktop
-        Chrome). The browser fires `beforeinstallprompt`; we capture it and
-        replay it from our own Install button.
-     2. iOS    — Safari / Chrome / Firefox on iOS NEVER fire that event, so the
-        banner teaches the Share → "Add to Home Screen" gesture instead.
-     3. MANUAL — a Chromium browser that has not (or will not) fire the event
-        gets the browser-menu instructions instead.
-
-   Paths 2 and 3 are why the previous banner looked "broken on mobile": it only
-   rendered when `beforeinstallprompt` reached us, and that event is never
-   fired on iOS and is a one-shot event on Android (it can also be withheld
-   entirely when an installability criterion — icon size, manifest — is off).
+   Chromium (Android Chrome / Edge / Brave / Samsung, desktop Chrome) fires
+   `beforeinstallprompt`; we capture it and replay it from our own Install
+   button. iOS and browsers that withhold the event never see this banner —
+   no manual download instructions are shown.
    ══════════════════════════════════════════════════════════════════════════ */
 
 // The user's choice is stored in a COOKIE (not sessionStorage/localStorage):
@@ -28,11 +18,10 @@ import { Download, X, Smartphone, MoreVertical, Share2, Plus } from '../../utils
 // v3 of the cookie name: the previous build could not show on iOS at all and
 // was easy to miss on Android, so any stale "dismissed" cookie from it is
 // deliberately ignored — the fixed prompt gets one clean showing again.
-const COOKIE_NAME = 'pwa-install-choice-v3';   // 'accepted' | 'dismissed'
+const COOKIE_NAME = 'pwa-install-choice-v1';   // 'accepted' | 'dismissed'
 const ACCEPT_MAX_AGE = 60 * 60 * 24 * 365;     // accepted  → 1 year (effectively forever)
 const DISMISS_MAX_AGE = 60 * 60 * 24 * 7;      // "Not now" → 7 days
 const SHOW_DELAY_MS = 4 * 1000;                // after the native prompt is captured
-const PROBE_DELAY_MS = 12 * 1000;              // no native event → manual instructions
 
 // ─── Early capture of beforeinstallprompt ────────────────────────────
 // The browser fires `beforeinstallprompt` exactly ONCE per page load —
@@ -78,35 +67,11 @@ const isStandalone = () => {
     return displayMode || window.navigator.standalone === true;
 };
 
-/** iPhone / iPad (including iPadOS, which reports itself as a Mac). */
-const isIosDevice = () => {
-    if (typeof navigator === 'undefined') return false;
-    const ua = navigator.userAgent || '';
-    if (/iPad|iPhone|iPod/.test(ua)) return true;
-    return ua.includes('Macintosh') && typeof document !== 'undefined' && 'ontouchend' in document;
-};
-
-/** A phone/tablet — the devices where a home-screen install is worth offering.
- *  Desktop visitors are never nagged with manual instructions. */
-const isMobileDevice = () => {
-    if (typeof navigator === 'undefined') return false;
-    const ua = navigator.userAgent || '';
-    if (/Android|iPhone|iPad|iPod|Mobile|Windows Phone|webOS|BlackBerry/i.test(ua)) return true;
-    try {
-        return window.matchMedia('(any-pointer: coarse)').matches && window.innerWidth <= 1024;
-    } catch {
-        return false;
-    }
-};
-
 const InstallPrompt = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
-    // 'native' → we hold the browser's own prompt; 'ios' / 'manual' → instructions.
-    const [kind, setKind] = useState(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [hideForever, setHideForever] = useState(false);
     const delayTimerRef = useRef(null);
-    const probeTimerRef = useRef(null);
 
     useEffect(() => {
         // Already installed, or the user already accepted/dismissed → stay quiet.
@@ -117,16 +82,6 @@ const InstallPrompt = () => {
 
         const clearTimers = () => {
             if (delayTimerRef.current) { clearTimeout(delayTimerRef.current); delayTimerRef.current = null; }
-            if (probeTimerRef.current) { clearTimeout(probeTimerRef.current); probeTimerRef.current = null; }
-        };
-
-        const reveal = (nextKind) => {
-            setKind((current) => {
-                // Never downgrade an already-revealed native prompt.
-                if (current === 'native') return current;
-                return nextKind;
-            });
-            setShowPrompt(true);
         };
 
         // Shared handler — the event may arrive via the module-scope capture
@@ -134,11 +89,10 @@ const InstallPrompt = () => {
         const handlePromptEvent = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            if (probeTimerRef.current) { clearTimeout(probeTimerRef.current); probeTimerRef.current = null; }
             // Do NOT pop up immediately on landing — wait a few seconds so it
             // is not in the user's face the second the page loads.
             if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
-            delayTimerRef.current = setTimeout(() => reveal('native'), SHOW_DELAY_MS);
+            delayTimerRef.current = setTimeout(() => setShowPrompt(true), SHOW_DELAY_MS);
         };
 
         // If the event already fired before mount, use the captured one now.
@@ -151,15 +105,6 @@ const InstallPrompt = () => {
         };
         window.addEventListener('beforeinstallprompt', handler);
         earlyInstallListeners.add(handler);
-
-        // ── Fallback: no native event on a phone → show how to install it ──
-        // Covers iOS (never supported) and Android Chromium browsers where the
-        // event is withheld (criteria not met yet, or it already fired once).
-        if (isIosDevice() || isMobileDevice()) {
-            probeTimerRef.current = setTimeout(() => {
-                reveal(isIosDevice() ? 'ios' : 'manual');
-            }, PROBE_DELAY_MS);
-        }
 
         // Installed from anywhere (including the browser's own mini-infobar).
         const installedHandler = () => {
@@ -213,17 +158,12 @@ const InstallPrompt = () => {
     const handleDismiss = () => {
         setShowPrompt(false);
         if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
-        if (probeTimerRef.current) clearTimeout(probeTimerRef.current);
         // Dismissed → stay quiet for a week (survives logout & refreshes).
         setCookie(COOKIE_NAME, 'dismissed', DISMISS_MAX_AGE);
     };
 
-    // Don't render if already installed, or the prompt should not show.
-    if (hideForever || !showPrompt) return null;
-
-    const native = kind === 'native' && !!deferredPrompt;
-    const ios = kind === 'ios';
-    const showSteps = ios || (kind === 'manual' && !native);
+    // Don't render if already installed, or there is no native prompt to replay.
+    if (hideForever || !showPrompt || !deferredPrompt) return null;
 
     return (
         <div className="install-wrapper" role="dialog" aria-label="Install Rest Point">
@@ -292,34 +232,10 @@ const InstallPrompt = () => {
                 }
                 .install-close:hover { color: #FAF8F4; }
 
-                .install-steps {
-                    list-style: none;
-                    margin: 0 0 1rem 0;
-                    padding: 0.75rem;
-                    border-radius: 8px;
-                    background: rgba(250, 248, 244, 0.06);
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.6rem;
-                }
-                .install-step {
-                    display: flex;
-                    gap: 0.55rem;
-                    align-items: flex-start;
-                    font-size: 0.74rem;
-                    line-height: 1.4;
-                    color: rgba(250, 248, 244, 0.82);
-                }
-                .install-step-icon {
-                    flex-shrink: 0;
-                    color: #A98F6E;
-                    margin-top: 1px;
-                }
-                .install-step strong { color: #FAF8F4; font-weight: 600; }
-
                 .install-actions {
                     display: flex;
                     gap: 0.5rem;
+                    margin-top: 1rem;
                 }
                 .btn-sm {
                     flex: 1;
@@ -366,71 +282,28 @@ const InstallPrompt = () => {
                         max-width: none;
                         padding: 0.9rem;
                     }
-                    .install-step { font-size: 0.78rem; }
-                    .btn-sm { min-height: 44px; font-size: 0.82rem; }
-                }
             `}</style>
             <div className="install-header">
                 <div className="install-icon-box">
                     <Smartphone size={18} />
                 </div>
                 <div>
-                    <h3 className="install-title">
-                        {ios ? 'Add to Home Screen' : 'Install App'}
-                    </h3>
-                    <p className="install-desc">
-                        {ios
-                            ? 'Install Rest Point on this iPhone or iPad — no app store needed.'
-                            : native
-                                ? 'Add to home screen for quick access.'
-                                : 'Install Rest Point straight from your browser menu.'}
-                    </p>
+                    <h3 className="install-title">Install App</h3>
+                    <p className="install-desc">Add to home screen for quick access.</p>
                 </div>
                 <button className="install-close" onClick={handleDismiss} aria-label="Dismiss">
                     <X size={16} />
                 </button>
             </div>
 
-            {showSteps && (
-                <ol className="install-steps">
-                    <li className="install-step">
-                        <span className="install-step-icon"><Share2 size={14} /></span>
-                        <span>
-                            {ios
-                                ? <>Tap the <strong>Share</strong> icon in Safari&rsquo;s toolbar.</>
-                                : <>Open the browser menu <strong>(⋮ / ⋯)</strong> at the top-right.</>}
-                        </span>
-                    </li>
-                    <li className="install-step">
-                        <span className="install-step-icon"><Plus size={14} /></span>
-                        <span>
-                            {ios
-                                ? <>Scroll the share sheet and tap <strong>Add to Home Screen</strong>.</>
-                                : <>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</>}
-                        </span>
-                    </li>
-                    <li className="install-step">
-                        <span className="install-step-icon"><MoreVertical size={14} /></span>
-                        <span>Confirm — Rest Point then opens like a normal app.</span>
-                    </li>
-                </ol>
-            )}
-
             <div className="install-actions">
                 <button className="btn-sm btn-dismiss" onClick={handleDismiss}>
                     Not Now
                 </button>
-                {native ? (
-                    <button className="btn-sm btn-install" onClick={handleInstall}>
-                        <Download size={14} />
-                        Install
-                    </button>
-                ) : (
-                    <button className="btn-sm btn-install" onClick={handleDismiss}>
-                        <Download size={14} />
-                        Got it
-                    </button>
-                )}
+                <button className="btn-sm btn-install" onClick={handleInstall}>
+                    <Download size={14} />
+                    Install
+                </button>
             </div>
         </div>
     );

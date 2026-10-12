@@ -101,32 +101,46 @@ svg{display:block}
   background:var(--ink);border-radius:3px}
 .section-head .n{font:500 .7rem var(--mono);color:rgba(250,248,244,.42)}
 .section-head .t{font:500 .76rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#FAF8F2}
-/* ── floating-label fields ── */
+/* ── dashed-underline fields ── */
+.frow{display:flex;gap:1.5rem;flex-wrap:wrap}
+.frow>.field{flex:1 1 200px;min-width:0}
 .field{margin-bottom:1.2rem}
 .field:last-child{margin-bottom:0}
-.field label{display:block;font:600 .68rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin-bottom:.4rem}
+.field>label{display:block;font:600 .68rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin-bottom:.4rem}
 .req{color:var(--red)}
 .opt{display:inline;font:500 .62rem var(--karla);letter-spacing:.06em;text-transform:none;font-style:normal;color:var(--faint)}
-.inwrap{position:relative;display:flex;align-items:center;overflow:hidden}
+.inwrap{position:relative;display:flex;align-items:center}
 .inwrap input,.inwrap select,.inwrap textarea{
   width:100%;height:2.6rem;background:transparent;border:0;border-radius:0;outline:0;
-  padding:0 .2rem .35rem 0;flex:1 1 auto;font:inherit;color:var(--ink);
-  min-width:0;transition:none}
+  border-bottom:1.5px dashed var(--dash);padding:0 .2rem .35rem 0;flex:1 1 auto;
+  font:inherit;color:var(--ink);min-width:0;transition:border-color .2s var(--ease)}
 .inwrap textarea{height:auto;min-height:5.2rem;line-height:1.6;padding-top:.5rem;padding-bottom:1.7rem;resize:vertical}
-.inwrap input::placeholder,.inwrap select::placeholder,.inwrap textarea::placeholder{color:transparent}
-.inwrap input:focus,.inwrap select:focus,.inwrap textarea:focus{border:0;background:transparent;box-shadow:0 0 0 3px rgba(169,143,110,.32), 0 0 0 5px rgba(21,23,26,.05)}
+.inwrap input:hover,.inwrap select:hover,.inwrap textarea:hover{border-bottom-color:var(--ink)}
+.inwrap input::placeholder,.inwrap select::placeholder,.inwrap textarea::placeholder{color:var(--faint);font-weight:400}
+.inwrap input:focus,.inwrap select:focus,.inwrap textarea:focus{border-bottom:1.5px solid var(--berry)}
 .inwrap select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:2.2rem;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%235F584C' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .85rem center}
 .inwrap select option{background:#fff;color:var(--ink)}
-.inwrap input:disabled,.inwrap select:disabled,.inwrap textarea:disabled{color:var(--faint);cursor:not-allowed}
+.inwrap input:disabled,.inwrap select:disabled,.inwrap textarea:disabled{color:var(--faint);cursor:not-allowed;border-bottom-color:var(--line)}
+.field.bad .inwrap input,.field.bad .inwrap select,.field.bad .inwrap textarea{border-bottom:1.5px solid var(--red)}
+.field.bad>label{color:var(--red)}
+.err{display:none;font:500 .75rem var(--sans);color:var(--red);margin:.35rem 0 0}
+.field.bad .err{display:block}
+.autofilled{font:italic 500 .82rem var(--serif);color:var(--faint);margin:.4rem 0 0}
 @media(max-width:600px){.fbp-panel input,.fbp-panel select,.fbp-panel textarea{font-size:16px}.inwrap input,.inwrap select{height:3rem}}
 .tareawrap{position:relative;width:100%}
+.tareawrap textarea{width:100%;background:transparent;border:0;border-radius:0;outline:0;
+  border-bottom:1.5px dashed var(--dash);padding:.5rem 2.1rem 1.7rem 0;font:inherit;color:var(--ink);
+  line-height:1.6;min-height:5.2rem;resize:vertical;transition:border-color .2s var(--ease)}
+.tareawrap textarea:hover{border-bottom-color:var(--ink)}
+.tareawrap textarea:focus{border-bottom:1.5px solid var(--berry)}
+.tareawrap textarea::placeholder{color:var(--faint);font-weight:400}
 .counter{position:absolute;bottom:.55rem;right:0;font:700 .62rem var(--mono);color:var(--faint)}
 /* verdigris tick badge — appears when the field holds a value */
 .tickbadge{position:absolute;right:.2rem;top:50%;transform:translateY(-50%);
   width:1.4rem;height:1.4rem;border-radius:50%;background:var(--verd);color:#fff;
   display:none;place-items:center;pointer-events:none}
 .tickbadge svg{width:13px;height:13px}
-.inwrap.has-val .tickbadge{display:grid}
+.has-val .tickbadge{display:grid}
 .inwrap.has-val input,.inwrap.has-val select{padding-right:2.6rem}
 .tareawrap .tickbadge{top:1rem}
 /* any-color — square checkbox row, no pill */
@@ -139,6 +153,10 @@ svg{display:block}
   border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 .sqbox:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 .any-line span{font:500 .9rem var(--sans);color:var(--ink2)}
+/* color preference — text field first, florist's-choice chip placed beside it */
+.colorrow{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.colorrow .inwrap{flex:1 1 190px;min-width:0}
+.colorrow .any-line{padding:0;flex:0 0 auto}
 /* ── size cards ── */
 .sizes{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.3rem}
 @media(max-width:460px){.sizes{grid-template-columns:1fr 1fr}}
@@ -324,7 +342,7 @@ const FbSymbols = () => (
 
 /* helpers */
 
-const BLANK = { time: '', dep: '', funeralDate: '', ribbon: '', colors: '', anyColor: true, size: '', quantities: {}, flowers: '', notes: '', name: '', phone: '' }
+const BLANK = { time: '', dep: '', funeralDate: '', ribbon: '', colors: '', anyColor: false, size: '', quantities: {}, flowers: '', notes: '', name: '', phone: '' }
 const SIZES = [
   ['Small', 'Thoughtful tribute'],
   ['Medium', 'Classic tribute'],
@@ -512,8 +530,20 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
 
   const dep = form.dep.trim()
 
-  /* step 1 → step 2: nothing on the arrangement step is required any more */
-  const goDetails = () => setStep(2)
+  /* step 1 → step 2: the departed name is required — stop and jump to it if blank */
+  const goDetails = () => {
+    if (form.dep.trim().length < 2) {
+      setBad(b => ({ ...b, dep: true }))
+      const el = document.getElementById('fDep')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.focus({ preventScroll: true })
+      }
+      return
+    }
+    setBad(b => ({ ...b, dep: false }))
+    setStep(2)
+  }
 
   const submit = async () => {
     const b = {}
@@ -695,12 +725,13 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                               <span className="tickbadge"><svg><use href="#tick" /></svg></span>
                             </div>
                           </div>
-                          <div className="field">
-                            <label htmlFor="fDep">Departed name <span className="opt">(optional)</span></label>
+                          <div className={'field' + (bad.dep ? ' bad' : '')}>
+                            <label htmlFor="fDep">Departed name <span className="req">*</span></label>
                             <div className={'inwrap' + (form.dep ? ' has-val' : '')}>
                               <input type="text" id="fDep" placeholder="e.g. Mary Wanjiku" autoComplete="off" {...set('dep')} />
                               <span className="tickbadge"><svg><use href="#tick" /></svg></span>
                             </div>
+                            <p className="err">Please enter the departed name</p>
                           </div>
                         </div>
                       </div>
@@ -763,13 +794,15 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                         <div className="frow">
                           <div className="field">
                             <label htmlFor="fColors">Color preference</label>
-                            <label className="any-line">
-                              <input type="checkbox" id="fAnyColor" className="sqbox" checked={form.anyColor} onChange={event => setForm(current => ({ ...current, anyColor: event.target.checked }))} />
-                              <span>Any color · florist's choice</span>
-                            </label>
-                            <div className={'inwrap' + (!form.anyColor && form.colors ? ' has-val' : '')}>
-                              <input type="text" id="fColors" placeholder="e.g. Deep red, white" autoComplete="off" disabled={form.anyColor} {...set('colors')} />
-                              <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                            <div className="colorrow">
+                              <div className={'inwrap' + (!form.anyColor && form.colors ? ' has-val' : '')}>
+                                <input type="text" id="fColors" placeholder="e.g. Deep red, white" autoComplete="off" disabled={form.anyColor} {...set('colors')} />
+                                <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                              </div>
+                              <label className="any-line">
+                                <input type="checkbox" id="fAnyColor" className="sqbox" checked={form.anyColor} onChange={event => setForm(current => ({ ...current, anyColor: event.target.checked }))} />
+                                <span>Any color · florist's choice</span>
+                              </label>
                             </div>
                           </div>
                           <div className="field">

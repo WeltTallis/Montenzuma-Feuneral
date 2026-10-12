@@ -9,10 +9,15 @@
    • animation names → rpd-prefixed to avoid clashing with other modules
    ══════════════════════════════════════════════════════════════════════════ */
 
-.rpd,
-.rpd *,
-.rpd *::before,
-.rpd *::after {
+/* Global zero-out for the whole dashboard tree.
+   The scope goes through :where() (adds no specificity) and the :not(html):not(body)
+   pair adds only an element-level floor, so the whole selector sits at (0,0,2):
+   it still beats Bootstrap's element reboot rules (p/h*/
+
+:where(.rpd),
+:where(.rpd) *:not(html):not(body),
+:where(.rpd) *:not(html):not(body)::before,
+:where(.rpd) *:not(html):not(body)::after {
    margin: 0;
    padding: 0;
    box-sizing: border-box
@@ -1115,65 +1120,65 @@
    inherit the shadow inside an already-shadowed `.san-card` and fight the
    `.lbl` styling for the label. A separate namespace keeps both intact. */
 .rpd .side .skpis {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px
+   display: grid;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 6px
 }
 
 .rpd .side .skpi {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 9px 9px 8px;
-    border: 1px solid var(--brdl);
-    border-radius: 8px;
-    background: var(--sect);
-    text-align: left;
-    cursor: pointer;
-    min-width: 0;
-    transition: border-color .15s, background .15s
+   display: flex;
+   flex-direction: column;
+   gap: 3px;
+   padding: 9px 9px 8px;
+   border: 1px solid var(--brdl);
+   border-radius: 8px;
+   background: var(--sect);
+   text-align: left;
+   cursor: pointer;
+   min-width: 0;
+   transition: border-color .15s, background .15s
 }
 
 .rpd .side .skpi:hover {
-    border-color: var(--tx4);
-    background: var(--card)
+   border-color: var(--tx4);
+   background: var(--card)
 }
 
 .rpd .side .skpi b {
-    font: 800 18px/1.1 var(--serif);
-    color: var(--tx);
-    font-variant-numeric: tabular-nums
+   font: 800 18px/1.1 var(--serif);
+   color: var(--tx);
+   font-variant-numeric: tabular-nums
 }
 
 /* `.skpi-lbl` is scoped rather than a bare `.skpi span`: the tile also contains
    the `.skpi-bar` / `.skpi-fill` pair, and an unqualified rule would uppercase
    and ellipsis them along with the label. */
 .rpd .side .skpi .skpi-lbl {
-    font-size: 9px;
-    font-weight: 700;
-    color: var(--tx3);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis
+   font-size: 9px;
+   font-weight: 700;
+   color: var(--tx3);
+   text-transform: uppercase;
+   letter-spacing: .5px;
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis
 }
 
 /* The share bar: a fixed 3px track so all four tiles stay aligned whatever the
    value, with the filled portion inline-coloured per status. */
 .rpd .side .skpi-bar {
-    display: block;
-    height: 3px;
-    margin-top: 4px;
-    border-radius: 3px;
-    background: var(--brd);
-    overflow: hidden
+   display: block;
+   height: 3px;
+   margin-top: 4px;
+   border-radius: 3px;
+   background: var(--brd);
+   overflow: hidden
 }
 
 .rpd .side .skpi-fill {
-    display: block;
-    height: 100%;
-    border-radius: 3px
+   display: block;
+   height: 100%;
+   border-radius: 3px
 }
 
 /* The grand total line inside a financial panel. A solid rule above it separates
@@ -1181,22 +1186,22 @@
    `!important`: `.srow+.srow` sets the same property at the SAME specificity
    (0,3,0), and this rule comes later in the file, so it wins on source order. */
 .rpd .side .srow-sum {
-    margin-top: 2px;
-    border-top: 1px solid var(--brd);
-    padding-top: 9px
+   margin-top: 2px;
+   border-top: 1px solid var(--brd);
+   padding-top: 9px
 }
 
 /* A short provenance note under a figure the reader should not mistake for an
    invoiced amount. Styled like the deceased sidebar's `ChargeNote`. */
 .rpd .side .snote {
-    margin: 10px 0 0;
-    padding: 8px 9px;
-    font-size: 10.5px;
-    line-height: 1.45;
-    color: var(--tx3);
-    background: var(--sect);
-    border: 1px solid var(--brdl);
-    border-radius: 7px
+   margin: 10px 0 0;
+   padding: 8px 9px;
+   font-size: 10.5px;
+   line-height: 1.45;
+   color: var(--tx3);
+   background: var(--sect);
+   border: 1px solid var(--brdl);
+   border-radius: 7px
 }
 
 
@@ -5004,7 +5009,7 @@
    margin-top: 2px
 }
 
-.rpd .wa-target-col > i {
+.rpd .wa-target-col>i {
    position: absolute;
    top: 5px;
    right: 6px;
@@ -5034,7 +5039,7 @@
    box-shadow: inset 0 0 0 1px var(--green)
 }
 
-.rpd .wa-pm-cell.met > i {
+.rpd .wa-pm-cell.met>i {
    margin-left: 3px;
    font-size: 8px;
    color: var(--green)
@@ -6346,6 +6351,7 @@
 }
 
 @media(max-width:560px) {
+
    /* The title's <p> subtitle is gone, so this rule no longer hid anything.
       What DOES need to collapse on a phone is the section switcher: with the
       tabs, Live, Register Worker and Refresh all in one row, the bar is far
@@ -6353,21 +6359,21 @@
       instead of being pushed off the right edge, and the tabs are allowed to
       scroll rather than crushing their labels. */
    .rpd .wp-tabs {
-       margin-left: 0;
-       order: 3;
-       width: 100%;
-       overflow-x: auto;
-       -webkit-overflow-scrolling: touch
+      margin-left: 0;
+      order: 3;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch
    }
 
    .rpd .wp-tab {
-       flex: 1 0 auto
+      flex: 1 0 auto
    }
 
    .rpd .wp-refresh {
-       font-size: 0;
-       gap: 0;
-       padding: 0 12px
+      font-size: 0;
+      gap: 0;
+      padding: 0 12px
    }
 }
 

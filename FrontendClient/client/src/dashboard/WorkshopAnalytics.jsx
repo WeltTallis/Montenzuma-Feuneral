@@ -389,7 +389,7 @@ const Floor = styled.div`
 `;
 const Stage = styled.div`
   border:1px solid ${C.line};border-top:3px solid ${p => p.$c};border-radius:4px;
-  padding:12px 13px;background:${C.section};min-width:0;
+  padding:16px 14px;background:${C.section};min-width:0;
 `;
 const StageTop = styled.div`
   display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:.4rem;
@@ -399,12 +399,12 @@ const StageTop = styled.div`
      font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 `;
 const StageItem = styled.div`
-  display:flex;justify-content:space-between;gap:.5rem;font-size:13px;padding:4px 0;cursor:default;color:${C.ink};
+  display:flex;justify-content:space-between;gap:.5rem;font-size:13px;padding:6px 0;cursor:default;color:${C.ink};
   span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
   em{font-style:normal;color:${C.muted};font-weight:500;flex-shrink:0;}
   em.late{color:${C.red};}
 `;
-const StageEmpty = styled.div`font-size:12px;color:${C.muted};font-style:italic;padding:2px 0;`;
+const StageEmpty = styled.div`font-size:12px;color:${C.muted};font-style:italic;padding:4px 0 2px;`;
 
 const Empty = styled(Card)`padding:40px;text-align:center;font-size:14px;color:${C.muted};`;
 

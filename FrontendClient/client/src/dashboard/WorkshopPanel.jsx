@@ -35,72 +35,64 @@ function TabBar({ active, onChange }) {
   );
 }
 
-function TargetModal({ months, workerTargets, workers, production, onSave, onClose }) {
-  const [scope, setScope] = useState("workshop");
+/* "2026-10" -> "Oct 2026" — readable labels for the month select and the
+   saved-confirmation banner. */
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthLabel = (key) => {
+  const [y, m] = String(key).split("-");
+  const name = MONTH_SHORT[Number(m) - 1];
+  return name ? `${name} ${y}` : String(key);
+};
+
+/* Single-value target dialog — the layout the modal stylesheet was written
+   for: pick a month, type ONE number (the coffins each worker must finish
+   this month), save. The old 12-month grid lost its CSS when the stylesheet
+   was converted (`.wp-target-grid` / `.wp-target-cell` were deleted), so the
+   cells rendered with no styling at all, and its save loop closed the dialog
+   after writing the first month. */
+function TargetModal({ months, onSave, onClose }) {
   const [err, setErr] = useState("");
-  const workerOptions = (workers || []).map((w) => ({
-    id: String(w.user_id ?? w.id),
-    name: String(w.full_name || `${w.first_name || ""} ${w.last_name || ""}`.trim() || "Worker"),
-  }));
+  const [busy, setBusy] = useState(false);
 
+  const now = new Date();
+  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const keys = (months || []).map((m) => m.month).filter(Boolean);
+  const monthKeys = keys.length ? keys : [currentKey];
 
-  const producedFor = (monthKey) => {
-    if (scope === "workshop") {
-      return Number((months || []).find((m) => m.month === monthKey)?.produced) || 0;
-    }
-    const w = (production?.workers || []).find((x) => String(x.worker_id) === String(scope));
-    return Number(w?.monthly?.[monthKey]) || 0;
-  };
+  const [month, setMonth] = useState(monthKeys.includes(currentKey) ? currentKey : monthKeys[0]);
+  const [qty, setQty] = useState("");
 
-  /* The target already set for THIS scope, so switching to a worker shows that
-     worker's numbers instead of re-using the workshop's. */
-  const targetFor = (monthKey) => {
-    if (scope === "workshop") {
-      return Number((months || []).find((m) => m.month === monthKey)?.target) || 0;
-    }
-    const row = (workerTargets || []).find(
-      (x) => String(x.worker_id) === String(scope) && String(x.month) === monthKey
-    );
-    return Number(row?.target) || 0;
-  };
+  /* Re-seed the input whenever the month changes so it shows what is already
+     saved for that month (blank when none is set yet). */
+  useEffect(() => {
+    const saved = Number((months || []).find((m) => m.month === month)?.target) || 0;
+    setQty(saved > 0 ? String(saved) : "");
+  }, [month]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const buildDraft = () => {
-    const o = {};
-    (months || []).forEach((m) => {
-      const t = targetFor(m.month);
-      o[m.month] = t > 0 ? String(t) : "";
-    });
-    return o;
-  };
-
-  const [draft, setDraft] = useState(buildDraft);
-
-  /* Switching scope must rebuild the sheet, or a worker's sheet would still be
-     showing the workshop's numbers. `months`/`workerTargets` are stable for the
-     life of the modal, so scope is the only trigger that matters here. */
-  useEffect(() => { setDraft(buildDraft()); }, [scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const savedRow = (months || []).find((m) => m.month === month);
+  const produced = Number(savedRow?.produced) || 0;
+  const targetNum = Number(qty) > 0 ? Number(qty) : 0;
+  const pct = targetNum > 0 ? Math.min(100, Math.round((produced / targetNum) * 100)) : 0;
+  const met = targetNum > 0 && produced >= targetNum;
 
   const save = async () => {
-    // Validate everything before writing, so a typo in month 7 does not leave
-    // months 1-6 saved and 7-12 missing.
-    for (const m of months || []) {
-      const raw = (draft[m.month] ?? "").trim();
-      if (raw === "") continue;
+    const raw = String(qty ?? "").trim();
+    if (raw !== "") {
       const n = Number(raw);
       if (!Number.isFinite(n) || n < 0 || Math.floor(n) !== n) {
-        setErr(`${m.month} must be a whole number of coffins.`);
+        setErr("Target must be a whole number of coffins, e.g. 8.");
         return;
       }
     }
     setErr("");
-    // null = the workshop-wide target; a worker id = that worker's own target.
-    const workerId = scope === "workshop" ? null : scope;
-    for (const m of months || []) {
-      const raw = (draft[m.month] ?? "").trim();
-      // Blank is saved as 0 rather than skipped, so clearing a target that was
-      // previously set actually removes it instead of silently keeping the old
-      // number in place.
-      await onSave(m.month, raw === "" ? 0 : Number(raw), workerId);
+    setBusy(true);
+    try {
+      // Blank is saved as 0, which clears the month's target. workerId is null:
+      // ONE shared number that every worker is measured against.
+      const res = await onSave(month, raw === "" ? 0 : Number(raw), null);
+      if (res && res.success === false) setErr(res.error || "Could not save target");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -115,71 +107,57 @@ function TargetModal({ months, workerTargets, workers, production, onSave, onClo
 
         <div className="wp-target-body">
           <div className="wp-target-scope">
-            <label htmlFor="wp-target-who">Target applies to</label>
+            <label htmlFor="wp-target-month">Month</label>
             <select
-              id="wp-target-who"
-              value={scope}
-              onChange={(e) => setScope(e.target.value)}
+              id="wp-target-month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
             >
-              <option value="workshop">Whole workshop</option>
-              {workerOptions.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
+              {monthKeys.map((k) => (
+                <option key={k} value={k}>{monthLabel(k)}</option>
               ))}
             </select>
           </div>
 
           <p className="wp-target-sub">
-            {scope === "workshop"
-              ? "How many coffins the workshop aims to finish each month. Leave a month blank to track it without a target."
-              : `How many coffins ${workerOptions.find((w) => w.id === scope)?.name || "this worker"} is expected to finish each month. A month they reach it turns green on the analytics.`}
+            The number of coffins each worker must finish in the selected
+            month. Leave the field blank to track the month without a target.
           </p>
 
-          <div className="wp-target-grid">
-            {(months || []).map((m) => {
-              const val = draft[m.month] ?? "";
-              const has = val.trim() !== "";
-              const produced = producedFor(m.month);
-              const pct = has && Number(val) > 0
-                ? Math.min(100, Math.round((produced / Number(val)) * 100))
-                : 0;
-              const met = has && Number(val) > 0 && produced >= Number(val);
-              return (
-                <div className="wp-target-cell" key={m.month}>
-                  <label>{m.month}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    inputMode="numeric"
-                    placeholder="—"
-                    value={val}
-                    onChange={(e) => setDraft((d) => ({ ...d, [m.month]: e.target.value }))}
-                  />
-                  <div className="wp-target-actual">
-                    <span className={met ? "met" : ""}>{produced} made</span>
-                    {has && Number(val) > 0 && (
-                      <span className={met ? "met" : "miss"}>
-                        {met ? "Target met" : `${pct}%`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="wp-target-track">
-                    <span
-                      className={met ? "met" : ""}
-                      style={has && Number(val) > 0 ? { width: `${pct}%` } : undefined}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+          <div className="wp-target-single">
+            <label htmlFor="wp-target-qty">Target per worker</label>
+            <div className="wp-target-single-row">
+              <input
+                id="wp-target-qty"
+                type="number"
+                min="0"
+                step="1"
+                inputMode="numeric"
+                placeholder="e.g. 8"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+              />
+              <span className="wp-target-unit">coffins each<br />this month</span>
+            </div>
+
+            <div className="wp-target-actual">
+              <span>{produced} made</span>
+              {targetNum > 0 && (
+                <span className={met ? "met" : "miss"}>
+                  {met ? "Target met" : `${pct}%`}
+                </span>
+              )}
+            </div>
           </div>
 
-          {err ? <div className="wp-err">{err}</div> : null}
+          {err ? <div className="wp-target-err">{err}</div> : null}
         </div>
 
         <div className="wp-target-foot">
           <button type="button" className="wp-btn-ghost" onClick={onClose}>Cancel</button>
-          <button type="button" className="wp-addworker" onClick={save}>Save Targets</button>
+          <button type="button" className="wp-addworker" onClick={save} disabled={busy}>
+            {busy ? "Saving…" : "Save Target"}
+          </button>
         </div>
       </div>
     </>
@@ -267,7 +245,9 @@ export default function WorkshopPanel({ onExit }) {
       const who = workerId
         ? (workers.find((w) => String(w.user_id ?? w.id) === String(workerId))?.full_name || "Worker")
         : "the workshop";
-      setTargetSaved(`Target for ${who} in ${month} set to ${qty} coffin${Number(qty) === 1 ? "" : "s"}.`);
+      setTargetSaved(qty > 0
+        ? `Target for ${who} in ${monthLabel(month)} set to ${qty} coffin${Number(qty) === 1 ? "" : "s"} per worker.`
+        : `Target for ${who} in ${monthLabel(month)} cleared.`);
       setTargetOpen(false);
       // Reload so the chart reflects the new mark immediately rather than waiting
       // for the next refresh cycle.
@@ -275,6 +255,9 @@ export default function WorkshopPanel({ onExit }) {
     } else {
       setError(res?.error || "Could not save target");
     }
+    // Returned so the modal can show a failure inline instead of silently
+    // staying open with no message.
+    return res;
   };
 
   const header = (
@@ -400,7 +383,6 @@ export default function WorkshopPanel({ onExit }) {
       {targetOpen && (
         <TargetModal
           months={targets?.months || []}
-          production={production}
           onSave={saveTarget}
           onClose={() => { setTargetSaved(""); setTargetOpen(false); }}
         />

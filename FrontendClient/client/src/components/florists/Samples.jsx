@@ -52,7 +52,7 @@ const CSS = `:root{
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   margin-top: 24px;
 }
 
@@ -60,16 +60,18 @@ const CSS = `:root{
   width: 6px;
   height: 6px;
   border-radius: 50px;
-  background: rgba(255, 255, 255, 0.35);
-  transition: width 0.3s ease, background 0.3s ease;
+  background: rgba(214, 51, 108, 0.25);
+  transition: all 0.3s ease;
   cursor: pointer;
+  border: none;
+  outline: none;
+  box-shadow: none;
 }
 
 .mg-dot.active {
-  width: 20px;
+  width: 22px;
   background: #D6336C;
 }
-
 .mg-continue{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 20px;border:none;border-radius:0;background:#f6f0eb;color:#191612;font:800 9px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .18s ease;white-space:nowrap}
 .mg-continue:hover{background:#8b4557;color:#fff}
 .mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at top, rgba(255,255,255,.96), rgba(242,236,231,.92) 38%, rgba(228,220,214,.94) 100%);text-align:center;padding:40px}
