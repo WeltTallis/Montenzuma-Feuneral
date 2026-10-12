@@ -1971,13 +1971,13 @@ const FlowerBookingsNew = () => {
         .flower-list-tools { margin: 10px 0 20px; }
         .flower-place-booking { background: linear-gradient(135deg, #EC5E93, #D6336C) !important; box-shadow: 0 5px 14px rgba(214,51,108,.2); }
         .flower-place-booking:hover { background: linear-gradient(135deg, #E04B85, #C42A61) !important; }
-        .flower-bookings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 600px; min-height: 100vh; background: #fff; }
-        .flower-bookings-main { min-width: 0; padding: 0 28px 48px; }
+        .flower-bookings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 650px; min-height: 100vh; background: #fff; }
+        .flower-bookings-main { min-width: 0; padding: 0 18px 18px; }
         .flower-bookings-layout .flx-split { grid-template-columns: minmax(0, 1fr) !important; }
         .flower-bookings-layout .flx-rail { display: none !important; }
-        .flower-detail-panel { position: sticky; top: 0; height: 100vh; min-width: 0; overflow-y: auto; border-left: 1px solid #F0E4EA; background: #fff; padding: 0 24px 36px; }
-        .flower-detail-panel-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -24px 18px; padding: 14px 20px; border-bottom: 1px solid #F0E4EA; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
-        .flower-detail-back { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #F0E4EA; border-radius: 8px; background: #fff; color: #6E675E; font-size: 12px; font-weight: 700; }
+        .flower-detail-panel { position: sticky; top: 0; height: 100vh; min-width: 0; overflow-y: auto; border-left: 1px solid #F0E4EA; background: #fff; padding: 0 14px 16px; }
+        .flower-detail-panel-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -24px 18px; padding: 14px 20px; border-bottom: 1px solid #C42A61; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+        .flower-detail-back { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #C42A61; border-radius: 8px; background: #C42A61; color: #fff; font-size: 12px; font-weight: 700; }
         .flower-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #A39A8E; }
         .flower-detail-empty-mark { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 14px; border-radius: 50%; background: #FCE0EC; color: #D6336C; }
         .flower-detail-empty h2 { margin: 0 0 5px; color: #1F1D1A; font: 600 19px 'Playfair Display', Georgia, serif; }
