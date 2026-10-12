@@ -6,30 +6,34 @@
 import { useMemo, useState } from "react";
 import styled from "styled-components";
 
-/* status palette */
+/* status palette — remapped to the CRM (insurance) monochrome design tokens:
+   black/gray chrome, Source Sans body, Merriweather values, 4px corners.
+   The original keys are kept so every reference in the file still resolves. */
 const C = {
-  navy: "#00296B", navyBg: "#EBF1FA",
-  orange: "#E36414", orangeBg: "#FDEFE4",
-  plum: "#5F0F40", plumBg: "#F7EAF1",
-  green: "#132A13",
-  amber: "#D97706", amberBg: "#FCF3E3",
-  teal: "#0D9488", tealBg: "#E6F4F2",
-  ok: "#0E9F6E", okBg: "#E5F5EE",
-  red: "#DD2D4A",
-  ink: "#0F172A", muted: "#64748B", faint: "#94A3B8",
-  line: "#E8ECF1", bg: "#F5F7FA", card: "#FFFFFF",
+  navy: "#0a0a0a", navyBg: "#f1f5f9",
+  orange: "#d97706", orangeBg: "#fffbeb",
+  plum: "#1a1a1a", plumBg: "#f9fafb",
+  green: "#16a34a",
+  amber: "#d97706", amberBg: "#fffbeb",
+  teal: "#0284c7", tealBg: "#eff6ff",
+  ok: "#16a34a", okBg: "#f0fdf4",
+  red: "#dc2626",
+  ink: "#1a1a1a", muted: "#777777", faint: "#777777",
+  line: "#e0e0e0", bg: "#f7f7f5", card: "#ffffff",
+  section: "#f9fafb", field: "#f7f7f5",
 };
 
 /* One colour per worker, cycled in a fixed order so a worker's line keeps the
-   same colour across every chart and chip. */
-const PALETTE = [C.navy, C.orange, C.plum, C.amber, C.green, "#7C3AED", "#0D9488", "#B45309"];
+   same colour across every chart and chip. Muted categorical set that sits
+   cleanly on white (matches the CRM doughnut/bar palette). */
+const PALETTE = ["#0a0a0a", "#0284c7", "#d97706", "#7c3aed", "#16a34a", "#0f766e", "#b45309", "#be185d"];
 
 const STAGES = [
-  { name: "Building", color: C.navy },
-  { name: "Waiting Bay", color: C.amber },
-  { name: "Painting", color: C.orange },
-  { name: "Interior", color: C.plum },
-  { name: "Store", color: C.green },
+  { name: "Building", color: "#0a0a0a" },
+  { name: "Waiting Bay", color: "#0284c7" },
+  { name: "Painting", color: "#d97706" },
+  { name: "Interior", color: "#7c3aed" },
+  { name: "Store", color: "#16a34a" },
 ];
 
 const STATUS_TO_STAGE = {
@@ -216,185 +220,193 @@ const IX = ({ size = 11 }) => <Svg size={size} sw={2.4}><path d="M18 6L6 18M6 6l
 
 /* ══════════════════════════ STYLES ══════════════════════════ */
 const Root = styled.div`
-  display:flex;flex-direction:column;gap:14px;color:${C.ink};
+  display:flex;flex-direction:column;gap:24px;color:${C.ink};
+  font-family:'Source Sans 3',sans-serif;
   font-variant-numeric:tabular-nums;min-width:0;
 `;
 const Card = styled.div`
-  background:${C.card};border:1px solid ${C.line};border-radius:16px;
-  box-shadow:0 1px 2px rgba(16,24,40,.05);min-width:0;
+  background:${C.card};border:1px solid ${C.line};border-radius:4px;
+  min-width:0;overflow:hidden;
 `;
 const CardHead = styled.div`
-  padding:15px 18px 0;
-  h2{font-size:.92rem;font-weight:800;letter-spacing:-.01em;margin:0;cursor:default;}
+  padding:16px 24px;border-bottom:1px solid ${C.line};background:${C.section};
+  display:flex;justify-content:space-between;align-items:center;
+  h2{font-family:'Merriweather',serif;font-size:16px;font-weight:700;color:#0a0a0a;
+     letter-spacing:0;margin:0;cursor:default;}
 `;
-const CardBody = styled.div`padding:13px 18px 17px;min-width:0;`;
+const CardBody = styled.div`padding:24px;min-width:0;`;
 
 const Kpis = styled.div`
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;
   @media(max-width:980px){grid-template-columns:repeat(2,minmax(0,1fr));}
   @media(max-width:520px){grid-template-columns:1fr;}
 `;
-const Kpi = styled(Card)`padding:15px 17px;`;
-const KpiTop = styled.div`display:flex;align-items:center;gap:.5rem;margin-bottom:11px;`;
+const Kpi = styled(Card)`padding:20px;`;
+const KpiTop = styled.div`display:flex;align-items:center;gap:.6rem;margin-bottom:14px;`;
 const KpiIc = styled.span`
-  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;
-  background:${p => p.$bg};color:${p => p.$fg};
+  width:32px;height:32px;border-radius:4px;display:grid;place-items:center;flex-shrink:0;
+  background:${C.field};color:${C.ink};
 `;
 const KpiLabel = styled.span`
-  font-size:.66rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${C.muted};
+  font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};
 `;
-const KpiNum = styled.div`font-size:1.85rem;font-weight:800;letter-spacing:-.03em;line-height:1;`;
-const KpiFoot = styled.div`margin-top:9px;font-size:.69rem;font-weight:600;color:${C.muted};`;
+const KpiNum = styled.div`
+  font-family:'Merriweather',serif;font-size:32px;font-weight:700;color:#0a0a0a;
+  letter-spacing:-.02em;line-height:1;
+`;
+const KpiFoot = styled.div`margin-top:12px;font-size:12px;font-weight:500;color:${C.muted};`;
 const Delta = styled.span`
-  display:inline-flex;align-items:center;gap:.25rem;font-weight:700;
-  color:${p => (p.$up ? C.ok : C.faint)};
+  display:inline-flex;align-items:center;gap:.25rem;font-weight:600;
+  color:${p => (p.$up ? C.ok : C.muted)};
 `;
 
 const Main = styled.div`
-  display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;
+  display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;
   @media(max-width:980px){grid-template-columns:1fr;}
 `;
 
 /* trend chips — quiet text buttons */
-const ChipRow = styled.div`display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin-bottom:8px;`;
+const ChipRow = styled.div`display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;`;
 const ChipLbl = styled.span`
-  font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:${C.faint};margin-right:.2rem;
+  font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:${C.muted};margin-right:.2rem;
 `;
 const Chip = styled.button`
-  display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .65rem;
-  border:1px solid ${p => (p.$on ? C.navy : C.line)};border-radius:999px;
-  background:${p => (p.$on ? C.navy : "#fff")};color:${p => (p.$on ? "#fff" : C.muted)};
-  font-size:.71rem;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit;
-  &:hover{border-color:${C.navy};color:${p => (p.$on ? "#fff" : C.ink)};}
+  display:inline-flex;align-items:center;gap:8px;padding:6px 14px;
+  border:1px solid ${p => (p.$on ? C.ink : C.line)};border-radius:4px;
+  background:${p => (p.$on ? C.ink : "#fff")};color:${p => (p.$on ? "#fff" : C.muted)};
+  font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'Source Sans 3',sans-serif;
+  &:hover{border-color:${C.ink};color:${p => (p.$on ? "#fff" : C.ink)};}
 `;
 const Cdot = styled.span`width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${p => p.$c};`;
 
 const ChartBox = styled.div`svg{width:100%;height:auto;display:block;}`;
 
 /* target ring */
-const RingRow = styled.div`display:flex;align-items:center;gap:15px;min-width:0;`;
+const RingRow = styled.div`display:flex;align-items:center;gap:18px;min-width:0;`;
 const Ring = styled.div`
   position:relative;width:100px;height:100px;flex-shrink:0;cursor:default;
   svg{transform:rotate(-90deg);display:block;}
 `;
 const RingVal = styled.div`
   position:absolute;inset:0;display:grid;place-items:center;text-align:center;
-  b{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;line-height:1;display:block;}
-  small{font-size:.55rem;font-weight:700;color:${C.muted};text-transform:uppercase;letter-spacing:.05em;}
+  b{font-family:'Merriweather',serif;font-size:22px;font-weight:700;color:#0a0a0a;
+     letter-spacing:-.02em;line-height:1;display:block;}
+  small{font-size:10px;font-weight:600;color:${C.muted};text-transform:uppercase;letter-spacing:.1em;}
 `;
 const RingInfo = styled.div`
   min-width:0;
-  .big{font-size:1rem;font-weight:800;}
-  .ratio{font-size:.68rem;font-weight:600;color:${C.muted};margin-top:.1rem;}
+  .big{font-family:'Merriweather',serif;font-size:16px;font-weight:700;color:#0a0a0a;}
+  .ratio{font-size:12px;font-weight:500;color:${C.muted};margin-top:2px;}
 `;
 const Strip = styled.div`
-  display:flex;gap:5px;margin-top:13px;padding-top:13px;border-top:1px dashed ${C.line};
+  display:flex;gap:6px;margin-top:16px;padding-top:16px;border-top:1px solid ${C.line};
 `;
 const TCol = styled.div`
-  flex:1;min-width:0;cursor:default;border-radius:6px;
-  ${p => (p.$now ? `outline:2px solid ${C.navy};outline-offset:2px;` : "")}
+  flex:1;min-width:0;cursor:default;border-radius:2px;
+  ${p => (p.$now ? `outline:2px solid ${C.ink};outline-offset:2px;` : "")}
 `;
 const TBar = styled.div`
   height:42px;display:flex;align-items:flex-end;justify-content:center;
-  span{display:block;width:100%;max-width:15px;border-radius:4px 4px 2px 2px;
-    background:${p => (p.$hit ? C.ok : "#E2E8F0")};}
+  span{display:block;width:100%;max-width:15px;border-radius:2px 2px 0 0;
+    background:${p => (p.$hit ? C.ok : C.line)};}
 `;
 const TM = styled.div`
-  margin-top:4px;font-size:.58rem;font-weight:700;color:${p => (p.$hit ? C.ok : C.muted)};
-  display:flex;align-items:center;justify-content:center;gap:2px;
+  margin-top:6px;font-size:11px;font-weight:600;color:${p => (p.$hit ? C.ok : C.muted)};
+  display:flex;align-items:center;justify-content:center;gap:3px;
 `;
 const TStats = styled.div`
-  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px;padding-top:13px;
-  border-top:1px dashed ${C.line};
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;padding-top:16px;
+  border-top:1px solid ${C.line};
 `;
 const TStat = styled.div`
-  background:#FAFBFD;border:1px solid ${C.line};border-radius:10px;padding:8px 11px;
-  .k{font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${C.faint};}
-  .v{font-size:.9rem;font-weight:800;margin-top:2px;}
+  background:${C.field};border:1px solid ${C.line};border-radius:4px;padding:12px;
+  .k{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};}
+  .v{font-family:'Merriweather',serif;font-size:15px;font-weight:700;color:#0a0a0a;margin-top:4px;}
 `;
 
 /* worker table */
 const TableWrap = styled.div`
-  padding:0 6px 6px;overflow-x:auto;border-radius:0 0 16px 16px;
+  padding:0 6px 6px;overflow-x:auto;
 `;
 const WTable = styled.table`
   width:100%;border-collapse:collapse;min-width:640px;
-  th{font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${C.faint};
-     text-align:left;padding:10px 14px;border-bottom:1px solid ${C.line};}
+  th{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};
+     text-align:left;padding:12px 16px;border-bottom:1px solid ${C.line};}
   th.num,td.num{text-align:right;}
-  td{padding:11px 14px;border-bottom:1px solid ${C.line};font-size:.79rem;vertical-align:middle;}
+  td{padding:13px 16px;border-bottom:1px solid ${C.line};font-size:14px;vertical-align:middle;color:${C.ink};}
   tbody tr:last-child td{border-bottom:none;}
 `;
 const WRow = styled.tr`
   transition:background .12s;
-  &:hover{background:#FAFBFD;}
+  &:hover{background:${C.field};}
   /* remove button is revealed on row hover — plain selector, no interpolation */
   &:hover .rm-btn{opacity:1;pointer-events:auto;}
 `;
 const Who = styled.div`display:flex;align-items:center;gap:.6rem;min-width:0;`;
 const Ava = styled.span`
-  width:32px;height:32px;border-radius:9px;color:#fff;font-weight:800;font-size:.74rem;
+  width:32px;height:32px;border-radius:4px;color:#fff;font-weight:700;font-size:12px;
+  font-family:'Source Sans 3',sans-serif;
   display:grid;place-items:center;flex-shrink:0;background:${p => p.$c};
 `;
 const WhoTxt = styled.span`min-width:0;
-  b{display:block;font-size:.79rem;font-weight:700;line-height:1.2;
+  b{display:block;font-size:14px;font-weight:600;line-height:1.2;color:${C.ink};
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  small{font-size:.65rem;color:${C.muted};}
+  small{font-size:12px;color:${C.muted};}
 `;
 const Rm = styled.button`
   opacity:0;pointer-events:none;transition:.15s;margin-left:.4rem;flex-shrink:0;
-  width:20px;height:20px;border:none;border-radius:6px;background:transparent;color:${C.faint};
+  width:20px;height:20px;border:none;border-radius:4px;background:transparent;color:${C.muted};
   display:inline-grid;place-items:center;cursor:pointer;
-  &:hover{background:${C.plumBg};color:${C.plum};}
+  &:hover{background:${C.field};color:${C.red};}
 `;
 const MiniTrack = styled.span`
-  width:78px;height:6px;border-radius:99px;background:#F1F5F9;overflow:hidden;
+  width:78px;height:6px;border-radius:3px;background:${C.line};overflow:hidden;
   display:inline-block;vertical-align:middle;flex-shrink:0;
-  span{display:block;height:100%;border-radius:99px;background:${p => (p.$met ? C.ok : C.plum)};}
+  span{display:block;height:100%;border-radius:3px;background:${p => (p.$met ? C.ok : C.ink)};}
 `;
 const TgtCell = styled.div`
   display:flex;align-items:center;gap:.5rem;justify-content:flex-end;cursor:default;min-width:0;
-  em{font-style:normal;font-size:.7rem;font-weight:700;color:${C.muted};min-width:46px;text-align:right;}
+  em{font-style:normal;font-size:13px;font-weight:600;color:${C.muted};min-width:46px;text-align:right;}
   em.met{color:${C.ok};}
 `;
 const Spark = styled.div`
   display:flex;align-items:flex-end;gap:2px;height:24px;cursor:default;
-  i{width:5px;border-radius:2px 2px 1px 1px;background:#D8DEE7;}
-  i:last-child{background:${C.navy};}
+  i{width:5px;border-radius:1px;background:${C.line};}
+  i:last-child{background:${C.ink};}
 `;
 const Share = styled.span`
-  display:inline-flex;align-items:center;gap:.4rem;font-size:.71rem;font-weight:700;color:${C.muted};cursor:default;
-  .bar{width:46px;height:5px;border-radius:99px;background:#F1F5F9;overflow:hidden;flex-shrink:0;}
-  .bar span{display:block;height:100%;border-radius:99px;background:${C.orange};}
+  display:inline-flex;align-items:center;gap:.4rem;font-size:13px;font-weight:600;color:${C.muted};cursor:default;
+  .bar{width:46px;height:5px;border-radius:3px;background:${C.line};overflow:hidden;flex-shrink:0;}
+  .bar span{display:block;height:100%;border-radius:3px;background:${C.ink};}
 `;
 
 /* floor pipeline */
 const Floor = styled.div`
-  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;
   @media(max-width:980px){grid-template-columns:repeat(2,minmax(0,1fr));}
   @media(max-width:520px){grid-template-columns:1fr;}
 `;
 const Stage = styled.div`
-  border:1px solid ${C.line};border-top:3px solid ${p => p.$c};border-radius:12px;
-  padding:10px 11px;background:#FCFDFE;min-width:0;
+  border:1px solid ${C.line};border-top:3px solid ${p => p.$c};border-radius:4px;
+  padding:12px 13px;background:${C.section};min-width:0;
 `;
 const StageTop = styled.div`
-  display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:.4rem;
-  b{font-size:.67rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${C.muted};
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:.4rem;
+  b{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .n{min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:${p => p.$c};color:#fff;
-     font-size:.63rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .n{min-width:20px;height:20px;padding:0 6px;border-radius:3px;background:${p => p.$c};color:#fff;
+     font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 `;
 const StageItem = styled.div`
-  display:flex;justify-content:space-between;gap:.5rem;font-size:.69rem;padding:3px 0;cursor:default;
+  display:flex;justify-content:space-between;gap:.5rem;font-size:13px;padding:4px 0;cursor:default;color:${C.ink};
   span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
-  em{font-style:normal;color:${C.faint};font-weight:600;flex-shrink:0;}
+  em{font-style:normal;color:${C.muted};font-weight:500;flex-shrink:0;}
   em.late{color:${C.red};}
 `;
-const StageEmpty = styled.div`font-size:.64rem;color:${C.faint};font-style:italic;padding:2px 0;`;
+const StageEmpty = styled.div`font-size:12px;color:${C.muted};font-style:italic;padding:2px 0;`;
 
-const Empty = styled(Card)`padding:26px;text-align:center;font-size:.8rem;color:${C.muted};`;
+const Empty = styled(Card)`padding:40px;text-align:center;font-size:14px;color:${C.muted};`;
 
 /* ══════════════════════════ COMPONENT ══════════════════════════ */
 export default function WorkshopAnalytics({ orders = [], workers = [], production = null, targets = null, onRemoveWorker }) {
@@ -530,9 +542,9 @@ export default function WorkshopAnalytics({ orders = [], workers = [], productio
             >
               <Ring>
                 <svg width="100" height="100" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="#EDF1F6" strokeWidth="9" />
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#e0e0e0" strokeWidth="9" />
                   <circle cx="50" cy="50" r="42" fill="none"
-                    stroke={!hasTarget ? "#CBD5E1" : ringMet ? C.ok : C.orange}
+                    stroke={!hasTarget ? "#cbd5e1" : ringMet ? C.ok : C.orange}
                     strokeWidth="9" strokeLinecap="round"
                     strokeDasharray={`${(pctArc / 100) * 2 * Math.PI * 42} ${2 * Math.PI * 42}`} />
                 </svg>
@@ -757,14 +769,14 @@ function TrendPanel({ rows }) {
           {gridLines.map((g) => (
             <g key={g}>
               <line x1={padL} x2={W - padR} y1={y(g)} y2={y(g)}
-                stroke={g === 0 ? "#D8DEE7" : "#F1F4F8"} strokeWidth="1" />
-              <text x={padL - 7} y={y(g) + 3.5} textAnchor="end" fontSize="10" fill={C.faint}>{g}</text>
+                stroke={g === 0 ? "#e0e0e0" : "#f1f5f9"} strokeWidth="1" />
+              <text x={padL - 7} y={y(g) + 3.5} textAnchor="end" fontSize="10" fill={C.muted}>{g}</text>
             </g>
           ))}
           {MONTHS.map((m, i) => (
             <text key={m} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10"
-              fontWeight={i === lastMonth ? 700 : 400}
-              fill={i > lastMonth ? "#CBD5E1" : i === lastMonth ? C.ink : C.faint}>{m}</text>
+              fontWeight={i === lastMonth ? 600 : 400}
+              fill={i > lastMonth ? "#cbd5e1" : i === lastMonth ? C.ink : C.muted}>{m}</text>
           ))}
 
           {series.map((s) => {
