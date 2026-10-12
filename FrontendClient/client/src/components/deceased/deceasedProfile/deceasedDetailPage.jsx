@@ -231,10 +231,10 @@ const ChargeSettingsButton = styled.button`
 `;
 
 const TABS = [
-  { key: 'overview', label: 'Overview' },
+  { key: 'intake', label: 'Intake' },
+  { key: 'release', label: 'Release' },
   { key: 'postmortem', label: 'Postmortem' },
   { key: 'financials', label: 'Financials' },
-  { key: 'release', label: 'Release' },
   { key: 'docs', label: 'Documents' },
   { key: 'audit', label: 'Audit Log' },
 ];
@@ -249,7 +249,7 @@ const DeceasedDetailPage = () => {
   // 'MON-NYAFHJEW39J6FURJG6H=2026' contain '=' as part of the identifier.
   // The URL-encoded form is '%3D' and searchParams.get() already decodes it.
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('intake');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -574,8 +574,12 @@ const DeceasedDetailPage = () => {
             </Tabs>
 
             <TabContent>
-              <TabPane $active={activeTab === 'overview'}>
+              <TabPane $active={activeTab === 'intake'}>
                 <OverviewTab deceased={deceased} nextOfKin={nextOfKin} />
+              </TabPane>
+
+              <TabPane $active={activeTab === 'release'}>
+                <ReleaseTab deceased={deceased} deceasedId={deceasedId} refreshVersion={refreshVersion} />
               </TabPane>
 
               <TabPane $active={activeTab === 'postmortem'}>
@@ -584,10 +588,6 @@ const DeceasedDetailPage = () => {
 
               <TabPane $active={activeTab === 'financials'}>
                 <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} deceased={deceased} onDataChanged={fetchData} />
-              </TabPane>
-
-              <TabPane $active={activeTab === 'release'}>
-                <ReleaseTab deceased={deceased} deceasedId={deceasedId} refreshVersion={refreshVersion} />
               </TabPane>
 
               <TabPane $active={activeTab === 'docs'}>
