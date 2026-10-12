@@ -1976,7 +1976,7 @@ const FlowerBookingsNew = () => {
         .flower-bookings-layout .flx-split { grid-template-columns: minmax(0, 1fr) !important; }
         .flower-bookings-layout .flx-rail { display: none !important; }
         .flower-detail-panel { position: sticky; top: 0; height: 100vh; min-width: 0; overflow-y: auto; border-left: 1px solid #F0E4EA; background: #fff; padding: 0 14px 16px; }
-        .flower-detail-panel-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -24px 18px; padding: 14px 20px; border-bottom: 1px solid #C42A61; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+        .flower-detail-panel-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -24px 18px; padding: 10px 10px; border-bottom: 1px solid #C42A61; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
         .flower-detail-back { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #C42A61; border-radius: 8px; background: #C42A61; color: #fff; font-size: 12px; font-weight: 700; }
         .flower-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #A39A8E; }
         .flower-detail-empty-mark { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 14px; border-radius: 50%; background: #FCE0EC; color: #D6336C; }
@@ -1988,7 +1988,7 @@ const FlowerBookingsNew = () => {
         .flower-image-carousel::-webkit-scrollbar { display: none; }
         .flower-image-slide { flex: 0 0 100%; width: 100%; height: 100%; scroll-snap-align: start; }
         .flower-image-slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
-        .flower-carousel-arrow { position: absolute; top: 50%; z-index: 2; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; transform: translateY(-50%); border: 1px solid rgba(255,255,255,.7); border-radius: 50%; background: rgba(31,29,26,.58); color: #fff; }
+        .flower-carousel-arrow { position: absolute; top: 50%; z-index: 2; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; transform: translateY(-50%); border: 1px solid #D6336C; border-radius: 50%; background: rgba(31,29,26,.58); color: #fff; }
         .flower-carousel-arrow.previous { left: 10px; }
         .flower-carousel-arrow.next { right: 10px; }
         .flower-detail-sample-thumb { width: 44px; height: 44px; flex: 0 0 44px; overflow: hidden; border-radius: 8px; background: #FDF1F6; }
@@ -1997,7 +1997,7 @@ const FlowerBookingsNew = () => {
         .flower-detail-panel .trackRow { flex-wrap: wrap; }
         .flower-spec > dl > div:last-child { border-bottom: none !important; }
         @media (max-width: 640px) {
-          .flower-spec { padding: 14px 16px !important; }
+          .flower-spec { padding: 10px 10px !important; }
         }
         .flower-booking-avatar { display: grid; place-items: center; width: 52px; height: 52px; flex: 0 0 52px; border: 1px solid rgba(0,0,0,.05); border-radius: 12px; font: 600 22px 'Playfair Display', Georgia, serif; }
         .flower-booking-avatar.booked { background: linear-gradient(135deg, #F9CFE2, #FBE1EC); color: #C2255C; }
@@ -2007,7 +2007,7 @@ const FlowerBookingsNew = () => {
         .fb-card.is-active { border-color: #D6336C !important; box-shadow: 0 0 0 1px #D6336C, 0 5px 14px rgba(214,51,108,.12); }
         @media (max-width: 1023px) {
           .flower-bookings-layout { display: block; min-height: 0; }
-          .flower-bookings-main { padding: 0 12px 40px; }
+          .flower-bookings-main { padding: 0 12px 10px; }
           .flower-detail-empty { display: none; }
           .flower-detail-backdrop { position: fixed; inset: 0; z-index: 1000; display: block; background: rgba(20,18,15,.32); }
           .flower-detail-panel { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; width: min(420px, 92vw); height: 100dvh; border: 0; border-radius: 16px 0 0 16px; box-shadow: -12px 0 40px rgba(0,0,0,.12); transform: translateX(105%); transition: transform .3s cubic-bezier(.32,.72,.28,1); padding: 0 2px 24px; }

@@ -47,25 +47,33 @@ const CSS = `:root{
 .mg-btn:hover{transform:translateY(-1px);background:#6d4447}
 .mg-btn svg{width:22px;height:22px}
 .mg-btn.selected{background:#f6f0eb;border-color:#f6f0eb;color:#171310;box-shadow:0 12px 20px rgba(246,240,235,.2)}
-/* The "Most booked now" recommendations block was removed — it floated a fixed
-   overlay over the bottom bar and duplicated every card (title twice + "Booked
-   N times" + its own + button), exactly the rubbish the user asked to delete.
-   It is intentionally dead now; keeping the comment (not the rules) so nobody
-   re-adds them. */
-.mg-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
-.mg-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s;cursor:pointer}
-.mg-dot.active{width:22px;background:var(--gold)}
-/* ── Continue booking ──────────────────────────────────────────────────────────
-   An INLINE button that sits in the normal-flow bottom bar beside the single "+".
-   There is deliberately NO floating tray / chip list here any more: browsing the
-   gallery should show nothing but the arrangement, the one "+", and — once
-   something is actually added — this button. The old floating cart bar
-   (position:absolute; right:20px; bottom:118px) also permanently collided with
-   the recommendations panel at right:24px/bottom:120px, which is why both were
-   overlapping and stealing each other's clicks. */
+
+.mg-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  margin-top: 24px;
+}
+
+.mg-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: width 0.3s ease, background 0.3s ease;
+  cursor: pointer;
+}
+
+.mg-dot.active {
+  width: 20px;
+  background: #D6336C;
+}
+
 .mg-continue{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 20px;border:none;border-radius:0;background:#f6f0eb;color:#191612;font:800 9px 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .18s ease;white-space:nowrap}
 .mg-continue:hover{background:#8b4557;color:#fff}
 .mg-empty{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at top, rgba(255,255,255,.96), rgba(242,236,231,.92) 38%, rgba(228,220,214,.94) 100%);text-align:center;padding:40px}
+
 .mg-empty-icon{opacity:.45;margin-bottom:16px;color:#8b4557}
 .mg-empty h3{font:400 26px var(--serif);color:#4d3a38;margin:0 0 8px}
 .mg-empty p{font:400 15px var(--sans);color:#7d6661;max-width:30rem;line-height:1.6}
