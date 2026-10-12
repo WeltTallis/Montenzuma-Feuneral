@@ -55,7 +55,23 @@ RUN npm install -g tsx --no-audit --no-fund && mkdir -p /usr/src/app/node_module
 
 WORKDIR /usr/src/app/services/store-service
 
-# Copy the store-service node_modules on top of a root-level dirs so Node.js can find shared deps like jsonwebtoken when loading app-global/authMiddleware.js\nCOPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/services/store-service/node_modules /usr/src/app/node_modules
+# Copy the store-service production deps to the root-level node_modules dir so
+# Node.js can find shared deps like jsonwebtoken when loading
+# app-global/middlewares/authMiddleware.js — and so server.ts resolves its own
+# deps (dotenv, express, knex, mysql2, ...) by walking up from
+# /usr/src/app/services/store-service.
+# NOTE: this MUST be its own instruction line. It used to be glued onto the end
+# of the comment above (a literal "\n" inside one commented line), so the COPY
+# was silently COMMENTED OUT, the image shipped with NO node_modules at all, and
+# the container crashed on boot with:
+#   Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'dotenv' imported from
+#   /usr/src/app/services/store-service/server.ts
+COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/services/store-service/node_modules /usr/src/app/node_modules
+
+# Build-time smoke check: a missing runtime dependency must fail the IMAGE
+# build, not the container boot loop.
+RUN node --input-type=module -e "for (const p of ['dotenv','express','cors','knex','mysql2','jsonwebtoken']) { await import(p); console.log('[store] ok:', p); }"
+
 COPY --chown=nodejs:nodejs services/store-service/ ./
 
 # routes/storeRoutes.ts imports the shared CommonJS auth middleware via
