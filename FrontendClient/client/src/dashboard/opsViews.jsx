@@ -184,7 +184,7 @@ function QuadRow({ ev, onOpenCase }) {
         <div className="qm2">{p.name}</div>
         <div className="qs2">{p.adm} · {p.branch} · {sub}</div>
       </div>
-      <span className="st" style={{ color: cfg.c }}><i style={{ background: cfg.c }} />{cfg.label}</span>
+      <span className="st" style={{ color: cfg.c }} title={cfg.label}><i style={{ background: cfg.c }} />{cfg.label}</span>
     </div>
   );
 }
@@ -411,7 +411,7 @@ function BandedDay({ date, searched, filters, today, onOpenCase, onClearDay }) {
                     <div className="nm">{e.p.name}</div>
                     <div className="sub">{TYPE_L[e.t]} · {e.p.adm} · {extra}</div>
                   </div>
-                  <span className="st" style={{ color: TYPE_C[e.t] }}>
+                  <span className="st" style={{ color: TYPE_C[e.t] }} title={TYPE_L[e.t]}>
                     <i style={{ background: TYPE_C[e.t] }} />{TYPE_L[e.t]}
                   </span>
                 </div>
@@ -542,7 +542,7 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
               <div className="sub">{p.adm} · {p.branch}</div>
             </div>
             <div className="cell">
-              <span className="st" style={{ color: TYPE_C[ev.t] }}>
+              <span className="st" style={{ color: TYPE_C[ev.t] }} title={TYPE_L[ev.t]}>
                 <i style={{ background: TYPE_C[ev.t] }} />{TYPE_L[ev.t]}
               </span>
               <div className="stdays">{String(sub).slice(0, 30)}</div>
@@ -684,7 +684,7 @@ export function RegisterView({ section, people, searched, filters, sort, onSort,
             <div className="cell">
               {isPm ? (
                 <>
-                  <span className="st" style={{ color: pmState.c }}>
+                  <span className="st" style={{ color: pmState.c }} title={pmState.label}>
                     <i style={{ background: pmState.c }} />{pmState.label}
                   </span>
                   <div className="stdays">
