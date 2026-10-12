@@ -269,8 +269,8 @@ const Btn = styled.button`
 
 // ─── List Components ───
 const ListCard = styled.div`
-  background: white; border: 1px solid ${C.borderLight};
-  border-radius: 12px; overflow: hidden;
+
+  border-radius: 10px; overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03); width: 100%; box-sizing: border-box;
 `;
 const ListHeader = styled.div`
@@ -736,6 +736,7 @@ const DeceasedListPage = () => {
     <>
       <GlobalFonts />
       <AppContainer>
+
         <ToastContainer position="top-right" autoClose={3000} />
 
         {/* ═══ TOOLBAR: one row when it fits, wraps cleanly when it does not ═══ */}
@@ -814,10 +815,6 @@ const DeceasedListPage = () => {
 
         {/* List Card */}
         <ListCard>
-          <ListHeader>
-            <h2>{selectedDate ? `Deceased for ${formatDate(selectedDate)}` : `All Deceased · ${calYear}`} ({filteredRecords.length})</h2>
-          </ListHeader>
-
           {serviceUnavailable && (
             <div style={{ padding: '24px', textAlign: 'center', background: C.warningBg, borderBottom: `1px solid #fde68a` }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '16px 24px', background: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', maxWidth: '100%', boxSizing: 'border-box' }}>

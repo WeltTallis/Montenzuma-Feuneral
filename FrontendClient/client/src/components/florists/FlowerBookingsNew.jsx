@@ -1,6 +1,6 @@
 
 // Package was only used by the removed icon-box tiles.
-import { Flower2, User, Calendar, X, Check, Home } from '../../utils/icons/icons';
+import { Flower2, User, Calendar, X, Check, Home, Phone } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -341,6 +341,9 @@ const FlowerBookingsNew = () => {
     remarks: '',
     deceased_name: '',
     booked_by: getLocalUserName(),
+    // Kin contact — stored as `customer` / `customer_phone` on the server and
+    // surfaced in the booking side panel ("Booked By" + "Phone Number").
+    phone: '',
     branch: '',
     date: fmtDateStr(new Date()),   // the day the order was placed — calendar tracks it
     time: '10:00',
@@ -588,6 +591,9 @@ const FlowerBookingsNew = () => {
         size: newBooking.size?.trim() || null,
         deceased_name: newBooking.deceased_name.trim(),
         booked_by: newBooking.booked_by || getLocalUserName() || 'System',
+        // Kin contact — becomes `customer_phone` on the server, shown in the
+        // booking side panel as "Phone Number".
+        phone: newBooking.phone.trim() || null,
         branch: resolveBranchName() || undefined,
         funeral_home: resolveBranchName() || undefined,
         date: bookedOn,
@@ -613,6 +619,7 @@ const FlowerBookingsNew = () => {
         remarks: '',
         deceased_name: '',
         booked_by: getLocalUserName(),
+        phone: '',
         branch: '',
         date: fmtDateStr(new Date()),
         time: '10:00',
@@ -1147,7 +1154,10 @@ const FlowerBookingsNew = () => {
               <div style={styles.metaRow}>Flowers: {b.flower_description || lineItems.map(i => i.name).join(' · ')}</div>
             )}
             <div style={styles.metaRow}><User size={14} /> {b.deceased_name}</div>
-            <div style={styles.metaRow}><User size={14} /> Booked by {b.booked_by || b.customer}</div>
+            <div style={styles.metaRow}>
+              <User size={14} /> Booked by {b.booked_by || b.customer || '—'}
+              {(b.customer_phone || b.phone) ? ` · ${b.customer_phone || b.phone}` : ''}
+            </div>
             {(b.branch || b.funeral_home) && getBranches().length > 1 && (
               <div style={styles.metaRow}>
                 <Home size={14} /> {resolveBranchName(b.branch || b.funeral_home)}
@@ -1537,13 +1547,26 @@ const FlowerBookingsNew = () => {
               the detail panel. `newBooking.time` keeps its existing default so the
               POST body and the [WHEN:…] stamp are unchanged. */}
 
-          <label style={{ ...lbl, marginTop: '6px' }}>Booked By</label>
+          <label style={{ ...lbl, marginTop: '6px' }}>Booked By (Kin Name)</label>
           <input
             type="text"
-            readOnly
-            title="Auto-filled from your account"
-            style={{ ...inp, marginBottom: '22px', color: '#574F47' }}
+            title="Auto-filled from your account — edit if you are booking on behalf of the family"
+            placeholder="Full name of the person booking"
+            style={{ ...inp, marginBottom: '12px', color: '#574F47' }}
             value={newBooking.booked_by || getLocalUserName()}
+            onChange={e => setNewBooking(prev => ({ ...prev, booked_by: e.target.value }))}
+          />
+
+          {/* Kin phone — saved as `customer_phone` and shown in the booking
+              side panel so the florist can call the person who booked. */}
+          <label style={lbl}>Phone Number</label>
+          <input
+            type="tel"
+            inputMode="tel"
+            placeholder="e.g. 0712 345 678"
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.phone}
+            onChange={e => setNewBooking(prev => ({ ...prev, phone: e.target.value }))}
           />
 
           {/* ── 5 · Priority Level ── */}
@@ -1662,6 +1685,11 @@ const FlowerBookingsNew = () => {
     const designText = designMatch ? designMatch[1].trim() : '';
     const instructionText = b.special_instructions || remarksList.join('\n');
     const currentStatusIdx = STATUS_FLOW.indexOf(normStatus(b.status));
+    // WHO booked this — the kin's name + phone. `booked_by` is sent by the UIs,
+    // the server stores it as `customer` (and the phone as `customer_phone`).
+    const bookerName = String(b.booked_by || b.customer || b.customer_name || '').trim();
+    const bookerPhone = String(b.customer_phone || b.phone || '').trim();
+    const bookerInitial = (bookerName || '?').trim().charAt(0).toUpperCase();
 
     let actionBtnHtml = '';
     if (normStatus(b.status) === 'cancelled') {
@@ -1744,6 +1772,63 @@ const FlowerBookingsNew = () => {
             <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#8A8178' }}>
               {asList(product.types).join(' · ') || 'Custom Arrangement'}
             </p>
+
+            {/* ── Who booked this (kin) — name + phone, front and centre ── */}
+            <div
+              className="flower-booking-contact"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                background: 'linear-gradient(135deg, #FDF1F6 0%, #FFFFFF 70%)',
+                border: '1px solid #F6C6DA',
+                borderRadius: '14px',
+                padding: '12px 14px',
+                marginBottom: '20px'
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: '#FCE0EC',
+                  color: '#BE185D',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                {bookerInitial}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9C9389' }}>
+                  Booked By (Kin)
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1C1A17', wordBreak: 'break-word' }}>
+                  {bookerName || '—'}
+                </div>
+              </div>
+              <div style={{ minWidth: 0, textAlign: 'right' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9C9389', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                  <Phone size={11} /> Phone
+                </div>
+                {bookerPhone ? (
+                  <a
+                    href={`tel:${bookerPhone.replace(/\s+/g, '')}`}
+                    style={{ fontSize: '14px', fontWeight: 700, color: '#475A43', textDecoration: 'none', wordBreak: 'break-word' }}
+                  >
+                    {bookerPhone}
+                  </a>
+                ) : (
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#9C9389' }}>—</div>
+                )}
+              </div>
+            </div>
 
             {/* Compact horizontal status tracker — replaces the tall vertical card */}
             <div style={styles.trackRow}>
@@ -1848,8 +1933,21 @@ const FlowerBookingsNew = () => {
                   <dd style={styles.specValue}>{Number(b.quantity) || lineItems.reduce((total, item) => total + item.quantity, 0)}</dd>
                 </div>
                 <div style={styles.specRow}>
-                  <dt style={styles.specLabel}>Booked By</dt>
-                  <dd style={styles.specValue}>{b.booked_by || b.customer || '—'}</dd>
+                  <dt style={styles.specLabel}>Booked By (Kin Name)</dt>
+                  <dd style={styles.specValue}>{bookerName || '—'}</dd>
+                </div>
+                <div style={styles.specRow}>
+                  <dt style={styles.specLabel}>Phone Number</dt>
+                  <dd style={styles.specValue}>
+                    {bookerPhone ? (
+                      <a
+                        href={`tel:${bookerPhone.replace(/\s+/g, '')}`}
+                        style={{ color: '#475A43', fontWeight: 600, textDecoration: 'none' }}
+                      >
+                        {bookerPhone}
+                      </a>
+                    ) : '—'}
+                  </dd>
                 </div>
                 <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Branch</dt>
