@@ -1,15 +1,36 @@
 ﻿import { coffinQuery } from '../db.js';
 import crypto from 'crypto';
 
-/**
- * Coffin Model - Database operations against the CENTRAL coffin database.
- * All tenants share one central coffin DB; every query is scoped by tenant_slug
- * (and tenant_id) columns. There is no per-tenant database for coffin data.
- * Assumes the modern `coffins` schema:
- *   coffin_id, tenant_slug, type, exact_price, quantity, color, size, ...
- * Maps rows into the shape the frontend Inventory / Register / Select modals expect.
- */
+
 class CoffinModel {
+
+  static toMySqlDate(value: any): string | null {
+    if (value === null || value === undefined || value === '') return null;
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    // JS Date object (e.g. a DATE column read back by the mysql2 driver).
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+    }
+
+    const s = String(value).trim();
+    if (!s) return null;
+
+    // Already a clean 'YYYY-MM-DD' (or ISO datetime) — keep the date part only.
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+    // Anything else (e.g. a locale string 'Fri Oct 23 2026') — parse & reformat.
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+    }
+
+    // Unparseable — return null rather than feed a bad literal to the DATE column.
+    return null;
+  }
+
   /**
    * Map a raw `coffins` row into the frontend shape.
    */
@@ -153,8 +174,8 @@ class CoffinModel {
       branch_id: branchId
         ? String(branchId)
         : (row.branch_id !== null && row.branch_id !== undefined && String(row.branch_id).trim() !== ''
-            ? String(row.branch_id)
-            : null)
+          ? String(row.branch_id)
+          : null)
     }));
   }
 
@@ -297,9 +318,7 @@ class CoffinModel {
 
     // Normalise a service date down to YYYY-MM-DD so the DATE column accepts it
     // (the inventory UI sends e.g. '2026-08-25', possibly as a JS Date ISO string).
-    const serviceDate = data.service_date
-      ? String(data.service_date).slice(0, 10)
-      : null;
+    const serviceDate = CoffinModel.toMySqlDate(data.service_date);
 
     const sql = `
       INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, client_phone, service_date, service_time, paid, notes, status, created_at)
@@ -342,7 +361,7 @@ class CoffinModel {
 
     // Normalise the expected (service) date down to YYYY-MM-DD so the DATE
     // column accepts it (the UI may send a full ISO datetime string).
-    const serviceDate = data.service_date ? String(data.service_date).slice(0, 10) : null;
+    const serviceDate = CoffinModel.toMySqlDate(data.service_date);
 
     const sql = `
       INSERT INTO stock_requests
@@ -418,7 +437,9 @@ class CoffinModel {
     }
 
     const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-    const serviceDate = data.service_date ? String(data.service_date).slice(0, 10) : null;
+    // `data.service_date` may be a JS Date (read back from stock_requests) or a
+    // 'YYYY-MM-DD' string (HTTP body). Normalise both so the DATE insert succeeds.
+    const serviceDate = CoffinModel.toMySqlDate(data.service_date);
 
     await coffinQuery(
       `INSERT INTO coffin_bookings
