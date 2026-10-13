@@ -117,10 +117,14 @@ const CoffinTransfers = ({
   // REQUEST-centric classification (fixed):
   // Incoming = requests where MY branch is the SOURCE (from_branch_id ==
   // currentBranch) — another branch asked for MY stock (my fulfilment queue).
-  const incomingRequests = stockRequests.filter((r) => r.from_branch_id == currentBranch);
-  // Outgoing = requests MY branch SENT (to_branch_id == currentBranch) — I asked
+  // OUTGOING = requests MY branch SENT (to_branch_id == currentBranch) — I asked
   // another branch for stock and am waiting on them.
-  const outgoingRequests = stockRequests.filter((r) => r.to_branch_id == currentBranch);
+  //
+  // Branch IDs are stored as canonical COMPLETE slugs (e.g.
+  // org-home-machakos) on the server, so compare on strings, not raw numbers.
+  const me = String(currentBranch ?? '');
+  const incomingRequests = stockRequests.filter((r) => String(r.from_branch_id ?? '') === me);
+  const outgoingRequests = stockRequests.filter((r) => String(r.to_branch_id ?? '') === me);
 
   const totalIncoming = incomingRequests.length;
   const totalOutgoing = outgoingRequests.length;

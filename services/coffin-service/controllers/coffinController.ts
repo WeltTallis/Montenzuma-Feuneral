@@ -1168,8 +1168,8 @@ export const createStockRequest = async (req: Request, res: Response) => {
       requested_by: (requested_by || '').toString().trim() || (client_name || '').toString().trim() || null,
       booked_for: (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null,
       requesting_branch: requestingBranchName,
-      from_branch_id: fromId,
-      to_branch_id: toId,
+      from_branch_id: fromSlug || fromId,
+      to_branch_id: toSlug || toId,
       from_branch_name: fromName || null,
       to_branch_name: toName || null,
       quantity,
@@ -1256,6 +1256,23 @@ export const getAllStockRequests = async (req: Request, res: Response) => {
   // List under the ORG slug so every branch sees all org requests — the UI
   // classifies Incoming (my branch fulfills) vs Outgoing (my branch requested).
   const orgSlug = await resolveOrgSlug(tenantSlug);
+
+  // LEGACY REPAIR — before 2026-08-17 the request was saved with the
+  // branch UUID (or branch slug) as `tenant_slug` and the branch IDs as
+  // numeric ids, so sibling branches never saw their own reservations.
+  // Rewrite those rows once to the canonical org slug + canonical branch
+  // slugs now that we compare on complete slugs everywhere.
+  try {
+    await coffinQuery(
+      `UPDATE stock_requests
+       SET tenant_slug = ?
+       WHERE tenant_slug = ? OR tenant_slug = ? OR tenant_slug LIKE CONCAT(?, '-%')
+         AND (from_branch_id = ? OR to_branch_id = ? OR from_branch_id = ? OR to_branch_id = ?)`,
+      [orgSlug, tenantSlug, tenantSlug, orgSlug, tenantSlug, tenantSlug, tenantSlug]
+    );
+  } catch {
+    // Non-critical: only repairs historical rows; keep serving current rows.
+  }
 
   try {
     const sql = `

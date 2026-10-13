@@ -38,14 +38,8 @@ const getStoredNextTx = () => {
   return Number(val) || 1;
 };
 
-let globalNextId = getStoredNextId();
-let globalNextTx = getStoredNextTx();
-
-const todayKeyLocal = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+let globalNextId = 31;
+let globalNextTx = 1;
 
 export const useStore = () => {
   // Start from the localStorage mirror so a refresh never shows empty data

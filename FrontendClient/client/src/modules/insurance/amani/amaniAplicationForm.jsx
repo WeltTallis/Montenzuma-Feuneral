@@ -186,6 +186,14 @@ export default function AmaniApplicationForm() {
      renders while the visitor is typing. */
   const [fillStamp] = useState(() => formatStamp(new Date()));
 
+  const policyNumberLabel = applicationResult?.publicCode || applicationResult?.policyNumber || formData.idNumber || '34343434';
+  const coverLabel = coverOptions.find((option) => option.value === (applicationResult?.coverType || formData.cover))?.label
+    || applicationResult?.coverType
+    || (coverOptions.find((option) => option.value === formData.cover)?.label || 'Family');
+  const premiumValue = applicationResult?.monthlyPremium ?? selectedPlan?.monthly ?? planFor(formData.cover)?.monthly ?? 1000;
+  const statusLabel = applicationResult?.status || 'active';
+  const beneficiariesLabel = applicationResult?.beneficiaries || 'Next of kin not recorded.';
+
   const handleResendSms = async (targetPhone) => {
     const phoneToSend = targetPhone || formData.phone;
     if (!phoneToSend) return;
@@ -850,8 +858,37 @@ export default function AmaniApplicationForm() {
       font-size: 0.95rem; letter-spacing: 0.03em;
     }
     .af-done-cards {
-      display: flex; flex-direction: column; gap: 1.5rem;
-      max-width: 680px; margin: 2rem auto; text-align: left;
+      display: grid;
+      grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+      gap: 1.5rem;
+      max-width: 860px; margin: 2rem auto; text-align: left;
+      align-items: start;
+    }
+    .af-policy-box {
+      background: linear-gradient(180deg, #f9fbfc 0%, #edf3f7 100%);
+      border: 1.5px solid #d0dfe9; border-radius: 12px;
+      padding: 1.25rem 1.15rem;
+      box-shadow: 0 4px 18px rgba(23, 60, 90, 0.04);
+    }
+    .af-policy-head {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-weight: 700; color: var(--af-blue); margin-bottom: 1rem;
+    }
+    .af-policy-grid {
+      display: grid; gap: 0.8rem;
+    }
+    .af-policy-row {
+      display: grid; gap: 0.2rem;
+      padding-bottom: 0.7rem; border-bottom: 1px solid rgba(23, 60, 90, 0.08);
+    }
+    .af-policy-row:last-child { padding-bottom: 0; border-bottom: none; }
+    .af-policy-label {
+      font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--af-gray);
+      font-weight: 700;
+    }
+    .af-policy-value {
+      font-size: 1rem; font-weight: 700; color: var(--af-blue);
+      word-break: break-word;
     }
     .af-sms-box {
       background: #ffffff; border: 1.5px solid #d0dfe9; border-radius: 12px;
@@ -1045,6 +1082,35 @@ export default function AmaniApplicationForm() {
               )}
 
               <div className="af-done-cards">
+                <aside className="af-policy-box">
+                  <div className="af-policy-head">
+                    <ShieldCheck size={16} />
+                    <span>Policy Details</span>
+                  </div>
+                  <div className="af-policy-grid">
+                    <div className="af-policy-row">
+                      <span className="af-policy-label">Policy Number</span>
+                      <span className="af-policy-value">{policyNumberLabel}</span>
+                    </div>
+                    <div className="af-policy-row">
+                      <span className="af-policy-label">Cover Plan</span>
+                      <span className="af-policy-value">{coverLabel}</span>
+                    </div>
+                    <div className="af-policy-row">
+                      <span className="af-policy-label">Premium</span>
+                      <span className="af-policy-value">Ksh {Number(premiumValue || 0).toLocaleString('en-KE')}</span>
+                    </div>
+                    <div className="af-policy-row">
+                      <span className="af-policy-label">Status</span>
+                      <span className="af-policy-value">{String(statusLabel).toLowerCase()}</span>
+                    </div>
+                    <div className="af-policy-row">
+                      <span className="af-policy-label">Beneficiaries</span>
+                      <span className="af-policy-value">{beneficiariesLabel}</span>
+                    </div>
+                  </div>
+                </aside>
+
                 {/* ── 01: Instant SMS Confirmation Card ── */}
                 <div className="af-sms-box">
                   <div className="af-sms-head">
@@ -1066,8 +1132,8 @@ export default function AmaniApplicationForm() {
                     <div className="af-sms-bubble">
                       {applicationResult?.smsPreview || (
                         <>
-                          Montenzuma Monalisa Funeral Home: Thank you for registering for the Amani Cover. Your application has been received. Your Policy No is {applicationResult?.publicCode || applicationResult?.policyNumber || formData.idNumber}. We are honored to protect your family&apos;s future. Pay premium:{' '}
-                          <a href={applicationResult?.paymentLink || '#'}>{applicationResult?.paymentLink || 'https://paymontenzuma.restpoint.co.ke'}</a>. For assistance, call 0740045355.
+                          Montenzuma Monalisa Funeral Home: Thank you for registering for the Amani Cover. Your application has been received. Your Policy No is {policyNumberLabel}. We are honored to protect your family&apos;s future. Pay premium:{' '}
+                          <a href={applicationResult?.paymentLink || 'https://paymontenzuma.restpoint.co.ke'}>{applicationResult?.paymentLink || 'https://paymontenzuma.restpoint.co.ke'}</a>. For assistance, call 0740045355.
                         </>
                       )}
                     </div>

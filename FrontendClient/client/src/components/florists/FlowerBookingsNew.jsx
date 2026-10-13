@@ -329,7 +329,8 @@ const FlowerBookingsNew = () => {
   const imageCarouselRef = useRef(null);
   const [newBooking, setNewBooking] = useState({
     arrangement_type: '',
-    flower_details: '',
+    flower_designs: [],
+    flower_design: '',
     flower_design: '',
     color_preference: '',
     any_color: true,
@@ -549,6 +550,7 @@ const FlowerBookingsNew = () => {
       .map(s => s.trim())
       .filter(Boolean);
     if (typedTypes.length === 0) return showToast('Please enter the flowers for this arrangement', 'error');
+    if (!newBooking.flower_designs?.length) return showToast('Please select at least one flower design', 'error');
     const colors = String(newBooking.color_preference || '').split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
     const items = [{
       arrangement_id: null,
@@ -567,15 +569,20 @@ const FlowerBookingsNew = () => {
       // [TYPES:…] keeps every flower name · [WHEN:…] pins the exact booked day
       // so the calendar and list always agree on one date.
       const bookedOn = newBooking.date || fmtDateStr(new Date());
+      const designTags = [
+        ...newBooking.flower_designs?.map(d => `[FLOWER:${d}]`) || [],
+        newBooking.flower_design ? `[DESIGN:${clean(newBooking.flower_design)}]` : '',
+      ].filter(Boolean).join(' ');
       const notesValue = [
         `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
         `[WHEN:${bookedOn} ${newBooking.time}]`,
-        newBooking.flower_design ? `[DESIGN:${clean(newBooking.flower_design)}]` : '',
+        designTags,
         newBooking.priority?.trim() ? `Priority: ${newBooking.priority.trim()}` : '',
         newBooking.remarks?.trim() || ''
       ].filter(Boolean).join(' ');
       await api.post('/florist/bookings', {
         arrangement_name: headline.slice(0, 255),
+        arrangement_type: newBooking.arrangement_type?.trim() || null,
         arrangement_id: null,
         flower_type: headline.slice(0, 100),
         flower_description: typedTypes.join(', '),
@@ -1391,23 +1398,61 @@ const FlowerBookingsNew = () => {
             ))}
           </select>
 
-          {/* ── Flower Design ── */}
-          <label style={{ ...lbl, marginBottom: '12px' }}>Flower Design</label>
+          {/* ── Arrangement Type ── */}
+          <label style={{ ...lbl, marginBottom: '12px' }}>Arrangement Type *</label>
           <select
             style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.flower_design}
-            onChange={e => setNewBooking(prev => ({ ...prev, flower_design: e.target.value }))}
+            value={newBooking.arrangement_type}
+            onChange={e => setNewBooking(prev => ({ ...prev, arrangement_type: e.target.value }))}
+            required
           >
-            <option value="">Select flower design</option>
-            <option value="Roses">🌹 Roses</option>
-            <option value="Lilies">🌸 Lilies</option>
-            <option value="Chrysanthemums">🌼 Chrysanthemums</option>
-            <option value="Carnations">🌷 Carnations</option>
-            <option value="Mixed Flowers">💐 Mixed flowers</option>
-            <option value="White Flowers">🤍 White flowers</option>
-            <option value="Florist's Choice">🌿 Florist's choice</option>
+            <option value="">Select arrangement type</option>
+            <option value="Wreath">Wreath</option>
+            <option value="Casket Spray">Casket Spray</option>
+            <option value="Standing Spray">Standing Spray</option>
+            <option value="Funeral Basket">Funeral Basket</option>
+            <option value="Sympathy Bouquet">Sympathy Bouquet</option>
+            <option value="Cross / Heart Arrangement">Cross / Heart Arrangement</option>
+            <option value="Sample">Sample (browse arrangements)</option>
           </select>
 
+          {/* ── Flower Design (many flowers now — multi-select, no modal) ── */}
+          <label style={{ ...lbl, marginBottom: '12px', fontWeight: 500 }}>Flower Design * (multi-select)</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', padding: '12px', background: '#F7F4EF', borderRadius: '10px', border: '1px solid #E3DCD2' }}>
+            {['Roses', 'Lilies', 'Chrysanthemums', 'Carnations', 'Mixed Flowers', 'White Flowers', "Florist's Choice"].map(flower => (
+              <label key={flower} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 500, color: '#3D352D', cursor: 'pointer', padding: '6px 10px', borderRadius: '8px', background: newBooking.flower_designs?.includes(flower) ? '#E8E0D6' : 'transparent', border: newBooking.flower_designs?.includes(flower) ? '1px solid #C9BFA8' : '1px solid transparent' }}>
+                <input
+                  type="checkbox"
+                  style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                  checked={newBooking.flower_designs?.includes(flower) || false}
+                  onChange={e => setNewBooking(prev => ({
+                    ...prev,
+                    flower_designs: e.target.checked ? [...(prev.flower_designs || []), flower] : (prev.flower_designs || []).filter(f => f !== flower),
+                  }))}
+                />
+                {flower}
+              </label>
+            ))}
+          </div>
+
+          {/* ── Flowers ── */}
+          <label style={{ ...lbl, marginBottom: '12px' }}>Flowers *</label>
+          <textarea
+            rows={3}
+            required
+            style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
+            placeholder="Enter flowers separated by commas, e.g. Red Roses, White Lilies, Gypsophila"
+            value={newBooking.flower_details}
+            onChange={e => setNewBooking(prev => ({ ...prev, flower_details: e.target.value }))}
+          />
+
+          <label style={{ ...lbl, marginBottom: '12px' }}>Funeral / Service Date <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span></label>
+          <input
+            type="date"
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.funeral_date}
+            onChange={e => setNewBooking(prev => ({ ...prev, funeral_date: e.target.value }))}
+          />
           {/* ── Branch (auto-detected) ── */}
           {/* The booking is automatically assigned to the logged-in user's
               current branch — no manual selection needed. For multi-branch

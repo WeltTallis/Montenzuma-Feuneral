@@ -246,9 +246,10 @@ const PAY_STYLES = `
 
 export default function AmaniPayPortal() {
   const { code: paymentCode } = useParams();
+  const hasDirectPaymentLink = Boolean(paymentCode);
   const automaticPaymentStarted = useRef(false);
   const [idNumber, setIdNumber] = useState('');
-  const [status, setStatus] = useState('lookup');
+  const [status, setStatus] = useState(hasDirectPaymentLink ? 'loading' : 'lookup');
   const [frequency, setFrequency] = useState('monthly');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [paymentState, setPaymentState] = useState('idle');
@@ -259,6 +260,7 @@ export default function AmaniPayPortal() {
   useEffect(() => {
     if (!paymentCode) return undefined;
     let active = true;
+    setStatus('loading');
     getPaymentLink(paymentCode).then((result) => {
       if (!active) return;
       setPolicy({ policyCode: result.publicCode, policyNumber: result.policyNumber, coverType: result.coverType, monthlyPremium: result.monthlyPremium, coverStatus: result.status, coveredCount: result.coveredCount });
@@ -458,6 +460,19 @@ export default function AmaniPayPortal() {
         {/* ---------- RIGHT: form panel ---------- */}
         <section className="form-panel" aria-label="Payment form">
           <div className="form-panel__inner">{/* ---- 1. LOOKUP ---- */}
+            {status === 'loading' && (
+              <div className="state-view centered-state" role="status" aria-live="polite">
+                <div className="pending-orbit">
+                  <div className="pending-orbit__dot" />
+                </div>
+                <div className="form-heading form-heading--center">
+                  <div className="form-heading__kicker">SECURE PAYMENT LINK</div>
+                  <h2>Loading your payment</h2>
+                  <p>We are retrieving the policy details and sending the M-Pesa prompt for this cover.</p>
+                </div>
+              </div>
+            )}
+
             {status === 'lookup' && (
               <div className="state-view">
                 <div className="form-heading">

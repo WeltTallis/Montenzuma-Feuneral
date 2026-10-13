@@ -1,33 +1,34 @@
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 .amani-cover {
-  /* Amani Cover — Executive Dignity & Protection */
-  --ac-primary: #0a0a0a;
-  /* Deep Solid Black / Charcoal */
-  --ac-primary-hover: #1a1a1a;
-  --ac-ink: #1a1a1a;
-  /* Charcoal Body Text */
-  --ac-accent: #334155;
-  /* Slate Accent */
-  --ac-highlight: #475569;
-  /* Cool Gray Accent */
-  --ac-bg: #f8fafc;
-  /* Crisp Modern Light Slate BG */
-  --ac-card: #ffffff;
-  /* Pure White */
-  --ac-border: #e2e8f0;
-  /* Subtle, crisp border */
-  --ac-input: #cbd5e1;
-  /* Soft Slate input border */
-  --ac-mutedfg: #64748b;
-  /* Secondary text */
-  --ac-onprimary: #ffffff;
-  --ac-onaccent: #ffffff;
-  --ac-oncard: #1a1a1a;
-  --ac-ring: #0a0a0a;
-  --ac-success: #16a34a;
-  --ac-success-bg: #f0fdf4;
-  --ac-danger: #dc2626;
+  /* Amani Cover — Dignity, Trust & Family Protection */
+  --ac-primary: #163B65;
+  /* Deep Navy Blue */
+  --ac-primary-hover: #0F2D4D;
+  /* Darker Navy on Hover */
+  --ac-ink: #1E344B;
+  /* Deep Blue-Gray Text */
+  --ac-accent: #356DA8;
+  /* Trustworthy Medium Blue */
+  --ac-highlight: #6B9ACB;
+  /* Soft Steel Blue */
+  --ac-bg: #F2F7FC;
+  /* Gentle Blue-Tinted Background */
+  --ac-card: #FFFFFF;
+  /* Clean White Cards */
+  --ac-border: #D8E5F1;
+  /* Soft Blue Borders */
+  --ac-input: #B7CCDF;
+  /* Muted Blue Input Borders */
+  --ac-mutedfg: #667D94;
+  /* Muted Blue-Gray Text */
+  --ac-onprimary: #FFFFFF;
+  --ac-onaccent: #FFFFFF;
+  --ac-oncard: #1E344B;
+  --ac-ring: #356DA8;
+  --ac-success: #16805D;
+  --ac-success-bg: #EAF7F0;
+  --ac-danger: #C43D4B;
 
   color-scheme: light;
   background: var(--ac-bg);

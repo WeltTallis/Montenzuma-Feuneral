@@ -37,3 +37,9 @@ jobs:
     - name: Check cross-directory relative require paths
       run: npm run check:paths
     - run: npm test
+
+
+
+cd /opt/restpoint
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --force-recreate mpesa-service
+docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=80 mpesa-service
