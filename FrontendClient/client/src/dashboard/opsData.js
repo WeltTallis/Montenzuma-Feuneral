@@ -10,7 +10,7 @@ export const DOWF = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fr
 
 /* Storage holding fee used for the accrual figure (KES / body / day).
    Kept as a single constant so the business rate is easy to change. */
-const STORAGE_FEE_PER_DAY = 500;
+export const STORAGE_FEE_PER_DAY = 500;
 
 
 export const pad = (n) => (String(n).length < 2 ? `0${n}` : String(n));

@@ -1,5 +1,5 @@
 import {
-  CARE, TYPE_L, ageBucketOf, ageFor, careCfg, careOf, daysInCare, fmtDate,
+  CARE, TYPE_L, STORAGE_FEE_PER_DAY, ageBucketOf, ageFor, careCfg, careOf, daysInCare, fmtDate,
   isReleased, statusMeta, todayKey, MO,
 } from "./opsData";
 import { Avatar } from "./opsBits";
@@ -545,6 +545,14 @@ function IntakePane({ p }) {
     raw.next_of_kin_signature,
     raw.received_by_signature,
   );
+  const daysHeld = daysInCare(p);
+  const isHeld = !isReleased(p) && p.admDate && p.admDate <= todayKey();
+  const recordedCharges = (ch.totalNum || 0) + (ch.extraNum || 0);
+  const dailyRate = ch.perDayNum || STORAGE_FEE_PER_DAY;
+  const accruedEstimate = isHeld ? (daysHeld || 0) * dailyRate : 0;
+  const currency = ch.currency || "KES";
+  const formatMoney = (amount) =>
+    `${currency} ${Number(amount || 0).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="cp-pane">
@@ -621,10 +629,20 @@ function IntakePane({ p }) {
             on this panel, so it is a full-width highlight rather than a
             footnote in the hero strip. */}
         <Card
-          l="Days in Morgue"
-          v={p.admDate && p.admDate > todayKey() ? "Scheduled" : `${daysInCare(p) ?? 0} days`}
+          l="Days in Morgue so far"
+          v={
+            p.admDate && p.admDate > todayKey()
+              ? "Scheduled"
+              : daysHeld == null ? "Not available" : `${daysHeld} days`
+          }
           hl
-          sub={p.release && p.release.status === "completed" ? "Released" : "Still in our care"}
+          sub={
+            p.admDate && p.admDate > todayKey()
+              ? "Admission scheduled"
+              : p.release && p.release.status === "completed"
+                ? "Released"
+                : p.admDate ? "Still in our care" : "Admission date not recorded"
+          }
         />
       </div>
 
@@ -653,10 +671,6 @@ function IntakePane({ p }) {
         {sigPath ? (
           <div className="ccard wide cp-sig">
             <SignatureImage path={sigPath} label="Intake signature" maxHeight={200} />
-            <div className="ccsub">
-              Signed at intake by the next of kin or receiving officer. This is the
-              authorisation for the body to be received into your care.
-            </div>
           </div>
         ) : (
           <Card
@@ -670,8 +684,25 @@ function IntakePane({ p }) {
 
       <DrawerSection title="Charges" />
       <div className="cgrid">
-        <Card l="Total Mortuary Charge" v={ch.total} hl />
-        <Card l="Extra Charges" v={ch.extra} mono />
+        <Card
+          l="Charges so far"
+          v={formatMoney(recordedCharges + accruedEstimate)}
+          hl
+          sub={
+            isHeld
+              ? `Recorded charges plus ${formatMoney(accruedEstimate)} accrued at ${formatMoney(dailyRate)} per day${ch.perDayNum ? "." : " (dashboard estimate)."}`
+              : "Recorded mortuary and extra charges."
+          }
+        />
+        <Card l="Recorded Mortuary Charge" v={formatMoney(ch.totalNum)} />
+        <Card l="Extra Charges" v={formatMoney(ch.extraNum)} />
+        {isHeld ? (
+          <Card
+            l="Accrued Holding Estimate"
+            v={formatMoney(accruedEstimate)}
+            sub={ch.perDayNum ? `${daysHeld || 0} days × ${formatMoney(dailyRate)} per day` : `Estimated at ${formatMoney(STORAGE_FEE_PER_DAY)} per day; confirm the branch rate in Financials.`}
+          />
+        ) : null}
       </div>
     </div>
   );

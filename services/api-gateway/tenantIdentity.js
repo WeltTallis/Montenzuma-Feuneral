@@ -60,6 +60,16 @@ const PLATFORM_ROLES = new Set(['systemadmin', 'superadmin']);
  * into a sibling tenant.
  */
 const ORG_WIDE_READ_ROLES = new Set(['admin', 'manager']);
+const OPS_DASHBOARD_BRANCH_READ_ROLES = new Set([
+  'system_administrator',
+  'systemadmin',
+  'tenant_admin',
+]);
+const OPS_DASHBOARD_BRANCH_READ_ENDPOINTS = new Set([
+  'checkout',
+  'deceased-all',
+  'postmortem-requests',
+]);
 
 // Every tenant slug the platform issues is lowercase-kebab.
 const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -173,6 +183,12 @@ function servicePathOf(req) {
 function isPreAuthRoute(req) {
   if (!PRE_AUTH_METHODS.has(req.method)) return false;
   return PRE_AUTH_PREFIXES.has(servicePathOf(req).split('/')[0]);
+}
+
+function isOperationsDashboardBranchRead(req) {
+  if (req.method !== 'GET') return false;
+  const segments = servicePathOf(req).split('/').filter(Boolean);
+  return OPS_DASHBOARD_BRANCH_READ_ENDPOINTS.has(segments[segments.length - 1]);
 }
 
 /**
@@ -350,7 +366,13 @@ function applyTenantIdentity(proxyReq, req, log) {
          never widen the request beyond the caller's own organisation. */
       const wantsSibling = clientBranchDb
         && String(clientBranchDb) !== branchDb
-        && ORG_WIDE_READ_ROLES.has(String(identity.role || '').toLowerCase())
+        && (
+          ORG_WIDE_READ_ROLES.has(String(identity.role || '').toLowerCase())
+          || (
+            OPS_DASHBOARD_BRANCH_READ_ROLES.has(String(identity.role || '').toLowerCase())
+            && isOperationsDashboardBranchRead(req)
+          )
+        )
         && belongsToTenant(String(clientBranchDb), String(identity.tenantSlug));
 
       if (wantsSibling) {

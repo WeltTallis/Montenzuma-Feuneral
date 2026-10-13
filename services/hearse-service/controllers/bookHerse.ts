@@ -947,16 +947,17 @@ export const getAllDrivers = asyncHandler(async (req: Request, res: Response) =>
             return;
         }
 
-        let drivers: any[] = [];
-        try {
-            drivers = await safeQuery(`SELECT id AS driver_id, driver_name, driver_phone, license_number, status, created_at FROM drivers ORDER BY driver_name ASC`, []);
-        } catch (driverErr) {
-            drivers = [];
-        }
+        const drivers = await safeQuery(
+            `SELECT id AS driver_id, full_name AS driver_name, phone AS driver_phone, license_number, status, created_at
+               FROM drivers
+              ORDER BY full_name ASC`,
+            []
+        );
         const payload = { status: 'success', total: drivers.length, drivers };
         await hearseCacheSet(req, cacheKey, payload, FLEET_CACHE_TTL);
         res.status(200).json({ ...payload, source: 'database' });
     } catch (error) {
+        console.error('Failed to fetch drivers:', error);
         res.status(500).json({ status: 'error', message: 'Failed to fetch drivers.' });
     }
 });

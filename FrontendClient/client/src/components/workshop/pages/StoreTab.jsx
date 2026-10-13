@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { formatDate as fmtDate, parseDate, toDateKey } from '../../../utils/dates/parseDates';
 import { workshopService } from '../services/workshopService';
 import api from '../../../api/axios';
-import { getTenantSlug } from '../../../utils/globalAuth';
+import { getBranchId, getBranchSlug, getParentTenantSlug, getTenantId, getTenantSlug } from '../../../utils/globalAuth';
 import { Ctx } from './WorkshopDashboard';
 
 const T = {
@@ -82,8 +82,24 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
     setDriversLoading(true);
     setDriversError('');
     try {
-      const r = await api.get('/all-drivers');
-      const list = r?.data?.drivers || [];
+      const headers = {};
+      const parentTenantSlug = getParentTenantSlug() || getTenantSlug();
+      const tenantId = getTenantId();
+      const branchSlug = getBranchSlug();
+      const branchId = getBranchId();
+      if (parentTenantSlug) headers['x-tenant-slug'] = parentTenantSlug;
+      if (tenantId) headers['x-tenant-id'] = tenantId;
+      if (branchSlug) headers['x-branch-slug'] = branchSlug;
+      if (branchId) headers['x-branch-id'] = branchId;
+
+      const r = await api.get('/all-drivers', { headers });
+      if (r?.data?.status !== 'success') {
+        throw new Error(r?.data?.message || 'The driver service returned an invalid response.');
+      }
+      const list = r.data.drivers;
+      if (!Array.isArray(list)) {
+        throw new Error('The driver service returned an invalid driver list.');
+      }
       const normalized = list.map(d => ({
         id: String(d.driver_id ?? d.id ?? ''),
         name: d.driver_name || d.full_name || '',
@@ -114,8 +130,7 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
     receivedBy: '',
 
-    // `driverId` is the real assignment (from the drivers roster);
-    // `driver` stays as the typed/display name for free-text fallback.
+    // `driverId` is the roster assignment; `driver` stores its display name.
     driverId: '',
 
     driver: '',
