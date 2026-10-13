@@ -22,10 +22,29 @@ const getKnex = (req: any): Knex => {
   const db = req.app?.locals?.storeKnex as Knex | null;
   if (!db) {
     throw new Error(
-      'Store database is not available. Is MariaDB running? (mini service runs in demo-only mode)',
+      'Store database is not available. Check the store service database connection.',
     );
   }
   return db;
+};
+
+const getActorName = (req: any): string => {
+  const claims = req.user || {};
+  const joinedName = [claims.firstName || claims.first_name, claims.lastName || claims.last_name]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  return String(
+    joinedName ||
+      claims.fullName ||
+      claims.full_name ||
+      claims.name ||
+      claims.displayName ||
+      claims.display_name ||
+      claims.username ||
+      claims.email ||
+      '',
+  ).trim();
 };
 
 const itemToJSON = (r: StoreItemRecord) => ({
@@ -128,12 +147,14 @@ export const createItem = async (req: any, res: any): Promise<any> => {
     const unit = String(body.unit || 'pcs').trim();
     const stock = Math.max(0, getFloat(body.stock) ?? 0);
     const minStock = Math.max(0, getFloat(body.minStock) ?? 0);
+    const staff = getActorName(req);
 
     if (!name) return fail(res, 400, 'Item name is required');
     if (body.stock !== undefined && getFloat(body.stock) === null)
       return fail(res, 400, 'Invalid stock value');
     if (body.minStock !== undefined && getFloat(body.minStock) === null)
       return fail(res, 400, 'Invalid minStock value');
+    if (stock > 0 && !staff) return fail(res, 401, 'Your account name is unavailable. Sign in again.');
 
     const exists = await db('mini_store_items').where({ name }).first();
     if (exists) return fail(res, 409, `Item "${name}" already exists`);
@@ -163,7 +184,7 @@ export const createItem = async (req: any, res: any): Promise<any> => {
         action: 'restocked',
         quantity: stock,
         unit: row.unit,
-        staff: String(body.staff || 'Store Clerk'),
+        staff,
         reason: 'Initial stock',
         remaining: Number(row.stock),
         created_at: new Date().toISOString(),
@@ -187,6 +208,7 @@ export const updateItem = async (req: any, res: any): Promise<any> => {
     if (!row) return fail(res, 404, `Item ${id} not found`);
 
     const body = req.body || {};
+    const staff = getActorName(req);
     const patch: any = {};
     if (body.name !== undefined) {
       const name = String(body.name).trim();
@@ -204,6 +226,8 @@ export const updateItem = async (req: any, res: any): Promise<any> => {
       delta = newStock - Number(row.stock);
       patch.stock = newStock;
     }
+    if (delta !== 0 && !staff)
+      return fail(res, 401, 'Your account name is unavailable. Sign in again.');
 
     await db('mini_store_items')
       .where({ id })
@@ -217,7 +241,7 @@ export const updateItem = async (req: any, res: any): Promise<any> => {
         action: 'adjusted',
         quantity: Math.abs(delta),
         unit: updated.unit,
-        staff: String(body.staff || 'Store Clerk'),
+        staff,
         reason: `Stock adjusted (${delta > 0 ? '+' : '-'}${delta} ${updated.unit}) - ${String(body.reason || 'manual adjustment')}`,
         remaining: Number(updated.stock),
       });
@@ -259,10 +283,11 @@ export const pickItem = async (req: any, res: any): Promise<any> => {
     const id = parseInt(req.params.id, 10);
     const body: MovementDTO = req.body || {};
     const qty = getFloat(body.quantity);
+    const staff = getActorName(req);
 
     if (!id) return fail(res, 400, 'Invalid item id');
     if (qty === null || qty <= 0) return fail(res, 400, 'A valid quantity is required');
-    if (!body.staff) return fail(res, 400, 'Staff member is required');
+    if (!staff) return fail(res, 401, 'Your account name is unavailable. Sign in again.');
     if (!body.reason) return fail(res, 400, 'Reason is required');
 
     const item = (await db('mini_store_items').where({ id }).first()) as
@@ -284,7 +309,7 @@ export const pickItem = async (req: any, res: any): Promise<any> => {
       action: 'used',
       quantity: qty,
       unit: item.unit,
-      staff: String(body.staff),
+      staff,
       reason: String(reason),
       remaining: newStock,
       created_at: new Date().toISOString(),
@@ -313,9 +338,11 @@ export const restockItem = async (req: any, res: any): Promise<any> => {
     const id = parseInt(req.params.id, 10);
     const body: MovementDTO = req.body || {};
     const qty = getFloat(body.quantity);
+    const staff = getActorName(req);
 
     if (!id) return fail(res, 400, 'Invalid item id');
     if (qty === null || qty <= 0) return fail(res, 400, 'A valid quantity is required');
+    if (!staff) return fail(res, 401, 'Your account name is unavailable. Sign in again.');
 
     const item = (await db('mini_store_items').where({ id }).first()) as
       StoreItemRecord | undefined;
@@ -331,7 +358,7 @@ export const restockItem = async (req: any, res: any): Promise<any> => {
       action: 'restocked',
       quantity: qty,
       unit: item.unit,
-      staff: String(body.staff || 'Store Clerk'),
+      staff,
       reason: String(reason),
       remaining: newStock,
       created_at: new Date().toISOString(),
@@ -360,6 +387,7 @@ export const adjustItem = async (req: any, res: any): Promise<any> => {
     const id = parseInt(req.params.id, 10);
     const body: AdjustDTO = req.body || {};
     const newStock = Math.max(0, getFloat(body.newStock) ?? 0);
+    const staff = getActorName(req);
     if (!id) return fail(res, 400, 'Invalid item id');
     if (getFloat(body.newStock) === null) return fail(res, 400, 'newStock is required');
 
@@ -368,6 +396,8 @@ export const adjustItem = async (req: any, res: any): Promise<any> => {
     if (!item) return fail(res, 404, `Item ${id} not found`);
 
     const delta = newStock - Number(item.stock);
+    if (delta !== 0 && !staff)
+      return fail(res, 401, 'Your account name is unavailable. Sign in again.');
     await db('mini_store_items').where({ id }).update({ stock: newStock });
 
     if (delta !== 0) {
@@ -377,7 +407,7 @@ export const adjustItem = async (req: any, res: any): Promise<any> => {
         action: 'adjusted',
         quantity: Math.abs(delta),
         unit: item.unit,
-        staff: String(body.staff || 'Store Clerk'),
+        staff,
         reason: `Stock adjusted (${delta > 0 ? '+' : '-'}${delta} ${item.unit}) - ${String(body.reason || 'manual adjustment')}`,
         remaining: newStock,
         created_at: new Date().toISOString(),

@@ -4,7 +4,7 @@ import { useStoreContext } from '../storeContext';
 import { getStatus, statusBadge } from '../seed';
 
 export default function ItemsView() {
-  const { items, pendingQuick, setPendingQuick, setView } = useStoreContext();
+  const { items, connected, pendingQuick, setPendingQuick, setView } = useStoreContext();
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('all');
 
@@ -89,6 +89,7 @@ export default function ItemsView() {
                         className="quick-btn me-1"
                         title="Quick Pick"
                         onClick={() => quick(i.id, 'pick')}
+                        disabled={!connected}
                       >
                         <i className="fa-solid fa-minus" />
                       </Button>
@@ -98,6 +99,7 @@ export default function ItemsView() {
                         className="quick-btn"
                         title="Quick Restock"
                         onClick={() => quick(i.id, 'restock')}
+                        disabled={!connected}
                       >
                         <i className="fa-solid fa-plus" />
                       </Button>

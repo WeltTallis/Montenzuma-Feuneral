@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Smartphone, Send, CheckCircle2, Copy, RefreshCw, Calendar, ArrowRight, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Smartphone, Send, CheckCircle2, Copy, RefreshCw, Calendar, ArrowRight, MessageSquare, ShieldCheck } from 'lucide-react';
 import { CONTACT, GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlanAmount, planFor } from './amaniData';
 import { InsuranceApiError, submitApplication, sendPolicySms } from '../../../api/insuranceApi';
 
@@ -186,6 +186,7 @@ export default function AmaniApplicationForm() {
      renders while the visitor is typing. */
   const [fillStamp] = useState(() => formatStamp(new Date()));
 
+  const selectedPlan = formData.cover ? planFor(formData.cover) : null;
   const policyNumberLabel = applicationResult?.publicCode || applicationResult?.policyNumber || formData.idNumber || '34343434';
   const coverLabel = coverOptions.find((option) => option.value === (applicationResult?.coverType || formData.cover))?.label
     || applicationResult?.coverType
@@ -235,8 +236,6 @@ export default function AmaniApplicationForm() {
   /* The chosen plan's real rate, or null until a cover type is picked. Used to
      price the frequency options, so the amounts a member sees are the amounts
      PLANS actually defines rather than a number typed into the markup. */
-  const selectedPlan = formData.cover ? planFor(formData.cover) : null;
-
   const handleChange = (event) => {
     const { name, type, checked, value } = event.target;
     const nextValue = type === 'checkbox' ? checked : value;

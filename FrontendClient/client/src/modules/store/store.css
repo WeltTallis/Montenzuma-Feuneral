@@ -64,7 +64,23 @@
 
 .mini-store .navbar-tabs {
   gap: 0.4rem;
+  margin-left: 1.25rem;
 }
+
+.mini-store .store-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+  color: var(--k-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.mini-store .store-brand i { font-size: 1.15rem; }
+.mini-store .store-nav-toggle { display: none; }
 
 .mini-store .store-tab-btn {
   background: transparent;
@@ -440,18 +456,41 @@
   }
 
   .mini-store .navbar .container-fluid { flex-wrap: wrap; row-gap: 0.7rem; }
+  .mini-store .store-brand { margin-right: auto; }
+  .mini-store .store-nav-toggle {
+   display: inline-flex;
+   width: 44px;
+   height: 44px;
+   align-items: center;
+   justify-content: center;
+   border-radius: 12px;
+   order: 1;
+  }
   .mini-store .navbar .navbar-tabs {
+   display: none !important;
    order: 3;
    width: 100%;
-   overflow-x: auto;
-   -webkit-overflow-scrolling: touch;
-   flex-wrap: nowrap;
-   padding-bottom: .2rem;
-   scrollbar-width: none;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 0.5rem;
+   margin: 0;
+   padding: 0.75rem 0 0;
+   border-top: 1px solid var(--k-border);
   }
-  .mini-store .navbar .navbar-tabs::-webkit-scrollbar { display: none; }
-  .mini-store .navbar .navbar-tabs .btn { white-space: nowrap; }
-  .mini-store .navbar .navbar-actions { margin-left: auto; gap: .5rem; }
+  .mini-store .navbar .navbar-tabs.is-open {
+   display: grid !important;
+  }
+  .mini-store .navbar .navbar-tabs .btn {
+   width: 100%;
+   min-width: 0;
+   justify-content: flex-start;
+   white-space: normal;
+   margin: 0 !important;
+  }
+  .mini-store .navbar .navbar-actions {
+   order: 2;
+   margin-left: 0 !important;
+   gap: .5rem;
+  }
 
   /* Signed-in pill collapses to just the avatar so the "Add Item" button keeps
      its room. The full name stays available as a tooltip. */
@@ -523,6 +562,9 @@
 }
 
 @media (max-width: 400px) {
+  .mini-store .store-brand { gap: 0.4rem; font-size: 0.88rem; }
+  .mini-store .navbar .navbar-actions { gap: 0.35rem !important; }
+  .mini-store .navbar .store-primary-btn { padding: 0.5rem 0.65rem; }
   .mini-store .stat-tile { width: 86%; }
 }
 

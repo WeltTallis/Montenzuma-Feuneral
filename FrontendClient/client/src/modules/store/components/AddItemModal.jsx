@@ -5,7 +5,8 @@ import { STORE_CATEGORIES, STORE_UNITS } from '../seed';
 import { getCurrentUserName } from '../../../utils/globalAuth';
 import notify from '../../../utils/notify';
 export default function AddItemModal({ show, onHide }) {
-  const { addItem } = useStoreContext();
+  const { addItem, connected } = useStoreContext();
+  const [saving, setSaving] = useState(false);
   // "Added by" is attributed to the signed-in user instead of being typed in.
   // Hand-typed names were misspelled, inconsistent, and trivially forged.
   const currentUser = getCurrentUserName();
@@ -21,14 +22,26 @@ export default function AddItemModal({ show, onHide }) {
   const reset = () =>
     setPayload({ name: '', category: STORE_CATEGORIES[0], unit: 'pcs', stock: '', minStock: '' });
 
-  const onSave = () => {
-    if (!payload.name || !payload.stock) {
+  const onSave = async () => {
+    if (!payload.name.trim() || payload.stock === '') {
       notify.warning('Missing details', 'Name and stock are required.');
       return;
     }
-    addItem({ ...payload, staff: currentUser, stock: Number(payload.stock), minStock: Number(payload.minStock) });
-    reset();
-    onHide();
+    setSaving(true);
+    try {
+      const saved = await addItem({
+        ...payload,
+        staff: currentUser,
+        stock: Number(payload.stock),
+        minStock: Number(payload.minStock),
+      });
+      if (saved) {
+        reset();
+        onHide();
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -108,8 +121,10 @@ export default function AddItemModal({ show, onHide }) {
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="outline-secondary" onClick={() => { reset(); onHide(); }}>Cancel</Button>
-        <Button variant="primary" onClick={onSave}>Save Item</Button>
+        <Button variant="outline-secondary" disabled={saving} onClick={() => { reset(); onHide(); }}>Cancel</Button>
+        <Button variant="primary" disabled={saving || !connected} onClick={onSave}>
+          {saving ? 'Saving…' : 'Save Item'}
+        </Button>
       </Modal.Footer>
     </Modal>
   );

@@ -62,7 +62,7 @@ storeApi.interceptors.response.use(
   (err) => {
     const isNet = !err.response;
     err.friendlyMessage = isNet
-      ? 'Lichene Store service is unreachable. Showing local demo data.'
+      ? 'Lichene Store service is unreachable. Inventory is not saved locally.'
       : (err.response?.data?.message || err.message || 'Store service error');
     return Promise.reject(err);
   }

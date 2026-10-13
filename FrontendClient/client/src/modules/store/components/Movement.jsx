@@ -6,12 +6,13 @@ import { getCurrentUserName } from '../../../utils/globalAuth';
 import notify from '../../../utils/notify';
 export default function MovementView() {
   const ctx = useStoreContext();
-  const { items, pickItem, restockItem, pendingQuick, setPendingQuick, setView } = ctx;
+  const { items, connected, pickItem, restockItem, pendingQuick, setPendingQuick, setView } = ctx;
 
   // "Done by" is the signed-in user, not a free-text field.
   const currentUser = getCurrentUserName();
   const [mode, setMode] = useState('pick');
   const [selected, setSelected] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     qty: '', reason: PICK_REASONS[0], notes: '', supplier: '',
   });
@@ -28,16 +29,20 @@ export default function MovementView() {
   const selectedItem = selected ? items.find((i) => i.id === selected) : null;
   const upd = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const submit = () => {
+  const submit = async () => {
     const qty = Number(form.qty);
     if (!selectedItem) return;
     if (qty <= 0) { notify.warning('Invalid quantity', 'Enter a valid quantity.'); return; }
-    if (mode === 'pick') {
-      pickItem(selectedItem.id, qty, currentUser, form.reason, form.notes);
-    } else {
-      restockItem(selectedItem.id, qty, form.supplier || undefined);
+    setSubmitting(true);
+    try {
+      const saved = mode === 'pick'
+        ? await pickItem(selectedItem.id, qty, currentUser, form.reason, form.notes)
+        : await restockItem(selectedItem.id, qty, form.supplier || undefined);
+      if (!saved) return;
+      setForm({ qty: '', reason: PICK_REASONS[0], notes: '', supplier: '' });
+    } finally {
+      setSubmitting(false);
     }
-    setForm({ qty: '', reason: PICK_REASONS[0], notes: '', supplier: '' });
   };
 
   const quickQty = (n) => setForm((f) => ({ ...f, qty: String(n) }));
@@ -184,9 +189,9 @@ export default function MovementView() {
                   </div>
                 )}
 
-                <Button variant="primary" className="w-100 mt-3 btn-sm" onClick={submit}>
+                <Button variant="primary" className="w-100 mt-3 btn-sm" onClick={submit} disabled={!connected || submitting}>
                   <i className={`fa-solid ${mode === 'pick' ? 'fa-arrow-down' : 'fa-arrow-up'}`} />{' '}
-                  {mode === 'pick' ? 'Record Pick' : 'Record Restock'}
+                  {submitting ? 'Saving…' : mode === 'pick' ? 'Record Pick' : 'Record Restock'}
                 </Button>
               </>
             )}

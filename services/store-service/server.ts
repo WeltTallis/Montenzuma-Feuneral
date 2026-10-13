@@ -40,13 +40,12 @@ if (foundEnv) {
   console.log('[STORE] No .env file found (normal in Docker) — using environment variables from the container.');
 }
 
-// Fail fast and loudly if the DB config really is absent, instead of silently
-// building a knex client against 127.0.0.1/root with an empty password and
-// then serving "demo-only" responses that look like lost data.
+// Fail fast if persistent database configuration is absent; do not start a
+// service that appears to accept inventory changes without storing them.
 const REQUIRED_DB_ENV = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'OPERATIONS_DATABASE'];
 const missingDbEnv = REQUIRED_DB_ENV.filter((k) => !process.env[k]);
 if (missingDbEnv.length) {
-  console.error(
+  throw new Error(
     `[STORE] FATAL: missing database configuration: ${missingDbEnv.join(', ')}. ` +
     'Set DB_HOST / DB_USER / DB_PASSWORD / OPERATIONS_DATABASE on the service ' +
     '(docker-compose `environment:` or `env_file`).',
@@ -82,43 +81,37 @@ const buildConfig = () => ({
 });
 
 const initDatabase = async () => {
+  const database = knex(buildConfig());
+  storeKnex = database;
   try {
-    storeKnex = knex(buildConfig());
-    console.log('[STORE] Database connection initialized');
-
-    if (!storeKnex) return;
-    const hasMigrationsTable = await storeKnex.schema.hasTable('knex_migrations_store');
-    if (!hasMigrationsTable || !(await storeKnex.schema.hasTable('mini_store_items'))) {
-      await storeKnex.migrate.latest();
-      console.log('[STORE] Knex migrations completed successfully');
-    } else {
-      await storeKnex.migrate.latest();
-      console.log('[STORE] Migrations already up to date');
-    }
+    await database.raw('SELECT 1');
+    console.log('[STORE] Database connection established');
+    await database.migrate.latest();
+    console.log('[STORE] Database migrations completed successfully');
   } catch (error: any) {
-    console.error('[STORE] Database initialization failed (running demo-only):', error.message);
+    console.error('[STORE] Database initialization failed:', error.message);
+    await database.destroy();
     storeKnex = null;
+    throw error;
   }
 };
 
 app.locals.storeKnex = storeKnex;
 
 // ============================================
-// STATIC UI - serve the Mini Store UI at '/'
-// ============================================
-const UI_FILE = path.resolve(__dirname, '../../mini-store.html');
-
-app.get('/', (_req, res) => {
-  res.sendFile(UI_FILE, (err) => {
-    if (err) res.status(500).json({ success: false, message: 'Mini Store UI not found' });
-  });
-});
-
-// ============================================
 // HEALTH CHECK
 // ============================================
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', service: 'store-service', version: '1.0.0' });
+app.get('/health', async (_req, res) => {
+  if (!storeKnex) {
+    return res.status(503).json({ status: 'unavailable', service: 'store-service' });
+  }
+  try {
+    await storeKnex.raw('SELECT 1');
+    return res.status(200).json({ status: 'ok', service: 'store-service', version: '1.0.0' });
+  } catch (error) {
+    console.error('[STORE] Health check database query failed:', error);
+    return res.status(503).json({ status: 'unavailable', service: 'store-service' });
+  }
 });
 
 
@@ -172,6 +165,9 @@ process.on('SIGINT', () => {
 });
 
 // Initialize and start
-startServer();
+startServer().catch((error) => {
+  console.error('[STORE] Startup failed; service will not serve demo data:', error);
+  process.exit(1);
+});
 
 export default app;

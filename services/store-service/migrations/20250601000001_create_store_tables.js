@@ -28,7 +28,7 @@ export async function up(knex) {
       table.enu('action', ['used', 'restocked', 'adjusted']).notNullable();
       table.decimal('quantity', 12, 3).notNullable();
       table.string('unit', 50).notNullable();
-      table.string('staff', 255).notNullable().defaultTo('Store Clerk');
+      table.string('staff', 255).notNullable();
       table.string('reason', 500);
       table.decimal('remaining', 12, 3).notNullable();
       table.string('created_at', 255);

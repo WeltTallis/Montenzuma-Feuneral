@@ -47,11 +47,11 @@ It connects using the shared `.env` vars (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `
 - `store_items`  — `id, name, category, unit, stock, min_stock, created_at, updated_at`
 - `store_transactions` — `id, item_id, item_name, action (used|restocked|adjusted), quantity, unit, staff, reason, remaining, created_at`
 
-If MariaDB isn't reachable the service still boots in **demo-only** mode so the UI remains usable.
+The service requires MariaDB and runs its migrations before listening. It exits on database connection or migration failure; it never returns demo inventory. `/health` checks database availability. Transaction attribution comes from the verified signed-in account, and the database no longer supplies a generic "Store Clerk" identity.
 
 ### UI
 
-`mini-store.html` (repo root) is opened directly in a browser for offline demo, **or** served by this service at `http://localhost:7071/`. Set `USE_SERVICE = true` in the UI's `<script>` to let it talk to the API (it auto-detects reachability and falls back to local demo data).
+The production React UI talks to the authenticated API and does not keep inventory or transactions in browser storage. `mini-store.html` is a legacy standalone demo and is not served by this API service.
 
 ## Port
 
