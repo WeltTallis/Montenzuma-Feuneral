@@ -66,6 +66,7 @@ const OPS_DASHBOARD_BRANCH_READ_ROLES = new Set([
   'tenant_admin',
 ]);
 const OPS_DASHBOARD_BRANCH_READ_ENDPOINTS = new Set([
+  'charge-settings',
   'checkout',
   'deceased-all',
   'postmortem-requests',
@@ -188,7 +189,8 @@ function isPreAuthRoute(req) {
 function isOperationsDashboardBranchRead(req) {
   if (req.method !== 'GET') return false;
   const segments = servicePathOf(req).split('/').filter(Boolean);
-  return OPS_DASHBOARD_BRANCH_READ_ENDPOINTS.has(segments[segments.length - 1]);
+  return OPS_DASHBOARD_BRANCH_READ_ENDPOINTS.has(segments[segments.length - 1])
+    || (segments[0] === 'charge-settings' && segments.length === 2);
 }
 
 /**

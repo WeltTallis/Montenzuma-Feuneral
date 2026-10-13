@@ -19,6 +19,20 @@ const resolveStoredUser = () => {
 const USER_ADMIN_ROLES = ['admin', 'manager', 'systemadmin', 'system_administrator', 'tenant_admin'];
 const isUserManager = (user) => USER_ADMIN_ROLES.includes(String(user?.role || '').toLowerCase());
 
+const USER_ROLE_OPTIONS = [
+    { value: 'staff', label: 'Staff' },
+    { value: 'manager', label: 'Manager' },
+    { value: 'accountant', label: 'Accountant' },
+    { value: 'driver', label: 'Driver' },
+    { value: 'mortician', label: 'Mortician' },
+    { value: 'florist', label: 'Florist' },
+    { value: 'insurance_manager', label: 'Insurance Manager' },
+    { value: 'hr', label: 'HR' },
+];
+const formatRoleLabel = (role) =>
+    USER_ROLE_OPTIONS.find((option) => option.value === String(role || '').toLowerCase())?.label
+    || String(role || 'Staff').replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+
 const THEME = {
     colors: {
         ink: '#15171A',
@@ -1077,7 +1091,7 @@ export default function SettingsPage() {
                                                         </div>
                                                     </td>
                                                     <td data-label="Role">
-                                                        <span className={'rps-pill ' + pillClass}>{u.role || 'Staff'}</span>
+                                                        <span className={'rps-pill ' + pillClass}>{formatRoleLabel(u.role)}</span>
                                                     </td>
                                                     <td data-label="Branch">
                                                         <select
@@ -1362,10 +1376,9 @@ export default function SettingsPage() {
                                         value={userForm.role}
                                         onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value }))}
                                     >
-                                        <option value="staff">Staff</option>
-                                        <option value="manager">Manager</option>
-                                        <option value="accountant">Accountant</option>
-                                        <option value="driver">Driver</option>
+                                        {USER_ROLE_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>

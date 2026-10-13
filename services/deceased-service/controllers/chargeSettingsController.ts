@@ -45,7 +45,14 @@ const resolveSettingsKey = (id: unknown): { settingsKey: string; isHomeDefault: 
 };
 
 const getTenantSlugFromReq = (req: TenantRequest): string =>
-    ((req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || (req as any).tenantSlug || 'system_shared');
+    (
+        (req as any).tenantSlug ||
+        (req.headers['x-branch-db'] as string) ||
+        (req.headers['x-branch-slug'] as string) ||
+        (req.headers['x-slug'] as string) ||
+        (req.headers['x-tenant-slug'] as string) ||
+        'system_shared'
+    );
 
 const ensureChargeSettingsTable = async (dbName: string): Promise<void> => {
     const sql = `

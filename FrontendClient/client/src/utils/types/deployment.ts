@@ -39,7 +39,17 @@ export interface AppUser {
     id: number;
     email: string;
     fullName: string;
-    role: 'admin' | 'manager' | 'staff' | 'user' | 'mortician' | 'driver';
+    role:
+        | 'admin'
+        | 'manager'
+        | 'staff'
+        | 'user'
+        | 'accountant'
+        | 'mortician'
+        | 'driver'
+        | 'florist'
+        | 'insurance_manager'
+        | 'hr';
     branchId: number | null;
     branchSlug?: string;
     tenantSlug?: string;

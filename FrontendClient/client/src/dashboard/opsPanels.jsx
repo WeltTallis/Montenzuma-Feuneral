@@ -1,11 +1,13 @@
 import {
-  CARE, TYPE_L, STORAGE_FEE_PER_DAY, ageBucketOf, ageFor, careCfg, careOf, daysInCare, fmtDate,
+  CARE, TYPE_L, ageBucketOf, ageFor, careCfg, careOf, daysInCare, fmtDate,
   isReleased, statusMeta, todayKey, MO,
 } from "./opsData";
 import { Avatar } from "./opsBits";
 import { Ic } from "./opsIcons";
 import { getTenantSlug as resolveTenantSlug } from "../utils/globalAuth";
-import { useState } from "react";
+import api from "../api/axios";
+import { getHoursInMorgue } from "../components/deceased/deceasedProfile/theme";
+import { useEffect, useState } from "react";
 import env from "../utils/config/env";
 import { rebaseUploadUrl } from "../utils/tenantResolver/tenantBranding";
 
@@ -545,12 +547,66 @@ function IntakePane({ p }) {
     raw.next_of_kin_signature,
     raw.received_by_signature,
   );
+  const deceasedId = raw.deceased_id || it.deceasedId;
+  const branchSlug = raw._branchSlug || raw.branch_slug || "";
+  const [chargeSettings, setChargeSettings] = useState(null);
+  const [chargeSettingsLoading, setChargeSettingsLoading] = useState(false);
+  const [chargeSettingsError, setChargeSettingsError] = useState(false);
+
+  useEffect(() => {
+    if (!deceasedId) {
+      setChargeSettings(null);
+      setChargeSettingsLoading(false);
+      setChargeSettingsError(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setChargeSettings(null);
+    setChargeSettingsLoading(true);
+    setChargeSettingsError(false);
+    const tenantSlug = branchSlug || resolveTenantSlug();
+    const headers = tenantSlug
+      ? {
+          "x-tenant-slug": tenantSlug,
+          ...(branchSlug ? { "x-branch-slug": branchSlug, "x-branch-db": branchSlug } : {}),
+        }
+      : {};
+
+    api.get(`/deceased/charge-settings/${encodeURIComponent(deceasedId)}`, { headers })
+      .then((response) => {
+        if (cancelled) return;
+        const settings = response?.data?.data;
+        setChargeSettings(settings?.exists ? settings : null);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn("[Operations dashboard] charge settings load failed:", error?.message);
+        setChargeSettingsError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setChargeSettingsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [deceasedId, branchSlug]);
+
   const daysHeld = daysInCare(p);
-  const isHeld = !isReleased(p) && p.admDate && p.admDate <= todayKey();
-  const recordedCharges = (ch.totalNum || 0) + (ch.extraNum || 0);
-  const dailyRate = ch.perDayNum || STORAGE_FEE_PER_DAY;
-  const accruedEstimate = isHeld ? (daysHeld || 0) * dailyRate : 0;
-  const currency = ch.currency || "KES";
+  const chargeType = String(chargeSettings?.chargeType || chargeSettings?.charge_type || "daily").toLowerCase() === "hourly"
+    ? "hourly"
+    : "daily";
+  const configuredRate = Number(
+    chargeType === "hourly"
+      ? chargeSettings?.hourlyRate ?? chargeSettings?.hourly_rate
+      : chargeSettings?.dailyRate ?? chargeSettings?.daily_rate
+  ) || 0;
+  const billingUnits = chargeType === "hourly"
+    ? getHoursInMorgue(raw.date_admitted || raw.created_at)
+    : daysHeld;
+  const configuredEstimate = configuredRate && billingUnits != null
+    ? configuredRate * billingUnits
+    : null;
+  const currency = chargeSettings?.currency || ch.currency || "KES";
   const formatMoney = (amount) =>
     `${currency} ${Number(amount || 0).toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
 
@@ -685,24 +741,24 @@ function IntakePane({ p }) {
       <DrawerSection title="Charges" />
       <div className="cgrid">
         <Card
-          l="Charges so far"
-          v={formatMoney(recordedCharges + accruedEstimate)}
+          l="Recorded Mortuary Charge"
+          v={ch.total || "Not recorded"}
           hl
-          sub={
-            isHeld
-              ? `Recorded charges plus ${formatMoney(accruedEstimate)} accrued at ${formatMoney(dailyRate)} per day${ch.perDayNum ? "." : " (dashboard estimate)."}`
-              : "Recorded mortuary and extra charges."
-          }
         />
-        <Card l="Recorded Mortuary Charge" v={formatMoney(ch.totalNum)} />
-        <Card l="Extra Charges" v={formatMoney(ch.extraNum)} />
-        {isHeld ? (
+        <Card l="Extra Charges" v={ch.extra || "Not recorded"} />
+        {chargeSettingsLoading ? (
+          <Card l="Care Charge Estimate" v="Loading configured rate…" />
+        ) : chargeSettingsError ? (
+          <Card l="Care Charge Estimate" v="Unable to load configured rate" />
+        ) : chargeSettings && configuredRate ? (
           <Card
-            l="Accrued Holding Estimate"
-            v={formatMoney(accruedEstimate)}
-            sub={ch.perDayNum ? `${daysHeld || 0} days × ${formatMoney(dailyRate)} per day` : `Estimated at ${formatMoney(STORAGE_FEE_PER_DAY)} per day; confirm the branch rate in Financials.`}
+            l="Estimated Care Charge"
+            v={configuredEstimate == null ? "Admission date unavailable" : formatMoney(configuredEstimate)}
+            sub={`${formatMoney(configuredRate)} per ${chargeType === "hourly" ? "hour" : "day"} × ${billingUnits ?? 0} ${chargeType === "hourly" ? "hours" : "days"} · ${chargeSettings.isDefault ? "home default" : "deceased-specific"} rate`}
           />
-        ) : null}
+        ) : (
+          <Card l="Care Charge Estimate" v="No configured rate" />
+        )}
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string('password_hash', 255).notNullable();
     table.string('full_name', 100).notNullable();
     table.string('phone', 20);
-    table.enum('role', ['admin', 'manager', 'staff']).defaultTo('staff');
+    table.string('role', 50).defaultTo('staff');
     table.boolean('is_active').defaultTo(true);
     table.boolean('is_verified').defaultTo(false);
     table.string('last_login_at', 255);

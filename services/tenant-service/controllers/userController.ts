@@ -35,6 +35,7 @@ export class UserController {
                 'admin',
                 'manager',
                 'receptionist',
+                'accountant',
                 'mortician',
                 'driver',
                 'hearse_driver',
@@ -43,6 +44,8 @@ export class UserController {
                 'inventory_manager',
                 'procurement_officer',
                 'funeral_director',
+                'florist',
+                'insurance_manager',
                 'hr',
                 'payroll',
                 'security',
@@ -119,6 +122,19 @@ export class UserController {
                     } catch (err: any) {
                         console.warn('[registerUser] Could not resolve parent branch:', (err && err.message) || err);
                     }
+                }
+
+                // Older tenant schemas used an ENUM for role and reject new
+                // operational roles. Expand those legacy columns once before
+                // inserting; current schemas already use VARCHAR.
+                const [roleColumns] = await conn.query(
+                    `SELECT DATA_TYPE FROM information_schema.COLUMNS
+                      WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'users'
+                        AND COLUMN_NAME = 'role'`
+                );
+                if (String((roleColumns as any[])[0]?.DATA_TYPE || '').toLowerCase() === 'enum') {
+                    await conn.query("ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'staff'");
                 }
 
                 // Hash password
