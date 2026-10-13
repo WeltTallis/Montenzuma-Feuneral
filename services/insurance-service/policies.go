@@ -12,7 +12,7 @@ import (
 )
 
 func newPolicyNumber(now time.Time) (string, error) {
-	random := make([]byte, 4)
+	random := make([]byte, 12)
 	if _, err := rand.Read(random); err != nil {
 		return "", err
 	}
@@ -66,9 +66,9 @@ func (a *app) createPolicy(w http.ResponseWriter, r *http.Request) {
 		smsOK, smsInfo := sendSMSNotification(phone, smsMsg)
 		write(w, 200, map[string]any{
 			"success": true, "duplicate": true, "policyNumber": existingPolicy, "publicCode": existingCode, "status": "active",
-			"paymentLink": payLink,
+			"paymentLink":    payLink,
 			"paymentMessage": "Montenzuma Monalisa Funeral Home: Your Amani Cover premium is due. Pay instantly via M-Pesa: " + payLink,
-			"smsSent": smsOK, "smsPhone": phone, "smsPreview": smsMsg, "smsDetails": smsInfo,
+			"smsSent":        smsOK, "smsPhone": phone, "smsPreview": smsMsg, "smsDetails": smsInfo,
 			"member": map[string]any{"policyNumber": existingPolicy, "publicCode": existingCode, "fullName": name, "phone": phone, "coverType": cover, "monthlyPremium": premium, "status": "active", "paymentLink": payLink},
 		})
 		return
@@ -111,9 +111,9 @@ func (a *app) createPolicy(w http.ResponseWriter, r *http.Request) {
 	smsOK, smsInfo := sendSMSNotification(phone, smsMsg)
 	write(w, 201, map[string]any{
 		"success": true, "policyNumber": policy, "publicCode": code,
-		"paymentLink": payLink,
+		"paymentLink":    payLink,
 		"paymentMessage": "Montenzuma Monalisa Funeral Home: Your Amani Cover premium is due. Pay instantly via M-Pesa: " + payLink,
-		"smsSent": smsOK, "smsPhone": phone, "smsPreview": smsMsg, "smsDetails": smsInfo, "status": "active",
+		"smsSent":        smsOK, "smsPhone": phone, "smsPreview": smsMsg, "smsDetails": smsInfo, "status": "active",
 		"member": map[string]any{"policyId": policyID, "policyNumber": policy, "publicCode": code, "fullName": name, "phone": phone, "coverType": cover, "monthlyPremium": premium, "status": "active", "paymentLink": payLink},
 	})
 }
@@ -131,22 +131,32 @@ func (a *app) coverCheck(w http.ResponseWriter, r *http.Request) {
 	var policyNumber, publicCode, name, cover, status string
 	var covered int
 	var created time.Time
+	var premium float64
 	err = a.db.QueryRow(r.Context(), `
 		SELECT policy_number, COALESCE(public_code,''), full_name, cover_type,
-			status, covered_count, created_at
+			status, covered_count, created_at, COALESCE(monthly_premium,0)::float8
 		FROM insurance_policies
 		WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1)
 			AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')
 		ORDER BY created_at DESC LIMIT 1`,
-		identifier, tenant(r)).Scan(&policyNumber, &publicCode, &name, &cover, &status, &covered, &created)
+		identifier, tenant(r)).Scan(&policyNumber, &publicCode, &name, &cover, &status, &covered, &created, &premium)
 	if err != nil {
 		write(w, 404, map[string]any{"success": true, "covered": false, "found": false, "message": "No active cover found"})
+		return
+	}
+	if premium <= 0 {
+		premium = premiumForCover(cover)
+	}
+	snapshot, err := a.paymentSnapshot(r.Context(), policyNumber, created, premium)
+	if err != nil {
+		write(w, 500, map[string]any{"error": "Could not calculate the amount due"})
 		return
 	}
 	write(w, 200, map[string]any{
 		"success": true, "covered": strings.EqualFold(status, "active"), "found": true,
 		"policyNumber": policyNumber, "publicCode": publicCode, "coverType": cover,
-		"status": status, "coveredCount": covered, "openedAt": created,
+		"status": status, "coveredCount": covered, "openedAt": created, "monthlyPremium": premium,
+		"amountDue": snapshot.AmountDue, "arrearsAmount": snapshot.ArrearsAmount, "unpaidMonths": snapshot.UnpaidMonths, "monthsWithoutPayment": snapshot.MonthsWithoutPay,
 	})
 }
 
@@ -193,9 +203,65 @@ func (a *app) claimTrack(w http.ResponseWriter, r *http.Request) {
 	write(w, 200, map[string]any{"success": true, "claims": out})
 }
 
-func(a *app)listPolicies(w http.ResponseWriter,r *http.Request){rows,e:=a.db.Query(r.Context(),`SELECT policy_id,policy_number,COALESCE(id_number,''),full_name,phone,cover_type,covered_count,COALESCE(monthly_premium,0)::float8,status,COALESCE(next_of_kin_name,''),COALESCE(next_of_kin_relationship,''),COALESCE(next_of_kin_phone,''),created_at,COALESCE(public_code,'') FROM insurance_policies WHERE is_deleted=false AND (tenant_slug=$1 OR tenant_slug='system_shared') ORDER BY created_at DESC`,tenant(r));if e!=nil{write(w,500,map[string]any{"error":"Unable to load policies"});return};defer rows.Close();out:=[]map[string]any{};for rows.Next(){var id int64;var num,idno,name,phone,cover,status,code,nok,nokRel,nokPhone string;var count int;var premium float64;var created time.Time;if rows.Scan(&id,&num,&idno,&name,&phone,&cover,&count,&premium,&status,&nok,&nokRel,&nokPhone,&created,&code)==nil{out=append(out,map[string]any{"policyId":id,"policyNumber":num,"idNumber":idno,"publicCode":code,"paymentLink":paymentLinkURL(code),"paymentMessage":"Montenzuma Mona Lisa: Your Amani Cover premium is due. Pay instantly via M-Pesa: "+paymentLinkURL(code),"fullName":name,"phone":phone,"coverType":cover,"coveredCount":count,"monthlyPremium":premium,"nextOfKinName":nok,"nextOfKinRelationship":nokRel,"nextOfKinPhone":nokPhone,"status":status,"createdAt":created})}};write(w,200,map[string]any{"success":true,"policies":out})}
+func (a *app) listPolicies(w http.ResponseWriter, r *http.Request) {
+	rows, e := a.db.Query(r.Context(), `SELECT policy_id,policy_number,COALESCE(id_number,''),full_name,phone,cover_type,covered_count,COALESCE(monthly_premium,0)::float8,status,COALESCE(next_of_kin_name,''),COALESCE(next_of_kin_relationship,''),COALESCE(next_of_kin_phone,''),created_at,COALESCE(public_code,'') FROM insurance_policies WHERE is_deleted=false AND (tenant_slug=$1 OR tenant_slug='system_shared') ORDER BY created_at DESC`, tenant(r))
+	if e != nil {
+		write(w, 500, map[string]any{"error": "Unable to load policies"})
+		return
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var id int64
+		var num, idno, name, phone, cover, status, code, nok, nokRel, nokPhone string
+		var count int
+		var premium float64
+		var created time.Time
+		if rows.Scan(&id, &num, &idno, &name, &phone, &cover, &count, &premium, &status, &nok, &nokRel, &nokPhone, &created, &code) == nil {
+			out = append(out, map[string]any{"policyId": id, "policyNumber": num, "idNumber": idno, "publicCode": code, "paymentLink": paymentLinkURL(code), "paymentMessage": "Montenzuma Mona Lisa: Your Amani Cover premium is due. Pay instantly via M-Pesa: " + paymentLinkURL(code), "fullName": name, "phone": phone, "coverType": cover, "coveredCount": count, "monthlyPremium": premium, "nextOfKinName": nok, "nextOfKinRelationship": nokRel, "nextOfKinPhone": nokPhone, "status": status, "createdAt": created})
+		}
+	}
+	write(w, 200, map[string]any{"success": true, "policies": out})
+}
 
-func(a *app)listPayments(w http.ResponseWriter,r *http.Request){q:=r.URL.Query();status:=strings.ToLower(strings.TrimSpace(q.Get("status")));limit:=20;if v:=q.Get("limit");v!=""{var n int;fmt.Sscan(v,&n);if n>0&&n<=200{limit=n}};query:=`SELECT p.payment_id,p.reference,p.policy_number,p.phone,p.amount::float8,p.status,COALESCE(p.mpesa_receipt,''),COALESCE(p.result_code,''),COALESCE(p.failure_reason,p.result_description,''),COALESCE(p.retryable,false),p.created_at,COALESCE(pol.full_name,'') FROM insurance_payments p LEFT JOIN insurance_policies pol ON pol.policy_number=p.policy_number WHERE (p.tenant_slug=$1 OR p.tenant_slug='system_shared')`;args:=[]any{tenant(r)};if status=="paid"||status=="failed"||status=="pending"{query+=` AND p.status=$2`;args=append(args,status)};query+=` ORDER BY p.created_at DESC LIMIT `+fmt.Sprint(limit);rows,e:=a.db.Query(r.Context(),query,args...);if e!=nil{write(w,500,map[string]any{"error":"Unable to load payments"});return};defer rows.Close();out:=[]map[string]any{};for rows.Next(){var id int64;var ref,num,phone,receipt,code,reason,name string;var st string;var amt float64;var retry bool;var created time.Time;if rows.Scan(&id,&ref,&num,&phone,&amt,&st,&receipt,&code,&reason,&retry,&created,&name)==nil{out=append(out,map[string]any{"paymentId":id,"reference":ref,"policyNumber":num,"memberName":name,"phone":phone,"amount":amt,"status":st,"receipt":receipt,"resultCode":code,"failureReason":reason,"retryable":retry,"createdAt":created})}};write(w,200,map[string]any{"success":true,"payments":out})}
+func (a *app) listPayments(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	status := strings.ToLower(strings.TrimSpace(q.Get("status")))
+	limit := 20
+	if v := q.Get("limit"); v != "" {
+		var n int
+		fmt.Sscan(v, &n)
+		if n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+	query := `SELECT p.payment_id,p.reference,p.policy_number,p.phone,p.amount::float8,p.status,COALESCE(p.mpesa_receipt,''),COALESCE(p.result_code,''),COALESCE(p.failure_reason,p.result_description,''),COALESCE(p.retryable,false),p.created_at,COALESCE(pol.full_name,'') FROM insurance_payments p LEFT JOIN insurance_policies pol ON pol.policy_number=p.policy_number WHERE (p.tenant_slug=$1 OR p.tenant_slug='system_shared')`
+	args := []any{tenant(r)}
+	if status == "paid" || status == "failed" || status == "pending" {
+		query += ` AND p.status=$2`
+		args = append(args, status)
+	}
+	query += ` ORDER BY p.created_at DESC LIMIT ` + fmt.Sprint(limit)
+	rows, e := a.db.Query(r.Context(), query, args...)
+	if e != nil {
+		write(w, 500, map[string]any{"error": "Unable to load payments"})
+		return
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var id int64
+		var ref, num, phone, receipt, code, reason, name string
+		var st string
+		var amt float64
+		var retry bool
+		var created time.Time
+		if rows.Scan(&id, &ref, &num, &phone, &amt, &st, &receipt, &code, &reason, &retry, &created, &name) == nil {
+			out = append(out, map[string]any{"paymentId": id, "reference": ref, "policyNumber": num, "memberName": name, "phone": phone, "amount": amt, "status": st, "receipt": receipt, "resultCode": code, "failureReason": reason, "retryable": retry, "createdAt": created})
+		}
+	}
+	write(w, 200, map[string]any{"success": true, "payments": out})
+}
 
 func (a *app) getPolicy(w http.ResponseWriter, r *http.Request) {
 	identifier := normalize(r.PathValue("policyNumber"))
@@ -215,8 +281,8 @@ func (a *app) getPolicy(w http.ResponseWriter, r *http.Request) {
 	}
 	write(w, 200, map[string]any{"success": true, "policy": map[string]any{
 		"policyId": id, "policyNumber": number, "publicCode": code,
-		"paymentLink": paymentLinkURL(code),
+		"paymentLink":    paymentLinkURL(code),
 		"paymentMessage": "Montenzuma Mona Lisa: Your Amani Cover premium is due. Pay instantly via M-Pesa: " + paymentLinkURL(code),
-		"fullName": name, "phone": phone, "coverType": cover, "coveredCount": count, "status": status,
+		"fullName":       name, "phone": phone, "coverType": cover, "coveredCount": count, "status": status,
 	}})
 }

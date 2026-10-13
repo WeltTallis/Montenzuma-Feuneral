@@ -262,75 +262,63 @@ export default function WorkshopPanel({ onExit }) {
 
   const header = (
     <div className="wp-head">
-      <button
-        type="button"
-        className="wp-back"
-        onClick={onExit}
-        title="Back to Operations"
-        aria-label="Back to Operations"
-      >
-        <Ic n="arrowL" s={13} />
-        Operations
-      </button>
-
-      {/* The subtitle "Coffin store, production tracking and worker output" was
-          removed: the two tabs below now say Store and Analytics outright, so
-          the sentence only restated the switcher. The Live pill stays because
-          it reports a real connection state that neither tab communicates. */}
-      <div className="wp-head-txt">
-        <h1>Workshop</h1>
-      </div>
-
-      {/* The section switcher sits INSIDE the header row, not on a second bar
-          under it. It is the control the user reaches for most, so it belongs
-          where the eye already is. */}
-      {/* Monthly target is an admin setting, exactly like Register Worker — it is
-          a commitment the workshop makes, not something a worker needs to see.
-          The set-target control opens on the month being viewed. */}
-      <TabBar active={tab} onChange={setTab} />
-
-      {isAdmin && (
+      <div className="wp-head-brand">
         <button
           type="button"
-          className="wp-addworker"
-          onClick={() => setTargetOpen(true)}
-          title="Set the number of coffins every worker must finish this month"
+          className="wp-back"
+          onClick={onExit}
+          title="Back to Operations"
+          aria-label="Back to Operations"
         >
-          <i className="fas fa-bullseye" aria-hidden="true" style={{ fontSize: 11 }} />
-          Set Target
+          <Ic n="arrowL" s={13} />
+          Operations
         </button>
-      )}
+        <div className="wp-head-txt">
+          <h1>Workshop</h1>
+        </div>
+      </div>
 
-      <div className="wp-head-right">
-        <span className={`wp-live${connected ? " on" : ""}`}>
-          <i aria-hidden="true" />
-          {connected ? "Live" : "Offline"}
-        </span>
-        {/* Admin-only: adding people to the roster is a management action. It
-            lives HERE rather than only on the standalone /workshop page because
-            day-to-day users work from this dashboard tab and had no way to
-            reach it at all. */}
+      <TabBar active={tab} onChange={setTab} />
+
+      <div className="wp-head-actions">
         {isAdmin && (
           <button
             type="button"
             className="wp-addworker"
-            onClick={() => { setWorkerSaved(""); setShowWorkerModal(true); }}
-            title="Add a worker to the workshop roster"
+            onClick={() => setTargetOpen(true)}
+            title="Set the number of coffins every worker must finish this month"
           >
-            <i className="fas fa-user-plus" aria-hidden="true" style={{ fontSize: 11 }} />
-            Register Worker
+            <i className="fas fa-bullseye" aria-hidden="true" style={{ fontSize: 11 }} />
+            Set Target
           </button>
         )}
-        <button
-          type="button"
-          className="wp-refresh"
-          onClick={load}
-          disabled={loading}
-          title="Reload workshop data"
-        >
-          <span className={loading ? "spin" : ""}><Ic n="sync" s={13} /></span>
-          Refresh
-        </button>
+        <div className="wp-head-right">
+          <span className={`wp-live${connected ? " on" : ""}`}>
+            <i aria-hidden="true" />
+            {connected ? "Live" : "Offline"}
+          </span>
+          {isAdmin && (
+            <button
+              type="button"
+              className="wp-addworker"
+              onClick={() => { setWorkerSaved(""); setShowWorkerModal(true); }}
+              title="Add a worker to the workshop roster"
+            >
+              <i className="fas fa-user-plus" aria-hidden="true" style={{ fontSize: 11 }} />
+              Register Worker
+            </button>
+          )}
+          <button
+            type="button"
+            className="wp-refresh"
+            onClick={load}
+            disabled={loading}
+            title="Reload workshop data"
+          >
+            <span className={loading ? "spin" : ""}><Ic n="sync" s={13} /></span>
+            Refresh
+          </button>
+        </div>
       </div>
     </div>
   );

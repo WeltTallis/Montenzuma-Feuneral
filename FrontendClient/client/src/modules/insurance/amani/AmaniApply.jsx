@@ -23,9 +23,9 @@ export default function AmaniApply() {
         intro="Complete your details and choose the cover that feels right. Our team will confirm your application and help with the next steps."
       />
 
-      <main className="bg-ac-bg px-4 py-10 sm:px-6 lg:px-10 lg:py-16">
+      <main className="bg-ac-bg px-0 py-10 sm:px-6 lg:px-10 lg:py-16">
         <div className="mx-auto max-w-7xl">
-          <div className="amani-section-index mb-6"><b>01</b><span>Your application</span></div>
+          <div className="amani-section-index mb-6 px-4 sm:px-0"><b>01</b><span>Your application</span></div>
           <AmaniApplicationForm />
         </div>
       </main>

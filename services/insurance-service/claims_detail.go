@@ -33,25 +33,25 @@ func (a *app) claimDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	payments := []map[string]any{}
 	var totalContributions float64
-    // Fetch related claim events
-    var events []map[string]any
-    eventRows, err := a.db.Query(r.Context(), `SELECT event_id, event_type, description, created_at FROM insurance_claim_events WHERE claim_id=$1 ORDER BY created_at`, id)
-    if err == nil {
-        defer eventRows.Close()
-        for eventRows.Next() {
-            var evID int64
-            var evType, evDesc string
-            var evCreated time.Time
-            if eventRows.Scan(&evID, &evType, &evDesc, &evCreated) == nil {
-                events = append(events, map[string]any{
-                    "eventId": evID,
-                    "type": evType,
-                    "description": evDesc,
-                    "createdAt": evCreated,
-                })
-            }
-        }
-    }
+	// Fetch related claim events
+	var events []map[string]any
+	eventRows, err := a.db.Query(r.Context(), `SELECT event_id, event_type, description, created_at FROM insurance_claim_events WHERE claim_id=$1 ORDER BY created_at`, id)
+	if err == nil {
+		defer eventRows.Close()
+		for eventRows.Next() {
+			var evID int64
+			var evType, evDesc string
+			var evCreated time.Time
+			if eventRows.Scan(&evID, &evType, &evDesc, &evCreated) == nil {
+				events = append(events, map[string]any{
+					"eventId":     evID,
+					"type":        evType,
+					"description": evDesc,
+					"createdAt":   evCreated,
+				})
+			}
+		}
+	}
 	rows, err := a.db.Query(r.Context(), `SELECT payment_id,reference,amount::float8,status,COALESCE(mpesa_receipt,''),created_at FROM insurance_payments WHERE policy_number=$1 AND (tenant_slug=$2 OR tenant_slug='system_shared') ORDER BY created_at DESC`, policyNumber, tenant(r))
 	if err == nil {
 		defer rows.Close()
@@ -78,38 +78,146 @@ func (a *app) claimDetail(w http.ResponseWriter, r *http.Request) {
 		"disbursedAmount": disbursedAmount, "disbursementMethod": disbursementMethod, "disbursementReference": disbursementReference,
 		"disbursedAt": disbursedAtStr, "approvedAt": approvedAt, "rejectedAt": rejectedAt,
 		"events": events,
-
 	}})
 }
 
 func (a *app) analytics(w http.ResponseWriter, r *http.Request) {
 	var totalContributions float64
 	var paidPayments int
-	_ = a.db.QueryRow(r.Context(), `SELECT COALESCE(SUM(amount),0)::float8,COUNT(*) FROM insurance_payments WHERE status='paid' AND (tenant_slug=$1 OR tenant_slug='system_shared')`, tenant(r)).Scan(&totalContributions, &paidPayments)
+	if err := a.db.QueryRow(r.Context(), `SELECT COALESCE(SUM(amount),0)::float8,COUNT(*) FROM insurance_payments WHERE status='paid' AND (tenant_slug=$1 OR tenant_slug='system_shared')`, tenant(r)).Scan(&totalContributions, &paidPayments); err != nil {
+		write(w, 500, map[string]any{"error": "Unable to load contribution analytics"})
+		return
+	}
+	var stkAttempts, stkSuccessful, stkFailed, stkPending int
+	err := a.db.QueryRow(r.Context(), `
+		SELECT COUNT(*),
+			COUNT(*) FILTER (WHERE status='paid'),
+			COUNT(*) FILTER (WHERE status='failed'),
+			COUNT(*) FILTER (WHERE status='pending')
+		FROM insurance_payments
+		WHERE created_at >= now() - interval '6 months'
+			AND (tenant_slug=$1 OR tenant_slug='system_shared')`, tenant(r)).
+		Scan(&stkAttempts, &stkSuccessful, &stkFailed, &stkPending)
+	if err != nil {
+		write(w, 500, map[string]any{"error": "Unable to load STK push analytics"})
+		return
+	}
+	terminalAttempts := stkSuccessful + stkFailed
+	successRate, failureRate := 0.0, 0.0
+	if terminalAttempts > 0 {
+		successRate = float64(stkSuccessful) * 100 / float64(terminalAttempts)
+		failureRate = float64(stkFailed) * 100 / float64(terminalAttempts)
+	}
 	claimsByStatus := map[string]int{}
 	claimRows, err := a.db.Query(r.Context(), `SELECT status,COUNT(*) FROM insurance_claims WHERE is_deleted=false AND (tenant_slug=$1 OR tenant_slug='system_shared') GROUP BY status`, tenant(r))
-	if err == nil {
-		defer claimRows.Close()
-		for claimRows.Next() {
-			var status string
-			var count int
-			if claimRows.Scan(&status, &count) == nil {
-				claimsByStatus[status] = count
-			}
-		}
+	if err != nil {
+		write(w, 500, map[string]any{"error": "Unable to load claim analytics"})
+		return
 	}
+	for claimRows.Next() {
+		var status string
+		var count int
+		if err := claimRows.Scan(&status, &count); err != nil {
+			claimRows.Close()
+			write(w, 500, map[string]any{"error": "Unable to read claim analytics"})
+			return
+		}
+		claimsByStatus[status] = count
+	}
+	if err := claimRows.Err(); err != nil {
+		claimRows.Close()
+		write(w, 500, map[string]any{"error": "Unable to read claim analytics"})
+		return
+	}
+	claimRows.Close()
+
 	monthly := []map[string]any{}
 	paymentRows, err := a.db.Query(r.Context(), `SELECT to_char(date_trunc('month',created_at),'YYYY-MM') AS month,COALESCE(SUM(amount),0)::float8,COUNT(*) FROM insurance_payments WHERE status='paid' AND created_at>=date_trunc('month',now())-interval '11 months' AND (tenant_slug=$1 OR tenant_slug='system_shared') GROUP BY date_trunc('month',created_at) ORDER BY date_trunc('month',created_at)`, tenant(r))
-	if err == nil {
-		defer paymentRows.Close()
-		for paymentRows.Next() {
-			var month string
-			var amount float64
-			var count int
-			if paymentRows.Scan(&month, &amount, &count) == nil {
-				monthly = append(monthly, map[string]any{"month": month, "amount": amount, "payments": count})
-			}
+	if err != nil {
+		write(w, 500, map[string]any{"error": "Unable to load monthly contribution analytics"})
+		return
+	}
+	for paymentRows.Next() {
+		var month string
+		var amount float64
+		var count int
+		if err := paymentRows.Scan(&month, &amount, &count); err != nil {
+			paymentRows.Close()
+			write(w, 500, map[string]any{"error": "Unable to read monthly contribution analytics"})
+			return
+		}
+		monthly = append(monthly, map[string]any{"month": month, "amount": amount, "payments": count})
+	}
+	if err := paymentRows.Err(); err != nil {
+		paymentRows.Close()
+		write(w, 500, map[string]any{"error": "Unable to read monthly contribution analytics"})
+		return
+	}
+	paymentRows.Close()
+
+	defaulterRows, err := a.db.Query(r.Context(), `
+		SELECT p.policy_number,p.full_name,p.phone,p.cover_type,p.created_at,
+			COALESCE(p.monthly_premium,0)::float8,
+			COALESCE(SUM(pay.amount) FILTER (WHERE pay.status='paid'),0)::float8,
+			COALESCE(MAX(pay.created_at) FILTER (WHERE pay.status='paid'),p.created_at),
+			COUNT(pay.payment_id) FILTER (WHERE pay.status='paid')
+		FROM insurance_policies p
+		LEFT JOIN insurance_payments pay ON pay.policy_number=p.policy_number
+		WHERE p.status='active' AND p.is_deleted=false
+			AND (p.tenant_slug=$1 OR p.tenant_slug='system_shared')
+		GROUP BY p.policy_id
+		ORDER BY p.created_at DESC`, tenant(r))
+	if err != nil {
+		write(w, 500, map[string]any{"error": "Unable to load defaulter analytics"})
+		return
+	}
+	defaulters := []map[string]any{}
+	now := time.Now()
+	for defaulterRows.Next() {
+		var policyNumber, name, phone, cover string
+		var createdAt, lastPaidAt time.Time
+		var premium, paidTotal float64
+		var paidCount int
+		if err := defaulterRows.Scan(&policyNumber, &name, &phone, &cover, &createdAt, &premium, &paidTotal, &lastPaidAt, &paidCount); err != nil {
+			defaulterRows.Close()
+			write(w, 500, map[string]any{"error": "Unable to read defaulter analytics"})
+			return
+		}
+		if premium <= 0 {
+			premium = premiumForCover(cover)
+		}
+		if paidCount == 0 {
+			lastPaidAt = time.Time{}
+		}
+		snapshot := buildPaymentSnapshot(createdAt, lastPaidAt, now, premium, paidTotal)
+		if snapshot.MonthsWithoutPay >= 6 && snapshot.ArrearsAmount > 0 {
+			defaulters = append(defaulters, map[string]any{
+				"policyNumber": policyNumber, "name": name, "phone": phone, "coverType": cover,
+				"monthlyPremium": premium, "arrearsAmount": snapshot.ArrearsAmount,
+				"unpaidMonths": snapshot.UnpaidMonths, "monthsWithoutPayment": snapshot.MonthsWithoutPay,
+				"lastPaidAt": func() any {
+					if paidCount == 0 {
+						return nil
+					}
+					return lastPaidAt
+				}(),
+			})
 		}
 	}
-	write(w, 200, map[string]any{"success": true, "totalContributions": totalContributions, "paidPayments": paidPayments, "claimsByStatus": claimsByStatus, "monthlyContributions": monthly})
+	if err := defaulterRows.Err(); err != nil {
+		defaulterRows.Close()
+		write(w, 500, map[string]any{"error": "Unable to read defaulter analytics"})
+		return
+	}
+	defaulterRows.Close()
+
+	write(w, 200, map[string]any{
+		"success": true, "totalContributions": totalContributions, "paidPayments": paidPayments,
+		"claimsByStatus": claimsByStatus, "monthlyContributions": monthly, "defaulters": defaulters,
+		"longTermDefaulters": len(defaulters),
+		"stkPushMetrics": map[string]any{
+			"periodMonths": 6, "attempts": stkAttempts, "successful": stkSuccessful, "failed": stkFailed,
+			"pending": stkPending, "successRate": successRate, "failureRate": failureRate,
+		},
+	})
 }

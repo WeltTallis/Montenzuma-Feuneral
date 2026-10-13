@@ -251,8 +251,8 @@ function ImageInterlude() {
 function ApplySection() {
   return (
     <section id="apply" className="scroll-mt-20 bg-ac-bg py-20 text-ac-ink lg:py-28">
-      <div className="mx-auto max-w-7xl px-6 lg:px-10">
-        <div className="amani-section-intro">
+      <div className="mx-auto max-w-7xl px-0 sm:px-6 lg:px-10">
+        <div className="amani-section-intro px-6 sm:px-0">
           <div className="amani-section-index"><b>05</b><span>Start your application</span></div>
           <div className="amani-section-copy">
             <h2 className="font-serif font-medium text-ac-primary">A simple first step towards peace of mind.</h2>
@@ -273,10 +273,10 @@ function ClaimBand() {
   return (
     <section
       id="claim"
-      className="amani-claim-band scroll-mt-20 border-t border-ac-border bg-ac-card px-6 py-16 lg:px-10 lg:py-20"
+      className="amani-claim-band scroll-mt-20 border-t border-ac-border bg-ac-card px-0 py-16 sm:px-6 lg:px-10 lg:py-20"
     >
       <div className="mx-auto max-w-7xl">
-        <div className="amani-section-index mb-5"><b>06</b><span>Here when you need us</span></div>
+        <div className="amani-section-index mb-5 px-6 sm:px-0"><b>06</b><span>Here when you need us</span></div>
         <div className="amani-claim-card flex flex-col gap-8 bg-ac-primary p-8 text-white sm:p-10 lg:flex-row lg:items-center lg:justify-between lg:p-12">
           <div className="max-w-xl">
           {/* Kiswahili accent — "Ndiyo" = "Yes", a warm answer to the question

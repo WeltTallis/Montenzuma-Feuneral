@@ -130,13 +130,14 @@ func (a *app) sendPolicySMS(w http.ResponseWriter, r *http.Request) {
 
 	var name, phone, cover, policyNumber, code string
 	var premium float64
+	var createdAt time.Time
 	err := a.db.QueryRow(r.Context(),
-		`SELECT full_name, phone, cover_type, policy_number, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8
+		`SELECT full_name, phone, cover_type, policy_number, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8, created_at
 		 FROM insurance_policies
 		 WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1)
 			AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')
 		 ORDER BY created_at DESC LIMIT 1`,
-		polNum, tenant(r)).Scan(&name, &phone, &cover, &policyNumber, &code, &premium)
+		polNum, tenant(r)).Scan(&name, &phone, &cover, &policyNumber, &code, &premium, &createdAt)
 
 	if err != nil {
 		write(w, 404, map[string]any{"error": "Policy not found"})
@@ -156,12 +157,29 @@ func (a *app) sendPolicySMS(w http.ResponseWriter, r *http.Request) {
 	msgType := str(m, "type") // "registration", "monthly_payment", "custom"
 	customMsg := str(m, "message")
 
+	var monthlySnapshot policyPaymentSnapshot
+	isMonthlyReminder := msgType == "monthly_payment" || msgType == "monthly"
+	if isMonthlyReminder {
+		if premium <= 0 {
+			premium = premiumForCover(cover)
+		}
+		monthlySnapshot, err = a.paymentSnapshot(r.Context(), policyNumber, createdAt, premium)
+		if err != nil {
+			write(w, 500, map[string]any{"error": "Could not calculate the amount due"})
+			return
+		}
+		if monthlySnapshot.MonthsWithoutPay >= 6 && monthlySnapshot.ArrearsAmount > 0 {
+			write(w, 409, map[string]any{"error": "Payment reminders are paused after six months without a successful payment"})
+			return
+		}
+	}
+
 	var msg string
 	if customMsg != "" {
 		msg = customMsg
-	} else if msgType == "monthly_payment" || msgType == "monthly" {
-		msg = fmt.Sprintf("Montenzuma Monalisa Funeral Home: Dear %s, your monthly Amani Cover premium of KES %.0f for policy %s is due. Pay easily via M-Pesa: %s. For assistance, call 0740045355",
-			name, premium, policyNumber, payLink)
+	} else if isMonthlyReminder {
+		msg = fmt.Sprintf("Montenzuma Monalisa Funeral Home: Dear %s, your Amani Cover payment of KES %.0f is due for policy %s. This includes any unpaid monthly premiums. Pay via M-Pesa: %s. For assistance, call 0740045355",
+			name, monthlySnapshot.AmountDue, policyNumber, payLink)
 	} else {
 		msg = fmt.Sprintf("Montenzuma Monalisa Funeral Home: Thank you for registering for the Amani Cover. Your application has been received. Your Policy No is %s. We are honored to protect your family's future. Pay premium: %s. For assistance, call 0740045355",
 			policyNumber, payLink)
@@ -194,7 +212,7 @@ func (a *app) sendMonthlyReminders(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	query := `SELECT policy_number, full_name, phone, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8 
+	query := `SELECT policy_number, full_name, phone, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8, cover_type, created_at
 	          FROM insurance_policies 
 	          WHERE status='active' AND is_deleted=false AND (tenant_slug=$1 OR tenant_slug='system_shared')`
 	args := []any{tenant(r)}
@@ -213,62 +231,93 @@ func (a *app) sendMonthlyReminders(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type sentResult struct {
-		PolicyNumber string  `json:"policyNumber"`
-		PublicCode   string  `json:"publicCode"`
-		Name         string  `json:"name"`
-		Phone        string  `json:"phone"`
-		Amount       float64 `json:"amount"`
-		PaymentLink  string  `json:"paymentLink"`
-		Status       string  `json:"status"`
+		PolicyNumber  string  `json:"policyNumber"`
+		PublicCode    string  `json:"publicCode"`
+		Name          string  `json:"name"`
+		Phone         string  `json:"phone"`
+		Amount        float64 `json:"amount"`
+		PaymentLink   string  `json:"paymentLink"`
+		Status        string  `json:"status"`
+		MonthsOverdue int     `json:"monthsOverdue,omitempty"`
+		AmountDue     float64 `json:"amountDue,omitempty"`
 	}
 
 	var results []sentResult
-	sentCount := 0
+	sentCount, suppressedCount := 0, 0
 
 	for rows.Next() {
-		var polNum, name, phone, code string
+		var polNum, name, phone, code, cover string
+		var createdAt time.Time
 		var premium float64
-		if rows.Scan(&polNum, &name, &phone, &code, &premium) == nil {
-			if strings.TrimSpace(phone) == "" {
-				continue
-			}
-			payLink := paymentLinkURL(code)
-			msg := customMsgTpl
-			if msg == "" {
-				msg = fmt.Sprintf("Montenzuma Monalisa Funeral Home: Dear %s, your monthly Amani Cover premium of KES %.0f (Policy: %s) is due. Pay securely via M-Pesa: %s. Tel: (020) 2346928.",
-					name, premium, code, payLink)
-			} else {
-				msg = strings.ReplaceAll(msg, "{name}", name)
-				msg = strings.ReplaceAll(msg, "{policy}", code)
-				msg = strings.ReplaceAll(msg, "{amount}", fmt.Sprintf("%.0f", premium))
-				msg = strings.ReplaceAll(msg, "{link}", payLink)
-			}
-
-			ok, _ := sendSMSNotification(phone, msg)
-			st := "sent"
-			if !ok {
-				st = "failed"
-			} else {
-				sentCount++
-			}
-
-			results = append(results, sentResult{
-				PolicyNumber: polNum,
-				PublicCode:   code,
-				Name:         name,
-				Phone:        phone,
-				Amount:       premium,
-				PaymentLink:  payLink,
-				Status:       st,
-			})
+		if err := rows.Scan(&polNum, &name, &phone, &code, &premium, &cover, &createdAt); err != nil {
+			rows.Close()
+			write(w, 500, map[string]any{"error": "Unable to read active policies for monthly reminders"})
+			return
 		}
+		if strings.TrimSpace(phone) == "" {
+			continue
+		}
+		if premium <= 0 {
+			premium = premiumForCover(cover)
+		}
+		snapshot, err := a.paymentSnapshot(r.Context(), polNum, createdAt, premium)
+		if err != nil {
+			rows.Close()
+			write(w, 500, map[string]any{"error": "Could not calculate amounts due for monthly reminders"})
+			return
+		}
+		payLink := paymentLinkURL(code)
+		if snapshot.MonthsWithoutPay >= 6 && snapshot.ArrearsAmount > 0 {
+			suppressedCount++
+			results = append(results, sentResult{
+				PolicyNumber: polNum, PublicCode: code, Name: name, Phone: phone,
+				Amount: snapshot.AmountDue, PaymentLink: payLink, Status: "suppressed",
+				MonthsOverdue: snapshot.UnpaidMonths, AmountDue: snapshot.AmountDue,
+			})
+			continue
+		}
+		msg := customMsgTpl
+		if msg == "" {
+			msg = fmt.Sprintf("Montenzuma Monalisa Funeral Home: Dear %s, your Amani Cover payment of KES %.0f (Policy: %s) is due, including unpaid monthly premiums. Pay securely via M-Pesa: %s. Tel: (020) 2346928.",
+				name, snapshot.AmountDue, polNum, payLink)
+		} else {
+			msg = strings.ReplaceAll(msg, "{name}", name)
+			msg = strings.ReplaceAll(msg, "{policy}", polNum)
+			msg = strings.ReplaceAll(msg, "{amount}", fmt.Sprintf("%.0f", snapshot.AmountDue))
+			msg = strings.ReplaceAll(msg, "{link}", payLink)
+		}
+
+		ok, _ := sendSMSNotification(phone, msg)
+		st := "sent"
+		if !ok {
+			st = "failed"
+		} else {
+			sentCount++
+		}
+
+		results = append(results, sentResult{
+			PolicyNumber:  polNum,
+			PublicCode:    code,
+			Name:          name,
+			Phone:         phone,
+			Amount:        snapshot.AmountDue,
+			PaymentLink:   payLink,
+			Status:        st,
+			MonthsOverdue: snapshot.UnpaidMonths,
+			AmountDue:     snapshot.AmountDue,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		write(w, 500, map[string]any{"error": "Unable to read active policies for monthly reminders"})
+		return
 	}
 
 	write(w, 200, map[string]any{
-		"success":   true,
-		"sentCount": sentCount,
-		"total":     len(results),
-		"results":   results,
+		"success":         true,
+		"sentCount":       sentCount,
+		"total":           len(results),
+		"suppressedCount": suppressedCount,
+		"results":         results,
 	})
 }
 

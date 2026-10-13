@@ -581,6 +581,10 @@
    padding: 0 0 40px
 }
 
+.rpd .mains.workshop-mode {
+   overflow: visible
+}
+
 /* The calendar now owns Today / ‹ › / period / Day-Week-Month, so the sidebar
    stays until the layout genuinely cannot hold it. When it goes, the toolbar's
    `.tb-sched` cluster takes over. */
@@ -6275,15 +6279,28 @@
    you where you are and how to leave. Built entirely from the dashboard tokens
    so it follows the light/dark toggle instead of the old hard-coded header. */
 .rpd .wp-head {
-   display: flex;
+   position: sticky;
+   top: 52px;
+   z-index: 45;
+   display: grid;
+   grid-template-columns: minmax(0, 1fr) auto auto;
+   grid-template-areas: "brand tabs actions";
    align-items: center;
-   gap: 14px;
-   flex-wrap: wrap;
+   gap: 12px 18px;
    background: var(--card);
    border: 1px solid var(--brd);
    border-radius: 12px;
    padding: 13px 16px;
-   box-shadow: var(--shs)
+   box-shadow: var(--shs);
+   backdrop-filter: blur(12px)
+}
+
+.rpd .wp-head-brand {
+   grid-area: brand;
+   display: flex;
+   align-items: center;
+   gap: 12px;
+   min-width: 0
 }
 
 .rpd .wp-back {
@@ -6307,10 +6324,7 @@
    color: var(--acc)
 }
 
-/* The title no longer flexes. It used to grow to push the actions right, but now
-   the TABS carry margin-left:auto, so two auto margins would split the free space
-   between them and the bar would shift around as labels changed width. Title
-   stays its natural width and the tabs own the single auto margin. */
+/* The brand and controls stay grouped; the switcher has its own grid area. */
 .rpd .wp-head-txt {
    min-width: 0;
    flex: 0 0 auto
@@ -6332,10 +6346,6 @@
    white-space: nowrap
 }
 
-/* margin-left:auto was removed: .wp-tabs owns the single auto margin now, which
-   is what slides BOTH the tabs and these actions to the right of the title.
-   Keeping it here as well split the free space between the two and made the bar
-   jitter. */
 .rpd .wp-head-right {
    display: flex;
    align-items: center;
@@ -6402,42 +6412,17 @@
    cursor: not-allowed
 }
 
-@media(max-width:560px) {
-
-   /* The title's <p> subtitle is gone, so this rule no longer hid anything.
-      What DOES need to collapse on a phone is the section switcher: with the
-      tabs, Live, Register Worker and Refresh all in one row, the bar is far
-      too wide. margin-left:auto is dropped so the tabs sit under the title
-      instead of being pushed off the right edge, and the tabs are allowed to
-      scroll rather than crushing their labels. */
-   .rpd .wp-tabs {
-      margin-left: 0;
-      order: 3;
-      width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch
-   }
-
-   .rpd .wp-tab {
-      flex: 1 0 auto
-   }
-
-   .rpd .wp-refresh {
-      font-size: 0;
-      gap: 0;
-      padding: 0 12px
-   }
+.rpd .wp-head-actions {
+   grid-area: actions;
+   display: flex;
+   align-items: center;
+   justify-content: flex-end;
+   gap: 8px;
+   min-width: 0
 }
 
-/* ── Workshop module sub-tabs (Store / Analytics) ──────────────────────── */
-/* Now that the switcher lives INSIDE .wp-head, it must not draw a second card
-   around itself — a bordered, filled pill floating in another bordered, filled
-   card read as two boxes stacked inside one another. It is now just a segmented
-   control on the header's own surface.
-
-   margin-left:auto is what centres it between the title and the actions: the
-   title block flexes to fill, so the actions get pushed to the far right. */
 .rpd .wp-tabs {
+   grid-area: tabs;
    display: inline-flex;
    gap: 3px;
    background: var(--bg);
@@ -6445,17 +6430,18 @@
    border-radius: 10px;
    padding: 3px;
    width: fit-content;
-   flex: 0 0 auto;
-   margin-left: auto
+   min-width: 0
 }
 
 .rpd .wp-tab {
    display: inline-flex;
    align-items: center;
+   justify-content: center;
    gap: 7px;
-   padding: 8px 18px;
-   border-radius: 8px;
-   font: 700 12.5px var(--sans);
+   min-height: 34px;
+   padding: 7px 14px;
+   border-radius: 7px;
+   font: 700 12px var(--sans);
    color: var(--tx3);
    background: transparent;
    border: none;
@@ -6475,6 +6461,63 @@
 
 .rpd .wp-tab i {
    font-size: 11px
+}
+
+@media(max-width:900px) {
+   .rpd .wp-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+         "brand actions"
+         "tabs tabs";
+      gap: 10px 12px;
+      top: 52px
+   }
+
+   .rpd .wp-tabs {
+      width: 100%;
+      justify-content: stretch
+   }
+
+   .rpd .wp-tab {
+      flex: 1 1 0
+   }
+}
+
+@media(max-width:560px) {
+   .rpd .wp-head {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+         "brand"
+         "tabs"
+         "actions";
+      gap: 10px;
+      padding: 10px 12px
+   }
+
+   .rpd .wp-head-brand {
+      justify-content: space-between
+   }
+
+   .rpd .wp-head-actions {
+      justify-content: space-between;
+      flex-wrap: wrap
+   }
+
+   .rpd .wp-head-actions > .wp-addworker {
+      flex: 1 1 auto;
+      justify-content: center
+   }
+
+   .rpd .wp-head-right {
+      flex: 1 1 auto;
+      justify-content: flex-end
+   }
+
+   .rpd .wp-refresh {
+      font-size: 0;
+      gap: 0;
+      padding: 0 12px
+   }
 }
 
 /* ── Store view ───────────────────────────────────────────────────────── */

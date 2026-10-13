@@ -6,6 +6,7 @@ import {
 } from '../../utils/icons/icons';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
+import ApplyLeave from '../leave/ApplyLeave';
 
 const API_BASE_URL = env.FULL_API_URL;
 
@@ -362,6 +363,8 @@ const css = `
 
 /* ═══ card ═══ */
 #rp-driver .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:12px; }
+#rp-driver .card.pickup-pending{ border-color:rgba(255,138,61,.55);
+  box-shadow:0 0 0 1px rgba(255,138,61,.14), 0 0 20px rgba(255,138,61,.18); }
 #rp-driver .card-bd{ padding:16px 17px; }
 #rp-driver .c-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
 #rp-driver .c-code{ font:700 .9rem var(--mono); letter-spacing:.02em; }
@@ -599,7 +602,7 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
         : <button className="btn teal press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'in_transit')}>Accept Trip →</button>;
 
     return (
-        <article className="card anim-up" style={{ animationDelay: `${i * .05}s` }}>
+        <article className={`card anim-up ${done ? '' : 'pickup-pending'}`} style={{ animationDelay: `${i * .05}s` }}>
             <div className="card-bd">
                 <div className="c-top">
                     <div>
@@ -780,12 +783,14 @@ const DriverPortal = () => {
     const [success, setSuccess] = useState('');
     const [info, setInfo] = useState('');
     const [tab, setTab] = useState('trips');
+    const [showLeaveApplication, setShowLeaveApplication] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [busy, setBusy] = useState(false);
 
     const slug = getTenantSlug();
     const user = getUser();
     const driverName = user?.name || user?.full_name || user?.driver_name || '';
+    const driverId = user?.driver_id || user?.driverId || user?.driver?.driver_id || '';
     const first = driverName ? String(driverName).trim().split(' ')[0] : 'Driver';
 
     const say = useCallback((setter, msg) => {
@@ -808,12 +813,15 @@ const DriverPortal = () => {
 
     const loadP = useCallback(async (silent = false) => {
         if (silent) setRefreshing(true); else setLoadingP(true);
-        // Without a name there is nothing to scope to, and the endpoint
-        // refuses anyway — so skip rather than ask for the whole tenant's log.
-        if (!driverName) { setPickups([]); setLoadingP(false); return; }
+        // The endpoint requires a specific driver identity; never request the
+        // tenant-wide dispatch log for a profile without one.
+        if (!driverId && !driverName) { setPickups([]); setLoadingP(false); return; }
         try {
+            const identity = new URLSearchParams();
+            if (driverId) identity.set('driver_id', String(driverId));
+            if (driverName) identity.set('driver_name', String(driverName));
             const r = await fetch(
-                `${API_BASE_URL}/workshop/store/pickups?driver_name=${encodeURIComponent(driverName)}&t=${Date.now()}`,
+                `${API_BASE_URL}/workshop/store/pickups?${identity.toString()}&t=${Date.now()}`,
                 { headers: getAuthHeaders() }
             );
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -824,7 +832,7 @@ const DriverPortal = () => {
             console.warn('[DriverPortal] Pickups unavailable:', e.message);
             setPickups([]);
         } finally { setLoadingP(false); setRefreshing(false); }
-    }, [driverName]);
+    }, [driverId, driverName]);
 
     const loadL = useCallback(async () => {
         setLoadingL(true);
@@ -1050,7 +1058,12 @@ return (
                     )}
 
                     {tab === 'leaves' && (
-                        loadingL ? <Loading text="Loading leaves…" /> :
+                        showLeaveApplication ? (
+                            <ApplyLeave
+                                onClose={() => setShowLeaveApplication(false)}
+                                onSubmitted={loadL}
+                            />
+                        ) : loadingL ? <Loading text="Loading leaves…" /> :
                             leaves.length === 0 ? (
                                 <Empty
                                     emoji="🗓️"
@@ -1060,7 +1073,7 @@ return (
                                         <button
                                             className="btn teal press"
                                             style={{ flex: '0 0 auto', padding: '11px 20px' }}
-                                            onClick={() => navigate(`/${slug}/leaves/apply`)}
+                                            onClick={() => setShowLeaveApplication(true)}
                                         >
                                             <Plus size={14} strokeWidth={2.5} />&nbsp; Apply for Leave
                                         </button>
@@ -1072,7 +1085,7 @@ return (
                                         <button
                                             className="btn teal press"
                                             style={{ flex: '0 0 auto', padding: '9px 16px', fontSize: '.8rem' }}
-                                            onClick={() => navigate(`/${slug}/leaves/apply`)}
+                                            onClick={() => setShowLeaveApplication(true)}
                                         >
                                             <Plus size={13} strokeWidth={2.5} />&nbsp; Apply for Leave
                                         </button>

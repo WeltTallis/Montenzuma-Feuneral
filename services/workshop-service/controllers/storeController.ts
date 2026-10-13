@@ -641,10 +641,6 @@ const getDriverPickups = async (req: Request, res: Response) => {
 
         const params: any[] = [];
         const conditions: string[] = ["action = 'DISPATCH'"];
-
-        // Match on id when we have one, otherwise fall back to the name. The
-        // portal knows who it is by name; the workshop assigns by id, and a
-        // driver who re-registers keeps working through the name match.
         const driverId = String(req.query.driver_id ?? '').trim();
         const driverName = String(req.query.driver_name ?? '').trim();
         if (driverId) {
@@ -665,7 +661,7 @@ const getDriverPickups = async (req: Request, res: Response) => {
             params.push(status);
         }
 
-        const pickups: any = await safeTenantQuery(
+        let pickups: any = await safeTenantQuery(
             tenantDb,
             `SELECT * FROM store_transactions
              WHERE ${conditions.join(' AND ')}
@@ -673,6 +669,26 @@ const getDriverPickups = async (req: Request, res: Response) => {
              LIMIT 100`,
             params
         );
+
+        // Portal user IDs and the hearse roster's driver IDs are not always the
+        // same. If the roster ID has no assigned dispatches, retry by the exact
+        // stored driver name supplied by the portal.
+        if (!pickups?.length && driverId && driverName) {
+            const nameConditions = ["action = 'DISPATCH'", 'LOWER(TRIM(driver_name)) = LOWER(TRIM(?))'];
+            const nameParams: any[] = [driverName];
+            if (status && ['pending', 'accepted', 'declined'].includes(status)) {
+                nameConditions.push('pickup_status = ?');
+                nameParams.push(status);
+            }
+            pickups = await safeTenantQuery(
+                tenantDb,
+                `SELECT * FROM store_transactions
+                 WHERE ${nameConditions.join(' AND ')}
+                 ORDER BY txn_date DESC, id DESC
+                 LIMIT 100`,
+                nameParams
+            );
+        }
 
         // Only rows that actually name a driver are pickups.
         res.json((pickups || []).filter((p: any) => p.driver_id || p.driver_name));

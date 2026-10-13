@@ -47,9 +47,10 @@ func (a *app) runMonthlyReminderJob(ctx context.Context) {
 		return
 	}
 
-	query := `SELECT policy_number, full_name, phone, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8, tenant_slug, created_at 
-	          FROM insurance_policies 
-	          WHERE status='active' AND is_deleted=false AND phone != ''`
+	query := `SELECT policy_number, full_name, phone, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8, cover_type, created_at
+	          FROM insurance_policies p
+	          WHERE status='active' AND is_deleted=false AND phone != ''
+	            AND (last_payment_reminder_at IS NULL OR last_payment_reminder_at < now() - interval '30 days')`
 
 	rows, err := a.db.Query(ctx, query)
 	if err != nil {
@@ -60,32 +61,50 @@ func (a *app) runMonthlyReminderJob(ctx context.Context) {
 
 	sentCount := 0
 	for rows.Next() {
-		var polNum, name, phone, code, tenantSlug string
+		var polNum, name, phone, code, cover string
 		var premium float64
 		var createdAt time.Time
-		if err := rows.Scan(&polNum, &name, &phone, &code, &premium, &tenantSlug, &createdAt); err != nil {
-			continue
+		if err := rows.Scan(&polNum, &name, &phone, &code, &premium, &cover, &createdAt); err != nil {
+			log.Printf("[CRON ERROR] Failed to read a policy for monthly reminders: %v", err)
+			return
 		}
 
 		cleanPhone := strings.TrimSpace(phone)
 		if cleanPhone == "" {
 			continue
 		}
+		if premium <= 0 {
+			premium = premiumForCover(cover)
+		}
+		snapshot, err := a.paymentSnapshot(ctx, polNum, createdAt, premium)
+		if err != nil {
+			log.Printf("[CRON ERROR] Could not calculate amount due for policy %s: %v", polNum, err)
+			continue
+		}
+		if snapshot.MonthsWithoutPay >= 6 && snapshot.ArrearsAmount > 0 {
+			continue
+		}
 
 		payLink := paymentLinkURL(code)
 		reminderMsg := fmt.Sprintf(
-			"Montenzuma Monalisa Funeral Home: Dear %s, your monthly Amani Cover premium of KES %.0f (Policy No: %s) is due. Pay easily via M-Pesa: %s. We are honored to protect your family's future. For assistance, call 0740045355",
-			name, premium, code, payLink,
+			"Montenzuma Monalisa Funeral Home: Dear %s, your Amani Cover payment of KES %.0f (Policy No: %s) is due, including any unpaid monthly premiums. Pay via M-Pesa: %s. For assistance, call 0740045355",
+			name, snapshot.AmountDue, polNum, payLink,
 		)
 
 		// Dispatch SMS via the unified SMS notifier
 		ok, details := sendSMSNotification(cleanPhone, reminderMsg)
 		if ok {
 			sentCount++
-			log.Printf("[CRON SMS SENT] Policy %s to %s: %s", code, cleanPhone, details)
+			if _, err := a.db.Exec(ctx, `UPDATE insurance_policies SET last_payment_reminder_at=now() WHERE policy_number=$1`, polNum); err != nil {
+				log.Printf("[CRON ERROR] SMS sent but reminder timestamp update failed for %s: %v", polNum, err)
+			}
+			log.Printf("[CRON SMS SENT] Policy %s to %s: %s", polNum, cleanPhone, details)
 		} else {
-			log.Printf("[CRON SMS FAILED] Policy %s to %s: %s", code, cleanPhone, details)
+			log.Printf("[CRON SMS FAILED] Policy %s to %s: %s", polNum, cleanPhone, details)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("[CRON ERROR] Failed while scanning policies for monthly reminders: %v", err)
 	}
 
 	if sentCount > 0 {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,75 @@ import (
 	"time"
 )
 
+type policyPaymentSnapshot struct {
+	PaidTotal        float64
+	LastPaidAt       time.Time
+	MonthsDue        int
+	UnpaidMonths     int
+	MonthsWithoutPay int
+	ArrearsAmount    float64
+	AmountDue        float64
+}
+
+func monthDifference(from, to time.Time) int {
+	return (to.Year()-from.Year())*12 + int(to.Month()-from.Month())
+}
+
+func buildPaymentSnapshot(createdAt, lastPaidAt, now time.Time, premium, paidTotal float64) policyPaymentSnapshot {
+	monthsDue := monthDifference(createdAt, now) + 1
+	if monthsDue < 1 {
+		monthsDue = 1
+	}
+	unpaidMonths := 0
+	if premium > 0 {
+		unpaidMonths = monthsDue - int(paidTotal/premium)
+		if unpaidMonths < 0 {
+			unpaidMonths = 0
+		}
+	}
+	monthsWithoutPay := monthDifference(createdAt, now)
+	if !lastPaidAt.IsZero() {
+		monthsWithoutPay = monthDifference(lastPaidAt, now)
+	}
+	if monthsWithoutPay < 0 {
+		monthsWithoutPay = 0
+	}
+	arrearsAmount := premium*float64(monthsDue) - paidTotal
+	if arrearsAmount < 0 {
+		arrearsAmount = 0
+	}
+	amountDue := arrearsAmount
+	if amountDue < premium {
+		amountDue = premium
+	}
+	return policyPaymentSnapshot{
+		PaidTotal:        paidTotal,
+		LastPaidAt:       lastPaidAt,
+		MonthsDue:        monthsDue,
+		UnpaidMonths:     unpaidMonths,
+		MonthsWithoutPay: monthsWithoutPay,
+		ArrearsAmount:    arrearsAmount,
+		AmountDue:        amountDue,
+	}
+}
+
+func (a *app) paymentSnapshot(ctx context.Context, policyNumber string, createdAt time.Time, premium float64) (policyPaymentSnapshot, error) {
+	var paidTotal float64
+	var lastPaidAt time.Time
+	err := a.db.QueryRow(ctx, `
+		SELECT COALESCE(SUM(amount) FILTER (WHERE status='paid'),0)::float8,
+			COALESCE(MAX(created_at) FILTER (WHERE status='paid'), 'epoch'::timestamptz)
+		FROM insurance_payments
+		WHERE policy_number=$1`, policyNumber).Scan(&paidTotal, &lastPaidAt)
+	if err != nil {
+		return policyPaymentSnapshot{}, err
+	}
+	if lastPaidAt.Equal(time.Unix(0, 0).UTC()) {
+		lastPaidAt = time.Time{}
+	}
+	return buildPaymentSnapshot(createdAt, lastPaidAt, time.Now(), premium, paidTotal), nil
+}
+
 func paymentLinkURL(code string) string {
 	if code == "" {
 		return ""
@@ -22,8 +92,9 @@ func (a *app) getPaymentLink(w http.ResponseWriter, r *http.Request) {
 	var policyNumber, cover, status string
 	var premium float64
 	var count int
+	var createdAt time.Time
 	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
-	err := a.db.QueryRow(r.Context(), `SELECT policy_number,cover_type,status,monthly_premium,covered_count FROM insurance_policies WHERE public_code=$1 AND is_deleted=false`, code).Scan(&policyNumber, &cover, &status, &premium, &count)
+	err := a.db.QueryRow(r.Context(), `SELECT policy_number,cover_type,status,monthly_premium,covered_count,created_at FROM insurance_policies WHERE public_code=$1 AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')`, code, tenant(r)).Scan(&policyNumber, &cover, &status, &premium, &count, &createdAt)
 	if err != nil {
 		write(w, 404, map[string]any{"error": "Payment link not found"})
 		return
@@ -31,7 +102,15 @@ func (a *app) getPaymentLink(w http.ResponseWriter, r *http.Request) {
 	if premium <= 0 {
 		premium = premiumForCover(cover)
 	}
-	write(w, 200, map[string]any{"success": true, "publicCode": code, "policyNumber": policyNumber, "coverType": cover, "status": status, "monthlyPremium": premium, "coveredCount": count})
+	snapshot, err := a.paymentSnapshot(r.Context(), policyNumber, createdAt, premium)
+	if err != nil {
+		write(w, 500, map[string]any{"error": "Could not calculate the amount due"})
+		return
+	}
+	write(w, 200, map[string]any{
+		"success": true, "publicCode": code, "policyNumber": policyNumber, "coverType": cover, "status": status, "monthlyPremium": premium, "coveredCount": count,
+		"amountDue": snapshot.AmountDue, "arrearsAmount": snapshot.ArrearsAmount, "unpaidMonths": snapshot.UnpaidMonths, "monthsWithoutPayment": snapshot.MonthsWithoutPay,
+	})
 }
 func normalizeCover(cover string) string {
 	key := strings.ToLower(strings.TrimSpace(cover))
@@ -81,10 +160,14 @@ func normalizeKenyanPhone(value string) string {
 	}
 	return digits
 }
-/* Reference shown to the payer and stored on the payment:
-   "INS" + 5 letters/digits + HHMM, e.g. INSK7M2Q1930 — the format you asked
-   for. Stays within Daraja's 12-character AccountReference limit while
-   embedding the time so two payments on the same day never collide. */
+
+/*
+Reference shown to the payer and stored on the payment:
+
+	"INS" + 5 letters/digits + HHMM, e.g. INSK7M2Q1930 — the format you asked
+	for. Stays within Daraja's 12-character AccountReference limit while
+	embedding the time so two payments on the same day never collide.
+*/
 func paymentReference() (string, error) {
 	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	buf := make([]byte, 5)
@@ -120,10 +203,11 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	}
 	var premium float64
 	var status, cover, registeredPhone string
+	var createdAt time.Time
 	if publicCode != "" {
-		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone FROM insurance_policies WHERE public_code=$1 AND is_deleted=false`, publicCode).Scan(&policy, &premium, &status, &cover, &registeredPhone)
+		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone,created_at FROM insurance_policies WHERE public_code=$1 AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')`, publicCode, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone, &createdAt)
 	} else {
-		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone FROM insurance_policies WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1) AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared') ORDER BY created_at DESC LIMIT 1`, policy, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone)
+		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone,created_at FROM insurance_policies WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1) AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared') ORDER BY created_at DESC LIMIT 1`, policy, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone, &createdAt)
 	}
 	if e != nil {
 		write(w, 404, map[string]any{"error": "Policy not found"})
@@ -143,7 +227,15 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	if premium <= 0 {
 		premium = premiumForCover(cover)
 	}
-	amount := premium * float64(months)
+	snapshot, e := a.paymentSnapshot(r.Context(), policy, createdAt, premium)
+	if e != nil {
+		write(w, 500, map[string]any{"error": "Could not calculate the amount due"})
+		return
+	}
+	amount := snapshot.ArrearsAmount
+	if prepaidAmount := premium * float64(months); amount < prepaidAmount {
+		amount = prepaidAmount
+	}
 	if amount <= 0 {
 		write(w, 409, map[string]any{"error": "No contribution rate is configured for this policy"})
 		return
@@ -194,6 +286,7 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET merchant_request_id=$1,checkout_request_id=$2,updated_at=now() WHERE reference=$3`, result["MerchantRequestID"], result["CheckoutRequestID"], ref)
 	log.Printf("[STK] sent reference=%s CheckoutRequestID=%v ResponseCode=%v phone=%s", ref, result["CheckoutRequestID"], result["ResponseCode"], phone)
 	result["reference"], result["status"], result["amount"] = ref, "pending", amount
+	result["arrearsAmount"], result["unpaidMonths"] = snapshot.ArrearsAmount, snapshot.UnpaidMonths
 	write(w, 200, result)
 }
 func (a *app) paymentCallback(w http.ResponseWriter, r *http.Request) {

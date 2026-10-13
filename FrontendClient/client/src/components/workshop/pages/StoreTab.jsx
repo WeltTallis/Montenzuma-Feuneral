@@ -72,22 +72,29 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
   const [loading, setLoading] = useState(false);
   const [previewDispatchId, setPreviewDispatchId] = useState('');
 
-  /* Drivers live in the hearse service's operations DB, so they are fetched
-     over the gateway rather than from the workshop service. The list is only
-     used to populate the driver picker on the dispatch modal. A failure here
-     must NOT block dispatching — the operator can still type a name. */
+  /* Drivers live in the hearse service's operations DB, so fetch its roster
+     through the gateway and persist the selected driver's ID with the dispatch. */
   const [drivers, setDrivers] = useState([]);
+  const [driversLoading, setDriversLoading] = useState(false);
+  const [driversError, setDriversError] = useState('');
 
   const loadDrivers = useCallback(async () => {
+    setDriversLoading(true);
+    setDriversError('');
     try {
       const r = await api.get('/all-drivers');
       const list = r?.data?.drivers || [];
-      setDrivers(list.map(d => ({
+      const normalized = list.map(d => ({
         id: String(d.driver_id ?? d.id ?? ''),
         name: d.driver_name || d.full_name || '',
-      })).filter(d => d.id && d.name));
+      })).filter(d => d.id && d.name);
+      setDrivers(normalized);
+      if (!normalized.length) setDriversError('No registered drivers were found. Add a driver before dispatching a coffin.');
     } catch (e) {
-      console.warn('[StoreTab] Could not load driver list:', e?.message);
+      setDrivers([]);
+      setDriversError(e?.response?.data?.message || e?.message || 'Could not load the driver list.');
+    } finally {
+      setDriversLoading(false);
     }
   }, []);
 
@@ -300,6 +307,7 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
     if (!dispatchForm.dispatchedBy.trim()) errors.push('Enter dispatched by name');
 
     if (!dispatchForm.destination.trim()) errors.push('Enter destination');
+    if (!dispatchForm.driverId || !drivers.some(d => d.id === dispatchForm.driverId)) errors.push('Select a registered driver');
 
 
 
@@ -323,13 +331,12 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
         const item = items.find(it => it.key === cartItem.key);
 
-        if (!item) return { success: false, name: cartItem.name };
+        if (!item) return { success: false, key: cartItem.key, name: cartItem.name };
 
         const q = cartItem.qty || 1;
+        if (q > effQty(item)) return { success: false, key: item.key, name: item.name, error: 'Not enough stock' };
 
-        if (q > effQty(item)) return { success: false, name: item.name, error: 'Not enough stock' };
-
-        await workshopService.dispatchStoreItem({
+        const response = await workshopService.dispatchStoreItem({
 
           item_key: item.key,
 
@@ -361,7 +368,10 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
         });
 
-        return { success: true, name: item.name, qty: q };
+        if (!response?.success) {
+          return { success: false, key: item.key, name: item.name, error: response?.error || 'Dispatch request failed' };
+        }
+        return { success: true, key: item.key, name: item.name, qty: q };
 
       }));
 
@@ -370,18 +380,13 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
       const failed = results.filter(r => !r.success);
 
       if (failed.length > 0) {
-
-        addToast('Dispatch failed for: ' + failed.map(f => f.name).join(', '), 'error');
-
+        addToast('Dispatch failed for: ' + failed.map(f => `${f.name}${f.error ? ` (${f.error})` : ''}`).join(', '), 'error');
+        setDispatchCart(cart => cart.filter(item => failed.some(f => f.key === item.key)));
       } else {
-
         addToast('Successfully dispatched ' + dispatchCart.length + ' coffin(s) · ' + cartTotalUnits + ' units', 'success');
-
+        setShowDispatchModal(false);
+        setDispatchCart([]);
       }
-
-      setShowDispatchModal(false);
-
-      setDispatchCart([]);
 
       loadStore();
 
@@ -896,20 +901,28 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
                     </div>
                     <div>
                       <label style={labelS}>Driver</label>
-                      {drivers.length > 0 ? (
-                        <select
-                          value={dispatchForm.driverId}
-                          onChange={(e) => {
-                            const picked = drivers.find(d => d.id === e.target.value);
-                            setDispatchForm(f => ({ ...f, driverId: e.target.value, driver: picked ? picked.name : '' }));
-                          }}
-                          style={inputS}
-                        >
-                          <option value="">Select a driver…</option>
-                          {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
-                      ) : (
-                        <input value={dispatchForm.driver} onChange={setDF('driver')} style={inputS} placeholder="Driver Name" />
+                      <select
+                        value={dispatchForm.driverId}
+                        onChange={(e) => {
+                          const picked = drivers.find(d => d.id === e.target.value);
+                          setDispatchForm(f => ({ ...f, driverId: e.target.value, driver: picked ? picked.name : '' }));
+                        }}
+                        style={inputS}
+                        disabled={driversLoading || drivers.length === 0}
+                      >
+                        <option value="">
+                          {driversLoading ? 'Loading drivers…' : drivers.length ? 'Select a driver…' : 'No drivers available'}
+                        </option>
+                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                      {driversError && (
+                        <div role="alert" style={{ color: T.danger, fontSize: 12, marginTop: 5 }}>
+                          {driversError}{drivers.length === 0 && (
+                            <button type="button" onClick={loadDrivers} disabled={driversLoading} style={{ marginLeft: 8, color: T.primary, background: 'none', border: 0, cursor: 'pointer', textDecoration: 'underline' }}>
+                              {driversLoading ? 'Loading…' : 'Retry'}
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
@@ -924,7 +937,7 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
                     <button onClick={() => setDispatchStep(1)} style={primaryBtn(T.bg, T.textSec)}><i className="fas fa-arrow-left" style={{ fontSize: 11, marginRight: 6 }} />Back</button>
-                    <button onClick={submitAviationDispatch} disabled={loading} style={{ ...primaryBtn(T.danger, '#fff'), opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                    <button onClick={submitAviationDispatch} disabled={loading || driversLoading || drivers.length === 0 || !dispatchForm.driverId} style={{ ...primaryBtn(T.danger, '#fff'), opacity: loading || driversLoading || drivers.length === 0 || !dispatchForm.driverId ? 0.5 : 1, cursor: loading || driversLoading || drivers.length === 0 || !dispatchForm.driverId ? 'not-allowed' : 'pointer' }}>
                       <i className="fas fa-truck-fast" style={{ fontSize: 12 }} /> {loading ? 'Dispatching...' : 'Confirm & Dispatch'}
                     </button>
                   </div>

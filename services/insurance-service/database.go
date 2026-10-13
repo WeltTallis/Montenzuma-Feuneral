@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS insurance_policies (
 
 
 ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS public_code TEXT;
+ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS last_payment_reminder_at TIMESTAMPTZ;
 UPDATE insurance_policies SET public_code='PC-' || LPAD(policy_id::text,5,'0') WHERE public_code IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS insurance_policies_public_code_idx ON insurance_policies(public_code);
 CREATE TABLE IF NOT EXISTS insurance_policy_members (

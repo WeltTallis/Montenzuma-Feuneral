@@ -743,6 +743,12 @@
   line-height: 1.16;
 }
 
+.amani-cover main .amani-appform .af-section-title,
+.amani-cover main .amani-claimform .section-title {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
 .amani-cover main p {
   text-wrap: pretty;
 }
@@ -935,6 +941,12 @@
   background:
     radial-gradient(circle at 96% 5%, rgb(142 216 230 / 20%), transparent 25%),
     var(--ac-primary);
+}
+
+@media (max-width: 639px) {
+  .amani-cover .amani-claim-card {
+    border-radius: 0;
+  }
 }
 
 .amani-cover .amani-claim-card a {

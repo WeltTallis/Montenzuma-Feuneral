@@ -16,17 +16,6 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-// Major Kenyan Funeral Homes
-const FUNERAL_HOMES = [
-  { id: 'lee', name: 'Lee Funeral Home, Nairobi', lat: -1.2954, lng: 36.8078 },
-  { id: 'chiromo', name: 'Chiromo Funeral Parlour', lat: -1.2758, lng: 36.8066 },
-  { id: 'ku', name: 'K.U. Funeral Home, Kiambu', lat: -1.1824, lng: 36.9272 },
-  { id: 'umash-nrb', name: 'Umash Funeral Home, Nairobi', lat: -1.2921, lng: 36.8041 },
-  { id: 'umash-nkr', name: 'Umash Funeral Home, Nakuru', lat: -0.2833, lng: 36.0667 },
-  { id: 'jocham', name: 'Jocham Mortuary, Mombasa', lat: -4.0416, lng: 39.6706 },
-  { id: 'eldoret', name: 'Moi Teaching Mortuary, Eldoret', lat: 0.5204, lng: 35.2863 }
-];
-
 const QUICK_LOCATIONS = [
   { name: 'Nakuru', lat: -0.3031, lng: 36.0800 },
   { name: 'Eldoret', lat: 0.5143, lng: 35.2698 },
@@ -84,11 +73,6 @@ const Input = styled.input`
   &:focus { outline: none; border-color: #4fc3f7; }
 `;
 
-const Select = styled.select`
-  flex: 1; height: 40px; background: #1a1a1a; border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px; padding: 0 12px; color: #fff; font-size: 14px;
-`;
-
 const Button = styled.button`
   height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 700; font-size: 13px;
   cursor: pointer; border: none; white-space: nowrap; transition: 0.15s;
@@ -138,7 +122,8 @@ const EditHighlight = styled.div`
 `;
 
 function AdvancedHearseRouter({ onClose }) {
-  const [origin, setOrigin] = useState(FUNERAL_HOMES[0]);
+  const [origin, setOrigin] = useState(null);
+  const [locationState, setLocationState] = useState('detecting');
   const [destinationStr, setDestinationStr] = useState('');
   const [destName, setDestName] = useState('');
   const [destCoords, setDestCoords] = useState(null);
@@ -158,64 +143,117 @@ function AdvancedHearseRouter({ onClose }) {
   const polylineLayer = useRef(null);
   const markersGroup = useRef(null);
 
+  const detectDeviceLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationState('unsupported');
+      setOrigin(null);
+      return;
+    }
+    setLocationState('detecting');
+    setOrigin(null);
+    setDestCoords(null);
+    setOneWayKm(0);
+    setTimeMin(0);
+    if (leafletInstance.current && markersGroup.current) markersGroup.current.clearLayers();
+    if (leafletInstance.current && polylineLayer.current) {
+      leafletInstance.current.removeLayer(polylineLayer.current);
+      polylineLayer.current = null;
+    }
+    try {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const deviceOrigin = {
+            name: 'Device location',
+            lat: coords.latitude,
+            lng: coords.longitude,
+          };
+          setOrigin(deviceOrigin);
+          setLocationState('ready');
+          if (leafletInstance.current && window.L) {
+            markersGroup.current.clearLayers();
+            window.L.marker([deviceOrigin.lat, deviceOrigin.lng])
+              .addTo(markersGroup.current)
+              .bindPopup('<b>Device location</b><br/>Origin');
+            leafletInstance.current.setView([deviceOrigin.lat, deviceOrigin.lng], 12);
+          }
+        },
+        (error) => {
+          setOrigin(null);
+          setLocationState(error.code === error.PERMISSION_DENIED ? 'denied' : 'unavailable');
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+      );
+    } catch {
+      setOrigin(null);
+      setLocationState('unavailable');
+    }
+  };
+
   useEffect(() => {
-    if (!mapRef.current) return;
-    const loadLeaflet = async () => {
-      if (!window.L) {
-        await new Promise((res) => {
-          const script = document.createElement('script'); script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-          script.onload = res; document.body.appendChild(script);
-        });
-      }
-      if (!leafletInstance.current && window.L) {
-        const L = window.L;
-        const map = L.map(mapRef.current).setView([origin.lat, origin.lng], 10);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
-        markersGroup.current = L.layerGroup().addTo(map);
-        leafletInstance.current = map;
-        updateOriginMarker(origin);
-      }
-    };
-    loadLeaflet();
+    detectDeviceLocation();
   }, []);
 
-  const updateOriginMarker = (home) => {
-    if (!leafletInstance.current || !window.L) return;
-    markersGroup.current.clearLayers();
-    if (polylineLayer.current) leafletInstance.current.removeLayer(polylineLayer.current);
-    window.L.marker([home.lat, home.lng]).addTo(markersGroup.current).bindPopup(`<b>${home.name}</b><br/>Origin`).openPopup();
-    leafletInstance.current.setView([home.lat, home.lng], 12);
-    setDestCoords(null); setOneWayKm(0);
-  };
-
-  const handleOriginChange = (e) => {
-    const selected = FUNERAL_HOMES.find(h => h.id === e.target.value);
-    setOrigin(selected); updateOriginMarker(selected);
-  };
+  useEffect(() => {
+    if (!mapRef.current) return undefined;
+    let cancelled = false;
+    const loadLeaflet = async () => {
+      if (!window.L) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Map library could not be loaded'));
+          document.body.appendChild(script);
+        });
+      }
+      if (cancelled || leafletInstance.current || !window.L) return;
+      const map = window.L.map(mapRef.current).setView([-1.2864, 36.8172], 6);
+      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+      markersGroup.current = window.L.layerGroup().addTo(map);
+      leafletInstance.current = map;
+      if (origin) {
+        window.L.marker([origin.lat, origin.lng])
+          .addTo(markersGroup.current)
+          .bindPopup('<b>Device location</b><br/>Origin');
+        map.setView([origin.lat, origin.lng], 12);
+      }
+    };
+    loadLeaflet().catch((error) => notify.error('Map unavailable', error.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [origin]);
 
   const calculateRouteOSRM = async (lat, lng, name) => {
-    setLoading(true); setDestName(name); setDestCoords({ lat, lng });
+    if (!origin) {
+      notify.warning('Location required', 'Allow location access to calculate the route from this device.');
+      return;
+    }
+    setLoading(true);
     try {
       const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${lng},${lat}?overview=full&geometries=geojson`);
       const data = await res.json();
-      if (data.routes && data.routes[0]) {
-        const route = data.routes[0];
-        setOneWayKm(Number((route.distance / 1000).toFixed(1)));
-        setTimeMin(Math.round(route.duration / 60));
-
-        if (leafletInstance.current && window.L) {
-          const L = window.L; const map = leafletInstance.current;
-          if (polylineLayer.current) map.removeLayer(polylineLayer.current);
-          markersGroup.current.clearLayers();
-          L.marker([origin.lat, origin.lng]).addTo(markersGroup.current);
-          L.marker([lat, lng]).addTo(markersGroup.current).bindPopup(`<b>${name}</b>`).openPopup();
-          const routeCoords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
-          polylineLayer.current = L.polyline(routeCoords, { color: '#4fc3f7', weight: 5, opacity: 0.8 }).addTo(map);
-          map.fitBounds(polylineLayer.current.getBounds(), { padding: [40, 40] });
-        }
+      if (!res.ok || data.code !== 'Ok' || !data.routes?.[0]) {
+        throw new Error(data.message || 'No driving route was found for these locations.');
       }
-    } catch {
-      notify.error('Routing failed', 'We could not calculate a route. Please try again.');
+      const route = data.routes[0];
+      setDestName(name);
+      setDestCoords({ lat, lng });
+      setOneWayKm(Number((route.distance / 1000).toFixed(1)));
+      setTimeMin(Math.round(route.duration / 60));
+
+      if (leafletInstance.current && window.L) {
+        const L = window.L; const map = leafletInstance.current;
+        if (polylineLayer.current) map.removeLayer(polylineLayer.current);
+        markersGroup.current.clearLayers();
+        L.marker([origin.lat, origin.lng]).addTo(markersGroup.current).bindPopup('<b>Device location</b><br/>Origin');
+        L.marker([lat, lng]).addTo(markersGroup.current).bindPopup(`<b>${name}</b>`).openPopup();
+        const routeCoords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
+        polylineLayer.current = L.polyline(routeCoords, { color: '#4fc3f7', weight: 5, opacity: 0.8 }).addTo(map);
+        map.fitBounds(polylineLayer.current.getBounds(), { padding: [40, 40] });
+      }
+    } catch (error) {
+      notify.error('Routing failed', error.message || 'We could not calculate a route. Please try again.');
     } finally { setLoading(false); }
   };
 
@@ -226,7 +264,7 @@ function AdvancedHearseRouter({ onClose }) {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destinationStr + ', Kenya')}&countrycodes=ke&limit=1`);
       const data = await res.json();
       if (data && data.length > 0) {
-        calculateRouteOSRM(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name.split(',')[0]);
+        await calculateRouteOSRM(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name.split(',')[0]);
       } else { notify.warning('Location not found', 'No matching place was found for that search.'); }
     } catch { notify.error('Search failed', 'We could not search for that location right now.'); }
     finally { setLoading(false); }
@@ -264,19 +302,34 @@ function AdvancedHearseRouter({ onClose }) {
 
           <SidePanel>
             <Section>
-              <Label>1. Origin (Funeral Home)</Label>
-              <Select value={origin.id} onChange={handleOriginChange} style={{ width: '100%', marginBottom: 12 }}>
-                {FUNERAL_HOMES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-              </Select>
+              <Label>1. Your current location</Label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+                <span role="status" style={{ color: locationState === 'ready' ? '#a7f3d0' : '#aaa', fontSize: 13 }}>
+                  {locationState === 'ready' && origin
+                    ? 'Device location detected'
+                    : locationState === 'detecting'
+                      ? 'Detecting device location…'
+                      : locationState === 'denied'
+                        ? 'Location permission was denied'
+                        : locationState === 'unsupported'
+                          ? 'Location is not supported by this browser'
+                          : 'Could not detect device location'}
+                </span>
+                {locationState !== 'ready' && (
+                  <Button $variant="outline" onClick={detectDeviceLocation} disabled={locationState === 'detecting'}>
+                    {locationState === 'detecting' ? 'Detecting…' : 'Try again'}
+                  </Button>
+                )}
+              </div>
 
               <Label>2. Destination Search</Label>
               <Row>
-                <Input placeholder="e.g. Nakuru, Eldoret..." value={destinationStr} onChange={e => setDestinationStr(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-                <Button onClick={handleSearch} disabled={loading}>{loading ? '...' : 'Find'}</Button>
+                <Input placeholder="e.g. Nakuru, Eldoret..." value={destinationStr} onChange={e => setDestinationStr(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} disabled={!origin || loading} />
+                <Button onClick={handleSearch} disabled={loading || !origin || !destinationStr.trim()}>{loading ? '...' : 'Find'}</Button>
               </Row>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {QUICK_LOCATIONS.map(loc => (
-                  <button key={loc.name} onClick={() => { setDestinationStr(loc.name); calculateRouteOSRM(loc.lat, loc.lng, loc.name); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', padding: '4px 10px', borderRadius: 12, fontSize: 11, cursor: 'pointer' }}>{loc.name}</button>
+                  <button key={loc.name} disabled={!origin || loading} onClick={() => { setDestinationStr(loc.name); calculateRouteOSRM(loc.lat, loc.lng, loc.name); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', padding: '4px 10px', borderRadius: 12, fontSize: 11, cursor: origin && !loading ? 'pointer' : 'not-allowed' }}>{loc.name}</button>
                 ))}
               </div>
             </Section>
@@ -298,7 +351,7 @@ function AdvancedHearseRouter({ onClose }) {
             </Section>
 
             <Section style={{ flex: 1, border: 'none', background: '#0a0a0a' }}>
-              {!destCoords && !loading && <div style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>Search a destination to display distances.</div>}
+              {!destCoords && !loading && <div style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>{origin ? 'Search a destination to display distances.' : 'Allow device location to calculate a route.'}</div>}
               {loading && <div style={{ color: '#4fc3f7', textAlign: 'center', marginTop: 20 }}>Plotting route...</div>}
               
               {destCoords && !loading && (

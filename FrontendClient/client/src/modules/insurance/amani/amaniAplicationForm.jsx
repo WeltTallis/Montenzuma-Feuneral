@@ -577,7 +577,7 @@ export default function AmaniApplicationForm() {
     .af-hdr-welcome {
       margin: 0 0 0.35rem;
       font-family: ${AF.serif};
-      font-size: clamp(1.6rem, 3.8vw, 2.4rem);
+      font-size: clamp(1.35rem, 3vw, 2rem);
       font-weight: 700; line-height: 1.12; letter-spacing: -0.03em;
       color: #fff;
     }
@@ -606,7 +606,7 @@ export default function AmaniApplicationForm() {
       font-size: 0.82rem; font-weight: 700;
     }
     .af-section-title {
-      margin: 0; font-family: ${AF.serif}; font-size: 1.25rem; font-weight: 700;
+      margin: 0; font-family: ${AF.serif}; font-size: 1.05rem; font-weight: 700;
       letter-spacing: -0.02em; color: ${AF.navy};
     }
 
@@ -913,7 +913,7 @@ export default function AmaniApplicationForm() {
     }
 
     @media (max-width: 600px) {
-      .amani-appform { border-radius: 20px; }
+      .amani-appform { border-radius: 0; }
       .af-doc-header { padding: 1.75rem var(--af-gutter-mobile) 1.6rem; gap: 1.1rem; }
       .af-form-body { padding: 1.75rem var(--af-gutter-mobile) 1.5rem; }
       .af-hdr-right { align-items: flex-start; width: 100%; }
@@ -989,9 +989,9 @@ export default function AmaniApplicationForm() {
                 Welcome to Amani Cover. Your insurance application has been registered, and an instant confirmation SMS has been dispatched to your phone.
               </p>
 
-              {(applicationResult?.publicCode || applicationResult?.policyNumber) && (
+              {applicationResult?.policyNumber && (
                 <div className="af-done-policy-badge">
-                  Policy Number: <strong>{applicationResult.publicCode || applicationResult.policyNumber}</strong>
+                  Policy Number: <strong>{applicationResult.policyNumber}</strong>
                 </div>
               )}
 

@@ -925,7 +925,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           </aside>
         ) : null}
 
-        <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}${isBoardPeriod ? " schedule-mode" : ""}`}>
+        <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}${isBoardPeriod ? " schedule-mode" : ""}${isWorkshop ? " workshop-mode" : ""}`}>
           {isWorkshop ? (
             <WorkshopPanel onExit={() => onModule("operations")} />
           ) : loading && !cases.length ? (

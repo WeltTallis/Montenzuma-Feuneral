@@ -310,6 +310,9 @@ export default function AmaniPayPortal({ showTopbar = true }) {
           monthlyPremium: result.monthlyPremium,
           coverStatus: result.status,
           coveredCount: result.coveredCount,
+          arrearsAmount: result.arrearsAmount,
+          unpaidMonths: result.unpaidMonths,
+          monthsWithoutPayment: result.monthsWithoutPayment,
         });
         setIdNumber(result.policyNumber || '');
         setStatus('plan');
@@ -333,7 +336,8 @@ export default function AmaniPayPortal({ showTopbar = true }) {
   const plan = planFor(policy?.coverType);
   const monthsCovered = FREQUENCIES.find((f) => f.value === frequency)?.months || 1;
   const monthlyRate = Number(policy?.monthlyPremium) || plan.monthly;
-  const dueNow = monthlyRate * monthsCovered;
+  const arrearsAmount = Number(policy?.arrearsAmount) || 0;
+  const dueNow = Math.max(arrearsAmount, monthlyRate * monthsCovered);
 
   const coverStatus = String(policy?.coverStatus || '').toLowerCase();
   const applicationPending = coverStatus === 'pending';
@@ -360,6 +364,10 @@ export default function AmaniPayPortal({ showTopbar = true }) {
           coverType: result.coverType,
           coverStatus: result.status,
           coveredCount: result.coveredCount,
+          monthlyPremium: result.monthlyPremium,
+          arrearsAmount: result.arrearsAmount,
+          unpaidMonths: result.unpaidMonths,
+          monthsWithoutPayment: result.monthsWithoutPayment,
         });
         setStatus('plan');
       } else {
@@ -641,7 +649,7 @@ export default function AmaniPayPortal({ showTopbar = true }) {
                           />
                           <span className="freq-option__label">{option.label}</span>
                           <span className="freq-option__hint">{option.hint}</span>
-                          <span className="freq-option__amount">KES {formatKes(monthlyRate * option.months)}</span>
+                          <span className="freq-option__amount">KES {formatKes(Math.max(arrearsAmount, monthlyRate * option.months))}</span>
                         </label>
                       ))}
                     </div>
@@ -765,6 +773,7 @@ export default function AmaniPayPortal({ showTopbar = true }) {
                 {memberRef && <div className="portal-summary__row"><span>Member ID</span><strong>•••• {memberRef}</strong></div>}
                 <div className="portal-summary__row"><span>People covered</span><strong>{policy.coveredCount || 1}</strong></div>
                 <div className="portal-summary__row"><span>Monthly rate</span><strong>{formatPlanAmount(policy.coverType, monthlyRate)}</strong></div>
+                {arrearsAmount > 0 && <div className="portal-summary__row"><span>Past-due balance</span><strong>{formatPlanAmount(policy.coverType, arrearsAmount)}</strong></div>}
                 <div className="portal-summary__row"><span>Payment period</span><strong>{monthsCovered > 1 ? `${monthsCovered} months` : 'Monthly'}</strong></div>
               </div>
 

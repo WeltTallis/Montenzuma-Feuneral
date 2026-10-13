@@ -304,7 +304,7 @@ const ClaimSubmissionForm = () => {
       --gutter: 56px;
       --gutter-tablet: 36px;
       --gutter-mobile: 18px;
-      width: calc(100% - 2rem);
+      width: 100%;
       max-width: 1120px;
       margin: 2rem auto;
       overflow: hidden;
@@ -786,6 +786,7 @@ const ClaimSubmissionForm = () => {
       .checklist-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
+      :scope { margin: 0; border-radius: 0; border-left: 0; border-right: 0; }
       .container { border-radius: 0; border-left: 0; border-right: 0; }
       .doc-header, .form-body, .record-strip, .form-intro { padding-left: var(--gutter-mobile); padding-right: var(--gutter-mobile); }
       .hdr-right { width: 100%; justify-content: space-between; }
@@ -821,7 +822,7 @@ const ClaimSubmissionForm = () => {
       margin-bottom: 0.75rem;
       color: #fff;
       font-family: 'Merriweather', Georgia, serif;
-      font-size: clamp(1.75rem, 3.2vw, 2.4rem);
+      font-size: clamp(1.35rem, 3vw, 1.95rem);
       font-weight: 700;
       letter-spacing: -0.03em;
     }

@@ -82,15 +82,20 @@ export default function InsuranceDashboard() {
       alert('No active members to send reminders to.');
       return;
     }
-    if (!window.confirm(`Send monthly payment links via SMS to ${active.length} active member(s)?`)) {
+    const eligible = active.filter(m => !m.remindersPaused);
+    if (!eligible.length) {
+      alert('All active members are paused from payment reminders after six months without payment.');
+      return;
+    }
+    if (!window.confirm(`Send monthly payment links via SMS to ${eligible.length} eligible member(s)?`)) {
       return;
     }
     setMonthlyBatchSending(true);
     try {
       const res = await insuranceApi.sendMonthlyReminders({
-        policyNumbers: active.map(m => m.policyNumber),
+        policyNumbers: eligible.map(m => m.policyNumber),
       });
-      alert(`Success! Sent monthly payment link reminders to ${res?.sentCount ?? active.length} member(s).`);
+      alert(`Sent ${res?.sentCount ?? eligible.length} reminder(s). ${res?.suppressedCount || 0} long-term defaulter(s) were suppressed.`);
     } catch (err) {
       alert('Could not send batch reminders: ' + (err?.message || 'Error'));
     } finally {
@@ -104,8 +109,15 @@ export default function InsuranceDashboard() {
       const [policyRes, statsRes, claimRes, analyticsRes] = await Promise.all([
         insuranceApi.listPolicies(), insuranceApi.getStats(), insuranceApi.listClaims(), insuranceApi.getAnalytics()
       ]);
-      setMembers(rows(policyRes));
-      setStats({ ...unwrap(statsRes), ...unwrap(analyticsRes) });
+      const analytics = unwrap(analyticsRes) || {};
+      const defaulterMap = new Map((analytics.defaulters || []).map(member => [member.policyNumber, member]));
+      setMembers(rows(policyRes).map(member => {
+        const defaulter = defaulterMap.get(member.policyNumber);
+        return defaulter
+          ? { ...member, ...defaulter, remindersPaused: true }
+          : { ...member, remindersPaused: false };
+      }));
+      setStats({ ...unwrap(statsRes), ...analytics });
       setClaims(rows(claimRes));
       try {
         const payRes = await insuranceApi.listPayments({ limit: 100 });
@@ -135,7 +147,9 @@ export default function InsuranceDashboard() {
   const paidTotal = Number(stats?.totalContributions || stats?.paidContributions || 0);
   const activeCount = members.filter(p => String(p.status).toLowerCase() === 'active').length;
   const pendingCount = Number(stats?.pendingClaims ?? claims.filter(c => ['submitted', 'under_review'].includes(String(c.status).toLowerCase())).length);
-  const defaulterCount = members.filter(p => ['lapsed', 'defaulter'].includes(String(p.status).toLowerCase())).length;
+  const defaulterCount = Number(stats?.longTermDefaulters ?? members.filter(p => ['lapsed', 'defaulter'].includes(String(p.status).toLowerCase())).length);
+  const stkMetrics = stats?.stkPushMetrics || {};
+  const longTermDefaulters = Array.isArray(stats?.defaulters) ? stats.defaulters : [];
 
   // --- Handlers ---
   const openProfile = (record, type) => {
@@ -478,9 +492,10 @@ export default function InsuranceDashboard() {
                             className="btn"
                             style={{ padding: '3px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                             onClick={(e) => { e.stopPropagation(); handleSendMonthlyPaymentLink(m); }}
-                            title="Send Monthly Payment Link via SMS"
+                            disabled={m.remindersPaused}
+                            title={m.remindersPaused ? 'Payment reminders are paused after six months without payment' : 'Send Monthly Payment Link via SMS'}
                           >
-                            <span>📱</span> SMS Link
+                            <span>📱</span> {m.remindersPaused ? 'Paused' : 'SMS Link'}
                           </button>
                         </td>
                       </tr>
@@ -567,6 +582,38 @@ export default function InsuranceDashboard() {
                   <div className="kpi-card"><span className="kpi-label">Total Members</span><span className="kpi-value">{members.length}</span></div>
                   <div className="kpi-card"><span className="kpi-label">Claims Filed</span><span className="kpi-value">{claims.length}</span></div>
                   <div className="kpi-card"><span className="kpi-label">Active Rate</span><span className="kpi-value">{members.length ? Math.round((activeCount / members.length) * 100) : 0}%</span></div>
+                </div>
+                <div className="card" style={{ marginBottom: '24px' }}>
+                  <div className="card-header"><h3>M-Pesa STK Push — Last 6 Months</h3></div>
+                  <div className="kpi-grid" style={{ padding: '20px', marginBottom: 0 }}>
+                    <div className="kpi-card"><span className="kpi-label">Push Attempts</span><span className="kpi-value">{Number(stkMetrics.attempts || 0).toLocaleString()}</span></div>
+                    <div className="kpi-card"><span className="kpi-label">Successful</span><span className="kpi-value">{Number(stkMetrics.successful || 0).toLocaleString()}</span><span className="kpi-sub up">{Number(stkMetrics.successRate || 0).toFixed(1)}% of completed attempts</span></div>
+                    <div className="kpi-card"><span className="kpi-label">Failed</span><span className="kpi-value">{Number(stkMetrics.failed || 0).toLocaleString()}</span><span className="kpi-sub down">{Number(stkMetrics.failureRate || 0).toFixed(1)}% of completed attempts</span></div>
+                    <div className="kpi-card"><span className="kpi-label">Awaiting Result</span><span className="kpi-value">{Number(stkMetrics.pending || 0).toLocaleString()}</span></div>
+                  </div>
+                </div>
+                <div className="card" style={{ marginBottom: '24px' }}>
+                  <div className="card-header">
+                    <h3>Long-term Defaulters — 6+ Months ({longTermDefaulters.length})</h3>
+                    <span style={{ color: 'var(--gray)', fontSize: '12px' }}>Payment reminder SMS paused</span>
+                  </div>
+                  <div className="table-wrap"><table><thead><tr><th>Member</th><th>Policy</th><th>Phone</th><th>Monthly Premium</th><th>Unpaid Months</th><th>Amount Owed</th><th>Last Paid</th></tr></thead><tbody>
+                    {longTermDefaulters.map(member => (
+                      <tr key={member.policyNumber} onClick={() => {
+                        const record = members.find(item => item.policyNumber === member.policyNumber);
+                        if (record) openProfile(record, 'member');
+                      }}>
+                        <td><b>{member.name || '—'}</b></td>
+                        <td>{member.policyNumber || '—'}</td>
+                        <td>{member.phone || '—'}</td>
+                        <td>{money(member.monthlyPremium)}</td>
+                        <td>{member.unpaidMonths} months</td>
+                        <td>{money(member.arrearsAmount)}</td>
+                        <td>{member.lastPaidAt ? dateText(member.lastPaidAt) : 'Never'}</td>
+                      </tr>
+                    ))}
+                    {!longTermDefaulters.length && <tr><td colSpan="7" className="empty-state">No active policy has gone six months without a successful payment.</td></tr>}
+                  </tbody></table></div>
                 </div>
                 <div className="grid-2-eq">
                   <div className="card"><div className="card-header"><h3>Premium Trend (6 months)</h3></div><div style={{padding:'24px',height:'320px',position:'relative'}}>{trendData.labels.length > 0 ? <Line data={trendData} options={{responsive:true,maintainAspectRatio:false}} /> : <div className="empty-state">No data</div>}</div></div>

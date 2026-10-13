@@ -783,8 +783,9 @@ function RangeStripBar({ range, onClear }) {
 
 /* ═══════════════════════ MAIN ═══════════════════════ */
 
-const ApplyLeave = () => {
+const ApplyLeave = ({ onClose, onSubmitted }) => {
   const navigate = useNavigate();
+  const close = () => (onClose ? onClose() : navigate(-1));
 
   const userId = getUserId();
   const userName = (() => {
@@ -952,6 +953,7 @@ const ApplyLeave = () => {
         });
       }
       await loadData();
+      if (onSubmitted) await onSubmitted();
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to submit leave request';
       setBanner({ type: 'error', msg });
@@ -1017,7 +1019,7 @@ const ApplyLeave = () => {
             <Title>Apply for Leave</Title>
             <Subtitle>Hi <b>{userName}</b> — pick your dates on the calendar, add the details, submit.</Subtitle>
           </div>
-          <BackBtn onClick={() => navigate(-1)}><Ic n="chevL" s={14} /> Back</BackBtn>
+          <BackBtn onClick={close}><Ic n="chevL" s={14} /> Back</BackBtn>
         </Header>
 
         {banner && (
@@ -1152,7 +1154,7 @@ const ApplyLeave = () => {
               </FormGrid>
 
               <Actions>
-                <Btn className="secondary" type="button" onClick={() => { notify.info('Cancelled', 'Nothing was submitted.'); navigate(-1); }}>
+                <Btn className="secondary" type="button" onClick={() => { notify.info('Cancelled', 'Nothing was submitted.'); close(); }}>
                   Cancel
                 </Btn>
                 {/* Only disabled while submitting: a permanently-disabled button
