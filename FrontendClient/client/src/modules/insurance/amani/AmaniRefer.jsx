@@ -34,7 +34,7 @@ export default function AmaniRefer() {
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start lg:gap-16">
           {/* Left: what happens after they send the name. */}
           <div>
-            <div className="rounded-[2rem] bg-ac-primary p-8 text-ac-onprimary sm:p-10">
+            <div className="amani-claim-card rounded-2xl bg-ac-primary p-8 text-ac-onprimary sm:p-10">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="font-serif text-2xl">How a referral works</h2>
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-ac-onprimary/10">
@@ -89,7 +89,7 @@ export default function AmaniRefer() {
 
 {/* Right: the form. Deliberately short — their name and number is all
               we need, which keeps referring to under a minute of effort. */}
-          <div className="rounded-[2rem] border border-ac-border bg-ac-card p-8 shadow-xl shadow-ac-primary/5 sm:p-10">
+          <div className="amani-content-card rounded-2xl border border-ac-border bg-ac-card p-8 shadow-xl shadow-ac-primary/5 sm:p-10">
             {sent ? (
               <div className="flex flex-col items-center py-10 text-center" role="status">
                 <span className="grid size-16 place-items-center rounded-full bg-ac-primary/10 text-ac-primary">
@@ -114,7 +114,7 @@ export default function AmaniRefer() {
                 </p>
 
                 <form
-                  className="mt-8 flex flex-col gap-5"
+                  className="amani-referral-form mt-8 flex flex-col gap-5"
                   onSubmit={(event) => {
                     event.preventDefault();
                     setSent(true);
@@ -125,7 +125,7 @@ export default function AmaniRefer() {
                     <input
                       required
                       name="referredName"
-                      className={fieldClass}
+                      className={`${fieldClass} amani-form-input`}
                       placeholder="Their full name"
                     />
                   </label>
@@ -135,7 +135,7 @@ export default function AmaniRefer() {
                       required
                       type="tel"
                       name="referredPhone"
-                      className={fieldClass}
+                      className={`${fieldClass} amani-form-input`}
                       placeholder="+254 7XX XXX XXX"
                     />
                   </label>
@@ -144,14 +144,14 @@ export default function AmaniRefer() {
                     <span className="font-normal text-ac-mutedfg">(optional)</span>
                     <input
                       name="referrerName"
-                      className={fieldClass}
+                      className={`${fieldClass} amani-form-input`}
                       placeholder="Your name"
                     />
                   </label>
 
                   <button
                     type="submit"
-                    className="mt-2 inline-flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-ac-primary text-base font-medium text-white transition-colors hover:bg-ac-primary/90"
+                    className="mt-2 inline-flex h-13 w-full items-center justify-center gap-2 rounded-full bg-ac-primary text-base font-medium text-white transition-colors hover:bg-ac-primary/90"
                   >
                     Send referral
                     <UserPlus className="size-4" aria-hidden="true" />

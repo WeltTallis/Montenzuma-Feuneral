@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Check,
   ShieldCheck,
-  Star,
 } from 'lucide-react';
 import {
   PHOTOS,
@@ -42,8 +41,7 @@ export default function AmaniCover() {
         <Hero />
         <PlanOptions />
         <PromiseBand />
-        <Moments />
-        <About />
+        <ImageInterlude />
         <HowItWorks />
         <ApplySection />
         <ClaimBand />
@@ -55,159 +53,60 @@ export default function AmaniCover() {
 }
 
 /* ── hero.tsx ─────────────────────────────────────────────────── */
-const AVATARS = [
-  { src: PHOTOS.motherDaughter, alt: '' },
-  { src: PHOTOS.elderlyCouple, alt: '' },
-  { src: PHOTOS.fatherSon, alt: '' },
-];
-
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 pt-10 pb-20 lg:grid-cols-[1fr_1.1fr] lg:gap-16 lg:px-10 lg:pt-16 lg:pb-28">
-        <div>
-          {/* Kiswahili accent — the Kenyan hook the page opens with. "Je, uko
-              covered?" = "Are you covered?". This sits where the old "By
-              Montenzuma" eyebrow used to be; that attribution now lives on the
-              hero photo badge. */}
-          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-ac-accent">
-            <span className="size-1.5 rounded-full bg-ac-highlight" aria-hidden="true" />
-            {SW.heroHook}
-          </p>
-
-          <h1 className="mt-4 font-serif text-[clamp(2.75rem,6vw,5rem)] font-medium leading-[1.02] tracking-tight text-balance text-ac-primary">
-            Peace of mind for the ones you <em className="text-ac-accent">love most.</em>
+    <section className="amani-hero">
+      <div className="amani-hero__inner">
+        <div className="amani-hero__copy">
+          <p className="amani-hero__eyebrow">{SW.heroHook}</p>
+          <h1 className="amani-hero__title">
+            Peace of mind for the ones you <em>love most.</em>
           </h1>
-
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            Amani Cover is funeral insurance that lets your family say goodbye
-            with dignity, without worrying about the cost. Offered by Montenzuma Monalisa Funeral
-            Home, trusted by families for over 25 years.
+          <p className="amani-hero__intro">
+            Amani Cover is funeral insurance that helps your family say goodbye
+            with dignity, without worrying about the cost. Offered by Montenzuma
+            Monalisa Funeral Home, trusted by families for over 25 years.
           </p>
-
-          <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <a
-              href="#plans"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-primary px-7 text-base font-medium text-white shadow-lg shadow-ac-primary/20 transition-colors hover:bg-ac-primary/90"
-            >
-              Choose a cover
-              <ArrowRight className="size-4" aria-hidden="true" />
+          <div className="amani-hero__actions">
+            <a href="#plans" className="amani-hero__button">
+              Explore cover options <ArrowRight size={17} aria-hidden="true" />
             </a>
-            <Link
-              to="/amani/payments"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-ac-ink px-7 text-base font-medium text-white shadow-lg shadow-ac-ink/20 transition-colors hover:bg-ac-ink/90"
-            >
-              Make a payment
-              <ArrowRight className="size-4" aria-hidden="true" />
+            <Link to="/amani/payments" className="amani-hero__button amani-hero__button--secondary">
+              Make a payment <ArrowRight size={17} aria-hidden="true" />
             </Link>
           </div>
-
-          {/* Kiswahili accent — the price whisper, so the KES 500 entry point
-              is heard in the same breath as the CTAs. */}
-          <p className="mt-4 text-sm italic text-ac-mutedfg">{SW.heroPriceLine}</p>
-
-          <div className="mt-12 flex items-center gap-5 border-t border-ac-border pt-8">
-            <div className="flex -space-x-3">
-              {AVATARS.map((avatar) => (
-                <span
-                  key={avatar.src}
-                  className="relative size-12 overflow-hidden rounded-full ring-4 ring-ac-bg"
-                >
-                  {/* These avatars render at size-12 (48px). An explicit
-                      `sizes="48px"` makes the browser pick the smallest
-                      variant; without a correct value it would assume 100vw
-                      and download a full-size photo for a 48px circle. */}
-                  <FillImage src={avatar.src} alt={avatar.alt} sizes="48px" className="object-cover" />
-                </span>
-              ))}
-            </div>
-            <div>
-              <div className="flex items-center gap-0.5 text-ac-accent" aria-label="Rated 4.9 out of 5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="size-4 fill-current" aria-hidden="true" />
-                ))}
-                <span className="ml-2 text-sm font-semibold text-ac-primary">4.9</span>
-              </div>
-              <p className="mt-1 text-sm text-ac-mutedfg">Trusted by families across Kenya</p>
-            </div>
-          </div>
+          <p className="amani-hero__price">{SW.heroPriceLine}</p>
         </div>
-
-
-        {/* MOBILE: this was `aspect-[5/5.4] grid-cols-6 grid-rows-6` at every width, so
-            a 390px phone got a 6-column collage squeezed into ~350px (each
-            photo ~55px wide) inside a box 380px TALL — unreadable thumbnails
-            and a huge empty scroll before the copy. It now collapses to one
-            hero photo on phones, which is the only one that matters, and the
-            two supporting photos sit side by side underneath it. */}
-        <div className="relative">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:aspect-[5/5.4] lg:grid-cols-6 lg:grid-rows-6">
-            {/* FillImage is position:absolute, so every frame needs an explicit
-                  ratio or the grid row collapses to 0px tall on mobile. */}
-            <div className="relative col-span-2 row-span-1 aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-ac-primary/15 sm:aspect-[16/11] sm:rounded-t-[999px] sm:rounded-b-[2.5rem] lg:col-span-4 lg:row-span-6 lg:aspect-auto lg:rounded-t-[999px] lg:rounded-b-[2.5rem]">
-              <FillImage
-                src={PHOTOS.familyHero}
-                alt="A multigenerational family embracing together on a sofa in warm afternoon light"
-                priority
-                className="object-cover"
-                /* One column on phones, the 4-of-6 collage slot from lg up.
-                   Getting this right is what makes the browser pick the 640w
-                   file on a small screen instead of the 1024w one. */
-                sizes="(max-width: 1023px) 92vw, 38vw"
-              />
-            </div>
-            <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mt-10 lg:aspect-auto">
-              <FillImage
-                src={PHOTOS.whiteLilies}
-                alt="White lilies and roses in a glass vase beside a framed family photo"
-                className="object-cover object-left"
-                sizes="(max-width: 1023px) 46vw, 18vw"
-              />
-
-
-            </div>
-            <div className="relative col-span-1 row-span-1 aspect-square overflow-hidden rounded-[2rem] lg:col-span-2 lg:row-span-3 lg:mb-10 lg:aspect-auto">
-              <FillImage
-                src={PHOTOS.elderlyCouple}
-                alt="An elderly couple holding hands and smiling on their porch"
-                className="object-cover"
-                sizes="(max-width: 1023px) 46vw, 18vw"
-              />
-            </div>
+        <div className="amani-hero__collage" aria-label="Amani Cover family and care photography">
+          <div className="amani-hero__image-main">
+            <FillImage
+              src={PHOTOS.familyHero}
+              alt="A multigenerational family embracing together at home"
+              priority
+              className="object-cover"
+              sizes="(max-width: 767px) 92vw, 52vw"
+            />
           </div>
-
-          <figure
-            className="
-    absolute
-    -bottom-14
-    left-[-2rem]
-    w-[24rem]
-    max-w-[calc(100vw-1.5rem)]
-    rounded-2xl
-    border
-    border-ac-border
-    bg-ac-card
-    p-3
-    shadow-xl
-    shadow-ac-primary/10
-
-    sm:-bottom-8
-    sm:left-[-9.8rem]
-    sm:w-[24rem]
-  "
-          >
-            <blockquote className="font-serif text-lg leading-snug text-ac-primary"> &ldquo;You may never know when you will need it, but when the unexpected happens, having a plan can make the difference.&rdquo; </blockquote>
-
-            <figcaption className="mt-3 text-xs text-ac-mutedfg">
-              AMANI COVER
-            </figcaption>
-          </figure>
-
-
-          <div className="absolute top-8 left-4 flex items-center rounded-2xl  gap-3  bg-ac-primary px-4 py-2.5 text-ac-onprimary shadow-lg sm:left-[-1rem]">
-            <ShieldCheck className="size-5 text-ac-highlight" aria-hidden="true" />
-            <span className="text-sm font-medium">Covered by Montenzuma Funeral</span>
+          <div className="amani-hero__image-small amani-hero__image-small--flowers">
+            <FillImage
+              src={PHOTOS.whiteLilies}
+              alt="White lilies arranged with care"
+              className="object-cover"
+              sizes="(max-width: 767px) 30vw, 16vw"
+            />
           </div>
+          <div className="amani-hero__image-small amani-hero__image-small--family">
+            <FillImage
+              src={PHOTOS.elderlyCouple}
+              alt="An elderly couple smiling together"
+              className="object-cover"
+              sizes="(max-width: 767px) 25vw, 13vw"
+            />
+          </div>
+          <aside className="amani-hero__trust" aria-label="Montenzuma Monalisa experience">
+            <ShieldCheck size={18} aria-hidden="true" />
+            <span>Trusted family care for 25+ years</span>
+          </aside>
         </div>
       </div>
     </section>
@@ -218,21 +117,23 @@ function Hero() {
 
 function PlanOptions() {
   return (
-    <section id="plans" className="scroll-mt-20  bg-ac-bg px-2 py-10 lg:px-10 lg:py-18">
+    <section id="plans" className="amani-plans scroll-mt-20 px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ac-accent">Choose your cover</p>
-          <h2 className="mt-3 font-serif text-3xl font-medium leading-tight text-ac-primary sm:text-4xl">Know the contribution before you apply.</h2>
-          <p className="mt-3 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect. Group cover starts at five people.</p>
+        <div className="amani-section-intro">
+          <div className="amani-section-index"><b>01</b><span>Choose your cover</span></div>
+          <div className="amani-section-copy">
+            <h2 className="font-serif font-medium text-ac-primary">Know the contribution before you apply.</h2>
+            <p className="mt-3 leading-relaxed text-ac-mutedfg">Select the option that fits the people you want to protect. Group cover starts at five people.</p>
+          </div>
         </div>
-        <div className="grid items-stretch gap-5 pt-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="amani-plan-grid grid items-stretch pt-2 sm:grid-cols-2 xl:grid-cols-4">
           {coverOptions.map((option) => (
             <article
               key={option.value}
               className={
                 option.value === 'Family'
-                  ? 'relative flex min-h-52 flex-col rounded-2xl bg-ac-primary p-5 shadow-lg shadow-ac-primary/30 transition hover:-translate-y-1 xl:-translate-y-2 xl:hover:-translate-y-3'
-                  : 'relative flex min-h-52 flex-col rounded-2xl bg-ac-card p-3 shadow-sm transition hover:-translate-y-1 hover:border-ac-accent hover:shadow-md'
+                  ? 'amani-plan-card amani-plan-card--featured relative flex flex-col transition hover:-translate-y-1'
+                  : 'amani-plan-card relative flex flex-col transition hover:-translate-y-1 hover:shadow-md'
               }
             >
               {option.value === 'Family' && (
@@ -273,7 +174,6 @@ function PlanOptions() {
             </article>
           ))}
         </div>
-        <p className="mt-5 text-xs leading-relaxed text-ac-mutedfg">Submitting an application does not activate cover. Our team will confirm your application and explain payment and start dates.</p>
       </div>
     </section>
   );
@@ -282,151 +182,66 @@ function PlanOptions() {
 /* ── promise-band.tsx ─ */
 function PromiseBand() {
   return (
-    <section aria-label="Our promises" className="bg-ac-primary text-ac-onprimary">
-      <div className="mx-auto grid max-w-7xl divide-y divide-ac-onprimary/10 px-6 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:px-10">
-        {promises.map((item, index) => (
-          <div key={item.title} className="flex gap-5 py-9 sm:px-8 first:sm:pl-0">
-            <span className="font-serif text-2xl italic text-ac-highlight">0{index + 1}</span>
-            <div>
-              <h2 className="font-serif text-2xl">{item.title}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-ac-onprimary/70">{item.text}</p>
-            </div>
+    <section aria-label="Our promises" className="amani-promise-band bg-ac-primary text-ac-onprimary">
+      <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        <div className="amani-section-intro amani-section-intro--light">
+          <div className="amani-section-index amani-section-index--light"><b>02</b><span>Our promise</span></div>
+          <div className="amani-section-copy">
+            <h2 className="font-serif font-medium text-white">Care that stays with your family.</h2>
+            <p className="mt-3 leading-relaxed text-white/70">Clear cover, thoughtful support and a real person to help when your family needs us.</p>
           </div>
-        ))}
+        </div>
+        <div className="grid divide-y divide-ac-onprimary/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {promises.map((item, index) => (
+            <div key={item.title} className="amani-promise-item flex gap-5 py-9 sm:px-8 first:sm:pl-0">
+              <span className="font-serif text-2xl italic text-ac-highlight">0{index + 1}</span>
+              <div>
+                <h3 className="font-serif text-2xl">{item.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-ac-onprimary/70">{item.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-/* ── moments.tsx ──────────────────────────────────────────────── */
-function Moments() {
+function ImageInterlude() {
   return (
-    <section aria-labelledby="moments-title" className="px-6 py-20 lg:px-10 lg:py-28">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
-              Why families choose Amani
-            </p>
-            <h2
-              id="moments-title"
-              className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary"
-            >
-              Because every family deserves to <em className="text-ac-accent">simply be together.</em>
-            </h2>
-          </div>
-          <p className="max-w-sm leading-relaxed text-ac-mutedfg text-pretty">
-            When the hardest day comes, your cover takes care of the costs and arrangements, so
-            your family can hold each other instead of worrying about bills.
-          </p>
-        </div>
-
-        <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-5 md:mt-14 lg:auto-rows-[20rem] lg:grid-cols-3">
-          {moments.map((moment, index) => {
-            const featured = index === 0;
-            return (
-              <figure
-                key={moment.src}
-                className={`group relative overflow-hidden rounded-2xl sm:rounded-[2rem] ${featured
-                  ? 'col-span-2 aspect-[4/3] sm:aspect-[16/9] lg:row-span-2 lg:aspect-auto'
-                  : 'aspect-[4/5] sm:aspect-[4/3] lg:aspect-auto'
-                  }`}
-              >
-                <FillImage
-                  src={moment.src}
-                  alt={moment.alt}
-                  sizes={moment.sizes}
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-ac-primary/85 via-ac-primary/10 to-transparent" />
-                <figcaption className="absolute inset-x-0 bottom-0 p-4 sm:p-6 lg:p-8">
-                  <span className="inline-block  bg-ac-bg/95 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ac-primary sm:px-3 sm:py-1 sm:text-xs">
-                    {moment.label}
-                  </span>
-                  <p
-                    className={`mt-2 max-w-md font-serif leading-snug text-ac-onprimary text-balance sm:mt-3 ${featured ? 'text-xl sm:text-2xl lg:text-3xl' : 'text-base sm:text-xl lg:text-2xl'
-                      }`}
-                  >
-                    {moment.caption}
-                  </p>
-                  {/* Kiswahili accent — the proverb under the English caption:
-                      "Ahadi ni deni" / "Watoto wetu, jukumu letu" / "Upendo haufi".
-                      Renders only when a moment carries an `sw` line. */}
-                  {moment.sw && (
-                    <p className="mt-1 font-serif text-sm italic text-ac-highlight/90 sm:text-base">
-                      {moment.sw}
-                    </p>
-                  )}
-                </figcaption>
-              </figure>
-            );
-          })}
+    <section id="about" className="amani-image-interlude" aria-labelledby="amani-promise-title">
+      <div className="amani-image-interlude__content">
+        <span className="amani-image-interlude__eyebrow">Amani Cover</span>
+        <h2 id="amani-promise-title" className="amani-image-interlude__title">
+          More than a policy. <em>A promise to your family.</em>
+        </h2>
+        <p className="amani-image-interlude__intro">
+          Amani means peace. For over 25 years, Montenzuma Monalisa Funeral Home
+          has walked beside families through loss. Amani Cover is our funeral
+          insurance, built so the people you love never have to face the cost
+          of saying goodbye alone.
+        </p>
+        <ul className="amani-image-interlude__points">
+          {aboutPoints.map((point) => (
+            <li key={point}>
+              <Check size={16} aria-hidden="true" />
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="amani-image-interlude__promises">
+          {moments.map((moment) => (
+            <article key={moment.label}>
+              <h3>{moment.caption}</h3>
+              {moment.sw && <p>{moment.sw}</p>}
+            </article>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-
-/* ── about.tsx ─────── */
-function About() {
-  return (
-    <section id="about" className="scroll-mt-20 px-6 py-20 lg:px-10 lg:py-28">
-      <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-2 lg:gap-20">
-        <div className="relative mx-auto grid w-full max-w-xl grid-cols-5 gap-3 sm:gap-4 lg:max-w-none">
-          <div className="relative col-span-3 aspect-[4/5] overflow-hidden rounded-2xl sm:rounded-[2rem]">
-            <FillImage
-              src={PHOTOS.grandmotherChild}
-              alt="A grandmother holding her granddaughter close in a sunlit garden"
-              className="object-cover"
-              sizes="(max-width: 1024px) 60vw, 30vw"
-            />
-          </div>
-          <div className="col-span-2 flex flex-col gap-3 pt-8 sm:gap-4 sm:pt-16">
-            <div className="relative aspect-square overflow-hidden rounded-2xl sm:rounded-[2rem]">
-              <FillImage
-                src={PHOTOS.hands}
-                alt="Hands of three generations resting together on a table"
-                className="object-cover"
-                sizes="(max-width: 1024px) 40vw, 20vw"
-              />
-            </div>
-            {/* "Amani means peace" — a roundish blue chip with white type, so
-                the brand's meaning reads clearly against the white page. */}
-            <div className="rounded-2xl bg-ac-primary p-5 text-center shadow-sm sm:p-7">
-              <p className="font-serif text-xl text-ac-onprimary sm:text-2xl">Amani</p>
-              <p className="text-sm italic text-ac-onprimary/85">means peace</p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
-            A cover born from care
-          </p>
-          <h2 className="mt-5 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
-            More than a policy. <em className="text-ac-accent">A promise to your family.</em>
-          </h2>
-          <p className="mt-6 text-lg leading-relaxed text-ac-mutedfg text-pretty">
-            Amani means peace. For over 25 years, Montenzuma Monalisa Funeral Home has walked
-            beside families through loss. Amani Cover is our funeral insurance, built so the
-            people you love never have to face the cost of saying goodbye alone.
-          </p>
-          <ul className="mt-8 flex flex-col gap-4">
-            {aboutPoints.map((point) => (
-              <li key={point} className="flex items-start gap-3">
-                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-ac-primary text-ac-onprimary">
-                  <Check className="size-3.5" aria-hidden="true" />
-                </span>
-                <span className="leading-relaxed text-ac-primary">{point}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ── how-it-works.tsx ─────────────────────────────────────────── */
 function HowItWorks() {
@@ -436,9 +251,7 @@ function HowItWorks() {
         {/* Two columns: the pitch on the left, the numbered rows on the right. */}
         <div className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-accent">
-              A gentler process
-            </p>
+            <div className="amani-section-index mb-4"><b>04</b><span>A gentler process</span></div>
             <h2 className="mt-4 font-serif text-[clamp(2.25rem,4.5vw,3.5rem)] font-medium leading-[1.05] tracking-tight text-balance text-ac-primary">
               Protection, in three simple steps.
             </h2>
@@ -486,7 +299,16 @@ function HowItWorks() {
 function ApplySection() {
   return (
     <section id="apply" className="scroll-mt-20 bg-ac-bg py-20 text-ac-ink lg:py-28">
-      <AmaniApplicationForm />
+      <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        <div className="amani-section-intro">
+          <div className="amani-section-index"><b>05</b><span>Start your application</span></div>
+          <div className="amani-section-copy">
+            <h2 className="font-serif font-medium text-ac-primary">A simple first step towards peace of mind.</h2>
+            <p className="mt-3 leading-relaxed text-ac-mutedfg">Tell us who you would like to protect. Our team will guide you through the next steps.</p>
+          </div>
+        </div>
+        <AmaniApplicationForm />
+      </div>
     </section>
   );
 }
@@ -499,10 +321,12 @@ function ClaimBand() {
   return (
     <section
       id="claim"
-      className="scroll-mt-20 border-t border-ac-border bg-ac-card px-6 py-16 lg:px-10 lg:py-20"
+      className="amani-claim-band scroll-mt-20 border-t border-ac-border bg-ac-card px-6 py-16 lg:px-10 lg:py-20"
     >
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 rounded-[2rem] bg-ac-primary p-8 text-white sm:p-10 lg:flex-row lg:items-center lg:justify-between lg:p-12">
-        <div className="max-w-xl">
+      <div className="mx-auto max-w-7xl">
+        <div className="amani-section-index mb-5"><b>06</b><span>Here when you need us</span></div>
+        <div className="amani-claim-card flex flex-col gap-8 bg-ac-primary p-8 text-white sm:p-10 lg:flex-row lg:items-center lg:justify-between lg:p-12">
+          <div className="max-w-xl">
           {/* Kiswahili accent — "Ndiyo" = "Yes", a warm answer to the question
               the eyebrow asks. Everything after stays English. */}
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ac-highlight">
@@ -524,7 +348,8 @@ function ClaimBand() {
         >
           Submit a claim
           <ArrowRight className="size-5" aria-hidden="true" />
-        </Link>
+          </Link>
+        </div>
       </div>
     </section>
   );

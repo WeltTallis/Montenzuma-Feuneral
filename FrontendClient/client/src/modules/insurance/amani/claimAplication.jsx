@@ -290,17 +290,17 @@ const ClaimSubmissionForm = () => {
        properties above still apply to the form and nothing else. */
     const styles = `
     :root {
-            --ink: #293946;
+            --ink: #1e344b;
       --bone: #ffffff;
-            --bone2: #f4f7f8;
-            --brass: #92764c;
-            --gray: #697985;
-            --line: #dce4e8;
+            --bone2: #f2f7fc;
+            --brass: #6b9acb;
+            --gray: #667d94;
+            --line: #d8e5f1;
             --error-red: #ad5750;
-            --blue-primary: #173c5a;
-            --blue-hover: #102f49;
-            --blue-tick: #547895;
-            --blue-bg: #edf3f7;
+            --blue-primary: #163b65;
+            --blue-hover: #0f2d4d;
+            --blue-tick: #356da8;
+            --blue-bg: #edf4fb;
       --gutter: 96px;
       --gutter-tablet: 64px;
       --gutter-mobile: 32px;
@@ -327,6 +327,10 @@ const ClaimSubmissionForm = () => {
       position: relative;
       padding-bottom: 60px;
       overflow: hidden;
+      border: 1px solid var(--line);
+      border-top: 3px solid #356da8;
+      border-radius: 16px;
+      box-shadow: 0 18px 55px rgba(31, 42, 46, 0.08);
     }
 
     .watermark {
@@ -408,7 +412,7 @@ const ClaimSubmissionForm = () => {
     .form-intro {
       padding: 4rem var(--gutter) 3rem;
       border-bottom: 1px solid var(--line);
-      background: white;
+      background: linear-gradient(120deg, #edf4fb, #fff 72%);
     }
     .intro-title {
     font-family: 'Cormorant Garamond', serif;
@@ -431,8 +435,8 @@ const ClaimSubmissionForm = () => {
 
     .checklist-card {
       background: var(--blue-bg);
-      border: 1px solid #dbeafe;
-      border-radius: 16px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
       padding: 2rem;
       max-width: 800px;
     }
@@ -766,6 +770,7 @@ const ClaimSubmissionForm = () => {
       .checklist-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
+      .container { border-radius: 0; border-left: 0; border-right: 0; }
       .doc-header, .form-body, .record-strip, .form-intro { padding-left: var(--gutter-mobile); padding-right: var(--gutter-mobile); }
       .hdr-right { width: 100%; justify-content: space-between; }
     }

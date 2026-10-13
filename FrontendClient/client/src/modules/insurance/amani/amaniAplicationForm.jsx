@@ -4,19 +4,19 @@ import { CONTACT, GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlan
 import { InsuranceApiError, submitApplication, sendPolicySms } from '../../../api/insuranceApi';
 
 const AF = {
-  ink: '#293946',
-  inkMuted: '#596b78',
-  inkFaint: '#8997a0',
-  navy: '#173c5a',
-  navyDeep: '#102f49',
-  blue: '#547895',
-  bluePale: '#edf3f7',
-  brass: '#92764c',
-  border: '#dce4e8',
+  ink: '#1e344b',
+  inkMuted: '#667d94',
+  inkFaint: '#8598aa',
+  navy: '#163b65',
+  navyDeep: '#0f2d4d',
+  blue: '#356da8',
+  bluePale: '#edf4fb',
+  brass: '#6b9acb',
+  border: '#d8e5f1',
   error: '#ad5750',
   success: '#557565',
-  sans: "'DM Sans', system-ui, sans-serif",
-  serif: "'Cormorant Garamond', Georgia, serif",
+  sans: "'Source Sans 3', system-ui, sans-serif",
+  serif: "'Merriweather', Georgia, serif",
 };
 
 const getInitialCover = () => {
@@ -988,6 +988,7 @@ export default function AmaniApplicationForm() {
       .af-row { flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem; }
       .af-actions { flex-direction: column-reverse; }
       .af-actions .af-btn { width: 100%; }
+      .af-done-cards { grid-template-columns: minmax(0, 1fr); }
     }
 
     /* Phones: the document was inset by a 32px gutter on BOTH sides on top of
@@ -1020,6 +1021,95 @@ export default function AmaniApplicationForm() {
       .af-group-block { padding: 1rem 0.85rem 1.1rem; }
       .af-member-row { padding: 0.85rem 0.8rem 0.95rem; }
       .af-selected-plan { align-items: flex-start; flex-direction: column; }
+      .af-done { padding: 1.5rem 0; }
+      .af-done h3 { font-size: 1.65rem; }
+      .af-done-cards { gap: 1rem; margin: 1.5rem auto; }
+      .af-policy-box, .af-sms-box { min-width: 0; padding: 1rem; }
+      .af-sms-head { align-items: flex-start; flex-direction: column; gap: 0.65rem; }
+      .af-sms-head-title { font-size: 0.95rem; }
+      .af-sms-badge { max-width: 100%; overflow-wrap: anywhere; }
+      .af-sms-preview-phone { min-width: 0; padding: 0.75rem; }
+      .af-sms-preview-top { align-items: flex-start; flex-direction: column; gap: 0.25rem; font-size: 0.62rem; }
+      .af-sms-bubble { padding: 0.8rem; font-size: 0.85rem; overflow-wrap: anywhere; }
+      .af-sms-bubble a { overflow-wrap: anywhere; }
+      .af-sms-actions { align-items: stretch; flex-direction: column; }
+      .af-action-btn { justify-content: center; min-height: 44px; }
+      .af-alt-phone-row { flex-direction: column; }
+      .af-alt-input { min-height: 44px; }
+    }
+
+    .amani-appform {
+      border: 1px solid ${AF.border};
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 16px 42px rgba(22, 59, 101, 0.08);
+    }
+    .af-doc-header {
+      background: linear-gradient(120deg, #edf4fb, #fff 72%);
+      border-top: 3px solid #356da8;
+    }
+    .af-hdr-welcome { color: ${AF.navy}; }
+    .af-hdr-value {
+      border-color: ${AF.border};
+      border-radius: 6px;
+      background: #edf4fb;
+      color: ${AF.navy};
+    }
+    .af-section-head {
+      border-radius: 8px;
+      background: ${AF.navy};
+    }
+    .af-doc-input:focus, .af-doc-select:focus {
+      border-bottom: 1.5px solid #356da8;
+      box-shadow: 0 2px 0 #8fb2d3;
+    }
+    .af-cover-card { border-radius: 9px; }
+    .af-cover-card:has(input:checked) {
+      border-color: ${AF.navy};
+      background: #edf4fb;
+      box-shadow: 0 0 0 2px #8fb2d3;
+    }
+    .af-cover-card-price {
+      background: #edf4fb;
+      color: ${AF.navy};
+    }
+    .af-btn { border-radius: 6px; }
+    .af-btn-primary {
+      border-color: transparent;
+      background: ${AF.navy};
+      color: #fff;
+      box-shadow: 0 8px 22px rgba(22, 59, 101, 0.16);
+    }
+    .af-btn-primary:hover:not(:disabled) {
+      background: ${AF.navyDeep};
+      color: #fff;
+    }
+    .af-btn-ghost {
+      border-radius: 6px;
+      color: ${AF.navy};
+      box-shadow: inset 0 0 0 1.5px ${AF.navy};
+    }
+    .af-btn-ghost:hover { background: ${AF.bluePale}; }
+    .af-action-btn {
+      border-radius: 6px;
+    }
+    .af-record-strip, .af-policy-box, .af-sms-box {
+      border-radius: 14px;
+    }
+    .af-policy-box {
+      background: ${AF.navyDeep};
+      color: #fff;
+    }
+    .af-cta-paynow {
+      border-radius: 6px;
+      background: ${AF.navy};
+      box-shadow: 0 8px 22px rgba(22, 59, 101, 0.2);
+    }
+    .af-cta-paynow:hover { background: ${AF.navyDeep}; }
+    .af-done-mark { background: ${AF.navy}; color: #fff; }
+
+    @media (max-width: 600px) {
+      .amani-appform { border-radius: 0; }
     }
   `;
 

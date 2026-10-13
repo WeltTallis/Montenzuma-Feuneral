@@ -461,7 +461,7 @@ function BandedDay({ date, searched, filters, today, onOpenCase, onClearDay }) {
 
 /* ── operations month table ─────────────────────────────────────────────── */
 
-const OPS_COLS = "3px 1.5fr 1.2fr 1fr 1fr";
+const OPS_COLS = "1.5fr 1.2fr 1fr 1fr";
 
 /** Default command view — stat strip · today's timeline · the period's events. */
 function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
@@ -516,7 +516,6 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
       </div>
 
       <div className="lh" style={{ gridTemplateColumns: OPS_COLS }}>
-        <div />
         <div>Deceased</div>
         <div>Event</div>
         <div>Schedule</div>
@@ -528,15 +527,14 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
         const sub = ev.t === "release" ? p.release.dest : ev.t === "intake" ? p.receivedFrom : p.pm.authority;
         return (
           <div
-            className="row"
+            className="row ops-month-row"
             key={`${ev.t}-${p.uid}-${ev.date}-${ev.time}`}
-            style={{ gridTemplateColumns: OPS_COLS }}
+            style={{ gridTemplateColumns: OPS_COLS, borderLeftColor: TYPE_C[ev.t] }}
             onClick={() => onOpenCase(p.uid, ev.t)}
             role="button"
             tabIndex={0}
             onKeyDown={(e2) => { if (e2.key === "Enter") onOpenCase(p.uid, ev.t); }}
           >
-            <div className="rbar" style={{ background: TYPE_C[ev.t] }} />
             <div className="cell">
               <div className="nm">{p.name}</div>
               <div className="sub">{p.adm} · {p.branch}</div>

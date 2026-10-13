@@ -264,7 +264,7 @@ export default function AmaniTrackClaim() {
       `}</style>
 
       {/* ═════════ header band ═════════ */}
-      <div className="atk-band">
+      <div className="atk-band amani-track-band">
         <div className="atk-wrap">
           <Link to="/amani/cover" className="atk-back">
             <ArrowLeft size={15} /> Back to Amani Cover

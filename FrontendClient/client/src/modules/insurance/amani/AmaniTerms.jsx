@@ -19,7 +19,7 @@ import {
 import { AmaniFooter, AmaniNav, PageHeader } from './AmaniUi';
 import './AmaniCover.css';
 
-const CARD = 'rounded-[2rem] border border-ac-border bg-ac-card p-8 shadow-sm sm:p-10';
+const CARD = 'amani-content-card rounded-2xl border border-ac-border bg-ac-card p-8 shadow-sm sm:p-10';
 const CARD_ICON = 'grid size-11 place-items-center rounded-full bg-ac-primary/10 text-ac-primary';
 const TICK = 'mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-ac-primary text-ac-onprimary';
 
@@ -38,7 +38,7 @@ export default function AmaniTerms() {
       <main className="px-6 py-20 lg:px-10 lg:py-24">
         <div className="mx-auto max-w-5xl">
           {/* Vision / mission — the reason the product exists. */}
-          <p className="border-l-[3px] border-ac-accent bg-ac-bg py-6 pl-6 pr-6 font-serif text-lg leading-relaxed text-ac-primary sm:text-xl">
+          <p className="amani-terms-vision border-l-[3px] border-ac-accent bg-ac-bg py-6 pl-6 pr-6 font-serif text-lg leading-relaxed text-ac-primary sm:text-xl">
             {vision}
           </p>
 

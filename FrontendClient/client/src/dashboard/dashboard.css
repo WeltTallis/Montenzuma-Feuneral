@@ -1511,6 +1511,10 @@
    min-height: 54px
 }
 
+.rpd .ops-month-row {
+   border-left: 2px solid transparent
+}
+
 .rpd .row:hover {
    background: var(--bg)
 }
