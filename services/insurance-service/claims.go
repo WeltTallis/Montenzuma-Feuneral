@@ -18,13 +18,18 @@ func (a *app) createClaim(w http.ResponseWriter, r *http.Request) {
 	}
 	policy := normalize(str(m, "policyNumber"))
 	var pid int64
-	err := a.db.QueryRow(r.Context(), "SELECT policy_id FROM insurance_policies WHERE policy_number=$1 AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')", policy, tenant(r)).Scan(&pid)
+	var policyNumber string
+	err := a.db.QueryRow(r.Context(), `
+		SELECT policy_id, policy_number FROM insurance_policies
+		WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1)
+			AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')
+		ORDER BY created_at DESC LIMIT 1`, policy, tenant(r)).Scan(&pid, &policyNumber)
 	if err != nil {
 		write(w, 404, map[string]any{"error": "Policy not found"})
 		return
 	}
 	var id int64
-	err = a.db.QueryRow(r.Context(), "INSERT INTO insurance_claims(policy_number,policy_id,claimant_full_name,claimant_id_number,phone,relationship,deceased_name,death_date,cause_of_death,place_of_death,notes,tenant_slug) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING claim_id", policy, pid, first(m, "claimantFullName", "fullName", "claimantName"), first(m, "claimantIdNumber", "idNumber", "claimantId"), str(m, "phone"), str(m, "relationship"), str(m, "deceasedName"), str(m, "deathDate"), first(m, "causeOfDeath", "causeDeath", "cause"), first(m, "placeOfDeath", "placeDeath", "place"), str(m, "notes"), tenant(r)).Scan(&id)
+	err = a.db.QueryRow(r.Context(), "INSERT INTO insurance_claims(policy_number,policy_id,claimant_full_name,claimant_id_number,phone,relationship,deceased_name,death_date,cause_of_death,place_of_death,notes,tenant_slug) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING claim_id", policyNumber, pid, first(m, "claimantFullName", "fullName", "claimantName"), first(m, "claimantIdNumber", "idNumber", "claimantId"), str(m, "phone"), str(m, "relationship"), str(m, "deceasedName"), str(m, "deathDate"), first(m, "causeOfDeath", "causeDeath", "cause"), first(m, "placeOfDeath", "placeDeath", "place"), str(m, "notes"), tenant(r)).Scan(&id)
 	if err != nil {
 		write(w, 400, map[string]any{"error": "Claim details are invalid or incomplete"})
 		return

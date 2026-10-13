@@ -128,12 +128,15 @@ func (a *app) sendPolicySMS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var name, phone, cover, code string
+	var name, phone, cover, policyNumber, code string
 	var premium float64
 	err := a.db.QueryRow(r.Context(),
-		`SELECT full_name, phone, cover_type, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8 
-		 FROM insurance_policies WHERE (policy_number=$1 OR public_code=$1) AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')`,
-		polNum, tenant(r)).Scan(&name, &phone, &cover, &code, &premium)
+		`SELECT full_name, phone, cover_type, policy_number, COALESCE(public_code,''), COALESCE(monthly_premium,0)::float8
+		 FROM insurance_policies
+		 WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1)
+			AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')
+		 ORDER BY created_at DESC LIMIT 1`,
+		polNum, tenant(r)).Scan(&name, &phone, &cover, &policyNumber, &code, &premium)
 
 	if err != nil {
 		write(w, 404, map[string]any{"error": "Policy not found"})
@@ -158,10 +161,10 @@ func (a *app) sendPolicySMS(w http.ResponseWriter, r *http.Request) {
 		msg = customMsg
 	} else if msgType == "monthly_payment" || msgType == "monthly" {
 		msg = fmt.Sprintf("Montenzuma Monalisa Funeral Home: Dear %s, your monthly Amani Cover premium of KES %.0f for policy %s is due. Pay easily via M-Pesa: %s. For assistance, call 0740045355",
-			name, premium, code, payLink)
+			name, premium, policyNumber, payLink)
 	} else {
 		msg = fmt.Sprintf("Montenzuma Monalisa Funeral Home: Thank you for registering for the Amani Cover. Your application has been received. Your Policy No is %s. We are honored to protect your family's future. Pay premium: %s. For assistance, call 0740045355",
-			code, payLink)
+			policyNumber, payLink)
 	}
 
 	ok, details := sendSMSNotification(targetPhone, msg)
@@ -171,7 +174,7 @@ func (a *app) sendPolicySMS(w http.ResponseWriter, r *http.Request) {
 		"recipient":    targetPhone,
 		"message":      msg,
 		"paymentLink":  payLink,
-		"policyNumber": polNum,
+		"policyNumber": policyNumber,
 		"publicCode":   code,
 		"details":      details,
 	})

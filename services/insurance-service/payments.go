@@ -123,7 +123,7 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	if publicCode != "" {
 		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone FROM insurance_policies WHERE public_code=$1 AND is_deleted=false`, publicCode).Scan(&policy, &premium, &status, &cover, &registeredPhone)
 	} else {
-		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone FROM insurance_policies WHERE policy_number=$1 AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')`, policy, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone)
+		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone FROM insurance_policies WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1) AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared') ORDER BY created_at DESC LIMIT 1`, policy, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone)
 	}
 	if e != nil {
 		write(w, 404, map[string]any{"error": "Policy not found"})

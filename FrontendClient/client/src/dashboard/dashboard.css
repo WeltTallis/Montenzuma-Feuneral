@@ -1512,7 +1512,9 @@
 }
 
 .rpd .ops-month-row {
-   border-left: 2px solid transparent
+   position: relative;
+   border-left: 4px solid transparent;
+   padding-left: 0
 }
 
 .rpd .row:hover {

@@ -355,7 +355,8 @@ export default function AmaniPayPortal({ showTopbar = true }) {
       const result = await checkCover({ policyNumber: value });
       if (result?.found) {
         setPolicy({
-          policyNumber: value.toUpperCase(),
+          policyNumber: result.policyNumber || value.toUpperCase(),
+          policyCode: result.publicCode,
           coverType: result.coverType,
           coverStatus: result.status,
           coveredCount: result.coveredCount,

@@ -127,26 +127,6 @@ export const promises = [
   { title: 'Supportive', text: 'A real person to talk to, whenever you need us.' },
 ];
 
-/* How it works. THREE steps. `num` is the "01 / 02 / 03" marker rendered in the
-   left cell of the HowItWorks row — keep it in sync with array order. */
-export const steps = [
-  {
-    num: '01',
-    title: 'Tell us about yourself',
-    desc: 'Share a few simple details so we can understand who you want to protect.',
-  },
-  {
-    num: '02',
-    title: 'Choose your cover',
-    desc: 'Pick the plan and contribution that fits your family and your budget.',
-  },
-  {
-    num: '03',
-    title: 'Rest easier',
-    desc: 'Apply securely, and your family will never have to face the cost of a funeral alone.',
-  },
-];
-
 /* About section bullet points. THREE items, matching the three-tall stat/point
    block beneath the About copy. */
 export const aboutPoints = [
@@ -178,11 +158,14 @@ export const aboutPoints = [
    `from: true` marks Group as a floor rather than a fixed price — group
    pricing scales with how many people are on the policy, so the UI must not
    present it as "exactly 10,000". */
+const GROUP_PLAN = { monthly: 10000, from: true, covers: 'Family + extended family' };
+
 export const PLANS = {
   Solo: { monthly: 500, from: false, covers: '1 person' },
   Family: { monthly: 1000, from: false, covers: 'You + your household' },
-  FamilyGroup: { monthly: 10000, from: true, covers: 'Family + extended family' },
-  Group: { monthly: 10000, from: true, covers: '5 or more people' },
+  Group: GROUP_PLAN,
+  /* Legacy cover type used by existing policies and application links. */
+  FamilyGroup: GROUP_PLAN,
   /* Developer test product: a REAL policy priced at KES 1 so the whole
      M-Pesa STK flow (prompt → PIN → callback → dashboard row) can be
      exercised in production for the cost of one shilling. */
@@ -206,6 +189,9 @@ export const PLANS = {
    NOTE: the dead insurance/mani/ folder still renders these in a <select>
    with defaultValue="Family"; Family is still the middle option, so that
    placeholder stays valid. */
+export const GROUP_COVER_VALUE = 'Group';
+export const MIN_GROUP_MEMBERS = 5;
+
 export const coverOptions = [
   {
     value: 'Solo',
@@ -222,18 +208,12 @@ export const coverOptions = [
     features: [PLANS.Family.covers, 'One simple monthly premium', 'Digital application'],
   },
   {
-    value: 'FamilyGroup',
-    label: 'Amani Family Group',
-    hint: 'Cover for your family and your extended family.',
-    monthly: PLANS.FamilyGroup.monthly,
-    features: [PLANS.FamilyGroup.covers, 'One shared policy', 'Scales with your group'],
-  },
-  {
-    value: 'Test',
-    label: 'Developer Test ',
-    hint: 'KES 1 a month  developer testing only.',
-    monthly: PLANS.Test.monthly,
-    features: ['Covers ' + PLANS.Test.covers, 'Real STK push at KES 1', 'Digital application'],
+    value: GROUP_COVER_VALUE,
+    label: 'Amani Group',
+    hint: 'Shared cover for families and groups of 5 or more.',
+    monthly: PLANS.Group.monthly,
+    minMembers: MIN_GROUP_MEMBERS,
+    features: [PLANS.Group.covers, 'One shared policy', 'Scales with your group'],
   },
 ];
 
@@ -252,13 +232,8 @@ export function formatPlanAmount(coverType, amount) {
   return plan.from ? `from ${formatted}` : formatted;
 }
 
-/* The value that switches the form into "add the rest of the group" mode. */
-export const GROUP_COVER_VALUE = 'Group';
-
-/* Smallest number of individuals an Amani Group policy may cover. The
-   applicant is themselves one of them, so the repeater must supply the
-   remaining MIN_GROUP_MEMBERS - 1 people. */
-export const MIN_GROUP_MEMBERS = 5;
+/* The applicant is one of the minimum number of group members, so the form
+   repeater collects the remaining MIN_GROUP_MEMBERS - 1 people. */
 
 /* Referral flow (its own route). THREE steps — rendered as a connected rail. */
 export const referSteps = [

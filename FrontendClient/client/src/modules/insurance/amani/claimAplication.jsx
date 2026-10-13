@@ -116,7 +116,7 @@ const ClaimSubmissionForm = () => {
             case 'idNumber': return 'Valid ID is required.';
             case 'phone': return 'Valid phone required.';
             case 'relationship': return 'Relationship is required.';
-            case 'policyNumber': return 'Policy number required.';
+            case 'policyNumber': return 'Member National ID number required.';
             case 'deceasedName': return 'Deceased name required.';
             case 'deathDate': return 'Date required.';
             case 'causeDeath': return 'Cause of death required.';
@@ -289,23 +289,37 @@ const ClaimSubmissionForm = () => {
        Inside the scope, `:root` resolves to the scoping element, so the custom
        properties above still apply to the form and nothing else. */
     const styles = `
-    :root {
-            --ink: #1e344b;
+    .amani-claimform {
+      --ink: #12263a;
       --bone: #ffffff;
-            --bone2: #f2f7fc;
-            --brass: #6b9acb;
-            --gray: #667d94;
-            --line: #d8e5f1;
-            --error-red: #ad5750;
-            --blue-primary: #163b65;
-            --blue-hover: #0f2d4d;
-            --blue-tick: #356da8;
-            --blue-bg: #edf4fb;
-      --gutter: 96px;
-      --gutter-tablet: 64px;
-      --gutter-mobile: 32px;
+      --bone2: #f5f9fb;
+      --brass: #0e7c9b;
+      --gray: #5a7080;
+      --line: #e3edf2;
+      --error-red: #c0392b;
+      --blue-primary: #0b2e4a;
+      --blue-hover: #071f33;
+      --blue-tick: #0e7c9b;
+      --blue-bg: #e3f2f6;
+      --gutter: 56px;
+      --gutter-tablet: 36px;
+      --gutter-mobile: 18px;
+      width: calc(100% - 2rem);
+      max-width: 1120px;
+      margin: 2rem auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: #fff;
+      box-shadow: 0 2px 6px rgba(11, 46, 74, 0.05), 0 28px 70px rgba(11, 46, 74, 0.13);
+      color: var(--ink);
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
+    @scope (.amani-claimform) {
     * { box-sizing: border-box; }
 
     body {
@@ -328,7 +342,7 @@ const ClaimSubmissionForm = () => {
       padding-bottom: 60px;
       overflow: hidden;
       border: 1px solid var(--line);
-      border-top: 3px solid #356da8;
+      border-top: 3px solid var(--blue-tick);
       border-radius: 16px;
       box-shadow: 0 18px 55px rgba(31, 42, 46, 0.08);
     }
@@ -412,11 +426,11 @@ const ClaimSubmissionForm = () => {
     .form-intro {
       padding: 4rem var(--gutter) 3rem;
       border-bottom: 1px solid var(--line);
-      background: linear-gradient(120deg, #edf4fb, #fff 72%);
+      background: linear-gradient(120deg, #e3f2f6, #fff 72%);
     }
     .intro-title {
     font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.5rem, 5vw, 3.5rem);
+      font-size: clamp(1.8rem, 4vw, 2.55rem);
       font-weight: 500;
       color: var(--ink);
       margin: 0 0 1.5rem 0;
@@ -426,7 +440,7 @@ const ClaimSubmissionForm = () => {
     .intro-title span { color: var(--blue-primary); font-style: italic; }
 
     .intro-subtitle {
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: var(--gray);
       max-width: 700px;
       margin-bottom: 2.5rem;
@@ -739,9 +753,11 @@ const ClaimSubmissionForm = () => {
 
     .btn-primary { 
       background: var(--blue-primary); 
-      color: #ffffff; 
+      color: #ffffff !important;
       box-shadow: 0 4px 12px rgba(11, 63, 138, 0.15);
     }
+    .amani-claimform .btn-primary,
+    .amani-claimform .btn-primary svg { color: #ffffff !important; }
     .btn-primary:hover { 
       background: var(--blue-hover); 
       transform: translateY(-1px); 
@@ -774,6 +790,189 @@ const ClaimSubmissionForm = () => {
       .doc-header, .form-body, .record-strip, .form-intro { padding-left: var(--gutter-mobile); padding-right: var(--gutter-mobile); }
       .hdr-right { width: 100%; justify-content: space-between; }
     }
+
+    .doc-header {
+      padding: 1.15rem var(--gutter) 0.25rem;
+      align-items: center;
+      border: 0;
+      background: linear-gradient(110deg, #071f33 0%, #0b2e4a 58%, #0e5a78 100%);
+    }
+    .hdr-brand {
+      color: rgba(255, 255, 255, 0.75);
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+    }
+    .hdr-brand span { color: #8ed8e6; }
+    .hdr-right { color: rgba(255, 255, 255, 0.72); }
+    .hdr-label, .hdr-value {
+      color: inherit;
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.76rem;
+      letter-spacing: 0;
+    }
+    .form-intro {
+      padding: 1rem var(--gutter) 2rem;
+      border: 0;
+      background: linear-gradient(110deg, #071f33 0%, #0b2e4a 58%, #0e5a78 100%);
+    }
+    .intro-title {
+      margin-bottom: 0.75rem;
+      color: #fff;
+      font-family: 'Merriweather', Georgia, serif;
+      font-size: clamp(1.75rem, 3.2vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .intro-title span { color: #8ed8e6; font-style: normal; }
+    .intro-subtitle {
+      max-width: 760px;
+      margin: 0 0 1.25rem;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+    .checklist-card {
+      max-width: none;
+      padding: 1.15rem 1.3rem;
+      border: 1px solid rgba(255, 255, 255, 0.68);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 12px 32px rgba(7, 31, 51, 0.18);
+    }
+    .checklist-title {
+      margin-bottom: 0.9rem;
+      color: #0b2e4a;
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.02em;
+      text-transform: none;
+    }
+    .checklist-grid { gap: 0.75rem 1.25rem; }
+    .check-item { gap: 0.6rem; font-size: 0.85rem; }
+    .check-item svg { width: 17px !important; height: 17px !important; }
+    .form-body { padding: 2.5rem var(--gutter) 2rem; }
+    .doc-section {
+      margin-bottom: 1.5rem;
+      padding: 1.4rem;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 6px 20px rgba(11, 46, 74, 0.04);
+    }
+    .section-head {
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem 0.9rem;
+      border: 0;
+      border-left: 3px solid #0e7c9b;
+      border-radius: 12px;
+      background: #f1f6f9;
+    }
+    .section-num {
+      color: #0e7c9b;
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+    .section-title {
+      color: #0b2e4a;
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .row { gap: 1.25rem; margin-bottom: 1.25rem; }
+    .col, .col-2, .col-half { min-width: 0; }
+    .field-label {
+      margin-bottom: 0.45rem;
+      color: #12263a;
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .doc-input, .doc-textarea {
+      padding: 0 0.9rem;
+      border: 1px solid #dce8ee;
+      border-radius: 11px;
+      background: #f1f6f9;
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.95rem;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+    .doc-input { height: 48px; }
+    .doc-textarea { min-height: 100px; padding: 0.75rem 0.9rem; }
+    .doc-input:focus, .doc-textarea:focus {
+      border-color: #0e7c9b;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(14, 124, 155, 0.14);
+    }
+    .tick-icon { top: 24px; right: 10px; }
+    .doc-input:has(+ .tick-icon) { padding-right: 2.8rem; }
+    .file-grid { gap: 0.9rem; }
+    .file-wrap {
+      min-height: 150px;
+      padding: 1.25rem;
+      border-color: #c8dce5;
+      border-radius: 14px;
+      background: #f7fafc;
+    }
+    .file-wrap:hover { border-color: #0e7c9b; background: #eaf5f8; }
+    .file-icon { margin-bottom: 0.75rem; background: #e3f2f6; color: #0e7c9b; }
+    .file-wrap.is-valid .file-icon { background: #0e7c9b; }
+    .file-title { font-size: 0.88rem; }
+    .file-sub { font-size: 0.76rem; }
+    .confirm-block {
+      margin-top: 1.5rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid #dce8ee;
+      border-left: 3px solid #0e7c9b;
+      border-radius: 12px;
+      background: #f5f9fb;
+    }
+    .confirm-text {
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.88rem;
+    }
+    .actions-container {
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top-color: #e3edf2;
+    }
+    .btn {
+      min-height: 48px;
+      padding: 0.8rem 1.4rem;
+      border-radius: 7px;
+      font-family: 'DM Sans', 'Source Sans 3', system-ui, sans-serif;
+      font-size: 0.84rem;
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+    .btn-primary {
+      background: #0b2e4a;
+      box-shadow: 0 8px 20px rgba(11, 46, 74, 0.18);
+    }
+    .btn-primary:hover { background: #071f33; }
+    .claim-alert { border-radius: 12px; }
+
+    @media (max-width: 1024px) {
+      .doc-header, .form-intro, .form-body { padding-left: var(--gutter-tablet); padding-right: var(--gutter-tablet); }
+      .doc-section { padding: 1.2rem; }
+    }
+    @media (max-width: 600px) {
+      .doc-header { padding-top: 1rem; }
+      .form-intro { padding-top: 0.75rem; padding-bottom: 1.25rem; }
+      .form-body { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+      .doc-section { margin-bottom: 1rem; padding: 0.95rem; border-radius: 16px; }
+      .section-head { margin-bottom: 1.15rem; }
+      .checklist-card { padding: 1rem; }
+      .checklist-grid { grid-template-columns: 1fr; }
+      .actions-container { margin-top: 1rem; }
+    }
+    }
   `;
 
     const TickSvg = () => (
@@ -786,9 +985,7 @@ const ClaimSubmissionForm = () => {
         <>
             <style>{styles}</style>
 
-            <div className="container amani-claimform">
-                <div className="watermark">OFFICIAL RECORD</div>
-
+            <div className="amani-claimform">
                 <div className="content-wrapper">
 
                     {/* Document header. The stylesheet has carried `.doc-header`,
@@ -831,7 +1028,7 @@ const ClaimSubmissionForm = () => {
                                 </div>
                                 <div className="check-item">
                                     <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', stroke: 'var(--blue-tick)', flexShrink: 0, marginTop: '2px' }}><polyline points="20 6 9 17 4 12" /></svg>
-                                    Amani Cover Policy Number
+                                    Member National ID Number
                                 </div>
                                 <div className="check-item">
                                     <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', stroke: 'var(--blue-tick)', flexShrink: 0, marginTop: '2px' }}><polyline points="20 6 9 17 4 12" /></svg>
@@ -933,13 +1130,15 @@ const ClaimSubmissionForm = () => {
                                 </div>
                                 <div className="row">
                                     <div className="col">
-                                        <label className="field-label">Policy / Cover Number <span className="req">*</span></label>
+                                        <label className="field-label">Member National ID Number <span className="req">*</span></label>
                                         <div className={getInputWrapClass('policyNumber')}>
                                             <input
                                                 className="doc-input"
                                                 type="text"
                                                 name="policyNumber"
-                                                placeholder="e.g., AMN-2024-00123"
+                                                inputMode="numeric"
+                                                autoComplete="off"
+                                                placeholder="Enter the ID used to register the cover"
                                                 value={formData.policyNumber}
                                                 onChange={handleChange}
                                                 onBlur={handleBlur}
@@ -1165,12 +1364,6 @@ const ClaimSubmissionForm = () => {
                         </form>
                     </div>
 
-                    {/* Record Strip */}
-                    <div className="record-strip">
-                        Montenzuma Monalisa Generated on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-                        <br />
-                        - Official Claim Record -
-                    </div>
                 </div>
             </div>
         </>

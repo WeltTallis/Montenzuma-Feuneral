@@ -64,12 +64,10 @@ export function FillImage({ src, alt, className = '', priority = false, sizes, w
    they point back to the landing sections so the nav is never a dead end. */
 const LANDING_ANCHORS = [
   { href: '#about', label: 'About' },
-  { href: '#how', label: 'How it works' },
   { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 const SUB_ANCHORS = [
   { href: '/amani/cover#about', label: 'About' },
-  { href: '/amani/cover#how', label: 'How it works' },
   { href: '/amani/claims/track', label: 'Track a claim' },
 ];
 
@@ -176,7 +174,6 @@ export function AmaniNav({ inPageLinks, active = '/amani/cover' }) {
     >
       <div className="an-bar">
         <Link to="/amani/cover" className="an-brand" aria-label="Amani Cover home">
-          <span className="an-brand__mark" aria-hidden="true">A</span>
           <span className="an-brand__text">
             <span className="an-brand__name">Amani</span>
             <small>by Montenzuma Monalisa</small>
@@ -361,7 +358,6 @@ export function AmaniFooter() {
             <h2>Explore</h2>
             <ul>
               <li><a href={anchor('about')}>About</a></li>
-              <li><a href={anchor('how')}>How it works</a></li>
               <li><a href={anchor('apply')}>Apply now</a></li>
               <li><Link to="/amani/cover/terms">Policy terms</Link></li>
               <li><Link to="/amani/cover/refer">Refer a friend</Link></li>

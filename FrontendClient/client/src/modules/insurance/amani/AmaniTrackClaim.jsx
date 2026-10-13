@@ -129,7 +129,7 @@ export default function AmaniTrackClaim() {
       <AmaniNav active="/amani/claims/track" />
       <style>{`
         /* ═════════ top band: back, title, inline lookup ═════════ */
-        .atk-band { background: var(--ac-bg); border-bottom: 1px solid var(--ac-border); padding: 2.25rem 0 3.5rem; }
+        .atk-band { background: linear-gradient(120deg, #e3f2f6, #fff 72%); border-bottom: 1px solid var(--ac-border); padding: 2.25rem 0 3.5rem; }
         .atk-wrap { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem; }
         @media (min-width: 1024px) { .atk-wrap { padding: 0 2.5rem; } }
 
@@ -147,9 +147,9 @@ export default function AmaniTrackClaim() {
         .atk-lookup { display: flex; flex-direction: column; gap: .75rem; margin-top: 2.25rem; }
         @media (min-width: 640px) { .atk-lookup { flex-direction: row; } }
 
-        .atk-input { flex: 1; height: 54px; padding: 0 1.15rem; border: 1px solid var(--ac-input); border-radius: 12px; background: #fff; color: var(--ac-ink); font: 500 .98rem 'DM Sans', sans-serif; transition: border-color .2s, box-shadow .2s; box-sizing: border-box; }
+        .atk-input { flex: 1; height: 54px; padding: 0 1.15rem; border: 1px solid var(--ac-input); border-radius: 12px; background: #fff; color: var(--ac-ink); font: 500 .98rem 'Source Sans 3', sans-serif; transition: border-color .2s, box-shadow .2s; box-sizing: border-box; }
         .atk-input::placeholder { color: #9AA9B6; }
-        .atk-input:focus { outline: none; border-color: var(--ac-accent); box-shadow: 0 0 0 4px rgba(102, 138, 154, .15); }
+        .atk-input:focus { outline: none; border-color: var(--ac-accent); box-shadow: 0 0 0 4px rgba(14, 124, 155, .15); }
         .atk-input[aria-invalid="true"] { border-color: #D64545; }
 
         .atk-btn { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; height: 54px; padding: 0 1.75rem; border: 0; border-radius: 12px; background: var(--ac-primary); color: #fff; white-space: nowrap; font-size: .95rem; font-weight: 700; cursor: pointer; transition: background .2s, transform .2s, box-shadow .2s; }
@@ -233,7 +233,7 @@ export default function AmaniTrackClaim() {
 
         .atk-step__dot { position: relative; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; margin: 0 auto; border-radius: 50%; background: #fff; border: 2px solid var(--ac-border); color: #fff; }
         .atk-step.done .atk-step__dot, .atk-step.current .atk-step__dot { background: var(--ac-primary); border-color: var(--ac-primary); }
-        .atk-step.current .atk-step__dot { box-shadow: 0 0 0 6px rgba(102, 138, 154, .16); }
+        .atk-step.current .atk-step__dot { box-shadow: 0 0 0 6px rgba(14, 124, 155, .16); }
         .atk-step.done .atk-step__dot svg { width: 14px; height: 14px; }
         .atk-step.rejected .atk-step__dot { background: #B42318; border-color: #B42318; }
 

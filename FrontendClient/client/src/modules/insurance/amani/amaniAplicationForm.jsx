@@ -4,17 +4,20 @@ import { CONTACT, GROUP_COVER_VALUE, MIN_GROUP_MEMBERS, coverOptions, formatPlan
 import { InsuranceApiError, submitApplication, sendPolicySms } from '../../../api/insuranceApi';
 
 const AF = {
-  ink: '#1e344b',
-  inkMuted: '#667d94',
-  inkFaint: '#8598aa',
-  navy: '#163b65',
-  navyDeep: '#0f2d4d',
-  blue: '#356da8',
-  bluePale: '#edf4fb',
-  brass: '#6b9acb',
-  border: '#d8e5f1',
-  error: '#ad5750',
-  success: '#557565',
+  ink: '#12263a',
+  inkMuted: '#5a7080',
+  inkFaint: '#8799a7',
+  navy: '#0b2e4a',
+  navyDeep: '#071f33',
+  navyMid: '#0e5a78',
+  blue: '#0e7c9b',
+  aqua: '#8ed8e6',
+  bluePale: '#e3f2f6',
+  field: '#f1f6f9',
+  brass: '#0e7c9b',
+  border: '#e3edf2',
+  error: '#c0392b',
+  success: '#15803d',
   sans: "'Source Sans 3', system-ui, sans-serif",
   serif: "'Merriweather', Georgia, serif",
 };
@@ -22,28 +25,29 @@ const AF = {
 const getInitialCover = () => {
   if (typeof window === 'undefined') return '';
   const requested = new URLSearchParams(window.location.search).get('plan');
-  return coverOptions.some(option => option.value === requested) ? requested : '';
+  const normalized = requested === 'FamilyGroup' ? GROUP_COVER_VALUE : requested;
+  return coverOptions.some(option => option.value === normalized) ? normalized : '';
 };
 
 const createInitial = () => {
   const cover = getInitialCover();
   return ({
-  fullName: '',
-  idNumber: '',
-  age: '',
-  employment: '',
-  phone: '',
-  email: '',
-  cover,
-  members: cover === GROUP_COVER_VALUE
-    ? Array.from({ length: MIN_GROUP_MEMBERS - 1 }, () => newMember())
-    : [],
-  confirmAccepted: false,
-  /* How often they intend to pay. Recorded at application time so the care
-     team and the payments page agree on the schedule from day one. Defaults
-     to monthly — the plan every member can afford — rather than leaving it
-     blank and guessing later. */
-  frequency: 'monthly',
+    fullName: '',
+    idNumber: '',
+    age: '',
+    employment: '',
+    phone: '',
+    email: '',
+    cover,
+    members: cover === GROUP_COVER_VALUE
+      ? Array.from({ length: MIN_GROUP_MEMBERS - 1 }, () => newMember())
+      : [],
+    confirmAccepted: false,
+    /* How often they intend to pay. Recorded at application time so the care
+       team and the payments page agree on the schedule from day one. Defaults
+       to monthly — the plan every member can afford — rather than leaving it
+       blank and guessing later. */
+    frequency: 'monthly',
   });
 };
 
@@ -77,8 +81,7 @@ const EMPLOYMENT_OPTIONS = [
 ];
 
 /* SINGLE SOURCE OF TRUTH for validity. Every caller — onChange, onBlur,
-   handleSubmit, and the green tick — routes through this. The previous version
-   copy-pasted these rules into three places that slowly drifted apart. */
+   handleSubmit, and the green tick — routes through this. */
 function isFieldValid(name, value) {
   switch (name) {
     case 'fullName':
@@ -187,7 +190,7 @@ export default function AmaniApplicationForm() {
   const [fillStamp] = useState(() => formatStamp(new Date()));
 
   const selectedPlan = formData.cover ? planFor(formData.cover) : null;
-  const policyNumberLabel = applicationResult?.publicCode || applicationResult?.policyNumber || formData.idNumber || '34343434';
+  const policyNumberLabel = applicationResult?.policyNumber || applicationResult?.publicCode || '';
   const coverLabel = coverOptions.find((option) => option.value === (applicationResult?.coverType || formData.cover))?.label
     || applicationResult?.coverType
     || (coverOptions.find((option) => option.value === formData.cover)?.label || 'Family');
@@ -233,9 +236,6 @@ export default function AmaniApplicationForm() {
   const groupSize = formData.members.length + 1;
   const isGroup = formData.cover === GROUP_COVER_VALUE;
 
-  /* The chosen plan's real rate, or null until a cover type is picked. Used to
-     price the frequency options, so the amounts a member sees are the amounts
-     PLANS actually defines rather than a number typed into the markup. */
   const handleChange = (event) => {
     const { name, type, checked, value } = event.target;
     const nextValue = type === 'checkbox' ? checked : value;
@@ -445,14 +445,11 @@ export default function AmaniApplicationForm() {
     setIsSubmitting(true);
     /* Real submit to insurance-service. The backend validates the same rules
        this form does and returns a per-field `errors` map, which is merged
-       into the local error state so a server-side rejection (a stale cover
-       list, an ID that fails the plausibility check) is shown next to the
-       right input rather than swallowed.
+       into the local error state so a server-side rejection is shown next to
+       the right input rather than swallowed.
        NOTE: `members` carries a `key` used only for React reconciliation; it
        is stripped here so it never reaches the API. */
     try {
-      /* Static import (not a dynamic await import) so the API client is part of
-         this lazy route's own chunk rather than fetched again on first submit. */
       const result = await submitApplication({
         fullName: formData.fullName,
         idNumber: formData.idNumber,
@@ -508,7 +505,7 @@ export default function AmaniApplicationForm() {
     }
   };
 
-  /* Wrapper class: green tick once valid, red once touched AND invalid. */
+  /* Wrapper class: tick once valid, red once touched AND invalid. */
   const getInputWrapClass = (name) => {
     const value = formData[name];
     let classes = 'af-input-wrap';
@@ -518,10 +515,9 @@ export default function AmaniApplicationForm() {
   };
 
   /* ------------------------------------------------------------------
-     Document stylesheet. Every selector is scoped under .amani-appform and
-     prefixed `af-`, so nothing here can reach the rest of the SPA. The global
-     reset (`*`, `body`, `:root`) that the previous version injected has been
-     dropped on purpose — the host app already owns those in src/index.css.
+     Sleek stylesheet. Every selector is scoped under .amani-appform and
+     prefixed `af-`, so nothing here can reach the rest of the SPA.
+     Borderless: separation comes from soft fills, rings and shadows.
      ------------------------------------------------------------------ */
   const STYLES = `
     .amani-appform {
@@ -532,602 +528,431 @@ export default function AmaniApplicationForm() {
       --af-blue: ${AF.navy};
       --af-blue-hover: ${AF.navyDeep};
       --af-tick: ${AF.blue};
-      --af-gutter: 96px;
-      --af-gutter-tablet: 64px;
-      /* 32px of padding on EACH side cost a 360px phone 64px of its width —
-         nearly a fifth of the screen — before a single character was readable.
-         16px keeps a comfortable touch/reading margin while letting the form
-         genuinely fill the screen. */
-      --af-gutter-mobile: 16px;
+      --af-aqua: ${AF.aqua};
+      --af-tint: ${AF.bluePale};
+      --af-field: ${AF.field};
+      --af-ring: 0 0 0 4px rgba(14, 124, 155, 0.16);
+      --af-gutter: 56px;
+      --af-gutter-tablet: 36px;
+      --af-gutter-mobile: 18px;
 
       position: relative;
       width: 100%;
-      max-width: 1400px;
+      max-width: 1120px;
       margin: 0 auto;
       overflow: hidden;
+      border-radius: 10px;
+
+      box-shadow: 0 2px 6px rgba(11, 46, 74, 0.05), 0 28px 70px rgba(11, 46, 74, 0.13);
       color: ${AF.ink};
       font-family: ${AF.sans};
       font-size: 15px;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
+    .amani-appform *, .amani-appform *::before, .amani-appform *::after { box-sizing: border-box; }
 
-    .af-watermark {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%) rotate(-35deg);
-      font-family: ${AF.serif}; font-size: 8rem; font-weight: 700;
-      color: rgba(23, 60, 90, 0.025); white-space: nowrap; pointer-events: none;
-      z-index: 0; letter-spacing: 0.2em; text-transform: uppercase;
-    }
+    .af-content { position: relative; }
 
-    .af-content { position: relative; z-index: 1; }
-
+    /* ---------- Header ---------- */
     .af-doc-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      flex-wrap: wrap; gap: 2rem;
-      padding: 3rem var(--af-gutter) 2rem;
-      border-bottom: 1px solid var(--af-line);
+      position: relative; overflow: hidden;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      flex-wrap: wrap; gap: 1.75rem;
+      padding: 2.75rem var(--af-gutter) 2.5rem;
+      background: linear-gradient(110deg, ${AF.navyDeep} 0%, ${AF.navy} 48%, ${AF.navyMid} 100%);
+      color: #fff;
     }
-    .af-hdr-left { flex: 1; min-width: 300px; }
-    /* Document title. Was font-size 1.5rem / weight 500, the same visual
-       weight as the small grey contact lines, so it read as another line of
-       contact info rather than as the title of the form. Now larger, bolder,
-       in the accent blue, with a tight leading and a real <h1> above it. */
+    .af-doc-header::before, .af-doc-header::after {
+      content: ''; position: absolute; border-radius: 50%; pointer-events: none;
+    }
+    .af-doc-header::before { top: -7rem; right: 8%; width: 18rem; height: 18rem; background: rgba(142, 216, 230, 0.09); }
+    .af-doc-header::after { bottom: -9rem; right: -4rem; width: 22rem; height: 22rem; background: rgba(14, 124, 155, 0.28); }
+    .af-hdr-left, .af-hdr-right { position: relative; z-index: 1; }
+    .af-hdr-left { flex: 1; min-width: 0; }
+    .af-hdr-mark {
+      display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 1.1rem;
+      border-radius: 14px; background: rgba(255, 255, 255, 0.12); color: ${AF.aqua};
+    }
     .af-hdr-welcome {
+      margin: 0 0 0.35rem;
       font-family: ${AF.serif};
-      font-size: clamp(1.75rem, 6vw, 2.5rem);
-      font-weight: 600;
-      line-height: 1.12;
-      letter-spacing: -0.015em;
-      color: var(--af-blue);
-      margin: 0 0 0.4rem;
+      font-size: clamp(1.6rem, 3.8vw, 2.4rem);
+      font-weight: 700; line-height: 1.12; letter-spacing: -0.03em;
+      color: #fff;
     }
-    /* Provider attribution directly under the title — smaller and greyer than
-       the title, but darker than the contact lines so the hierarchy is
-       title > provider > contact. */
-    .af-hdr-provider {
-      font-family: ${AF.sans};
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #334155;
-      margin: 0 0 1.35rem;
-    }
-    .af-hdr-facility { display: flex; flex-direction: column; gap: 0.5rem; }
-    .af-fac-line {
-      display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.8rem; color: var(--af-gray);
-    }
-    .af-fac-line svg { width: 14px; height: 14px; stroke: var(--af-blue); flex: none; }
+    .af-hdr-provider { margin: 0 0 1.4rem; font-size: 1rem; font-weight: 600; color: ${AF.aqua}; }
+    .af-hdr-facility { display: flex; flex-wrap: wrap; gap: 0.55rem 1.6rem; }
+    .af-fac-line { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: rgba(255, 255, 255, 0.78); }
+    .af-fac-line svg { width: 15px; height: 15px; stroke: ${AF.aqua}; flex: none; }
 
-    .af-hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
-    .af-hdr-label {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-      letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
-    }
+    .af-hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+    .af-hdr-label { font-size: 0.78rem; font-weight: 600; color: rgba(255, 255, 255, 0.68); }
     .af-hdr-value {
-      font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 500;
-      color: var(--af-blue); background: #f3f6f1;
-      padding: 0.2rem 0.8rem; border: 1px solid #d7dfd4; border-radius: 4px;
+      padding: 0.4rem 1rem; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.13); color: #fff;
+      font-size: 0.92rem; font-weight: 600; font-variant-numeric: tabular-nums;
     }
 
-    .af-form-body { padding: 3rem var(--af-gutter) 1.5rem; }
-    .af-doc-section { margin-bottom: 3rem; }
-    .af-doc-section:last-child { margin-bottom: 0; }
+    /* ---------- Body ---------- */
+    .af-form-body { padding: 2.75rem var(--af-gutter) 2.5rem; }
+    .af-doc-section { margin-bottom: 2.75rem; }
+    .af-doc-section:last-of-type { margin-bottom: 0; }
 
-    .af-section-head {
-      display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;
-      padding: 0.75rem 1.25rem; background: var(--af-blue); border-radius: 4px;
-    }
+    .af-section-head { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1.5rem; }
     .af-section-num {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
-      font-weight: 500; color: rgba(255, 255, 255, 0.55);
+      display: grid; place-items: center; flex: none; width: 34px; height: 34px;
+      border-radius: 50%; background: var(--af-tint); color: ${AF.navy};
+      font-size: 0.82rem; font-weight: 700;
     }
     .af-section-title {
-      font-family: ${AF.serif}; font-size: 1.2rem;
-      font-weight: 500; color: #fff; margin: 0;
+      margin: 0; font-family: ${AF.serif}; font-size: 1.25rem; font-weight: 700;
+      letter-spacing: -0.02em; color: ${AF.navy};
     }
 
-    .af-row { display: flex; gap: 2rem; margin-bottom: 1.75rem; }
+    .af-selected-plan {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      margin-bottom: 2.25rem; padding: 1.1rem 1.4rem; border-radius: 16px;
+      background: linear-gradient(120deg, ${AF.navy}, ${AF.navyMid}); color: #fff;
+      box-shadow: 0 12px 30px rgba(11, 46, 74, 0.18);
+    }
+    .af-selected-plan > div { display: flex; flex-direction: column; gap: 0.15rem; }
+    .af-selected-plan span { font-size: 0.8rem; color: ${AF.aqua}; font-weight: 600; }
+    .af-selected-plan strong { font-size: 1.05rem; font-weight: 700; }
+
+    .af-row { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; }
     .af-row:last-child { margin-bottom: 0; }
     .af-col { flex: 1 1 0; min-width: 0; }
-    .af-field-label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; }
-    .af-req { color: var(--af-error); font-size: 0.7rem; margin-left: 4px; }
+    .af-field-label { display: block; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; color: ${AF.ink}; }
+    .af-req { margin-left: 3px; color: var(--af-error); font-size: 0.8rem; }
 
-    .af-input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
+    /* ---------- Inputs: soft filled fields ---------- */
+    .af-input-wrap { position: relative; display: flex; flex-wrap: wrap; align-items: center; width: 100%; }
     .af-doc-input, .af-doc-select {
-      width: 100%; height: 2.75rem; border: none;
-      border-bottom: 1.5px dashed #cbd5e1; background: transparent; outline: none;
-      padding: 0 2.5rem 0.25rem 0; font-family: ${AF.sans};
-      font-size: 1rem; font-weight: 400; color: ${AF.ink};
-      transition: border-color 0.2s ease;
+      width: 100%; height: 52px; padding: 0 2.75rem 0 1rem;
+      border: 0; border-radius: 12px; outline: none;
+      background: var(--af-field); color: ${AF.ink};
+      box-shadow: inset 0 0 0 1.5px transparent;
+      font-family: ${AF.sans}; font-size: 1rem; font-weight: 400;
+      transition: background 0.18s ease, box-shadow 0.18s ease;
       appearance: none; -webkit-appearance: none;
     }
-    .af-doc-input:focus, .af-doc-select:focus { border-bottom: 1.5px solid var(--af-blue); }
-    .af-doc-input::placeholder { color: var(--af-muted); font-weight: 400; }
+    .af-doc-input:hover, .af-doc-select:hover { background: #ebf2f6; }
+    .af-doc-input:focus, .af-doc-select:focus {
+      background: #fff;
+      box-shadow: inset 0 0 0 1.5px ${AF.blue}, var(--af-ring);
+    }
+    .af-doc-input::placeholder { color: var(--af-muted); }
     .af-doc-select {
       cursor: pointer;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 0.25rem center;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235a7080' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 1rem center;
     }
+    .af-input-wrap.is-valid .af-doc-select { background-image: none; }
 
     .af-tick-icon {
-      position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%);
-      width: 1.5rem; height: 1.5rem; border-radius: 50%;
-      background: var(--af-tick); color: #fff;
-      display: none; place-items: center; pointer-events: none;
+      position: absolute; right: 14px; top: 26px; transform: translateY(-50%);
+      display: none; place-items: center; width: 22px; height: 22px;
+      border-radius: 50%; background: var(--af-tick); color: #fff; pointer-events: none;
     }
-    .af-tick-icon svg { width: 16px; height: 16px; }
+    .af-tick-icon svg { width: 13px; height: 13px; }
     .af-input-wrap.is-valid .af-tick-icon { display: grid; }
 
-    .af-err-msg { display: block; color: var(--af-error); font-size: 0.75rem; margin-top: 0.3rem; }
+    .af-err-msg { display: block; width: 100%; margin-top: 0.4rem; color: var(--af-error); font-size: 0.8rem; font-weight: 500; }
     .af-input-wrap.has-error .af-doc-input,
-    .af-input-wrap.has-error .af-doc-select { border-bottom-color: var(--af-error); }
+    .af-input-wrap.has-error .af-doc-select {
+      background: #fff6f5; box-shadow: inset 0 0 0 1.5px var(--af-error);
+    }
+    .af-input-wrap.has-error .af-doc-input:focus,
+    .af-input-wrap.has-error .af-doc-select:focus { box-shadow: inset 0 0 0 1.5px var(--af-error), 0 0 0 4px rgba(192, 57, 43, 0.14); }
 
-    /* Radio appearance. Scoped to BOTH the legacy .af-radio-opt and the newer
-       .af-cover-card so the custom dot is applied either way — without this
-       the native radio shows through unstyled inside the cover cards. */
-    .af-radio-opt, .af-cover-card { cursor: pointer; }
-    .af-radio-opt input, .af-cover-card input {
-      appearance: none; -webkit-appearance: none; width: 20px; height: 20px;
-      border: 1.5px solid #cbd5e1; border-radius: 50%; position: relative;
-      cursor: pointer; margin: 0; transition: all 0.2s; flex: none;
+    /* ---------- Radios & selectable cards ---------- */
+    .af-cover-card input, .af-freq-card input {
+      position: relative; flex: none; width: 22px; height: 22px; margin: 0;
+      border-radius: 50%; background: #fff; cursor: pointer;
+      box-shadow: inset 0 0 0 1.5px #b5c7d1;
+      appearance: none; -webkit-appearance: none; transition: background 0.15s ease, box-shadow 0.15s ease;
     }
-    .af-radio-opt input:checked, .af-cover-card input:checked { border-color: var(--af-blue); }
-    .af-radio-opt input:checked::after, .af-cover-card input:checked::after {
-      content: ''; position: absolute; top: 3px; left: 3px;
-      width: 10px; height: 10px; border-radius: 50%; background: var(--af-blue);
-    }
-    .af-radio-opt input:focus-visible, .af-cover-card input:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
-    .af-radio-opt span { font-size: 1rem; }
-    .af-input-wrap.has-error .af-radio-group,
-    .af-input-wrap.has-error .af-cover-cards {
-      padding-left: 4px; border-left: 2px solid var(--af-error);
+    .af-cover-card input:checked, .af-freq-card input:checked { background: ${AF.blue}; box-shadow: none; }
+    .af-cover-card input:checked::after, .af-freq-card input:checked::after {
+      content: ''; position: absolute; inset: 6px; border-radius: 50%; background: #fff;
     }
 
-    /* ---- Amani Group repeater -----------------------------------------
-       Cover cards: each option is a full-width tappable card rather than a
-       bare radio + label, so the one-line description underneath has room and
-       the whole card is a comfortable touch target on a phone. */
-    .af-cover-cards { display: flex; flex-direction: column; gap: 0.75rem; padding-top: 0.5rem; width: 100%; }
+    .af-cover-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.9rem; width: 100%; }
+    .af-input-wrap.has-error .af-cover-cards { padding: 0.5rem; margin: -0.5rem; border-radius: 20px; background: #fff6f5; }
+
     .af-cover-card {
-      display: flex; align-items: flex-start; gap: 0.85rem;
-      padding: 1rem 1.15rem; border: 1.5px solid var(--af-line);
-      border-radius: 6px; background: #fff; cursor: pointer;
-      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+      display: flex; align-items: flex-start; gap: 0.9rem;
+      padding: 1.15rem 1.25rem; border-radius: 16px; background: #fff; cursor: pointer;
+      box-shadow: inset 0 0 0 1.5px #dce8ee;
+      transition: box-shadow 0.18s ease, background 0.18s ease, transform 0.18s ease;
     }
-    .af-cover-card:hover { border-color: #9fb1bf; background: #fbfcfd; }
+    .af-cover-card:hover { box-shadow: inset 0 0 0 1.5px #9fc4d1; background: #fbfdfe; }
     .af-cover-card:has(input:checked) {
-      border-color: var(--af-blue); background: #edf3f7;
-      box-shadow: 0 1px 3px rgba(23, 60, 90, 0.12);
+      background: var(--af-tint);
+      box-shadow: inset 0 0 0 2px ${AF.blue}, 0 10px 26px rgba(14, 124, 155, 0.14);
     }
-    .af-cover-card input { margin-top: 0.15rem; }
-    .af-cover-card-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-    .af-cover-card-title { font-size: 1rem; font-weight: 600; color: var(--af-blue); }
-
-  /* Real price, shown on the card itself so nobody has to guess what a plan
-     costs. "from" wording for the plans priced as a floor (FamilyGroup/Group). */
-  .af-cover-card-price { display: inline-flex; align-items: baseline; gap: 0.2rem; margin-left: 0.5rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #f3efe7; color: #765f3e; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
-  .af-cover-card-price small { font-size: 0.62rem; font-weight: 600; opacity: 0.75; }
-
-  /* Payment-frequency picker on the application form. */
-  .af-freq-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.5rem; width: 100%; }
-  .af-freq-card { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.8rem 0.9rem; border: 1px solid var(--af-line, #d7e0ea); border-radius: 0.7rem; background: #fff; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s; }
-  .af-freq-card:hover { border-color: #9fb1bf; background: #fbfcfd; }
-  .af-freq-card.is-active { border-color: var(--af-blue); background: #f5f8fa; box-shadow: 0 0 0 3px rgba(23, 60, 90, 0.1); }
-  .af-freq-card input { margin-top: 0.15rem; accent-color: var(--af-blue); }
-  .af-freq-card-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-  .af-freq-card-label { font-size: 0.92rem; font-weight: 600; color: var(--af-blue); }
-  .af-freq-card-hint { font-size: 0.7rem; color: var(--af-muted, #64748b); }
-  .af-freq-card-amount { margin-top: 0.2rem; font-size: 0.85rem; font-weight: 700; color: var(--af-blue); }
-  .af-freq-card-amount small { font-size: 0.68rem; font-weight: 500; color: var(--af-muted, #64748b); }
-  .af-hint { margin-top: 0.4rem; font-size: 0.72rem; color: var(--af-muted, #64748b); }
-
-  @media (max-width: 560px) {
-    .af-freq-cards { grid-template-columns: 1fr; }
-  }
-    .af-cover-card-hint { font-size: 0.8rem; color: var(--af-gray); line-height: 1.45; }
+    .af-cover-card:focus-within { outline: 3px solid rgba(14, 124, 155, 0.35); outline-offset: 2px; }
+    .af-cover-card input { margin-top: 0.1rem; }
+    .af-cover-card-body { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+    .af-cover-card-title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; font-size: 1.02rem; font-weight: 700; color: ${AF.navy}; }
+    .af-cover-card-price {
+      display: inline-flex; align-items: baseline; gap: 0.2rem;
+      padding: 0.15rem 0.6rem; border-radius: 999px;
+      background: ${AF.navy}; color: #fff; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+    }
+    .af-cover-card:has(input:checked) .af-cover-card-price { background: ${AF.blue}; }
+    .af-cover-card-price small { font-size: 0.66rem; font-weight: 600; opacity: 0.8; }
+    .af-cover-card-hint { font-size: 0.85rem; color: var(--af-gray); line-height: 1.5; }
     .af-cover-card-badge {
-      display: inline-block; margin-top: 0.3rem; font-family: 'JetBrains Mono', monospace;
-      font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
-      color: #765f3e; background: #f5f0e4; border: 1px solid #e4d8bd;
-      border-radius: 3px; padding: 0.15rem 0.45rem; align-self: flex-start;
+      align-self: flex-start; margin-top: 0.15rem; padding: 0.15rem 0.6rem;
+      border-radius: 999px; background: #fff; color: ${AF.blue};
+      font-size: 0.75rem; font-weight: 700; box-shadow: inset 0 0 0 1px rgba(14, 124, 155, 0.3);
     }
-    .af-cover-card:focus-within { outline: 2px solid var(--af-tick); outline-offset: 2px; }
 
-    /* Member rows */
-    .af-group-block {
-      margin-top: 1.5rem; padding: 1.25rem 1.15rem 1.35rem;
-      background: #f6f8f8; border: 1px solid var(--af-line); border-radius: 6px;
+    /* Payment frequency */
+    .af-freq-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; width: 100%; }
+    .af-freq-card {
+      display: flex; align-items: flex-start; gap: 0.8rem;
+      padding: 1rem 1.15rem; border-radius: 16px; background: #fff; cursor: pointer;
+      box-shadow: inset 0 0 0 1.5px #dce8ee;
+      transition: box-shadow 0.18s ease, background 0.18s ease;
     }
-    .af-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
-    .af-group-title { font-size: 0.95rem; font-weight: 600; color: ${AF.ink}; }
+    .af-freq-card:hover { box-shadow: inset 0 0 0 1.5px #9fc4d1; }
+    .af-freq-card.is-active { background: var(--af-tint); box-shadow: inset 0 0 0 2px ${AF.blue}; }
+    .af-freq-card:focus-within { outline: 3px solid rgba(14, 124, 155, 0.35); outline-offset: 2px; }
+    .af-freq-card input { margin-top: 0.1rem; }
+    .af-freq-card-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+    .af-freq-card-label { font-size: 0.98rem; font-weight: 700; color: ${AF.navy}; }
+    .af-freq-card-hint { font-size: 0.8rem; color: var(--af-gray); }
+    .af-freq-card-amount { margin-top: 0.3rem; font-size: 0.95rem; font-weight: 700; color: ${AF.navy}; }
+    .af-freq-card-amount small { font-size: 0.75rem; font-weight: 500; color: var(--af-gray); }
+    .af-hint { margin-top: 0.5rem; font-size: 0.8rem; color: var(--af-gray); }
+
+    /* ---------- Group members ---------- */
+    .af-group-block { margin-top: 1.75rem; padding: 1.5rem; border-radius: 20px; background: #f5f9fb; }
+    .af-group-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.4rem; }
+    .af-group-title { font-family: ${AF.serif}; font-size: 1.05rem; font-weight: 700; color: ${AF.navy}; }
     .af-group-count {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500;
-      letter-spacing: 0.06em; text-transform: uppercase; color: var(--af-blue);
-      background: #edf3f7; border: 1px solid #d7e2e9; border-radius: 999px;
-      padding: 0.25rem 0.65rem; white-space: nowrap;
+      padding: 0.25rem 0.8rem; border-radius: 999px; white-space: nowrap;
+      background: #e1f4e8; color: ${AF.success}; font-size: 0.8rem; font-weight: 700;
     }
-    .af-group-count.is-short { color: var(--af-error); background: #fef2f2; border-color: #fecaca; }
-    .af-group-note { font-size: 0.78rem; color: var(--af-gray); margin: 0 0 1rem; }
+    .af-group-count.is-short { background: #fdeceb; color: var(--af-error); }
+    .af-group-note { margin: 0 0 1.25rem; font-size: 0.88rem; color: var(--af-gray); }
 
     .af-member-row {
-      position: relative; background: #fff; border: 1px solid var(--af-line);
-      border-radius: 5px; padding: 1rem 1rem 1.1rem; margin-bottom: 0.85rem;
+      margin-bottom: 0.9rem; padding: 1.1rem 1.25rem 1.3rem; border-radius: 16px; background: #fff;
+      box-shadow: 0 6px 18px rgba(11, 46, 74, 0.06);
     }
-    .af-member-row.has-error { border-color: #fca5a5; }
-    .af-member-head {
-      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
-      margin-bottom: 0.85rem;
-    }
-    .af-member-num {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-      letter-spacing: 0.1em; text-transform: uppercase; color: var(--af-gray);
-    }
+    .af-member-row.has-error { box-shadow: inset 0 0 0 1.5px #f2b8b3, 0 6px 18px rgba(11, 46, 74, 0.06); }
+    .af-member-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.9rem; }
+    .af-member-num { font-size: 0.85rem; font-weight: 700; color: ${AF.blue}; }
     .af-member-remove {
-      display: inline-flex; align-items: center; gap: 0.3rem;
-      background: transparent; border: none; padding: 0.25rem 0.4rem;
-      font-family: inherit; font-size: 0.72rem; font-weight: 600;
-      letter-spacing: 0.04em; text-transform: uppercase;
-      color: var(--af-error); cursor: pointer; border-radius: 4px;
+      display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.8rem;
+      border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+      color: var(--af-error); font-family: inherit; font-size: 0.8rem; font-weight: 600;
+      transition: background 0.15s ease;
     }
-    .af-member-remove:hover { background: #fef2f2; }
+    .af-member-remove:hover { background: #fdeceb; }
     .af-member-remove:focus-visible { outline: 2px solid var(--af-error); outline-offset: 1px; }
-    .af-member-remove svg { width: 13px; height: 13px; }
+    .af-member-remove svg { width: 14px; height: 14px; }
 
     .af-add-member {
-      display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
-      width: 100%; height: 2.75rem; padding: 0 1.25rem;
-      background: #fff; color: var(--af-blue);
-      box-shadow: inset 0 0 0 1.5px var(--af-blue);
-      border-radius: 4px; font-family: inherit; font-size: 0.9rem;
-      font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      width: 100%; height: 50px; padding: 0 1.25rem; border: 0; border-radius: 12px;
+      background: var(--af-tint); color: ${AF.navy}; cursor: pointer;
+      font-family: inherit; font-size: 0.95rem; font-weight: 700;
+      transition: background 0.18s ease;
     }
-    .af-add-member:hover { background: #edf3f7; }
-    .af-add-member:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
-    .af-add-member svg { width: 15px; height: 15px; }
+    .af-add-member:hover { background: #d3ecf2; }
+    .af-add-member:focus-visible { outline: 3px solid rgba(14, 124, 155, 0.4); outline-offset: 2px; }
+    .af-add-member svg { width: 16px; height: 16px; }
 
-    .af-group-summary {
-      display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.78rem; color: var(--af-gray); margin: 0.85rem 0 0;
-    }
-
-    /* Submit outcome banners. Error is red-tinted, the duplicate-application
-       notice is blue-tinted and informational - a duplicate is NOT a failure
-       from the visitor's point of view, so it must not look like one. */
-    .af-alerts { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.5rem; }
-    .af-alert {
-      display: flex; align-items: flex-start; gap: 0.6rem;
-      margin: 0; padding: 0.85rem 1rem;
-      font-size: 0.9rem; line-height: 1.5;
-      border-radius: 4px; border-left: 3px solid transparent;
-    }
-    .af-alert-error {
-      color: #991b1b; background: #fef2f2; border-left-color: var(--af-error);
-    }
-    .af-alert-info {
-      color: #294b63; background: #edf3f7; border-left-color: var(--af-blue);
-    }
-
-    .af-confirm-block {
-      margin-top: 1.5rem; padding: 1.1rem 1.3rem 1.25rem; background: #edf3f7;
-      border-radius: 4px; display: flex; flex-direction: column; gap: 0.55rem;
-      border-left: 3px solid var(--af-blue);
-    }
-    .af-confirm-label { display: flex; align-items: flex-start; gap: 0.8rem; cursor: pointer; }
+    /* ---------- Declaration, alerts, actions ---------- */
+    .af-confirm-block { margin-top: 2.25rem; padding: 1.25rem 1.4rem; border-radius: 18px; background: var(--af-tint); }
+    .af-confirm-label { display: flex; align-items: flex-start; gap: 0.9rem; cursor: pointer; }
     .af-confirm-box {
-      appearance: none; -webkit-appearance: none; width: 22px; height: 22px;
-      border: 1.5px solid #cbd5e1; border-radius: 4px; background: #fff;
-      position: relative; cursor: pointer; margin: 0; flex: none;
+      position: relative; flex: none; width: 24px; height: 24px; margin: 0; border-radius: 8px;
+      background: #fff; cursor: pointer; box-shadow: inset 0 0 0 1.5px #9fc4d1;
+      appearance: none; -webkit-appearance: none; transition: background 0.15s ease, box-shadow 0.15s ease;
     }
-    .af-confirm-box:checked { background: var(--af-blue); border-color: var(--af-blue); }
+    .af-confirm-box:checked { background: ${AF.navy}; box-shadow: none; }
     .af-confirm-box:checked::after {
-      content: ''; position: absolute; top: 2px; left: 7px;
-      width: 5px; height: 10px; border: solid #fff;
-      border-width: 0 2px 2px 0; transform: rotate(45deg);
+      content: ''; position: absolute; top: 4px; left: 8px; width: 6px; height: 11px;
+      border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
     }
-    .af-confirm-box:focus-visible { outline: 2px solid var(--af-tick); outline-offset: 2px; }
-    .af-confirm-label span { font-size: 0.85rem; line-height: 1.5; }
+    .af-confirm-box:focus-visible { outline: 3px solid rgba(14, 124, 155, 0.4); outline-offset: 2px; }
+    .af-confirm-label span { font-size: 0.9rem; line-height: 1.55; }
+    .af-confirm-block .af-err-msg { margin-left: 2.4rem; width: auto; }
 
-    .af-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; }
+    .af-alerts { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.5rem; }
+    .af-alert { display: flex; align-items: flex-start; gap: 0.6rem; margin: 0; padding: 0.95rem 1.15rem; border-radius: 14px; font-size: 0.92rem; line-height: 1.5; }
+    .af-alert-error { background: #fdeceb; color: #922b21; }
+    .af-alert-info { background: var(--af-tint); color: ${AF.navy}; }
+
+    .af-actions { display: flex; justify-content: flex-end; gap: 0.9rem; margin-top: 2rem; }
     .af-btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-      height: 2.75rem; padding: 0 1.75rem; border: none; border-radius: 4px;
-      font-family: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease;
+      height: 52px; padding: 0 2rem; border: 0; border-radius: 7px; cursor: pointer;
+      font-family: inherit; font-size: 1rem; font-weight: 700;
+      transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
     }
-    .af-btn-primary { background: var(--af-blue); color: #fff; box-shadow: 0 4px 12px rgba(23, 60, 90, 0.16); }
-    .af-btn-primary:hover:not(:disabled) { background: var(--af-blue-hover); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(16, 47, 73, 0.24); }
+    .af-btn:focus-visible { outline: 3px solid rgba(14, 124, 155, 0.45); outline-offset: 3px; }
+    .af-btn-primary { background: ${AF.navy}; color: #fff; box-shadow: 0 10px 26px rgba(11, 46, 74, 0.22); }
+    .af-btn-primary:hover:not(:disabled) { background: ${AF.navyDeep}; transform: translateY(-2px); box-shadow: 0 14px 32px rgba(11, 46, 74, 0.28); }
     .af-btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
-    .af-btn-ghost { background: transparent; color: var(--af-blue); box-shadow: inset 0 0 0 1.5px var(--af-blue); }
-    .af-btn-ghost:hover { background: #edf3f7; }
+    .af-btn-ghost { background: var(--af-tint); color: ${AF.navy}; }
+    .af-btn-ghost:hover { background: #d3ecf2; }
 
-    .af-record-strip {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-      letter-spacing: 0.11em; text-transform: uppercase; color: var(--af-gray);
-      text-align: center; line-height: 1.7; margin: 2rem var(--af-gutter) 0;
-      padding: 0.9rem 1rem 0.4rem; border-top: 1px solid var(--af-line);
-    }
-
-    .af-done { padding: 2.5rem 0; text-align: center; }
-    .af-done h3 { font-family: ${AF.serif}; font-size: 2.2rem; margin: 1rem 0 0.5rem; color: var(--af-blue); }
-    .af-done p { color: var(--af-gray); margin: 0 auto; max-width: 36rem; }
-    .af-done-policy-badge {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      background: #edf3f7; border: 1px solid #c9dbe6; padding: 0.5rem 1.25rem;
-      border-radius: 9999px; font-weight: 700; color: var(--af-blue); margin: 1rem 0 1.5rem;
-      font-size: 0.95rem; letter-spacing: 0.03em;
-    }
-    .af-done-cards {
-      display: grid;
-      grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
-      gap: 1.5rem;
-      max-width: 860px; margin: 2rem auto; text-align: left;
-      align-items: start;
-    }
-    .af-policy-box {
-      background: linear-gradient(180deg, #f9fbfc 0%, #edf3f7 100%);
-      border: 1.5px solid #d0dfe9; border-radius: 12px;
-      padding: 1.25rem 1.15rem;
-      box-shadow: 0 4px 18px rgba(23, 60, 90, 0.04);
-    }
-    .af-policy-head {
-      display: flex; align-items: center; gap: 0.6rem;
-      font-weight: 700; color: var(--af-blue); margin-bottom: 1rem;
-    }
-    .af-policy-grid {
-      display: grid; gap: 0.8rem;
-    }
-    .af-policy-row {
-      display: grid; gap: 0.2rem;
-      padding-bottom: 0.7rem; border-bottom: 1px solid rgba(23, 60, 90, 0.08);
-    }
-    .af-policy-row:last-child { padding-bottom: 0; border-bottom: none; }
-    .af-policy-label {
-      font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--af-gray);
-      font-weight: 700;
-    }
-    .af-policy-value {
-      font-size: 1rem; font-weight: 700; color: var(--af-blue);
-      word-break: break-word;
-    }
-    .af-sms-box {
-      background: #ffffff; border: 1.5px solid #d0dfe9; border-radius: 12px;
-      padding: 1.5rem; box-shadow: 0 4px 18px rgba(23, 60, 90, 0.06);
-    }
-    .af-sms-head {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
-    }
-    .af-sms-head-title {
-      display: flex; align-items: center; gap: 0.6rem;
-      font-weight: 700; font-size: 1rem; color: var(--af-blue);
-    }
-    .af-sms-badge {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      background: #e8f5e9; color: #1b5e20; padding: 0.25rem 0.75rem;
-      border-radius: 9999px; font-size: 0.75rem; font-weight: 700;
-    }
-    .af-sms-preview-phone {
-      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
-      padding: 1rem 1.25rem; margin-bottom: 1.25rem; position: relative;
-    }
-    .af-sms-preview-top {
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 0.72rem; color: #64748b; font-weight: 600; margin-bottom: 0.5rem;
-      text-transform: uppercase; letter-spacing: 0.05em;
-    }
-    .af-sms-bubble {
-      background: #173c5a; color: #ffffff; padding: 0.9rem 1.1rem;
-      border-radius: 14px 14px 14px 2px; font-size: 0.9rem; line-height: 1.5;
-      box-shadow: 0 2px 8px rgba(23, 60, 90, 0.15); word-break: break-word;
-    }
-    .af-sms-bubble a { color: #8bc34a; font-weight: 700; text-decoration: underline; }
-    .af-sms-actions {
-      display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
-    }
-    .af-action-btn {
-      display: inline-flex; align-items: center; gap: 0.45rem;
-      padding: 0.55rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
-      border: 1px solid #cbd5e1; background: #fff; color: var(--af-blue);
-      cursor: pointer; transition: all 0.2s ease;
-    }
-    .af-action-btn:hover { background: #f1f5f9; border-color: var(--af-blue); }
-    .af-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .af-alt-phone-row {
-      display: flex; gap: 0.5rem; margin-top: 0.75rem; width: 100%;
-    }
-    .af-alt-input {
-      flex: 1; padding: 0.55rem 0.85rem; border: 1px solid #cbd5e1;
-      border-radius: 6px; font-size: 0.9rem; font-family: inherit;
-    }
-    .af-monthly-card {
-      background: linear-gradient(135deg, #173c5a 0%, #102f49 100%);
-      color: #fff; border-radius: 12px; padding: 1.6rem;
-      box-shadow: 0 6px 20px rgba(23, 60, 90, 0.18);
-    }
-    .af-monthly-head {
-      display: flex; align-items: center; gap: 0.6rem;
-      font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; color: #fff;
-    }
-    .af-monthly-desc {
-      font-size: 0.85rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 1.25rem;
-    }
-    .af-paylink-row {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem;
-    }
-    .af-paylink-url {
-      font-family: monospace; font-size: 0.85rem; color: #e2e8f0;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .af-paylink-copy {
-      background: rgba(255, 255, 255, 0.2); border: none; color: #fff;
-      padding: 0.4rem 0.75rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;
-      cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0;
-    }
-    .af-paylink-copy:hover { background: rgba(255, 255, 255, 0.3); }
-    .af-cta-paynow {
-      display: inline-flex; width: 100%; align-items: center; justify-content: center;
-      gap: 0.6rem; padding: 0.9rem 1.5rem; background: #00a86b; color: #fff;
-      border-radius: 8px; font-weight: 700; font-size: 1rem; text-decoration: none;
-      box-shadow: 0 4px 14px rgba(0, 168, 107, 0.3); transition: all 0.2s ease;
-    }
-    .af-cta-paynow:hover { background: #008f5a; transform: translateY(-1px); }
-    .af-done-contact { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 1rem; padding: 0.65rem 1.2rem; border-radius: 6px; background: #edf3f7; color: var(--af-blue); font-weight: 600; text-decoration: none; border: 1px solid #cbd5e1; }
-    .af-done-contact:hover { background: #e2e8f0; }
+    /* ---------- Success state ---------- */
+    .af-done { padding: 1rem 0 0.5rem; text-align: center; }
+    .af-done h3 { margin: 1.1rem 0 0.5rem; font-family: ${AF.serif}; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.02em; color: ${AF.navy}; }
+    .af-done p { max-width: 36rem; margin: 0 auto; color: var(--af-gray); }
     .af-done-mark {
       display: grid; place-items: center; width: 4.5rem; height: 4.5rem; margin: 0 auto;
-      border-radius: 50%; background: #00a86b; color: #fff;
+      border-radius: 50%; background: linear-gradient(135deg, ${AF.navy}, ${AF.navyMid}); color: ${AF.aqua};
+      box-shadow: 0 14px 30px rgba(11, 46, 74, 0.22);
     }
-    .af-done-mark svg { width: 32px; height: 32px; }
+    .af-done-mark svg { width: 30px; height: 30px; }
+    .af-done-policy-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem; margin: 1.25rem 0 0.5rem;
+      padding: 0.5rem 1.3rem; border-radius: 999px; background: var(--af-tint);
+      color: ${AF.navy}; font-size: 0.95rem;
+    }
+    .af-done-cards {
+      display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 1.25rem;
+      max-width: 900px; margin: 2rem auto; text-align: left; align-items: stretch;
+    }
+    .af-monthly-card { grid-column: 1 / -1; }
 
+    .af-policy-box {
+      padding: 1.5rem 1.4rem; border-radius: 20px; color: #fff;
+      background: linear-gradient(160deg, ${AF.navy}, ${AF.navyDeep});
+      box-shadow: 0 16px 38px rgba(11, 46, 74, 0.2);
+    }
+    .af-policy-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.1rem; font-weight: 700; color: ${AF.aqua}; }
+    .af-policy-grid { display: grid; gap: 0.85rem; }
+    .af-policy-row { display: grid; gap: 0.15rem; padding-bottom: 0.85rem; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+    .af-policy-row:last-child { padding-bottom: 0; border-bottom: 0; }
+    .af-policy-label { font-size: 0.8rem; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
+    .af-policy-value { font-size: 1.02rem; font-weight: 700; color: #fff; word-break: break-word; }
+
+    .af-sms-box { padding: 1.5rem; border-radius: 20px; background: #fff; box-shadow: 0 14px 38px rgba(11, 46, 74, 0.1); }
+    .af-sms-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.9rem; margin-bottom: 1.1rem; }
+    .af-sms-head-title { display: flex; align-items: center; gap: 0.6rem; font-size: 1rem; font-weight: 700; color: ${AF.navy}; }
+    .af-sms-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.8rem; border-radius: 999px; background: #e1f4e8; color: ${AF.success}; font-size: 0.78rem; font-weight: 700; }
+    .af-sms-preview-phone { margin-bottom: 1.25rem; padding: 1rem 1.2rem; border-radius: 16px; background: #f5f9fb; }
+    .af-sms-preview-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; color: var(--af-gray); font-size: 0.75rem; font-weight: 600; }
+    .af-sms-bubble {
+      padding: 0.95rem 1.15rem; border-radius: 18px 18px 18px 4px;
+      background: ${AF.navy}; color: #fff; font-size: 0.92rem; line-height: 1.55; word-break: break-word;
+    }
+    .af-sms-bubble a { color: ${AF.aqua}; font-weight: 700; text-decoration: underline; }
+    .af-sms-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; }
+    .af-action-btn {
+      display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.65rem 1.1rem;
+      border: 0; border-radius: 999px; background: var(--af-tint); color: ${AF.navy}; cursor: pointer;
+      font-family: inherit; font-size: 0.88rem; font-weight: 700; transition: background 0.18s ease;
+    }
+    .af-action-btn:hover:not(:disabled) { background: #d3ecf2; }
+    .af-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .af-action-btn:focus-visible { outline: 3px solid rgba(14, 124, 155, 0.4); outline-offset: 2px; }
+    .af-alt-phone-row { display: flex; gap: 0.6rem; width: 100%; margin-top: 0.85rem; }
+    .af-alt-input {
+      flex: 1; min-width: 0; height: 46px; padding: 0 1rem; border: 0; border-radius: 12px; outline: none;
+      background: var(--af-field); font-family: inherit; font-size: 0.95rem;
+    }
+    .af-alt-input:focus { background: #fff; box-shadow: inset 0 0 0 1.5px ${AF.blue}, var(--af-ring); }
+
+    .af-monthly-card {
+      padding: 1.75rem; border-radius: 20px; color: #fff;
+      background: linear-gradient(120deg, ${AF.navyDeep}, ${AF.navyMid});
+      box-shadow: 0 18px 42px rgba(11, 46, 74, 0.22);
+    }
+    .af-monthly-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem; font-size: 1.08rem; font-weight: 700; color: #fff; }
+    .af-monthly-head svg { color: ${AF.aqua}; }
+    .af-monthly-desc { max-width: 640px; margin-bottom: 1.25rem; color: rgba(255, 255, 255, 0.78); font-size: 0.92rem; line-height: 1.6; }
+    .af-paylink-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+      margin-bottom: 1.1rem; padding: 0.7rem 0.8rem 0.7rem 1.1rem; border-radius: 14px; background: rgba(255, 255, 255, 0.1);
+    }
+    .af-paylink-url { overflow: hidden; color: #e8f4f8; font-size: 0.88rem; text-overflow: ellipsis; white-space: nowrap; }
+    .af-paylink-copy {
+      display: inline-flex; flex-shrink: 0; align-items: center; gap: 0.35rem; padding: 0.5rem 0.9rem;
+      border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.18); color: #fff; cursor: pointer;
+      font-family: inherit; font-size: 0.82rem; font-weight: 700; transition: background 0.15s ease;
+    }
+    .af-paylink-copy:hover { background: rgba(255, 255, 255, 0.28); }
+    .af-cta-paynow {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; width: 100%;
+      padding: 1rem 1.5rem; border-radius: 999px; background: ${AF.aqua}; color: ${AF.navy};
+      font-size: 1rem; font-weight: 800; text-decoration: none;
+      transition: background 0.18s ease, transform 0.18s ease;
+    }
+    .af-cta-paynow:hover { background: #a8e3ee; transform: translateY(-2px); }
+    .af-cta-paynow:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    .af-done-contact {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0.65rem 1.4rem;
+      border: 0; border-radius: 999px; background: var(--af-tint); color: ${AF.navy};
+      font-family: inherit; font-size: 0.95rem; font-weight: 700; text-decoration: none; cursor: pointer;
+      transition: background 0.18s ease;
+    }
+    .af-done-contact:hover { background: #d3ecf2; }
+
+    /* ---------- Responsive ---------- */
     @media (max-width: 1024px) {
-      .af-doc-header, .af-form-body, .af-record-strip {
-        padding-left: var(--af-gutter-tablet); padding-right: var(--af-gutter-tablet);
-      }
-      .af-row { flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem; }
-      .af-actions { flex-direction: column-reverse; }
-      .af-actions .af-btn { width: 100%; }
+      .af-doc-header, .af-form-body { padding-left: var(--af-gutter-tablet); padding-right: var(--af-gutter-tablet); }
       .af-done-cards { grid-template-columns: minmax(0, 1fr); }
     }
 
-    /* Phones: the document was inset by a 32px gutter on BOTH sides on top of
-       the page's own px-6, so a 360px screen lost ~80px to margins and the
-       input rows were cramped. Below 600px the form now goes edge-to-edge
-       (it still has the 16px reading gutter, but no extra page padding) and
-       the header stacks so the date stamp sits under the title instead of
-       competing with it for horizontal space. */
+    @media (max-width: 720px) {
+      .af-row { flex-direction: column; gap: 1.35rem; margin-bottom: 1.35rem; }
+      .af-freq-cards { grid-template-columns: 1fr; }
+      .af-actions { flex-direction: column-reverse; }
+      .af-actions .af-btn { width: 100%; }
+    }
+
     @media (max-width: 600px) {
-      .af-doc-header, .af-form-body, .af-record-strip {
-        padding-left: var(--af-gutter-mobile);
-        padding-right: var(--af-gutter-mobile);
-      }
+      .amani-appform { border-radius: 20px; }
+      .af-doc-header { padding: 1.75rem var(--af-gutter-mobile) 1.6rem; gap: 1.1rem; }
+      .af-form-body { padding: 1.75rem var(--af-gutter-mobile) 1.5rem; }
       .af-hdr-right { align-items: flex-start; width: 100%; }
-      .af-watermark { font-size: 4rem; }
-
-      /* Full-bleed: kill the page gutter so the form spans the whole screen,
-         and reduce the document's own padding to a comfortable 16px. */
-      .amani-appform { max-width: 100%; border-left: none; border-right: none; }
-      .af-doc-header { padding: 1.5rem var(--af-gutter-mobile) 1.25rem; gap: 1rem; }
-      .af-form-body { padding: 1.75rem var(--af-gutter-mobile) 1.25rem; }
-      .af-record-strip { margin: 1.5rem var(--af-gutter-mobile) 0; }
-
-      /* min-width:300px forced the header column to overflow a 360px screen
-         once the real padding was accounted for. */
-      .af-hdr-left { min-width: 0; }
-
-      .af-doc-section { margin-bottom: 2rem; }
-      .af-section-head { padding: 0.65rem 1rem; margin-bottom: 1.25rem; }
-      .af-group-block { padding: 1rem 0.85rem 1.1rem; }
-      .af-member-row { padding: 0.85rem 0.8rem 0.95rem; }
+      .af-hdr-facility { flex-direction: column; gap: 0.5rem; }
+      .af-doc-section { margin-bottom: 2.25rem; }
       .af-selected-plan { align-items: flex-start; flex-direction: column; }
-      .af-done { padding: 1.5rem 0; }
-      .af-done h3 { font-size: 1.65rem; }
-      .af-done-cards { gap: 1rem; margin: 1.5rem auto; }
-      .af-policy-box, .af-sms-box { min-width: 0; padding: 1rem; }
-      .af-sms-head { align-items: flex-start; flex-direction: column; gap: 0.65rem; }
-      .af-sms-head-title { font-size: 0.95rem; }
+      .af-group-block { padding: 1.1rem 0.9rem; }
+      .af-member-row { padding: 0.95rem 0.9rem 1.1rem; }
+      .af-cover-cards { grid-template-columns: 1fr; }
+      .af-confirm-block { padding: 1.1rem 1rem; }
+      .af-done h3 { font-size: 1.5rem; }
+      .af-policy-box, .af-sms-box, .af-monthly-card { min-width: 0; padding: 1.15rem; }
+      .af-sms-head { align-items: flex-start; flex-direction: column; }
       .af-sms-badge { max-width: 100%; overflow-wrap: anywhere; }
-      .af-sms-preview-phone { min-width: 0; padding: 0.75rem; }
-      .af-sms-preview-top { align-items: flex-start; flex-direction: column; gap: 0.25rem; font-size: 0.62rem; }
-      .af-sms-bubble { padding: 0.8rem; font-size: 0.85rem; overflow-wrap: anywhere; }
-      .af-sms-bubble a { overflow-wrap: anywhere; }
+      .af-sms-preview-phone { padding: 0.8rem; }
+      .af-sms-preview-top { align-items: flex-start; flex-direction: column; gap: 0.2rem; }
+      .af-sms-bubble { padding: 0.85rem; font-size: 0.88rem; overflow-wrap: anywhere; }
       .af-sms-actions { align-items: stretch; flex-direction: column; }
-      .af-action-btn { justify-content: center; min-height: 44px; }
+      .af-action-btn { justify-content: center; min-height: 46px; }
       .af-alt-phone-row { flex-direction: column; }
-      .af-alt-input { min-height: 44px; }
     }
 
-    .amani-appform {
-      border: 1px solid ${AF.border};
-      border-radius: 10px;
-      background: #fff;
-      box-shadow: 0 16px 42px rgba(22, 59, 101, 0.08);
-    }
-    .af-doc-header {
-      background: linear-gradient(120deg, #edf4fb, #fff 72%);
-      border-top: 3px solid #356da8;
-    }
-    .af-hdr-welcome { color: ${AF.navy}; }
-    .af-hdr-value {
-      border-color: ${AF.border};
-      border-radius: 6px;
-      background: #edf4fb;
-      color: ${AF.navy};
-    }
-    .af-section-head {
-      border-radius: 8px;
-      background: ${AF.navy};
-    }
-    .af-doc-input:focus, .af-doc-select:focus {
-      border-bottom: 1.5px solid #356da8;
-      box-shadow: 0 2px 0 #8fb2d3;
-    }
-    .af-cover-card { border-radius: 9px; }
-    .af-cover-card:has(input:checked) {
-      border-color: ${AF.navy};
-      background: #edf4fb;
-      box-shadow: 0 0 0 2px #8fb2d3;
-    }
-    .af-cover-card-price {
-      background: #edf4fb;
-      color: ${AF.navy};
-    }
-    .af-btn { border-radius: 6px; }
-    .af-btn-primary {
-      border-color: transparent;
-      background: ${AF.navy};
-      color: #fff;
-      box-shadow: 0 8px 22px rgba(22, 59, 101, 0.16);
-    }
-    .af-btn-primary:hover:not(:disabled) {
-      background: ${AF.navyDeep};
-      color: #fff;
-    }
-    .af-btn-ghost {
-      border-radius: 6px;
-      color: ${AF.navy};
-      box-shadow: inset 0 0 0 1.5px ${AF.navy};
-    }
-    .af-btn-ghost:hover { background: ${AF.bluePale}; }
-    .af-action-btn {
-      border-radius: 6px;
-    }
-    .af-record-strip, .af-policy-box, .af-sms-box {
-      border-radius: 14px;
-    }
-    .af-policy-box {
-      background: ${AF.navyDeep};
-      color: #fff;
-    }
-    .af-cta-paynow {
-      border-radius: 6px;
-      background: ${AF.navy};
-      box-shadow: 0 8px 22px rgba(22, 59, 101, 0.2);
-    }
-    .af-cta-paynow:hover { background: ${AF.navyDeep}; }
-    .af-done-mark { background: ${AF.navy}; color: #fff; }
-
-    @media (max-width: 600px) {
-      .amani-appform { border-radius: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .amani-appform * { transition-duration: 0.01ms !important; }
+      .af-btn-primary:hover:not(:disabled), .af-cta-paynow:hover { transform: none; }
     }
   `;
 
   return (
     <div className="amani-appform">
       <style>{STYLES}</style>
-      <div className="af-watermark" aria-hidden="true">OFFICIAL RECORD</div>
 
       <div className="af-content">
         {/* Document header */}
         <header className="af-doc-header">
           <div className="af-hdr-left">
-            {/* Was one flattened string, "Amani  Cover  Apllication Form
-                Montenzuma", in the same weight and colour as the contact lines
-                below it — so the document title did not read as a title, and
-                "Apllication" was misspelt. Split into a real heading plus a
-                provider line, with the title given the heavy Fraunces treatment
-                and the accent colour so it is unmistakable on a phone. */}
+            <div className="af-hdr-mark" aria-hidden="true">
+              <ShieldCheck size={22} />
+            </div>
             <h1 className="af-hdr-welcome">
               Amani Cover Application Form
             </h1>
@@ -1150,7 +975,7 @@ export default function AmaniApplicationForm() {
             </div>
           </div>
           <div className="af-hdr-right">
-            <div className="af-hdr-label">Filling Date &amp; Time</div>
+            <div className="af-hdr-label">Filling date &amp; time</div>
             <div className="af-hdr-value">{fillStamp}</div>
           </div>
         </header>
@@ -1200,11 +1025,11 @@ export default function AmaniApplicationForm() {
                   </div>
                 </aside>
 
-                {/* ── 01: Instant SMS Confirmation Card ── */}
+                {/* Instant SMS confirmation card */}
                 <div className="af-sms-box">
                   <div className="af-sms-head">
                     <div className="af-sms-head-title">
-                      <MessageSquare size={18} color="var(--af-blue)" />
+                      <MessageSquare size={18} color="var(--af-tick)" />
                       <span>Instant SMS Confirmation</span>
                     </div>
                     <span className="af-sms-badge">
@@ -1216,7 +1041,7 @@ export default function AmaniApplicationForm() {
                   <div className="af-sms-preview-phone">
                     <div className="af-sms-preview-top">
                       <span>SMS Gateway · Africa&apos;s Talking</span>
-                      <span>Delivered Just Now</span>
+                      <span>Delivered just now</span>
                     </div>
                     <div className="af-sms-bubble">
                       {applicationResult?.smsPreview || (
@@ -1236,7 +1061,7 @@ export default function AmaniApplicationForm() {
                       disabled={resendLoading}
                     >
                       <RefreshCw size={14} />
-                      {resendLoading ? 'Sending SMS…' : 'Resend SMS to My Phone'}
+                      {resendLoading ? 'Sending SMS…' : 'Resend SMS to my phone'}
                     </button>
 
                     <button
@@ -1245,7 +1070,7 @@ export default function AmaniApplicationForm() {
                       onClick={() => setShowAltPhone(!showAltPhone)}
                     >
                       <Smartphone size={14} />
-                      Send to Alternate Phone
+                      Send to another phone
                     </button>
                   </div>
 
@@ -1261,12 +1086,12 @@ export default function AmaniApplicationForm() {
                       <button
                         type="button"
                         className="af-action-btn"
-                        style={{ background: 'var(--af-blue)', color: '#fff', borderColor: 'var(--af-blue)' }}
+                        style={{ background: 'var(--af-blue)', color: '#fff' }}
                         disabled={resendLoading || !altPhone.trim()}
                         onClick={() => handleResendSms(altPhone)}
                       >
                         <Send size={14} />
-                        Send Now
+                        Send now
                       </button>
                     </div>
                   )}
@@ -1275,12 +1100,12 @@ export default function AmaniApplicationForm() {
                     <div
                       style={{
                         marginTop: '0.85rem',
-                        padding: '0.65rem 0.9rem',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
+                        padding: '0.7rem 1rem',
+                        borderRadius: '12px',
+                        fontSize: '0.88rem',
                         fontWeight: 600,
-                        background: resendStatus.type === 'success' ? '#e8f5e9' : '#ffebee',
-                        color: resendStatus.type === 'success' ? '#1b5e20' : '#c62828',
+                        background: resendStatus.type === 'success' ? '#e1f4e8' : '#fdeceb',
+                        color: resendStatus.type === 'success' ? '#15803d' : '#c0392b',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
@@ -1292,7 +1117,7 @@ export default function AmaniApplicationForm() {
                   )}
                 </div>
 
-                {/* ── 02: Monthly Payment Link & Schedule Card ── */}
+                {/* Monthly payment link & schedule card */}
                 <div className="af-monthly-card">
                   <div className="af-monthly-head">
                     <Calendar size={18} />
@@ -1311,7 +1136,7 @@ export default function AmaniApplicationForm() {
                         onClick={handleCopyPaymentLink}
                       >
                         <Copy size={13} />
-                        {copiedLink ? 'Copied!' : 'Copy Link'}
+                        {copiedLink ? 'Copied!' : 'Copy link'}
                       </button>
                     </div>
                   )}
@@ -1323,23 +1148,22 @@ export default function AmaniApplicationForm() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Pay First Month Now with M-Pesa <ArrowRight size={18} />
+                      Pay first month now with M-Pesa <ArrowRight size={18} />
                     </a>
                   )}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.9rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
                 <a className="af-done-contact" href={CONTACT.phoneHref}>
                   Talk to our team · {CONTACT.phone}
                 </a>
                 <button
                   type="button"
                   className="af-done-contact"
-                  style={{ background: 'transparent', cursor: 'pointer' }}
                   onClick={handleReset}
                 >
-                  Register Another Member
+                  Register another member
                 </button>
               </div>
             </div>
@@ -1354,17 +1178,18 @@ export default function AmaniApplicationForm() {
                   <strong>{formatPlanAmount(formData.cover, selectedPlan.monthly)} / month</strong>
                 </div>
               )}
+
               {/* Section 01 — personal information */}
               <section className="af-doc-section">
                 <div className="af-section-head">
-                  <span className="af-section-num">01</span>
-                  <h2 className="af-section-title">Personal Information</h2>
+                  <span className="af-section-num">1</span>
+                  <h2 className="af-section-title">Personal information</h2>
                 </div>
 
                 <div className="af-row">
                   <div className="af-col">
                     <label className="af-field-label" htmlFor="af-fullName">
-                      Full Name <span className="af-req">*</span>
+                      Full name <span className="af-req">*</span>
                     </label>
                     <div className={getInputWrapClass('fullName')}>
                       <input
@@ -1388,7 +1213,7 @@ export default function AmaniApplicationForm() {
                   </div>
                   <div className="af-col">
                     <label className="af-field-label" htmlFor="af-idNumber">
-                      ID Number <span className="af-req">*</span>
+                      ID number <span className="af-req">*</span>
                     </label>
                     <div className={getInputWrapClass('idNumber')}>
                       <input
@@ -1441,7 +1266,7 @@ export default function AmaniApplicationForm() {
                   </div>
                   <div className="af-col">
                     <label className="af-field-label" htmlFor="af-employment">
-                      Employment Status <span className="af-req">*</span>
+                      Employment status <span className="af-req">*</span>
                     </label>
                     <div className={getInputWrapClass('employment')}>
                       <select
@@ -1475,13 +1300,13 @@ export default function AmaniApplicationForm() {
                   this form and the landing page's <select> can never disagree. */}
               <section className="af-doc-section">
                 <div className="af-section-head">
-                  <span className="af-section-num">02</span>
-                  <h2 className="af-section-title">Insurance &amp; Cover Selection</h2>
+                  <span className="af-section-num">2</span>
+                  <h2 className="af-section-title">Insurance &amp; cover selection</h2>
                 </div>
 
                 <div className="af-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                   <label className="af-field-label">
-                    Choose Cover Type <span className="af-req">*</span>
+                    Choose cover type <span className="af-req">*</span>
                   </label>
                   <div className={getInputWrapClass('cover')} style={{ width: '100%' }}>
                     <div className="af-cover-cards" role="radiogroup" aria-label="Choose cover type">
@@ -1610,7 +1435,7 @@ export default function AmaniApplicationForm() {
                           <div className="af-row" style={{ marginBottom: 0 }}>
                             <div className="af-col">
                               <label className="af-field-label" htmlFor={`af-m-${member.key}-name`}>
-                                Full Name <span className="af-req">*</span>
+                                Full name <span className="af-req">*</span>
                               </label>
                               <div
                                 className={
@@ -1640,7 +1465,7 @@ export default function AmaniApplicationForm() {
 
                             <div className="af-col">
                               <label className="af-field-label" htmlFor={`af-m-${member.key}-phone`}>
-                                Phone Number <span className="af-req">*</span>
+                                Phone number <span className="af-req">*</span>
                               </label>
                               <div
                                 className={
@@ -1685,14 +1510,14 @@ export default function AmaniApplicationForm() {
               {/* Section 03 — contact */}
               <section className="af-doc-section">
                 <div className="af-section-head">
-                  <span className="af-section-num">03</span>
-                  <h2 className="af-section-title">Contact Details</h2>
+                  <span className="af-section-num">3</span>
+                  <h2 className="af-section-title">Contact details</h2>
                 </div>
 
                 <div className="af-row">
                   <div className="af-col">
                     <label className="af-field-label" htmlFor="af-phone">
-                      Phone Number <span className="af-req">*</span>
+                      Phone number <span className="af-req">*</span>
                     </label>
                     <div className={getInputWrapClass('phone')}>
                       <input
@@ -1716,7 +1541,7 @@ export default function AmaniApplicationForm() {
                   </div>
                   <div className="af-col">
                     <label className="af-field-label" htmlFor="af-email">
-                      Email Address <span style={{ fontWeight: 400, color: 'var(--af-muted)' }}>(optional)</span>
+                      Email address <span style={{ fontWeight: 400, color: 'var(--af-muted)' }}>(optional)</span>
                     </label>
                     <div className={getInputWrapClass('email')}>
                       <input
@@ -1794,11 +1619,6 @@ export default function AmaniApplicationForm() {
           )}
         </div>
 
-        {!submitted && (
-          <p className="af-record-strip">
-            Montenzuma Monalisa Funeral Home · Amani Cover · Nairobi Branch
-          </p>
-        )}
       </div>
     </div>
   );

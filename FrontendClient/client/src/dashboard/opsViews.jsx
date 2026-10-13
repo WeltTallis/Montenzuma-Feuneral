@@ -527,7 +527,7 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
         const sub = ev.t === "release" ? p.release.dest : ev.t === "intake" ? p.receivedFrom : p.pm.authority;
         return (
           <div
-            className="row ops-month-row"
+            className={`row ops-month-row event-${ev.t}`}
             key={`${ev.t}-${p.uid}-${ev.date}-${ev.time}`}
             style={{ gridTemplateColumns: OPS_COLS, borderLeftColor: TYPE_C[ev.t] }}
             onClick={() => onOpenCase(p.uid, ev.t)}
