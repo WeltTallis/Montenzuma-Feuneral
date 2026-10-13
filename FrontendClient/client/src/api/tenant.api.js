@@ -25,15 +25,24 @@ export const tenantApi = {
   },
   getBranding: async (slug) => {
     try {
-      // Try to fetch from the real backend first
       const response = await api.get(ENDPOINTS.TENANT.CONFIG(slug));
-      return response.data;
+      const settings = response.data?.data || response.data || {};
+      const name = settings.tenantName || settings.name || slug || 'RESTPOINT Default Tenant';
+      const logo = settings.logoUrl || settings.logo_url || settings.logo || '';
+
+      return {
+        ...settings,
+        name,
+        tenantName: name,
+        logo,
+        logoUrl: logo,
+        primaryColor: settings.primaryColor || '#2b5a82',
+      };
     } catch (err) {
-      // Fallback mock for development
-      console.warn('⚠️ Branding API failed, using mock:', err.message);
+      console.warn('⚠️ Branding API failed; using the tenant name fallback:', err.message);
       return {
         name: slug || 'RESTPOINT Default Tenant',
-        logo: '/mock-logo.png',
+        logo: '',
         primaryColor: '#2b5a82',
         features: {
           hearseTracking: false,

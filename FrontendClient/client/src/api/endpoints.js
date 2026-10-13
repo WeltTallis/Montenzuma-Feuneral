@@ -57,7 +57,7 @@ export const ENDPOINTS = {
     ORGANIZATION: '/onboarding/organization',
     REGISTER: '/tenants/register',
     LOGIN: '/onboarding/login',
-    CONFIG: (slug) => `/tenants/${slug}/config`,
+    CONFIG: (slug) => `/tenant/${slug}/settings`,
     SETTINGS: (slug) => `/tenant/${slug}/settings`,
     // Same resource as SETTINGS but named for the write path (Settings →
     // Organization saves name / phone / email / location / country).

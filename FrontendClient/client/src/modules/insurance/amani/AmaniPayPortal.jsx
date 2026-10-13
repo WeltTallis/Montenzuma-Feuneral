@@ -40,7 +40,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { LockKeyhole, Phone, Search, ShieldCheck } from 'lucide-react';
+import { Check, LockKeyhole, Phone, Search, ShieldCheck, X } from 'lucide-react';
 import { CONTACT, formatPlanAmount, planFor } from './amaniData';
 import { FillImage } from './AmaniUi';
 import { InsuranceApiError, checkCover, startPayment, getPaymentStatus, getPaymentLink } from '../../../api/insuranceApi';
@@ -161,6 +161,15 @@ const PAY_STYLES = `
   .amani-pay .payment-contact-card { margin-top: 1.5rem; padding: 1.1rem; border: 1px solid var(--pay-line); border-radius: .85rem; background: var(--pay-wash); }
   .amani-pay .payment-contact-card strong { color: var(--pay-navy); font-size: .9rem; }
   .amani-pay .payment-contact-card p { margin: .45rem 0 1rem; color: var(--pay-slate); font-size: .78rem; line-height: 1.55; }
+  .amani-pay .payment-contact-card--paid { border-color: #a8d9b7; background: #f0faf3; }
+  .amani-pay .payment-contact-card--failed { border-color: #efb6b3; background: #fff3f2; }
+  .amani-pay .payment-result-heading { display: flex; align-items: center; gap: .8rem; }
+  .amani-pay .payment-result-icon { display: grid; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; place-items: center; border-radius: .7rem; }
+  .amani-pay .payment-result-icon--paid { background: #d8f2df; color: #16743a; }
+  .amani-pay .payment-result-icon--failed { background: #fde0de; color: #b42318; }
+  .amani-pay .payment-result-label { display: block; margin-bottom: .18rem; font-size: .62rem; font-weight: 800; letter-spacing: .1em; }
+  .amani-pay .payment-result-label--paid { color: #16743a; }
+  .amani-pay .payment-result-label--failed { color: #b42318; }
 
   .amani-pay .form-note { display: flex; align-items: center; justify-content: center; gap: .45rem; margin-top: 1.25rem; color: #8593a4; font-size: .7rem; }
   .amani-pay .form-note svg { color: var(--pay-green); }
@@ -622,15 +631,27 @@ export default function AmaniPayPortal() {
                     {paymentDetails?.receipt && <p>M-Pesa receipt: <strong>{paymentDetails.receipt}</strong></p>}
                   </div>
                 ) : paymentState === 'paid' ? (
-                  <div className="payment-contact-card" role="status" aria-live="polite">
-                    <strong>Payment received</strong>
+                  <div className="payment-contact-card payment-contact-card--paid" role="status" aria-live="polite">
+                    <div className="payment-result-heading">
+                      <span className="payment-result-icon payment-result-icon--paid"><Check size={22} strokeWidth={3} aria-hidden="true" /></span>
+                      <div>
+                        <span className="payment-result-label payment-result-label--paid">PAYMENT CONFIRMED</span>
+                        <strong>Payment received</strong>
+                      </div>
+                    </div>
                     <p>Your contribution has been confirmed.</p>
                     <small>Payment reference: {paymentReference}</small>
                     {paymentDetails?.receipt && <p>M-Pesa receipt: <strong>{paymentDetails.receipt}</strong></p>}
                   </div>
                 ) : paymentState === 'failed' ? (
-                  <div className="payment-contact-card" role="alert">
-                    <strong>Payment was not completed</strong>
+                  <div className="payment-contact-card payment-contact-card--failed" role="alert">
+                    <div className="payment-result-heading">
+                      <span className="payment-result-icon payment-result-icon--failed"><X size={22} strokeWidth={3} aria-hidden="true" /></span>
+                      <div>
+                        <span className="payment-result-label payment-result-label--failed">PAYMENT FAILED</span>
+                        <strong>Payment was not completed</strong>
+                      </div>
+                    </div>
                     <p>{paymentDetails?.resultDescription || 'The M-Pesa request was cancelled or could not be completed.'}</p>
                     <button className="pay-button" type="button" onClick={() => setPaymentState('idle')}>Try again</button>
                   </div>
