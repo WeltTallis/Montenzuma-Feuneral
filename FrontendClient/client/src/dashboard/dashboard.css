@@ -1769,6 +1769,7 @@
 .rpd .tlc {
    background: var(--sect);
    border: 1px solid var(--brdl);
+   border-left: 3px solid transparent;
    border-radius: 9px;
    padding: 8px 12px;
    display: flex;
@@ -1779,9 +1780,33 @@
    min-width: 0
 }
 
+.rpd .tlc.event-intake {
+   border-left-color: var(--blue)
+}
+
+.rpd .tlc.event-pm {
+   border-left-color: var(--orange)
+}
+
+.rpd .tlc.event-release {
+   border-left-color: var(--teal)
+}
+
 .rpd .tlc:hover {
    border-color: var(--brd);
    box-shadow: var(--shs)
+}
+
+.rpd .tlc.event-intake:hover {
+   border-left-color: var(--blue)
+}
+
+.rpd .tlc.event-pm:hover {
+   border-left-color: var(--orange)
+}
+
+.rpd .tlc.event-release:hover {
+   border-left-color: var(--teal)
 }
 
 .rpd .tlv {
@@ -2146,13 +2171,27 @@
 }
 
 .rpd .qrow2 {
+   position: relative;
    display: flex;
    gap: 10px;
    align-items: center;
    padding: 9px 14px;
    border-bottom: 1px solid var(--brdl);
+   border-left: 3px solid transparent;
    cursor: pointer;
    transition: background .1s
+}
+
+.rpd .qrow2.event-intake {
+   border-left-color: var(--blue)
+}
+
+.rpd .qrow2.event-pm {
+   border-left-color: var(--orange)
+}
+
+.rpd .qrow2.event-release {
+   border-left-color: var(--teal)
 }
 
 .rpd .qrow2:hover {

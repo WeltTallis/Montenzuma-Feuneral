@@ -238,9 +238,11 @@ const getRootPool = async () => {
     return rootPool;
 };
 exports.getRootPool = getRootPool;
-// ─── Tenant Lookup Helpers ───────────────────────────────────────────────────
-// Schemas that must NEVER be handed back as a tenant database, whatever the
-// registry says. Last line of defence for a malformed/attacked tracking row.
+// ─── Tenant Lookup with Circuit Breaker ──────────────────────────────────────
+/**
+ * Schemas that must NEVER be handed back as a tenant database, whatever the
+ * registry says. Last line of defence for a malformed/attacked tracking row.
+ */
 const RESERVED_SCHEMAS = new Set([
     'information_schema',
     'mysql',
@@ -265,9 +267,11 @@ const identVariants = (value) => {
         return [];
     return Array.from(new Set([raw, raw.replace(/_/g, '-'), raw.replace(/-/g, '_')])).filter(Boolean);
 };
+/** `%`/`_`/`\` in a slug must not turn into wildcards inside a LIKE pattern. */
 const escapeLikePattern = (value) => String(value).replace(/[\\%_]/g, (ch) => `\\${ch}`);
+/** A schema name is only usable as a tenant DB when it is not a system schema. */
 const toUsableDbName = (value) => {
-    const name = String(value !== null && value !== void 0 ? value : '').trim();
+    const name = String(value ?? '').trim();
     if (!name)
         return null;
     if (RESERVED_SCHEMAS.has(name.toLowerCase())) {
@@ -281,7 +285,7 @@ const schemaExists = async (pool, name) => {
         const [rows] = await pool.query('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? LIMIT 1', [name]);
         return rows.length > 0;
     }
-    catch (_a) {
+    catch {
         return false;
     }
 };
@@ -300,9 +304,30 @@ const findTenantRow = async (pool, slug, requireActive) => {
              OR REPLACE(TRIM(db_name), '_', '-') IN (?))
         ${requireActive ? `AND status = 'active'` : ''}
       LIMIT 1`, [variants, variants, variants, variants]);
-    return rows.length > 0 ? rows[0] : null;
+    const list = rows;
+    return list.length > 0 ? list[0] : null;
 };
-// ─── Tenant Lookup with Circuit Breaker ──────────────────────────────────────
+/**
+ * Resolve a tenant slug → database name through the tenant allowlist.
+ *
+ * SECURITY: the slug is ALWAYS matched against tenant_tracking.tenants, so an
+ * arbitrary schema name (information_schema, mysql, another tenant's db_name,
+ * …) can never be used as "the tenant".
+ *
+ * `requireActive` defaults to TRUE (unchanged behaviour for every caller).
+ * Pass `{ requireActive: false }` when the DATA must still be readable while the
+ * tenant row is not `status = "active"` (suspended / trial / pending) — e.g. the
+ * deceased-service, where a suspended funeral home must keep access to its
+ * mortuary records. The slug↔db_name allowlist check is kept in both modes.
+ *
+ * RESOLUTION ORDER (first hit wins):
+ *   1. tenants.tenant_slug / tenants.db_name (exact, trimmed, `-`/`_` folded)
+ *   2. tenant_tracking.branches.branch_slug → branch_db_name (the parent row is
+ *      the fallback) — multi-branch tenants address a branch as
+ *      `<org>-<branch>`, a slug `tenants` alone does not know about
+ *   3. `<parent>-<branch>` decomposition: the parent tenant's own `branches`
+ *      table decides the database (`branch_slug` exact, then a name match)
+ */
 const lookupTenantDatabase = async (tenantSlug, options = {}) => {
     const requireActive = options.requireActive !== false;
     const slug = String(tenantSlug || '').trim();
@@ -329,7 +354,10 @@ const lookupTenantDatabase = async (tenantSlug, options = {}) => {
         if (row) {
             const direct = toUsableDbName(row.db_name);
             if (direct) {
-                LOGGER.info('Tenant database resolved from tenant_tracking.tenants', { slug, dbName: direct });
+                LOGGER.info('Tenant database resolved from tenant_tracking.tenants', {
+                    slug,
+                    dbName: direct,
+                });
                 return remember(direct);
             }
             // A row whose db_name is empty can still be usable: tenant-service
@@ -337,10 +365,17 @@ const lookupTenantDatabase = async (tenantSlug, options = {}) => {
             // slug (server-controlled) once a schema with that name really exists.
             const fallback = toUsableDbName(row.tenant_slug);
             if (fallback && (await schemaExists(pool, fallback))) {
-                LOGGER.warn('Tenant row has no db_name - using its slug as the database', { slug, dbName: fallback });
+                LOGGER.warn('Tenant row has no db_name — using its slug as the database', {
+                    slug,
+                    dbName: fallback,
+                });
                 return remember(fallback);
             }
-            LOGGER.warn('Tenant row found but it has no usable database', { slug, tenantSlug: row.tenant_slug, dbName: row.db_name });
+            LOGGER.warn('Tenant row found but it has no usable database', {
+                slug,
+                tenantSlug: row.tenant_slug,
+                dbName: row.db_name,
+            });
         }
         // ── Pass 2: the platform-wide branch registry ───────────────────────────
         // tenant_tracking.branches maps every branch slug to the database holding
@@ -359,13 +394,16 @@ const lookupTenantDatabase = async (tenantSlug, options = {}) => {
                     toUsableDbName(branch.tenant_db_name) ||
                     toUsableDbName(branch.tenant_slug);
                 if (branchDb) {
-                    LOGGER.info('Tenant database resolved from tenant_tracking.branches', { slug, dbName: branchDb });
+                    LOGGER.info('Tenant database resolved from tenant_tracking.branches', {
+                        slug,
+                        dbName: branchDb,
+                    });
                     return remember(branchDb);
                 }
             }
         }
         catch (err) {
-            // The tracking branch table is optional in older deployments - it must
+            // The tracking branch table is optional in older deployments — it must
             // never break the primary (tenants) lookup.
             LOGGER.warn('Branch registry lookup skipped', { slug, error: err.message });
         }
@@ -388,7 +426,11 @@ const lookupTenantDatabase = async (tenantSlug, options = {}) => {
                     const exact = exactRows[0];
                     const exactDb = exact ? toUsableDbName(exact.branch_db_name) : null;
                     if (exactDb) {
-                        LOGGER.info('Tenant database resolved from branches (parent + branch)', { slug, parentDb, dbName: exactDb });
+                        LOGGER.info('Tenant database resolved from branches (parent + branch)', {
+                            slug,
+                            parentDb,
+                            dbName: exactDb,
+                        });
                         return remember(exactDb);
                     }
                     const like = `%${escapeLikePattern(branchName)}%`;
@@ -398,19 +440,27 @@ const lookupTenantDatabase = async (tenantSlug, options = {}) => {
                     const loose = rows[0];
                     const looseDb = loose ? toUsableDbName(loose.branch_db_name) : null;
                     if (looseDb) {
-                        LOGGER.info('Tenant database resolved from branches (name match)', { slug, parentDb, dbName: looseDb });
+                        LOGGER.info('Tenant database resolved from branches (name match)', {
+                            slug,
+                            parentDb,
+                            dbName: looseDb,
+                        });
                         return remember(looseDb);
                     }
                 }
                 catch (err) {
-                    LOGGER.warn('Branch decomposition lookup failed', { slug, parentDb, error: err.message });
+                    LOGGER.warn('Branch decomposition lookup failed', {
+                        slug,
+                        parentDb,
+                        error: err.message,
+                    });
                     // The slug belongs to a real tenant, so serving the parent database
                     // is better than 403-ing every request.
                     return remember(parentDb);
                 }
             }
         }
-        // ── No match - log what the registry DOES hold nearby ─────────────────
+        // ── No match — log what the registry DOES hold nearby ───────────────────
         // Without this, "No database found for tenant" gives the operator nothing
         // to act on. The near-miss list names the values actually stored, so the
         // data can be corrected (or the resolver extended) immediately.
@@ -421,10 +471,10 @@ const lookupTenantDatabase = async (tenantSlug, options = {}) => {
              FROM tenant_tracking.tenants
             WHERE tenant_slug LIKE ? OR db_name LIKE ?
             LIMIT 5`, [prefix, prefix]);
-            nearMisses = near.map((r) => `${r.tenant_slug} -> ${r.db_name} (${r.status})`);
+            nearMisses = near.map((r) => `${r.tenant_slug} → ${r.db_name} (${r.status})`);
         }
-        catch (_a) {
-            /* diagnostics only - never fatal */
+        catch {
+            /* diagnostics only — never fatal */
         }
         LOGGER.warn(requireActive ? 'No active database found for tenant' : 'No database found for tenant', {
             tenantSlug: slug,

@@ -103,7 +103,7 @@ function TimelineRows({ data, now, onOpenCase, endNote = true }) {
             <div className="tlt">{r.ev.time}</div>
             <div className="tlr"><span className="tld">{r.st === "done" ? "✓" : ""}</span></div>
             <div
-              className="tlc"
+              className={`tlc event-${r.ev.t}`}
               onClick={() => onOpenCase(r.p.uid, r.ev.t)}
               role="button"
               tabIndex={0}
@@ -172,7 +172,7 @@ function QuadRow({ ev, onOpenCase }) {
   const sub = ev.t === "release" ? p.release.dest : ev.t === "intake" ? `from ${p.receivedFrom}` : p.pm.authority;
   return (
     <div
-      className="qrow2"
+      className={`qrow2 event-${ev.t}`}
       onClick={() => onOpenCase(p.uid, ev.t)}
       role="button"
       tabIndex={0}
