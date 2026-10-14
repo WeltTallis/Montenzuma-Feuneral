@@ -97,32 +97,53 @@ P=$(sql_escape "$DB_PASS")
 
 
 # --- 3. Converge role and database over the local socket -------------------
-# The image's pg_hba.conf has `local all all trust`, and it always bootstraps
-# a `postgres` superuser regardless of POSTGRES_USER — so this needs no
+# The image's pg_hba.conf has `local all all trust`, so socket logins need no
 # password even while every TCP login is failing.
+#
+# WHICH superuser do we use for the socket? The official image bootstraps the
+# POSTGRES_USER role as SUPERUSER and, when POSTGRES_USER is set to something
+# other than `postgres`, does NOT create a `postgres` role at all. So a volume
+# initialised with POSTGRES_USER=mpesa has superuser `mpesa` and no `postgres`,
+# and a hardcoded `-U postgres` dies with `role "postgres" does not exist`.
+# Detect the usable socket superuser: prefer the configured DB_USER (that is the
+# POSTGRES_USER the volume was created with), then fall back to `postgres`.
+log "    detecting socket superuser..."
+SUPERUSER=""
+for candidate in "$DB_USER" postgres; do
+  if docker exec "$CONTAINER" psql -U "$candidate" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1; then
+    SUPERUSER="$candidate"
+    break
+  fi
+done
+if [ -z "$SUPERUSER" ]; then
+  die "Could not open a local socket as either '${DB_USER}' or 'postgres'. Inspect the container: docker exec -it ${CONTAINER} psql -U ${DB_USER} -d ${DB_NAME}"
+fi
+log "    socket superuser: ${SUPERUSER}"
+
+# Run a psql statement over the trusted local socket as the detected superuser.
+su_psql() { docker exec -i "$CONTAINER" psql -U "$SUPERUSER" -d postgres -v ON_ERROR_STOP=1 "$@"; }
+
 log "    checking role and database..."
-ROLE_EXISTS=$(docker exec "$CONTAINER" psql -U postgres -d postgres -tAc \
+ROLE_EXISTS=$(su_psql -tAc \
   "SELECT 1 FROM pg_roles WHERE rolname = '${DB_USER}'" 2>/dev/null || true)
 if [ "$ROLE_EXISTS" = "1" ]; then
   log "    role '${DB_USER}' exists — converging password"
 else
   log "    role '${DB_USER}' MISSING — creating (volume was initialised with other names)"
-  docker exec -i "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
-    -c "CREATE ROLE \"${DB_USER}\" LOGIN SUPERUSER CREATEDB CREATEROLE" >/dev/null
+  su_psql -c "CREATE ROLE \"${DB_USER}\" LOGIN SUPERUSER CREATEDB CREATEROLE" >/dev/null
 fi
 
-DB_EXISTS=$(docker exec "$CONTAINER" psql -U postgres -d postgres -tAc \
+DB_EXISTS=$(su_psql -tAc \
   "SELECT 1 FROM pg_database WHERE datname = '${DB_NAME}'" 2>/dev/null || true)
 if [ "$DB_EXISTS" != "1" ]; then
   log "    database '${DB_NAME}' MISSING — creating"
-  docker exec -i "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
-    -c "CREATE DATABASE \"${DB_NAME}\" OWNER \"${DB_USER}\"" >/dev/null
+  su_psql -c "CREATE DATABASE \"${DB_NAME}\" OWNER \"${DB_USER}\"" >/dev/null
 fi
 
 # ALTER ROLE always runs: it is the only way to converge a STALE password in
 # the volume onto whatever the env file says today.
 log "    applying ALTER ROLE..."
-docker exec -i "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+su_psql \
   -c "ALTER ROLE \"${DB_USER}\" WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD '${P}'" >/dev/null
 
 # --- 4. Verify with a real TCP/SCRAM login (the app's exact auth path) -----
