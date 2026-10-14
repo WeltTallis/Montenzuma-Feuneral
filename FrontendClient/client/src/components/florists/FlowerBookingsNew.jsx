@@ -1177,8 +1177,20 @@ const FlowerBookingsNew = () => {
         sample_uploads: []
       });
     } catch (e) {
-      console.error('[FlowerBookings] Place order FAILED:', e?.response?.status, e?.response?.data || e.message);
-      showToast(e.response?.data?.message || e.friendlyMessage || `Failed to ${editingBookingId ? 'update' : 'create'} booking`, 'error');
+      const serverError = e?.response?.data;
+      console.error('[FlowerBookings] Place order FAILED:', JSON.stringify({
+        status: e?.response?.status,
+        serverError: serverError?.message || serverError?.error,
+        code: e?.code,
+        message: e?.message,
+      }));
+      const failureMessage = serverError?.message
+        || serverError?.error
+        || e.friendlyMessage
+        || (e?.code === 'ECONNABORTED'
+          ? 'The booking request timed out. Check the bookings list before trying again.'
+          : `Failed to ${editingBookingId ? 'update' : 'create'} booking`);
+      showToast(failureMessage, 'error');
     } finally {
       placingRef.current = false;
       setPlacingOrder(false);

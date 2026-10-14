@@ -43,6 +43,40 @@ const tenantIdOf = (req: any): string | null =>
 const tenantSlugOf = (req: any): string | null =>
     req.tenant?.tenant_slug || req.tenantSlug || null;
 
+let serviceTypeSchemaReady: Promise<void> | null = null;
+
+const ensureServiceTypeColumn = async () => {
+    if (!serviceTypeSchemaReady) {
+        serviceTypeSchemaReady = (async () => {
+            const columns = await safeQuery("SHOW COLUMNS FROM `flower_bookings` LIKE 'service_type'");
+            const existingType = String(columns[0]?.Type || '').toLowerCase();
+
+            if (!columns.length) {
+                try {
+                    await safeExecute('ALTER TABLE `flower_bookings` ADD COLUMN `service_type` TEXT NULL');
+                } catch (error: any) {
+                    if (error?.code !== 'ER_DUP_FIELDNAME' && error?.errno !== 1060) throw error;
+                }
+            }
+
+            const verifiedColumns = columns.length
+                ? columns
+                : await safeQuery("SHOW COLUMNS FROM `flower_bookings` LIKE 'service_type'");
+            if (!verifiedColumns.length) {
+                throw new Error('Flower booking schema setup did not create service_type');
+            }
+            const verifiedType = String(verifiedColumns[0]?.Type || existingType).toLowerCase();
+            if (!/^(mediumtext|longtext|text)$/.test(verifiedType)) {
+                await safeExecute('ALTER TABLE `flower_bookings` MODIFY COLUMN `service_type` TEXT NULL');
+            }
+        })().catch(error => {
+            serviceTypeSchemaReady = null;
+            throw error;
+        });
+    }
+    await serviceTypeSchemaReady;
+};
+
 /**
  * Build a tenant WHERE fragment used by every booking query.
  * Uses ONLY the tenant id when available; falls back to tenant_slug.
@@ -236,6 +270,7 @@ export const getBookingById = async (req: any, res: any) => {
  */
 export const createBooking = async (req: any, res: any) => {
     try {
+        await ensureServiceTypeColumn();
         const tenantId = tenantIdOf(req);
         const tenantSlug = tenantSlugOf(req);
         const {
@@ -342,7 +377,12 @@ export const createBooking = async (req: any, res: any) => {
 
         res.status(201).json({ success: true, data: newBooking[0], message: 'Booking created successfully' });
     } catch (error: any) {
-        console.error('[FLORIST] Error creating booking:', error.message);
+        console.error('[FLORIST] Error creating booking:', {
+            code: error.code,
+            errno: error.errno,
+            sqlState: error.sqlState,
+            message: error.message,
+        });
         res.status(500).json({ success: false, error: 'Failed to create booking', message: error.message });
     }
 };
@@ -353,6 +393,7 @@ export const createBooking = async (req: any, res: any) => {
  */
 export const updateBooking = async (req: any, res: any) => {
     try {
+        if (req.body?.service_type !== undefined) await ensureServiceTypeColumn();
         const tenantScope = buildTenantScope(req);
         const { id } = req.params;
         const updates = req.body;
