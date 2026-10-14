@@ -30,7 +30,14 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
   const [paymentState, setPaymentState] = useState('idle');
   const [pollCount, setPollCount] = useState(0);
   const checkoutRequestId = requestResult?.CheckoutRequestID || requestResult?.checkoutRequestID || '';
-  const isProcessing = busy || paymentState === 'pending';
+
+  useEffect(() => {
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
 
   useEffect(() => {
     if (paymentState !== 'pending' || !checkoutRequestId) return undefined;
@@ -107,7 +114,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
         throw new Error(result.ResponseDescription || result.CustomerMessage || 'M-Pesa did not accept the STK request.');
       }
       setRequestResult(result);
-      setPaymentState('pending');
+      setPaymentState(result.CheckoutRequestID || result.checkoutRequestID ? 'pending' : 'delayed');
     } catch (requestError) {
       console.error('[Deceased STK] Failed to initiate payment:', requestError?.response?.data || requestError);
       setError(requestError?.response?.data?.error || requestError?.response?.data?.message || requestError.message || 'Could not send the STK push.');
@@ -115,13 +122,6 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
     } finally {
       setBusy(false);
     }
-  };
-
-  const resetForm = () => {
-    setRequestResult(null);
-    setPaymentState('idle');
-    setPollCount(0);
-    setError('');
   };
 
   const displayPhone = phoneNumber || '—';
@@ -141,7 +141,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
     <div
       className="deceased-stk-scrim"
       role="presentation"
-      onMouseDown={event => event.target === event.currentTarget && !isProcessing && onClose()}
+      onMouseDown={event => event.target === event.currentTarget && onClose()}
     >
       <section className="deceased-stk-panel" role="dialog" aria-modal="true" aria-labelledby="deceased-stk-title">
         <header className="deceased-stk-header">
@@ -149,7 +149,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
             <h2 id="deceased-stk-title">{requestResult ? statusTitle : 'Request M-Pesa payment'}</h2>
             <p>{requestResult ? resultDescription : 'The payer gets a prompt on their phone to enter their PIN.'}</p>
           </div>
-          <button className="deceased-stk-close" type="button" aria-label="Close" disabled={isProcessing} onClick={onClose}>×</button>
+          <button className="deceased-stk-close" type="button" aria-label="Close" onClick={onClose}>×</button>
         </header>
 
         <div className="deceased-stk-body">
@@ -173,15 +173,20 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                   <strong>{displayName}</strong>
                   <span>Admission {admissionNumber || '—'} · {kinName.trim()}</span>
                 </div>
-                {checkoutRequestId && <p className="deceased-stk-request-id">Checkout request: {checkoutRequestId}</p>}
-                {(requestResult.MerchantRequestID || requestResult.merchantRequestID) &&
-                  <p className="deceased-stk-request-id">Merchant request: {requestResult.MerchantRequestID || requestResult.merchantRequestID}</p>}
                 <p className="deceased-stk-secure-note">Payment is recorded only after M-Pesa confirms the transaction.</p>
               </div>
             ) : (
               <div className={`deceased-stk-result is-${paymentState === 'paid' ? 'success' : paymentState === 'failed' ? 'failure' : 'waiting'}`} role={paymentState === 'failed' ? 'alert' : 'status'} aria-live="polite">
                 <div className="deceased-stk-result-icon" aria-hidden="true">
-                  {paymentState === 'paid' ? '✓' : paymentState === 'failed' ? '×' : '…'}
+                  {paymentState === 'paid' ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m5 12.5 4.5 4.5L19 7.5" />
+                    </svg>
+                  ) : paymentState === 'failed' ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="m6 6 12 12M18 6 6 18" />
+                    </svg>
+                  ) : '…'}
                 </div>
                 <h3>{paymentState === 'paid'
                   ? `KES ${Math.round(Number(amount)).toLocaleString('en-KE')} received`
@@ -194,9 +199,6 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                   <div><dt>Paid by</dt><dd>{kinName.trim()}</dd></div>
                   <div><dt>Phone</dt><dd>{displayPhone}</dd></div>
                   <div><dt>Admission</dt><dd>{admissionNumber}</dd></div>
-                  {checkoutRequestId && <div><dt>Checkout request</dt><dd>{checkoutRequestId}</dd></div>}
-                  {(requestResult.MerchantRequestID || requestResult.merchantRequestID) &&
-                    <div><dt>Merchant request</dt><dd>{requestResult.MerchantRequestID || requestResult.merchantRequestID}</dd></div>}
                   <div className="deceased-stk-total">
                     <dt>{paymentState === 'paid' ? 'Amount paid' : 'Amount requested'}</dt>
                     <dd>KES {Math.round(Number(amount)).toLocaleString('en-KE')}</dd>
@@ -256,7 +258,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
 
         {!requestResult && (
           <footer className="deceased-stk-footer">
-            <button type="button" className="deceased-stk-button" disabled={busy} onClick={onClose}>Cancel</button>
+            <button type="button" className="deceased-stk-button" onClick={onClose}>Cancel</button>
             <button type="submit" form="deceased-stk-form" className="deceased-stk-button is-primary" disabled={busy || !selectedDeceased}>
               {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : 'Send payment request'}
             </button>
@@ -264,9 +266,12 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
         )}
         {requestResult && paymentState !== 'pending' && (
           <footer className="deceased-stk-footer">
-            {paymentState === 'delayed' && <button type="button" className="deceased-stk-button" onClick={() => setPaymentState('pending')}>Check again</button>}
-            {paymentState === 'failed' && <button type="button" className="deceased-stk-button" onClick={resetForm}>Try again</button>}
             <button type="button" className="deceased-stk-button is-primary" onClick={onClose}>Done</button>
+          </footer>
+        )}
+        {requestResult && paymentState === 'pending' && (
+          <footer className="deceased-stk-footer">
+            <button type="button" className="deceased-stk-button" onClick={onClose}>Close</button>
           </footer>
         )}
       </section>
