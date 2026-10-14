@@ -112,6 +112,9 @@ const parseWhen = (b) => {
   if (m) return { date: m[1], time: m[2] ? toTimeOnly(m[2]) : '' };
   return { date: null, time: '' };
 };
+const getBookingNoteTag = (booking, tag) =>
+  new RegExp(`\\[${tag}:([^\\]]*)\\]`, 'i').exec(String(booking?.notes || ''))?.[1]?.trim() || '';
+const wasBookingEdited = booking => Boolean(getBookingNoteTag(booking, 'EDITED'));
 const toTimeOnly = v => {
   const d = parseUtilDate(v);
   return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
@@ -849,6 +852,9 @@ const FlowerBookingsNew = () => {
   const [calDate, setCalDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeBookingId, setActiveBookingId] = useState(null);
+  const [editingBookingId, setEditingBookingId] = useState(null);
+  const [editingLineItems, setEditingLineItems] = useState([]);
+  const [editingInitialQuantity, setEditingInitialQuantity] = useState(null);
   const imageCarouselRef = useRef(null);
   const [newBooking, setNewBooking] = useState({
     arrangement_type: '',
@@ -863,6 +869,10 @@ const FlowerBookingsNew = () => {
     quantity: 1,
     service_type: 'Funeral service before final burial',
     funeral_date: '',
+    service_time: '',
+    route: '',
+    vehicle_plate: '',
+    contact_name: '',
     remarks: '',
     deceased_name: '',
     // Kin contact — stored as `customer_phone` and shown in the booking side panel.
@@ -1084,13 +1094,82 @@ const FlowerBookingsNew = () => {
   }, []);
 
   const openNewBookingForm = useCallback((dateStr) => {
-    setNewBooking(prev => ({ ...prev, date: dateStr || fmtDateStr(new Date()) }));
+    setEditingBookingId(null);
+    setEditingLineItems([]);
+    setEditingInitialQuantity(null);
+    setNewBooking({
+      arrangement_type: '',
+      flower_designs: '',
+      initials: '',
+      coffin_type: '',
+      flower_details: '',
+      color_preference: '',
+      any_color: true,
+      ribbon_message: '',
+      size: '',
+      quantity: 1,
+      service_type: 'Funeral service before final burial',
+      funeral_date: '',
+      service_time: '',
+      route: '',
+      vehicle_plate: '',
+      contact_name: '',
+      remarks: '',
+      deceased_name: '',
+      phone: '',
+      branch: '',
+      date: dateStr || fmtDateStr(new Date()),
+      time: '10:00',
+      priority: 'Normal',
+      sample_uploads: [],
+    });
+    setView('new');
+  }, []);
+
+  const openEditBooking = useCallback((booking) => {
+    const lineItems = parseLineItems(booking);
+    const notes = String(booking?.notes || '');
+    const humanNotes = notes
+      .replace(/\[(?:TYPES|WHEN|DESIGN|INITIALS|COFFIN|ROUTE|VEHICLE|CONTACT|SERVICE-TIME|EDITED|PRIORITY):[^\]]*\]/gi, '')
+      .trim();
+    const storedColors = [...asList(booking?.primary_color), ...asList(booking?.accent_color)]
+      .filter(color => !/^any color/i.test(color));
+    const when = parseWhen(booking);
+    setEditingLineItems(lineItems);
+    setEditingInitialQuantity(lineItems[0]?.quantity || 1);
+    setEditingBookingId(String(booking?.id || booking?.booking_id || ''));
+    setNewBooking({
+      arrangement_type: lineItems.map(item => item.name).join(', '),
+      flower_designs: getBookingNoteTag(booking, 'DESIGN'),
+      initials: getBookingNoteTag(booking, 'INITIALS'),
+      coffin_type: getBookingNoteTag(booking, 'COFFIN'),
+      flower_details: booking?.flower_description || [...new Set(lineItems.flatMap(item => item.types || []))].join(', '),
+      color_preference: storedColors.join(', '),
+      any_color: storedColors.length === 0,
+      ribbon_message: booking?.ribbon_message || '',
+      size: booking?.size || '',
+      quantity: lineItems[0]?.quantity || 1,
+      service_type: booking?.service_type || 'Funeral service before final burial',
+      funeral_date: toDateOnly(booking?.funeral_date) || '',
+      service_time: getBookingNoteTag(booking, 'SERVICE-TIME'),
+      route: getBookingNoteTag(booking, 'ROUTE'),
+      vehicle_plate: getBookingNoteTag(booking, 'VEHICLE'),
+      contact_name: getBookingNoteTag(booking, 'CONTACT'),
+      remarks: booking?.special_instructions || humanNotes,
+      deceased_name: booking?.deceased_name || '',
+      phone: booking?.customer_phone || '',
+      branch: booking?.branch || '',
+      date: when.date || bookingDateKey(booking) || fmtDateStr(new Date()),
+      time: when.time || toTimeOnly(booking?.time) || '10:00',
+      priority: getBookingNoteTag(booking, 'PRIORITY') || booking?.priority || 'Normal',
+      sample_uploads: [],
+    });
     setView('new');
   }, []);
 
   const submitBooking = useCallback(async (e) => {
     e.preventDefault();
-    // Re-entry guard — a double-click must NEVER place the order twice
+    // A double-click must never create a duplicate or race a booking update.
     if (placingRef.current) return;
     if (!newBooking.deceased_name?.trim()) return showToast('Please enter the deceased name', 'error');
 
@@ -1098,19 +1177,24 @@ const FlowerBookingsNew = () => {
     if (arrangementTypes.length === 0) return showToast('Please enter at least one arrangement type', 'error');
 
     const flowerDesigns = splitCommaList(newBooking.flower_designs);
-    if (flowerDesigns.length === 0) return showToast('Please enter at least one flower design', 'error');
-
     const typedTypes = splitCommaList(newBooking.flower_details);
-    if (typedTypes.length === 0) return showToast('Please enter the flowers for this arrangement', 'error');
+    if (typedTypes.length === 0 && !editingBookingId) return showToast('Please enter the flowers for this arrangement', 'error');
     const colors = splitCommaList(newBooking.color_preference);
     const quantityPerArrangement = Math.max(1, Number(newBooking.quantity) || 1);
-    const items = arrangementTypes.map(name => ({
-      arrangement_id: null,
-      name,
-      types: typedTypes,
-      colors: newBooking.any_color ? [] : colors,
-      quantity: quantityPerArrangement,
-    }));
+    const preserveArrangementQuantities = editingBookingId
+      && Number(newBooking.quantity) === editingInitialQuantity;
+    const items = arrangementTypes.map(name => {
+      const existing = preserveArrangementQuantities
+        ? editingLineItems.find(item => item.name === name)
+        : null;
+      return {
+        arrangement_id: existing?.arrangement_id ?? null,
+        name,
+        types: typedTypes,
+        colors: newBooking.any_color ? [] : colors,
+        quantity: existing?.quantity || quantityPerArrangement,
+      };
+    });
     const headline = arrangementTypes.join(', ');
     placingRef.current = true;
     setPlacingOrder(true);
@@ -1121,23 +1205,32 @@ const FlowerBookingsNew = () => {
       // [TYPES:…] keeps every flower name · [WHEN:…] pins the exact booked day
       // so the calendar and list always agree on one date.
       const bookedOn = newBooking.date || fmtDateStr(new Date());
-      const designTag = `[DESIGN:${flowerDesigns.map(clean).join(', ')}]`;
+      const designTag = flowerDesigns.length ? `[DESIGN:${flowerDesigns.map(clean).join(', ')}]` : '';
       const initialsTag = newBooking.initials?.trim()
         ? `[INITIALS:${splitCommaList(newBooking.initials).map(clean).join(', ')}]`
         : '';
       const coffinType = newBooking.coffin_type.trim();
       const coffinTag = coffinType ? `[COFFIN:${clean(coffinType)}]` : '';
+      const routeTag = newBooking.route?.trim() ? `[ROUTE:${clean(newBooking.route)}]` : '';
+      const vehicleTag = newBooking.vehicle_plate?.trim() ? `[VEHICLE:${clean(newBooking.vehicle_plate)}]` : '';
+      const contactTag = newBooking.contact_name?.trim() ? `[CONTACT:${clean(newBooking.contact_name)}]` : '';
+      const serviceTimeTag = newBooking.service_time?.trim() ? `[SERVICE-TIME:${clean(newBooking.service_time)}]` : '';
+      const editedTag = editingBookingId ? `[EDITED:${new Date().toISOString()}]` : '';
+      const priorityTag = newBooking.priority?.trim() ? `[PRIORITY:${clean(newBooking.priority)}]` : '';
       const notesValue = [
         `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
         `[WHEN:${bookedOn} ${newBooking.time}]`,
-        designTag,
+        flowerDesigns.length ? designTag : '',
         initialsTag,
         coffinTag,
-        newBooking.service_type ? `Service: ${newBooking.service_type}` : '',
-        newBooking.priority?.trim() ? `Priority: ${newBooking.priority.trim()}` : '',
-        newBooking.remarks?.trim() || ''
+        routeTag,
+        vehicleTag,
+        contactTag,
+        serviceTimeTag,
+        priorityTag,
+        editedTag,
       ].filter(Boolean).join(' ');
-      await api.post('/florist/bookings', {
+      const payload = {
         arrangement_name: headline.slice(0, 255),
         arrangement_type: arrangementTypes.join(', '),
         arrangement_id: null,
@@ -1158,18 +1251,29 @@ const FlowerBookingsNew = () => {
         // Kin contact — becomes `customer_phone` on the server, shown in the
         // booking side panel as "Phone Number".
         phone: newBooking.phone.trim() || null,
-        branch: resolveBranchName() || undefined,
-        funeral_home: resolveBranchName() || undefined,
+        customer_phone: newBooking.phone.trim() || null,
+        branch: resolveBranchName(newBooking.branch) || newBooking.branch || undefined,
+        funeral_home: resolveBranchName(newBooking.branch) || newBooking.branch || undefined,
         date: bookedOn,
         time: newBooking.time,
         priority: newBooking.priority,
         notes: notesValue.trim() || null,
-        sample_uploads: newBooking.sample_uploads || []
-      });
+        sample_uploads: newBooking.sample_uploads || [],
+      };
+      if (editingBookingId) {
+        await api.put(`/florist/bookings/${encodeURIComponent(editingBookingId)}`, payload);
+        showToast('Flower booking updated');
+      } else {
+        await api.post('/florist/bookings', payload);
+        showToast(items.length > 1 ? `${items.length} flower orders placed!` : 'Booking placed successfully!');
+      }
 
-      showToast(items.length > 1 ? `${items.length} flower orders placed!` : 'Booking placed successfully!');
       await loadBookings();
+      if (editingBookingId) setActiveBookingId(editingBookingId);
       setView('list');
+      setEditingBookingId(null);
+      setEditingLineItems([]);
+      setEditingInitialQuantity(null);
       setNewBooking({
         arrangement_type: '',
         flower_designs: '',
@@ -1183,6 +1287,10 @@ const FlowerBookingsNew = () => {
         quantity: 1,
         service_type: 'Funeral service before final burial',
         funeral_date: '',
+        service_time: '',
+        route: '',
+        vehicle_plate: '',
+        contact_name: '',
         remarks: '',
         deceased_name: '',
         phone: '',
@@ -1194,12 +1302,12 @@ const FlowerBookingsNew = () => {
       });
     } catch (e) {
       console.error('[FlowerBookings] Place order FAILED:', e?.response?.status, e?.response?.data || e.message);
-      showToast(e.response?.data?.message || e.friendlyMessage || 'Failed to create booking', 'error');
+      showToast(e.response?.data?.message || e.friendlyMessage || `Failed to ${editingBookingId ? 'update' : 'create'} booking`, 'error');
     } finally {
       placingRef.current = false;
       setPlacingOrder(false);
     }
-  }, [newBooking, showToast, loadBookings]);
+  }, [newBooking, editingBookingId, editingLineItems, editingInitialQuantity, showToast, loadBookings]);
 
   const updateStatus = useCallback(async (id, nextStatus) => {
     const url = `/florist/bookings/${id}/status`;
@@ -1749,6 +1857,9 @@ const FlowerBookingsNew = () => {
       : normStatus(b.status) === 'cancelled'
         ? { label: 'Cancelled', color: '#B91C1C', bg: '#FDE4E4' }
         : { label: 'Booked', color: '#BE185D', bg: '#FCE0EC' };
+    const initials = getBookingNoteTag(b, 'INITIALS');
+    const priority = String(getBookingNoteTag(b, 'PRIORITY') || b.priority || 'Normal');
+    const wasEdited = wasBookingEdited(b);
 
     // ── Card background by status ──
     // Every order status gets its own distinct tint so the list can be read
@@ -1759,12 +1870,13 @@ const FlowerBookingsNew = () => {
 
     return (
       <div
-        className={`fb-card${String(activeBookingId) === String(b.id) ? ' is-active' : ''}`}
+        className={`fb-card${String(activeBookingId) === String(b.id) ? ' is-active' : ''}${wasEdited ? ' is-edited' : ''}`}
         data-status={normStatus(b.status)}
         style={{
           ...styles.bookingCard,
           background: cardBg,
-          borderColor: cardBorder,
+          borderColor: wasEdited ? '#c4b5fd' : cardBorder,
+          boxShadow: wasEdited ? 'inset 3px 0 0 #7c3aed' : styles.bookingCard.boxShadow,
         }}
         onClick={() => viewBooking(b.id)}
       >
@@ -1786,6 +1898,7 @@ const FlowerBookingsNew = () => {
             {b.flower_type || b.arrangement_name || product.title}
             {lineItems.length > 1 && <span className="flower-quantity-chip">+{lineItems.length - 1} more</span>}
             {Number(b.quantity) > 1 && <span className="flower-quantity-chip">×{b.quantity}</span>}
+            {wasEdited && <span className="flower-edited-chip">Updated</span>}
           </div>
           <div className="fb-card-meta" style={styles.bookingMeta}>
             {lineItems.length > 0 && (
@@ -1795,6 +1908,7 @@ const FlowerBookingsNew = () => {
               <div style={styles.metaRow}>Flowers: {b.flower_description || lineItems.map(i => i.name).join(' · ')}</div>
             )}
             <div style={styles.metaRow}><User size={14} /> {b.deceased_name}</div>
+            {initials && <div className="flower-card-initials">Dedication: {initials}</div>}
             <div style={styles.metaRow}>
               <User size={14} /> Booked by {b.booked_by || b.customer || '—'}
               {(b.customer_phone || b.phone) ? ` · ${b.customer_phone || b.phone}` : ''}
@@ -1811,8 +1925,8 @@ const FlowerBookingsNew = () => {
           {/* No "Expected By" line — the value it showed was the day the order
               was BOOKED, which the feed header already groups under. */}
           <div style={styles.pillsRow}>
-            <span style={{ ...styles.priorityPill, background: b.priority === 'High' ? '#FEE2E2' : b.priority === 'Low' ? '#DCFCE7' : '#F1F5F9', color: b.priority === 'High' ? '#B91C1C' : b.priority === 'Low' ? '#166534' : '#475569' }}>
-              {b.priority}
+            <span style={{ ...styles.priorityPill, background: priority.toLowerCase() === 'high' ? '#FEE2E2' : priority.toLowerCase() === 'low' ? '#DCFCE7' : '#F1F5F9', color: priority.toLowerCase() === 'high' ? '#B91C1C' : priority.toLowerCase() === 'low' ? '#166534' : '#475569' }}>
+              {priority}
             </span>
             <span style={{ ...styles.statusPill, background: statusCfg.bg, color: statusCfg.color }}>{statusCfg.label}</span>
           </div>
@@ -2092,7 +2206,9 @@ const FlowerBookingsNew = () => {
       <div style={styles.formContainer}>
         {/* Header — same pattern as Create Arrangement */}
         <div style={{ padding: '24px 28px', borderBottom: '1px solid #EAE7E2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, color: '#1C1A17', margin: 0 }}>Place Flower Order</h2>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, color: '#1C1A17', margin: 0 }}>
+            {editingBookingId ? 'Edit Flower Booking' : 'Place Flower Order'}
+          </h2>
           <button
             type="button"
             onClick={() => setView('list')}
@@ -2123,13 +2239,12 @@ const FlowerBookingsNew = () => {
               </button>
             ))}
           </div>
-          <label style={lbl} htmlFor="flower-designs">Flower Design(s) *</label>
+          <label style={lbl} htmlFor="flower-designs">Flower Design(s)</label>
           <textarea
             id="flower-designs"
             rows={2}
-            required
             style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="e.g. Classic, Natural, Garden style"
+            placeholder="Optional — e.g. Casket spray, portrait flowers"
             value={newBooking.flower_designs}
             onChange={e => setNewBooking(prev => ({ ...prev, flower_designs: e.target.value }))}
           />
@@ -2191,6 +2306,39 @@ const FlowerBookingsNew = () => {
             style={{ ...inp, marginBottom: '22px' }}
             value={newBooking.funeral_date}
             onChange={e => setNewBooking(prev => ({ ...prev, funeral_date: e.target.value }))}
+          />
+          <button
+            type="button"
+            onClick={() => setNewBooking(prev => ({ ...prev, funeral_date: fmtDateStr(addDays(new Date(), 1)) }))}
+            style={{ display: 'block', marginTop: '-14px', marginBottom: '18px', padding: '6px 10px', border: '1px solid #c4b5fd', borderRadius: '999px', background: '#f5f3ff', color: '#6d28d9', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Set funeral date to tomorrow
+          </button>
+          <label style={lbl} htmlFor="flower-service-time">Service / Dispatch Time</label>
+          <input
+            id="flower-service-time"
+            type="time"
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.service_time}
+            onChange={e => setNewBooking(prev => ({ ...prev, service_time: e.target.value }))}
+          />
+          <label style={lbl} htmlFor="flower-route">Route / Service Location</label>
+          <input
+            id="flower-route"
+            type="text"
+            style={{ ...inp, marginBottom: '22px' }}
+            placeholder="e.g. Montezuma to Mbumbuni"
+            value={newBooking.route}
+            onChange={e => setNewBooking(prev => ({ ...prev, route: e.target.value }))}
+          />
+          <label style={lbl} htmlFor="flower-vehicle-plate">Hearse / Vehicle Number Plate</label>
+          <input
+            id="flower-vehicle-plate"
+            type="text"
+            style={{ ...inp, marginBottom: '22px' }}
+            placeholder="e.g. KCV 095H"
+            value={newBooking.vehicle_plate}
+            onChange={e => setNewBooking(prev => ({ ...prev, vehicle_plate: e.target.value }))}
           />
           <label style={lbl}>Color Preference</label>
           <label className="flx-any-color">
@@ -2288,6 +2436,15 @@ const FlowerBookingsNew = () => {
             value={newBooking.phone}
             onChange={e => setNewBooking(prev => ({ ...prev, phone: e.target.value }))}
           />
+          <label style={lbl} htmlFor="flower-contact-name">Family / T-Cord Contact Name</label>
+          <input
+            id="flower-contact-name"
+            type="text"
+            placeholder="e.g. Felistus"
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.contact_name}
+            onChange={e => setNewBooking(prev => ({ ...prev, contact_name: e.target.value }))}
+          />
 
           {/* ── 5 · Priority Level ── */}
           <label style={lbl}>Priority Level</label>
@@ -2342,7 +2499,9 @@ const FlowerBookingsNew = () => {
               }}
             >
               <Check size={14} />
-              {placingOrder ? 'Placing Order…' : 'Place Order'}
+              {placingOrder
+                ? (editingBookingId ? 'Saving Changes…' : 'Placing Order…')
+                : (editingBookingId ? 'Save Changes' : 'Place Order')}
             </button>
           </div>
         </form>
@@ -2351,7 +2510,7 @@ const FlowerBookingsNew = () => {
   };
 
   const renderDetail = () => {
-    const b = bookings.find(x => x.id === activeBookingId);
+    const b = bookings.find(x => String(x.id || x.booking_id) === String(activeBookingId));
     if (!b) {
       return (
         <aside className="flower-detail-panel flower-detail-empty" aria-label="Booking details">
@@ -2381,7 +2540,7 @@ const FlowerBookingsNew = () => {
     }).filter(image => typeof image.src === 'string' && image.src.trim());
     const uniqueBookingImages = [...new Map(bookingImages.map(image => [image.src, image])).values()];
     // Strip machine tokens before splitting human notes.
-    const humanNotes = String(b.notes || '').replace(/\[(?:TYPES|WHEN|DESIGN|INITIALS|COFFIN):[^\]]*\]/gi, '');
+    const humanNotes = String(b.notes || '').replace(/\[(?:TYPES|WHEN|DESIGN|INITIALS|COFFIN|ROUTE|VEHICLE|CONTACT|SERVICE-TIME|EDITED|PRIORITY):[^\]]*\]/gi, '');
     const noteParts = humanNotes.split('|').map(s => s.trim()).filter(Boolean);
     let sizeNote = '';
     const remarksList = [];
@@ -2407,6 +2566,12 @@ const FlowerBookingsNew = () => {
     const initialsText = initialsMatch ? initialsMatch[1].trim() : '';
     const coffinMatch = /\[COFFIN:([^\]]+)\]/i.exec(String(b.notes || ''));
     const coffinType = coffinMatch ? coffinMatch[1].trim() : '';
+    const routeText = getBookingNoteTag(b, 'ROUTE');
+    const vehiclePlate = getBookingNoteTag(b, 'VEHICLE');
+    const contactName = getBookingNoteTag(b, 'CONTACT');
+    const serviceTime = getBookingNoteTag(b, 'SERVICE-TIME');
+    const priority = String(getBookingNoteTag(b, 'PRIORITY') || b.priority || 'Normal');
+    const edited = wasBookingEdited(b);
     const instructionText = b.special_instructions || remarksList.join('\n');
     const currentStatusIdx = STATUS_FLOW.indexOf(normStatus(b.status));
     // WHO booked this — the kin's name + phone. `booked_by` is sent by the UIs,
@@ -2489,7 +2654,8 @@ const FlowerBookingsNew = () => {
           <div style={styles.detailBody}>
             <div style={styles.chipRow}>
               <div style={styles.chipPrimary}>{shortBookingCode(b)}</div>
-              <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{b.priority} Priority</span>
+              <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{priority} Priority</span>
+              {edited && <span className="flower-edited-chip">Updated</span>}
             </div>
 
             <h2 className="flower-detail-title" style={styles.detailTitle}>{product.title}{lineItems.length > 1 ? ` +${lineItems.length - 1} more` : ''}</h2>
@@ -2660,6 +2826,30 @@ const FlowerBookingsNew = () => {
                   <dt style={styles.specLabel}>Funeral / Service Date</dt>
                   <dd style={styles.specValue}>{b.funeral_date ? fmtDateOnly(b.funeral_date) : 'Not specified'}</dd>
                 </div>
+                {serviceTime && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Service / Dispatch Time</dt>
+                    <dd style={styles.specValue}>{serviceTime}</dd>
+                  </div>
+                )}
+                {routeText && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Route / Service Location</dt>
+                    <dd style={styles.specValue}>{routeText}</dd>
+                  </div>
+                )}
+                {vehiclePlate && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Hearse / Vehicle Plate</dt>
+                    <dd style={styles.specValue}>{vehiclePlate}</dd>
+                  </div>
+                )}
+                {contactName && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Family / T-Cord Contact</dt>
+                    <dd style={styles.specValue}>{contactName}{bookerPhone ? ` · ${bookerPhone}` : ''}</dd>
+                  </div>
+                )}
                 <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Total Quantity</dt>
                   <dd style={styles.specValue}>{Number(b.quantity) || lineItems.reduce((total, item) => total + item.quantity, 0)}</dd>
@@ -2701,6 +2891,13 @@ const FlowerBookingsNew = () => {
             </section>
 
             <div style={styles.detailActions}>
+              <button
+                type="button"
+                className="flower-edit-booking-button"
+                onClick={() => openEditBooking(b)}
+              >
+                Edit booking
+              </button>
               {actionBtnHtml}
             </div>
           </div>
@@ -2806,6 +3003,8 @@ const FlowerBookingsNew = () => {
         .flower-booking-avatar.completed { background: linear-gradient(135deg, #C8EEDA, #DEF6E7); color: #2B9155; }
         .fb-card[data-status="booked"] { background: linear-gradient(135deg, #FDE9F1 0%, #FDF1F6 60%, #FEFAFC 100%) !important; border-color: #F6C6DA !important; }
         .fb-card[data-status="completed"] { background: linear-gradient(135deg, #E2F6EA 0%, #EDFAF1 60%, #FBFEFC 100%) !important; border-color: #BFEBD0 !important; }
+        .fb-card.is-edited:not(.is-active) { border-color: #c4b5fd !important; box-shadow: inset 3px 0 0 #7c3aed, 0 3px 10px rgba(124,58,237,.08) !important; }
+        .fb-card.is-edited.is-active { border-color: #7c3aed !important; box-shadow: 0 0 0 1px #7c3aed, 0 5px 14px rgba(124,58,237,.14) !important; }
         .fb-card.is-active { border-color: #D6336C !important; box-shadow: 0 0 0 1px #D6336C, 0 5px 14px rgba(214,51,108,.12); }
         @media (max-width: 1023px) {
           .flower-bookings-layout { display: block; min-height: 0; }
@@ -2829,6 +3028,10 @@ const FlowerBookingsNew = () => {
         .fb-card[data-status="booked"]:hover { transform: translateY(-1px); border-color: #EFABCB !important; box-shadow: 0 5px 14px rgba(214,51,108,.1); }
         .fb-card[data-status="completed"]:hover { transform: translateY(-1px); border-color: #A3E1BB !important; box-shadow: 0 5px 14px rgba(16,185,129,.12); }
         .flower-quantity-chip { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: #FCE0EC; color: #BE185D; font: 700 11px 'DM Sans', system-ui, sans-serif; vertical-align: 2px; }
+        .flower-edited-chip { display: inline-flex; margin-left: 8px; padding: 3px 8px; border: 1px solid #ddd6fe; border-radius: 999px; background: #f5f3ff; color: #6d28d9; font: 700 10px 'DM Sans', system-ui, sans-serif; vertical-align: 2px; }
+        .flower-card-initials { width: fit-content; max-width: 100%; overflow: hidden; padding: 3px 8px; border: 1px solid #ddd6fe; border-radius: 6px; background: #f5f3ff; color: #6d28d9; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .flower-edit-booking-button { flex: 1; padding: 14px 12px; border: 1px solid #c4b5fd; border-radius: 10px; background: #f5f3ff; color: #6d28d9; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .flower-edit-booking-button:hover { border-color: #7c3aed; background: #ede9fe; }
         .fb-card[data-status="completed"] .flower-quantity-chip { background: #D8F4E4; color: #0E7A54; }
         .flower-funeral-date { display: inline-flex; margin-top: 4px; padding: 2px 8px; border: 1px solid #E7D9F6; border-radius: 999px; background: #F5EEFB; color: #7E3FA1; font-size: 10px; font-weight: 700; }
         .flx-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }

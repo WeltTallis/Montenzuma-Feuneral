@@ -371,8 +371,9 @@ export const updateBooking = async (req: any, res: any) => {
         const allowedFields = [
             'flower_type', 'flower_description', 'customer',
             'customer_phone', 'customer_email', 'deceased_name', 'branch',
-            'arrangement_id', 'date', 'time', 'status', 'notes',
-            'ribbon_color', 'size'
+            'arrangement_id', 'arrangements', 'date', 'time', 'status', 'notes',
+            'ribbon_color', 'primary_color', 'accent_color', 'ribbon_message',
+            'size', 'quantity', 'special_instructions', 'funeral_date', 'service_type'
         ];
 
         const setClauses: string[] = [];
@@ -381,7 +382,9 @@ export const updateBooking = async (req: any, res: any) => {
         for (const field of allowedFields) {
             if (updates[field] !== undefined) {
                 setClauses.push(`${field} = ?`);
-                params.push(updates[field]);
+                params.push(field === 'arrangements' && updates[field] !== null
+                    ? JSON.stringify(updates[field])
+                    : updates[field]);
             }
         }
 
