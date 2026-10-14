@@ -268,6 +268,7 @@ async function ensureFloristTables(dbName: string) {
             table.string('tenant_slug', 100).notNullable();
             table.string('flower_type', 100).notNullable();
             table.text('flower_description');
+            table.text('service_type');
             table.string('customer', 255).notNullable();
             table.string('customer_phone', 20);
             table.string('customer_email', 255);
@@ -372,6 +373,7 @@ async function ensureFloristTables(dbName: string) {
             { name: 'ribbon_message', sqlType: 'TEXT' },
             { name: 'special_instructions', sqlType: 'TEXT' },
             { name: 'funeral_date', sqlType: 'DATE' },
+            { name: 'service_type', sqlType: 'TEXT' },
             { name: 'deceased_gender', sqlType: 'VARCHAR(40)' },
         ];
         for (const col of bookingExtraColumns) {
@@ -382,6 +384,9 @@ async function ensureFloristTables(dbName: string) {
                 console.log(`[FLORIST] Added missing column '${col.name}' to flower_bookings`);
             }
         }
+        // Existing installs may still have the original VARCHAR(50) limit.
+        // Service type is free text, so widen it without restricting its value.
+        await tenantKnex.raw('ALTER TABLE `flower_bookings` MODIFY COLUMN `service_type` TEXT NULL');
 
         console.log(`[FLORIST] ✓ Florist tables ready in: ${dbName}`);
         return true;

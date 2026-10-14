@@ -104,9 +104,8 @@ const parseLineItems = (b) => {
   }
   return [{ name: b?.flower_type || 'Custom Arrangement', arrangement_id: b?.arrangement_id || null, quantity: Math.max(1, Number(b?.quantity) || 1) }];
 };
-// The EXACT date/time the user picked rides back inside notes as
-// [WHEN:YYYY-MM-DD HH:mm] — immune to server-side timezone conversions that
-// otherwise shift bookings a day forward/backward between write and read.
+// [WHEN:…] preserves the order-entry date/time for older records. Service
+// scheduling is stored separately in funeral_date and [SERVICE-TIME:…].
 const parseWhen = (b) => {
   const m = /\[WHEN\s*:\s*(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}:\d{2}(?::\d{2})?))?\s*\]/i.exec(String(b?.notes || ''));
   if (m) return { date: m[1], time: m[2] ? toTimeOnly(m[2]) : '' };
@@ -287,7 +286,7 @@ const FLX_RESPONSIVE = `
   display: grid;
   flex: 1;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-template-rows: repeat(6, minmax(112px, 1fr));
+  grid-template-rows: repeat(6, minmax(150px, 1fr));
   gap: 1px;
   align-content: stretch;
   background: var(--fc-line);
@@ -296,7 +295,7 @@ const FLX_RESPONSIVE = `
   position: relative;
   display: flex;
   min-width: 0;
-  min-height: 112px;
+  min-height: 150px;
   flex-direction: column;
   overflow: hidden;
   padding: 7px;
@@ -335,16 +334,32 @@ const FLX_RESPONSIVE = `
   box-shadow: inset 0 0 0 2px var(--fc-primary);
 }
 .flower-calendar .flx-cal-event {
+  display: flex;
+  min-height: 36px;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   padding: 4px 6px;
+  border-left: 3px solid currentColor;
   border-radius: 4px;
   font-size: 10px;
-  font-weight: 500;
-  line-height: 1.25;
+  font-weight: 700;
+  line-height: 1.2;
   text-align: left;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
+.flower-calendar-event-name,
+.flower-calendar-event-info {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flower-calendar-event-name { font-size: 10px; font-weight: 800; }
+.flower-calendar-event-info { margin-top: 2px; font-size: 9px; font-weight: 600; opacity: .95; }
 .flower-calendar .flower-calendar-more {
   padding: 3px 5px !important;
   color: var(--fc-muted) !important;
@@ -373,10 +388,12 @@ const FLX_RESPONSIVE = `
   .flower-calendar-title { font-size: 17px !important; }
   .flower-calendar-nav button { min-width: 30px; height: 32px; padding: 0 7px; }
   .flower-calendar .flx-cal-weekday { padding: 8px 1px; font-size: 9px; }
-  .flower-calendar .flx-cal-day { min-height: 76px; padding: 3px; }
-  .flower-calendar .flx-cal-days { grid-template-rows: repeat(6, minmax(76px, auto)); }
+  .flower-calendar .flx-cal-day { min-height: 120px; padding: 3px; }
+  .flower-calendar .flx-cal-days { grid-template-rows: repeat(6, minmax(120px, auto)); }
   .flower-calendar .flower-calendar-date { width: 22px; height: 22px; font-size: 10px; }
-  .flower-calendar .flx-cal-event { padding: 2px 3px; font-size: 8px; }
+  .flower-calendar .flx-cal-event { min-height: 27px; padding: 3px 3px; border-left-width: 2px; }
+  .flower-calendar-event-name { font-size: 8px; }
+  .flower-calendar-event-info { margin-top: 1px; font-size: 7px; }
   .flower-calendar-selected-day { padding: 14px 10px; }
 }
 .flower-urgency-strip {
@@ -858,21 +875,18 @@ const FlowerBookingsNew = () => {
     return () => clearTimeout(t);
   }, [view, calDate]);
 
-  // The API returns the expected date in `date` (older rows may carry it as
-  // `delivery_date`, sometimes as a full DATETIME) — always normalise to a
-  // clean YYYY-MM-DD key so list, cards and calendar agree. The [WHEN:…]
-  // token stamped at booking time wins over anything the server shifted.
-  // There is NO separate "expected by" day any more: what a booking shows is
-  // the day it was BOOKED, so rows with no date fall back to created_at.
+  // The calendar and date filters use the funeral/service date first, then
+  // fall back to the original booking date for older or unscheduled records.
   const bookingDateKey = (b) =>
-    parseWhen(b).date
+    toDateOnly(b?.funeral_date)
+    || parseWhen(b).date
     || toDateOnly(b?.created_at)
     || toDateOnly(b?.delivery_date || b?.date);
 
   const getEventsForDate = useCallback((dateStr) => {
-    // Full Calendar: an order appears under the day it was BOOKED (created),
-    // never under its Expected-By delivery deadline.
-    return bookings.filter(b => (toDateOnly(b?.created_at) || bookingDateKey(b)) === dateStr);
+    // Put the booking on its funeral/service date; legacy unscheduled rows fall
+    // back to their original booking date.
+    return bookings.filter(b => bookingDateKey(b) === dateStr);
   }, [bookings]);
 
   const flowerUrgency = useMemo(() => {
@@ -911,11 +925,9 @@ const FlowerBookingsNew = () => {
   };
 
   const calendarItems = useMemo(() => {
-    // Full Calendar places each order on the day it was BOOKED (created) —
-    // never on its Expected-By delivery deadline.
     return bookings.map(b => ({
       ...b,
-      _calDate: toDateOnly(b?.created_at) || bookingDateKey(b),
+      _calDate: bookingDateKey(b),
     }));
   }, [bookings]);
 
@@ -1036,12 +1048,13 @@ const FlowerBookingsNew = () => {
     if (placingRef.current) return;
     if (!newBooking.deceased_name?.trim()) return showToast('Please enter the deceased name', 'error');
 
-    const arrangementTypes = splitCommaList(newBooking.arrangement_type);
-    if (arrangementTypes.length === 0) return showToast('Please enter at least one arrangement type', 'error');
-
+    const requestedArrangements = splitCommaList(newBooking.arrangement_type);
     const flowerDesigns = splitCommaList(newBooking.flower_designs);
     const typedTypes = splitCommaList(newBooking.flower_details);
-    if (typedTypes.length === 0 && !editingBookingId) return showToast('Please enter the flowers for this arrangement', 'error');
+    if (!requestedArrangements.length && !typedTypes.length && !editingBookingId) {
+      return showToast('Enter the requested flower item or flower details', 'error');
+    }
+    const arrangementTypes = requestedArrangements.length ? requestedArrangements : ['Flower order'];
     const colors = splitCommaList(newBooking.color_preference);
     const quantityPerArrangement = Math.max(1, Number(newBooking.quantity) || 1);
     const preserveArrangementQuantities = editingBookingId
@@ -1063,10 +1076,10 @@ const FlowerBookingsNew = () => {
     setPlacingOrder(true);
 
     try {
-      // ONE row = ONE order containing the arrangement and its flower types.
+      // ONE row = ONE order containing the exact client-requested items/details.
       const clean = s => String(s || '').replace(/\|/g, '/').replace(/[[\]]/g, '').trim();
-      // [TYPES:…] keeps every flower name · [WHEN:…] pins the exact booked day
-      // so the calendar and list always agree on one date.
+      // Keep the order-entry date for legacy feeds; funeral_date is the service
+      // date used by the operations calendar.
       const bookedOn = newBooking.date || fmtDateStr(new Date());
       const designTag = flowerDesigns.length ? `[DESIGN:${flowerDesigns.map(clean).join(', ')}]` : '';
       const initialsTag = newBooking.initials?.trim()
@@ -1473,10 +1486,10 @@ const FlowerBookingsNew = () => {
       ].filter(Boolean).join(' ').toLowerCase().includes(query);
     });
 
-    // Group orders by the day they were booked, newest dates first.
+    // Group orders by their funeral/service date, newest dates first.
     const sorted = [...visibleBookings].sort((a, b) => {
-      const da = a.date ? new Date(a.date).getTime() : Infinity;
-      const db = b.date ? new Date(b.date).getTime() : Infinity;
+      const da = bookingDateKey(a) ? new Date(`${bookingDateKey(a)}T00:00:00`).getTime() : Infinity;
+      const db = bookingDateKey(b) ? new Date(`${bookingDateKey(b)}T00:00:00`).getTime() : Infinity;
       return db - da;
     });
     const groups = {};
@@ -1486,7 +1499,7 @@ const FlowerBookingsNew = () => {
       groups[key].push(b);
     });
 
-    // A tapped mini-calendar / strip date narrows the feed to that day only
+    // A selected date narrows the feed to bookings due for service that day.
     let entries = Object.entries(groups);
     if (selectedDate) entries = entries.filter(([date]) => date === selectedDate);
 
@@ -1782,6 +1795,11 @@ const FlowerBookingsNew = () => {
               </div>
             )}
             {b.funeral_date && <div className="flower-funeral-date">Funeral {fmtDateOnly(b.funeral_date)}</div>}
+            {(getBookingNoteTag(b, 'SERVICE-TIME') || getBookingNoteTag(b, 'ROUTE')) && (
+              <div className="flower-booking-service-meta">
+                {[getBookingNoteTag(b, 'SERVICE-TIME'), getBookingNoteTag(b, 'ROUTE')].filter(Boolean).join(' · ')}
+              </div>
+            )}
           </div>
         </div>
         <div className="flx-card-right" style={styles.bookingRight}>
@@ -1856,10 +1874,32 @@ const FlowerBookingsNew = () => {
                   {visible.map((b, index) => {
                     const matchedSample = arrangements.find(a => a.title === b.flower_type);
                     const evTitle = matchedSample?.title || b.flower_type || 'Order';
-                    const evColor = getBookingDotColor(b);
+                    const statusColor = getBookingDotColor(b);
+                    const eventLabel = b.deceased_name || evTitle;
+                    const eventInfo = [
+                      getBookingNoteTag(b, 'SERVICE-TIME'),
+                      getBookingNoteTag(b, 'ROUTE'),
+                      evTitle,
+                      b.flower_description,
+                      getBookingNoteTag(b, 'INITIALS') ? `Dedication: ${getBookingNoteTag(b, 'INITIALS')}` : '',
+                    ].filter(Boolean).join(' · ');
+                    const eventTitle = [
+                      eventLabel,
+                      eventInfo,
+                      getBookingNoteTag(b, 'COFFIN') ? `Coffin: ${getBookingNoteTag(b, 'COFFIN')}` : '',
+                      b.special_instructions,
+                      getBookingNoteTag(b, 'CONTACT') ? `T-Cord: ${getBookingNoteTag(b, 'CONTACT')}` : '',
+                      b.customer_phone,
+                    ].filter(Boolean).join(' · ');
                     return (
-                      <div className="flx-cal-event" key={`${b.booking_id || b.id || dateStr}-${index}`} style={{ background: `${evColor}1A`, color: evColor }}>
-                        {b.time ? `${String(b.time).slice(0, 5)} ` : ''}{evTitle.split(' ')[0]}
+                      <div
+                        className="flx-cal-event"
+                        key={`${b.booking_id || b.id || dateStr}-${index}`}
+                        title={eventTitle}
+                        style={{ background: statusColor, color: '#fff', borderLeftColor: statusColor }}
+                      >
+                        <span className="flower-calendar-event-name">{eventLabel}</span>
+                        <span className="flower-calendar-event-info">{eventInfo || 'Flower booking'}</span>
                       </div>
                     );
                   })}
@@ -2013,16 +2053,18 @@ const FlowerBookingsNew = () => {
         </div>
 
         <form onSubmit={submitBooking} style={{ padding: '24px 28px 40px' }}>
-          <label style={lbl} htmlFor="flower-arrangement-types">Arrangement Type(s) *</label>
+          <label style={lbl} htmlFor="flower-arrangement-types">Arrangement / Requested Flower Item(s)</label>
           <textarea
             id="flower-arrangement-types"
             rows={2}
-            required
             style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="e.g. Full set, Stems, Round wreath, Heart spray, Casket spray, Car number plate, Coffin wrap"
+            placeholder="Record the request as given: full set, casket flowers only, 4 extra rings, portrait flowers, 100 stems"
             value={newBooking.arrangement_type}
             onChange={e => setNewBooking(prev => ({ ...prev, arrangement_type: e.target.value }))}
           />
+          <p style={{ margin: '0 0 10px', color: '#6E675E', fontSize: '12px', lineHeight: 1.5 }}>
+            A “full set” can differ by booking. Record its exact flowers and extras below; short flower-only orders are fine too.
+          </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
             {arrangementSuggestions.map(item => (
               <button
@@ -2064,13 +2106,12 @@ const FlowerBookingsNew = () => {
           />
 
           {/* ── Flowers ── */}
-          <label style={lbl} htmlFor="flower-details">Flowers *</label>
+          <label style={lbl} htmlFor="flower-details">Flower Types, Colors & Package Details</label>
           <textarea
             id="flower-details"
             rows={3}
-            required
             style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="e.g. Mums, white lilies, red roses, chrysanthemum, gypsophila, greenery"
+            placeholder="e.g. Full set mums, white with a touch of purple; all white; casket spray white and purple mums"
             value={newBooking.flower_details}
             onChange={e => setNewBooking(prev => ({ ...prev, flower_details: e.target.value }))}
           />
@@ -2622,6 +2663,12 @@ const FlowerBookingsNew = () => {
                   <dt style={styles.specLabel}>Funeral / Service Date</dt>
                   <dd style={styles.specValue}>{b.funeral_date ? fmtDateOnly(b.funeral_date) : 'Not specified'}</dd>
                 </div>
+                {b.service_type && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Service Type</dt>
+                    <dd style={styles.specValue}>{b.service_type}</dd>
+                  </div>
+                )}
                 {serviceTime && (
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Service / Dispatch Time</dt>
@@ -2830,6 +2877,7 @@ const FlowerBookingsNew = () => {
         .flower-edit-booking-button:hover { border-color: #7c3aed; background: #ede9fe; }
         .fb-card[data-status="completed"] .flower-quantity-chip { background: #D8F4E4; color: #0E7A54; }
         .flower-funeral-date { display: inline-flex; margin-top: 4px; padding: 2px 8px; border: 1px solid #E7D9F6; border-radius: 999px; background: #F5EEFB; color: #7E3FA1; font-size: 10px; font-weight: 700; }
+        .flower-booking-service-meta { overflow: hidden; color: #526071; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
         .flx-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         /* The sample-picker (flx-sample-*) styles were removed along with the
            picker section — the booking screen books DIRECT by Arrangement Type. */

@@ -9,7 +9,7 @@ export async function up(knex) {
     table.string('booking_id', 50).unique().notNullable();
     table.string('flower_type', 100).notNullable();
     table.text('flower_description');
-    table.string('service_type', 50).notNullable();
+    table.text('service_type');
     table.string('customer', 255).notNullable();
     table.string('customer_phone', 20);
     table.string('customer_email', 255);

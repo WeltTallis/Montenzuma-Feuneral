@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS flower_bookings (
     booking_id VARCHAR(50) UNIQUE NOT NULL,
     flower_type VARCHAR(100) NOT NULL,
     flower_description TEXT,
-    service_type VARCHAR(50) NOT NULL,
+    service_type TEXT,
     customer VARCHAR(255) NOT NULL,
     customer_phone VARCHAR(20),
     customer_email VARCHAR(255),
