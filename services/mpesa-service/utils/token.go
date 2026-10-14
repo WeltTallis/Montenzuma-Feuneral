@@ -3,8 +3,10 @@ package utils
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-mpesa-integration/config"
@@ -38,16 +40,27 @@ func GenerateAccessToken(consumerKey string, consumerSecret string) (string, err
 		}
 	}(res.Body)
 
-	var accessTokenResponse AccessTokenResponse
-	// Read the response body
+	// Safaricom answers token requests with HTTP 200 + {"access_token": "..."}.
+	// On bad credentials, a wrong OAuth URL, or a sandbox/production mismatch it
+	// returns a non-2xx status and/or a JSON body WITHOUT access_token. Without
+	// checking the status/body here we would hand an empty token to the STK call
+	// and only see a generic "request failed" from Safaricom afterwards. Surface
+	// the real cause at the point of failure instead.
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", err
 	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return "", fmt.Errorf("M-Pesa OAuth failed: HTTP %d body: %s", res.StatusCode, string(body))
+	}
+
+	var accessTokenResponse AccessTokenResponse
 	// Unmarshal the JSON response into the struct
-	err = json.Unmarshal(body, &accessTokenResponse)
-	if err != nil {
+	if err := json.Unmarshal(body, &accessTokenResponse); err != nil {
 		return "", err
+	}
+	if strings.TrimSpace(accessTokenResponse.AccessToken) == "" {
+		return "", fmt.Errorf("M-Pesa OAuth returned no access_token: body: %s", string(body))
 	}
 	return accessTokenResponse.AccessToken, nil
 }
