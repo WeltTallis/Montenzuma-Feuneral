@@ -227,6 +227,7 @@ async function ensureWorkshopTables(dbName: string) {
         const workshopOnlyTables: string[] = [
             `CREATE TABLE IF NOT EXISTS materials (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                tenant_slug VARCHAR(100) NOT NULL,
                 name VARCHAR(255) NOT NULL,
                 category VARCHAR(100) NOT NULL,
                 unit VARCHAR(50) NOT NULL DEFAULT 'pieces',
@@ -236,10 +237,12 @@ async function ensureWorkshopTables(dbName: string) {
                 description TEXT,
                 created_at VARCHAR(255),
                 updated_at VARCHAR(255),
-                INDEX idx_materials_category (category)
+                INDEX idx_materials_category (category),
+                INDEX idx_materials_tenant (tenant_slug)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS material_usage (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                tenant_slug VARCHAR(100) NOT NULL,
                 coffin_order_id INT UNSIGNED NOT NULL,
                 material_id INT UNSIGNED NOT NULL,
                 quantity_used DECIMAL(10,2) NOT NULL,
@@ -249,10 +252,12 @@ async function ensureWorkshopTables(dbName: string) {
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
                 FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
                 INDEX idx_usage_order (coffin_order_id),
-                INDEX idx_usage_material (material_id)
+                INDEX idx_usage_material (material_id),
+                INDEX idx_usage_tenant (tenant_slug)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS production_stages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                tenant_slug VARCHAR(100) NOT NULL,
                 coffin_order_id INT UNSIGNED NOT NULL,
                 stage VARCHAR(50) NOT NULL,
                 status VARCHAR(50) DEFAULT 'pending',
@@ -261,7 +266,8 @@ async function ensureWorkshopTables(dbName: string) {
                 notes TEXT,
                 FOREIGN KEY (coffin_order_id) REFERENCES coffin_orders(id) ON DELETE CASCADE,
                 UNIQUE KEY uk_order_stage (coffin_order_id, stage),
-                INDEX idx_stages_order (coffin_order_id)
+                INDEX idx_stages_order (coffin_order_id),
+                INDEX idx_stages_tenant (tenant_slug)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS worker_assignments (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -346,6 +352,38 @@ async function ensureWorkshopTables(dbName: string) {
                     if (!/Duplicate column/i.test(msg) && !/ER_DUP_FIELDNAME/i.test(msg)) {
                         console.warn(`[WORKSHOP] Could not add column ${col} to coffin_orders in ${dbName}: ${msg}`);
                     }
+                }
+            }
+        }
+
+        // ── Ensure tenant_slug on the tenant-scoped workshop tables ─────────────
+        // materials / material_usage / production_stages are shared in the ONE
+        // operations DB and isolated via tenant_slug (NOT NULL, no default).
+        // Older tenant DBs provisioned before this column existed would otherwise
+        // fail every INSERT with "Field 'tenant_slug' doesn't have a default value".
+        // Add it idempotently, backfilling existing rows with 'system_shared' so the
+        // NOT NULL constraint can be applied cleanly.
+        const tenantScopedTables: string[] = ['materials', 'material_usage', 'production_stages'];
+        for (const table of tenantScopedTables) {
+            try {
+                const hasSlug = await tenantKnex.schema.hasColumn(table, 'tenant_slug');
+                if (!hasSlug) {
+                    // Add nullable first so existing rows are not rejected, backfill,
+                    // then tighten to NOT NULL to match the canonical schema.
+                    await tenantKnex.raw(`ALTER TABLE \`${table}\` ADD COLUMN tenant_slug VARCHAR(100) NULL`);
+                    await tenantKnex.raw(`UPDATE \`${table}\` SET tenant_slug = 'system_shared' WHERE tenant_slug IS NULL OR tenant_slug = ''`);
+                    try {
+                        await tenantKnex.raw(`ALTER TABLE \`${table}\` MODIFY COLUMN tenant_slug VARCHAR(100) NOT NULL`);
+                    } catch { /* leave nullable if modify is blocked; inserts still supply a value */ }
+                    try {
+                        await tenantKnex.raw(`CREATE INDEX idx_${table}_tenant ON \`${table}\` (tenant_slug)`);
+                    } catch { /* index may already exist */ }
+                    console.log(`[WORKSHOP] ✅ Added 'tenant_slug' to ${table} in: ${dbName}`);
+                }
+            } catch (e: any) {
+                const msg = e?.message || '';
+                if (!/Duplicate column/i.test(msg) && !/ER_DUP_FIELDNAME/i.test(msg)) {
+                    console.warn(`[WORKSHOP] Could not add tenant_slug to ${table} in ${dbName}: ${msg}`);
                 }
             }
         }

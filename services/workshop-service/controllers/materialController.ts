@@ -43,10 +43,16 @@ const createMaterial = async (req: Request, res: Response) => {
 
         const { name, category, unit, quantity, unit_price, min_stock_level, description } = req.body;
 
+        // All materials rows live in the ONE shared operations DB, isolated via the
+        // tenant_slug column (NOT NULL, no default) — so it MUST be provided here,
+        // exactly like createOrder does for coffin_orders. Omitting it makes MySQL
+        // reject the INSERT with "Field 'tenant_slug' doesn't have a default value".
+        const tenantSlug = (req as any).tenant?.tenant_slug || (req as any).tenantSlug || 'system_shared';
+
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO materials (name, category, unit, quantity, unit_price, min_stock_level, description)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [name, category, unit, quantity || 0, unit_price || 0, min_stock_level || 0, description]
+            `INSERT INTO materials (name, category, unit, quantity, unit_price, min_stock_level, description, tenant_slug)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [name, category, unit, quantity || 0, unit_price || 0, min_stock_level || 0, description, tenantSlug]
         );
 
         const rows: any = await safeTenantQuery(tenantDb, 'SELECT * FROM materials WHERE id = ?', [insertResult.insertId]);
@@ -120,6 +126,10 @@ const useMaterial = async (req: Request, res: Response) => {
 
         const { coffin_order_id, material_id, quantity_used, notes } = req.body;
 
+        // material_usage.tenant_slug is NOT NULL with no default (same as materials),
+        // so it must be supplied on insert.
+        const tenantSlug = (req as any).tenant?.tenant_slug || (req as any).tenantSlug || 'system_shared';
+
         // Check stock
         const materialRows: any = await safeTenantQuery(tenantDb,
             'SELECT * FROM materials WHERE id = ? FOR UPDATE', [material_id]
@@ -138,9 +148,9 @@ const useMaterial = async (req: Request, res: Response) => {
 
         // Record usage
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO material_usage (coffin_order_id, material_id, quantity_used, unit_cost, notes)
-             VALUES (?, ?, ?, ?, ?)`,
-            [coffin_order_id, material_id, quantity_used, unitCost, notes]
+            `INSERT INTO material_usage (coffin_order_id, material_id, quantity_used, unit_cost, notes, tenant_slug)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [coffin_order_id, material_id, quantity_used, unitCost, notes, tenantSlug]
         );
 
         // Deduct from inventory

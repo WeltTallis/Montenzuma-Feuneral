@@ -2,7 +2,8 @@ import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { formatDate as fmtDate, parseDate, toDateKey } from '../../../utils/dates/parseDates';
 import { workshopService } from '../services/workshopService';
 import api from '../../../api/axios';
-import { getBranchId, getBranchSlug, getParentTenantSlug, getTenantId, getTenantSlug } from '../../../utils/globalAuth';
+import { ENDPOINTS } from '../../../api/endpoints';
+import { getParentTenantSlug, getTenantSlug } from '../../../utils/globalAuth';
 import { Ctx } from './WorkshopDashboard';
 
 const T = {
@@ -72,8 +73,13 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
   const [loading, setLoading] = useState(false);
   const [previewDispatchId, setPreviewDispatchId] = useState('');
 
-  /* Drivers live in the hearse service's operations DB, so fetch its roster
-     through the gateway and persist the selected driver's ID with the dispatch. */
+  /* Drivers are ordinary users with role "driver" (created in Settings → Users),
+     NOT rows in the hearse service's own roster. The hearse `/all-drivers`
+     endpoint has no create/assign path, so it is almost always empty and the
+     dispatch dropdown read "No drivers available". Fetch the tenant user list
+     the same way the Settings page does (GET /tenant/{slug}/users against the
+     PARENT tenant slug) and filter it down to drivers here. The stored
+     driver_id/driver_name still match what the Driver Portal looks up by name. */
   const [drivers, setDrivers] = useState([]);
   const [driversLoading, setDriversLoading] = useState(false);
   const [driversError, setDriversError] = useState('');
@@ -82,30 +88,36 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
     setDriversLoading(true);
     setDriversError('');
     try {
-      const headers = {};
-      const parentTenantSlug = getParentTenantSlug() || getTenantSlug();
-      const tenantId = getTenantId();
-      const branchSlug = getBranchSlug();
-      const branchId = getBranchId();
-      if (parentTenantSlug) headers['x-tenant-slug'] = parentTenantSlug;
-      if (tenantId) headers['x-tenant-id'] = tenantId;
-      if (branchSlug) headers['x-branch-slug'] = branchSlug;
-      if (branchId) headers['x-branch-id'] = branchId;
+      // Tenant-level users live in the PARENT tenant DB; a branch slug is not a
+      // real tenant, so the parent slug must take priority (mirrors SettingsPage).
+      const slug = getParentTenantSlug() || getTenantSlug();
+      if (!slug) throw new Error('Could not resolve your organisation. Please sign in again.');
 
-      const r = await api.get('/all-drivers', { headers });
-      if (r?.data?.status !== 'success') {
-        throw new Error(r?.data?.message || 'The driver service returned an invalid response.');
-      }
-      const list = r.data.drivers;
+      const headers = { 'x-tenant-slug': slug };
+      const r = await api.get(ENDPOINTS.TENANT.USERS(slug), { headers });
+      const list = r?.data?.data || r?.data?.users || r?.data;
       if (!Array.isArray(list)) {
-        throw new Error('The driver service returned an invalid driver list.');
+        throw new Error('The user service returned an invalid user list.');
       }
-      const normalized = list.map(d => ({
-        id: String(d.driver_id ?? d.id ?? ''),
-        name: d.driver_name || d.full_name || '',
-      })).filter(d => d.id && d.name);
+
+      // Keep only drivers — case/format tolerant since several services write
+      // the role ('driver', 'Driver', 'hearse_driver', ...).
+      const isDriver = (u) => {
+        const role = String(u?.role || '').toLowerCase().replace(/[\s-]+/g, '_');
+        return role === 'driver' || role.includes('driver');
+      };
+      const normalized = list
+        .filter(isDriver)
+        .map(u => ({
+          id: String(u.user_id ?? u.id ?? ''),
+          name: u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username || '',
+        }))
+        .filter(d => d.id && d.name);
+
       setDrivers(normalized);
-      if (!normalized.length) setDriversError('No registered drivers were found. Add a driver before dispatching a coffin.');
+      if (!normalized.length) {
+        setDriversError('No drivers were found. Add a user with the "Driver" role in Settings → Users before dispatching a coffin.');
+      }
     } catch (e) {
       setDrivers([]);
       setDriversError(e?.response?.data?.message || e?.message || 'Could not load the driver list.');

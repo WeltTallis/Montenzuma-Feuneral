@@ -38,10 +38,13 @@ const recordMaterialUsage = async (req: Request, res: Response) => {
 
         const { orderId, material_id, quantity_used, unit_cost, notes } = req.body;
 
+        // material_usage.tenant_slug is NOT NULL with no default — supply it here.
+        const tenantSlug = (req as any).tenant?.tenant_slug || (req as any).tenantSlug || 'system_shared';
+
         const insertResult: any = await safeTenantExecute(tenantDb,
-            `INSERT INTO material_usage (coffin_order_id, material_id, quantity_used, unit_cost, notes, used_at)
-             VALUES (?, ?, ?, ?, ?, NOW())`,
-            [orderId, material_id, quantity_used, unit_cost, notes]
+            `INSERT INTO material_usage (coffin_order_id, material_id, quantity_used, unit_cost, notes, used_at, tenant_slug)
+             VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
+            [orderId, material_id, quantity_used, unit_cost, notes, tenantSlug]
         );
 
         // Deduct from inventory

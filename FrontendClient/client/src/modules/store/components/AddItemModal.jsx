@@ -45,7 +45,7 @@ export default function AddItemModal({ show, onHide }) {
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered backdrop="static" size="lg" scrollable>
+    <Modal show={show} onHide={onHide} centered backdrop="static" size="lg" scrollable contentClassName="store-modal">
       <Modal.Header closeButton>
         <Modal.Title>Add New Item</Modal.Title>
       </Modal.Header>

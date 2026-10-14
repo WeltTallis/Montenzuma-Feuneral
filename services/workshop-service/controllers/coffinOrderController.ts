@@ -244,8 +244,8 @@ const createOrder = async (req: Request, res: Response) => {
         for (const stage of stages) {
             try {
                 await safeTenantExecute(tenantDb,
-                    'INSERT INTO production_stages (coffin_order_id, stage) VALUES (?, ?)',
-                    [orderId, stage]
+                    'INSERT INTO production_stages (coffin_order_id, stage, tenant_slug) VALUES (?, ?, ?)',
+                    [orderId, stage, tenantSlug]
                 );
             } catch (stageError: any) {
                 console.error(`[WORKSHOP] Could not create stage ${stage} for order ${orderId}:`, stageError.message);
