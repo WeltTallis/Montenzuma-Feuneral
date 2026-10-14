@@ -219,145 +219,12 @@ const FLX_RESPONSIVE = `
   padding: 18px 24px 28px !important;
 }
 .flower-toolbar-calendar .flx-nav { display: none !important; }
-.flower-calendar-sidebar {
-  display: flex;
-  width: 260px;
-  flex: 0 0 260px;
-  flex-direction: column;
-  border-right: 1px solid var(--fc-line);
-  background: #fff;
-}
-.flower-calendar-sidebar-heading {
-  display: flex;
-  min-height: 62px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--fc-line);
-  font-size: 15px;
-  font-weight: 600;
-}
-.flower-calendar-sidebar-heading span {
-  color: var(--fc-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-.flower-calendar-mini {
-  padding: 18px 16px;
-  border-bottom: 1px solid var(--fc-line);
-}
-.flower-calendar-mini-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.flower-calendar-mini-week,
-.flower-calendar-mini-days {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
-}
-.flower-calendar-mini-week {
-  margin-bottom: 5px;
-}
-.flower-calendar-mini-week span {
-  padding: 5px 0;
-  color: var(--fc-muted);
-  font-size: 10px;
-  text-align: center;
-}
-.flower-calendar-mini-day {
-  display: grid;
-  min-width: 0;
-  aspect-ratio: 1;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--fc-text);
-  cursor: pointer;
-  font-size: 11px;
-}
-.flower-calendar-mini-day:hover,
-.flower-calendar-mini-day.is-selected {
-  background: var(--fc-primary-soft);
-  color: var(--fc-primary);
-}
-.flower-calendar-mini-day.is-today {
-  background: var(--fc-primary);
-  color: #fff;
-  font-weight: 700;
-}
-.flower-calendar-mini-day.is-outside { color: #adb5bd; }
-.flower-calendar-sidebar-section {
-  padding: 18px 16px;
-  border-bottom: 1px solid var(--fc-line);
-}
-.flower-calendar-sidebar-title {
-  margin: 0 0 12px;
-  color: var(--fc-text);
-  font-size: 12px;
-  font-weight: 600;
-}
-.flower-calendar-legend {
-  display: grid;
-  gap: 11px;
-}
-.flower-calendar-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: #495057;
-  font-size: 12px;
-}
-.flower-calendar-legend-dot {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 9px;
-  border-radius: 50%;
-}
-.flower-calendar-upcoming {
-  display: grid;
-  gap: 8px;
-}
-.flower-calendar-upcoming-item {
-  display: grid;
-  gap: 3px;
-  padding: 9px 10px;
-  border: 1px solid #edf0f2;
-  border-left: 3px solid var(--fc-primary);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--fc-text);
-  cursor: pointer;
-  text-align: left;
-}
-.flower-calendar-upcoming-item:hover {
-  border-color: #c8d7fa;
-  background: #f8faff;
-}
-.flower-calendar-upcoming-item strong {
-  overflow: hidden;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.flower-calendar-upcoming-item span {
-  color: var(--fc-muted);
-  font-size: 10px;
-}
-.flower-calendar-upcoming-empty {
-  color: var(--fc-muted);
-  font-size: 12px;
-}
 .flower-calendar-main {
   display: flex;
   min-width: 0;
   flex: 1;
   flex-direction: column;
+  width: 100%;
 }
 .flower-calendar-heading {
   display: flex;
@@ -499,13 +366,9 @@ const FLX_RESPONSIVE = `
   border-radius: 6px !important;
   background: var(--fc-primary) !important;
 }
-@media (max-width: 900px) {
-  .flower-calendar-sidebar { width: 220px; flex-basis: 220px; }
-}
 @media (max-width: 700px) {
   .flower-calendar-page { padding: 10px !important; }
   .flower-calendar { min-height: 0; flex-direction: column; }
-  .flower-calendar-sidebar { display: none; }
   .flower-calendar-heading { min-height: 58px; padding: 10px 12px; }
   .flower-calendar-title { font-size: 17px !important; }
   .flower-calendar-nav button { min-width: 30px; height: 32px; padding: 0 7px; }
@@ -1043,7 +906,7 @@ const FlowerBookingsNew = () => {
     switch (normStatus(b.status)) {
       case 'completed': return '#059669';
       case 'cancelled': return '#dc2626';
-      default: return '#d97706';   // Booked / any pre-completion state
+      default: return '#2563eb';   // Blue matches the Metis calendar's primary event color.
     }
   };
 
@@ -1945,76 +1808,9 @@ const FlowerBookingsNew = () => {
     for (let i = 0; i < 42; i++) days.push(addDays(gridStart, i));
     const todayStr = todayKey();
     const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const monthBookings = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) => {
-      const date = new Date(year, month, index + 1);
-      return getEventsForDate(fmtDateStr(date));
-    }).flat();
-    const upcomingOrders = flowerUrgency.upcoming.slice(0, 5);
 
     return (
       <section className="flower-calendar">
-        <aside className="flower-calendar-sidebar">
-          <div className="flower-calendar-sidebar-heading">
-            <div>Calendar <span>{monthBookings.length} this month</span></div>
-          </div>
-          <div className="flower-calendar-mini">
-            <div className="flower-calendar-mini-heading">
-              <span>{MONTHS[month]} {year}</span>
-              <span>{monthBookings.length} bookings</span>
-            </div>
-            <div className="flower-calendar-mini-week">
-              {weekdays.map(day => <span key={day}>{day.slice(0, 1)}</span>)}
-            </div>
-            <div className="flower-calendar-mini-days">
-              {days.map(day => {
-                const dateStr = fmtDateStr(day);
-                const isToday = dateStr === todayStr;
-                const isSelected = dateStr === selectedDate;
-                return (
-                  <button
-                    type="button"
-                    key={dateStr}
-                    className={`flower-calendar-mini-day${day.getMonth() !== month ? ' is-outside' : ''}${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
-                    aria-label={day.toLocaleDateString('en-KE', { dateStyle: 'full' })}
-                    aria-pressed={isSelected}
-                    onClick={() => {
-                      setSelectedDate(dateStr);
-                      if (day.getMonth() !== month) setCalDate(new Date(day.getFullYear(), day.getMonth(), 1));
-                    }}
-                  >
-                    {day.getDate()}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="flower-calendar-sidebar-section">
-            <h3 className="flower-calendar-sidebar-title">Booking status</h3>
-            <div className="flower-calendar-legend">
-              <div className="flower-calendar-legend-item"><i className="flower-calendar-legend-dot" style={{ background: '#d97706' }} />Booked</div>
-              <div className="flower-calendar-legend-item"><i className="flower-calendar-legend-dot" style={{ background: '#059669' }} />Completed</div>
-              <div className="flower-calendar-legend-item"><i className="flower-calendar-legend-dot" style={{ background: '#dc2626' }} />Cancelled</div>
-            </div>
-          </div>
-          <div className="flower-calendar-sidebar-section">
-            <h3 className="flower-calendar-sidebar-title">Next funeral dates</h3>
-            {upcomingOrders.length ? (
-              <div className="flower-calendar-upcoming">
-                {upcomingOrders.map(({ booking, dateKey }, index) => (
-                  <button
-                    type="button"
-                    className="flower-calendar-upcoming-item"
-                    key={`${booking.booking_id || booking.id || dateKey}-${index}`}
-                    onClick={() => viewBooking(booking.booking_id || booking.id)}
-                  >
-                    <strong>{booking.deceased_name || booking.flower_type || 'Flower booking'}</strong>
-                    <span>{new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-                  </button>
-                ))}
-              </div>
-            ) : <div className="flower-calendar-upcoming-empty">No upcoming funeral dates</div>}
-          </div>
-        </aside>
         <div className="flower-calendar-main">
           <div className="flower-calendar-heading">
             <div className="flower-calendar-title">{MONTHS[month]} {year}</div>
