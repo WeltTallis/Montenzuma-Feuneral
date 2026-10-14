@@ -193,6 +193,350 @@ const getLocalUserName = () => {
 };
 
 const FLX_RESPONSIVE = `
+.flower-calendar {
+  --flower-calendar-brand: #0e5a43;
+  --flower-calendar-brand-soft: #e9f4ee;
+  --flower-calendar-ink: #111816;
+  --flower-calendar-muted: #6a7570;
+  --flower-calendar-line: #e8ebea;
+  overflow: hidden;
+  border: 1px solid var(--flower-calendar-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(17, 24, 22, .06);
+  color: var(--flower-calendar-ink);
+}
+.flower-calendar-heading {
+  min-height: 88px;
+  margin: 0 !important;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--flower-calendar-line);
+}
+.flower-calendar-eyebrow {
+  margin-bottom: 3px;
+  color: var(--flower-calendar-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.flower-calendar-title {
+  color: var(--flower-calendar-ink);
+  font-family: inherit !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.02em;
+}
+.flower-calendar-heading > div:last-child {
+  gap: 8px;
+}
+.flower-calendar-heading button {
+  width: 36px !important;
+  height: 36px !important;
+  border: 1px solid var(--flower-calendar-line) !important;
+  border-radius: 8px !important;
+  color: var(--flower-calendar-ink) !important;
+  transition: background .15s ease, border-color .15s ease;
+}
+.flower-calendar-heading button:hover {
+  border-color: var(--flower-calendar-brand) !important;
+  background: var(--flower-calendar-brand-soft) !important;
+}
+.flower-calendar-heading .flower-calendar-today {
+  width: auto !important;
+  padding: 0 13px;
+  background: var(--flower-calendar-brand) !important;
+  border-color: var(--flower-calendar-brand) !important;
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+.flower-calendar-heading .flower-calendar-today:hover {
+  background: #0a4937 !important;
+  color: #fff !important;
+}
+.flower-toolbar-calendar .flx-nav {
+  display: none !important;
+}
+.flower-calendar .flx-cal-weekdays {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--flower-calendar-line);
+}
+.flower-calendar .flx-cal-weekday {
+  padding: 11px 6px;
+  background: var(--flower-calendar-brand);
+  color: #fff !important;
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+.flower-calendar .flx-cal-days {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--flower-calendar-line);
+}
+.flower-calendar .flx-cal-day {
+  min-height: 116px;
+  padding: 9px;
+  border: 0 !important;
+  border-radius: 0;
+  background: #fff !important;
+  opacity: 1 !important;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+.flower-calendar .flx-cal-day:hover {
+  z-index: 1;
+  background: #f7f8f8 !important;
+  box-shadow: inset 0 0 0 1px #cfd9d3;
+}
+.flower-calendar .flx-cal-day.is-outside {
+  background: #f7f8f8 !important;
+}
+.flower-calendar .flx-cal-day.is-outside .flower-calendar-date {
+  color: #a8b0ac;
+}
+.flower-calendar .flx-cal-day.is-today {
+  background: #f3f8f5 !important;
+  box-shadow: inset 0 0 0 2px var(--flower-calendar-brand);
+}
+.flower-calendar .flx-cal-day.is-selected {
+  box-shadow: inset 0 0 0 2px var(--flower-calendar-brand);
+}
+.flower-calendar .flower-calendar-date {
+  display: inline-flex;
+  width: 27px;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--flower-calendar-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.flower-calendar .is-today .flower-calendar-date {
+  background: var(--flower-calendar-brand) !important;
+  color: #fff !important;
+}
+.flower-calendar .flx-cal-event {
+  min-width: 0;
+  margin: 3px 0 0;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+}
+.flower-calendar .flower-calendar-more {
+  padding: 3px 5px !important;
+  color: var(--flower-calendar-muted) !important;
+  font-size: 10px !important;
+}
+.flower-calendar-selected-day {
+  margin: 0 !important;
+  padding: 22px;
+  border-top: 1px solid var(--flower-calendar-line);
+}
+.flower-calendar-selected-day h2 {
+  color: var(--flower-calendar-ink);
+  font-family: inherit !important;
+  font-size: 18px !important;
+}
+.flower-calendar-selected-day > div > button {
+  border-radius: 8px !important;
+  background: var(--flower-calendar-brand) !important;
+}
+.flower-urgency-strip {
+  --flower-urgency-ink: #14201b;
+  --flower-urgency-muted: #6a7570;
+  --flower-urgency-line: #e8ebea;
+  position: relative;
+  display: flex;
+  height: 64px;
+  margin: 0 14px 12px;
+  overflow: hidden;
+  border: 1px solid #efe3e8;
+  border-radius: 16px;
+  background: linear-gradient(90deg, rgba(255, 250, 252, .92), rgba(252, 244, 247, .92));
+  box-shadow: 0 10px 32px rgba(120, 30, 60, .1), inset 0 1px 0 rgba(255, 255, 255, .8);
+  color: var(--flower-urgency-ink);
+}
+.flower-urgency-strip::after {
+  position: absolute;
+  z-index: 3;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(229, 23, 63, .25);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  animation: flower-urgency-alarm 2.4s ease-in-out infinite;
+}
+.flower-urgency-label {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 11px;
+  padding: 0 18px 0 14px;
+  background: linear-gradient(135deg, #ee1c46, #c4103a);
+  color: #fff;
+}
+.flower-urgency-icon {
+  position: relative;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .22);
+}
+.flower-urgency-icon::after {
+  position: absolute;
+  border: 2px solid rgba(255, 255, 255, .85);
+  border-radius: 50%;
+  content: '';
+  inset: 0;
+  animation: flower-urgency-sonar 1.6s ease-out infinite;
+}
+.flower-urgency-label strong,
+.flower-urgency-label small {
+  display: block;
+  white-space: nowrap;
+}
+.flower-urgency-label strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+.flower-urgency-label small {
+  color: rgba(255, 255, 255, .88);
+  font-size: 11px;
+}
+.flower-urgency-marquee {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+.flower-urgency-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: flower-urgency-run 120s linear infinite;
+}
+.flower-urgency-marquee:hover .flower-urgency-track,
+.flower-urgency-marquee:focus-within .flower-urgency-track {
+  animation-play-state: paused;
+}
+.flower-urgency-set {
+  display: flex;
+  flex: none;
+  min-width: 100%;
+}
+.flower-urgency-item {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 22px;
+  white-space: nowrap;
+}
+.flower-urgency-item::after {
+  position: absolute;
+  top: 17px;
+  right: 0;
+  bottom: 17px;
+  width: 1px;
+  background: var(--flower-urgency-line);
+  content: '';
+}
+.flower-urgency-glyph {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+}
+.flower-urgency-when {
+  color: #c4103a;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.flower-urgency-what {
+  display: grid;
+  max-width: 210px;
+  line-height: 1.25;
+}
+.flower-urgency-what strong,
+.flower-urgency-what span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flower-urgency-what strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.flower-urgency-what span {
+  color: var(--flower-urgency-muted);
+  font-size: 10px;
+}
+.flower-urgency-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #d6246e;
+  color: #fff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.flower-urgency-pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.flower-urgency-item.is-soon .flower-urgency-when,
+.flower-urgency-item.is-soon .flower-urgency-glyph {
+  color: #b26a00;
+}
+.flower-urgency-item.is-soon .flower-urgency-pill {
+  background: #fff1d6;
+  color: #8a5a00;
+}
+.flower-urgency-item.is-later .flower-urgency-when,
+.flower-urgency-item.is-later .flower-urgency-glyph {
+  color: #2f7a58;
+}
+.flower-urgency-item.is-later .flower-urgency-pill {
+  background: #e6f3ec;
+  color: #2f7a58;
+}
+.flower-urgency-overflow {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 9px;
+  padding: 0 22px;
+  color: #c4103a;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+@keyframes flower-urgency-alarm {
+  50% { box-shadow: inset 0 0 0 1px rgba(229, 23, 63, .7), inset 0 0 22px rgba(229, 23, 63, .12); }
+}
+@keyframes flower-urgency-sonar {
+  to { transform: scale(1.8); opacity: 0; }
+}
+@keyframes flower-urgency-run {
+  to { transform: translateX(-50%); }
+}
+
 @media (max-width: 640px) {
   /* Toolbar: stack nav/buttons, no scattered gaps */
   .flx-toolbar { flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
@@ -217,16 +561,38 @@ const FLX_RESPONSIVE = `
   .flx-strip::-webkit-scrollbar { display: none !important; }
   .flx-strip > button { flex: 0 0 42px !important; min-width: 42px !important; padding-left: 2px !important; padding-right: 2px !important; }
 
-  /* Full calendar: 7-col grid is too tight → stack as 3-cols so labels+events read */
-  .flx-cal-weekdays { grid-template-columns: repeat(3, 1fr) !important; }
-  .flx-cal-days { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
-  .flx-cal-day { min-height: 70px !important; min-width: 0 !important; padding: 6px !important; }
+  .flx-cal-weekdays,
+  .flx-cal-days { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+  .flx-cal-weekdays { gap: 1px !important; }
+  .flx-cal-days { gap: 1px !important; }
+  .flower-calendar .flx-cal-day { min-height: 72px !important; min-width: 0 !important; padding: 4px !important; }
+  .flower-calendar .flx-cal-weekday { padding: 8px 2px !important; font-size: 8px !important; letter-spacing: 0 !important; }
+  .flx-cal-event { padding: 2px 3px !important; font-size: 8px !important; }
+  .flower-calendar-heading { min-height: 72px; padding: 14px 12px; }
+  .flower-calendar-title { font-size: 19px !important; }
+  .flower-calendar-selected-day { padding: 16px 12px; }
+  .flower-calendar .flx-cal-event { font-size: 7px !important; }
+  .flower-urgency-strip { height: 58px; margin: 0 8px 10px; }
+  .flower-urgency-label { gap: 8px; padding: 0 11px; }
+  .flower-urgency-icon { width: 32px; height: 32px; flex-basis: 32px; }
+  .flower-urgency-label strong { font-size: 11px; }
+  .flower-urgency-label small { font-size: 9px; }
+  .flower-urgency-item { gap: 7px; padding: 0 14px; }
+  .flower-urgency-what { max-width: 140px; }
+  .flower-urgency-when { font-size: 10px; }
+  .flower-urgency-pill { padding: 4px 7px; font-size: 9px; }
 
   /* Samples gallery — one card per row. The grid used a fixed 200px minimum,
      which still fitted TWO columns on a 375px phone once padding was added,
      leaving a ~110px thumbnail too small to judge the arrangement's quality. */
   .fb-samples-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
   .fb-sample-media { height: 240px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flower-urgency-strip::after,
+  .flower-urgency-icon::after,
+  .flower-urgency-track { animation: none; }
+  .flower-urgency-marquee { overflow-x: auto; }
 }
 
 
@@ -324,6 +690,7 @@ const FlowerBookingsNew = () => {
     const v = new URLSearchParams(window.location.search).get('view');
     return v === 'samples' ? 'samples' : 'list';
   });
+  const [urgencyNow, setUrgencyNow] = useState(() => Date.now());
   const [calDate, setCalDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeBookingId, setActiveBookingId] = useState(null);
@@ -447,6 +814,11 @@ const FlowerBookingsNew = () => {
     loadBookings();
   }, [loadBookings, loadArrangements]);
 
+  useEffect(() => {
+    const timer = setInterval(() => setUrgencyNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Auto-scroll the mobile date strip so today's chip is in view.
   // The rail starts at today; scroll it directly without moving the page.
   useEffect(() => {
@@ -474,6 +846,33 @@ const FlowerBookingsNew = () => {
     // never under its Expected-By delivery deadline.
     return bookings.filter(b => (toDateOnly(b?.created_at) || bookingDateKey(b)) === dateStr);
   }, [bookings]);
+
+  const flowerUrgency = useMemo(() => {
+    const today = todayKey();
+    const now = urgencyNow;
+    const dueLimit = now + 48 * 60 * 60 * 1000;
+    const activeUpcoming = bookings.flatMap(booking => {
+      if (['completed', 'cancelled'].includes(String(booking.status || '').toLowerCase())) return [];
+      const dateKey = toDateOnly(booking.funeral_date);
+      if (!dateKey || dateKey < today) return [];
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+      if (!match) return [];
+      const dueDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+      const hoursUntil = (dueDate.getTime() - now) / (60 * 60 * 1000);
+      const isDueToday = dateKey === today;
+      return [{
+        booking,
+        dateKey,
+        dueDate,
+        hoursUntil: Math.max(0, hoursUntil),
+        isDueToday,
+      }];
+    }).sort((a, b) => a.dueDate - b.dueDate);
+    return {
+      upcoming: activeUpcoming,
+      dueSoon: activeUpcoming.filter(item => item.isDueToday || item.dueDate.getTime() <= dueLimit),
+    };
+  }, [bookings, urgencyNow]);
 
   const getBookingDotColor = (b) => {
     switch (normStatus(b.status)) {
@@ -816,12 +1215,86 @@ const FlowerBookingsNew = () => {
     }
   }, [showToast, loadArrangements, loadBookings]);
 
+  const renderFlowerUrgency = () => {
+    const isHighVolume = flowerUrgency.upcoming.length > 60;
+    if (!isHighVolume && flowerUrgency.dueSoon.length === 0) return null;
+    const orders = flowerUrgency.dueSoon.length
+      ? flowerUrgency.dueSoon
+      : flowerUrgency.upcoming.slice(0, 12);
+    const renderOrder = ({ booking, dateKey, hoursUntil, isDueToday }, index) => {
+      const urgencyClass = isDueToday || hoursUntil < 8 ? 'is-hot' : hoursUntil < 24 ? 'is-soon' : 'is-later';
+      const timeLabel = isDueToday
+        ? 'Due today'
+        : hoursUntil < 1
+          ? 'Due shortly'
+          : hoursUntil < 24
+            ? `in ${Math.ceil(hoursUntil)} h`
+            : `in ${Math.ceil(hoursUntil / 24)} d`;
+      const dateLabel = new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-KE', {
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const location = booking.funeral_home || booking.branch || booking.service_type || 'Funeral service';
+      return (
+        <div className={`flower-urgency-item ${urgencyClass}`} key={`${booking.booking_id || booking.id || dateKey}-${index}`}>
+          <Flower2 className="flower-urgency-glyph" aria-hidden="true" />
+          <span className="flower-urgency-when">{dateLabel}</span>
+          <span className="flower-urgency-what">
+            <strong>{booking.flower_type || booking.arrangement_name || 'Flower order'}</strong>
+            <span>{booking.deceased_name || 'Deceased record'} · {location}</span>
+          </span>
+          <span className="flower-urgency-pill"><i />{timeLabel}</span>
+        </div>
+      );
+    };
+    const renderOrderSet = (suffix, hidden = false) => (
+      <div className="flower-urgency-set" key={suffix} aria-hidden={hidden || undefined}>
+        {orders.map(renderOrder)}
+        {isHighVolume && (
+          <div className="flower-urgency-overflow">
+            <span>{flowerUrgency.upcoming.length} upcoming flower bookings</span>
+            <span>·</span>
+            <span>Review the production schedule</span>
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      <div className="flower-urgency-strip" role="region" aria-label="Upcoming flower booking deadlines">
+        <div className="flower-urgency-label">
+          <div className="flower-urgency-icon"><Flower2 size={21} aria-hidden="true" /></div>
+          <div>
+            <strong>{flowerUrgency.dueSoon.length ? 'Urgent orders' : 'Busy schedule'}</strong>
+            <small>
+              {flowerUrgency.dueSoon.length
+                ? `Next 48 hrs · ${flowerUrgency.dueSoon.length} due`
+                : `${flowerUrgency.upcoming.length} upcoming bookings`}
+            </small>
+          </div>
+        </div>
+        <div
+          className="flower-urgency-marquee"
+          aria-label={flowerUrgency.dueSoon.length
+            ? `${flowerUrgency.dueSoon.length} orders due within 48 hours`
+            : `${flowerUrgency.upcoming.length} upcoming flower bookings`}
+        >
+          <div className="flower-urgency-track">
+            {renderOrderSet('primary')}
+            {renderOrderSet('duplicate', true)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderToolbar = () => {
     const d = calDate;
     return (
       <>
         <style dangerouslySetInnerHTML={{ __html: FLX_RESPONSIVE }} />
-        <div className="flx-toolbar" style={styles.toolbar}>
+        <div className={`flx-toolbar${view === 'calendar' ? ' flower-toolbar-calendar' : ''}`} style={styles.toolbar}>
           <div className="flx-nav" style={styles.nav}>
             <div style={styles.title}>
               <button style={styles.arrowBtn} onClick={() => calNav(-1)}>
@@ -1204,20 +1677,24 @@ const FlowerBookingsNew = () => {
     const todayStr = todayKey();
 
     return (
-      <div>
-        <div style={styles.calHeader}>
-          <div style={styles.calTitle}>{MONTHS[month]} {year}</div>
+      <section className="flower-calendar">
+        <div className="flower-calendar-heading" style={styles.calHeader}>
+          <div>
+            <div className="flower-calendar-eyebrow">Flower bookings</div>
+            <div className="flower-calendar-title" style={styles.calTitle}>{MONTHS[month]} {year}</div>
+          </div>
           <div style={styles.calNav}>
-            <button style={styles.calArrow} onClick={() => calNav(-1)}>
+            <button type="button" aria-label="Previous month" style={styles.calArrow} onClick={() => calNav(-1)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
             </button>
-            <button style={styles.calArrow} onClick={() => calNav(1)}>
+            <button type="button" className="flower-calendar-today" onClick={calToday}>Today</button>
+            <button type="button" aria-label="Next month" style={styles.calArrow} onClick={() => calNav(1)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           </div>
         </div>
         <div className="flx-cal-weekdays" style={styles.calWeekdays}>
-          {WEEKDAYS.map(w => <div key={w} style={styles.calWeekday}>{w}</div>)}
+          {WEEKDAYS.map(w => <div className="flx-cal-weekday" key={w} style={styles.calWeekday}>{w}</div>)}
         </div>
         <div className="flx-cal-days" style={styles.calDays}>
           {days.map(day => {
@@ -1232,7 +1709,7 @@ const FlowerBookingsNew = () => {
             return (
               <div
                 key={dateStr}
-                className="flx-cal-day"
+                className={`flx-cal-day${outside ? ' is-outside' : ''}${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}${events.length ? ' has-bookings' : ''}`}
                 style={{
                   ...styles.calDay,
                   background: outside ? '#FAF9F7' : isToday ? 'linear-gradient(180deg,rgba(47,79,62,.05),#fff 40%)' : '#fff',
@@ -1242,7 +1719,7 @@ const FlowerBookingsNew = () => {
                 onClick={() => openDayList(dateStr)}
               >
                 <div style={styles.calDayNum}>
-                  <span style={isToday ? styles.todayNum : {}}>{day.getDate()}</span>
+                  <span className="flower-calendar-date" style={isToday ? styles.todayNum : {}}>{day.getDate()}</span>
                 </div>
                 {visible.map(b => {
                   // Exact name only — never substitute another arrangement
@@ -1250,13 +1727,13 @@ const FlowerBookingsNew = () => {
                   const evTitle = matchedSample?.title || b.flower_type || 'Order';
                   const evColor = getBookingDotColor(b);
                   return (
-                    <div key={b.id} style={{ ...styles.calEvent, background: `${evColor}1A`, color: evColor }}>
+                    <div className="flx-cal-event" key={b.id} style={{ ...styles.calEvent, background: `${evColor}1A`, color: evColor }}>
                       {b.time ? String(b.time).slice(0, 5) : ''} {evTitle.split(' ')[0]}
                     </div>
                   );
                 })}
                 {more > 0 && (
-                  <div style={{ fontSize: '9px', color: '#9C9389', fontWeight: 700, padding: '2px 6px' }}>
+                  <div className="flower-calendar-more" style={{ fontSize: '9px', color: '#9C9389', fontWeight: 700, padding: '2px 6px' }}>
                     +{more} more
                   </div>
                 )}
@@ -1266,7 +1743,7 @@ const FlowerBookingsNew = () => {
         </div>
 
         {selectedDate && (
-          <div style={styles.selectedDayPanel}>
+          <div className="flower-calendar-selected-day" style={styles.selectedDayPanel}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <h2 style={styles.sectionTitle}>{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} Bookings</h2>
               <button style={styles.addBookingBtn} onClick={() => openNewBookingForm(selectedDate)}>
@@ -1280,7 +1757,7 @@ const FlowerBookingsNew = () => {
             )}
           </div>
         )}
-      </div>
+      </section>
     );
   };
 
@@ -1480,18 +1957,15 @@ const FlowerBookingsNew = () => {
               </button>
             ))}
           </div>
-          <label style={lbl}>Service Type</label>
-          <select
+          <label style={lbl} htmlFor="flower-service-type">Service Type</label>
+          <input
+            id="flower-service-type"
+            type="text"
             style={{ ...inp, marginBottom: '22px' }}
+            placeholder="e.g. Funeral service before final burial"
             value={newBooking.service_type}
             onChange={e => setNewBooking(prev => ({ ...prev, service_type: e.target.value }))}
-          >
-            <option value="Funeral service before final burial">Funeral service before final burial</option>
-            <option value="Viewing / wake">Viewing / wake</option>
-            <option value="Burial service">Burial service</option>
-            <option value="Memorial service">Memorial service</option>
-            <option value="Other service">Other service</option>
-          </select>
+          />
 
           <label style={{ ...lbl, marginBottom: '12px' }}>Funeral / Service Date <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span></label>
           <input
@@ -2028,6 +2502,7 @@ const FlowerBookingsNew = () => {
   return (
     <div style={styles.container}>
       {renderToolbar()}
+      {(view === 'list' || view === 'calendar') && renderFlowerUrgency()}
 
       {view === 'list' && (
         <div className={`flower-bookings-layout${activeBookingId ? ' has-selection' : ''}`}>
@@ -2047,7 +2522,7 @@ const FlowerBookingsNew = () => {
         </div>
       )}
       {view === 'calendar' && (
-        <div className="flx-content" style={styles.content}>
+        <div className="flx-content flower-calendar-page" style={styles.content}>
           {renderCalendar()}
         </div>
       )}
