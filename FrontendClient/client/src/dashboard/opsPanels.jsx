@@ -659,7 +659,9 @@ function IntakePane({ p }) {
             emptier than the data actually was. */}
         <Card l="ID Type" v={it.idType} />
         <Card l="National ID" v={it.idNo} mono />
-        <Card l="County" v={it.county} />
+        {it.county && !/^unknown$/i.test(it.county.trim()) ? (
+          <Card l="County" v={it.county} />
+        ) : null}
         <Card l="Physician" v={it.physician} />
         <Card l="Chamber Assigned" v={it.chamber} />
         <Card l="Storage Type" v={it.storage} />
@@ -741,11 +743,11 @@ function IntakePane({ p }) {
       <DrawerSection title="Charges" />
       <div className="cgrid">
         <Card
-          l="Recorded Mortuary Charge"
-          v={ch.total || "Not recorded"}
+          l="Mortuary Charge"
+          v={ch.total}
           hl
         />
-        <Card l="Extra Charges" v={ch.extra || "Not recorded"} />
+        <Card l="Extra Charges" v={ch.extra} />
         {chargeSettingsLoading ? (
           <Card l="Care Charge Estimate" v="Loading configured rate…" />
         ) : chargeSettingsError ? (

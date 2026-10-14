@@ -92,7 +92,7 @@ const OverviewTab = ({ deceased, nextOfKin }) => {
       {/* Deceased Name — Julius Sans One, top-left */}
       <DetailItem $full style={{ marginBottom: '20px' }}>
         <DetailLabel style={{ fontSize: 11, opacity: 0.55 }}>Deceased Name</DetailLabel>
-        <DetailValue style={{ color: '#00296B', fontSize: 24, fontWeight: 400, fontFamily: "'Julius Sans One', serif", lineHeight: 1.25, marginBottom: 8 }}>{deceasedName}</DetailValue>
+        <DetailValue style={{ color: '#00296B', fontSize: 24, fontWeight: 800, fontFamily: "'Julius Sans One', serif", lineHeight: 1.25, marginBottom: 8 }}>{deceasedName}</DetailValue>
       </DetailItem>
 
       {/* 01 — Admission */}

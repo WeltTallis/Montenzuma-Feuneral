@@ -208,7 +208,7 @@ export const resolveTenantBranding = (tenantData) => {
     || DEFAULT_BRANDING.fontFamily
     || '';
 
-  // Branch info (first branch) — used for display when available
+  // Keep branch details as a fallback; saved tenant branding takes precedence.
   const branchInfo = source?.branches?.[0] || {};
 
   // Get branch display values with realistic fallbacks
@@ -216,19 +216,19 @@ export const resolveTenantBranding = (tenantData) => {
     ? branchInfo.branch_name
     : '';
 
-  const displayLocation = branchInfo?.branch_location
+  const displayLocation = location
+    || branchInfo?.branch_location
     || branchInfo?.location
-    || location
     || DEFAULT_BRANDING.location;
 
-  const displayPhone = branchInfo?.branch_phone
+  const displayPhone = phone
+    || branchInfo?.branch_phone
     || branchInfo?.phone
-    || phone
     || DEFAULT_BRANDING.phone;
 
-  const displayEmail = branchInfo?.branch_email
+  const displayEmail = email
+    || branchInfo?.branch_email
     || branchInfo?.email
-    || email
     || DEFAULT_BRANDING.email;
 
   // Logo URL — normalize relative paths to full URL
