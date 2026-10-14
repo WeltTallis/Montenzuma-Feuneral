@@ -22,24 +22,30 @@ const fieldStyle = {
   boxSizing: 'border-box',
 };
 
-const DeceasedStkPushModal = ({ deceased, nextOfKin, onClose }) => {
-  const admissionNumber = deceased?.admission_number || deceased?.admission_no || '';
-  const deceasedId = deceased?.deceased_id || deceased?.deceasedId || deceased?.id || '';
+const recordKey = record => String(record?.deceased_id || record?.deceasedId || record?.id || '');
+const recordAdmission = record => record?.admission_number || record?.admission_no || '';
+
+const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClose }) => {
+  const records = deceased ? [deceased] : deceasedRecords;
+  const [selectedId, setSelectedId] = useState(recordKey(deceased));
+  const selectedDeceased = deceased || records.find(record => recordKey(record) === selectedId);
+  const admissionNumber = recordAdmission(selectedDeceased);
+  const deceasedId = recordKey(selectedDeceased);
   const initialKinName = nextOfKin?.full_name || nextOfKin?.name ||
-    deceased?.contact_person || deceased?.next_of_kin_name || '';
+    selectedDeceased?.contact_person || selectedDeceased?.next_of_kin_name || '';
   const initialPhone = nextOfKin?.contact || nextOfKin?.phone_number ||
-    deceased?.phone_number || deceased?.tel_number || '';
+    selectedDeceased?.phone_number || selectedDeceased?.tel_number || '';
   const [kinName, setKinName] = useState(initialKinName);
   const [phoneNumber, setPhoneNumber] = useState(initialPhone);
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [requestResult, setRequestResult] = useState(null);
 
   const submit = async (event) => {
     event.preventDefault();
     setError('');
-    setMessage('');
+    setRequestResult(null);
 
     const amountValue = Number(amount);
     const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
@@ -65,7 +71,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, onClose }) => {
       if (result.ResponseCode && result.ResponseCode !== '0') {
         throw new Error(result.ResponseDescription || result.CustomerMessage || 'M-Pesa did not accept the STK request.');
       }
-      setMessage(result.CustomerMessage || 'STK push sent. The payment will appear on this deceased record after M-Pesa confirms it.');
+      setRequestResult(result);
     } catch (requestError) {
       console.error('[Deceased STK] Failed to initiate payment:', requestError?.response?.data || requestError);
       setError(requestError?.response?.data?.error || requestError?.response?.data?.message || requestError.message || 'Could not send the STK push.');
@@ -84,18 +90,51 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, onClose }) => {
           </div>
           <button type="button" aria-label="Close" disabled={busy} onClick={onClose} style={{ border: 0, background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button>
         </div>
-        {message ? (
+        {requestResult ? (
           <div role="status" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', padding: 14, borderRadius: 8 }}>
-            <strong>{message}</strong>
-            <p style={{ margin: '12px 0 0', fontSize: 13 }}>Admission number: {admissionNumber} · Payer: {kinName.trim()}</p>
+            <strong>{requestResult.CustomerMessage || 'The STK request was accepted by the M-Pesa service.'}</strong>
+            <p style={{ margin: '12px 0 0', fontSize: 13 }}>
+              Admission number: {admissionNumber}<br />
+              Kin: {kinName.trim()}<br />
+              Amount: KES {Math.round(Number(amount)).toLocaleString()}<br />
+              Phone: {phoneNumber}
+            </p>
+            {requestResult.CheckoutRequestID && <p style={{ margin: '8px 0 0', fontSize: 12, overflowWrap: 'anywhere' }}>Checkout request: {requestResult.CheckoutRequestID}</p>}
+            {requestResult.MerchantRequestID && <p style={{ margin: '4px 0 0', fontSize: 12, overflowWrap: 'anywhere' }}>Merchant request: {requestResult.MerchantRequestID}</p>}
+            <p style={{ margin: '10px 0 0', fontSize: 12 }}>Payment is recorded against this deceased only after M-Pesa confirms the transaction.</p>
             <button type="button" onClick={onClose} style={{ ...fieldStyle, marginTop: 16, border: 0, background: '#047857', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Done</button>
           </div>
         ) : (
           <form onSubmit={submit} style={{ display: 'grid', gap: 14 }}>
-            <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-              Deceased
-              <input style={{ ...fieldStyle, background: '#f8fafc' }} value={deceased?.full_name || deceased?.name || '—'} readOnly />
-            </label>
+            {deceased ? (
+              <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
+                Deceased
+                <input style={{ ...fieldStyle, background: '#f8fafc' }} value={deceased.full_name || deceased.name || '—'} readOnly />
+              </label>
+            ) : (
+              <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
+                Select deceased
+                <select
+                  style={fieldStyle}
+                  value={selectedId}
+                  onChange={event => {
+                    const record = records.find(item => recordKey(item) === event.target.value);
+                    setSelectedId(event.target.value);
+                    setKinName(record?.contact_person || record?.next_of_kin_name || '');
+                    setPhoneNumber(record?.phone_number || record?.tel_number || '');
+                    setError('');
+                  }}
+                  required
+                >
+                  <option value="" disabled>Choose a deceased record</option>
+                  {records.map(record => (
+                    <option key={recordKey(record)} value={recordKey(record)}>
+                      {(record.full_name || record.name || 'Unnamed')} · Admission {recordAdmission(record) || '—'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
               Admission number
               <input style={{ ...fieldStyle, background: '#f8fafc' }} value={admissionNumber} readOnly />

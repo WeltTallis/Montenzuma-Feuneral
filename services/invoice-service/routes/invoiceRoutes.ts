@@ -3,6 +3,7 @@ import {
   getAllDeceasedWithFinancials,
   getDeceasedFinancialDetails,
   createPayment,
+  recordConfirmedMpesaPayment,
   createExtraCharge,
   createSystemInvoice,
   createInvoice,
@@ -18,6 +19,8 @@ const router = Router();
 
 // Import authentication middleware
 const { protect, authorizeAny } = require('../../../services/app-global/middlewares/authMiddleware');
+
+router.post('/invoices/payment-callback', recordConfirmedMpesaPayment);
 
 // ALL routes require authentication - this is financial data
 router.use(protect);

@@ -1,6 +1,7 @@
 // controllers/invoice.ts
 import { Request, Response, NextFunction } from 'express';
 import Redis from 'ioredis';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
@@ -577,6 +578,66 @@ export const createPayment = async (req: Request, res: Response, next: NextFunct
     message: 'Payment recorded successfully',
     payment_id: (result as any).insertId,
   });
+};
+
+export const recordConfirmedMpesaPayment = async (req: Request, res: Response): Promise<void> => {
+  const configuredSecret = process.env.DECEASED_PAYMENT_CALLBACK_SECRET || process.env.JWT_SECRET || '';
+  const suppliedSecret = req.get('x-mpesa-payment-secret') || '';
+  const expected = Buffer.from(configuredSecret);
+  const supplied = Buffer.from(suppliedSecret);
+  if (!configuredSecret || expected.length !== supplied.length || !crypto.timingSafeEqual(expected, supplied)) {
+    res.status(401).json({ success: false, message: 'Unauthorized payment callback' });
+    return;
+  }
+
+  const {
+    tenantSlug, deceasedId, admissionNumber, payerName, checkoutRequestId,
+    amount, phoneNumber, receiptNumber,
+  } = req.body || {};
+  const paymentAmount = Number(amount);
+  if (!tenantSlug || !deceasedId || !admissionNumber || !checkoutRequestId ||
+      !receiptNumber || !Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+    res.status(400).json({ success: false, message: 'Confirmed payment callback is missing required details' });
+    return;
+  }
+
+  try {
+    const existing = await safeQuery(
+      'SELECT payment_id FROM payments WHERE transaction_id = ? OR receipt_number = ? LIMIT 1',
+      [checkoutRequestId, receiptNumber],
+      String(tenantSlug),
+    );
+    if (existing.length > 0) {
+      res.json({ success: true, duplicate: true, payment_id: existing[0].payment_id });
+      return;
+    }
+
+    const message = `M-Pesa payment confirmed for admission ${admissionNumber}${payerName ? ` by ${payerName}` : ''}`;
+    const result: any = await safeQuery(
+      `INSERT INTO payments
+        (deceased_id, transaction_id, phone_number, amount, payment_method, payment_date,
+         reference_number, receipt_number, status, message, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'mobile_money', ?, ?, ?, 'completed', ?, ?, ?, ?)`,
+      [
+        String(deceasedId),
+        String(checkoutRequestId),
+        phoneNumber || null,
+        paymentAmount,
+        getKenyaTimeISO(),
+        String(admissionNumber),
+        String(receiptNumber),
+        message,
+        message,
+        getKenyaTimeISO(),
+        getKenyaTimeISO(),
+      ],
+      String(tenantSlug),
+    );
+    res.status(201).json({ success: true, payment_id: result?.insertId || null });
+  } catch (error: any) {
+    console.error('[INVOICE] Failed to record confirmed M-Pesa payment:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed to record confirmed M-Pesa payment' });
+  }
 };
 
 export const createExtraCharge = async (req: Request, res: Response, next: NextFunction): Promise<void> => {

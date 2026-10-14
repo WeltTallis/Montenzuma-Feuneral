@@ -18,10 +18,10 @@ type STKPushRequest struct {
 	ResponseCode        string    `json:"responseCode"`
 	ResponseDescription string    `json:"responseDescription"`
 	CustomerMessage     string    `json:"customerMessage"`
-	TenantSlug          string    `json:"tenantSlug" gorm:"-"`
-	DeceasedID          string    `json:"deceasedId" gorm:"-"`
-	AdmissionNumber     string    `json:"admissionNumber" gorm:"-"`
-	PayerName           string    `json:"payerName" gorm:"-"`
+	TenantSlug          string    `json:"tenantSlug"`
+	DeceasedID          string    `json:"deceasedId"`
+	AdmissionNumber     string    `json:"admissionNumber"`
+	PayerName           string    `json:"payerName"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }

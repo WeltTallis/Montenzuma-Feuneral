@@ -512,7 +512,7 @@ const DeceasedListPage = () => {
   const [exportNotify, setExportNotify] = useState(null);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [unavailableMessage, setUnavailableMessage] = useState('');
-  const [stkPushDeceased, setStkPushDeceased] = useState(null);
+  const [showStkPush, setShowStkPush] = useState(false);
   const exportCleanupRef = useRef(null);
 
   const fetchDeceased = useCallback(async () => {
@@ -780,6 +780,10 @@ const DeceasedListPage = () => {
               <i className={`fas fa-sync-alt${refreshing ? ' fa-spin' : ''}`}></i>
               Refresh
             </Btn>
+            <Btn $primary onClick={() => setShowStkPush(true)} disabled={loading || records.length === 0}>
+              <i className="fas fa-mobile-alt"></i>
+              STK Push
+            </Btn>
             <Btn $export onClick={() => { setExportPin(''); setShowExport(true); }}>
               <i className="fas fa-file-export"></i>
               Export Data
@@ -839,12 +843,7 @@ const DeceasedListPage = () => {
                             <td>{formatDate(admitted)}</td>
                             <td>{days} days</td>
                             <td><StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge></td>
-                            <td>
-                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn>
-                                <Btn $sm onClick={(e) => { e.stopPropagation(); setStkPushDeceased(r); }}>STK Push</Btn>
-                              </div>
-                            </td>
+                            <td><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></td>
                           </tr>
                         );
                       })}
@@ -876,17 +875,14 @@ const DeceasedListPage = () => {
                           <div><span>Days in Morgue</span><strong>{days} days</strong></div>
                           <div style={{ gridColumn: 'span 2' }}><span>Date Admitted</span><strong>{formatDate(admitted)}</strong></div>
                         </MobileCardDetails>
-                        <MobileCardFooter>
-                          <Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn>
-                          <Btn $sm onClick={(e) => { e.stopPropagation(); setStkPushDeceased(r); }}>STK Push</Btn>
-                        </MobileCardFooter>
+                        <MobileCardFooter><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></MobileCardFooter>
                       </MobileCard>
                     );
                   })}
           </MobileCardContainer>
         </ListCard>
 
-        {stkPushDeceased && <DeceasedStkPushModal deceased={stkPushDeceased} onClose={() => setStkPushDeceased(null)} />}
+        {showStkPush && <DeceasedStkPushModal deceasedRecords={records} onClose={() => setShowStkPush(false)} />}
 
         {/* Export Side Panel */}
         <ModalOverlay $open={showExport} onClick={() => !exporting && setShowExport(false)}>

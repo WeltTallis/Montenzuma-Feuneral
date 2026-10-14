@@ -6,6 +6,7 @@ import (
     "fmt"
     "net/http"
     "os"
+    "strconv"
     "time"
 
     "github.com/gin-gonic/gin"
@@ -109,7 +110,11 @@ func (h *MpesaHandler) STKCallback(c *gin.Context) {
             case "TransactionDate":
                 transactionDate = getString(value)
             case "PhoneNumber":
-                phoneNumber = getString(value)
+                if number, ok := value.(float64); ok {
+                    phoneNumber = fmt.Sprintf("%.0f", number)
+                } else {
+                    phoneNumber = getString(value)
+                }
             }
         }
     }
@@ -178,6 +183,71 @@ func (h *MpesaHandler) STKCallback(c *gin.Context) {
             }
         } else {
             logrus.Errorf("invalid insurance callback request: %v", err)
+        }
+    }
+
+    if resultCode == "0" {
+        target := os.Getenv("DECEASED_PAYMENT_CALLBACK_URL")
+        tenantSlug := c.Query("tenantSlug")
+        deceasedID := c.Query("deceasedId")
+        admissionNumber := c.Query("admissionNumber")
+        payerName := c.Query("payerName")
+        secret := os.Getenv("DECEASED_PAYMENT_CALLBACK_SECRET")
+        if secret == "" {
+            secret = os.Getenv("JWT_SECRET")
+        }
+        initiated, lookupErr := h.mpesaService.GetSTKPushByCheckoutRequestID(c.Request.Context(), checkoutRequestID)
+        requestedAmount := ""
+        if initiated != nil {
+            requestedAmount = initiated.Amount
+        }
+        amountRequested, requestedAmountErr := strconv.ParseFloat(requestedAmount, 64)
+        amountReceived, receivedAmountErr := strconv.ParseFloat(amount, 64)
+        validInitiatedPayment := lookupErr == nil && initiated != nil &&
+            initiated.TenantSlug == tenantSlug &&
+            initiated.DeceasedID == deceasedID &&
+            initiated.AdmissionNumber == admissionNumber &&
+            initiated.AccountReference == orderID &&
+            initiated.PhoneNumber == phoneNumber &&
+            requestedAmountErr == nil && receivedAmountErr == nil && amountRequested == amountReceived
+        if !validInitiatedPayment {
+            logrus.Warnf("deceased payment callback did not match an initiated STK request: CheckoutRequestID=%s lookupError=%v", checkoutRequestID, lookupErr)
+        }
+        if target != "" && tenantSlug != "" && deceasedID != "" && admissionNumber != "" && secret != "" && validInitiatedPayment {
+            forward, marshalErr := json.Marshal(map[string]string{
+                "tenantSlug":       tenantSlug,
+                "deceasedId":       deceasedID,
+                "admissionNumber":  admissionNumber,
+                "payerName":        payerName,
+                "reference":        orderID,
+                "checkoutRequestId": checkoutRequestID,
+                "amount":           amount,
+                "phoneNumber":      phoneNumber,
+                "receiptNumber":    mpesaReceiptNumber,
+                "transactionDate":  transactionDate,
+            })
+            if marshalErr != nil {
+                logrus.Errorf("deceased payment callback marshal failed: %v", marshalErr)
+            } else {
+                req, reqErr := http.NewRequest(http.MethodPost, target, bytes.NewReader(forward))
+                if reqErr != nil {
+                    logrus.Errorf("invalid deceased payment callback URL: %v", reqErr)
+                } else {
+                    req.Header.Set("Content-Type", "application/json")
+                    req.Header.Set("X-Mpesa-Payment-Secret", secret)
+                    client := &http.Client{Timeout: 5 * time.Second}
+                    if res, callErr := client.Do(req); callErr != nil {
+                        logrus.Errorf("deceased payment callback forwarding failed: %v", callErr)
+                    } else {
+                        res.Body.Close()
+                        if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+                            logrus.Errorf("deceased payment callback returned HTTP %d", res.StatusCode)
+                        }
+                    }
+                }
+            }
+        } else {
+            logrus.Warn("deceased payment callback skipped: callback URL, secret, metadata, or matching STK request is missing")
         }
     }
 
