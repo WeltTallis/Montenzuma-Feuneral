@@ -337,6 +337,7 @@ const FlowerBookingsNew = () => {
     ribbon_message: '',
     size: '',
     quantity: 1,
+    service_type: 'Funeral service before final burial',
     funeral_date: '',
     deceased_gender: '',
     remarks: '',
@@ -348,7 +349,8 @@ const FlowerBookingsNew = () => {
     branch: '',
     date: fmtDateStr(new Date()),   // the day the order was placed — calendar tracks it
     time: '10:00',
-    priority: 'Normal'
+    priority: 'Normal',
+    sample_uploads: []
   });
   const [toasts, setToasts] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -571,6 +573,7 @@ const FlowerBookingsNew = () => {
         `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
         `[WHEN:${bookedOn} ${newBooking.time}]`,
         designTag,
+        newBooking.service_type ? `Service: ${newBooking.service_type}` : '',
         newBooking.priority?.trim() ? `Priority: ${newBooking.priority.trim()}` : '',
         newBooking.remarks?.trim() || ''
       ].filter(Boolean).join(' ');
@@ -581,6 +584,7 @@ const FlowerBookingsNew = () => {
         flower_type: headline.slice(0, 100),
         flower_description: typedTypes.join(', '),
         arrangements: items,
+        service_type: newBooking.service_type || 'Funeral service before final burial',
         ribbon_color: newBooking.any_color ? null : colors[0] || null,
         primary_color: newBooking.any_color ? 'Any color (florist choice)' : colors[0] || null,
         accent_color: newBooking.any_color ? null : colors.slice(1).join(', ') || null,
@@ -600,7 +604,8 @@ const FlowerBookingsNew = () => {
         date: bookedOn,
         time: newBooking.time,
         priority: newBooking.priority,
-        notes: notesValue.trim() || null
+        notes: notesValue.trim() || null,
+        sample_uploads: newBooking.sample_uploads || []
       });
 
       showToast(items.length > 1 ? `${items.length} flower orders placed!` : 'Booking placed successfully!');
@@ -615,6 +620,7 @@ const FlowerBookingsNew = () => {
         ribbon_message: '',
         size: '',
         quantity: 1,
+        service_type: 'Funeral service before final burial',
         funeral_date: '',
         deceased_gender: '',
         remarks: '',
@@ -624,7 +630,8 @@ const FlowerBookingsNew = () => {
         branch: '',
         date: fmtDateStr(new Date()),
         time: '10:00',
-        priority: 'Normal'
+        priority: 'Normal',
+        sample_uploads: []
       });
     } catch (e) {
       console.error('[FlowerBookings] Place order FAILED:', e?.response?.status, e?.response?.data || e.message);
@@ -1378,7 +1385,7 @@ const FlowerBookingsNew = () => {
         return { ...prev, [field]: merged.join(', ') };
       });
     };
-    const arrangementSuggestions = ['Full set', 'Stems', 'Round wreath', 'Heart spray', 'Initials', 'Casket spray', 'Car number plate', 'Coffin wrap'];
+    const arrangementSuggestions = ['Full set', 'Stems', 'Round wreath', 'Heart spray', 'Casket spray', 'Coffin wrap', 'Herse', 'Car number plate'];
     const flowerSuggestions = ['Mums', 'Red roses', 'White lilies', 'Chrysanthemums', 'Gypsophila', 'Greenery'];
 
     return (
@@ -1417,7 +1424,7 @@ const FlowerBookingsNew = () => {
             ))}
           </div>
           <p style={{ margin: '0 0 18px', color: '#8A8178', fontSize: '11px' }}>
-            Enter one or more arrangement styles, separated by commas. Common orders include full set, stems, rounds, hearts, initials, caskets and car number plates.
+            Enter one or more arrangement styles, separated by commas. Use <b>Full set</b> for a complete funeral package (for example full set with extra 40 stems), then add the extra details in the remarks. "Initials" and "car plate" are not arrangement types — they are wording/details.
           </p>
 
           <label style={lbl} htmlFor="flower-designs">Flower Design(s) *</label>
@@ -1431,7 +1438,7 @@ const FlowerBookingsNew = () => {
             onChange={e => setNewBooking(prev => ({ ...prev, flower_designs: e.target.value }))}
           />
           <p style={{ margin: '0 0 18px', color: '#8A8178', fontSize: '11px' }}>
-            Type any design you need; separate multiple designs with commas. For example: full set, initials, ribbon wording or a custom statement.
+            Type any design you need; separate multiple designs with commas. For example: full set, natural, ribbon wording, initials, or a custom design note.
           </p>
 
           {/* ── Flowers ── */}
@@ -1460,6 +1467,19 @@ const FlowerBookingsNew = () => {
           <p style={{ margin: '0 0 22px', color: '#8A8178', fontSize: '11px' }}>
             Add any flower types or colors, separated by commas.
           </p>
+
+          <label style={lbl}>Service Type</label>
+          <select
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.service_type}
+            onChange={e => setNewBooking(prev => ({ ...prev, service_type: e.target.value }))}
+          >
+            <option value="Funeral service before final burial">Funeral service before final burial</option>
+            <option value="Viewing / wake">Viewing / wake</option>
+            <option value="Burial service">Burial service</option>
+            <option value="Memorial service">Memorial service</option>
+            <option value="Other service">Other service</option>
+          </select>
 
           <label style={{ ...lbl, marginBottom: '12px' }}>Funeral / Service Date <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span></label>
           <input
@@ -1554,10 +1574,25 @@ const FlowerBookingsNew = () => {
           <textarea
             rows={3}
             style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
-            placeholder="e.g. initials 'Mum & Dad', casket wording, car number plate 'KDG 321A'"
+            placeholder="e.g. Full set + extra 40 stems, initials 'Mum & Dad', casket wording, hearse, car plate 'KDG 321A', wreath with red and white tones"
             value={newBooking.remarks}
             onChange={e => setNewBooking(prev => ({ ...prev, remarks: e.target.value }))}
           />
+
+          <label style={lbl}>Sample Flower Upload</label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ ...inp, marginBottom: '22px', padding: '10px 12px' }}
+            onChange={e => {
+              const files = Array.from(e.target.files || []);
+              setNewBooking(prev => ({ ...prev, sample_uploads: files }));
+            }}
+          />
+          <p style={{ margin: '-12px 0 20px', color: '#8A8178', fontSize: '11px' }}>
+            Clients can upload a reference image of the flowers they want. Staff can use it to match the desired style.
+          </p>
 
           {/* ── 4 · Booking Details ── */}
           <label style={lbl}>Deceased Name *</label>

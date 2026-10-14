@@ -3,6 +3,7 @@ import RouteOptimizer from '../../hearse/RouteOptimizer';
 import React, { useState } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import bwipjs from '@bwip-js/browser';
+import DeceasedStkPushModal from '../DeceasedStkPushModal';
 
 // ─── Colors defined locally (fixes styled-components error #12) ───
 const C = {
@@ -221,13 +222,14 @@ const Barcode = ({ value }) => {
 };
 
 // ─── Component ───
-const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettingsClick, onRefresh, refreshing = false, onScanClick }) => {
+const DeceasedProfileHeader = ({ deceased, nextOfKin, onBack, onTabSwitch, onChargeSettingsClick, onRefresh, refreshing = false, onScanClick }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const pathParams = useParams();
   const deceasedId = searchParams.get('id') || pathParams.id;
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [showStkPush, setShowStkPush] = useState(false);
 
   const displayId = deceased?.deceased_id || deceased?.id;
   const admissionNo = deceased?.admission_number || deceased?.admission_no || '—';
@@ -253,6 +255,7 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
   return (
     <>
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
+      {showStkPush && <DeceasedStkPushModal deceased={deceased} nextOfKin={nextOfKin} onClose={() => setShowStkPush(false)} />}
 
       <BackBtn onClick={onBack}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -279,6 +282,14 @@ const DeceasedProfileHeader = ({ deceased, onBack, onTabSwitch, onChargeSettings
 
         {/* Action buttons at top-right */}
         <HeaderActions>
+          <Btn $primary type="button" onClick={() => setShowStkPush(true)} disabled={!deceased}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" />
+              <path d="M8 6h8M9 18h6" />
+            </svg>
+            STK Push
+          </Btn>
+
           <RefreshBtn
             type="button"
             onClick={onRefresh}

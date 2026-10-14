@@ -5,6 +5,7 @@ import { getTenantSlug, getAuthToken, getBranchScopeHeaders } from '../../../uti
 import { DECEASED_CHANGED_EVENT } from '../../../api/dashboardDataApi';
 import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
+import DeceasedStkPushModal from '../DeceasedStkPushModal';
 import {
   formatDate, daysFromNow, todayKey,
 } from '../../../utils/dates/parseDates';
@@ -511,16 +512,8 @@ const DeceasedListPage = () => {
   const [exportNotify, setExportNotify] = useState(null);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [unavailableMessage, setUnavailableMessage] = useState('');
+  const [stkPushDeceased, setStkPushDeceased] = useState(null);
   const exportCleanupRef = useRef(null);
-
-  // ─── New Admission — the tenant-scoped intake form (/<slug>/deceased/register).
-  // This used to point at /tenant/<slug>/register, a path that does not exist,
-  // so the button dumped every user on the 404/landing page.
-  const handleNewAdmission = useCallback(() => {
-    const slug = getTenantSlug() || localStorage.getItem('tenantSlug') || '';
-    if (!slug) { showToast.error('Tenant not resolved. Please sign in again.'); return; }
-    navigate(`/${slug}/deceased/register`);
-  }, [navigate]);
 
   const fetchDeceased = useCallback(async () => {
     setLoading(true); setServiceUnavailable(false); setUnavailableMessage('');
@@ -787,10 +780,6 @@ const DeceasedListPage = () => {
               <i className={`fas fa-sync-alt${refreshing ? ' fa-spin' : ''}`}></i>
               Refresh
             </Btn>
-            <Btn $admission onClick={handleNewAdmission}>
-              <i className="fas fa-user-plus"></i>
-              New Admission
-            </Btn>
             <Btn $export onClick={() => { setExportPin(''); setShowExport(true); }}>
               <i className="fas fa-file-export"></i>
               Export Data
@@ -850,7 +839,12 @@ const DeceasedListPage = () => {
                             <td>{formatDate(admitted)}</td>
                             <td>{days} days</td>
                             <td><StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge></td>
-                            <td><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn>
+                                <Btn $sm onClick={(e) => { e.stopPropagation(); setStkPushDeceased(r); }}>STK Push</Btn>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
@@ -882,12 +876,17 @@ const DeceasedListPage = () => {
                           <div><span>Days in Morgue</span><strong>{days} days</strong></div>
                           <div style={{ gridColumn: 'span 2' }}><span>Date Admitted</span><strong>{formatDate(admitted)}</strong></div>
                         </MobileCardDetails>
-                        <MobileCardFooter><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></MobileCardFooter>
+                        <MobileCardFooter>
+                          <Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn>
+                          <Btn $sm onClick={(e) => { e.stopPropagation(); setStkPushDeceased(r); }}>STK Push</Btn>
+                        </MobileCardFooter>
                       </MobileCard>
                     );
                   })}
           </MobileCardContainer>
         </ListCard>
+
+        {stkPushDeceased && <DeceasedStkPushModal deceased={stkPushDeceased} onClose={() => setStkPushDeceased(null)} />}
 
         {/* Export Side Panel */}
         <ModalOverlay $open={showExport} onClick={() => !exporting && setShowExport(false)}>

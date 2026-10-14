@@ -83,6 +83,12 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
     query := callback.Query()
     query.Set("businessnumber", partyB)
     query.Set("reference", strings.TrimSpace(request.AccountReference))
+    if request.TenantSlug != "" && request.DeceasedID != "" && request.AdmissionNumber != "" {
+        query.Set("tenantSlug", strings.TrimSpace(request.TenantSlug))
+        query.Set("deceasedId", strings.TrimSpace(request.DeceasedID))
+        query.Set("admissionNumber", strings.TrimSpace(request.AdmissionNumber))
+        query.Set("payerName", strings.TrimSpace(request.PayerName))
+    }
     callback.RawQuery = query.Encode()
     callbackURL := callback.String()
 

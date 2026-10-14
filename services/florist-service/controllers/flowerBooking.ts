@@ -243,7 +243,8 @@ export const createBooking = async (req: any, res: any) => {
             funeral_home, date, time, notes, phone, email, branch: branchFromPayload,
             ribbon_color, size, arrangements, flower_type: flowerTypeFromBody,
             flower_description: flowerDescriptionFromBody, quantity, primary_color,
-            accent_color, ribbon_message, special_instructions, funeral_date, deceased_gender
+            accent_color, ribbon_message, special_instructions, funeral_date, deceased_gender,
+            service_type: serviceTypeFromBody
         } = req.body;
 
         // Map frontend fields to backend schema
@@ -252,6 +253,7 @@ export const createBooking = async (req: any, res: any) => {
         // instead of a bare "Custom Arrangement".
         const flower_type = arrangement_name || flowerTypeFromBody || 'Custom Arrangement';
         const flower_description = flowerDescriptionFromBody || '';
+        const service_type = serviceTypeFromBody || 'Funeral service before final burial';
         const customer = booked_by || 'Guest';
         const customer_phone = phone || '';
         const customer_email = email || '';
@@ -297,15 +299,15 @@ export const createBooking = async (req: any, res: any) => {
             (booking_id, tenant_slug, tenant_id, flower_type, flower_description, customer,
              customer_phone, customer_email, deceased_name, deceased_gender, branch,
              arrangement_id, date, time, status, notes, created_by, ribbon_color, size, arrangements,
-             quantity, primary_color, accent_color, ribbon_message, special_instructions, funeral_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+             quantity, primary_color, accent_color, ribbon_message, special_instructions, funeral_date, service_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
             [
                 booking_id, tenantSlug, tenantId, flower_type, flower_description, customer,
                 customer_phone || '', customer_email || '', deceased_name || '', deceased_gender || null, branch,
                 arrangement_id || null, date || null, time || null, notes || '', req.tenantSlug || 'system',
                 ribbon_color || null, size || null, arrangementsJson, totalQuantity,
                 primary_color || null, accent_color || null, ribbon_message || null,
-                special_instructions || null, funeral_date || null
+                special_instructions || null, funeral_date || null, service_type
             ]
         );
 

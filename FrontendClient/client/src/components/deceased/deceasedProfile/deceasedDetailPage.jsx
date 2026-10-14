@@ -555,6 +555,7 @@ const DeceasedDetailPage = () => {
 
         <DeceasedProfileHeader
           deceased={deceased}
+          nextOfKin={nextOfKin}
           onBack={() => { const slug = getTenantSlug(); navigate(`/${slug}/all-deceased`); }}
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
