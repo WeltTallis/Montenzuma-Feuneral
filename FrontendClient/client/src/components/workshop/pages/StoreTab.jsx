@@ -90,36 +90,75 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
     try {
       // Tenant-level users live in the PARENT tenant DB; a branch slug is not a
       // real tenant, so the parent slug must take priority (mirrors SettingsPage).
-      const slug = getParentTenantSlug() || getTenantSlug();
-      if (!slug) throw new Error('Could not resolve your organisation. Please sign in again.');
-
-      const headers = { 'x-tenant-slug': slug };
-      const r = await api.get(ENDPOINTS.TENANT.USERS(slug), { headers });
-      const list = r?.data?.data || r?.data?.users || r?.data;
-      if (!Array.isArray(list)) {
-        throw new Error('The user service returned an invalid user list.');
+      // Try each candidate slug in turn — the first that returns a non-empty user
+      // list wins, so a stale/missing parentTenantSlug can't blank the dropdown.
+      const seen = new Set();
+      const slugCandidates = [
+        getParentTenantSlug(),
+        getTenantSlug(),
+        localStorage.getItem('tenantSlug'),
+        localStorage.getItem('parentTenantSlug'),
+      ].filter(Boolean).filter(s => (seen.has(s) ? false : (seen.add(s), true)));
+      if (!slugCandidates.length) {
+        throw new Error('Could not resolve your organisation. Please sign in again.');
       }
 
       // Keep only drivers — case/format tolerant since several services write
-      // the role ('driver', 'Driver', 'hearse_driver', ...).
+      // the role ('driver', 'Driver', 'hearse_driver', 'Hearse Driver', ...).
       const isDriver = (u) => {
-        const role = String(u?.role || '').toLowerCase().replace(/[\s-]+/g, '_');
-        return role === 'driver' || role.includes('driver');
+        const role = String(u?.role || '').toLowerCase().replace(/[\s_-]+/g, '_');
+        return role === 'driver' || role === 'hearse_driver' || role.includes('driver');
       };
-      const normalized = list
-        .filter(isDriver)
-        .map(u => ({
-          id: String(u.user_id ?? u.id ?? ''),
-          name: u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username || '',
-        }))
-        .filter(d => d.id && d.name);
+      const toDriver = (u) => ({
+        id: String(u.user_id ?? u.id ?? ''),
+        name: u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username || '',
+      });
 
-      setDrivers(normalized);
-      if (!normalized.length) {
-        setDriversError('No drivers were found. Add a user with the "Driver" role in Settings → Users before dispatching a coffin.');
+      let drivers = [];
+      let lastList = [];
+      let resolvedSlug = '';
+      for (const slug of slugCandidates) {
+        const headers = { 'x-tenant-slug': slug };
+        let r;
+        try {
+          r = await api.get(ENDPOINTS.TENANT.USERS(slug), { headers });
+        } catch (err) {
+          // 404 = tenant not found for this slug; keep trying the next candidate.
+          if (err?.response?.status === 404) continue;
+          throw err;
+        }
+        const list = r?.data?.data || r?.data?.users || r?.data;
+        if (!Array.isArray(list)) {
+          throw new Error('The user service returned an invalid user list.');
+        }
+        lastList = list;
+        resolvedSlug = slug;
+        const found = list.filter(isDriver).map(toDriver).filter(d => d.id && d.name);
+        if (found.length) { drivers = found; break; }
+      }
+
+      setDrivers(drivers);
+
+      // Self-diagnosing log: shows exactly what the API returned and why nothing
+      // matched, so "No drivers available" is never a dead end in the console.
+      if (!drivers.length) {
+        const roles = [...new Set(lastList.map(u => String(u?.role ?? '')))];
+        console.warn('[StoreTab] No drivers matched.', {
+          resolvedSlug,
+          triedSlugs: slugCandidates,
+          userCount: lastList.length,
+          distinctRoles: roles,
+          sampleUsers: lastList.slice(0, 5).map(u => ({ id: u.user_id ?? u.id, name: u.full_name ?? u.username, role: u.role })),
+        });
+        setDriversError(
+          lastList.length
+            ? `No users with a "Driver" role were found for ${resolvedSlug || 'your organisation'} (roles present: ${roles.filter(Boolean).join(', ') || 'none'}). Add one in Settings → Users, then Retry.`
+            : 'No drivers were found. Add a user with the "Driver" role in Settings → Users before dispatching a coffin.'
+        );
       }
     } catch (e) {
       setDrivers([]);
+      console.warn('[StoreTab] loadDrivers failed:', e?.response?.data || e?.message);
       setDriversError(e?.response?.data?.message || e?.message || 'Could not load the driver list.');
     } finally {
       setDriversLoading(false);

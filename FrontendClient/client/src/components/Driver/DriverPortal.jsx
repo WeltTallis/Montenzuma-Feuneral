@@ -790,7 +790,13 @@ const DriverPortal = () => {
     const slug = getTenantSlug();
     const user = getUser();
     const driverName = user?.name || user?.full_name || user?.driver_name || '';
-    const driverId = user?.driver_id || user?.driverId || user?.driver?.driver_id || '';
+    // Drivers are ordinary tenant users (Settings → Users, role "driver"), and
+    // the workshop Store stores a dispatch's driver_id as that user's id. So the
+    // pickup feed must match on the SAME id. Prefer an explicit driver_id, then
+    // fall back to the user's own id — otherwise a normal login has no driver_id
+    // and pickups only ever matched by (fragile) exact name.
+    const driverId = user?.driver_id || user?.driverId || user?.driver?.driver_id
+        || user?.user_id || user?.userId || user?.id || '';
     const first = driverName ? String(driverName).trim().split(' ')[0] : 'Driver';
 
     const say = useCallback((setter, msg) => {

@@ -485,8 +485,9 @@ function Sidebar({
             card, and the two disagreed: `charges.accrued` honours each body's
             own daily rate while `calc.accrual` was a flat KES 500 estimate for
             every held body, so the rail showed two different holding costs for
-            the same thing. The breakdown below adds up honestly:
-            mortuaryOnly + extraOnly = billed, billed + accrued = total. */}
+            the same thing. The per-line charge breakdown (Mortuary / Extra /
+            Billed to date) was removed at the request of the dashboard owners;
+            only the storage accrual and the running total remain. */}
         <div className="san-card">
           <div className="side-h">
             <span className="side-h-ic"><Ic n="clip" s={12} /></span>
@@ -494,18 +495,6 @@ function Sidebar({
             <em>{ccy}</em>
           </div>
           <div className="stop">
-            <div className="srow">
-              <span className="sn">Mortuary charges</span>
-              <b>{money(calc.charges?.mortuaryOnly)}</b>
-            </div>
-            <div className="srow">
-              <span className="sn">Extra charges</span>
-              <b>{money(calc.charges?.extraOnly)}</b>
-            </div>
-            <div className="srow">
-              <span className="sn">Billed to date</span>
-              <b>{money(calc.charges?.billed)}</b>
-            </div>
             <div className="srow">
               <span className="sn">Storage accrued</span>
               <b>{money(calc.charges?.accrued)}</b>
