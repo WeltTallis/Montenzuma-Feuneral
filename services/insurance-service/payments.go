@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -287,14 +288,34 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	resp, e := (&http.Client{Timeout: 20 * time.Second}).Do(req)
 	if e != nil {
 		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_code='gateway_error',result_description='Payment service unavailable',failure_reason='Payment service unavailable. Please try again.',retryable=true,updated_at=now() WHERE reference=$1`, ref)
+		// Log the actual transport error (DNS, connection refused, timeout) so a
+		// down/unreachable mpesa-service is diagnosable instead of a silent 502.
+		log.Printf("[STK] mpesa-service request failed for reference=%s url=%s: %v", ref, req.URL.String(), e)
 		write(w, 502, map[string]any{"error": "Payment service unavailable", "reference": ref})
 		return
 	}
 	defer resp.Body.Close()
+	// Read the raw body once so it can be both decoded AND logged/returned on
+	// failure. Previously the body was discarded, so every mpesa-service error
+	// (bad OAuth creds, sandbox/prod URL mismatch, shortcode problems) collapsed
+	// into an identical generic "Payment request was rejected".
+	body, _ := io.ReadAll(resp.Body)
 	var result map[string]any
-	if json.NewDecoder(resp.Body).Decode(&result) != nil || resp.StatusCode >= 300 || result["success"] == false {
-		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_code='gateway_error',result_description='Payment request was rejected',failure_reason='Payment request was rejected. Please try again.',retryable=true,updated_at=now() WHERE reference=$1`, ref)
-		write(w, 502, map[string]any{"error": "Payment request was rejected", "reference": ref})
+	_ = json.Unmarshal(body, &result)
+	if resp.StatusCode >= 300 || result["success"] == false {
+		detail := str(result, "error")
+		if detail == "" {
+			detail = str(result, "ResponseDescription")
+		}
+		if detail == "" {
+			detail = strings.TrimSpace(string(body))
+		}
+		if detail == "" {
+			detail = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		}
+		_, _ = a.db.Exec(r.Context(), `UPDATE insurance_payments SET status='failed',result_code='gateway_error',result_description=$1,failure_reason='Payment request was rejected. Please try again.',retryable=true,updated_at=now() WHERE reference=$2`, detail, ref)
+		log.Printf("[STK] mpesa-service rejected request for reference=%s status=%d body=%s", ref, resp.StatusCode, strings.TrimSpace(string(body)))
+		write(w, 502, map[string]any{"error": "Payment request was rejected", "detail": detail, "reference": ref})
 		return
 	}
 	if respCode, ok := result["ResponseCode"].(string); ok && respCode != "0" {
