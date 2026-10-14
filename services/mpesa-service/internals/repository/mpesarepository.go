@@ -12,7 +12,7 @@ type MpesaRepository interface {
 	SaveSTKPush(ctx context.Context, request *interfacex.STKPushRequest, response *interfacex.STKPushResponse) error
 	GetSTKPushByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*interfacex.STKPushRequest, error)
 	SaveCallbackRequest(request *model.CallbackRequest) error
-
+	GetCallbackRequestByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*model.CallbackRequest, error)
 }
 
 type mpesaRepository struct {
@@ -59,6 +59,14 @@ func (r *mpesaRepository) GetSTKPushByCheckoutRequestID(ctx context.Context, che
 		return nil, err
 	}
 	return &request, nil
+}
+
+func (r *mpesaRepository) GetCallbackRequestByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*model.CallbackRequest, error) {
+	var callback model.CallbackRequest
+	if err := r.db.WithContext(ctx).Where("checkout_request_id = ?", checkoutRequestID).Order("id DESC").First(&callback).Error; err != nil {
+		return nil, err
+	}
+	return &callback, nil
 }
 
 func (r *mpesaRepository) SaveCallbackRequest(request *model.CallbackRequest) error {

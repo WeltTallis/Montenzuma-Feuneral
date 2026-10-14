@@ -1,29 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { getTenantSlug } from '../../utils/globalAuth';
+import './DeceasedStkPushModal.css';
 
-const overlayStyle = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 12000,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 16,
-  background: 'rgba(15, 23, 42, .58)',
-};
-
-const fieldStyle = {
-  width: '100%',
-  padding: '11px 12px',
-  border: '1px solid #d1d5db',
-  borderRadius: 7,
-  fontSize: 14,
-  boxSizing: 'border-box',
-};
-
+const STATUS_POLL_INTERVAL_MS = 4000;
+const MAX_STATUS_POLLS = 75;
+const AMOUNT_PRESETS = [5000, 10000, 25000, 50000];
 const recordKey = record => String(record?.deceased_id || record?.deceasedId || record?.id || '');
 const recordAdmission = record => record?.admission_number || record?.admission_no || '';
+
+const deceasedName = record => record?.full_name || record?.name || 'Unnamed deceased';
 
 const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClose }) => {
   const records = deceased ? [deceased] : deceasedRecords;
@@ -41,20 +27,69 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [requestResult, setRequestResult] = useState(null);
+  const [paymentState, setPaymentState] = useState('idle');
+  const [pollCount, setPollCount] = useState(0);
+  const checkoutRequestId = requestResult?.CheckoutRequestID || requestResult?.checkoutRequestID || '';
+  const isProcessing = busy || paymentState === 'pending';
 
-  const submit = async (event) => {
+  useEffect(() => {
+    if (paymentState !== 'pending' || !checkoutRequestId) return undefined;
+    let active = true;
+    let attempts = 0;
+    let timer;
+    const checkStatus = async () => {
+      attempts += 1;
+      if (active) setPollCount(attempts);
+      try {
+        const response = await api.get(`/mpesa/payment-status/${encodeURIComponent(checkoutRequestId)}`);
+        if (!active) return;
+        const status = String(response.data?.status || 'pending').toLowerCase();
+        setRequestResult(previous => ({ ...previous, ...response.data }));
+        if (status === 'paid' || status === 'failed') {
+          setPaymentState(status);
+          return;
+        }
+      } catch (statusError) {
+        console.warn('[Deceased STK] Status check failed; will retry:', statusError?.response?.data || statusError.message);
+      }
+
+      if (active && attempts >= MAX_STATUS_POLLS) {
+        if (timer) clearInterval(timer);
+        setPaymentState(current => current === 'pending' ? 'delayed' : current);
+      }
+    };
+
+    timer = setInterval(checkStatus, STATUS_POLL_INTERVAL_MS);
+    checkStatus();
+    return () => {
+      active = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [checkoutRequestId, paymentState]);
+
+  const selectRecord = recordId => {
+    const record = records.find(item => recordKey(item) === recordId);
+    setSelectedId(recordId);
+    setKinName(record?.contact_person || record?.next_of_kin_name || '');
+    setPhoneNumber(record?.phone_number || record?.tel_number || '');
+    setError('');
+  };
+
+  const submit = async event => {
     event.preventDefault();
     setError('');
-    setRequestResult(null);
 
     const amountValue = Number(amount);
     const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
-    if (!deceasedId) return setError('This deceased record is missing its ID.');
+    if (!deceasedId) return setError('Select a deceased record.');
     if (!admissionNumber) return setError('This deceased record is missing its admission number.');
     if (!kinName.trim()) return setError('Enter the next-of-kin name.');
-    if (!/^(?:\+?254|0)[17]\d{8}$/.test(cleanPhone)) return setError('Enter a valid Kenyan M-Pesa phone number.');
+    if (!/^(?:\+?254|0)[17]\d{8}$/.test(cleanPhone)) return setError('Enter a valid Kenyan M-Pesa phone number, such as 0712 345 678.');
     if (!Number.isFinite(amountValue) || amountValue < 1) return setError('Enter a payment amount of at least KES 1.');
 
+    setRequestResult(null);
+    setPollCount(0);
+    setPaymentState('starting');
     setBusy(true);
     try {
       const response = await api.post('/mpesa/stkpush', {
@@ -72,91 +107,167 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
         throw new Error(result.ResponseDescription || result.CustomerMessage || 'M-Pesa did not accept the STK request.');
       }
       setRequestResult(result);
+      setPaymentState('pending');
     } catch (requestError) {
       console.error('[Deceased STK] Failed to initiate payment:', requestError?.response?.data || requestError);
       setError(requestError?.response?.data?.error || requestError?.response?.data?.message || requestError.message || 'Could not send the STK push.');
+      setPaymentState('idle');
     } finally {
       setBusy(false);
     }
   };
 
+  const resetForm = () => {
+    setRequestResult(null);
+    setPaymentState('idle');
+    setPollCount(0);
+    setError('');
+  };
+
+  const displayPhone = phoneNumber || '—';
+  const displayName = deceasedName(selectedDeceased);
+  const statusTitle = paymentState === 'paid' ? 'Payment received' :
+    paymentState === 'failed' ? 'Payment not completed' :
+      paymentState === 'delayed' ? 'Still waiting for M-Pesa' : 'Waiting for payment';
+  const resultDescription = paymentState === 'paid'
+    ? (requestResult?.resultDescription || 'M-Pesa confirmed this payment.')
+    : paymentState === 'failed'
+      ? (requestResult?.resultDescription || requestResult?.ResultDesc || 'The request was cancelled or could not be completed. No payment was recorded.')
+      : paymentState === 'delayed'
+        ? 'We have not received confirmation yet. Check the payer’s M-Pesa messages before sending another request.'
+        : 'Enter your M-Pesa PIN on the phone. The deceased’s account will only be updated after M-Pesa confirms the payment.';
+
   return (
-    <div style={overlayStyle} role="presentation" onMouseDown={event => event.target === event.currentTarget && !busy && onClose()}>
-      <section role="dialog" aria-modal="true" aria-labelledby="deceased-stk-title" style={{ width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+    <div
+      className="deceased-stk-scrim"
+      role="presentation"
+      onMouseDown={event => event.target === event.currentTarget && !isProcessing && onClose()}
+    >
+      <section className="deceased-stk-panel" role="dialog" aria-modal="true" aria-labelledby="deceased-stk-title">
+        <header className="deceased-stk-header">
           <div>
-            <h2 id="deceased-stk-title" style={{ margin: 0, fontSize: 21 }}>Send M-Pesa STK Push</h2>
-            <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: 13 }}>Payment is linked to this deceased record after M-Pesa confirms it.</p>
+            <h2 id="deceased-stk-title">{requestResult ? statusTitle : 'Request M-Pesa payment'}</h2>
+            <p>{requestResult ? resultDescription : 'The payer gets a prompt on their phone to enter their PIN.'}</p>
           </div>
-          <button type="button" aria-label="Close" disabled={busy} onClick={onClose} style={{ border: 0, background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button>
-        </div>
-        {requestResult ? (
-          <div role="status" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', padding: 14, borderRadius: 8 }}>
-            <strong>{requestResult.CustomerMessage || 'The STK request was accepted by the M-Pesa service.'}</strong>
-            <p style={{ margin: '12px 0 0', fontSize: 13 }}>
-              Admission number: {admissionNumber}<br />
-              Kin: {kinName.trim()}<br />
-              Amount: KES {Math.round(Number(amount)).toLocaleString()}<br />
-              Phone: {phoneNumber}
-            </p>
-            {requestResult.CheckoutRequestID && <p style={{ margin: '8px 0 0', fontSize: 12, overflowWrap: 'anywhere' }}>Checkout request: {requestResult.CheckoutRequestID}</p>}
-            {requestResult.MerchantRequestID && <p style={{ margin: '4px 0 0', fontSize: 12, overflowWrap: 'anywhere' }}>Merchant request: {requestResult.MerchantRequestID}</p>}
-            <p style={{ margin: '10px 0 0', fontSize: 12 }}>Payment is recorded against this deceased only after M-Pesa confirms the transaction.</p>
-            <button type="button" onClick={onClose} style={{ ...fieldStyle, marginTop: 16, border: 0, background: '#047857', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Done</button>
-          </div>
-        ) : (
-          <form onSubmit={submit} style={{ display: 'grid', gap: 14 }}>
-            {deceased ? (
-              <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-                Deceased
-                <input style={{ ...fieldStyle, background: '#f8fafc' }} value={deceased.full_name || deceased.name || '—'} readOnly />
-              </label>
+          <button className="deceased-stk-close" type="button" aria-label="Close" disabled={isProcessing} onClick={onClose}>×</button>
+        </header>
+
+        <div className="deceased-stk-body">
+          {requestResult ? (
+            paymentState === 'pending' ? (
+              <div className="deceased-stk-processing" role="status" aria-live="polite">
+                <div className="deceased-stk-phone-art" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <rect x="7" y="2" width="10" height="20" rx="2.5" />
+                    <path d="M11 18h2" />
+                  </svg>
+                </div>
+                <h3>Check your phone</h3>
+                <p>Approve the M-Pesa prompt to pay <strong>KES {Math.round(Number(amount)).toLocaleString('en-KE')}</strong>.</p>
+                <ol className="deceased-stk-steps">
+                  <li className="is-done"><span />Request sent to M-Pesa</li>
+                  <li className={pollCount > 5 ? 'is-done' : 'is-active'}><span />Waiting for PIN on {displayPhone}</li>
+                  <li className={pollCount > 5 ? 'is-active' : ''}><span />Confirming payment</li>
+                </ol>
+                <div className="deceased-stk-record-note">
+                  <strong>{displayName}</strong>
+                  <span>Admission {admissionNumber || '—'} · {kinName.trim()}</span>
+                </div>
+                {checkoutRequestId && <p className="deceased-stk-request-id">Checkout request: {checkoutRequestId}</p>}
+                {(requestResult.MerchantRequestID || requestResult.merchantRequestID) &&
+                  <p className="deceased-stk-request-id">Merchant request: {requestResult.MerchantRequestID || requestResult.merchantRequestID}</p>}
+                <p className="deceased-stk-secure-note">Payment is recorded only after M-Pesa confirms the transaction.</p>
+              </div>
             ) : (
-              <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-                Select deceased
-                <select
-                  style={fieldStyle}
-                  value={selectedId}
-                  onChange={event => {
-                    const record = records.find(item => recordKey(item) === event.target.value);
-                    setSelectedId(event.target.value);
-                    setKinName(record?.contact_person || record?.next_of_kin_name || '');
-                    setPhoneNumber(record?.phone_number || record?.tel_number || '');
-                    setError('');
-                  }}
-                  required
-                >
-                  <option value="" disabled>Choose a deceased record</option>
-                  {records.map(record => (
-                    <option key={recordKey(record)} value={recordKey(record)}>
-                      {(record.full_name || record.name || 'Unnamed')} · Admission {recordAdmission(record) || '—'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-              Admission number
-              <input style={{ ...fieldStyle, background: '#f8fafc' }} value={admissionNumber} readOnly />
-            </label>
-            <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-              Kin name
-              <input style={fieldStyle} value={kinName} onChange={event => setKinName(event.target.value)} required autoComplete="name" />
-            </label>
-            <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-              Kin M-Pesa phone number
-              <input style={fieldStyle} type="tel" inputMode="tel" placeholder="0712 345 678" value={phoneNumber} onChange={event => setPhoneNumber(event.target.value)} required autoComplete="tel" />
-            </label>
-            <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-              Payment amount (KES)
-              <input style={fieldStyle} type="number" min="1" step="1" value={amount} onChange={event => setAmount(event.target.value)} required />
-            </label>
-            {error && <div role="alert" style={{ padding: 11, color: '#991b1b', background: '#fef2f2', borderRadius: 7, fontSize: 13 }}>{error}</div>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
-              <button type="button" disabled={busy} onClick={onClose} style={{ ...fieldStyle, width: 'auto', cursor: 'pointer', background: '#fff' }}>Cancel</button>
-              <button type="submit" disabled={busy} style={{ ...fieldStyle, width: 'auto', minWidth: 140, cursor: busy ? 'wait' : 'pointer', border: 0, background: '#047857', color: '#fff', fontWeight: 700 }}>{busy ? 'Sending…' : 'Send STK Push'}</button>
-            </div>
-          </form>
+              <div className={`deceased-stk-result is-${paymentState === 'paid' ? 'success' : paymentState === 'failed' ? 'failure' : 'waiting'}`} role={paymentState === 'failed' ? 'alert' : 'status'} aria-live="polite">
+                <div className="deceased-stk-result-icon" aria-hidden="true">
+                  {paymentState === 'paid' ? '✓' : paymentState === 'failed' ? '×' : '…'}
+                </div>
+                <h3>{paymentState === 'paid'
+                  ? `KES ${Math.round(Number(amount)).toLocaleString('en-KE')} received`
+                  : paymentState === 'failed' ? 'Payment was not received' : 'Confirmation is taking longer than expected'}</h3>
+                <p>{paymentState === 'paid'
+                  ? `The payment is now recorded on ${displayName}’s deceased record.`
+                  : resultDescription}</p>
+                <dl className="deceased-stk-receipt">
+                  {paymentState === 'paid' && requestResult.receipt && <div><dt>M-Pesa code</dt><dd>{requestResult.receipt}</dd></div>}
+                  <div><dt>Paid by</dt><dd>{kinName.trim()}</dd></div>
+                  <div><dt>Phone</dt><dd>{displayPhone}</dd></div>
+                  <div><dt>Admission</dt><dd>{admissionNumber}</dd></div>
+                  {checkoutRequestId && <div><dt>Checkout request</dt><dd>{checkoutRequestId}</dd></div>}
+                  {(requestResult.MerchantRequestID || requestResult.merchantRequestID) &&
+                    <div><dt>Merchant request</dt><dd>{requestResult.MerchantRequestID || requestResult.merchantRequestID}</dd></div>}
+                  <div className="deceased-stk-total">
+                    <dt>{paymentState === 'paid' ? 'Amount paid' : 'Amount requested'}</dt>
+                    <dd>KES {Math.round(Number(amount)).toLocaleString('en-KE')}</dd>
+                  </div>
+                </dl>
+                {paymentState === 'delayed' && <p className="deceased-stk-secure-note">Do not send another request until you have checked whether this payment arrived.</p>}
+              </div>
+            )
+          ) : (
+            <>
+              <div className="deceased-stk-record">
+                <div className="deceased-stk-avatar" aria-hidden="true">{displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</div>
+                <div className="deceased-stk-record-text"><strong>{displayName}</strong><span>Admission {admissionNumber || '—'}</span></div>
+              </div>
+              <form id="deceased-stk-form" className="deceased-stk-form" onSubmit={submit}>
+                {!deceased && (
+                  <label>
+                    <span>Deceased record</span>
+                    <select className="deceased-stk-input" value={selectedId} onChange={event => selectRecord(event.target.value)} required>
+                      <option value="" disabled>Choose a deceased record</option>
+                      {records.map(record => (
+                        <option key={recordKey(record)} value={recordKey(record)}>
+                          {deceasedName(record)} · Admission {recordAdmission(record) || '—'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label>
+                  <span>Next of kin name</span>
+                  <input className="deceased-stk-input" value={kinName} onChange={event => setKinName(event.target.value)} autoComplete="name" required />
+                </label>
+                <label>
+                  <span>M-Pesa phone number</span>
+                  <input className="deceased-stk-input" type="tel" inputMode="tel" placeholder="0712 345 678" value={phoneNumber} onChange={event => setPhoneNumber(event.target.value)} autoComplete="tel" required />
+                </label>
+                <label>
+                  <span>Amount</span>
+                  <div className="deceased-stk-amount">
+                    <span>KES</span>
+                    <input className="deceased-stk-input" type="number" min="1" step="1" inputMode="numeric" placeholder="0" value={amount} onChange={event => setAmount(event.target.value)} required />
+                  </div>
+                  <div className="deceased-stk-presets" aria-label="Suggested amounts">
+                    {AMOUNT_PRESETS.map(preset => (
+                      <button type="button" key={preset} className={Number(amount) === preset ? 'is-selected' : ''} onClick={() => setAmount(String(preset))}>
+                        {preset.toLocaleString('en-KE')}
+                      </button>
+                    ))}
+                  </div>
+                </label>
+                {error && <div className="deceased-stk-error" role="alert">{error}</div>}
+                <p className="deceased-stk-secure-note">The payment is added to this deceased record only after M-Pesa confirms it.</p>
+              </form>
+            </>
+          )}
+        </div>
+
+        {!requestResult && (
+          <footer className="deceased-stk-footer">
+            <button type="button" className="deceased-stk-button" disabled={busy} onClick={onClose}>Cancel</button>
+            <button type="submit" form="deceased-stk-form" className="deceased-stk-button is-primary" disabled={busy || !selectedDeceased}>
+              {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : 'Send payment request'}
+            </button>
+          </footer>
+        )}
+        {requestResult && paymentState !== 'pending' && (
+          <footer className="deceased-stk-footer">
+            {paymentState === 'delayed' && <button type="button" className="deceased-stk-button" onClick={() => setPaymentState('pending')}>Check again</button>}
+            {paymentState === 'failed' && <button type="button" className="deceased-stk-button" onClick={resetForm}>Try again</button>}
+            <button type="button" className="deceased-stk-button is-primary" onClick={onClose}>Done</button>
+          </footer>
         )}
       </section>
     </div>

@@ -22,6 +22,7 @@ import (
 type MpesaService interface {
     STKPush(ctx context.Context, request *interfacex.STKPushRequest) (*interfacex.STKPushResponse, error)
     GetSTKPushByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*interfacex.STKPushRequest, error)
+    GetCallbackRequestByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*model.CallbackRequest, error)
     SaveCallbackRequest(request *model.CallbackRequest)
 }
 
@@ -181,9 +182,13 @@ func (s *mpesaService) SaveCallbackRequest(request *model.CallbackRequest) {
         } else {
             logrus.Info("Callback request saved successfully")
         }
-
-        func (s *mpesaService) GetSTKPushByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*interfacex.STKPushRequest, error) {
-            return s.mpesaRepo.GetSTKPushByCheckoutRequestID(ctx, checkoutRequestID)
-        }
     }()
+}
+
+func (s *mpesaService) GetSTKPushByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*interfacex.STKPushRequest, error) {
+    return s.mpesaRepo.GetSTKPushByCheckoutRequestID(ctx, checkoutRequestID)
+}
+
+func (s *mpesaService) GetCallbackRequestByCheckoutRequestID(ctx context.Context, checkoutRequestID string) (*model.CallbackRequest, error) {
+    return s.mpesaRepo.GetCallbackRequestByCheckoutRequestID(ctx, checkoutRequestID)
 }

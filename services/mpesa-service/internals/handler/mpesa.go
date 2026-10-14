@@ -3,10 +3,12 @@
 import (
     "bytes"
     "encoding/json"
+    "errors"
     "fmt"
     "net/http"
     "os"
     "strconv"
+    "strings"
     "time"
 
     "github.com/gin-gonic/gin"
@@ -14,6 +16,7 @@ import (
     "github.com/go-mpesa-integration/internals/model"
     "github.com/go-mpesa-integration/internals/services"
     "github.com/sirupsen/logrus"
+    "gorm.io/gorm"
 )
 
 type MpesaHandler struct {
@@ -41,6 +44,55 @@ func (h *MpesaHandler) InitiateSTKPush(c *gin.Context) {
         return
     }
     c.JSON(http.StatusOK, response)
+}
+
+func (h *MpesaHandler) PaymentStatus(c *gin.Context) {
+    checkoutRequestID := strings.TrimSpace(c.Param("checkoutRequestID"))
+    if checkoutRequestID == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"status": "failed", "resultDescription": "A checkout request ID is required."})
+        return
+    }
+
+    if _, err := h.mpesaService.GetSTKPushByCheckoutRequestID(c.Request.Context(), checkoutRequestID); err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            c.JSON(http.StatusNotFound, gin.H{"status": "failed", "resultDescription": "Payment request not found."})
+        } else {
+            logrus.Errorf("error looking up STK request: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"status": "pending", "resultDescription": "Could not check payment status."})
+        }
+        return
+    }
+
+    callback, err := h.mpesaService.GetCallbackRequestByCheckoutRequestID(c.Request.Context(), checkoutRequestID)
+    if err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            c.JSON(http.StatusOK, gin.H{"status": "pending"})
+            return
+        }
+        logrus.Errorf("error looking up payment status: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"status": "pending", "resultDescription": "Could not check payment status."})
+        return
+    }
+    if callback == nil {
+        c.JSON(http.StatusOK, gin.H{"status": "pending"})
+        return
+    }
+    if callback.ResultCode == "0" {
+        c.JSON(http.StatusOK, gin.H{
+            "status": "paid",
+            "resultDescription": "Payment received.",
+            "receipt": callback.TransactionReference,
+            "amount": callback.Amount,
+            "phoneNumber": callback.PhoneNumber,
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "status": "failed",
+        "resultDescription": callback.ResultDesc,
+        "resultCode": callback.ResultCode,
+    })
 }
 
 func (h *MpesaHandler) STKCallback(c *gin.Context) {
