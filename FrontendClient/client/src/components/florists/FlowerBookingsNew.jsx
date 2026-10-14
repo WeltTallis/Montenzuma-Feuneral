@@ -331,6 +331,8 @@ const FlowerBookingsNew = () => {
   const [newBooking, setNewBooking] = useState({
     arrangement_type: '',
     flower_designs: '',
+    initials: '',
+    coffin_type: '',
     flower_details: '',
     color_preference: '',
     any_color: true,
@@ -339,12 +341,9 @@ const FlowerBookingsNew = () => {
     quantity: 1,
     service_type: 'Funeral service before final burial',
     funeral_date: '',
-    deceased_gender: '',
     remarks: '',
     deceased_name: '',
-    booked_by: getLocalUserName(),
-    // Kin contact — stored as `customer` / `customer_phone` on the server and
-    // surfaced in the booking side panel ("Booked By" + "Phone Number").
+    // Kin contact — stored as `customer_phone` and shown in the booking side panel.
     phone: '',
     branch: '',
     date: fmtDateStr(new Date()),   // the day the order was placed — calendar tracks it
@@ -569,10 +568,17 @@ const FlowerBookingsNew = () => {
       // so the calendar and list always agree on one date.
       const bookedOn = newBooking.date || fmtDateStr(new Date());
       const designTag = `[DESIGN:${flowerDesigns.map(clean).join(', ')}]`;
+      const initialsTag = newBooking.initials?.trim()
+        ? `[INITIALS:${splitCommaList(newBooking.initials).map(clean).join(', ')}]`
+        : '';
+      const coffinType = newBooking.coffin_type.trim();
+      const coffinTag = coffinType ? `[COFFIN:${clean(coffinType)}]` : '';
       const notesValue = [
         `[TYPES:${items.map(i => clean(i.name)).join('|')}]`,
         `[WHEN:${bookedOn} ${newBooking.time}]`,
         designTag,
+        initialsTag,
+        coffinTag,
         newBooking.service_type ? `Service: ${newBooking.service_type}` : '',
         newBooking.priority?.trim() ? `Priority: ${newBooking.priority.trim()}` : '',
         newBooking.remarks?.trim() || ''
@@ -591,11 +597,10 @@ const FlowerBookingsNew = () => {
         ribbon_message: newBooking.ribbon_message?.trim() || null,
         special_instructions: newBooking.remarks?.trim() || null,
         funeral_date: newBooking.funeral_date || null,
-        deceased_gender: newBooking.deceased_gender || null,
         quantity: items.reduce((total, item) => total + item.quantity, 0),
         size: newBooking.size?.trim() || null,
         deceased_name: newBooking.deceased_name.trim(),
-        booked_by: newBooking.booked_by || getLocalUserName() || 'System',
+        booked_by: getLocalUserName() || 'System',
         // Kin contact — becomes `customer_phone` on the server, shown in the
         // booking side panel as "Phone Number".
         phone: newBooking.phone.trim() || null,
@@ -614,6 +619,8 @@ const FlowerBookingsNew = () => {
       setNewBooking({
         arrangement_type: '',
         flower_designs: '',
+        initials: '',
+        coffin_type: '',
         flower_details: '',
         color_preference: '',
         any_color: true,
@@ -622,10 +629,8 @@ const FlowerBookingsNew = () => {
         quantity: 1,
         service_type: 'Funeral service before final burial',
         funeral_date: '',
-        deceased_gender: '',
         remarks: '',
         deceased_name: '',
-        booked_by: getLocalUserName(),
         phone: '',
         branch: '',
         date: fmtDateStr(new Date()),
@@ -1407,7 +1412,7 @@ const FlowerBookingsNew = () => {
             rows={2}
             required
             style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="e.g. Full set, Stems, Round wreath, Heart spray, Initials, Casket spray, Car number plate, Coffin wrap"
+            placeholder="e.g. Full set, Stems, Round wreath, Heart spray, Casket spray, Car number plate, Coffin wrap"
             value={newBooking.arrangement_type}
             onChange={e => setNewBooking(prev => ({ ...prev, arrangement_type: e.target.value }))}
           />
@@ -1423,23 +1428,34 @@ const FlowerBookingsNew = () => {
               </button>
             ))}
           </div>
-          <p style={{ margin: '0 0 18px', color: '#8A8178', fontSize: '11px' }}>
-            Enter one or more arrangement styles, separated by commas. Use <b>Full set</b> for a complete funeral package (for example full set with extra 40 stems), then add the extra details in the remarks. "Initials" and "car plate" are not arrangement types — they are wording/details.
-          </p>
-
           <label style={lbl} htmlFor="flower-designs">Flower Design(s) *</label>
           <textarea
             id="flower-designs"
             rows={2}
             required
             style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="e.g. Classic, Natural, Full set, Initials, Ribbon wording"
+            placeholder="e.g. Classic, Natural, Garden style"
             value={newBooking.flower_designs}
             onChange={e => setNewBooking(prev => ({ ...prev, flower_designs: e.target.value }))}
           />
-          <p style={{ margin: '0 0 18px', color: '#8A8178', fontSize: '11px' }}>
-            Type any design you need; separate multiple designs with commas. For example: full set, natural, ribbon wording, initials, or a custom design note.
-          </p>
+          <label style={lbl} htmlFor="flower-initials">Initials / Dedication</label>
+          <input
+            id="flower-initials"
+            type="text"
+            style={{ ...inp, marginBottom: '8px' }}
+            placeholder="e.g. Mum, Shosho, Mum & Dad"
+            value={newBooking.initials}
+            onChange={e => setNewBooking(prev => ({ ...prev, initials: e.target.value }))}
+          />
+          <label style={lbl} htmlFor="flower-coffin-type">Coffin Type</label>
+          <input
+            id="flower-coffin-type"
+            type="text"
+            style={{ ...inp, marginBottom: '22px' }}
+            placeholder="e.g. Standard, half couch, full couch"
+            value={newBooking.coffin_type}
+            onChange={e => setNewBooking(prev => ({ ...prev, coffin_type: e.target.value }))}
+          />
 
           {/* ── Flowers ── */}
           <label style={lbl} htmlFor="flower-details">Flowers *</label>
@@ -1464,10 +1480,6 @@ const FlowerBookingsNew = () => {
               </button>
             ))}
           </div>
-          <p style={{ margin: '0 0 22px', color: '#8A8178', fontSize: '11px' }}>
-            Add any flower types or colors, separated by commas.
-          </p>
-
           <label style={lbl}>Service Type</label>
           <select
             style={{ ...inp, marginBottom: '22px' }}
@@ -1488,40 +1500,6 @@ const FlowerBookingsNew = () => {
             value={newBooking.funeral_date}
             onChange={e => setNewBooking(prev => ({ ...prev, funeral_date: e.target.value }))}
           />
-          {/* ── Branch (auto-detected) ── */}
-          {/* The booking is automatically assigned to the logged-in user's
-              current branch — no manual selection needed. For multi-branch
-              setups (e.g. Nairobi, Machakos, Thika), this ensures the order
-              is tagged with the correct branch DB without extra clicks. */}
-          <label style={{ ...lbl, marginBottom: '12px', fontWeight: 500 }}>Branch<span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}> — auto-detected</span></label>
-          <div
-            style={{
-              ...inp,
-              background: '#F7F4EF',
-              borderColor: '#E3DCD2',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 12px'
-            }}
-          >
-            <Home style={{
-              width: '14px',
-              height: '14px',
-              color: '#9C9389',
-              flexShrink: 0
-            }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, color: '#3D352D', fontSize: '13px' }}>
-                {resolveBranchName() || getBranchSlug() || '—'}
-              </div>
-              <div style={{ fontSize: '11px', color: '#A39A8E', fontWeight: 400 }}>
-                Detected from your account — no selection needed
-              </div>
-            </div>
-          </div>
-
           <label style={lbl}>Color Preference</label>
           <label className="flx-any-color">
             <input
@@ -1574,7 +1552,7 @@ const FlowerBookingsNew = () => {
           <textarea
             rows={3}
             style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
-            placeholder="e.g. Full set + extra 40 stems, initials 'Mum & Dad', casket wording, hearse, car plate 'KDG 321A', wreath with red and white tones"
+            placeholder="Extra stems, hearse details, car plate, or other instructions"
             value={newBooking.remarks}
             onChange={e => setNewBooking(prev => ({ ...prev, remarks: e.target.value }))}
           />
@@ -1590,10 +1568,6 @@ const FlowerBookingsNew = () => {
               setNewBooking(prev => ({ ...prev, sample_uploads: files }));
             }}
           />
-          <p style={{ margin: '-12px 0 20px', color: '#8A8178', fontSize: '11px' }}>
-            Clients can upload a reference image of the flowers they want. Staff can use it to match the desired style.
-          </p>
-
           {/* ── 4 · Booking Details ── */}
           <label style={lbl}>Deceased Name *</label>
           <input
@@ -1605,33 +1579,11 @@ const FlowerBookingsNew = () => {
             required
           />
 
-          <label style={lbl}>Deceased Gender <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span></label>
-          <select
-            style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.deceased_gender}
-            onChange={e => setNewBooking(prev => ({ ...prev, deceased_gender: e.target.value }))}
-          >
-            <option value="">Not specified</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-          <p style={{ margin: '-14px 0 20px', color: '#8A8178', fontSize: '11px' }}>Optional context for the florist; it does not determine the arrangement.</p>
-
           {/* "Ready At Time" removed at the user's request — it was a required
               field that added nothing: the order is filed under the day it was
               booked, and the ready-at hour was never shown back on the card or
               the detail panel. `newBooking.time` keeps its existing default so the
               POST body and the [WHEN:…] stamp are unchanged. */}
-
-          <label style={{ ...lbl, marginTop: '6px' }}>Booked By (Kin Name)</label>
-          <input
-            type="text"
-            title="Auto-filled from your account — edit if you are booking on behalf of the family"
-            placeholder="Full name of the person booking"
-            style={{ ...inp, marginBottom: '12px', color: '#574F47' }}
-            value={newBooking.booked_by || getLocalUserName()}
-            onChange={e => setNewBooking(prev => ({ ...prev, booked_by: e.target.value }))}
-          />
 
           {/* Kin phone — saved as `customer_phone` and shown in the booking
               side panel so the florist can call the person who booked. */}
@@ -1737,7 +1689,7 @@ const FlowerBookingsNew = () => {
     }).filter(image => typeof image.src === 'string' && image.src.trim());
     const uniqueBookingImages = [...new Map(bookingImages.map(image => [image.src, image])).values()];
     // Strip machine tokens before splitting human notes.
-    const humanNotes = String(b.notes || '').replace(/\[(?:TYPES|WHEN|DESIGN):[^\]]*\]/gi, '');
+    const humanNotes = String(b.notes || '').replace(/\[(?:TYPES|WHEN|DESIGN|INITIALS|COFFIN):[^\]]*\]/gi, '');
     const noteParts = humanNotes.split('|').map(s => s.trim()).filter(Boolean);
     let sizeNote = '';
     const remarksList = [];
@@ -1756,9 +1708,13 @@ const FlowerBookingsNew = () => {
     const colourText = [...new Set(colorValues)].join(', ') || "Any color · florist's choice";
     const ribbonMessage = b.ribbon_message || ribbonNote || '—';
     const flowerText = b.flower_description || [...new Set(lineItems.flatMap(item => item.types || []))].join(', ') || asList(product.types).join(', ') || 'Florist’s choice';
-    // [DESIGN:…] carries the Flower Design dropdown value (Roses, Lilies, …).
+    // Machine tags keep design and dedication details readable on every backend version.
     const designMatch = /\[DESIGN:([^\]]+)\]/i.exec(String(b.notes || ''));
     const designText = designMatch ? designMatch[1].trim() : '';
+    const initialsMatch = /\[INITIALS:([^\]]+)\]/i.exec(String(b.notes || ''));
+    const initialsText = initialsMatch ? initialsMatch[1].trim() : '';
+    const coffinMatch = /\[COFFIN:([^\]]+)\]/i.exec(String(b.notes || ''));
+    const coffinType = coffinMatch ? coffinMatch[1].trim() : '';
     const instructionText = b.special_instructions || remarksList.join('\n');
     const currentStatusIdx = STATUS_FLOW.indexOf(normStatus(b.status));
     // WHO booked this — the kin's name + phone. `booked_by` is sent by the UIs,
@@ -1883,7 +1839,7 @@ const FlowerBookingsNew = () => {
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9C9389' }}>
-                  Booked By (Kin)
+                  Booked By
                 </div>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: '#1C1A17', wordBreak: 'break-word' }}>
                   {bookerName || '—'}
@@ -1988,6 +1944,18 @@ const FlowerBookingsNew = () => {
                     <dd style={styles.specValue}>{designText}</dd>
                   </div>
                 )}
+                {initialsText && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Initials / Dedication</dt>
+                    <dd style={styles.specValue}>{initialsText}</dd>
+                  </div>
+                )}
+                {coffinType && (
+                  <div style={styles.specRow}>
+                    <dt style={styles.specLabel}>Coffin Type</dt>
+                    <dd style={styles.specValue}>{coffinType}</dd>
+                  </div>
+                )}
                 <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Flower Size</dt>
                   <dd style={styles.specValue}>{b.size || asList(product.sizes).join(', ') || sizeNote || '—'}</dd>
@@ -2001,15 +1969,11 @@ const FlowerBookingsNew = () => {
                   <dd style={styles.specValue}>{b.funeral_date ? fmtDateOnly(b.funeral_date) : 'Not specified'}</dd>
                 </div>
                 <div style={styles.specRow}>
-                  <dt style={styles.specLabel}>Deceased Gender</dt>
-                  <dd style={styles.specValue}>{b.deceased_gender || 'Not specified'}</dd>
-                </div>
-                <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Total Quantity</dt>
                   <dd style={styles.specValue}>{Number(b.quantity) || lineItems.reduce((total, item) => total + item.quantity, 0)}</dd>
                 </div>
                 <div style={styles.specRow}>
-                  <dt style={styles.specLabel}>Booked By (Kin Name)</dt>
+                  <dt style={styles.specLabel}>Booked By</dt>
                   <dd style={styles.specValue}>{bookerName || '—'}</dd>
                 </div>
                 <div style={styles.specRow}>
