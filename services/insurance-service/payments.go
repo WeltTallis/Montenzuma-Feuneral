@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type policyPaymentSnapshot struct {
@@ -185,7 +188,14 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 		write(w, 400, map[string]any{"error": "Invalid request body"})
 		return
 	}
+	// Resolve the identifier exactly like cover-check does: prefer policyNumber,
+	// fall back to idNumber, then normalise away the AMANI/AMN/AM prefixes. The
+	// Amani portal feeds cover-check the ID number the member types, so stk-push
+	// must accept the same value or it 404s on a policy cover-check just found.
 	policy := normalize(str(m, "policyNumber"))
+	if policy == "" {
+		policy = normalize(str(m, "idNumber"))
+	}
 	publicCode := strings.ToUpper(strings.TrimSpace(str(m, "policyCode")))
 	requestedPhone := str(m, "phoneNumber")
 	phone := normalizeKenyanPhone(requestedPhone)
@@ -204,13 +214,29 @@ func (a *app) stkPush(w http.ResponseWriter, r *http.Request) {
 	var premium float64
 	var status, cover, registeredPhone string
 	var createdAt time.Time
-	if publicCode != "" {
-		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone,created_at FROM insurance_policies WHERE public_code=$1 AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared')`, publicCode, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone, &createdAt)
-	} else {
-		e = a.db.QueryRow(r.Context(), `SELECT policy_number,monthly_premium,status,cover_type,phone,created_at FROM insurance_policies WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1) AND is_deleted=false AND (tenant_slug=$2 OR tenant_slug='system_shared') ORDER BY created_at DESC LIMIT 1`, policy, tenant(r)).Scan(&policy, &premium, &status, &cover, &registeredPhone, &createdAt)
-	}
+	// Match on EVERY identifier the caller may have supplied — policy_number,
+	// id_number, or public_code (from policyCode). The previous code searched
+	// public_code ALONE whenever policyCode was present, so a request that also
+	// carried a valid policyNumber/idNumber still 404'd ("Policy not found")
+	// when policyCode did not exactly equal the stored public_code. Matching all
+	// three together keeps stk-push consistent with cover-check.
+	e = a.db.QueryRow(r.Context(), `
+		SELECT policy_number, monthly_premium, status, cover_type, phone, created_at
+		FROM insurance_policies
+		WHERE (policy_number=$1 OR id_number=$1 OR public_code=$1 OR public_code=$2)
+			AND is_deleted=false AND (tenant_slug=$3 OR tenant_slug='system_shared')
+		ORDER BY created_at DESC LIMIT 1`,
+		policy, publicCode, tenant(r),
+	).Scan(&policy, &premium, &status, &cover, &registeredPhone, &createdAt)
 	if e != nil {
-		write(w, 404, map[string]any{"error": "Policy not found"})
+		if errors.Is(e, pgx.ErrNoRows) {
+			write(w, 404, map[string]any{"error": "Policy not found"})
+			return
+		}
+		// Anything other than "no rows" is a real database fault; do not hide it
+		// behind a 404 "Policy not found" that sends support hunting the wrong way.
+		log.Printf("[STK] policy lookup failed for policy=%q code=%q tenant=%q: %v", policy, publicCode, tenant(r), e)
+		write(w, 500, map[string]any{"error": "Could not load the policy. Please try again."})
 		return
 	}
 	if phone == "" {
