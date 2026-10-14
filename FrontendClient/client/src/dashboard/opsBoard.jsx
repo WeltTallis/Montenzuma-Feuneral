@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DOWF, MO, TYPE_L, addDays, eventsOf, matchPill, parseKey, weekStartOf,
 } from "./opsData";
 import {
   DURATIONS, END_HOUR, HOUR_HEIGHT, START_HOUR, eventKey, timeMinutes, timeText,
 } from "./opsScheduler";
+import { Ic } from "./opsIcons";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Operations · Day / Week board — a 1:1 port of the "Operations Schedule"
@@ -38,7 +39,7 @@ const statusClass = (event) => {
 
 /** Time order for one day (start time, then type, then admission number). */
 const byTime = (a, b) => {
-  const diff = timeMinutes(a.time) - timeMinutes(b.time);
+  const diff = a.shiftOffset - b.shiftOffset;
   return diff || a.t.localeCompare(b.t) || eventKey(a).localeCompare(eventKey(b));
 };
 
@@ -56,7 +57,7 @@ function stackDown(events, gridHeight) {
   const sorted = events.slice().sort(byTime);
   if (!sorted.length) return [];
 
-  const topOf = (event) => Math.max(0, ((timeMinutes(event.time) - START_HOUR * 60) * HOUR_HEIGHT) / 60);
+  const topOf = (event) => Math.max(0, (event.shiftOffset * HOUR_HEIGHT) / 60);
   const tallOf = (event) => (DURATIONS[event.t] * HOUR_HEIGHT) / 60;
   const GAP = 3;
   const MIN_H = 22;
@@ -89,23 +90,52 @@ export default function BoardSchedule({
   onPickDay,
 }) {
   const scrollRef = useRef(null);
+  const [shift, setShift] = useState("all");
   const isWeek = view === "week";
   const days = isWeek
     ? Array.from({ length: 7 }, (_, index) => addDays(weekStartOf(selDate), index))
     : [selDate];
   const columns = isWeek ? "64px repeat(7, minmax(110px, 1fr))" : "64px minmax(0, 1fr)";
-  const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
+  const hours = shift === "night"
+    ? [...Array.from({ length: 6 }, (_, index) => index + 18), ...Array.from({ length: 6 }, (_, index) => index)]
+    : shift === "day"
+      ? Array.from({ length: 12 }, (_, index) => index + 6)
+      : Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
   const gridHeight = hours.length * HOUR_HEIGHT;
-  const timeLabel = (hour) => (hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`);
+  const timeLabel = (hour) => (
+    hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`
+  );
+
+  const shiftEvents = useMemo(() => eventsOf(searched)
+    .filter((event) => passes(event.p, filters))
+    .flatMap((event) => {
+      const minutes = timeMinutes(event.time);
+      const hour = Math.floor(minutes / 60);
+      if (shift === "day" && (hour < 6 || hour >= 18)) return [];
+      if (shift === "night" && hour >= 6 && hour < 18) return [];
+      const nightEarly = shift === "night" && hour < 6;
+      return [{
+        ...event,
+        shiftDate: nightEarly ? addDays(event.date, -1) : event.date,
+        shiftOffset: shift === "night"
+          ? (nightEarly ? minutes + 6 * 60 : minutes - 18 * 60)
+          : minutes - 6 * 60,
+      }];
+    }), [searched, filters, shift]);
 
   /* The Day view's tabs are a type filter; the Week view always shows all. */
-  const boardEvents = eventsOf(searched).filter((event) => passes(event.p, filters));
+  const boardEvents = shiftEvents;
   const allEvents = dayTab === "all" ? boardEvents : boardEvents.filter((event) => event.t === dayTab);
   const eventsByDay = Object.fromEntries(
-    days.map((day) => [day, allEvents.filter((event) => event.date === day)])
+    days.map((day) => [day, allEvents.filter((event) => event.shiftDate === day)])
   );
   /* Tab counters ignore the type filter, so every tab reports its own total. */
-  const selectedDayAll = boardEvents.filter((event) => event.date === selDate);
+  const selectedDayAll = boardEvents.filter((event) => event.shiftDate === selDate);
+  const shiftCount = shift === "all"
+    ? "All scheduled hours"
+    : shift === "day"
+      ? "6:00 AM – 6:00 PM"
+      : "6:00 PM – 6:00 AM";
 
   /* The strip carries what has no clock time: future arrivals and the
      scheduled handovers to the family. */
@@ -116,17 +146,28 @@ export default function BoardSchedule({
 
   useEffect(() => {
     const node = scrollRef.current;
-    if (!node || !days.includes(today)) return undefined;
+    const currentMinutes = timeMinutes(now);
+    const currentHour = Math.floor(currentMinutes / 60);
+    const nowShiftDate = shift === "night" && currentHour < 6 ? addDays(today, -1) : today;
+    const inShift = shift === "all"
+      ? currentHour >= START_HOUR && currentHour <= END_HOUR
+      : shift === "day"
+        ? currentHour >= 6 && currentHour < 18
+        : currentHour >= 18 || currentHour < 6;
+    if (!node || !inShift || !days.includes(nowShiftDate)) return undefined;
     const frame = requestAnimationFrame(() => {
-      const top = ((timeMinutes(now) - START_HOUR * 60) * HOUR_HEIGHT) / 60;
+      const offset = shift === "night"
+        ? (currentHour < 6 ? currentMinutes + 6 * 60 : currentMinutes - 18 * 60)
+        : currentMinutes - 6 * 60;
+      const top = (offset * HOUR_HEIGHT) / 60;
       node.scrollTop = Math.max(0, top - node.clientHeight / 3);
     });
     return () => cancelAnimationFrame(frame);
-  }, [view, selDate]);
+  }, [view, selDate, shift]);
 
 
   const renderCard = ({ event, top, height }) => {
-    const end = timeMinutes(event.time) + DURATIONS[event.t];
+    const end = (timeMinutes(event.time) + DURATIONS[event.t]) % (24 * 60);
     const compact = height < 38;
     const location = event.t === "release"
       ? event.p.release ? event.p.release.dest : null
@@ -163,6 +204,33 @@ export default function BoardSchedule({
 
   return (
     <>
+      <div className="shift-toolbar" aria-label="Filter operations by work shift">
+        <div className="shift-intro">
+          <span className="shift-icon"><Ic n={shift === "night" ? "moon" : "sun"} s={16} /></span>
+          <div>
+            <b>Shift schedule</b>
+            <span>{shiftCount} · {shiftEvents.filter((event) => days.includes(event.shiftDate)).length} operations</span>
+          </div>
+        </div>
+        <div className="shift-switch" role="group" aria-label="Shift">
+          {[
+            ["all", "All shifts"],
+            ["day", "Day shift"],
+            ["night", "Night shift"],
+          ].map(([key, label]) => (
+            <button
+              type="button"
+              className={shift === key ? "on" : ""}
+              data-shift={key}
+              key={key}
+              onClick={() => setShift(key)}
+              aria-pressed={shift === key}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className={`bd ${isWeek ? "week" : "day"}`} aria-label={`${isWeek ? "Weekly" : "Daily"} operations schedule`}>
         <div className="bd-allday" style={{ gridTemplateColumns: columns }}>
           <div className="bd-adlabel">All Day</div>
@@ -227,12 +295,24 @@ export default function BoardSchedule({
                   {hours.map((hour) => <div className="bd-hour" key={`cell-${day}-${hour}`} />)}
                   {!dayEvents.length ? <div className="bd-empty">No events scheduled</div> : null}
                   {stackDown(dayEvents, gridHeight).map(renderCard)}
-                  {day === today ? (() => {
-                    const nowTop = ((timeMinutes(now) - START_HOUR * 60) * HOUR_HEIGHT) / 60;
+                  {(() => {
+                    const currentMinutes = timeMinutes(now);
+                    const currentHour = Math.floor(currentMinutes / 60);
+                    const nowShiftDate = shift === "night" && currentHour < 6 ? addDays(today, -1) : today;
+                    const inShift = shift === "all"
+                      ? currentHour >= START_HOUR && currentHour <= END_HOUR
+                      : shift === "day"
+                        ? currentHour >= 6 && currentHour < 18
+                        : currentHour >= 18 || currentHour < 6;
+                    if (day !== nowShiftDate || !inShift) return null;
+                    const nowOffset = shift === "night"
+                      ? (currentHour < 6 ? currentMinutes + 6 * 60 : currentMinutes - 18 * 60)
+                      : currentMinutes - 6 * 60;
+                    const nowTop = (nowOffset * HOUR_HEIGHT) / 60;
                     return nowTop >= 0 && nowTop <= gridHeight
                       ? <div className="bd-now" style={{ top: `${nowTop}px` }} />
                       : null;
-                  })() : null}
+                  })()}
                 </div>
               );
             })}
@@ -261,4 +341,3 @@ export default function BoardSchedule({
     </>
   );
 }
-

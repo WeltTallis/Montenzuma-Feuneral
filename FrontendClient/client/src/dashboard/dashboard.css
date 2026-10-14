@@ -4302,6 +4302,99 @@
    font-size: 16px
 }
 
+/* ── day / night shift switch ── */
+.rpd .shift-toolbar {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 14px;
+   flex: 0 0 auto;
+   min-width: 0;
+   margin: 12px 22px 0;
+   padding: 10px 14px;
+   border: 1px solid var(--brd);
+   border-radius: 10px;
+   background: var(--card);
+   box-shadow: var(--shs)
+}
+
+.rpd .shift-intro {
+   display: flex;
+   align-items: center;
+   gap: 10px;
+   min-width: 0
+}
+
+.rpd .shift-icon {
+   display: grid;
+   place-items: center;
+   width: 34px;
+   height: 34px;
+   flex: 0 0 auto;
+   border-radius: 9px;
+   background: var(--blue-bg);
+   color: var(--blue)
+}
+
+.rpd .shift-intro>div {
+   display: grid;
+   gap: 2px;
+   min-width: 0
+}
+
+.rpd .shift-intro b {
+   color: var(--tx);
+   font-size: 12px;
+   font-weight: 700
+}
+
+.rpd .shift-intro span:not(.shift-icon) {
+   color: var(--tx3);
+   font-size: 10px;
+   font-weight: 500
+}
+
+.rpd .shift-switch {
+   display: inline-flex;
+   align-items: center;
+   gap: 3px;
+   flex: 0 0 auto;
+   padding: 3px;
+   border: 1px solid var(--brd);
+   border-radius: 8px;
+   background: var(--field)
+}
+
+.rpd .shift-switch button {
+   min-height: 30px;
+   padding: 0 12px;
+   border-radius: 6px;
+   color: var(--tx3);
+   font-size: 10.5px;
+   font-weight: 700;
+   white-space: nowrap;
+   transition: color .15s, background .15s, box-shadow .15s
+}
+
+.rpd .shift-switch button:hover {
+   color: var(--tx)
+}
+
+.rpd .shift-switch button.on {
+   background: var(--card);
+   color: var(--acc);
+   box-shadow: var(--shs)
+}
+
+.rpd .shift-switch button[data-shift="day"].on {
+   color: #a45b00
+}
+
+.rpd .shift-switch button[data-shift="night"].on {
+   background: #17324a;
+   color: #fff
+}
+
 /* board surface */
 .rpd .bd {
    --stPending: #d97706;
@@ -4691,6 +4784,29 @@
 /* ── responsive (the design's own breakpoints) ── */
 .rpd .mains.schedule-mode .dtabs {
    margin: 10px 22px 14px
+}
+
+@media(max-width:560px) {
+   .rpd .shift-toolbar {
+      align-items: stretch;
+      flex-direction: column;
+      margin: 10px 10px 0;
+      gap: 9px
+   }
+
+   .rpd .shift-switch {
+      width: 100%
+   }
+
+   .rpd .shift-switch button {
+      flex: 1;
+      padding: 0 6px
+   }
+
+   .rpd .mains.schedule-mode .dtabs {
+      margin-left: 10px;
+      margin-right: 10px
+   }
 }
 
 @media(max-width:768px) {
