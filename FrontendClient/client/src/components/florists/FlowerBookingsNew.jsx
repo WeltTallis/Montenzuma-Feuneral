@@ -1356,6 +1356,30 @@ const FlowerBookingsNew = () => {
     // Shared styling tokens — mirror the Create Arrangement panel exactly
     const lbl = { display: 'block', fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '8px' };
     const inp = { width: '100%', padding: '12px 14px', border: '1px solid #EAE7E2', borderRadius: '8px', fontSize: '13px', fontFamily: "'DM Sans', system-ui, sans-serif", background: '#FAF9F7', color: '#1C1A17', outline: 'none' };
+    const suggestionChip = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      borderRadius: '999px',
+      border: '1px solid #EAE7E2',
+      background: '#F7F4EF',
+      color: '#574F47',
+      fontSize: '11px',
+      fontWeight: 600,
+      padding: '6px 10px',
+      cursor: 'pointer',
+      transition: 'all 0.15s ease'
+    };
+    const addSuggestion = (field, value) => {
+      const candidate = String(value || '').trim();
+      if (!candidate) return;
+      setNewBooking(prev => {
+        const existing = splitCommaList(prev[field]);
+        const merged = [...new Set([...existing, ...splitCommaList(candidate)])];
+        return { ...prev, [field]: merged.join(', ') };
+      });
+    };
+    const arrangementSuggestions = ['Full set', 'Stems', 'Round wreath', 'Heart spray', 'Initials', 'Casket spray', 'Car number plate', 'Coffin wrap'];
+    const flowerSuggestions = ['Mums', 'Red roses', 'White lilies', 'Chrysanthemums', 'Gypsophila', 'Greenery'];
 
     return (
       <div style={styles.formContainer}>
@@ -1375,13 +1399,25 @@ const FlowerBookingsNew = () => {
             id="flower-arrangement-types"
             rows={2}
             required
-            style={{ ...inp, resize: 'vertical', marginBottom: '6px' }}
-            placeholder="e.g. Wreath, Casket Spray, Standing Spray"
+            style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
+            placeholder="e.g. Full set, Stems, Round wreath, Heart spray, Initials, Casket spray, Car number plate, Coffin wrap"
             value={newBooking.arrangement_type}
             onChange={e => setNewBooking(prev => ({ ...prev, arrangement_type: e.target.value }))}
           />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+            {arrangementSuggestions.map(item => (
+              <button
+                key={item}
+                type="button"
+                style={suggestionChip}
+                onClick={() => addSuggestion('arrangement_type', item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
           <p style={{ margin: '0 0 18px', color: '#8A8178', fontSize: '11px' }}>
-            Enter one or more arrangements, separated by commas. Each becomes an item in this order.
+            Enter one or more arrangement styles, separated by commas. Common orders include full set, stems, rounds, hearts, initials, caskets and car number plates.
           </p>
 
           <label style={lbl} htmlFor="flower-designs">Flower Design(s) *</label>
@@ -1389,13 +1425,13 @@ const FlowerBookingsNew = () => {
             id="flower-designs"
             rows={2}
             required
-            style={{ ...inp, resize: 'vertical', marginBottom: '6px' }}
-            placeholder="e.g. Classic, Garden style, Florist's choice"
+            style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
+            placeholder="e.g. Classic, Natural, Full set, Initials, Ribbon wording"
             value={newBooking.flower_designs}
             onChange={e => setNewBooking(prev => ({ ...prev, flower_designs: e.target.value }))}
           />
           <p style={{ margin: '0 0 18px', color: '#8A8178', fontSize: '11px' }}>
-            Type any design you need; separate multiple designs with commas.
+            Type any design you need; separate multiple designs with commas. For example: full set, initials, ribbon wording or a custom statement.
           </p>
 
           {/* ── Flowers ── */}
@@ -1404,11 +1440,23 @@ const FlowerBookingsNew = () => {
             id="flower-details"
             rows={3}
             required
-            style={{ ...inp, resize: 'vertical', marginBottom: '6px' }}
-            placeholder="Enter flowers separated by commas, e.g. Red Roses, White Lilies, Gypsophila"
+            style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
+            placeholder="e.g. Mums, white lilies, red roses, chrysanthemum, gypsophila, greenery"
             value={newBooking.flower_details}
             onChange={e => setNewBooking(prev => ({ ...prev, flower_details: e.target.value }))}
           />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+            {flowerSuggestions.map(item => (
+              <button
+                key={item}
+                type="button"
+                style={suggestionChip}
+                onClick={() => addSuggestion('flower_details', item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
           <p style={{ margin: '0 0 22px', color: '#8A8178', fontSize: '11px' }}>
             Add any flower types or colors, separated by commas.
           </p>
@@ -1506,7 +1554,7 @@ const FlowerBookingsNew = () => {
           <textarea
             rows={3}
             style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
-            placeholder="Any special design or delivery instructions"
+            placeholder="e.g. initials 'Mum & Dad', casket wording, car number plate 'KDG 321A'"
             value={newBooking.remarks}
             onChange={e => setNewBooking(prev => ({ ...prev, remarks: e.target.value }))}
           />
