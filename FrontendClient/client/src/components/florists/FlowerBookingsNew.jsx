@@ -194,158 +194,324 @@ const getLocalUserName = () => {
 
 const FLX_RESPONSIVE = `
 .flower-calendar {
-  --flower-calendar-brand: #0e5a43;
-  --flower-calendar-brand-soft: #e9f4ee;
-  --flower-calendar-ink: #111816;
-  --flower-calendar-muted: #6a7570;
-  --flower-calendar-line: #e8ebea;
+  --fc-primary: #2563eb;
+  --fc-primary-soft: rgba(37, 99, 235, .1);
+  --fc-text: #212529;
+  --fc-muted: #6c757d;
+  --fc-line: #dee2e6;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 680px;
   overflow: hidden;
-  border: 1px solid var(--flower-calendar-line);
-  border-radius: 14px;
+  border: 1px solid var(--fc-line);
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 8px 26px rgba(17, 24, 22, .06);
-  color: var(--flower-calendar-ink);
+  box-shadow: 0 2px 8px rgba(33, 37, 41, .06);
+  color: var(--fc-text);
 }
-.flower-calendar-heading {
-  min-height: 88px;
-  margin: 0 !important;
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--flower-calendar-line);
+.flower-calendar-page {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 18px 24px 28px !important;
 }
-.flower-calendar-eyebrow {
-  margin-bottom: 3px;
-  color: var(--flower-calendar-muted);
+.flower-toolbar-calendar .flx-nav { display: none !important; }
+.flower-calendar-sidebar {
+  display: flex;
+  width: 260px;
+  flex: 0 0 260px;
+  flex-direction: column;
+  border-right: 1px solid var(--fc-line);
+  background: #fff;
+}
+.flower-calendar-sidebar-heading {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--fc-line);
+  font-size: 15px;
+  font-weight: 600;
+}
+.flower-calendar-sidebar-heading span {
+  color: var(--fc-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.flower-calendar-mini {
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--fc-line);
+}
+.flower-calendar-mini-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.flower-calendar-mini-week,
+.flower-calendar-mini-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+.flower-calendar-mini-week {
+  margin-bottom: 5px;
+}
+.flower-calendar-mini-week span {
+  padding: 5px 0;
+  color: var(--fc-muted);
   font-size: 10px;
+  text-align: center;
+}
+.flower-calendar-mini-day {
+  display: grid;
+  min-width: 0;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fc-text);
+  cursor: pointer;
+  font-size: 11px;
+}
+.flower-calendar-mini-day:hover,
+.flower-calendar-mini-day.is-selected {
+  background: var(--fc-primary-soft);
+  color: var(--fc-primary);
+}
+.flower-calendar-mini-day.is-today {
+  background: var(--fc-primary);
+  color: #fff;
   font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
 }
-.flower-calendar-title {
-  color: var(--flower-calendar-ink);
-  font-family: inherit !important;
-  font-size: 22px !important;
-  font-weight: 700 !important;
-  letter-spacing: -.02em;
+.flower-calendar-mini-day.is-outside { color: #adb5bd; }
+.flower-calendar-sidebar-section {
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--fc-line);
 }
-.flower-calendar-heading > div:last-child {
+.flower-calendar-sidebar-title {
+  margin: 0 0 12px;
+  color: var(--fc-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.flower-calendar-legend {
+  display: grid;
+  gap: 11px;
+}
+.flower-calendar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #495057;
+  font-size: 12px;
+}
+.flower-calendar-legend-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+}
+.flower-calendar-upcoming {
+  display: grid;
   gap: 8px;
 }
-.flower-calendar-heading button {
-  width: 36px !important;
-  height: 36px !important;
-  border: 1px solid var(--flower-calendar-line) !important;
-  border-radius: 8px !important;
-  color: var(--flower-calendar-ink) !important;
-  transition: background .15s ease, border-color .15s ease;
+.flower-calendar-upcoming-item {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #edf0f2;
+  border-left: 3px solid var(--fc-primary);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--fc-text);
+  cursor: pointer;
+  text-align: left;
 }
-.flower-calendar-heading button:hover {
-  border-color: var(--flower-calendar-brand) !important;
-  background: var(--flower-calendar-brand-soft) !important;
+.flower-calendar-upcoming-item:hover {
+  border-color: #c8d7fa;
+  background: #f8faff;
 }
-.flower-calendar-heading .flower-calendar-today {
-  width: auto !important;
-  padding: 0 13px;
-  background: var(--flower-calendar-brand) !important;
-  border-color: var(--flower-calendar-brand) !important;
-  color: #fff !important;
+.flower-calendar-upcoming-item strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flower-calendar-upcoming-item span {
+  color: var(--fc-muted);
+  font-size: 10px;
+}
+.flower-calendar-upcoming-empty {
+  color: var(--fc-muted);
   font-size: 12px;
-  font-weight: 700;
 }
-.flower-calendar-heading .flower-calendar-today:hover {
-  background: #0a4937 !important;
-  color: #fff !important;
+.flower-calendar-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
 }
-.flower-toolbar-calendar .flx-nav {
-  display: none !important;
+.flower-calendar-heading {
+  display: flex;
+  min-height: 68px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 !important;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--fc-line);
+}
+.flower-calendar-title {
+  color: var(--fc-text);
+  font-family: inherit !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+}
+.flower-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.flower-calendar-nav button {
+  display: inline-flex;
+  min-width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid var(--fc-line);
+  border-radius: 6px;
+  background: #fff;
+  color: #495057;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+.flower-calendar-nav button:hover {
+  border-color: #b6c8f8;
+  background: #f8faff;
+  color: var(--fc-primary);
 }
 .flower-calendar .flx-cal-weekdays {
+  display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
   margin: 0;
-  background: var(--flower-calendar-line);
+  background: var(--fc-line);
 }
 .flower-calendar .flx-cal-weekday {
-  padding: 11px 6px;
-  background: var(--flower-calendar-brand);
-  color: #fff !important;
-  font-size: 10px;
-  letter-spacing: .08em;
+  padding: 10px 5px;
+  background: #f8f9fa;
+  color: #495057 !important;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 .flower-calendar .flx-cal-days {
+  display: grid;
+  flex: 1;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(112px, 1fr));
   gap: 1px;
-  background: var(--flower-calendar-line);
+  align-content: stretch;
+  background: var(--fc-line);
 }
 .flower-calendar .flx-cal-day {
-  min-height: 116px;
-  padding: 9px;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 112px;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 7px;
   border: 0 !important;
   border-radius: 0;
   background: #fff !important;
+  cursor: pointer;
   opacity: 1 !important;
-  transition: background .15s ease, box-shadow .15s ease;
+  transition: background .15s ease;
 }
-.flower-calendar .flx-cal-day:hover {
-  z-index: 1;
-  background: #f7f8f8 !important;
-  box-shadow: inset 0 0 0 1px #cfd9d3;
+.flower-calendar .flx-cal-day:hover { background: #f8f9fa !important; }
+.flower-calendar .flx-cal-day:focus-visible {
+  z-index: 2;
+  outline: 2px solid var(--fc-primary);
+  outline-offset: -2px;
 }
-.flower-calendar .flx-cal-day.is-outside {
-  background: #f7f8f8 !important;
-}
-.flower-calendar .flx-cal-day.is-outside .flower-calendar-date {
-  color: #a8b0ac;
-}
-.flower-calendar .flx-cal-day.is-today {
-  background: #f3f8f5 !important;
-  box-shadow: inset 0 0 0 2px var(--flower-calendar-brand);
-}
-.flower-calendar .flx-cal-day.is-selected {
-  box-shadow: inset 0 0 0 2px var(--flower-calendar-brand);
-}
+.flower-calendar .flx-cal-day.is-outside { background: #fafbfc !important; }
 .flower-calendar .flower-calendar-date {
   display: inline-flex;
-  width: 27px;
-  height: 27px;
+  width: 26px;
+  height: 26px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: var(--flower-calendar-ink);
+  color: #495057;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
-.flower-calendar .is-today .flower-calendar-date {
-  background: var(--flower-calendar-brand) !important;
+.flower-calendar .flx-cal-day.is-outside .flower-calendar-date { color: #adb5bd; }
+.flower-calendar .flx-cal-day.is-today .flower-calendar-date {
+  background: var(--fc-primary) !important;
   color: #fff !important;
+  font-weight: 700;
+}
+.flower-calendar .flx-cal-day.is-selected {
+  box-shadow: inset 0 0 0 2px var(--fc-primary);
 }
 .flower-calendar .flx-cal-event {
   min-width: 0;
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   padding: 4px 6px;
-  border-radius: 5px;
+  border-radius: 4px;
   font-size: 10px;
-  font-weight: 600;
-  line-height: 1.3;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
   text-overflow: ellipsis;
 }
 .flower-calendar .flower-calendar-more {
   padding: 3px 5px !important;
-  color: var(--flower-calendar-muted) !important;
+  color: var(--fc-muted) !important;
   font-size: 10px !important;
+  text-align: left;
 }
 .flower-calendar-selected-day {
   margin: 0 !important;
-  padding: 22px;
-  border-top: 1px solid var(--flower-calendar-line);
+  padding: 18px 20px;
+  border-top: 1px solid var(--fc-line);
 }
 .flower-calendar-selected-day h2 {
-  color: var(--flower-calendar-ink);
+  margin: 0;
+  color: var(--fc-text);
   font-family: inherit !important;
-  font-size: 18px !important;
+  font-size: 16px !important;
 }
 .flower-calendar-selected-day > div > button {
-  border-radius: 8px !important;
-  background: var(--flower-calendar-brand) !important;
+  border-radius: 6px !important;
+  background: var(--fc-primary) !important;
+}
+@media (max-width: 900px) {
+  .flower-calendar-sidebar { width: 220px; flex-basis: 220px; }
+}
+@media (max-width: 700px) {
+  .flower-calendar-page { padding: 10px !important; }
+  .flower-calendar { min-height: 0; flex-direction: column; }
+  .flower-calendar-sidebar { display: none; }
+  .flower-calendar-heading { min-height: 58px; padding: 10px 12px; }
+  .flower-calendar-title { font-size: 17px !important; }
+  .flower-calendar-nav button { min-width: 30px; height: 32px; padding: 0 7px; }
+  .flower-calendar .flx-cal-weekday { padding: 8px 1px; font-size: 9px; }
+  .flower-calendar .flx-cal-day { min-height: 76px; padding: 3px; }
+  .flower-calendar .flx-cal-days { grid-template-rows: repeat(6, minmax(76px, auto)); }
+  .flower-calendar .flower-calendar-date { width: 22px; height: 22px; font-size: 10px; }
+  .flower-calendar .flx-cal-event { padding: 2px 3px; font-size: 8px; }
+  .flower-calendar-selected-day { padding: 14px 10px; }
 }
 .flower-urgency-strip {
   --flower-urgency-ink: #14201b;
@@ -561,17 +727,6 @@ const FLX_RESPONSIVE = `
   .flx-strip::-webkit-scrollbar { display: none !important; }
   .flx-strip > button { flex: 0 0 42px !important; min-width: 42px !important; padding-left: 2px !important; padding-right: 2px !important; }
 
-  .flx-cal-weekdays,
-  .flx-cal-days { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
-  .flx-cal-weekdays { gap: 1px !important; }
-  .flx-cal-days { gap: 1px !important; }
-  .flower-calendar .flx-cal-day { min-height: 72px !important; min-width: 0 !important; padding: 4px !important; }
-  .flower-calendar .flx-cal-weekday { padding: 8px 2px !important; font-size: 8px !important; letter-spacing: 0 !important; }
-  .flx-cal-event { padding: 2px 3px !important; font-size: 8px !important; }
-  .flower-calendar-heading { min-height: 72px; padding: 14px 12px; }
-  .flower-calendar-title { font-size: 19px !important; }
-  .flower-calendar-selected-day { padding: 16px 12px; }
-  .flower-calendar .flx-cal-event { font-size: 7px !important; }
   .flower-urgency-strip { height: 58px; margin: 0 8px 10px; }
   .flower-urgency-label { gap: 8px; padding: 0 11px; }
   .flower-urgency-icon { width: 32px; height: 32px; flex-basis: 32px; }
@@ -1670,93 +1825,156 @@ const FlowerBookingsNew = () => {
     const d = calDate;
     const year = d.getFullYear(), month = d.getMonth();
     const first = new Date(year, month, 1);
-    const startOffset = (first.getDay() + 6) % 7;
+    const startOffset = first.getDay();
     const gridStart = addDays(first, -startOffset);
     const days = [];
     for (let i = 0; i < 42; i++) days.push(addDays(gridStart, i));
     const todayStr = todayKey();
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthBookings = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) => {
+      const date = new Date(year, month, index + 1);
+      return getEventsForDate(fmtDateStr(date));
+    }).flat();
+    const upcomingOrders = flowerUrgency.upcoming.slice(0, 5);
 
     return (
       <section className="flower-calendar">
-        <div className="flower-calendar-heading" style={styles.calHeader}>
-          <div>
-            <div className="flower-calendar-eyebrow">Flower bookings</div>
-            <div className="flower-calendar-title" style={styles.calTitle}>{MONTHS[month]} {year}</div>
+        <aside className="flower-calendar-sidebar">
+          <div className="flower-calendar-sidebar-heading">
+            <div>Calendar <span>{monthBookings.length} this month</span></div>
           </div>
-          <div style={styles.calNav}>
-            <button type="button" aria-label="Previous month" style={styles.calArrow} onClick={() => calNav(-1)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-            </button>
-            <button type="button" className="flower-calendar-today" onClick={calToday}>Today</button>
-            <button type="button" aria-label="Next month" style={styles.calArrow} onClick={() => calNav(1)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-            </button>
+          <div className="flower-calendar-mini">
+            <div className="flower-calendar-mini-heading">
+              <span>{MONTHS[month]} {year}</span>
+              <span>{monthBookings.length} bookings</span>
+            </div>
+            <div className="flower-calendar-mini-week">
+              {weekdays.map(day => <span key={day}>{day.slice(0, 1)}</span>)}
+            </div>
+            <div className="flower-calendar-mini-days">
+              {days.map(day => {
+                const dateStr = fmtDateStr(day);
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                return (
+                  <button
+                    type="button"
+                    key={dateStr}
+                    className={`flower-calendar-mini-day${day.getMonth() !== month ? ' is-outside' : ''}${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
+                    aria-label={day.toLocaleDateString('en-KE', { dateStyle: 'full' })}
+                    aria-pressed={isSelected}
+                    onClick={() => {
+                      setSelectedDate(dateStr);
+                      if (day.getMonth() !== month) setCalDate(new Date(day.getFullYear(), day.getMonth(), 1));
+                    }}
+                  >
+                    {day.getDate()}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-        <div className="flx-cal-weekdays" style={styles.calWeekdays}>
-          {WEEKDAYS.map(w => <div className="flx-cal-weekday" key={w} style={styles.calWeekday}>{w}</div>)}
-        </div>
-        <div className="flx-cal-days" style={styles.calDays}>
-          {days.map(day => {
-            const dateStr = fmtDateStr(day);
-            const outside = day.getMonth() !== month;
-            const isToday = dateStr === todayStr;
-            const isSelected = dateStr === selectedDate;
-            const events = getEventsForDate(dateStr);
-            const visible = events.slice(0, 2);
-            const more = events.length - visible.length;
-
-            return (
-              <div
-                key={dateStr}
-                className={`flx-cal-day${outside ? ' is-outside' : ''}${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}${events.length ? ' has-bookings' : ''}`}
-                style={{
-                  ...styles.calDay,
-                  background: outside ? '#FAF9F7' : isToday ? 'linear-gradient(180deg,rgba(47,79,62,.05),#fff 40%)' : '#fff',
-                  border: `1px solid ${isToday ? '#2F4F3E' : '#EAE7E2'}`,
-                  opacity: outside ? 0.5 : 1,
-                }}
-                onClick={() => openDayList(dateStr)}
-              >
-                <div style={styles.calDayNum}>
-                  <span className="flower-calendar-date" style={isToday ? styles.todayNum : {}}>{day.getDate()}</span>
-                </div>
-                {visible.map(b => {
-                  // Exact name only — never substitute another arrangement
-                  const matchedSample = arrangements.find(a => a.title === b.flower_type);
-                  const evTitle = matchedSample?.title || b.flower_type || 'Order';
-                  const evColor = getBookingDotColor(b);
-                  return (
-                    <div className="flx-cal-event" key={b.id} style={{ ...styles.calEvent, background: `${evColor}1A`, color: evColor }}>
-                      {b.time ? String(b.time).slice(0, 5) : ''} {evTitle.split(' ')[0]}
-                    </div>
-                  );
-                })}
-                {more > 0 && (
-                  <div className="flower-calendar-more" style={{ fontSize: '9px', color: '#9C9389', fontWeight: 700, padding: '2px 6px' }}>
-                    +{more} more
-                  </div>
-                )}
+          <div className="flower-calendar-sidebar-section">
+            <h3 className="flower-calendar-sidebar-title">Booking status</h3>
+            <div className="flower-calendar-legend">
+              <div className="flower-calendar-legend-item"><i className="flower-calendar-legend-dot" style={{ background: '#d97706' }} />Booked</div>
+              <div className="flower-calendar-legend-item"><i className="flower-calendar-legend-dot" style={{ background: '#059669' }} />Completed</div>
+              <div className="flower-calendar-legend-item"><i className="flower-calendar-legend-dot" style={{ background: '#dc2626' }} />Cancelled</div>
+            </div>
+          </div>
+          <div className="flower-calendar-sidebar-section">
+            <h3 className="flower-calendar-sidebar-title">Next funeral dates</h3>
+            {upcomingOrders.length ? (
+              <div className="flower-calendar-upcoming">
+                {upcomingOrders.map(({ booking, dateKey }, index) => (
+                  <button
+                    type="button"
+                    className="flower-calendar-upcoming-item"
+                    key={`${booking.booking_id || booking.id || dateKey}-${index}`}
+                    onClick={() => viewBooking(booking.booking_id || booking.id)}
+                  >
+                    <strong>{booking.deceased_name || booking.flower_type || 'Flower booking'}</strong>
+                    <span>{new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                  </button>
+                ))}
               </div>
-            );
-          })}
-        </div>
-
-        {selectedDate && (
-          <div className="flower-calendar-selected-day" style={styles.selectedDayPanel}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h2 style={styles.sectionTitle}>{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} Bookings</h2>
-              <button style={styles.addBookingBtn} onClick={() => openNewBookingForm(selectedDate)}>
-                <Check size={14} /> Add Booking
+            ) : <div className="flower-calendar-upcoming-empty">No upcoming funeral dates</div>}
+          </div>
+        </aside>
+        <div className="flower-calendar-main">
+          <div className="flower-calendar-heading">
+            <div className="flower-calendar-title">{MONTHS[month]} {year}</div>
+            <div className="flower-calendar-nav">
+              <button type="button" aria-label="Previous month" onClick={() => calNav(-1)}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+              </button>
+              <button type="button" onClick={calToday}>Today</button>
+              <button type="button" aria-label="Next month" onClick={() => calNav(1)}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
             </div>
-            {getEventsForDate(selectedDate).length === 0 ? (
-              <p style={{ color: '#9C9389', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>No bookings scheduled.</p>
-            ) : (
-              getEventsForDate(selectedDate).map(b => renderBookingCard(b))
-            )}
           </div>
-        )}
+          <div className="flx-cal-weekdays">
+            {weekdays.map(day => <div className="flx-cal-weekday" key={day}>{day}</div>)}
+          </div>
+          <div className="flx-cal-days">
+            {days.map(day => {
+              const dateStr = fmtDateStr(day);
+              const outside = day.getMonth() !== month;
+              const isToday = dateStr === todayStr;
+              const isSelected = dateStr === selectedDate;
+              const events = getEventsForDate(dateStr);
+              const visible = events.slice(0, 3);
+              const more = events.length - visible.length;
+
+              return (
+                <div
+                  key={dateStr}
+                  className={`flx-cal-day${outside ? ' is-outside' : ''}${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}${events.length ? ' has-bookings' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${day.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long' })}${events.length ? `, ${events.length} booking${events.length === 1 ? '' : 's'}` : ', no bookings'}`}
+                  onClick={() => openDayList(dateStr)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openDayList(dateStr);
+                    }
+                  }}
+                >
+                  <div className="flower-calendar-date">{day.getDate()}</div>
+                  {visible.map((b, index) => {
+                    const matchedSample = arrangements.find(a => a.title === b.flower_type);
+                    const evTitle = matchedSample?.title || b.flower_type || 'Order';
+                    const evColor = getBookingDotColor(b);
+                    return (
+                      <div className="flx-cal-event" key={`${b.booking_id || b.id || dateStr}-${index}`} style={{ background: `${evColor}1A`, color: evColor }}>
+                        {b.time ? `${String(b.time).slice(0, 5)} ` : ''}{evTitle.split(' ')[0]}
+                      </div>
+                    );
+                  })}
+                  {more > 0 && <div className="flower-calendar-more">+{more} more</div>}
+                </div>
+              );
+            })}
+          </div>
+
+          {selectedDate && (
+            <div className="flower-calendar-selected-day">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
+                <h2>{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} Bookings</h2>
+                <button style={styles.addBookingBtn} onClick={() => openNewBookingForm(selectedDate)}>
+                  <Check size={14} /> Add Booking
+                </button>
+              </div>
+              {getEventsForDate(selectedDate).length === 0 ? (
+                <p style={{ color: '#6c757d', fontSize: '13px', textAlign: 'center', padding: '18px 0' }}>No bookings scheduled.</p>
+              ) : (
+                getEventsForDate(selectedDate).map(b => renderBookingCard(b))
+              )}
+            </div>
+          )}
+        </div>
       </section>
     );
   };
