@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Flower bookings: trends and decisions</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: light dark;
+            box-sizing: border-box;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            --bg: #fff;
+            --ink: #1c1a17;
+            --muted: #6f675f;
+            --line: #e8e4de;
+            --soft: #f6f4f1;
+            --past: #cfc8c0;
+            --ok: #2f8f66;
+            --okbg: #eaf6f0;
+            --warn: #b26a00;
+            --warnbg: #fff4de;
+            --bad: #c4103a;
+            --badbg: #fdecef
+        }
+
+        @media (prefers-color-scheme:dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #17151a;
+                --ink: #f1ede8;
+                --muted: #a69d94;
+                --line: #2e2a31;
+                --soft: #1f1c23;
+                --past: #4d4650;
+                --ok: #5fb892;
+                --okbg: #17261f;
+                --warn: #e8a33d;
+                --warnbg: #2a2113;
+                --bad: #ff6b87;
+                --badbg: #2c161c
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #17151a;
+            --ink: #f1ede8;
+            --muted: #a69d94;
+            --line: #2e2a31;
+            --soft: #1f1c23;
+            --past: #4d4650;
+            --ok: #5fb892;
+            --okbg: #17261f;
+            --warn: #e8a33d;
+            --warnbg: #2a2113;
+            --bad: #ff6b87;
+            --badbg: #2c161c
+        }
+
+        html {
+            scroll-padding-top: env(safe-area-inset-top, 0px)
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font: 16px/1.5 'DM Sans', system-ui, sans-serif
+        }
+
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 20px 16px 48px
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 26px;
+            line-height: 1.2
+        }
+
+        .sub {
+            margin: 4px 0 18px;
+            color: var(--muted)
+        }
+
+        .status {
+            padding: 22px 24px;
+            border-radius: 18px;
+            border: 2px solid var(--c);
+            background: var(--cb)
+        }
+
+        .ok {
+            --c: var(--ok);
+            --cb: var(--okbg)
+        }
+
+        .warn {
+            --c: var(--warn);
+            --cb: var(--warnbg)
+        }
+
+        .bad {
+            --c: var(--bad);
+            --cb: var(--badbg)
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 99px;
+            background: var(--c);
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: .04em;
+            text-transform: uppercase
+        }
+
+        .status h2 {
+            margin: 10px 0 6px;
+            font-size: 24px;
+            line-height: 1.25
+        }
+
+        .status p {
+            margin: 0;
+            font-size: 17px
+        }
+
+        .sig {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 14px 0 22px
+        }
+
+        .s {
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-left: 6px solid var(--c);
+            border-radius: 14px;
+            background: var(--soft)
+        }
+
+        .s small {
+            display: block;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .s b {
+            display: block;
+            font-size: 30px;
+            line-height: 1.2
+        }
+
+        .s span {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--c)
+        }
+
+        .card {
+            padding: 20px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            margin-bottom: 16px
+        }
+
+        .card h3 {
+            margin: 0 0 2px;
+            font-size: 18px
+        }
+
+        .card>p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px
+        }
+
+        .area {
+            position: relative;
+            height: 200px;
+            margin-top: 36px;
+            border-bottom: 2px solid var(--line)
+        }
+
+        .bars {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: flex-end;
+            gap: 6px
+        }
+
+        .col {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            align-items: flex-end
+        }
+
+        .bar {
+            width: 100%;
+            border-radius: 8px 8px 0 0;
+            background: var(--past);
+            position: relative;
+            min-height: 2px
+        }
+
+        .bar em {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: -22px;
+            text-align: center;
+            font-style: normal;
+            font-weight: 700;
+            font-size: 14px
+        }
+
+        .bar.mid {
+            background: var(--warn)
+        }
+
+        .bar.hi {
+            background: var(--bad)
+        }
+
+        .bar.f {
+            background: var(--ok);
+            outline: 2px dashed rgba(255, 255, 255, .6);
+            outline-offset: -3px
+        }
+
+        .bar.f.mid {
+            background: var(--warn)
+        }
+
+        .bar.f.hi {
+            background: var(--bad)
+        }
+
+        .usual {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-top: 2px dashed var(--muted);
+            pointer-events: none
+        }
+
+        .usual span {
+            position: absolute;
+            right: 0;
+            top: -22px;
+            background: var(--bg);
+            padding: 0 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted)
+        }
+
+        .labs {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px
+        }
+
+        .labs div {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.25
+        }
+
+        .labs .f {
+            color: var(--ink);
+            font-weight: 700
+        }
+
+        .key {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 4px
+        }
+
+        .key i {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 6px;
+            vertical-align: -1px
+        }
+
+        .take {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--soft);
+            font-size: 15px
+        }
+
+        .how {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 10px
+        }
+
+        .bars svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible
+        }
+
+        .lp,
+        .lf {
+            fill: none;
+            stroke: var(--muted);
+            stroke-width: 3;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            vector-effect: non-scaling-stroke
+        }
+
+        .lf {
+            stroke: var(--ok);
+            stroke-dasharray: 7 6
+        }
+
+        .dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid var(--bg);
+            box-sizing: content-box;
+            transform: translate(-50%, 50%)
+        }
+
+        .dot em {
+            position: absolute;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
+            font-style: normal;
+            font-weight: 700;
+            font-size: 13px;
+            white-space: nowrap;
+            color: var(--ink)
+        }
+
+        .dot.ok {
+            background: var(--ok)
+        }
+
+        .dot.warn {
+            background: var(--warn)
+        }
+
+        .dot.bad {
+            background: var(--bad)
+        }
+
+        .dot.p {
+            background: var(--muted)
+        }
+
+        .fr {
+            display: grid;
+            grid-template-columns: 110px 1fr 70px;
+            gap: 10px;
+            align-items: center;
+            padding: 7px 0;
+            font-size: 15px
+        }
+
+        .fr .t {
+            height: 18px;
+            border-radius: 9px;
+            background: var(--soft);
+            overflow: hidden;
+            border: 1px solid var(--line)
+        }
+
+        .fr .t i {
+            display: block;
+            height: 100%;
+            border-radius: 9px;
+            background: var(--ok)
+        }
+
+        .fr.mid .t i {
+            background: var(--warn)
+        }
+
+        .fr.hi .t i {
+            background: var(--bad)
+        }
+
+        .fr b {
+            display: block;
+            text-align: right;
+            line-height: 1.2
+        }
+
+        .fr small {
+            display: block;
+            text-align: right;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .fr.mid small {
+            color: var(--warn)
+        }
+
+        .fr.hi small {
+            color: var(--bad)
+        }
+
+        @media (max-width:700px) {
+            .fr {
+                grid-template-columns: 90px 1fr 60px
+            }
+
+            .sig {
+                grid-template-columns: 1fr
+            }
+
+            .status h2 {
+                font-size: 21px
+            }
+
+            .labs div {
+                font-size: 10px
+            }
+
+            .bar em {
+                font-size: 12px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>Flower bookings</h1>
+        <p class="sub">Daily, weekly and monthly booking trends, with a clear decision on how many materials to order.
+        </p>
+        <div id="status"></div>
+        <div class="sig" id="sig"></div>
+
+        <section class="card">
+            <h3>Next 7 days</h3>
+            <p>Funerals needing flowers each day, starting today</p>
+            <div class="area">
+                <div class="bars" id="b7"></div>
+                <div class="usual" id="u7"></div>
+            </div>
+            <div class="labs" id="l7"></div>
+            <div class="take" id="t7"></div>
+        </section>
+
+        <section class="card">
+            <h3>Weekly trend</h3>
+            <p>Bookings per week: last 8 weeks and the 3 weeks ahead</p>
+            <div class="area">
+                <div class="bars" id="bw"></div>
+                <div class="usual" id="uw"></div>
+            </div>
+            <div class="labs" id="lw"></div>
+            <div class="take" id="tw"></div>
+        </section>
+
+        <section class="card">
+            <h3>Monthly trend</h3>
+            <p>Bookings per month: last 6 months and this month (projected to the month end)</p>
+            <div class="area">
+                <div class="bars" id="bm"></div>
+                <div class="usual" id="um"></div>
+            </div>
+            <div class="labs" id="lm"></div>
+            <div class="take" id="tm"></div>
+        </section>
+
+        <section class="card">
+            <h3>Most booked flowers</h3>
+            <p>Stems booked in the last 30 days, with the change vs the 30 days before</p>
+            <div id="fl" style="margin-top:10px"></div>
+            <div class="take" id="tf"></div>
+        </section>
+
+        <div class="key"><span><i style="background:var(--muted)"></i>Past</span><span><i
+                    style="background:var(--ok)"></i>Coming up</span><span><i style="background:var(--warn)"></i>Rising
+                (10%+ above usual)</span><span><i style="background:var(--bad)"></i>High (25%+ above usual)</span></div>
+        <p class="how">"Usual" is the average of your past periods. The decision follows the highest warning among the
+            next 7 days, the weekly trend and the monthly trend. Future figures can still grow as more families book.
+        </p>
+    </div>
+    <script>
+        // Sample numbers: replace with your real booking counts.
+        var DAILY7 = [3, 4, 6, 2, 7, 8, 5];                 // next 7 days, starting today
+        var PAST_W = [18, 21, 17, 24, 20, 19, 23, 22];       // last 8 weeks, oldest first
+        var AHEAD_W = [23, 38, 22];                     // this week, next week, in 2 weeks (booked so far)
+        var PAST_M = [78, 84, 81, 92, 88, 95];             // last 6 full months, oldest first
+        var MONTH_SO_FAR = 52;                        // bookings this month up to today
+        var LEAD = 3;                                 // days the supplier needs to deliver
+
+        function sum(a) { return a.reduce(function (x, y) { return x + y }, 0) }
+        function $(i) { return document.getElementById(i) }
+        function add(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x }
+        function fd(d) { return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) }
+        function lvl(v, u) { return v >= u * 1.25 ? 2 : v >= u * 1.10 ? 1 : 0 }
+        function pc(v, u) { return Math.round((v / u - 1) * 100) }
+        var NAMES = ['Normal', 'Rising', 'High'], CLS = ['ok', 'warn', 'bad'];
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        var mon0 = add(today, -((today.getDay() + 6) % 7));
+
+        var avgW = sum(PAST_W) / PAST_W.length, avgD = avgW / 7, avgM = sum(PAST_M) / PAST_M.length;
+        var dim = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        var proj = Math.round(MONTH_SO_FAR / today.getDate() * dim);
+        var sum7 = sum(DAILY7), peakI = 0; AHEAD_W.forEach(function (v, i) { if (v > AHEAD_W[peakI]) peakI = i });
+        var peakW = AHEAD_W[peakI], wkName = ['this week', 'next week', 'in 2 weeks'][peakI];
+        var L7 = lvl(sum7, avgW), LW = lvl(peakW, avgW), LM = lvl(proj, avgM), worst = Math.max(L7, LW, LM);
+        var start = peakI === 0 ? today : add(mon0, 7 * peakI), by = add(start, -LEAD); if (by < today) by = today;
+        var pct = Math.max(pc(sum7, avgW), pc(peakW, avgW), pc(proj, avgM));
+        var when = L7 > 0 ? 'today' : LW > 0 ? 'by ' + fd(by) : 'this week';
+
+        var T = [['ok', 'Normal', 'Bookings are normal', 'Keep ordering your usual amount of materials. No action needed.'],
+        ['warn', 'Rising', 'Bookings are going up', 'Order a little extra: about ' + pct + '% more than usual, ' + when + '.'],
+        ['bad', 'High', 'Bookings are high: order more materials now', 'Order about ' + pct + '% more flowers and materials than usual, ' + when + '. Suppliers need about ' + LEAD + ' days to deliver.']][worst];
+        $('status').innerHTML = '<div class="status ' + T[0] + '"><span class="tag">' + T[1] + '</span><h2>' + T[2] + '</h2><p>' + T[3] + '</p></div>';
+
+        function sig(l, v, sub, lv) { return '<div class="s ' + CLS[lv] + '"><small>' + l + '</small><b>' + v + '</b><span>' + NAMES[lv] + ': ' + sub + '</span></div>' }
+        $('sig').innerHTML = sig('Next 7 days', sum7, (pc(sum7, avgW) >= 0 ? '+' : '') + pc(sum7, avgW) + '% vs a usual week', L7)
+            + sig('Weekly trend', peakW, 'busiest week ' + wkName + ', ' + (pc(peakW, avgW) >= 0 ? '+' : '') + pc(peakW, avgW) + '%', LW)
+            + sig('Monthly trend', proj, 'projected this month, ' + (pc(proj, avgM) >= 0 ? '+' : '') + pc(proj, avgM) + '%', LM);
+
+        function chart(id, vals, labs, usual, first, uLab, max, kind) {
+            max = max || Math.max(10, Math.ceil(Math.max.apply(null, vals.concat(usual)) * 1.12 / 10) * 10);
+            if (kind === 'bar') { $('b' + id).innerHTML = vals.map(function (v, i) { var f = i >= first, l = ['', 'mid', 'hi'][lvl(v, usual)]; return '<div class="col"><div class="bar ' + (f ? 'f ' : '') + l + '" style="height:' + (v / max * 100) + '%"><em>' + v + '</em></div></div>' }).join('') } else {
+                var n = vals.length, pt = function (i) { return ((i + .5) / n * 100).toFixed(2) + ',' + (100 - vals[i] / max * 100).toFixed(2) }, a = [], b = [], i;
+                for (i = 0; i < n; i++) { if (i < first) a.push(pt(i)); if (i >= first - 1) b.push(pt(i)) }
+                $('b' + id).innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline class="lp" points="' + a.join(' ') + '"/><polyline class="lf" points="' + b.join(' ') + '"/></svg>'
+                    + vals.map(function (v, i) { var k = lvl(v, usual), l = k ? ['', 'warn', 'bad'][k] : (i >= first ? 'ok' : 'p'); return '<span class="dot ' + l + '" style="left:' + ((i + .5) / n * 100) + '%;bottom:' + (v / max * 100) + '%"><em>' + v + '</em></span>' }).join('')
+            }
+            $('u' + id).style.bottom = (usual / max * 100) + '%';
+            $('u' + id).innerHTML = '<span>' + uLab + '</span>';
+            $('l' + id).innerHTML = labs.map(function (t, i) { return '<div class="' + (i >= first ? 'f' : '') + '">' + t + '</div>' }).join('')
+        }
+
+        // next 7 days
+        var dl = DAILY7.map(function (v, i) { var d = add(today, i); return (i === 0 ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'short' })) + '<br>' + d.getDate() });
+        chart('7', DAILY7, dl, avgD, 0, 'Usual day: ' + avgD.toFixed(1), 12, 'bar');
+        var bi = 0; DAILY7.forEach(function (v, i) { if (v > DAILY7[bi]) bi = i });
+        $('t7').innerHTML = '<b>' + sum7 + ' funerals in the next 7 days</b> (' + (pc(sum7, avgW) >= 0 ? '+' : '') + pc(sum7, avgW) + '% vs a usual week of ' + Math.round(avgW) + '). Busiest day: <b>' + fd(add(today, bi)) + '</b> with ' + DAILY7[bi] + '.';
+
+        // weekly
+        var wl = PAST_W.map(function (v, i) { return add(mon0, 7 * (i - PAST_W.length)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }).concat(['This week', 'Next week', 'In 2 weeks']);
+        chart('w', PAST_W.concat(AHEAD_W), wl, avgW, PAST_W.length, 'Usual week: ' + Math.round(avgW));
+        var half = sum(PAST_W.slice(4)) / 4, prev = sum(PAST_W.slice(0, 4)) / 4, tr = pc(half, prev);
+        $('tw').innerHTML = 'Busiest week ahead: <b>' + wkName + ' with ' + peakW + ' bookings</b> (' + (pc(peakW, avgW) >= 0 ? '+' : '') + pc(peakW, avgW) + '% vs usual). Over the last 8 weeks the trend is ' + (Math.abs(tr) < 3 ? 'flat' : tr > 0 ? 'up ' + tr + '%' : 'down ' + Math.abs(tr) + '%') + '.';
+
+        // monthly
+        var ml = PAST_M.map(function (v, i) { return new Date(today.getFullYear(), today.getMonth() - (PAST_M.length - i), 1).toLocaleDateString('en-GB', { month: 'short' }) })
+            .concat([today.toLocaleDateString('en-GB', { month: 'short' }) + '<br>(projected)']);
+        chart('m', PAST_M.concat([proj]), ml, avgM, PAST_M.length, 'Usual month: ' + Math.round(avgM), undefined, 'bar');
+        $('tm').innerHTML = '<b>' + MONTH_SO_FAR + ' bookings so far this month</b>, on track for about <b>' + proj + '</b> (' + (pc(proj, avgM) >= 0 ? '+' : '') + pc(proj, avgM) + '% vs a usual month of ' + Math.round(avgM) + ').';
+        // Sample numbers: stems booked in the last 30 days vs the 30 days before. Replace with your real counts.
+        var FLOWERS = [["Red roses", 420, 320], ["White lilies", 310, 300], ["Mums", 260, 215], ["Carnations", 190, 195], ["Gypsophila", 150, 120], ["Orchids", 90, 95]];
+        FLOWERS.sort(function (a, b) { return b[1] - a[1] });
+        var fmx = FLOWERS[0][1];
+        $('fl').innerHTML = FLOWERS.map(function (f) {
+            var p = pc(f[1], f[2]), k = lvl(f[1], f[2]);
+            return '<div class="fr ' + ['', 'mid', 'hi'][k] + '"><span>' + f[0] + '</span><div class="t"><i style="width:' + (f[1] / fmx * 100) + '%"></i></div><div><b>' + f[1] + '</b><small>' + (p >= 0 ? '+' : '') + p + '%</small></div></div>'
+        }).join('');
+        var rise = FLOWERS.filter(function (f) { return lvl(f[1], f[2]) > 0 }).map(function (f) { return f[0] });
+        $('tf').innerHTML = rise.length ? '<b>Order more: ' + rise.join(', ') + '.</b> These are booked 10% or more above the previous 30 days.' : 'No flower is booked much above the previous 30 days. Keep your usual flower order.';
+    </script>
+</body>
+
+</html>

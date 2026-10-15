@@ -358,6 +358,88 @@ const FLX_RESPONSIVE = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.flower-urgency-strip {
+  height: 68px;
+  margin: 0 14px 12px;
+  border-radius: 16px;
+}
+.flower-urgency-strip::after { animation: none; box-shadow: inset 0 0 0 1px rgba(229, 23, 63, .18); }
+.flower-urgency-scroll {
+  z-index: 1;
+  flex: 0 0 34px;
+  border: 0;
+  border-left: 1px solid var(--flower-urgency-line);
+  background: #fff;
+  color: #c4103a;
+  cursor: pointer;
+  font: 700 22px/1 'DM Sans', system-ui, sans-serif;
+}
+.flower-urgency-scroll:first-of-type { border-right: 1px solid var(--flower-urgency-line); border-left: 0; }
+.flower-urgency-scroll:hover { background: #fdf1f6; }
+.flower-urgency-scroll:focus-visible,
+.flower-urgency-item:focus-visible { outline: 2px solid #d6336c; outline-offset: -3px; }
+.flower-urgency-rail {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.flower-urgency-rail::-webkit-scrollbar { display: none; }
+.flower-urgency-item {
+  width: 300px;
+  min-width: 260px;
+  max-width: 340px;
+  border: 0;
+  border-right: 1px solid var(--flower-urgency-line);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  scroll-snap-align: start;
+}
+.flower-urgency-item:hover,
+.flower-urgency-item.is-selected { background: rgba(214, 51, 108, .07); }
+.flower-urgency-item.is-selected { box-shadow: inset 0 -3px 0 #d6336c; }
+.flower-urgency-item::after { display: none; }
+.flower-urgency-when { display: flex; min-width: 58px; flex-direction: column; gap: 3px; color: #c4103a; }
+.flower-urgency-when strong { font-size: 15px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.flower-urgency-when small { color: var(--flower-urgency-muted); font-size: 10px; }
+.flower-urgency-what { min-width: 0; max-width: 185px; }
+.flower-urgency-what strong { font-size: 12px; }
+.flower-urgency-what span { font-size: 11px; }
+.flower-urgency-pill { flex: none; padding: 4px 9px; border-radius: 999px; background: #d6336c; color: #fff; font-size: 10px; }
+.flower-urgency-item.is-soon .flower-urgency-when strong { color: #b26a00; }
+.flower-urgency-item.is-soon .flower-urgency-pill { background: #fff1d6; color: #8a5a00; }
+.flower-urgency-item.is-later .flower-urgency-when strong { color: #2f7a58; }
+.flower-urgency-item.is-later .flower-urgency-pill { background: #e6f3ec; color: #2f7a58; }
+.flower-urgency-detail {
+  margin: -2px 14px 14px;
+  padding: 16px 18px;
+  border: 1px solid #efe3e8;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(120, 30, 60, .06);
+}
+.flower-urgency-detail-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.flower-urgency-detail-head h2 { margin: 0; color: #1c1a17; font: 600 19px 'Playfair Display', Georgia, serif; }
+.flower-urgency-detail-head p { margin: 4px 0 0; color: #8a8178; font-size: 12px; }
+.flower-urgency-detail-actions { display: flex; align-items: center; gap: 8px; }
+.flower-urgency-detail-actions a,
+.flower-urgency-open { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; padding: 8px 14px; border: 0; border-radius: 9px; background: #2f4f3e; color: #fff; font: 700 12px 'DM Sans', system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.flower-urgency-detail-actions button { width: 36px; height: 36px; border: 1px solid #efe3e8; border-radius: 9px; background: #fff; color: #6a625a; cursor: pointer; font-size: 22px; }
+.flower-urgency-arrangements { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.flower-urgency-arrangements span { padding: 5px 12px; border: 1px solid #f6c6da; border-radius: 999px; background: #fdf1f6; color: #9d1f50; font-size: 12px; font-weight: 700; }
+.flower-urgency-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 20px; margin: 0; }
+.flower-urgency-facts dt { color: #8a8178; font-size: 11px; }
+.flower-urgency-facts dd { margin: 2px 0 0; color: #1c1a17; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.flower-urgency-ribbon { margin: 14px 0 0; padding: 10px 14px; border-left: 3px solid #d6336c; border-radius: 4px 10px 10px 4px; background: #fdf1f6; font: italic 600 15px 'Playfair Display', Georgia, serif; }
+.flower-urgency-note { margin: 10px 0 0; padding: 10px 14px; border: 1px solid #f3d9a4; border-radius: 10px; background: #fff6e5; color: #554b38; font-size: 13px; }
+.flower-urgency-open { margin-top: 14px; background: #d6336c; }
 .flower-calendar-event-name { font-size: 10px; font-weight: 800; }
 .flower-calendar-event-info { margin-top: 2px; font-size: 9px; font-weight: 600; opacity: .95; }
 .flower-calendar .flower-calendar-more {
@@ -610,15 +692,19 @@ const FLX_RESPONSIVE = `
   .flx-strip::-webkit-scrollbar { display: none !important; }
   .flx-strip > button { flex: 0 0 42px !important; min-width: 42px !important; padding-left: 2px !important; padding-right: 2px !important; }
 
-  .flower-urgency-strip { height: 58px; margin: 0 8px 10px; }
+  .flower-urgency-strip { height: 60px; margin: 0 8px 10px; }
+  .flower-urgency-scroll { display: none; }
+  .flower-urgency-rail { scroll-snap-type: x proximity; }
   .flower-urgency-label { gap: 8px; padding: 0 11px; }
   .flower-urgency-icon { width: 32px; height: 32px; flex-basis: 32px; }
   .flower-urgency-label strong { font-size: 11px; }
   .flower-urgency-label small { font-size: 9px; }
-  .flower-urgency-item { gap: 7px; padding: 0 14px; }
+  .flower-urgency-item { width: 270px; min-width: 255px; gap: 8px; padding: 0 12px; }
   .flower-urgency-what { max-width: 140px; }
-  .flower-urgency-when { font-size: 10px; }
-  .flower-urgency-pill { padding: 4px 7px; font-size: 9px; }
+  .flower-urgency-detail { margin: -2px 8px 10px; padding: 14px; }
+  .flower-urgency-detail-actions { width: 100%; }
+  .flower-urgency-detail-actions a { flex: 1; }
+  .flower-urgency-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
 
   /* Samples gallery — one card per row. The grid used a fixed 200px minimum,
      which still fitted TWO columns on a 375px phone once padding was added,
@@ -729,13 +815,18 @@ const FlowerBookingsNew = () => {
     return v === 'samples' ? 'samples' : 'list';
   });
   const [urgencyNow, setUrgencyNow] = useState(() => Date.now());
+  const [selectedUrgencyBookingId, setSelectedUrgencyBookingId] = useState(null);
   const [calDate, setCalDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [editingLineItems, setEditingLineItems] = useState([]);
   const [editingInitialQuantity, setEditingInitialQuantity] = useState(null);
+  const [previewSample, setPreviewSample] = useState(null);
+  const [updatingBookingSamples, setUpdatingBookingSamples] = useState(false);
   const imageCarouselRef = useRef(null);
+  const urgencyRailRef = useRef(null);
+  const bookingSampleInputRef = useRef(null);
   const [newBooking, setNewBooking] = useState({
     arrangement_type: '',
     flower_designs: '',
@@ -818,6 +909,48 @@ const FlowerBookingsNew = () => {
     setLoading(false);
   }, [showToast]);
 
+  const updateBookingSamples = useCallback(async (bookingId, files = [], removeImages = []) => {
+    if (!bookingId || updatingBookingSamples) return false;
+    const formData = new FormData();
+    files.forEach(file => formData.append('images', file));
+    if (removeImages.length) formData.append('remove_images', JSON.stringify(removeImages));
+    setUpdatingBookingSamples(true);
+    try {
+      const response = await api.post(
+        `/florist/bookings/${encodeURIComponent(bookingId)}/samples`,
+        formData
+      );
+      const savedImages = response.data?.data;
+      if (!Array.isArray(savedImages)) throw new Error('The server returned an invalid photo list');
+      setBookings(current => current.map(booking =>
+        String(booking.id || booking.booking_id) === String(bookingId)
+          ? { ...booking, sample_images: savedImages }
+          : booking
+      ));
+      showToast('Booking reference photos updated');
+      return true;
+    } catch (error) {
+      const message = error?.response?.data?.message
+        || error?.response?.data?.error
+        || error?.friendlyMessage
+        || 'Could not update booking reference photos';
+      console.error('[FlowerBookings] Reference photo update failed:', error?.response?.data || error.message);
+      showToast(message, 'error');
+      return false;
+    } finally {
+      setUpdatingBookingSamples(false);
+    }
+  }, [showToast, updatingBookingSamples]);
+
+  useEffect(() => {
+    if (!previewSample) return undefined;
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setPreviewSample(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [previewSample]);
+
   // Real-time socket listeners for flower bookings
   useEffect(() => {
     if (!socket || !connected) return;
@@ -899,14 +1032,22 @@ const FlowerBookingsNew = () => {
       if (!dateKey || dateKey < today) return [];
       const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
       if (!match) return [];
-      const dueDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+      const serviceTime = getBookingNoteTag(booking, 'SERVICE-TIME');
+      const timeMatch = /^(\d{1,2}):(\d{2})/.exec(serviceTime);
+      const dueDate = new Date(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+        timeMatch ? Number(timeMatch[1]) : 12,
+        timeMatch ? Number(timeMatch[2]) : 0
+      );
       const hoursUntil = (dueDate.getTime() - now) / (60 * 60 * 1000);
       const isDueToday = dateKey === today;
       return [{
         booking,
         dateKey,
         dueDate,
-        hoursUntil: Math.max(0, hoursUntil),
+        hoursUntil,
         isDueToday,
       }];
     }).sort((a, b) => a.dueDate - b.dueDate);
@@ -1134,17 +1275,37 @@ const FlowerBookingsNew = () => {
         time: newBooking.time,
         priority: newBooking.priority,
         notes: notesValue.trim() || null,
-        sample_uploads: newBooking.sample_uploads || [],
       };
+      const sampleFiles = newBooking.sample_uploads || [];
+      let sampleUploadFailed = false;
       if (editingBookingId) {
         await api.put(`/florist/bookings/${encodeURIComponent(editingBookingId)}`, payload);
-        showToast('Flower booking updated');
+        if (sampleFiles.length) {
+          sampleUploadFailed = !(await updateBookingSamples(editingBookingId, sampleFiles));
+        }
       } else {
-        await api.post('/florist/bookings', payload);
-        showToast(items.length > 1 ? `${items.length} flower orders placed!` : 'Booking placed successfully!');
+        const response = await api.post('/florist/bookings', payload);
+        const createdBookingId = response.data?.data?.id || response.data?.data?.booking_id;
+        if (sampleFiles.length) {
+          if (createdBookingId) {
+            sampleUploadFailed = !(await updateBookingSamples(createdBookingId, sampleFiles));
+          } else {
+            sampleUploadFailed = true;
+            showToast('Booking was created, but its reference photos could not be linked. Add them from the booking details.', 'error');
+          }
+        }
       }
 
       await loadBookings();
+      if (sampleUploadFailed) {
+        showToast(editingBookingId
+          ? 'Booking updated, but some reference photos could not be saved.'
+          : 'Booking placed, but some reference photos could not be saved.', 'error');
+      } else {
+        showToast(editingBookingId
+          ? 'Flower booking updated'
+          : items.length > 1 ? `${items.length} flower orders placed!` : 'Booking placed successfully!');
+      }
       if (editingBookingId) setActiveBookingId(editingBookingId);
       setView('list');
       setEditingBookingId(null);
@@ -1195,7 +1356,7 @@ const FlowerBookingsNew = () => {
       placingRef.current = false;
       setPlacingOrder(false);
     }
-  }, [newBooking, editingBookingId, editingLineItems, editingInitialQuantity, showToast, loadBookings]);
+  }, [newBooking, editingBookingId, editingLineItems, editingInitialQuantity, showToast, loadBookings, updateBookingSamples]);
 
   const updateStatus = useCallback(async (id, nextStatus) => {
     const url = `/florist/bookings/${id}/status`;
@@ -1367,76 +1528,110 @@ const FlowerBookingsNew = () => {
   }, [showToast, loadArrangements, loadBookings]);
 
   const renderFlowerUrgency = () => {
-    const isHighVolume = flowerUrgency.upcoming.length > 60;
-    if (!isHighVolume && flowerUrgency.dueSoon.length === 0) return null;
-    const orders = flowerUrgency.dueSoon.length
-      ? flowerUrgency.dueSoon
-      : flowerUrgency.upcoming.slice(0, 12);
-    const renderOrder = ({ booking, dateKey, hoursUntil, isDueToday }, index) => {
-      const urgencyClass = isDueToday || hoursUntil < 8 ? 'is-hot' : hoursUntil < 24 ? 'is-soon' : 'is-later';
-      const timeLabel = isDueToday
-        ? 'Due today'
-        : hoursUntil < 1
-          ? 'Due shortly'
-          : hoursUntil < 24
-            ? `in ${Math.ceil(hoursUntil)} h`
-            : `in ${Math.ceil(hoursUntil / 24)} d`;
-      const dateLabel = new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-KE', {
-        weekday: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      const location = booking.funeral_home || booking.branch || booking.service_type || 'Funeral service';
-      return (
-        <div className={`flower-urgency-item ${urgencyClass}`} key={`${booking.booking_id || booking.id || dateKey}-${index}`}>
-          <Flower2 className="flower-urgency-glyph" aria-hidden="true" />
-          <span className="flower-urgency-when">{dateLabel}</span>
-          <span className="flower-urgency-what">
-            <strong>{booking.flower_type || booking.arrangement_name || 'Flower order'}</strong>
-            <span>{booking.deceased_name || 'Deceased record'} · {location}</span>
-          </span>
-          <span className="flower-urgency-pill"><i />{timeLabel}</span>
-        </div>
-      );
-    };
-    const renderOrderSet = (suffix, hidden = false) => (
-      <div className="flower-urgency-set" key={suffix} aria-hidden={hidden || undefined}>
-        {orders.map(renderOrder)}
-        {isHighVolume && (
-          <div className="flower-urgency-overflow">
-            <span>{flowerUrgency.upcoming.length} upcoming flower bookings</span>
-            <span>·</span>
-            <span>Review the production schedule</span>
-          </div>
-        )}
-      </div>
+    if (flowerUrgency.upcoming.length === 0) return null;
+    const todayCount = flowerUrgency.upcoming.filter(order => order.isDueToday).length;
+    const selectedOrder = flowerUrgency.upcoming.find(({ booking }) =>
+      String(booking.id || booking.booking_id) === String(selectedUrgencyBookingId)
     );
+    const scrollRail = direction => {
+      const rail = urgencyRailRef.current;
+      if (rail) rail.scrollBy({ left: direction * Math.max(240, rail.clientWidth * 0.7), behavior: 'smooth' });
+    };
 
     return (
-      <div className="flower-urgency-strip" role="region" aria-label="Upcoming flower booking deadlines">
-        <div className="flower-urgency-label">
-          <div className="flower-urgency-icon"><Flower2 size={21} aria-hidden="true" /></div>
-          <div>
-            <strong>{flowerUrgency.dueSoon.length ? 'Urgent orders' : 'Busy schedule'}</strong>
-            <small>
-              {flowerUrgency.dueSoon.length
-                ? `Next 48 hrs · ${flowerUrgency.dueSoon.length} due`
-                : `${flowerUrgency.upcoming.length} upcoming bookings`}
-            </small>
+      <>
+        <div className="flower-urgency-strip" role="region" aria-label="Upcoming flower bookings">
+          <div className="flower-urgency-label">
+            <div className="flower-urgency-icon"><Flower2 size={21} aria-hidden="true" /></div>
+            <div>
+              <strong>{todayCount ? 'Urgent orders' : 'Upcoming orders'}</strong>
+              <small>{todayCount} due today · {flowerUrgency.upcoming.length} upcoming</small>
+            </div>
           </div>
-        </div>
-        <div
-          className="flower-urgency-marquee"
-          aria-label={flowerUrgency.dueSoon.length
-            ? `${flowerUrgency.dueSoon.length} orders due within 48 hours`
-            : `${flowerUrgency.upcoming.length} upcoming flower bookings`}
-        >
-          <div className="flower-urgency-track">
-            {renderOrderSet('primary')}
-            {renderOrderSet('duplicate', true)}
+          <button className="flower-urgency-scroll" type="button" aria-label="Scroll to earlier bookings" onClick={() => scrollRail(-1)}>‹</button>
+          <div className="flower-urgency-rail" ref={urgencyRailRef} aria-label={`${flowerUrgency.upcoming.length} upcoming bookings`}>
+            {flowerUrgency.upcoming.map(({ booking, dateKey, hoursUntil, isDueToday }) => {
+              const bookingId = String(booking.id || booking.booking_id);
+              const serviceTime = getBookingNoteTag(booking, 'SERVICE-TIME');
+              const dateLabel = isDueToday
+                ? 'Today'
+                : new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
+              const countdown = hoursUntil <= 0
+                ? 'Due now'
+                : hoursUntil < 1
+                  ? `in ${Math.ceil(hoursUntil * 60)} min`
+                  : hoursUntil < 24
+                    ? `in ${Math.ceil(hoursUntil)} h`
+                    : `in ${Math.ceil(hoursUntil / 24)} d`;
+              const urgencyClass = isDueToday || hoursUntil < 8 ? 'is-hot' : hoursUntil < 24 ? 'is-soon' : 'is-later';
+              const lineItems = parseLineItems(booking);
+              const itemLabel = lineItems.map(item => `${item.name} ×${item.quantity}`).join(', ');
+              const isSelected = String(selectedUrgencyBookingId) === bookingId;
+              return (
+                <button
+                  className={`flower-urgency-item ${urgencyClass}${isSelected ? ' is-selected' : ''}`}
+                  key={bookingId}
+                  type="button"
+                  aria-expanded={isSelected}
+                  onClick={() => setSelectedUrgencyBookingId(isSelected ? null : bookingId)}
+                >
+                  <span className="flower-urgency-when">
+                    <strong>{serviceTime || 'Time TBC'}</strong>
+                    <small>{dateLabel}</small>
+                  </span>
+                  <span className="flower-urgency-what">
+                    <strong>{booking.deceased_name || 'Deceased record'}</strong>
+                    <span>{itemLabel || booking.flower_type || booking.arrangement_name || 'Flower order'}</span>
+                  </span>
+                  <span className="flower-urgency-pill">{countdown}</span>
+                </button>
+              );
+            })}
           </div>
+          <button className="flower-urgency-scroll" type="button" aria-label="Scroll to later bookings" onClick={() => scrollRail(1)}>›</button>
         </div>
-      </div>
+        {selectedOrder && (() => {
+          const { booking, dateKey } = selectedOrder;
+          const contactPhone = String(booking.customer_phone || booking.phone || '');
+          const route = getBookingNoteTag(booking, 'ROUTE');
+          const initials = getBookingNoteTag(booking, 'INITIALS');
+          const items = parseLineItems(booking);
+          const fields = [
+            ['Flowers', booking.flower_description],
+            ['Colours', [booking.primary_color, booking.accent_color].flatMap(asList).join(', ')],
+            ['Coffin', getBookingNoteTag(booking, 'COFFIN')],
+            ['Vehicle plate', getBookingNoteTag(booking, 'VEHICLE')],
+            ['Dedication', initials],
+            ['Service', booking.service_type],
+            ['Booked by', booking.booked_by || booking.customer],
+          ].filter(([, value]) => value);
+          return (
+            <section className="flower-urgency-detail" aria-live="polite">
+              <div className="flower-urgency-detail-head">
+                <div>
+                  <h2>{booking.deceased_name || 'Flower booking'}</h2>
+                  <p>{new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · {getBookingNoteTag(booking, 'SERVICE-TIME') || 'Time not specified'}{route ? ` · ${route}` : ''}</p>
+                </div>
+                <div className="flower-urgency-detail-actions">
+                  {contactPhone && <a href={`tel:${contactPhone.replace(/[^\d+]/g, '')}`}>Call {getBookingNoteTag(booking, 'CONTACT') || 'contact'}</a>}
+                  <button type="button" aria-label="Close booking summary" onClick={() => setSelectedUrgencyBookingId(null)}>×</button>
+                </div>
+              </div>
+              <div className="flower-urgency-arrangements">
+                {items.map((item, index) => <span key={`${item.name}-${index}`}>{item.name} ×{item.quantity}</span>)}
+              </div>
+              {fields.length > 0 && (
+                <dl className="flower-urgency-facts">
+                  {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+                </dl>
+              )}
+              {booking.ribbon_message && <p className="flower-urgency-ribbon">“{booking.ribbon_message}”</p>}
+              {booking.special_instructions && <p className="flower-urgency-note"><strong>Note:</strong> {booking.special_instructions}</p>}
+              <button className="flower-urgency-open" type="button" onClick={() => viewBooking(booking.id || booking.booking_id)}>Open full booking</button>
+            </section>
+          );
+        })()}
+      </>
     );
   };
 
@@ -1817,7 +2012,7 @@ const FlowerBookingsNew = () => {
         <div className="flx-card-right" style={styles.bookingRight}>
           {/* No "Expected By" line — the value it showed was the day the order
               was BOOKED, which the feed header already groups under. */}
-          <div style={styles.pillsRow}>
+          <div className="fb-card-pills" style={styles.pillsRow}>
             <span style={{ ...styles.priorityPill, background: priority.toLowerCase() === 'high' ? '#FEE2E2' : priority.toLowerCase() === 'low' ? '#DCFCE7' : '#F1F5F9', color: priority.toLowerCase() === 'high' ? '#B91C1C' : priority.toLowerCase() === 'low' ? '#166534' : '#475569' }}>
               {priority}
             </span>
@@ -2246,7 +2441,7 @@ const FlowerBookingsNew = () => {
             onChange={e => setNewBooking(prev => ({ ...prev, remarks: e.target.value }))}
           />
 
-          <label style={lbl}>Sample Flower Upload</label>
+          <label style={lbl}>Client Reference Photos</label>
           <input
             type="file"
             accept="image/*"
@@ -2257,6 +2452,9 @@ const FlowerBookingsNew = () => {
               setNewBooking(prev => ({ ...prev, sample_uploads: files }));
             }}
           />
+          <p style={{ margin: '-14px 0 22px', color: '#6E675E', fontSize: '12px', lineHeight: 1.5 }}>
+            Add photos showing the exact design the family requested. These will be saved with the booking.
+          </p>
           {/* ── 4 · Booking Details ── */}
           <label style={lbl}>Deceased Name *</label>
           <input
@@ -2388,6 +2586,10 @@ const FlowerBookingsNew = () => {
       }));
     }).filter(image => typeof image.src === 'string' && image.src.trim());
     const uniqueBookingImages = [...new Map(bookingImages.map(image => [image.src, image])).values()];
+    const clientReferenceImages = asList(b.sample_images).map((image, index) => ({
+      url: typeof image === 'string' ? image : image?.url,
+      alt: typeof image === 'string' ? `Client reference photo ${index + 1}` : image?.alt_text || `Client reference photo ${index + 1}`,
+    })).filter(image => typeof image.url === 'string' && image.url.trim());
     // Strip machine tokens before splitting human notes.
     const humanNotes = String(b.notes || '').replace(/\[(?:TYPES|WHEN|DESIGN|INITIALS|COFFIN|ROUTE|VEHICLE|CONTACT|SERVICE-TIME|EDITED|PRIORITY):[^\]]*\]/gi, '');
     const noteParts = humanNotes.split('|').map(s => s.trim()).filter(Boolean);
@@ -2473,9 +2675,9 @@ const FlowerBookingsNew = () => {
             <div className="flower-detail-hero">
               <div className="flower-image-carousel" ref={imageCarouselRef} aria-label="Arrangement photos">
                 {uniqueBookingImages.map((img, idx) => (
-                  <div key={idx} className="flower-image-slide">
+                  <button key={idx} type="button" className="flower-image-slide" aria-label={`View ${img.alt} full size`} onClick={() => setPreviewSample(img)}>
                     <img src={img.src} alt={img.alt} />
-                  </div>
+                  </button>
                 ))}
               </div>
               {uniqueBookingImages.length > 1 && (
@@ -2609,9 +2811,14 @@ const FlowerBookingsNew = () => {
                     }}
                   >
                     {s?.images?.length > 0 && (
-                      <div className="flower-detail-sample-thumb">
+                      <button
+                        type="button"
+                        className="flower-detail-sample-thumb"
+                        aria-label={`View ${li.name} arrangement sample full size`}
+                        onClick={() => setPreviewSample({ src: s.images[0]?.url || s.images[0], alt: `${li.name} arrangement sample` })}
+                      >
                         <img src={s.images[0]?.url || s.images[0]} alt={li.name} />
-                      </div>
+                      </button>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: '#1C1A17' }}>{li.name} <span className="flower-quantity-chip">×{li.quantity}</span></div>
@@ -2623,6 +2830,65 @@ const FlowerBookingsNew = () => {
                 );
               })}
             </div>
+
+            <section className="flower-client-samples" aria-label="Client reference photos">
+              <div className="flower-client-samples-head">
+                <div>
+                  <h3>Client reference photos</h3>
+                  <p>{clientReferenceImages.length} photo{clientReferenceImages.length === 1 ? '' : 's'} attached to this booking</p>
+                </div>
+                <button
+                  type="button"
+                  className="flower-client-samples-add"
+                  disabled={updatingBookingSamples}
+                  onClick={() => bookingSampleInputRef.current?.click()}
+                >
+                  {updatingBookingSamples ? 'Saving…' : 'Add photos'}
+                </button>
+                <input
+                  ref={bookingSampleInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={event => {
+                    const files = Array.from(event.target.files || []);
+                    event.target.value = '';
+                    if (files.length) updateBookingSamples(b.id || b.booking_id, files);
+                  }}
+                />
+              </div>
+              {clientReferenceImages.length ? (
+                <div className="flower-client-samples-grid">
+                  {clientReferenceImages.map((image, index) => (
+                    <figure className="flower-client-sample" key={`${image.url}-${index}`}>
+                      <button
+                        type="button"
+                        className="flower-client-sample-view"
+                        aria-label={`View reference photo ${index + 1} full size`}
+                        onClick={() => setPreviewSample({ src: image.url, alt: image.alt })}
+                      >
+                        <img src={image.url} alt={image.alt} loading="lazy" />
+                        <span>View full size</span>
+                      </button>
+                      <figcaption>
+                        <span>{image.alt}</span>
+                        <button
+                          type="button"
+                          aria-label={`Remove reference photo ${index + 1}`}
+                          disabled={updatingBookingSamples}
+                          onClick={() => updateBookingSamples(b.id || b.booking_id, [], [image.url])}
+                        >
+                          Remove
+                        </button>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              ) : (
+                <p className="flower-client-samples-empty">No client photos yet. Add a reference image to show the florist the requested design.</p>
+              )}
+            </section>
 
             {/* ── Order facts, one clean list ────────────────────────────────────
                 Used to be a grid of ten boxed tiles (icon box + card each), far
@@ -2808,6 +3074,23 @@ const FlowerBookingsNew = () => {
         </>
       )}
 
+      {previewSample && (
+        <div
+          className="flower-sample-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-label={previewSample.alt || 'Flower sample photo'}
+          onClick={() => setPreviewSample(null)}
+        >
+          <button type="button" aria-label="Close full-size photo" onClick={() => setPreviewSample(null)}>×</button>
+          <img
+            src={previewSample.src || previewSample.url}
+            alt={previewSample.alt || 'Flower sample'}
+            onClick={event => event.stopPropagation()}
+          />
+        </div>
+      )}
+
       <div style={styles.toastContainer}>
         {toasts.map(t => (
           <div key={t.id} style={styles.toast}>
@@ -2825,7 +3108,7 @@ const FlowerBookingsNew = () => {
         .flower-list-tools { margin: 10px 0 20px; }
         .flower-place-booking { background: linear-gradient(135deg, #EC5E93, #D6336C) !important; box-shadow: 0 5px 14px rgba(214,51,108,.2); }
         .flower-place-booking:hover { background: linear-gradient(135deg, #E04B85, #C42A61) !important; }
-        .flower-bookings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 650px; min-height: 100vh; background: #fff; }
+        .flower-bookings-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, min(40vw, 520px)); min-height: 100vh; background: #fff; }
         .flower-bookings-main { min-width: 0; padding: 0 18px 18px; }
         .flower-bookings-layout .flx-split { grid-template-columns: minmax(0, 1fr) !important; }
         .flower-bookings-layout .flx-rail { display: none !important; }
@@ -2847,11 +3130,35 @@ const FlowerBookingsNew = () => {
         .flower-carousel-arrow.next { right: 10px; }
         .flower-detail-sample-thumb { width: 44px; height: 44px; flex: 0 0 44px; overflow: hidden; border-radius: 8px; background: #FDF1F6; }
         .flower-detail-sample-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        button.flower-detail-sample-thumb { padding: 0; border: 0; cursor: zoom-in; }
+        .flower-image-slide { display: block; padding: 0; border: 0; background: #fff; cursor: zoom-in; }
+        .flower-client-samples { margin: 0 0 22px; padding: 14px; border: 1px solid #F0E4EA; border-radius: 14px; background: #fff; }
+        .flower-client-samples-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .flower-client-samples-head h3 { margin: 0; color: #1C1A17; font-size: 14px; font-weight: 700; }
+        .flower-client-samples-head p { margin: 3px 0 0; color: #8A8178; font-size: 11px; }
+        .flower-client-samples-add { min-height: 38px; flex: 0 0 auto; padding: 8px 12px; border: 1px solid #F6C6DA; border-radius: 9px; background: #FDF1F6; color: #9D1F50; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .flower-client-samples-add:disabled,
+        .flower-client-sample figcaption button:disabled { cursor: wait; opacity: .6; }
+        .flower-client-samples-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+        .flower-client-sample { min-width: 0; margin: 0; overflow: hidden; border: 1px solid #F0E4EA; border-radius: 10px; background: #fff; }
+        .flower-client-sample-view { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; overflow: hidden; border: 0; background: #FDF7FA; cursor: zoom-in; }
+        .flower-client-sample-view img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        .flower-client-sample-view span { position: absolute; right: 5px; bottom: 5px; left: 5px; padding: 4px 6px; border-radius: 5px; background: rgba(28,26,23,.72); color: #fff; font-size: 10px; text-align: center; }
+        .flower-client-sample figcaption { display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 7px; }
+        .flower-client-sample figcaption span { min-width: 0; overflow: hidden; color: #6E675E; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+        .flower-client-sample figcaption button { flex: 0 0 auto; padding: 3px 5px; border: 0; border-radius: 5px; background: #FFF1F2; color: #B91C1C; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .flower-client-samples-empty { margin: 0; color: #8A8178; font-size: 12px; line-height: 1.5; }
+        .flower-sample-preview { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 24px; background: rgba(15,15,15,.92); }
+        .flower-sample-preview img { display: block; max-width: min(96vw, 1500px); max-height: 90vh; object-fit: contain; }
+        .flower-sample-preview > button { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 18px; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.5); border-radius: 50%; background: rgba(0,0,0,.45); color: #fff; cursor: pointer; font-size: 30px; line-height: 1; }
         .flower-detail-title { font-size: 26px !important; line-height: 1.25; }
         .flower-detail-panel .trackRow { flex-wrap: wrap; }
         .flower-spec > dl > div:last-child { border-bottom: none !important; }
         @media (max-width: 640px) {
           .flower-spec { padding: 10px 10px !important; }
+          .flower-client-samples { padding: 11px; }
+          .flower-client-samples-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .flower-sample-preview { padding: 12px; }
         }
         .flower-booking-avatar { display: grid; place-items: center; width: 52px; height: 52px; flex: 0 0 52px; border: 1px solid rgba(0,0,0,.05); border-radius: 12px; font: 600 22px 'Playfair Display', Georgia, serif; }
         .flower-booking-avatar.booked { background: linear-gradient(135deg, #F9CFE2, #FBE1EC); color: #C2255C; }
@@ -2910,16 +3217,20 @@ const FlowerBookingsNew = () => {
           .fb-booking-name { white-space: normal !important; }
           .fb-booking-meta { flex-direction: column !important; }
 
-          /* Compact order cards on phones */
-          .fb-card { padding: 10px !important; gap: 10px !important; border-radius: 14px !important; }
-          .fb-card-thumb { width: 52px !important; height: 52px !important; border-radius: 12px !important; }
-          .fb-card-name { font-size: 14px !important; }
-          .fb-card-meta { font-size: 13px !important; gap: 1px !important; }
-          .flx-card-right { gap: 5px !important; }
+          /* Keep order details and status controls readable on narrow screens. */
+          .fb-card { display: grid !important; grid-template-columns: 64px minmax(0, 1fr); align-items: start !important; padding: 12px !important; gap: 12px !important; border-radius: 14px !important; }
+          .fb-card-thumb,
+          .flower-booking-avatar { width: 64px !important; height: 64px !important; flex-basis: 64px !important; border-radius: 12px !important; }
+          .fb-booking-name { font-size: 17px !important; line-height: 1.35 !important; }
+          .fb-card-meta { font-size: 14px !important; gap: 4px !important; }
+          .flx-card-right { grid-column: 1 / -1; flex-direction: row !important; flex-wrap: wrap; align-items: center !important; justify-content: flex-start !important; gap: 8px !important; }
+          .fb-card-pills { flex-wrap: wrap; }
           .flower-list-heading { align-items: flex-start; }
           .flower-list-heading h1 { font-size: 20px; }
+          .flower-list-heading h1 small { display: block; margin-top: 3px; }
           .flower-status-tabs { width: 100%; }
-          .flower-status-tabs button { flex: 1; padding-left: 6px; padding-right: 6px; }
+          .flower-status-tabs button { flex: 1; min-height: 40px; padding: 8px 10px; border: 1px solid #F0E4EA; border-radius: 8px; background: #fff; font-size: 14px; }
+          .flower-status-tabs button.active { border-color: #D6336C; background: #FDF1F6; }
           .flx-form-grid { grid-template-columns: 1fr; }
         }
 

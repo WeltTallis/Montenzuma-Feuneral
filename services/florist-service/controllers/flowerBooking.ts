@@ -7,6 +7,7 @@
 import { safeQuery, safeExecute } from '../database.ts';
 import axios from 'axios';
 import crypto from 'crypto';
+import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService.js';
 
 interface Booking {
     id?: number;
@@ -44,6 +45,7 @@ const tenantSlugOf = (req: any): string | null =>
     req.tenant?.tenant_slug || req.tenantSlug || null;
 
 let serviceTypeSchemaReady: Promise<void> | null = null;
+let bookingSampleSchemaReady: Promise<void> | null = null;
 
 const ensureServiceTypeColumn = async () => {
     if (!serviceTypeSchemaReady) {
@@ -75,6 +77,29 @@ const ensureServiceTypeColumn = async () => {
         });
     }
     await serviceTypeSchemaReady;
+};
+
+const ensureBookingSampleImagesColumn = async () => {
+    if (!bookingSampleSchemaReady) {
+        bookingSampleSchemaReady = (async () => {
+            const columns = await safeQuery("SHOW COLUMNS FROM `flower_bookings` LIKE 'sample_images'");
+            if (!columns.length) {
+                try {
+                    await safeExecute('ALTER TABLE `flower_bookings` ADD COLUMN `sample_images` TEXT NULL');
+                } catch (error: any) {
+                    if (error?.code !== 'ER_DUP_FIELDNAME' && error?.errno !== 1060) throw error;
+                }
+            }
+            const verifiedColumns = columns.length
+                ? columns
+                : await safeQuery("SHOW COLUMNS FROM `flower_bookings` LIKE 'sample_images'");
+            if (!verifiedColumns.length) throw new Error('Flower booking schema setup did not create sample_images');
+        })().catch(error => {
+            bookingSampleSchemaReady = null;
+            throw error;
+        });
+    }
+    await bookingSampleSchemaReady;
 };
 
 /**
@@ -261,6 +286,89 @@ export const getBookingById = async (req: any, res: any) => {
     } catch (error: any) {
         console.error('[FLORIST] Error fetching booking:', error.message);
         res.status(500).json({ success: false, error: 'Failed to fetch booking', message: error.message });
+    }
+};
+
+/**
+ * POST /florist/bookings/:id/samples
+ * Add or remove client reference photos for an existing booking.
+ */
+export const updateBookingSamples = async (req: any, res: any) => {
+    try {
+        await ensureBookingSampleImagesColumn();
+        const tenantScope = buildTenantScope(req);
+        const { id } = req.params;
+        const existing = await safeQuery(
+            `SELECT id, sample_images FROM flower_bookings WHERE (id = ? OR booking_id = ?) AND ${tenantScope.clause} LIMIT 1`,
+            [id, id, ...tenantScope.params]
+        );
+        if (!existing.length) {
+            return res.status(404).json({ success: false, error: 'Booking not found' });
+        }
+
+        const rawImages = existing[0].sample_images;
+        let currentImages: any[] = [];
+        if (Array.isArray(rawImages)) {
+            currentImages = rawImages;
+        } else if (typeof rawImages === 'string' && rawImages.trim()) {
+            try {
+                const parsed = JSON.parse(rawImages);
+                currentImages = Array.isArray(parsed) ? parsed : [];
+            } catch {
+                throw new Error('Saved booking sample photos are invalid; no changes were made');
+            }
+        }
+
+        let removeImages = req.body?.remove_images || [];
+        if (typeof removeImages === 'string') {
+            try {
+                removeImages = JSON.parse(removeImages);
+            } catch {
+                return res.status(400).json({ success: false, error: 'Invalid remove_images value' });
+            }
+        }
+        if (!Array.isArray(removeImages) || removeImages.some(url => typeof url !== 'string')) {
+            return res.status(400).json({ success: false, error: 'remove_images must be an array of image URLs' });
+        }
+
+        const files = Array.isArray(req.files) ? req.files : [];
+        if (!files.length && !removeImages.length) {
+            return res.status(400).json({ success: false, error: 'Choose photos to upload or remove' });
+        }
+
+        const removedUrls = new Set(removeImages);
+        const nextImages = currentImages.filter(image =>
+            !removedUrls.has(typeof image === 'string' ? image : image?.url)
+        );
+        const tenantSlug = String(tenantSlugOf(req) || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
+        const bookingPrefix = String(existing[0].id).replace(/[^a-zA-Z0-9_-]/g, '');
+
+        for (const [index, file] of files.entries()) {
+            const extension = file.mimetype === 'image/png' ? '.png'
+                : file.mimetype === 'image/webp' ? '.webp'
+                    : file.mimetype === 'image/gif' ? '.gif'
+                        : file.mimetype === 'image/avif' ? '.avif'
+                            : '.jpg';
+            const filename = `booking-${bookingPrefix}-${Date.now()}-${index}-${crypto.randomBytes(4).toString('hex')}${extension}`;
+            const result = await centralizedUploadService.uploadImage(file.buffer, filename, tenantSlug, 'flowers');
+            if (!result?.success || !result.urlPath) {
+                throw new Error(result?.error || `Could not save booking photo ${index + 1}`);
+            }
+            nextImages.push({
+                url: result.urlPath,
+                alt_text: file.originalname || `Booking reference photo ${nextImages.length + 1}`,
+                uploaded_at: new Date().toISOString(),
+            });
+        }
+
+        await safeExecute(
+            `UPDATE flower_bookings SET sample_images = ? WHERE id = ? AND ${tenantScope.clause}`,
+            [JSON.stringify(nextImages), existing[0].id, ...tenantScope.params]
+        );
+        res.json({ success: true, data: nextImages, message: 'Booking reference photos updated' });
+    } catch (error: any) {
+        console.error('[FLORIST] Error updating booking sample photos:', error.message);
+        res.status(500).json({ success: false, error: 'Failed to update booking sample photos', message: error.message });
     }
 };
 

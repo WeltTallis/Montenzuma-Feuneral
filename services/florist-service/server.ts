@@ -375,6 +375,7 @@ async function ensureFloristTables(dbName: string) {
             { name: 'funeral_date', sqlType: 'DATE' },
             { name: 'service_type', sqlType: 'TEXT' },
             { name: 'deceased_gender', sqlType: 'VARCHAR(40)' },
+            { name: 'sample_images', sqlType: 'TEXT' },
         ];
         for (const col of bookingExtraColumns) {
             if (!(await tenantKnex.schema.hasColumn('flower_bookings', col.name))) {
