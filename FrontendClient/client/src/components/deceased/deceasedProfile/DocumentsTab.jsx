@@ -132,7 +132,7 @@ const StatusTag = styled.span`
   border: 1px solid ${p => p.$info ? '#bfdbfe' : C.borderLight};
 `;
 
-const DocumentsTab = ({ documents, deceasedId }) => {
+const DocumentsTab = ({ documents, deceasedId, branchSlug, refreshVersion = 0 }) => {
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [localDocs, setLocalDocs] = useState(null);
@@ -146,7 +146,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.get(`/documents/${deceasedId}`, { headers: getTenantHeaders(), withCredentials: false });
+        const res = await api.get(`/documents/${deceasedId}`, { headers: getTenantHeaders(branchSlug), withCredentials: false });
         if (!cancelled) {
           const list = res.data?.files || res.data?.data || [];
           setLocalDocs(Array.isArray(list) ? list : []);
@@ -154,7 +154,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
       } catch (e) { /* keep whatever the parent passed */ }
     })();
     return () => { cancelled = true; };
-  }, [deceasedId]);
+  }, [branchSlug, deceasedId, refreshVersion]);
 
   const normalizeDocument = (doc = {}) => {
     const documentId = doc.document_id ?? doc.documentId ?? doc.id ?? null;
@@ -193,14 +193,15 @@ const DocumentsTab = ({ documents, deceasedId }) => {
       // browser's automatic Content-Type and break multer parsing on the backend.
       const headers = {
         'Content-Type': null,
-        'x-tenant-slug': localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || ''
+        'x-tenant-slug': branchSlug || localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug') || '',
+        ...(branchSlug ? { 'x-branch-slug': branchSlug, 'x-branch-db': branchSlug } : {}),
       };
       // Only add auth headers if available (don't spread getTenantHeaders to avoid
       // inheriting the application/json Content-Type from the api instance)
       try {
         const token = localStorage.getItem('accessToken') || localStorage.getItem('authToken');
         if (token) headers['Authorization'] = `Bearer ${token}`;
-        const slug = localStorage.getItem('tenantSlug');
+        const slug = branchSlug || localStorage.getItem('tenantSlug');
         if (slug) headers['x-tenant-slug'] = slug;
       } catch (e) { /* localStorage may not be available */ }
 
@@ -219,7 +220,7 @@ const DocumentsTab = ({ documents, deceasedId }) => {
 
       if (response.data?.success || response.data?.document) {
         notify.success('Document uploaded', response.data?.message || 'Document uploaded successfully');
-        const refreshed = await api.get(`/documents/${deceasedId}`, { headers: getTenantHeaders(), withCredentials: false });
+        const refreshed = await api.get(`/documents/${deceasedId}`, { headers: getTenantHeaders(branchSlug), withCredentials: false });
         const list = refreshed.data?.files || refreshed.data?.data || [];
         setLocalDocs(Array.isArray(list) ? list : []);
         if (fileInputRef.current) fileInputRef.current.value = '';

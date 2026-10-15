@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import "./dashboard.css";
 
@@ -41,6 +42,8 @@ const NAV = [
   { id: "pm", label: "PM", icon: "vial", full: "Postmortem Requests" },
   { id: "analytics", label: "Analytics", icon: "grid", full: "Analytics" },
 ];
+
+
 
 const VIEWS = [
   { id: "day", label: "Day" },
@@ -522,6 +525,8 @@ function Sidebar({
 
 export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const { cases, loading, reload } = useCaseData();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [section, setSection] = useState("command");
   // Top-level module switch: "operations" (mortuary register) or "workshop"
@@ -636,7 +641,26 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   }, []);
 
   /* ── handlers ─────────────────────────────────────────────────────────── */
-  const openCase = useCallback((uid, ctx) => setDrawer({ uid, ctx: ctx || "intake" }), []);
+  const openCase = useCallback((uid, ctx) => {
+    const selectedCase = cases.find((item) => item.uid === uid);
+    const profileId = selectedCase?.id
+      || selectedCase?.raw?.id
+      || selectedCase?.raw?.deceased_id
+      || selectedCase?.raw?.deceasedId;
+    const profileBranchSlug = selectedCase?.raw?._branchSlug || tenantSlug;
+    const profileTenantSlug = tenantSlug || localStorage.getItem("tenantSlug") || localStorage.getItem("tenant_slug");
+
+    if (profileId && profileTenantSlug && profileBranchSlug) {
+      navigate(`/${profileTenantSlug}/deceased?id=${encodeURIComponent(profileId)}&branch=${encodeURIComponent(profileBranchSlug)}`, {
+        state: {
+          from: `${location.pathname}${location.search}`,
+          profileBranchSlug,
+        },
+      });
+      return;
+    }
+    setDrawer({ uid, ctx: ctx || "intake" });
+  }, [cases, location.pathname, location.search, navigate, tenantSlug]);
   const openModal = useCallback((key) => setModal(key), []);
 
   const pickDay = useCallback((key) => {

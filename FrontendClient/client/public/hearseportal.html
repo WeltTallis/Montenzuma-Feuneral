@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hearse Fuel Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff;--ink:#12202b;--muted:#66737d;--line:#e6eaee;--sunken:#f7f9fa;
+  --brand:#0b4f7c;--brand-soft:#e6f0f7;
+  --ok:#1f7a4d;--ok-soft:#e5f4ec;--warn:#9a5b00;--warn-soft:#fff1d6;--bad:#b42318;--bad-soft:#fdeceb;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;padding:22px 18px 60px}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-bottom:18px}
+h1{margin:0;font-size:22px;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:4px;padding:4px;background:var(--sunken);border:1px solid var(--line);border-radius:12px}
+.tab{border:0;background:transparent;padding:8px 16px;border-radius:9px;font-weight:600;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(18,32,43,.12)}
+
+.banner{display:grid;gap:6px;margin-bottom:18px}
+.alert{display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:10px;font-size:14px;font-weight:500}
+.alert i{flex:none;width:9px;height:9px;border-radius:50%;background:currentColor;font-style:normal}
+.alert.empty{background:var(--bad-soft);color:var(--bad)}
+.alert.empty i{animation:blink 1.1s ease-in-out infinite}
+.alert.low{background:var(--warn-soft);color:var(--warn)}
+@keyframes blink{50%{opacity:.2}}
+
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
+.panel h2{margin:0 0 14px;font-size:16px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:820px){.grid2{grid-template-columns:1.1fr .9fr}}
+form{display:grid;gap:14px}
+label{display:grid;gap:6px;font-size:13px;font-weight:600}
+.in{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.in:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.btn{padding:12px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{border:0;color:var(--muted);font-weight:600;padding:6px 0;background:none}
+
+.cardbox{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--sunken)}
+.cardrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.cardno{font-weight:600;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.bal{font-size:24px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}.chip.low{background:var(--warn-soft);color:var(--warn)}.chip.empty{background:var(--bad-soft);color:var(--bad)}
+.gauge{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin:12px 0 4px;padding:3px;border-radius:7px;border:1px solid transparent}
+.gauge i{height:12px;border-radius:3px;background:#e3e8ec}
+.gauge.ok i.on{background:var(--ok)}.gauge.low i.on{background:#e19b1f}
+.gauge.empty{border-color:var(--bad);animation:blink 1.1s ease-in-out infinite}
+.ef{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted)}
+
+.check{padding:11px 13px;border-radius:9px;font-size:14px;font-weight:500;background:var(--ok-soft);color:var(--ok)}
+.check.bad{background:var(--bad-soft);color:var(--bad)}.check.warn{background:var(--warn-soft);color:var(--warn)}
+.check:empty{display:none}
+
+.list{display:grid}
+.entry{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}
+.entry:first-child{border-top:0}
+.entry small{display:block;color:var(--muted);font-size:12px}
+.entry b{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:16px}
+.stat small{display:block;color:var(--muted);font-size:12px;font-weight:600}
+.stat b{font-size:20px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat.hero b{font-size:30px;color:var(--brand)}
+.split{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line);margin:14px 0 6px}
+.split span{display:block;height:100%}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin:16px 0}
+.cards .cardbox{background:#fff}
+.reg{font-weight:800;font-size:16px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+th{text-align:left;color:var(--muted);font-size:12px;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+td.n,th.n{text-align:right}
+
+/* refresh */
+:root{--bg:#f4f6f8}
+.tabs{background:#e8edf1;border-color:#e8edf1}
+.brand{display:flex;gap:12px;align-items:center}
+.mark{width:42px;height:42px;border-radius:12px;background:var(--brand);color:#fff;display:grid;place-items:center}
+.hero{max-width:520px;margin:10px auto 0;display:grid;gap:16px}
+.hero h2{margin:0;font-size:22px;letter-spacing:-.01em}
+.pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.pickbtn{padding:18px 16px;border:1px solid var(--line);border-radius:12px;background:#fff;font-weight:800;font-size:16px;text-align:left;cursor:pointer}
+.pickbtn:hover{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.btn.big{padding:16px 20px;font-size:17px;border-radius:12px}
+.scrim{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end;background:rgba(18,32,43,.38);animation:fade .2s ease}
+.scrim[hidden]{display:none}
+.side{width:100%;max-width:440px;height:100%;display:flex;flex-direction:column;background:#fff;box-shadow:-16px 0 48px rgba(18,32,43,.16);animation:slideIn .3s cubic-bezier(.2,.8,.2,1)}
+.scrim.out{animation:fade .2s ease reverse forwards}
+.scrim.out .side{animation:slideIn .2s ease reverse forwards}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sh{flex:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:calc(18px + env(safe-area-inset-top,0px)) 22px 16px;border-bottom:1px solid var(--line)}
+.sh small{display:block;color:var(--muted);font-size:12px;font-weight:600}
+.sh h2{margin:0;font-size:20px}
+.x{flex:none;width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:20px;line-height:1;cursor:pointer}
+.sb{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding:20px 22px 0}
+.sb>*{flex:none}.sb>form{flex:1 0 auto}
+form .sf{margin:auto -22px 0;padding:16px 22px calc(16px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line);position:sticky;bottom:0}
+.avail{padding:18px;border-radius:14px;margin-bottom:20px;background:var(--ok-soft);color:var(--ok)}
+.avail.low{background:var(--warn-soft);color:var(--warn)}
+.avail.empty{background:var(--bad-soft);color:var(--bad)}
+.avail small{font-weight:600;font-size:13px}
+.avail .big{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1.15;font-variant-numeric:tabular-nums}
+.avail .cardno{color:inherit;opacity:.85;margin-top:6px}
+.qa{display:flex;gap:8px;flex-wrap:wrap;margin-top:-6px}
+.qb{padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.qb:hover{border-color:var(--brand)}
+.doneview{display:grid;gap:16px;justify-items:center;text-align:center;padding-bottom:24px}
+.tick{width:64px;height:64px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;font-size:30px;font-weight:800}
+.doneview h3{margin:0;font-size:22px}.doneview p{margin:2px 0 0;color:var(--muted)}
+.rc{width:100%;margin:0;text-align:left;border:1px dashed var(--line);border-radius:12px;padding:4px 16px;background:var(--sunken)}
+.rc div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.rc div:first-child{border-top:0}.rc dt{color:var(--muted)}.rc dd{margin:0;font-weight:700;text-align:right}
+
+/* v3: red driver hero, % rings, analytics */
+.dh{background:linear-gradient(160deg,#b0102c,#e0284a 65%,#ef4d68);color:#fff;border-radius:22px;padding:22px 22px 20px;box-shadow:0 14px 34px rgba(176,16,44,.28)}
+.dhtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dhtop small{display:block;opacity:.85;font-size:12px;font-weight:600}
+.dhtop b{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.dchip{padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.2);font-size:12px;font-weight:700}
+.dpct{font-size:76px;font-weight:800;letter-spacing:-.05em;line-height:1;margin-top:14px;font-variant-numeric:tabular-nums}
+.dpct sup{font-size:30px;font-weight:700;margin-left:2px;vertical-align:top;position:relative;top:10px}
+.dsub{opacity:.9;font-size:14px;margin-top:4px}
+.dbar{height:10px;border-radius:99px;background:rgba(255,255,255,.28);margin:16px 0 8px;overflow:hidden}
+.dbar i{display:block;height:100%;background:#fff;border-radius:99px}
+.dkes{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.dh h2{color:#fff;margin:0}.dh p{margin:4px 0 0;opacity:.9}
+.btn.rec{background:var(--ink);border-color:var(--ink);color:#fff}
+.ring{--p:0;--c:#999;width:78px;height:78px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),#e8edf1 0);display:grid;place-items:center;flex:none}
+.ring span{width:60px;height:60px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:800;font-size:18px;color:var(--c);font-variant-numeric:tabular-nums}
+.oc{display:flex;gap:14px;align-items:center;padding:16px;background:#fff;border:1px solid var(--line);border-top:4px solid var(--c);border-radius:14px}
+.oc.empty{background:#fff8f7;border-color:#f3b8b3;border-top-color:var(--bad)}
+.oc.empty .ring{animation:blink 1.2s ease-in-out infinite}
+.okes{font-size:13px;color:var(--muted);margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.last{font-size:12px;color:var(--muted);margin-top:6px}
+.an{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+@media(min-width:820px){.an{grid-template-columns:1fr 1fr}.an .wide{grid-column:1/-1}}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpis div{padding:12px;background:var(--sunken);border-radius:10px}
+.kpis small{display:block;color:var(--muted);font-size:12px;font-weight:600}.kpis b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.bars{display:grid;gap:12px}
+.bar small{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600;margin-bottom:4px}
+.bar small span{color:var(--muted);font-weight:500}
+.bar i{display:block;height:9px;border-radius:99px;background:var(--brand)}
+.bar div{background:#edf1f4;border-radius:99px}
+.cols{display:flex;align-items:flex-end;gap:10px;height:140px}
+.cols div{flex:1;display:grid;grid-template-rows:1fr auto;gap:6px;height:100%;text-align:center;font-size:12px;color:var(--muted)}
+.cols i{align-self:end;display:block;background:var(--brand);border-radius:6px 6px 2px 2px;min-height:3px}
+.fchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.fc{padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.fc[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+td small{display:block;color:var(--muted);font-size:12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;max-width:92vw;z-index:9}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 012-2h7a2 2 0 012 2v16M3 21h13M15 9h2a2 2 0 012 2v5a1.5 1.5 0 003 0V9l-3-3M7 8h5"/></svg></span><div><h1>Hearse fuel portal</h1><p>Total fuel cards, funded by cheque</p></div></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="driver">Driver</button>
+      <button class="tab" role="tab" data-tab="fleet">Office</button>
+    </div>
+  </header>
+  <div class="banner" id="banner" role="status"></div>
+  <main id="app"></main>
+</div>
+<div class="scrim" id="scrim" hidden>
+  <aside class="side" role="dialog" aria-modal="true" aria-labelledby="pt">
+    <div class="sh"><div><small>Fuelling now</small><h2 id="pt"></h2></div><button class="x" id="px" type="button" aria-label="Close">&times;</button></div>
+    <div class="sb" id="pbody"></div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const KEY="hearse-fuel-v2",H=36e5,DAY=24*H;
+const ST=[["Total Westlands","Westlands, Nairobi"],["Total Mombasa Road","Mombasa Rd, Nairobi"],["Total Thika Road","Thika Rd, Nairobi"],["Total Ngong Road","Ngong Rd, Nairobi"],["Total Karen","Karen, Nairobi"],["Total Kiambu Road","Kiambu Rd, Kiambu"],["Total Parklands","Parklands, Nairobi"],["Total Nakuru","Nakuru Town"]];
+const seed=()=>{const n=Date.now();
+  const cards=[
+    {id:"h1",reg:"KDD 417F",card:"7120 4455 0912 3001",bal:38000,cap:50000},
+    {id:"h2",reg:"KDG 092K",card:"7120 4455 0912 3002",bal:22500,cap:40000},
+    {id:"h3",reg:"KCZ 733M",card:"7120 4455 0912 3003",bal:3200,cap:30000},
+    {id:"h4",reg:"KDA 258B",card:"7120 4455 0912 3004",bal:0,cap:30000},
+    {id:"h5",reg:"KBY 504T",card:"7120 4455 0912 3005",bal:18000,cap:40000}];
+  const D=["John Otieno","Samuel Kiptoo","Peter Mwangi","Daniel Njoroge","Grace Achieng"];
+  const rows=[[2,2,4800,2],[9,3,6500,1],[26,0,9200,0],[31,4,7300,4],[50,1,8100,3],[55,2,5200,6],[74,0,6400,5],[79,3,7000,1],[98,4,5600,0],[103,1,9300,4],[122,2,4300,2],[127,0,8800,7],[146,3,6100,1],[151,4,7900,3],[170,1,5400,6],[175,0,7200,0],[194,2,5000,5],[199,3,8400,1]];
+  const run={};cards.forEach(c=>run[c.id]=c.bal);
+  const tx=rows.map(([h,i,amt,k],j)=>{const c=cards[i],t={t:n-h*H,id:c.id,driver:D[(i+j)%5],station:ST[k][0],loc:ST[k][1],amt,after:Math.min(run[c.id],c.cap)};run[c.id]+=amt;return t});
+  return{cheques:[{no:"CHQ-004512",amt:400000,t:n-8*DAY}],cards,tx}};
+let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.cards)S=seed();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const kes=n=>"KES "+Math.round(n).toLocaleString("en-KE");
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const loaded=()=>sum(S.cheques.map(c=>c.amt)),spent=()=>sum(S.tx.map(t=>t.amt));
+const remaining=()=>loaded()-spent(),onCards=()=>sum(S.cards.map(c=>c.bal)),free=()=>remaining()-onCards();
+const cap=c=>Math.max(c.cap||1,c.bal,1);
+const pct=c=>Math.max(0,Math.min(100,c.bal/cap(c)*100));
+const status=c=>c.bal<=0?"empty":pct(c)<20?"low":"ok";
+const LABEL={ok:"Fuel available",low:"Low fuel",empty:"No fuel"};
+const col=p=>p<=0?"#d92d20":`hsl(${Math.round(Math.min(100,p)*1.25)} 70% 38%)`;
+const card=id=>S.cards.find(c=>c.id===id);
+const when=t=>new Date(t).toLocaleString("en-KE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+let tab="driver",mine=null,fh="all",tt,driverName="";
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),3800)}
+
+function gauge(c){
+  const f=Math.min(12,Math.ceil(pct(c)/100*12));
+  return `<div class="gauge ${status(c)}" aria-hidden="true">${Array.from({length:12},(_,i)=>`<i class="${i<f?"on":""}"></i>`).join("")}</div><div class="ef" aria-hidden="true"><span>E</span><span>F</span></div>`;
+}
+function banner(){
+  const bad=S.cards.filter(c=>status(c)!=="ok").sort((a,b)=>a.bal-b.bal);
+  $("#banner").innerHTML=bad.map(c=>status(c)==="empty"
+    ?`<div class="alert empty"><i></i><span><b>${esc(c.reg)}</b> is at 0%. No fuel on its card. Do not send it out until it is topped up.</span></div>`
+    :`<div class="alert low"><i></i><span><b>${esc(c.reg)}</b> is running low: ${Math.round(pct(c))}% left (${kes(c.bal)}).</span></div>`).join("");
+}
+function verdict(c,amt){
+  if(c.bal<=0)return{block:true,cls:"bad",msg:"No fuel on this card. Do not fuel; ask the office to top up."};
+  if(!amt||amt<1)return{block:true,cls:"",msg:""};
+  if(amt>c.bal)return{block:true,cls:"bad",msg:`This card has only ${kes(c.bal)}. The amount is ${kes(amt-c.bal)} too high.`};
+  if(amt>remaining())return{block:true,cls:"bad",msg:`Total funds are only ${kes(remaining())}. Ask the office to load a cheque.`};
+  const after=c.bal-amt,ap=Math.round(after/cap(c)*100);
+  if(ap<20)return{block:false,cls:"warn",msg:`Allowed, but the card will be low: ${ap}% (${kes(after)}) left.`};
+  return{block:false,cls:"",msg:`Card after fuelling: ${ap}% (${kes(after)}). Total funds after: ${kes(remaining()-amt)}.`};
+}
+const ent=t=>`<div class="entry"><div>${esc(t.station)}<small>${esc(t.loc||"")} · ${when(t.t)}</small></div><b>${kes(t.amt)}</b></div>`;
+
+/* ---------- driver ---------- */
+function renderDriver(){
+  const c=mine&&card(mine);
+  if(!c){
+    $("#app").innerHTML=`<section class="hero"><div class="dh"><h2>Which hearse are you driving?</h2><p>Pick yours to see its fuel card.</p></div>
+      <div class="pick">${S.cards.map(x=>`<button class="pickbtn" data-id="${x.id}">${esc(x.reg)}</button>`).join("")}</div></section>`;
+    document.querySelectorAll(".pickbtn").forEach(b=>b.onclick=()=>{mine=b.dataset.id;renderDriver()});
+    return;
+  }
+  const p=Math.round(pct(c)),s=status(c),mt=S.tx.filter(t=>t.id===c.id).slice(0,5);
+  $("#app").innerHTML=`<section class="hero">
+    <div class="dh"><div class="dhtop"><div><small>Your hearse</small><b>${esc(c.reg)}</b></div><span class="dchip">${LABEL[s]}</span></div>
+      <div class="dpct">${p}<sup>%</sup></div><div class="dsub">Fuel remaining on card ending ${esc(c.card.slice(-4))}</div>
+      <div class="dbar"><i style="width:${p}%"></i></div><div class="dkes"><span>${kes(c.bal)} left</span><span>Full: ${kes(cap(c))}</span></div></div>
+    <button class="btn big rec" id="open">Record fuel</button>
+    <div class="panel"><h2>Your recent fuel</h2><div class="list">${mt.map(ent).join("")||"<p style='color:var(--muted);margin:0'>No fuel recorded for this hearse yet.</p>"}</div></div>
+    <button class="btn ghost" id="sw">Not ${esc(c.reg)}? Switch hearse</button></section>`;
+  $("#open").onclick=openPanel;$("#sw").onclick=()=>{mine=null;renderDriver()};
+}
+function openPanel(){const sc=$("#scrim");sc.classList.remove("out");sc.hidden=false;panelForm();setTimeout(()=>{const a=$("#st");if(a)a.focus()},320)}
+function closePanel(){
+  const sc=$("#scrim");if(sc.hidden||sc.classList.contains("out"))return;
+  sc.classList.add("out");
+  setTimeout(()=>{sc.hidden=true;sc.classList.remove("out");if(tab==="driver")renderDriver()},200);
+}
+function panelForm(){
+  const c=card(mine),s=status(c);
+  $("#pt").textContent=c.reg;
+  const chips=[2000,5000,10000].filter(v=>v<c.bal);
+  $("#pbody").innerHTML=`
+  <div class="avail ${s}"><small>${s==="empty"?"No fuel on this card":"You can fuel up to"}</small><div class="big">${kes(c.bal)}</div>${gauge(c)}<div class="cardno">${Math.round(pct(c))}% of card left · ${esc(c.card)}</div></div>
+  <form id="f">
+    <label>Total station<input class="in" id="st" list="stl" placeholder="Total Westlands" required autocomplete="off"></label>
+    <datalist id="stl">${ST.map(x=>`<option value="${x[0]}">`).join("")}</datalist>
+    <label>Location<input class="in" id="lc" placeholder="Area or town" required autocomplete="off"></label>
+    <label>Amount fuelled (KES)<input class="in" id="am" type="number" min="1" step="1" inputmode="numeric" placeholder="0" required></label>
+    <div class="qa">${chips.map(v=>`<button type="button" class="qb" data-v="${v}">${v.toLocaleString("en-KE")}</button>`).join("")}${c.bal>0?`<button type="button" class="qb" data-v="${c.bal}">Max</button>`:""}</div>
+    <label>Driver name<input class="in" id="dr" value="${esc(driverName)}" required autocomplete="name"></label>
+    <div class="check" id="ck" role="alert"></div>
+    <div class="sf"><button class="btn primary" id="go" style="width:100%">Record fuel</button></div>
+  </form>`;
+  const upd=()=>{const v=verdict(c,Math.round(+$("#am").value));$("#ck").className="check "+v.cls;$("#ck").textContent=v.msg;$("#go").disabled=v.block};
+  $("#am").oninput=upd;
+  $("#st").oninput=e=>{const m=ST.find(x=>x[0].toLowerCase()===e.target.value.trim().toLowerCase());if(m)$("#lc").value=m[1]};
+  document.querySelectorAll(".qb").forEach(b=>b.onclick=()=>{$("#am").value=b.dataset.v;upd()});
+  $("#f").onsubmit=e=>{
+    e.preventDefault();
+    const amt=Math.round(+$("#am").value);if(verdict(c,amt).block)return;
+    driverName=$("#dr").value.trim();const st=$("#st").value.trim(),lc=$("#lc").value.trim();
+    c.bal-=amt;S.tx.unshift({t:Date.now(),id:c.id,driver:driverName,station:st,loc:lc,amt,after:c.bal});save();
+    panelDone(c,amt,st,lc);
+  };
+  upd();
+}
+function panelDone(c,amt,st,lc){
+  const s=status(c);
+  $("#pbody").innerHTML=`<div class="doneview"><div class="tick">\u2713</div>
+    <div><h3>Fuel recorded</h3><p>${kes(amt)} at ${esc(st)}</p></div>
+    <dl class="rc"><div><dt>Hearse</dt><dd>${esc(c.reg)}</dd></div><div><dt>Location</dt><dd>${esc(lc)}</dd></div><div><dt>Deducted from card and total funds</dt><dd>${kes(amt)}</dd></div><div><dt>Card left now</dt><dd>${Math.round(pct(c))}% (${kes(c.bal)})</dd></div></dl>
+    ${s!=="ok"?`<div class="check ${s==="empty"?"bad":"warn"}" style="width:100%">${s==="empty"?"This card is now empty. Tell the office before the next trip.":"This card is running low. Tell the office to top it up."}</div>`:""}
+    <button class="btn primary big" style="width:100%" id="dn">Done</button></div>`;
+  $("#dn").onclick=closePanel;
+}
+$("#px").onclick=closePanel;
+$("#scrim").addEventListener("mousedown",e=>{if(e.target.id==="scrim")closePanel()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closePanel()});
+
+/* ---------- office ---------- */
+const bars=(m,total)=>{const e=Object.entries(m).sort((a,b)=>b[1]-a[1]),mx=e[0]?e[0][1]:1;
+  return `<div class="bars">${e.map(([k,v])=>`<div class="bar"><small>${esc(k)}<span>${kes(v)} · ${Math.round(v/total*100)}%</span></small><div><i style="width:${v/mx*100}%"></i></div></div>`).join("")}</div>`};
+function analytics(){
+  const bh={},bs={},days=Array(7).fill(0);
+  S.tx.forEach(t=>{const r=(card(t.id)||{}).reg||"?";bh[r]=(bh[r]||0)+t.amt;bs[t.station]=(bs[t.station]||0)+t.amt;const d=Math.floor((Date.now()-t.t)/DAY);if(d<7)days[6-d]+=t.amt});
+  const tot=spent()||1,mx=Math.max(...days,1),top=Object.fromEntries(Object.entries(bs).sort((a,b)=>b[1]-a[1]).slice(0,5));
+  return `<div class="an">
+   <div class="panel wide"><h2>Analytics</h2><div class="kpis"><div><small>Fuel entries</small><b>${S.tx.length}</b></div><div><small>Average fill</small><b>${kes(spent()/Math.max(1,S.tx.length))}</b></div><div><small>Spent, last 7 days</small><b>${kes(sum(days))}</b></div></div></div>
+   <div class="panel"><h2>Spend by hearse</h2>${bars(bh,tot)}</div>
+   <div class="panel"><h2>Top stations</h2>${bars(top,tot)}</div>
+   <div class="panel wide"><h2>Daily spend, last 7 days</h2><div class="cols">${days.map((v,i)=>`<div><i style="height:${v/mx*100}%" title="${kes(v)}"></i><span>${new Date(Date.now()-(6-i)*DAY).toLocaleDateString("en-KE",{weekday:"short"})}</span></div>`).join("")}</div></div></div>`;
+}
+function renderFleet(){
+  const rem=remaining(),oc=onCards(),fr=free(),pc=rem>0?Math.max(0,Math.min(100,oc/rem*100)):0;
+  const rows=S.tx.filter(t=>fh==="all"||t.id===fh);
+  $("#app").innerHTML=`
+  <section class="panel">
+    <div class="stats">
+      <div class="stat hero"><small>Total funds remaining</small><b>${kes(rem)}</b></div>
+      <div class="stat"><small>Loaded by cheque</small><b>${kes(loaded())}</b></div>
+      <div class="stat"><small>Fuel spent</small><b>${kes(spent())}</b></div>
+      <div class="stat"><small>Not yet on a card</small><b>${kes(fr)}</b></div>
+    </div>
+    <div class="split" aria-hidden="true"><span style="width:${pc}%;background:var(--brand)"></span></div>
+    <div class="legend"><span><i style="background:var(--brand)"></i>On hearse cards ${kes(oc)}</span><span><i style="background:var(--line)"></i>Not yet on a card ${kes(fr)}</span></div>
+  </section>
+  <div class="cards">${S.cards.map(c=>{const p=Math.round(pct(c)),s=status(c),l=S.tx.find(t=>t.id===c.id);
+    return `<div class="cardbox"><div class="cardrow"><div><div class="reg">${esc(c.reg)}</div><div class="cardno">${esc(c.card)}</div></div>
+      <div style="text-align:right"><div class="bal">${p}%</div><span class="chip ${s}">${LABEL[s]}</span></div></div>${gauge(c)}
+      <div class="okes" style="margin-top:8px">${kes(c.bal)} of ${kes(cap(c))}</div>
+      <div class="last">${l?`Last fuelled ${when(l.t)}, ${esc(l.station)}`:"No fuel recorded yet"}</div></div>`}).join("")}</div>
+  <section class="grid2">
+    <form class="panel" id="fc"><h2>Load a cheque</h2>
+      <label>Cheque number<input class="in" id="cn" required placeholder="CHQ-004600"></label>
+      <label>Amount (KES)<input class="in" id="ca" type="number" min="1" step="1" required placeholder="0"></label>
+      <button class="btn primary">Add to total funds</button></form>
+    <form class="panel" id="ft"><h2>Top up a hearse card</h2>
+      <label>Hearse<select class="in" id="th">${S.cards.map(c=>`<option value="${c.id}">${esc(c.reg)} (${Math.round(pct(c))}% left)</option>`).join("")}</select></label>
+      <label>Amount (KES), up to ${kes(Math.max(0,fr))}<input class="in" id="ta" type="number" min="1" step="1" required placeholder="0"></label>
+      <button class="btn primary">Move to card</button></form>
+  </section>
+  ${analytics()}
+  <section class="panel" style="margin-top:16px"><h2>Fuel log</h2>
+    <div class="fchips"><button class="fc" data-f="all" aria-pressed="${fh==="all"}">All hearses</button>${S.cards.map(c=>`<button class="fc" data-f="${c.id}" aria-pressed="${fh===c.id}">${esc(c.reg)}</button>`).join("")}</div>
+    <div class="tablewrap"><table>
+    <thead><tr><th>When</th><th>Hearse</th><th>Driver</th><th>Station</th><th class="n">Amount</th><th class="n">Card left</th></tr></thead>
+    <tbody>${rows.map(t=>{const c=card(t.id)||{},p=Math.round(Math.min(100,t.after/cap(c)*100));
+      return `<tr><td>${when(t.t)}</td><td><b>${esc(c.reg||"?")}</b></td><td>${esc(t.driver)}</td><td>${esc(t.station)}<small>${esc(t.loc||"")}</small></td><td class="n">${kes(t.amt)}</td><td class="n" style="color:${col(p)};font-weight:700">${p}%</td></tr>`}).join("")||"<tr><td colspan='6'>No entries.</td></tr>"}</tbody></table></div></section>
+  <p><button class="btn ghost" id="rs">Reset demo data</button></p>`;
+  document.querySelectorAll(".fc").forEach(b=>b.onclick=()=>{fh=b.dataset.f;const y=scrollY;renderFleet();scrollTo(0,y)});
+  $("#fc").onsubmit=e=>{e.preventDefault();const a=Math.round(+$("#ca").value);
+    S.cheques.push({no:$("#cn").value.trim(),amt:a,t:Date.now()});save();toast(`Cheque ${$("#cn").value.trim()} loaded: ${kes(a)}.`);render()};
+  $("#ft").onsubmit=e=>{e.preventDefault();const a=Math.round(+$("#ta").value),c=card($("#th").value);
+    if(a>free())return toast(`Only ${kes(Math.max(0,free()))} is not yet on a card. Load a cheque first.`);
+    c.bal+=a;if(c.bal>c.cap)c.cap=c.bal;save();toast(`${kes(a)} moved to ${c.reg}. Card now at ${Math.round(pct(c))}%.`);render()};
+  $("#rs").onclick=()=>{S=seed();save();mine=null;fh="all";render()};
+}
+
+function render(){
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab));
+  if(tab==="fleet"){banner();renderFleet()}else{$("#banner").innerHTML="";renderDriver()}
+}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+render();
+</script>
+</body>
+</html>

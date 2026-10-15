@@ -284,7 +284,7 @@ const StatLine = ({ label, value, color }) => (
   </span>
 );
 
-const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission, requests: requestsProp, onRequestsChanged }) => {
+const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission, requests: requestsProp, onRequestsChanged, branchSlug, refreshVersion = 0 }) => {
   const navigate = useNavigate();
   const { socket } = useSocket();
   const pm = postmortem || {};
@@ -332,10 +332,10 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
   // Tenant-wide postmortem analytics (requested vs carried out)
   const [stats, setStats] = useState(null);
   const loadStats = useCallback(() => {
-    return axios.get(`${env.FULL_API_URL}/postmortem-requests/stats`, { headers: getTenantHeaders() })
+    return axios.get(`${env.FULL_API_URL}/postmortem-requests/stats`, { headers: getTenantHeaders(branchSlug) })
       .then((res) => { if (res.data?.success) setStats(res.data.data || null); })
       .catch(() => { /* stats are optional */ });
-  }, []);
+  }, [branchSlug]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
@@ -343,12 +343,12 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
     if (!deceasedId) return;
     try {
       const res = await axios.get(`${env.FULL_API_URL}/postmortem-requests`, {
-        headers: getTenantHeaders(),
+        headers: getTenantHeaders(branchSlug),
         params: { deceased_id: deceasedId },
       });
       if (Array.isArray(res.data?.data)) setOwnRequests(res.data.data);
     } catch (e) { /* no tracked requests yet */ }
-  }, [deceasedId]);
+  }, [branchSlug, deceasedId, refreshVersion]);
 
   // Always self-load as well - belt & suspenders alongside the parent's copy.
   useEffect(() => { loadRequests(); }, [loadRequests]);
@@ -379,7 +379,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
 
   const generatePDF = async () => {
     try {
-      const headers = getTenantHeaders();
+      const headers = getTenantHeaders(branchSlug);
       const url = `${env.FULL_API_URL}/postmortem/${deceasedId}/pdf`;
       const response = await fetch(url, {
         method: 'GET',
@@ -418,7 +418,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
       const res = await axios.post(
         `${env.FULL_API_URL}/postmortem-requests`,
         { deceased_id: deceasedId, ...requestForm },
-        { headers: getTenantHeaders() }
+        { headers: getTenantHeaders(branchSlug) }
       );
       if (res.data?.success) {
         // Build the notification payload for the global bell
@@ -478,7 +478,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
       const res = await axios.post(
         `${env.FULL_API_URL}/postmortem-requests/${id}/send`,
         {},
-        { headers: getTenantHeaders() }
+        { headers: getTenantHeaders(branchSlug) }
       );
       if (res.data?.success) {
         showToast.success('Marked as sent - postmortem is now pending');
@@ -499,7 +499,7 @@ const PostmortemTab = ({ postmortem, deceasedId, deceasedName, deceasedAdmission
       const res = await axios.put(
         `${env.FULL_API_URL}/postmortem-requests/${id}/status`,
         { status: 'cancelled' },
-        { headers: getTenantHeaders() }
+        { headers: getTenantHeaders(branchSlug) }
       );
       if (res.data?.success) {
         showToast.success('Postmortem request cancelled');

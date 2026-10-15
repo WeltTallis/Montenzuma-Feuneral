@@ -957,7 +957,11 @@ export function CaseDrawer({ record, ctx, onClose }) {
     resolveTenantSlug?.() ||
     ""
   )) || "";
-  const profileUrl = p.id && tenantSlug ? `/${tenantSlug}/deceased/${p.id}` : null;
+  const profileId = p.id || p.raw?.id || p.raw?.deceased_id || p.raw?.deceasedId;
+  const profileBranchSlug = p.raw?._branchSlug || tenantSlug;
+  const profileUrl = profileId && tenantSlug
+    ? `/${tenantSlug}/deceased?id=${encodeURIComponent(profileId)}${profileBranchSlug ? `&branch=${encodeURIComponent(profileBranchSlug)}` : ""}`
+    : null;
 
   return (
     <>

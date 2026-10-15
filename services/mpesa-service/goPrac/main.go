@@ -1,13 +1,8 @@
-package   main
+package main
 
-import   'fmt'
+import "fmt"
 
-
-
-//entry  point
-
-func   main(){
-
-	fmt.PrintLn("hellow    go   world ")
-
+// entry point
+func main() {
+	fmt.Println("hellow    go   world ")
 }

@@ -194,7 +194,7 @@ const formatReleaseMoment = (release) => {
   return release?.created_at ? formatDateTime(release.created_at) : '';
 };
 
-const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0 }) => {
+const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0, branchSlug }) => {
   const navigate = useNavigate();
   const d = deceased || {};
   const admissionNumber = d.admission_number || d.admission_no || deceasedId;
@@ -225,7 +225,7 @@ const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0 }) => {
 
       setIsLoading(true);
 
-      const headers = { ...getTenantHeaders() };
+      const headers = { ...getTenantHeaders(branchSlug) };
       const lookup = String(admissionNumber || deceasedId || '').trim();
       const norm = (value) => String(value || '').trim().toLowerCase();
       const names = new Set([norm(deceasedName)]);
@@ -282,7 +282,7 @@ const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0 }) => {
 
     fetchReleaseDetails();
     return () => { cancelled = true; };
-  }, [admissionNumber, deceasedId, deceasedName, refreshVersion]);
+  }, [admissionNumber, deceasedId, deceasedName, refreshVersion, branchSlug]);
 
   return (
     <>

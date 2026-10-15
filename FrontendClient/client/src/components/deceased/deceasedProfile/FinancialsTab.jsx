@@ -519,7 +519,7 @@ const StatementDetailsPane = ({ receipt, setField }) => (
 );
 
 // ── Component ──────────────────────────────────────────────────────────────
-const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, deceased, onDataChanged }) => {
+const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, deceased, onDataChanged, branchSlug, refreshVersion = 0 }) => {
   const [payments, setPayments] = useState(initialPayments || []);
   const [chargeList, setChargeList] = useState(initialCharges || []);
   const [tab, setTab] = useState('payments');
@@ -583,6 +583,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
   // Keep local mirrors in sync with parent data
   useEffect(() => { setChargeList(initialCharges || []); }, [initialCharges]);
+  useEffect(() => { setPayments(initialPayments || []); }, [initialPayments]);
 
   // Fill in the deceased once it arrives (the tab can mount before the fetch lands).
   useEffect(() => {
@@ -595,9 +596,10 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
   }, [dName, lifeYears, dAdmNo]);
 
   const headers = useCallback(() => ({
-    'x-tenant-slug': getTenantSlug(),
+    'x-tenant-slug': branchSlug || getTenantSlug(),
+    ...(branchSlug ? { 'x-branch-slug': branchSlug, 'x-branch-db': branchSlug } : {}),
     'Authorization': `Bearer ${getAuthToken ? getAuthToken() : localStorage.getItem('token') || localStorage.getItem('authToken') || ''}`,
-  }), []);
+  }), [branchSlug]);
 
   const loadPayments = useCallback(async () => {
     if (!deceasedId) return;
@@ -609,7 +611,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     }
   }, [deceasedId, headers]);
 
-  useEffect(() => { loadPayments(); }, [loadPayments]);
+  useEffect(() => { loadPayments(); }, [loadPayments, refreshVersion]);
 
 
   const handleRecordPayment = async (e) => {

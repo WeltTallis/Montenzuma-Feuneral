@@ -461,33 +461,83 @@ function BandedDay({ date, searched, filters, today, onOpenCase, onClearDay }) {
 
 /* ── operations month table ─────────────────────────────────────────────── */
 
-const OPS_COLS = "1.5fr 1.2fr 1fr 1fr";
+const OPS_COLS = "1.25fr repeat(3, 1fr)";
+
+function processProgress(p, type, today) {
+  if (type === "intake") {
+    if (!p.admDate) return { label: "Not started", date: "", time: "", detail: "No intake recorded", color: "var(--tx4)", state: "pending" };
+    const scheduled = p.admDate > today;
+    return {
+      label: scheduled ? "Scheduled" : "Received",
+      date: p.admDate,
+      time: p.admTime,
+      detail: p.receivedFrom,
+      color: TYPE_C.intake,
+      state: scheduled ? "upcoming" : "complete",
+    };
+  }
+  if (type === "pm") {
+    if (!p.pm) return { label: "Not started", date: "", time: "", detail: "No postmortem recorded", color: "var(--tx4)", state: "pending" };
+    const completed = p.pm.state === "completed";
+    const date = completed ? (p.pm.doneDate || p.pm.reqDate) : p.pm.reqDate;
+    const time = completed ? (p.pm.doneTime || p.pm.reqTime) : p.pm.reqTime;
+    return {
+      label: completed ? "Completed" : p.pm.state === "in-progress" ? "In progress" : "Requested",
+      date,
+      time,
+      detail: p.pm.authority,
+      color: completed ? "var(--plum)" : p.pm.state === "in-progress" ? "var(--blue)" : "var(--orange)",
+      state: completed ? "complete" : "active",
+    };
+  }
+  if (!p.release) return { label: "Not started", date: "", time: "", detail: "No release recorded", color: "var(--tx4)", state: "pending" };
+  const scheduled = p.release.status === "scheduled";
+  return {
+    label: scheduled ? "Scheduled" : "Released",
+    date: p.release.date,
+    time: p.release.time,
+    detail: p.release.dest,
+    color: scheduled ? "var(--orange)" : TYPE_C.release,
+    state: scheduled ? "upcoming" : "complete",
+  };
+}
 
 /** Default command view — stat strip · today's timeline · the period's events. */
 function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
   const { s, e } = periodRange(state.view, state.selDate);
-  const list = [];
-  searched.forEach((p) => {
-    if (p.admDate && p.admDate >= s && p.admDate <= e) {
-      list.push({ t: "intake", time: p.admTime || "00:00", date: p.admDate, p });
-    }
-    if (p.pm && p.pm.reqDate && p.pm.reqDate >= s && p.pm.reqDate <= e) {
-      list.push({ t: "pm", time: p.pm.reqTime || "09:00", date: p.pm.reqDate, p });
-    }
-    if (p.release && p.release.date && p.release.date >= s && p.release.date <= e) {
-      list.push({ t: "release", time: p.release.time || "09:00", date: p.release.date, p });
-    }
-  });
-  const visible = list.filter((ev) => passes(ev.p, state.filters));
-  // Newest first — today's events lead, then yesterday, backwards through the
-  // period. See sortEventsNewestFirst for why this is not a localeCompare.
-  const visibleSorted = sortEventsNewestFirst(visible);
+  const visible = searched
+    .filter((p) => passes(p, state.filters))
+    .map((p) => {
+      const stages = {
+        intake: processProgress(p, "intake", today),
+        pm: processProgress(p, "pm", today),
+        release: processProgress(p, "release", today),
+      };
+      const eventDates = [p.admDate, p.pm?.reqDate, p.pm?.doneDate, p.release?.date]
+        .filter((date) => date && date >= s && date <= e);
+      eventDates.sort();
+      return eventDates.length ? { p, stages, latestDate: eventDates[eventDates.length - 1] } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.latestDate.localeCompare(a.latestDate));
 
   const sel = parseKey(state.selDate);
   const periodLbl = `Month of ${MO[sel.getMonth()]} ${sel.getFullYear()}`;
 
   return (
     <>
+      <div className="ops-page-heading">
+        <div>
+          <span className="ops-eyebrow">RESTPOINT OPERATIONS</span>
+          <h1>Operations overview</h1>
+          <p>A live view of admissions, releases and postmortem activity for the selected branch.</p>
+        </div>
+        <div className="ops-date-badge">
+          <span className="ops-live-dot" />
+          <span><b>Today</b>{fmtDate(today)}</span>
+        </div>
+      </div>
+
       <StatStrip
         items={[
           { cls: "st-blue", icon: "cal", num: calc.monthIntakes, label: "This Month", sub: `intakes · ${MOS[state.calM]} ${state.calY}` },
@@ -504,60 +554,61 @@ function MonthTable({ searched, calc, state, now, today, onOpenCase }) {
         onOpenCase={onOpenCase}
       />
 
-      <div className="mhead">
-        <div>
-          <div className="mh-t">Operations</div>
-          <div className="mh-s">
-            {periodLbl} · click a row for the case file · use Day/Week/Month above · pick a day in
-            the sidebar calendar
+      <section className="ops-list-card" aria-label="Scheduled operations">
+        <div className="mhead">
+          <div>
+            <div className="mh-t">Scheduled operations</div>
+            <div className="mh-s">
+              {periodLbl} · one row per deceased, with intake, postmortem and release progress
+            </div>
           </div>
+          <div className="mh-r"><span className="cnt-chip">{visible.length} cases</span></div>
         </div>
-        <div className="mh-r"><span className="cnt-chip">{visible.length} events</span></div>
-      </div>
 
-      <div className="lh" style={{ gridTemplateColumns: OPS_COLS }}>
-        <div>Deceased</div>
-        <div>Event</div>
-        <div>Schedule</div>
-        <div style={{ textAlign: "left" }}>Status</div>
-      </div>
+        <div className="lh" style={{ gridTemplateColumns: OPS_COLS }}>
+          <div>Deceased</div>
+          <div>Intake</div>
+          <div>Postmortem</div>
+          <div>Release</div>
+        </div>
 
-      {visibleSorted.length ? visibleSorted.map((ev) => {
-        const p = ev.p;
-        const sub = ev.t === "release" ? p.release.dest : ev.t === "intake" ? p.receivedFrom : p.pm.authority;
-        return (
+        {visible.length ? visible.map(({ p, stages }) => (
           <div
-            className={`row ops-month-row event-${ev.t}`}
-            key={`${ev.t}-${p.uid}-${ev.date}-${ev.time}`}
-            style={{ gridTemplateColumns: OPS_COLS, borderLeftColor: TYPE_C[ev.t] }}
-            onClick={() => onOpenCase(p.uid, ev.t)}
+            className="row ops-month-row ops-progress-row"
+            key={p.uid}
+            style={{ gridTemplateColumns: OPS_COLS }}
+            onClick={() => onOpenCase(p.uid, "intake")}
             role="button"
             tabIndex={0}
-            onKeyDown={(e2) => { if (e2.key === "Enter") onOpenCase(p.uid, ev.t); }}
+            onKeyDown={(e2) => { if (e2.key === "Enter") onOpenCase(p.uid, "intake"); }}
           >
-            <div className="cell">
+            <div className="cell ops-progress-person">
               <div className="nm">{p.name}</div>
               <div className="sub">{p.adm} · {p.branch}</div>
             </div>
-            <div className="cell">
-              <span className="st" style={{ color: TYPE_C[ev.t] }} title={TYPE_L[ev.t]}>
-                <i style={{ background: TYPE_C[ev.t] }} />{TYPE_L[ev.t]}
-              </span>
-              <div className="stdays">{String(sub).slice(0, 30)}</div>
-            </div>
-            <div className="cell">
-              <div className="mt2">{shortDate(ev.date)}</div>
-              <div className="sub"><Ic n="clock" s={9} />{ev.time}</div>
-            </div>
-            <div className="cell"><StatusChip c={p} /></div>
+            {["intake", "pm", "release"].map((type) => {
+              const stage = stages[type];
+              return (
+                <div className={`cell ops-process ops-process-${stage.state}`} key={type}>
+                  <span className="ops-process-mobile-label">{TYPE_L[type]}</span>
+                  <span className="st" style={{ color: stage.color }}>
+                    <i style={{ background: stage.color }} />{stage.label}
+                  </span>
+                  <div className="stdays">
+                    {stage.date ? `${shortDate(stage.date)}${stage.time ? ` · ${stage.time}` : ""}` : "No date recorded"}
+                  </div>
+                  <div className="ops-process-detail" title={stage.detail}>{stage.detail}</div>
+                </div>
+              );
+            })}
           </div>
-        );
-      }) : (
-        <div className="empty">
-          <div className="empty-ico"><Ic n="cal" s={20} /></div>
-          <span style={{ fontSize: 12 }}>No operations in this period — adjust filters or pick a day.</span>
-        </div>
-      )}
+        )) : (
+          <div className="empty">
+            <div className="empty-ico"><Ic n="cal" s={20} /></div>
+            <span style={{ fontSize: 12 }}>No operations in this period — adjust filters or pick a day.</span>
+          </div>
+        )}
+      </section>
     </>
   );
 }

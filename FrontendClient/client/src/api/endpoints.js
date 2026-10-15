@@ -10,7 +10,7 @@ export const buildUrl = (service, path = '') => {
 };
 
 // Helper to get tenant headers for multi-tenant isolation
-export const getTenantHeaders = () => {
+export const getTenantHeaders = (tenantSlugOverride) => {
   const headers = {};
   try {
     const tenantSlug = localStorage.getItem('tenantSlug') || sessionStorage.getItem('tenantSlug');
@@ -26,6 +26,11 @@ export const getTenantHeaders = () => {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (branchSlug) headers['x-branch-slug'] = branchSlug;
     if (branchId) headers['x-branch-id'] = branchId;
+    if (tenantSlugOverride) {
+      headers['x-tenant-slug'] = tenantSlugOverride;
+      headers['x-branch-slug'] = tenantSlugOverride;
+      headers['x-branch-db'] = tenantSlugOverride;
+    }
   } catch (e) {
     // localStorage not available
   }

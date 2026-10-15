@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { getTenantSlug, getAuthToken, getBranchScopeHeaders } from '../../../utils/globalAuth';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useSocket } from '../../../utils/context/socketContext';
 
 // Import your existing sub-components
 import ScanDocumentModal from '../../scanner/ScanDocumentModal';
@@ -249,6 +250,9 @@ const DeceasedDetailPage = () => {
   // 'MON-NYAFHJEW39J6FURJG6H=2026' contain '=' as part of the identifier.
   // The URL-encoded form is '%3D' and searchParams.get() already decodes it.
   const navigate = useNavigate();
+  const location = useLocation();
+  const { socket } = useSocket();
+  const profileBranchSlug = searchParams.get('branch') || location.state?.profileBranchSlug || getTenantSlug();
   const [activeTab, setActiveTab] = useState('intake');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -286,11 +290,11 @@ const DeceasedDetailPage = () => {
     };
   }, []);
 
-  const fetchData = useCallback(async (forceRefresh = false) => {
+  const fetchData = useCallback(async (forceRefresh = false, silent = false) => {
     if (!deceasedId) return false;
 
     const safeDeceasedId = encodeURIComponent(deceasedId);
-    const cacheKey = `${deceasedId}-${getTenantSlug()}`;
+    const cacheKey = `${deceasedId}-${profileBranchSlug}`;
 
     // Clear cache on force refresh
     if (forceRefresh) {
@@ -315,13 +319,16 @@ const DeceasedDetailPage = () => {
 
     setLoading(true);
     try {
-      const slug = getTenantSlug();
+      const slug = profileBranchSlug;
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
       // `x-tenant-slug` selects the DATABASE the deceased-service reads; for a
       // branch user it must be the BRANCH slug (each branch owns its own DB).
       const headers = {
         'Authorization': `Bearer ${token}`,
         ...getBranchScopeHeaders(slug),
+        'x-tenant-slug': slug,
+        'x-branch-slug': slug,
+        'x-branch-db': slug,
       };
 
       // Fire ALL API calls in parallel — no waterfall
@@ -508,14 +515,54 @@ const DeceasedDetailPage = () => {
       return true;
     } catch (err) {
       console.error('Error fetching deceased detail:', err);
-      showToast.error('Failed to load deceased details');
+      if (!silent) showToast.error('Failed to load deceased details');
       return false;
     } finally {
       if (mounted.current) setLoading(false);
     }
-  }, [deceasedId]);
+  }, [deceasedId, profileBranchSlug]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(true, true); }, [fetchData]);
+
+  useEffect(() => {
+    if (!deceasedId) return undefined;
+    let refreshTimer = null;
+    const refreshQuietly = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchData(true, true);
+    };
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        refreshQuietly();
+      }, 350);
+    };
+    const events = [
+      'notification:deceased-admitted', 'deceased-admitted',
+      'notification:deceased-removed', 'deceased-removed',
+      'notification:deceased-updated', 'deceased-updated',
+      'notification:body-released', 'body-released',
+      'notification:postmortem-request', 'postmortem-request',
+      'notification:postmortem-update', 'postmortem-update',
+      'notification:payment-updated', 'payment-updated',
+      'notification:charge-updated', 'charge-updated',
+    ];
+    events.forEach((event) => socket?.on?.(event, scheduleRefresh));
+
+    const interval = setInterval(refreshQuietly, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshQuietly();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(interval);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      document.removeEventListener('visibilitychange', onVisible);
+      events.forEach((event) => socket?.off?.(event, scheduleRefresh));
+    };
+  }, [deceasedId, socket, fetchData]);
 
   const handleRefresh = useCallback(async () => {
     if (!deceasedId || refreshing) return;
@@ -556,7 +603,13 @@ const DeceasedDetailPage = () => {
         <DeceasedProfileHeader
           deceased={deceased}
           nextOfKin={nextOfKin}
-          onBack={() => { const slug = getTenantSlug(); navigate(`/${slug}/all-deceased`); }}
+          onBack={() => {
+            if (location.state?.from) {
+              navigate(location.state.from);
+              return;
+            }
+            navigate(`/${profileBranchSlug}/all-deceased`);
+          }}
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
           onRefresh={handleRefresh}
@@ -580,19 +633,19 @@ const DeceasedDetailPage = () => {
               </TabPane>
 
               <TabPane $active={activeTab === 'release'}>
-                <ReleaseTab deceased={deceased} deceasedId={deceasedId} refreshVersion={refreshVersion} />
+                <ReleaseTab deceased={deceased} deceasedId={deceasedId} refreshVersion={refreshVersion} branchSlug={profileBranchSlug} />
               </TabPane>
 
               <TabPane $active={activeTab === 'postmortem'}>
-                <PostmortemTab postmortem={postmortem} deceasedId={deceasedId} deceasedName={deceased?.full_name || deceased?.name || ''} deceasedAdmission={deceased?.admission_number || deceased?.admission_no || ''} requests={requests} onRequestsChanged={fetchData} />
+                <PostmortemTab postmortem={postmortem} deceasedId={deceasedId} deceasedName={deceased?.full_name || deceased?.name || ''} deceasedAdmission={deceased?.admission_number || deceased?.admission_no || ''} requests={requests} onRequestsChanged={() => fetchData(true)} branchSlug={profileBranchSlug} refreshVersion={refreshVersion} />
               </TabPane>
 
               <TabPane $active={activeTab === 'financials'}>
-                <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} deceased={deceased} onDataChanged={fetchData} />
+                <FinancialsTab charges={charges} payments={payments} deceasedId={deceasedId} deceased={deceased} onDataChanged={() => fetchData(true)} branchSlug={profileBranchSlug} refreshVersion={refreshVersion} />
               </TabPane>
 
               <TabPane $active={activeTab === 'docs'}>
-                <DocumentsTab documents={deceased?.documents} deceasedId={documentDeceasedId} />
+                <DocumentsTab documents={deceased?.documents} deceasedId={documentDeceasedId} branchSlug={profileBranchSlug} refreshVersion={refreshVersion} />
               </TabPane>
 
               <TabPane $active={activeTab === 'audit'}>
