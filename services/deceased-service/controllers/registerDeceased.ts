@@ -8,6 +8,7 @@ import { processSignature } from "../utils/uploadSignature";
 import { NextOfKinModel } from "../models/NextOfKin";
 import { Request, Response } from "express";
 import * as z from "zod";
+import { sendTransactionalSms } from "../../app-global/utils/sendTransactionalSms";
 
 
 
@@ -247,6 +248,13 @@ export const registerNewDeceased = async (
         );
 
         Logger.info({ message: `Deceased registered ${deceased_id} - Admission: ${admission_number}` });
+
+        await sendTransactionalSms({
+            phone: data.tell_no,
+            tenantSlug,
+            event: "body intake confirmation",
+            message: `Montenzuma Monalisa Funeral Home: We have received the body of ${data.full_name} into our care. Admission number: ${admission_number}. For assistance, please contact the funeral home.`,
+        });
 
         // ==============================
         // INVALIDATE CACHE — wipe every deceased key for this tenant

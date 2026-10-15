@@ -241,6 +241,26 @@ services:
       retries: 3
       start_period: 40s
 
+  sms-service:
+    build:
+      context: services/sms-service
+      dockerfile: Dockerfile
+    image: restpoint-sms-service:latest
+    container_name: restpoint_sms_service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      PORT: 8080
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   deceased-service:
     build:
       context: .
@@ -257,6 +277,7 @@ services:
       PORT: 5000
       SERVICE_NAME: deceased-service
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      SMS_SERVICE_URL: http://restpoint_sms_service:8080
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
@@ -659,6 +680,7 @@ services:
       PORT: 5000
       SERVICE_NAME: bodycheckout-service
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      SMS_SERVICE_URL: http://restpoint_sms_service:8080
       # The release flow writes the Released status straight into the tenant DB
       # and then pokes deceased-service so its Redis list/detail caches are
       # invalidated. 5000 is the port INSIDE the container — 5003 is only the

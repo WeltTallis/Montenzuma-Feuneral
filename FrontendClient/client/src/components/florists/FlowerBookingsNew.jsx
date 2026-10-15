@@ -3,6 +3,7 @@
 import { Flower2, User, Calendar, X, Check, Home, Phone } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
+import env from '../../utils/config/env';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReusableCalendar from '../../utils/calender/calender';
 import { useSocket } from '../../utils/context/socketContext'
@@ -73,6 +74,16 @@ const asList = v => {
     } catch { return v.split(',').map(s => s.trim()).filter(Boolean); }
   }
   return [];
+};
+const displayText = value => {
+  const text = String(value ?? '').trim();
+  return /^(?:[-–—]|n\/?a|not specified|null|undefined)$/i.test(text) ? '' : text;
+};
+const resolveFlowerImageUrl = image => {
+  const value = displayText(typeof image === 'string' ? image : image?.url || image?.urlPath);
+  if (!value || /^(?:https?:|data:|blob:)/i.test(value)) return value;
+  const uploadsUrl = String(env.UPLOADS_URL || '').replace(/\/+$/, '');
+  return uploadsUrl ? `${uploadsUrl}/${value.replace(/^\/+/, '')}` : value;
 };
 const splitCommaList = value => String(value || '').split(/[,\n]+/).map(item => item.trim()).filter(Boolean);
 // Normalise ANY date-ish value (DATE, DATETIME, ISO, Date obj) → 'YYYY-MM-DD'
@@ -918,7 +929,11 @@ const FlowerBookingsNew = () => {
     try {
       const response = await api.post(
         `/florist/bookings/${encodeURIComponent(bookingId)}/samples`,
-        formData
+        formData,
+        {
+          headers: { 'Content-Type': null },
+          timeout: 180000,
+        }
       );
       const savedImages = response.data?.data;
       if (!Array.isArray(savedImages)) throw new Error('The server returned an invalid photo list');
@@ -1963,10 +1978,10 @@ const FlowerBookingsNew = () => {
         }}
         onClick={() => viewBooking(b.id)}
       >
-        {product.images?.length > 0 ? (
+        {product.images?.length > 0 && resolveFlowerImageUrl(product.images[0]) ? (
           <div className="fb-card-thumb" style={styles.mediaThumb}>
             <img
-              src={product.images[0]?.url || product.images[0]}
+              src={resolveFlowerImageUrl(product.images[0])}
               alt={product.title}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
@@ -1990,12 +2005,15 @@ const FlowerBookingsNew = () => {
             {(b.flower_description || lineItems.length > 0) && (
               <div style={styles.metaRow}>Flowers: {b.flower_description || lineItems.map(i => i.name).join(' · ')}</div>
             )}
-            <div style={styles.metaRow}><User size={14} /> {b.deceased_name}</div>
+            {displayText(b.deceased_name) && <div style={styles.metaRow}><User size={14} /> {displayText(b.deceased_name)}</div>}
             {initials && <div className="flower-card-initials">Dedication: {initials}</div>}
-            <div style={styles.metaRow}>
-              <User size={14} /> Booked by {b.booked_by || b.customer || '—'}
-              {(b.customer_phone || b.phone) ? ` · ${b.customer_phone || b.phone}` : ''}
-            </div>
+            {(displayText(b.booked_by || b.customer) || displayText(b.customer_phone || b.phone)) && (
+              <div style={styles.metaRow}>
+                <User size={14} />
+                {displayText(b.booked_by || b.customer) && ` Booked by ${displayText(b.booked_by || b.customer)}`}
+                {displayText(b.customer_phone || b.phone) && ` · ${displayText(b.customer_phone || b.phone)}`}
+              </div>
+            )}
             {(b.branch || b.funeral_home) && getBranches().length > 1 && (
               <div style={styles.metaRow}>
                 <Home size={14} /> {resolveBranchName(b.branch || b.funeral_home)}
@@ -2156,9 +2174,9 @@ const FlowerBookingsNew = () => {
                   className="fb-sample-media"
                   style={{ background: '#1C1A17' }}
                 >
-                  {arrangement.images?.length > 0 ? (
+                  {arrangement.images?.length > 0 && resolveFlowerImageUrl(arrangement.images[0]) ? (
                     <img
-                      src={arrangement.images[0]?.url || arrangement.images[0]}
+                      src={resolveFlowerImageUrl(arrangement.images[0])}
                       alt={arrangement.title}
                       // NOT lazy: the samples grid IS the gallery clients browse
                       // to choose an arrangement, so a lazy thumbnail shows as a
@@ -2581,13 +2599,13 @@ const FlowerBookingsNew = () => {
         String(a.arrangement_id || a.id) === String(item.arrangement_id || '') || a.title === item.name
       );
       return (Array.isArray(sample?.images) ? sample.images : []).map(image => ({
-        src: image?.url || image,
+        src: resolveFlowerImageUrl(image),
         alt: item.name,
       }));
     }).filter(image => typeof image.src === 'string' && image.src.trim());
     const uniqueBookingImages = [...new Map(bookingImages.map(image => [image.src, image])).values()];
     const clientReferenceImages = asList(b.sample_images).map((image, index) => ({
-      url: typeof image === 'string' ? image : image?.url,
+      url: resolveFlowerImageUrl(image),
       alt: typeof image === 'string' ? `Client reference photo ${index + 1}` : image?.alt_text || `Client reference photo ${index + 1}`,
     })).filter(image => typeof image.url === 'string' && image.url.trim());
     // Strip machine tokens before splitting human notes.
@@ -2607,28 +2625,37 @@ const FlowerBookingsNew = () => {
     const colorValues = [...new Set(requestedColors.length
       ? requestedColors
       : [...asList(product.colors), ...lineItems.flatMap(item => item.colors || [])])];
-    const colourText = [...new Set(colorValues)].join(', ') || "Any color · florist's choice";
-    const ribbonMessage = b.ribbon_message || ribbonNote || '—';
-    const flowerText = b.flower_description || [...new Set(lineItems.flatMap(item => item.types || []))].join(', ') || asList(product.types).join(', ') || 'Florist’s choice';
+    const colourText = [...new Set(colorValues.map(displayText).filter(Boolean))].join(', ');
+    const ribbonMessage = displayText(b.ribbon_message || ribbonNote);
+    const flowerText = displayText(b.flower_description)
+      || [...new Set(lineItems.flatMap(item => item.types || []).map(displayText).filter(Boolean))].join(', ')
+      || asList(product.types).map(displayText).filter(Boolean).join(', ');
     // Machine tags keep design and dedication details readable on every backend version.
     const designMatch = /\[DESIGN:([^\]]+)\]/i.exec(String(b.notes || ''));
-    const designText = designMatch ? designMatch[1].trim() : '';
+    const designText = designMatch ? displayText(designMatch[1]) : '';
     const initialsMatch = /\[INITIALS:([^\]]+)\]/i.exec(String(b.notes || ''));
-    const initialsText = initialsMatch ? initialsMatch[1].trim() : '';
+    const initialsText = initialsMatch ? displayText(initialsMatch[1]) : '';
     const coffinMatch = /\[COFFIN:([^\]]+)\]/i.exec(String(b.notes || ''));
-    const coffinType = coffinMatch ? coffinMatch[1].trim() : '';
-    const routeText = getBookingNoteTag(b, 'ROUTE');
-    const vehiclePlate = getBookingNoteTag(b, 'VEHICLE');
-    const contactName = getBookingNoteTag(b, 'CONTACT');
-    const serviceTime = getBookingNoteTag(b, 'SERVICE-TIME');
+    const coffinType = coffinMatch ? displayText(coffinMatch[1]) : '';
+    const routeText = displayText(getBookingNoteTag(b, 'ROUTE'));
+    const vehiclePlate = displayText(getBookingNoteTag(b, 'VEHICLE'));
+    const contactName = displayText(getBookingNoteTag(b, 'CONTACT'));
+    const serviceTime = displayText(getBookingNoteTag(b, 'SERVICE-TIME'));
+    const flowerSize = displayText(b.size || asList(product.sizes).join(', ') || sizeNote);
+    const deceasedName = displayText(b.deceased_name);
+    const serviceType = displayText(b.service_type);
+    const funeralDate = displayText(b.funeral_date);
+    const funeralDateText = funeralDate && !Number.isNaN(new Date(funeralDate).getTime())
+      ? fmtDateOnly(funeralDate)
+      : '';
     const priority = String(getBookingNoteTag(b, 'PRIORITY') || b.priority || 'Normal');
     const edited = wasBookingEdited(b);
-    const instructionText = b.special_instructions || remarksList.join('\n');
+    const instructionText = displayText(b.special_instructions) || displayText(remarksList.join('\n'));
     const currentStatusIdx = STATUS_FLOW.indexOf(normStatus(b.status));
     // WHO booked this — the kin's name + phone. `booked_by` is sent by the UIs,
     // the server stores it as `customer` (and the phone as `customer_phone`).
-    const bookerName = String(b.booked_by || b.customer || b.customer_name || '').trim();
-    const bookerPhone = String(b.customer_phone || b.phone || '').trim();
+    const bookerName = displayText(b.booked_by || b.customer || b.customer_name);
+    const bookerPhone = displayText(b.customer_phone || b.phone || b.booker_phone);
     const bookerInitial = (bookerName || '?').trim().charAt(0).toUpperCase();
 
     let actionBtnHtml = '';
@@ -2800,6 +2827,7 @@ const FlowerBookingsNew = () => {
               </div>
               {lineItems.map((li, i) => {
                 const s = arrangements.find(a => String(a.arrangement_id || a.id) === String(li.arrangement_id) || a.title === li.name);
+                const sampleImageUrl = resolveFlowerImageUrl(s?.images?.[0]);
                 const sampleFlowers = [...new Set([...(li.types || []), ...asList(s?.types)])].join(', ');
                 const sampleColors = [...new Set([...(li.colors || []), ...asList(s?.colors)])].join(', ');
                 return (
@@ -2810,14 +2838,14 @@ const FlowerBookingsNew = () => {
                       borderBottom: i < lineItems.length - 1 ? '1px solid #F3F1EC' : 'none'
                     }}
                   >
-                    {s?.images?.length > 0 && (
+                    {sampleImageUrl && (
                       <button
                         type="button"
                         className="flower-detail-sample-thumb"
                         aria-label={`View ${li.name} arrangement sample full size`}
-                        onClick={() => setPreviewSample({ src: s.images[0]?.url || s.images[0], alt: `${li.name} arrangement sample` })}
+                        onClick={() => setPreviewSample({ src: sampleImageUrl, alt: `${li.name} arrangement sample` })}
                       >
-                        <img src={s.images[0]?.url || s.images[0]} alt={li.name} />
+                        <img src={sampleImageUrl} alt={li.name} />
                       </button>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -2897,20 +2925,20 @@ const FlowerBookingsNew = () => {
             <section className="flower-spec" style={styles.specSection} aria-label="Order details">
               <div style={styles.specTitle}>Order details</div>
               <dl style={styles.specList}>
-                <div style={styles.specRow}>
+                {colourText && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Color Preference</dt>
-                  <dd style={styles.specValue}>{colourText || '—'}</dd>
-                </div>
+                  <dd style={styles.specValue}>{colourText}</dd>
+                </div>}
                 {ribbonMessage && (
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Ribbon / Banner Wording</dt>
                     <dd style={styles.specValue}>{ribbonMessage}</dd>
                   </div>
                 )}
-                <div style={styles.specRow}>
+                {flowerText && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Flowers</dt>
-                  <dd style={styles.specValue}>{flowerText || '—'}</dd>
-                </div>
+                  <dd style={styles.specValue}>{flowerText}</dd>
+                </div>}
                 {designText && (
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Flower Design</dt>
@@ -2929,22 +2957,22 @@ const FlowerBookingsNew = () => {
                     <dd style={styles.specValue}>{coffinType}</dd>
                   </div>
                 )}
-                <div style={styles.specRow}>
+                {flowerSize && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Flower Size</dt>
-                  <dd style={styles.specValue}>{b.size || asList(product.sizes).join(', ') || sizeNote || '—'}</dd>
-                </div>
-                <div style={styles.specRow}>
+                  <dd style={styles.specValue}>{flowerSize}</dd>
+                </div>}
+                {deceasedName && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Deceased Name</dt>
-                  <dd style={styles.specValue}>{b.deceased_name || '—'}</dd>
-                </div>
-                <div style={styles.specRow}>
+                  <dd style={styles.specValue}>{deceasedName}</dd>
+                </div>}
+                {funeralDateText && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Funeral / Service Date</dt>
-                  <dd style={styles.specValue}>{b.funeral_date ? fmtDateOnly(b.funeral_date) : 'Not specified'}</dd>
-                </div>
-                {b.service_type && (
+                  <dd style={styles.specValue}>{funeralDateText}</dd>
+                </div>}
+                {serviceType && (
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Service Type</dt>
-                    <dd style={styles.specValue}>{b.service_type}</dd>
+                    <dd style={styles.specValue}>{serviceType}</dd>
                   </div>
                 )}
                 {serviceTime && (
@@ -2975,31 +3003,27 @@ const FlowerBookingsNew = () => {
                   <dt style={styles.specLabel}>Total Quantity</dt>
                   <dd style={styles.specValue}>{Number(b.quantity) || lineItems.reduce((total, item) => total + item.quantity, 0)}</dd>
                 </div>
-                <div style={styles.specRow}>
+                {bookerName && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Booked By</dt>
-                  <dd style={styles.specValue}>{bookerName || '—'}</dd>
-                </div>
-                <div style={styles.specRow}>
+                  <dd style={styles.specValue}>{bookerName}</dd>
+                </div>}
+                {bookerPhone && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Phone Number</dt>
                   <dd style={styles.specValue}>
-                    {bookerPhone ? (
-                      <a
-                        href={`tel:${bookerPhone.replace(/\s+/g, '')}`}
-                        style={{ color: '#475A43', fontWeight: 600, textDecoration: 'none' }}
-                      >
-                        {bookerPhone}
-                      </a>
-                    ) : '—'}
+                    <a
+                      href={`tel:${bookerPhone.replace(/\s+/g, '')}`}
+                      style={{ color: '#475A43', fontWeight: 600, textDecoration: 'none' }}
+                    >
+                      {bookerPhone}
+                    </a>
                   </dd>
-                </div>
-                <div style={styles.specRow}>
+                </div>}
+                {displayText(b.branch || b.funeral_home) && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Branch</dt>
                   <dd style={styles.specValue}>
-                    {(b.branch || b.funeral_home)
-                      ? resolveBranchName(b.branch || b.funeral_home)
-                      : '—'}
+                    {resolveBranchName(b.branch || b.funeral_home)}
                   </dd>
-                </div>
+                </div>}
                 {instructionText && (
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Special Remarks</dt>

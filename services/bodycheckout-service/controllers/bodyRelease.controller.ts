@@ -6,6 +6,7 @@ import Logger from '../../../packages/shared-logger/dist/index';
 import { Request, Response, NextFunction } from 'express';
 import * as Zod from 'zod';
 import axios from 'axios';
+import { sendTransactionalSms } from '../../app-global/utils/sendTransactionalSms';
 import sharp from 'sharp';
 
 /**
@@ -301,6 +302,13 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
 
     await db.execute(query, params);
     Logger.info(`[RELEASE] Successfully created release: ${releaseId} in database: ${dbName}`);
+
+    await sendTransactionalSms({
+      phone: releaseData.tell_number,
+      tenantSlug,
+      event: 'body release confirmation',
+      message: `Montenzuma Monalisa Funeral Home: The body of ${releaseData.name_of_deceased || releaseData.admission_number || 'your loved one'} has been released to ${releaseData.next_kin}.${releaseData.final_destination ? ` Destination: ${releaseData.final_destination}.` : ''} For assistance, please contact the funeral home.`,
+    });
 
     // Emit notification for body release
     try {
