@@ -338,7 +338,7 @@ export const updateBookingSamples = async (req: any, res: any) => {
 
         const removedUrls = new Set(removeImages);
         const nextImages = currentImages.filter(image =>
-            !removedUrls.has(typeof image === 'string' ? image : image?.url)
+            !removedUrls.has(typeof image === 'string' ? image : image?.url || image?.urlPath)
         );
         const tenantSlug = String(tenantSlugOf(req) || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
         const bookingPrefix = String(existing[0].id).replace(/[^a-zA-Z0-9_-]/g, '');

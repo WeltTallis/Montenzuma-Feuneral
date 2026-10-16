@@ -835,6 +835,7 @@ const FlowerBookingsNew = () => {
   const [editingInitialQuantity, setEditingInitialQuantity] = useState(null);
   const [previewSample, setPreviewSample] = useState(null);
   const [updatingBookingSamples, setUpdatingBookingSamples] = useState(false);
+  const [bookingSamplePreviews, setBookingSamplePreviews] = useState([]);
   const imageCarouselRef = useRef(null);
   const urgencyRailRef = useRef(null);
   const bookingSampleInputRef = useRef(null);
@@ -965,6 +966,10 @@ const FlowerBookingsNew = () => {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [previewSample]);
+
+  useEffect(() => () => {
+    bookingSamplePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+  }, [bookingSamplePreviews]);
 
   // Real-time socket listeners for flower bookings
   useEffect(() => {
@@ -1128,6 +1133,7 @@ const FlowerBookingsNew = () => {
     setEditingBookingId(null);
     setEditingLineItems([]);
     setEditingInitialQuantity(null);
+    setBookingSamplePreviews([]);
     setNewBooking({
       arrangement_type: '',
       flower_designs: '',
@@ -1160,6 +1166,7 @@ const FlowerBookingsNew = () => {
   const openEditBooking = useCallback((booking) => {
     const lineItems = parseLineItems(booking);
     const notes = String(booking?.notes || '');
+    setBookingSamplePreviews([]);
     const humanNotes = notes
       .replace(/\[(?:TYPES|WHEN|DESIGN|INITIALS|COFFIN|ROUTE|VEHICLE|CONTACT|SERVICE-TIME|EDITED|PRIORITY):[^\]]*\]/gi, '')
       .trim();
@@ -1950,6 +1957,8 @@ const FlowerBookingsNew = () => {
       colors: [],
       sizes: []
     };
+    const cardImageUrl = resolveFlowerImageUrl(product.images?.[0])
+      || resolveFlowerImageUrl(asList(b.sample_images)[0]);
     const statusCfg = normStatus(b.status) === 'completed'
       ? { label: 'Completed', color: '#15803D', bg: '#DCF5E5' }
       : normStatus(b.status) === 'cancelled'
@@ -1978,10 +1987,10 @@ const FlowerBookingsNew = () => {
         }}
         onClick={() => viewBooking(b.id)}
       >
-        {product.images?.length > 0 && resolveFlowerImageUrl(product.images[0]) ? (
+        {cardImageUrl ? (
           <div className="fb-card-thumb" style={styles.mediaThumb}>
             <img
-              src={resolveFlowerImageUrl(product.images[0])}
+              src={cardImageUrl}
               alt={product.title}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
@@ -2467,9 +2476,24 @@ const FlowerBookingsNew = () => {
             style={{ ...inp, marginBottom: '22px', padding: '10px 12px' }}
             onChange={e => {
               const files = Array.from(e.target.files || []);
+              e.target.value = '';
+              setBookingSamplePreviews(files.map(file => ({
+                name: file.name,
+                url: URL.createObjectURL(file),
+              })));
               setNewBooking(prev => ({ ...prev, sample_uploads: files }));
             }}
           />
+          {bookingSamplePreviews.length > 0 && (
+            <div className="flower-booking-upload-previews" aria-label="Selected reference photos">
+              {bookingSamplePreviews.map((preview, index) => (
+                <figure key={`${preview.name}-${index}`}>
+                  <img src={preview.url} alt={preview.name} />
+                  <figcaption>{preview.name}</figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
           <p style={{ margin: '-14px 0 22px', color: '#6E675E', fontSize: '12px', lineHeight: 1.5 }}>
             Add photos showing the exact design the family requested. These will be saved with the booking.
           </p>
@@ -2606,6 +2630,7 @@ const FlowerBookingsNew = () => {
     const uniqueBookingImages = [...new Map(bookingImages.map(image => [image.src, image])).values()];
     const clientReferenceImages = asList(b.sample_images).map((image, index) => ({
       url: resolveFlowerImageUrl(image),
+      storedUrl: typeof image === 'string' ? image : image?.url || image?.urlPath,
       alt: typeof image === 'string' ? `Client reference photo ${index + 1}` : image?.alt_text || `Client reference photo ${index + 1}`,
     })).filter(image => typeof image.url === 'string' && image.url.trim());
     // Strip machine tokens before splitting human notes.
@@ -2830,6 +2855,11 @@ const FlowerBookingsNew = () => {
                 const sampleImageUrl = resolveFlowerImageUrl(s?.images?.[0]);
                 const sampleFlowers = [...new Set([...(li.types || []), ...asList(s?.types)])].join(', ');
                 const sampleColors = [...new Set([...(li.colors || []), ...asList(s?.colors)])].join(', ');
+                const sampleDetails = [
+                  sampleFlowers,
+                  sampleColors,
+                  asList(s?.sizes)[0] ? `${asList(s?.sizes)[0]} size` : '',
+                ].map(displayText).filter(Boolean).join(' · ');
                 return (
                   <div
                     key={`${li.name}-${i}`}
@@ -2850,9 +2880,7 @@ const FlowerBookingsNew = () => {
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: '#1C1A17' }}>{li.name} <span className="flower-quantity-chip">×{li.quantity}</span></div>
-                      <div style={{ fontSize: '11px', color: '#9C9389' }}>
-                        {[sampleFlowers, sampleColors, asList(s?.sizes)[0] ? `${asList(s?.sizes)[0]} size` : ''].filter(Boolean).join(' · ') || 'Custom arrangement'}
-                      </div>
+                      {sampleDetails && <div style={{ fontSize: '11px', color: '#9C9389' }}>{sampleDetails}</div>}
                     </div>
                   </div>
                 );
@@ -2863,8 +2891,10 @@ const FlowerBookingsNew = () => {
               <div className="flower-client-samples-head">
                 <div>
                   <h3>Client reference photos</h3>
-                  <p>{clientReferenceImages.length} photo{clientReferenceImages.length === 1 ? '' : 's'} attached to this booking</p>
-                </div>
+                      {clientReferenceImages.length > 0 && (
+                        <p>{clientReferenceImages.length} photo{clientReferenceImages.length === 1 ? '' : 's'} attached to this booking</p>
+                      )}
+                    </div>
                 <button
                   type="button"
                   className="flower-client-samples-add"
@@ -2905,7 +2935,7 @@ const FlowerBookingsNew = () => {
                           type="button"
                           aria-label={`Remove reference photo ${index + 1}`}
                           disabled={updatingBookingSamples}
-                          onClick={() => updateBookingSamples(b.id || b.booking_id, [], [image.url])}
+                          onClick={() => updateBookingSamples(b.id || b.booking_id, [], [image.storedUrl || image.url])}
                         >
                           Remove
                         </button>
@@ -2913,9 +2943,7 @@ const FlowerBookingsNew = () => {
                     </figure>
                   ))}
                 </div>
-              ) : (
-                <p className="flower-client-samples-empty">No client photos yet. Add a reference image to show the florist the requested design.</p>
-              )}
+              ) : null}
             </section>
 
             {/* ── Order facts, one clean list ────────────────────────────────────
@@ -3160,6 +3188,10 @@ const FlowerBookingsNew = () => {
         .flower-client-samples-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
         .flower-client-samples-head h3 { margin: 0; color: #1C1A17; font-size: 14px; font-weight: 700; }
         .flower-client-samples-head p { margin: 3px 0 0; color: #8A8178; font-size: 11px; }
+        .flower-booking-upload-previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 9px; margin: -12px 0 20px; }
+        .flower-booking-upload-previews figure { min-width: 0; margin: 0; overflow: hidden; border: 1px solid #F0E4EA; border-radius: 9px; background: #fff; }
+        .flower-booking-upload-previews img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+        .flower-booking-upload-previews figcaption { padding: 5px 7px; overflow: hidden; color: #6E675E; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
         .flower-client-samples-add { min-height: 38px; flex: 0 0 auto; padding: 8px 12px; border: 1px solid #F6C6DA; border-radius: 9px; background: #FDF1F6; color: #9D1F50; font-size: 12px; font-weight: 700; cursor: pointer; }
         .flower-client-samples-add:disabled,
         .flower-client-sample figcaption button:disabled { cursor: wait; opacity: .6; }

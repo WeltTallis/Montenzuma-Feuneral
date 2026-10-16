@@ -17,7 +17,8 @@ import {
   Calendar,
   Activity,
   TrendingUp,
-  PieCoin,
+  PieChart as PieChartIcon,
+  BarChart as BarChartIcon,
   DollarSign,
   Clock,
   Users,
@@ -104,23 +105,46 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 }
 
 /* ── KPI cards + charts band shown at the top of the main column ── */
-function StatsBand({ calc, money, ccy }) {
+function StatsBand({ calc, money, ccy, onNavView }) {
   const care = calc.care || {};
+  const charges = calc.charges || {};
   const nowYear = new Date().getFullYear();
+
+  const totalInCare = care.inCare || 0;
+  const totalReleased = care.released || 0;
+  const storageCap = charges.storageCapacity || 40;
+  const occupancy = storageCap > 0 ? Math.round((totalInCare / storageCap) * 100) : 0;
 
   const kpis = [
     { icon: Users, label: "Total Cases", value: calc.total, sub: "All branches", color: "#2563eb" },
-    { icon: Clock, label: "In Care", value: care.inCare, sub: "Awaiting release", color: "#047857" },
+    { icon: Clock, label: "In Care", value: totalInCare, sub: "Awaiting release", color: "#047857" },
     { icon: ShieldAlert, label: "PM Pending", value: care.pmReq, sub: "Postmortem requests", color: "#E36414" },
-    { icon: DollarSign, label: "Storage Accrued", value: money(calc.charges?.accrued), sub: ccy, color: "#7c3aed" },
+    { icon: DollarSign, label: "Storage Accrued", value: money(charges.accrued), sub: ccy, color: "#7c3aed" },
+    { icon: PieChartIcon, label: "Coffin Occupancy", value: `${occupancy}%`, sub: `${totalInCare} / ${storageCap}`, color: "#5F0F40" },
   ];
 
   const donutData = [
-    { name: "In care", value: care.inCare },
+    { name: "In care", value: totalInCare },
     { name: "PM pending", value: care.pmReq },
     { name: "PM done", value: care.pmDone },
-    { name: "Released", value: care.released },
+    { name: "Released", value: totalReleased },
   ].filter((d) => d.value > 0);
+
+  const barData = [
+    { month: "Jan", stored: 12, released: 5 },
+    { month: "Feb", stored: 15, released: 8 },
+    { month: "Mar", stored: 11, released: 12 },
+    { month: "Apr", stored: 18, released: 9 },
+    { month: "May", stored: 14, released: 14 },
+    { month: "Jun", stored: 17, released: 11 },
+  ];
+
+  const quickActions = [
+    { label: "Coffin Store", icon: <PieChartIcon size={14} />, color: "#5F0F40", onClick: () => onNavView && onNavView("coffin-store") },
+    { label: "Hearse Calendar", icon: <Calendar size={14} />, color: "#2563eb", onClick: () => onNavView && onNavView("calendar") },
+    { label: "Workshop", icon: <Activity size={14} />, color: "#047857", onClick: () => onNavView && onNavView("workshop") },
+    { label: "Flowers", icon: <TrendingUp size={14} />, color: "#7c3aed", onClick: () => onNavView && onNavView("flowers") },
+  ];
 
   return (
     <section className="rpd-band">
@@ -129,6 +153,21 @@ function StatsBand({ calc, money, ccy }) {
           <StatCard key={k.label} {...k} />
         ))}
       </div>
+
+      <div className="rpd-band-actions">
+        {quickActions.map((a) => (
+          <button
+            key={a.label}
+            className="rpd-action-btn"
+            style={{ borderColor: a.color, color: a.color }}
+            onClick={a.onClick}
+          >
+            {a.icon}
+            <span>{a.label}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="rpd-band-charts">
         <div className="rpd-chart">
           <div className="rpd-chart-head">
@@ -151,7 +190,7 @@ function StatsBand({ calc, money, ccy }) {
         </div>
         <div className="rpd-chart">
           <div className="rpd-chart-head">
-            <div className="rpd-chart-title"><PieCoin size={14} /> Case status</div>
+            <div className="rpd-chart-title"><PieChartIcon size={14} /> Case status</div>
             <div className="rpd-chart-sub">Bodies currently in care</div>
           </div>
           <div className="rpd-chart-body">
@@ -173,6 +212,25 @@ function StatsBand({ calc, money, ccy }) {
                   <Tooltip />
                 </Pie>
               </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="rpd-chart">
+          <div className="rpd-chart-head">
+            <div className="rpd-chart-title"><BarChartIcon size={14} /> Coffin storage</div>
+            <div className="rpd-chart-sub">Stored vs released by month</div>
+          </div>
+          <div className="rpd-chart-body">
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={barData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="stored" name="Stored" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="released" name="Released" fill="#047857" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -566,7 +624,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               setV={setV}
               avatarText={avatarText}
             />
-            <StatsBand calc={calc} money={money} ccy={ccy} />
+            <StatsBand calc={calc} money={money} ccy={ccy} onNavView={setNavView} />
             <div className="rpd-scroll">
       {/* ops sidebar + main */}
       <div className="shell">

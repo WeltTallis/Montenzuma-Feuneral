@@ -8479,3 +8479,41 @@
   padding: 0.75rem 1rem 1rem;
   overflow: hidden;
 }
+
+/* Quick action buttons row */
+.rpd-band-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.rpd-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid;
+  border-radius: 8px;
+  background: var(--card);
+  color: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.rpd-action-btn:hover {
+  border-color: currentColor;
+  background: rgba(0, 0, 0, 0.03);
+}
+.rpd-action-btn:active {
+  transform: translateY(-1px);
+}
+
+/* 3-column chart layout on large screens */
+@media (min-width: 1280px) {
+  .rpd-band-charts {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
