@@ -754,6 +754,7 @@ const SERVICE_ROUTES = {
   // modal surfaced as "Availability service unreachable".
   'availability': SERVICE_URLS.hearse,
 
+  'coffin': SERVICE_URLS.coffin,
   'coffins': SERVICE_URLS.coffin,
   'chemicals': SERVICE_URLS.chemicals,
   'support': SERVICE_URLS.support,

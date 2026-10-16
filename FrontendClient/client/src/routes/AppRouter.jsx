@@ -510,14 +510,12 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
       <Routes>
         <Route path="/" element={<TenantRootRedirect slug={slug} />} />
 
-        {/* Dashboard — wrapped in DashboardLayout so the global ModernSidebar
-            side panel is visible here, exactly like every other tenant page. */}
+        {/* Dashboard renders its own DashSidebar internally — no global
+            ModernSidebar wrapper so there is no duplicate sidebar. */}
         <Route path="dashboard" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}>
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <DashboardRoleGate tenantSlug={slug} tenantData={tenantData} />
-            </Suspense>
-          </Layout>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <DashboardRoleGate tenantSlug={slug} tenantData={tenantData} />
+          </Suspense>
         } />
 
         {/* Insurance member directory and operations dashboard */}
@@ -619,11 +617,11 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
         } />
 
-        {/* Workshop - role guarded: workshop / carpenter / workshop_technician /
-            workshop_manager (+ admin / manager / system roles) may enter. */}
+        {/* Workshop renders its own WorkshopSidebar independently — no global
+            ModernSidebar wrapper so there is no duplicate sidebar. */}
         <Route path="workshop" element={
           <WorkshopRouteGuard>
-            <Layout tenantData={tenantData} tenantSlug={slug}><WorkshopDashboard /></Layout>
+            <WorkshopDashboard />
           </WorkshopRouteGuard>
         } />
 
