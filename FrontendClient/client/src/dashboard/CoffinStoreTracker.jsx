@@ -126,6 +126,65 @@ function HealthBar({ pct, color, ring }) {
   );
 }
 
+// A single stacked column in the 3-branch store view (accent-themed header +
+// health summary chips + colour-coded inventory rows).
+function BranchColumn({ b, accent }) {
+  const healthPct = b.items.length ? Math.round((b.healthy / b.items.length) * 100) : 0;
+  return (
+    <div style={{ border: `1px solid ${C.line}`, borderRadius: 16, background: C.card, overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,0.04)', display: 'flex', flexDirection: 'column' }}>
+      {/* Accent header: branch name + totals */}
+      <div style={{ background: accent.grad, color: '#fff', padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 22 }}>{accent.emoji}</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.branch}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.85 }}>{b.items.length} coffin types · {b.total} units</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 15, fontWeight: 800 }}>{currency(b.value)}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.85 }}>stock value</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <HealthBar pct={healthPct} color="#fff" ring="rgba(255,255,255,.25)" />
+        </div>
+      </div>
+
+      {/* Health summary chips */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '10px 12px', borderBottom: `1px solid ${C.lineSoft}`, background: C.bg }}>
+        <Chip color={C.successDark} bg={C.successBg}>✅ {b.healthy} healthy</Chip>
+        <Chip color={C.warningDark} bg={C.warningBg}>⚠️ {b.lowStock} low</Chip>
+        <Chip color={C.dangerDark} bg={C.dangerBg}>💀 {b.out} out</Chip>
+      </div>
+
+      {/* Colour-coded inventory rows */}
+      <div style={{ padding: 6, flex: 1 }}>
+        {b.items.length === 0 ? (
+          <div style={{ padding: 20, textAlign: 'center', color: C.muted, fontSize: 12 }}>No coffins in this store.</div>
+        ) : (
+          b.items.map((c, idx) => {
+            const st = stockStatus(c.quantity);
+            return (
+              <div key={c.coffin_id ?? idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10 }}>
+                <span style={{ fontSize: 15 }} className="cst-icon">⚰️</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name || c.type || 'Unnamed coffin'}</div>
+                  <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>
+                    {[c.color, c.size].filter(Boolean).join(' · ') || '—'} · {currency(c.exact_price || c.price)}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <Chip color={st.color} bg={st.bg}>{st.emoji} {c.quantity || 0}</Chip>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────
 export default function CoffinStoreTracker() {
   const [coffins, setCoffins] = useState([]);
