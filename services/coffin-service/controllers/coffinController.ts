@@ -522,7 +522,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const {
       coffin_id, coffin_name, color, size, quantity,
       booked_by, booked_for, client_name, deceased_name,
-      service_date
+      service_date, amount, deposit
     } = (req as any).body;
 
     // Tenant/branch context — prefer the auth headers the frontend sends
@@ -622,6 +622,8 @@ export const createOrder = async (req: Request, res: Response) => {
       client_phone: ((req as any).body?.client_phone || '').toString().trim() || null,
       service_time: ((req as any).body?.service_time || '').toString().trim() || null,
       paid: !!((req as any).body?.paid),
+      amount: (req as any).body?.amount,
+      deposit: (req as any).body?.deposit,
       service_date: service_date || null,
       tenant_id: rTenantId,
       branch_id: rBranchId
@@ -636,11 +638,14 @@ export const createOrder = async (req: Request, res: Response) => {
       id: result.order_id || `booking-${Date.now()}`,
       title: 'New Coffin Reservation',
       message: `${finalBookedBy || 'Client'} reserved ${finalName} (qty ${finalQuantity})`,
-      fullContent: `Coffin: ${finalName}\nClient: ${finalBookedBy || 'N/A'}\nDeceased: ${finalBookedFor || 'N/A'}\nQuantity: ${finalQuantity}\nBooking ID: ${result.order_id}`,
+      fullContent: `Coffin: ${finalName}\nClient: ${finalBookedBy || 'N/A'}\nDeceased: ${finalBookedFor || 'N/A'}\nQuantity: ${finalQuantity}\nAmount: ${result.amount || 0}\nDeposit: ${result.deposit || 0}\nBalance: ${(result.amount || 0) - (result.deposit || 0)}\nBooking ID: ${result.order_id}`,
       orderId: result.order_id,
       coffinName: finalName,
       clientName: finalBookedBy,
       quantity: finalQuantity,
+      amount: result.amount,
+      deposit: result.deposit,
+      balance: result.amount - result.deposit,
       status: 'active',
       priority: 'medium',
     }, tenantSlug);
@@ -657,7 +662,11 @@ export const createOrder = async (req: Request, res: Response) => {
         booked_by: finalBookedBy,
         booked_for: finalBookedFor,
         service_date: service_date || null,
-        status: 'active'
+        status: 'active',
+        paid: result.paid,
+        amount: result.amount,
+        deposit: result.deposit,
+        balance: result.amount - result.deposit
       }
     });
 
@@ -734,13 +743,30 @@ export const getAllOrders = async (req: Request, res: Response) => {
       params.push(String(branchId));
     }
 
+    // Support ?today=1 shortcut: scope to today's date only.
+    const todayParam = (req.query.today as string | undefined);
+    let effectiveQuery = req.query ?? {};
+    if (todayParam === '1' || todayParam === 'true') {
+      const today = new Date().toISOString().slice(0, 10);
+      effectiveQuery = { ...effectiveQuery, from: today, to: today };
+    }
+
     // Unified month/year scoping. The reservation dashboard always sends
     // from/to (first/last day of the visible month); other callers may send
     // year+month or nothing. Absent bounds keep the legacy "everything" view.
-    const dateRange = resolveOrderDateRange((req.query ?? {}) as Record<string, unknown>);
+    const dateRange = resolveOrderDateRange(effectiveQuery as Record<string, unknown>);
     let dateClause = '';
     if (dateRange.from) { dateClause += ' AND DATE(COALESCE(cb.service_date, cb.created_at)) >= ?'; params.push(dateRange.from); }
     if (dateRange.to) { dateClause += ' AND DATE(COALESCE(cb.service_date, cb.created_at)) <= ?'; params.push(dateRange.to); }
+
+    // Search filters: coffin name, client name (booked_by), deceased name (booked_for)
+    const search = (req.query.search as string | undefined) || '';
+    let searchClause = '';
+    if (search && search.trim()) {
+      const like = `%${search.trim()}%`;
+      searchClause = ` AND (cb.coffin_name LIKE ? OR cb.booked_by LIKE ? OR cb.booked_for LIKE ? OR cb.client_phone LIKE ?)`;
+      params.push(like, like, like, like);
+    }
 
     const sql = `
       SELECT order_id, order_id AS id, coffin_id, coffin_name, color, size, quantity,
@@ -751,11 +777,13 @@ export const getAllOrders = async (req: Request, res: Response) => {
              source_request_id,
              status,
              paid,
+             amount,
+             deposit,
              DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
              service_time,
              created_at
       FROM coffin_bookings cb
-      WHERE cb.tenant_slug = ?${branchClause}${dateClause}
+      WHERE cb.tenant_slug = ?${branchClause}${dateClause}${searchClause}
       ORDER BY cb.created_at DESC
     `;
 
@@ -900,14 +928,14 @@ export const getOrderById = async (req: Request, res: Response) => {
 export const updateOrderStatus = async (req: Request, res: Response) => {
   const tenantSlug = (req as any).tenantSlug;
   const id = String(req.params.id);
-  const { status, paid } = (req as any).body;
+  const { status, paid, amount, deposit } = (req as any).body;
 
   if (!tenantSlug) {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
-  if (status === undefined && paid === undefined) {
-    return res.status(400).json({ success: false, message: 'No update provided (status or paid required)' });
+  if (status === undefined && paid === undefined && amount === undefined && deposit === undefined) {
+    return res.status(400).json({ success: false, message: 'No update provided (status, paid, amount or deposit required)' });
   }
 
   if (status !== undefined && !['active', 'booked', 'completed', 'cancelled'].includes(status)) {
@@ -941,6 +969,14 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       updates.push('paid = ?');
       values.push(paid ? 1 : 0);
     }
+    if (amount !== undefined) {
+      updates.push('amount = ?');
+      values.push(parseFloat(amount) || 0);
+    }
+    if (deposit !== undefined) {
+      updates.push('deposit = ?');
+      values.push(parseFloat(deposit) || 0);
+    }
 
     updates.push('updated_at = NOW()');
 
@@ -950,7 +986,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     await clearCoffinCache(tenantSlug);
 
-    logger.info({ msg: 'Order status updated', tenantSlug, orderId: id, status, paid });
+    logger.info({ msg: 'Order status updated', tenantSlug, orderId: id, status, paid, amount, deposit });
     return res.status(200).json({ success: true, message: 'Order updated successfully' });
   } catch (error: any) {
     logger.error({ msg: 'Update order status error', tenantSlug, id, error: error.message });

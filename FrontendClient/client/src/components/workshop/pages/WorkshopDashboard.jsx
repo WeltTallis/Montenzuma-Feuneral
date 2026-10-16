@@ -8,6 +8,7 @@ import ModalRouter from './ModalRouter';
 import OrdersTab from './OrdersTab';
 import StoreTab from './StoreTab';
 import Toasts from './Toasts';
+import WorkshopSidebar from '../components/WorkshopSidebar';
 
 export const Ctx = createContext(null);
 
@@ -97,6 +98,7 @@ const WorkshopDashboard = () => {
   const { socket } = useSocket();
   // Orders is the landing tab — the Dashboard tab no longer exists.
   const [tab, setTab] = useState('orders');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -265,6 +267,19 @@ const WorkshopDashboard = () => {
       socket.off('connect_error', onConnectError);
     };
   }, [socket, addToast]);
+
+  // Listen for navigation requests from the independent workshop sidebar
+  // (Orders / Materials / Store / Workers / Settings) and switch tabs.
+  useEffect(() => {
+    const onWsNavigate = (event) => {
+      const { tab: nextTab } = event.detail || {};
+      if (nextTab && ['orders', 'materials', 'store', 'workers', 'settings'].includes(nextTab)) {
+        setTab(nextTab);
+      }
+    };
+    window.addEventListener('ws:navigate', onWsNavigate);
+    return () => window.removeEventListener('ws:navigate', onWsNavigate);
+  }, []);
 
   // ============================================
   // OPTIONAL: Add a check if socket is connected before sending
@@ -524,6 +539,15 @@ const WorkshopDashboard = () => {
               the dashboard is one click away and the duplicate header text is
               gone too. */}
           <div className="ws-topbar">
+            <button
+              className="ws-btn-ghost"
+              onClick={() => setSidebarOpen((o) => !o)}
+              title="Toggle workshop sidebar"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <i className="fas fa-bars" style={{ fontSize: 13 }} />
+              <span style={{ display: sidebarOpen ? 'inline' : 'none', fontSize: 13, fontWeight: 600 }}>Sidebar</span>
+            </button>
             <WorkshopTabs activeTab={tab} onTabChange={setTab} />
 
             <div className="ws-topbar-actions">
@@ -561,6 +585,9 @@ const WorkshopDashboard = () => {
           workers={workers}
         />}
         <Toasts toasts={toasts} />
+        {/* Independent workshop side panel — gated by role (renders null for
+            non-workshop roles) and slides over the page content. */}
+        <WorkshopSidebar open={sidebarOpen} onToggle={setSidebarOpen} />
       </div>
     </Ctx.Provider>
   );

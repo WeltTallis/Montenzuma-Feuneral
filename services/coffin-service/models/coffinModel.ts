@@ -321,9 +321,12 @@ class CoffinModel {
     const serviceDate = CoffinModel.toMySqlDate(data.service_date);
 
     const sql = `
-      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, client_phone, service_date, service_time, paid, notes, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, client_phone, service_date, service_time, paid, amount, deposit, notes, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
     `;
+
+    const amount = parseFloat(data.amount) || 0;
+    const deposit = parseFloat(data.deposit) || 0;
 
     const result: any = await coffinQuery(sql, [
       orderId, tenantSlug,
@@ -336,6 +339,8 @@ class CoffinModel {
       serviceDate,
       data.service_time ? String(data.service_time).slice(0, 5) : null,
       data.paid ? 1 : 0,
+      amount,
+      deposit,
       (data.notes != null && String(data.notes).trim() !== '') ? String(data.notes).trim() : null
     ]);
 
@@ -349,7 +354,10 @@ class CoffinModel {
       booked_by: data.booked_by,
       booked_for: data.booked_for,
       service_date: serviceDate,
-      service_time: data.service_time ? String(data.service_time).slice(0, 5) : null
+      service_time: data.service_time ? String(data.service_time).slice(0, 5) : null,
+      paid: data.paid ? 1 : 0,
+      amount,
+      deposit
     };
   }
 

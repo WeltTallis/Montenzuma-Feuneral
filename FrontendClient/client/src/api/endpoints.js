@@ -255,6 +255,12 @@ export const ENDPOINTS = {
       MONTHLY: '/workshop/analytics/monthly',
     },
   },
+  COFFIN: {
+    BASE: '/coffins',
+    ALL_BRANCHES: '/coffins/all-branches',
+    ORDERS: '/coffins/orders',
+    DETAIL: (id) => `/coffins/${id}`,
+  },
   LEAVE: {
     BASE: '/leaves',
     APPLY: '/leaves/apply',

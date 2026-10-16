@@ -10,6 +10,8 @@ import ModernSidebar from '../components/layout/ModernSidebar';
 import { hasSession, getTenantSlug } from '../utils/globalAuth';
 import { useAuth } from '../utils/context/AuthContext';
 import Loader from '../components/loader/loader';
+import WorkshopRouteGuard from '../components/workshop/components/WorkshopRouteGuard';
+import FlowerBookingGuard from '../components/florists/FlowerBookingGuard';
 import { tenantApi } from '../api/tenant.api';
 
 const UpcomingIntegrations = lazy(() => import('../modules/integrations/UpcomingIntegrations'));
@@ -617,9 +619,12 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
         } />
 
-        {/* Workshop - All authenticated users */}
+        {/* Workshop - role guarded: workshop / carpenter / workshop_technician /
+            workshop_manager (+ admin / manager / system roles) may enter. */}
         <Route path="workshop" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><WorkshopDashboard /></Layout>
+          <WorkshopRouteGuard>
+            <Layout tenantData={tenantData} tenantSlug={slug}><WorkshopDashboard /></Layout>
+          </WorkshopRouteGuard>
         } />
 
         {/* Store Journal — the Journal is no longer a standalone destination.
@@ -664,8 +669,11 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           <Layout tenantData={tenantData} tenantSlug={slug}><FlowerBookings /></Layout>
         } />
 
+        {/* Flower booking creation - staff / manager / workshop roles / admin only */}
         <Route path="flowers/new" element={
-          <FlowerBookingForm />
+          <FlowerBookingGuard>
+            <FlowerBookingForm />
+          </FlowerBookingGuard>
         } />
 
         <Route path="flowers/order/:id" element={
