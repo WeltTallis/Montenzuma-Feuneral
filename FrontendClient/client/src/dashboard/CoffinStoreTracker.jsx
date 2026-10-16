@@ -371,8 +371,227 @@ export default function CoffinStoreTracker() {
         </div>
       )}
 
-      {/* __STACK__ */}
+      {/* ── 🗂️ 3-BRANCH STACK ────────────────────────────────────────────── */}
+      <section style={{ marginBottom: 26 }}>
+        <div style={{ ...styles.sectionTitle, justifyContent: 'space-between' }}>
+          <div style={{ ...styles.sectionTitle, marginBottom: 0 }}>
+            <span style={{ fontSize: 17 }}>🗂️</span>
+            <h2 style={styles.h2}>3-Branch Stack</h2>
+            {totalPages > 1 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>page {safePage + 1}/{totalPages}</span>
+            )}
+          </div>
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setBranchPage((p) => Math.max(0, p - 1))} disabled={safePage === 0} style={{ ...styles.pillBtn(safePage === 0 ? C.line : C.primaryDark), opacity: safePage === 0 ? 0.5 : 1 }}>‹ Prev</button>
+              <button onClick={() => setBranchPage((p) => Math.min(totalPages - 1, p + 1))} disabled={safePage >= totalPages - 1} style={{ ...styles.pillBtn(safePage >= totalPages - 1 ? C.line : C.primaryDark), opacity: safePage >= totalPages - 1 ? 0.5 : 1 }}>Next ›</button>
+            </div>
+          )}
+        </div>
 
+        {visibleBranches.length === 0 ? (
+          <div style={{ ...styles.panel, padding: 40, textAlign: 'center', color: C.muted }}>⚰️ No coffin inventory found.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16 }}>
+            {visibleBranches.map((b, i) => (
+              <BranchColumn key={b.branch} b={b} accent={BRANCH_ACCENTS[(safePage * PER_PAGE + i) % BRANCH_ACCENTS.length]} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── 🔗 REAL RELATIONSHIPS: transfers + coffin↔booking links ─────── */}
+      <section style={{ marginBottom: 26 }}>
+        <div style={styles.sectionTitle}>
+          <span style={{ fontSize: 17 }}>🔗</span>
+          <h2 style={styles.h2}>Real Relationships</h2>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>branch · coffin · booking · client</span>
+        </div>
+
+        {/* Cross-branch transfer suggestions */}
+        {transferSuggestions.length > 0 && (
+          <div style={{ ...styles.panel, marginBottom: 16 }}>
+            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 15 }}>🔄</span>
+              <strong style={{ fontSize: 13 }}>Transfer suggestions</strong>
+              <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>move surplus → deficit branch</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10, padding: 12 }}>
+              {transferSuggestions.map((t, i) => (
+                <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, background: C.bg }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>⚰️</span>
+                    <strong style={{ fontSize: 13, flex: 1 }}>{t.name}</strong>
+                    <Chip color={C.purple} bg={C.purpleBg}>🔄 transfer</Chip>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, flexWrap: 'wrap' }}>
+                    <Chip color={C.successDark} bg={C.successBg}>📦 {branchKeyOf(t.from)} · {Number(t.from.quantity || 0)}</Chip>
+                    <span style={{ color: C.muted, fontWeight: 800 }}>→</span>
+                    <Chip color={C.dangerDark} bg={C.dangerBg}>📍 {branchKeyOf(t.to)} · {Number(t.to.quantity || 0)}</Chip>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Coffin → bookings → client relationship table */}
+        <div style={styles.panel}>
+          <div style={{ overflowX: 'auto' }} className="cst-scroll">
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>⚰️ Coffin</th>
+                  <th style={styles.th}>🏢 Branch</th>
+                  <th style={styles.th}>🎨 Color / Size</th>
+                  <th style={styles.th}>💰 Price</th>
+                  <th style={styles.th}>📦 Stock</th>
+                  <th style={styles.th}>🔗 Bookings</th>
+                  <th style={styles.th}>📅 Last Booked</th>
+                  <th style={styles.th}>💰 Booked Value</th>
+                  <th style={styles.th}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enriched.length > 0 ? (
+                  [...enriched]
+                    .sort((a, b) => (b._related.length - a._related.length) || (Number(b.quantity || 0) - Number(a.quantity || 0)))
+                    .map((c) => {
+                      const q = Number(c.quantity || 0);
+                      const st = stockStatus(q);
+                      const bk = c._related.length;
+                      return (
+                        <tr key={`${c.coffin_id}-${c.branch_id}`} className="cst-row">
+                          <td style={styles.td}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 16 }} className="cst-icon">{st.emoji}</span>
+                              <div>
+                                <div style={{ fontWeight: 700 }}>{c.name || c.type || 'Unnamed Coffin'}</div>
+                                {c._hot && <span style={{ fontSize: 10, fontWeight: 800, color: C.danger }}>🔥 moving</span>}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={styles.td}><Chip color={C.primary} bg={C.primarySoft}>🏢 {branchKeyOf(c)}</Chip></td>
+                          <td style={{ ...styles.td, color: C.muted }}>{c.color || '—'} / {c.size || '—'}</td>
+                          <td style={{ ...styles.td, fontWeight: 600 }}>{currency(c.exact_price || c.price || 0)}</td>
+                          <td style={{ ...styles.td, fontWeight: 800, color: st.color }}>{q}</td>
+                          <td style={styles.td}>
+                            {bk > 0
+                              ? <Chip color={C.purple} bg={C.purpleBg}>🔗 {bk} linked</Chip>
+                              : <span style={{ color: C.faint, fontSize: 12 }}>— none</span>}
+                          </td>
+                          <td style={{ ...styles.td, color: C.muted }}>{c._lastDate || '—'}</td>
+                          <td style={{ ...styles.td, fontWeight: 600, color: c._revenue > 0 ? C.successDark : C.faint }}>{c._revenue > 0 ? currency(c._revenue) : '—'}</td>
+                          <td style={styles.td}><Chip color={st.color} bg={st.bg}>{st.emoji} {st.label}</Chip></td>
+                        </tr>
+                      );
+                    })
+                ) : (
+                  <tr><td style={styles.emptyCell} colSpan={9}>No coffin inventory found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 🔥 HOT / most-moving coffins ─────────────────────────────────── */}
+      {hotCoffins.length > 0 && (
+        <section style={{ marginBottom: 26 }}>
+          <div style={styles.sectionTitle}>
+            <span style={{ fontSize: 17 }}>🔥</span>
+            <h2 style={styles.h2}>Most Moving Coffins</h2>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>ranked by booked quantity</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+            {hotCoffins.map((h, i) => (
+              <div key={i} style={{ ...styles.panel, padding: 14, borderTop: `3px solid ${i === 0 ? C.danger : i === 1 ? C.warning : C.primary}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 22 }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '🔥'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.name}</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{[h.color, h.size].filter(Boolean).join(' · ') || '—'}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: C.primaryDark }}>{h.qty}</span>
+                  <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>units booked</span>
+                </div>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginTop: 2 }}>🏢 {h.branches} branch{h.branches === 1 ? '' : 'es'} · 💰 {currency(h.revenue)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 📅 TODAY'S BOOKINGS ──────────────────────────────────────────── */}
+      <section>
+        <div style={{ ...styles.sectionTitle, justifyContent: 'space-between' }}>
+          <div style={{ ...styles.sectionTitle, marginBottom: 0 }}>
+            <span style={{ fontSize: 17 }}>📅</span>
+            <h2 style={styles.h2}>Today's Bookings</h2>
+            {todayLoading && <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>loading…</span>}
+          </div>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="🔎 Search client / deceased / coffin…"
+            style={{ padding: '8px 12px', borderRadius: 9, border: `1px solid ${C.line}`, fontSize: 12, minWidth: 240, outline: 'none', background: C.card }}
+          />
+        </div>
+
+        <div style={styles.panel}>
+          <div style={{ overflowX: 'auto' }} className="cst-scroll">
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>⚰️ Coffin</th>
+                  <th style={styles.th}>👤 Client · Deceased</th>
+                  <th style={styles.th}>📅 Service Date</th>
+                  <th style={styles.th}>💰 Amount</th>
+                  <th style={styles.th}>💳 Deposit</th>
+                  <th style={styles.th}>⚖️ Balance</th>
+                  <th style={styles.th}>✅ Paid</th>
+                  <th style={styles.th}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {todayBookings.length > 0 ? (
+                  todayBookings.map((b) => {
+                    const amount = Number(b.amount || 0);
+                    const deposit = Number(b.deposit || 0);
+                    const balance = amount - deposit;
+                    const paid = b.paid === 1 || b.paid === true;
+                    const st = bookingStatus(b.status);
+                    return (
+                      <tr key={b.order_id || b.id} className="cst-row">
+                        <td style={styles.td}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 15 }} className="cst-icon">⚰️</span>
+                            <span style={{ fontWeight: 700 }}>{b.coffin_name || b.type || '—'}</span>
+                          </div>
+                        </td>
+                        <td style={styles.td}>
+                          <div style={{ fontWeight: 600 }}>{b.booked_by || b.client_name || '—'}</div>
+                          <div style={{ fontSize: 11, color: C.muted }}>for {b.booked_for || b.deceased_name || '—'}</div>
+                        </td>
+                        <td style={styles.td}>{b.service_date || '—'}{b.service_time ? <span style={{ color: C.muted }}> · {b.service_time}</span> : null}</td>
+                        <td style={{ ...styles.td, fontWeight: 700, color: C.primaryDark }}>{currency(amount)}</td>
+                        <td style={{ ...styles.td, fontWeight: 600, color: C.successDark }}>{currency(deposit)}</td>
+                        <td style={{ ...styles.td, fontWeight: 800, color: balance > 0 ? C.warningDark : C.successDark }}>{currency(balance)}</td>
+                        <td style={styles.td}><Chip color={paid ? C.successDark : C.muted} bg={paid ? C.successBg : C.lineSoft}>{paid ? '✅ Yes' : '⏳ No'}</Chip></td>
+                        <td style={styles.td}><Chip color={st.color} bg={st.bg}>{st.emoji} {st.label}</Chip></td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr><td style={styles.emptyCell} colSpan={8}>📅 No coffin bookings found for today.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import {
 import "./metis-design.css";
 
 /* -------------------------------------------------------------------------
-   DeceasedScheduleCalendar — intake / release / service calendar for the
+   DeceasedScheduleCalendar â€” intake / release / service calendar for the
    RestPoint operations dashboard.
 
    Default view: a full MONTH grid. Every intake & release lands on its day
@@ -18,9 +18,9 @@ import "./metis-design.css";
    -----
    events        { id, uid?, type, date, time, title, note, status, branch,
                    deceased: {id,name,age,branch,sex,hearse}, raw? }[]
-   onEventSelect (ev) => void        — fired when a chip/day is opened
+   onEventSelect (ev) => void        â€” fired when a chip/day is opened
    initialView   "month" | "week" | "day"   (default "month")
-   branch        string              — optional branch filter
+   branch        string              â€” optional branch filter
    ------------------------------------------------------------------------- */
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -33,7 +33,7 @@ const todayKey = () => toKey(new Date());
 const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return toKey(d); };
 const weekStartOf = (k) => { const d = parseKey(k); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return toKey(d); };
 
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEK = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 
 const fmtMonthYear = (k) => { const d = parseKey(k); return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
@@ -41,14 +41,14 @@ const fmtDayHeader = (k) => { const d = parseKey(k); return `${d.getDate()} ${MO
 const fmtFull = (k) => { const d = parseKey(k); return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
 
 const TYPE_META = {
-  intake:   { label: "Body Intake",       color: "var(--md-primary)",   bg: "var(--blue-bg)",   icon: User },
-  release:  { label: "Body Release",      color: "var(--md-teal)",      bg: "var(--teal-bg)",   icon: Cross },
-  pm:       { label: "Postmortem Exam",   color: "var(--md-warning)",   bg: "var(--warnl)",     icon: ShieldAlert },
-  funeral:  { label: "Funeral Service",   color: "var(--md-danger)",    bg: "var(--pinkl)",     icon: Flower },
-  transfer: { label: "Hearse Transfer",   color: "var(--md-info)",      bg: "var(--blue-bg)",   icon: Droplets },
-  viewing:  { label: "Viewing / Wake",    color: "#7c3aed",             bg: "var(--plum-bg)",   icon: User },
-  cremation:{ label: "Cremation",         color: "#7c3aed",             bg: "var(--plum-bg)",   icon: Timer },
-  burial:   { label: "Burial",            color: "var(--md-teal)",      bg: "var(--teal-bg)",   icon: Cross },
+  intake: { label: "Body Intake", color: "var(--md-primary)", bg: "var(--blue-bg)", icon: User },
+  release: { label: "Body Release", color: "var(--md-teal)", bg: "var(--teal-bg)", icon: Cross },
+  pm: { label: "Postmortem Exam", color: "var(--md-warning)", bg: "var(--warnl)", icon: ShieldAlert },
+  funeral: { label: "Funeral Service", color: "var(--md-danger)", bg: "var(--pinkl)", icon: Flower },
+  transfer: { label: "Hearse Transfer", color: "var(--md-info)", bg: "var(--blue-bg)", icon: Droplets },
+  viewing: { label: "Viewing / Wake", color: "#7c3aed", bg: "var(--plum-bg)", icon: User },
+  cremation: { label: "Cremation", color: "#7c3aed", bg: "var(--plum-bg)", icon: Timer },
+  burial: { label: "Burial", color: "var(--md-teal)", bg: "var(--teal-bg)", icon: Cross },
 };
 const STATUS_COLOR = {
   scheduled: "var(--md-primary)",
@@ -69,12 +69,12 @@ const MOCK_DECEASED = [
 
 const TODAY = todayKey();
 const MOCK_EVENTS = [
-  { id: "e-1", uid: "d-101", type: "intake", date: TODAY, time: "09:15", title: "Body Intake", status: "confirmed", note: "Morgue intake · Chamber 4", deceased: MOCK_DECEASED[0], branch: "Westlands", raw: {} },
+  { id: "e-1", uid: "d-101", type: "intake", date: TODAY, time: "09:15", title: "Body Intake", status: "confirmed", note: "Morgue intake Â· Chamber 4", deceased: MOCK_DECEASED[0], branch: "Westlands", raw: {} },
   { id: "e-2", uid: "d-102", type: "intake", date: addDays(TODAY, 1), time: "11:00", title: "Body Intake", status: "scheduled", note: "Reception intake", deceased: MOCK_DECEASED[1], branch: "Kilimani", raw: {} },
   { id: "e-3", uid: "d-103", type: "release", date: addDays(TODAY, 2), time: "14:00", title: "Body Release", status: "scheduled", note: "Released to next of kin", deceased: MOCK_DECEASED[2], branch: "Westlands", raw: {} },
   { id: "e-4", uid: "d-104", type: "transfer", date: addDays(TODAY, 3), time: "10:30", title: "Hearse Transfer", status: "in_transit", note: "Hearse C en route", deceased: MOCK_DECEASED[3], branch: "Karen", raw: {} },
   { id: "e-5", uid: "d-105", type: "funeral", date: addDays(TODAY, 5), time: "11:00", title: "Funeral Service", status: "scheduled", note: "St. Mary's Chapel", deceased: MOCK_DECEASED[4], branch: "Kilimani", raw: {} },
-  { id: "e-6", uid: "d-106", type: "release", date: addDays(TODAY, -1), time: "15:30", title: "Body Release", status: "completed", note: "Burial — Kilimani Cemetery", deceased: MOCK_DECEASED[5], branch: "Westlands", raw: {} },
+  { id: "e-6", uid: "d-106", type: "release", date: addDays(TODAY, -1), time: "15:30", title: "Body Release", status: "completed", note: "Burial â€” Kilimani Cemetery", deceased: MOCK_DECEASED[5], branch: "Westlands", raw: {} },
 ];
 
 function normEvents(raw) {
@@ -226,7 +226,7 @@ function EventRow({ event, onClick }) {
           {event.title}
         </div>
         <div style={{ fontSize: "0.7rem", color: "var(--md-ink-muted)" }}>
-          {event.time ? `${event.time} · ` : ""}{event.deceased.name}{event.deceased.age ? ` · ${event.deceased.age} yrs` : ""}
+          {event.time ? `${event.time} Â· ` : ""}{event.deceased.name}{event.deceased.age ? ` Â· ${event.deceased.age} yrs` : ""}
         </div>
       </div>
       <span style={{ fontSize: "0.65rem", fontWeight: 700, color: STATUS_COLOR[event.status] || "var(--md-ink-muted)", background: "rgba(0,0,0,0.06)", padding: "0.1rem 0.4rem", borderRadius: "9px", whiteSpace: "nowrap" }}>
@@ -308,21 +308,21 @@ function DetailPanel({ selected, onClose, onEventSelect }) {
   const meta = TYPE_META[e.type] || TYPE_META.intake;
   const rows = [
     { label: "Deceased", value: d.name },
-    { label: "Reference", value: d.id || e.uid || "—" },
-    { label: "Age / Sex", value: `${d.age ? d.age + " yrs" : "—"}${d.sex ? " · " + d.sex : ""}` },
-    { label: "Branch", value: d.branch || "—" },
-    { label: "Hearse / Vehicle", value: d.hearse || "—" },
+    { label: "Reference", value: d.id || e.uid || "â€”" },
+    { label: "Age / Sex", value: `${d.age ? d.age + " yrs" : "â€”"}${d.sex ? " Â· " + d.sex : ""}` },
+    { label: "Branch", value: d.branch || "â€”" },
+    { label: "Hearse / Vehicle", value: d.hearse || "â€”" },
     { label: "Event", value: e.label },
     { label: "Type", value: e.type },
     { label: "Status", value: e.status },
-    { label: "Date", value: e.date ? fmtFull(e.date) : "—" },
-    { label: "Time", value: e.time || "—" },
-    { label: "Note / Location", value: e.note || "—" },
-    { label: "Received from", value: e.receivedFrom || "—" },
-    { label: "Officer / Staff", value: e.officer || e.staff || "—" },
-    { label: "Destination / Receiver", value: e.dest || e.receiver || "—" },
-    { label: "Permit", value: e.permit || "—" },
-    { label: "Charges", value: e.total || "—" },
+    { label: "Date", value: e.date ? fmtFull(e.date) : "â€”" },
+    { label: "Time", value: e.time || "â€”" },
+    { label: "Note / Location", value: e.note || "â€”" },
+    { label: "Received from", value: e.receivedFrom || "â€”" },
+    { label: "Officer / Staff", value: e.officer || e.staff || "â€”" },
+    { label: "Destination / Receiver", value: e.dest || e.receiver || "â€”" },
+    { label: "Permit", value: e.permit || "â€”" },
+    { label: "Charges", value: e.total || "â€”" },
   ];
   return (
     <>
@@ -444,7 +444,7 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
                     <Icon size={12} style={{ color: TYPE_META[ev.type]?.color }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--md-ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--md-ink-muted)" }}>{ev.deceased.name} · {ev.date ? fmtFull(ev.date) : "—"}</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--md-ink-muted)" }}>{ev.deceased.name} Â· {ev.date ? fmtFull(ev.date) : "â€”"}</div>
                     </div>
                   </div>
                 );
