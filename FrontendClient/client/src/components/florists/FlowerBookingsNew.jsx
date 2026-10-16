@@ -1598,7 +1598,7 @@ const FlowerBookingsNew = () => {
                   onClick={() => setSelectedUrgencyBookingId(isSelected ? null : bookingId)}
                 >
                   <span className="flower-urgency-when">
-                    <strong>{serviceTime || 'Time TBC'}</strong>
+                    {serviceTime && <small>{serviceTime}</small>}
                     <small>{dateLabel}</small>
                   </span>
                   <span className="flower-urgency-what">
