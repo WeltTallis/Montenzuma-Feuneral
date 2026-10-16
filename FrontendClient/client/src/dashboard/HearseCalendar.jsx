@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { format, startOfWeek, endOfWeek, addDays, subWeeks, addWeeks, isSameDay } from "date-fns";
-import { Calendar, ChevronLeft, ChevronRight, Clock, User, Cross2, Droplets, Flower } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, User, Cross, Droplets, Flower } from "lucide-react";
 import "./metis-design.css";
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -10,12 +10,12 @@ import "./metis-design.css";
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 07:00 → 18:00
 
 const TYPE_META = {
-  funeral:   { label: "Funeral Service", color: "var(--md-danger)", icon: Cross2 },
+  funeral:   { label: "Funeral Service", color: "var(--md-danger)", icon: Cross },
   transfer:  { label: "Hearse Transfer", color: "var(--md-info)", icon: Droplets },
   service:   { label: "Memorial Service", color: "var(--md-primary)", icon: Flower },
   viewing:   { label: "Viewing / Wake", color: "var(--md-warning)", icon: User },
   cremation: { label: "Cremation", color: "#7c3aed", icon: null },
-  burial:    { label: "Burial", color: "var(--md-teal)", icon: Cross2 },
+  burial:    { label: "Burial", color: "var(--md-teal)", icon: Cross },
 };
 
 const STATUS_COLOR = {
