@@ -13,6 +13,7 @@ export const NAV_ITEMS = [
   { id: "workshop", view: "workshop", sub: null, label: "Workshop", desc: "Production analytics", icon: "hammer", full: "Workshop — production analytics" },
   { id: "flowers", view: "flowers", sub: null, label: "Flowers", desc: "Charts & bookings", icon: "flower", full: "Flowers — charts & bookings analysis" },
   { id: "coffin-store", view: "coffin-store", sub: null, label: "Coffin Store", desc: "Cross-branch inventory", icon: "store", full: "Coffin Store — all branches" },
+  { id: "calendar", view: "calendar", sub: null, label: "Calendar", desc: "Deceased & service schedule", icon: "cal", full: "Calendar — deceased & service schedule" },
 ];
 
 const initialsOf = (name) =>

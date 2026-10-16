@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./dashboard.css";
 import "./shell/shell.css";
 import "./florist/flowers.css";
+import "./metis-design.css";
 
 import { useCaseData } from "./useCaseData";
 import { schedulePeriod } from "./schedulePeriod";
@@ -24,6 +25,7 @@ import WorkshopPanel from "./WorkshopPanel";
 import StoreSection from "./StoreSection";
 import FlowerAnalytics from "./florist/FlowerAnalytics";
 import CoffinStoreTracker from "./CoffinStoreTracker";
+import DeceasedScheduleCalendar from "./HearseCalendar";
 import DashSidebar, { NAV_ITEMS } from "./shell/DashSidebar";
 
 /* Sidebar view → the ops section it lands on. */
@@ -64,7 +66,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
 
   const isModuleView =
-    navView === "store" || navView === "workshop" || navView === "flowers" || navView === "coffin-store";
+    navView === "store" || navView === "workshop" || navView === "flowers" || navView === "coffin-store" || navView === "calendar";
   const [view, setView] = useState("month");
   const [selDate, setSelDate] = useState(todayKey());
   const [calY, setCalY] = useState(new Date().getFullYear());
@@ -431,6 +433,8 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             <FlowerAnalytics />
           ) : navView === "coffin-store" ? (
             <CoffinStoreTracker />
+          ) : navView === "calendar" ? (
+            <DeceasedScheduleCalendar onEventSelect={(e) => {}} />
           ) : loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}>
