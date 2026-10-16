@@ -1,50 +1,150 @@
 // CoffinStoreTracker.jsx
-// Cross-branch coffin store tracker for the dashboard.
-// Shows coffin stock in every branch, the most-moving (popular) coffin types,
-// and low-stock alerts — so managers know which coffin is most needed and
-// where to rebalance stock.
+// ═══════════════════════════════════════════════════════════════════════════
+// Cross-branch coffin store tracker for the dashboard — redesigned.
+//
+//  • 🧊 Cool emoji chars + a clean "good color" system (mirrors coffininventory)
+//  • 🏢⚰️🔗 REAL relationships : branch → coffin → booking → client/deceased,
+//    plus cross-branch TRANSFER suggestions (surplus branch → deficit branch)
+//  • 🗂️ 3-BRANCH STACK : branches render as stacked columns, 3 at a time,
+//    with prev/next paging when the org has more than 3 branches
+//  • 🎨 Every inventory row/chip is colour-coded by stock health
+//
 // Self-contained: fetches from CoffinAPI (cross-branch endpoint) and computes
-// derived metrics on the client.
+// all derived metrics on the client. No new dependencies required.
+// ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from 'react';
 import { CoffinAPI } from '../api/coffinApi';
 import { getTenantSlug } from '../utils/globalAuth';
 
+// ── Palette (good colours, same spirit as components/coffins/coffininventory) ──
 const C = {
-  navy: '#0a0a0a', navyBg: '#f1f5f9',
-  green: '#16a34a', greenBg: '#f0fdf4',
-  amber: '#d97706', amberBg: '#fffbeb',
-  red: '#dc2626', redBg: '#fef2f2',
-  blue: '#0284c7', blueBg: '#eff6ff',
-  ink: '#1a1a1a', muted: '#777777', line: '#e0e0e0', card: '#ffffff',
+  // surfaces
+  ink: '#0f172a',
+  muted: '#64748b',
+  faint: '#94a3b8',
+  line: '#e2e8f0',
+  lineSoft: '#f1f5f9',
+  card: '#ffffff',
+  bg: '#f8fafc',
+
+  // brand
+  primary: '#1d4ed8',
+  primaryDark: '#1e3a8a',
+  primarySoft: '#eff6ff',
+
+  // status — the "good colours" every inventory chip uses
+  success: '#059669', successDark: '#15803d', successBg: '#ecfdf5', successRing: '#a7f3d0',
+  warning: '#d97706', warningDark: '#b45309', warningBg: '#fffbeb', warningRing: '#fde68a',
+  danger: '#dc2626', dangerDark: '#b91c1c', dangerBg: '#fef2f2', dangerRing: '#fecaca',
+  info: '#0284c7', infoBg: '#e0f2fe',
+  purple: '#7c3aed', purpleBg: '#f5f3ff', purpleRing: '#ddd6fe',
 };
+
+// Accent themes for the branch stack columns (cycled per branch).
+const BRANCH_ACCENTS = [
+  { key: 'blue',   color: '#1d4ed8', soft: '#eff6ff', ring: '#bfdbfe', grad: 'linear-gradient(135deg,#1e3a8a,#3b82f6)', emoji: '🏢' },
+  { key: 'green',  color: '#047857', soft: '#ecfdf5', ring: '#a7f3d0', grad: 'linear-gradient(135deg,#047857,#10b981)', emoji: '🏬' },
+  { key: 'purple', color: '#6d28d9', soft: '#f5f3ff', ring: '#ddd6fe', grad: 'linear-gradient(135deg,#5b21b6,#a78bfa)', emoji: '🏛️' },
+  { key: 'rose',   color: '#be185d', soft: '#fff1f2', ring: '#fecdd3', grad: 'linear-gradient(135deg,#9f1239,#fb7185)', emoji: '🏩' },
+  { key: 'amber',  color: '#b45309', soft: '#fffbeb', ring: '#fde68a', grad: 'linear-gradient(135deg,#92400e,#f59e0b)', emoji: '🏦' },
+];
 
 const pad = (n) => String(n).padStart(2, '0');
 const todayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
-
 const currency = (v) => {
   const n = Number(v || 0);
   return n.toLocaleString('en-KE', { style: 'currency', currency: 'KES', minimumFractionDigits: 0 });
 };
+const branchKeyOf = (c) => c.branch_name || c.branch_slug || (c.branch_id != null ? `Branch ${c.branch_id}` : 'Unknown Branch');
 
+// ── Stock health → good colour + emoji for every inventory chip ────────────
+const stockStatus = (q) => {
+  const n = Number(q || 0);
+  if (n <= 0) return { label: 'Out of Stock', color: C.danger, dark: C.dangerDark, bg: C.dangerBg, ring: C.dangerRing, emoji: '💀', pct: 0 };
+  if (n <= 5) return { label: 'Low Stock', color: C.warning, dark: C.warningDark, bg: C.warningBg, ring: C.warningRing, emoji: '⚠️', pct: Math.min(45, 10 + n * 7) };
+  return { label: 'In Stock', color: C.success, dark: C.successDark, bg: C.successBg, ring: C.successRing, emoji: '✅', pct: Math.min(100, 55 + n * 2) };
+};
+
+// ── Booking status → colour + emoji ────────────────────────────────────────
+const bookingStatus = (status) => {
+  const s = String(status || 'pending').toLowerCase();
+  const map = {
+    pending:   { label: 'Pending',   color: C.warning, bg: C.warningBg, emoji: '🕒' },
+    booked:    { label: 'Approved',  color: C.success, bg: C.successBg, emoji: '✅' },
+    approved:  { label: 'Approved',  color: C.success, bg: C.successBg, emoji: '✅' },
+    completed: { label: 'Completed', color: C.primary, bg: C.primarySoft, emoji: '🏁' },
+    delivered: { label: 'Delivered', color: C.primary, bg: C.primarySoft, emoji: '🚚' },
+    cancelled: { label: 'Cancelled', color: C.muted,   bg: C.lineSoft,  emoji: '🚫' },
+    rejected:  { label: 'Rejected',  color: C.danger,  bg: C.dangerBg,  emoji: '⛔' },
+  };
+  const normalized = ['transferring', 'transit', 'in-transit', 'in_transit'].includes(s) ? 'approved' : s;
+  return map[normalized] || map.pending;
+};
+
+// ── Shared inline styles ────────────────────────────────────────────────────
+const styles = {
+  wrap: { padding: 24, fontFamily: "'Inter','Source Sans Pro',-apple-system,BlinkMacSystemFont,sans-serif", color: C.ink, maxWidth: 1400, margin: '0 auto' },
+  sectionTitle: { display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px' },
+  h2: { margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em' },
+  panel: { border: `1px solid ${C.line}`, borderRadius: 14, background: C.card, boxShadow: '0 1px 2px rgba(15,23,42,0.04)', overflow: 'hidden' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
+  th: { padding: '11px 12px', textAlign: 'left', background: C.lineSoft, borderBottom: `1px solid ${C.line}`, color: C.muted, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' },
+  td: { padding: '11px 12px', borderBottom: `1px solid ${C.lineSoft}`, verticalAlign: 'middle' },
+  chip: (color, bg) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 999, fontSize: 11, fontWeight: 700, color, background: bg, whiteSpace: 'nowrap' }),
+  pillBtn: (bg, color = '#fff') => ({ padding: '7px 14px', borderRadius: 8, border: 'none', background: bg, color, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'filter .15s ease' }),
+  emptyCell: { padding: '26px 12px', textAlign: 'center', color: C.muted },
+};
+
+// Small reusable KPI tile.
+function KpiCard({ emoji, label, value, sub, color, bg }) {
+  return (
+    <div style={{ background: bg, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, display: 'flex', alignItems: 'center', gap: 12, minWidth: 150, flex: '1 1 150px' }}>
+      <span style={{ fontSize: 24, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.08))' }} aria-hidden> {emoji} </span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, fontWeight: 700 }}>{label}</div>
+        <div style={{ fontSize: 24, fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
+        {sub && <div style={{ fontSize: 11, color: C.faint, fontWeight: 600 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+// Rounded status chip used across every inventory / booking row.
+function Chip({ color, bg, children }) {
+  return <span style={styles.chip(color, bg)}>{children}</span>;
+}
+
+// A thin coloured stock-health meter.
+function HealthBar({ pct, color, ring }) {
+  return (
+    <div style={{ height: 7, borderRadius: 999, background: ring, overflow: 'hidden' }}>
+      <div style={{ height: '100%', width: `${Math.max(4, Math.min(100, pct))}%`, borderRadius: 999, background: color, transition: 'width .5s ease' }} />
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
 export default function CoffinStoreTracker() {
   const [coffins, setCoffins] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [branchFilter, setBranchFilter] = useState('all');
 
   // Today's bookings tab
   const [todayBookings, setTodayBookings] = useState([]);
   const [todayLoading, setTodayLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 3-branch stack paging
+  const [branchPage, setBranchPage] = useState(0);
+
   const tenantSlug = getTenantSlug();
   const parentSlug = tenantSlug ? tenantSlug.split('-').slice(0, -1).join('-') || tenantSlug : '';
 
-  // ── Load data ──────────────────────────────────────────────────────────
+  // ── Load cross-branch inventory + orders ──────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -65,9 +165,7 @@ export default function CoffinStoreTracker() {
           setError(null);
         }
       } catch (err) {
-        if (!cancelled) {
-          setError(err?.friendlyMessage || err.message || 'Failed to load coffin store data');
-        }
+        if (!cancelled) setError(err?.friendlyMessage || err?.message || 'Failed to load coffin store data');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -76,7 +174,7 @@ export default function CoffinStoreTracker() {
     return () => { cancelled = true; };
   }, [parentSlug, tenantSlug]);
 
-  // ── Load today's bookings ──────────────────────────────────────────────
+  // ── Load today's bookings ─────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     const loadToday = async () => {
@@ -86,9 +184,7 @@ export default function CoffinStoreTracker() {
         if (searchQuery && searchQuery.trim()) params.search = searchQuery.trim();
         const ord = await CoffinAPI.getTodayBookings(params);
         const orders = Array.isArray(ord?.data) ? ord.data : [];
-        if (!cancelled) {
-          setTodayBookings(orders);
-        }
+        if (!cancelled) setTodayBookings(orders);
       } catch (err) {
         console.warn('[CoffinStoreTracker] Today bookings load failed:', err?.message);
         if (!cancelled) setTodayBookings([]);
@@ -100,44 +196,85 @@ export default function CoffinStoreTracker() {
     return () => { cancelled = true; };
   }, [parentSlug, tenantSlug, searchQuery]);
 
-  // ── Derived metrics ────────────────────────────────────────────────────
-
+    // ── Derived: branch groups (relationship: branch → coffins) ──────────────
   const byBranch = useMemo(() => {
     const map = new Map();
     coffins.forEach((c) => {
-      const b = c.branch_name || c.branch_slug || c.branch_id || 'Unknown Branch';
+      const b = branchKeyOf(c);
       if (!map.has(b)) map.set(b, []);
       map.get(b).push(c);
     });
-    return Array.from(map.entries()).map(([branch, items]) => ({
-      branch,
-      total: items.reduce((s, c) => s + (Number(c.quantity) || 0), 0),
-      count: items.length,
-      lowStock: items.filter((c) => {
-        const q = Number(c.quantity || 0);
-        return q <= 5 || q === 0;
-      }).length,
-      items,
-    }));
+    return Array.from(map.entries())
+      .map(([branch, items]) => {
+        const total = items.reduce((s, c) => s + (Number(c.quantity) || 0), 0);
+        const value = items.reduce((s, c) => s + (Number(c.exact_price || c.price || 0) * (Number(c.quantity) || 0)), 0);
+        const lowStock = items.filter((c) => { const q = Number(c.quantity || 0); return q > 0 && q <= 5; }).length;
+        const out = items.filter((c) => Number(c.quantity || 0) <= 0).length;
+        const healthy = items.length - lowStock - out;
+        return { branch, items, total, value, lowStock, out, healthy };
+      })
+      .sort((a, b) => b.total - a.total);
   }, [coffins]);
 
-  const totalCoffins = coffins.reduce((s, c) => s + (Number(c.quantity) || 0), 0);
-  const totalBranches = byBranch.length;
-  const lowStockCoffins = coffins.filter((c) => {
-    const q = Number(c.quantity || 0);
-    return q <= 5 || q === 0;
-  });
-  const outOfStock = coffins.filter((c) => Number(c.quantity || 0) === 0);
-
-  const mostMoving = useMemo(() => {
+  // ── Derived: coffin → bookings relationship map ──────────────────────────
+  const bookingsByCoffin = useMemo(() => {
     const map = new Map();
     bookings.forEach((b) => {
-      const key = `${b.coffin_name || b.type || 'Unknown'} | ${b.color || ''} | ${b.size || ''}`;
-      const qty = Number(b.quantity || 1);
-      const cur = map.get(key) || { name: b.coffin_name || b.type || 'Unknown', color: b.color || '', size: b.size || '', qty: 0, branches: new Set() };
-      cur.qty += qty;
+      const id = b.coffin_id != null ? String(b.coffin_id) : null;
+      if (!id) return;
+      if (!map.has(id)) map.set(id, []);
+      map.get(id).push(b);
+    });
+    return map;
+  }, [bookings]);
+
+  // ── Derived: enriched coffins with real booking relationships ────────────
+  const enriched = useMemo(
+    () =>
+      coffins.map((c) => {
+        const id = c.coffin_id != null ? String(c.coffin_id) : null;
+        const related = id ? bookingsByCoffin.get(id) || [] : [];
+        const bookedQty = related.reduce((s, b) => s + (Number(b.quantity) || 1), 0);
+        const revenue = related.reduce((s, b) => s + (Number(b.amount) || 0), 0);
+        const lastDate = related.map((b) => b.service_date).filter(Boolean).sort().slice(-1)[0] || null;
+        return { ...c, _related: related, _bookedQty: bookedQty, _revenue: revenue, _lastDate: lastDate, _hot: related.length > 0 };
+      }),
+    [coffins, bookingsByCoffin]
+  );
+
+  // ── Derived: cross-branch TRANSFER suggestions (surplus → deficit) ───────
+  const transferSuggestions = useMemo(() => {
+    const byName = new Map();
+    enriched.forEach((c) => {
+      const name = (c.name || c.type || '').toLowerCase().trim();
+      if (!name) return;
+      if (!byName.has(name)) byName.set(name, []);
+      byName.get(name).push(c);
+    });
+    const suggestions = [];
+    byName.forEach((rows, name) => {
+      const deficits = rows.filter((r) => Number(r.quantity || 0) <= 2);
+      const surpluses = rows.filter((r) => Number(r.quantity || 0) > 2);
+      deficits.forEach((d) => {
+        const s = surpluses.find(
+          (x) => branchKeyOf(x) !== branchKeyOf(d) && Number(x.quantity || 0) > Number(d.quantity || 0)
+        );
+        if (s) suggestions.push({ name: d.name || d.type, from: s, to: d });
+      });
+    });
+    return suggestions.slice(0, 6);
+  }, [enriched]);
+
+  // ── Derived: hot / most-moving coffins ────────────────────────────────────
+  const hotCoffins = useMemo(() => {
+    const map = new Map();
+    bookings.forEach((b) => {
+      const key = `${b.coffin_name || b.type || 'Unknown'}|${b.color || ''}|${b.size || ''}`;
+      const cur = map.get(key) || { name: b.coffin_name || b.type || 'Unknown', color: b.color || '', size: b.size || '', qty: 0, branches: new Set(), revenue: 0 };
+      cur.qty += Number(b.quantity || 1);
+      cur.revenue += Number(b.amount || 0);
       if (b.branch_name) cur.branches.add(b.branch_name);
-      if (b.branch_id) cur.branches.add(String(b.branch_id));
+      else if (b.branch_id != null) cur.branches.add(String(b.branch_id));
       map.set(key, cur);
     });
     return Array.from(map.values())
@@ -146,287 +283,98 @@ export default function CoffinStoreTracker() {
       .slice(0, 6);
   }, [bookings]);
 
-  const filteredBranches = branchFilter === 'all' ? byBranch : byBranch.filter((b) => b.branch === branchFilter);
+  // ── Derived: top-level KPIs ───────────────────────────────────────────────
+  const totalUnits = enriched.reduce((s, c) => s + (Number(c.quantity) || 0), 0);
+  const totalValue = enriched.reduce((s, c) => s + (Number(c.exact_price || c.price || 0) * (Number(c.quantity) || 0)), 0);
+  const totalBranches = byBranch.length;
+  const lowStock = enriched.filter((c) => { const q = Number(c.quantity || 0); return q > 0 && q <= 5; });
+  const outOfStock = enriched.filter((c) => Number(c.quantity || 0) <= 0);
+  const todayRevenue = todayBookings.reduce((s, b) => s + (Number(b.amount) || 0), 0);
 
-  const handleRetry = () => {
-    window.dispatchEvent(new CustomEvent('ws:reload-coffin-store'));
-  };
+  // ── 3-branch stack paging ─────────────────────────────────────────────────
+  const PER_PAGE = 3;
+  const totalPages = Math.max(1, Math.ceil(byBranch.length / PER_PAGE));
+  const safePage = Math.min(branchPage, totalPages - 1);
+  const visibleBranches = byBranch.slice(safePage * PER_PAGE, safePage * PER_PAGE + PER_PAGE);
 
+  const handleRetry = () => window.dispatchEvent(new CustomEvent('ws:reload-coffin-store'));
+
+  // ── Loading / error states ────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ padding: 30, textAlign: 'center', color: C.muted }}>
-        <span style={{ fontSize: 22, marginRight: 8 }} role="img" aria-label="loading">📦</span>
-        <div style={{ marginTop: 8, fontWeight: 600 }}>Loading coffin store across branches…</div>
+      <div style={{ ...styles.wrap, textAlign: 'center', padding: '60px 24px' }}>
+        <div style={{ fontSize: 44, animation: 'cst-bob 1.4s ease-in-out infinite' }}>⚰️</div>
+        <div style={{ marginTop: 12, fontWeight: 700, color: C.muted }}>Loading coffin store across branches…</div>
+        <style>{`@keyframes cst-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}`}</style>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: 30, textAlign: 'center', color: C.red }}>
-        <span style={{ fontSize: 22, marginRight: 8 }} role="img" aria-label="error">⚠️</span>
-        <div style={{ marginTop: 8, fontWeight: 600 }}>{error}</div>
-        <button onClick={handleRetry} style={{ marginTop: 12, padding: '8px 16px', background: C.navy, color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-          Retry
-        </button>
+      <div style={{ ...styles.wrap, textAlign: 'center', padding: '60px 24px' }}>
+        <div style={{ fontSize: 44 }}>🚨</div>
+        <div style={{ marginTop: 12, fontWeight: 700, color: C.danger }}>{error}</div>
+        <button onClick={handleRetry} style={{ ...styles.pillBtn(C.primary), marginTop: 16 }}>🔄 Retry</button>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 24, fontFamily: "'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif", color: C.ink }}>
-      <header style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 24 }} role="img" aria-label="coffin">⚰️</span>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Coffin Store Tracker</h1>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: C.muted }}>Cross-branch inventory and low-stock watch</p>
+    <div style={styles.wrap}>
+      <style>{`
+        .cst-th{ cursor:default }
+        @keyframes cst-pop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+        @keyframes cst-glow{0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,.18)}50%{box-shadow:0 0 0 8px rgba(37,99,235,0)}}
+        .cst-row:hover{ background:${C.lineSoft} }
+        .cst-icon{ transition:transform .15s ease }
+        .cst-icon:hover{ transform:translateY(-2px) scale(1.15) }
+        @media (max-width: 720px){ .cst-scroll{ overflow-x:auto } }
+      `}</style>
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <header style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div style={{ width: 52, height: 52, borderRadius: 15, background: 'linear-gradient(135deg,#1e3a8a,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: '0 8px 18px rgba(30,58,138,.35)' }}>⚰️</div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 10 }}>
+            Coffin Store Tracker
+            <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: C.primarySoft, color: C.primary }}>LIVE</span>
+          </h1>
+          <p style={{ margin: '2px 0 0', color: C.muted, fontSize: 13, fontWeight: 600 }}>
+            ⚰️ × 🏢 × 🔗 real cross-branch relationships · stacked 3 branches at a time
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => window.dispatchEvent(new CustomEvent('ws:reload-coffin-store'))} style={styles.pillBtn(C.primaryDark)}>🔄 Refresh</button>
         </div>
       </header>
 
-      {/* ── KPI cards ──────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <KpiCard label="Total Coffins in Stock" value={totalCoffins} sub={`${totalBranches} branch${totalBranches === 1 ? '' : 's'}`} color={C.navy} bg={C.navyBg} icon="📦" />
-        <KpiCard label="Branches Tracked" value={totalBranches} sub="All branches reporting" color={C.blue} bg={C.blueBg} icon="🏢" />
-        <KpiCard label="Low Stock (≤5)" value={lowStockCoffins.length} sub={outOfStock.length > 0 ? `${outOfStock.length} out of stock` : 'All replenished'} color={lowStockCoffins.length ? C.amber : C.green} bg={lowStockCoffins.length ? C.amberBg : C.greenBg} icon="⚠️" />
-        <KpiCard label="Most Moving" value={mostMoving.length ? mostMoving[0].qty : 0} sub={mostMoving.length ? mostMoving[0].name : '—'} color={C.green} bg={C.greenBg} icon="🔥" />
+      {/* ── KPI row ─────────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 8 }}>
+        <KpiCard emoji="📦" label="Total Units" value={totalUnits} sub={`${enriched.length} coffin types`} color={C.primaryDark} bg={C.primarySoft} />
+        <KpiCard emoji="🏢" label="Branches" value={totalBranches} sub="live stores" color={C.info} bg={C.infoBg} />
+        <KpiCard emoji="💰" label="Stock Value" value={currency(totalValue)} sub="at sell price" color={C.successDark} bg={C.successBg} />
+        <KpiCard emoji="⚠️" label="Low Stock" value={lowStock.length} sub="reorder soon" color={C.warningDark} bg={C.warningBg} />
+        <KpiCard emoji="💀" label="Out of Stock" value={outOfStock.length} sub="unavailable" color={C.dangerDark} bg={C.dangerBg} />
+        <KpiCard emoji="📅" label="Today's Bookings" value={todayBookings.length} sub={currency(todayRevenue)} color={C.purple} bg={C.purpleBg} />
       </div>
 
-      {/* ── Low stock alerts ───────────────────────────────────────────── */}
-      {lowStockCoffins.length > 0 && (
-        <section style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 16 }} role="img" aria-label="alert">⚠️</span>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Low Stock Alerts</h2>
+      {/* ── Low-stock / transfer alert banner ───────────────────────────── */}
+      {(lowStock.length > 0 || outOfStock.length > 0 || transferSuggestions.length > 0) && (
+        <div style={{ margin: '14px 0 20px', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(90deg,#fffbeb,#fef2f2)', border: '1px solid #fde68a' }}>
+          <span style={{ fontSize: 22 }}>🚨</span>
+          <div style={{ flex: 1, fontSize: 13, color: C.warningDark, fontWeight: 600 }}>
+            <strong style={{ fontWeight: 800 }}>Stock watch:</strong>{' '}
+            {lowStock.length} low · {outOfStock.length} out of stock
+            {transferSuggestions.length > 0 && <> · {transferSuggestions.length} transfer opportunit{transferSuggestions.length === 1 ? 'y' : 'ies'} found</>}
           </div>
-          <div style={{ overflowX: 'auto', border: `1px solid ${C.line}`, borderRadius: 8, background: C.card }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ textAlign: 'left', background: '#f9fafb', borderBottom: `1px solid ${C.line}` }}>
-                  <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Coffin</th>
-                  <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Type / Color / Size</th>
-                  <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Branch</th>
-                  <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Stock</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lowStockCoffins.map((c) => (
-                  <tr key={`${c.coffin_id}-${c.branch_id}`} style={{ borderBottom: `1px solid ${C.line}` }}>
-                    <td style={{ padding: 10, fontWeight: 600 }}>{c.name || c.type || 'Unnamed'}</td>
-                    <td style={{ padding: 10, color: C.muted }}>{`${c.type || ''} · ${c.color || '—'} · ${c.size || '—'}`}</td>
-                    <td style={{ padding: 10 }}>{c.branch_name || c.branch_slug || c.branch_id || '—'}</td>
-                    <td style={{ padding: 10, fontWeight: 700, color: Number(c.quantity) === 0 ? C.red : C.amber }}>{Number(c.quantity || 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        </div>
       )}
 
-      {/* ── Most moving coffins ────────────────────────────────────────── */}
-      <section style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span style={{ fontSize: 16 }} role="img" aria-label="trending">🔥</span>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Most Moving Coffins</h2>
-        </div>
-        <div style={{ overflowX: 'auto', border: `1px solid ${C.line}`, borderRadius: 8, background: C.card }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: 'left', background: '#f9fafb', borderBottom: `1px solid ${C.line}` }}>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Coffin</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Specs</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Units Booked</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Branches</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mostMoving.length > 0 ? (
-                mostMoving.map((m, i) => (
-                  <tr key={i} style={{ borderBottom: i < mostMoving.length - 1 ? `1px solid ${C.line}` : 'none' }}>
-                    <td style={{ padding: 10, fontWeight: 600 }}>{i + 1}. {m.name}</td>
-                    <td style={{ padding: 10, color: C.muted }}>{`${m.color || '—'} · ${m.size || '—'}`}</td>
-                    <td style={{ padding: 10, fontWeight: 700, color: C.green }}>{m.qty}</td>
-                    <td style={{ padding: 10 }}>{m.branches}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td style={{ padding: 20, textAlign: 'center', color: C.muted }} colspan="4">No booking data yet — most-moving list will populate as coffins are ordered.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {/* __STACK__ */}
 
-      {/* Today's Coffin Bookings */}
-      <section style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 16 }} role="img" aria-label="today">📅</span>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Today's Coffin Bookings</h2>
-          <input
-            type="text"
-            placeholder="Search by coffin name, client name, or booked by…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.line}`, fontSize: 12, background: '#fff' }}
-          />
-          {todayLoading && <span style={{ fontSize: 12, color: C.muted }}>Loading…</span>}
-        </div>
-        <div style={{ overflowX: 'auto', border: `1px solid ${C.line}`, borderRadius: 8, background: C.card }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: 'left', background: '#f9fafb', borderBottom: `1px solid ${C.line}` }}>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Coffin</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Client / Deceased</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Booked By</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Service Date</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Amount</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Deposit</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Balance</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Paid</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todayBookings.length > 0 ? (
-                todayBookings.map((b) => {
-                  const amount = Number(b.amount || 0);
-                  const deposit = Number(b.deposit || 0);
-                  const balance = amount - deposit;
-                  const paid = b.paid === 1 || b.paid === true;
-                  return (
-                    <tr key={b.order_id || b.id} style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <td style={{ padding: 10, fontWeight: 600 }}>{b.coffin_name || b.type || '—'}</td>
-                      <td style={{ padding: 10, color: C.muted }}>{`${b.booked_by || b.client_name || '—'} · ${b.booked_for || b.deceased_name || '—'}`}</td>
-                      <td style={{ padding: 10 }}>{b.booked_by || b.client_name || '—'}</td>
-                      <td style={{ padding: 10 }}>{b.service_date || '—'}</td>
-                      <td style={{ padding: 10, fontWeight: 600, color: C.navy }}>{currency(amount)}</td>
-                      <td style={{ padding: 10, fontWeight: 600, color: C.green }}>{currency(deposit)}</td>
-                      <td style={{ padding: 10, fontWeight: 700, color: balance > 0 ? C.amber : C.green }}>{currency(balance)}</td>
-                      <td style={{ padding: 10, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: paid ? C.green : C.muted }}>{paid ? 'Yes' : 'No'}</td>
-                      <td style={{ padding: 10, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: C.ink }}>{b.status || 'active'}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td style={{ padding: 20, textAlign: 'center', color: C.muted }} colspan="9">No coffin bookings found for today.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ── Per-branch inventory ───────────────────────────────────────── */}
-      <section>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <span style={{ fontSize: 16 }} role="img" aria-label="branch">🏢</span>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Coffins by Branch</h2>
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.line}`, fontSize: 12, background: '#fff' }}
-          >
-            <option value="all">All branches</option>
-            {byBranch.map((b) => <option key={b.branch} value={b.branch}>{b.branch}</option>)}
-          </select>
-        </div>
-        <div style={{ overflowX: 'auto', border: `1px solid ${C.line}`, borderRadius: 8, background: C.card }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: 'left', background: '#f9fafb', borderBottom: `1px solid ${C.line}` }}>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Branch</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Coffin Types</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Total Units</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Low Stock</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Top Coffin</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBranches.length > 0 ? (
-                filteredBranches.map((b) => {
-                  const top = b.items
-                    .sort((a, z) => (Number(z.quantity || 0) - Number(a.quantity || 0)))[0];
-                  return (
-                    <tr key={b.branch} style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <td style={{ padding: 10, fontWeight: 600 }}>{b.branch}</td>
-                      <td style={{ padding: 10 }}>{b.count}</td>
-                      <td style={{ padding: 10, fontWeight: 700 }}>{b.total}</td>
-                      <td style={{ padding: 10, fontWeight: 600, color: b.lowStock ? C.amber : C.green }}>{b.lowStock}</td>
-                      <td style={{ padding: 10, color: C.muted, fontSize: 12 }}>{top ? `${top.name || top.type || '—'}` : '—'}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td style={{ padding: 20, textAlign: 'center', color: C.muted }} colspan="5">No branches match this filter.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ── Detail table ───────────────────────────────────────────────── */}
-      <section style={{ marginTop: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span style={{ fontSize: 16 }} role="img" aria-label="list">📋</span>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>All Coffin Inventory</h2>
-        </div>
-        <div style={{ overflowX: 'auto', border: `1px solid ${C.line}`, borderRadius: 8, background: C.card }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: 'left', background: '#f9fafb', borderBottom: `1px solid ${C.line}` }}>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Branch</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Coffin</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Color / Size</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Price</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Stock</th>
-                <th style={{ padding: 10, color: C.muted, fontWeight: 600 }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {coffins.length > 0 ? (
-                coffins.map((c) => {
-                  const q = Number(c.quantity || 0);
-                  const status = q === 0 ? 'Out of Stock' : q <= 5 ? 'Low Stock' : 'In Stock';
-                  const statusColor = q === 0 ? C.red : q <= 5 ? C.amber : C.green;
-                  return (
-                    <tr key={`${c.coffin_id}-${c.branch_id}`} style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <td style={{ padding: 10 }}>{c.branch_name || c.branch_slug || c.branch_id || '—'}</td>
-                      <td style={{ padding: 10, fontWeight: 600 }}>{c.name || c.type || 'Unnamed Coffin'}</td>
-                      <td style={{ padding: 10, color: C.muted }}>{`${c.color || '—'} / ${c.size || '—'}`}</td>
-                      <td style={{ padding: 10 }}>{currency(c.exact_price || c.price || 0)}</td>
-                      <td style={{ padding: 10, fontWeight: 700, color: statusColor }}>{q}</td>
-                      <td style={{ padding: 10, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: statusColor }}>{status}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td style={{ padding: 20, textAlign: 'center', color: C.muted }} colspan="6">No coffin inventory found.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
 }
 
-function KpiCard({ label, value, sub, color, bg, icon }) {
-  return (
-    <div style={{ background: bg, border: `1px solid ${C.line}`, borderRadius: 10, padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span style={{ fontSize: 20 }} role="img" aria-hidden="true">{icon}</span>
-      <div>
-        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: color }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: C.muted }}>{sub}</div>}
-      </div>
-    </div>
-  );
-}
-
+// __APPEND__
