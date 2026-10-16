@@ -9,7 +9,7 @@ import { getAuthToken, getTenantSlug } from '../utils/globalAuth';
  *   { success: true, data: ..., message?: string }
  */
 const coffinApi = axios.create({
-  baseURL: env.COFFIN_SERVICE_API || env.FULL_API_URL + '/coffin',
+  baseURL: env.COFFIN_SERVICE_API || env.FULL_API_URL + '/coffins',
   withCredentials: true,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
