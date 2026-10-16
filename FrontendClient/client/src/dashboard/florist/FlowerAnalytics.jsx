@@ -12,11 +12,11 @@ import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell,
 } from "recharts";
-import api from "../api/axios";
-import { getTenantId } from "../utils/globalAuth";
-import { toDateKey } from "../utils/dates/parseDates";
-import { useSocket } from "../utils/context/socketContext";
-import { Ic } from "./opsIcons";
+import api from "../../api/axios";
+import { getTenantId } from "../../utils/globalAuth";
+import { toDateKey } from "../../utils/dates/parseDates";
+import { useSocket } from "../../utils/context/socketContext";
+import { Ic } from "../opsIcons";
 
 const LEAD_DAYS = 3;
 

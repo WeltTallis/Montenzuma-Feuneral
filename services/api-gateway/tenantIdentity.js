@@ -438,7 +438,7 @@ function applyTenantIdentity(proxyReq, req, log) {
   } else if (isPreAuthRoute(req)) {
     // ── Pre-authentication surface: a client slug is expected and legitimate ──
     const slug = clientSlug ? String(clientSlug) : 'system_shared';
-    if (clientSlug && !TENANT_SLUG_RE.test(slug) && !PLATFORM_ROLES.has(identity.role)) {
+    if (clientSlug && slug !== 'system_shared' && !TENANT_SLUG_RE.test(slug) && !PLATFORM_ROLES.has(identity.role)) {
       if (log && log.warn) {
         log.warn(`[TENANT-IDENTITY] rejected malformed pre-auth slug "${slug}" on ${req.method} ${req.originalUrl}`);
       }
