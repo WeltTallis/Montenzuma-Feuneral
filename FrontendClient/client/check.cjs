@@ -1,0 +1,1 @@
+const mod = require("lucide-react"); const keys = Object.keys(mod).filter(k => /^(Pie|Chart|Activity|Calendar|Clock|Users|Shield|Trending|Dollar|Layout)/.test(k)); console.log(JSON.stringify(keys, null, 2));

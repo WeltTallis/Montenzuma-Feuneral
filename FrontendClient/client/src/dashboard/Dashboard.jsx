@@ -1,5 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import {
+  Calendar,
+  Activity,
+  TrendingUp,
+  PieCoin,
+  DollarSign,
+  Clock,
+  Users,
+  ShieldAlert,
+} from "lucide-react";
 
 import "./dashboard.css";
 import "./shell/shell.css";
@@ -25,7 +48,7 @@ import WorkshopPanel from "./WorkshopPanel";
 import StoreSection from "./StoreSection";
 import FlowerAnalytics from "./florist/FlowerAnalytics";
 import CoffinStoreTracker from "./CoffinStoreTracker";
-import DeceasedScheduleCalendar from "./HearseCalendar";
+import DeceasedScheduleCalendar, { MOCK_EVENTS } from "./HearseCalendar";
 import DashSidebar, { NAV_ITEMS } from "./shell/DashSidebar";
 
 /* Sidebar view → the ops section it lands on. */
@@ -36,6 +59,15 @@ const VIEWS = [
   { id: "week", label: "Week" },
   { id: "month", label: "Month" },
 ];
+
+/* Calendar chip / row styling per event type (mirrors the flowbite palette). */
+const CAL_TYPE = {
+  intake: { label: "Body Intake", status: "confirmed", color: "#2563eb", bg: "#eff6ff", icon: <Users size={12} /> },
+  release: { label: "Body Release", status: "completed", color: "#047857", bg: "#ecfdf5", icon: <ShieldAlert size={12} /> },
+  pm: { label: "Postmortem Exam", status: "scheduled", color: "#E36414", bg: "#fffbeb", icon: <Activity size={12} /> },
+  funeral: { label: "Funeral Service", status: "scheduled", color: "#7c3aed", bg: "#faf5ff", icon: <Calendar size={12} /> },
+  transfer: { label: "Hearse Transfer", status: "in_transit", color: "#2563eb", bg: "#eff6ff", icon: <Clock size={12} /> },
+};
 
 const DARK_KEY = "rpd-ops-dark";
 const NAV_COLLAPSE_KEY = "rpd-nav-collapsed";
@@ -50,6 +82,104 @@ const NAV = [
   { id: "pm", label: "PM", icon: "vial", full: "Postmortem Requests" },
   { id: "analytics", label: "Analytics", icon: "grid", full: "Analytics" },
 ];
+
+const DONUT_COLORS = ["#2563eb", "#E36414", "#5F0F40", "#047857"];
+
+/* ── stat card ── */
+function StatCard({ icon: Icon, label, value, sub, color }) {
+  return (
+    <div className="rpd-stat">
+      <div className="rpd-stat-wrap" style={{ borderColor: color }}>
+        <div className="rpd-stat-ic" style={{ background: `${color}1a`, color }}>
+          <Icon size={16} />
+        </div>
+        <div className="rpd-stat-body">
+          <div className="rpd-stat-lbl">{label}</div>
+          <div className="rpd-stat-val">{value}</div>
+          {sub != null && <div className="rpd-stat-sub">{sub}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── KPI cards + charts band shown at the top of the main column ── */
+function StatsBand({ calc, money, ccy }) {
+  const care = calc.care || {};
+  const nowYear = new Date().getFullYear();
+
+  const kpis = [
+    { icon: Users, label: "Total Cases", value: calc.total, sub: "All branches", color: "#2563eb" },
+    { icon: Clock, label: "In Care", value: care.inCare, sub: "Awaiting release", color: "#047857" },
+    { icon: ShieldAlert, label: "PM Pending", value: care.pmReq, sub: "Postmortem requests", color: "#E36414" },
+    { icon: DollarSign, label: "Storage Accrued", value: money(calc.charges?.accrued), sub: ccy, color: "#7c3aed" },
+  ];
+
+  const donutData = [
+    { name: "In care", value: care.inCare },
+    { name: "PM pending", value: care.pmReq },
+    { name: "PM done", value: care.pmDone },
+    { name: "Released", value: care.released },
+  ].filter((d) => d.value > 0);
+
+  return (
+    <section className="rpd-band">
+      <div className="rpd-band-grid">
+        {kpis.map((k) => (
+          <StatCard key={k.label} {...k} />
+        ))}
+      </div>
+      <div className="rpd-band-charts">
+        <div className="rpd-chart">
+          <div className="rpd-chart-head">
+            <div className="rpd-chart-title"><TrendingUp size={14} /> Monthly flow</div>
+            <div className="rpd-chart-sub">Intake vs releases · {nowYear}</div>
+          </div>
+          <div className="rpd-chart-body">
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={calc.flow || []}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="adm" name="Intakes" stroke="#2563eb" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="rel" name="Releases" stroke="#047857" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="rpd-chart">
+          <div className="rpd-chart-head">
+            <div className="rpd-chart-title"><PieCoin size={14} /> Case status</div>
+            <div className="rpd-chart-sub">Bodies currently in care</div>
+          </div>
+          <div className="rpd-chart-body">
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={donutData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={98}
+                  startAngle={0}
+                  endAngle={360}
+                  labelLine={false}
+                >
+                  {DONUT_COLORS.map((fill, i) => (
+                    <Cell key={i} fill={fill} />
+                  ))}
+                  <Tooltip />
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const { cases, loading, reload } = useCaseData();
@@ -118,6 +248,46 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     calM,
     calY,
   ]);
+
+  /* ── calendar events from real case data (demo data when empty) ───────── */
+  const calendarEvents = useMemo(() => {
+    const raw = eventsOf(scoped);
+    if (!raw.length) return MOCK_EVENTS;
+    return raw.map((e, i) => {
+      const p = e.p;
+      const m = CAL_TYPE[e.t] || CAL_TYPE.intake;
+      const released = p.release || {};
+      return {
+        id: `evt-${p.uid}-${e.t}-${e.date}-${i}`,
+        uid: p.uid,
+        type: e.t,
+        date: e.date,
+        time: e.time,
+        title: m.label,
+        status: e.t === "release" ? (released.status || m.status) : m.status,
+        note:
+          e.t === "release"
+            ? `Released → ${released.dest || "—"}`
+            : `${m.label} · ${p.branch || "—"}`,
+        branch: p.branch || "",
+        deceased: {
+          id: p.uid,
+          name: p.name || "Unknown",
+          age: p.age != null ? p.age : "",
+          branch: p.branch || "",
+          sex: p.sex || "",
+          hearse: p.hearse || "",
+        },
+      };
+    });
+  }, [scoped]);
+
+  /* ── currency formatting ── */
+  const ccy = calc.charges?.currency || "KES";
+  const money = (n) => {
+    const v = Number(n) || 0;
+    return v > 0 ? `${ccy} ${v.toLocaleString("en-KE", { maximumFractionDigits: 0 })}` : "—";
+  };
 
   /* calendar dots — branch-scoped, one dot per event type per day */
   const calendarDots = useMemo(() => {
@@ -396,6 +566,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               setV={setV}
               avatarText={avatarText}
             />
+            <StatsBand calc={calc} money={money} ccy={ccy} />
             <div className="rpd-scroll">
       {/* ops sidebar + main */}
       <div className="shell">
@@ -434,7 +605,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           ) : navView === "coffin-store" ? (
             <CoffinStoreTracker />
           ) : navView === "calendar" ? (
-            <DeceasedScheduleCalendar onEventSelect={(e) => {}} />
+            <DeceasedScheduleCalendar events={calendarEvents} onEventSelect={(e) => {}} />
           ) : loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}>

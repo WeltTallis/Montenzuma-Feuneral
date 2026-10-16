@@ -8338,3 +8338,144 @@
       text-transform: uppercase
    }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   RestPoint — Flowbite-inspired dashboard band (KPI cards + charts)
+   Scoped under .rpd so it never leaks outside the dashboard.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Flowbite-ish design tokens layered on top of the existing .rpd tokens */
+.rpd {
+  --fp-primary: #2563eb;
+  --fp-primary-soft: rgba(37, 99, 235, 0.10);
+  --fp-success: #047857;
+  --fp-success-soft: rgba(4, 120, 87, 0.10);
+  --fp-warning: #E36414;
+  --fp-warning-soft: rgba(227, 100, 20, 0.10);
+  --fp-purple: #7c3aed;
+  --fp-purple-soft: rgba(124, 58, 237, 0.10);
+  --fp-border: #e4e4e7;
+  --fp-surface: #ffffff;
+  --fp-muted: #71717a;
+}
+.rpd.dark {
+  --fp-border: #2a2e35;
+  --fp-surface: #16181d;
+  --fp-muted: #9aa1ab;
+}
+
+/* Stat card row */
+.rpd-band {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+@media (min-width: 640px) {
+  .rpd-band {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .rpd-band {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.rpd-band-grid {
+  display: contents;
+}
+.rpd-stat {
+  border: 1px solid var(--fp-border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shs);
+}
+.rpd-stat-wrap {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  align-items: center;
+}
+.rpd-stat-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  border: 1px solid;
+}
+.rpd-stat-body {
+  min-width: 0;
+}
+.rpd-stat-lbl {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tx4);
+  margin-bottom: 2px;
+}
+.rpd-stat-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--tx);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.rpd-stat-sub {
+  font-size: 11.5px;
+  color: var(--tx3);
+  margin-top: 2px;
+}
+
+/* Charts band */
+.rpd-band-charts {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  margin-top: 0.25rem;
+}
+@media (min-width: 1024px) {
+  .rpd-band-charts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.rpd-chart {
+  border: 1px solid var(--fp-border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shs);
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+.rpd-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--brdl);
+  flex-shrink: 0;
+}
+.rpd-chart-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--tx);
+}
+.rpd-chart-sub {
+  font-size: 10.5px;
+  color: var(--tx3);
+  margin-top: 1px;
+}
+.rpd-chart-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0.75rem 1rem 1rem;
+  overflow: hidden;
+}
