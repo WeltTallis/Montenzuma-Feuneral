@@ -48,15 +48,14 @@ import { Ic } from "./opsIcons";
 import { OperationsView, RegisterView } from "./opsViews";
 import { AnalyticsView } from "./opsAnalytics";
 import { CaseDrawer, ModalHost } from "./opsPanels";
-import WorkshopPanel from "./WorkshopPanel";
 import StoreSection from "./StoreSection";
 import FlowerAnalytics from "./florist/FlowerAnalytics";
 import SimpleCoffinInventory from "./SimpleCoffinInventory";
-import DeceasedScheduleCalendar, { MOCK_EVENTS } from "./HearseCalendar";
+import DeceasedScheduleCalendar from "./HearseCalendar";
 import DashSidebar, { NAV_ITEMS } from "./shell/DashSidebar";
 
 /* Sidebar view → the ops section it lands on. */
-const VIEW_SECTION = { home: "command", deceased: "intake" };
+const VIEW_SECTION = { home: "command" };
 
 const VIEWS = [
   { id: "day", label: "Day" },
@@ -66,11 +65,11 @@ const VIEWS = [
 
 /* Calendar chip / row styling per event type (mirrors the flowbite palette). */
 const CAL_TYPE = {
-  intake: { label: "Body Intake", status: "confirmed", color: "#2563eb", bg: "#eff6ff", icon: <Users size={12} /> },
-  release: { label: "Body Release", status: "completed", color: "#047857", bg: "#ecfdf5", icon: <ShieldAlert size={12} /> },
-  pm: { label: "Postmortem Exam", status: "scheduled", color: "#E36414", bg: "#fffbeb", icon: <Activity size={12} /> },
-  funeral: { label: "Funeral Service", status: "scheduled", color: "#7c3aed", bg: "#faf5ff", icon: <Calendar size={12} /> },
-  transfer: { label: "Hearse Transfer", status: "in_transit", color: "#2563eb", bg: "#eff6ff", icon: <Clock size={12} /> },
+  intake: { label: "Body Intake", status: "confirmed", color: "#1d4ed8", bg: "#eff6ff", icon: <Users size={12} /> },
+  release: { label: "Body Release", status: "completed", color: "#059669", bg: "#ecfdf5", icon: <ShieldAlert size={12} /> },
+  pm: { label: "Postmortem Exam", status: "scheduled", color: "#d97706", bg: "#fffbeb", icon: <Activity size={12} /> },
+  funeral: { label: "Funeral Service", status: "scheduled", color: "#0284c7", bg: "#f0f9ff", icon: <Calendar size={12} /> },
+  transfer: { label: "Hearse Transfer", status: "in_transit", color: "#1d4ed8", bg: "#eff6ff", icon: <Clock size={12} /> },
 };
 
 const DARK_KEY = "rpd-ops-dark";
@@ -81,13 +80,11 @@ const NAV_VIEW_KEY = "rpd-nav-view";
    row shares the toolbar with search, branch, schedule and avatar. */
 const NAV = [
   { id: "command", label: "Operations", icon: "cal", full: "Operations" },
-  { id: "intake", label: "Intake", icon: "bed", full: "Intake Register" },
-  { id: "release", label: "Release", icon: "heart", full: "Releases & Transfers" },
   { id: "pm", label: "PM", icon: "vial", full: "Postmortem Requests" },
   { id: "analytics", label: "Analytics", icon: "grid", full: "Analytics" },
 ];
 
-const DONUT_COLORS = ["#2563eb", "#E36414", "#5F0F40", "#047857"];
+const DONUT_COLORS = ["#1d4ed8", "#d97706", "#0284c7", "#059669"];
 
 /* ── stat card ── */
 function StatCard({ icon: Icon, label, value, sub, color }) {
@@ -119,11 +116,11 @@ function StatsBand({ calc, money, ccy, onNavView }) {
   const occupancy = storageCap > 0 ? Math.round((totalInCare / storageCap) * 100) : 0;
 
   const kpis = [
-    { icon: Users, label: "Total Cases", value: calc.total, sub: "All branches", color: "#2563eb" },
-    { icon: Clock, label: "In Care", value: totalInCare, sub: "Awaiting release", color: "#047857" },
-    { icon: ShieldAlert, label: "PM Pending", value: care.pmReq, sub: "Postmortem requests", color: "#E36414" },
-    { icon: DollarSign, label: "Storage Accrued", value: money(charges.accrued), sub: ccy, color: "#7c3aed" },
-    { icon: PieChartIcon, label: "Coffin Occupancy", value: `${occupancy}%`, sub: `${totalInCare} / ${storageCap}`, color: "#5F0F40" },
+    { icon: Users, label: "Total Cases", value: calc.total, sub: "All branches", color: "#1d4ed8" },
+    { icon: Clock, label: "In Care", value: totalInCare, sub: "Awaiting release", color: "#059669" },
+    { icon: ShieldAlert, label: "PM Pending", value: care.pmReq, sub: "Postmortem requests", color: "#d97706" },
+    { icon: DollarSign, label: "Storage Accrued", value: money(charges.accrued), sub: ccy, color: "#0284c7" },
+    { icon: PieChartIcon, label: "Coffin Occupancy", value: `${occupancy}%`, sub: `${totalInCare} / ${storageCap}`, color: "#1e3a8a" },
   ];
 
   const donutData = [
@@ -143,10 +140,9 @@ function StatsBand({ calc, money, ccy, onNavView }) {
   ];
 
   const quickActions = [
-    { label: "Coffin Store", icon: <PieChartIcon size={14} />, color: "#5F0F40", onClick: () => onNavView && onNavView("coffin-store") },
-    { label: "Hearse Calendar", icon: <Calendar size={14} />, color: "#2563eb", onClick: () => onNavView && onNavView("calendar") },
-    { label: "Workshop", icon: <Activity size={14} />, color: "#047857", onClick: () => onNavView && onNavView("workshop") },
-    { label: "Flowers", icon: <TrendingUp size={14} />, color: "#7c3aed", onClick: () => onNavView && onNavView("flowers") },
+    { label: "Coffin Store", icon: <PieChartIcon size={14} />, color: "#1e3a8a", onClick: () => onNavView && onNavView("coffin-store") },
+    { label: "Hearse Calendar", icon: <Calendar size={14} />, color: "#1d4ed8", onClick: () => onNavView && onNavView("calendar") },
+    { label: "Flowers", icon: <TrendingUp size={14} />, color: "#0284c7", onClick: () => onNavView && onNavView("flowers") },
   ];
 
   return (
@@ -185,8 +181,8 @@ function StatsBand({ calc, money, ccy, onNavView }) {
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="adm" name="Intakes" stroke="#2563eb" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="rel" name="Releases" stroke="#047857" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="adm" name="Intakes" stroke="#1d4ed8" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="rel" name="Releases" stroke="#059669" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -231,8 +227,8 @@ function StatsBand({ calc, money, ccy, onNavView }) {
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="stored" name="Stored" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="released" name="Released" fill="#047857" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="stored" name="Stored" fill="#1d4ed8" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="released" name="Released" fill="#059669" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -257,7 +253,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
 
   const isModuleView =
-    navView === "store" || navView === "workshop" || navView === "flowers" || navView === "coffin-store" || navView === "calendar";
+    navView === "store" || navView === "flowers" || navView === "coffin-store" || navView === "calendar";
   const [view, setView] = useState("month");
   const [selDate, setSelDate] = useState(todayKey());
   const [calY, setCalY] = useState(new Date().getFullYear());
@@ -313,8 +309,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
   /* ── calendar events from real case data (demo data when empty) ───────── */
   const calendarEvents = useMemo(() => {
-    const raw = eventsOf(scoped);
-    if (!raw.length) return MOCK_EVENTS;
+    const raw = eventsOf(cases);
     return raw.map((e, i) => {
       const p = e.p;
       const m = CAL_TYPE[e.t] || CAL_TYPE.intake;
@@ -334,15 +329,20 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
         branch: p.branch || "",
         deceased: {
           id: p.uid,
+          recordId: p.raw?.id || p.raw?.deceased_id || p.raw?.deceasedId || "",
+          admissionNumber: p.adm,
           name: p.name || "Unknown",
           age: p.age != null ? p.age : "",
           branch: p.branch || "",
           sex: p.sex || "",
           hearse: p.hearse || "",
         },
+        officer: p.officer || "",
+        receivedFrom: p.receivedFrom || "",
+        raw: p.raw || null,
       };
     });
-  }, [scoped]);
+  }, [cases]);
 
   /* ── currency formatting ── */
   const ccy = calc.charges?.currency || "KES";
@@ -390,12 +390,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     return eventsOf(searched).filter((event) => daySet.has(event.date)).length;
   }, [analyticsPeriod.startKey, searched, view]);
 
-  const shellUser = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
-      return raw ? JSON.parse(raw) : {};
-    } catch { return {}; }
-  }, []);
   const activeNavMeta = NAV_ITEMS.find((n) => n.id === navView) || NAV_ITEMS[0];
   const showOpsToolbar = !isModuleView;
   /* effects */
@@ -543,9 +537,8 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     setTodayMode(false);
   };
 
-  /* Sidebar destination picker: home/deceased stay in the ops pages (Home is
-     the main operations board, Deceased lands on the intake register);
-     store/workshop/flowers swap the main column. Closes the mobile drawer. */
+  /* Sidebar destination picker: Home opens operations; module destinations
+     replace the main column. Closes the mobile drawer after selection. */
   const onNavView = (id) => {
     if (VIEW_SECTION[id]) {
       setSection(VIEW_SECTION[id]);
@@ -589,7 +582,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           onNavigate={onNavView}
           onToggleCollapse={() => setNavCollapsed((c) => !c)}
           onCloseMobile={() => setNavOpen(false)}
-          user={shellUser}
           tenantSlug={tenantSlug}
         />
         <div className="rpd-body">
@@ -669,14 +661,12 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
         <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}${isBoardPeriod ? " schedule-mode" : ""}`}>
           {navView === "store" ? (
             <StoreSection />
-          ) : navView === "workshop" ? (
-            <WorkshopPanel onExit={() => onNavView("home")} />
           ) : navView === "flowers" ? (
             <FlowerAnalytics />
           ) : navView === "coffin-store" ? (
             <SimpleCoffinInventory />
           ) : navView === "calendar" ? (
-            <DeceasedScheduleCalendar events={calendarEvents} onEventSelect={(e) => {}} />
+            <DeceasedScheduleCalendar events={calendarEvents} loading={loading} onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)} />
           ) : loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}>

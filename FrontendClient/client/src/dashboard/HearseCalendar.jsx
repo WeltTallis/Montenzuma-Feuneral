@@ -1,25 +1,21 @@
 import { useMemo, useState, useCallback } from "react";
 import {
-  Calendar, ChevronLeft, ChevronRight, Clock, User, Cross, Droplets, Flower,
+  Calendar, ChevronLeft, ChevronRight, Clock, Search, User, Cross, Droplets, Flower,
   Plus, X, CheckCircle, ChevronDown, MapPin, Phone, Mail, ShieldAlert, Timer,
 } from "lucide-react";
 import "./metis-design.css";
 
 /* -------------------------------------------------------------------------
-   DeceasedScheduleCalendar — intake / release / service calendar for the
-   RestPoint operations dashboard.
-
-   Default view: a full MONTH grid. Every intake & release lands on its day
-   as a coloured chip, so the whole month is visible at a glance. Tapping a
-   chip (or a day) opens a slide-over that shows EVERY detail of the deceased
-   and the event.
+   DeceasedScheduleCalendar — searchable, cross-branch activity roster for
+   the RestPoint operations dashboard. Date ranges stay in list view; the
+   side rail highlights today's activity and the next scheduled events.
 
    Props
    -----
    events        { id, uid?, type, date, time, title, note, status, branch,
                    deceased: {id,name,age,branch,sex,hearse}, raw? }[]
    onEventSelect (ev) => void        — fired when a chip/day is opened
-   initialView   "month" | "week" | "day"   (default "month")
+   initialView   "today" | "month" | "week" | "day" | "all" (default "month")
    branch        string              — optional branch filter
    ------------------------------------------------------------------------- */
 
@@ -41,14 +37,14 @@ const fmtDayHeader = (k) => { const d = parseKey(k); return `${d.getDate()} ${MO
 const fmtFull = (k) => { const d = parseKey(k); return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
 
 const TYPE_META = {
-  intake: { label: "Body Intake", color: "var(--md-primary)", bg: "var(--blue-bg)", icon: User },
-  release: { label: "Body Release", color: "var(--md-teal)", bg: "var(--teal-bg)", icon: Cross },
-  pm: { label: "Postmortem Exam", color: "var(--md-warning)", bg: "var(--warnl)", icon: ShieldAlert },
-  funeral: { label: "Funeral Service", color: "var(--md-danger)", bg: "var(--pinkl)", icon: Flower },
-  transfer: { label: "Hearse Transfer", color: "var(--md-info)", bg: "var(--blue-bg)", icon: Droplets },
-  viewing: { label: "Viewing / Wake", color: "#7c3aed", bg: "var(--plum-bg)", icon: User },
-  cremation: { label: "Cremation", color: "#7c3aed", bg: "var(--plum-bg)", icon: Timer },
-  burial: { label: "Burial", color: "var(--md-teal)", bg: "var(--teal-bg)", icon: Cross },
+  intake: { label: "Body Intake", color: "#1d4ed8", bg: "#eff6ff", icon: User },
+  release: { label: "Body Release", color: "#059669", bg: "#ecfdf5", icon: Cross },
+  pm: { label: "Postmortem Exam", color: "#d97706", bg: "#fffbeb", icon: ShieldAlert },
+  funeral: { label: "Funeral Service", color: "#dc2626", bg: "#fef2f2", icon: Flower },
+  transfer: { label: "Hearse Transfer", color: "#0284c7", bg: "#f0f9ff", icon: Droplets },
+  viewing: { label: "Viewing / Wake", color: "#7c3aed", bg: "#f5f3ff", icon: User },
+  cremation: { label: "Cremation", color: "#7c3aed", bg: "#f5f3ff", icon: Timer },
+  burial: { label: "Burial", color: "#059669", bg: "#ecfdf5", icon: Cross },
 };
 const STATUS_COLOR = {
   scheduled: "var(--md-primary)",
@@ -98,6 +94,8 @@ function normEvents(raw) {
       branch: e.branch || d.branch || "",
       deceased: {
         id: d.id || "",
+        recordId: d.recordId || d.record_id || "",
+        admissionNumber: d.admissionNumber || d.admission_number || d.adm || "",
         name: d.name || "Unknown",
         age: d.age != null ? d.age : "",
         branch: d.branch || "",
@@ -105,7 +103,7 @@ function normEvents(raw) {
         hearse: d.hearse || "",
       },
       receivedFrom: e.receivedFrom || (e.raw && e.raw.received_from) || "",
-      officer: e.officer || (e.raw && e.raw.receiving_officer) || "",
+      officer: e.officer || (e.raw && (e.raw.receiving_officer || e.raw.received_by || e.raw.staff_name)) || "",
       dest: e.dest || (e.raw && e.raw.final_destination) || "",
       receiver: e.receiver || (e.raw && e.raw.next_kin) || "",
       staff: e.staff || (e.raw && e.raw.released_by) || "",
@@ -363,110 +361,80 @@ function DetailPanel({ selected, onClose, onEventSelect }) {
   );
 }
 
-export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEventSelect, initialView = "month", branch = "" }) {
+export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEventSelect, initialView = "month", branch = "", loading = false }) {
   const events = useMemo(() => normEvents(eventsProp).filter((e) => !branch || e.branch === branch || e.deceased.branch === branch), [eventsProp, branch]);
-  const eventsByDay = useMemo(() => {
-    const m = {};
-    events.forEach((e) => { if (!m[e.date]) m[e.date] = []; m[e.date].push(e); });
-    return m;
-  }, [events]);
   const [view, setView] = useState(initialView);
-  const [date, setDate] = useState(() => {
-    if (initialView === "week") return weekStartOf(todayKey());
-    if (initialView === "day") return todayKey();
-    return todayKey();
-  });
+  const [date, setDate] = useState(todayKey);
+  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
-
   const [y, mo] = date.split("-").map(Number);
   const today = todayKey();
-
-  const intakesThisMonth = events.filter((e) => e.type === "intake" && e.date.startsWith(`${y}-${pad(mo)}-`)).length;
-  const releasesThisMonth = events.filter((e) => e.type === "release" && e.date.startsWith(`${y}-${pad(mo)}-`)).length;
-  const upcoming = events.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
-
-  const step = (dir) => {
-    if (view === "month") { setDate(toKey(new Date(y, mo - 1 + dir, 1))); }
-    else if (view === "week") { setDate(addDays(date, dir * 7)); }
-    else { setDate(addDays(date, dir)); }
+  const monthPrefix = `${y}-${pad(mo)}-`;
+  const intakesThisMonth = events.filter((e) => e.type === "intake" && e.date.startsWith(monthPrefix)).length;
+  const releasesThisMonth = events.filter((e) => e.type === "release" && e.date.startsWith(monthPrefix)).length;
+  const matches = (event) => [event.deceased.name, event.deceased.id, event.deceased.recordId, event.deceased.admissionNumber, event.branch, event.title, event.officer, event.deceased.age]
+    .join(" ").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+  const inRange = (event) => {
+    if (view === "today") return event.date === today;
+    if (view === "day") return event.date === date;
+    if (view === "week") { const start = weekStartOf(date); return event.date >= start && event.date <= addDays(start, 6); }
+    if (view === "month") return event.date.startsWith(monthPrefix);
+    return true;
   };
-  const goToday = () => { setDate(todayKey()); if (view === "week") setDate(weekStartOf(todayKey())); };
-
-  const handleDayClick = useCallback((day) => { setView("day"); setDate(toKey(day)); }, []);
-  const handleEventClick = useCallback((ev) => { setSelected({ event: ev, deceased: ev.deceased }); onEventSelect?.({ event: ev, deceased: ev.deceased }); }, [onEventSelect]);
+  const listEvents = events.filter((event) => inRange(event) && matches(event)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "") || a.title.localeCompare(b.title));
+  const todayActivity = events.filter((event) => event.date === today).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const upcoming = events.filter((event) => event.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "")).slice(0, 6);
+  const step = (direction) => {
+    if (view === "month") setDate(toKey(new Date(y, mo - 1 + direction, 1)));
+    else if (view === "week") setDate(addDays(date, direction * 7));
+    else if (view === "today") { setView("day"); setDate(addDays(today, direction)); }
+    else if (view !== "all") setDate(addDays(date, direction));
+  };
+  const goToday = () => { setView("today"); setDate(today); };
+  const handleEventClick = useCallback((event) => setSelected({ event, deceased: event.deceased }), []);
+  const rangeTitle = view === "today" ? "Today" : view === "all" ? "All dates" : view === "day" ? fmtFull(date) : view === "week" ? `${fmtDayHeader(weekStartOf(date))} – ${fmtDayHeader(addDays(weekStartOf(date), 6))}` : fmtMonthYear(date);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "420px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", padding: "0.7rem 1rem", borderBottom: "1px solid var(--md-border)", background: "var(--md-surface-panel)", borderRadius: "var(--md-radius) var(--md-radius) 0 0", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-          <Calendar size={18} />
-          <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--md-ink-primary)" }}>Deceased Schedule</span>
+    <section className="md-schedule">
+      <header className="md-schedule-head">
+        <div className="md-schedule-title"><span className="md-schedule-mark"><Calendar size={19}/></span><div><h1>Deceased Schedule</h1><p>All branches · intake, release, postmortem and service activity</p></div></div>
+        <div className="md-schedule-controls">
+          <div className="md-schedule-period"><button type="button" onClick={() => step(-1)} aria-label="Previous period"><ChevronLeft size={16}/></button><strong>{rangeTitle}</strong><button type="button" onClick={() => step(1)} aria-label="Next period"><ChevronRight size={16}/></button></div>
+          <button type="button" className="md-schedule-today" onClick={goToday}>Today</button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          <button className="md-btn md-btn-sm md-btn-icon-only" onClick={() => step(-1)} title="Previous"><ChevronLeft size={14} /></button>
-          <button className="md-btn md-btn-sm md-btn-primary" onClick={goToday}>Today</button>
-          <button className="md-btn md-btn-sm md-btn-icon-only" onClick={() => step(1)} title="Next"><ChevronRight size={14} /></button>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.2rem" }}>
-          {["month", "week", "day"].map((v) => (
-            <button key={v} className={`md-btn md-btn-sm ${view === v ? "md-btn-primary" : ""}`} onClick={() => { setView(v); if (v === "week") setDate(weekStartOf(date)); if (v === "day") setDate(date); }}>
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-            </button>
-          ))}
-        </div>
+      </header>
+      <div className="md-schedule-tabs" role="tablist" aria-label="Schedule date range">
+        {["today", "month", "week", "day", "all"].map((item) => <button type="button" role="tab" aria-selected={view === item} className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>{item === "all" ? "All dates" : item[0].toUpperCase() + item.slice(1)}</button>)}
+        <label className="md-schedule-search"><SearchIcon/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or receiving officer" aria-label="Search deceased schedule"/><kbd>⌕</kbd></label>
       </div>
-
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <aside style={{ width: "260px", flex: "0 0 260px", borderRight: "1px solid var(--md-border)", background: "var(--md-surface-panel)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-          <div style={{ padding: "0.75rem 0.9rem", borderBottom: "1px solid var(--md-border)", background: "var(--md-surface-sunken)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-              <Calendar size={14} style={{ color: "var(--md-ink-muted)" }} />
-              <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--md-ink-primary)" }}>Roster</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.35rem" }}>
-              <div style={{ background: "var(--blue-bg)", border: "1px solid var(--md-primary)", borderRadius: "8px", padding: "0.5rem" }}>
-                <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, color: "var(--md-primary)" }}>{intakesThisMonth}</div>
-                <div style={{ fontSize: "0.7rem", color: "var(--md-ink-muted)" }}>Intakes this month</div>
-              </div>
-              <div style={{ background: "var(--teal-bg)", border: "1px solid var(--md-teal)", borderRadius: "8px", padding: "0.5rem" }}>
-                <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, color: "var(--md-teal)" }}>{releasesThisMonth}</div>
-                <div style={{ fontSize: "0.7rem", color: "var(--md-ink-muted)" }}>Releases this month</div>
-              </div>
-            </div>
-          </div>
-          <div style={{ padding: "0.75rem 0.9rem" }}>
-            <div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: "var(--md-ink-muted)", marginBottom: "0.5rem" }}>Upcoming</div>
-            {upcoming.length ? (
-              upcoming.map((ev) => {
-                const Icon = TYPE_META[ev.type]?.icon || User;
-                return (
-                  <div key={ev.id} style={{ display: "flex", alignItems: "start", gap: "0.5rem", padding: "0.45rem", borderRadius: "8px", background: "var(--md-surface-hover)", marginBottom: "0.35rem", cursor: "pointer", onClick: () => handleEventClick(ev) }}>
-                    <Icon size={12} style={{ color: TYPE_META[ev.type]?.color }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--md-ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--md-ink-muted)" }}>{ev.deceased.name} · {ev.date ? fmtFull(ev.date) : "—"}</div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div style={{ fontSize: "0.72rem", color: "var(--md-ink-muted)", padding: "0.6rem 0" }}>No upcoming events</div>
-            )}
-          </div>
+      <div className="md-schedule-layout">
+        <aside className="md-activity-panel">
+          <div className="md-panel-heading"><div><span>Live roster</span><h2>Today’s activity</h2></div><b>{todayActivity.length}</b></div>
+          <div className="md-month-stats"><div><b>{intakesThisMonth}</b><span>Intakes this month</span></div><div><b>{releasesThisMonth}</b><span>Releases this month</span></div></div>
+          <div className="md-activity-list">{todayActivity.length ? todayActivity.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick} compact/>) : <div className="md-activity-empty"><Calendar size={18}/><span>No activity scheduled today</span></div>}</div>
+          <div className="md-upcoming-heading">Upcoming</div>
+          <div className="md-upcoming-list">{upcoming.filter((event) => event.date !== today).slice(0, 4).map((event) => <button type="button" key={event.id} onClick={() => { setDate(event.date); setView("day"); handleEventClick(event); }}><i style={{ background: TYPE_META[event.type]?.color || "#1d4ed8" }}/><span><b>{event.deceased.name}</b><small>{fmtFull(event.date)} · {event.title}</small></span></button>)}{!upcoming.some((event) => event.date > today) && <small className="md-no-upcoming">No upcoming events</small>}</div>
         </aside>
-
-        <div style={{ flex: 1, minWidth: 0, background: "var(--md-surface-app)", padding: "0.8rem", overflowY: "auto" }}>
-          {view === "month" ? (
-            <MonthGrid year={y} month={mo - 1} events={events} onDayClick={handleDayClick} onEventClick={handleEventClick} today={today} />
-          ) : view === "week" ? (
-            <WeekGrid weekStartKey={date} eventsByDay={eventsByDay} onEventClick={handleEventClick} today={today} />
-          ) : (
-            <DayGrid dayKey={date} events={events} onEventClick={handleEventClick} today={today} />
-          )}
-        </div>
+        <main className="md-schedule-main">
+          <div className="md-list-heading"><div><h2>{rangeTitle} roster</h2><p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p></div><div className="md-event-legend"><span><i style={{background:"#1d4ed8"}/>Intake</span><span><i style={{background:"#059669"}/>Release</span><span><i style={{background:"#d97706"}/>Postmortem</span><span><i style={{background:"#0284c7"}/>Service / transfer</span></div></div>
+          {loading ? <div className="md-schedule-empty"><Calendar size={24}/><b>Loading all branch schedules…</b></div> : listEvents.length ? <div className="md-event-list">{listEvents.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick}/>)}</div> : <div className="md-schedule-empty"><Calendar size={24}/><b>No matching schedule activity</b><span>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span></div>}
+        </main>
       </div>
-
       {selected && <DetailPanel selected={selected} onClose={() => setSelected(null)} onEventSelect={onEventSelect} />}
-    </div>
+    </section>
   );
+}
+
+function SearchIcon() { return <Search size={15}/>; }
+
+function EventListCard({ event, onClick, compact = false }) {
+  const meta = TYPE_META[event.type] || TYPE_META.intake;
+  const Icon = meta.icon;
+  return <button type="button" className={`md-event-card${compact ? " compact" : ""}`} onClick={() => onClick(event)} style={{ "--event-color": meta.color, "--event-tint": meta.bg }}>
+    <span className="md-event-type-icon"><Icon size={17}/></span>
+    <span className="md-event-date"><b>{fmtDayHeader(event.date)}</b><small>{event.time || "Time not set"}</small></span>
+    <span className="md-event-person"><b>{event.deceased.name}</b><small>{event.deceased.admissionNumber || event.deceased.id || "No admission number"} · {event.branch || "Branch not set"}</small></span>
+    <span className="md-event-type"><b>{event.title}</b><small>{event.officer && event.officer !== "—" ? `Received by ${event.officer}` : "Receiving officer not recorded"}</small></span>
+    <span className="md-event-status">{event.status.replaceAll("_", " ")}</span><ChevronRight className="md-event-chevron" size={16}/>
+  </button>;
 }
