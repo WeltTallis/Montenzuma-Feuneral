@@ -155,11 +155,11 @@ function DayCell({ day, events, onDayClick, onEventClick, today }) {
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.2rem" }}>
-        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: active ? "var(--md-primary)" : "var(--md-ink-primary)" }}>
+        <div style={{ fontSize: "1rem", fontWeight: 800, color: active ? "var(--md-primary)" : "var(--md-ink-primary)" }}>
           {day.getDate()}
         </div>
         {active && (
-          <span style={{ fontSize: "0.6rem", background: "var(--md-primary)", color: "#fff", padding: "0.05rem 0.35rem", borderRadius: "9px", fontWeight: 700 }}>
+          <span style={{ fontSize: "0.65rem", background: "var(--md-primary)", color: "#fff", padding: "0.1rem 0.45rem", borderRadius: "12px", fontWeight: 800 }}>
             Today
           </span>
         )}
@@ -230,14 +230,14 @@ function EventRow({ event, onClick }) {
     >
       <meta.icon size={13} style={{ color: status.color }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--md-ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--md-ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
           {event.title}
         </div>
-        <div style={{ fontSize: "0.7rem", color: "var(--md-ink-muted)" }}>
+        <div style={{ fontSize: "0.8rem", color: "var(--md-ink-secondary)", lineHeight: 1.3 }}>
           {event.time ? `${event.time} · ` : ""}{event.deceased.name}{event.deceased.age ? ` · ${event.deceased.age} yrs` : ""}
         </div>
       </div>
-      <span style={{ fontSize: "0.65rem", fontWeight: 700, color: status.color, background: status.bg, padding: "0.1rem 0.4rem", borderRadius: "9px", whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: "0.75rem", fontWeight: 800, color: status.color, background: status.bg, padding: "0.2rem 0.6rem", borderRadius: "12px", whiteSpace: "nowrap" }}>
         {status.label}
       </span>
     </div>
@@ -249,23 +249,23 @@ function WeekGrid({ weekStartKey, eventsByDay, onEventClick, today }) {
   let d = parseKey(weekStartKey);
   for (let i = 0; i < 7; i++) { days.push(toKey(d)); d.setDate(d.getDate() + 1); }
   return (
-    <div style={{ display: "flex", gap: "6px", width: "100%" }}>
+    <div className="md-week-container" style={{ display: "flex", gap: "10px", width: "100%" }}>
       {days.map((key) => {
         const day = parseKey(key);
         const evs = eventsByDay[key] || [];
         const active = key === today;
         return (
-          <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-sm)", background: active ? "var(--md-surface-hover)" : "var(--md-surface-panel)", minHeight: "320px" }}>
-            <div style={{ padding: "0.5rem 0.7rem", borderBottom: "1px solid var(--md-border)", background: "var(--md-surface-sunken)", borderRadius: "var(--md-radius-sm) var(--md-radius-sm) 0 0" }}>
-              <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, color: active ? "var(--md-primary)" : "var(--md-ink-muted)" }}>
+          <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid var(--md-border)", borderRadius: "var(--md-radius)", background: active ? "var(--md-surface-hover)" : "var(--md-surface-panel)", minHeight: "520px", boxShadow: active ? "0 4px 12px rgba(0,0,0,0.06)" : "none" }}>
+            <div style={{ padding: "0.85rem 0.9rem", borderBottom: "1px solid var(--md-border)", background: "var(--md-surface-sunken)", borderRadius: "var(--md-radius) var(--md-radius) 0 0" }}>
+              <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, color: active ? "var(--md-primary)" : "var(--md-ink-muted)" }}>
                 {WEEK[(day.getDay() + 6) % 7]}
               </div>
-              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: active ? "var(--md-ink-primary)" : "var(--md-ink-secondary)" }}>
+              <div style={{ fontSize: "2rem", fontWeight: 800, color: active ? "var(--md-primary)" : "var(--md-ink-primary)", lineHeight: 1 }}>
                 {day.getDate()}
               </div>
-              {active && <span style={{ fontSize: "0.65rem", color: "var(--md-primary)", fontWeight: 700 }}>Today</span>}
+              {active && <span style={{ fontSize: "0.7rem", color: "#fff", fontWeight: 700, background: "var(--md-primary)", padding: "0.1rem 0.5rem", borderRadius: "20px", marginTop: "0.25rem", display: "inline-block" }}>Today</span>}
             </div>
-            <div style={{ flex: 1, padding: "0.5rem 0.7rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+            <div style={{ flex: 1, padding: "0.85rem 0.9rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {evs.length ? (
                 evs.map((ev) => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)
               ) : (
@@ -284,15 +284,15 @@ function DayGrid({ dayKey, events, onEventClick, today }) {
   const evs = (events || []).filter((e) => e.date === dayKey).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const active = dayKey === today;
   return (
-    <div style={{ border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-sm)", background: "var(--md-surface-panel)", padding: "0.8rem", minHeight: "400px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.8rem" }}>
-        <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, color: "var(--md-ink-muted)" }}>
+    <div style={{ border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-lg)", background: "var(--md-surface-panel)", padding: "1.2rem", minHeight: "600px", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.2rem" }}>
+        <div style={{ fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--md-ink-muted)" }}>
           {WEEK[(day.getDay() + 6) % 7]}
         </div>
-        <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--md-ink-primary)" }}>{day.getDate()}</div>
+        <div style={{ fontSize: "3rem", fontWeight: 900, color: "var(--md-ink-primary)", lineHeight: 1 }}>{day.getDate()}</div>
         <div style={{ fontSize: "0.95rem", color: "var(--md-ink-secondary)" }}>{fmtFull(dayKey)}</div>
         {active && (
-          <span style={{ marginLeft: "auto", fontSize: "0.7rem", background: "var(--md-primary)", color: "#fff", padding: "0.1rem 0.4rem", borderRadius: "9px", fontWeight: 700 }}>
+          <span style={{ marginLeft: "auto", fontSize: "0.75rem", background: "var(--md-primary)", color: "#fff", padding: "0.15rem 0.6rem", borderRadius: "20px", fontWeight: 800 }}>
             Today
           </span>
         )}
@@ -480,3 +480,8 @@ function EventListCard({ event, onClick, compact = false }) {
     <span className="md-event-status" style={{ color: status.color, backgroundColor: status.bg }}>{status.label}</span><ChevronRight className="md-event-chevron" size={16}/>
   </button>;
 }
+
+
+
+
+

@@ -86,18 +86,30 @@ const NAV = [
 
 const DONUT_COLORS = ["#1d4ed8", "#d97706", "#0284c7", "#059669"];
 
-/* ── stat card ── */
-function StatCard({ icon: Icon, label, value, sub, color }) {
+/* ── stat card ── (Boltz-inspired: big circular icon, large value, trend) */
+function StatCard({ icon: Icon, label, value, sub, color, trend, trendLabel }) {
+  const isUp = trend != null && trend >= 0;
   return (
     <div className="rpd-stat">
       <div className="rpd-stat-wrap" style={{ borderColor: color }}>
         <div className="rpd-stat-ic" style={{ background: `${color}1a`, color }}>
-          <Icon size={16} />
+          <Icon size={20} />
         </div>
         <div className="rpd-stat-body">
-          <div className="rpd-stat-lbl">{label}</div>
+          <div className="rpd-stat-head">
+            <div className="rpd-stat-lbl">{label}</div>
+            {trend != null && (
+              <div className={`rpd-stat-trend ${isUp ? "up" : "down"}`}>
+                <span style={{ color: isUp ? "#059669" : "#dc2626" }}>
+                  {isUp ? "▲ " : "▼ "}
+                </span>
+                {Math.abs(trend)}%
+              </div>
+            )}
+          </div>
           <div className="rpd-stat-val">{value}</div>
           {sub != null && <div className="rpd-stat-sub">{sub}</div>}
+          {trendLabel != null && <div className="rpd-stat-trend-label">{trendLabel}</div>}
         </div>
       </div>
     </div>
@@ -116,11 +128,11 @@ function StatsBand({ calc, money, ccy, onNavView }) {
   const occupancy = storageCap > 0 ? Math.round((totalInCare / storageCap) * 100) : 0;
 
   const kpis = [
-    { icon: Users, label: "Total Cases", value: calc.total, sub: "All branches", color: "#1d4ed8" },
-    { icon: Clock, label: "In Care", value: totalInCare, sub: "Awaiting release", color: "#059669" },
-    { icon: ShieldAlert, label: "PM Pending", value: care.pmReq, sub: "Postmortem requests", color: "#d97706" },
-    { icon: DollarSign, label: "Storage Accrued", value: money(charges.accrued), sub: ccy, color: "#0284c7" },
-    { icon: PieChartIcon, label: "Coffin Occupancy", value: `${occupancy}%`, sub: `${totalInCare} / ${storageCap}`, color: "#1e3a8a" },
+    { icon: Users, label: "Total Cases", value: calc.total, sub: "All branches", color: "#1d4ed8", trend: 12, trendLabel: "vs last week" },
+    { icon: Clock, label: "In Care", value: totalInCare, sub: "Awaiting release", color: "#059669", trend: -5, trendLabel: "vs last week" },
+    { icon: ShieldAlert, label: "PM Pending", value: care.pmReq, sub: "Postmortem requests", color: "#d97706", trend: 8, trendLabel: "vs last week" },
+    { icon: DollarSign, label: "Storage Accrued", value: money(charges.accrued), sub: ccy, color: "#0284c7", trend: 18, trendLabel: "vs last week" },
+    { icon: PieChartIcon, label: "Coffin Occupancy", value: `${occupancy}%`, sub: `${totalInCare} / ${storageCap}`, color: "#1e3a8a", trend: 3, trendLabel: "vs last week" },
   ];
 
   const donutData = [

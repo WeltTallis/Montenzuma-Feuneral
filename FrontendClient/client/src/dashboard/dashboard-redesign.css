@@ -7,7 +7,7 @@
 .rpd .rpd-nav-logo-mark{background:linear-gradient(145deg,#315bdc,#2444b8);border-radius:10px;box-shadow:0 6px 16px #315bdc30}.rpd .rpd-nav-logo-txt b,.rpd .rpd-nav-txt b{color:#172033}.rpd .rpd-nav-logo-txt small,.rpd .rpd-nav-txt small,.rpd .rpd-nav-caption,.rpd .rpd-nav-ghost,.rpd .rpd-nav-collapse{color:#78849a}.rpd .rpd-nav-caption{padding:18px 10px 7px;font-size:9px}.rpd .rpd-nav-item{padding:7px 8px;margin-bottom:2px;border-radius:9px;color:#536078}.rpd .rpd-nav-item:hover{background:#f4f6fb;color:#25304a}.rpd .rpd-nav-item.on{background:#eef2ff;border:1px solid #dbe3ff;color:#315bdc;box-shadow:none}.rpd .rpd-nav-ico{background:#f3f5f9;color:#7b879d;width:32px;height:32px;flex-basis:32px;border-radius:8px}.rpd .rpd-nav-item.on .rpd-nav-ico{background:#fff;color:#315bdc}.rpd .rpd-nav-bar{display:block;background:#315bdc}.rpd .rpd-nav-foot{border-top:1px solid #edf0f5;padding-top:12px}.rpd .rpd-nav-avatar{background:linear-gradient(145deg,#315bdc,#8b5cf6);border-radius:9px}.rpd .rpd-nav.is-collapsed{width:76px;flex-basis:76px}
 .rpd .rpd-topbar{padding:17px 28px;background:#ffffffd9;backdrop-filter:blur(14px);border-bottom:1px solid #e8eaf1}.rpd .rpd-topbar-title b{font-family:var(--sans);font-size:17px;font-weight:780;letter-spacing:-.025em}.rpd .rpd-topbar-title small{font-size:11px;color:#8993a5}.rpd .rpd-topbar-date{font-size:11px;background:#f4f5fb;padding:7px 10px;border-radius:7px}.rpd .tb-btn.sq{border:1px solid #e4e7f0;border-radius:8px;background:#fff;color:#647089;width:32px;height:32px}.rpd .tb-btn.sq:hover{background:#f0efff;color:#625add;border-color:#dcd8ff}
 .rpd .tbar{padding:11px 28px;background:#ffffffc9;border-bottom:1px solid #e8eaf1;backdrop-filter:blur(14px)}.rpd .nvp{background:#f4f5fa;padding:4px;border-radius:9px;gap:2px}.rpd .nvp button{border-radius:6px;font-size:11px;padding:7px 10px;color:#6e7890}.rpd .nvp button.on{background:#fff;color:#564ed2;box-shadow:0 2px 6px #262b4117}.rpd .rpd-scroll{background:transparent}
-.rpd .rpd-band{padding:24px 28px 0;background:transparent;gap:18px}.rpd .rpd-band-grid{gap:14px}.rpd .rpd-stat{border:0}.rpd .rpd-stat-wrap{border:1px solid #e7eaf1!important;border-radius:12px;background:#fff;padding:15px;min-height:100px;box-shadow:0 5px 18px #1a234009;transition:transform .18s,box-shadow .18s}.rpd .rpd-stat-wrap:hover{transform:translateY(-2px);box-shadow:0 10px 24px #1a234013}.rpd .rpd-stat-ic{height:34px;width:34px;border-radius:9px}.rpd .rpd-stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#8993a6}.rpd .rpd-stat-val{font-size:25px;font-weight:800;letter-spacing:-.055em;margin:4px 0}.rpd .rpd-stat-sub{font-size:10px;color:#99a2b0}.rpd .rpd-band-actions{gap:9px}.rpd .rpd-action-btn{background:#fff;border:1px solid #e6e9f2!important;border-radius:8px;padding:9px 12px;box-shadow:0 3px 10px #1d263208;font-size:11px;font-weight:700}.rpd .rpd-action-btn:hover{background:#f3f2ff;transform:translateY(-1px)}
+.rpd .rpd-band{padding:24px 28px 0;background:transparent;gap:18px}.rpd .rpd-band-grid{gap:14px}.rpd .rpd-stat{border:0}.rpd .rpd-stat-wrap{border:1px solid #e7eaf1!important;border-radius:16px;background:#fff;padding:20px 18px;min-height:140px;box-shadow:0 8px 24px #1a23400a;transition:transform .2s,box-shadow .2s,border-color .2s}.rpd .rpd-stat-wrap:hover{transform:translateY(-4px);box-shadow:0 12px 32px #1a234014;border-color:#c7cfe6}.rpd .rpd-stat-ic{height:48px;width:48px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.rpd .rpd-stat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.rpd .rpd-stat-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#8993a6}.rpd .rpd-stat-trend{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700}.rpd .rpd-stat-trend.up{color:#059669}.rpd .rpd-stat-trend.down{color:#dc2626}.rpd .rpd-stat-val{font-size:30px;font-weight:900;letter-spacing:-.06em;margin:2px 0;line-height:1}.rpd .rpd-stat-sub{font-size:10px;color:#99a2b0;margin-top:2px}.rpd .rpd-stat-trend-label{font-size:9px;color:#a3a8b8;margin-top:4px}.rpd .rpd-band-actions{gap:9px}.rpd .rpd-action-btn{background:#fff;border:1px solid #e6e9f2!important;border-radius:8px;padding:9px 12px;box-shadow:0 3px 10px #1d263208;font-size:11px;font-weight:700}.rpd .rpd-action-btn:hover{background:#f3f2ff;transform:translateY(-1px)}
 .rpd .rpd-band-charts{gap:18px}.rpd .rpd-chart{border:1px solid #e7eaf1;border-radius:12px;background:#fff;box-shadow:0 5px 18px #1a234008;overflow:hidden}.rpd .rpd-chart-head{padding:16px 18px;border-bottom:1px solid #f0f1f5}.rpd .rpd-chart-title{font-size:13px;font-weight:780}.rpd .rpd-chart-sub{font-size:10px;color:#8c96a8}.rpd .rpd-chart-body{padding:8px 13px}
 .rpd .mains{flex:1;width:0;min-width:0;overflow:visible}.rpd .mains > *{width:100%;min-width:0;box-sizing:border-box}.rpd .rpd-scroll{min-width:0}
 .rpd .shell{gap:20px;padding:20px 28px 32px;background:transparent}.rpd .side{width:254px;flex:0 0 254px}.rpd .side>*{border:1px solid #e7eaf1!important;border-radius:12px!important;background:#fff;box-shadow:0 5px 18px #1a234008}.rpd .mains{min-width:0}.rpd .card,.rpd .acard,.rpd .kcard,.rpd .tblwrap,.rpd .sch,.rpd .board{border-color:#e7eaf1!important;border-radius:12px!important;box-shadow:0 5px 18px #1a234008!important}.rpd .mains .head,.rpd .mains .chead{border-color:#edf0f4!important;background:#fff}.rpd.dark{--bg:#101423;--card:#181d2d;--sect:#202638;--field:#1d2332;--brd:#2c3448;--brdl:#252c3d;--tx:#eef0f8;--tx2:#c5cbda;--tx3:#929caf;--tx4:#6d778b}.rpd.dark .app{background:#101423}.rpd.dark .rpd-topbar,.rpd.dark .tbar{background:#181d2de8}.rpd.dark .rpd-stat-wrap,.rpd.dark .rpd-chart,.rpd.dark .side>*{background:#181d2d}.rpd.dark .nvp{background:#222839}.rpd.dark .nvp button.on{background:#303850;color:#d8d3ff}
@@ -49,7 +49,7 @@
 .rpd .rpd-scroll{padding-bottom:36px}.rpd .shell{padding:24px 34px 40px;gap:22px}.rpd .side{width:260px;flex-basis:260px}.rpd .side>*{border-radius:14px!important;box-shadow:0 6px 20px rgba(30,42,70,.045);background:#fff}.rpd .mains{background:transparent}.rpd .mains .head,.rpd .mains .chead{padding:20px 22px;background:#fff;border-bottom:1px solid #edf0f5}.rpd .card,.rpd .acard,.rpd .kcard,.rpd .tblwrap,.rpd .sch,.rpd .board{border-radius:14px!important;box-shadow:0 6px 20px rgba(30,42,70,.045)!important;border-color:#e7ebf3!important;background:#fff}
 .rpd .mains > .md-cal-wrap,.rpd .mains > .ci-page,.rpd .mains > .fl-wrap,.rpd .mains > .workshop-panel{max-width:none;margin:0;padding:0}.rpd .mains > .md-cal-wrap{padding:4px 0 0}.rpd .mains > .md-cal-wrap .md-cal-header{margin-bottom:18px;border-radius:14px}.rpd .mains > .ci-page{width:100%}
 @media(max-width:1100px){.rpd .rpd-nav{width:224px;flex-basis:224px}.rpd .rpd-topbar,.rpd .tbar{padding-left:24px;padding-right:24px}.rpd .rpd-band,.rpd .shell{padding-left:24px;padding-right:24px}}
-@media(max-width:720px){.rpd .rpd-topbar{height:60px;padding:0 14px}.rpd .tbar{padding:9px 14px}.rpd .rpd-band,.rpd .shell{padding-left:14px;padding-right:14px}.rpd .rpd-band{padding-top:16px}.rpd .shell{padding-top:16px}.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rpd .rpd-stat-wrap{min-height:92px;padding:13px}.rpd .rpd-stat-val{font-size:22px}.rpd .mains > .md-cal-wrap{padding-top:0}}
+@media(max-width:720px){.rpd .rpd-topbar{height:60px;padding:0 14px}.rpd .tbar{padding:9px 14px}.rpd .rpd-band,.rpd .shell{padding-left:14px;padding-right:14px}.rpd .rpd-band{padding-top:16px}.rpd .shell{padding-top:16px}.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rpd .rpd-stat-wrap{min-height:110px;padding:14px}.rpd .rpd-stat-val{font-size:24px}.rpd .mains > .md-cal-wrap{padding-top:0}}
 
 /* Keep the overview metrics and module pages in separate, predictable rows.
    The legacy band was a four-column grid, which made each chart a narrow
@@ -199,23 +199,30 @@
 .rpd .md-event-legend span{padding:4px 7px;border:1px solid #f1f5f9;border-radius:999px;background:#fff;font-size:9px;}
 .rpd .md-event-legend i{width:8px;height:8px;flex:none;box-shadow:0 0 0 2px color-mix(in srgb,currentColor 12%,transparent);}
 .rpd .md-schedule-toolbar .md-schedule-search{min-width:min(300px,100%);flex:1 1 260px;margin-left:0;padding:0 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;}
-.rpd .md-calendar-view{padding:8px 12px 14px;overflow-x:auto;}
-.rpd .md-calendar-view table{min-width:690px;border-spacing:4px 2px!important;}
-.rpd .md-calendar-view thead th{padding:9px 7px!important;color:#64748b!important;font-size:10px!important;}
-.rpd .md-calendar-view tbody tr{height:114px!important;}
+.rpd .md-calendar-view{padding:16px 20px 20px;overflow-x:auto;}
+.rpd .md-calendar-view table{min-width:820px;border-spacing:8px 4px!important;}
+.rpd .md-calendar-view thead th{padding:12px 10px!important;color:#64748b!important;font-size:11px!important;text-transform:uppercase;letter-spacing:0.05em;}
+.rpd .md-calendar-view tbody tr{height:180px!important;}
 .rpd .md-calendar-view tbody td{vertical-align:top;}
-.rpd .md-calendar-view tbody td>div{height:110px!important;padding:7px!important;border-color:#e8edf4!important;border-radius:8px!important;background:#fff!important;}
-.rpd .md-calendar-view tbody td>div:hover{border-color:#cbd5e1!important;background:#f8fafc!important;}
-.rpd .md-calendar-view tbody td>div>div:first-child>div:first-child{font-size:11px!important;color:#334155!important;}
-.rpd .md-calendar-view tbody td>div button{max-width:100%;padding:3px 6px!important;border:0!important;border-left:3px solid currentColor!important;border-radius:4px!important;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px!important;}
+.rpd .md-calendar-view tbody td>div{height:170px!important;padding:12px!important;border-color:#e8edf4!important;border-radius:14px!important;background:#fff!important;box-shadow:0 4px 12px rgba(0,0,0,0.03);transition:transform 0.15s,box-shadow 0.15s,border-color 0.15s;}
+.rpd .md-calendar-view tbody td>div:hover{border-color:#b3c2e6!important;background:#fafbff!important;transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.06);}
+.rpd .md-calendar-view tbody td>div>div:first-child>div:first-child{font-size:13px!important;color:#334155!important;font-weight:700;}
+.rpd .md-calendar-view tbody td>div>div:first-child>div:last-child{font-size:11px!important;color:#94a3b8!important;}
+.rpd .md-calendar-view tbody td>div button{max-width:100%;padding:8px 12px!important;border:0!important;border-left:4px solid currentColor!important;border-radius:10px!important;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px!important;line-height:1.4;}
 .rpd .md-calendar-view tbody td>div button svg{vertical-align:middle;}
-.rpd .md-calendar-view>div[style*="display: flex"]{min-width:760px;}
-.rpd .md-calendar-view .md-calendar-empty{padding:10px 6px;color:#64748b;font-size:11px;}
+.rpd .md-calendar-view>div[style*="display: flex"]{min-width:920px;gap:10px;}
+.rpd .md-calendar-view .md-calendar-empty{padding:20px 6px;color:#64748b;font-size:12px;}
+/* Week gap for the React inline-styled WeekGrid */
+.rpd .md-week-container{gap:10px!important;}
 @media(max-width:760px){
   .rpd.rpd-home .rpd-topbar{display:flex;height:54px;min-height:54px;}
   .rpd .md-schedule-toolbar{gap:8px;padding:10px;}
   .rpd .md-mode-tabs{margin-left:0;}
   .rpd .md-mode-tabs{width:max-content;}
   .rpd .md-schedule-toolbar .md-schedule-search{flex-basis:100%;}
-  .rpd .md-calendar-view{padding:4px 5px 10px;}
+  .rpd .md-calendar-view{padding:8px 8px 12px;}
+  .rpd .md-calendar-view table{min-width:640px;border-spacing:6px 3px!important;}
+  .rpd .md-calendar-view tbody tr{height:140px!important;}
+  .rpd .md-calendar-view tbody td>div{height:130px!important;padding:8px!important;}
 }
+

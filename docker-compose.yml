@@ -41,7 +41,8 @@ services:
       test:
         - 'CMD-SHELL'
         - >-
-          mariadb --protocol=socket -uroot -p"$$MARIADB_HEALTH_PW" -N -B
+          mariadb --defaults-extra-file=/var/lib/mysql/.my-healthcheck.cnf
+          --protocol=socket -N -B
           -e "SELECT 1 FROM information_schema.ENGINES
           WHERE engine='innodb' AND support IN ('YES','DEFAULT','ENABLED')"
           | grep -qx 1
@@ -1008,7 +1009,7 @@ services:
       # busybox wget, not GNU wget — `nginx:alpine` ships no `wget` package, so
       # `wget` is busybox's and supports neither `--no-verbose` nor `--tries`.
       # See the identical note in docker-compose.prod.yml.
-      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost/']
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1/']
       interval: 30s
       timeout: 10s
       retries: 3
