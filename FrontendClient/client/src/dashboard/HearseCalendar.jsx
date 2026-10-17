@@ -416,7 +416,18 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
           <div className="md-upcoming-list">{upcoming.filter((event) => event.date !== today).slice(0, 4).map((event) => <button type="button" key={event.id} onClick={() => { setDate(event.date); setView("day"); handleEventClick(event); }}><i style={{ background: TYPE_META[event.type]?.color || "#1d4ed8" }}/><span><b>{event.deceased.name}</b><small>{fmtFull(event.date)} · {event.title}</small></span></button>)}{!upcoming.some((event) => event.date > today) && <small className="md-no-upcoming">No upcoming events</small>}</div>
         </aside>
         <main className="md-schedule-main">
-          <div className="md-list-heading"><div><h2>{rangeTitle} roster</h2><p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p></div><div className="md-event-legend"><span><i style={{background:"#1d4ed8"}/>Intake</span><span><i style={{background:"#059669"}/>Release</span><span><i style={{background:"#d97706"}/>Postmortem</span><span><i style={{background:"#0284c7"}/>Service / transfer</span></div></div>
+          <div className="md-list-heading">
+            <div>
+              <h2>{rangeTitle} roster</h2>
+              <p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p>
+            </div>
+            <div className="md-event-legend">
+              <span><i style={{ background: "#1d4ed8" }} /> Intake</span>
+              <span><i style={{ background: "#059669" }} /> Release</span>
+              <span><i style={{ background: "#d97706" }} /> Postmortem</span>
+              <span><i style={{ background: "#0284c7" }} /> Service / transfer</span>
+            </div>
+          </div>
           {loading ? <div className="md-schedule-empty"><Calendar size={24}/><b>Loading all branch schedules…</b></div> : listEvents.length ? <div className="md-event-list">{listEvents.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick}/>)}</div> : <div className="md-schedule-empty"><Calendar size={24}/><b>No matching schedule activity</b><span>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span></div>}
         </main>
       </div>
