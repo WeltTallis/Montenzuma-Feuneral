@@ -547,6 +547,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
       setSection(VIEW_SECTION[id]);
       setFilters([]);
       setTodayMode(false);
+    } else if (id !== "home" && id !== "deceased") {
+      setSection("command");
+      setFilters([]);
+      setTodayMode(false);
     }
     setNavView(id);
     setNavOpen(false);
@@ -627,7 +631,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               setV={setV}
               avatarText={avatarText}
             />
-            <StatsBand calc={calc} money={money} ccy={ccy} onNavView={setNavView} />
+            <StatsBand calc={calc} money={money} ccy={ccy} onNavView={onNavView} />
             <div className="rpd-scroll">
       {/* ops sidebar + main */}
       <div className="shell">
