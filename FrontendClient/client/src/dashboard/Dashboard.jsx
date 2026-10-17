@@ -574,7 +574,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     setTodayMode(false);
   };
   return (
-    <div className={`rpd${dark ? " dark" : ""}${section === "analytics" ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}`}>
+    <div className={`rpd${dark ? " dark" : ""}${section === "analytics" ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}${navView === "home" ? " rpd-home" : ""}`}>
       <div className="app">
         <DashSidebar
           active={navView}
@@ -627,10 +627,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               setV={setV}
               avatarText={avatarText}
             />
-            {navView === "home" ? (
-              <StatsBand calc={calc} money={money} ccy={ccy} onNavView={onNavView} />
-            ) : null}
             <div className="rpd-scroll" ref={contentScrollRef}>
+              {navView === "home" ? (
+                <StatsBand calc={calc} money={money} ccy={ccy} onNavView={onNavView} />
+              ) : null}
       {/* ops sidebar + main */}
       <div className="shell">
         {showOpsToolbar && section !== "analytics" ? (

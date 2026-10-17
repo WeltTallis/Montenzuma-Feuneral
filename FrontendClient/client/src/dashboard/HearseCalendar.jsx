@@ -37,21 +37,20 @@ const fmtDayHeader = (k) => { const d = parseKey(k); return `${d.getDate()} ${MO
 const fmtFull = (k) => { const d = parseKey(k); return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
 
 const TYPE_META = {
-  intake: { label: "Body Intake", color: "#1d4ed8", bg: "#eff6ff", icon: User },
-  release: { label: "Body Release", color: "#059669", bg: "#ecfdf5", icon: Cross },
-  pm: { label: "Postmortem Exam", color: "#d97706", bg: "#fffbeb", icon: ShieldAlert },
-  funeral: { label: "Funeral Service", color: "#dc2626", bg: "#fef2f2", icon: Flower },
-  transfer: { label: "Hearse Transfer", color: "#0284c7", bg: "#f0f9ff", icon: Droplets },
-  viewing: { label: "Viewing / Wake", color: "#7c3aed", bg: "#f5f3ff", icon: User },
-  cremation: { label: "Cremation", color: "#7c3aed", bg: "#f5f3ff", icon: Timer },
-  burial: { label: "Burial", color: "#059669", bg: "#ecfdf5", icon: Cross },
+  intake: { label: "Body Intake", color: "#00296B", bg: "#EFF6FF", icon: User },
+  release: { label: "Body Release", color: "#132A13", bg: "#E8F5E9", icon: Cross },
+  pm: { label: "Postmortem Exam", color: "#E36414", bg: "#FFEDD5", icon: ShieldAlert },
+  funeral: { label: "Funeral Service", color: "#B4534B", bg: "#FBEDEC", icon: Flower },
+  transfer: { label: "Hearse Transfer", color: "#7C3AED", bg: "#F3E8FF", icon: Droplets },
+  viewing: { label: "Viewing / Wake", color: "#8B5CF6", bg: "#F5F3FF", icon: User },
+  cremation: { label: "Cremation", color: "#9333EA", bg: "#FAF5FF", icon: Timer },
+  burial: { label: "Burial", color: "#475A43", bg: "#EEF3EC", icon: Cross },
 };
 const STATUS_COLOR = {
-  scheduled: "var(--md-primary)",
-  confirmed: "var(--md-success)",
-  in_transit: "var(--md-warning)",
-  completed: "var(--md-secondary)",
-  cancelled: "var(--md-danger)",
+  pending: "#d97706", booked: "#00296B", confirmed: "#00296B",
+  scheduled: "#E36414", in_transit: "#E36414", in_progress: "#0c0b0f",
+  postponed: "#d97706", completed: "#5F0F40", delivered: "#132A13",
+  cancelled: "#DD2D4A", maintenance: "#03071E",
 };
 
 export const MOCK_DECEASED = [
@@ -126,7 +125,7 @@ function MonthChip({ event, onClick }) {
       onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
     >
       <meta.icon size={10} />
-      <span style={{ marginLeft: "0.3rem", opacity: 0.9 }}>{event.title}</span>
+      <span style={{ marginLeft: "0.3rem", opacity: 0.9 }}>{event.time ? `${event.time} ` : ""}{event.title}</span>
     </button>
   );
 }
@@ -236,7 +235,7 @@ function EventRow({ event, onClick }) {
 
 function WeekGrid({ weekStartKey, eventsByDay, onEventClick, today }) {
   const days = [];
-  let d = new Date(weekStartKey);
+  let d = parseKey(weekStartKey);
   for (let i = 0; i < 7; i++) { days.push(toKey(d)); d.setDate(d.getDate() + 1); }
   return (
     <div style={{ display: "flex", gap: "6px", width: "100%" }}>
@@ -248,7 +247,7 @@ function WeekGrid({ weekStartKey, eventsByDay, onEventClick, today }) {
           <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-sm)", background: active ? "var(--md-surface-hover)" : "var(--md-surface-panel)", minHeight: "320px" }}>
             <div style={{ padding: "0.5rem 0.7rem", borderBottom: "1px solid var(--md-border)", background: "var(--md-surface-sunken)", borderRadius: "var(--md-radius-sm) var(--md-radius-sm) 0 0" }}>
               <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, color: active ? "var(--md-primary)" : "var(--md-ink-muted)" }}>
-                {WEEK[day.getDay()]}
+                {WEEK[(day.getDay() + 6) % 7]}
               </div>
               <div style={{ fontSize: "1.1rem", fontWeight: 700, color: active ? "var(--md-ink-primary)" : "var(--md-ink-secondary)" }}>
                 {day.getDate()}
@@ -277,7 +276,7 @@ function DayGrid({ dayKey, events, onEventClick, today }) {
     <div style={{ border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-sm)", background: "var(--md-surface-panel)", padding: "0.8rem", minHeight: "400px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.8rem" }}>
         <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, color: "var(--md-ink-muted)" }}>
-          {WEEK[day.getDay()]}
+          {WEEK[(day.getDay() + 6) % 7]}
         </div>
         <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--md-ink-primary)" }}>{day.getDate()}</div>
         <div style={{ fontSize: "0.95rem", color: "var(--md-ink-secondary)" }}>{fmtFull(dayKey)}</div>
@@ -364,6 +363,7 @@ function DetailPanel({ selected, onClose, onEventSelect }) {
 export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEventSelect, initialView = "month", branch = "", loading = false }) {
   const events = useMemo(() => normEvents(eventsProp).filter((e) => !branch || e.branch === branch || e.deceased.branch === branch), [eventsProp, branch]);
   const [view, setView] = useState(initialView);
+  const [mode, setMode] = useState("calendar");
   const [date, setDate] = useState(todayKey);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
@@ -382,10 +382,16 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
     return true;
   };
   const listEvents = events.filter((event) => inRange(event) && matches(event)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "") || a.title.localeCompare(b.title));
+  const gridEvents = events.filter(matches);
+  const gridEventsByDay = gridEvents.reduce((days, event) => {
+    (days[event.date] ||= []).push(event);
+    return days;
+  }, {});
+  const monthDate = parseKey(date);
   const todayActivity = events.filter((event) => event.date === today).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const upcoming = events.filter((event) => event.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "")).slice(0, 6);
   const step = (direction) => {
-    if (view === "month") setDate(toKey(new Date(y, mo - 1 + direction, 1)));
+    if (view === "month" || view === "all") { setView("month"); setDate(toKey(new Date(y, mo - 1 + direction, 1))); }
     else if (view === "week") setDate(addDays(date, direction * 7));
     else if (view === "today") { setView("day"); setDate(addDays(today, direction)); }
     else if (view !== "all") setDate(addDays(date, direction));
@@ -403,8 +409,16 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
           <button type="button" className="md-schedule-today" onClick={goToday}>Today</button>
         </div>
       </header>
-      <div className="md-schedule-tabs" role="tablist" aria-label="Schedule date range">
-        {["today", "month", "week", "day", "all"].map((item) => <button type="button" role="tab" aria-selected={view === item} className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>{item === "all" ? "All dates" : item[0].toUpperCase() + item.slice(1)}</button>)}
+      <div className="md-schedule-toolbar">
+        <div className="md-schedule-tabs" role="tablist" aria-label="Calendar view">
+          {["month", "week", "day"].map((item) => <button type="button" role="tab" aria-selected={view === item} className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}
+          <button type="button" role="tab" aria-selected={view === "today"} className={view === "today" ? "active" : ""} onClick={goToday}>Today</button>
+          <button type="button" role="tab" aria-selected={view === "all"} className={view === "all" ? "active" : ""} onClick={() => setView("all")}>All dates</button>
+        </div>
+        <div className="md-schedule-tabs md-mode-tabs" role="group" aria-label="Calendar or list view">
+          <button type="button" aria-pressed={mode === "calendar"} className={mode === "calendar" ? "active" : ""} onClick={() => setMode("calendar")}><Calendar size={13}/> Calendar</button>
+          <button type="button" aria-pressed={mode === "list"} className={mode === "list" ? "active" : ""} onClick={() => setMode("list")}><span className="md-list-icon">☷</span> List</button>
+        </div>
         <label className="md-schedule-search"><SearchIcon/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or receiving officer" aria-label="Search deceased schedule"/><kbd>⌕</kbd></label>
       </div>
       <div className="md-schedule-layout">
@@ -418,7 +432,7 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
         <main className="md-schedule-main">
           <div className="md-list-heading">
             <div>
-              <h2>{rangeTitle} roster</h2>
+              <h2>{rangeTitle} {mode === "list" ? "roster" : "calendar"}</h2>
               <p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p>
             </div>
             <div className="md-event-legend">
@@ -428,7 +442,12 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
               <span><i style={{ background: "#0284c7" }} /> Service / transfer</span>
             </div>
           </div>
-          {loading ? <div className="md-schedule-empty"><Calendar size={24}/><b>Loading all branch schedules…</b></div> : listEvents.length ? <div className="md-event-list">{listEvents.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick}/>)}</div> : <div className="md-schedule-empty"><Calendar size={24}/><b>No matching schedule activity</b><span>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span></div>}
+          {loading ? <div className="md-schedule-empty"><Calendar size={24}/><b>Loading all branch schedules…</b></div> : mode === "calendar" ? (
+            <div className="md-calendar-view">
+              {view === "week" ? <WeekGrid weekStartKey={weekStartOf(date)} eventsByDay={gridEventsByDay} onEventClick={handleEventClick} today={today}/> : view === "day" || view === "today" ? <DayGrid dayKey={view === "today" ? today : date} events={gridEvents} onEventClick={handleEventClick} today={today}/> : <MonthGrid year={monthDate.getFullYear()} month={monthDate.getMonth()} events={gridEvents} onDayClick={(day) => { setDate(toKey(day)); setView("day"); }} onEventClick={handleEventClick} today={today}/>}
+              {!listEvents.length && <div className="md-calendar-empty">No matching events in this range. Change the date or search to see more.</div>}
+            </div>
+          ) : listEvents.length ? <div className="md-event-list">{listEvents.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick}/>)}</div> : <div className="md-schedule-empty"><Calendar size={24}/><b>No matching schedule activity</b><span>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span></div>}
         </main>
       </div>
       {selected && <DetailPanel selected={selected} onClose={() => setSelected(null)} onEventSelect={onEventSelect} />}
