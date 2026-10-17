@@ -43,7 +43,7 @@ const S = {
   // horizontal space, wrapping into an unreadable two-line block on a laptop.
   // 640 gives the row room to breathe while still leaving the page visible
   // behind it. The drawer is `width:100%` with this as maxWidth, so phones
-  // are unaffected � they already take the full screen.
+  // are unaffected — they already take the full screen.
   drawerWidth: 640,
   font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -1210,7 +1210,7 @@ const CoffinDashboard = () => {
 
   //  Inject Font Awesome CDN (Fix for missing icons) 
 
-  //  CRUD Handl�
+  //  CRUD Handl”
   const handleCreateCoffin = async (e) => {
     e.preventDefault();
     setSubmitLoading(true);
@@ -1373,7 +1373,7 @@ const CoffinDashboard = () => {
 
   const handleStockAction = async (id, action) => {
     // -- Role guards --------------------------------------------------
-    // from_branch_id = source/dispatcher � to_branch_id = requester/receiver.
+    // from_branch_id = source/dispatcher · to_branch_id = requester/receiver.
     // 2-status flow: ONLY the SOURCE branch may approve; ONLY the
     // REQUESTING (receiving) branch may confirm "Delivered". No "In Transit".
     const req = stockRequests.find((r) => r.id === id || String(r.id) === String(id));
@@ -1485,7 +1485,7 @@ const CoffinDashboard = () => {
     }
   };
 
-  // ─── Filtered Data ──────────────────────────────────────────────────
+  // â”€â”€â”€ Filtered Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Coffins registered without a per-branch id (branch_id undefined) belong to the
   // current branch, so keep them visible. Otherwise match the selected branch.
   const branchCoffins = coffins.filter(
@@ -1548,7 +1548,7 @@ const CoffinDashboard = () => {
   const outOfStockCount = branchCoffins.filter((c) => c.stock <= 0).length;
   const pendingBookingsCount = branchBookings.filter((b) => b.status === 'pending').length;
 
-  // ─── Drawer Views ───────────────────────────────────────────────────
+  // â”€â”€â”€ Drawer Views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const openDrawer = (title, content) => setDrawer({ open: true, title, content });
   const closeDrawer = () => setDrawer({ open: false, title: '', content: '' });
 
@@ -1742,7 +1742,7 @@ const CoffinDashboard = () => {
     const sameBranchRequest = String(r.from_branch_id || '') === String(r.to_branch_id || '');
     const routeLabel = sameBranchRequest
       ? 'Self / Internal request'
-      : `${fromBranchName} → ${toBranchName}`;
+      : `${fromBranchName} â†’ ${toBranchName}`;
 
     const isIncoming = String(r.to_branch_id || '') === String(currentBranch || '');
     const isOutgoing = String(r.from_branch_id || '') === String(currentBranch || '');
@@ -1844,13 +1844,13 @@ const CoffinDashboard = () => {
         ${r.status === 'pending' && r.from_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','approve')"><i class="fa-solid fa-check"></i> Approve & Dispatch</button>` : ''}
         ${r.status === 'pending' && r.from_branch_id == currentBranch ? `<button class="drawer-btn btn-d" onclick="window.__handleStockAction('${r.id}','rejected')"><i class="fa-solid fa-times"></i> Reject</button>` : ''}
         ${r.status === 'approved' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','delivered')"><i class="fa-solid fa-check-double"></i> Delivered Now</button>` : ''}
-        ${r.status === 'approved' && r.from_branch_id == currentBranch ? `<div style="font-size:12px; color:#64748b; font-style:italic; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-hourglass-half"></i> Approved � awaiting ${r.to_branch_name || 'the requesting branch'} to confirm delivery</div>` : ''}
+        ${r.status === 'approved' && r.from_branch_id == currentBranch ? `<div style="font-size:12px; color:#64748b; font-style:italic; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-hourglass-half"></i> Approved — awaiting ${r.to_branch_name || 'the requesting branch'} to confirm delivery</div>` : ''}
         <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close</button>
       </div>`;
     openDrawer(`Transfer Request #${r.id}`, content);
   };
 
-  // ─── Find Stock in Other Branches ───────────────────────────────────
+  // â”€â”€â”€ Find Stock in Other Branches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [interSearch, setInterSearch] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
 
@@ -1969,7 +1969,7 @@ const CoffinDashboard = () => {
     const coffinsToSearch = window.__interBranchCoffins || [];
 
     const results = coffinsToSearch.filter((c) => {
-      // "Find in Other Branches" must not surface the CURRENT branch's own stock �
+      // "Find in Other Branches" must not surface the CURRENT branch's own stock —
       // that stock is already shown in the Inventory tab / Reservation dropdown.
       if (c.branch_id && c.branch_id == currentBranch) return false;
       if (branchFilter && String(c.branch_id || '') != String(branchFilter)) return false;
@@ -2002,7 +2002,7 @@ const CoffinDashboard = () => {
           const stockBg = stock > 2 ? S.successLight : stock > 0 ? S.warningLight : S.dangerLight;
           const stockLabel = stock > 2 ? 'Available' : stock > 0 ? 'Low Stock' : 'Out of Stock';
 
-          // Resolve the owning branch from the live branch list first � the row
+          // Resolve the owning branch from the live branch list first — the row
           // may only carry a generic branch_name.
           const br = branches.find((x) => x && (x.id == c.branch_id || x.branch_id == c.branch_id
             || x.branch_slug === c.branch_slug || x.slug === c.branch_slug));
@@ -2050,7 +2050,7 @@ const CoffinDashboard = () => {
     if (el) el.innerHTML = html;
   };
 
-  // ─── Expose to window for drawer HTML buttons ───────────────────────
+  // â”€â”€â”€ Expose to window for drawer HTML buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     window.__closeDrawer = closeDrawer;
     window.__openBookingModal = (coffinId) => {
@@ -2109,7 +2109,7 @@ const CoffinDashboard = () => {
             <div>
               <h4 style="font-size:16px; font-weight:700; color:${S.primaryDark}; margin:0 0 4px;">${c.name}</h4>
               <p style="font-size:13px; color:${S.primaryDark}; margin:0; opacity:0.8;">
-                From <strong>${branches.find((b) => b.id == c.branch_id)?.name || c.branch_name || 'other branch'}</strong> � ${formatKES(c.price)}
+                From <strong>${branches.find((b) => b.id == c.branch_id)?.name || c.branch_name || 'other branch'}</strong> • ${formatKES(c.price)}
               </p>
             </div>
           </div>
@@ -2236,14 +2236,14 @@ const CoffinDashboard = () => {
     };
   }, [bookings, branches, currentBranch, coffins]);
 
-  // ─── Render Tabs ────────────────────────────────────────────────────
+  // â”€â”€â”€ Render Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const pendingReqCount = stockRequests.filter(
     (r) =>
       r.status === 'pending' &&
       (r.from_branch_id == currentBranch || r.to_branch_id == currentBranch),
   ).length;
 
-  // ─── Loading ────────────────────────────────────────────────────────
+  // â”€â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (loading) {
     return (
       <div style={styles.W}>
@@ -2265,7 +2265,7 @@ const CoffinDashboard = () => {
     );
   }
 
-  // ─── Error State ────────────────────────────────────────────────────
+  // â”€â”€â”€ Error State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (error) {
     return (
       <div style={styles.W}>
@@ -2284,7 +2284,7 @@ const CoffinDashboard = () => {
     );
   }
 
-  // ─── Render Inventory Tab ───────────────────────────────────────────
+  // â”€â”€â”€ Render Inventory Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderInventory = () => (
     <>
       {/* Modern Stat Cards */}
@@ -2450,7 +2450,7 @@ const CoffinDashboard = () => {
                           fontFamily: 'monospace',
                         }}
                       >
-                        {coffin.custom_id || coffin.coffin_id || '�'}
+                        {coffin.custom_id || coffin.coffin_id || '—'}
                       </td>
                       <td style={styles.td}>
                         {(() => {
@@ -2579,10 +2579,10 @@ const CoffinDashboard = () => {
     </>
   );
 
-  // ─── Render sections via shell ────────────────────────────────────────────
+  // â”€â”€â”€ Render sections via shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Transfers tab UI extracted into ./coffinTransfers.jsx (rendered inside the ReservationDashboard shell below)
 
-  // ─── Main Render ────────────────────────────────────────────────────
+  // â”€â”€â”€ Main Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div style={styles.W}>
       <style>{`
@@ -2731,7 +2731,7 @@ const CoffinDashboard = () => {
 
 
 
-      {/* Register Coffin Sidebar � same beautiful chrome as New Reservation */}
+      {/* Register Coffin Sidebar — same beautiful chrome as New Reservation */}
       <div
         style={{
           ...styles.bkOverlay,
@@ -3127,7 +3127,7 @@ const CoffinDashboard = () => {
                     return branchCoffinsList.length > 0 ? (
                       branchCoffinsList.map((c) => (
                         <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
-                          {c.name} � {formatKES(c.price)} ({c.stock} left)
+                          {c.name} — {formatKES(c.price)} ({c.stock} left)
                         </option>
                       ))
                     ) : (
@@ -3298,7 +3298,7 @@ const CoffinDashboard = () => {
                     {(() => {
                       // Only offer coffins stocked at the SOURCE branch being
                       // requested from (plus shared central stock without a
-                      // branch assignment) � never my own branch's stock.
+                      // branch assignment) — never my own branch's stock.
                       const sourceBranchId =
                         modal.data.from_branch_id || modal.data.to_branch_id || '';
                       const sourceCoffins = coffins.filter((c) => {
@@ -3415,7 +3415,7 @@ const CoffinDashboard = () => {
         </div>
       </div>
 
-      {/* ──────────── DRAWER ──────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DRAWER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
         style={{ ...styles.drawerOverlay, ...(drawer.open ? styles.drawerOverlayOpen : {}) }}
         onClick={closeDrawer}
@@ -3433,7 +3433,7 @@ const CoffinDashboard = () => {
   );
 };
 
-// ─── Helper ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const objToStr = (obj) => {
   if (!obj) return '';
   return Object.entries(obj)
