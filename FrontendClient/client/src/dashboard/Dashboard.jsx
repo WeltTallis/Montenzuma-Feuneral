@@ -288,6 +288,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   });
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(nowClock());
+  const contentScrollRef = useRef(null);
 
   const tooltip = useTooltip();
   const today = todayKey();
@@ -413,6 +414,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   useEffect(() => {
     try { localStorage.setItem(NAV_VIEW_KEY, navView); } catch { /* storage blocked */ }
   }, [navView]);
+  useEffect(() => {
+    if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0;
+  }, [navView, section]);
   useEffect(() => {
     const id = setInterval(() => setNow(nowClock()), 30000);
     return () => clearInterval(id);
@@ -631,8 +635,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               setV={setV}
               avatarText={avatarText}
             />
-            <StatsBand calc={calc} money={money} ccy={ccy} onNavView={onNavView} />
-            <div className="rpd-scroll">
+            {navView === "home" ? (
+              <StatsBand calc={calc} money={money} ccy={ccy} onNavView={onNavView} />
+            ) : null}
+            <div className="rpd-scroll" ref={contentScrollRef}>
       {/* ops sidebar + main */}
       <div className="shell">
         {showOpsToolbar && section !== "analytics" ? (

@@ -17,3 +17,59 @@
 
 /* Calendar and florist now use the same quiet Flowbite-inspired card language. */
 .rpd .md-cal-wrap{padding:24px 28px 36px;max-width:1280px;margin:0 auto}.rpd .md-cal-header,.rpd .md-calendar,.rpd .md-sidebar{border:1px solid #e5e7eb;border-radius:9px;box-shadow:0 1px 2px #11182708;background:#fff}.rpd .md-cal-header{padding:16px 18px;margin-bottom:16px}.rpd .md-cal-title{font-family:var(--sans);font-size:18px;font-weight:780}.rpd .md-cal-subtitle{font-size:11px;color:#6b7280}.rpd .md-calendar{overflow:hidden}.rpd .md-weekday{background:#f9fafb;color:#6b7280;font-size:10px;font-weight:800;letter-spacing:.07em}.rpd .md-day{border-color:#edf0f3!important}.rpd .md-day:hover{background:#f8faff}.rpd .md-event{border-radius:5px;font-size:10px}.rpd .md-btn{border-radius:7px;font-size:11px;font-weight:700}.rpd .md-btn-primary{background:#1d4ed8;border-color:#1d4ed8}.rpd .fl-wrap{max-width:1280px;margin:0 auto;padding:24px 28px 36px;gap:18px}.rpd .fl-head h1{font-family:var(--sans);font-size:24px;font-weight:800;letter-spacing:-.04em}.rpd .fl-head p{font-size:12px}.rpd .fl-btn{border-radius:7px;background:#1d4ed8}.rpd .fl-status{border-radius:9px;border-width:1px;padding:16px 18px}.rpd .fl-card{border-radius:9px;border-color:#e5e7eb;padding:18px;box-shadow:0 1px 2px #11182708}.rpd .fl-card h3{font-family:var(--sans);font-size:14px;font-weight:780}.rpd .fl-grid{gap:16px}.rpd .fl-track{height:6px}.rpd .fl-take{font-size:11px}.rpd .fl-row{font-size:11px}@media(max-width:720px){.rpd .md-cal-wrap,.rpd .fl-wrap{padding:18px 12px}.rpd .md-cal-header{padding:13px}.rpd .fl-grid{grid-template-columns:1fr}}
+
+/* Final dashboard visual system: calm white workspace, clear hierarchy, and
+   full-width module pages. These rules intentionally sit last so the legacy
+   Metis styles cannot pull the new shell back into the old dark layout. */
+.rpd{background:#f7f8fc;color:#182236;letter-spacing:0}
+.rpd .app{background:#f7f8fc;gap:0}
+.rpd .rpd-nav{width:256px;flex-basis:256px;background:#fff;border-right:1px solid #e8ebf2;box-shadow:10px 0 32px rgba(30,42,70,.04);padding:18px 12px}
+.rpd .rpd-nav-brand{padding:4px 8px 24px}
+.rpd .rpd-nav-logo{gap:12px;padding:8px;border-radius:12px}
+.rpd .rpd-nav-logo-mark{width:38px;height:38px;flex-basis:38px;border-radius:12px;background:#1e4ed8;box-shadow:0 8px 18px rgba(30,78,216,.2);font-family:var(--sans);font-size:17px}
+.rpd .rpd-nav-logo-txt b{font-size:15px;letter-spacing:-.02em}
+.rpd .rpd-nav-logo-txt small{font-size:10px;color:#8a95a8}
+.rpd .rpd-nav-caption{padding:6px 12px 10px;color:#a0a9b8;font-size:9px;letter-spacing:.14em}
+.rpd .rpd-nav-list{padding:0 2px;gap:5px}
+.rpd .rpd-nav-item{min-height:52px;padding:8px 10px;border-radius:11px;color:#69758a;gap:11px}
+.rpd .rpd-nav-item:hover{background:#f6f8fc;color:#24324d}
+.rpd .rpd-nav-item.on{background:#eef3ff;border:1px solid #dce7ff;color:#2452c7;box-shadow:none}
+.rpd .rpd-nav-item.on .rpd-nav-ico{background:#fff;color:#2452c7;box-shadow:0 2px 6px rgba(30,78,216,.09)}
+.rpd .rpd-nav-ico{width:34px;height:34px;flex-basis:34px;background:#f5f7fa;color:#7e899c;border-radius:10px}
+.rpd .rpd-nav-txt b{font-size:12px;font-weight:750;color:inherit}.rpd .rpd-nav-txt small{font-size:10px;color:#929cad}
+.rpd .rpd-nav-item.on .rpd-nav-txt small{color:#5273c4;opacity:1}
+.rpd .rpd-nav-bar{left:-2px;top:12px;bottom:12px;width:3px;background:#2452c7}
+.rpd .rpd-nav-foot{padding:16px 2px 0;margin-top:16px;border-top:1px solid #edf0f5;gap:3px}
+.rpd .rpd-nav-user{padding:9px;border-radius:11px}.rpd .rpd-nav-avatar{width:34px;height:34px;flex-basis:34px;background:#edf2ff;color:#2452c7;font-size:11px}
+.rpd .rpd-nav-ghost,.rpd .rpd-nav-collapse{padding:8px 10px;color:#8b95a6;font-size:11px}.rpd .rpd-nav-ghost:hover,.rpd .rpd-nav-collapse:hover{background:#f6f8fc;color:#26344d}
+.rpd .rpd-body{background:#f7f8fc}.rpd .rpd-topbar{height:70px;padding:0 34px;background:#fff;border-bottom:1px solid #e9ecf2;box-shadow:0 2px 12px rgba(34,48,80,.03)}
+.rpd .rpd-topbar-title b{font-size:19px;font-weight:800;letter-spacing:-.035em;color:#182236}.rpd .rpd-topbar-title small{font-size:11px;color:#8b95a6;margin-top:3px}
+.rpd .tbar{padding:12px 34px;background:#fff;border-bottom:1px solid #edf0f5}.rpd .nvp{background:#f5f7fb;border:1px solid #edf0f5;padding:4px;border-radius:10px}.rpd .nvp button{padding:8px 12px;font-size:11px}.rpd .nvp button.on{color:#2452c7;background:#fff;border:1px solid #e1e8fb;box-shadow:0 2px 6px rgba(22,43,90,.08)}
+.rpd .rpd-band{padding:28px 34px 0;gap:20px}.rpd .rpd-band-grid{gap:14px}.rpd .rpd-stat-wrap{min-height:112px;padding:18px;border-radius:14px;background:#fff;border:1px solid #e7ebf3!important;box-shadow:0 6px 20px rgba(30,42,70,.045)}.rpd .rpd-stat-lbl{font-size:10px;color:#8b96a8}.rpd .rpd-stat-val{font-size:28px;color:#172238}.rpd .rpd-band-charts{gap:20px}.rpd .rpd-chart{border-radius:14px;box-shadow:0 6px 20px rgba(30,42,70,.045)}
+.rpd .rpd-scroll{padding-bottom:36px}.rpd .shell{padding:24px 34px 40px;gap:22px}.rpd .side{width:260px;flex-basis:260px}.rpd .side>*{border-radius:14px!important;box-shadow:0 6px 20px rgba(30,42,70,.045);background:#fff}.rpd .mains{background:transparent}.rpd .mains .head,.rpd .mains .chead{padding:20px 22px;background:#fff;border-bottom:1px solid #edf0f5}.rpd .card,.rpd .acard,.rpd .kcard,.rpd .tblwrap,.rpd .sch,.rpd .board{border-radius:14px!important;box-shadow:0 6px 20px rgba(30,42,70,.045)!important;border-color:#e7ebf3!important;background:#fff}
+.rpd .mains > .md-cal-wrap,.rpd .mains > .ci-page,.rpd .mains > .fl-wrap,.rpd .mains > .workshop-panel{max-width:none;margin:0;padding:0}.rpd .mains > .md-cal-wrap{padding:4px 0 0}.rpd .mains > .md-cal-wrap .md-cal-header{margin-bottom:18px;border-radius:14px}.rpd .mains > .ci-page{width:100%}
+@media(max-width:1100px){.rpd .rpd-nav{width:224px;flex-basis:224px}.rpd .rpd-topbar,.rpd .tbar{padding-left:24px;padding-right:24px}.rpd .rpd-band,.rpd .shell{padding-left:24px;padding-right:24px}}
+@media(max-width:720px){.rpd .rpd-topbar{height:60px;padding:0 14px}.rpd .tbar{padding:9px 14px}.rpd .rpd-band,.rpd .shell{padding-left:14px;padding-right:14px}.rpd .rpd-band{padding-top:16px}.rpd .shell{padding-top:16px}.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rpd .rpd-stat-wrap{min-height:92px;padding:13px}.rpd .rpd-stat-val{font-size:22px}.rpd .mains > .md-cal-wrap{padding-top:0}}
+
+/* Keep the overview metrics and module pages in separate, predictable rows.
+   The legacy band was a four-column grid, which made each chart a narrow
+   sibling of the KPI cards and squeezed the real module content. */
+.rpd .rpd-band{display:flex;flex-direction:column;min-width:0;margin:0;}
+.rpd .rpd-band-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;width:100%;}
+.rpd .rpd-stat{min-width:0;border:0;background:transparent;box-shadow:none;}
+.rpd .rpd-stat-wrap{height:100%;min-width:0;box-sizing:border-box;}
+.rpd .rpd-stat-body{overflow:hidden;}
+.rpd .rpd-stat-val{overflow-wrap:anywhere;}
+.rpd .rpd-band-actions{display:flex;flex-wrap:wrap;gap:10px;}
+.rpd .rpd-band-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:100%;}
+.rpd .rpd-band-charts .rpd-chart{min-width:0;}
+.rpd .rpd-band-charts .rpd-chart:last-child:nth-child(odd){grid-column:1/-1;}
+.rpd .shell{display:flex;align-items:flex-start;min-width:0;}
+.rpd .mains{flex:1 1 0;width:auto;min-width:0;}
+.rpd .mains>*{max-width:100%;}
+.rpd .rpd-scroll{overscroll-behavior:contain;scrollbar-gutter:stable;}
+.rpd .rpd-body,.rpd .rpd-main{min-width:0;}
+.rpd .rpd-nav{flex-shrink:0;}
+@media(max-width:1100px){.rpd .rpd-band-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:820px){.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.rpd .rpd-band-charts{grid-template-columns:minmax(0,1fr);}.rpd .rpd-band-charts .rpd-chart:last-child:nth-child(odd){grid-column:auto;}}
+@media(max-width:720px){.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.rpd .rpd-band-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}.rpd .rpd-action-btn{justify-content:center;min-width:0;}.rpd .shell{display:block;}.rpd .mains{width:100%;}.rpd .rpd-scroll{scrollbar-gutter:auto;}}
