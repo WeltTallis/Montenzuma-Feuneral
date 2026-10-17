@@ -1,5 +1,5 @@
 /* Dashboard sidebar navigation (Metis-style layout).
-   Home → operations overview · Calendar → cross-branch deceased schedule ·
+   Home → cross-branch deceased schedule ·
    Store → inventory & journal · Workshop → production analytics ·
    Flowers → flower charts & bookings analysis. */
 import { useEffect } from "react";
@@ -7,11 +7,10 @@ import { useNavigate } from "react-router-dom";
 import { Ic } from "../opsIcons";
 
 export const NAV_ITEMS = [
-  { id: "home", view: "home", sub: "command", label: "Home", desc: "Operations overview", icon: "home", full: "Home — operations overview" },
+  { id: "home", view: "home", sub: "command", label: "Operations", desc: "Deceased schedule", icon: "home", full: "Operations — deceased schedule" },
   { id: "store", view: "store", sub: null, label: "Store", desc: "Inventory & journal", icon: "store", full: "Store — inventory & journal" },
   { id: "flowers", view: "flowers", sub: null, label: "Flowers", desc: "Charts & bookings", icon: "flower", full: "Flowers — charts & bookings analysis" },
   { id: "coffin-store", view: "coffin-store", sub: null, label: "Coffin Store", desc: "Cross-branch inventory", icon: "store", full: "Coffin Store — all branches" },
-  { id: "calendar", view: "calendar", sub: null, label: "Calendar", desc: "Deceased & service schedule", icon: "cal", full: "Calendar — deceased & service schedule" },
 ];
 
 export default function DashSidebar({

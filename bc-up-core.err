@@ -1,0 +1,13 @@
+ Image restpoint-tenant-service:latest Pulling 
+ Image restpoint-api-gateway:latest Pulling 
+ Image restpoint-tenant-service:latest pull access denied for restpoint-tenant-service, repository does not exist or may require 'docker login' 
+ Image restpoint-api-gateway:latest pull access denied for restpoint-api-gateway, repository does not exist or may require 'docker login' 
+ Container restpoint_redis Running 
+ Container restpoint_rabbitmq Running 
+ Container restpoint_mariadb Recreate 
+ Container restpoint_mariadb Recreated 
+ Container restpoint_tenant_service Creating 
+ Container restpoint_api_gateway Creating 
+ Container restpoint_tenant_service Error response from daemon: No such image: restpoint-tenant-service:latest 
+ Container restpoint_api_gateway Error response from daemon: No such image: restpoint-api-gateway:latest 
+Error response from daemon: No such image: restpoint-api-gateway:latest

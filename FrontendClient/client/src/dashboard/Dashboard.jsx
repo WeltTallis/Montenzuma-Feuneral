@@ -45,7 +45,7 @@ import {
 } from "./opsData";
 import { TipBox, useTooltip } from "./opsBits";
 import { Ic } from "./opsIcons";
-import { OperationsView, RegisterView } from "./opsViews";
+import { RegisterView } from "./opsViews";
 import { AnalyticsView } from "./opsAnalytics";
 import { CaseDrawer, ModalHost } from "./opsPanels";
 import StoreSection from "./StoreSection";
@@ -141,7 +141,7 @@ function StatsBand({ calc, money, ccy, onNavView }) {
 
   const quickActions = [
     { label: "Coffin Store", icon: <PieChartIcon size={14} />, color: "#1e3a8a", onClick: () => onNavView && onNavView("coffin-store") },
-    { label: "Hearse Calendar", icon: <Calendar size={14} />, color: "#1d4ed8", onClick: () => onNavView && onNavView("calendar") },
+    { label: "Operations Calendar", icon: <Calendar size={14} />, color: "#1d4ed8", onClick: () => onNavView && onNavView("home") },
     { label: "Flowers", icon: <TrendingUp size={14} />, color: "#0284c7", onClick: () => onNavView && onNavView("flowers") },
   ];
 
@@ -253,7 +253,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
 
   const isModuleView =
-    navView === "store" || navView === "flowers" || navView === "coffin-store" || navView === "calendar";
+    navView === "store" || navView === "flowers" || navView === "coffin-store";
   const [view, setView] = useState("month");
   const [selDate, setSelDate] = useState(todayKey());
   const [calY, setCalY] = useState(new Date().getFullYear());
@@ -628,12 +628,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               avatarText={avatarText}
             />
             <div className="rpd-scroll" ref={contentScrollRef}>
-              {navView === "home" ? (
-                <StatsBand calc={calc} money={money} ccy={ccy} onNavView={onNavView} />
-              ) : null}
       {/* ops sidebar + main */}
       <div className="shell">
-        {showOpsToolbar && section !== "analytics" ? (
+        {showOpsToolbar && section !== "analytics" && navView !== "home" ? (
           <aside className="side">
             <Sidebar
               calc={calc}
@@ -665,8 +662,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             <FlowerAnalytics />
           ) : navView === "coffin-store" ? (
             <SimpleCoffinInventory />
-          ) : navView === "calendar" ? (
-            <DeceasedScheduleCalendar events={calendarEvents} loading={loading} onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)} />
           ) : loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}>
@@ -697,32 +692,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               onDayTabChange={setDayTab}
             />
           ) : section === "command" ? (
-            <OperationsView
-              searched={searched}
-              calc={calc}
-              state={{
-                view,
-                selDate,
-                clickedDay,
-                todayMode,
-                filters,
-                calM,
-                calY,
-                dayTab,
-              }}
-              now={now}
-              today={today}
-              onOpenCase={openCase}
-              onClearDay={() => setClickedDay(null)}
-              onPickDay={(key) => {
-                setView("day");
-                setSelDate(key);
-                setClickedDay(null);
-                setDayTab("all");
-                setTodayMode(false);
-              }}
-              onDayTabChange={setDayTab}
-            />
+            <DeceasedScheduleCalendar events={calendarEvents} loading={loading} onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)} />
           ) : (
             <RegisterView
               section={section}

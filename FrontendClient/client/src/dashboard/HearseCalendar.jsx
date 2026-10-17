@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import {
   Calendar, ChevronLeft, ChevronRight, Clock, Search, User, Cross, Droplets, Flower,
-  Plus, X, CheckCircle, ChevronDown, MapPin, Phone, Mail, ShieldAlert, Timer,
+  Plus, X, CheckCircle, ChevronDown, MapPin, Phone, Mail, ShieldAlert, Timer, List,
 } from "lucide-react";
 import "./metis-design.css";
 
@@ -46,12 +46,20 @@ const TYPE_META = {
   cremation: { label: "Cremation", color: "#9333EA", bg: "#FAF5FF", icon: Timer },
   burial: { label: "Burial", color: "#475A43", bg: "#EEF3EC", icon: Cross },
 };
-const STATUS_COLOR = {
-  pending: "#d97706", booked: "#00296B", confirmed: "#00296B",
-  scheduled: "#E36414", in_transit: "#E36414", in_progress: "#0c0b0f",
-  postponed: "#d97706", completed: "#5F0F40", delivered: "#132A13",
-  cancelled: "#DD2D4A", maintenance: "#03071E",
+const STATUS_CONFIG = {
+  pending: { label: "Pending", progress: 10, color: "#d97706", bg: "#FFFBEB", dotColor: "#d97706" },
+  booked: { label: "Booked", progress: 25, color: "#00296B", bg: "#EFF6FF", dotColor: "#00296B" },
+  confirmed: { label: "Confirmed", progress: 25, color: "#00296B", bg: "#EFF6FF", dotColor: "#00296B" },
+  scheduled: { label: "Scheduled", progress: 25, color: "#E36414", bg: "#FFEDD5", dotColor: "#E36414" },
+  in_transit: { label: "In Transit", progress: 60, color: "#E36414", bg: "#FFEDD5", dotColor: "#E36414" },
+  in_progress: { label: "In Progress", progress: 60, color: "#0c0b0f", bg: "#F3F4F6", dotColor: "#0c0b0f" },
+  postponed: { label: "Postponed", progress: 15, color: "#d97706", bg: "#FFFBEB", dotColor: "#d97706" },
+  completed: { label: "Completed", progress: 100, color: "#5F0F40", bg: "#FCE7F3", dotColor: "#5F0F40" },
+  delivered: { label: "Delivered", progress: 100, color: "#132A13", bg: "#E8F5E9", dotColor: "#132A13" },
+  cancelled: { label: "Cancelled", progress: 0, color: "#DD2D4A", bg: "#FEE2E2", dotColor: "#DD2D4A" },
+  maintenance: { label: "Maintenance", progress: 0, color: "#03071E", bg: "#E0E7FF", dotColor: "#03071E" },
 };
+const getStatusMeta = (status) => STATUS_CONFIG[String(status || "scheduled").toLowerCase().replace(/\s+/g, "_")] || STATUS_CONFIG.scheduled;
 
 export const MOCK_DECEASED = [
   { id: "d-101", name: "James M. Okafor", age: 68, branch: "Westlands", hearse: "Hearse A (HX-4421)", sex: "M", status: "confirmed" },
@@ -77,6 +85,8 @@ function normEvents(raw) {
     const meta = TYPE_META[e.type] || TYPE_META.intake;
     const d = e.deceased || {};
     const date = e.date || (e.start ? toKey(e.start) : todayKey());
+    const status = String(e.status || "scheduled").toLowerCase().replace(/\s+/g, "_");
+    const statusMeta = getStatusMeta(status);
     return {
       id: e.id || `${e.type || "evt"}-${date}-${i}`,
       uid: e.uid || d.id || "",
@@ -84,10 +94,10 @@ function normEvents(raw) {
       type: e.type || "intake",
       date,
       time: e.time || "",
-      status: e.status || "scheduled",
+      status,
       note: e.note || "",
-      color: meta.color,
-      bg: meta.bg,
+      color: statusMeta.color,
+      bg: statusMeta.bg,
       icon: meta.icon,
       label: meta.label,
       branch: e.branch || d.branch || "",
@@ -118,7 +128,7 @@ function MonthChip({ event, onClick }) {
     <button
       className="md-btn md-btn-sm"
       style={{
-        background: meta.bg, color: meta.color, borderColor: meta.color,
+        background: event.bg, color: event.color, borderColor: event.color,
         fontSize: "0.68rem", fontWeight: 700, padding: "0.18rem 0.5rem",
         marginTop: "0.2rem", display: "block", width: "fit-content",
       }}
@@ -208,6 +218,7 @@ function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
 
 function EventRow({ event, onClick }) {
   const meta = TYPE_META[event.type] || TYPE_META.intake;
+  const status = getStatusMeta(event.status);
   return (
     <div
       onClick={() => onClick(event)}
@@ -217,7 +228,7 @@ function EventRow({ event, onClick }) {
         background: event.bg, cursor: "pointer", marginBottom: "0.4rem",
       }}
     >
-      <meta.icon size={13} style={{ color: meta.color }} />
+      <meta.icon size={13} style={{ color: status.color }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--md-ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {event.title}
@@ -226,8 +237,8 @@ function EventRow({ event, onClick }) {
           {event.time ? `${event.time} · ` : ""}{event.deceased.name}{event.deceased.age ? ` · ${event.deceased.age} yrs` : ""}
         </div>
       </div>
-      <span style={{ fontSize: "0.65rem", fontWeight: 700, color: STATUS_COLOR[event.status] || "var(--md-ink-muted)", background: "rgba(0,0,0,0.06)", padding: "0.1rem 0.4rem", borderRadius: "9px", whiteSpace: "nowrap" }}>
-        {event.status}
+      <span style={{ fontSize: "0.65rem", fontWeight: 700, color: status.color, background: status.bg, padding: "0.1rem 0.4rem", borderRadius: "9px", whiteSpace: "nowrap" }}>
+        {status.label}
       </span>
     </div>
   );
@@ -415,9 +426,9 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
           <button type="button" role="tab" aria-selected={view === "today"} className={view === "today" ? "active" : ""} onClick={goToday}>Today</button>
           <button type="button" role="tab" aria-selected={view === "all"} className={view === "all" ? "active" : ""} onClick={() => setView("all")}>All dates</button>
         </div>
-        <div className="md-schedule-tabs md-mode-tabs" role="group" aria-label="Calendar or list view">
-          <button type="button" aria-pressed={mode === "calendar"} className={mode === "calendar" ? "active" : ""} onClick={() => setMode("calendar")}><Calendar size={13}/> Calendar</button>
-          <button type="button" aria-pressed={mode === "list"} className={mode === "list" ? "active" : ""} onClick={() => setMode("list")}><span className="md-list-icon">☷</span> List</button>
+        <div className="md-schedule-tabs md-mode-tabs" role="group" aria-label="Schedule display mode">
+          <button type="button" aria-label="Show calendar" aria-pressed={mode === "calendar"} className={mode === "calendar" ? "active" : ""} onClick={() => setMode("calendar")}><Calendar size={14}/> Calendar</button>
+          <button type="button" aria-label="Show list" aria-pressed={mode === "list"} className={mode === "list" ? "active" : ""} onClick={() => setMode("list")}><List size={14}/> List</button>
         </div>
         <label className="md-schedule-search"><SearchIcon/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or receiving officer" aria-label="Search deceased schedule"/><kbd>⌕</kbd></label>
       </div>
@@ -427,7 +438,7 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
           <div className="md-month-stats"><div><b>{intakesThisMonth}</b><span>Intakes this month</span></div><div><b>{releasesThisMonth}</b><span>Releases this month</span></div></div>
           <div className="md-activity-list">{todayActivity.length ? todayActivity.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick} compact/>) : <div className="md-activity-empty"><Calendar size={18}/><span>No activity scheduled today</span></div>}</div>
           <div className="md-upcoming-heading">Upcoming</div>
-          <div className="md-upcoming-list">{upcoming.filter((event) => event.date !== today).slice(0, 4).map((event) => <button type="button" key={event.id} onClick={() => { setDate(event.date); setView("day"); handleEventClick(event); }}><i style={{ background: TYPE_META[event.type]?.color || "#1d4ed8" }}/><span><b>{event.deceased.name}</b><small>{fmtFull(event.date)} · {event.title}</small></span></button>)}{!upcoming.some((event) => event.date > today) && <small className="md-no-upcoming">No upcoming events</small>}</div>
+          <div className="md-upcoming-list">{upcoming.filter((event) => event.date !== today).slice(0, 4).map((event) => <button type="button" key={event.id} onClick={() => { setDate(event.date); setView("day"); handleEventClick(event); }}><i style={{ background: event.color }}/><span><b>{event.deceased.name}</b><small>{fmtFull(event.date)} · {event.title}</small></span></button>)}{!upcoming.some((event) => event.date > today) && <small className="md-no-upcoming">No upcoming events</small>}</div>
         </aside>
         <main className="md-schedule-main">
           <div className="md-list-heading">
@@ -436,10 +447,10 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
               <p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p>
             </div>
             <div className="md-event-legend">
-              <span><i style={{ background: "#1d4ed8" }} /> Intake</span>
-              <span><i style={{ background: "#059669" }} /> Release</span>
-              <span><i style={{ background: "#d97706" }} /> Postmortem</span>
-              <span><i style={{ background: "#0284c7" }} /> Service / transfer</span>
+              {["pending", "booked", "scheduled", "in_transit", "completed", "cancelled"].map((status) => {
+                const config = STATUS_CONFIG[status];
+                return <span key={status}><i style={{ background: config.dotColor }} /> {config.label}</span>;
+              })}
             </div>
           </div>
           {loading ? <div className="md-schedule-empty"><Calendar size={24}/><b>Loading all branch schedules…</b></div> : mode === "calendar" ? (
@@ -460,11 +471,12 @@ function SearchIcon() { return <Search size={15}/>; }
 function EventListCard({ event, onClick, compact = false }) {
   const meta = TYPE_META[event.type] || TYPE_META.intake;
   const Icon = meta.icon;
-  return <button type="button" className={`md-event-card${compact ? " compact" : ""}`} onClick={() => onClick(event)} style={{ "--event-color": meta.color, "--event-tint": meta.bg }}>
+  const status = getStatusMeta(event.status);
+  return <button type="button" className={`md-event-card${compact ? " compact" : ""}`} onClick={() => onClick(event)} style={{ "--event-color": status.color, "--event-tint": status.bg }}>
     <span className="md-event-type-icon"><Icon size={17}/></span>
     <span className="md-event-date"><b>{fmtDayHeader(event.date)}</b><small>{event.time || "Time not set"}</small></span>
     <span className="md-event-person"><b>{event.deceased.name}</b><small>{event.deceased.admissionNumber || event.deceased.id || "No admission number"} · {event.branch || "Branch not set"}</small></span>
     <span className="md-event-type"><b>{event.title}</b><small>{event.officer && event.officer !== "—" ? `Received by ${event.officer}` : "Receiving officer not recorded"}</small></span>
-    <span className="md-event-status">{event.status.replaceAll("_", " ")}</span><ChevronRight className="md-event-chevron" size={16}/>
+    <span className="md-event-status" style={{ color: status.color, backgroundColor: status.bg }}>{status.label}</span><ChevronRight className="md-event-chevron" size={16}/>
   </button>;
 }
