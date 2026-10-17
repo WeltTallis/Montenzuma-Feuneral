@@ -117,7 +117,7 @@ export const createCoffin = async (req: Request, res: Response) => {
   try {
     const {
       type, name, exact_price, price,
-      quantity, color, size
+      quantity, color, size, description
     } = (req as any).body;
 
     // Tenant/branch context — prefer the auth headers the frontend sends
@@ -162,6 +162,7 @@ export const createCoffin = async (req: Request, res: Response) => {
       quantity: modelQty,
       color,
       size,
+      description,
       tenant_id: tenantIdVal,
       branch_id: branchIdVal
     });
@@ -187,6 +188,7 @@ export const createCoffin = async (req: Request, res: Response) => {
       type: result.type,
       color: result.color,
       size: result.size,
+      description: result.description,
       quantity: result.quantity,
       stock: result.quantity,
       exact_price: result.exact_price,

@@ -96,14 +96,14 @@ class CoffinModel {
 
     const sql = `
       INSERT INTO coffins
-        (coffin_id, tenant_slug, tenant_id, branch_id, type, exact_price, quantity, color, size,
+        (coffin_id, tenant_slug, tenant_id, branch_id, type, exact_price, quantity, color, size, description,
          is_active, is_deleted, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, NOW())
     `;
 
     await coffinQuery(sql, [
       coffinId, tenantSlug, tenantId, branchId,
-      type, exactPrice, quantity, color, size
+      type, exactPrice, quantity, color, size, data.description || null
     ]);
 
     return {
@@ -117,6 +117,7 @@ class CoffinModel {
       stock: quantity,
       color,
       size,
+      description: data.description || null,
       tenant_id: tenantId,
       branch_id: branchId
     };
@@ -138,7 +139,7 @@ class CoffinModel {
     }
 
     const sql = `
-      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.description, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -159,7 +160,7 @@ class CoffinModel {
    */
   static async getByBranch(tenantSlug: string, _branchDbName?: string | null, _branchSlug?: string | null, branchId: number | null = null): Promise<any[]> {
     const sql = `
-      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.description, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -191,7 +192,7 @@ class CoffinModel {
     }
 
     const sql = `
-      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.description, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id

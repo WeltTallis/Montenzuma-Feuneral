@@ -4,7 +4,7 @@ import ModalRouter from "../components/workshop/pages/ModalRouter";
 import { useCallback, useEffect, useState } from "react";
 import { useSocket } from "../utils/context/socketContext";
 import { isWorkshopAdmin } from "../utils/workshopRole";
-import WorkshopAnalytics from "./WorkshopAnalytics";
+import CoffinCommandCenter from "./CoffinCommandCenter";
 import StoreView from "./StoreView";
 import { Ic } from "./opsIcons";
 
@@ -352,11 +352,13 @@ export default function WorkshopPanel({ onExit }) {
       ) : (
         <div className="wp-grid">
           <section className="wp-analytics">
-            <WorkshopAnalytics
+            <CoffinCommandCenter
               orders={orders}
               workers={workers}
               production={production}
               targets={targets}
+              store={store}
+              onOpenStore={() => setTab("store")}
             />
           </section>
         </div>

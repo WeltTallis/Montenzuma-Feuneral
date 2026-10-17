@@ -1,4 +1,4 @@
-﻿import { formatDate, toDateKey, todayKey } from '../../utils/dates/parseDates';
+import { formatDate, toDateKey, todayKey } from '../../utils/dates/parseDates';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import HorizontalCalendar from '../views/horizontalCalender';
 import { useSocket } from '../../utils/context/socketContext';
@@ -9,14 +9,14 @@ import { ENDPOINTS } from '../../api/endpoints';
 import 'react-toastify/dist/ReactToastify.css';
 import WeeklyView from '../views/weeklyView';
 import DailyView from '../views/dailyView';
-import api from '../../api/axios';
 import env from '../../utils/config/env';
+import api from '../../api/axios';
+
 import {
   getTenantSlug, getParentTenantSlug, getTenantId, getBranchId, getBranches,
 } from '../../utils/globalAuth';
 
 const API = env.FULL_API_URL;
-
 
 const S = {
   primary: '#1d4ed8',
@@ -43,7 +43,7 @@ const S = {
   // horizontal space, wrapping into an unreadable two-line block on a laptop.
   // 640 gives the row room to breathe while still leaving the page visible
   // behind it. The drawer is `width:100%` with this as maxWidth, so phones
-  // are unaffected — they already take the full screen.
+  // are unaffected � they already take the full screen.
   drawerWidth: 640,
   font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -640,7 +640,7 @@ const styles = {
   drawerHeaderH2: { fontSize: 18, fontWeight: 700, margin: 0 },
   drawerBody: { flex: 1, overflowY: 'auto', padding: 24, background: S.bg },
 
-  // ── Side panel chrome (New Reservation + Register Coffin) ──────────────────
+  // -- Side panel chrome (New Reservation + Register Coffin) ------------------
   // Matches the deceased Charge Settings / Scanner Bridge sidebars: dark-teal
   // gradient header, white scrollable body, pinned footer.
   bkOverlay: {
@@ -1210,7 +1210,7 @@ const CoffinDashboard = () => {
 
   //  Inject Font Awesome CDN (Fix for missing icons) 
 
-  //  CRUD Handl”
+  //  CRUD Handl�
   const handleCreateCoffin = async (e) => {
     e.preventDefault();
     setSubmitLoading(true);
@@ -1283,6 +1283,8 @@ const CoffinDashboard = () => {
         quantity: d.quantity || 1,
         service_date: d.service_date,
         service_time: d.service_time || '',
+        amount: d.amount != null ? Number(d.amount) : 0,
+        deposit: d.deposit != null ? Number(d.deposit) : 0,
         notes: d.notes,
         paid: d.paid || false,
         specifications: d.specifications || [],
@@ -1370,8 +1372,8 @@ const CoffinDashboard = () => {
   };
 
   const handleStockAction = async (id, action) => {
-    // ── Role guards ──────────────────────────────────────────────────
-    // from_branch_id = source/dispatcher · to_branch_id = requester/receiver.
+    // -- Role guards --------------------------------------------------
+    // from_branch_id = source/dispatcher � to_branch_id = requester/receiver.
     // 2-status flow: ONLY the SOURCE branch may approve; ONLY the
     // REQUESTING (receiving) branch may confirm "Delivered". No "In Transit".
     const req = stockRequests.find((r) => r.id === id || String(r.id) === String(id));
@@ -1483,7 +1485,7 @@ const CoffinDashboard = () => {
     }
   };
 
-  // â”€â”€â”€ Filtered Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Filtered Data ──────────────────────────────────────────────────
   // Coffins registered without a per-branch id (branch_id undefined) belong to the
   // current branch, so keep them visible. Otherwise match the selected branch.
   const branchCoffins = coffins.filter(
@@ -1546,7 +1548,7 @@ const CoffinDashboard = () => {
   const outOfStockCount = branchCoffins.filter((c) => c.stock <= 0).length;
   const pendingBookingsCount = branchBookings.filter((b) => b.status === 'pending').length;
 
-  // â”€â”€â”€ Drawer Views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Drawer Views ───────────────────────────────────────────────────
   const openDrawer = (title, content) => setDrawer({ open: true, title, content });
   const closeDrawer = () => setDrawer({ open: false, title: '', content: '' });
 
@@ -1740,7 +1742,7 @@ const CoffinDashboard = () => {
     const sameBranchRequest = String(r.from_branch_id || '') === String(r.to_branch_id || '');
     const routeLabel = sameBranchRequest
       ? 'Self / Internal request'
-      : `${fromBranchName} â†’ ${toBranchName}`;
+      : `${fromBranchName} → ${toBranchName}`;
 
     const isIncoming = String(r.to_branch_id || '') === String(currentBranch || '');
     const isOutgoing = String(r.from_branch_id || '') === String(currentBranch || '');
@@ -1842,13 +1844,13 @@ const CoffinDashboard = () => {
         ${r.status === 'pending' && r.from_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','approve')"><i class="fa-solid fa-check"></i> Approve & Dispatch</button>` : ''}
         ${r.status === 'pending' && r.from_branch_id == currentBranch ? `<button class="drawer-btn btn-d" onclick="window.__handleStockAction('${r.id}','rejected')"><i class="fa-solid fa-times"></i> Reject</button>` : ''}
         ${r.status === 'approved' && r.to_branch_id == currentBranch ? `<button class="drawer-btn btn-s" onclick="window.__handleStockAction('${r.id}','delivered')"><i class="fa-solid fa-check-double"></i> Delivered Now</button>` : ''}
-        ${r.status === 'approved' && r.from_branch_id == currentBranch ? `<div style="font-size:12px; color:#64748b; font-style:italic; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-hourglass-half"></i> Approved — awaiting ${r.to_branch_name || 'the requesting branch'} to confirm delivery</div>` : ''}
+        ${r.status === 'approved' && r.from_branch_id == currentBranch ? `<div style="font-size:12px; color:#64748b; font-style:italic; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-hourglass-half"></i> Approved � awaiting ${r.to_branch_name || 'the requesting branch'} to confirm delivery</div>` : ''}
         <button class="drawer-btn btn-g" onclick="window.__closeDrawer()">Close</button>
       </div>`;
     openDrawer(`Transfer Request #${r.id}`, content);
   };
 
-  // â”€â”€â”€ Find Stock in Other Branches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Find Stock in Other Branches ───────────────────────────────────
   const [interSearch, setInterSearch] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
 
@@ -1967,7 +1969,7 @@ const CoffinDashboard = () => {
     const coffinsToSearch = window.__interBranchCoffins || [];
 
     const results = coffinsToSearch.filter((c) => {
-      // "Find in Other Branches" must not surface the CURRENT branch's own stock —
+      // "Find in Other Branches" must not surface the CURRENT branch's own stock �
       // that stock is already shown in the Inventory tab / Reservation dropdown.
       if (c.branch_id && c.branch_id == currentBranch) return false;
       if (branchFilter && String(c.branch_id || '') != String(branchFilter)) return false;
@@ -2000,7 +2002,7 @@ const CoffinDashboard = () => {
           const stockBg = stock > 2 ? S.successLight : stock > 0 ? S.warningLight : S.dangerLight;
           const stockLabel = stock > 2 ? 'Available' : stock > 0 ? 'Low Stock' : 'Out of Stock';
 
-          // Resolve the owning branch from the live branch list first — the row
+          // Resolve the owning branch from the live branch list first � the row
           // may only carry a generic branch_name.
           const br = branches.find((x) => x && (x.id == c.branch_id || x.branch_id == c.branch_id
             || x.branch_slug === c.branch_slug || x.slug === c.branch_slug));
@@ -2048,7 +2050,7 @@ const CoffinDashboard = () => {
     if (el) el.innerHTML = html;
   };
 
-  // â”€â”€â”€ Expose to window for drawer HTML buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Expose to window for drawer HTML buttons ───────────────────────
   useEffect(() => {
     window.__closeDrawer = closeDrawer;
     window.__openBookingModal = (coffinId) => {
@@ -2107,7 +2109,7 @@ const CoffinDashboard = () => {
             <div>
               <h4 style="font-size:16px; font-weight:700; color:${S.primaryDark}; margin:0 0 4px;">${c.name}</h4>
               <p style="font-size:13px; color:${S.primaryDark}; margin:0; opacity:0.8;">
-                From <strong>${branches.find((b) => b.id == c.branch_id)?.name || c.branch_name || 'other branch'}</strong> • ${formatKES(c.price)}
+                From <strong>${branches.find((b) => b.id == c.branch_id)?.name || c.branch_name || 'other branch'}</strong> � ${formatKES(c.price)}
               </p>
             </div>
           </div>
@@ -2234,14 +2236,14 @@ const CoffinDashboard = () => {
     };
   }, [bookings, branches, currentBranch, coffins]);
 
-  // â”€â”€â”€ Render Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render Tabs ────────────────────────────────────────────────────
   const pendingReqCount = stockRequests.filter(
     (r) =>
       r.status === 'pending' &&
       (r.from_branch_id == currentBranch || r.to_branch_id == currentBranch),
   ).length;
 
-  // â”€â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Loading ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={styles.W}>
@@ -2263,7 +2265,7 @@ const CoffinDashboard = () => {
     );
   }
 
-  // â”€â”€â”€ Error State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Error State ────────────────────────────────────────────────────
   if (error) {
     return (
       <div style={styles.W}>
@@ -2282,7 +2284,7 @@ const CoffinDashboard = () => {
     );
   }
 
-  // â”€â”€â”€ Render Inventory Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render Inventory Tab ───────────────────────────────────────────
   const renderInventory = () => (
     <>
       {/* Modern Stat Cards */}
@@ -2448,7 +2450,7 @@ const CoffinDashboard = () => {
                           fontFamily: 'monospace',
                         }}
                       >
-                        {coffin.custom_id || coffin.coffin_id || '—'}
+                        {coffin.custom_id || coffin.coffin_id || '�'}
                       </td>
                       <td style={styles.td}>
                         {(() => {
@@ -2577,10 +2579,10 @@ const CoffinDashboard = () => {
     </>
   );
 
-  // â”€â”€â”€ Render sections via shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render sections via shell ────────────────────────────────────────────
   // Transfers tab UI extracted into ./coffinTransfers.jsx (rendered inside the ReservationDashboard shell below)
 
-  // â”€â”€â”€ Main Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Main Render ────────────────────────────────────────────────────
   return (
     <div style={styles.W}>
       <style>{`
@@ -2729,7 +2731,7 @@ const CoffinDashboard = () => {
 
 
 
-      {/* Register Coffin Sidebar — same beautiful chrome as New Reservation */}
+      {/* Register Coffin Sidebar � same beautiful chrome as New Reservation */}
       <div
         style={{
           ...styles.bkOverlay,
@@ -2763,126 +2765,126 @@ const CoffinDashboard = () => {
         </div>
 
         <form onSubmit={handleCreateCoffin} style={styles.bkForm}>
-            <div style={styles.bkBody}>
-              <div style={styles.bkSectionHead}>
-                <span>Coffin details</span>
-                <span style={styles.bkSectionRule} />
-              </div>
-              <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Name *</label>
-                  <input
-                    style={styles.fi}
-                    required
-                    value={modal.data.name || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, name: e.target.value } })
-                    }
-                    placeholder="Mahogany Heritage"
-                  />
-                </div>
-              </div>
-              <div style={styles.fr}>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Size (ft)</label>
-                  <input
-                    style={styles.fi}
-                    value={modal.data.size || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, size: e.target.value } })
-                    }
-                    placeholder="e.g. 6ft, 7ft"
-                  />
-                </div>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Color</label>
-                  <input
-                    style={styles.fi}
-                    value={modal.data.color || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
-                    }
-                    placeholder="e.g. Black, Brown"
-                  />
-                </div>
-              </div>
-              <div style={styles.fr}>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Price (KES) *</label>
-                  <input
-                    style={styles.fi}
-                    required
-                    type="number"
-                    value={modal.data.price || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, price: e.target.value } })
-                    }
-                  />
-                </div>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Stock</label>
-                  <input
-                    style={styles.fi}
-                    type="number"
-                    value={modal.data.stock || 0}
-                    onChange={(e) =>
-                      setModal({
-                        ...modal,
-                        data: { ...modal.data, stock: parseInt(e.target.value) || 0 },
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div style={styles.bkSectionHead}>
-                <span>Media &amp; notes</span>
-                <span style={styles.bkSectionRule} />
-              </div>
+          <div style={styles.bkBody}>
+            <div style={styles.bkSectionHead}>
+              <span>Coffin details</span>
+              <span style={styles.bkSectionRule} />
+            </div>
+            <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
               <div style={styles.fg}>
-                <label style={styles.fl}>Images</label>
+                <label style={styles.fl}>Name *</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files);
-                    setModal({ ...modal, data: { ...modal.data, images: files } });
-                  }}
-                  style={styles.bkFile}
+                  style={styles.fi}
+                  required
+                  value={modal.data.name || ''}
+                  onChange={(e) =>
+                    setModal({ ...modal, data: { ...modal.data, name: e.target.value } })
+                  }
+                  placeholder="Mahogany Heritage"
                 />
-                <div style={{ fontSize: 12, color: S.textMuted, marginTop: 4 }}>
-                  You can select multiple images (max 10)
-                </div>
+              </div>
+            </div>
+            <div style={styles.fr}>
+              <div style={styles.fg}>
+                <label style={styles.fl}>Size (ft)</label>
+                <input
+                  style={styles.fi}
+                  value={modal.data.size || ''}
+                  onChange={(e) =>
+                    setModal({ ...modal, data: { ...modal.data, size: e.target.value } })
+                  }
+                  placeholder="e.g. 6ft, 7ft"
+                />
               </div>
               <div style={styles.fg}>
-                <label style={styles.fl}>Notes</label>
-                <textarea
-                  style={{ ...styles.fi, minHeight: 80, resize: 'vertical' }}
-                  value={modal.data.notes || ''}
+                <label style={styles.fl}>Color</label>
+                <input
+                  style={styles.fi}
+                  value={modal.data.color || ''}
                   onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })
+                    setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
                   }
-                  placeholder="Any notes..."
+                  placeholder="e.g. Black, Brown"
                 />
               </div>
             </div>
-
-            <div style={styles.bkFooter}>
-              <button
-                type="button"
-                style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
-                onClick={() => setModal({ open: false, type: '', data: {} })}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
-                disabled={submitLoading}
-              >
-                {submitLoading ? 'Saving...' : 'Save Coffin'}
-              </button>
+            <div style={styles.fr}>
+              <div style={styles.fg}>
+                <label style={styles.fl}>Price (KES) *</label>
+                <input
+                  style={styles.fi}
+                  required
+                  type="number"
+                  value={modal.data.price || ''}
+                  onChange={(e) =>
+                    setModal({ ...modal, data: { ...modal.data, price: e.target.value } })
+                  }
+                />
+              </div>
+              <div style={styles.fg}>
+                <label style={styles.fl}>Stock</label>
+                <input
+                  style={styles.fi}
+                  type="number"
+                  value={modal.data.stock || 0}
+                  onChange={(e) =>
+                    setModal({
+                      ...modal,
+                      data: { ...modal.data, stock: parseInt(e.target.value) || 0 },
+                    })
+                  }
+                />
+              </div>
             </div>
+            <div style={styles.bkSectionHead}>
+              <span>Media &amp; notes</span>
+              <span style={styles.bkSectionRule} />
+            </div>
+            <div style={styles.fg}>
+              <label style={styles.fl}>Images</label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files);
+                  setModal({ ...modal, data: { ...modal.data, images: files } });
+                }}
+                style={styles.bkFile}
+              />
+              <div style={{ fontSize: 12, color: S.textMuted, marginTop: 4 }}>
+                You can select multiple images (max 10)
+              </div>
+            </div>
+            <div style={styles.fg}>
+              <label style={styles.fl}>Notes</label>
+              <textarea
+                style={{ ...styles.fi, minHeight: 80, resize: 'vertical' }}
+                value={modal.data.notes || ''}
+                onChange={(e) =>
+                  setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })
+                }
+                placeholder="Any notes..."
+              />
+            </div>
+          </div>
+
+          <div style={styles.bkFooter}>
+            <button
+              type="button"
+              style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
+              onClick={() => setModal({ open: false, type: '', data: {} })}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
+              disabled={submitLoading}
+            >
+              {submitLoading ? 'Saving...' : 'Save Coffin'}
+            </button>
+          </div>
         </form>
       </div>
 
@@ -2957,9 +2959,9 @@ const CoffinDashboard = () => {
                   value={Math.max(
                     0,
                     (parseInt(modal.data.current_stock) || 0) +
-                      ((modal.data.mode || 'add') === 'add'
-                        ? (parseInt(modal.data.quantity) || 0)
-                        : -(parseInt(modal.data.quantity) || 0)),
+                    ((modal.data.mode || 'add') === 'add'
+                      ? (parseInt(modal.data.quantity) || 0)
+                      : -(parseInt(modal.data.quantity) || 0)),
                   )}
                 />
               </div>
@@ -3125,7 +3127,7 @@ const CoffinDashboard = () => {
                     return branchCoffinsList.length > 0 ? (
                       branchCoffinsList.map((c) => (
                         <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
-                          {c.name} — {formatKES(c.price)} ({c.stock} left)
+                          {c.name} � {formatKES(c.price)} ({c.stock} left)
                         </option>
                       ))
                     ) : (
@@ -3168,6 +3170,44 @@ const CoffinDashboard = () => {
                     <option value="no">No</option>
                     <option value="yes">Yes</option>
                   </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={styles.fl}>Amount</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    style={styles.fi}
+                    value={modal.data.amount || ''}
+                    onChange={(e) =>
+                      setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, amount: e.target.value },
+                      }))
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label style={styles.fl}>Deposit</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    style={styles.fi}
+                    value={modal.data.deposit || ''}
+                    onChange={(e) =>
+                      setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, deposit: e.target.value },
+                      }))
+                    }
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
 
@@ -3258,7 +3298,7 @@ const CoffinDashboard = () => {
                     {(() => {
                       // Only offer coffins stocked at the SOURCE branch being
                       // requested from (plus shared central stock without a
-                      // branch assignment) — never my own branch's stock.
+                      // branch assignment) � never my own branch's stock.
                       const sourceBranchId =
                         modal.data.from_branch_id || modal.data.to_branch_id || '';
                       const sourceCoffins = coffins.filter((c) => {
@@ -3375,7 +3415,7 @@ const CoffinDashboard = () => {
         </div>
       </div>
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DRAWER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ──────────── DRAWER ──────────── */}
       <div
         style={{ ...styles.drawerOverlay, ...(drawer.open ? styles.drawerOverlayOpen : {}) }}
         onClick={closeDrawer}
@@ -3393,7 +3433,7 @@ const CoffinDashboard = () => {
   );
 };
 
-// â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helper ──────────────────────────────────────────────────────────
 const objToStr = (obj) => {
   if (!obj) return '';
   return Object.entries(obj)
@@ -3408,3 +3448,4 @@ const objToStr = (obj) => {
 };
 
 export default CoffinDashboard;
+

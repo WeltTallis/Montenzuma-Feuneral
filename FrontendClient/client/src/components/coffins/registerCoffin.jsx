@@ -882,11 +882,15 @@ const RegisterCoffin = () => {
 
   const [coffinData, setCoffinData] = useState({
     name: '',
+    type: '',
     price: '',
     size: '',
     color: '',
-    quantity: ''
+    quantity: '',
+    description: ''
   });
+  const [registeredTypes, setRegisteredTypes] = useState(() => { try { return JSON.parse(localStorage.getItem('coffinTypes') || '[]'); } catch { return []; } });
+  const [registeredColors, setRegisteredColors] = useState(() => { try { return JSON.parse(localStorage.getItem('coffinColors') || '[]'); } catch { return []; } });
 
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -929,7 +933,13 @@ const RegisterCoffin = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setCoffinData({ ...coffinData, [name]: value });
+    setCoffinData({ ...coffinData, [name]: value, ...(name === 'type' ? { name: value } : {}) });
+  };
+
+  const rememberOption = (key, value, setter) => {
+    const clean = String(value || '').trim();
+    if (!clean) return;
+    setter((current) => { const next = [...new Set([...current, clean])].sort(); localStorage.setItem(key, JSON.stringify(next)); return next; });
   };
 
   const handleFileChange = (e) => {
@@ -1027,8 +1037,8 @@ const RegisterCoffin = () => {
     setSuccessMessage(null);
 
     // Enhanced validation
-    if (!coffinData.name) {
-      setError('Coffin Name is required.');
+    if (!(coffinData.type || coffinData.name)) {
+      setError('Coffin type is required.');
       setLoading(false);
       return;
     }
@@ -1101,10 +1111,12 @@ const RegisterCoffin = () => {
       // Reset form
       setCoffinData({
         name: '',
+        type: '',
         price: '',
         size: '',
         color: '',
-        quantity: ''
+        quantity: '',
+        description: ''
       });
       setImageFiles([]);
       setImagePreviews([]);
@@ -1220,17 +1232,24 @@ const RegisterCoffin = () => {
               <Col md={12}>
                 <StyledFormGroup controlId="formName">
                   <Form.Label>
-                    <Box /> Coffin Name
+                    <Box /> Coffin Type
                     <span className="required-badge">REQUIRED</span>
                   </Form.Label>
                   <Form.Control
                     type="text"
-                    name="name"
-                    value={coffinData.name}
+                    name="type"
+                    value={coffinData.type}
                     onChange={handleInputChange}
-                    placeholder="e.g., Mahogany Heritage"
+                    placeholder="e.g., Heritage Oak"
+                    list="registered-coffin-types"
                     required
                   />
+                  <datalist id="registered-coffin-types">{registeredTypes.map((type) => <option key={type} value={type} />)}</datalist>
+                  <Form.Text>Register a consistent type name so colors and stock stay grouped.</Form.Text>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <Form.Control type="text" name="typeDraft" placeholder="Add a new type" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); rememberOption('coffinTypes', event.currentTarget.value, setRegisteredTypes); event.currentTarget.value = ''; } }} />
+                    <button type="button" className="btn btn-outline-secondary" onClick={(event) => { const input = event.currentTarget.previousElementSibling; rememberOption('coffinTypes', input.value, setRegisteredTypes); input.value = ''; }}>Add type</button>
+                  </div>
                 </StyledFormGroup>
               </Col>
             </Row>
@@ -1270,11 +1289,27 @@ const RegisterCoffin = () => {
                     name="color"
                     value={coffinData.color}
                     onChange={handleInputChange}
-                    placeholder="e.g., Dark Brown"
+                    placeholder="e.g., Walnut Brown"
+                    list="registered-coffin-colors"
                   />
+                  <datalist id="registered-coffin-colors">{registeredColors.map((color) => <option key={color} value={color} />)}</datalist>
+                  <Form.Text>Colors become available filters on the coffin inventory dashboard.</Form.Text>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <Form.Control type="text" name="colorDraft" placeholder="Add a new color" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); rememberOption('coffinColors', event.currentTarget.value, setRegisteredColors); event.currentTarget.value = ''; } }} />
+                    <button type="button" className="btn btn-outline-secondary" onClick={(event) => { const input = event.currentTarget.previousElementSibling; rememberOption('coffinColors', input.value, setRegisteredColors); input.value = ''; }}>Add color</button>
+                  </div>
                 </StyledFormGroup>
               </Col>
             </Row>
+          </FormSection>
+
+          <FormSection>
+            <div className="section-title"><FileText /> Description</div>
+            <StyledFormGroup controlId="formDescription">
+              <Form.Label>Short coffin description</Form.Label>
+              <Form.Control as="textarea" rows={2} name="description" value={coffinData.description} onChange={handleInputChange} placeholder="e.g., Short coffin, no handles, cream interior" />
+              <Form.Text>Use this for practical details such as handles, lining, shape, or finish.</Form.Text>
+            </StyledFormGroup>
           </FormSection>
 
           {/* Pricing & Inventory Section */}

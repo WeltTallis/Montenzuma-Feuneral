@@ -31,6 +31,7 @@ import "./dashboard.css";
 import "./shell/shell.css";
 import "./florist/flowers.css";
 import "./metis-design.css";
+import "./dashboard-redesign.css";
 
 import { useCaseData } from "./useCaseData";
 import { schedulePeriod } from "./schedulePeriod";
@@ -50,7 +51,7 @@ import { CaseDrawer, ModalHost } from "./opsPanels";
 import WorkshopPanel from "./WorkshopPanel";
 import StoreSection from "./StoreSection";
 import FlowerAnalytics from "./florist/FlowerAnalytics";
-import CoffinStoreTracker from "./CoffinStoreTracker";
+import SimpleCoffinInventory from "./SimpleCoffinInventory";
 import DeceasedScheduleCalendar, { MOCK_EVENTS } from "./HearseCalendar";
 import DashSidebar, { NAV_ITEMS } from "./shell/DashSidebar";
 
@@ -663,7 +664,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           ) : navView === "flowers" ? (
             <FlowerAnalytics />
           ) : navView === "coffin-store" ? (
-            <CoffinStoreTracker />
+            <SimpleCoffinInventory />
           ) : navView === "calendar" ? (
             <DeceasedScheduleCalendar events={calendarEvents} onEventSelect={(e) => {}} />
           ) : loading && !cases.length ? (

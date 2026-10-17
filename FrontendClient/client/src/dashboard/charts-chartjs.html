@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8" />
+        <title>Chart.js - Sufee Admin</title>
+        <meta name="description" content="Chart.js Examples - Sufee Admin Dashboard" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <div data-partial="head-common"></div>
+        <style>
+            /* Chart container styles */
+            .chart-container {
+                position: relative;
+                height: 300px;
+                margin-bottom: 20px;
+            }
+
+            .chart-container-tall {
+                height: 400px;
+            }
+
+            .chart-container-small {
+                height: 200px;
+            }
+
+            /* Chart card styles */
+            .chart-card {
+                transition: transform 0.2s ease-in-out;
+            }
+
+            .chart-card:hover {
+                transform: translateY(-2px);
+            }
+
+            /* Legend customization */
+            .chart-legend {
+                margin-top: 20px;
+                padding: 10px;
+                background: #f8f9fa;
+                border-radius: 0.375rem;
+            }
+
+            /* Stats display */
+            .chart-stats {
+                display: flex;
+                justify-content: space-around;
+                margin-bottom: 20px;
+            }
+
+            .chart-stat {
+                text-align: center;
+            }
+
+            .chart-stat-value {
+                font-size: 1.5rem;
+                font-weight: bold;
+                color: var(--bs-primary);
+            }
+
+            .chart-stat-label {
+                font-size: 0.875rem;
+                color: var(--bs-secondary);
+            }
+        </style>
+    </head>
+
+    <body class="sufee-dashboard" data-page="charts-chartjs">
+        <!-- Main Container -->
+        <div class="d-flex min-vh-100">
+            <!-- Sidebar -->
+            <div data-partial="sidebar" data-partial-replace="true"></div>
+
+            <!-- Main Content Area -->
+            <div class="main-content flex-grow-1">
+                <!-- Top Header -->
+                <div data-partial="header" data-partial-replace="true"></div>
+
+                <!-- Breadcrumb Section -->
+                <div data-breadcrumb data-breadcrumb-title="Chart.js" data-breadcrumb-path="Charts|Chart.js"></div>
+
+                <!-- Content Area -->
+                <main class="content-area p-4">
+                    <div class="container-fluid">
+                        <!-- Page Header -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h1 class="h3 mb-3">Chart.js Examples</h1>
+                                <p class="text-muted mb-0">
+                                    Beautiful and responsive charts using Chart.js library with various chart types and
+                                    configurations.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Line and Bar Charts -->
+                        <div class="row mb-4">
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Line Chart</h5>
+                                        <span class="badge bg-info">Last 7 months</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-stats">
+                                            <div class="chart-stat">
+                                                <div class="chart-stat-value">$12,345</div>
+                                                <div class="chart-stat-label">Total Revenue</div>
+                                            </div>
+                                            <div class="chart-stat">
+                                                <div class="chart-stat-value">+23%</div>
+                                                <div class="chart-stat-label">Growth</div>
+                                            </div>
+                                            <div class="chart-stat">
+                                                <div class="chart-stat-value">1,234</div>
+                                                <div class="chart-stat-label">Orders</div>
+                                            </div>
+                                        </div>
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="lineChart"
+                                                data-chart="line"
+                                                data-labels="January,February,March,April,May,June,July"
+                                                data-values="65,59,80,81,56,55,40;28,48,40,19,86,27,90"
+                                                data-datasets="Revenue,Cost"
+                                                data-colors="info,danger"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Bar Chart</h5>
+                                        <span class="badge bg-primary">Monthly Sales</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="barChart"
+                                                data-chart="bar"
+                                                data-labels="Red,Blue,Yellow,Green,Purple,Orange"
+                                                data-values="12,19,3,5,2,3"
+                                                data-datasets="Sales"
+                                                data-no-legend
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pie and Doughnut Charts -->
+                        <div class="row mb-4">
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Pie Chart</h5>
+                                        <span class="badge bg-success">Categories</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="pieChart"
+                                                data-chart="pie"
+                                                data-labels="Electronics,Clothing,Food,Books,Sports"
+                                                data-values="300,50,100,40,120"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Doughnut Chart</h5>
+                                        <span class="badge bg-info">Market Share</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="doughnutChart"
+                                                data-chart="doughnut"
+                                                data-labels="Desktop,Mobile,Tablet,Other"
+                                                data-values="55,30,10,5"
+                                                data-colors="info,warning,success,secondary"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Radar and Polar Area Charts -->
+                        <div class="row mb-4">
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Radar Chart</h5>
+                                        <span class="badge bg-warning">Skills</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="radarChart"
+                                                data-chart="radar"
+                                                data-labels="JavaScript,Python,Java,C++,Ruby,PHP"
+                                                data-values="85,70,60,75,50,80;70,85,75,60,70,65"
+                                                data-datasets="Developer A,Developer B"
+                                                data-colors="info,danger"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Polar Area Chart</h5>
+                                        <span class="badge bg-danger">Distribution</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="polarAreaChart"
+                                                data-chart="polarArea"
+                                                data-labels="Red,Green,Yellow,Grey,Blue"
+                                                data-values="11,16,7,3,14"
+                                                data-colors="danger,success,warning,secondary,info"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mixed and Area Charts -->
+                        <div class="row mb-4">
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Mixed Chart</h5>
+                                        <span class="badge bg-secondary">Revenue vs Orders</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container chart-container-tall">
+                                            <canvas id="mixedChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Area Chart</h5>
+                                        <span class="badge bg-dark">Traffic</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container chart-container-tall">
+                                            <canvas
+                                                id="areaChart"
+                                                data-chart="area"
+                                                data-labels="00:00,04:00,08:00,12:00,16:00,20:00,24:00"
+                                                data-values="30,25,50,75,85,60,45"
+                                                data-datasets="Visitors"
+                                                data-colors="info"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bubble and Scatter Charts -->
+                        <div class="row mb-4">
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Bubble Chart</h5>
+                                        <span class="badge bg-primary">Data Points</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="bubbleChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Scatter Chart</h5>
+                                        <span class="badge bg-success">Correlation</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="scatterChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Horizontal Bar and Stacked Charts -->
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Horizontal Bar Chart</h5>
+                                        <span class="badge bg-info">Rankings</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container chart-container-tall">
+                                            <canvas
+                                                id="horizontalBarChart"
+                                                data-chart="bar"
+                                                data-horizontal
+                                                data-labels="Product A,Product B,Product C,Product D,Product E"
+                                                data-values="65,59,80,81,56"
+                                                data-datasets="Sales"
+                                                data-colors="primary"
+                                                data-no-legend
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="card chart-card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Stacked Bar Chart</h5>
+                                        <span class="badge bg-warning">Breakdown</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container chart-container-tall">
+                                            <canvas
+                                                id="stackedBarChart"
+                                                data-chart="bar"
+                                                data-stacked
+                                                data-labels="Q1,Q2,Q3,Q4"
+                                                data-values="20,30,40,50;30,25,35,40;15,20,25,30"
+                                                data-datasets="Product A,Product B,Product C"
+                                                data-colors="danger,info,warning"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script type="module" src="/main.js"></script>
+        <script type="module">
+            // Most charts on this page are wired up via `data-chart` attributes
+            // and rendered by ChartManager (src/scripts/components/charts.js).
+            //
+            // The three below (mixed, bubble, scatter) use Chart.js shapes that
+            // don't fit the single-array attribute model — kept as-is to show
+            // when to escape from the declarative wrapper.
+            import Chart from 'chart.js/auto';
+
+            Chart.defaults.font.family = "'Open Sans', sans-serif";
+            Chart.defaults.color = '#6c757d';
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 15, boxWidth: 12 }
+                    }
+                }
+            };
+
+            // Mixed Chart — bar + line on dual y-axes
+            new Chart(document.getElementById('mixedChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: [12000, 19000, 15000, 25000, 22000, 30000],
+                            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                            order: 1
+                        },
+                        {
+                            label: 'Orders',
+                            data: [120, 190, 150, 250, 220, 300],
+                            type: 'line',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            yAxisID: 'y1',
+                            order: 0
+                        }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left'
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Bubble Chart
+            new Chart(document.getElementById('bubbleChart'), {
+                type: 'bubble',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Dataset 1',
+                            data: [
+                                { x: 20, y: 30, r: 15 },
+                                { x: 40, y: 10, r: 10 },
+                                { x: 30, y: 20, r: 25 },
+                                { x: 10, y: 40, r: 20 }
+                            ],
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                        },
+                        {
+                            label: 'Dataset 2',
+                            data: [
+                                { x: 10, y: 20, r: 15 },
+                                { x: 25, y: 30, r: 20 },
+                                { x: 35, y: 25, r: 10 },
+                                { x: 45, y: 35, r: 25 }
+                            ],
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                        }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 50
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 50
+                        }
+                    }
+                }
+            });
+
+            // Scatter Chart
+            new Chart(document.getElementById('scatterChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Scatter Dataset',
+                            data: [
+                                { x: -10, y: 0 },
+                                { x: 0, y: 10 },
+                                { x: 10, y: 5 },
+                                { x: 0.5, y: 5.5 },
+                                { x: -5, y: -5 },
+                                { x: 5, y: -10 },
+                                { x: -3, y: 8 },
+                                { x: 7, y: -3 }
+                            ],
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                        }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
