@@ -1025,6 +1025,14 @@ const CoffinDashboard = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (modal.open && modal.type === 'booking') {
+      setBookingSearch('');
+      setBookingTypeFilter('all');
+      setBookingColorFilter('all');
+    }
+  }, [modal.open, modal.type]);
+
   // API Calls 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
@@ -3241,6 +3249,9 @@ const CoffinDashboard = () => {
                         coffin_id: e.target.value,
                         color: selected?.color || '',
                         size: selected?.size || '',
+                        quantity: selected
+                          ? Math.min(parseInt(prev.data.quantity, 10) || 1, getCoffinStock(selected))
+                          : prev.data.quantity,
                         amount: selected?.price ?? selected?.exact_price ?? prev.data.amount,
                       },
                     }));
@@ -3577,4 +3588,5 @@ const objToStr = (obj) => {
     })
     .join(';');
 };
-
+
+export default CoffinDashboard;

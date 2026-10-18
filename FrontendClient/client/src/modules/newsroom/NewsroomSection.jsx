@@ -400,8 +400,8 @@ const NewsroomSection = () => {
                       </defs>
                       <rect x="2" y="10" width="36" height="36" rx="9" fill="url(#rpg)" />
                       <path d="M12 22 L20 30 L32 18" stroke="#FAF8F4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                      <text x="48" y="28" font-family="Fraunces, serif" font-size="22" font-weight="500" fill="#15171A" letter-spacing="-0.5">RestPay</text>
-                      <text x="48" y="44" font-family="JetBrains Mono, monospace" font-size="7" fill="#8B7355" letter-spacing="2">UNIFIED PAYMENTS</text>
+                      <text x="48" y="28" font-family="Fraunces, serif" font-size="22" font-weight="500" fill="#15171A" letterSpacing="-0.5">RestPay</text>
+                      <text x="48" y="44" font-family="JetBrains Mono, monospace" font-size="7" fill="#8B7355" letterSpacing="2">UNIFIED PAYMENTS</text>
                     </svg>
                   </div>
                   <img src={articles[0].logo} alt="RestPay Preview" onError={hideBrokenLogo} />
