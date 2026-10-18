@@ -145,8 +145,11 @@ export const createCoffin = async (req: Request, res: Response) => {
     }
 
     const existing: any[] = await coffinQuery(
-      'SELECT coffin_id FROM coffins WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ? AND is_deleted = FALSE',
-      [modelType, (color || '').trim(), (size || '').trim(), tenantSlug]
+      `SELECT coffin_id FROM coffins
+       WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ?
+         AND ((branch_id = ?) OR (branch_id IS NULL AND ? IS NULL))
+         AND is_deleted = FALSE`,
+      [modelType, (color || '').trim(), (size || '').trim(), tenantSlug, branchIdVal, branchIdVal]
     );
 
     if (existing.length > 0) {

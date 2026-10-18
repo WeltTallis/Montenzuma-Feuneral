@@ -59,6 +59,7 @@ import {
 import {
     getInventory,
     dispatchItem,
+    updateDispatchTarget,
     restockItem,
     getHistory,
     getTargets,
@@ -139,6 +140,7 @@ workshopRouter.post('/orders/:orderId/complete-stage', completeProductionStage)
 workshopRouter.get('/store/inventory', getInventory)
 workshopRouter.get('/store/history', getHistory)
 workshopRouter.post('/store/dispatch', dispatchItem)
+workshopRouter.patch('/store/dispatch/:id/target', updateDispatchTarget)
 workshopRouter.post('/store/restock', restockItem)
 
 // Driver pickup feed. A "pickup" is a store dispatch that was assigned to a

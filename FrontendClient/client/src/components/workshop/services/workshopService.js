@@ -186,6 +186,9 @@ export const workshopService = {
     dispatchStoreItem: (data) =>
         handleResponse(workshopApi.post('/workshop/store/dispatch', data)),
 
+    updateDispatchTarget: (id, data) =>
+        handleResponse(workshopApi.patch(`/workshop/store/dispatch/${id}/target`, data)),
+
     // Driver pickups — store dispatches that were assigned to a driver.
     // `identity` is `{ driver_id }` or `{ driver_name }`; the endpoint refuses
     // to list anything without one so a tenant's whole dispatch history is

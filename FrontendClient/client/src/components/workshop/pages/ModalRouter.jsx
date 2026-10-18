@@ -7,7 +7,7 @@ const T = {
   primary: '#1E40AF',
 };
 
-const ModalRouter = ({ type, onClose, onSubmit, workers = [] }) => {
+const ModalRouter = ({ type, onClose, onSubmit, workers = [], catalog }) => {
   if (!type) return null;
 
   return (
@@ -22,7 +22,7 @@ const ModalRouter = ({ type, onClose, onSubmit, workers = [] }) => {
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: T.textMuted, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: 20 }}>
-          {type === 'createOrder' && <CreateOrderForm close={onClose} onSubmit={onSubmit} workers={workers} />}
+          {type === 'createOrder' && <CreateOrderForm close={onClose} onSubmit={onSubmit} workers={workers} catalog={catalog} />}
           {type === 'createWorker' && <CreateWorkerForm close={onClose} onSubmit={onSubmit} />}
           {type === 'createMaterial' && <CreateMaterialForm close={onClose} onSubmit={onSubmit} />}
         </div>

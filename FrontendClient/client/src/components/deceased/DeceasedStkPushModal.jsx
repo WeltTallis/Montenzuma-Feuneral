@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import api from '../../api/axios';
 import { getTenantSlug } from '../../utils/globalAuth';
 import './DeceasedStkPushModal.css';
 
 const STATUS_POLL_INTERVAL_MS = 4000;
 const MAX_STATUS_POLLS = 75;
-const AMOUNT_PRESETS = [5000, 10000, 25000, 50000];
 const recordKey = record => String(record?.deceased_id || record?.deceasedId || record?.id || '');
 const recordAdmission = record => record?.admission_number || record?.admission_no || '';
 
@@ -126,6 +126,8 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
 
   const displayPhone = phoneNumber || '—';
   const displayName = deceasedName(selectedDeceased);
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  const formattedAmount = `KES ${Math.round(Number(amount) || 0).toLocaleString('en-KE')}`;
   const statusTitle = paymentState === 'paid' ? 'Payment received' :
     paymentState === 'failed' ? 'Payment not completed' :
       paymentState === 'delayed' ? 'Still waiting for M-Pesa' : 'Waiting for payment';
@@ -144,10 +146,11 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
       onMouseDown={event => event.target === event.currentTarget && onClose()}
     >
       <section className="deceased-stk-panel" role="dialog" aria-modal="true" aria-labelledby="deceased-stk-title">
-        <header className="deceased-stk-header">
+        <header className={`deceased-stk-header${paymentState === 'failed' ? ' is-failure' : paymentState === 'delayed' ? ' is-waiting' : ''}`}>
           <div>
-            <h2 id="deceased-stk-title">{requestResult ? statusTitle : 'Request M-Pesa payment'}</h2>
-            <p>{requestResult ? resultDescription : 'The payer gets a prompt on their phone to enter their PIN.'}</p>
+            {!requestResult && <div className="deceased-stk-brand"><i />M-Pesa payment</div>}
+            <h2 id="deceased-stk-title">{requestResult ? statusTitle : 'Request a payment'}</h2>
+            <p>{requestResult ? resultDescription : 'The payer receives a prompt on their phone and approves it with their M-Pesa PIN.'}</p>
           </div>
           <button className="deceased-stk-close" type="button" aria-label="Close" onClick={onClose}>×</button>
         </header>
@@ -156,14 +159,36 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
           {requestResult ? (
             paymentState === 'pending' ? (
               <div className="deceased-stk-processing" role="status" aria-live="polite">
-                <div className="deceased-stk-phone-art" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                    <rect x="7" y="2" width="10" height="20" rx="2.5" />
-                    <path d="M11 18h2" />
-                  </svg>
+                <div className="deceased-stk-hero">
+                  <div className="deceased-stk-hero-main">
+                    <div className="deceased-stk-pulse" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                        <rect x="7" y="2" width="10" height="20" rx="2.5" />
+                        <path d="M11 18h2" />
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="deceased-stk-hero-label">Approve on {displayPhone}</span>
+                      <strong className="deceased-stk-hero-amount">{formattedAmount}</strong>
+                    </div>
+                  </div>
+                  <div className="deceased-stk-qr">
+                    <div className="deceased-stk-qr-box">
+                      <QRCodeSVG
+                        value={checkoutRequestId}
+                        size={96}
+                        bgColor="#ffffff"
+                        fgColor="#08261f"
+                        level="M"
+                        aria-label="M-Pesa checkout request reference"
+                      />
+                    </div>
+                    <span>Request reference</span>
+                  </div>
                 </div>
-                <h3>Check your phone</h3>
-                <p>Approve the M-Pesa prompt to pay <strong>KES {Math.round(Number(amount)).toLocaleString('en-KE')}</strong>.</p>
+                <div className="deceased-stk-progress" aria-label={`Payment confirmation check ${pollCount} of ${MAX_STATUS_POLLS}`}>
+                  <div style={{ width: `${Math.max(4, (pollCount / MAX_STATUS_POLLS) * 100)}%` }} />
+                </div>
                 <ol className="deceased-stk-steps">
                   <li className="is-done"><span />Request sent to M-Pesa</li>
                   <li className={pollCount > 5 ? 'is-done' : 'is-active'}><span />Waiting for PIN on {displayPhone}</li>
@@ -189,19 +214,20 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                   ) : '…'}
                 </div>
                 <h3>{paymentState === 'paid'
-                  ? `KES ${Math.round(Number(amount)).toLocaleString('en-KE')} received`
+                  ? `${formattedAmount} received`
                   : paymentState === 'failed' ? 'Payment was not received' : 'Confirmation is taking longer than expected'}</h3>
                 <p>{paymentState === 'paid'
                   ? `The payment is now recorded on ${displayName}’s deceased record.`
                   : resultDescription}</p>
                 <dl className="deceased-stk-receipt">
-                  {paymentState === 'paid' && requestResult.receipt && <div><dt>M-Pesa code</dt><dd>{requestResult.receipt}</dd></div>}
+                  {paymentState === 'paid' && (requestResult.receipt || requestResult.mpesaReceiptNumber || requestResult.MpesaReceiptNumber) && <div><dt>M-Pesa code</dt><dd className="deceased-stk-code">{requestResult.receipt || requestResult.mpesaReceiptNumber || requestResult.MpesaReceiptNumber}</dd></div>}
+                  <div><dt>Deceased</dt><dd>{displayName}</dd></div>
                   <div><dt>Paid by</dt><dd>{kinName.trim()}</dd></div>
                   <div><dt>Phone</dt><dd>{displayPhone}</dd></div>
                   <div><dt>Admission</dt><dd>{admissionNumber}</dd></div>
                   <div className="deceased-stk-total">
                     <dt>{paymentState === 'paid' ? 'Amount paid' : 'Amount requested'}</dt>
-                    <dd>KES {Math.round(Number(amount)).toLocaleString('en-KE')}</dd>
+                    <dd>{formattedAmount}</dd>
                   </div>
                 </dl>
                 {paymentState === 'delayed' && <p className="deceased-stk-secure-note">Do not send another request until you have checked whether this payment arrived.</p>}
@@ -210,7 +236,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
           ) : (
             <>
               <div className="deceased-stk-record">
-                <div className="deceased-stk-avatar" aria-hidden="true">{displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</div>
+                <div className="deceased-stk-avatar" aria-hidden="true">{initials}</div>
                 <div className="deceased-stk-record-text"><strong>{displayName}</strong><span>Admission {admissionNumber || '—'}</span></div>
               </div>
               <form id="deceased-stk-form" className="deceased-stk-form" onSubmit={submit}>
@@ -227,26 +253,21 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                     </select>
                   </label>
                 )}
+                <div className="deceased-stk-row">
+                  <label>
+                    <span>Next of kin name</span>
+                    <input className="deceased-stk-input" value={kinName} onChange={event => setKinName(event.target.value)} autoComplete="name" required />
+                  </label>
+                  <label>
+                    <span>M-Pesa phone number</span>
+                    <input className="deceased-stk-input" type="tel" inputMode="tel" placeholder="0712 345 678" value={phoneNumber} onChange={event => setPhoneNumber(event.target.value)} autoComplete="tel" required />
+                  </label>
+                </div>
                 <label>
-                  <span>Next of kin name</span>
-                  <input className="deceased-stk-input" value={kinName} onChange={event => setKinName(event.target.value)} autoComplete="name" required />
-                </label>
-                <label>
-                  <span>M-Pesa phone number</span>
-                  <input className="deceased-stk-input" type="tel" inputMode="tel" placeholder="0712 345 678" value={phoneNumber} onChange={event => setPhoneNumber(event.target.value)} autoComplete="tel" required />
-                </label>
-                <label>
-                  <span>Amount</span>
+                  <span>Amount to pay</span>
                   <div className="deceased-stk-amount">
                     <span>KES</span>
                     <input className="deceased-stk-input" type="number" min="1" step="1" inputMode="numeric" placeholder="0" value={amount} onChange={event => setAmount(event.target.value)} required />
-                  </div>
-                  <div className="deceased-stk-presets" aria-label="Suggested amounts">
-                    {AMOUNT_PRESETS.map(preset => (
-                      <button type="button" key={preset} className={Number(amount) === preset ? 'is-selected' : ''} onClick={() => setAmount(String(preset))}>
-                        {preset.toLocaleString('en-KE')}
-                      </button>
-                    ))}
                   </div>
                 </label>
                 {error && <div className="deceased-stk-error" role="alert">{error}</div>}
@@ -260,7 +281,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
           <footer className="deceased-stk-footer">
             <button type="button" className="deceased-stk-button" onClick={onClose}>Cancel</button>
             <button type="submit" form="deceased-stk-form" className="deceased-stk-button is-primary" disabled={busy || !selectedDeceased}>
-              {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : 'Send payment request'}
+              {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : `Send request${Number(amount) > 0 ? ` · ${formattedAmount}` : ''}`}
             </button>
           </footer>
         )}

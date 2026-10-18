@@ -7,17 +7,8 @@ const T = {
   primary: '#1E40AF',
 };
 
-/* The base coffin types the workshop stocks.
-
-   The Store tracks coffins BY TYPE, so the type is the one thing that decides
-   which store line an order adds to. This form therefore offers the canonical
-   list below PLUS every type the Store already holds (fetched at run time) and
-   nothing else. A free-typed near-duplicate ("Standard " beside "standard") is
-   what used to open a second store line and leave the store disagreeing with
-   the floor, so the choice is deliberately constrained.
-
-   Adding a genuinely new type means adding it here — that keeps the Store a
-   uniform, one-line-per-type list. */
+/* Common coffin types remain available alongside tenant-configured types and
+   variants already represented by finished stock. */
 export const COFFIN_TYPES = [
   'Standard', 'Premier', 'Executive', 'Deluxe', 'Basic', 'Casket', 'Child',
 ];
@@ -28,15 +19,14 @@ const inputStyle = {
 };
 const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 4 };
 
-const CreateOrderForm = ({ close, onSubmit, workers = [] }) => {
+const CreateOrderForm = ({ close, onSubmit, workers = [], catalog }) => {
     const [form, setForm] = useState({
       coffin_name: '', coffin_type: 'Standard', size: '', color: '',
       priority: 'normal', assigned_worker_id: '',
     });
 
-  /* Types the Store already tracks, with how many of each it holds. Best-effort:
-     if the inventory call fails the canonical COFFIN_TYPES list alone is offered,
-     so creating an order is never blocked by the Store being unavailable. */
+  /* Variants the Store already tracks. Best-effort: if the inventory call fails,
+     the canonical COFFIN_TYPES list alone is offered. */
   const [storeTypes, setStoreTypes] = useState([]);
   useEffect(() => {
     let alive = true;
@@ -45,7 +35,12 @@ const CreateOrderForm = ({ close, onSubmit, workers = [] }) => {
       if (!alive || !res?.success) return;
       const list = Array.isArray(res.data?.coffinTypes) ? res.data.coffinTypes : [];
       setStoreTypes(list
-        .map(t => ({ type: String(t?.type ?? '').trim(), count: Number(t?.count) || 0 }))
+        .map(t => ({
+          type: String(t?.type ?? '').trim(),
+          color: String(t?.color ?? '').trim(),
+          size: String(t?.size ?? '').trim(),
+          count: Number(t?.count) || 0,
+        }))
         .filter(t => t.type));
     })();
     return () => { alive = false; };
@@ -53,10 +48,10 @@ const CreateOrderForm = ({ close, onSubmit, workers = [] }) => {
 
   const keyOf = (s) => String(s).trim().toLowerCase();
 
-  /* Canonical types first, then anything else the Store holds — de-duplicated
-     case-insensitively, so the dropdown can never offer the same type twice. */
+  /* Canonical types first, then types from settings or finished stock. */
   const typeOptions = useMemo(() => {
-    const counts = new Map(storeTypes.map(t => [keyOf(t.type), t.count]));
+    const counts = new Map();
+    storeTypes.forEach((t) => counts.set(keyOf(t.type), (counts.get(keyOf(t.type)) || 0) + t.count));
     const seen = new Set();
     const out = [];
     const push = (raw) => {
@@ -67,11 +62,21 @@ const CreateOrderForm = ({ close, onSubmit, workers = [] }) => {
       out.push({ type, count: counts.get(k) || 0 });
     };
     COFFIN_TYPES.forEach(push);
+    Object.keys(catalog?.types || {}).forEach(push);
     storeTypes.forEach(t => push(t.type));
     return out;
-  }, [storeTypes]);
+  }, [storeTypes, catalog]);
 
-  const selectedInStore = typeOptions.find(o => keyOf(o.type) === keyOf(form.coffin_type))?.count || 0;
+  const colorOptions = useMemo(() => {
+    const configured = catalog?.types?.[form.coffin_type] || [];
+    const stocked = storeTypes.filter((variant) => keyOf(variant.type) === keyOf(form.coffin_type)).map((variant) => variant.color);
+    return [...new Set([...configured, ...stocked].filter(Boolean))];
+  }, [catalog, form.coffin_type, storeTypes]);
+  const selectedInStore = storeTypes
+    .filter((variant) => keyOf(variant.type) === keyOf(form.coffin_type)
+      && (!form.color || keyOf(variant.color) === keyOf(form.color))
+      && (!form.size || keyOf(variant.size) === keyOf(form.size)))
+    .reduce((count, variant) => count + variant.count, 0);
 
   const submit = (e) => {
     e.preventDefault();
@@ -91,7 +96,7 @@ const CreateOrderForm = ({ close, onSubmit, workers = [] }) => {
           <select
             required
             value={form.coffin_type}
-            onChange={e => setForm({ ...form, coffin_type: e.target.value })}
+            onChange={e => setForm({ ...form, coffin_type: e.target.value, color: '' })}
             style={inputStyle}
           >
             {typeOptions.map(o => (
@@ -101,18 +106,25 @@ const CreateOrderForm = ({ close, onSubmit, workers = [] }) => {
             ))}
           </select>
           <p style={{ fontSize: 11, color: T.textSec, margin: '4px 0 0' }}>
-            The type is what the Store counts and tracks — every order of the same
-            type adds to that one store line.
+            The Store tracks finished coffins separately by type, color, and size.
             {selectedInStore > 0 && (
-              <> This type already holds <b>{selectedInStore}</b> in the Store, so
-              this order adds to that same line.</>
+              <> This combination currently has <b>{selectedInStore}</b> finished in the Store.</>
             )}
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={labelStyle}>Color</label>
-            <input value={form.color} onChange={e => setForm({ ...form, color: e.target.value })} placeholder="e.g. Walnut, Mahogany, Oak" style={inputStyle} />
+            <select value={form.color} onChange={e => setForm({ ...form, color: e.target.value })} style={inputStyle}>
+              <option value="">Choose color</option>
+              {colorOptions.map((color) => <option key={color} value={color}>{color}</option>)}
+            </select>
+            {form.color && catalog?.colors?.[form.color] && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, color: T.textSec, fontSize: 11 }}>
+                <i style={{ width: 12, height: 12, display: 'inline-block', border: '1px solid #d1d5db', borderRadius: '50%', background: catalog.colors[form.color] }} />
+                {form.color}
+              </span>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Size (ft)</label>

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import env from '../utils/config/env';
-import { getAuthToken, getTenantSlug } from '../utils/globalAuth';
+import { getAuthToken, getTenantId, getTenantSlug, getBranchId } from '../utils/globalAuth';
 
 /**
  * Coffin service API client.
@@ -19,8 +19,12 @@ coffinApi.interceptors.request.use(
   (config) => {
     const token = getAuthToken();
     const slug = getTenantSlug();
+    const tenantId = getTenantId();
+    const branchId = getBranchId();
     if (token) config.headers['Authorization'] = `Bearer ${token}`;
     if (slug) config.headers['x-tenant-slug'] = slug;
+    if (tenantId && !config.headers['x-tenant-id']) config.headers['x-tenant-id'] = String(tenantId);
+    if (branchId && !config.headers['x-branch-id']) config.headers['x-branch-id'] = String(branchId);
     return config;
   },
   (error) => Promise.reject(error)
@@ -42,7 +46,9 @@ const unwrap = (p) => p.then((res) => res.data);
 export const CoffinAPI = {
   /** All coffins across every branch for the parent org (GET /coffins/all-branches?parent_slug=...) */
   getAllBranches: (parentSlug) =>
-    unwrap(coffinApi.get('/all-branches', { params: { parent_slug: parentSlug } })),
+    unwrap(coffinApi.get('/all-branches', {
+      params: { parent_slug: parentSlug, tenant_id: getTenantId() || undefined },
+    })),
 
   /** Single coffin detail (GET /coffins/:id) */
   getById: (id) => unwrap(coffinApi.get(`/${id}`)),
@@ -54,8 +60,24 @@ export const CoffinAPI = {
 
   /** Create a coffin reservation/order with amount and deposit support
    *  POST /coffins/orders */
-  createOrder: (orderData) =>
-    unwrap(coffinApi.post('/orders', orderData)),
+  createOrder: (orderData, branchId) =>
+    unwrap(coffinApi.post('/orders', {
+      ...orderData,
+      ...(branchId ? { branch_id: String(branchId) } : {}),
+    }, branchId ? { headers: { 'x-branch-id': String(branchId) } } : undefined)),
+
+  /** Register a finished workshop dispatch in a branch's coffin inventory. */
+  registerInventory: (inventoryData, branchId) =>
+    unwrap(coffinApi.post('/', {
+      ...inventoryData,
+      branch_id: String(branchId),
+    }, { headers: { 'x-branch-id': String(branchId) } })),
+
+  /** Update a branch inventory variant, including quantity adjustments. */
+  updateInventory: (coffinId, inventoryData, branchId) =>
+    unwrap(coffinApi.put(`/${coffinId}`, {
+      ...inventoryData,
+    }, { headers: { 'x-branch-id': String(branchId) } })),
 
   /** Update order status / paid / amount / deposit
    *  PATCH /coffins/orders/:id/status */

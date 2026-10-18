@@ -43,6 +43,16 @@ const ensureStoreColumns = async (tenantDb: string) => {
         ['destination', 'VARCHAR(255) NULL'],
         ['pickup_status', "ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending'"],
         ['responded_at', 'VARCHAR(255) NULL'],
+        ['dispatch_type', "VARCHAR(24) NOT NULL DEFAULT 'legacy'"],
+        ['dispatch_id', 'VARCHAR(64) NULL'],
+        ['recipient_name', 'VARCHAR(200) NULL'],
+        ['recipient_phone', 'VARCHAR(64) NULL'],
+        ['destination_branch_id', 'VARCHAR(64) NULL'],
+        ['service_date', 'DATE NULL'],
+        ['service_time', 'TIME NULL'],
+        ['customer_order_id', 'VARCHAR(64) NULL'],
+        ['target_status', "VARCHAR(24) NOT NULL DEFAULT 'not_applicable'"],
+        ['target_error', 'TEXT NULL'],
     ];
 
     try {
@@ -345,21 +355,22 @@ const getInventory = async (req: Request, res: Response) => {
         const materials: any = await safeTenantQuery(tenantDb,
             `SELECT id, name, category, unit, quantity FROM materials ORDER BY name`);
 
-        // ── Coffins are tracked BY TYPE, not one row per order ──────────────
-        // Every finished order used to add its own `cf:<id>` store row, so the
-        // store grew a long, meaningless list of individual coffins. The store
-        // only ever needs to know "how many of each TYPE do we hold", so all
-        // orders of the same type collapse into a single row keyed by the type.
-        /* The search key is the normalised type, so "Executive", "executive "
-           and "EXECUTIVE" are one store line rather than three. Everything that
-           is not a letter or a digit folds into a hyphen first, which also makes
-           "Standard 6ft" and "Standard-6ft" the same row. */
+        // Track finished stock by type, color, and size so dispatching one variant
+        // cannot accidentally consume stock from another.
         const typeKey = (t: string) => {
             const slug = String(t).trim().toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, '');
             return `cft:${slug || 'uncategorised'}`;
         };
+        const valueKey = (value: unknown, fallback: string) => {
+            const slug = String(value ?? '').trim().toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return slug || fallback;
+        };
+        const variantKey = (type: string, color: string, size: string) =>
+            `${typeKey(type)}:${valueKey(color, 'no-color')}:${valueKey(size, 'no-size')}`;
 
         /* A row is given ONE label. Previously it was whichever order happened to
            sort first, so the Store could show "standard" beside the "Standard"
@@ -370,16 +381,28 @@ const getInventory = async (req: Request, res: Response) => {
         const prettify = (s: string) =>
             s === s.toLowerCase() ? s.replace(/\b[a-z]/g, (ch) => ch.toUpperCase()) : s;
 
-        const byType = new Map<string, { spellings: Map<string, number>; count: number; colors: Set<string>; sizes: Set<string> }>();
+        const byType = new Map<string, {
+            typeKey: string;
+            spellings: Map<string, number>;
+            count: number;
+            color: string;
+            size: string;
+        }>();
         (coffins || []).forEach((c: any) => {
             const type = String(c.coffin_type ?? '').trim() || 'Uncategorised';
-            const key = typeKey(type);
-            if (!byType.has(key)) byType.set(key, { spellings: new Map(), count: 0, colors: new Set(), sizes: new Set() });
+            const color = String(c.color ?? '').trim();
+            const size = String(c.size ?? '').trim();
+            const key = variantKey(type, color, size);
+            if (!byType.has(key)) byType.set(key, {
+                typeKey: typeKey(type),
+                spellings: new Map(),
+                count: 0,
+                color,
+                size,
+            });
             const bucket = byType.get(key)!;
             bucket.count += 1;
             bucket.spellings.set(type, (bucket.spellings.get(type) || 0) + 1);
-            if (c.color) bucket.colors.add(String(c.color));
-            if (c.size) bucket.sizes.add(String(c.size));
         });
 
         const coffinTypes = [...byType.entries()].map(([key, b]) => {
@@ -391,14 +414,21 @@ const getInventory = async (req: Request, res: Response) => {
                 if (x[0].length !== y[0].length) return x[0].length - y[0].length;
                 return x[0].localeCompare(y[0]);
             })[0][0];
-            return { key, type: prettify(spelling), count: b.count, colors: [...b.colors], sizes: [...b.sizes] };
-        }).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
+            return {
+                key,
+                typeKey: b.typeKey,
+                type: prettify(spelling),
+                color: b.color,
+                size: b.size,
+                count: b.count,
+            };
+        }).sort((a, b) => a.type.localeCompare(b.type) || a.color.localeCompare(b.color) || a.size.localeCompare(b.size));
 
         const syncItems: any[] = [];
-        coffinTypes.forEach(({ key, type, count, colors, sizes }) => {
+        coffinTypes.forEach(({ key, type, count, color, size }) => {
             syncItems.push({
                 key, type: 'Coffin', name: type, unit: 'pcs', qty: count,
-                sub: [sizes[0], colors[0]].filter(Boolean).join(' · ') || 'Coffin',
+                sub: `Color: ${color || '—'} · Size: ${size || '—'}`,
             });
         });
         (materials || []).forEach((m: any) => syncItems.push({
@@ -438,9 +468,48 @@ const getInventory = async (req: Request, res: Response) => {
         const dispatchedByKey = ledgerByKey('DISPATCH');
         const restockedByKey = ledgerByKey('RESTOCK');
 
-        for (const { key, count } of coffinTypes) {
-            const target = Math.max(0, count + (restockedByKey.get(key) || 0) - (dispatchedByKey.get(key) || 0));
-            await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = ? WHERE item_key = ?', [target, key]);
+        const legacyTypes = new Map<string, typeof coffinTypes>();
+        coffinTypes.forEach((variant) => {
+            const siblings = legacyTypes.get(variant.typeKey) || [];
+            siblings.push(variant);
+            legacyTypes.set(variant.typeKey, siblings);
+        });
+
+        for (const [legacyKey, variants] of legacyTypes) {
+            const remaining = new Map<string, number>();
+            variants.forEach((variant) => {
+                remaining.set(
+                    variant.key,
+                    Math.max(0, variant.count + (restockedByKey.get(variant.key) || 0) - (dispatchedByKey.get(variant.key) || 0))
+                );
+            });
+
+            // Older deployments recorded stock movement against type-only keys.
+            // Preserve those totals by applying legacy adjustments to variants in a
+            // stable order; all new adjustments use their exact variant key.
+            const legacyRestock = restockedByKey.get(legacyKey) || 0;
+            const legacyDispatch = dispatchedByKey.get(legacyKey) || 0;
+            if (variants.length) {
+                remaining.set(variants[0].key, (remaining.get(variants[0].key) || 0) + legacyRestock);
+            }
+            let toDispatch = legacyDispatch;
+            for (const variant of variants) {
+                if (toDispatch <= 0) break;
+                const available = remaining.get(variant.key) || 0;
+                const used = Math.min(available, toDispatch);
+                remaining.set(variant.key, available - used);
+                toDispatch -= used;
+            }
+
+            for (const variant of variants) {
+                const target = remaining.get(variant.key) || 0;
+                await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = ? WHERE item_key = ?', [target, variant.key]);
+            }
+
+            // Prevent the old type-only row from appearing as a duplicate variant.
+            if (legacyKey !== variants[0]?.key) {
+                await safeTenantExecute(tenantDb, "UPDATE store_items SET item_type = 'Legacy', quantity = 0 WHERE item_key = ?", [legacyKey]);
+            }
         }
 
         // Retire the old per-order `cf:<id>` rows: zero them so they stop
@@ -498,12 +567,31 @@ const dispatchItem = async (req: Request, res: Response) => {
 
         const {
             item_key, item_type, item_name, item_sub, unit, qty, date, picked_by, notes,
-            driver_id, driver_name, destination,
+            driver_id, driver_name, destination, dispatch_type, dispatch_id,
+            recipient_name, recipient_phone, destination_branch_id, service_date, service_time, customer_order_id,
         } = req.body;
         if (!item_key) return res.status(400).json({ error: 'item_key is required' });
         const q = Number(qty) || 0;
         if (q <= 0) return res.status(400).json({ error: 'Quantity must be greater than 0' });
+        const dispatchType = String(dispatch_type || 'legacy').trim().toLowerCase();
+        if (!['legacy', 'inventory', 'customer'].includes(dispatchType)) {
+            return res.status(400).json({ error: 'dispatch_type must be inventory or customer' });
+        }
+        if (dispatchType === 'inventory' && !String(destination_branch_id || '').trim()) {
+            return res.status(400).json({ error: 'destination_branch_id is required for inventory dispatches' });
+        }
+        if (dispatchType === 'customer' && !String(recipient_name || '').trim()) {
+            return res.status(400).json({ error: 'recipient_name is required for customer dispatches' });
+        }
         const txnDate = date || new Date().toISOString().slice(0, 10);
+        const serviceDate = service_date ? String(service_date).trim() : null;
+        const serviceTime = service_time ? String(service_time).trim() : null;
+        if (serviceDate && !/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) {
+            return res.status(400).json({ error: 'service_date must be in YYYY-MM-DD format' });
+        }
+        if (serviceTime && !/^\d{2}:\d{2}$/.test(serviceTime)) {
+            return res.status(400).json({ error: 'service_time must be in HH:MM format' });
+        }
 
         // The driver is optional — an internal branch-to-branch transfer may not
         // involve one. When present, both the id and the display name are stored
@@ -530,8 +618,10 @@ const dispatchItem = async (req: Request, res: Response) => {
         const insertResult: any = await safeTenantExecute(tenantDb,
             `INSERT INTO store_transactions
                 (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes,
-                 driver_id, driver_name, destination, pickup_status, created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+                 driver_id, driver_name, destination, pickup_status, dispatch_type, dispatch_id,
+                 recipient_name, recipient_phone, destination_branch_id, service_date, service_time, customer_order_id,
+                 target_status, target_error, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
                 item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs',
                 'DISPATCH', q, txnDate, picked_by || '', notes || '',
@@ -540,6 +630,16 @@ const dispatchItem = async (req: Request, res: Response) => {
                 // filtered to rows that actually have a driver, so a driverless
                 // dispatch never reaches a driver's queue.
                 'pending',
+                dispatchType,
+                String(dispatch_id || '').trim() || null,
+                String(recipient_name || '').trim() || null,
+                String(recipient_phone || '').trim() || null,
+                String(destination_branch_id || '').trim() || null,
+                serviceDate,
+                serviceTime,
+                String(customer_order_id || '').trim() || null,
+                dispatchType === 'legacy' ? 'not_applicable' : 'pending',
+                null,
                 new Date().toISOString(),
             ]);
 
@@ -569,6 +669,42 @@ const dispatchItem = async (req: Request, res: Response) => {
         res.status(201).json({ success: true, item: updated[0], transaction: txn[0] });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+const updateDispatchTarget = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const id = String(req.params.id || '').trim();
+        const status = String(req.body?.status || '').trim().toLowerCase();
+        const error = String(req.body?.error || '').trim();
+        const customerOrderId = String(req.body?.customer_order_id || '').trim();
+        if (!id) return res.status(400).json({ error: 'Dispatch transaction id is required' });
+        if (!['synced', 'failed'].includes(status)) {
+            return res.status(400).json({ error: 'status must be either "synced" or "failed"' });
+        }
+
+        const existing: any = await safeTenantQuery(
+            tenantDb,
+            "SELECT id FROM store_transactions WHERE id = ? AND action = 'DISPATCH'",
+            [id]
+        );
+        if (!existing?.length) return res.status(404).json({ error: 'Dispatch transaction not found' });
+
+        await safeTenantExecute(
+            tenantDb,
+            `UPDATE store_transactions
+             SET target_status = ?, target_error = ?, customer_order_id = ?
+             WHERE id = ? AND action = 'DISPATCH'`,
+            [status, status === 'failed' ? (error || 'Branch inventory or customer order registration failed') : null, customerOrderId || null, id]
+        );
+        const rows: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [id]);
+        res.json({ success: true, transaction: rows[0] });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message || 'Could not update dispatch registration status' });
     }
 };
 
@@ -760,6 +896,7 @@ const respondToPickup = async (req: Request, res: Response) => {
 export {
     getInventory,
     dispatchItem,
+    updateDispatchTarget,
     restockItem,
     getHistory,
     getTargets,

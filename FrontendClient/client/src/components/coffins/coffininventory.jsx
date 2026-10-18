@@ -19,23 +19,23 @@ import {
 const API = env.FULL_API_URL;
 
 const S = {
-  primary: '#1d4ed8',
-  primaryLight: '#eff6ff',
-  primaryDark: '#1e3a8a',
-  bg: '#f8fafc',
+  primary: '#0f766e',
+  primaryLight: '#f0fdfa',
+  primaryDark: '#115e59',
+  bg: '#f9fafb',
   cardBg: '#ffffff',
-  text: '#2a0f0f',
+  text: '#111827',
   textMuted: '#64748b',
-  textLight: '#080505',
-  border: '#e2e8f0',
-  borderLight: '#f1f5f9',
-  success: '#059669',
-  successLight: '#ecfdf5',
+  textLight: '#374151',
+  border: '#e5e7eb',
+  borderLight: '#f3f4f6',
+  success: '#16a34a',
+  successLight: '#f0fdf4',
   warning: '#d97706',
   warningLight: '#fffbeb',
   danger: '#dc2626',
   dangerLight: '#fef2f2',
-  info: '#0284c7',
+  info: '#00296b',
   // Width of the right-hand drawer. "Find Stock in Other Branches" puts a
   // branch filter and a stacked result card per coffin in here, and at the
   // previous 520px the result rows were squeezed: the coffin name ellipsised
@@ -969,10 +969,10 @@ const Tag = ({ cls, children }) => {
     'tag-lo': { background: S.warningLight, color: S.warning },
     'tag-ou': { background: S.dangerLight, color: S.danger },
     'tag-pe': { background: S.warningLight, color: S.warning },
-    'tag-bo': { background: '#e0f2fe', color: S.info },
-    'tag-co': { background: S.successLight, color: S.success },
-    'tag-ca': { background: S.dangerLight, color: S.danger },
-    'tag-ar': { background: '#e0e7ff', color: S.primaryDark },
+    'tag-bo': { background: '#eff6ff', color: '#00296b' },
+    'tag-co': { background: '#fce7f3', color: '#5f0f40' },
+    'tag-ca': { background: '#fee2e2', color: '#dd2d4a' },
+    'tag-ar': { background: '#eff6ff', color: '#00296b' },
     'tag-tr': { background: S.warningLight, color: S.warning },
     'tag-de': { background: S.successLight, color: S.success },
   };
@@ -1034,7 +1034,7 @@ const CoffinDashboard = () => {
   }, [modal.open, modal.type]);
 
   // API Calls 
-  const fetchAllData = useCallback(async () => {
+  const fetchAllData = useCallback(async (requestedBranchId) => {
     setLoading(true);
     setError(null);
     try {
@@ -1070,11 +1070,11 @@ const CoffinDashboard = () => {
         if (branchesRes.data?.success && branchesRes.data?.data) {
           const rawBranches = Array.isArray(branchesRes.data.data) ? branchesRes.data.data : [];
           branchList = rawBranches.map((b) => ({
-            id: b.branch_id,
-            name: b.branch_name,
-            branch_slug: b.branch_slug || b.branch_db_name,
-            branch_db_name: b.branch_db_name,
-          }));
+            id: String(b.branch_id ?? b.id ?? ''),
+            name: b.branch_name || b.name || 'Branch',
+            branch_slug: b.branch_slug || b.branch_db_name || '',
+            branch_db_name: b.branch_db_name || '',
+          })).filter((branch) => branch.id);
           console.log('[COFFIN UI] Fetched branches from API:', branchList.length);
         }
       } catch (e) {
@@ -1088,31 +1088,38 @@ const CoffinDashboard = () => {
         if (cachedBranches.length > 0) {
           branchList = cachedBranches
             .map((b) => ({
-              id: b.branchId || b.branch_id || b.id,
+              id: String(b.branchId || b.branch_id || b.id || ''),
               name: b.branchName || b.branch_name || 'Branch',
               branch_slug: b.branchSlug || b.branch_slug || b.branchDbName || '',
               branch_db_name: b.branchDbName || b.branch_db_name || '',
             }))
-            .filter((b) => b.id != null);
+            .filter((b) => b.id);
           console.log('[COFFIN UI] Using localStorage branches fallback:', branchList.length);
         }
       }
 
-      if (branchList.length === 0) {
-        // Fallback: create a default main branch
+      if (branchList.length === 0 && userBranchId) {
+        // Keep a known, authenticated branch usable if the branch directory is
+        // temporarily unavailable; never invent a numeric branch ID.
         branchList = [
           {
-            id: 1,
+            id: String(userBranchId),
             name: 'Main Branch',
             branch_slug: tenantSlug,
             branch_db_name: tenantSlug,
           },
         ];
-        console.log('[COFFIN UI] Using fallback branch:', branchList[0]);
       }
 
-      const defaultBranch =
-        branchList.find((b) => b.id == userBranchId)?.id || branchList[0]?.id || 1;
+      const requestedBranch = typeof requestedBranchId === 'string'
+        ? branchList.find((branch) => String(branch.id) === requestedBranchId)
+        : null;
+      const storedBranch = branchList.find((branch) => String(branch.id) === String(getBranchId()));
+      const defaultBranch = requestedBranch?.id
+        || storedBranch?.id
+        || branchList.find((branch) => String(branch.id) === String(userBranchId))?.id
+        || branchList[0]?.id
+        || null;
 
       setBranches(branchList);
       setCurrentBranch(defaultBranch);
@@ -1122,7 +1129,7 @@ const CoffinDashboard = () => {
       if (resolvedBranch) {
         localStorage.setItem('branchId', String(resolvedBranch.id));
         localStorage.setItem('branchSlug', resolvedBranch.branch_slug || '');
-        localStorage.setItem('branchDb', resolvedBranch.branch_db_name || '');
+        localStorage.setItem('branchDbName', resolvedBranch.branch_db_name || '');
       }
 
       try {
@@ -2333,7 +2340,7 @@ const CoffinDashboard = () => {
           ></i>
           <p style={styles.esP}>Error loading coffin inventory</p>
           <p style={{ fontSize: 12, color: S.textMuted, marginTop: 8 }}>{error}</p>
-          <button style={{ ...styles.btn, ...styles.btnP, marginTop: 16 }} onClick={fetchAllData}>
+          <button style={{ ...styles.btn, ...styles.btnP, marginTop: 16 }} onClick={() => fetchAllData()}>
             <i className="fa-solid fa-redo"></i> Retry
           </button>
         </div>
@@ -2707,10 +2714,10 @@ const CoffinDashboard = () => {
         .inline-tag.tag-lo { background: ${S.warningLight}; color: ${S.warning}; }
         .inline-tag.tag-ou { background: ${S.dangerLight}; color: ${S.danger}; }
         .inline-tag.tag-pe { background: ${S.warningLight}; color: ${S.warning}; }
-        .inline-tag.tag-bo { background: #e0f2fe; color: ${S.info}; }
-        .inline-tag.tag-co { background: ${S.successLight}; color: ${S.success}; }
-        .inline-tag.tag-ca { background: ${S.dangerLight}; color: ${S.danger}; }
-        .inline-tag.tag-ar { background: #e0e7ff; color: ${S.primaryDark}; }
+        .inline-tag.tag-bo { background: #eff6ff; color: #00296b; }
+        .inline-tag.tag-co { background: #fce7f3; color: #5f0f40; }
+        .inline-tag.tag-ca { background: #fee2e2; color: #dd2d4a; }
+        .inline-tag.tag-ar { background: #eff6ff; color: #00296b; }
         .inline-tag.tag-tr { background: ${S.warningLight}; color: ${S.warning}; }
         .inline-tag.tag-de { background: ${S.successLight}; color: ${S.success}; }
         tr:hover td { background: #f1f5f9; }
@@ -2762,7 +2769,7 @@ const CoffinDashboard = () => {
                 value: currentBranch || '',
                 onChange: (e) => {
                   // Branch ids are strings/UUIDs - do NOT parseInt() (that yields NaN).
-                  setCurrentBranch(e.target.value);
+                  fetchAllData(e.target.value);
                 },
                 options: branches.map((b) => ({ value: b.id, label: b.name })),
               }
@@ -2770,7 +2777,7 @@ const CoffinDashboard = () => {
           }
           headerActions={
             <>
-              <button className="cb-tb-btn" onClick={fetchAllData} title="Refresh data">
+              <button className="cb-tb-btn" onClick={() => fetchAllData()} title="Refresh data">
                 <i className="fa-solid fa-arrows-rotate"></i> Refresh
               </button>
               <button className="cb-tb-btn" onClick={() => openFindStock()} title="Search other branches">

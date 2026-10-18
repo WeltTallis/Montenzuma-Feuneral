@@ -3,7 +3,8 @@ import { formatDate as fmtDate, parseDate, toDateKey } from '../../../utils/date
 import { workshopService } from '../services/workshopService';
 import api from '../../../api/axios';
 import { ENDPOINTS } from '../../../api/endpoints';
-import { getParentTenantSlug, getTenantSlug } from '../../../utils/globalAuth';
+import { getParentTenantSlug, getTenantSlug, getBranchId, getBranches } from '../../../utils/globalAuth';
+import { CoffinAPI } from '../../../api/coffinApi';
 import { Ctx } from './WorkshopContext';
 
 const T = {
@@ -56,7 +57,7 @@ const Gauge = ({ pct, label }) => {
 const StoreTab = ({ dispatchRequest = 0 }) => {
   const ctx = useContext(Ctx);
   if (!ctx) return null;
-  const { addToast, workers = [] } = ctx;
+  const { addToast, workers = [], catalog = { colors: {} } } = ctx;
   const slug = getTenantSlug() || 'default';
 
   const [items, setItems] = useState([]);
@@ -83,6 +84,8 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
   const [drivers, setDrivers] = useState([]);
   const [driversLoading, setDriversLoading] = useState(false);
   const [driversError, setDriversError] = useState('');
+  const [branches, setBranches] = useState([]);
+  const [branchesError, setBranchesError] = useState('');
 
   const loadDrivers = useCallback(async () => {
     setDriversLoading(true);
@@ -167,6 +170,46 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
   useEffect(() => { loadDrivers(); }, [loadDrivers]);
 
+  const loadBranches = useCallback(async () => {
+    setBranchesError('');
+    const cached = (getBranches() || []).map((branch) => ({
+      id: String(branch.branchId ?? branch.branch_id ?? branch.id ?? ''),
+      name: branch.name || branch.branchName || branch.branch_name || branch.branchSlug || 'Branch',
+    })).filter((branch) => branch.id);
+    const currentBranchId = String(getBranchId() || '');
+    if (currentBranchId && !cached.some((branch) => branch.id === currentBranchId)) {
+      cached.push({ id: currentBranchId, name: 'My branch' });
+    }
+
+    try {
+      const parentSlug = getParentTenantSlug();
+      if (!parentSlug) throw new Error('Could not resolve your organisation to load branches.');
+      const response = await api.get(ENDPOINTS.TENANT.BRANCHES(parentSlug));
+      const result = response?.data?.data || response?.data?.branches || response?.data;
+      const branchRows = Array.isArray(result) ? result : Array.isArray(result?.branches) ? result.branches : [];
+      if (!branchRows.length && !cached.length) throw new Error('No branches are available for this organisation.');
+      const remote = branchRows.map((branch) => ({
+        id: String(branch.branchId ?? branch.branch_id ?? branch.id ?? ''),
+        name: branch.name || branch.branchName || branch.branch_name || branch.branchSlug || 'Branch',
+      })).filter((branch) => branch.id);
+      const merged = [...remote];
+      cached.forEach((branch) => {
+        if (!merged.some((item) => item.id === branch.id)) merged.push(branch);
+      });
+      setBranches(merged);
+      setDispatchForm((form) => ({
+        ...form,
+        branchId: form.branchId || currentBranchId || merged[0]?.id || '',
+      }));
+    } catch (error) {
+      setBranches(cached);
+      setBranchesError(error?.response?.data?.message || error.message || 'Could not load branch options.');
+      setDispatchForm((form) => ({ ...form, branchId: form.branchId || currentBranchId || cached[0]?.id || '' }));
+    }
+  }, []);
+
+  useEffect(() => { loadBranches(); }, [loadBranches]);
+
   const [form, setForm] = useState({ qty: 1, date: toKey(new Date()), pickedBy: '', notes: '' });
 
   const [showDispatchModal, setShowDispatchModal] = useState(false);
@@ -176,6 +219,15 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
   const [dispatchCart, setDispatchCart] = useState([]); // { key, name, sub, unit, qty, maxQty }[]
 
   const [dispatchForm, setDispatchForm] = useState({
+
+    dispatchType: 'inventory',
+    branchId: String(getBranchId() || ''),
+    inventoryPrice: '',
+    customerName: '',
+    customerPhone: '',
+    customerFor: '',
+    serviceDate: toKey(new Date()),
+    serviceTime: '',
 
     dispatchedBy: '',
 
@@ -212,15 +264,16 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
         const data = res.data || {};
 
-        setItems(Array.isArray(data.items) ? data.items.map(it => ({
-
+        setItems(Array.isArray(data.items) ? data.items.map(it => {
+          const variant = String(it.item_sub || '').match(/^Color:\s*(.*?)\s*·\s*Size:\s*(.*?)$/);
+          return {
           key: it.item_key, kind: it.item_type || 'Item', name: it.item_name,
 
-          sub: it.item_sub || '', unit: it.unit || 'pcs', quantity: Number(it.quantity) || 0,
+          sub: it.item_sub || '', color: variant && variant[1] !== '—' ? variant[1] : '', size: variant && variant[2] !== '—' ? variant[2] : '', unit: it.unit || 'pcs', quantity: Number(it.quantity) || 0,
 
           assignedToName: it.assigned_to_name || '',
 
-        })) : []);
+        }; }) : []);
 
         setHistory(Array.isArray(data.history) ? data.history.map(h => ({
 
@@ -229,6 +282,10 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
           unit: h.unit || 'pcs', qty: Number(h.qty) || 0, date: toDateKey(parseDate(h.txn_date)) || '',
 
           pickedBy: h.txn_by || '', notes: h.notes || '', assignedToName: h.assigned_to_name || '',
+          dispatchType: h.dispatch_type || 'legacy', dispatchId: h.dispatch_id || '',
+          recipientName: h.recipient_name || '', recipientPhone: h.recipient_phone || '',
+          destination: h.destination || '', destinationBranchId: h.destination_branch_id || '',
+          serviceDate: h.service_date || '', serviceTime: h.service_time || '',
 
         })) : []);
 
@@ -310,6 +367,10 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
       time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
 
+      serviceDate: toKey(new Date()),
+
+      customerFor: '',
+
       dispatchedBy: '',
 
       receivedBy: '',
@@ -364,6 +425,41 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
 
 
+  const receiveInBranchInventory = async (item, quantity, branchId) => {
+    if (!branchId) throw new Error('Select a destination branch.');
+    const parentSlug = getParentTenantSlug();
+    if (!parentSlug) throw new Error('Could not resolve your organisation to register branch stock.');
+
+    const response = await CoffinAPI.getAllBranches(parentSlug);
+    const inventoryRows = Array.isArray(response?.data) ? response.data : [];
+    const variant = inventoryRows.find((row) =>
+      String(row.branch_id || '') === String(branchId)
+      && String(row.type || row.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase()
+      && String(row.color || '').trim().toLowerCase() === String(item.color || '').trim().toLowerCase()
+      && String(row.size || '').trim().toLowerCase() === String(item.size || '').trim().toLowerCase()
+    );
+
+    if (variant) {
+      await CoffinAPI.updateInventory(variant.coffin_id, {
+        quantity: (Number(variant.quantity) || 0) + quantity,
+      }, branchId);
+      return variant;
+    }
+
+    const price = Number(dispatchForm.inventoryPrice);
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error(`Enter a valid coffin price to register ${item.name} in this branch's inventory.`);
+    }
+    return CoffinAPI.registerInventory({
+      type: item.name,
+      color: item.color || '',
+      size: item.size || '',
+      quantity,
+      exact_price: price,
+      description: 'Received from workshop dispatch',
+    }, branchId);
+  };
+
   const submitAviationDispatch = async () => {
 
     const errors = [];
@@ -372,7 +468,9 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
     if (!dispatchForm.dispatchedBy.trim()) errors.push('Enter dispatched by name');
 
-    if (!dispatchForm.destination.trim()) errors.push('Enter destination');
+    if (!dispatchForm.branchId || !branches.some((branch) => branch.id === dispatchForm.branchId)) errors.push('Select a registered destination branch');
+    if (dispatchForm.dispatchType === 'customer' && !dispatchForm.customerName.trim()) errors.push('Enter the customer name');
+    if (dispatchForm.dispatchType === 'customer' && !dispatchForm.serviceDate) errors.push('Choose the customer service date');
     if (!dispatchForm.driverId || !drivers.some(d => d.id === dispatchForm.driverId)) errors.push('Select a registered driver');
 
 
@@ -391,51 +489,80 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
     try {
 
-      const dispatchId = 'DSP-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 100)).padStart(2, '0');
+      const dispatchId = `DSP-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
+      const destinationBranch = branches.find((branch) => branch.id === dispatchForm.branchId);
 
       const results = await Promise.all(dispatchCart.map(async (cartItem) => {
 
         const item = items.find(it => it.key === cartItem.key);
-
         if (!item) return { success: false, key: cartItem.key, name: cartItem.name };
 
         const q = cartItem.qty || 1;
         if (q > effQty(item)) return { success: false, key: item.key, name: item.name, error: 'Not enough stock' };
 
         const response = await workshopService.dispatchStoreItem({
-
           item_key: item.key,
-
           item_type: item.kind,
-
           item_name: item.name,
-
           item_sub: item.sub,
-
           unit: item.unit,
-
           qty: q,
-
           date: dispatchForm.date,
-
           picked_by: dispatchForm.dispatchedBy,
-
-          /* The driver assignment proper. These land in their own columns so
-             the dispatch becomes a pickup the driver can see and answer in
-             the Driver Portal — the notes string below stays a human-readable
-             log and is never parsed for this. */
+          dispatch_type: dispatchForm.dispatchType,
+          dispatch_id: dispatchId,
+          recipient_name: dispatchForm.dispatchType === 'customer' ? dispatchForm.customerName.trim() : '',
+          recipient_phone: dispatchForm.customerPhone.trim(),
+          destination_branch_id: dispatchForm.branchId,
+          service_date: dispatchForm.dispatchType === 'customer' ? dispatchForm.serviceDate : null,
+          service_time: dispatchForm.dispatchType === 'customer' ? dispatchForm.serviceTime : null,
           driver_id: dispatchForm.driverId || null,
-
           driver_name: dispatchForm.driver || null,
-
-          destination: dispatchForm.destination || null,
-
-          notes: 'DISPATCH LOG: Dispatch ID: ' + dispatchId + ' | Dispatched By: ' + dispatchForm.dispatchedBy + ' | Received By: ' + (dispatchForm.receivedBy || 'None') + ' | Driver: ' + dispatchForm.driver + ' | From: ' + (dispatchForm.from || 'N/A') + ' | Destination: ' + dispatchForm.destination + ' | Purpose: ' + dispatchForm.purpose + ' | Remarks: ' + dispatchForm.remarks + ' | Time: ' + dispatchForm.time + (item.assignedToName ? ' | Assigned To: ' + item.assignedToName : ''),
-
+          destination: dispatchForm.dispatchType === 'customer' ? dispatchForm.customerName.trim() : destinationBranch?.name || null,
+          notes: 'DISPATCH LOG: Dispatch ID: ' + dispatchId + ' | Type: ' + dispatchForm.dispatchType + ' | Dispatched By: ' + dispatchForm.dispatchedBy + ' | Received By: ' + (dispatchForm.receivedBy || 'None') + ' | Driver: ' + dispatchForm.driver + ' | From: ' + (dispatchForm.from || 'N/A') + ' | Destination: ' + (dispatchForm.dispatchType === 'customer' ? dispatchForm.customerName : destinationBranch?.name || 'N/A') + ' | Purpose: ' + dispatchForm.purpose + ' | Remarks: ' + dispatchForm.remarks + ' | Time: ' + dispatchForm.time + (item.assignedToName ? ' | Assigned To: ' + item.assignedToName : ''),
         });
-
         if (!response?.success) {
           return { success: false, key: item.key, name: item.name, error: response?.error || 'Dispatch request failed' };
+        }
+
+        const transactionId = response?.data?.transaction?.id || response?.transaction?.id;
+        try {
+          const branchVariant = await receiveInBranchInventory(item, q, dispatchForm.branchId);
+          let customerOrderId = '';
+          if (dispatchForm.dispatchType === 'customer') {
+            const order = await CoffinAPI.createOrder({
+              coffin_id: branchVariant.coffin_id,
+              coffin_name: item.name,
+              color: item.color || '',
+              size: item.size || '',
+              quantity: q,
+              client_name: dispatchForm.customerName.trim(),
+              client_phone: dispatchForm.customerPhone.trim(),
+              deceased_name: dispatchForm.customerFor.trim(),
+              service_date: dispatchForm.serviceDate,
+              service_time: dispatchForm.serviceTime || null,
+              notes: `Created from workshop dispatch ${dispatchId}`,
+            }, dispatchForm.branchId);
+            customerOrderId = String(order?.order_id || order?.data?.order_id || '');
+          }
+          if (transactionId) {
+            const update = await workshopService.updateDispatchTarget(transactionId, {
+              status: 'synced',
+              customer_order_id: customerOrderId,
+            });
+            if (!update?.success) throw new Error(update?.error || 'Branch registration status could not be saved.');
+          }
+        } catch (error) {
+          const message = error?.friendlyMessage || error?.response?.data?.message || error.message || 'Target registration failed';
+          if (transactionId) {
+            try {
+              const targetUpdate = await workshopService.updateDispatchTarget(transactionId, { status: 'failed', error: message });
+              if (!targetUpdate?.success) console.error('[StoreTab] Could not record failed dispatch target status:', targetUpdate?.error);
+            } catch (targetUpdateError) {
+              console.error('[StoreTab] Could not record failed dispatch target status:', targetUpdateError);
+            }
+          }
+          return { success: false, recorded: true, key: item.key, name: item.name, error: message };
         }
         return { success: true, key: item.key, name: item.name, qty: q };
 
@@ -446,8 +573,19 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
       const failed = results.filter(r => !r.success);
 
       if (failed.length > 0) {
-        addToast('Dispatch failed for: ' + failed.map(f => `${f.name}${f.error ? ` (${f.error})` : ''}`).join(', '), 'error');
-        setDispatchCart(cart => cart.filter(item => failed.some(f => f.key === item.key)));
+        const recordedFailures = failed.filter((result) => result.recorded);
+        const dispatchFailures = failed.filter((result) => !result.recorded);
+        if (recordedFailures.length) {
+          addToast('Dispatch recorded, but branch/customer registration needs attention: ' + recordedFailures.map(f => `${f.name} (${f.error})`).join(', '), 'error');
+        }
+        if (dispatchFailures.length) {
+          addToast('Dispatch failed for: ' + dispatchFailures.map(f => `${f.name}${f.error ? ` (${f.error})` : ''}`).join(', '), 'error');
+        }
+        setDispatchCart(cart => cart.filter(item => dispatchFailures.some(f => f.key === item.key)));
+        if (!dispatchFailures.length) {
+          setShowDispatchModal(false);
+          setDispatchCart([]);
+        }
       } else {
         addToast('Successfully dispatched ' + dispatchCart.length + ' coffin(s) · ' + cartTotalUnits + ' units', 'success');
         setShowDispatchModal(false);
@@ -470,7 +608,24 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
 
 
-  const openDispatch = (item) => { setForm({ qty: 1, date: toKey(new Date()), pickedBy: '', notes: '' }); setModal({ type: 'dispatch', item }); };
+  const openDispatch = (item) => {
+    setDispatchCart([{ key: item.key, name: item.name, sub: item.sub, unit: item.unit, qty: 1, maxQty: effQty(item) }]);
+    setDispatchStep(2);
+    setDispatchForm((form) => ({
+      ...form,
+      dispatchType: 'inventory',
+      date: toKey(new Date()),
+      serviceDate: toKey(new Date()),
+      time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+      dispatchedBy: '',
+      receivedBy: '',
+      customerName: '',
+      customerPhone: '',
+      customerFor: '',
+      inventoryPrice: '',
+    }));
+    setShowDispatchModal(true);
+  };
 
   const openRestock = (item) => { setForm({ qty: 1, date: toKey(new Date()), pickedBy: '', notes: '' }); setModal({ type: 'restock', item }); };
 
@@ -737,7 +892,10 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
                     <td style={{ padding: '10px 14px' }}>
 
-                      <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{it.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: T.text }}>
+                        {it.color && <i aria-label={it.color} title={it.color} style={{ width: 12, height: 12, flex: '0 0 12px', border: '1px solid #cbd5e1', borderRadius: '50%', background: catalog.colors?.[it.color] || '#e5e7eb' }} />}
+                        {it.name}
+                      </div>
 
                       <div style={{ fontSize: 11, color: T.textSec }}>{it.sub}</div>
 
@@ -922,7 +1080,7 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
                     </div>
                     <div style={{ background: T.bg, border: `1px solid ${T.borderLight}`, borderRadius: 8, padding: '8px 12px' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 2 }}>To</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{dispatchForm.destination || '—'}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{dispatchForm.dispatchType === 'customer' ? dispatchForm.customerName || 'Customer' : branches.find((branch) => branch.id === dispatchForm.branchId)?.name || 'Select branch'}</div>
                     </div>
                     <div style={{ background: T.bg, border: `1px solid ${T.borderLight}`, borderRadius: 8, padding: '8px 12px' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 2 }}>Driver</div>
@@ -940,14 +1098,60 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
 
                   {/* Dispatch Details Form */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={labelS}>Dispatch type *</label>
+                      <select value={dispatchForm.dispatchType} onChange={setDF('dispatchType')} style={inputS}>
+                        <option value="inventory">Add to branch inventory</option>
+                        <option value="customer">Direct customer order</option>
+                      </select>
+                      <small style={{ display: 'block', marginTop: 5, color: T.textMuted }}>
+                        {dispatchForm.dispatchType === 'inventory'
+                          ? 'The dispatched coffin variant will be added to the selected branch inventory.'
+                          : 'The coffin will be registered in branch inventory and a customer booking will be created immediately.'}
+                      </small>
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={labelS}>Destination branch *</label>
+                      <select value={dispatchForm.branchId} onChange={setDF('branchId')} style={inputS}>
+                        <option value="">Select a branch…</option>
+                        {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                      </select>
+                      {branchesError && <div role="alert" style={{ color: T.danger, fontSize: 11, marginTop: 5 }}>{branchesError} <button type="button" onClick={loadBranches} style={{ border: 0, background: 'none', color: T.primary, cursor: 'pointer', textDecoration: 'underline' }}>Retry</button></div>}
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={labelS}>Coffin price (KES) *</label>
+                      <input type="number" min="0.01" step="0.01" value={dispatchForm.inventoryPrice} onChange={setDF('inventoryPrice')} style={inputS} placeholder="Only needed when this variant is new to the branch" />
+                      <small style={{ display: 'block', marginTop: 5, color: T.textMuted }}>Existing branch variants keep their saved price; this is used for a new type/color/size.</small>
+                    </div>
+                    {dispatchForm.dispatchType === 'customer' && (
+                      <>
+                        <div>
+                          <label style={labelS}>Customer name *</label>
+                          <input value={dispatchForm.customerName} onChange={setDF('customerName')} style={inputS} placeholder="Customer or family name" />
+                        </div>
+                        <div>
+                          <label style={labelS}>Customer phone</label>
+                          <input value={dispatchForm.customerPhone} onChange={setDF('customerPhone')} style={inputS} placeholder="Phone number" />
+                        </div>
+                        <div>
+                          <label style={labelS}>Deceased name</label>
+                          <input value={dispatchForm.customerFor} onChange={setDF('customerFor')} style={inputS} placeholder="Optional" />
+                        </div>
+                        <div>
+                          <label style={labelS}>Service date *</label>
+                          <input type="date" value={dispatchForm.serviceDate} onChange={setDF('serviceDate')} style={inputS} />
+                        </div>
+                        <div>
+                          <label style={labelS}>Service time</label>
+                          <input type="time" value={dispatchForm.serviceTime} onChange={setDF('serviceTime')} style={inputS} />
+                        </div>
+                      </>
+                    )}
                     <div>
                       <label style={labelS}>From</label>
                       <input value={dispatchForm.from} onChange={setDF('from')} style={inputS} placeholder="Origin / From location" />
                     </div>
-                    <div>
-                      <label style={labelS}>Destination *</label>
-                      <input value={dispatchForm.destination} onChange={setDF('destination')} style={inputS} placeholder="Destination" />
-                    </div>
+                    <div><label style={labelS}>Received by</label><input value={dispatchForm.receivedBy} onChange={setDF('receivedBy')} style={inputS} placeholder="Receiving person" /></div>
                     <div>
                       <label style={labelS}>Date Dispatched</label>
                       <input type="date" value={dispatchForm.date} onChange={setDF('date')} style={inputS} />
@@ -960,10 +1164,6 @@ const StoreTab = ({ dispatchRequest = 0 }) => {
                       <label style={labelS}>Dispatched By</label>
                       <input list="store-pickers" placeholder="Name of person dispatching" value={dispatchForm.dispatchedBy} onChange={setDF('dispatchedBy')} style={inputS} />
                       <datalist id="store-pickers">{workers.map(w => <option key={w.id} value={w.name} />)}</datalist>
-                    </div>
-                    <div>
-                      <label style={{ ...labelS, color: T.danger }}>Received By *</label>
-                      <input value={dispatchForm.receivedBy} onChange={setDF('receivedBy')} style={inputS} placeholder="Name (required)" />
                     </div>
                     <div>
                       <label style={labelS}>Driver</label>
