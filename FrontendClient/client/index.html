@@ -822,8 +822,6 @@
         if (pct) pct.textContent = r + '%';
         if (p < 100) {
           requestAnimationFrame(tick);
-        } else {
-          setTimeout(function () { p = 0; requestAnimationFrame(tick); }, 1400);
         }
       }
       setTimeout(tick, 400);

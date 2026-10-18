@@ -1,4 +1,4 @@
-﻿import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { GlobalLoaderStyles } from './components/loader/loader';
 import Loader from './components/loader/loader';
@@ -13,6 +13,10 @@ import { SocketProvider } from './utils/context/socketContext.jsx';
 
 
 function App() {
+  useEffect(() => {
+    document.getElementById('boot-loader')?.remove();
+  }, []);
+
   return (
     <>
       {/* Outside the boundary so the connection toast still renders while a

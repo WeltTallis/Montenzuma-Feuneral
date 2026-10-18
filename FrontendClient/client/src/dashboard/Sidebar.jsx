@@ -2,7 +2,7 @@ import React from "react";
 import { Ic } from "./opsIcons";
 
 /* ============================================================================
-   Sidebar — clean white navigation rail.
+   Sidebar â€” clean white navigation rail.
    ============================================================================ */
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "home", desc: "Overview & KPIs" },

@@ -1,16 +1,16 @@
 /* Dashboard sidebar navigation (Clean White Design).
-   Home ? dashboard · Deceased ? records · Schedule ? calendar · Analytics ? reports · Store ? inventory · Settings ? configuration. */
+   Home ? dashboard Â· Deceased ? records Â· Schedule ? calendar Â· Analytics ? reports Â· Store ? inventory Â· Settings ? configuration. */
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ic } from "../opsIcons";
 
 export const NAV_ITEMS = [
-  { id: "dashboard", view: "dashboard", label: "Dashboard", desc: "Overview & KPIs", icon: "home", full: "Dashboard — overview & KPIs" },
-  { id: "deceased", view: "deceased", label: "Deceased", desc: "Intake & records", icon: "users", full: "Deceased — intake & records" },
-  { id: "schedule", view: "schedule", label: "Schedule", desc: "Calendar & events", icon: "cal", full: "Schedule — calendar & events" },
-  { id: "analytics", view: "analytics", label: "Analytics", desc: "Reports & insights", icon: "grid", full: "Analytics — reports & insights" },
-  { id: "store", view: "store", label: "Store", desc: "Inventory & supplies", icon: "store", full: "Store — inventory & supplies" },
-  { id: "settings", view: "settings", label: "Settings", desc: "Configuration", icon: "store", full: "Settings — configuration" },
+  { id: "dashboard", view: "dashboard", label: "Dashboard", desc: "Overview & KPIs", icon: "home", full: "Dashboard â€” overview & KPIs" },
+  { id: "deceased", view: "deceased", label: "Deceased", desc: "Intake & records", icon: "users", full: "Deceased â€” intake & records" },
+  { id: "schedule", view: "schedule", label: "Schedule", desc: "Calendar & events", icon: "cal", full: "Schedule â€” calendar & events" },
+  { id: "analytics", view: "analytics", label: "Analytics", desc: "Reports & insights", icon: "grid", full: "Analytics â€” reports & insights" },
+  { id: "store", view: "store", label: "Store", desc: "Inventory & supplies", icon: "store", full: "Store â€” inventory & supplies" },
+  { id: "settings", view: "settings", label: "Settings", desc: "Configuration", icon: "store", full: "Settings â€” configuration" },
 ];
 
 export default function DashSidebar({

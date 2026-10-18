@@ -587,7 +587,12 @@ const WorkshopDashboard = () => {
         <Toasts toasts={toasts} />
         {/* Independent workshop side panel — gated by role (renders null for
             non-workshop roles) and slides over the page content. */}
-        <WorkshopSidebar open={sidebarOpen} onToggle={setSidebarOpen} />
+        <WorkshopSidebar
+          open={sidebarOpen}
+          onToggle={setSidebarOpen}
+          activeTab={tab}
+          onSelect={setTab}
+        />
       </div>
     </Ctx.Provider>
   );
