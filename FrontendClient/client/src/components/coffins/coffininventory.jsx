@@ -60,6 +60,9 @@ const getStockStatus = (stock) => {
   return { label: 'Available', cls: 'tag-ok', color: '#059669' };
 };
 
+const getCoffinStock = (coffin) =>
+  Math.max(0, parseInt(coffin?.stock ?? coffin?.quantity, 10) || 0);
+
 const getBookingStatus = (status) => {
   const map = {
     pending: { label: 'Pending', cls: 'tag-pe' },
@@ -995,9 +998,14 @@ const CoffinDashboard = () => {
 
   // Filters
   const [invFilter, setInvFilter] = useState('all');
+  const [invTypeFilter, setInvTypeFilter] = useState('all');
+  const [invColorFilter, setInvColorFilter] = useState('all');
   const [bkFilter, setBkFilter] = useState('all');
   const [invQuery, setInvQuery] = useState('');
   const [bkQuery, setBkQuery] = useState('');
+  const [bookingSearch, setBookingSearch] = useState('');
+  const [bookingTypeFilter, setBookingTypeFilter] = useState('all');
+  const [bookingColorFilter, setBookingColorFilter] = useState('all');
 
   // Reservations calendar/list state now lives inside <ReservationDashboard />
 
@@ -1239,6 +1247,7 @@ const CoffinDashboard = () => {
         formData.append('tenant_id', String(tenantId));
       }
       formData.append('name', data.name);
+      formData.append('type', data.name);
       formData.append('exact_price', parseFloat(data.price));
       formData.append('quantity', parseInt(data.stock) || 0);
       if (data.size) formData.append('size', data.size);
@@ -1267,6 +1276,18 @@ const CoffinDashboard = () => {
 
   const handleCreateBooking = async (e) => {
     e.preventDefault();
+    const selectedCoffin = coffins.find(
+      (coffin) => (coffin.coffin_id || coffin.id) == modal.data.coffin_id
+    );
+    const requestedQuantity = parseInt(modal.data.quantity, 10) || 1;
+    if (!selectedCoffin || requestedQuantity > getCoffinStock(selectedCoffin)) {
+      toast.error(
+        selectedCoffin
+          ? `Only ${getCoffinStock(selectedCoffin)} of this coffin variant are available`
+          : 'Select an available coffin type and color'
+      );
+      return;
+    }
     setSubmitLoading(true);
     try {
       const d = modal.data;
@@ -1495,6 +1516,30 @@ const CoffinDashboard = () => {
       c.branch_id === currentBranch ||
       c.branch_id == currentBranch,
   );
+  const inventoryTypes = [...new Set(branchCoffins.map((c) => c.type || c.name).filter(Boolean))].sort();
+  const inventoryColors = [...new Set(branchCoffins.map((c) => c.color).filter(Boolean))].sort();
+  const bookableCoffins = coffins.filter((coffin) => {
+    const matchesBranch = !coffin.branch_id || coffin.branch_id == (modal.data.branch_id || currentBranch);
+    return matchesBranch && getCoffinStock(coffin) > 0;
+  });
+  const bookingTypes = [...new Set(bookableCoffins.map((c) => c.type || c.name).filter(Boolean))].sort();
+  const bookingColors = [...new Set(
+    bookableCoffins
+      .filter((c) => bookingTypeFilter === 'all' || (c.type || c.name) === bookingTypeFilter)
+      .map((c) => c.color)
+      .filter(Boolean)
+  )].sort();
+  const filteredBookingCoffins = bookableCoffins.filter((coffin) => {
+    const type = coffin.type || coffin.name || '';
+    if (bookingTypeFilter !== 'all' && type !== bookingTypeFilter) return false;
+    if (bookingColorFilter !== 'all' && coffin.color !== bookingColorFilter) return false;
+    const query = bookingSearch.trim().toLowerCase();
+    return !query || [coffin.name, coffin.type, coffin.color, coffin.size, coffin.custom_id, coffin.coffin_id]
+      .some((value) => String(value || '').toLowerCase().includes(query));
+  });
+  const selectedBookingCoffin = bookableCoffins.find(
+    (coffin) => (coffin.coffin_id || coffin.id) == modal.data.coffin_id
+  );
   // Mirrors `branchCoffins` above: a booking registered without a per-branch id
   // (branch_id NULL) is shared central inventory and must stay visible everywhere.
   // The server already scopes /coffins/orders to the current branch OR NULL, so we
@@ -1509,10 +1554,12 @@ const CoffinDashboard = () => {
   );
 
   const filteredCoffins = branchCoffins.filter((c) => {
+    const stock = getCoffinStock(c);
     if (invQuery) {
       const ql = invQuery.toLowerCase();
       if (
         !c.name?.toLowerCase().includes(ql) &&
+        !c.type?.toLowerCase().includes(ql) &&
         !(c.custom_id || c.coffin_id)?.toLowerCase().includes(ql) &&
         !c.size?.toLowerCase().includes(ql) &&
         !c.color?.toLowerCase().includes(ql) &&
@@ -1520,9 +1567,11 @@ const CoffinDashboard = () => {
       )
         return false;
     }
-    if (invFilter === 'available') return c.stock > 2;
-    if (invFilter === 'low') return c.stock > 0 && c.stock <= 2;
-    if (invFilter === 'out') return c.stock <= 0;
+    if (invTypeFilter !== 'all' && (c.type || c.name) !== invTypeFilter) return false;
+    if (invColorFilter !== 'all' && c.color !== invColorFilter) return false;
+    if (invFilter === 'available') return stock > 2;
+    if (invFilter === 'low') return stock > 0 && stock <= 2;
+    if (invFilter === 'out') return stock <= 0;
     return true;
   });
 
@@ -1543,9 +1592,9 @@ const CoffinDashboard = () => {
   const incomingRequests = stockRequests.filter((r) => r.to_branch_id == currentBranch);
   const outgoingRequests = stockRequests.filter((r) => r.from_branch_id == currentBranch);
 
-  const totalStock = branchCoffins.reduce((s, c) => s + (parseInt(c.stock) || 0), 0);
-  const lowStockCount = branchCoffins.filter((c) => c.stock > 0 && c.stock <= 2).length;
-  const outOfStockCount = branchCoffins.filter((c) => c.stock <= 0).length;
+  const totalStock = branchCoffins.reduce((s, c) => s + getCoffinStock(c), 0);
+  const lowStockCount = branchCoffins.filter((c) => getCoffinStock(c) > 0 && getCoffinStock(c) <= 2).length;
+  const outOfStockCount = branchCoffins.filter((c) => getCoffinStock(c) <= 0).length;
   const pendingBookingsCount = branchBookings.filter((b) => b.status === 'pending').length;
 
   // â”€â”€â”€ Drawer Views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2302,13 +2351,13 @@ const CoffinDashboard = () => {
 
         <div style={{ ...styles.statCard, background: '#15803d' }}>
           <div style={styles.statHeader}>
-            <span style={styles.statLabel}>Available</span>
+            <span style={styles.statLabel}>Coffin Variants</span>
             <div style={styles.statIcon}>
-              <i className="fa-solid fa-circle-check"></i>
+              <i className="fa-solid fa-tags"></i>
             </div>
           </div>
-          <div style={styles.statValue}>{totalStock - lowStockCount - outOfStockCount}</div>
-          <div style={styles.statSubtext}>Ready to book</div>
+          <div style={styles.statValue}>{branchCoffins.length}</div>
+          <div style={styles.statSubtext}>Types, colors and sizes</div>
         </div>
 
         <div style={{ ...styles.statCard, background: '#d97706' }}>
@@ -2372,11 +2421,29 @@ const CoffinDashboard = () => {
             <i className="fa-solid fa-magnifying-glass" style={{ color: S.textMuted }}></i>
             <input
               style={styles.sboxInput}
-              placeholder="Search name or SKU..."
+              placeholder="Search coffin type, color, name, or ID..."
               value={invQuery}
               onChange={(e) => setInvQuery(e.target.value)}
             />
           </div>
+          <select
+            style={{ ...styles.fs, width: 'auto', minWidth: 145 }}
+            aria-label="Filter inventory by coffin type"
+            value={invTypeFilter}
+            onChange={(e) => setInvTypeFilter(e.target.value)}
+          >
+            <option value="all">All types</option>
+            {inventoryTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+          </select>
+          <select
+            style={{ ...styles.fs, width: 'auto', minWidth: 135 }}
+            aria-label="Filter inventory by color"
+            value={invColorFilter}
+            onChange={(e) => setInvColorFilter(e.target.value)}
+          >
+            <option value="all">All colors</option>
+            {inventoryColors.map((color) => <option key={color} value={color}>{color}</option>)}
+          </select>
           <div style={styles.ff}>
             {[
               ['all', 'All'],
@@ -2428,16 +2495,17 @@ const CoffinDashboard = () => {
                 </tr>
               ) : (
                 filteredCoffins.map((coffin) => {
-                  const st = getStockStatus(coffin.stock);
+                  const stock = getCoffinStock(coffin);
+                  const st = getStockStatus(stock);
                   const id = coffin.coffin_id || coffin.id;
                   return (
                     <tr key={id}>
                       <td style={styles.td}>
                         <div style={styles.ci}>
-                          <div style={styles.thumb}>{coffin.name?.charAt(0) || '?'}</div>
+                          <div style={styles.thumb}>{(coffin.type || coffin.name)?.charAt(0) || '?'}</div>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ ...styles.cname, overflowWrap: 'anywhere' }}>{coffin.name}</div>
-                            <div style={styles.sku}>{coffin.sku}</div>
+                            <div style={{ ...styles.cname, overflowWrap: 'anywhere' }}>{coffin.type || coffin.name}</div>
+                            <div style={styles.sku}>{coffin.color || 'Color not set'}{coffin.size ? ` · ${coffin.size}` : ''}</div>
                           </div>
                         </div>
                       </td>
@@ -2460,6 +2528,7 @@ const CoffinDashboard = () => {
                           // four attributes, so the table had a ragged,
                           // low-density rhythm. These wrap to fit the data.
                           const details = [
+                            coffin.type ? ['Type', coffin.type] : null,
                             coffin.size ? ['Size', coffin.size] : null,
                             coffin.color ? ['Color', coffin.color] : null,
                             coffin.material ? ['Material', coffin.material] : null,
@@ -2490,14 +2559,14 @@ const CoffinDashboard = () => {
                           ...styles.td,
                           fontWeight: 700,
                           color:
-                            coffin.stock <= 0
+                            stock <= 0
                               ? S.danger
-                              : coffin.stock <= 2
+                              : stock <= 2
                                 ? S.warning
                                 : S.success,
                         }}
                       >
-                        {coffin.stock}
+                        {stock}
                       </td>
                       <td style={styles.td}>
                         <Tag cls={st.cls}>{st.label}</Tag>
@@ -2515,11 +2584,11 @@ const CoffinDashboard = () => {
                             style={{ ...styles.btn, ...styles.btnD, ...styles.btnSm, background: '#dc2626' }}
                             onClick={() => openAdjustCoffinStock(id, 'remove')}
                             title="Subtract stock"
-                            disabled={coffin.stock <= 0}
+                            disabled={stock <= 0}
                           >
                             <i className="fa-solid fa-minus"></i>
                           </button>
-                          {coffin.stock > 0 && (
+                          {stock > 0 && (
                             <button
                               style={{ ...styles.btn, ...styles.btnS, ...styles.btnSm }}
                               onClick={() =>
@@ -2537,7 +2606,7 @@ const CoffinDashboard = () => {
                               Book
                             </button>
                           )}
-                          {coffin.stock <= 0 && (
+                          {stock <= 0 && (
                             <button
                               style={{ ...styles.btn, ...styles.btnW, ...styles.btnSm }}
                               onClick={() => openFindStock(coffin.name)}
@@ -2545,7 +2614,7 @@ const CoffinDashboard = () => {
                               Find Stock
                             </button>
                           )}
-                          {coffin.stock > 0 && (
+                          {stock > 0 && (
                             <button
                               style={{
                                 ...styles.btn,
@@ -2772,7 +2841,7 @@ const CoffinDashboard = () => {
             </div>
             <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
               <div style={styles.fg}>
-                <label style={styles.fl}>Name *</label>
+                <label style={styles.fl}>Coffin type / name *</label>
                 <input
                   style={styles.fi}
                   required
@@ -3107,36 +3176,97 @@ const CoffinDashboard = () => {
               </div>
 
               <div>
+                <label style={styles.fl}>Search available coffin types and colors</label>
+                <input
+                  style={styles.fi}
+                  type="search"
+                  value={bookingSearch}
+                  onChange={(e) => setBookingSearch(e.target.value)}
+                  placeholder="Search by coffin name, type, color, or size"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={styles.fl}>Coffin type</label>
+                  <select
+                    style={styles.fs}
+                    value={bookingTypeFilter}
+                    onChange={(e) => {
+                      setBookingTypeFilter(e.target.value);
+                      setBookingColorFilter('all');
+                      setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, coffin_id: '', color: '', size: '' },
+                      }));
+                    }}
+                  >
+                    <option value="all">All available types</option>
+                    {bookingTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.fl}>Available color</label>
+                  <select
+                    style={styles.fs}
+                    value={bookingColorFilter}
+                    onChange={(e) => {
+                      setBookingColorFilter(e.target.value);
+                      setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, coffin_id: '', color: '', size: '' },
+                      }));
+                    }}
+                  >
+                    <option value="all">All available colors</option>
+                    {bookingColors.map((color) => <option key={color} value={color}>{color}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
                 <label style={styles.fl}>Select Coffin *</label>
                 <select
                   style={styles.fs}
                   required
                   value={modal.data.coffin_id || ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, coffin_id: e.target.value } })
-                  }
+                  onChange={(e) => {
+                    const selected = filteredBookingCoffins.find(
+                      (coffin) => (coffin.coffin_id || coffin.id) == e.target.value
+                    );
+                    setModal((prev) => ({
+                      ...prev,
+                      data: {
+                        ...prev.data,
+                        coffin_id: e.target.value,
+                        color: selected?.color || '',
+                        size: selected?.size || '',
+                        amount: selected?.price ?? selected?.exact_price ?? prev.data.amount,
+                      },
+                    }));
+                  }}
                 >
                   <option value="">Select coffin</option>
-                  {(() => {
-                    const selectedBranchId = modal.data.branch_id || currentBranch;
-                    const branchCoffinsList = coffins.filter((c) => {
-                      const matchesBranch = !c.branch_id || c.branch_id == selectedBranchId;
-                      const hasStock = (parseInt(c.stock) || 0) > 0;
-                      return matchesBranch && hasStock;
-                    });
-                    return branchCoffinsList.length > 0 ? (
-                      branchCoffinsList.map((c) => (
-                        <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
-                          {c.name} — {formatKES(c.price)} ({c.stock} left)
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>
-                        No coffins available
-                      </option>
-                    );
-                  })()}
+                  {filteredBookingCoffins.length > 0 ? filteredBookingCoffins.map((coffin) => (
+                    <option key={coffin.coffin_id || coffin.id} value={coffin.coffin_id || coffin.id}>
+                      {[coffin.type || coffin.name, coffin.color, coffin.size].filter(Boolean).join(' · ')}
+                      {' — '}{formatKES(coffin.price ?? coffin.exact_price)}
+                      {' ('}{getCoffinStock(coffin)}{' available)'}
+                    </option>
+                  )) : (
+                    <option value="" disabled>
+                      {bookableCoffins.length ? 'No coffins match these search filters' : 'No coffins currently in stock'}
+                    </option>
+                  )}
                 </select>
+                {selectedBookingCoffin && (
+                  <div style={{ fontSize: 12, color: S.textMuted, marginTop: 6 }}>
+                    {selectedBookingCoffin.type || selectedBookingCoffin.name}
+                    {selectedBookingCoffin.color ? ` · ${selectedBookingCoffin.color}` : ''}
+                    {selectedBookingCoffin.size ? ` · ${selectedBookingCoffin.size}` : ''}
+                    {` · ${getCoffinStock(selectedBookingCoffin)} in stock`}
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16 }}>
@@ -3145,6 +3275,7 @@ const CoffinDashboard = () => {
                   <input
                     type="number"
                     min="1"
+                    max={selectedBookingCoffin ? getCoffinStock(selectedBookingCoffin) : undefined}
                     style={styles.fi}
                     value={modal.data.quantity || 1}
                     onChange={(e) =>
@@ -3446,6 +3577,4 @@ const objToStr = (obj) => {
     })
     .join(';');
 };
-
-export default CoffinDashboard;
-
+
