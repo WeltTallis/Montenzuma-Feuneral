@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSocket } from '../../../utils/context/socketContext';
 import { workshopService } from '../services/workshopService';
+import { Ctx } from './WorkshopContext';
 
-import WorkshopTabs from './WorkshopTabs';
 import MaterialsTab from './MaterialsTab';
 import ModalRouter from './ModalRouter';
 import OrdersTab from './OrdersTab';
 import StoreTab from './StoreTab';
 import Toasts from './Toasts';
 import WorkshopSidebar from '../components/WorkshopSidebar';
-
-export const Ctx = createContext(null);
 
 const STAGES = [
   { name: 'Building', icon: 'fa-hammer', color: '#2563EB', bg: '#EFF6FF' },
@@ -47,6 +45,7 @@ const transformOrder = (o) => {
     id: o.order_number || `CF-${o.id}`,
     dbId: o.id,
     name: o.coffin_name || 'Unnamed',
+    client: o.client_name || o.client || o.customer_name || '',
     type: o.coffin_type || 'Standard',
     size: o.size || 'Standard',
     color: o.color || 'Natural',
@@ -96,9 +95,9 @@ const S = {
 
 const WorkshopDashboard = () => {
   const { socket } = useSocket();
-  // Orders is the landing tab — the Dashboard tab no longer exists.
-  const [tab, setTab] = useState('orders');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [tab, setTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -136,9 +135,13 @@ const WorkshopDashboard = () => {
         workshopService.getWorkers(),
         workshopService.getMaterials(),
       ]);
-      if (ordersRes.data) setOrders(Array.isArray(ordersRes.data) ? ordersRes.data.map(transformOrder) : []);
-      if (workersRes.data) setWorkers(Array.isArray(workersRes.data) ? workersRes.data.map(transformWorker) : []);
-      if (materialsRes.data) setMaterials(Array.isArray(materialsRes.data) ? materialsRes.data.map(transformMaterial) : []);
+      const failedRequest = [ordersRes, workersRes, materialsRes].find((result) => !result?.success);
+      if (failedRequest) {
+        throw new Error(failedRequest.error || 'A workshop data request failed.');
+      }
+      setOrders(Array.isArray(ordersRes.data) ? ordersRes.data.map(transformOrder) : []);
+      setWorkers(Array.isArray(workersRes.data) ? workersRes.data.map(transformWorker) : []);
+      setMaterials(Array.isArray(materialsRes.data) ? materialsRes.data.map(transformMaterial) : []);
       setConnected(true);
     } catch (err) {
       setError(err.message);
@@ -273,7 +276,7 @@ const WorkshopDashboard = () => {
   useEffect(() => {
     const onWsNavigate = (event) => {
       const { tab: nextTab } = event.detail || {};
-      if (nextTab && ['orders', 'materials', 'store', 'workers', 'settings'].includes(nextTab)) {
+      if (nextTab && ['dashboard', 'orders', 'floor', 'store', 'materials', 'deliveries', 'reports', 'settings'].includes(nextTab)) {
         setTab(nextTab);
       }
     };
@@ -329,7 +332,12 @@ const WorkshopDashboard = () => {
 
   const deleteWorker = async (id) => {
     if (!confirm('Remove this worker?')) return;
-    try { await workshopService.deleteWorker(id); addToast('Worker removed', 'info'); loadData(); }
+    try {
+      const result = await workshopService.deleteWorker(id);
+      if (!result?.success) throw new Error(result?.error || 'Unable to remove worker.');
+      addToast('Worker removed', 'info');
+      await loadData();
+    }
     catch (err) { addToast('Failed to remove worker: ' + err.message, 'error'); }
   };
 
@@ -356,18 +364,29 @@ const WorkshopDashboard = () => {
     catch (err) { addToast('Failed to add material: ' + err.message, 'error'); }
   };
 
+  const deleteMaterial = async (id) => {
+    const result = await workshopService.deleteMaterial(id);
+    if (!result?.success) throw new Error(result?.error || 'Unable to delete material.');
+    await loadData();
+  };
+
   const deleteOrder = async (id) => {
     if (!confirm('Delete this order?')) return;
-    try { await workshopService.deleteOrder(id); addToast('Order deleted', 'info'); loadData(); }
+    try {
+      const result = await workshopService.deleteOrder(id);
+      if (!result?.success) throw new Error(result?.error || 'Unable to delete order.');
+      addToast('Order deleted', 'info');
+      await loadData();
+    }
     catch (err) { addToast('Failed to delete order: ' + err.message, 'error'); }
   };
 
   const value = useMemo(() => ({
     orders, workers, materials, loading, error, connected,
     toasts, modal, setModal, addToast, createOrder, updateOrderStatus,
-    createWorker, deleteWorker, addMaterial, deleteOrder, loadData, tab, setTab,
+    createWorker, deleteWorker, addMaterial, deleteMaterial, deleteOrder, loadData, tab, setTab,
     assignWorker,
-  }), [orders, workers, materials, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteOrder, loadData, assignWorker]);
+  }), [orders, workers, materials, loading, error, connected, toasts, modal, tab, createOrder, updateOrderStatus, createWorker, deleteWorker, addMaterial, deleteMaterial, deleteOrder, loadData, assignWorker]);
 
   // ─── Loading State ──────────────────────────────────────────────────
   if (loading && !orders.length) {

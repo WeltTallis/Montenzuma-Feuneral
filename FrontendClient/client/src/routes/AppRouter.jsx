@@ -124,7 +124,7 @@ const StoreDashboard = lazy(() => import('../modules/store'));
 // by the bento grid on the marketing site (modules/landing/imageCard.jsx)
 const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/chemicalAnalytics'));
 const ReleaseFormPreview = lazy(() => import('../components/deceased/register/deceasedRelease'));
-const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopDashboard'));
+const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopWorkspace'));
 const BodyIntakePreview = lazy(() => import('../components/deceased/register/deceasedIntake'));
 const FlowerBookingsPreview = lazy(() => import('../components/florists/FlowerBookingsNew'));
 const ReceptionPortalPreview = lazy(() => import('../components/reception/ReceptionPortal'));

@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { Ctx } from './WorkshopDashboard';
+import { Ctx } from './WorkshopContext';
 
 const T = {
   bg: '#F4F6F8', surface: '#FFFFFF', bdr: '#E2E8F0', borderLight: '#F1F5F9',

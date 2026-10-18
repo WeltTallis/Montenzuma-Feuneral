@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useContext } from 'react';
-import { Ctx } from './WorkshopDashboard';
+import { Ctx } from './WorkshopContext';
 
 const T = {
   bg: '#F4F6F8', surface: '#FFFFFF', bdr: '#E2E8F0', borderLight: '#F1F5F9',
@@ -78,7 +78,7 @@ const modalNote = { padding: '4px 8px 12px', fontSize: 12, color: T.textSec };
 const initialsOf = (name) =>
   String(name || 'W').split(/\s+/).filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 
-const OrdersTab = () => {
+const OrdersTab = ({ searchTerm = '' }) => {
   const ctx = useContext(Ctx);
   if (!ctx) return null;
   const { orders, workers, setModal, updateOrderStatus, deleteOrder, assignWorker } = ctx;
@@ -101,8 +101,15 @@ const OrdersTab = () => {
   const filtered = useMemo(() => {
     let f = [...orders];
     if (filter !== 'all') f = f.filter(o => o.stageIndex === STAGES.findIndex(s => s.name === filter));
+    const query = searchTerm.trim().toLowerCase();
+    if (query) {
+      f = f.filter(order =>
+        [order.id, order.name, order.client, order.type, order.size, order.color, order.assignedToName]
+          .some(value => String(value || '').toLowerCase().includes(query))
+      );
+    }
     return f.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [orders, filter]);
+  }, [orders, filter, searchTerm]);
 
   const stageCount = (value) =>
     value === 'all' ? orders.length : orders.filter(o => o.stageIndex === STAGES.findIndex(s => s.name === value)).length;

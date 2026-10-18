@@ -4,7 +4,7 @@ import { workshopService } from '../services/workshopService';
 import api from '../../../api/axios';
 import { ENDPOINTS } from '../../../api/endpoints';
 import { getParentTenantSlug, getTenantSlug } from '../../../utils/globalAuth';
-import { Ctx } from './WorkshopDashboard';
+import { Ctx } from './WorkshopContext';
 
 const T = {
 
