@@ -1,0 +1,9 @@
+/* ============================================================================
+   Deliveries — live in-memory dispatch log (mock).
+   ============================================================================ */
+export const DELIVERIES = [
+  { id: 'DSP-2024-07', coffin: 'Custom Rosewood Casket', client: 'Hargrove Estate',   from: 'Eternal Craft Workshop', destination: 'Riverside Memorial Park', dispatchedBy: 'Marcus Webb', receivedBy: 'John Hargrove',  driver: 'Tom Hardy',  status: 'transit',   date: 'Apr 10', time: '11:30 AM', purpose: 'Funeral delivery',     remarks: 'Family requested white-glove handling' },
+  { id: 'DSP-2024-06', coffin: 'Oak Brass-Handled',       client: 'Riverstone Co.',    from: 'Eternal Craft Workshop', destination: 'Greenfield Funeral Home',  dispatchedBy: 'Marcus Webb', receivedBy: 'Lisa Park',     driver: 'Tom Hardy',  status: 'delivered', date: 'Apr 10', time: '9:00 AM',  purpose: 'Stock delivery',       remarks: 'Regular weekly order' },
+  { id: 'DSP-2024-08', coffin: 'Walnut Cross Casket',     client: 'Bennett & Sons',    from: 'Eternal Craft Workshop', destination: 'Bennett Chapel',          dispatchedBy: 'Marcus Webb', receivedBy: '—',             driver: 'Ana Vidal',  status: 'scheduled', date: 'Apr 10', time: '4:00 PM',  purpose: 'Client pickup',         remarks: 'Wait for family confirmation' },
+  { id: 'DSP-2024-05', coffin: 'Maple Lined Casket',       client: 'Peters Family',     from: 'Eternal Craft Workshop', destination: 'St. Luke Cemetery',       dispatchedBy: 'Marcus Webb', receivedBy: 'Father Daniels', driver: 'Ana Vidal',  status: 'delivered', date: 'Apr 10', time: '8:00 AM',  purpose: 'Funeral service',      remarks: 'On-time, no issues' },
+];

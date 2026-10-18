@@ -45,7 +45,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
             return;
         }
 
-        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id } = req.body;
+        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id, fuel_card_number } = req.body;
         const image = req.file ? `uploads/hearses/${req.file.filename}` : null;
 
         if (!plate_number) {
@@ -118,10 +118,10 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         const hearseNumber = String((countResult[0]?.count || 0) + 1).padStart(3, '0');
         const hearse_code = `HRS-${hearseNumber}`;
 
-        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'active_bookings', 'tenant_id', 'tenant_slug', 'created_at', 'updated_at'];
+        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'active_bookings', 'tenant_id', 'tenant_slug', 'fuel_card_number', 'created_at', 'updated_at'];
         const insertValues = [
             hearse_code, hearse_name || null, plate_number.trim(), model || null, capacity || 8, status || 'available',
-            assignedBranchId, branchNameValue, branchCodeValue, 0, tenantId, tenantSlug, now, now
+            assignedBranchId, branchNameValue, branchCodeValue, 0, tenantId, tenantSlug, fuel_card_number || null, now, now
         ];
 
         const placeholders = insertValues.map(() => '?').join(', ');
@@ -140,7 +140,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
                 model: model || null, capacity: capacity || 8, status: status || 'available',
                 branch_id: assignedBranchId, branch_name: branchNameValue,
                 branch_code: branchCodeValue, tenant_id: tenantId, tenant_slug: tenantSlug,
-                image, created_at: now, updated_at: now
+                fuel_card_number: fuel_card_number || null, image, created_at: now, updated_at: now
             };
 
             io.emit('hearse_registered', { type: 'HEARSE_REGISTERED', hearse: newHearse, timestamp: now, message: `New hearse registered: ${hearse_name || plate_number}` });
@@ -166,7 +166,7 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
     try {
         const { id } = req.params;
         const pool = await getHearsePool();
-        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id, description } = req.body;
+        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id, description, fuel_card_number } = req.body;
         const image = req.file ? `uploads/hearses/${req.file.filename}` : null;
         const now = getKenyaTimeISO();
 
@@ -179,6 +179,7 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
         if (model) { fields.push('model = ?'); values.push(model); }
         if (capacity !== undefined && capacity !== null) { fields.push('capacity = ?'); values.push(capacity); }
         if (status) { fields.push('status = ?'); values.push(status); }
+        if (fuel_card_number !== undefined) { fields.push('fuel_card_number = ?'); values.push(fuel_card_number || null); }
         
         // Handle branch update - support both branch_id and branch_code
         if (branch_code && !branch_id) {

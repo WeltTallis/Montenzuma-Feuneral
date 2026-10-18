@@ -26,6 +26,7 @@ CREATE TABLE hearses (
     year INT,
     chassis_number VARCHAR(50),
     engine_number VARCHAR(50),
+    fuel_card_number VARCHAR(50),
     insurance_expiry DATE,
     service_due_date DATE,
     created_at VARCHAR(255),

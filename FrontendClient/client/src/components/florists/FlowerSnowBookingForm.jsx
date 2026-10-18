@@ -650,8 +650,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
       ['Flowers', [...new Set([...selectedFlowers, ...form.flowers.split(/[\n,]+/).map(item => item.trim()).filter(Boolean)])].join(', ')],
       ['Departed', dep],
       ['Funeral date', form.funeralDate],
-      ['Color preference', form.anyColor ? "Any color · florist's choice" : form.colors],
-      ['Ribbon wording', form.ribbon.trim()],
       ['Size', form.size],
       ['Quantities', chosen.map(c => `${c.title} ×${qtyOf(c.id)}`).join(', ')],
       ['Notes', form.notes.trim()],
@@ -789,29 +787,6 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                             <span className="tickbadge"><svg><use href="#tick" /></svg></span>
                           </div>
                           <p className="autofilled">Leave blank and the florist will arrange seasonal flowers.</p>
-                        </div>
-
-                        <div className="frow">
-                          <div className="field">
-                            <label htmlFor="fColors">Color preference</label>
-                            <div className="colorrow">
-                              <div className={'inwrap' + (!form.anyColor && form.colors ? ' has-val' : '')}>
-                                <input type="text" id="fColors" placeholder="e.g. Deep red, white" autoComplete="off" disabled={form.anyColor} {...set('colors')} />
-                                <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                              </div>
-                              <label className="any-line">
-                                <input type="checkbox" id="fAnyColor" className="sqbox" checked={form.anyColor} onChange={event => setForm(current => ({ ...current, anyColor: event.target.checked }))} />
-                                <span>Any color · florist's choice</span>
-                              </label>
-                            </div>
-                          </div>
-                          <div className="field">
-                            <label htmlFor="fRibbon">Ribbon wording <span className="opt">(optional)</span></label>
-                            <div className={'inwrap' + (form.ribbon ? ' has-val' : '')}>
-                              <input type="text" id="fRibbon" placeholder='e.g. "Rest in Peace"' autoComplete="off" {...set('ribbon')} />
-                              <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                            </div>
-                          </div>
                         </div>
 
                       <div className="field">

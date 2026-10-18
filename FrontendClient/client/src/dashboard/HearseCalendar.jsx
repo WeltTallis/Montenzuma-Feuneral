@@ -148,9 +148,9 @@ function DayCell({ day, events, onDayClick, onEventClick, today }) {
     <div
       onClick={() => onDayClick(day)}
       style={{
-        border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-sm)",
-        padding: "0.35rem", height: "100px", display: "flex", flexDirection: "column",
-        gap: "0.2rem", cursor: "pointer", background: active ? "var(--md-surface-hover)" : "var(--md-surface-panel)",
+        border: "1px solid var(--md-border)", borderRadius: "var(--md-radius)",
+        padding: "0.6rem", height: "130px", display: "flex", flexDirection: "column",
+        gap: "0.3rem", cursor: "pointer", background: active ? "var(--md-surface-hover)" : "var(--md-surface-panel)",
         position: "relative",
       }}
     >
@@ -202,7 +202,7 @@ function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
         </thead>
         <tbody>
           {weeks.map((week, wi) => (
-            <tr key={wi} style={{ height: "100px" }}>
+            <tr key={wi} style={{ height: "130px" }}>
               {week.map((day) => (
                 <td key={toKey(day)} style={{ padding: 0 }}>
                   <DayCell day={day} events={events} onDayClick={onDayClick} onEventClick={onEventClick} today={today} />
@@ -223,12 +223,12 @@ function EventRow({ event, onClick }) {
     <div
       onClick={() => onClick(event)}
       style={{
-        display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.45rem 0.6rem",
-        border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-sm)",
-        background: event.bg, cursor: "pointer", marginBottom: "0.4rem",
+        display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.85rem 1rem",
+        border: "1px solid var(--md-border)", borderRadius: "var(--md-radius)",
+        background: event.bg, cursor: "pointer", marginBottom: "0.6rem",
       }}
     >
-      <meta.icon size={13} style={{ color: status.color }} />
+      <meta.icon size={16} style={{ color: status.color }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--md-ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
           {event.title}
@@ -480,6 +480,9 @@ function EventListCard({ event, onClick, compact = false }) {
     <span className="md-event-status" style={{ color: status.color, backgroundColor: status.bg }}>{status.label}</span><ChevronRight className="md-event-chevron" size={16}/>
   </button>;
 }
+
+
+
 
 
 

@@ -53,6 +53,13 @@ const DetailValue = styled.div`
   word-break: break-word;
   line-height: 1.35;
   ${p => p.$mono && 'font-family: ui-monospace, monospace; font-size: 13px;'}
+  ${p => p.$hl && `
+    color: #5F0F40;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+    text-shadow: 0 0 12px rgba(95, 15, 64, 0.12);
+  `}
 `;
 
 // -------------------------------------------------------------------
@@ -99,9 +106,9 @@ const OverviewTab = ({ deceased, nextOfKin }) => {
       <SectionHead $mt0><span>01</span> Admission</SectionHead>
       <DetailGrid>
         <DetailItem><DetailLabel>Admission Number</DetailLabel><DetailValue $mono>{d.admission_number || d.admission_no || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Date Admitted</DetailLabel><DetailValue>{formatDate(d.date_admitted || d.created_at)}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Date Admitted</DetailLabel><DetailValue $hl>{formatDate(d.date_admitted || d.created_at)}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Time Received</DetailLabel><DetailValue $mono>{d.time_received || d.admission_time || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Receiving Officer</DetailLabel><DetailValue>{d.receiving_officer || d.admitted_by || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Receiving Officer</DetailLabel><DetailValue $hl>{d.receiving_officer || d.admitted_by || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Body Status</DetailLabel><DetailValue>{d.body_status || d.body_condition || 'In Morgue'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Received From</DetailLabel><DetailValue>{d.received_from || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Date of Death</DetailLabel><DetailValue>{formatDate(d.date_of_death)}</DetailValue></DetailItem>

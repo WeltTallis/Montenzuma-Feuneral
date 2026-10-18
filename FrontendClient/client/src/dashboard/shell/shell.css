@@ -1,111 +1,66 @@
-/* Shell layout: sidebar + content column. All selectors stay under `.rpd`
-   so nothing leaks into the rest of the app. */
-.rpd .app { display: flex; align-items: stretch; min-height: 100vh; }
+/* ============================================================================
+   RestPoint Dashboard � Shell Layout
+   ============================================================================ */
+.rpd .app { display: flex; align-items: stretch; min-height: 100vh; background: var(--rp-bg); }
 .rpd .rpd-body { display: flex; flex: 1; min-width: 0; align-items: stretch; }
 .rpd .rpd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-
-/* ── sidebar ── */
 .rpd .rpd-nav-scrim { display: none; }
 .rpd .rpd-nav {
-  width: 240px; flex: 0 0 240px; align-self: stretch;
+  width: 252px; flex: 0 0 252px; align-self: stretch;
   position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column;
-  background: var(--card); border-right: 1px solid var(--brd);
-  transition: width .22s ease, flex-basis .22s ease;
+  background: var(--rp-sidebar);
+  border-right: 1px solid var(--rp-border);
+  transition: width 0.22s ease, flex-basis 0.22s ease;
+  z-index: 100;
 }
-.rpd .rpd-nav-brand { display: flex; align-items: center; gap: 8px; padding: 14px 12px 10px; }
+.rpd .rpd-nav-brand { display: flex; align-items: center; gap: 10px; padding: 20px 14px 12px; }
 .rpd .rpd-nav-burger { display: none; }
-.rpd .rpd-nav-logo {
-  display: flex; align-items: center; gap: 10px;
-  padding: 4px 6px; border-radius: 10px; text-align: left; width: 100%;
-}
-.rpd .rpd-nav-logo:hover { background: var(--sect); }
-.rpd .rpd-nav-logo-mark {
-  width: 34px; height: 34px; border-radius: 10px; flex: 0 0 34px;
-  display: grid; place-items: center;
-  background: #132a13; color: #fff; font-family: var(--serif); font-weight: 700; font-size: 18px;
-}
+.rpd .rpd-nav-logo { display: flex; align-items: center; gap: 10px; padding: 4px 6px; border-radius: var(--rp-radius-md); width: 100%; cursor: pointer; }
+.rpd .rpd-nav-logo:hover { background: var(--rp-accent-bg); }
+.rpd .rpd-nav-logo-mark { width: 36px; height: 36px; border-radius: var(--rp-radius-lg); flex: 0 0 36px; display: grid; place-items: center; background: var(--rp-accent); color: #fff; font-weight: 800; font-size: 16px; box-shadow: 0 4px 12px rgba(99,91,223,0.25); }
 .rpd .rpd-nav-logo-txt { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
-.rpd .rpd-nav-logo-txt b { font-size: 14px; }
-.rpd .rpd-nav-logo-txt small { font-size: 11px; color: var(--tx3); }
-.rpd .rpd-nav-list { flex: 1; overflow-y: auto; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; }
-.rpd .rpd-nav-caption { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--tx4); padding: 6px 10px 4px; }
-.rpd .rpd-nav-item {
-  position: relative; display: flex; align-items: center; gap: 12px;
-  width: 100%; padding: 9px 10px; border-radius: 10px; text-align: left;
-  color: var(--tx2); border: 1px solid transparent;
-}
-.rpd .rpd-nav-item:hover { background: var(--sect); }
-.rpd .rpd-nav-item.on { background: var(--acclt); color: var(--accl); border-color: var(--brdl); font-weight: 600; }
-.rpd .rpd-nav-ico {
-  width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px;
-  display: grid; place-items: center; background: var(--sect); color: var(--tx3);
-}
-.rpd .rpd-nav-item.on .rpd-nav-ico { background: var(--card); color: var(--accl); }
+.rpd .rpd-nav-logo-txt b { font-size: 15px; color: var(--rp-text); font-weight: 800; letter-spacing: -0.02em; }
+.rpd .rpd-nav-logo-txt small { font-size: 10px; color: var(--rp-text-muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+.rpd .rpd-nav-list { flex: 1; overflow-y: auto; padding: 8px 8px 4px; display: flex; flex-direction: column; gap: 3px; }
+.rpd .rpd-nav-caption { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rp-text-muted); padding: 8px 12px 6px; }
+.rpd .rpd-nav-item { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: var(--rp-radius-xl); color: var(--rp-text-muted); border: 1px solid transparent; cursor: pointer; transition: all 0.15s ease; font-family: var(--rp-font); }
+.rpd .rpd-nav-item:hover { background: var(--rp-accent-bg); color: var(--rp-accent-dark); }
+.rpd .rpd-nav-item.on { background: var(--rp-surface); color: var(--rp-accent-dark); border: 1px solid var(--rp-border); box-shadow: 0 4px 12px rgba(0,0,0,0.04); font-weight: 700; }
+.rpd .rpd-nav-item.on .rpd-nav-txt b { color: var(--rp-accent-dark); }
+.rpd .rpd-nav-item.on .rpd-nav-txt small { color: var(--rp-accent-dark); opacity: 0.8; }
+.rpd .rpd-nav-ico { width: 36px; height: 36px; flex: 0 0 36px; border-radius: var(--rp-radius-lg); display: grid; place-items: center; background: var(--rp-accent-bg); color: var(--rp-accent-dark); }
+.rpd .rpd-nav-item.on .rpd-nav-ico { background: var(--rp-accent); color: #fff; box-shadow: 0 4px 12px rgba(99,91,223,0.25); }
 .rpd .rpd-nav-txt { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-.rpd .rpd-nav-txt b { font-size: 13px; white-space: nowrap; }
-.rpd .rpd-nav-txt small { font-size: 11px; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rpd .rpd-nav-item.on .rpd-nav-txt small { color: inherit; opacity: .75; }
-.rpd .rpd-nav-bar { position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--acc); }
-.rpd .rpd-nav-foot { padding: 10px; border-top: 1px solid var(--brdl); display: flex; flex-direction: column; gap: 4px; }
-.rpd .rpd-nav-user { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; text-align: left; width: 100%; }
-.rpd .rpd-nav-user:hover { background: var(--sect); }
-.rpd .rpd-nav-avatar { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; display: grid; place-items: center; background: #132a13; color: #fff; font-size: 12px; font-weight: 700; }
-.rpd .rpd-nav-ghost, .rpd .rpd-nav-collapse {
-  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
-  border-radius: 9px; font-size: 12px; color: var(--tx3); text-align: left; width: 100%;
-}
-.rpd .rpd-nav-ghost:hover, .rpd .rpd-nav-collapse:hover { background: var(--sect); color: var(--tx); }
-.rpd .rpd-nav-ghost.danger:hover { background: var(--dngl); color: var(--dng); }
-
-/* collapsed → icon rail */
-.rpd .rpd-nav.is-collapsed { width: 72px; flex-basis: 72px; }
-.rpd .rpd-nav.is-collapsed .rpd-nav-txt,
-.rpd .rpd-nav.is-collapsed .rpd-nav-caption,
-.rpd .rpd-nav.is-collapsed .rpd-nav-logo-txt { display: none; }
-.rpd .rpd-nav.is-collapsed .rpd-nav-item,
-.rpd .rpd-nav.is-collapsed .rpd-nav-user,
-.rpd .rpd-nav.is-collapsed .rpd-nav-ghost,
-.rpd .rpd-nav.is-collapsed .rpd-nav-collapse { justify-content: center; }
-.rpd .rpd-nav.is-collapsed .rpd-nav-bar { left: -10px; }
-
-/* ── slim shell topbar (the views keep their own toolbars below it) ── */
-.rpd .rpd-topbar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 18px; background: var(--card); border-bottom: 1px solid var(--brd);
-  position: sticky; top: 0; z-index: 30;
-}
-.rpd .rpd-topbar-menu { display: none; width: 36px; height: 36px; border-radius: 9px; place-items: center; border: 1px solid var(--brd); }
+.rpd .rpd-nav-txt b { font-size: 13px; font-weight: 800; white-space: nowrap; color: inherit; }
+.rpd .rpd-nav-txt small { font-size: 10px; color: var(--rp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rpd .rpd-nav-bar { position: absolute; left: -10px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--rp-accent); }
+.rpd .rpd-nav-foot { padding: 14px 12px 10px; border-top: 1px solid var(--rp-border-muted); display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+.rpd .rpd-nav-avatar { width: 34px; height: 34px; border-radius: var(--rp-radius-lg); flex: 0 0 34px; display: grid; place-items: center; background: linear-gradient(135deg, var(--rp-accent), var(--rp-accent-dark)); color: #fff; font-size: 12px; font-weight: 800; }
+.rpd .rpd-nav-ghost, .rpd .rpd-nav-collapse { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--rp-radius-lg); font-size: 12px; color: var(--rp-text-muted); text-align: left; width: 100%; cursor: pointer; transition: all 0.15s ease; }
+.rpd .rpd-nav-ghost:hover, .rpd .rpd-nav-collapse:hover { background: var(--rp-accent-bg); color: var(--rp-accent-dark); }
+.rpd .rpd-nav.is-collapsed { width: 76px; flex-basis: 76px; }
+.rpd .rpd-nav.is-collapsed .rpd-nav-txt, .rpd .rpd-nav.is-collapsed .rpd-nav-caption, .rpd .rpd-nav.is-collapsed .rpd-nav-logo-txt { display: none; }
+.rpd .rpd-nav.is-collapsed .rpd-nav-item, .rpd .rpd-nav.is-collapsed .rpd-nav-ghost, .rpd .rpd-nav.is-collapsed .rpd-nav-collapse { justify-content: center; }
+.rpd .rpd-topbar { display: flex; align-items: center; gap: 12px; padding: 14px 32px; background: var(--rp-surface); border-bottom: 1px solid var(--rp-border); position: sticky; top: 0; z-index: 30; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.rpd .rpd-topbar-menu { display: none; width: 36px; height: 36px; border-radius: var(--rp-radius-lg); place-items: center; border: 1px solid var(--rp-border); background: #fff; cursor: pointer; }
 .rpd .rpd-topbar-title { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-.rpd .rpd-topbar-title b { font-size: 15px; font-family: var(--serif); }
-.rpd .rpd-topbar-title small { font-size: 11px; color: var(--tx3); }
+.rpd .rpd-topbar-title b { font-size: 17px; font-weight: 800; color: var(--rp-text); letter-spacing: -0.025em; font-family: var(--rp-font); }
+.rpd .rpd-topbar-title small { font-size: 11px; color: var(--rp-text-muted); margin-top: 2px; }
 .rpd .rpd-topbar-sp { flex: 1; }
-.rpd .rpd-topbar-date { font-size: 12px; color: var(--tx3); white-space: nowrap; }
-.rpd .rpd-topbar .tbtn { position: static; }
-
-/* main column scrolls; the old `.rpd` root scrolled the whole page */
+.rpd .rpd-topbar-date { font-size: 12px; color: var(--rp-text-muted); background: var(--rp-accent-bg); padding: 7px 12px; border-radius: var(--rp-radius-md); font-weight: 700; color: var(--rp-accent-dark); }
+.rpd .tb-btn.sq { border: 1px solid var(--rp-border); border-radius: var(--rp-radius-md); background: var(--rp-surface); color: var(--rp-text-muted); width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; transition: all 0.15s ease; }
+.rpd .tb-btn.sq:hover { background: var(--rp-accent-bg); color: var(--rp-accent-dark); border-color: var(--rp-accent); }
 .rpd .rpd-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .rpd .app { height: 100vh; overflow: hidden; }
-
-/* ── mobile: sidebar becomes an off-canvas drawer ── */
 @media (max-width: 1024px) {
-  .rpd .rpd-nav {
-    position: fixed; left: 0; top: 0; bottom: 0; z-index: 120;
-    transform: translateX(-105%); transition: transform .25s ease;
-    width: 264px; flex-basis: 264px;
-  }
+  .rpd .rpd-nav { position: fixed; left: 0; top: 0; bottom: 0; z-index: 120; transform: translateX(-105%); transition: transform 0.25s ease; width: 264px; flex-basis: 264px; }
   .rpd .rpd-nav.is-collapsed { width: 264px; flex-basis: 264px; }
-  .rpd .rpd-nav.is-collapsed .rpd-nav-txt,
-  .rpd .rpd-nav.is-collapsed .rpd-nav-caption,
-  .rpd .rpd-nav.is-collapsed .rpd-nav-logo-txt { display: flex; }
-  .rpd.rpd-nav-open .rpd-nav { transform: none; box-shadow: var(--shxl); }
-  .rpd.rpd-nav-open .rpd-nav-scrim {
-    display: block; position: fixed; inset: 0; z-index: 110;
-    background: rgba(0, 0, 0, .35);
-  }
-  .rpd .rpd-nav-burger { display: grid; width: 34px; height: 34px; border-radius: 9px; place-items: center; border: 1px solid var(--brd); flex: 0 0 34px; }
+  .rpd.rpd-nav-open .rpd-nav { transform: none; box-shadow: var(--rp-shadow-lg); }
+  .rpd.rpd-nav-open .rpd-nav-scrim { display: block; position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.35); }
+  .rpd .rpd-nav-burger { display: grid; width: 34px; height: 34px; border-radius: var(--rp-radius-md); place-items: center; border: 1px solid var(--rp-border); flex: 0 0 34px; }
   .rpd .rpd-topbar-menu { display: grid; }
-  .rpd .rpd-topbar { padding: 10px 12px; }
+  .rpd .rpd-topbar { padding: 14px 16px; }
   .rpd .rpd-topbar-date { display: none; }
   .rpd .rpd-nav-collapse { display: none; }
 }

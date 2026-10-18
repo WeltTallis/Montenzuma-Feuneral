@@ -27,6 +27,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import "./design-tokens.css";
 import "./dashboard.css";
 import "./shell/shell.css";
 import "./florist/flowers.css";
@@ -739,3 +740,5 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     </div>
   );
 }
+
+

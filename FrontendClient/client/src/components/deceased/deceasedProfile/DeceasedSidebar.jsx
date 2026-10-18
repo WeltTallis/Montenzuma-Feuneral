@@ -228,6 +228,10 @@ const TimelineText = styled.div`
 
   ${({ $completed }) => $completed && `color: ${C.success};`}
   ${({ $active }) => $active && `color: ${C.warning};`}
+  ${({ $hl }) => $hl && `
+    color: #5F0F40;
+    font-weight: 800;
+  `}
 `;
 
 const TimelineTime = styled.div`
@@ -239,6 +243,7 @@ const TimelineTime = styled.div`
 
   ${({ $completed }) => $completed && `color: ${C.success}; opacity: 0.8;`}
     ${({ $active }) => $active && `color: ${C.warning}; opacity: 0.9;`}
+    ${({ $hl }) => $hl && `color: #5F0F40; font-weight: 800; opacity: 1;`}
 `;
 
 /* ─── QR Code Section ─── */
@@ -454,8 +459,8 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
         <TimelineItemRow $completed={true}>
           <TimelineDot $completed={true} />
           <TimelineContent>
-            <TimelineText $completed={true}>Admitted</TimelineText>
-            <TimelineTime $completed={true}>{formatDate(deceased?.created_at)}</TimelineTime>
+            <TimelineText $completed={true} $hl>Admitted</TimelineText>
+            <TimelineTime $completed={true} $hl>{formatDate(deceased?.created_at)}</TimelineTime>
           </TimelineContent>
         </TimelineItemRow>
         <TimelineItemRow $completed={postmortem?.status === 'completed'} $active={postmortem?.status === 'pending' || postmortem?.status === 'in_progress'}>

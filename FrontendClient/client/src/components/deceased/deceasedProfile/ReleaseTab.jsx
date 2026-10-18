@@ -86,6 +86,13 @@ const DetailValue = styled.div`
   line-height: 1.4;
   
   ${p => p.$muted && `color: ${C.gray}; font-weight: 500;`}
+  ${p => p.$hl && `
+    color: #5F0F40;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    text-shadow: 0 0 12px rgba(95, 15, 64, 0.12);
+  `}
 `;
 
 const Btn = styled.button`
@@ -331,7 +338,7 @@ const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0, branchSlug }) =>
           <DetailGrid>
             <DetailItem><DetailLabel>Release ID</DetailLabel><DetailValue>{releaseData?.release_id || '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Deceased</DetailLabel><DetailValue>{releaseData?.name_of_deceased || d.full_name || d.name_of_deceased || '—'}</DetailValue></DetailItem>
-            <DetailItem><DetailLabel>Admission Date</DetailLabel><DetailValue>{formatDate(calendarDateValue(d.date_admitted || d.admission_date || d.created_at))}</DetailValue></DetailItem>
+            <DetailItem><DetailLabel>Admission Date</DetailLabel><DetailValue $hl>{formatDate(calendarDateValue(d.date_admitted || d.admission_date || d.created_at))}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Released Date</DetailLabel><DetailValue>{releaseData ? (releaseData.date_of_removal || releaseData.release_date ? formatDate(calendarDateValue(releaseData.date_of_removal || releaseData.release_date)) : (releaseData.created_at ? formatDate(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
             <DetailItem><DetailLabel>Released Time</DetailLabel><DetailValue>{releaseData ? (releaseData.time_of_removal || releaseData.release_time ? formatTime12(releaseData.time_of_removal || releaseData.release_time) : (releaseData.created_at ? formatTime12(releaseData.created_at) : '—')) : '—'}</DetailValue></DetailItem>
           </DetailGrid>

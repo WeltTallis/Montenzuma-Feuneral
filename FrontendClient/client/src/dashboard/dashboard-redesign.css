@@ -1,228 +1,313 @@
-/* 2026 dashboard skin: a single, independent visual system layered over the
-   existing live operations data and routes.  Kept last in the import order. */
-.rpd{--bg:#f5f7fb;--card:#fff;--sect:#f8f9fc;--field:#f5f6fb;--brd:#e7eaf1;--brdl:#eef0f5;--tx:#172033;--tx2:#48546a;--tx3:#78849a;--tx4:#aab3c2;--brand:#635bdf;--brandl:#5149ce;--blue:#3483d7;--green:#22a06b;--orange:#d88a35;--pink:#df5e7a;--plum:#8065dc;--acc:#635bdf;--accl:#5149ce;--acclt:#efedff;--sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--serif:Inter,ui-sans-serif,system-ui,sans-serif;background:var(--bg)}
-.rpd .app{background:radial-gradient(circle at 75% -20%,#ebe8ff 0,transparent 29%),var(--bg)}
-.rpd .rpd-nav{width:252px;flex-basis:252px;background:#fff;border-right:1px solid #e6eaf1;padding:12px 10px;box-shadow:8px 0 30px #1a23400d}
-.rpd .rpd-nav-logo{padding:9px 8px}.rpd .rpd-nav-logo:hover,.rpd .rpd-nav-user:hover,.rpd .rpd-nav-ghost:hover,.rpd .rpd-nav-collapse:hover{background:#f5f7fb}
-.rpd .rpd-nav-logo-mark{background:linear-gradient(145deg,#315bdc,#2444b8);border-radius:10px;box-shadow:0 6px 16px #315bdc30}.rpd .rpd-nav-logo-txt b,.rpd .rpd-nav-txt b{color:#172033}.rpd .rpd-nav-logo-txt small,.rpd .rpd-nav-txt small,.rpd .rpd-nav-caption,.rpd .rpd-nav-ghost,.rpd .rpd-nav-collapse{color:#78849a}.rpd .rpd-nav-caption{padding:18px 10px 7px;font-size:9px}.rpd .rpd-nav-item{padding:7px 8px;margin-bottom:2px;border-radius:9px;color:#536078}.rpd .rpd-nav-item:hover{background:#f4f6fb;color:#25304a}.rpd .rpd-nav-item.on{background:#eef2ff;border:1px solid #dbe3ff;color:#315bdc;box-shadow:none}.rpd .rpd-nav-ico{background:#f3f5f9;color:#7b879d;width:32px;height:32px;flex-basis:32px;border-radius:8px}.rpd .rpd-nav-item.on .rpd-nav-ico{background:#fff;color:#315bdc}.rpd .rpd-nav-bar{display:block;background:#315bdc}.rpd .rpd-nav-foot{border-top:1px solid #edf0f5;padding-top:12px}.rpd .rpd-nav-avatar{background:linear-gradient(145deg,#315bdc,#8b5cf6);border-radius:9px}.rpd .rpd-nav.is-collapsed{width:76px;flex-basis:76px}
-.rpd .rpd-topbar{padding:17px 28px;background:#ffffffd9;backdrop-filter:blur(14px);border-bottom:1px solid #e8eaf1}.rpd .rpd-topbar-title b{font-family:var(--sans);font-size:17px;font-weight:780;letter-spacing:-.025em}.rpd .rpd-topbar-title small{font-size:11px;color:#8993a5}.rpd .rpd-topbar-date{font-size:11px;background:#f4f5fb;padding:7px 10px;border-radius:7px}.rpd .tb-btn.sq{border:1px solid #e4e7f0;border-radius:8px;background:#fff;color:#647089;width:32px;height:32px}.rpd .tb-btn.sq:hover{background:#f0efff;color:#625add;border-color:#dcd8ff}
-.rpd .tbar{padding:11px 28px;background:#ffffffc9;border-bottom:1px solid #e8eaf1;backdrop-filter:blur(14px)}.rpd .nvp{background:#f4f5fa;padding:4px;border-radius:9px;gap:2px}.rpd .nvp button{border-radius:6px;font-size:11px;padding:7px 10px;color:#6e7890}.rpd .nvp button.on{background:#fff;color:#564ed2;box-shadow:0 2px 6px #262b4117}.rpd .rpd-scroll{background:transparent}
-.rpd .rpd-band{padding:24px 28px 0;background:transparent;gap:18px}.rpd .rpd-band-grid{gap:14px}.rpd .rpd-stat{border:0}.rpd .rpd-stat-wrap{border:1px solid #e7eaf1!important;border-radius:16px;background:#fff;padding:20px 18px;min-height:140px;box-shadow:0 8px 24px #1a23400a;transition:transform .2s,box-shadow .2s,border-color .2s}.rpd .rpd-stat-wrap:hover{transform:translateY(-4px);box-shadow:0 12px 32px #1a234014;border-color:#c7cfe6}.rpd .rpd-stat-ic{height:48px;width:48px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.rpd .rpd-stat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.rpd .rpd-stat-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#8993a6}.rpd .rpd-stat-trend{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700}.rpd .rpd-stat-trend.up{color:#059669}.rpd .rpd-stat-trend.down{color:#dc2626}.rpd .rpd-stat-val{font-size:30px;font-weight:900;letter-spacing:-.06em;margin:2px 0;line-height:1}.rpd .rpd-stat-sub{font-size:10px;color:#99a2b0;margin-top:2px}.rpd .rpd-stat-trend-label{font-size:9px;color:#a3a8b8;margin-top:4px}.rpd .rpd-band-actions{gap:9px}.rpd .rpd-action-btn{background:#fff;border:1px solid #e6e9f2!important;border-radius:8px;padding:9px 12px;box-shadow:0 3px 10px #1d263208;font-size:11px;font-weight:700}.rpd .rpd-action-btn:hover{background:#f3f2ff;transform:translateY(-1px)}
-.rpd .rpd-band-charts{gap:18px}.rpd .rpd-chart{border:1px solid #e7eaf1;border-radius:12px;background:#fff;box-shadow:0 5px 18px #1a234008;overflow:hidden}.rpd .rpd-chart-head{padding:16px 18px;border-bottom:1px solid #f0f1f5}.rpd .rpd-chart-title{font-size:13px;font-weight:780}.rpd .rpd-chart-sub{font-size:10px;color:#8c96a8}.rpd .rpd-chart-body{padding:8px 13px}
-.rpd .mains{flex:1;width:0;min-width:0;overflow:visible}.rpd .mains > *{width:100%;min-width:0;box-sizing:border-box}.rpd .rpd-scroll{min-width:0}
-.rpd .shell{gap:20px;padding:20px 28px 32px;background:transparent}.rpd .side{width:254px;flex:0 0 254px}.rpd .side>*{border:1px solid #e7eaf1!important;border-radius:12px!important;background:#fff;box-shadow:0 5px 18px #1a234008}.rpd .mains{min-width:0}.rpd .card,.rpd .acard,.rpd .kcard,.rpd .tblwrap,.rpd .sch,.rpd .board{border-color:#e7eaf1!important;border-radius:12px!important;box-shadow:0 5px 18px #1a234008!important}.rpd .mains .head,.rpd .mains .chead{border-color:#edf0f4!important;background:#fff}.rpd.dark{--bg:#101423;--card:#181d2d;--sect:#202638;--field:#1d2332;--brd:#2c3448;--brdl:#252c3d;--tx:#eef0f8;--tx2:#c5cbda;--tx3:#929caf;--tx4:#6d778b}.rpd.dark .app{background:#101423}.rpd.dark .rpd-topbar,.rpd.dark .tbar{background:#181d2de8}.rpd.dark .rpd-stat-wrap,.rpd.dark .rpd-chart,.rpd.dark .side>*{background:#181d2d}.rpd.dark .nvp{background:#222839}.rpd.dark .nvp button.on{background:#303850;color:#d8d3ff}
-@media(max-width:1024px){.rpd .rpd-nav{padding:12px 10px}.rpd .rpd-band,.rpd .shell{padding-left:18px;padding-right:18px}.rpd .rpd-topbar,.rpd .tbar{padding-left:18px;padding-right:18px}.rpd .side{width:230px;flex-basis:230px}}@media(max-width:720px){.rpd .rpd-band,.rpd .shell{padding-left:12px;padding-right:12px}.rpd .rpd-topbar{padding:12px}.rpd .tbar{padding:8px 12px}.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rpd .shell{padding-top:12px}.rpd .side{display:none}.rpd .rpd-stat-wrap{min-height:91px;padding:12px}.rpd .rpd-stat-val{font-size:21px}}
+/* ============================================================================
+   RestPoint Dashboard — Clean White Redesign (2026)
+   Layered last in the import order. Uses rp- tokens from design-tokens.css.
+   ============================================================================ */
 
-.rpd.dark .rpd-nav{background:#fff;color:#172033;border-right-color:#e6eaf1}.rpd.dark .rpd-nav-txt b{color:#172033}.rpd.dark .rpd-nav-item{color:#536078}.rpd.dark .rpd-nav-item:hover{background:#f4f6fb;color:#25304a}.rpd.dark .rpd-nav-item.on{background:#eef2ff;color:#315bdc}.rpd.dark .rpd-nav-ghost,.rpd.dark .rpd-nav-collapse,.rpd.dark .rpd-nav-caption,.rpd.dark .rpd-nav-txt small{color:#78849a}
-
-/* Calendar and florist now use the same quiet Flowbite-inspired card language. */
-.rpd .md-cal-wrap{padding:24px 28px 36px;max-width:1280px;margin:0 auto}.rpd .md-cal-header,.rpd .md-calendar,.rpd .md-sidebar{border:1px solid #e5e7eb;border-radius:9px;box-shadow:0 1px 2px #11182708;background:#fff}.rpd .md-cal-header{padding:16px 18px;margin-bottom:16px}.rpd .md-cal-title{font-family:var(--sans);font-size:18px;font-weight:780}.rpd .md-cal-subtitle{font-size:11px;color:#6b7280}.rpd .md-calendar{overflow:hidden}.rpd .md-weekday{background:#f9fafb;color:#6b7280;font-size:10px;font-weight:800;letter-spacing:.07em}.rpd .md-day{border-color:#edf0f3!important}.rpd .md-day:hover{background:#f8faff}.rpd .md-event{border-radius:5px;font-size:10px}.rpd .md-btn{border-radius:7px;font-size:11px;font-weight:700}.rpd .md-btn-primary{background:#1d4ed8;border-color:#1d4ed8}.rpd .fl-wrap{max-width:1280px;margin:0 auto;padding:24px 28px 36px;gap:18px}.rpd .fl-head h1{font-family:var(--sans);font-size:24px;font-weight:800;letter-spacing:-.04em}.rpd .fl-head p{font-size:12px}.rpd .fl-btn{border-radius:7px;background:#1d4ed8}.rpd .fl-status{border-radius:9px;border-width:1px;padding:16px 18px}.rpd .fl-card{border-radius:9px;border-color:#e5e7eb;padding:18px;box-shadow:0 1px 2px #11182708}.rpd .fl-card h3{font-family:var(--sans);font-size:14px;font-weight:780}.rpd .fl-grid{gap:16px}.rpd .fl-track{height:6px}.rpd .fl-take{font-size:11px}.rpd .fl-row{font-size:11px}@media(max-width:720px){.rpd .md-cal-wrap,.rpd .fl-wrap{padding:18px 12px}.rpd .md-cal-header{padding:13px}.rpd .fl-grid{grid-template-columns:1fr}}
-
-/* Final dashboard visual system: calm white workspace, clear hierarchy, and
-   full-width module pages. These rules intentionally sit last so the legacy
-   Metis styles cannot pull the new shell back into the old dark layout. */
-.rpd{background:#f7f8fc;color:#182236;letter-spacing:0}
-.rpd .app{background:#f7f8fc;gap:0}
-.rpd .rpd-nav{width:256px;flex-basis:256px;background:#fff;border-right:1px solid #e8ebf2;box-shadow:10px 0 32px rgba(30,42,70,.04);padding:18px 12px}
-.rpd .rpd-nav-brand{padding:4px 8px 24px}
-.rpd .rpd-nav-logo{gap:12px;padding:8px;border-radius:12px}
-.rpd .rpd-nav-logo-mark{width:38px;height:38px;flex-basis:38px;border-radius:12px;background:#1e4ed8;box-shadow:0 8px 18px rgba(30,78,216,.2);font-family:var(--sans);font-size:17px}
-.rpd .rpd-nav-logo-txt b{font-size:15px;letter-spacing:-.02em}
-.rpd .rpd-nav-logo-txt small{font-size:10px;color:#8a95a8}
-.rpd .rpd-nav-caption{padding:6px 12px 10px;color:#a0a9b8;font-size:9px;letter-spacing:.14em}
-.rpd .rpd-nav-list{padding:0 2px;gap:5px}
-.rpd .rpd-nav-item{min-height:52px;padding:8px 10px;border-radius:11px;color:#69758a;gap:11px}
-.rpd .rpd-nav-item:hover{background:#f6f8fc;color:#24324d}
-.rpd .rpd-nav-item.on{background:#eef3ff;border:1px solid #dce7ff;color:#2452c7;box-shadow:none}
-.rpd .rpd-nav-item.on .rpd-nav-ico{background:#fff;color:#2452c7;box-shadow:0 2px 6px rgba(30,78,216,.09)}
-.rpd .rpd-nav-ico{width:34px;height:34px;flex-basis:34px;background:#f5f7fa;color:#7e899c;border-radius:10px}
-.rpd .rpd-nav-txt b{font-size:12px;font-weight:750;color:inherit}.rpd .rpd-nav-txt small{font-size:10px;color:#929cad}
-.rpd .rpd-nav-item.on .rpd-nav-txt small{color:#5273c4;opacity:1}
-.rpd .rpd-nav-bar{left:-2px;top:12px;bottom:12px;width:3px;background:#2452c7}
-.rpd .rpd-nav-foot{padding:16px 2px 0;margin-top:16px;border-top:1px solid #edf0f5;gap:3px}
-.rpd .rpd-nav-user{padding:9px;border-radius:11px}.rpd .rpd-nav-avatar{width:34px;height:34px;flex-basis:34px;background:#edf2ff;color:#2452c7;font-size:11px}
-.rpd .rpd-nav-ghost,.rpd .rpd-nav-collapse{padding:8px 10px;color:#8b95a6;font-size:11px}.rpd .rpd-nav-ghost:hover,.rpd .rpd-nav-collapse:hover{background:#f6f8fc;color:#26344d}
-.rpd .rpd-body{background:#f7f8fc}.rpd .rpd-topbar{height:70px;padding:0 34px;background:#fff;border-bottom:1px solid #e9ecf2;box-shadow:0 2px 12px rgba(34,48,80,.03)}
-.rpd .rpd-topbar-title b{font-size:19px;font-weight:800;letter-spacing:-.035em;color:#182236}.rpd .rpd-topbar-title small{font-size:11px;color:#8b95a6;margin-top:3px}
-.rpd .tbar{padding:12px 34px;background:#fff;border-bottom:1px solid #edf0f5}.rpd .nvp{background:#f5f7fb;border:1px solid #edf0f5;padding:4px;border-radius:10px}.rpd .nvp button{padding:8px 12px;font-size:11px}.rpd .nvp button.on{color:#2452c7;background:#fff;border:1px solid #e1e8fb;box-shadow:0 2px 6px rgba(22,43,90,.08)}
-.rpd .rpd-band{padding:28px 34px 0;gap:20px}.rpd .rpd-band-grid{gap:14px}.rpd .rpd-stat-wrap{min-height:112px;padding:18px;border-radius:14px;background:#fff;border:1px solid #e7ebf3!important;box-shadow:0 6px 20px rgba(30,42,70,.045)}.rpd .rpd-stat-lbl{font-size:10px;color:#8b96a8}.rpd .rpd-stat-val{font-size:28px;color:#172238}.rpd .rpd-band-charts{gap:20px}.rpd .rpd-chart{border-radius:14px;box-shadow:0 6px 20px rgba(30,42,70,.045)}
-.rpd .rpd-scroll{padding-bottom:36px}.rpd .shell{padding:24px 34px 40px;gap:22px}.rpd .side{width:260px;flex-basis:260px}.rpd .side>*{border-radius:14px!important;box-shadow:0 6px 20px rgba(30,42,70,.045);background:#fff}.rpd .mains{background:transparent}.rpd .mains .head,.rpd .mains .chead{padding:20px 22px;background:#fff;border-bottom:1px solid #edf0f5}.rpd .card,.rpd .acard,.rpd .kcard,.rpd .tblwrap,.rpd .sch,.rpd .board{border-radius:14px!important;box-shadow:0 6px 20px rgba(30,42,70,.045)!important;border-color:#e7ebf3!important;background:#fff}
-.rpd .mains > .md-cal-wrap,.rpd .mains > .ci-page,.rpd .mains > .fl-wrap,.rpd .mains > .workshop-panel{max-width:none;margin:0;padding:0}.rpd .mains > .md-cal-wrap{padding:4px 0 0}.rpd .mains > .md-cal-wrap .md-cal-header{margin-bottom:18px;border-radius:14px}.rpd .mains > .ci-page{width:100%}
-@media(max-width:1100px){.rpd .rpd-nav{width:224px;flex-basis:224px}.rpd .rpd-topbar,.rpd .tbar{padding-left:24px;padding-right:24px}.rpd .rpd-band,.rpd .shell{padding-left:24px;padding-right:24px}}
-@media(max-width:720px){.rpd .rpd-topbar{height:60px;padding:0 14px}.rpd .tbar{padding:9px 14px}.rpd .rpd-band,.rpd .shell{padding-left:14px;padding-right:14px}.rpd .rpd-band{padding-top:16px}.rpd .shell{padding-top:16px}.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rpd .rpd-stat-wrap{min-height:110px;padding:14px}.rpd .rpd-stat-val{font-size:24px}.rpd .mains > .md-cal-wrap{padding-top:0}}
-
-/* Keep the overview metrics and module pages in separate, predictable rows.
-   The legacy band was a four-column grid, which made each chart a narrow
-   sibling of the KPI cards and squeezed the real module content. */
-.rpd .rpd-band{display:flex;flex-direction:column;min-width:0;margin:0;}
-.rpd .rpd-band-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;width:100%;}
-.rpd .rpd-stat{min-width:0;border:0;background:transparent;box-shadow:none;}
-.rpd .rpd-stat-wrap{height:100%;min-width:0;box-sizing:border-box;}
-.rpd .rpd-stat-body{overflow:hidden;}
-.rpd .rpd-stat-val{overflow-wrap:anywhere;}
-.rpd .rpd-band-actions{display:flex;flex-wrap:wrap;gap:10px;}
-.rpd .rpd-band-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:100%;}
-.rpd .rpd-band-charts .rpd-chart{min-width:0;}
-.rpd .rpd-band-charts .rpd-chart:last-child:nth-child(odd){grid-column:1/-1;}
-.rpd .shell{display:flex;align-items:flex-start;min-width:0;}
-.rpd .mains{flex:1 1 0;width:auto;min-width:0;}
-.rpd .mains>*{max-width:100%;}
-.rpd .rpd-scroll{overscroll-behavior:contain;scrollbar-gutter:stable;}
-.rpd .rpd-body,.rpd .rpd-main{min-width:0;}
-.rpd .rpd-nav{flex-shrink:0;}
-@media(max-width:1100px){.rpd .rpd-band-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
-@media(max-width:820px){.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.rpd .rpd-band-charts{grid-template-columns:minmax(0,1fr);}.rpd .rpd-band-charts .rpd-chart:last-child:nth-child(odd){grid-column:auto;}}
-@media(max-width:720px){.rpd .rpd-band-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.rpd .rpd-band-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}.rpd .rpd-action-btn{justify-content:center;min-width:0;}.rpd .shell{display:block;}.rpd .mains{width:100%;}.rpd .rpd-scroll{scrollbar-gutter:auto;}}
-
-/* Clean white dashboard palette. */
-.rpd{
-  --bg:#fff;--card:#fff;--sect:#f8fafc;--field:#fff;--brd:#e2e8f0;--brdl:#f1f5f9;
-  --tx:#2a0f0f;--tx2:#334155;--tx3:#64748b;--tx4:#94a3b8;
-  --brand:#1d4ed8;--brandl:#1e3a8a;--acc:#1d4ed8;--accl:#1e3a8a;--acclt:#eff6ff;
-  --blue:#0284c7;--green:#059669;--orange:#d97706;--pink:#dc2626;--plum:#1e3a8a;
-  background:#fff;color:#2a0f0f;
-}
-.rpd .app,.rpd .rpd-body,.rpd .rpd-main,.rpd .rpd-scroll,.rpd .shell,.rpd .mains{background:#fff;}
-.rpd .rpd-nav{background:#fff;border-right-color:#e2e8f0;box-shadow:4px 0 18px rgba(15,23,42,.035);}
-.rpd .rpd-nav-logo-mark{background:#1d4ed8;box-shadow:0 5px 12px rgba(29,78,216,.16);}
-.rpd .rpd-nav-item{color:#64748b;}
-.rpd .rpd-nav-item:hover{background:#f8fafc;color:#1e3a8a;}
-.rpd .rpd-nav-item.on{background:#eff6ff;border-color:#dbeafe;color:#1d4ed8;}
-.rpd .rpd-nav-item.on .rpd-nav-ico{color:#1d4ed8;}
-.rpd .rpd-nav-bar{background:#1d4ed8;}
-.rpd .rpd-nav-foot{border-top-color:#f1f5f9;}
-.rpd .rpd-nav-avatar{background:#eff6ff;color:#1d4ed8;}
-.rpd .rpd-topbar,.rpd .tbar{background:#fff;border-color:#e2e8f0;box-shadow:none;}
-.rpd .rpd-topbar-title b,.rpd .rpd-stat-val{color:#2a0f0f;}
-.rpd .rpd-topbar-title small,.rpd .rpd-stat-lbl,.rpd .rpd-stat-sub{color:#64748b;}
-.rpd .rpd-stat-wrap,.rpd .rpd-chart,.rpd .side>*,.rpd .card,.rpd .acard,.rpd .kcard,.rpd .tblwrap,.rpd .sch,.rpd .board{background:#fff;border-color:#e2e8f0!important;box-shadow:0 1px 3px rgba(15,23,42,.045)!important;}
-.rpd .nvp{background:#f8fafc;border-color:#e2e8f0;}
-.rpd .nvp button.on{color:#1d4ed8;border-color:#dbeafe;background:#fff;}
-.rpd .rpd-action-btn{color:#1d4ed8;border-color:#dbeafe!important;}
-.rpd .rpd-action-btn:hover{background:#eff6ff;}
-.rpd .md-cal-header,.rpd .md-calendar,.rpd .md-sidebar,.rpd .fl-card{background:#fff;border-color:#e2e8f0;box-shadow:0 1px 3px rgba(15,23,42,.045);}
-.rpd .md-btn-primary,.rpd .fl-btn{background:#1d4ed8;border-color:#1d4ed8;}
-.rpd .md-btn-primary:hover,.rpd .fl-btn:hover{background:#1e3a8a;}
-@media(max-width:720px){.rpd .rpd-band,.rpd .shell{background:#fff;}}
-.rpd.dark .rpd-body,.rpd.dark .rpd-main,.rpd.dark .rpd-scroll,.rpd.dark .shell,.rpd.dark .mains{background:#101423;}
-
-/* Deceased schedule: searchable cross-branch list with an at-a-glance day rail. */
-.rpd .md-schedule{display:grid;gap:16px;min-width:0;color:#2a0f0f;}
-.rpd .md-schedule-head,.rpd .md-schedule-title,.rpd .md-schedule-controls,.rpd .md-schedule-period,.rpd .md-schedule-tabs,.rpd .md-list-heading,.rpd .md-event-legend,.rpd .md-event-legend span{display:flex;align-items:center;}
-.rpd .md-schedule-head{justify-content:space-between;gap:18px;padding:18px 20px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;}
-.rpd .md-schedule-title{gap:12px;min-width:0;}
-.rpd .md-schedule-mark{width:40px;height:40px;display:grid;place-items:center;flex:none;border-radius:11px;background:#eff6ff;color:#1d4ed8;}
-.rpd .md-schedule-title h1,.rpd .md-list-heading h2{margin:0;color:#2a0f0f;font-size:17px;letter-spacing:-.025em;font-weight:800;}
-.rpd .md-schedule-title p,.rpd .md-list-heading p{margin:4px 0 0;color:#64748b;font-size:11px;}
-.rpd .md-schedule-controls{gap:9px;}
-.rpd .md-schedule-period{gap:8px;}
-.rpd .md-schedule-period button,.rpd .md-schedule-today{display:grid;place-items:center;height:34px;padding:0 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;cursor:pointer;}
-.rpd .md-schedule-period strong{min-width:105px;text-align:center;color:#2a0f0f;font-size:12px;}
-.rpd .md-schedule-today{display:block;background:#1d4ed8;border-color:#1d4ed8;color:white;font-size:11px;font-weight:750;}
-.rpd .md-schedule-period button:hover{background:#eff6ff;color:#1d4ed8;}
-.rpd .md-schedule-tabs{gap:4px;flex-wrap:wrap;padding:4px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;}
-.rpd .md-schedule-tabs>[role=tab]{padding:8px 12px;border:0;border-radius:7px;background:transparent;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;}
-.rpd .md-schedule-tabs>[role=tab].active{background:#eff6ff;color:#1d4ed8;}
-.rpd .md-schedule-search{display:flex;align-items:center;gap:8px;min-width:240px;flex:1;margin-left:auto;padding:0 10px;color:#64748b;}
-.rpd .md-schedule-search input{width:100%;min-width:0;height:34px;border:0;outline:0;background:transparent;color:#2a0f0f;font:inherit;font-size:11px;}
-.rpd .md-schedule-search kbd{padding:2px 5px;border:1px solid #e2e8f0;border-radius:4px;color:#94a3b8;font-size:10px;}
-.rpd .md-schedule-layout{display:grid;grid-template-columns:minmax(240px,290px) minmax(0,1fr);align-items:start;gap:16px;}
-.rpd .md-activity-panel,.rpd .md-schedule-main{min-width:0;border:1px solid #e2e8f0;border-radius:12px;background:#fff;}
-.rpd .md-activity-panel{padding:16px;}
-.rpd .md-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;}
-.rpd .md-panel-heading>div>span,.rpd .md-upcoming-heading{color:#64748b;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;}
-.rpd .md-panel-heading h2{margin:4px 0 0;color:#2a0f0f;font-size:15px;font-weight:800;}
-.rpd .md-panel-heading>b{display:grid;place-items:center;min-width:29px;height:29px;padding:0 7px;border-radius:9px;background:#eff6ff;color:#1d4ed8;font-size:12px;}
-.rpd .md-month-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;padding-bottom:14px;border-bottom:1px solid #f1f5f9;}
-.rpd .md-month-stats>div{display:grid;gap:4px;padding:11px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;}
-.rpd .md-month-stats>div:first-child b{color:#1d4ed8;}.rpd .md-month-stats>div:last-child b{color:#059669;}
-.rpd .md-month-stats b{font-size:21px;line-height:1;font-weight:800;}.rpd .md-month-stats span{color:#64748b;font-size:9px;line-height:1.35;}
-.rpd .md-activity-list{display:grid;gap:8px;}
-.rpd .md-activity-empty,.rpd .md-schedule-empty{display:grid;justify-items:center;gap:8px;padding:25px 14px;color:#94a3b8;text-align:center;font-size:11px;}
-.rpd .md-upcoming-heading{margin:19px 0 8px;padding-top:14px;border-top:1px solid #f1f5f9;}
-.rpd .md-upcoming-list{display:grid;gap:3px;}
-.rpd .md-upcoming-list>button{display:flex;align-items:center;gap:9px;width:100%;padding:8px 5px;border:0;border-radius:7px;background:transparent;text-align:left;cursor:pointer;}
-.rpd .md-upcoming-list>button:hover{background:#f8fafc;}
-.rpd .md-upcoming-list>button>i{width:7px;height:28px;flex:none;border-radius:99px;}
-.rpd .md-upcoming-list>button>span{display:grid;gap:3px;min-width:0;}
-.rpd .md-upcoming-list b{overflow:hidden;color:#334155;font-size:10px;text-overflow:ellipsis;white-space:nowrap;}
-.rpd .md-upcoming-list small,.rpd .md-no-upcoming{color:#64748b;font-size:9px;}
-.rpd .md-schedule-main{overflow:hidden;}
-.rpd .md-list-heading{justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid #f1f5f9;}
-.rpd .md-event-legend{gap:10px;flex-wrap:wrap;}
-.rpd .md-event-legend span{gap:5px;color:#64748b;font-size:9px;font-weight:650;}
-.rpd .md-event-legend i{width:7px;height:7px;border-radius:50%;}
-.rpd .md-event-list{display:grid;}
-.rpd .md-event-card{position:relative;display:grid;grid-template-columns:36px 78px minmax(130px,1.1fr) minmax(150px,1fr) auto 16px;align-items:center;gap:11px;width:100%;min-width:0;padding:13px 16px;border:0;border-bottom:1px solid #f1f5f9;background:#fff;text-align:left;cursor:pointer;}
-.rpd .md-event-card:last-child{border-bottom:0;}
-.rpd .md-event-card:hover{background:#f8fafc;}
-.rpd .md-event-type-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--event-tint);color:var(--event-color);}
-.rpd .md-event-date,.rpd .md-event-person,.rpd .md-event-type{display:grid;gap:4px;min-width:0;}
-.rpd .md-event-date b{color:#334155;font-size:11px;}.rpd .md-event-date small,.rpd .md-event-person small,.rpd .md-event-type small{overflow:hidden;color:#64748b;font-size:9px;text-overflow:ellipsis;white-space:nowrap;}
-.rpd .md-event-person b,.rpd .md-event-type b{overflow:hidden;color:#2a0f0f;font-size:11px;text-overflow:ellipsis;white-space:nowrap;}
-.rpd .md-event-status{padding:5px 7px;border-radius:99px;background:var(--event-tint);color:var(--event-color);font-size:9px;font-weight:750;text-transform:capitalize;white-space:nowrap;}
-.rpd .md-event-chevron{color:#94a3b8;}
-.rpd .md-event-card.compact{grid-template-columns:28px 1fr;gap:8px;padding:8px;border:1px solid #e2e8f0;border-left:3px solid var(--event-color);border-radius:8px;background:var(--event-tint);}
-.rpd .md-event-card.compact .md-event-type-icon{width:26px;height:26px;background:#fff;}
-.rpd .md-event-card.compact .md-event-date{grid-column:2;grid-row:1;display:flex;gap:6px;align-items:center;}
-.rpd .md-event-card.compact .md-event-date b,.rpd .md-event-card.compact .md-event-date small{font-size:9px;}
-.rpd .md-event-card.compact .md-event-person{grid-column:2;grid-row:2;}.rpd .md-event-card.compact .md-event-person b{font-size:10px;}
-.rpd .md-event-card.compact .md-event-type,.rpd .md-event-card.compact .md-event-status,.rpd .md-event-card.compact .md-event-chevron{display:none;}
-.rpd .md-schedule-empty{min-height:220px;align-content:center;padding:36px;}.rpd .md-schedule-empty b{color:#334155;font-size:13px;}.rpd .md-schedule-empty span{max-width:390px;line-height:1.6;}
-.rpd .md-event-card:focus-visible,.rpd .md-upcoming-list>button:focus-visible,.rpd .md-schedule-tabs button:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px;}
-@media(max-width:1050px){.rpd .md-schedule-layout{grid-template-columns:240px minmax(0,1fr);}.rpd .md-event-card{grid-template-columns:34px 66px minmax(100px,1fr) auto 16px;}.rpd .md-event-type{grid-column:3;grid-row:2;}.rpd .md-event-status{grid-column:4;grid-row:1/3;}}
-@media(max-width:760px){.rpd .md-schedule-head{align-items:flex-start;flex-direction:column;}.rpd .md-schedule-controls{width:100%;justify-content:space-between;}.rpd .md-schedule-layout{grid-template-columns:1fr;}.rpd .md-activity-panel{order:2;}.rpd .md-schedule-main{order:1;}.rpd .md-schedule-search{order:2;flex-basis:100%;margin:0;border-top:1px solid #f1f5f9;}.rpd .md-event-card{grid-template-columns:32px 60px minmax(0,1fr) auto 14px;gap:8px;padding:11px;}.rpd .md-event-person{grid-column:3;grid-row:1;}.rpd .md-event-type{grid-column:3;grid-row:2;}.rpd .md-event-status{grid-column:4;grid-row:1/3;}}
-@media(max-width:480px){.rpd .md-schedule-title h1{font-size:15px;}.rpd .md-schedule-title p{font-size:10px;}.rpd .md-schedule-tabs>[role=tab]{padding:7px 9px;font-size:10px;}.rpd .md-event-card{grid-template-columns:28px minmax(0,1fr) auto 12px;}.rpd .md-event-date{grid-column:2;grid-row:1;display:flex;gap:6px;align-items:center;}.rpd .md-event-person{grid-column:2;grid-row:2;}.rpd .md-event-type{grid-column:2;grid-row:3;}.rpd .md-event-status{grid-column:3;grid-row:1/4;}.rpd .md-event-chevron{grid-column:4;grid-row:1/4;}.rpd .md-list-heading{padding:13px;}.rpd .md-event-legend{gap:7px;}}
-@media(max-width:1024px){.rpd .rpd-nav-burger{align-self:flex-end;margin:0 8px 4px;}}
-.rpd .rpd-nav-foot{margin-top:auto;padding:12px 2px 4px;border-top:1px solid #f1f5f9;gap:5px;}
-.rpd .rpd-nav-foot .rpd-nav-ghost{color:#64748b;}
-.rpd .rpd-nav-foot .rpd-nav-ghost:hover{background:#f8fafc;color:#334155;}
-
-/* The overview owns its full scroll region. The KPI band used to sit outside
-   the scroll box, while the nested box had no constrained height to scroll. */
-.rpd .rpd-body{display:flex;flex:1 1 0;flex-direction:column;min-width:0;min-height:0;height:100vh;overflow:hidden;}
-.rpd .rpd-main{display:flex;flex:1 1 0;flex-direction:column;min-width:0;min-height:0;overflow:hidden;}
-.rpd .rpd-scroll{flex:1 1 0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
-.rpd.rpd-home .rpd-topbar,.rpd.rpd-home .tbar{display:none;}
-.rpd.rpd-home .rpd-scroll>.rpd-band{padding-top:28px;}
-
-/* Month/week/day calendar and a separate roster toggle. */
-.rpd .md-schedule-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #f1f5f9;}
-.rpd .md-schedule-toolbar .md-schedule-tabs{flex:none;}
-.rpd .md-mode-tabs{margin-left:auto;}
-.rpd .md-mode-tabs{gap:3px;padding:3px;border-color:#dbe3f0;border-radius:10px;background:#f8fafc;}
-.rpd .md-mode-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:94px;min-height:34px;padding:7px 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:#64748b;font-size:11px;font-weight:750;transition:background .15s ease,color .15s ease,box-shadow .15s ease;}
-.rpd .md-mode-tabs button:hover{background:#fff;color:#334155;}
-.rpd .md-mode-tabs button.active{border-color:#dbeafe;background:#fff;color:#1d4ed8;box-shadow:0 1px 3px rgba(15,23,42,.12);}
-.rpd .md-mode-tabs button:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px;}
-.rpd .md-event-legend{gap:8px 12px;}
-.rpd .md-event-legend span{padding:4px 7px;border:1px solid #f1f5f9;border-radius:999px;background:#fff;font-size:9px;}
-.rpd .md-event-legend i{width:8px;height:8px;flex:none;box-shadow:0 0 0 2px color-mix(in srgb,currentColor 12%,transparent);}
-.rpd .md-schedule-toolbar .md-schedule-search{min-width:min(300px,100%);flex:1 1 260px;margin-left:0;padding:0 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;}
-.rpd .md-calendar-view{padding:16px 20px 20px;overflow-x:auto;}
-.rpd .md-calendar-view table{min-width:820px;border-spacing:8px 4px!important;}
-.rpd .md-calendar-view thead th{padding:12px 10px!important;color:#64748b!important;font-size:11px!important;text-transform:uppercase;letter-spacing:0.05em;}
-.rpd .md-calendar-view tbody tr{height:180px!important;}
-.rpd .md-calendar-view tbody td{vertical-align:top;}
-.rpd .md-calendar-view tbody td>div{height:170px!important;padding:12px!important;border-color:#e8edf4!important;border-radius:14px!important;background:#fff!important;box-shadow:0 4px 12px rgba(0,0,0,0.03);transition:transform 0.15s,box-shadow 0.15s,border-color 0.15s;}
-.rpd .md-calendar-view tbody td>div:hover{border-color:#b3c2e6!important;background:#fafbff!important;transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.06);}
-.rpd .md-calendar-view tbody td>div>div:first-child>div:first-child{font-size:13px!important;color:#334155!important;font-weight:700;}
-.rpd .md-calendar-view tbody td>div>div:first-child>div:last-child{font-size:11px!important;color:#94a3b8!important;}
-.rpd .md-calendar-view tbody td>div button{max-width:100%;padding:8px 12px!important;border:0!important;border-left:4px solid currentColor!important;border-radius:10px!important;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px!important;line-height:1.4;}
-.rpd .md-calendar-view tbody td>div button svg{vertical-align:middle;}
-.rpd .md-calendar-view>div[style*="display: flex"]{min-width:920px;gap:10px;}
-.rpd .md-calendar-view .md-calendar-empty{padding:20px 6px;color:#64748b;font-size:12px;}
-/* Week gap for the React inline-styled WeekGrid */
-.rpd .md-week-container{gap:10px!important;}
-@media(max-width:760px){
-  .rpd.rpd-home .rpd-topbar{display:flex;height:54px;min-height:54px;}
-  .rpd .md-schedule-toolbar{gap:8px;padding:10px;}
-  .rpd .md-mode-tabs{margin-left:0;}
-  .rpd .md-mode-tabs{width:max-content;}
-  .rpd .md-schedule-toolbar .md-schedule-search{flex-basis:100%;}
-  .rpd .md-calendar-view{padding:8px 8px 12px;}
-  .rpd .md-calendar-view table{min-width:640px;border-spacing:6px 3px!important;}
-  .rpd .md-calendar-view tbody tr{height:140px!important;}
-  .rpd .md-calendar-view tbody td>div{height:130px!important;padding:8px!important;}
+/* -- Base tokens -- */
+.rpd {
+  --bg: var(--rp-bg, #f8f9fc);
+  --card: var(--rp-surface, #fff);
+  --sect: var(--rp-accent-bg, #f5f7fb);
+  --field: var(--rp-bg, #f5f6fb);
+  --brd: var(--rp-border, #e7eaf1);
+  --brdl: var(--rp-border-muted, #eef0f5);
+  --tx: var(--rp-text, #172033);
+  --tx2: var(--rp-text-secondary, #48546a);
+  --tx3: var(--rp-text-muted, #78849a);
+  --tx4: #aab3c2;
+  --brand: var(--rp-accent, #635bdf);
+  --brandl: var(--rp-accent-dark, #5149ce);
+  --blue: #3483d7;
+  --green: var(--rp-success, #22a06b);
+  --orange: var(--rp-warning, #d88a35);
+  --pink: var(--rp-danger, #df5e7a);
+  --plum: #8065dc;
+  --acc: var(--brand);
+  --accl: var(--brandl);
+  --acclt: var(--rp-accent-bg, #efedff);
+  --sans: var(--rp-font, Inter, ui-sans-serif, system-ui, sans-serif);
+  --serif: var(--rp-font, Inter, ui-sans-serif, system-ui, sans-serif);
+  background: var(--bg);
 }
 
+/* -- App background -- */
+.rpd .app { background: var(--rp-bg, #f8f9fc); }
+
+/* -- Main content scroll -- */
+.rpd .rpd-scroll { background: transparent; }
+
+/* -- Topbar -- */
+.rpd .rpd-topbar {
+  padding: 16px 32px;
+  background: var(--rp-surface, #fff);
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--rp-border, #e8eaf1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.rpd .rpd-topbar-title b {
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--rp-text, #172236);
+}
+.rpd .rpd-topbar-title small { font-size: 11px; color: var(--rp-text-muted, #8b95a6); margin-top: 2px; }
+.rpd .rpd-topbar-date {
+  font-size: 11px;
+  background: var(--rp-accent-bg, #efedff);
+  color: var(--rp-accent-dark, #5149ce);
+  padding: 7px 12px;
+  border-radius: var(--rp-radius-md, 10px);
+  font-weight: 700;
+}
+.rpd .tb-btn.sq {
+  border: 1px solid var(--rp-border, #e4e7f0);
+  border-radius: var(--rp-radius-md, 10px);
+  background: #fff;
+  color: var(--rp-text-muted, #647089);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.rpd .tb-btn.sq:hover {
+  background: var(--rp-accent-bg, #efedff);
+  color: var(--rp-accent-dark, #5149ce);
+  border-color: var(--rp-accent, #635bdf);
+}
+
+/* -- Secondary toolbar -- */
+.rpd .tbar {
+  padding: 10px 32px;
+  background: var(--rp-surface, #fff);
+  border-bottom: 1px solid var(--rp-border, #e8eaf1);
+  backdrop-filter: none;
+}
+.rpd .nvp {
+  background: var(--rp-bg, #f5f7fb);
+  padding: 4px;
+  border-radius: var(--rp-radius-md, 10px);
+  gap: 2px;
+  border: 1px solid var(--rp-border-muted, #edf0f5);
+}
+.rpd .nvp button {
+  border-radius: var(--rp-radius-sm, 8px);
+  font-size: 11px;
+  padding: 8px 14px;
+  color: var(--rp-text-muted, #6e7890);
+  font-weight: 600;
+}
+.rpd .nvp button.on {
+  background: #fff;
+  color: var(--rp-accent-dark, #564ed2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--rp-border-muted, #e1e8fb);
+}
+
+/* -- KPI Band -- */
+.rpd .rpd-band {
+  padding: 28px 32px 0;
+  background: transparent;
+  gap: 20px;
+}
+.rpd .rpd-band-grid { gap: 16px; }
+.rpd .rpd-stat { border: 0; }
+.rpd .rpd-stat-wrap {
+  border: 1px solid var(--rp-border, #e7eaf1) !important;
+  border-radius: var(--rp-radius-2xl, 16px);
+  background: var(--rp-surface, #fff);
+  padding: 22px 20px;
+  min-height: 145px;
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.rpd .rpd-stat-wrap:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(30, 42, 70, 0.1);
+  border-color: #c7cfe6;
+}
+.rpd .rpd-stat-ic {
+  height: 48px;
+  width: 48px;
+  border-radius: var(--rp-radius-lg, 14px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rpd .rpd-stat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.rpd .rpd-stat-lbl {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: var(--rp-text-muted, #8993a6);
+}
+.rpd .rpd-stat-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.rpd .rpd-stat-trend.up { color: #059669; }
+.rpd .rpd-stat-trend.down { color: #dc2626; }
+.rpd .rpd-stat-val {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  margin: 2px 0;
+  line-height: 1;
+  color: var(--rp-text, #172236);
+}
+.rpd .rpd-stat-sub {
+  font-size: 10px;
+  color: #99a2b0;
+  margin-top: 3px;
+}
+.rpd .rpd-stat-trend-label {
+  font-size: 9px;
+  color: #a3a8b8;
+  margin-top: 4px;
+}
+
+/* -- Chart cards -- */
+.rpd .rpd-band-charts { gap: 20px; }
+.rpd .rpd-chart {
+  border: 1px solid var(--rp-border, #e7eaf1);
+  border-radius: var(--rp-radius-xl, 14px);
+  background: var(--rp-surface, #fff);
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045);
+  overflow: hidden;
+}
+.rpd .rpd-chart-head { padding: 16px 18px; border-bottom: 1px solid var(--rp-border-muted, #f0f1f5); }
+.rpd .rpd-chart-title { font-size: 13px; font-weight: 800; color: var(--rp-text, #172236); }
+.rpd .rpd-chart-sub { font-size: 10px; color: #8c96a8; }
+.rpd .rpd-chart-body { padding: 10px 14px; }
+
+/* -- Main layout -- */
+.rpd .mains { flex: 1; width: 0; min-width: 0; overflow: visible; }
+.rpd .mains > * { width: 100%; min-width: 0; box-sizing: border-box; }
+.rpd .rpd-scroll { min-width: 0; padding-bottom: 36px; }
+
+/* -- Shell (ops sidebar + main) -- */
+.rpd .shell { gap: 22px; padding: 24px 32px 40px; background: transparent; }
+.rpd .side {
+  width: 260px;
+  flex: 0 0 260px;
+}
+.rpd .side > * {
+  border: 1px solid var(--rp-border, #e7eaf1) !important;
+  border-radius: var(--rp-radius-xl, 14px) !important;
+  background: var(--rp-surface, #fff);
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045);
+}
+.rpd .card, .rpd .acard, .rpd .kcard, .rpd .tblwrap, .rpd .sch, .rpd .board {
+  border-color: var(--rp-border, #e7eaf1) !important;
+  border-radius: var(--rp-radius-xl, 14px) !important;
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045) !important;
+  background: var(--rp-surface, #fff);
+}
+.rpd .mains .head, .rpd .mains .chead {
+  border-color: var(--rp-border-muted, #edf0f5) !important;
+  background: var(--rp-surface, #fff);
+}
+
+/* -- Calendar & module views -- */
+.rpd .mains > .md-cal-wrap,
+.rpd .mains > .ci-page,
+.rpd .mains > .fl-wrap,
+.rpd .mains > .workshop-panel {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.rpd .mains > .md-cal-wrap { padding: 4px 0 0; }
+.rpd .mains > .md-cal-wrap .md-cal-header { margin-bottom: 18px; border-radius: var(--rp-radius-xl, 14px); }
+.rpd .mains > .ci-page { width: 100%; }
+
+/* -- Calendar view -- */
+.rpd .md-calendar-view { padding: 16px 20px 20px; overflow-x: auto; }
+.rpd .md-calendar-view table { min-width: 820px; border-spacing: 8px 4px !important; }
+.rpd .md-calendar-view thead th { padding: 12px 10px !important; color: var(--rp-text-muted, #64748b) !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.05em; }
+.rpd .md-calendar-view tbody tr { height: 180px !important; }
+.rpd .md-calendar-view tbody td { vertical-align: top; }
+.rpd .md-calendar-view tbody td > div {
+  height: 170px !important;
+  padding: 12px !important;
+  border-color: var(--rp-border, #e8edf4) !important;
+  border-radius: var(--rp-radius-xl, 14px) !important;
+  background: var(--rp-surface, #fff) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.rpd .md-calendar-view tbody td > div:hover {
+  border-color: #b3c2e6 !important;
+  background: #fafbff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+.rpd .md-calendar-view tbody td > div > div:first-child > div:first-child { font-size: 13px !important; color: #334155 !important; font-weight: 700; }
+.rpd .md-calendar-view tbody td > div > div:first-child > div:last-child { font-size: 11px !important; color: #94a3b8 !important; }
+.rpd .md-calendar-view tbody td > div button {
+  max-width: 100%;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  border-left: 4px solid currentColor !important;
+  border-radius: 10px !important;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px !important;
+  line-height: 1.4;
+}
+.rpd .md-calendar-view tbody td > div button svg { vertical-align: middle; }
+.rpd .md-calendar-view > div[style*="display: flex"] { min-width: 920px; gap: 10px; }
+.rpd .md-calendar-view .md-calendar-empty { padding: 20px 6px; color: #64748b; font-size: 12px; }
+.rpd .md-week-container { gap: 10px !important; }
+
+/* -- Dark theme -- */
+.rpd.dark {
+  --bg: #101423;
+  --card: #181d2d;
+  --sect: #202638;
+  --field: #1d2332;
+  --brd: #2c3448;
+  --brdl: #252c3d;
+  --tx: #eef0f8;
+  --tx2: #c5cbda;
+  --tx3: #929caf;
+  --tx4: #6d778b;
+}
+.rpd.dark .app { background: #101423; }
+.rpd.dark .rpd-topbar, .rpd.dark .tbar { background: #181d2de8; }
+.rpd.dark .rpd-stat-wrap, .rpd.dark .rpd-chart, .rpd.dark .side > * { background: #181d2d; }
+.rpd.dark .nvp { background: #222839; }
+.rpd.dark .nvp button.on { background: #303850; color: #d8d3ff; }
+
+/* -- Mobile responsive -- */
+@media (max-width: 1024px) {
+  .rpd .rpd-band, .rpd .shell { padding-left: 18px; padding-right: 18px; }
+  .rpd .rpd-topbar, .rpd .tbar { padding-left: 18px; padding-right: 18px; }
+  .rpd .side { width: 230px; flex-basis: 230px; }
+}
+@media (max-width: 760px) {
+  .rpd.rpd-home .rpd-topbar { display: flex; height: 54px; min-height: 54px; }
+  .rpd .md-schedule-toolbar { gap: 8px; padding: 10px; }
+  .rpd .md-mode-tabs { margin-left: 0; }
+  .rpd .md-mode-tabs { width: max-content; }
+  .rpd .md-schedule-toolbar .md-schedule-search { flex-basis: 100%; }
+  .rpd .md-calendar-view { padding: 8px 8px 12px; }
+  .rpd .md-calendar-view table { min-width: 640px; border-spacing: 6px 3px !important; }
+  .rpd .md-calendar-view tbody tr { height: 140px !important; }
+  .rpd .md-calendar-view tbody td > div { height: 130px !important; padding: 8px !important; }
+}

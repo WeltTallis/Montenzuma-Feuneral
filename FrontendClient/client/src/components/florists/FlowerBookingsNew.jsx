@@ -932,7 +932,9 @@ const FlowerBookingsNew = () => {
         `/florist/bookings/${encodeURIComponent(bookingId)}/samples`,
         formData,
         {
-          headers: { 'Content-Type': null },
+          // Do NOT force Content-Type — axios will drop it for FormData and let
+          // the browser set multipart/form-data with the correct boundary.
+          headers: {},
           timeout: 180000,
         }
       );
@@ -1253,7 +1255,6 @@ const FlowerBookingsNew = () => {
       const routeTag = newBooking.route?.trim() ? `[ROUTE:${clean(newBooking.route)}]` : '';
       const vehicleTag = newBooking.vehicle_plate?.trim() ? `[VEHICLE:${clean(newBooking.vehicle_plate)}]` : '';
       const contactTag = newBooking.contact_name?.trim() ? `[CONTACT:${clean(newBooking.contact_name)}]` : '';
-      const serviceTimeTag = newBooking.service_time?.trim() ? `[SERVICE-TIME:${clean(newBooking.service_time)}]` : '';
       const editedTag = editingBookingId ? `[EDITED:${new Date().toISOString()}]` : '';
       const priorityTag = newBooking.priority?.trim() ? `[PRIORITY:${clean(newBooking.priority)}]` : '';
       const notesValue = [
@@ -1265,7 +1266,6 @@ const FlowerBookingsNew = () => {
         routeTag,
         vehicleTag,
         contactTag,
-        serviceTimeTag,
         priorityTag,
         editedTag,
       ].filter(Boolean).join(' ');
@@ -1359,6 +1359,7 @@ const FlowerBookingsNew = () => {
         priority: 'Normal',
         sample_uploads: []
       });
+      setBookingSamplePreviews([]);
     } catch (e) {
       const serverError = e?.response?.data;
       console.error('[FlowerBookings] Place order FAILED:', JSON.stringify({
@@ -1647,7 +1648,6 @@ const FlowerBookingsNew = () => {
                   {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
                 </dl>
               )}
-              {booking.ribbon_message && <p className="flower-urgency-ribbon">“{booking.ribbon_message}”</p>}
               {booking.special_instructions && <p className="flower-urgency-note"><strong>Note:</strong> {booking.special_instructions}</p>}
               <button className="flower-urgency-open" type="button" onClick={() => viewBooking(booking.id || booking.booking_id)}>Open full booking</button>
             </section>
@@ -2385,14 +2385,6 @@ const FlowerBookingsNew = () => {
           >
             Set funeral date to tomorrow
           </button>
-          <label style={lbl} htmlFor="flower-service-time">Service / Dispatch Time</label>
-          <input
-            id="flower-service-time"
-            type="time"
-            style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.service_time}
-            onChange={e => setNewBooking(prev => ({ ...prev, service_time: e.target.value }))}
-          />
           <label style={lbl} htmlFor="flower-route">Route / Service Location</label>
           <input
             id="flower-route"
@@ -2411,33 +2403,6 @@ const FlowerBookingsNew = () => {
             value={newBooking.vehicle_plate}
             onChange={e => setNewBooking(prev => ({ ...prev, vehicle_plate: e.target.value }))}
           />
-          <label style={lbl}>Color Preference</label>
-          <label className="flx-any-color">
-            <input
-              type="checkbox"
-              checked={newBooking.any_color}
-              onChange={e => setNewBooking(prev => ({ ...prev, any_color: e.target.checked }))}
-            />
-            Any color · florist's choice
-          </label>
-          <input
-            type="text"
-            style={{ ...inp, marginBottom: '22px' }}
-            placeholder="e.g. Deep Red, White"
-            disabled={newBooking.any_color}
-            value={newBooking.color_preference}
-            onChange={e => setNewBooking(prev => ({ ...prev, color_preference: e.target.value }))}
-          />
-
-          <label style={lbl}>Ribbon / Banner Wording</label>
-          <input
-            type="text"
-            style={{ ...inp, marginBottom: '22px' }}
-            placeholder='e.g. "Rest in Peace"'
-            value={newBooking.ribbon_message}
-            onChange={e => setNewBooking(prev => ({ ...prev, ribbon_message: e.target.value }))}
-          />
-
           <label style={lbl}>Size</label>
           <select
             style={{ ...inp, marginBottom: '22px' }}
@@ -2537,13 +2502,14 @@ const FlowerBookingsNew = () => {
 
           {/* ── 5 · Priority Level ── */}
           <label style={lbl}>Priority Level</label>
-          <input
-            type="text"
+          <select
             style={{ ...inp, marginBottom: '22px' }}
-            placeholder="Type it — e.g. Normal, Urgent, needed by 10am"
-            value={newBooking.priority}
+            value={newBooking.priority || 'Normal'}
             onChange={e => setNewBooking(prev => ({ ...prev, priority: e.target.value }))}
-          />
+          >
+            <option value="Normal">Normal</option>
+            <option value="Urgent">Urgent</option>
+          </select>
 
           {/* Footer actions — mirrors Create Arrangement */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '20px', marginTop: '24px', borderTop: '1px solid #EAE7E2' }}>
@@ -2650,8 +2616,6 @@ const FlowerBookingsNew = () => {
     const colorValues = [...new Set(requestedColors.length
       ? requestedColors
       : [...asList(product.colors), ...lineItems.flatMap(item => item.colors || [])])];
-    const colourText = [...new Set(colorValues.map(displayText).filter(Boolean))].join(', ');
-    const ribbonMessage = displayText(b.ribbon_message || ribbonNote);
     const flowerText = displayText(b.flower_description)
       || [...new Set(lineItems.flatMap(item => item.types || []).map(displayText).filter(Boolean))].join(', ')
       || asList(product.types).map(displayText).filter(Boolean).join(', ');
@@ -2665,7 +2629,6 @@ const FlowerBookingsNew = () => {
     const routeText = displayText(getBookingNoteTag(b, 'ROUTE'));
     const vehiclePlate = displayText(getBookingNoteTag(b, 'VEHICLE'));
     const contactName = displayText(getBookingNoteTag(b, 'CONTACT'));
-    const serviceTime = displayText(getBookingNoteTag(b, 'SERVICE-TIME'));
     const flowerSize = displayText(b.size || asList(product.sizes).join(', ') || sizeNote);
     const deceasedName = displayText(b.deceased_name);
     const serviceType = displayText(b.service_type);
@@ -2953,16 +2916,6 @@ const FlowerBookingsNew = () => {
             <section className="flower-spec" style={styles.specSection} aria-label="Order details">
               <div style={styles.specTitle}>Order details</div>
               <dl style={styles.specList}>
-                {colourText && <div style={styles.specRow}>
-                  <dt style={styles.specLabel}>Color Preference</dt>
-                  <dd style={styles.specValue}>{colourText}</dd>
-                </div>}
-                {ribbonMessage && (
-                  <div style={styles.specRow}>
-                    <dt style={styles.specLabel}>Ribbon / Banner Wording</dt>
-                    <dd style={styles.specValue}>{ribbonMessage}</dd>
-                  </div>
-                )}
                 {flowerText && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Flowers</dt>
                   <dd style={styles.specValue}>{flowerText}</dd>
@@ -3001,12 +2954,6 @@ const FlowerBookingsNew = () => {
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Service Type</dt>
                     <dd style={styles.specValue}>{serviceType}</dd>
-                  </div>
-                )}
-                {serviceTime && (
-                  <div style={styles.specRow}>
-                    <dt style={styles.specLabel}>Service / Dispatch Time</dt>
-                    <dd style={styles.specValue}>{serviceTime}</dd>
                   </div>
                 )}
                 {routeText && (

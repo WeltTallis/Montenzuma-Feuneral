@@ -214,6 +214,14 @@ const Value = styled.span`
   font-size: 0.95rem;
   line-height: 1.5;
 
+  ${props => props.$hl && `
+    color: #5F0F40;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    text-shadow: 0 0 12px rgba(95, 15, 64, 0.12);
+  `}
+
   .status-badge {
     background: ${(props) => props.statusColor || THEME.colors.gray};
     color: ${THEME.colors.bone};
@@ -522,6 +530,10 @@ const DeceasedInfoSection = ({ deceasedId: propDeceasedId, deceased: propDecease
 
     if (field.key.includes('date')) {
       value = formatDate(value);
+    }
+
+    if (field.key === 'date_admitted') {
+      return <Value $hl>{value}</Value>;
     }
 
     return <Value bold={field.bold}>{value}</Value>;

@@ -66,6 +66,13 @@ const DetailValue = styled.div`
   color: ${C.black}; 
   word-break: break-word;
   line-height: 1.4;
+  ${p => p.$hl && `
+    color: #5F0F40;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    text-shadow: 0 0 12px rgba(95, 15, 64, 0.12);
+  `}
 `;
 
 const AdmissionTab = ({ deceased }) => {
@@ -76,9 +83,9 @@ const AdmissionTab = ({ deceased }) => {
       <SectionHead $mt0 $primary><span>01</span> Admission Specifics</SectionHead>
       <DetailGrid>
         <DetailItem><DetailLabel>Admission Number</DetailLabel><DetailValue>{d.admission_number || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Date Admitted</DetailLabel><DetailValue>{formatDate(d.date_admitted || d.created_at)}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Date Admitted</DetailLabel><DetailValue $hl>{formatDate(d.date_admitted || d.created_at)}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Time Received</DetailLabel><DetailValue>{d.time_received || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Receiving Officer</DetailLabel><DetailValue>{d.receiving_officer || '—'}</DetailValue></DetailItem>
+        <DetailItem><DetailLabel>Receiving Officer</DetailLabel><DetailValue $hl>{d.receiving_officer || '—'}</DetailValue></DetailItem>
         <DetailItem $full><DetailLabel>Received From</DetailLabel><DetailValue>{d.received_from || '—'}</DetailValue></DetailItem>
       </DetailGrid>
 

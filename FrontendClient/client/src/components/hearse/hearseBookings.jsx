@@ -715,7 +715,7 @@ const HearseBookings = () => {
 
   // Register hearse
   const [registerHearseOpen, setRegisterHearseOpen] = useState(false);
-  const [hearseForm, setHearseForm] = useState({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '' });
+  const [hearseForm, setHearseForm] = useState({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '', fuel_card_number: '' });
   const [registerLoading, setRegisterLoading] = useState(false);
 
   // Cancel modal
@@ -969,7 +969,7 @@ const HearseBookings = () => {
       await api.registerHearse({ ...hearseForm });
       notify.success('Hearse registered successfully!');
       setRegisterHearseOpen(false);
-      setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '' });
+      setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '', fuel_card_number: '' });
       // Refresh only the data in place — do NOT call loadData() here because
       // that toggles a full-screen spinner (setLoading(true)) which makes the
       // whole page swap to a spinner, i.e. a "whole page refresh". Using
@@ -1487,6 +1487,13 @@ const HearseBookings = () => {
                     <option value="maintenance">Maintenance</option>
                     <option value="inactive">Inactive</option>
                   </Select>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <ModalLabel>Fuel Card Number</ModalLabel>
+                    <ModalInput placeholder="e.g., FC-12345" value={hearseForm.fuel_card_number}
+                      onChange={e => setHearseForm(p => ({ ...p, fuel_card_number: e.target.value }))} />
+                  </div>
                 </div>
                 <ModalFoot>
                   <SecondaryButton type="button" onClick={() => setRegisterHearseOpen(false)}>Cancel</SecondaryButton>
