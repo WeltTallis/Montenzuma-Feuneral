@@ -1,55 +1,28 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import 'bootstrap/dist/css/bootstrap.min.css'
-import App from './App'
-import { reportFailure } from './api/connectionStatus'
-import './index.css'
+﻿import React from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import { GlobalStyle } from "./GlobalStyle";
+import "./GlobalStyle/global.css";
+import { initAnalytics } from "./utils/analytics";
 
-// Get the root element
-const rootElement = document.getElementById('root');
-
-// Check if root element exists before creating root
-if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
+function initApp() {
+  const container = document.getElementById("root");
+  if (!container) return;
+  try { initAnalytics(); } catch (e) { console.warn("analytics init failed", e); }
+  const root = createRoot(container);
   root.render(
-    <React.StrictMode>
+    <BrowserRouter future={{ v7_relativeSplatUrl: true, v7_startTransition: true }}>
       <App />
-    </React.StrictMode>
+      <GlobalStyle />
+    </BrowserRouter>
   );
+}
 
-  // Remove the static boot loader now that React has mounted.
-  requestAnimationFrame(() => {
-    const bootLoader = document.getElementById('boot-loader');
-    if (bootLoader) bootLoader.remove();
-  });
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
 } else {
-  console.error('Root element not found! Make sure there is a div with id="root" in your HTML.');
-
-  // Create a fallback root if needed (for debugging)
-  const fallbackDiv = document.createElement('div');
-  fallbackDiv.id = 'root-fallback';
-  document.body.appendChild(fallbackDiv);
-  document.body.innerHTML += '<div style="padding:20px;text-align:center;font-family:sans-serif;"><h2>Application Error</h2><p>Root element not found. Please check your HTML.</p></div>';
+  initApp();
 }
 
-// Optional: Error boundary for the entire app
-// This catches errors that happen during rendering
-if (rootElement) {
-  window.addEventListener('error', (event) => {
-    console.error('Global error caught:', event.error);
-    // You could show a fallback UI here
-  });
-
-
-  window.addEventListener('unhandledrejection', (event) => {
-    const reason = event.reason;
-    console.error('Unhandled promise rejection:', reason);
-    const text = `${reason?.name || ''} ${reason?.message || ''} ${reason?.code || ''}`;
-    if (
-      /failed to fetch|fetch failed|networkerror|load failed|network connection was lost|err_network|err_internet_disconnected/i
-        .test(text)
-    ) {
-      reportFailure({ code: 'ERR_NETWORK', message: reason?.message });
-    }
-  });
-}
+export { initApp };
