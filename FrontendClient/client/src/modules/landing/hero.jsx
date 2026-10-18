@@ -96,7 +96,7 @@ const TabletScale = styled.div`
 const TabletScaleInner = styled.div`
   width: 380px; height: 540px; transform: scale(var(--s)); transform-origin: top left; transform-style: preserve-3d;
   transition: transform 0.8s cubic-bezier(0.7, 0, 0.3, 1);
-  ${props => props.isExpanded && css`transform: scale(1);`}
+  ${props => props.$isExpanded && css`transform: scale(1);`}
 `;
 
 const TabletFloatWrapper = styled.div`
@@ -105,7 +105,7 @@ const TabletFloatWrapper = styled.div`
   transition: width 0.8s cubic-bezier(0.7, 0, 0.3, 1), height 0.8s cubic-bezier(0.7, 0, 0.3, 1);
   z-index: 10;
 
-  ${props => props.isExpanded && css`
+  ${props => props.$isExpanded && css`
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; max-width: 100vw;
     transform: none !important; animation: none !important; opacity: 1 !important; z-index: 1000;
   `}
@@ -114,7 +114,7 @@ const TabletFloatWrapper = styled.div`
 const Tablet3DFlipper = styled.div`
   width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 1s cubic-bezier(0.7, 0, 0.3, 1);
   /* Prevent 3D flip when expanded so the form layer faces forward perfectly */
-  transform: ${props => props.isExpanded ? "rotateY(0deg)" : (props.isFlipped ? "rotateY(180deg)" : "rotateY(0deg)")};
+  transform: ${props => props.$isExpanded ? "rotateY(0deg)" : (props.$isFlipped ? "rotateY(180deg)" : "rotateY(0deg)")};
 `;
 
 const TabletFace = styled.div`
@@ -127,7 +127,7 @@ const TabletFrame = styled.div`
   box-shadow: 0 50px 100px -20px rgba(21,23,26,0.5), 0 30px 60px -30px rgba(199,123,94,0.15), inset 0 0 0 2px rgba(255,255,255,0.05); 
   transition: border-radius 0.8s ease, padding 0.8s ease, box-shadow 0.8s ease;
   &::before { content: ''; position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background: #1a1b1c; border-radius: 50%; z-index: 100; transition: opacity 0.3s; }
-  ${props => props.isExpanded && css`
+  ${props => props.$isExpanded && css`
     border-radius: 0; padding: 0; box-shadow: none;
     &::before { opacity: 0; }
   `}
@@ -136,7 +136,7 @@ const TabletFrame = styled.div`
 const TabletScreen = styled.div`
   width: 100%; height: 100%; background: #050507; border-radius: 22px; overflow: hidden; position: relative; font-family: 'Space Grotesk', sans-serif; color: #e8e8eb;
   transition: border-radius 0.8s ease, overflow-y 0.3s ease;
-  ${props => props.isExpanded && css`border-radius: 0; overflow-y: auto;`}
+  ${props => props.$isExpanded && css`border-radius: 0; overflow-y: auto;`}
 `;
 
 /* ── Form Layer ── */
@@ -203,7 +203,7 @@ const PCont = styled.div`display: flex; align-items: center; gap: 3px; font-size
 
 /* ── Floral UI ── */
 const FloralUI = styled.div`position: relative; height: 100%; background: #0a0b0c; overflow: hidden;`;
-const FlpHero = styled.img`position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.75) saturate(0.95); transition: opacity 0.4s ease-in-out; opacity: ${props => props.fading ? 0 : 1};`;
+const FlpHero = styled.img`position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.75) saturate(0.95); transition: opacity 0.4s ease-in-out; opacity: ${props => props.$fading ? 0 : 1};`;
 const FlpOverlay = styled.div`position: absolute; inset: 0; background: linear-gradient(180deg,rgba(10,11,12,0.4) 0%,rgba(10,11,12,0.02) 30%,rgba(10,11,12,0.02) 55%,rgba(10,11,12,0.85) 100%); pointer-events: none; z-index: 5;`;
 const FlpStrip = styled.div`position: absolute; top: 0; left: 0; right: 0; z-index: 20; padding: 25px 20px 0; display: flex; align-items: flex-start; gap: 14px; overflow-x: auto; scrollbar-width: none; &::-webkit-scrollbar { display: none; }`;
 const FlpStory = styled.button`display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 0; flex-shrink: 0; position: relative; z-index: 25;`;
@@ -212,7 +212,7 @@ const FlpRingInner = styled.div`width: 60px; height: 60px; border-radius: 50%; o
 const FlpStoryLabel = styled.span`font-size: 8px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.6); text-align: center; max-width: 65px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
 const FlpTitleBlock = styled.div`position: absolute; bottom: 40px; left: 25px; z-index: 10; animation: ${flpFadeUp} 1.2s cubic-bezier(0.16,1,0.3,1); pointer-events: none;`;
 const FlpNameTag = styled.div`font-size: 9px; font-weight: 600; letter-spacing: 0.35em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 10px;`;
-const FlpHeadline = styled.h2`font-family: 'Fraunces',serif; font-weight: 300; font-size: 30px; line-height: 1.05; color: #fff; letter-spacing: -0.02em; margin: 0; transition: opacity 0.4s ease, transform 0.4s ease; opacity: ${props => props.fading ? 0 : 1}; transform: ${props => props.fading ? "translateY(15px)" : "translateY(0)"}; & em { font-style: italic; font-weight: 300; color: rgba(255,255,255,0.65); }`;
+const FlpHeadline = styled.h2`font-family: 'Fraunces',serif; font-weight: 300; font-size: 30px; line-height: 1.05; color: #fff; letter-spacing: -0.02em; margin: 0; transition: opacity 0.4s ease, transform 0.4s ease; opacity: ${props => props.$fading ? 0 : 1}; transform: ${props => props.$fading ? "translateY(15px)" : "translateY(0)"}; & em { font-style: italic; font-weight: 300; color: rgba(255,255,255,0.65); }`;
 const FlpWordmark = styled.div`position: absolute; bottom: 40px; right: 25px; z-index: 10; text-align: right; animation: ${flpFadeUp} 1.4s cubic-bezier(0.16,1,0.3,1); pointer-events: none;`;
 const FlpWordmarkName = styled.div`font-family: 'Fraunces',serif; font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.4); letter-spacing: 0.04em;`;
 const FlpWordmarkSub = styled.div`font-size: 8px; font-weight: 500; letter-spacing: 0.28em; color: rgba(255,255,255,0.2); text-transform: uppercase; margin-top: 4px;`;
@@ -302,14 +302,14 @@ export default function Hero() {
             {/* ── TABLET ── */}
             <HeroVisual>
               <TabletScale>
-                <TabletScaleInner isExpanded={isExpanded}>
-                  <TabletFloatWrapper isExpanded={isExpanded}>
-                    <Tablet3DFlipper isFlipped={isFlipped} isExpanded={isExpanded}>
+                <TabletScaleInner $isExpanded={isExpanded}>
+                  <TabletFloatWrapper $isExpanded={isExpanded}>
+                    <Tablet3DFlipper $isFlipped={isFlipped} $isExpanded={isExpanded}>
 
                       {/* FRONT FACE: PORTAL */}
                       <TabletFace className="front">
-                        <TabletFrame isExpanded={isExpanded}>
-                          <TabletScreen isExpanded={isExpanded}>
+                        <TabletFrame $isExpanded={isExpanded}>
+                          <TabletScreen $isExpanded={isExpanded}>
                             
                             {/* Portal UI */}
                             <PortalUI>
@@ -431,10 +431,10 @@ export default function Hero() {
 
                       {/* BACK FACE: FLORAL (Static floral image to avoid clutter, matching original) */}
                       <TabletFace className="back">
-                        <TabletFrame isExpanded={isExpanded}>
-                          <TabletScreen isExpanded={isExpanded}>
+                        <TabletFrame $isExpanded={isExpanded}>
+                          <TabletScreen $isExpanded={isExpanded}>
                             <FloralUI>
-                              <FlpHero src={FloralData[0].img} alt="Floral Tribute" fading={0} loading="lazy" decoding="async" />
+                              <FlpHero src={FloralData[0].img} alt="Floral Tribute" $fading={0} loading="lazy" decoding="async" />
                               <FlpOverlay />
                               <FlpStrip>
                                 {FloralData.map((f, i) => (
@@ -450,7 +450,7 @@ export default function Hero() {
                               </FlpStrip>
                               <FlpTitleBlock>
                                 <FlpNameTag>Floral Tributes</FlpNameTag>
-                                <FlpHeadline fading={0}>{FloralData[0].title}</FlpHeadline>
+                                <FlpHeadline $fading={0}>{FloralData[0].title}</FlpHeadline>
                               </FlpTitleBlock>
                               <FlpWordmark>
                                 <FlpWordmarkName>Memorial Florals</FlpWordmarkName>
