@@ -292,14 +292,25 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
         {!requestResult && (
           <footer className="deceased-stk-footer">
             <button type="button" className="deceased-stk-button" onClick={onClose}>Cancel</button>
-            <button type="submit" form="deceased-stk-form" className="deceased-stk-button is-primary" disabled={busy || !selectedDeceased}>
-              {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : `Send request${Number(amount) > 0 ? ` · ${formattedAmount}` : ''}`}
-            </button>
+            {error ? (
+              <button type="button" className="deceased-stk-button is-primary" onClick={handleRetry} disabled={busy}>
+                {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : 'Try again'}
+              </button>
+            ) : (
+              <button type="submit" form="deceased-stk-form" className="deceased-stk-button is-primary" disabled={busy || !selectedDeceased}>
+                {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : `Send request${Number(amount) > 0 ? ` · ${formattedAmount}` : ''}`}
+              </button>
+            )}
           </footer>
         )}
         {requestResult && paymentState !== 'pending' && (
           <footer className="deceased-stk-footer">
-            <button type="button" className="deceased-stk-button is-primary" onClick={onClose}>Done</button>
+            {paymentState === 'failed' && (
+              <button type="button" className="deceased-stk-button is-primary" onClick={handleRetry}>
+                Try again
+              </button>
+            )}
+            <button type="button" className="deceased-stk-button" onClick={onClose}>Done</button>
           </footer>
         )}
         {requestResult && paymentState === 'pending' && (
