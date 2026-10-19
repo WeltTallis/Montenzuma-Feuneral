@@ -19,6 +19,7 @@ import CoffinInventory from './coffininventory';
 import CoffinTransfers from './coffinTransfers';
 import CoffinCalendarGrid from './CoffinCalendarGrid';
 import ReservationMonthGrid from './reservations/components/ReservationMonthGrid';
+import BookingReceiptLabel from './BookingReceiptLabel';
 import './reservations/reservations.css';
 
 var TX   = '#111827';
@@ -74,6 +75,7 @@ var IC = {
   search: <Ico size={12}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></Ico>,
   clock:  <Ico size={10}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></Ico>,
   grid:   <Ico size={11}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></Ico>,
+  pr:     <Ico size={12}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></Ico>,
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -164,6 +166,8 @@ export default function ReservationDashboard(props) {
   var _cd = useState(null), clickedDay = _cd[0], setClickedDay = _cd[1];
   var _mp = useState(false), markingPaid = _mp[0], setMarkingPaid = _mp[1];
   var _sq = useState(''), searchQuery = _sq[0], setSearchQuery = _sq[1];
+  // Receipt/label modal for the booking currently open in the side panel.
+  var _lo = useState(false), labelOpen = _lo[0], setLabelOpen = _lo[1];
   var _af = useState([]), activeFilters = _af[0], setActiveFilters = _af[1];
   var inFlight = useRef(false), toastTimer = useRef(null), panelRef = useRef(null);
 
@@ -281,8 +285,15 @@ export default function ReservationDashboard(props) {
 
   useEffect(function () { fetchLive(); var t = setInterval(function () { if (live) fetchLive(); }, REFRESH_MS); var onVis = function () { if (document.visibilityState === 'visible') fetchLive(); }; document.addEventListener('visibilitychange', onVis); return function () { clearInterval(t); document.removeEventListener('visibilitychange', onVis); }; }, [fetchLive, live]);
   var money = typeof formatPrice === 'function' ? formatPrice : usd;
-  useEffect(function () { var h = function (e) { if (e.key === 'Escape') setPanelBk(null); }; document.addEventListener('keydown', h); return function () { document.removeEventListener('keydown', h); }; }, []);
-  useEffect(function () { var h = function (e) { if (panelBk && panelRef.current && !panelRef.current.contains(e.target)) setPanelBk(null); }; document.addEventListener('mousedown', h); return function () { document.removeEventListener('mousedown', h); }; }, [panelBk]);
+  // Escape closes the label first, then the panel — otherwise one keypress
+  // would kill both layers at once.
+  useEffect(function () { var h = function (e) { if (e.key !== 'Escape') return; if (labelOpen) { setLabelOpen(false); return; } setPanelBk(null); }; document.addEventListener('keydown', h); return function () { document.removeEventListener('keydown', h); }; }, [labelOpen]);
+  // Clicking the receipt modal must NOT dismiss the panel underneath it: the
+  // modal lives outside panelRef, so it needs an explicit carve-out.
+  useEffect(function () { var h = function (e) { if (!panelBk) return; if (labelOpen && e.target && e.target.closest && e.target.closest('.mz-rct-ov')) return; if (panelRef.current && !panelRef.current.contains(e.target)) setPanelBk(null); }; document.addEventListener('mousedown', h); return function () { document.removeEventListener('mousedown', h); }; }, [panelBk, labelOpen]);
+  // The label is a child of the panel: closing the panel closes the label too,
+  // otherwise the next booking opened would pop the receipt straight back up.
+  useEffect(function () { if (!panelBk) setLabelOpen(false); }, [panelBk]);
 
   var mapped = useMemo(function () {
     return (liveBookings || []).map(function (b) {
@@ -909,10 +920,20 @@ export default function ReservationDashboard(props) {
               ) : (
                 <button className="cb-pbtn paid" disabled>{IC.ck} Payment Received</button>
               )}
+              <button className="cb-pbtn ghost" onClick={function () { setLabelOpen(true); }} title="Print a receipt label with a barcode for this booking">{IC.pr} Print Label</button>
               <button className="cb-pbtn ghost" onClick={function () { setPanelBk(null); }}>Close</button>
             </div>
           </div>
         </React.Fragment>
+      )}
+
+      {/* Receipt label with a real Code 128 barcode (bwip-js) for the open booking */}
+      {panelBk && labelOpen && (
+        <BookingReceiptLabel
+          booking={panelBk}
+          money={money}
+          onClose={function () { setLabelOpen(false); }}
+        />
       )}
 
       {toastMsg && <div className={'cb-te' + (toastOut ? ' out' : '')}>{IC.ck}{toastMsg}</div>}
