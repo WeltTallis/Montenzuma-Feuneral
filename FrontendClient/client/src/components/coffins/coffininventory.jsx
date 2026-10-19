@@ -1291,21 +1291,35 @@ const CoffinDashboard = () => {
 
   const handleCreateBooking = async (e) => {
     e.preventDefault();
+    if (submitLoading) return;
     const selectedCoffin = coffins.find(
       (coffin) => (coffin.coffin_id || coffin.id) == modal.data.coffin_id
     );
-    const requestedQuantity = parseInt(modal.data.quantity, 10) || 1;
-    if (!selectedCoffin || requestedQuantity > getCoffinStock(selectedCoffin)) {
-      toast.error(
-        selectedCoffin
-          ? `Only ${getCoffinStock(selectedCoffin)} of this coffin variant are available`
-          : 'Select an available coffin type and color'
-      );
+    const d = modal.data;
+    const stock = getCoffinStock(selectedCoffin);
+    if (!selectedCoffin) {
+      toast.error('Select an available coffin type and color');
+      return;
+    }
+    const clientName = String(d.client_name || '').trim();
+    const deceasedName = String(d.deceased_name || '').trim();
+    const serviceDate = String(d.service_date || '');
+    if (!clientName) { toast.error('Client name is required'); return; }
+    if (!deceasedName) { toast.error('Deceased name is required'); return; }
+    if (!serviceDate) { toast.error('Service date is required'); return; }
+    const today = todayKey();
+    if (serviceDate < today) {
+      toast.error('Service date cannot be in the past');
+      return;
+    }
+    const requestedQuantity = parseInt(d.quantity, 10) || 1;
+    if (requestedQuantity <= 0) { toast.error('Quantity must be at least 1'); return; }
+    if (requestedQuantity > stock) {
+      toast.error(`Only ${stock} of this coffin variant are available`);
       return;
     }
     setSubmitLoading(true);
     try {
-      const d = modal.data;
       const selectedBranchId = d.branch_id || currentBranch;
       const isInterBranch = selectedBranchId != currentBranch;
 

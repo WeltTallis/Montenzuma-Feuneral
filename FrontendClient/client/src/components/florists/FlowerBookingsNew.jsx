@@ -2875,10 +2875,10 @@ const FlowerBookingsNew = () => {
               <div className="flower-client-samples-head">
                 <div>
                   <h3>Client reference photos</h3>
-                      {clientReferenceImages.length > 0 && (
-                        <p>{clientReferenceImages.length} photo{clientReferenceImages.length === 1 ? '' : 's'} attached to this booking</p>
-                      )}
-                    </div>
+                  {clientReferenceImages.length > 0 && (
+                    <p>{clientReferenceImages.length} photo{clientReferenceImages.length === 1 ? '' : 's'} attached to this booking</p>
+                  )}
+                </div>
                 <button
                   type="button"
                   className="flower-client-samples-add"
@@ -3132,7 +3132,7 @@ const FlowerBookingsNew = () => {
         .flower-bookings-main { min-width: 0; padding: 0 18px 18px; }
         .flower-bookings-layout .flx-split { grid-template-columns: minmax(0, 1fr) !important; }
         .flower-bookings-layout .flx-rail { display: none !important; }
-        .flower-detail-panel { position: sticky; top: 0; height: 100vh; min-width: 0; overflow-y: auto; border-left: 1px solid #F0E4EA; background: #fff; padding: 0 14px 16px; }
+        .flower-detail-panel { position: sticky; top: 0; height: 100vh; min-width: 0; overflow-y: auto; border-left: 1px solid #F0E4EA; background: #fff; padding: 0 18px 18px; }
         .flower-detail-panel-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -24px 18px; padding: 10px 10px; border-bottom: 1px solid #C42A61; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
         .flower-detail-back { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #C42A61; border-radius: 8px; background: #C42A61; color: #fff; font-size: 12px; font-weight: 700; }
         .flower-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #A39A8E; }

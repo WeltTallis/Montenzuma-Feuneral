@@ -1,16 +1,21 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import styled from 'styled-components';
-import { startOfWeek, addDays, isSameDay, isSameMonth, isToday, format } from 'date-fns';
+import {
+  startOfWeek, addDays, isSameDay, isSameMonth, isToday, format,
+} from 'date-fns';
 
-/* Coffin reservations â€” DAY and WEEK calendar grids.
+/* Coffin reservations — DAY and WEEK calendar grids.
  *
- * These mirror what the hearse calendar does instead of rendering the same
- * flat table for every view: DAY shows that day's reservations on a time
- * spine, WEEK lays the seven days of the selected week out side by side with
- * each day's bookings as chips. MONTH continues to use the parent's table.
+ * Clean, modern calendar for coffin bookings:
+ *  - DAY view: single day with a 6am–10pm time spine; bookings land on their
+ *    service hour row.
+ *  - WEEK view: seven days side by side; bookings stack as status-coloured
+ *    chips under each day header.
+ *  - Click a booking chip → onPick(booking) opens the reservation panel.
+ *  - Click a day header → onPickDay(date) jumps to that day.
  *
  * Coffins carry `service_time` only when the booking was given a time, so a
- * booking with no time is parked in the "Untimed" lane rather than being
+ * booking with no time is parked in the "No time" lane rather than being
  * dropped or forced into a fake hour.
  */
 
@@ -19,34 +24,33 @@ const C = {
   ink2: '#374151',
   ink3: '#6b7280',
   ink4: '#9ca3af',
-  bg: '#f9fafb',
+  bg: '#f8fafc',
   card: '#ffffff',
-  brd: '#e5e7eb',
-  brdl: '#f3f4f6',
+  brd: '#e2e8f0',
+  brdl: '#f1f5f9',
   acc: '#0f766e',
-  acclt: '#f0fdfa',
-  suc: '#16a34a',
+  acclt: '#ecfeff',
+  suc: '#15803d',
+  sucLt: '#ecfdf5',
   dng: '#dc2626',
+  dngLt: '#fef2f2',
+  pend: '#64748b',
+  pendLt: '#f1f5f9',
+  shadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)',
+  radius: '10px',
+  transition: 'all 0.15s ease',
 };
 
-/* Must match mapStatus() in ReservationDashboard. */
+/* Status palette — must match ReservationDashboard so chips/panel agree. */
 const ST = {
-  confirmed: { label: 'Confirmed', color: C.acc },
-  pending: { label: 'Pending', color: '#64748b' },
-  completed: { label: 'Completed', color: C.suc },
-  cancelled: { label: 'Cancelled', color: C.dng },
+  confirmed: { label: 'Confirmed', color: C.acc, tint: '#ecfeff' },
+  pending:   { label: 'Pending',   color: C.pend, tint: '#f1f5f9' },
+  completed: { label: 'Completed', color: C.suc,  tint: '#ecfdf5' },
+  cancelled: { label: 'Cancelled', color: C.dng,  tint: '#fef2f2' },
 };
 
 const statusOf = (b) => ST[b?.status] || ST.pending;
 
-/* Translucent chip tint for a status colour: the 6-digit hex plus a 2-digit
-   alpha ("14" ≈ 8%). Using hex + alpha keeps the tint locked to whatever the
-   status palette says, so a new status can never land on a hard-coded colour.
-   Requires a 6-digit hex — the palette above satisfies that, and the `+ 14`
-   on a named colour like "red" would produce an invalid 8-char string. */
-const tintOf = (color) => (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color) ? color + '14' : color);
-
-/* "14:30" -> 14.5 ; anything unparsable -> null (untimed lane). */
 const parseHour = (t) => {
   if (!t) return null;
   const m = String(t).match(/(\d{1,2}):(\d{2})/);
@@ -65,93 +69,86 @@ const fmtHour = (h) => {
   return `${h12}:${String(mm).padStart(2, '0')} ${ap}`;
 };
 
+/* ---------- Styled primitives ---------- */
+
 const Frame = styled.div`
-  flex: 1; min-height: 0; display: flex; flex-direction: column;
-  background: ${C.card};
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  background: ${C.card}; border-radius: ${C.radius}; border: 1px solid ${C.brd};
+  overflow: hidden; box-shadow: ${C.shadow};
 `;
 
 const Head = styled.div`
-  display: grid; align-items: center;
-  border-bottom: 1px solid ${C.brd};
-  padding: 10px 14px; gap: 6px;
-  grid-template-columns: 58px repeat(var(--cols, 1), minmax(0, 1fr));
+  display: grid; align-items: center; gap: 6px;
+  border-bottom: 1px solid ${C.brdl};
+  padding: 10px 14px;
+  background: ${C.bg};
+  grid-template-columns: 60px repeat(var(--cols, 1), minmax(0, 1fr));
 `;
 
 const HeadCorner = styled.div`
   font-size: 9px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
-  color: ${C.ink4};
+  color: ${C.ink4}; height: 1px;
 `;
 
-const DayHead = styled.button`
-  border: 1px solid ${C.brd}; background: ${C.card}; border-radius: 8px;
-  padding: 6px 4px; cursor: pointer; font-family: inherit;
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  transition: all .12s;
-
-  &:hover { border-color: ${C.acc}; }
-
+const DayHead = styled.button.attrs({ type: 'button' })`
+  border: 1px solid ${({ $selected }) => ($selected ? C.acc : C.brd)};
+  background: ${({ $selected, $today }) =>
+    $selected ? C.acclt : $today ? '#f0fdff' : C.card};
+  color: ${C.ink2}; border-radius: 10px; padding: 10px 6px; cursor: pointer;
+  font-family: inherit; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; transition: ${C.transition}; outline: none;
+  &:hover { border-color: ${C.acc}; background: ${C.acclt}; }
   .dow { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: ${C.ink4}; }
-  .dom { font-size: 15px; font-weight: 800; color: ${C.ink2}; line-height: 1.1; }
-
-  &.today .dom { color: ${C.acc}; }
-  &.today { border-color: ${C.acc}; background: ${C.acclt}; }
-  &.other .dom { color: ${C.ink4}; opacity: .55; }
-  &.sel { border-color: ${C.acc}; box-shadow: 0 0 0 2px ${C.acclt}; }
+  .dom { font-size: 16px; font-weight: 800; color: ${C.ink}; line-height: 1.1; }
+  .sub { font-size: 10px; color: ${C.ink3}; margin-top: 2px; }
 `;
 
 const BodyGrid = styled.div`
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
   display: grid;
-  grid-template-columns: 58px repeat(var(--cols, 1), minmax(0, 1fr));
+  grid-template-columns: 60px repeat(var(--cols, 1), minmax(0, 1fr));
 `;
 
 const TimeCell = styled.div`
-  border-right: 1px solid ${C.brd}; border-bottom: 1px solid ${C.brdl};
-  background: ${C.bg};
-  font-size: 10px; font-weight: 600; color: ${C.ink4};
-  text-align: right; padding: 3px 7px 0 0;
-  height: 52px;
+  border-right: 1px solid ${C.brdl}; border-bottom: 1px solid ${C.brdl};
+  background: ${C.bg}; font-size: 10px; font-weight: 700; color: ${C.ink4};
+  text-align: right; padding: 4px 8px 0 0; height: 44px;
 `;
 
 const DayCell = styled.div`
   border-right: 1px solid ${C.brdl}; border-bottom: 1px solid ${C.brdl};
-  height: 52px; position: relative; padding: 2px;
-  display: flex; flex-direction: column; gap: 2px;
-  overflow: hidden;
-`;
-
-const Chip = styled.button`
-  border: 0; border-left: 3px solid ${(p) => p.$color};
-  background: ${(p) => p.$tint};
-  color: ${C.ink}; border-radius: 6px; padding: 3px 6px;
-  font-family: inherit; font-size: 10.5px; text-align: left; cursor: pointer;
-  display: flex; flex-direction: column; gap: 1px; min-width: 0;
-  transition: transform .12s, box-shadow .12s;
-
-  &:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.1); }
-
-  .t { font-size: 9px; font-weight: 700; color: ${C.ink3}; }
-  .n { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .m { font-size: 9px; color: ${C.ink4}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  height: 44px; position: relative; padding: 4px;
+  display: flex; flex-direction: column; gap: 3px; overflow: hidden;
 `;
 
 const UntimedWrap = styled.div`
-  grid-column: 2 / -1;
-  border-bottom: 1px solid ${C.brd};
-  padding: 8px 10px;
-  display: flex; flex-wrap: wrap; gap: 6px;
+  grid-column: 2 / -1; border-bottom: 1px solid ${C.brd};
+  padding: 9px 12px; display: flex; flex-wrap: wrap; gap: 7px;
   background: ${C.bg};
 `;
 
 const UntimedLabel = styled.span`
   font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
-  color: ${C.ink4}; align-self: center; margin-right: 2px;
+  color: ${C.ink4}; align-self: center; margin-right: 3px;
 `;
 
 const Empty = styled.div`
   grid-column: 2 / -1; padding: 40px 16px; text-align: center;
   color: ${C.ink4}; font-size: 12px; font-weight: 600;
 `;
+
+const Chip = styled.button.attrs({ type: 'button' })`
+  border: 0; border-left: 3px solid ${({ $color }) => $color};
+  background: ${({ $tint }) => $tint}; color: ${C.ink}; border-radius: 7px;
+  padding: 4px 7px; font-family: inherit; font-size: 11px; text-align: left;
+  cursor: pointer; display: flex; flex-direction: column; gap: 1px;
+  min-width: 0; transition: ${C.transition}; outline: none;
+  &:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+  .t { font-size: 10px; font-weight: 700; color: ${C.ink3}; }
+  .n { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m { font-size: 10px; color: ${C.ink4}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+`;
+
 const SH = 6;   // first hour shown
 const EH = 22;  // last hour shown (exclusive)
 const HOURS = [];
@@ -171,13 +168,9 @@ export default function CoffinCalendarGrid({ view, date, bookings = [], onPick, 
   }, [isWeek, date]);
 
   /* ONE pass over the bookings builds the per-day model: which land on which
-     day, which have a usable time, and which hour row each sits in. Doing this
-     inside the render loop instead would re-split the whole list for every
-     hour cell â€” O(hours x days x bookings) on every paint.
-
-     Days are keyed on the LOCAL date, never toISOString(): that converts to
-     UTC and silently shifts every evening booking into the next day for
-     anyone east of Greenwich. */
+     day, which have a usable time, and which hour row each sits in. Days are
+     keyed on the LOCAL date, never toISOString(): that converts to UTC and
+     silently shifts every evening booking into the next day. */
   const model = useMemo(() => {
     const buckets = new Map();
     days.forEach((d) => buckets.set(format(d, 'yyyy-MM-dd'), []));
@@ -197,10 +190,9 @@ export default function CoffinCalendarGrid({ view, date, bookings = [], onPick, 
       const untimed = [];
       const rows = new Map();
       list.forEach((b) => {
-        const h = parseHour(b.time);
+        const h = parseHour(b.time || b.service_time);
         // No parsable time -> the "No time" lane. A time outside the visible
-        // window is CLAMPED onto the nearest hour row so it is still visible
-        // instead of vanishing off the top or bottom of the grid.
+        // window is CLAMPED onto the nearest hour row so it stays visible.
         if (h === null) { untimed.push(b); return; }
         const row = Math.max(SH, Math.min(EH - 1, Math.floor(h)));
         if (!rows.has(row)) rows.set(row, []);
@@ -213,24 +205,29 @@ export default function CoffinCalendarGrid({ view, date, bookings = [], onPick, 
     return { cols, total, untimedAll: cols.flatMap((c) => c.untimed) };
   }, [bookings, days]);
 
-  const renderChip = (b) => {
+  const renderChip = useCallback((b) => {
     const s = statusOf(b);
+    const time = b.time || b.service_time || '';
     return (
       <Chip
-        key={b.id ?? `${b.clientName}-${b.time}`}
+        key={b.id ?? `${b.clientName}-${b.time}-${b.service_time}`}
         $color={s.color}
-        $tint={tintOf(s.color)}
+        $tint={s.tint}
         onClick={() => onPick && onPick(b)}
-        title={`${b.clientName} Â· ${s.label}`}
+        title={`${b.clientName} · ${s.label}`}
       >
-        {b.time && <span className="t">{b.time}</span>}
+        {time && <span className="t">{time}</span>}
         <span className="n">{b.clientName}</span>
-        <span className="m">{b.coffinType}</span>
+        <span className="m">{b.coffinType || b.coffin_name || ''}</span>
       </Chip>
     );
-  };
+  }, [onPick]);
 
   const colsStyle = { '--cols': model.cols.length };
+
+  const handlePickDay = useCallback((d) => {
+    onPickDay && onPickDay(d);
+  }, [onPickDay]);
 
   return (
     <Frame>

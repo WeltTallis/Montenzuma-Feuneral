@@ -1,22 +1,25 @@
 import { useMemo, useState, useCallback } from "react";
+import styled from "styled-components";
 import {
-  Calendar, ChevronLeft, ChevronRight, Clock, Search, User, Cross, Droplets, Flower,
-  Plus, X, CheckCircle, ChevronDown, MapPin, Phone, Mail, ShieldAlert, Timer, List,
+  startOfWeek, addDays as dateAddDays, isSameDay, isSameMonth, isToday, format,
+} from "date-fns";
+import {
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Search, User, Cross,
+  Droplets, Flower, Plus, X, ShieldAlert, Timer, MapPin, Phone, Mail, List,
 } from "lucide-react";
-import "./metis-design.css";
 
 /* -------------------------------------------------------------------------
-   DeceasedScheduleCalendar — searchable, cross-branch activity roster for
-   the RestPoint operations dashboard. Date ranges stay in list view; the
-   side rail highlights today's activity and the next scheduled events.
+   DeceasedScheduleCalendar — clean modern calendar for deceased activity.
+   Matches the coffin calendar look: day view with a 6am–10pm time spine,
+   week view with 7 days side-by-side, status-coloured chips.
 
    Props
    -----
    events        { id, uid?, type, date, time, title, note, status, branch,
                    deceased: {id,name,age,branch,sex,hearse}, raw? }[]
-   onEventSelect (ev) => void        — fired when a chip/day is opened
-   initialView   "today" | "month" | "week" | "day" | "all" (default "month")
    branch        string              — optional branch filter
+   loading       boolean
+   onEventSelect ({ event }) => void — fired when a chip/day is opened
    ------------------------------------------------------------------------- */
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -37,29 +40,31 @@ const fmtDayHeader = (k) => { const d = parseKey(k); return `${d.getDate()} ${MO
 const fmtFull = (k) => { const d = parseKey(k); return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
 
 const TYPE_META = {
-  intake: { label: "Body Intake", color: "#00296B", bg: "#EFF6FF", icon: User },
-  release: { label: "Body Release", color: "#132A13", bg: "#E8F5E9", icon: Cross },
-  pm: { label: "Postmortem Exam", color: "#E36414", bg: "#FFEDD5", icon: ShieldAlert },
-  funeral: { label: "Funeral Service", color: "#B4534B", bg: "#FBEDEC", icon: Flower },
-  transfer: { label: "Hearse Transfer", color: "#7C3AED", bg: "#F3E8FF", icon: Droplets },
-  viewing: { label: "Viewing / Wake", color: "#8B5CF6", bg: "#F5F3FF", icon: User },
-  cremation: { label: "Cremation", color: "#9333EA", bg: "#FAF5FF", icon: Timer },
-  burial: { label: "Burial", color: "#475A43", bg: "#EEF3EC", icon: Cross },
+  intake:    { label: "Body Intake",    color: "#00296B", tint: "#EFF6FF", icon: User },
+  release:   { label: "Body Release",   color: "#132A13", tint: "#E8F5E9", icon: Cross },
+  pm:        { label: "Postmortem",     color: "#E36414", tint: "#FFEDD5", icon: ShieldAlert },
+  funeral:   { label: "Funeral Service",color: "#B4534B", tint: "#FBEDEC", icon: Flower },
+  transfer:  { label: "Hearse Transfer",color: "#7C3AED", tint: "#F3E8FF", icon: Droplets },
+  viewing:   { label: "Viewing / Wake", color: "#8B5CF6", tint: "#F5F3FF", icon: User },
+  cremation: { label: "Cremation",      color: "#9333EA", tint: "#FAF5FF", icon: Timer },
+  burial:    { label: "Burial",         color: "#475A43", tint: "#EEF3EC", icon: Cross },
 };
+const typeOf = (e) => TYPE_META[String(e?.type || "intake").toLowerCase()] || TYPE_META.intake;
+
 const STATUS_CONFIG = {
-  pending: { label: "Pending", progress: 10, color: "#d97706", bg: "#FFFBEB", dotColor: "#d97706" },
-  booked: { label: "Booked", progress: 25, color: "#00296B", bg: "#EFF6FF", dotColor: "#00296B" },
-  confirmed: { label: "Confirmed", progress: 25, color: "#00296B", bg: "#EFF6FF", dotColor: "#00296B" },
-  scheduled: { label: "Scheduled", progress: 25, color: "#E36414", bg: "#FFEDD5", dotColor: "#E36414" },
-  in_transit: { label: "In Transit", progress: 60, color: "#E36414", bg: "#FFEDD5", dotColor: "#E36414" },
-  in_progress: { label: "In Progress", progress: 60, color: "#0c0b0f", bg: "#F3F4F6", dotColor: "#0c0b0f" },
-  postponed: { label: "Postponed", progress: 15, color: "#d97706", bg: "#FFFBEB", dotColor: "#d97706" },
-  completed: { label: "Completed", progress: 100, color: "#5F0F40", bg: "#FCE7F3", dotColor: "#5F0F40" },
-  delivered: { label: "Delivered", progress: 100, color: "#132A13", bg: "#E8F5E9", dotColor: "#132A13" },
-  cancelled: { label: "Cancelled", progress: 0, color: "#DD2D4A", bg: "#FEE2E2", dotColor: "#DD2D4A" },
-  maintenance: { label: "Maintenance", progress: 0, color: "#03071E", bg: "#E0E7FF", dotColor: "#03071E" },
+  pending:   { label: "Pending",   color: "#d97706", tint: "#FFFBEB" },
+  booked:    { label: "Booked",    color: "#00296B", tint: "#EFF6FF" },
+  confirmed: { label: "Confirmed", color: "#0f766e", tint: "#ecfeff" },
+  scheduled: { label: "Scheduled", color: "#E36414", tint: "#FFEDD5" },
+  in_transit:{ label: "In Transit",color: "#E36414", tint: "#FFEDD5" },
+  in_progress:{label: "In Progress",color: "#0c0b0f", tint: "#F3F4F6" },
+  postponed: { label: "Postponed", color: "#d97706", tint: "#FFFBEB" },
+  completed: { label: "Completed", color: "#15803d", tint: "#ecfdf5" },
+  delivered: { label: "Delivered", color: "#132A13", tint: "#E8F5E9" },
+  cancelled: { label: "Cancelled", color: "#dc2626", tint: "#fef2f2" },
+  maintenance:{label: "Maintenance",color: "#03071E", tint: "#E0E7FF" },
 };
-const getStatusMeta = (status) => STATUS_CONFIG[String(status || "scheduled").toLowerCase().replace(/\s+/g, "_")] || STATUS_CONFIG.scheduled;
+const statusOf = (e) => STATUS_CONFIG[String(e?.status || "scheduled").toLowerCase().replace(/\s+/g, "_")] || STATUS_CONFIG.scheduled;
 
 export const MOCK_DECEASED = [
   { id: "d-101", name: "James M. Okafor", age: 68, branch: "Westlands", hearse: "Hearse A (HX-4421)", sex: "M", status: "confirmed" },
@@ -82,11 +87,11 @@ export const MOCK_EVENTS = [
 
 function normEvents(raw) {
   return (raw || []).map((e, i) => {
-    const meta = TYPE_META[e.type] || TYPE_META.intake;
     const d = e.deceased || {};
     const date = e.date || (e.start ? toKey(e.start) : todayKey());
     const status = String(e.status || "scheduled").toLowerCase().replace(/\s+/g, "_");
-    const statusMeta = getStatusMeta(status);
+    const statusMeta = statusOf({ status });
+    const meta = typeOf(e);
     return {
       id: e.id || `${e.type || "evt"}-${date}-${i}`,
       uid: e.uid || d.id || "",
@@ -97,7 +102,7 @@ function normEvents(raw) {
       status,
       note: e.note || "",
       color: statusMeta.color,
-      bg: statusMeta.bg,
+      tint: statusMeta.tint,
       icon: meta.icon,
       label: meta.label,
       branch: e.branch || d.branch || "",
@@ -121,23 +126,6 @@ function normEvents(raw) {
       raw: e.raw || null,
     };
   });
-}
-function MonthChip({ event, onClick }) {
-  const meta = TYPE_META[event.type] || TYPE_META.intake;
-  return (
-    <button
-      className="md-btn md-btn-sm"
-      style={{
-        background: event.bg, color: event.color, borderColor: event.color,
-        fontSize: "0.68rem", fontWeight: 700, padding: "0.18rem 0.5rem",
-        marginTop: "0.2rem", display: "block", width: "fit-content",
-      }}
-      onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
-    >
-      <meta.icon size={10} />
-      <span style={{ marginLeft: "0.3rem", opacity: 0.9 }}>{event.time ? `${event.time} ` : ""}{event.title}</span>
-    </button>
-  );
 }
 
 function DayCell({ day, events, onDayClick, onEventClick, today }) {
