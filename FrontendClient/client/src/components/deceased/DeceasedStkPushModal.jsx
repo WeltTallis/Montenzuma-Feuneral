@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import api from '../../api/axios';
 import { getTenantSlug } from '../../utils/globalAuth';
@@ -123,6 +123,18 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
       setBusy(false);
     }
   };
+
+  // Reset the modal to a fresh form state so the user can correct
+  // a wrong phone number / amount and send the STK push again.
+  const handleRetry = useCallback(() => {
+    setError('');
+    setRequestResult(null);
+    setPaymentState('idle');
+    setPollCount(0);
+    setPhoneNumber('');
+    setAmount('');
+    setBusy(false);
+  }, []);
 
   const displayPhone = phoneNumber || '—';
   const displayName = deceasedName(selectedDeceased);
