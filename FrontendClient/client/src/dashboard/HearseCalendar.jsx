@@ -128,6 +128,18 @@ function normEvents(raw) {
   });
 }
 
+const Chip = styled.button.attrs({ type: 'button' })`
+  border: 0; border-left: 3px solid ${({ $color }) => $color};
+  background: ${({ $tint }) => $tint}; color: #111827; border-radius: 7px;
+  padding: 4px 7px; font-family: inherit; font-size: 11px; text-align: left;
+  cursor: pointer; display: flex; flex-direction: column; gap: 1px;
+  min-width: 0; transition: all 0.15s ease; outline: none;
+  &:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+  .t { font-size: 10px; font-weight: 700; color: #6b7280; }
+  .n { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m { font-size: 10px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+`;
+
 function MonthChip({ event, onClick }) {
   const s = statusOf(event);
   const t = typeOf(event);
@@ -252,6 +264,81 @@ function DayGrid({ dayKey, events, onEventClick, today }) {
     </div>
   );
 }
+function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
+  const first = new Date(year, month, 1);
+  const start = weekStartOf(toKey(first));
+  const weeks = [];
+  let d = new Date(start);
+  for (let w = 0; w < 6; w++) {
+    const week = [];
+    for (let i = 0; i < 7; i++) { week.push(new Date(d)); d.setDate(d.getDate() + 1); }
+    weeks.push(week);
+  }
+  return (
+    <div style={{ width: "100%", overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "5px 0" }}>
+        <thead>
+          <tr>
+            {WEEK.map((w) => (
+              <th key={w} style={{ textAlign: "left", fontSize: "10px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".08em", padding: "6px 0", width: "14.28%" }}>
+                {w}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {weeks.map((week, wi) => (
+            <tr key={wi} style={{ height: "90px" }}>
+              {week.map((day) => {
+                const key = toKey(day);
+                const active = key === today;
+                const evs = (events || []).filter((e) => e.date === key);
+                return (
+                  <td key={key} style={{ padding: 0 }}>
+                    <div
+                      onClick={() => onDayClick(day)}
+                      style={{
+                        border: active ? "2px solid #0f766e" : "1px solid #e2e8f0",
+                        borderRadius: "8px", padding: "6px", height: "100%",
+                        display: "flex", flexDirection: "column", gap: "4px",
+                        cursor: "pointer", background: active ? "#f0fdff" : "#ffffff",
+                        position: "relative",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
+                        <div style={{ fontSize: "14px", fontWeight: 800, color: active ? "#0f766e" : "#0f172a" }}>
+                          {day.getDate()}
+                        </div>
+                        {active && (
+                          <span style={{ fontSize: "9px", color: "#fff", fontWeight: 700, background: "#0f766e", padding: "1px 5px", borderRadius: "10px" }}>
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden" }}>
+                        {evs.slice(0, 2).map((e) => (
+                          <Chip key={e.id} $color={statusOf(e).color} $tint={statusOf(e).tint} onClick={(ev) => { ev.stopPropagation(); onEventClick(e); }} style={{ padding: "2px 6px", fontSize: "9px" }}>
+                            <span className="t">{e.time}</span>
+                            <span className="n">{typeOf(e).label}</span>
+                            <span className="m">{e.deceased.name}</span>
+                          </Chip>
+                        ))}
+                        {evs.length > 2 && (
+                          <div style={{ fontSize: "8px", color: "#94a3b8", marginTop: "1px" }}>{evs.length - 2} more</div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function DetailPanel({ selected, onClose, onEventSelect }) {
   const e = selected.event;
   const d = selected.deceased || {};
