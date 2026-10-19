@@ -78,16 +78,27 @@ var IC = {
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 /* Payment state from backend paid/amount/deposit: paid → 'paid',
-   deposit>0 → 'deposited', otherwise → 'unpaid'. */
+   deposit>0 → 'deposited', otherwise → 'unpaid'.
+
+   This is the ONLY status the reservation calendar tracks. The backend keeps
+   every coffin booking at status='active' and records the money in
+   paid / amount / deposit, so the colour of a chip, dot or row has to come
+   from these fields. It used to come from `mapStatus`, a stub that returned
+   'paid' for EVERY row — which painted the whole calendar one colour and made
+   it impossible to see who had actually paid. */
+function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
 function payStatus(b) {
-  var amt = Number(b.amount || 0);
-  var dep = Number(b.deposit || 0);
+  if (!b) return 'unpaid';
+  var amt = num(b.amount);
+  var dep = num(b.deposit);
+  // Some rows report the money already taken instead of a deposit field.
+  var taken = num(b.paid_amount != null ? b.paid_amount : b.paidAmount);
+  if (taken > dep) dep = taken;
   if (b.paid === true || b.paid === 1 || b.paid === '1' || b.paid === 'true') return 'paid';
   if (amt > 0 && dep >= amt) return 'paid';
   if (dep > 0) return 'deposited';
   return 'unpaid';
 }
-function mapStatus(s) { return 'paid'; }
 function parseServiceDate(raw) { if (!raw) return null; var m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return new Date(+m[1], +m[2] - 1, +m[3]); var d = new Date(raw); return isNaN(d.getTime()) ? null : d; }
 function extractTime(raw) { if (!raw) return ''; var m = String(raw).match(/T(\d{2}):(\d{2})/); if (m) return m[1] + ':' + m[2]; if (/^\d{1,2}:\d{2}/.test(String(raw))) return String(raw).slice(0, 5); return ''; }
 function usd(n) { return 'KES ' + Number(n || 0).toLocaleString(); }
@@ -278,7 +289,7 @@ export default function ReservationDashboard(props) {
       var date = parseServiceDate(b.service_date); var cn = String(b.coffin_name || '').toLowerCase(); var c = null; var cA = liveCoffins || [];
       for (var i = 0; i < cA.length; i++) { if (String(cA[i].coffin_id || cA[i].id) == b.coffin_id) { c = cA[i]; break; } }
       if (!c && cn) { for (var j = 0; j < cA.length; j++) { if (cA[j].name && String(cA[j].name).toLowerCase() === cn) { c = cA[j]; break; } } }
-      return { id: b.id, clientName: b.client_name || '\u2014', deceasedName: b.deceased_name || '', phone: b.client_phone || b.phone || '', coffinType: (c && c.name) || b.coffin_name || '\u2014', date: date || new Date(), time: b.service_time || extractTime(b.service_date), status: mapStatus(b.status), price: Number(b.coffin_price || b.price || (c ? c.exact_price || c.price : 0) || 0), paid: !!b.paid, notes: b.notes || '', pendingTransfer: !!b.pending_transfer, transferReservation: !!b.pending_transfer || !!b.source_request_id, transferStatus: b.transfer_status || (b.source_request_id ? 'delivered' : ''), sourceRequestId: b.source_request_id || '' };
+      return { id: b.id, clientName: b.client_name || '\u2014', deceasedName: b.deceased_name || '', phone: b.client_phone || b.phone || '', coffinType: (c && c.name) || b.coffin_name || '\u2014', date: date || new Date(), time: b.service_time || extractTime(b.service_date), status: payStatus(b), price: Number(b.coffin_price || b.price || (c ? c.exact_price || c.price : 0) || 0), amount: num(b.amount), deposit: num(b.deposit), paid: payStatus(b) === 'paid', notes: b.notes || '', pendingTransfer: !!b.pending_transfer, transferReservation: !!b.pending_transfer || !!b.source_request_id, transferStatus: b.transfer_status || (b.source_request_id ? 'delivered' : ''), sourceRequestId: b.source_request_id || '' };
     }).sort(function (a, b) { return a.date.getTime() - b.date.getTime(); });
   }, [liveBookings, liveCoffins]);
 
@@ -289,7 +300,7 @@ export default function ReservationDashboard(props) {
     mapped.forEach(function (b) {
       var k = format(b.date, 'yyyy-MM-dd');
       if (!m[k]) m[k] = [];
-      var c = (ST[b.status] || ST.pending).bar;
+      var c = (ST[b.status] || ST.unpaid).bar;
       var existing = m[k].find(function (dot) { return dot.color === c; });
       if (existing) existing.transfer = existing.transfer || b.transferReservation;
       else m[k].push({ color: c, transfer: !!b.transferReservation });
@@ -313,7 +324,12 @@ export default function ReservationDashboard(props) {
   // card read 0 even with bookings on screen.
   var stats = useMemo(function () {
     var month = mapped.filter(function (b) { return isSameMonth(b.date, visibleMonthDate); });
-    return { total: month.length, pending: month.filter(function (b) { return b.status === 'pending'; }).length, revenue: month.filter(function (b) { return b.status === 'completed'; }).reduce(function (s, b) { return s + b.price; }, 0), today: mapped.filter(function (b) { return isToday(b.date); }).length };
+    // "Pending" = money still outstanding, i.e. anything not fully paid.
+    // Revenue = cash actually taken this month: full price for paid bookings
+    // and the deposit for part-paid ones. Unpaid bookings add nothing — these
+    // used to count status 'pending'/'completed', which never occur here, so
+    // both cards always read 0.
+    return { total: month.length, pending: month.filter(function (b) { return b.status !== 'paid'; }).length, revenue: month.reduce(function (s, b) { return s + (b.status === 'paid' ? b.price : b.status === 'deposited' ? b.deposit : 0); }, 0), today: mapped.filter(function (b) { return isToday(b.date); }).length };
   }, [mapped, visibleMonthDate]);
 
   var byType = useMemo(function () {
@@ -706,7 +722,7 @@ export default function ReservationDashboard(props) {
                 <div className="cb-an-card">
                   <div className="cb-an-title" style={{ marginBottom: 6 }}>Monthly Revenue</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: TX, letterSpacing: '-.5px' }}>{money(stats.revenue)}</div>
-                  <div style={{ fontSize: 10, color: TX4, fontWeight: 500, marginTop: 2 }}>From {stats.total} completed bookings</div>
+                  <div style={{ fontSize: 10, color: TX4, fontWeight: 500, marginTop: 2 }}>Paid in full or part-paid across {stats.total} booking{stats.total !== 1 ? 's' : ''} this month</div>
                 </div>
               </div>
             </div>
@@ -815,7 +831,7 @@ export default function ReservationDashboard(props) {
                   <span style={{ fontSize: 12 }}>{clickedDay ? 'No bookings for ' + format(clickedDay, 'MMM d, yyyy') : 'No bookings for this period'}</span>
                 </div>
               ) : visible.map(function (b) {
-                var cf = ST[b.status] || ST.pending;
+                var cf = ST[b.status] || ST.unpaid;
                 var isActive = panelBk && panelBk.id === b.id;
                 return (
                   <div key={b.id} className={'cb-r' + (isActive ? ' active' : '')} onClick={function () { setPanelBk(b); }}>
@@ -838,9 +854,9 @@ export default function ReservationDashboard(props) {
                     </div>
                     <div className="cb-cell" style={{ textAlign: 'right' }}>
                       <div className="cb-pr">{money(b.price)}</div>
-                      <div className="cb-paid" style={{ color: b.paid ? SUC : TX4 }}>
-                        <span className="cb-paid-dot" style={{ background: b.paid ? SUC : '#d1d5db' }} />
-                        {b.paid ? 'Paid' : 'Unpaid'}
+                      <div className="cb-paid" style={{ color: cf.color }}>
+                        <span className="cb-paid-dot" style={{ background: cf.color }} />
+                        {b.status === 'paid' ? 'Paid in full' : b.status === 'deposited' ? 'Deposit ' + money(b.deposit) : 'Unpaid'}
                       </div>
                     </div>
                   </div>
@@ -859,9 +875,9 @@ export default function ReservationDashboard(props) {
           <div className="cb-ov" onClick={function () { setPanelBk(null); }} />
           <div className="cb-panel" ref={panelRef}>
             <div className="cb-ph">
-              <div className="cb-ph-status" style={{ color: (ST[panelBk.status] || ST.pending).color }}>
-                <span className="cb-ph-pulse" style={{ background: (ST[panelBk.status] || ST.pending).color }} />
-                {(ST[panelBk.status] || ST.pending).label}
+              <div className="cb-ph-status" style={{ color: (ST[panelBk.status] || ST.unpaid).color }}>
+                <span className="cb-ph-pulse" style={{ background: (ST[panelBk.status] || ST.unpaid).color }} />
+                {(ST[panelBk.status] || ST.unpaid).label}
               </div>
               <button className="cb-ph-close" onClick={function () { setPanelBk(null); }}>{IC.x}</button>
             </div>
@@ -878,7 +894,7 @@ export default function ReservationDashboard(props) {
                 <div className="cb-pb-sec-t">Details</div>
                 <div className="cb-pb-grid">
                   <div className="cb-pb-card"><div className="cb-pb-card-l">Phone</div><div className="cb-pb-card-v">{panelBk.phone || '\u2014'}</div></div>
-                  <div className="cb-pb-card"><div className="cb-pb-card-l">Payment</div><div className="cb-pb-card-v" style={{ color: panelBk.paid ? SUC : DNG, fontWeight: 700 }}>{panelBk.paid ? 'Paid' : 'Unpaid'}</div></div>
+                  <div className="cb-pb-card"><div className="cb-pb-card-l">Payment</div><div className="cb-pb-card-v" style={{ color: (ST[panelBk.status] || ST.unpaid).color, fontWeight: 700 }}>{(ST[panelBk.status] || ST.unpaid).label}{panelBk.status === 'deposited' && panelBk.deposit > 0 ? ' \u00b7 ' + money(panelBk.deposit) : ''}</div></div>
                   <div className="cb-pb-card"><div className="cb-pb-card-l">Coffin</div><div className="cb-pb-card-v" style={{ fontSize: 12 }}>{panelBk.coffinType}</div></div>
                   <div className="cb-pb-card"><div className="cb-pb-card-l">Schedule</div><div className="cb-pb-card-v" style={{ fontSize: 12 }}>{format(panelBk.date, 'MMM d, yyyy')} {panelBk.time || ''}</div></div>
                   <div className="cb-pb-card wide"><div className="cb-pb-card-l">Amount</div><div className="cb-pb-card-v hl">{money(panelBk.price)}</div></div>

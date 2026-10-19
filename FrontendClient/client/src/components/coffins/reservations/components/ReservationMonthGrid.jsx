@@ -11,11 +11,15 @@ import {
   isToday,
 } from 'date-fns';
 
+/* Payment states — must match ReservationDashboard's ST so chips, dots,
+   filters and the detail panel all agree.
+   The backend keeps every coffin booking at status='active' and records the
+   money in paid/amount/deposit, so bookings are coloured by WHO HAS PAID:
+   Paid = green, Deposited = amber, Unpaid = red. */
 const statusStyles = {
-  confirmed: { color: '#0f766e', label: 'Confirmed' },
-  pending: { color: '#64748b', label: 'Pending' },
-  completed: { color: '#16a34a', label: 'Completed' },
-  cancelled: { color: '#dc2626', label: 'Cancelled' },
+  paid: { color: '#16a34a', label: 'Paid', mark: 'PAID' },
+  deposited: { color: '#d97706', label: 'Deposited', mark: 'DEPOSIT' },
+  unpaid: { color: '#dc2626', label: 'Unpaid', mark: 'UNPAID' },
 };
 
 function formatTime(time) {
@@ -79,6 +83,12 @@ export function ReservationMonthGrid({ visibleMonthDate, visible, clickedDay, on
                       title={`${booking.clientName} - ${status.label}${formattedTime ? ` - ${formattedTime}` : ''}`}
                     >
                       {time}{booking.clientName}
+                      <span
+                        style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 11, fontWeight: 800, letterSpacing: '.3px' }}
+                        title={status.label}
+                      >
+                        {status.mark}
+                      </span>
                     </button>
                   );
                 })}
