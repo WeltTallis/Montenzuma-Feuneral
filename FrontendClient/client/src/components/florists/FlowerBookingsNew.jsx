@@ -207,20 +207,20 @@ const getLocalUserName = () => {
 
 const FLX_RESPONSIVE = `
 .flower-calendar {
-  --fc-primary: #2563eb;
-  --fc-primary-soft: rgba(37, 99, 235, .1);
-  --fc-text: #212529;
-  --fc-muted: #6c757d;
-  --fc-line: #dee2e6;
+  --fc-primary: #D6336C;
+  --fc-primary-soft: rgba(214, 51, 108, .1);
+  --fc-text: #1F1D1A;
+  --fc-muted: #8A8178;
+  --fc-line: #F0E4EA;
   display: flex;
   width: 100%;
   min-width: 0;
   min-height: 680px;
   overflow: hidden;
   border: 1px solid var(--fc-line);
-  border-radius: 10px;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(33, 37, 41, .06);
+  box-shadow: 0 5px 18px rgba(120, 30, 60, .06);
   color: var(--fc-text);
 }
 .flower-calendar-page {
@@ -246,11 +246,12 @@ const FLX_RESPONSIVE = `
   margin: 0 !important;
   padding: 13px 20px;
   border-bottom: 1px solid var(--fc-line);
+  background: #fff;
 }
 .flower-calendar-title {
   color: var(--fc-text);
-  font-family: inherit !important;
-  font-size: 20px !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-size: 22px !important;
   font-weight: 600 !important;
 }
 .flower-calendar-nav {
@@ -266,16 +267,16 @@ const FLX_RESPONSIVE = `
   justify-content: center;
   padding: 0 10px;
   border: 1px solid var(--fc-line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff;
-  color: #495057;
+  color: #574F47;
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
 }
 .flower-calendar-nav button:hover {
-  border-color: #b6c8f8;
-  background: #f8faff;
+  border-color: #F0AECB;
+  background: #FDF7FA;
   color: var(--fc-primary);
 }
 .flower-calendar .flx-cal-weekdays {
@@ -287,11 +288,12 @@ const FLX_RESPONSIVE = `
 }
 .flower-calendar .flx-cal-weekday {
   padding: 10px 5px;
-  background: #f8f9fa;
-  color: #495057 !important;
+  background: #FDF7FA;
+  color: #6E675E !important;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 .flower-calendar .flx-cal-days {
   display: grid;
@@ -317,13 +319,13 @@ const FLX_RESPONSIVE = `
   opacity: 1 !important;
   transition: background .15s ease;
 }
-.flower-calendar .flx-cal-day:hover { background: #f8f9fa !important; }
+.flower-calendar .flx-cal-day:hover { background: #FDF7FA !important; }
 .flower-calendar .flx-cal-day:focus-visible {
   z-index: 2;
   outline: 2px solid var(--fc-primary);
   outline-offset: -2px;
 }
-.flower-calendar .flx-cal-day.is-outside { background: #fafbfc !important; }
+.flower-calendar .flx-cal-day.is-outside { background: #FCFAFB !important; }
 .flower-calendar .flower-calendar-date {
   display: inline-flex;
   width: 26px;
@@ -331,11 +333,11 @@ const FLX_RESPONSIVE = `
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: #495057;
+  color: #574F47;
   font-size: 12px;
   font-weight: 500;
 }
-.flower-calendar .flx-cal-day.is-outside .flower-calendar-date { color: #adb5bd; }
+.flower-calendar .flx-cal-day.is-outside .flower-calendar-date { color: #B8AEA7; }
 .flower-calendar .flx-cal-day.is-today .flower-calendar-date {
   background: var(--fc-primary) !important;
   color: #fff !important;
@@ -343,6 +345,7 @@ const FLX_RESPONSIVE = `
 }
 .flower-calendar .flx-cal-day.is-selected {
   box-shadow: inset 0 0 0 2px var(--fc-primary);
+  background: #FFF9FB !important;
 }
 .flower-calendar .flx-cal-event {
   display: flex;
@@ -353,7 +356,7 @@ const FLX_RESPONSIVE = `
   margin: 3px 0 0;
   padding: 4px 6px;
   border-left: 3px solid currentColor;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 10px;
   font-weight: 700;
   line-height: 1.2;
@@ -463,16 +466,17 @@ const FLX_RESPONSIVE = `
   margin: 0 !important;
   padding: 18px 20px;
   border-top: 1px solid var(--fc-line);
+  background: #FFFCFD;
 }
 .flower-calendar-selected-day h2 {
   margin: 0;
   color: var(--fc-text);
-  font-family: inherit !important;
-  font-size: 16px !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-size: 18px !important;
 }
 .flower-calendar-selected-day > div > button {
   border-radius: 6px !important;
-  background: var(--fc-primary) !important;
+  background: #D6336C !important;
 }
 @media (max-width: 700px) {
   .flower-calendar-page { padding: 10px !important; }
@@ -932,9 +936,10 @@ const FlowerBookingsNew = () => {
         `/florist/bookings/${encodeURIComponent(bookingId)}/samples`,
         formData,
         {
-          // Do NOT force Content-Type — axios will drop it for FormData and let
-          // the browser set multipart/form-data with the correct boundary.
-          headers: {},
+          // The shared axios instance defaults to application/json. Explicitly
+          // clear that default so Axios keeps FormData multipart and the browser
+          // supplies the boundary required by multer.
+          headers: { 'Content-Type': null },
           timeout: 180000,
         }
       );
@@ -1071,6 +1076,7 @@ const FlowerBookingsNew = () => {
         dueDate,
         hoursUntil,
         isDueToday,
+        isUrgent: isDueToday || hoursUntil < 8,
       }];
     }).sort((a, b) => a.dueDate - b.dueDate);
     return {
@@ -1079,11 +1085,12 @@ const FlowerBookingsNew = () => {
     };
   }, [bookings, urgencyNow]);
 
-  const getBookingDotColor = (b) => {
+  const getBookingCalendarColors = (b, isUrgent) => {
+    if (isUrgent) return { background: '#DC2626', color: '#fff', border: '#B91C1C' };
     switch (normStatus(b.status)) {
-      case 'completed': return '#059669';
-      case 'cancelled': return '#dc2626';
-      default: return '#2563eb';   // Blue matches the Metis calendar's primary event color.
+      case 'completed': return { background: '#DCF5E5', color: '#166534', border: '#2B9155' };
+      case 'cancelled': return { background: '#FDE4E4', color: '#991B1B', border: '#DC2626' };
+      default: return { background: '#FCE0EC', color: '#9D174D', border: '#D6336C' };
     }
   };
 
@@ -1715,11 +1722,19 @@ const FlowerBookingsNew = () => {
       ].filter(Boolean).join(' ').toLowerCase().includes(query);
     });
 
-    // Group orders by their funeral/service date, newest dates first.
+    // Put the nearest upcoming service first, followed by recent past services.
+    // ISO date keys sort chronologically without timezone-dependent parsing.
+    const today = todayKey();
     const sorted = [...visibleBookings].sort((a, b) => {
-      const da = bookingDateKey(a) ? new Date(`${bookingDateKey(a)}T00:00:00`).getTime() : Infinity;
-      const db = bookingDateKey(b) ? new Date(`${bookingDateKey(b)}T00:00:00`).getTime() : Infinity;
-      return db - da;
+      const dateA = bookingDateKey(a);
+      const dateB = bookingDateKey(b);
+      if (!dateA || !dateB) return dateA ? -1 : dateB ? 1 : 0;
+
+      const aUpcoming = dateA >= today;
+      const bUpcoming = dateB >= today;
+      if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+
+      return aUpcoming ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
     });
     const groups = {};
     sorted.forEach(b => {
@@ -2108,7 +2123,8 @@ const FlowerBookingsNew = () => {
                   {visible.map((b, index) => {
                     const matchedSample = arrangements.find(a => a.title === b.flower_type);
                     const evTitle = matchedSample?.title || b.flower_type || 'Order';
-                    const statusColor = getBookingDotColor(b);
+                    const isUrgent = flowerUrgency.upcoming.some(item => item.booking === b && item.isUrgent);
+                    const eventColors = getBookingCalendarColors(b, isUrgent);
                     const eventLabel = b.deceased_name || evTitle;
                     const eventInfo = [
                       getBookingNoteTag(b, 'SERVICE-TIME'),
@@ -2127,10 +2143,10 @@ const FlowerBookingsNew = () => {
                     ].filter(Boolean).join(' · ');
                     return (
                       <div
-                        className="flx-cal-event"
+                        className={`flx-cal-event${isUrgent ? ' is-urgent' : ''}`}
                         key={`${b.booking_id || b.id || dateStr}-${index}`}
                         title={eventTitle}
-                        style={{ background: statusColor, color: '#fff', borderLeftColor: statusColor }}
+                        style={{ background: eventColors.background, color: eventColors.color, borderLeftColor: eventColors.border }}
                       >
                         <span className="flower-calendar-event-name">{eventLabel}</span>
                         <span className="flower-calendar-event-info">{eventInfo || 'Flower booking'}</span>
