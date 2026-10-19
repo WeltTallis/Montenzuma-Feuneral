@@ -1293,22 +1293,7 @@ const FlowerBookingsNew = () => {
         quantity: items.reduce((total, item) => total + item.quantity, 0),
         deceased_name: newBooking.deceased_name.trim(),
         booked_by: getLocalUserName() || 'System',
-        // Transport coordinator phone — shown in the booking side panel as
-        // "Transport Coordinator" so it is never confused with the family contact.
-        phone: (() => {
-          try {
-            const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
-            const u = raw ? JSON.parse(raw) : {};
-            return u?.phone || u?.phone_number || u?.tel || u?.contact || '';
-          } catch { return ''; }
-        })() || null,
-        customer_phone: (() => {
-          try {
-            const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
-            const u = raw ? JSON.parse(raw) : {};
-            return u?.phone || u?.phone_number || u?.tel || u?.contact || '';
-          } catch { return ''; }
-        })() || null,
+
         branch: resolveBranchName(newBooking.branch) || newBooking.branch || undefined,
         funeral_home: resolveBranchName(newBooking.branch) || newBooking.branch || undefined,
         date: bookedOn,
@@ -2295,7 +2280,6 @@ const FlowerBookingsNew = () => {
         return { ...prev, [field]: merged.join(', ') };
       });
     };
-    const arrangementSuggestions = ['Full set', 'Stems', 'Round wreath', 'Heart spray', 'Casket spray', 'Coffin wrap', 'Herse', 'Car number plate'];
     return (
       <div style={styles.formContainer}>
         {/* Header — same pattern as Create Arrangement */}
@@ -2320,21 +2304,6 @@ const FlowerBookingsNew = () => {
             value={newBooking.arrangement_type}
             onChange={e => setNewBooking(prev => ({ ...prev, arrangement_type: e.target.value }))}
           />
-          <p style={{ margin: '0 0 10px', color: '#6E675E', fontSize: '12px', lineHeight: 1.5 }}>
-            A “full set” can differ by booking. Record its exact flowers and extras below; short flower-only orders are fine too.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-            {arrangementSuggestions.map(item => (
-              <button
-                key={item}
-                type="button"
-                style={suggestionChip}
-                onClick={() => addSuggestion('arrangement_type', item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
           <label style={lbl} htmlFor="flower-designs">Flower Design(s)</label>
           <textarea
             id="flower-designs"
@@ -2742,21 +2711,6 @@ const FlowerBookingsNew = () => {
                 <div style={{ fontSize: '14px', fontWeight: 700, color: '#1C1A17', wordBreak: 'break-word' }}>
                   {bookerName || '—'}
                 </div>
-              </div>
-              <div style={{ minWidth: 0, textAlign: 'right' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9C9389', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-                  <Phone size={11} /> Transport Coordinator
-                </div>
-                {bookerPhone ? (
-                  <a
-                    href={`tel:${bookerPhone.replace(/\s+/g, '')}`}
-                    style={{ fontSize: '14px', fontWeight: 700, color: '#475A43', textDecoration: 'none', wordBreak: 'break-word' }}
-                  >
-                    {bookerPhone}
-                  </a>
-                ) : (
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#9C9389' }}>—</div>
-                )}
               </div>
             </div>
 
