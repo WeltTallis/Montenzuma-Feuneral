@@ -84,7 +84,7 @@ export function ReservationMonthGrid({ visibleMonthDate, visible, clickedDay, on
                     >
                       {time}{booking.clientName}
                       <span
-                        style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 11, fontWeight: 800, letterSpacing: '.3px' }}
+                        style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 9, fontWeight: 800, letterSpacing: '.3px' }}
                         title={status.label}
                       >
                         {status.mark}

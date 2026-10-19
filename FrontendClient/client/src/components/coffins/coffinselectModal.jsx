@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { X, Search, Package, Check, Loader2, ChevronLeft, ChevronRight, Image, User, Calendar } from '../../utils/icons/icons';
+import { X, Search, Package, Check, Loader2, ChevronLeft, ChevronRight, Image, User, Calendar, Filter } from '../../utils/icons/icons';
 import { todayKey } from '../../utils/dates/parseDates';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import env from '../../utils/config/env';
+import { ENDPOINTS } from '../../api/endpoints';
 
 // Colors
 const Colors = {
@@ -20,6 +21,12 @@ const Colors = {
   warningYellow: '#D97706',
   danger: '#DC2626',
 };
+
+// API URLs
+const API_BASE = env.API_URL; // resolves to https://restpoint.co.ke/api/v1/restpoint in production
+const API_URL = `${API_BASE}/coffins`;
+const ASSIGN_URL = `${API_BASE}${ENDPOINTS.COFFINS.ASSIGN}`;
+const STOCK_URL = (id) => `${API_BASE}${ENDPOINTS.COFFINS.STOCK(id)}`;
 
 // Styled Components
 const ModalOverlay = styled.div`
@@ -453,10 +460,6 @@ const NavButton = styled.button`
 const DEFAULT_COFFIN_SVG =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHg9IjUwIiB5PSIzMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSI5MCIgcng9IjQiIGZpbGw9IiNFMEU3RUIiIHN0cm9rZT0iIzk0QTNCOCIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxwYXRoIGQ9Ik01MCA2MEgxNTBWMTIwSDUwVjYwWiIgZmlsbD0iI0E4QjZDNSIvPgo8cGF0aCBkPSJNNzAgMzBIMTMwTDk1IDkwSDM1TDcwIDMwWiIgZmlsbD0iIzgwOTZBQyIvPgo8cmVjdCB4PSI4NSIgeT0iMTIwIiB3aWR0aD0iMzAiIGhlaWdodD0iMjAiIGZpbGw9IiM4QTlBNzAiLz4KPC9zdmc+Cg==';
 
-const API_BASE = env.API_URL; // resolves to https://restpoint.co.ke/api/v1/restpoint in production
-const API_URL = `${API_BASE}/coffins`;
-const ASSIGN_URL = `${API_BASE}/deceased/coffin`;
-
 const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedData }) => {
   const [coffins, setCoffins] = useState([]);
   const [filteredCoffins, setFilteredCoffins] = useState([]);
@@ -468,6 +471,10 @@ const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedDat
   // Assignment form fields
   const [assignedBy, setAssignedBy] = useState('');
   const [assignedDate, setAssignedDate] = useState(todayKey());
+
+  // Color filter state
+  const [colorFilter, setColorFilter] = useState('all');
+  const [availableColors, setAvailableColors] = useState([]);
 
   // Image preview state
   const [previewImages, setPreviewImages] = useState([]);
@@ -535,6 +542,12 @@ const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedDat
           })
           .filter((coffin) => coffin.stock > 0); // Only show coffins in stock
 
+        // Build the colour dropdown from the actual stock on hand so every
+        // registered colour (White, Snow, Walnut…) is selectable.
+        const colorSet = new Set();
+        processedCoffins.forEach((c) => { if (c.color) colorSet.add(c.color); });
+        setAvailableColors([...colorSet].sort());
+
         setCoffins(processedCoffins);
         setFilteredCoffins(processedCoffins);
       } else {
@@ -554,21 +567,27 @@ const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedDat
     fetchCoffins();
   }, [fetchCoffins]);
 
-  // Filter coffins based on search
+  // Filter coffins based on search text AND selected colour, so a booking
+  // can be pinned to a specific stock line (e.g. "Snow" white coffins).
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredCoffins(coffins);
-    } else {
-      const filtered = coffins.filter(
+    let list = coffins;
+    if (searchTerm.trim() !== '') {
+      const q = searchTerm.trim().toLowerCase();
+      list = list.filter(
         (coffin) =>
-          coffin.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          coffin.material?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          coffin.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          coffin.custom_id?.toLowerCase().includes(searchTerm.toLowerCase()),
+          coffin.type?.toLowerCase().includes(q) ||
+          coffin.material?.toLowerCase().includes(q) ||
+          coffin.supplier?.toLowerCase().includes(q) ||
+          coffin.custom_id?.toLowerCase().includes(q),
       );
-      setFilteredCoffins(filtered);
     }
-  }, [searchTerm, coffins]);
+    if (colorFilter !== 'all') {
+      list = list.filter(
+        (coffin) => (coffin.color || '').toLowerCase() === colorFilter.toLowerCase(),
+      );
+    }
+    setFilteredCoffins(list);
+  }, [searchTerm, colorFilter, coffins]);
 
   const handleAssign = async () => {
     if (!selectedCoffin) {
@@ -583,6 +602,23 @@ const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedDat
 
     setAssigning(true);
     try {
+      // Re-check live stock right before assigning — the list can be stale
+      // and a booking must never go through against an out-of-stock coffin.
+      try {
+        const stockRes = await axios.get(STOCK_URL(selectedCoffin.coffin_id), { timeout: 8000 });
+        const stockData = stockRes.data?.data || stockRes.data || {};
+        const liveStock = Number(stockData.quantity ?? stockData.stock ?? stockData.qty ?? selectedCoffin.stock);
+        if (Number.isFinite(liveStock) && liveStock <= 0) {
+          toast.error('This coffin is out of stock. Choose another type or colour.');
+          await fetchCoffins();
+          setSelectedCoffin(null);
+          return;
+        }
+      } catch (stockErr) {
+        // Pre-check is advisory — proceed with the listed stock if it fails.
+        console.warn('[Coffin select] Stock pre-check failed:', stockErr?.message || stockErr);
+      }
+
       const payload = {
         deceased_id: deceasedId,
         coffin_id: selectedCoffin.coffin_id,
@@ -596,6 +632,15 @@ const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedDat
       const response = await axios.post(ASSIGN_URL, payload);
 
       if (response.data?.success) {
+        // Book against inventory: best-effort stock decrement (1 unit) then
+        // re-fetch so the card shows live stock for the next pick. A failed
+        // decrement must never undo the successful assignment.
+        try {
+          await axios.post(STOCK_URL(selectedCoffin.coffin_id), { action: 'use', quantity: 1 });
+          await fetchCoffins();
+        } catch (stockErr) {
+          console.warn('[Coffin select] Stock decrement failed:', stockErr?.message || stockErr);
+        }
         toast.success(`✅ Coffin assigned successfully! RFID: ${response.data.rfid}`);
         onSelectCoffin(response.data);
       } else {
@@ -667,15 +712,38 @@ const CoffinSelectionModal = ({ onClose, onSelectCoffin, deceasedId, deceasedDat
           </ModalHeader>
 
           <SearchSection>
-            <SearchInput>
-              <Search size={16} />
-              <input
-                type="text"
-                placeholder="Search by type, material, supplier..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </SearchInput>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <SearchInput style={{ flex: 1 }}>
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="Search by type, material, supplier..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </SearchInput>
+              {availableColors.length > 0 && (
+                <select
+                  aria-label="Filter by colour"
+                  value={colorFilter}
+                  onChange={(e) => setColorFilter(e.target.value)}
+                  style={{
+                    border: `1px solid ${Colors.border}`,
+                    borderRadius: '6px',
+                    padding: '0.55rem 0.6rem',
+                    fontSize: '0.8rem',
+                    color: Colors.textPrimary,
+                    background: 'white',
+                    maxWidth: '170px',
+                  }}
+                >
+                  <option value="all">All colours</option>
+                  {availableColors.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </SearchSection>
 
           {loading ? (
