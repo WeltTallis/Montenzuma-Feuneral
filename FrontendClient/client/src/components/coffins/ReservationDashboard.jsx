@@ -41,20 +41,14 @@ var SHS  = '0 1px 2px rgba(0,0,0,.04)';
 var SHL  = '0 10px 15px rgba(0,0,0,.08)';
 var SHXL = '0 20px 25px rgba(0,0,0,.1)';
 
+/* Coffin bookings: backend stores status='active' and tracks PAYMENT via
+   paid / amount / deposit fields. Only 3 payment states exist: */
 var ST = {
-  pending:     { label: 'Pending',     color: '#d97706', bar: '#d97706' },
-  booked:      { label: 'Booked',      color: '#00296B', bar: '#00296B' },
-  confirmed:   { label: 'Confirmed',   color: '#00296B', bar: '#00296B' },
-  scheduled:   { label: 'Scheduled',   color: '#E36414', bar: '#E36414' },
-  in_progress: { label: 'In Progress', color: '#0c0b0f', bar: '#0c0b0f' },
-  in_transit:  { label: 'In Transit',  color: '#E36414', bar: '#E36414' },
-  postponed:   { label: 'Postponed',   color: '#d97706', bar: '#d97706' },
-  completed:   { label: 'Completed',   color: '#5F0F40', bar: '#5F0F40' },
-  delivered:   { label: 'Delivered',   color: '#132A13', bar: '#132A13' },
-  cancelled:   { label: 'Cancelled',   color: '#DD2D4A', bar: '#DD2D4A' },
-  maintenance: { label: 'Maintenance', color: '#03071E', bar: '#03071E' },
+  paid:      { label: 'Paid',      color: '#16a34a', bar: '#16a34a' },
+  deposited: { label: 'Deposited', color: '#d97706', bar: '#d97706' },
+  unpaid:    { label: 'Unpaid',    color: '#dc2626', bar: '#dc2626' },
 };
-var STORD = ['confirmed', 'booked', 'pending', 'scheduled', 'in_progress', 'in_transit', 'postponed', 'completed', 'delivered', 'cancelled', 'maintenance'];
+var STORD = ['paid', 'deposited', 'unpaid'];
 
 function Ico(p) {
   return (
@@ -83,7 +77,17 @@ var IC = {
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }
-function mapStatus(s) { var v = String(s || '').toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_'); if (ST[v]) return v; if (v === 'active' || v === 'approved' || v === 'reserved') return 'confirmed'; if (v === 'done') return 'completed'; if (v === 'canceled' || v === 'rejected') return 'cancelled'; if (v === 'transit' || v === 'transferring') return 'in_transit'; if (v === 'progress') return 'in_progress'; if (v === 'paid') return 'confirmed'; return 'pending'; }
+/* Payment state from backend paid/amount/deposit: paid → 'paid',
+   deposit>0 → 'deposited', otherwise → 'unpaid'. */
+function payStatus(b) {
+  var amt = Number(b.amount || 0);
+  var dep = Number(b.deposit || 0);
+  if (b.paid === true || b.paid === 1 || b.paid === '1' || b.paid === 'true') return 'paid';
+  if (amt > 0 && dep >= amt) return 'paid';
+  if (dep > 0) return 'deposited';
+  return 'unpaid';
+}
+function mapStatus(s) { return 'paid'; }
 function parseServiceDate(raw) { if (!raw) return null; var m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return new Date(+m[1], +m[2] - 1, +m[3]); var d = new Date(raw); return isNaN(d.getTime()) ? null : d; }
 function extractTime(raw) { if (!raw) return ''; var m = String(raw).match(/T(\d{2}):(\d{2})/); if (m) return m[1] + ':' + m[2]; if (/^\d{1,2}:\d{2}/.test(String(raw))) return String(raw).slice(0, 5); return ''; }
 function usd(n) { return 'KES ' + Number(n || 0).toLocaleString(); }
