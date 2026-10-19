@@ -1,0 +1,2986 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <title>CoffinBook — Reservation Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e5e7eb;
+            border-radius: 4px;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f9fafb;
+            color: #111827;
+            -webkit-font-smoothing: antialiased;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ---------- Tokens (mirror your React C/ST) ---------- */
+        :root {
+            --ink: #111827;
+            --ink2: #374151;
+            --ink3: #6b7280;
+            --ink4: #9ca3af;
+            --bg: #f9fafb;
+            --card: #ffffff;
+            --brd: #e5e7eb;
+            --brdl: #f3f4f6;
+            --acc: #0f766e;
+            --accl: #14b8a6;
+            --acclt: #f0fdfa;
+            --suc: #16a34a;
+            --sucl: #f0fdf4;
+            --dng: #dc2626;
+            --dngl: #fef2f2;
+            --shs: 0 1px 2px rgba(0, 0, 0, .04);
+            --shl: 0 10px 15px rgba(0, 0, 0, .08);
+            --shxl: 0 20px 25px rgba(0, 0, 0, .1);
+        }
+
+        @keyframes cbPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: .3;
+                transform: scale(.7);
+            }
+        }
+
+        @keyframes cbTransferPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                box-shadow: 0 0 0 1px rgba(220, 38, 38, .15);
+            }
+
+            50% {
+                opacity: .45;
+                transform: scale(.68);
+                box-shadow: 0 0 0 4px rgba(220, 38, 38, .18);
+            }
+        }
+
+        @keyframes cbTIn {
+            from {
+                transform: translateY(12px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes cbTOut {
+            to {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+        }
+
+        @keyframes cbPanelIn {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes cbOvIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes cellIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ---------- Top brand bar (separate from app toolbar) ---------- */
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid var(--brd);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .topbar-mark {
+            width: 34px;
+            height: 34px;
+            background: var(--acc);
+            color: #fff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .topbar-title {
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: -0.01em;
+            color: var(--ink);
+        }
+
+        .topbar-title .sub {
+            display: block;
+            font-size: 10.5px;
+            color: var(--ink4);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 1px;
+        }
+
+        .topbar-link {
+            color: var(--ink3);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 7px 14px;
+            border-radius: 7px;
+            transition: all .12s;
+            border: 1px solid var(--brd);
+        }
+
+        .topbar-link:hover {
+            border-color: var(--acc);
+            color: var(--acc);
+            background: var(--acclt);
+        }
+
+        .btn-primary {
+            background: var(--acc);
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            padding: 8px 14px;
+            font-weight: 700;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background .15s;
+            box-shadow: 0 2px 8px rgba(15, 118, 110, .25);
+        }
+
+        .btn-primary:hover {
+            background: var(--accl);
+        }
+
+        .btn-primary svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        /* ---------- App frame ---------- */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 58px);
+            overflow: hidden;
+        }
+
+        /* ---------- Toolbar ---------- */
+        .cb-tb {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+            border-bottom: 1px solid var(--brd);
+            background: var(--card);
+            flex-shrink: 0;
+            gap: 12px;
+            min-height: 52px;
+        }
+
+        .cb-tb-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cb-tb-right {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .cb-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--brd);
+            margin: 0 4px;
+        }
+
+        .cb-search {
+            flex: 0 1 240px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg);
+            border: 1px solid var(--brd);
+            border-radius: 7px;
+            padding: 0 14px;
+            height: 30px;
+        }
+
+        .cb-search svg {
+            width: 12px;
+            height: 12px;
+            color: var(--ink4);
+            flex-shrink: 0;
+        }
+
+        .cb-search input {
+            border: none;
+            background: transparent;
+            outline: none;
+            flex: 1;
+            font-size: 12px;
+            color: var(--ink);
+            font-family: inherit;
+        }
+
+        .cb-search input::placeholder {
+            color: var(--ink4);
+        }
+
+        .cb-filter-chips {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+
+        .cb-filter-chips::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cb-fc {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .12s;
+            border: 1.5px solid var(--brd);
+            background: var(--card);
+            color: var(--ink3);
+            user-select: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .cb-fc:hover {
+            border-color: var(--ink4);
+            color: var(--ink2);
+        }
+
+        .cb-fc.on {
+            border-color: var(--acc);
+            background: var(--card);
+            color: var(--acc);
+        }
+
+        .cb-fc-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .cb-fc-ct {
+            font-weight: 700;
+            font-size: 9px;
+            opacity: 0.6;
+        }
+
+        .cb-tb-btn {
+            height: 30px;
+            padding: 0 12px;
+            border: 1px solid var(--brd);
+            background: var(--card);
+            color: var(--ink2);
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all .12s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .cb-tb-btn:hover {
+            border-color: var(--acc);
+            color: var(--acc);
+        }
+
+        .cb-tb-btn.sq {
+            width: 30px;
+            padding: 0;
+            justify-content: center;
+        }
+
+        .cb-tb-views {
+            display: flex;
+            background: var(--bg);
+            border: 1px solid var(--brd);
+            border-radius: 7px;
+            padding: 2px;
+            gap: 1px;
+        }
+
+        .cb-tb-v {
+            padding: 4px 12px;
+            border: none;
+            background: transparent;
+            color: var(--ink3);
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: inherit;
+            border-radius: 5px;
+            transition: all .15s;
+            text-transform: capitalize;
+        }
+
+        .cb-tb-v:hover {
+            color: var(--ink);
+        }
+
+        .cb-tb-v.on {
+            background: var(--card);
+            color: var(--ink);
+            box-shadow: var(--shs);
+            font-weight: 700;
+        }
+
+        /* ---------- Stat strip ---------- */
+        .cb-sr {
+            display: flex;
+            align-items: stretch;
+            flex-shrink: 0;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--brd);
+        }
+
+        .cb-sr::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cb-sr-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 22px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cb-sr-ico {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, .2);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .cb-sr-ico svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .cb-sr-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .cb-sr-num {
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        .cb-sr-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, .75);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+
+        /* ---------- Main split ---------- */
+        .cb-split {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+        }
+
+        .cb-side {
+            width: 300px;
+            background: var(--card);
+            border-right: 1px solid var(--brd);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 20;
+            min-height: 0;
+            overflow-y: hidden;
+        }
+
+        .cb-side-scroll {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ---------- Mini calendar ---------- */
+        .cb-mc {
+            padding: 14px 20px 12px;
+            border-bottom: 1px solid var(--brdl);
+        }
+
+        .cb-mc-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .cb-mc-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .cb-mc-nav {
+            display: flex;
+            gap: 2px;
+        }
+
+        .cb-mc-nav button {
+            width: 26px;
+            height: 26px;
+            border: 1px solid var(--brd);
+            background: var(--card);
+            color: var(--ink3);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .12s;
+        }
+
+        .cb-mc-nav button:hover {
+            border-color: var(--acc);
+            color: var(--acc);
+        }
+
+        .cb-mc-nav button svg {
+            width: 11px;
+            height: 11px;
+        }
+
+        .cb-mc-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            text-align: center;
+        }
+
+        .cb-mc-dow {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 5px 0;
+        }
+
+        .cb-mc-day {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--ink2);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all .12s;
+            position: relative;
+        }
+
+        .cb-mc-day:hover {
+            background: var(--bg);
+        }
+
+        .cb-mc-day.other {
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        .cb-mc-day.today {
+            font-weight: 800;
+            color: var(--acc);
+            background: var(--acclt);
+        }
+
+        .cb-mc-day.selected {
+            background: var(--acc);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .cb-cal-dots {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1.5px;
+        }
+
+        .cb-cal-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ---------- Status filters ---------- */
+        .cb-filters {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--brdl);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .cb-fc {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .12s;
+            border: 1.5px solid var(--brd);
+            background: var(--card);
+            color: var(--ink3);
+            user-select: none;
+        }
+
+        .cb-fc:hover {
+            border-color: var(--ink4);
+            color: var(--ink2);
+        }
+
+        .cb-fc.on {
+            border-color: var(--acc);
+            background: var(--card);
+            color: var(--acc);
+        }
+
+        .cb-fc-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .cb-fc-ct {
+            font-weight: 700;
+            font-size: 9px;
+            opacity: 0.6;
+        }
+
+        /* ---------- Analytics ---------- */
+        .cb-analytics {
+            flex: 1;
+            padding: 12px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .cb-an-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cb-an-title svg {
+            width: 11px;
+            height: 11px;
+        }
+
+        .cb-an-card {
+            background: var(--card);
+            border: 1px solid var(--brd);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .cb-an-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cb-an-leg {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .cb-an-leg-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .cb-an-leg-label {
+            font-size: 11px;
+            color: var(--ink2);
+            flex: 1;
+        }
+
+        .cb-an-leg-val {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .cb-an-leg-pct {
+            font-size: 9px;
+            color: var(--ink4);
+            width: 32px;
+            text-align: right;
+        }
+
+        .cb-an-pie-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .cb-an-pie {
+            width: 100px;
+            height: 100px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .cb-an-pie-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .cb-an-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .cb-an-bar-label {
+            font-size: 10px;
+            color: var(--ink2);
+            width: 90px;
+            flex-shrink: 0;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cb-an-bar-track {
+            flex: 1;
+            height: 16px;
+            background: var(--brdl);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .cb-an-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width .4s;
+        }
+
+        .cb-an-bar-val {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink);
+            min-width: 18px;
+            text-align: right;
+        }
+
+        .cb-an-rev {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--ink);
+            letter-spacing: -0.5px;
+        }
+
+        .cb-an-rev-sub {
+            font-size: 10px;
+            color: var(--ink4);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        /* ---------- Main list ---------- */
+        .cb-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            background: var(--card);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cb-df {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 24px;
+            background: var(--acclt);
+            border-bottom: 1px solid var(--brd);
+        }
+
+        .cb-df span {
+            font-size: 11px;
+            color: var(--acc);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cb-df button {
+            background: none;
+            border: none;
+            color: var(--ink3);
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            transition: all .12s;
+            font-family: inherit;
+        }
+
+        .cb-df button:hover {
+            color: var(--dng);
+        }
+
+        .cb-df button svg {
+            width: 9px;
+            height: 9px;
+        }
+
+        /* Month list table */
+        .cb-lh {
+            flex-shrink: 0;
+            display: grid;
+            grid-template-columns: 3px 1.2fr 0.9fr 0.85fr 0.75fr 0.8fr;
+            align-items: center;
+            padding: 9px 20px 9px 0;
+            border-bottom: 1px solid var(--brd);
+            background: var(--bg);
+        }
+
+        .cb-lh>div {
+            padding-left: 10px;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .cb-lh>div:last-child {
+            text-align: right;
+        }
+
+        .cb-r {
+            display: grid;
+            grid-template-columns: 3px 1.2fr 0.9fr 0.85fr 0.75fr 0.8fr;
+            align-items: center;
+            gap: 0;
+            padding: 13px 20px 13px 0;
+            cursor: pointer;
+            transition: all .1s;
+            border-bottom: 1px solid var(--brdl);
+            min-height: 56px;
+            animation: cellIn .15s ease both;
+        }
+
+        .cb-r:hover {
+            background: var(--bg);
+        }
+
+        .cb-r.active {
+            box-shadow: inset 3px 0 0 var(--acc);
+        }
+
+        .cb-bar {
+            width: 3px;
+            min-height: 22px;
+            border-radius: 2px;
+            align-self: stretch;
+        }
+
+        .cb-cell {
+            padding: 0 10px;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .cb-nm {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cb-sub {
+            font-size: 10px;
+            color: var(--ink4);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .cb-sub svg {
+            width: 10px;
+            height: 10px;
+            flex-shrink: 0;
+        }
+
+        .cb-cn {
+            font-size: 12px;
+            color: var(--ink2);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cb-mt {
+            font-size: 12px;
+            color: var(--ink2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cb-pr {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .cb-paid {
+            font-size: 9px;
+            font-weight: 600;
+            margin-top: 2px;
+            text-align: right;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
+        .cb-paid-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .cb-status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cb-status-chip .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .cb-status-chip .lbl {
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* ---------- Calendar grid (day/week) ---------- */
+        .cb-grid-frame {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: var(--card);
+        }
+
+        .cb-grid-head {
+            display: grid;
+            align-items: center;
+            border-bottom: 1px solid var(--brd);
+            padding: 10px 14px;
+            gap: 6px;
+            grid-template-columns: 58px repeat(var(--cols, 1), minmax(0, 1fr));
+        }
+
+        .cb-grid-head-corner {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--ink4);
+        }
+
+        .cb-grid-day-head {
+            border: 1px solid var(--brd);
+            background: var(--card);
+            border-radius: 8px;
+            padding: 6px 4px;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            transition: all .12s;
+        }
+
+        .cb-grid-day-head:hover {
+            border-color: var(--acc);
+        }
+
+        .cb-grid-day-head .dow {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: var(--ink4);
+        }
+
+        .cb-grid-day-head .dom {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--ink2);
+            line-height: 1.1;
+        }
+
+        .cb-grid-day-head.today {
+            border-color: var(--acc);
+            background: var(--acclt);
+        }
+
+        .cb-grid-day-head.today .dom {
+            color: var(--acc);
+        }
+
+        .cb-grid-day-head.other .dom {
+            color: var(--ink4);
+            opacity: 0.55;
+        }
+
+        .cb-grid-day-head.sel {
+            border-color: var(--acc);
+            box-shadow: 0 0 0 2px var(--acclt);
+        }
+
+        .cb-grid-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            display: grid;
+            grid-template-columns: 58px repeat(var(--cols, 1), minmax(0, 1fr));
+        }
+
+        .cb-time-cell {
+            border-right: 1px solid var(--brd);
+            border-bottom: 1px solid var(--brdl);
+            background: var(--bg);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink4);
+            text-align: right;
+            padding: 3px 7px 0 0;
+            height: 52px;
+        }
+
+        .cb-day-cell {
+            border-right: 1px solid var(--brdl);
+            border-bottom: 1px solid var(--brdl);
+            height: 52px;
+            position: relative;
+            padding: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+        }
+
+        .cb-chip {
+            border: none;
+            background: var(--chip-c, var(--acc));
+            color: #fff;
+            border-radius: 7px;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 12px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            transition: transform .12s, box-shadow .12s;
+            min-height: 40px;
+        }
+
+        .cb-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+        }
+
+        .cb-chip .t {
+            font-size: 10px;
+            font-weight: 700;
+            opacity: 0.8;
+        }
+
+        .cb-chip .n {
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cb-chip .m {
+            font-size: 10px;
+            opacity: 0.7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cb-untimed-wrap {
+            grid-column: 2 / -1;
+            border-bottom: 1px solid var(--brd);
+            padding: 8px 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            background: var(--bg);
+        }
+
+        .cb-untimed-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: var(--ink4);
+            align-self: center;
+            margin-right: 2px;
+        }
+
+        .cb-grid-empty {
+            grid-column: 2 / -1;
+            padding: 40px 16px;
+            text-align: center;
+            color: var(--ink4);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* ---------- Detail panel ---------- */
+        .cb-ov {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 24, 39, .4);
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            animation: cbOvIn .15s ease;
+        }
+
+        .cb-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 101;
+            width: 480px;
+            max-width: 92vw;
+            background: var(--card);
+            border-left: 1px solid var(--brd);
+            box-shadow: var(--shxl);
+            display: flex;
+            flex-direction: column;
+            animation: cbPanelIn .25s cubic-bezier(.32, .72, 0, 1);
+            overflow: hidden;
+        }
+
+        .cb-ph {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--brd);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .cb-ph-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .cb-ph-pulse {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: cbPulse 2s ease-in-out infinite;
+        }
+
+        .cb-ph-close {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--brd);
+            background: var(--card);
+            color: var(--ink3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .12s;
+        }
+
+        .cb-ph-close:hover {
+            border-color: var(--dng);
+            color: var(--dng);
+            background: var(--dngl);
+        }
+
+        .cb-pb {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+        }
+
+        .cb-pb-client {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--ink);
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .cb-pb-code {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink3);
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+        }
+
+        .cb-pb-sec {
+            margin-bottom: 24px;
+        }
+
+        .cb-pb-sec-t {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--brdl);
+        }
+
+        .cb-pb-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .cb-pb-card {
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--brdl);
+            border-radius: 10px;
+        }
+
+        .cb-pb-card.wide {
+            grid-column: 1 / -1;
+        }
+
+        .cb-pb-card-l {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 4px;
+        }
+
+        .cb-pb-card-v {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .cb-pb-card-v.hl {
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .cb-pf {
+            padding: 14px 24px;
+            border-top: 1px solid var(--brd);
+            background: var(--bg);
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .cb-pbtn {
+            flex: 1;
+            padding: 10px 0;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .12s;
+            text-align: center;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+
+        .cb-pbtn.primary {
+            background: var(--acc);
+            color: #fff;
+        }
+
+        .cb-pbtn.primary:hover {
+            background: var(--accl);
+        }
+
+        .cb-pbtn.paid {
+            background: var(--suc);
+            color: #fff;
+        }
+
+        .cb-pbtn.paid:disabled {
+            background: var(--ink4);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .cb-pbtn.ghost {
+            background: var(--card);
+            color: var(--ink3);
+            border: 1px solid var(--brd);
+        }
+
+        .cb-pbtn.ghost:hover {
+            color: var(--ink);
+            border-color: var(--ink4);
+        }
+
+        .cb-pbtn svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* ---------- Full month calendar grid ---------- */
+        .fc-frame {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: var(--card);
+        }
+
+        .fc-head {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border-bottom: 1px solid var(--brd);
+            flex-shrink: 0;
+        }
+
+        .fc-head-cell {
+            padding: 8px 6px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            text-align: center;
+            border-right: 1px solid var(--brdl);
+        }
+
+        .fc-head-cell:last-child {
+            border-right: none;
+        }
+
+        .fc-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-auto-rows: minmax(170px, 1fr);
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        .fc-day {
+            border-right: 1px solid var(--brdl);
+            border-bottom: 1px solid var(--brdl);
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: background .12s;
+            min-height: 160px;
+        }
+
+        .fc-day:hover {
+            background: var(--bg);
+        }
+
+        .fc-day.other {
+            background: var(--bg);
+        }
+
+        .fc-day.today {
+            background: var(--acclt);
+        }
+
+        .fc-day.selected {
+            box-shadow: inset 0 0 0 2px var(--acc);
+        }
+
+        .fc-day-num {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink2);
+            text-align: right;
+            padding: 2px 6px;
+            flex-shrink: 0;
+        }
+
+        .fc-day.today .fc-day-num {
+            color: var(--acc);
+            font-weight: 800;
+        }
+
+        .fc-day.other .fc-day-num {
+            color: var(--ink4);
+            opacity: 0.4;
+        }
+
+        .fc-day.selected .fc-day-num {
+            color: var(--acc);
+        }
+
+        .fc-day-chips {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            overflow: hidden;
+        }
+
+        .fc-chip {
+            border: none;
+            background: var(--chip-c, var(--acc));
+            color: #fff;
+            border-radius: 7px;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: left;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: transform .12s, box-shadow .12s;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fc-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .2);
+        }
+
+        .fc-more {
+            font-size: 11px;
+            color: var(--ink4);
+            font-weight: 600;
+            padding: 3px 6px;
+            text-align: center;
+        }
+
+        /* Payment legend strip */
+        .pay-legend {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 8px 24px;
+            background: var(--card);
+            border-bottom: 1px solid var(--brd);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .pay-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink3);
+        }
+
+        .pay-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .pay-legend-divider {
+            width: 1px;
+            height: 16px;
+            background: var(--brd);
+        }
+
+        /* ---------- New Booking modal ---------- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            animation: cbOvIn .18s ease;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 520px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: var(--shxl);
+            animation: cbPanelIn .22s ease-out;
+        }
+
+        .modal-head {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--brd);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mh-id {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .mh-name {
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            margin-top: 2px;
+            color: var(--ink);
+        }
+
+        .modal-close {
+            background: var(--bg);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 20px;
+            color: var(--ink3);
+            cursor: pointer;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+        }
+
+        .modal-close:hover {
+            background: var(--brdl);
+        }
+
+        .modal-body {
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .modal-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .field label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
+            padding: 10px 12px;
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--ink);
+            background: #fff;
+        }
+
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus {
+            outline: none;
+            border-color: var(--acc);
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .modal-footer {
+            padding: 14px 22px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            border-top: 1px solid var(--brd);
+        }
+
+        .btn-cancel {
+            background: var(--bg);
+            color: var(--ink3);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-cancel:hover {
+            background: var(--brdl);
+        }
+
+        .btn-save {
+            background: var(--acc);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-save:hover {
+            background: var(--accl);
+        }
+
+        .availability-box {
+            margin-top: 8px;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--brdl);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--ink3);
+        }
+
+        /* ---------- Toast ---------- */
+        .cb-te {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 11px 18px;
+            background: var(--ink);
+            color: #fff;
+            border-radius: 10px;
+            box-shadow: var(--shxl);
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            z-index: 2000;
+            animation: cbTIn .2s ease;
+        }
+
+        .cb-te.out {
+            animation: cbTOut .15s ease forwards;
+        }
+
+        .cb-te svg {
+            width: 13px;
+            height: 13px;
+            color: var(--suc);
+        }
+
+        /* ---------- Empty ---------- */
+        .cb-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--ink4);
+            gap: 8px;
+            padding: 40px 0;
+        }
+
+        .cb-empty-ico {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink4);
+        }
+
+        .cb-empty-ico svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 1100px) {
+            .cb-side {
+                width: 260px;
+            }
+
+            .cb-sr-item {
+                padding: 10px 14px;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .cb-side {
+                display: none;
+            }
+
+            .cb-tb {
+                padding: 8px 16px;
+                flex-wrap: wrap;
+            }
+
+            .cb-panel {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .cb-sr-item {
+                padding: 10px 14px;
+            }
+
+            .cb-sr-ico {
+                width: 30px;
+                height: 30px;
+            }
+
+            .cb-sr-num {
+                font-size: 16px;
+            }
+
+            .cb-lh,
+            .cb-r {
+                grid-template-columns: 3px 1fr 1fr 0.8fr 0.7fr 0.7fr;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top brand bar -->
+    <header class="topbar">
+        <div class="topbar-brand">
+            <div class="topbar-mark">CB</div>
+            <div class="topbar-title">
+                CoffinBook
+                <span class="sub">Reservation Dashboard</span>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <a class="topbar-link" href="inventory.html"
+                onclick="event.preventDefault(); window.location.href='inventory.html'; return false;">→ Inventory</a>
+            <button class="btn-primary" onclick="openNewBookingModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New Booking
+            </button>
+        </div>
+    </header>
+
+    <div class="app">
+        <!-- Toolbar -->
+        <div class="cb-tb">
+            <div class="cb-tb-left">
+                <div class="cb-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search bookings..." oninput="renderMain()" />
+                </div>
+                <div class="cb-divider"></div>
+                <div class="cb-filter-chips" id="statusFilters"></div>
+            </div>
+            <div class="cb-tb-right">
+                <button class="cb-tb-btn sq" id="prevBtn" title="Previous"><svg viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg></button>
+                <button class="cb-tb-btn sq" id="nextBtn" title="Next"><svg viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                    </svg></button>
+                <button class="cb-tb-btn" id="todayBtn">Today</button>
+                <div class="cb-divider"></div>
+                <div class="cb-tb-views" id="viewTabs">
+                    <button class="cb-tb-v" data-view="day">Day</button>
+                    <button class="cb-tb-v" data-view="week">Week</button>
+                    <button class="cb-tb-v" data-view="month">Month</button>
+                    <button class="cb-tb-v on" data-view="full">Full</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stat strip -->
+        <div class="cb-sr" id="statStrip"></div>
+
+        <!-- Payment legend -->
+        <div class="pay-legend" id="statusLegend"></div>
+
+        <!-- Full-width main — no sidebar -->
+        <main class="cb-main" id="mainArea"></main>
+    </div>
+
+    <!-- New Booking Modal -->
+    <div class="modal-overlay" id="newBookingModal" onclick="if(event.target===this)closeNewBookingModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <div>
+                    <div class="mh-id">New coffin booking</div>
+                    <div class="mh-name">Book a coffin</div>
+                </div>
+                <button class="modal-close" onclick="closeNewBookingModal()" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <div class="modal-section-title">Client details</div>
+                    <div class="field-grid">
+                        <div class="field" style="grid-column:1/-1">
+                            <label>Client name</label>
+                            <input type="text" id="bkClient" placeholder="e.g., Whitfield Family" />
+                        </div>
+                        <div class="field">
+                            <label>Deceased name</label>
+                            <input type="text" id="bkDeceased" placeholder="Optional" />
+                        </div>
+                        <div class="field">
+                            <label>Contact</label>
+                            <input type="text" id="bkContact" placeholder="Phone or email" />
+                        </div>
+                        <div class="field">
+                            <label>Date</label>
+                            <input type="date" id="bkDate" value="2020-04-10" />
+                        </div>
+                        <div class="field">
+                            <label>Time (24h)</label>
+                            <input type="time" id="bkTime" value="10:00" />
+                        </div>
+                        <div class="field" style="grid-column:1/-1">
+                            <label>Coffin price (KES)</label>
+                            <input type="number" id="bkPrice" value="45000" min="0" />
+                        </div>
+                        <div class="field">
+                            <label>Status</label>
+                            <select id="bkStatus">
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Coffin selection</div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label>Coffin type</label>
+                            <select id="bkType" onchange="updateBookingColorOptions()"></select>
+                        </div>
+                        <div class="field">
+                            <label>Color</label>
+                            <select id="bkColor" onchange="updateAvailability()"></select>
+                        </div>
+                        <div class="field" style="grid-column:1/-1">
+                            <label>Notes</label>
+                            <input type="text" id="bkNotes"
+                                placeholder="Special requests, delivery instructions, etc." />
+                        </div>
+                    </div>
+                    <div class="availability-box" id="availability"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeNewBookingModal()">Cancel</button>
+                <button class="btn-save" onclick="submitNewBooking()">Create booking</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div id="detailPanelHost"></div>
+
+    <!-- Toast -->
+    <div id="toastHost"></div>
+
+    <script>
+        /* ============================================================
+           TOKENS — must match the React ReservationDashboard palette
+           ============================================================ */
+        const C = {
+            ink: '#111827', ink2: '#374151', ink3: '#6b7280', ink4: '#9ca3af',
+            bg: '#f9fafb', card: '#ffffff', brd: '#e5e7eb', brdl: '#f3f4f6',
+            acc: '#0f766e', accl: '#14b8a6', acclt: '#f0fdfa',
+            suc: '#16a34a', sucl: '#f0fdf4', dng: '#dc2626', dngl: '#fef2f2',
+        };
+
+        const ST = {
+            pending: { label: 'Pending', color: '#d97706', bg: '#FFFBEB' },
+            booked: { label: 'Booked', color: '#00296B', bg: '#EFF6FF' },
+            confirmed: { label: 'Confirmed', color: '#00296B', bg: '#EFF6FF' },
+            scheduled: { label: 'Scheduled', color: '#E36414', bg: '#FFEDD5' },
+            in_transit: { label: 'In Transit', color: '#E36414', bg: '#FFEDD5' },
+            in_progress: { label: 'In Progress', color: '#0c0b0f', bg: '#F3F4F6' },
+            postponed: { label: 'Postponed', color: '#d97706', bg: '#FFFBEB' },
+            completed: { label: 'Completed', color: '#5F0F40', bg: '#FCE7F3' },
+            delivered: { label: 'Delivered', color: '#132A13', bg: '#E8F5E9' },
+            cancelled: { label: 'Cancelled', color: '#DD2D4A', bg: '#FEE2E2' },
+            maintenance: { label: 'Maintenance', color: '#03071E', bg: '#E0E7FF' },
+        };
+        const STORD = ['confirmed', 'booked', 'pending', 'scheduled', 'in_progress', 'in_transit', 'postponed', 'completed', 'delivered', 'cancelled', 'maintenance'];
+
+        const STATUS_TINT = (color) => {
+            if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) return color + '14';
+            return color;
+        };
+
+        function getStatusStyle(b) {
+            return ST[b.status] || ST.pending;
+        }
+
+        /* ============================================================
+           DATA — coffin catalog + color hex + inventory + bookings
+           ============================================================ */
+        const COFFIN_CATALOG = {
+            'Doom': { colors: ['White', 'Red', 'Gold', 'Black', 'Purple'] },
+            'Classic': { colors: ['Natural', 'Mahogany', 'Walnut', 'Dark Cherry'] },
+            'Premium': { colors: ['Dark Cherry', 'Golden Oak', 'Honey', 'Walnut'] },
+            'Standard': { colors: ['Natural', 'Pine', 'White'] },
+            'Child': { colors: ['Natural', 'White', 'Light Pink'] },
+            'Custom': { colors: ['Custom'] },
+        };
+
+        const COLOR_HEX = {
+            'White': '#ffffff', 'Red': '#dc2626', 'Gold': '#f4c430', 'Black': '#1a1a1a', 'Purple': '#7c3aed',
+            'Natural': '#d4a017', 'Mahogany': '#5c2e1f', 'Walnut': '#3d2817', 'Dark Cherry': '#5a1a1a',
+            'Golden Oak': '#c89060', 'Honey': '#e8b855', 'Pine': '#e8c896', 'Light Pink': '#f5d5d5',
+            'Custom': 'linear-gradient(135deg,#f4c430,#7c3aed,#dc2626)',
+        };
+
+        const STORE_STOCK = [
+            { id: 's1', type: 'Doom', color: 'White', qty: 4 },
+            { id: 's2', type: 'Doom', color: 'Red', qty: 2 },
+            { id: 's3', type: 'Doom', color: 'Gold', qty: 1 },
+            { id: 's4', type: 'Doom', color: 'Black', qty: 6 },
+            { id: 's5', type: 'Doom', color: 'Purple', qty: 0 },
+            { id: 's6', type: 'Classic', color: 'Natural', qty: 5 },
+            { id: 's7', type: 'Classic', color: 'Mahogany', qty: 2 },
+            { id: 's8', type: 'Classic', color: 'Walnut', qty: 3 },
+            { id: 's9', type: 'Classic', color: 'Dark Cherry', qty: 4 },
+            { id: 's10', type: 'Premium', color: 'Dark Cherry', qty: 4 },
+            { id: 's11', type: 'Premium', color: 'Golden Oak', qty: 0 },
+            { id: 's12', type: 'Premium', color: 'Honey', qty: 1 },
+            { id: 's13', type: 'Premium', color: 'Walnut', qty: 3 },
+            { id: 's14', type: 'Standard', color: 'Natural', qty: 8 },
+            { id: 's15', type: 'Standard', color: 'Pine', qty: 3 },
+            { id: 's16', type: 'Child', color: 'White', qty: 2 },
+            { id: 's17', type: 'Child', color: 'Natural', qty: 4 },
+            { id: 's18', type: 'Child', color: 'Light Pink', qty: 1 },
+        ];
+
+        let BOOKINGS = [
+            { id: 'BK-2024-001', clientName: 'Whitfield Family', deceasedName: 'Edith Whitfield', phone: '+1 555-0102', coffinType: 'Doom', color: 'White', date: '2020-04-10', time: '10:00', status: 'confirmed', price: 85000, paid: true, paidAmount: 85000, notes: 'Standard service' },
+            { id: 'BK-2024-002', clientName: 'Bennett & Sons', deceasedName: 'George Bennett', phone: '+1 555-0188', coffinType: 'Classic', color: 'Mahogany', date: '2020-04-10', time: '14:00', status: 'booked', price: 65000, paid: false, paidAmount: 30000, notes: 'Family viewing at 2 PM' },
+            { id: 'BK-2024-003', clientName: 'Rosewood Funeral', deceasedName: 'Mary Stone', phone: 'info@rosewood.com', coffinType: 'Premium', color: 'Dark Cherry', date: '2020-04-12', time: '11:00', status: 'pending', price: 95000, paid: false, paidAmount: 0, notes: 'Awaiting family confirmation' },
+            { id: 'BK-2024-004', clientName: 'Hargrove Estate', deceasedName: 'Robert Hargrove', phone: '+1 555-0145', coffinType: 'Doom', color: 'Gold', date: '2020-04-15', time: '09:00', status: 'scheduled', price: 120000, paid: true, paidAmount: 120000, notes: 'Premium white-glove handling' },
+            { id: 'BK-2024-005', clientName: 'Peters Family', deceasedName: 'Anna Peters', phone: '+1 555-0177', coffinType: 'Standard', color: 'Natural', date: '2020-04-12', time: '13:00', status: 'in_progress', price: 35000, paid: false, paidAmount: 10000, notes: 'Cremation service' },
+            { id: 'BK-2024-006', clientName: 'Langley Funeral', deceasedName: 'Thomas Langley', phone: '+1 555-0199', coffinType: 'Premium', color: 'Honey', date: '2020-04-18', time: '15:00', status: 'in_transit', price: 88000, paid: false, paidAmount: 40000, notes: 'Custom engraved nameplate' },
+            { id: 'BK-2024-007', clientName: 'Greenfield Home', deceasedName: 'Sarah Green', phone: '+1 555-0201', coffinType: 'Standard', color: 'Pine', date: '2020-04-08', time: '11:00', status: 'delivered', price: 32000, paid: true, paidAmount: 32000, notes: 'Delivered on time' },
+            { id: 'BK-2024-008', clientName: 'Riverstone Co.', deceasedName: '', phone: '+1 555-0212', coffinType: 'Classic', color: 'Walnut', date: '2020-04-20', time: '10:30', status: 'pending', price: 58000, paid: false, paidAmount: 0, notes: '' },
+            { id: 'BK-2024-009', clientName: 'Peters Family', deceasedName: 'James Peters', phone: '+1 555-0177', coffinType: 'Child', color: 'White', date: '2020-04-12', time: '', status: 'postponed', price: 28000, paid: false, paidAmount: 0, notes: 'Pediatric — special care' },
+            { id: 'BK-2024-010', clientName: 'Hale Family', deceasedName: 'Daniel Hale', phone: '+1 555-0233', coffinType: 'Doom', color: 'Black', date: '2020-04-10', time: '16:30', status: 'booked', price: 78000, paid: false, paidAmount: 25000, notes: 'Evening service' },
+            { id: 'BK-2024-011', clientName: 'Blackwell Family', deceasedName: 'Eleanor Blackwell', phone: '+1 555-0244', coffinType: 'Doom', color: 'Black', date: '2020-04-22', time: '13:00', status: 'completed', price: 92000, paid: true, paidAmount: 92000, notes: 'Full payment received' },
+            { id: 'BK-2024-012', clientName: 'Carter Estate', deceasedName: 'William Carter', phone: '+1 555-0255', coffinType: 'Premium', color: 'Walnut', date: '2020-04-25', time: '10:00', status: 'pending', price: 75000, paid: false, paidAmount: 0, notes: 'Awaiting deposit' },
+        ];
+
+        /* Payment status: fully paid / deposited (partial) / reserved (unpaid) */
+        const PAY_ST = {
+            paid: { label: 'Fully Paid', color: '#16a34a', bg: '#16a34a14' },
+            deposited: { label: 'Deposited', color: '#d97706', bg: '#d9770614' },
+            reserved: { label: 'Reserved · Unpaid', color: '#dc2626', bg: '#dc262614' },
+        };
+        function getPaymentStatus(b) {
+            const amt = b.paidAmount || 0;
+            if (amt >= b.price) return PAY_ST.paid;
+            if (amt > 0) return PAY_ST.deposited;
+            return PAY_ST.reserved;
+        }
+
+        /* ============================================================
+           STATE
+           ============================================================ */
+        let view = 'full';
+        let sel = new Date(2020, 3, 10);  // April 10, 2020
+        let viewMonth = 3;  // April (0-based)
+        let viewYear = 2020;
+        let calMonth = new Date(2020, 3, 1);
+        let clickedDay = null;
+        let activeFilters = [];
+        let searchQuery = '';
+        let panelBk = null;
+        const TODAY = new Date(2020, 3, 10);
+
+        /* ============================================================
+           DATE HELPERS
+           ============================================================ */
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const DOW_2 = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+        function isSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+        function isSameMonth(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth(); }
+        function isToday(d) { return isSameDay(d, TODAY); }
+        function startOfWeek(d, weekStartsOn = 1) { const r = new Date(d); const day = (d.getDay() - weekStartsOn + 7) % 7; r.setDate(r.getDate() - day); r.setHours(0, 0, 0, 0); return r; }
+        function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+        function endOfMonth(d) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
+        function startOfWeekSurrounding(d, weekStartsOn = 1) { return startOfWeek(startOfMonth(d), weekStartsOn); }
+        function endOfWeekSurrounding(d, weekStartsOn = 1) {
+            const e = endOfMonth(d);
+            const r = new Date(e);
+            const day = (r.getDay() - weekStartsOn + 7) % 7;
+            r.setDate(r.getDate() + (6 - day));
+            r.setHours(23, 59, 59, 999);
+            return r;
+        }
+        function eachDayOfInterval(start, end) {
+            const out = []; const cur = new Date(start);
+            while (cur <= end) { out.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+            return out;
+        }
+        function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+        function addWeeks(d, n) { return addDays(d, n * 7); }
+        function fmtISO(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+        function fmtMDY(d) { return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
+        function fmtMD(d) { return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`; }
+        function fmtTime12(t) {
+            if (!t) return '';
+            const m = String(t).match(/(\d{1,2}):(\d{2})/);
+            if (!m) return '';
+            const h = parseInt(m[1], 10); const min = m[2];
+            const ap = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 === 0 ? 12 : h % 12;
+            return `${h12}:${min} ${ap}`;
+        }
+        function parseHour(t) {
+            if (!t) return null;
+            const m = String(t).match(/(\d{1,2}):(\d{2})/);
+            if (!m) return null;
+            const h = parseInt(m[1], 10); const min = parseInt(m[2], 10);
+            if (h > 23 || min > 59) return null;
+            return h + min / 60;
+        }
+        function fmtHour(h) {
+            const hh = Math.floor(h); const mm = Math.round((h - hh) * 60);
+            const ap = hh >= 12 ? 'PM' : 'AM';
+            const h12 = hh % 12 === 0 ? 12 : hh % 12;
+            return `${h12}:${String(mm).padStart(2, '0')} ${ap}`;
+        }
+        function usd(n) { return 'KES ' + Number(n || 0).toLocaleString(); }
+        function money(n) { return usd(n); }
+
+        /* Calendar hours: 6 AM to 10 PM exclusive */
+        const SH = 6; const EH = 22;
+        const HOURS = []; for (let h = SH; h < EH; h++) HOURS.push(h);
+
+        /* ============================================================
+           ICONS (inline SVG strings)
+           ============================================================ */
+        const IC = {
+            cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+            ph: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.11 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+            us: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+            al: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+            dl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+            tr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+            x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+            ck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+            clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+        };
+
+        /* ============================================================
+           INVENTORY HELPERS
+           ============================================================ */
+        function getInventoryFor(type, color) { return STORE_STOCK.find(s => s.type === type && s.color === color); }
+        function getBookedCount(type, color) {
+            return BOOKINGS.filter(b => b.coffinType === type && b.color === color && (b.status === 'pending' || b.status === 'confirmed')).length;
+        }
+
+        /* ============================================================
+           STATS — for the colored stat strip
+           ============================================================ */
+        function renderStatStrip() {
+            const visibleMonthDate = new Date(viewYear, viewMonth, 1);
+            const monthBookings = BOOKINGS.filter(b => isSameMonth(parseDate(b.date), visibleMonthDate));
+            const pending = monthBookings.filter(b => b.status === 'pending').length;
+            const revenue = monthBookings.filter(b => b.status === 'completed').reduce((s, b) => s + b.price, 0);
+            const todayCount = BOOKINGS.filter(b => isSameDay(parseDate(b.date), TODAY)).length;
+
+            const items = [
+                { l: 'This Month', v: monthBookings.length, ic: IC.cal, bg: '#0284c7' },
+                { l: 'Pending', v: pending, ic: IC.al, bg: '#dc2626' },
+                { l: 'Revenue', v: money(revenue), ic: IC.dl, bg: '#16a34a' },
+                { l: 'Today', v: todayCount, ic: IC.tr, bg: '#0f766e' },
+            ];
+            document.getElementById('statStrip').innerHTML = items.map(si => `
+    <div class="cb-sr-item" style="background:${si.bg}">
+      <div class="cb-sr-ico">${si.ic}</div>
+      <div class="cb-sr-info">
+        <div class="cb-sr-num">${si.v}</div>
+        <div class="cb-sr-label">${si.l}</div>
+      </div>
+    </div>
+  `).join('');
+        }
+
+        function parseDate(s) {
+            if (!s) return null;
+            const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+            const d = new Date(s); return isNaN(d.getTime()) ? null : d;
+        }
+
+        /* ============================================================
+           MINI CALENDAR
+           ============================================================ */
+        function renderMiniCal() {
+            document.getElementById('mcTitle').textContent = `${MONTHS[calMonth.getMonth()]} ${calMonth.getFullYear()}`;
+            const start = startOfWeekSurrounding(calMonth, 1);
+            const end = endOfWeekSurrounding(calMonth, 1);
+            const days = eachDayOfInterval(start, end);
+
+            // Build per-day dots from BOOKINGS
+            const perDayDots = {};
+            BOOKINGS.forEach(b => {
+                const d = parseDate(b.date); if (!d) return;
+                const k = fmtISO(d);
+                if (!perDayDots[k]) perDayDots[k] = [];
+                const existing = perDayDots[k].find(dot => dot.color === ST[b.status].bar);
+                if (existing) { } else perDayDots[k].push({ color: ST[b.status].bar });
+            });
+
+            const dowHtml = DOW_2.map(d => `<div class="cb-mc-dow">${d}</div>`).join('');
+            const daysHtml = days.map(d => {
+                const k = fmtISO(d);
+                const dots = perDayDots[k] || [];
+                const hasEv = dots.length > 0;
+                const isSel = clickedDay && isSameDay(d, clickedDay);
+                const isTd = isToday(d);
+                const isCur = isSameMonth(d, calMonth);
+                let cls = 'cb-mc-day';
+                if (isSel) cls += ' selected';
+                else if (isTd) cls += ' today';
+                if (!isCur) cls += ' other';
+                return `
+      <div class="${cls}" onclick="onMiniCalDayClick(new Date(${d.getFullYear()},${d.getMonth()},${d.getDate()}))">
+        ${d.getDate()}
+        ${hasEv ? `<span class="cb-cal-dots">${dots.slice(0, 3).map(dot => `<span class="cb-cal-dot" style="background:${isSel ? 'rgba(255,255,255,.9)' : dot.color}"></span>`).join('')}</span>` : ''}
+      </div>
+    `;
+            }).join('');
+            document.getElementById('mcGrid').innerHTML = dowHtml + daysHtml;
+        }
+
+        function onMiniCalDayClick(day) {
+            if (clickedDay && isSameDay(day, clickedDay)) { clickedDay = null; }
+            else {
+                if (!isSameMonth(day, new Date(viewYear, viewMonth, 1))) goToMonth(day.getMonth(), day.getFullYear());
+                clickedDay = new Date(day);
+                sel = new Date(day);
+            }
+            renderMain();
+        }
+
+        function miniCalNav(dir) {
+            const newDate = new Date(calMonth);
+            newDate.setMonth(newDate.getMonth() + dir);
+            goToMonth(newDate.getMonth(), newDate.getFullYear());
+        }
+
+        /* ============================================================
+           FILTERS
+           ============================================================ */
+        function renderFilters() {
+            const counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 };
+            BOOKINGS.forEach(b => { if (counts[b.status] !== undefined) counts[b.status]++; });
+            document.getElementById('statusFilters').innerHTML = STORD.map(s => {
+                const isActive = activeFilters.indexOf(s) !== -1;
+                return `
+      <div class="cb-fc ${isActive ? 'on' : ''}" onclick="toggleFilter('${s}')">
+        <span class="cb-fc-dot" style="background:${ST[s].color}"></span>
+        ${ST[s].label}
+        <span class="cb-fc-ct">${counts[s]}</span>
+      </div>
+    `;
+            }).join('');
+        }
+
+        function toggleFilter(status) {
+            if (activeFilters.indexOf(status) !== -1) activeFilters = activeFilters.filter(s => s !== status);
+            else activeFilters = activeFilters.concat([status]);
+            clickedDay = null;
+            renderFilters(); renderMain();
+        }
+
+        /* ============================================================
+           ANALYTICS — pie chart (SVG donut) + bar chart + revenue
+           ============================================================ */
+        function renderAnalytics() {
+            const counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 };
+            BOOKINGS.forEach(b => { if (counts[b.status] !== undefined) counts[b.status]++; });
+            const total = BOOKINGS.length;
+            const statusData = STORD.map(s => ({ key: s, label: ST[s].label, value: counts[s], color: ST[s].bar }));
+
+            // Pie chart via SVG arcs
+            const radius = 38; const stroke = 14; const cx = 50; const cy = 50;
+            const circumference = 2 * Math.PI * radius;
+            let offset = 0;
+            const segments = statusData.filter(d => d.value > 0).map(d => {
+                const fraction = total > 0 ? d.value / total : 0;
+                const length = fraction * circumference;
+                const dash = `${length} ${circumference - length}`;
+                const seg = `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${d.color}" stroke-width="${stroke}" stroke-dasharray="${dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" />`;
+                offset += length;
+                return seg;
+            }).join('');
+            const pieHtml = total > 0 ? `
+    <svg viewBox="0 0 100 100" style="width:100px;height:100px;">
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${C.brdl}" stroke-width="${stroke}" />
+      ${segments}
+    </svg>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:18px;font-weight:800;color:${C.ink};">${total}</div>
+  ` : `<div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;color:${C.ink4};font-size:11px;">No data</div>`;
+
+            const legendHtml = statusData.map(d => {
+                const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                return `
+      <div class="cb-an-leg">
+        <span class="cb-an-leg-dot" style="background:${d.color}"></span>
+        <span class="cb-an-leg-label">${d.label}</span>
+        <span class="cb-an-leg-val">${d.value}</span>
+        <span class="cb-an-leg-pct">${pct}%</span>
+      </div>
+    `;
+            }).join('');
+
+            // Top coffin types (bar chart)
+            const typeCounts = {};
+            BOOKINGS.forEach(b => { const k = b.coffinType || 'Other'; typeCounts[k] = (typeCounts[k] || 0) + 1; });
+            const byType = Object.keys(typeCounts).map(k => ({ name: k, value: typeCounts[k] })).sort((a, b) => b.value - a.value).slice(0, 5);
+            const maxType = Math.max(...byType.map(t => t.value), 1);
+            const barColors = ['#0f766e', '#0891b2', '#16a34a', '#475569', '#dc2626'];
+            const barHtml = byType.length > 0 ? byType.map((t, i) => `
+    <div class="cb-an-bar-row">
+      <div class="cb-an-bar-label" title="${t.name}">${t.name.length > 14 ? t.name.slice(0, 14) + '…' : t.name}</div>
+      <div class="cb-an-bar-track"><div class="cb-an-bar-fill" style="width:${(t.value / maxType) * 100}%;background:${barColors[i % barColors.length]}"></div></div>
+      <div class="cb-an-bar-val">${t.value}</div>
+    </div>
+  `).join('') : `<div style="padding:16px 0;text-align:center;color:${C.ink4};font-size:11px;">No data yet</div>`;
+
+            // Revenue
+            const visibleMonthDate = new Date(viewYear, viewMonth, 1);
+            const monthBookings = BOOKINGS.filter(b => isSameMonth(parseDate(b.date), visibleMonthDate));
+            const revenue = monthBookings.filter(b => b.status === 'completed').reduce((s, b) => s + b.price, 0);
+            const completedCount = monthBookings.filter(b => b.status === 'completed').length;
+
+            document.getElementById('analytics').innerHTML = `
+    <div class="cb-an-title">${IC.grid} Analytics</div>
+
+    <div class="cb-an-card">
+      <div class="cb-an-title" style="margin-bottom:8px;">Status Breakdown</div>
+      ${total > 0 ? `
+        <div class="cb-an-pie-wrap">
+          <div class="cb-an-pie">${pieHtml}</div>
+          <div class="cb-an-legend" style="flex:1;">${legendHtml}</div>
+        </div>
+      ` : `<div style="padding:16px 0;text-align:center;color:${C.ink4};font-size:11px;">No data yet</div>`}
+    </div>
+
+    <div class="cb-an-card">
+      <div class="cb-an-title" style="margin-bottom:8px;">Top Coffin Types</div>
+      ${barHtml}
+    </div>
+
+    <div class="cb-an-card">
+      <div class="cb-an-title" style="margin-bottom:6px;">Monthly Revenue</div>
+      <div class="cb-an-rev">${money(revenue)}</div>
+      <div class="cb-an-rev-sub">From ${completedCount} completed booking${completedCount === 1 ? '' : 's'}</div>
+    </div>
+  `;
+        }
+
+        /* ============================================================
+           MAIN AREA — calendar grid (day/week) or list table (month)
+           ============================================================ */
+        function getVisibleBookings() {
+            let result = BOOKINGS.map(b => ({ ...b, dateObj: parseDate(b.date) })).filter(b => b.dateObj);
+            if (view === 'full') {
+                // Full calendar always shows the whole month — ignore clickedDay for filtering
+                const vm = new Date(viewYear, viewMonth, 1);
+                result = result.filter(b => isSameMonth(b.dateObj, vm));
+            } else if (clickedDay) {
+                result = result.filter(b => isSameDay(b.dateObj, clickedDay));
+            } else {
+                if (view === 'day') result = result.filter(b => isSameDay(b.dateObj, sel));
+                else if (view === 'week') {
+                    const ws = startOfWeek(sel, 1); const we = addDays(ws, 6);
+                    result = result.filter(b => b.dateObj >= ws && b.dateObj <= we);
+                } else {
+                    const vm = new Date(viewYear, viewMonth, 1);
+                    result = result.filter(b => isSameMonth(b.dateObj, vm));
+                }
+            }
+            if (activeFilters.length > 0) result = result.filter(b => activeFilters.indexOf(b.status) !== -1);
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                result = result.filter(b => (b.clientName || '').toLowerCase().includes(q) || (b.deceasedName || '').toLowerCase().includes(q) || (b.coffinType || '').toLowerCase().includes(q) || (b.phone || '').includes(q));
+            }
+            result.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+            return result;
+        }
+
+        function renderMain() {
+            const main = document.getElementById('mainArea');
+            const visible = getVisibleBookings();
+
+            // Clicked-day filter banner
+            const dayBanner = (clickedDay && view !== 'full') ? `
+    <div class="cb-df">
+      <span>${IC.cal} Showing: ${fmtMDY(clickedDay)} — ${visible.length} booking${visible.length !== 1 ? 's' : ''}</span>
+      <button onclick="clearClickedDay()">Clear ${IC.x}</button>
+    </div>
+  ` : '';
+
+            let content;
+            if (view === 'day' || view === 'week') {
+                content = renderCalendarGrid(visible);
+            } else if (view === 'full') {
+                content = renderFullCalendar(visible);
+            } else {
+                content = renderMonthList(visible);
+            }
+            main.innerHTML = dayBanner + content;
+        }
+
+        function clearClickedDay() {
+            clickedDay = null;
+            renderMain();
+        }
+
+        /* ---------- Day/Week calendar grid ---------- */
+        function renderCalendarGrid(visible) {
+            const isWeek = view === 'week';
+            const days = isWeek
+                ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(sel, 1), i))
+                : [sel];
+            const cols = days.length;
+
+            // Build per-day model
+            const buckets = new Map();
+            days.forEach(d => buckets.set(fmtISO(d), { d, untimed: [], rows: new Map() }));
+            visible.forEach(b => {
+                const k = fmtISO(b.dateObj);
+                if (!buckets.has(k)) return;
+                const bucket = buckets.get(k);
+                const h = parseHour(b.time);
+                if (h === null) { bucket.untimed.push(b); return; }
+                const row = Math.max(SH, Math.min(EH - 1, Math.floor(h)));
+                if (!bucket.rows.has(row)) bucket.rows.set(row, []);
+                bucket.rows.get(row).push(b);
+            });
+
+            const untimedAll = days.flatMap(d => buckets.get(fmtISO(d)).untimed);
+            const total = visible.length;
+
+            const headCols = days.map(d => {
+                const cls = `cb-grid-day-head ${isToday(d) ? 'today' : ''} ${isSameDay(d, sel) ? 'sel' : ''} ${!isSameMonth(d, new Date(viewYear, viewMonth, 1)) ? 'other' : ''}`;
+                return `
+      <div class="${cls}" onclick="onGridDayClick(new Date(${d.getFullYear()},${d.getMonth()},${d.getDate()}))" title="Jump to ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}">
+        <span class="dow">${DOW_SHORT[d.getDay()]}</span>
+        <span class="dom">${d.getDate()}</span>
+      </div>
+    `;
+            }).join('');
+
+            const colsStyle = `--cols:${cols}`;
+
+            let body;
+            if (total === 0) {
+                body = `<div class="cb-grid-empty">No coffin reservations for ${isWeek ? 'this week' : fmtMDY(sel)}.</div>`;
+            } else {
+                let rows = '';
+                if (untimedAll.length > 0) {
+                    rows += `<div class="cb-time-cell" style="height:auto;padding:9px 7px 0 0;"></div>`;
+                    rows += `<div class="cb-untimed-wrap"><span class="cb-untimed-label">No time</span>${untimedAll.map(renderChip).join('')}</div>`;
+                }
+                HOURS.forEach(h => {
+                    rows += `<div class="cb-time-cell">${fmtHour(h)}</div>`;
+                    days.forEach(d => {
+                        const bucket = buckets.get(fmtISO(d));
+                        const hits = bucket.rows.get(h) || [];
+                        rows += `<div class="cb-day-cell">${hits.map(renderChip).join('')}</div>`;
+                    });
+                });
+                body = rows;
+            }
+
+            return `
+    <div class="cb-grid-frame">
+      <div class="cb-grid-head" style="${colsStyle}">
+        <div class="cb-grid-head-corner">${isWeek ? '' : 'Time'}</div>
+        ${headCols}
+      </div>
+      <div class="cb-grid-body" style="${colsStyle}">${body}</div>
+    </div>
+  `;
+        }
+
+        function renderChip(b) {
+            const st = getStatusStyle(b);
+            return `
+    <button class="cb-chip" style="--chip-c:${st.color}" onclick="openDetailPanel('${b.id}')" title="${b.clientName} · ${st.label}">
+      ${b.time ? `<span class="t">${fmtTime12(b.time)}</span>` : ''}
+      <span class="n">${b.clientName}</span>
+      <span class="m">${b.coffinType}</span>
+    </button>
+  `;
+        }
+
+        function onGridDayClick(d) {
+            sel = new Date(d); clickedDay = null;
+            if (!isSameMonth(d, new Date(viewYear, viewMonth, 1))) goToMonth(d.getMonth(), d.getFullYear());
+            renderMain();
+        }
+
+        /* ---------- Full month calendar grid ---------- */
+        function renderFullCalendar(visible) {
+            const monthDate = new Date(viewYear, viewMonth, 1);
+            const start = startOfWeekSurrounding(monthDate, 1);
+            const end = endOfWeekSurrounding(monthDate, 1);
+            const days = eachDayOfInterval(start, end);
+
+            // Group bookings by date
+            const byDate = new Map();
+            visible.forEach(b => {
+                const k = fmtISO(b.dateObj);
+                if (!byDate.has(k)) byDate.set(k, []);
+                byDate.get(k).push(b);
+            });
+
+            const dowHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const headHtml = dowHeaders.map(d => `<div class="fc-head-cell">${d}</div>`).join('');
+
+            const daysHtml = days.map(d => {
+                const k = fmtISO(d);
+                const dayBookings = (byDate.get(k) || []).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+                const isTd = isToday(d);
+                const isOther = !isSameMonth(d, monthDate);
+                const isSel = clickedDay && isSameDay(d, clickedDay);
+                let cls = 'fc-day';
+                if (isTd) cls += ' today';
+                if (isOther) cls += ' other';
+                if (isSel) cls += ' selected';
+
+                const chipsHtml = dayBookings.slice(0, 4).map(b => {
+                    const st = getStatusStyle(b);
+                    const timeStr = b.time ? fmtTime12(b.time).replace(/:00 /, ' ') : '';
+                    return `<button class="fc-chip" style="--chip-c:${st.color}" onclick="event.stopPropagation(); openDetailPanel('${b.id}')" title="${b.clientName} · ${st.label}${b.time ? ' · ' + fmtTime12(b.time) : ''}">${timeStr ? timeStr + ' ' : ''}${b.clientName}</button>`;
+                }).join('');
+                const moreHtml = dayBookings.length > 4 ? `<div class="fc-more">+${dayBookings.length - 4} more</div>` : '';
+
+                return `<div class="${cls}" onclick="onFullCalDayClick(new Date(${d.getFullYear()},${d.getMonth()},${d.getDate()}))"><div class="fc-day-num">${d.getDate()}</div><div class="fc-day-chips">${chipsHtml}${moreHtml}</div></div>`;
+            }).join('');
+
+            return `
+    <div class="fc-frame">
+      <div class="fc-head">${headHtml}</div>
+      <div class="fc-grid">${daysHtml}</div>
+    </div>
+  `;
+        }
+
+        function onFullCalDayClick(d) {
+            if (clickedDay && isSameDay(d, clickedDay)) { clickedDay = null; }
+            else {
+                if (!isSameMonth(d, new Date(viewYear, viewMonth, 1))) goToMonth(d.getMonth(), d.getFullYear());
+                clickedDay = new Date(d);
+                sel = new Date(d);
+            }
+            renderMain();
+        }
+
+        /* ---------- Month list table ---------- */
+        function renderMonthList(visible) {
+            if (visible.length === 0) {
+                return `
+      <div class="cb-empty">
+        <div class="cb-empty-ico">${IC.cal}</div>
+        <span style="font-size:12px;">${clickedDay ? 'No bookings for ' + fmtMDY(clickedDay) : 'No bookings for this period'}</span>
+      </div>
+    `;
+            }
+            const rows = visible.map(b => {
+                const st = getStatusStyle(b);
+                const isActive = panelBk && panelBk.id === b.id;
+                return `
+      <div class="cb-r ${isActive ? 'active' : ''}" onclick="openDetailPanel('${b.id}')">
+        <div class="cb-bar" style="background:${st.color}"></div>
+        <div class="cb-cell">
+          <div class="cb-nm">${b.clientName}</div>
+          ${b.deceasedName ? `<div class="cb-sub">${IC.us}${b.deceasedName}</div>` : ''}
+        </div>
+        <div class="cb-cell">
+          <div class="cb-cn">${b.coffinType}</div>
+          <div class="cb-sub">${IC.ph}${b.phone || '—'}</div>
+        </div>
+        <div class="cb-cell">
+          <div class="cb-mt">${fmtMD(b.dateObj)}</div>
+          <div class="cb-sub">${IC.clock}${b.time ? fmtTime12(b.time) : '—'}</div>
+        </div>
+        <div class="cb-cell">
+          <span class="cb-status-chip" style="background:${st.bg};">
+            <span class="dot" style="background:${st.color}"></span>
+            <span class="lbl" style="color:${st.color}">${st.label}</span>
+          </span>
+        </div>
+        <div class="cb-cell" style="text-align:right;">
+          <div class="cb-pr">${money(b.price)}</div>
+          <div class="cb-paid" style="color:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? C.warn : C.dng}">
+            <span class="cb-paid-dot" style="background:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? C.warn : C.dng}"></span>
+            ${money(b.paidAmount || 0)} / ${money(b.price)}
+          </div>
+        </div>
+      </div>
+    `;
+            }).join('');
+
+            return `
+    <div class="cb-lh">
+      <div></div>
+      <div>Client</div>
+      <div>Coffin</div>
+      <div>Schedule</div>
+      <div>Status</div>
+      <div>Amount</div>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;">${rows}</div>
+  `;
+        }
+
+        /* ============================================================
+           DETAIL PANEL (slide-in from right)
+           ============================================================ */
+        function openDetailPanel(bookingId) {
+            const b = BOOKINGS.find(x => x.id === bookingId);
+            if (!b) return;
+            panelBk = b;
+            const st = getStatusStyle(b);
+            const dateObj = parseDate(b.date);
+
+            const host = document.getElementById('detailPanelHost');
+            host.innerHTML = `
+    <div class="cb-ov" onclick="closeDetailPanel()"></div>
+    <div class="cb-panel">
+      <div class="cb-ph">
+        <div class="cb-ph-status" style="color:${st.color};background:${st.bg};">
+          <span class="cb-ph-pulse" style="background:${st.color}"></span>
+          ${st.label}
+        </div>
+        <button class="cb-ph-close" onclick="closeDetailPanel()">${IC.x}</button>
+      </div>
+      <div class="cb-pb">
+        <div class="cb-pb-client">${b.clientName}</div>
+        <div class="cb-pb-code">${IC.dl} Booking #${b.id}</div>
+        <div class="cb-pb-sec">
+          <div class="cb-pb-sec-t">Details</div>
+          <div class="cb-pb-grid">
+            <div class="cb-pb-card"><div class="cb-pb-card-l">Phone</div><div class="cb-pb-card-v">${b.phone || '—'}</div></div>
+            <div class="cb-pb-card"><div class="cb-pb-card-l">Status</div><div class="cb-pb-card-v" style="color:${st.color};font-weight:700;">${st.label}</div></div>
+            <div class="cb-pb-card"><div class="cb-pb-card-l">Coffin</div><div class="cb-pb-card-v" style="font-size:12px;">${b.coffinType} · ${b.color}</div></div>
+            <div class="cb-pb-card"><div class="cb-pb-card-l">Schedule</div><div class="cb-pb-card-v" style="font-size:12px;">${fmtMDY(dateObj)} ${b.time ? '· ' + fmtTime12(b.time) : ''}</div></div>
+            <div class="cb-pb-card"><div class="cb-pb-card-l">Amount Due</div><div class="cb-pb-card-v hl">${money(b.price)}</div></div>
+            <div class="cb-pb-card"><div class="cb-pb-card-l">Amount Paid</div><div class="cb-pb-card-v" style="color:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? C.warn : C.dng};font-weight:700;">${money(b.paidAmount || 0)}</div></div>
+            <div class="cb-pb-card wide"><div class="cb-pb-card-l">Balance Remaining</div><div class="cb-pb-card-v" style="color:${(b.price - (b.paidAmount || 0)) > 0 ? C.dng : C.suc};font-weight:700;">${money(b.price - (b.paidAmount || 0))}</div></div>
+            ${b.deceasedName ? `<div class="cb-pb-card wide"><div class="cb-pb-card-l">Deceased</div><div class="cb-pb-card-v">${b.deceasedName}</div></div>` : ''}
+            ${b.notes ? `<div class="cb-pb-card wide"><div class="cb-pb-card-l">Notes</div><div class="cb-pb-card-v" style="font-size:12px;color:${C.ink2};">${b.notes}</div></div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="cb-pf">
+        ${(b.paidAmount || 0) < b.price ? `
+          <button class="cb-pbtn primary" onclick="markAsPaid('${b.id}')">${IC.ck} Mark Fully Paid</button>
+        ` : `
+          <button class="cb-pbtn paid" disabled>${IC.ck} Payment Received</button>
+        `}
+        <button class="cb-pbtn ghost" onclick="closeDetailPanel()">Close</button>
+      </div>
+    </div>
+  `;
+
+            // Re-render main to update active row
+            renderMain();
+        }
+
+        function closeDetailPanel() {
+            panelBk = null;
+            document.getElementById('detailPanelHost').innerHTML = '';
+            renderMain();
+        }
+
+        function markAsPaid(bookingId) {
+            const b = BOOKINGS.find(x => x.id === bookingId);
+            if (!b) return;
+            b.paid = true;
+            b.paidAmount = b.price;
+            showToast('Marked as fully paid');
+            openDetailPanel(bookingId); // refresh panel
+            renderStatStrip(); renderMain();
+        }
+
+        /* ============================================================
+           NAVIGATION
+           ============================================================ */
+        function navigate(dir) {
+            clickedDay = null;
+            if (view === 'day') {
+                sel = addDays(sel, dir);
+                goToMonth(sel.getMonth(), sel.getFullYear());
+            } else if (view === 'week') {
+                sel = dir === 1 ? addWeeks(sel, 1) : addWeeks(sel, -1);
+                goToMonth(sel.getMonth(), sel.getFullYear());
+            } else {
+                // month + full both page the visible month
+                goToMonth(viewMonth + dir, viewYear);
+            }
+        }
+
+        function goToMonth(month, year) {
+            let m = Math.trunc(Number(month));
+            let y = Math.trunc(Number(year));
+            if (!isFinite(m) || !isFinite(y)) return;
+            y += Math.floor(m / 12);
+            m = ((m % 12) + 12) % 12;
+            y = Math.min(2200, Math.max(1970, y));
+            viewMonth = m; viewYear = y;
+            calMonth = new Date(y, m, 1);
+            renderStatStrip(); renderFilters(); renderMain();
+        }
+
+        function goToday() {
+            sel = new Date(TODAY); clickedDay = null;
+            goToMonth(TODAY.getMonth(), TODAY.getFullYear());
+        }
+
+        /* ============================================================
+           VIEW SWITCHER
+           ============================================================ */
+        function setView(v) {
+            view = v; clickedDay = null;
+            document.querySelectorAll('#viewTabs .cb-tb-v').forEach(t => t.classList.toggle('on', t.dataset.view === v));
+            renderMain();
+        }
+
+        /* ============================================================
+           NEW BOOKING MODAL
+           ============================================================ */
+        function openNewBookingModal() {
+            const typeSelect = document.getElementById('bkType');
+            typeSelect.innerHTML = Object.keys(COFFIN_CATALOG).map(t => `<option value="${t}">${t}</option>`).join('');
+            updateBookingColorOptions();
+            document.getElementById('bkClient').value = '';
+            document.getElementById('bkDeceased').value = '';
+            document.getElementById('bkContact').value = '';
+            document.getElementById('bkNotes').value = '';
+            document.getElementById('bkDate').value = fmtISO(sel);
+            document.getElementById('bkTime').value = '10:00';
+            document.getElementById('bkStatus').value = 'pending';
+            document.getElementById('bkPrice').value = '45000';
+            updateAvailability();
+            document.getElementById('newBookingModal').classList.add('open');
+        }
+
+        function closeNewBookingModal() {
+            document.getElementById('newBookingModal').classList.remove('open');
+        }
+
+        function updateBookingColorOptions() {
+            const type = document.getElementById('bkType').value;
+            const cat = COFFIN_CATALOG[type] || { colors: [] };
+            document.getElementById('bkColor').innerHTML = cat.colors.map(c => `<option value="${c}">${c}</option>`).join('');
+            updateAvailability();
+        }
+
+        function updateAvailability() {
+            const type = document.getElementById('bkType').value;
+            const color = document.getElementById('bkColor').value;
+            const el = document.getElementById('availability');
+            if (!type || !color) return;
+            const stock = getInventoryFor(type, color);
+            if (!stock) {
+                el.innerHTML = `<span style="color:${C.dng};font-weight:700;">⚠ Variant not in inventory catalog</span>`;
+                return;
+            }
+            const booked = getBookedCount(type, color);
+            const available = Math.max(0, stock.qty - booked);
+            if (available === 0) {
+                el.innerHTML = `<span style="color:${C.dng};font-weight:700;">⚠ Fully booked — no availability for ${type} · ${color}</span>`;
+            } else if (available <= 2) {
+                el.innerHTML = `<span style="color:#b07d00;font-weight:700;">Only ${available} available (${booked} of ${stock.qty} booked)</span>`;
+            } else {
+                el.innerHTML = `<span style="color:${C.suc};font-weight:600;">✓ ${available} available · ${booked} booked · ${stock.qty} total stock</span>`;
+            }
+        }
+
+        function submitNewBooking() {
+            const client = document.getElementById('bkClient').value.trim();
+            const deceased = document.getElementById('bkDeceased').value.trim();
+            const contact = document.getElementById('bkContact').value.trim();
+            const type = document.getElementById('bkType').value;
+            const color = document.getElementById('bkColor').value;
+            const date = document.getElementById('bkDate').value;
+            const time = document.getElementById('bkTime').value;
+            const status = document.getElementById('bkStatus').value;
+            const price = parseInt(document.getElementById('bkPrice').value, 10) || 0;
+            const notes = document.getElementById('bkNotes').value.trim();
+
+            if (!client) { showToast('Client name is required', 'error'); return; }
+            if (!date) { showToast('Date is required', 'error'); return; }
+
+            // Check availability
+            const stock = getInventoryFor(type, color);
+            if (stock) {
+                const booked = getBookedCount(type, color);
+                const available = Math.max(0, stock.qty - booked);
+                if (available === 0) {
+                    showToast(`Cannot book — ${type} · ${color} is fully booked`, 'error');
+                    return;
+                }
+            }
+
+            const newId = 'BK-2024-' + String(BOOKINGS.length + 1).padStart(3, '0');
+            BOOKINGS.push({ id: newId, clientName: client, deceasedName: deceased, phone: contact, coffinType: type, color, date, time, status, price, paid: false, notes });
+            showToast(`Booking ${newId} created for ${client}`);
+            closeNewBookingModal();
+            renderStatStrip(); renderFilters(); renderMain();
+        }
+
+        /* ============================================================
+           TOAST
+           ============================================================ */
+        let toastTimer = null;
+        function showToast(msg, type = 'success') {
+            const host = document.getElementById('toastHost');
+            host.innerHTML = `<div class="cb-te">${IC.ck}<span>${msg}</span></div>`;
+            const el = host.querySelector('.cb-te');
+            if (type === 'error') {
+                el.querySelector('svg').style.color = C.dng;
+            }
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                el.classList.add('out');
+                setTimeout(() => { host.innerHTML = ''; }, 200);
+            }, 2600);
+        }
+
+        /* ============================================================
+           EVENT BINDINGS
+           ============================================================ */
+        document.getElementById('prevBtn').addEventListener('click', () => navigate(-1));
+        document.getElementById('nextBtn').addEventListener('click', () => navigate(1));
+        document.getElementById('todayBtn').addEventListener('click', goToday);
+        document.querySelectorAll('#viewTabs .cb-tb-v').forEach(t => {
+            t.addEventListener('click', () => setView(t.dataset.view));
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (panelBk) closeDetailPanel();
+                else closeNewBookingModal();
+            }
+        });
+
+        /* ============================================================
+           LEGEND — status color guide
+           ============================================================ */
+        function renderLegend() {
+            // Show only statuses that are actually used in BOOKINGS
+            const usedStatuses = [...new Set(BOOKINGS.map(b => b.status))];
+            const items = usedStatuses.map(s => ST[s]).filter(Boolean);
+            const el = document.getElementById('statusLegend');
+            if (!el) return;
+            el.innerHTML = items.map((st, i) => `
+    ${i > 0 ? '<div class="pay-legend-divider"></div>' : ''}
+    <div class="pay-legend-item">
+      <span class="pay-legend-dot" style="background:${st.bg};border:1px solid ${st.color}"></span>
+      <span style="color:${st.color}">${st.label}</span>
+    </div>
+  `).join('');
+        }
+
+        /* ============================================================
+           INIT
+           ============================================================ */
+        renderStatStrip();
+        renderFilters();
+        renderLegend();
+        renderMain();
+    </script>
+</body>
+
+</html>
