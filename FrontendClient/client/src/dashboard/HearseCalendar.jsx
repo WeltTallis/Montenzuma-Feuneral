@@ -128,107 +128,61 @@ function normEvents(raw) {
   });
 }
 
-function DayCell({ day, events, onDayClick, onEventClick, today }) {
-  const key = toKey(day);
-  const evs = (events || []).filter((e) => e.date === key);
-  const active = key === today;
+function MonthChip({ event, onClick }) {
+  const s = statusOf(event);
+  const t = typeOf(event);
   return (
-    <div
-      onClick={() => onDayClick(day)}
-      style={{
-        border: "1px solid var(--md-border)", borderRadius: "var(--md-radius)",
-        padding: "0.6rem", height: "130px", display: "flex", flexDirection: "column",
-        gap: "0.3rem", cursor: "pointer", background: active ? "var(--md-surface-hover)" : "var(--md-surface-panel)",
-        position: "relative",
-      }}
+    <Chip
+      $color={s.color}
+      $tint={s.tint}
+      onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
+      title={`${event.deceased.name} · ${s.label}`}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.2rem" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: active ? "var(--md-primary)" : "var(--md-ink-primary)" }}>
-          {day.getDate()}
-        </div>
-        {active && (
-          <span style={{ fontSize: "0.65rem", background: "var(--md-primary)", color: "#fff", padding: "0.1rem 0.45rem", borderRadius: "12px", fontWeight: 800 }}>
-            Today
-          </span>
-        )}
-      </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.1rem", overflow: "hidden" }}>
-        {evs.slice(0, 3).map((e) => (
-          <MonthChip key={e.id} event={e} onClick={onEventClick} />
-        ))}
-        {evs.length > 3 && (
-          <div style={{ fontSize: "0.6rem", color: "var(--md-ink-muted)", marginTop: "0.15rem" }}>
-            +{evs.length - 3} more
-          </div>
-        )}
-      </div>
-    </div>
+      {event.time && <span className="t">{event.time}</span>}
+      <span className="n">{t.label}</span>
+      <span className="m">{event.deceased.name}</span>
+    </Chip>
   );
 }
 
-function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
-  const first = new Date(year, month, 1);
-  const start = weekStartOf(toKey(first));
-  const weeks = [];
-  let d = new Date(start);
-  for (let w = 0; w < 6; w++) {
-    const week = [];
-    for (let i = 0; i < 7; i++) { week.push(new Date(d)); d.setDate(d.getDate() + 1); }
-    weeks.push(week);
-  }
-  return (
-    <div style={{ width: "100%", overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "5px 0" }}>
-        <thead>
-          <tr>
-            {WEEK.map((w) => (
-              <th key={w} style={{ textAlign: "left", fontSize: "0.68rem", fontWeight: 700, color: "var(--md-ink-muted)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "0.45rem 0.2rem", width: "14.28%" }}>
-                {w}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week, wi) => (
-            <tr key={wi} style={{ height: "130px" }}>
-              {week.map((day) => (
-                <td key={toKey(day)} style={{ padding: 0 }}>
-                  <DayCell day={day} events={events} onDayClick={onDayClick} onEventClick={onEventClick} today={today} />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+const SH = 6;
+const EH = 22;
+const HOURS = [];
+for (let h = SH; h < EH; h++) HOURS.push(h);
+
+const parseHour = (t) => {
+  if (!t) return null;
+  const m = String(t).match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h > 23 || min > 59) return null;
+  return h + min / 60;
+};
+
+const fmtHour = (h) => {
+  const hh = Math.floor(h);
+  const mm = Math.round((h - hh) * 60);
+  const ap = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${ap}`;
+};
 
 function EventRow({ event, onClick }) {
-  const meta = TYPE_META[event.type] || TYPE_META.intake;
-  const status = getStatusMeta(event.status);
+  const t = typeOf(event);
+  const s = statusOf(event);
   return (
-    <div
-      onClick={() => onClick(event)}
-      style={{
-        display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.85rem 1rem",
-        border: "1px solid var(--md-border)", borderRadius: "var(--md-radius)",
-        background: event.bg, cursor: "pointer", marginBottom: "0.6rem",
-      }}
+    <Chip
+      $color={s.color}
+      $tint={s.tint}
+      onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
+      title={`${event.deceased.name} · ${s.label}`}
+      style={{ cursor: "pointer", marginBottom: "8px", flex: 1 }}
     >
-      <meta.icon size={16} style={{ color: status.color }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--md-ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
-          {event.title}
-        </div>
-        <div style={{ fontSize: "0.8rem", color: "var(--md-ink-secondary)", lineHeight: 1.3 }}>
-          {event.time ? `${event.time} · ` : ""}{event.deceased.name}{event.deceased.age ? ` · ${event.deceased.age} yrs` : ""}
-        </div>
-      </div>
-      <span style={{ fontSize: "0.75rem", fontWeight: 800, color: status.color, background: status.bg, padding: "0.2rem 0.6rem", borderRadius: "12px", whiteSpace: "nowrap" }}>
-        {status.label}
-      </span>
-    </div>
+      {event.time && <span className="t">{event.time}</span>}
+      <span className="n">{t.label}</span>
+      <span className="m">{event.deceased.name}{event.deceased.age ? ` · ${event.deceased.age} yrs` : ""}</span>
+    </Chip>
   );
 }
 
@@ -237,27 +191,27 @@ function WeekGrid({ weekStartKey, eventsByDay, onEventClick, today }) {
   let d = parseKey(weekStartKey);
   for (let i = 0; i < 7; i++) { days.push(toKey(d)); d.setDate(d.getDate() + 1); }
   return (
-    <div className="md-week-container" style={{ display: "flex", gap: "10px", width: "100%" }}>
+    <div style={{ display: "flex", gap: "8px", width: "100%" }}>
       {days.map((key) => {
         const day = parseKey(key);
         const evs = eventsByDay[key] || [];
         const active = key === today;
         return (
-          <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid var(--md-border)", borderRadius: "var(--md-radius)", background: active ? "var(--md-surface-hover)" : "var(--md-surface-panel)", minHeight: "520px", boxShadow: active ? "0 4px 12px rgba(0,0,0,0.06)" : "none" }}>
-            <div style={{ padding: "0.85rem 0.9rem", borderBottom: "1px solid var(--md-border)", background: "var(--md-surface-sunken)", borderRadius: "var(--md-radius) var(--md-radius) 0 0" }}>
-              <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, color: active ? "var(--md-primary)" : "var(--md-ink-muted)" }}>
+          <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid #e2e8f0", borderRadius: "10px", background: active ? "#f0fdff" : "#ffffff", minHeight: "520px", boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)" }}>
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", borderRadius: "10px 10px 0 0" }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: active ? "#0f766e" : "#94a3b8" }}>
                 {WEEK[(day.getDay() + 6) % 7]}
               </div>
-              <div style={{ fontSize: "2rem", fontWeight: 800, color: active ? "var(--md-primary)" : "var(--md-ink-primary)", lineHeight: 1 }}>
+              <div style={{ fontSize: "2rem", fontWeight: 800, color: active ? "#0f766e" : "#1e293b", lineHeight: 1 }}>
                 {day.getDate()}
               </div>
-              {active && <span style={{ fontSize: "0.7rem", color: "#fff", fontWeight: 700, background: "var(--md-primary)", padding: "0.1rem 0.5rem", borderRadius: "20px", marginTop: "0.25rem", display: "inline-block" }}>Today</span>}
+              {active && <span style={{ fontSize: "0.7rem", color: "#fff", fontWeight: 700, background: "#0f766e", padding: "0.1rem 0.5rem", borderRadius: "20px", marginTop: "0.25rem", display: "inline-block" }}>Today</span>}
             </div>
             <div style={{ flex: 1, padding: "0.85rem 0.9rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {evs.length ? (
                 evs.map((ev) => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)
               ) : (
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--md-ink-muted)", fontSize: "0.75rem" }}>No events</div>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "0.75rem" }}>No events</div>
               )}
             </div>
           </div>
@@ -272,25 +226,25 @@ function DayGrid({ dayKey, events, onEventClick, today }) {
   const evs = (events || []).filter((e) => e.date === dayKey).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const active = dayKey === today;
   return (
-    <div style={{ border: "1px solid var(--md-border)", borderRadius: "var(--md-radius-lg)", background: "var(--md-surface-panel)", padding: "1.2rem", minHeight: "600px", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
+    <div style={{ border: "1px solid #e2e8f0", borderRadius: "10px", background: "#ffffff", padding: "1.2rem", minHeight: "600px", boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.2rem" }}>
-        <div style={{ fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--md-ink-muted)" }}>
+        <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: ".1em", fontWeight: 800, color: "#94a3b8" }}>
           {WEEK[(day.getDay() + 6) % 7]}
         </div>
-        <div style={{ fontSize: "3rem", fontWeight: 900, color: "var(--md-ink-primary)", lineHeight: 1 }}>{day.getDate()}</div>
-        <div style={{ fontSize: "0.95rem", color: "var(--md-ink-secondary)" }}>{fmtFull(dayKey)}</div>
+        <div style={{ fontSize: "32px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{day.getDate()}</div>
+        <div style={{ fontSize: "0.95rem", color: "#64748b" }}>{fmtFull(dayKey)}</div>
         {active && (
-          <span style={{ marginLeft: "auto", fontSize: "0.75rem", background: "var(--md-primary)", color: "#fff", padding: "0.15rem 0.6rem", borderRadius: "20px", fontWeight: 800 }}>
+          <span style={{ marginLeft: "auto", fontSize: "11px", background: "#0f766e", color: "#fff", padding: "0.15rem 0.6rem", borderRadius: "20px", fontWeight: 800 }}>
             Today
           </span>
         )}
       </div>
       {evs.length ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {evs.map((ev) => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", color: "var(--md-ink-muted)", textAlign: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", color: "#94a3b8", textAlign: "center" }}>
           <div style={{ fontSize: "2rem", marginBottom: "0.5rem", opacity: 0.5 }}>?</div>
           <div>No events scheduled for {fmtFull(dayKey)}</div>
         </div>
@@ -301,16 +255,17 @@ function DayGrid({ dayKey, events, onEventClick, today }) {
 function DetailPanel({ selected, onClose, onEventSelect }) {
   const e = selected.event;
   const d = selected.deceased || {};
-  const meta = TYPE_META[e.type] || TYPE_META.intake;
+  const t = typeOf(e);
+  const s = statusOf(e);
   const rows = [
     { label: "Deceased", value: d.name },
     { label: "Reference", value: d.id || e.uid || "—" },
     { label: "Age / Sex", value: `${d.age ? d.age + " yrs" : "—"}${d.sex ? " · " + d.sex : ""}` },
     { label: "Branch", value: d.branch || "—" },
     { label: "Hearse / Vehicle", value: d.hearse || "—" },
-    { label: "Event", value: e.label },
+    { label: "Event", value: t.label },
     { label: "Type", value: e.type },
-    { label: "Status", value: e.status },
+    { label: "Status", value: s.label },
     { label: "Date", value: e.date ? fmtFull(e.date) : "—" },
     { label: "Time", value: e.time || "—" },
     { label: "Note / Location", value: e.note || "—" },
@@ -322,36 +277,40 @@ function DetailPanel({ selected, onClose, onEventSelect }) {
   ];
   return (
     <>
-      <div className="md-sidebar-overlay open" onClick={onClose} />
+      <div style={{
+        position: "fixed", inset: 0, background: "rgba(15,23,42,0.35)", zIndex: 50, backdropFilter: "blur(2px)",
+      }} onClick={onClose} />
       <div style={{
         position: "fixed", right: 0, top: 0, bottom: 0,
-        width: "min(460px, 94vw)", maxWidth: "94vw", background: "var(--md-surface-panel)",
-        borderLeft: "1px solid var(--md-border)", boxShadow: "var(--md-shadow-lg)",
+        width: "min(460px, 94vw)", maxWidth: "94vw", background: "#ffffff",
+        borderLeft: "1px solid #e2e8f0", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
         zIndex: 60, display: "flex", flexDirection: "column", overflowY: "auto",
       }}>
-        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--md-border)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--md-surface-sunken)", flexShrink: 0 }}>
+        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <meta.icon size={16} style={{ color: meta.color }} />
-            <span style={{ fontWeight: 700, fontSize: "1rem", color: "var(--md-ink-primary)" }}>{e.title}</span>
+            <t.icon size={16} style={{ color: t.color }} />
+            <span style={{ fontWeight: 700, fontSize: "1rem", color: "#0f172a" }}>{e.title}</span>
           </div>
-          <button className="md-btn md-btn-sm md-btn-icon-only" onClick={onClose}><X size={16} /></button>
+          <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={16} /></button>
         </div>
         <div style={{ padding: "1rem 1.25rem" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.label} style={{ borderBottom: "1px solid var(--md-border)" }}>
-                  <td style={{ padding: "0.55rem 0.5rem", fontSize: "0.75rem", fontWeight: 600, color: "var(--md-ink-muted)", width: "34%", verticalAlign: "top" }}>{r.label}</td>
-                  <td style={{ padding: "0.55rem 0.5rem", fontSize: "0.82rem", color: "var(--md-ink-primary)", verticalAlign: "top" }}>{r.value}</td>
+                <tr key={r.label} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "0.55rem 0.5rem", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", width: "34%", verticalAlign: "top" }}>{r.label}</td>
+                  <td style={{ padding: "0.55rem 0.5rem", fontSize: "0.82rem", color: "#0f172a", verticalAlign: "top" }}>{r.value}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
-            <button className="md-btn md-btn-sm md-btn-primary" onClick={() => { onClose(); onEventSelect?.({ event: e, deceased: d }); }}>
+            <button type="button" className="primary" onClick={() => { onClose(); onEventSelect?.({ event: e, deceased: d }); }} style={{ background: "#0f766e", color: "#fff", border: "none", padding: "0.55rem 1rem", borderRadius: "8px", fontWeight: 700, cursor: "pointer" }}>
               Open case record
             </button>
-            <button className="md-btn md-btn-sm" onClick={onClose}>Close</button>
+            <button type="button" onClick={onClose} style={{ background: "#ffffff", color: "#475569", border: "1px solid #cbd5e1", padding: "0.55rem 1rem", borderRadius: "8px", fontWeight: 600, cursor: "pointer" }}>
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -400,53 +359,126 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
   const rangeTitle = view === "today" ? "Today" : view === "all" ? "All dates" : view === "day" ? fmtFull(date) : view === "week" ? `${fmtDayHeader(weekStartOf(date))} – ${fmtDayHeader(addDays(weekStartOf(date), 6))}` : fmtMonthYear(date);
 
   return (
-    <section className="md-schedule">
-      <header className="md-schedule-head">
-        <div className="md-schedule-title"><span className="md-schedule-mark"><Calendar size={19}/></span><div><h1>Deceased Schedule</h1><p>All branches · intake, release, postmortem and service activity</p></div></div>
-        <div className="md-schedule-controls">
-          <div className="md-schedule-period"><button type="button" onClick={() => step(-1)} aria-label="Previous period"><ChevronLeft size={16}/></button><strong>{rangeTitle}</strong><button type="button" onClick={() => step(1)} aria-label="Next period"><ChevronRight size={16}/></button></div>
-          <button type="button" className="md-schedule-today" onClick={goToday}>Today</button>
+    <section style={{ display: "flex", flexDirection: "column", gap: "12px", minHeight: 0 }}>
+      <header style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#ecfeff", display: "flex", alignItems: "center", justifyContent: "center", color: "#0f766e" }}>
+            <CalendarIcon size={16} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>Deceased Schedule</h1>
+            <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>All branches · intake, release, postmortem and service activity</p>
+          </div>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+            <button type="button" onClick={() => step(-1)} aria-label="Previous period" style={{ padding: "6px 10px", fontSize: "13px", fontWeight: 700, color: "#64748b", background: "transparent", border: "none", cursor: "pointer" }}><ChevronLeft size={14} /></button>
+            <strong style={{ padding: "6px 12px", fontSize: "13px", color: "#0f172a", borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0" }}>{rangeTitle}</strong>
+            <button type="button" onClick={() => step(1)} aria-label="Next period" style={{ padding: "6px 10px", fontSize: "13px", fontWeight: 700, color: "#64748b", background: "transparent", border: "none", cursor: "pointer" }}><ChevronRight size={14} /></button>
+          </div>
+          <button type="button" onClick={goToday} style={{ padding: "6px 12px", fontSize: "13px", fontWeight: 700, color: "#0f766e", background: "#ecfeff", border: "1px solid #0f766e", borderRadius: 8, cursor: "pointer" }}>Today</button>
         </div>
       </header>
-      <div className="md-schedule-toolbar">
-        <div className="md-schedule-tabs" role="tablist" aria-label="Calendar view">
-          {["month", "week", "day"].map((item) => <button type="button" role="tab" aria-selected={view === item} className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}
-          <button type="button" role="tab" aria-selected={view === "today"} className={view === "today" ? "active" : ""} onClick={goToday}>Today</button>
-          <button type="button" role="tab" aria-selected={view === "all"} className={view === "all" ? "active" : ""} onClick={() => setView("all")}>All dates</button>
+      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #e2e8f0", background: "#ffffff", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: "6px" }}>
+          {["month", "week", "day"].map((item) => (
+            <button type="button" role="tab" aria-selected={view === item} key={item} onClick={() => setView(item)} style={{ padding: "6px 12px", fontSize: "12px", fontWeight: 700, color: view === item ? "#fff" : "#64748b", background: view === item ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer" }}>{item[0].toUpperCase() + item.slice(1)}</button>
+          ))}
+          <button type="button" aria-selected={view === "today"} onClick={goToday} style={{ padding: "6px 12px", fontSize: "12px", fontWeight: 700, color: view === "today" ? "#fff" : "#64748b", background: view === "today" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer" }}>Today</button>
+          <button type="button" aria-selected={view === "all"} onClick={() => setView("all")} style={{ padding: "6px 12px", fontSize: "12px", fontWeight: 700, color: view === "all" ? "#fff" : "#64748b", background: view === "all" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer" }}>All dates</button>
         </div>
-        <div className="md-schedule-tabs md-mode-tabs" role="group" aria-label="Schedule display mode">
-          <button type="button" aria-label="Show calendar" aria-pressed={mode === "calendar"} className={mode === "calendar" ? "active" : ""} onClick={() => setMode("calendar")}><Calendar size={14}/> Calendar</button>
-          <button type="button" aria-label="Show list" aria-pressed={mode === "list"} className={mode === "list" ? "active" : ""} onClick={() => setMode("list")}><List size={14}/> List</button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+          <button type="button" aria-label="Show calendar" aria-pressed={mode === "calendar"} onClick={() => setMode("calendar")} style={{ padding: "6px 10px", fontSize: "12px", fontWeight: 700, color: mode === "calendar" ? "#fff" : "#64748b", background: mode === "calendar" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}><CalendarIcon size={13} /> Calendar</button>
+          <button type="button" aria-label="Show list" aria-pressed={mode === "list"} onClick={() => setMode("list")} style={{ padding: "6px 10px", fontSize: "12px", fontWeight: 700, color: mode === "list" ? "#fff" : "#64748b", background: mode === "list" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}><List size={13} /> List</button>
         </div>
-        <label className="md-schedule-search"><SearchIcon/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or receiving officer" aria-label="Search deceased schedule"/><kbd>⌕</kbd></label>
+        <label style={{ position: "relative", marginLeft: "auto", width: 260 }}>
+          <SearchIcon style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or receiving officer" aria-label="Search deceased schedule" style={{ width: "100%", padding: "7px 10px 7px 32px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: 8, color: "#0f172a", background: "#fff" }} />
+        </label>
       </div>
-      <div className="md-schedule-layout">
-        <aside className="md-activity-panel">
-          <div className="md-panel-heading"><div><span>Live roster</span><h2>Today’s activity</h2></div><b>{todayActivity.length}</b></div>
-          <div className="md-month-stats"><div><b>{intakesThisMonth}</b><span>Intakes this month</span></div><div><b>{releasesThisMonth}</b><span>Releases this month</span></div></div>
-          <div className="md-activity-list">{todayActivity.length ? todayActivity.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick} compact/>) : <div className="md-activity-empty"><Calendar size={18}/><span>No activity scheduled today</span></div>}</div>
-          <div className="md-upcoming-heading">Upcoming</div>
-          <div className="md-upcoming-list">{upcoming.filter((event) => event.date !== today).slice(0, 4).map((event) => <button type="button" key={event.id} onClick={() => { setDate(event.date); setView("day"); handleEventClick(event); }}><i style={{ background: event.color }}/><span><b>{event.deceased.name}</b><small>{fmtFull(event.date)} · {event.title}</small></span></button>)}{!upcoming.some((event) => event.date > today) && <small className="md-no-upcoming">No upcoming events</small>}</div>
-        </aside>
-        <main className="md-schedule-main">
-          <div className="md-list-heading">
-            <div>
-              <h2>{rangeTitle} {mode === "list" ? "roster" : "calendar"}</h2>
-              <p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p>
+      <div style={{ display: "flex", flex: 1, minHeight: 0, gap: "12px", overflow: "hidden" }}>
+        <aside style={{ width: 340, minWidth: 300, display: "flex", flexDirection: "column", border: "1px solid #e2e8f0", borderRadius: 10, background: "#ffffff", boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)", overflow: "hidden", minHeight: 0 }}>
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <div>
+                <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Live roster</span>
+                <h2 style={{ margin: "2px 0 0 0", fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>Today’s activity</h2>
+              </div>
+              <b style={{ fontSize: "13px", color: "#0f172a" }}>{todayActivity.length}</b>
             </div>
-            <div className="md-event-legend">
+          </div>
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid #f1f5f9", display: "flex", gap: "12px" }}>
+            <div style={{ flex: 1, padding: "10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc" }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Intakes this month</div>
+              <b style={{ fontSize: "16px", color: "#0f172a" }}>{intakesThisMonth}</b>
+            </div>
+            <div style={{ flex: 1, padding: "10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc" }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Releases this month</div>
+              <b style={{ fontSize: "16px", color: "#0f172a" }}>{releasesThisMonth}</b>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "10px 14px" }}>
+            {todayActivity.length ? (
+              todayActivity.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick} compact />)
+            ) : (
+              <div style={{ padding: "30px 14px", textAlign: "center", color: "#94a3b8" }}>
+                <CalendarIcon size={18} style={{ marginBottom: 8, opacity: 0.5 }} />
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "#64748b" }}>No activity scheduled today</span>
+              </div>
+            )}
+          </div>
+          <div style={{ padding: "10px 14px", borderTop: "1px solid #f1f5f9", fontSize: "11px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Upcoming</div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "10px 14px" }}>
+            {upcoming.filter((event) => event.date !== today).slice(0, 4).map((event) => (
+              <button type="button" key={event.id} onClick={() => { setDate(event.date); setView("day"); handleEventClick(event); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", marginBottom: 6, cursor: "pointer", fontSize: "12px" }}>
+                <i style={{ background: event.color, width: 8, height: 8, borderRadius: "50%", flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, color: "#334155" }}>
+                  <b>{event.deceased.name}</b>
+                  <span style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginTop: 2 }}>{fmtFull(event.date)} · {event.title}</span>
+                </span>
+              </button>
+            ))}
+            {!upcoming.some((event) => event.date > today) && <div style={{ padding: "14px 10px", fontSize: "12px", color: "#94a3b8", textAlign: "center" }}>No upcoming events</div>}
+          </div>
+        </aside>
+        <main style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>{rangeTitle} {mode === "list" ? "roster" : "calendar"}</h2>
+              <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#64748b" }}>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p>
+            </div>
+            <div style={{ display: "flex", gap: "6px" }}>
               {["pending", "booked", "scheduled", "in_transit", "completed", "cancelled"].map((status) => {
                 const config = STATUS_CONFIG[status];
-                return <span key={status}><i style={{ background: config.dotColor }} /> {config.label}</span>;
+                return (
+                  <span key={status} style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 700, color: config.color, background: config.tint, padding: "3px 8px", borderRadius: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: config.color }} /> {config.label}
+                  </span>
+                );
               })}
             </div>
           </div>
-          {loading ? <div className="md-schedule-empty"><Calendar size={24}/><b>Loading all branch schedules…</b></div> : mode === "calendar" ? (
-            <div className="md-calendar-view">
-              {view === "week" ? <WeekGrid weekStartKey={weekStartOf(date)} eventsByDay={gridEventsByDay} onEventClick={handleEventClick} today={today}/> : view === "day" || view === "today" ? <DayGrid dayKey={view === "today" ? today : date} events={gridEvents} onEventClick={handleEventClick} today={today}/> : <MonthGrid year={monthDate.getFullYear()} month={monthDate.getMonth()} events={gridEvents} onDayClick={(day) => { setDate(toKey(day)); setView("day"); }} onEventClick={handleEventClick} today={today}/>}
-              {!listEvents.length && <div className="md-calendar-empty">No matching events in this range. Change the date or search to see more.</div>}
+          {loading ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", color: "#94a3b8" }}>
+              <CalendarIcon size={24} style={{ marginBottom: 8, opacity: 0.5 }} />
+              <b style={{ fontSize: "14px", color: "#64748b" }}>Loading all branch schedules…</b>
             </div>
-          ) : listEvents.length ? <div className="md-event-list">{listEvents.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick}/>)}</div> : <div className="md-schedule-empty"><Calendar size={24}/><b>No matching schedule activity</b><span>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span></div>}
+          ) : mode === "calendar" ? (
+            <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+              {view === "week" ? <WeekGrid weekStartKey={weekStartOf(date)} eventsByDay={gridEventsByDay} onEventClick={handleEventClick} today={today} /> : view === "day" || view === "today" ? <DayGrid dayKey={view === "today" ? today : date} events={gridEvents} onEventClick={handleEventClick} today={today} /> : <MonthGrid year={monthDate.getFullYear()} month={monthDate.getMonth()} events={gridEvents} onDayClick={(day) => { setDate(toKey(day)); setView("day"); }} onEventClick={handleEventClick} today={today} />}
+              {!listEvents.length && <div style={{ padding: "30px 16px", textAlign: "center", color: "#94a3b8" }}>No matching events in this range. Change the date or search to see more.</div>}
+            </div>
+          ) : listEvents.length ? (
+            <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "0 16px 16px 16px" }}>
+              {listEvents.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick} />)}
+            </div>
+          ) : (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", color: "#94a3b8" }}>
+              <CalendarIcon size={24} style={{ marginBottom: 8, opacity: 0.5 }} />
+              <b style={{ fontSize: "14px", color: "#64748b" }}>No matching schedule activity</b>
+              <span style={{ fontSize: "12px", marginTop: 4 }}>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span>
+            </div>
+          )}
         </main>
       </div>
       {selected && <DetailPanel selected={selected} onClose={() => setSelected(null)} onEventSelect={onEventSelect} />}
@@ -457,17 +489,23 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
 function SearchIcon() { return <Search size={15}/>; }
 
 function EventListCard({ event, onClick, compact = false }) {
-  const meta = TYPE_META[event.type] || TYPE_META.intake;
-  const Icon = meta.icon;
-  const status = getStatusMeta(event.status);
-  return <button type="button" className={`md-event-card${compact ? " compact" : ""}`} onClick={() => onClick(event)} style={{ "--event-color": status.color, "--event-tint": status.bg }}>
-    <span className="md-event-type-icon"><Icon size={17}/></span>
-    <span className="md-event-date"><b>{fmtDayHeader(event.date)}</b><small>{event.time || "Time not set"}</small></span>
-    <span className="md-event-person"><b>{event.deceased.name}</b><small>{event.deceased.admissionNumber || event.deceased.id || "No admission number"} · {event.branch || "Branch not set"}</small></span>
-    <span className="md-event-type"><b>{event.title}</b><small>{event.officer && event.officer !== "—" ? `Received by ${event.officer}` : "Receiving officer not recorded"}</small></span>
-    <span className="md-event-status" style={{ color: status.color, backgroundColor: status.bg }}>{status.label}</span><ChevronRight className="md-event-chevron" size={16}/>
-  </button>;
+  const t = typeOf(event);
+  const s = statusOf(event);
+  return (
+    <Chip
+      $color={s.color}
+      $tint={s.tint}
+      onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
+      title={`${event.deceased.name} · ${s.label}`}
+      style={{ cursor: "pointer", marginBottom: "8px", display: "flex", width: "100%" }}
+    >
+      {event.time && <span className="t">{event.time}</span>}
+      <span className="n">{t.label}</span>
+      <span className="m">{event.deceased.name} · {event.deceased.admissionNumber || event.deceased.id || "No admission number"} · {event.branch || "Branch not set"}</span>
+    </Chip>
+  );
 }
+
 
 
 
