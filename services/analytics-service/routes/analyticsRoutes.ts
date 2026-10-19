@@ -6,7 +6,6 @@ import { optionalAuth } from '../../../services/app-global/middlewares/authMiddl
 import deceasedAnalytics from '../controllers/deceasedAnalyticsLegacy.controller';
 import bookingAnalytics from '../controllers/bookingAnalytics.controller';
 import revenueAnalytics from '../controllers/revenueAnalytics.controller';
-import coffinAnalytics from '../controllers/coffinAnalytics.controller';
 import chemicalAnalytics from '../controllers/chemicalAnalytics.controller';
 import workshopAnalytics from '../controllers/workshopAnalyticsLegacy.controller';
 import comprehensiveDashboard from '../controllers/comprehensiveDashboard.controller';
@@ -31,10 +30,6 @@ router.get('/analytics/hearse/fleet', bookingAnalytics.getHearseFleetStatus);
 // Revenue analytics
 router.get('/analytics/revenue/summary', revenueAnalytics.getRevenueSummary);
 router.get('/analytics/revenue/trends', revenueAnalytics.getMonthlyRevenueTrends);
-
-// Coffin analytics
-router.get('/analytics/coffins/inventory', coffinAnalytics.getCoffinInventorySummary);
-router.get('/analytics/coffins/sales', coffinAnalytics.getCoffinSales);
 
 // Chemical analytics
 router.get('/analytics/chemicals/stock', chemicalAnalytics.getChemicalStockSummary);

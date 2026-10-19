@@ -153,6 +153,26 @@ async function coffinQuery(sql, params = []) {
   return rows;
 }
 
+async function coffinTransaction(callback) {
+  await ensureCoffinDatabase();
+  const connection = await getCoffinPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    const query = async (sql, params = []) => {
+      const [rows] = await connection.query(sql, params);
+      return rows;
+    };
+    const result = await callback(query);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 /**
  * Run all pending knex migrations against the central coffin database.
  * This is the coffin service's OWN, independent migration (knex).
@@ -232,6 +252,7 @@ module.exports = {
   getCoffinPool,
   getCoffinKnex,
   coffinQuery,
+  coffinTransaction,
   runCoffinMigrations,
   closeCoffinDb,
 };

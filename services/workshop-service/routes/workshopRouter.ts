@@ -36,6 +36,11 @@ import {
     getWorkerProduction
 } from '../controllers/reportController'
 import {
+    getCoffinBookingsAnalytics,
+    getCoffinInventoryAnalytics,
+    getCoffinSalesAnalytics
+} from '../controllers/coffinAnalyticsController'
+import {
     getWorkers,
     createWorker,
     updateWorker,
@@ -118,6 +123,9 @@ workshopRouter.get('/reports/production', getProductionReport)
 workshopRouter.get('/reports/costing', getCostingReport)
 workshopRouter.get('/reports/worker-production', getWorkerProduction)
 workshopRouter.get('/analytics/monthly', getMonthlyAnalytics)
+workshopRouter.get('/analytics/coffins/inventory', getCoffinInventoryAnalytics)
+workshopRouter.get('/analytics/coffins/bookings', getCoffinBookingsAnalytics)
+workshopRouter.get('/analytics/coffins/sales', getCoffinSalesAnalytics)
 
 // ============ WORK ORDERS & DESIGNS ============
 workshopRouter.get('/orders/:id/work-order/pdf', generateWorkOrderPDF)

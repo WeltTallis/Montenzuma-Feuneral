@@ -1,9 +1,8 @@
 ﻿import { Request, Response } from 'express';
 import axios from 'axios';
 import CoffinModel from '../models/coffinModel.js';
-import { coffinQuery } from '../db.js';
+import { coffinQuery, coffinTransaction } from '../db.js';
 import { serviceGet, serviceSet, serviceDel, clearServiceCache } from '@montezuma/shared-services';
-import { publishTask } from '@montezuma/shared-services';
 import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
 import logger from '@montezuma/shared-logger';
 
@@ -48,29 +47,9 @@ async function clearCoffinCache(tenantSlug: string) {
   await clearServiceCache(SERVICE_NAME, tenantSlug);
 }
 
-// ─── Image Processing via RabbitMQ ──────────────────────────────────────
+// ─── Image Processing ───────────────────────────────────────────────────
 
-async function processImagesAsync(files: any[], coffinId: string, tenantSlug: string) {
-  const imageBuffers = files.map(f => ({
-    buffer: f.buffer.toString('base64'),
-    originalname: f.originalname,
-    size: f.size,
-    mimetype: f.mimetype
-  }));
-
-  const result = await publishTask(tenantSlug, 'coffin.image.process', {
-    coffinId,
-    images: imageBuffers,
-    tenantSlug
-  }, 'normal');
-
-  if (result.queued) {
-    logger.info({ msg: 'Coffin images queued for async processing', tenantSlug, coffinId, taskId: result.taskId });
-    return { queued: true, taskId: result.taskId };
-  }
-
-  // Fallback: process inline using global uploader
-  logger.warn({ msg: 'RabbitMQ unavailable - processing images inline', tenantSlug });
+async function processCoffinImages(files: any[], coffinId: string, tenantSlug: string) {
   return processImagesInline(files, coffinId, tenantSlug);
 }
 
@@ -78,9 +57,11 @@ async function processImagesInline(files: any[], coffinId: string, tenantSlug: s
   const imageUrls: string[] = [];
   for (let i = 0; i < Math.min(files.length, 10); i++) {
     const file = files[i];
+    if (!String(file.mimetype || '').startsWith('image/')) {
+      throw new Error(`"${file.originalname}" is not a supported image`);
+    }
     if (file.size > 10 * 1024 * 1024) {
-      logger.warn({ msg: 'Skipping oversized image', filename: file.originalname, size: file.size });
-      continue;
+      throw new Error(`Image "${file.originalname}" exceeds the 10 MB upload limit`);
     }
     try {
       const uploadResult = await centralizedUploadService.uploadImage(
@@ -90,13 +71,13 @@ async function processImagesInline(files: any[], coffinId: string, tenantSlug: s
         'coffins',
         `coffin-${coffinId}`
       );
-      if (uploadResult.success) {
-        imageUrls.push(uploadResult.urlPath);
-      } else {
-        logger.error({ msg: 'Image upload failed', filename: file.originalname, error: uploadResult.error });
+      if (!uploadResult.success || !uploadResult.urlPath) {
+        throw new Error(uploadResult.error || 'The image service did not return a URL');
       }
+      imageUrls.push(uploadResult.urlPath);
     } catch (err: any) {
       logger.error({ msg: 'Image processing error', filename: file.originalname, error: err.message });
+      throw new Error(`Failed to upload "${file.originalname}": ${err.message}`);
     }
   }
   return { queued: false, imageUrls };
@@ -106,7 +87,7 @@ async function processImagesInline(files: any[], coffinId: string, tenantSlug: s
 
 /**
  * POST /coffins - Create a new coffin
- * Required: name, color, size, quantity, price
+ * Required: name, color, quantity, price. Size is optional.
  */
 export const createCoffin = async (req: Request, res: Response) => {
   const tenantSlug = (req as any).tenantSlug;
@@ -134,22 +115,35 @@ export const createCoffin = async (req: Request, res: Response) => {
     const branchIdVal = (rBranchId != null && String(rBranchId).trim() !== '') ? String(rBranchId).trim() : null;
 
     const modelType = (type || name || '').toString().trim();
+    const modelColor = (color || '').toString().trim();
+    const modelSize = (size || '').toString().trim() || null;
     const modelPrice = parseFloat(exact_price ?? price) || 0;
-    const modelQty = parseInt(quantity) || 0;
+    const parsedModelQty = parseInt(quantity, 10) || 0;
+    const modelQty = Math.max(0, parsedModelQty);
 
     if (!modelType) {
       return res.status(400).json({ success: false, message: 'Missing required field: Model (name) is required' });
+    }
+    if (!modelColor) {
+      return res.status(400).json({ success: false, message: 'Missing required field: Color is required' });
+    }
+    if (parsedModelQty < 0) {
+      return res.status(400).json({ success: false, message: 'Stock quantity cannot be negative' });
     }
     if (!modelPrice || modelPrice <= 0) {
       return res.status(400).json({ success: false, message: 'Missing required field: Price must be greater than 0' });
     }
 
+    const tenantScope = tenantIdVal ? '(tenant_slug = ? OR tenant_id = ?)' : 'tenant_slug = ?';
+    const tenantScopeParams = tenantIdVal ? [tenantSlug, tenantIdVal] : [tenantSlug];
     const existing: any[] = await coffinQuery(
       `SELECT coffin_id FROM coffins
-       WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ?
+       WHERE LOWER(TRIM(type)) = LOWER(?) AND LOWER(TRIM(color)) = LOWER(?)
+         AND COALESCE(NULLIF(LOWER(TRIM(size)), ''), '') = COALESCE(LOWER(?), '')
+         AND ${tenantScope}
          AND ((branch_id = ?) OR (branch_id IS NULL AND ? IS NULL))
          AND is_deleted = FALSE`,
-      [modelType, (color || '').trim(), (size || '').trim(), tenantSlug, branchIdVal, branchIdVal]
+      [modelType, modelColor, modelSize, ...tenantScopeParams, branchIdVal, branchIdVal]
     );
 
     if (existing.length > 0) {
@@ -163,8 +157,8 @@ export const createCoffin = async (req: Request, res: Response) => {
       type: modelType,
       exact_price: modelPrice,
       quantity: modelQty,
-      color,
-      size,
+      color: modelColor,
+      size: modelSize,
       description,
       tenant_id: tenantIdVal,
       branch_id: branchIdVal
@@ -172,9 +166,27 @@ export const createCoffin = async (req: Request, res: Response) => {
 
     let imageResult: any = { queued: false, imageUrls: [] };
     if ((req as any).files && (req as any).files.length > 0) {
-      imageResult = await processImagesAsync((req as any).files, result.coffin_id, tenantSlug);
-      if (!imageResult.queued && imageResult.imageUrls.length > 0) {
-        await CoffinModel.addImages(tenantSlug, result.coffin_id, imageResult.imageUrls);
+      try {
+        imageResult = await processCoffinImages((req as any).files, result.coffin_id, tenantSlug);
+        if (imageResult.imageUrls.length > 0) {
+          await CoffinModel.addImages(tenantSlug, result.coffin_id, imageResult.imageUrls);
+        }
+      } catch (imageError: any) {
+        try {
+          await coffinQuery(
+            'UPDATE coffins SET is_deleted = TRUE WHERE coffin_id = ? AND tenant_slug = ?',
+            [result.coffin_id, tenantSlug]
+          );
+        } catch (cleanupError: any) {
+          logger.error({
+            msg: 'Could not roll back coffin after image upload failure',
+            tenantSlug,
+            coffinId: result.coffin_id,
+            error: cleanupError.message
+          });
+        }
+        await clearCoffinCache(tenantSlug);
+        throw new Error(`Coffin registration failed because an image could not be saved: ${imageError.message}`);
       }
     }
 
@@ -191,6 +203,9 @@ export const createCoffin = async (req: Request, res: Response) => {
       type: result.type,
       color: result.color,
       size: result.size,
+      quantity_on_hand: result.quantity_on_hand,
+      quantity_reserved: result.quantity_reserved,
+      quantity_available: result.quantity_available,
       description: result.description,
       quantity: result.quantity,
       stock: result.quantity,
@@ -264,7 +279,7 @@ export const getAllCoffins = async (req: Request, res: Response) => {
       }
 
       const sql = `
-        SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+        SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.created_at,
           GROUP_CONCAT(ci.image_url) as image_urls
         FROM coffins c
         LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -282,7 +297,7 @@ export const getAllCoffins = async (req: Request, res: Response) => {
 
     if (effectiveBranchId) {
       const sql = `
-        SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+        SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.created_at,
           GROUP_CONCAT(ci.image_url) as image_urls
         FROM coffins c
         LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -306,7 +321,7 @@ export const getAllCoffins = async (req: Request, res: Response) => {
     if (!coffins) {
       if (effectiveBranchId) {
         const sql = `
-          SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+          SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.created_at,
             GROUP_CONCAT(ci.image_url) as image_urls
           FROM coffins c
           LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -358,7 +373,7 @@ export const getAllCoffinsAllBranches = async (req: Request, res: Response) => {
     const params: any[] = tenantParam ? [String(parentSlug), tenantParam] : [String(parentSlug)];
 
     const rows: any[] = await coffinQuery(`
-      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -440,13 +455,53 @@ export const updateCoffin = async (req: Request, res: Response) => {
     return res.status(403).json({ success: false, message: 'Valid tenant required' });
   }
 
+  let detailsUpdated = false;
   try {
     const {
       type, name, material, exact_price, price,
       quantity, supplier, origin, color, size, category, currency
     } = (req as any).body;
 
-    await CoffinModel.update(tenantSlug, id, {
+    const headerOf = (name: string): string | null => {
+      const value = (req.headers as any)[name];
+      return Array.isArray(value) ? String(value[0]) : (value ? String(value) : null);
+    };
+    const tenantId = headerOf('x-tenant-id') || (req as any).user?.tenantId || (req as any).user?.tenant_id || null;
+    const current = await CoffinModel.getById(tenantSlug, id, tenantId);
+    if (!current) {
+      return res.status(404).json({ success: false, message: 'Coffin variant not found' });
+    }
+
+    const nextType = (type ?? name ?? current.type ?? '').toString().trim();
+    const nextColor = (color !== undefined ? color : current.color).toString().trim();
+    const nextSize = (size !== undefined ? size : current.size).toString().trim();
+    if (!nextColor) {
+      return res.status(400).json({ success: false, message: 'Coffin color is required' });
+    }
+    const ownerClause = tenantId
+      ? '(tenant_slug = ? OR tenant_id = ?)'
+      : 'tenant_slug = ?';
+    const ownerParams = tenantId ? [tenantSlug, String(tenantId)] : [tenantSlug];
+    const duplicate: any[] = await coffinQuery(
+      `SELECT coffin_id FROM coffins
+       WHERE coffin_id <> ?
+         AND LOWER(TRIM(type)) = LOWER(?)
+         AND LOWER(TRIM(color)) = LOWER(?)
+         AND COALESCE(NULLIF(LOWER(TRIM(size)), ''), '') = COALESCE(LOWER(?), '')
+         AND ${ownerClause}
+         AND ((branch_id = ?) OR (branch_id IS NULL AND ? IS NULL))
+         AND is_deleted = FALSE
+       LIMIT 1`,
+      [id, nextType, nextColor, nextSize || null, ...ownerParams, current.branch_id, current.branch_id]
+    );
+    if (duplicate.length) {
+      return res.status(409).json({
+        success: false,
+        message: 'A coffin variant with the same type, color, and size already exists in this branch'
+      });
+    }
+
+    const updateData = {
       type,
       name,
       material,
@@ -458,16 +513,29 @@ export const updateCoffin = async (req: Request, res: Response) => {
       color,
       size,
       category
-    });
+    };
+    const hasDetails = [
+      updateData.type,
+      updateData.name,
+      updateData.exact_price,
+      updateData.quantity,
+      updateData.color,
+      updateData.size,
+      (req as any).body?.image_url
+    ].some((value) => value !== undefined);
+    if (hasDetails) {
+      const updateResult = await CoffinModel.update(tenantSlug, id, updateData, tenantId);
+      if (updateResult === 0) {
+        return res.status(404).json({ success: false, message: 'Coffin variant not found' });
+      }
+      detailsUpdated = true;
+    }
 
     // Handle new images
     if ((req as any).files && (req as any).files.length > 0) {
-      const coffin = await CoffinModel.getById(tenantSlug, id);
-      if (coffin) {
-        const imageResult: any = await processImagesAsync((req as any).files, coffin.coffin_id, tenantSlug);
-        if (!imageResult.queued && imageResult.imageUrls.length > 0) {
-          await CoffinModel.addImages(tenantSlug, coffin.coffin_id, imageResult.imageUrls);
-        }
+      const imageResult: any = await processCoffinImages((req as any).files, current.coffin_id, tenantSlug);
+      if (imageResult.imageUrls.length > 0) {
+        await CoffinModel.addImages(tenantSlug, current.coffin_id, imageResult.imageUrls);
       }
     }
 
@@ -478,7 +546,10 @@ export const updateCoffin = async (req: Request, res: Response) => {
     return res.status(200).json({ success: true, message: 'Coffin updated successfully' });
   } catch (error: any) {
     logger.error({ msg: 'Update coffin error', tenantSlug, id, error: error.message });
-    return res.status(500).json({ success: false, message: error.message });
+    const message = detailsUpdated
+      ? `Coffin details were saved, but image upload failed: ${error.message}`
+      : error.message;
+    return res.status(500).json({ success: false, message });
   }
 };
 
@@ -519,13 +590,8 @@ export const createOrder = async (req: Request, res: Response) => {
   }
 
   try {
-    // Accept both the legacy field set and the inventory booking field set.
-    // The inventory UI sends: { coffin_id, client_name, client_phone, deceased_name, service_date, notes, paid }
-    // The legacy clients send: { coffin_name, color, size, quantity, booked_by, booked_for }.
-    // color/size/booked_by/booked_for/deceased are all OPTIONAL — details are auto-filled
-    // from the selected coffin so users don't have to re-enter them.
     const {
-      coffin_id, coffin_name, color, size, quantity,
+      coffin_id, coffin_name, type, color, size, quantity,
       booked_by, booked_for, client_name, deceased_name,
       service_date, amount, deposit
     } = (req as any).body;
@@ -538,6 +604,8 @@ export const createOrder = async (req: Request, res: Response) => {
     };
     const rTenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || (req as any).tenantId || (req as any).body?.tenant_id || (req as any).body?.tenantId || null;
     const rBranchId = headerOf('x-branch-id') || (req as any).branchId || (req as any).body?.branch_id || (req as any).body?.branchId || null;
+    const tenantIdVal = rTenantId != null && String(rTenantId).trim() ? String(rTenantId).trim() : null;
+    const branchIdVal = rBranchId != null && String(rBranchId).trim() ? String(rBranchId).trim() : null;
 
     const parsedQuantity = parseInt(quantity);
     if (quantity !== undefined && quantity !== '' && quantity !== null && (isNaN(parsedQuantity) || parsedQuantity <= 0)) {
@@ -546,65 +614,106 @@ export const createOrder = async (req: Request, res: Response) => {
     const finalQuantity = isNaN(parsedQuantity) || parsedQuantity <= 0 ? 1 : parsedQuantity;
 
     const coffinIdRaw = (coffin_id || '').toString().trim();
-    const coffinNameRaw = (coffin_name || '').toString().trim();
-
-    // A coffin must be identifiable by id OR name. Everything else is optional.
+    const coffinNameRaw = (coffin_name || type || '').toString().trim();
+    const requestedColor = (color || '').toString().trim();
+    const requestedSize = (size || '').toString().trim();
     if (!coffinIdRaw && !coffinNameRaw) {
       return res.status(400).json({
-        success: false,
-        message: 'Please select a coffin to book (coffin_id or coffin_name is required)'
+        success: false, message: 'Coffin type is required'
       });
     }
 
-    // Resolve the coffin: by id when available (its details auto-fill name/color/size),
-    // otherwise by name with optional color/size filters.
+    const tenantClause = tenantIdVal
+      ? '(tenant_slug = ? OR tenant_id = ?)'
+      : 'tenant_slug = ?';
+    const tenantParams = tenantIdVal ? [tenantSlug, tenantIdVal] : [tenantSlug];
+    const branchClause = branchIdVal ? ' AND (branch_id = ? OR branch_id IS NULL)' : '';
+    const branchParams = branchIdVal ? [branchIdVal] : [];
+    const variantSelect = `SELECT coffin_id, type, color, size, quantity
+      FROM coffins
+      WHERE ${tenantClause} AND is_deleted = FALSE${branchClause}`;
+
+    const findVariant = async (modelName: string, modelColor: string, modelSize?: string) => {
+      const sizeClause = modelSize
+        ? " AND COALESCE(NULLIF(LOWER(TRIM(size)), ''), '') = ?"
+        : " AND (size IS NULL OR TRIM(size) = '')";
+      const params = [...tenantParams, ...branchParams, modelName, modelColor];
+      if (modelSize) params.push(modelSize.toLowerCase());
+      const rows: any[] = await coffinQuery(
+        `${variantSelect}
+         AND LOWER(TRIM(type)) = LOWER(?)
+         AND LOWER(TRIM(color)) = LOWER(?)${sizeClause}
+         ORDER BY CASE WHEN size IS NULL OR TRIM(size) = '' THEN 0 ELSE 1 END,
+                  quantity DESC, coffin_id ASC`,
+        params
+      );
+      return rows[0] || null;
+    };
+
     let coffin: any = null;
     if (coffinIdRaw) {
       const rows: any[] = await coffinQuery(
-        'SELECT coffin_id, type, color, size, quantity FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE',
-        [coffinIdRaw, tenantSlug]
+        `SELECT coffin_id, type, color, size, quantity FROM coffins
+         WHERE coffin_id = ? AND ${tenantClause} AND is_deleted = FALSE${branchClause}`,
+        [coffinIdRaw, ...tenantParams, ...branchParams]
       );
       if (rows.length > 0) coffin = rows[0];
-    } else {
-      let sql = 'SELECT coffin_id, type, color, size, quantity FROM coffins WHERE type = ?';
-      const params: any[] = [coffinNameRaw];
-      const colorTrim = (color || '').toString().trim();
-      const sizeTrim = (size || '').toString().trim();
-      if (colorTrim) { sql += ' AND color = ?'; params.push(colorTrim); }
-      if (sizeTrim) { sql += ' AND size = ?'; params.push(sizeTrim); }
-      sql += ' AND tenant_slug = ? AND is_deleted = FALSE';
-      params.push(tenantSlug);
-      const rows: any[] = await coffinQuery(sql, params);
-      if (rows.length > 0) coffin = rows[0];
+      if (!coffin) {
+        return res.status(404).json({ success: false, message: 'Selected coffin variant was not found for this tenant or branch' });
+      }
+      if (coffinNameRaw && coffinNameRaw.toLowerCase() !== String(coffin.type || '').trim().toLowerCase()) {
+        return res.status(400).json({ success: false, message: 'Selected coffin type does not match the inventory variant' });
+      }
+      if (requestedColor && requestedColor.toLowerCase() !== String(coffin.color || '').trim().toLowerCase()) {
+        return res.status(400).json({ success: false, message: 'Selected coffin color does not match the inventory variant' });
+      }
+      if (requestedSize && requestedSize.toLowerCase() !== String(coffin.size || '').trim().toLowerCase()) {
+        coffin = await findVariant(coffin.type, requestedColor || coffin.color || '', requestedSize);
+        if (!coffin) {
+          return res.status(404).json({ success: false, message: 'No inventory variant matches the selected size' });
+        }
+      } else if (!requestedSize && String(coffin.size || '').trim()) {
+        const unsizedVariant = await findVariant(coffin.type, requestedColor || coffin.color || '');
+        coffin = unsizedVariant;
+      }
+    } else if (requestedColor) {
+      coffin = await findVariant(coffinNameRaw, requestedColor, requestedSize);
     }
 
-    if (!coffin) {
-      return res.status(404).json({
-        success: false,
-        message: 'Coffin not found. Please select a valid coffin from the list.'
-      });
+    const finalName = coffinNameRaw || coffin?.type || '';
+    const finalColor = requestedColor || (coffin?.color || '').toString().trim();
+    if (!finalName) {
+      return res.status(400).json({ success: false, message: 'Coffin type is required' });
+    }
+    if (!finalColor) {
+      return res.status(400).json({ success: false, message: 'Coffin color is required' });
+    }
+    if (requestedSize && !coffin) {
+      return res.status(404).json({ success: false, message: 'No inventory variant matches the selected type, color, and size' });
     }
 
-    if (parseInt(coffin.quantity) < finalQuantity) {
+    let stockReserved = false;
+    if (coffin && requestedSize) {
+      stockReserved = Number(coffin.quantity) >= finalQuantity;
+    } else if (coffin && !String(coffin.size || '').trim()) {
+      stockReserved = Number(coffin.quantity) >= finalQuantity;
+    }
+    if (requestedSize && !stockReserved) {
       return res.status(409).json({
         success: false,
-        message: `Insufficient stock. Available: ${coffin.quantity}, Requested: ${finalQuantity}`
+        message: `Insufficient stock. Available: ${coffin?.quantity || 0}, Requested: ${finalQuantity}`
       });
     }
 
-    // Auto-fill details from the selected coffin; let an explicit value override it.
-    const finalName = coffinNameRaw || coffin.type || 'Coffin';
-    const finalColor = (color || '').toString().trim() || coffin.color || null;
-    const finalSize = (size || '').toString().trim() || coffin.size || null;
+    const finalSize = requestedSize || null;
     const finalBookedBy = (booked_by || '').toString().trim() || (client_name || '').toString().trim() || null;
     const finalBookedFor = (booked_for || '').toString().trim() || (deceased_name || '').toString().trim() || null;
 
-    // Avoid double-booking the same coffin for the same person when booked_for is given.
-    if (finalBookedFor) {
+    if (finalBookedFor && coffin?.coffin_id) {
       const existingOrder: any[] = await coffinQuery(
         `SELECT order_id FROM coffin_bookings
          WHERE coffin_id = ? AND tenant_slug = ?
-         AND status = 'active' AND booked_for = ?`,
+           AND status IN ('active', 'booked') AND booked_for = ?`,
         [coffin.coffin_id, tenantSlug, finalBookedFor]
       );
 
@@ -617,7 +726,7 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     const result = await CoffinModel.createOrder(tenantSlug, {
-      coffin_id: coffin.coffin_id,
+      coffin_id: coffin?.coffin_id || null,
       coffin_name: finalName,
       color: finalColor,
       size: finalSize,
@@ -630,8 +739,10 @@ export const createOrder = async (req: Request, res: Response) => {
       amount: (req as any).body?.amount,
       deposit: (req as any).body?.deposit,
       service_date: service_date || null,
-      tenant_id: rTenantId,
-      branch_id: rBranchId
+      tenant_id: tenantIdVal,
+      branch_id: branchIdVal,
+      stock_reserved: stockReserved,
+      is_made_to_order: !stockReserved
     });
 
     await clearCoffinCache(tenantSlug);
@@ -642,12 +753,14 @@ export const createOrder = async (req: Request, res: Response) => {
     await emitSocketNotification('coffin-booking-created', {
       id: result.order_id || `booking-${Date.now()}`,
       title: 'New Coffin Reservation',
-      message: `${finalBookedBy || 'Client'} reserved ${finalName} (qty ${finalQuantity})`,
-      fullContent: `Coffin: ${finalName}\nClient: ${finalBookedBy || 'N/A'}\nDeceased: ${finalBookedFor || 'N/A'}\nQuantity: ${finalQuantity}\nAmount: ${result.amount || 0}\nDeposit: ${result.deposit || 0}\nBalance: ${(result.amount || 0) - (result.deposit || 0)}\nBooking ID: ${result.order_id}`,
+      message: `${finalBookedBy || 'Client'} reserved ${finalName} (qty ${finalQuantity})${result.is_made_to_order ? ' · made to order' : ''}`,
+      fullContent: `Coffin: ${finalName}\nColor: ${finalColor}\nSize: ${finalSize || 'Workshop to decide'}\nClient: ${finalBookedBy || 'N/A'}\nDeceased: ${finalBookedFor || 'N/A'}\nQuantity: ${finalQuantity}\nStock reserved: ${result.stock_reserved ? 'Yes' : 'No'}\nAmount: ${result.amount || 0}\nDeposit: ${result.deposit || 0}\nBalance: ${(result.amount || 0) - (result.deposit || 0)}\nBooking ID: ${result.order_id}`,
       orderId: result.order_id,
       coffinName: finalName,
       clientName: finalBookedBy,
       quantity: finalQuantity,
+      stock_reserved: result.stock_reserved,
+      is_made_to_order: result.is_made_to_order,
       amount: result.amount,
       deposit: result.deposit,
       balance: result.amount - result.deposit,
@@ -668,6 +781,8 @@ export const createOrder = async (req: Request, res: Response) => {
         booked_for: finalBookedFor,
         service_date: service_date || null,
         status: 'active',
+        stock_reserved: result.stock_reserved,
+        is_made_to_order: result.is_made_to_order,
         paid: result.paid,
         amount: result.amount,
         deposit: result.deposit,
@@ -677,7 +792,8 @@ export const createOrder = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     logger.error({ msg: 'Create order error', tenantSlug, error: error.message });
-    return res.status(500).json({ success: false, message: error.message });
+    const statusCode = /insufficient stock/i.test(error.message || '') ? 409 : 500;
+    return res.status(statusCode).json({ success: false, message: error.message });
   }
 };
 
@@ -782,6 +898,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
              source_request_id,
              status,
              paid,
+             stock_reserved,
+             is_made_to_order,
              amount,
              deposit,
              DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
@@ -868,6 +986,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
           branch_id: branchId,
           status: 'pending',
           paid: 0,
+          stock_reserved: false,
+          is_made_to_order: true,
           pending_transfer: true,
           transfer_status: t.status,
           source_request_id: t.request_id,
@@ -908,6 +1028,8 @@ export const getOrderById = async (req: Request, res: Response) => {
              branch_id,
              status,
              paid,
+             stock_reserved,
+             is_made_to_order,
              DATE_FORMAT(COALESCE(service_date, DATE(created_at)), '%Y-%m-%d') AS service_date,
              service_time,
              created_at, updated_at
@@ -947,47 +1069,107 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, message: 'Invalid status. Must be: active, booked, completed, or cancelled' });
   }
 
-  const updates: string[] = [];
-  const values: any[] = [];
-
   try {
-    // If cancelling, return stock to inventory
-    if (status === 'cancelled') {
-      const order: any[] = await coffinQuery(
-        'SELECT coffin_name, color, size, quantity FROM coffin_bookings WHERE order_id = ? AND tenant_slug = ?',
+    await coffinTransaction(async (query: any) => {
+      const orders: any[] = await query(
+        `SELECT order_id, coffin_id, quantity, status, stock_reserved, is_made_to_order, source_request_id
+         FROM coffin_bookings WHERE order_id = ? AND tenant_slug = ? FOR UPDATE`,
         [id, tenantSlug]
       );
-
-      if (order.length > 0) {
-        await coffinQuery(
-          'UPDATE coffins SET quantity = quantity + ? WHERE type = ? AND color = ? AND size = ? AND tenant_slug = ?',
-          [order[0].quantity, order[0].coffin_name, order[0].color, order[0].size, tenantSlug]
-        );
+      if (!orders.length) {
+        const error: any = new Error('Order not found');
+        error.statusCode = 404;
+        throw error;
       }
-    }
 
-    if (status !== undefined) {
-      updates.push('status = ?');
-      values.push(status);
-    }
-    if (paid !== undefined) {
-      updates.push('paid = ?');
-      values.push(paid ? 1 : 0);
-    }
-    if (amount !== undefined) {
-      updates.push('amount = ?');
-      values.push(parseFloat(amount) || 0);
-    }
-    if (deposit !== undefined) {
-      updates.push('deposit = ?');
-      values.push(parseFloat(deposit) || 0);
-    }
+      const order = orders[0];
+      const currentStatus = String(order.status || '').toLowerCase();
+      const active = ['active', 'booked', 'pending'].includes(currentStatus);
+      const stockIsReserved = Boolean(order.stock_reserved);
+      const madeToOrder = Boolean(order.is_made_to_order);
+      let nextStockReserved = stockIsReserved;
 
-    updates.push('updated_at = NOW()');
+      if (currentStatus === 'completed' && status && status !== 'completed') {
+        const error: any = new Error('A completed reservation cannot change status');
+        error.statusCode = 409;
+        throw error;
+      }
 
-    const sql = `UPDATE coffin_bookings SET ${updates.join(', ')} WHERE order_id = ? AND tenant_slug = ?`;
-    values.push(id, tenantSlug);
-    await coffinQuery(sql, values);
+      if (status === 'cancelled' && active && stockIsReserved && order.coffin_id) {
+        await query(
+          `UPDATE coffins
+           SET quantity = quantity + ?,
+               quantity_reserved = GREATEST(quantity_reserved - ?, 0)
+           WHERE coffin_id = ?`,
+          [order.quantity, order.quantity, order.coffin_id]
+        );
+        nextStockReserved = false;
+      } else if (status === 'completed' && active && stockIsReserved && order.coffin_id) {
+        await query(
+          `UPDATE coffins
+           SET quantity_reserved = GREATEST(quantity_reserved - ?, 0),
+               quantity_on_hand = GREATEST(quantity_on_hand - ?, 0)
+           WHERE coffin_id = ?`,
+          [order.quantity, order.quantity, order.coffin_id]
+        );
+        nextStockReserved = false;
+      } else if (
+        ['active', 'booked'].includes(status)
+        && currentStatus === 'cancelled'
+        && !madeToOrder
+        && !order.source_request_id
+      ) {
+        const stockUpdate: any = await query(
+          `UPDATE coffins
+           SET quantity = quantity - ?, quantity_reserved = quantity_reserved + ?
+           WHERE coffin_id = ? AND is_deleted = FALSE AND quantity >= ?`,
+          [order.quantity, order.quantity, order.coffin_id, order.quantity]
+        );
+        if (Number(stockUpdate?.affectedRows || 0) !== 1) {
+          const error: any = new Error('Insufficient stock to reactivate this reservation');
+          error.statusCode = 409;
+          throw error;
+        }
+        nextStockReserved = true;
+      } else if (['active', 'booked'].includes(status) && currentStatus === 'completed') {
+        const error: any = new Error('A completed reservation cannot be reactivated');
+        error.statusCode = 409;
+        throw error;
+      }
+
+      const updates: string[] = [];
+      const values: any[] = [];
+      if (status !== undefined) {
+        updates.push('status = ?');
+        values.push(status);
+        if (status === 'cancelled' || status === 'completed') {
+          updates.push('stock_reserved = ?');
+          values.push(nextStockReserved ? 1 : 0);
+        } else if (currentStatus === 'cancelled' && nextStockReserved) {
+          updates.push('stock_reserved = ?');
+          values.push(1);
+        }
+      }
+      if (paid !== undefined) {
+        updates.push('paid = ?');
+        values.push(paid ? 1 : 0);
+      }
+      if (amount !== undefined) {
+        updates.push('amount = ?');
+        values.push(parseFloat(amount) || 0);
+      }
+      if (deposit !== undefined) {
+        updates.push('deposit = ?');
+        values.push(parseFloat(deposit) || 0);
+      }
+
+      updates.push('updated_at = NOW()');
+      values.push(id, tenantSlug);
+      await query(
+        `UPDATE coffin_bookings SET ${updates.join(', ')} WHERE order_id = ? AND tenant_slug = ?`,
+        values
+      );
+    });
 
     await clearCoffinCache(tenantSlug);
 
@@ -995,7 +1177,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.status(200).json({ success: true, message: 'Order updated successfully' });
   } catch (error: any) {
     logger.error({ msg: 'Update order status error', tenantSlug, id, error: error.message });
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(error.statusCode || 500).json({ success: false, message: error.message });
   }
 };
 

@@ -9,6 +9,7 @@ import StoreTab from './StoreTab';
 import Toasts from './Toasts';
 import { Ctx } from './WorkshopContext';
 import { getTenantSlug } from '../../../utils/globalAuth';
+import CoffinInsights from '../components/CoffinInsights';
 
 const DEFAULT_COFFIN_CATALOG = {
   types: {
@@ -178,6 +179,8 @@ function WorkshopHome({ orders, workers, materials, search, onView, onNewOrder }
           <strong>{lowStock}</strong><small>Low-stock items</small>
         </button>
       </div>
+
+      <CoffinInsights />
 
       <div className="workshop-overview-grid">
         <section className="workshop-panel">
@@ -381,6 +384,7 @@ function WorkshopReports({ orders, workers, materials }) {
   const lowStock = materials.filter((material) => material.quantity <= material.minLevel);
   return (
     <div className="workshop-report-grid">
+      <div style={{ gridColumn: '1 / -1' }}><CoffinInsights /></div>
       {STAGES.map((stage) => {
         const count = orders.filter((order) => stage.statuses.includes(order.status)).length;
         return (

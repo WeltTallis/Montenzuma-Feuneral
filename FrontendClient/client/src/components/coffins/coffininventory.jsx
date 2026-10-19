@@ -63,6 +63,14 @@ const getStockStatus = (stock) => {
 const getCoffinStock = (coffin) =>
   Math.max(0, parseInt(coffin?.stock ?? coffin?.quantity, 10) || 0);
 
+const getCoffinImageUrl = (imagePath) => {
+  if (!imagePath || typeof imagePath !== 'string') return null;
+  const cleanPath = imagePath.trim();
+  if (/^https?:\/\//i.test(cleanPath)) return cleanPath;
+  const normalizedPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+  return `${env.API_GATEWAY_URL}${normalizedPath}`;
+};
+
 const getBookingStatus = (status) => {
   const map = {
     pending: { label: 'Pending', cls: 'tag-pe' },
@@ -1267,7 +1275,7 @@ const CoffinDashboard = () => {
       formData.append('quantity', parseInt(data.stock) || 0);
       if (data.size) formData.append('size', data.size);
       if (data.color) formData.append('color', data.color);
-      if (data.notes) formData.append('notes', data.notes);
+      if (data.notes) formData.append('description', data.notes);
       if (data.images && data.images.length > 0) {
         Array.from(data.images).forEach((file) => formData.append('images', file));
       }
@@ -1297,15 +1305,20 @@ const CoffinDashboard = () => {
     );
     const d = modal.data;
     const stock = getCoffinStock(selectedCoffin);
-    if (!selectedCoffin) {
-      toast.error('Select an available coffin type and color');
+    const coffinName = String(d.coffin_name || selectedCoffin?.type || selectedCoffin?.name || '').trim();
+    const coffinColor = String(d.color || selectedCoffin?.color || '').trim();
+    const requestedSize = String(d.size !== undefined ? d.size : selectedCoffin?.size || '').trim();
+    if (!coffinName) {
+      toast.error('Coffin type is required');
+      return;
+    }
+    if (!coffinColor) {
+      toast.error('Coffin color is required');
       return;
     }
     const clientName = String(d.client_name || '').trim();
-    const deceasedName = String(d.deceased_name || '').trim();
     const serviceDate = String(d.service_date || '');
     if (!clientName) { toast.error('Client name is required'); return; }
-    if (!deceasedName) { toast.error('Deceased name is required'); return; }
     if (!serviceDate) { toast.error('Service date is required'); return; }
     const today = todayKey();
     if (serviceDate < today) {
@@ -1314,22 +1327,29 @@ const CoffinDashboard = () => {
     }
     const requestedQuantity = parseInt(d.quantity, 10) || 1;
     if (requestedQuantity <= 0) { toast.error('Quantity must be at least 1'); return; }
-    if (requestedQuantity > stock) {
+    const selectedMatchesSize = selectedCoffin && (
+      requestedSize
+        ? String(selectedCoffin.size || '').trim().toLowerCase() === requestedSize.toLowerCase()
+        : !String(selectedCoffin.size || '').trim()
+    );
+    const stockBacked = selectedMatchesSize && stock >= requestedQuantity;
+    if (requestedSize && selectedMatchesSize && requestedQuantity > stock) {
       toast.error(`Only ${stock} of this coffin variant are available`);
       return;
     }
     setSubmitLoading(true);
     try {
       const selectedBranchId = d.branch_id || currentBranch;
-      const isInterBranch = selectedBranchId != currentBranch;
+      const isInterBranch = !!stockBacked && selectedBranchId != currentBranch;
 
       const res = await api.post('/coffins/bookings', {
         client_name: d.client_name,
         client_phone: d.client_phone,
         deceased_name: d.deceased_name,
-        coffin_id: d.coffin_id,
-        color: d.color || '',
-        size: d.size || '',
+        coffin_id: d.coffin_id || undefined,
+        coffin_name: coffinName,
+        color: coffinColor,
+        size: requestedSize || '',
         quantity: d.quantity || 1,
         service_date: d.service_date,
         service_time: d.service_time || '',
@@ -1549,7 +1569,7 @@ const CoffinDashboard = () => {
   const inventoryColors = [...new Set(branchCoffins.map((c) => c.color).filter(Boolean))].sort();
   const bookableCoffins = coffins.filter((coffin) => {
     const matchesBranch = !coffin.branch_id || coffin.branch_id == (modal.data.branch_id || currentBranch);
-    return matchesBranch && getCoffinStock(coffin) > 0;
+    return matchesBranch;
   });
   const bookingTypes = [...new Set(bookableCoffins.map((c) => c.type || c.name).filter(Boolean))].sort();
   const bookingColors = [...new Set(
@@ -2498,7 +2518,7 @@ const CoffinDashboard = () => {
                 <th style={styles.th}>ID</th>
                 <th style={styles.th}>Details</th>
                 <th style={styles.th}>Price</th>
-                <th style={styles.th}>Stock</th>
+                <th style={styles.th}>Available stock</th>
                 <th style={styles.th}>Status</th>
                 <th style={styles.th}>Action</th>
               </tr>
@@ -2531,7 +2551,17 @@ const CoffinDashboard = () => {
                     <tr key={id}>
                       <td style={styles.td}>
                         <div style={styles.ci}>
-                          <div style={styles.thumb}>{(coffin.type || coffin.name)?.charAt(0) || '?'}</div>
+                          <div style={styles.thumb}>
+                            {coffin.primary_image ? (
+                              <img
+                                src={getCoffinImageUrl(coffin.primary_image)}
+                                alt={`${coffin.type || coffin.name || 'Coffin'} variant`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                              />
+                            ) : (
+                              (coffin.type || coffin.name)?.charAt(0) || '?'
+                            )}
+                          </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ ...styles.cname, overflowWrap: 'anywhere' }}>{coffin.type || coffin.name}</div>
                             <div style={styles.sku}>{coffin.color || 'Color not set'}{coffin.size ? ` · ${coffin.size}` : ''}</div>
@@ -2595,7 +2625,11 @@ const CoffinDashboard = () => {
                                 : S.success,
                         }}
                       >
-                        {stock}
+                        <div>{stock}</div>
+                        <div style={{ color: S.textMuted, fontSize: 11, fontWeight: 500, marginTop: 3 }}>
+                          On hand {Math.max(0, Number(coffin.quantity_on_hand ?? stock + (Number(coffin.quantity_reserved) || 0)) || 0)}
+                          {' · '}Reserved {Math.max(0, Number(coffin.quantity_reserved) || 0)}
+                        </div>
                       </td>
                       <td style={styles.td}>
                         <Tag cls={st.cls}>{st.label}</Tag>
@@ -2856,8 +2890,29 @@ const CoffinDashboard = () => {
         <form onSubmit={handleCreateCoffin} style={styles.bkForm}>
           <div style={styles.bkBody}>
             <div style={styles.bkSectionHead}>
-              <span>Coffin details</span>
+              <span>Design and color variant</span>
               <span style={styles.bkSectionRule} />
+            </div>
+            <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
+              <div style={styles.fg}>
+                <label style={styles.fl}>Color variant * — inventory and bookings depend on this</label>
+                <input
+                  style={styles.fi}
+                  required
+                  list="coffin-inventory-colors"
+                  value={modal.data.color || ''}
+                  onChange={(e) =>
+                    setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
+                  }
+                  placeholder="Choose or enter a color, e.g. White, Gold, Black"
+                />
+                <datalist id="coffin-inventory-colors">
+                  {inventoryColors.map((color) => <option key={color} value={color} />)}
+                </datalist>
+                <span style={{ color: S.textMuted, fontSize: 12, marginTop: 5 }}>
+                  Register one color per variant. To add another color for the same design, use the same coffin type and choose a different color.
+                </span>
+              </div>
             </div>
             <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
               <div style={styles.fg}>
@@ -2865,12 +2920,16 @@ const CoffinDashboard = () => {
                 <input
                   style={styles.fi}
                   required
+                  list="coffin-inventory-types"
                   value={modal.data.name || ''}
                   onChange={(e) =>
                     setModal({ ...modal, data: { ...modal.data, name: e.target.value } })
                   }
                   placeholder="Mahogany Heritage"
                 />
+                <datalist id="coffin-inventory-types">
+                  {inventoryTypes.map((type) => <option key={type} value={type} />)}
+                </datalist>
               </div>
             </div>
             <div style={styles.fr}>
@@ -2878,22 +2937,11 @@ const CoffinDashboard = () => {
                 <label style={styles.fl}>Size (ft)</label>
                 <input
                   style={styles.fi}
-                  value={modal.data.size || ''}
+                  value={modal.data.size ?? selectedBookingCoffin?.size ?? ''}
                   onChange={(e) =>
                     setModal({ ...modal, data: { ...modal.data, size: e.target.value } })
                   }
                   placeholder="e.g. 6ft, 7ft"
-                />
-              </div>
-              <div style={styles.fg}>
-                <label style={styles.fl}>Color</label>
-                <input
-                  style={styles.fi}
-                  value={modal.data.color || ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
-                  }
-                  placeholder="e.g. Black, Brown"
                 />
               </div>
             </div>
@@ -2937,12 +2985,23 @@ const CoffinDashboard = () => {
                 multiple
                 onChange={(e) => {
                   const files = Array.from(e.target.files);
+                  if (files.length > 10) {
+                    toast.error('Select no more than 10 images');
+                    e.target.value = '';
+                    return;
+                  }
+                  const oversized = files.find((file) => file.size > 10 * 1024 * 1024);
+                  if (oversized) {
+                    toast.error(`${oversized.name} exceeds the 10 MB limit`);
+                    e.target.value = '';
+                    return;
+                  }
                   setModal({ ...modal, data: { ...modal.data, images: files } });
                 }}
                 style={styles.bkFile}
               />
               <div style={{ fontSize: 12, color: S.textMuted, marginTop: 4 }}>
-                You can select multiple images (max 10)
+                Upload up to 10 images, 10 MB each. {modal.data.images?.length ? `${modal.data.images.length} selected.` : ''}
               </div>
             </div>
             <div style={styles.fg}>
@@ -3217,11 +3276,17 @@ const CoffinDashboard = () => {
                       setBookingColorFilter('all');
                       setModal((prev) => ({
                         ...prev,
-                        data: { ...prev.data, coffin_id: '', color: '', size: '' },
+                        data: {
+                          ...prev.data,
+                          coffin_id: '',
+                          coffin_name: e.target.value === 'all' ? '' : e.target.value,
+                          color: '',
+                          size: '',
+                        },
                       }));
                     }}
                   >
-                    <option value="all">All available types</option>
+                    <option value="all">Choose a type</option>
                     {bookingTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                   </select>
                 </div>
@@ -3234,21 +3299,25 @@ const CoffinDashboard = () => {
                       setBookingColorFilter(e.target.value);
                       setModal((prev) => ({
                         ...prev,
-                        data: { ...prev.data, coffin_id: '', color: '', size: '' },
+                        data: {
+                          ...prev.data,
+                          coffin_id: '',
+                          color: e.target.value === 'all' ? '' : e.target.value,
+                          size: '',
+                        },
                       }));
                     }}
                   >
-                    <option value="all">All available colors</option>
+                    <option value="all">Choose a color</option>
                     {bookingColors.map((color) => <option key={color} value={color}>{color}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label style={styles.fl}>Select Coffin *</label>
+                <label style={styles.fl}>Inventory variant (optional)</label>
                 <select
                   style={styles.fs}
-                  required
                   value={modal.data.coffin_id || ''}
                   onChange={(e) => {
                     const selected = filteredBookingCoffins.find(
@@ -3259,9 +3328,10 @@ const CoffinDashboard = () => {
                       data: {
                         ...prev.data,
                         coffin_id: e.target.value,
+                        coffin_name: selected?.type || selected?.name || prev.data.coffin_name || '',
                         color: selected?.color || '',
                         size: selected?.size || '',
-                        quantity: selected
+                        quantity: selected && getCoffinStock(selected) > 0
                           ? Math.min(parseInt(prev.data.quantity, 10) || 1, getCoffinStock(selected))
                           : prev.data.quantity,
                         amount: selected?.price ?? selected?.exact_price ?? prev.data.amount,
@@ -3269,16 +3339,15 @@ const CoffinDashboard = () => {
                     }));
                   }}
                 >
-                  <option value="">Select coffin</option>
+                  <option value="">No stock variant — made to order</option>
                   {filteredBookingCoffins.length > 0 ? filteredBookingCoffins.map((coffin) => (
                     <option key={coffin.coffin_id || coffin.id} value={coffin.coffin_id || coffin.id}>
                       {[coffin.type || coffin.name, coffin.color, coffin.size].filter(Boolean).join(' · ')}
-                      {' — '}{formatKES(coffin.price ?? coffin.exact_price)}
-                      {' ('}{getCoffinStock(coffin)}{' available)'}
+                      {' — '}{getCoffinStock(coffin)}{' available · '}{formatKES(coffin.price ?? coffin.exact_price)}
                     </option>
                   )) : (
                     <option value="" disabled>
-                      {bookableCoffins.length ? 'No coffins match these search filters' : 'No coffins currently in stock'}
+                      {bookableCoffins.length ? 'No variants match these search filters' : 'No inventory variants (enter a type and color to make to order)'}
                     </option>
                   )}
                 </select>
@@ -3290,6 +3359,57 @@ const CoffinDashboard = () => {
                     {` · ${getCoffinStock(selectedBookingCoffin)} in stock`}
                   </div>
                 )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={styles.fl}>Coffin type *</label>
+                  <input
+                    style={styles.fi}
+                    required
+                    value={modal.data.coffin_name ?? selectedBookingCoffin?.type ?? selectedBookingCoffin?.name ?? ''}
+                    onChange={(e) =>
+                      setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, coffin_name: e.target.value, coffin_id: '' },
+                      }))
+                    }
+                    placeholder="e.g. Dome"
+                  />
+                </div>
+                <div>
+                  <label style={styles.fl}>Color *</label>
+                  <input
+                    style={styles.fi}
+                    required
+                    value={modal.data.color ?? selectedBookingCoffin?.color ?? ''}
+                    onChange={(e) =>
+                      setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, color: e.target.value, coffin_id: '' },
+                      }))
+                    }
+                    placeholder="e.g. White"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={styles.fl}>Size (optional)</label>
+                <input
+                  style={styles.fi}
+                  value={modal.data.size || ''}
+                  onChange={(e) =>
+                    setModal((prev) => ({
+                      ...prev,
+                      data: { ...prev.data, size: e.target.value },
+                    }))
+                  }
+                  placeholder="Leave blank and let the workshop decide"
+                />
+                <div style={{ fontSize: 12, color: S.textMuted, marginTop: 5 }}>
+                  Leave blank for a made-to-order booking. If a matching no-size variant has stock, it will be reserved.
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16 }}>

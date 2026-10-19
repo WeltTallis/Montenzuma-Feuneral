@@ -1,4 +1,4 @@
-﻿import { coffinQuery } from '../db.js';
+import { coffinQuery, coffinTransaction } from '../db.js';
 import crypto from 'crypto';
 
 
@@ -49,6 +49,11 @@ class CoffinModel {
       price_kes: parseFloat(r.exact_price ?? r.price) || 0, // UI fallback
       quantity: parseInt(r.quantity ?? r.stock) || 0,
       stock: parseInt(r.quantity ?? r.stock) || 0, // UI uses `stock`
+      quantity_available: parseInt(r.quantity ?? r.stock) || 0,
+      quantity_reserved: parseInt(r.quantity_reserved) || 0,
+      quantity_on_hand: Number.isFinite(Number(r.quantity_on_hand))
+        ? parseInt(r.quantity_on_hand)
+        : (parseInt(r.quantity ?? r.stock) || 0) + (parseInt(r.quantity_reserved) || 0),
       color: r.color || '',
       size: r.size || '',
       material: r.material || '',
@@ -96,14 +101,14 @@ class CoffinModel {
 
     const sql = `
       INSERT INTO coffins
-        (coffin_id, tenant_slug, tenant_id, branch_id, type, exact_price, quantity, color, size, description,
+        (coffin_id, tenant_slug, tenant_id, branch_id, type, exact_price, quantity, quantity_on_hand, quantity_reserved, color, size, description,
          is_active, is_deleted, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, TRUE, FALSE, NOW())
     `;
 
     await coffinQuery(sql, [
       coffinId, tenantSlug, tenantId, branchId,
-      type, exactPrice, quantity, color, size, data.description || null
+      type, exactPrice, quantity, quantity, color, size, data.description || null
     ]);
 
     return {
@@ -115,6 +120,9 @@ class CoffinModel {
       price: exactPrice,
       quantity,
       stock: quantity,
+      quantity_available: quantity,
+      quantity_on_hand: quantity,
+      quantity_reserved: 0,
       color,
       size,
       description: data.description || null,
@@ -139,7 +147,7 @@ class CoffinModel {
     }
 
     const sql = `
-      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.description, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.description, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -160,7 +168,7 @@ class CoffinModel {
    */
   static async getByBranch(tenantSlug: string, _branchDbName?: string | null, _branchSlug?: string | null, branchId: number | null = null): Promise<any[]> {
     const sql = `
-      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.description, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.description, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -192,7 +200,7 @@ class CoffinModel {
     }
 
     const sql = `
-      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.color, c.size, c.description, c.created_at,
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.description, c.created_at,
         GROUP_CONCAT(ci.image_url) as image_urls
       FROM coffins c
       LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
@@ -235,8 +243,11 @@ class CoffinModel {
       updateValues.push((data.size || '').toString().trim() || null);
     }
     if (data.quantity !== undefined) {
+      const quantity = Math.max(0, parseInt(data.quantity) || 0);
       updateFields.push('quantity = ?');
-      updateValues.push(parseInt(data.quantity) || 0);
+      updateValues.push(quantity);
+      updateFields.push('quantity_on_hand = ? + quantity_reserved');
+      updateValues.push(quantity);
     }
     if (data.exact_price !== undefined || data.price !== undefined) {
       updateFields.push('exact_price = ?');
@@ -267,7 +278,7 @@ class CoffinModel {
       'SELECT coffin_id FROM coffins WHERE coffin_id = ? AND (tenant_slug = ?' + (tenantId ? ' OR tenant_id = ?' : '') + ') AND is_deleted = FALSE',
       tenantId ? [id, tenantSlug, String(tenantId)] : [id, tenantSlug]
     );
-    return existing.length > 0 ? 0 : 0;
+    return existing.length > 0 ? 1 : 0;
   }
 
   /**
@@ -296,62 +307,68 @@ class CoffinModel {
    */
   static async createOrder(tenantSlug: string, data: any): Promise<any> {
     const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-
-    // Look the coffin up by its id — the caller auto-fills name/color/size from
-    // the selected coffin, so we never require those fields for a booking.
-    const coffin: any[] = await coffinQuery(
-      'SELECT coffin_id, quantity FROM coffins WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE',
-      [data.coffin_id, tenantSlug]
-    );
-
-    if (coffin.length === 0) {
-      throw new Error('Coffin not found with the specified id');
+    const quantity = parseInt(data.quantity, 10);
+    const stockReserved = data.stock_reserved === true;
+    const isMadeToOrder = data.is_made_to_order === true;
+    if (stockReserved && !data.coffin_id) {
+      throw new Error('A stock-backed reservation must identify an inventory variant');
     }
 
-    if (coffin[0].quantity < parseInt(data.quantity)) {
-      throw new Error(`Insufficient stock. Available: ${coffin[0].quantity}`);
-    }
-
-    await coffinQuery(
-      'UPDATE coffins SET quantity = quantity - ? WHERE coffin_id = ? AND tenant_slug = ?',
-      [parseInt(data.quantity), coffin[0].coffin_id, tenantSlug]
-    );
-
-    // Normalise a service date down to YYYY-MM-DD so the DATE column accepts it
-    // (the inventory UI sends e.g. '2026-08-25', possibly as a JS Date ISO string).
     const serviceDate = CoffinModel.toMySqlDate(data.service_date);
-
-    const sql = `
-      INSERT INTO coffin_bookings (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size, quantity, booked_by, booked_for, client_phone, service_date, service_time, paid, amount, deposit, notes, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
-    `;
-
     const amount = parseFloat(data.amount) || 0;
     const deposit = parseFloat(data.deposit) || 0;
+    const tenantId = data.tenant_id != null && String(data.tenant_id).trim()
+      ? String(data.tenant_id).trim()
+      : null;
+    const tenantClause = tenantId ? '(tenant_slug = ? OR tenant_id = ?)' : 'tenant_slug = ?';
+    const tenantParams = tenantId ? [tenantSlug, tenantId] : [tenantSlug];
 
-    const result: any = await coffinQuery(sql, [
-      orderId, tenantSlug,
-      (data.tenant_id != null && String(data.tenant_id).trim() !== '') ? String(data.tenant_id).trim() : null,
-      (data.branch_id != null && String(data.branch_id).trim() !== '') ? String(data.branch_id).trim() : null,
-      coffin[0].coffin_id, data.coffin_name?.trim() || null,
-      data.color ?? null, data.size ?? null, parseInt(data.quantity),
-      data.booked_by?.trim() || null, data.booked_for?.trim() || null,
-      data.client_phone?.trim() || null,
-      serviceDate,
-      data.service_time ? String(data.service_time).slice(0, 5) : null,
-      data.paid ? 1 : 0,
-      amount,
-      deposit,
-      (data.notes != null && String(data.notes).trim() !== '') ? String(data.notes).trim() : null
-    ]);
+    const result = await coffinTransaction(async (query: any) => {
+      if (stockReserved) {
+        const stockUpdate: any = await query(
+          `UPDATE coffins
+           SET quantity = quantity - ?, quantity_reserved = quantity_reserved + ?
+           WHERE coffin_id = ? AND ${tenantClause} AND is_deleted = FALSE AND quantity >= ?`,
+          [quantity, quantity, data.coffin_id, ...tenantParams, quantity]
+        );
+        if (Number(stockUpdate?.affectedRows || 0) !== 1) {
+          throw new Error('Insufficient stock for the selected coffin variant');
+        }
+      }
+
+      const sql = `
+        INSERT INTO coffin_bookings
+          (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size,
+           quantity, booked_by, booked_for, client_phone, service_date, service_time, paid,
+           amount, deposit, notes, stock_reserved, is_made_to_order, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+      `;
+
+      return query(sql, [
+        orderId, tenantSlug,
+        tenantId,
+        (data.branch_id != null && String(data.branch_id).trim() !== '') ? String(data.branch_id).trim() : null,
+        data.coffin_id || null, data.coffin_name?.trim() || null,
+        data.color ?? null, data.size ?? null, quantity,
+        data.booked_by?.trim() || null, data.booked_for?.trim() || null,
+        data.client_phone?.trim() || null, serviceDate,
+        data.service_time ? String(data.service_time).slice(0, 5) : null,
+        data.paid ? 1 : 0, amount, deposit,
+        (data.notes != null && String(data.notes).trim() !== '') ? String(data.notes).trim() : null,
+        stockReserved ? 1 : 0, isMadeToOrder ? 1 : 0
+      ]);
+    });
 
     return {
       order_id: orderId,
-      insertId: result.insertId,
+      insertId: (result as any).insertId,
+      coffin_id: data.coffin_id || null,
       coffin_name: data.coffin_name,
       color: data.color,
       size: data.size,
-      quantity: data.quantity,
+      quantity,
+      stock_reserved: stockReserved,
+      is_made_to_order: isMadeToOrder,
       booked_by: data.booked_by,
       booked_for: data.booked_for,
       service_date: serviceDate,
@@ -453,8 +470,9 @@ class CoffinModel {
     await coffinQuery(
       `INSERT INTO coffin_bookings
          (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size,
-          quantity, booked_by, booked_for, client_phone, service_date, paid, source_request_id, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'active', NOW())`,
+          quantity, booked_by, booked_for, client_phone, service_date, paid, source_request_id,
+          stock_reserved, is_made_to_order, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, 'active', NOW())`,
       [
         orderId, tenantSlug,
         (data.tenant_id != null && String(data.tenant_id).trim() !== '') ? String(data.tenant_id).trim() : null,

@@ -68,6 +68,15 @@ export const workshopService = {
     getOrderTimeline: (id) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.PRODUCTION.TIMELINE(id))),
 
+    getCoffinInventoryAnalytics: () =>
+        handleResponse(workshopApi.get('/workshop/analytics/coffins/inventory')),
+
+    getCoffinBookingsAnalytics: (params = {}) =>
+        handleResponse(workshopApi.get('/workshop/analytics/coffins/bookings', { params })),
+
+    getCoffinSalesAnalytics: (params = {}) =>
+        handleResponse(workshopApi.get('/workshop/analytics/coffins/sales', { params })),
+
     // --- Materials ---
     getMaterials: (params = {}) =>
         handleResponse(workshopApi.get(ENDPOINTS.WORKSHOP.MATERIALS, { params })),
