@@ -1008,6 +1008,24 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   // Handle view change
   const handleViewChange = useCallback((view) => {
     setCalendarView(view.type);
+    // Re-measure after a view switch so week/day columns settle at the
+    // correct width instead of rendering oversized ("big") columns.
+    requestAnimationFrame(() => {
+      const api = calendarRef.current?.getApi?.();
+      if (api) api.updateSize();
+    });
+  }, []);
+
+  // ── Fix "big columns" on first load ──────────────────────────────────
+  // FullCalendar sizes the grid when it mounts. If the container hasn't
+  // settled its final dimensions yet (flex 100vh shell), the initial
+  // paint uses a wrong width/height and the week/day columns render
+  // oversized. Re-measure once the DOM has laid out.
+  useEffect(() => {
+    const api = calendarRef.current?.getApi?.();
+    if (!api) return;
+    const frame = requestAnimationFrame(() => api.updateSize());
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   // Custom event renderer - Full cards for week/day view with all details
@@ -1354,7 +1372,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           dayCellDidMount={renderDayCell}
           height="100%"
           contentHeight="100%"
-          aspectRatio={1.8}
           firstDay={0}
           weekends={true}
           nowIndicator={true}
