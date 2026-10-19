@@ -1093,6 +1093,11 @@ const FlowerBookingsNew = () => {
       default: return { background: '#FCE0EC', color: '#9D174D', border: '#D6336C' };
     }
   };
+  const getBookingDotColor = (booking) => {
+    if (normStatus(booking.status) === 'completed') return '#2B9155';
+    if (normStatus(booking.status) === 'cancelled') return '#DC2626';
+    return '#D6336C';
+  };
 
   const calendarItems = useMemo(() => {
     return bookings.map(b => ({
