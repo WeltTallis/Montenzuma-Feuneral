@@ -848,7 +848,6 @@ const FlowerBookingsNew = () => {
     flower_designs: '',
     initials: '',
     coffin_type: '',
-    flower_details: '',
     color_preference: '',
     any_color: true,
     ribbon_message: '',
@@ -1153,7 +1152,6 @@ const FlowerBookingsNew = () => {
       flower_designs: '',
       initials: '',
       coffin_type: '',
-      flower_details: '',
       color_preference: '',
       any_color: true,
       ribbon_message: '',
@@ -1195,7 +1193,6 @@ const FlowerBookingsNew = () => {
       flower_designs: getBookingNoteTag(booking, 'DESIGN'),
       initials: getBookingNoteTag(booking, 'INITIALS'),
       coffin_type: getBookingNoteTag(booking, 'COFFIN'),
-      flower_details: booking?.flower_description || [...new Set(lineItems.flatMap(item => item.types || []))].join(', '),
       color_preference: storedColors.join(', '),
       any_color: storedColors.length === 0,
       ribbon_message: booking?.ribbon_message || '',
@@ -1227,9 +1224,8 @@ const FlowerBookingsNew = () => {
 
     const requestedArrangements = splitCommaList(newBooking.arrangement_type);
     const flowerDesigns = splitCommaList(newBooking.flower_designs);
-    const typedTypes = splitCommaList(newBooking.flower_details);
-    if (!requestedArrangements.length && !typedTypes.length && !editingBookingId) {
-      return showToast('Enter the requested flower item or flower details', 'error');
+    if (!requestedArrangements.length && !editingBookingId) {
+      return showToast('Enter the requested flower item', 'error');
     }
     const arrangementTypes = requestedArrangements.length ? requestedArrangements : ['Flower order'];
     const colors = splitCommaList(newBooking.color_preference);
@@ -1243,7 +1239,6 @@ const FlowerBookingsNew = () => {
       return {
         arrangement_id: existing?.arrangement_id ?? null,
         name,
-        types: typedTypes,
         colors: newBooking.any_color ? [] : colors,
         quantity: existing?.quantity || quantityPerArrangement,
       };
@@ -1286,7 +1281,7 @@ const FlowerBookingsNew = () => {
         arrangement_type: arrangementTypes.join(', '),
         arrangement_id: null,
         flower_type: headline.slice(0, 100),
-        flower_description: typedTypes.join(', '),
+        flower_description: '',
         arrangements: items,
         service_type: newBooking.service_type || 'Funeral service before final burial',
         ribbon_color: newBooking.any_color ? null : colors[0] || null,
@@ -1296,13 +1291,24 @@ const FlowerBookingsNew = () => {
         special_instructions: newBooking.remarks?.trim() || null,
         funeral_date: newBooking.funeral_date || null,
         quantity: items.reduce((total, item) => total + item.quantity, 0),
-        size: newBooking.size?.trim() || null,
         deceased_name: newBooking.deceased_name.trim(),
         booked_by: getLocalUserName() || 'System',
-        // Kin contact — becomes `customer_phone` on the server, shown in the
-        // booking side panel as "Phone Number".
-        phone: newBooking.phone.trim() || null,
-        customer_phone: newBooking.phone.trim() || null,
+        // Transport coordinator phone — shown in the booking side panel as
+        // "Transport Coordinator" so it is never confused with the family contact.
+        phone: (() => {
+          try {
+            const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+            const u = raw ? JSON.parse(raw) : {};
+            return u?.phone || u?.phone_number || u?.tel || u?.contact || '';
+          } catch { return ''; }
+        })() || null,
+        customer_phone: (() => {
+          try {
+            const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+            const u = raw ? JSON.parse(raw) : {};
+            return u?.phone || u?.phone_number || u?.tel || u?.contact || '';
+          } catch { return ''; }
+        })() || null,
         branch: resolveBranchName(newBooking.branch) || newBooking.branch || undefined,
         funeral_home: resolveBranchName(newBooking.branch) || newBooking.branch || undefined,
         date: bookedOn,
@@ -1350,7 +1356,6 @@ const FlowerBookingsNew = () => {
         flower_designs: '',
         initials: '',
         coffin_type: '',
-        flower_details: '',
         color_preference: '',
         any_color: true,
         ribbon_message: '',
@@ -2291,14 +2296,12 @@ const FlowerBookingsNew = () => {
       });
     };
     const arrangementSuggestions = ['Full set', 'Stems', 'Round wreath', 'Heart spray', 'Casket spray', 'Coffin wrap', 'Herse', 'Car number plate'];
-    const flowerSuggestions = ['Mums', 'Red roses', 'White lilies', 'Chrysanthemums', 'Gypsophila', 'Greenery'];
-
     return (
       <div style={styles.formContainer}>
         {/* Header — same pattern as Create Arrangement */}
         <div style={{ padding: '24px 28px', borderBottom: '1px solid #EAE7E2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, color: '#1C1A17', margin: 0 }}>
-            {editingBookingId ? 'Edit Flower Booking' : 'Place Flower Order'}
+            Arrangement / Requested Flower Item(s)
           </h2>
           <button
             type="button"
@@ -2360,28 +2363,6 @@ const FlowerBookingsNew = () => {
             onChange={e => setNewBooking(prev => ({ ...prev, coffin_type: e.target.value }))}
           />
 
-          {/* ── Flowers ── */}
-          <label style={lbl} htmlFor="flower-details">Flower Types, Colors & Package Details</label>
-          <textarea
-            id="flower-details"
-            rows={3}
-            style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="e.g. Full set mums, white with a touch of purple; all white; casket spray white and purple mums"
-            value={newBooking.flower_details}
-            onChange={e => setNewBooking(prev => ({ ...prev, flower_details: e.target.value }))}
-          />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-            {flowerSuggestions.map(item => (
-              <button
-                key={item}
-                type="button"
-                style={suggestionChip}
-                onClick={() => addSuggestion('flower_details', item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
           <label style={lbl} htmlFor="flower-service-type">Service Type</label>
           <input
             id="flower-service-type"
@@ -2422,28 +2403,8 @@ const FlowerBookingsNew = () => {
             style={{ ...inp, marginBottom: '22px' }}
             placeholder="e.g. KCV 095H"
             value={newBooking.vehicle_plate}
-            onChange={e => setNewBooking(prev => ({ ...prev, vehicle_plate: e.target.value }))}
+            onChange={e => setNewBooking(prev => ({ ...prev, vehicle_plate: e.target.value.toUpperCase() }))}
           />
-          <label style={lbl}>Size</label>
-          <select
-            style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.size}
-            onChange={e => setNewBooking(prev => ({ ...prev, size: e.target.value }))}
-          >
-            <option value="">Select size</option>
-            {['Small', 'Medium', 'Large'].map(size => <option key={size} value={size}>{size}</option>)}
-          </select>
-
-          <label style={lbl}>Quantity</label>
-          <input
-            type="number"
-            min="1"
-            max="99"
-            style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.quantity}
-            onChange={e => setNewBooking(prev => ({ ...prev, quantity: e.target.value }))}
-          />
-
           {/* ── Special instructions ── */}
           <label style={lbl}>Special Remarks</label>
           <textarea
@@ -2463,11 +2424,14 @@ const FlowerBookingsNew = () => {
             onChange={e => {
               const files = Array.from(e.target.files || []);
               e.target.value = '';
-              setBookingSamplePreviews(files.map(file => ({
+              const newPreviews = files.map(file => ({
                 name: file.name,
                 url: URL.createObjectURL(file),
-              })));
-              setNewBooking(prev => ({ ...prev, sample_uploads: files }));
+              }));
+              // Append new photos so each selection adds to the gallery
+              // instead of replacing what was already chosen (real-time update).
+              setBookingSamplePreviews(prev => [...prev, ...newPreviews]);
+              setNewBooking(prev => ({ ...prev, sample_uploads: [...(prev.sample_uploads || []), ...files] }));
             }}
           />
           {bookingSamplePreviews.length > 0 && (
@@ -2500,17 +2464,6 @@ const FlowerBookingsNew = () => {
               the detail panel. `newBooking.time` keeps its existing default so the
               POST body and the [WHEN:…] stamp are unchanged. */}
 
-          {/* Kin phone — saved as `customer_phone` and shown in the booking
-              side panel so the florist can call the person who booked. */}
-          <label style={lbl}>Phone Number</label>
-          <input
-            type="tel"
-            inputMode="tel"
-            placeholder="e.g. 0712 345 678"
-            style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.phone}
-            onChange={e => setNewBooking(prev => ({ ...prev, phone: e.target.value }))}
-          />
           <label style={lbl} htmlFor="flower-contact-name">Family / T-Cord Contact Name</label>
           <input
             id="flower-contact-name"
@@ -2792,7 +2745,7 @@ const FlowerBookingsNew = () => {
               </div>
               <div style={{ minWidth: 0, textAlign: 'right' }}>
                 <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9C9389', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-                  <Phone size={11} /> Phone
+                  <Phone size={11} /> Transport Coordinator
                 </div>
                 {bookerPhone ? (
                   <a
@@ -3004,7 +2957,7 @@ const FlowerBookingsNew = () => {
                   <dd style={styles.specValue}>{bookerName}</dd>
                 </div>}
                 {bookerPhone && <div style={styles.specRow}>
-                  <dt style={styles.specLabel}>Phone Number</dt>
+                  <dt style={styles.specLabel}>Transport Coordinator</dt>
                   <dd style={styles.specValue}>
                     <a
                       href={`tel:${bookerPhone.replace(/\s+/g, '')}`}
