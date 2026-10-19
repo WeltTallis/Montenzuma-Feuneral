@@ -2312,8 +2312,9 @@
                 const d = parseDate(b.date); if (!d) return;
                 const k = fmtISO(d);
                 if (!perDayDots[k]) perDayDots[k] = [];
-                const existing = perDayDots[k].find(dot => dot.color === ST[b.status].bar);
-                if (existing) { } else perDayDots[k].push({ color: ST[b.status].bar });
+                const dotColor = (ST[b.status] || ST.pending).color;
+                const existing = perDayDots[k].find(dot => dot.color === dotColor);
+                if (existing) { } else perDayDots[k].push({ color: dotColor });
             });
 
             const dowHtml = DOW_2.map(d => `<div class="cb-mc-dow">${d}</div>`).join('');
@@ -2386,7 +2387,7 @@
             const counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 };
             BOOKINGS.forEach(b => { if (counts[b.status] !== undefined) counts[b.status]++; });
             const total = BOOKINGS.length;
-            const statusData = STORD.map(s => ({ key: s, label: ST[s].label, value: counts[s], color: ST[s].bar }));
+            const statusData = STORD.map(s => ({ key: s, label: ST[s].label, value: counts[s], color: ST[s].color }));
 
             // Pie chart via SVG arcs
             const radius = 38; const stroke = 14; const cx = 50; const cy = 50;
@@ -2702,8 +2703,8 @@
         </div>
         <div class="cb-cell" style="text-align:right;">
           <div class="cb-pr">${money(b.price)}</div>
-          <div class="cb-paid" style="color:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? C.warn : C.dng}">
-            <span class="cb-paid-dot" style="background:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? C.warn : C.dng}"></span>
+          <div class="cb-paid" style="color:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? '#d97706' : C.dng}">
+            <span class="cb-paid-dot" style="background:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? '#d97706' : C.dng}"></span>
             ${money(b.paidAmount || 0)} / ${money(b.price)}
           </div>
         </div>
@@ -2756,7 +2757,7 @@
             <div class="cb-pb-card"><div class="cb-pb-card-l">Coffin</div><div class="cb-pb-card-v" style="font-size:12px;">${b.coffinType} · ${b.color}</div></div>
             <div class="cb-pb-card"><div class="cb-pb-card-l">Schedule</div><div class="cb-pb-card-v" style="font-size:12px;">${fmtMDY(dateObj)} ${b.time ? '· ' + fmtTime12(b.time) : ''}</div></div>
             <div class="cb-pb-card"><div class="cb-pb-card-l">Amount Due</div><div class="cb-pb-card-v hl">${money(b.price)}</div></div>
-            <div class="cb-pb-card"><div class="cb-pb-card-l">Amount Paid</div><div class="cb-pb-card-v" style="color:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? C.warn : C.dng};font-weight:700;">${money(b.paidAmount || 0)}</div></div>
+            <div class="cb-pb-card"><div class="cb-pb-card-l">Amount Paid</div><div class="cb-pb-card-v" style="color:${(b.paidAmount || 0) >= b.price ? C.suc : (b.paidAmount || 0) > 0 ? '#d97706' : C.dng};font-weight:700;">${money(b.paidAmount || 0)}</div></div>
             <div class="cb-pb-card wide"><div class="cb-pb-card-l">Balance Remaining</div><div class="cb-pb-card-v" style="color:${(b.price - (b.paidAmount || 0)) > 0 ? C.dng : C.suc};font-weight:700;">${money(b.price - (b.paidAmount || 0))}</div></div>
             ${b.deceasedName ? `<div class="cb-pb-card wide"><div class="cb-pb-card-l">Deceased</div><div class="cb-pb-card-v">${b.deceasedName}</div></div>` : ''}
             ${b.notes ? `<div class="cb-pb-card wide"><div class="cb-pb-card-l">Notes</div><div class="cb-pb-card-v" style="font-size:12px;color:${C.ink2};">${b.notes}</div></div>` : ''}

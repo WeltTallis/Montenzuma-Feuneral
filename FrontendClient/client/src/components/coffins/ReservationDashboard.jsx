@@ -42,12 +42,19 @@ var SHL  = '0 10px 15px rgba(0,0,0,.08)';
 var SHXL = '0 20px 25px rgba(0,0,0,.1)';
 
 var ST = {
-  confirmed: { label: 'Confirmed', color: ACC,      bar: ACC },
-  pending:   { label: 'Pending',   color: '#64748b', bar: '#64748b' },
-  completed: { label: 'Completed', color: SUC,      bar: SUC },
-  cancelled: { label: 'Cancelled', color: DNG,      bar: DNG },
+  pending:     { label: 'Pending',     color: '#d97706', bar: '#d97706' },
+  booked:      { label: 'Booked',      color: '#00296B', bar: '#00296B' },
+  confirmed:   { label: 'Confirmed',   color: '#00296B', bar: '#00296B' },
+  scheduled:   { label: 'Scheduled',   color: '#E36414', bar: '#E36414' },
+  in_progress: { label: 'In Progress', color: '#0c0b0f', bar: '#0c0b0f' },
+  in_transit:  { label: 'In Transit',  color: '#E36414', bar: '#E36414' },
+  postponed:   { label: 'Postponed',   color: '#d97706', bar: '#d97706' },
+  completed:   { label: 'Completed',   color: '#5F0F40', bar: '#5F0F40' },
+  delivered:   { label: 'Delivered',   color: '#132A13', bar: '#132A13' },
+  cancelled:   { label: 'Cancelled',   color: '#DD2D4A', bar: '#DD2D4A' },
+  maintenance: { label: 'Maintenance', color: '#03071E', bar: '#03071E' },
 };
-var STORD = ['confirmed', 'pending', 'completed', 'cancelled'];
+var STORD = ['confirmed', 'booked', 'pending', 'scheduled', 'in_progress', 'in_transit', 'postponed', 'completed', 'delivered', 'cancelled', 'maintenance'];
 
 function Ico(p) {
   return (
@@ -76,7 +83,7 @@ var IC = {
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }
-function mapStatus(s) { var v = String(s || '').toLowerCase(); if (v === 'active' || v === 'booked' || v === 'approved' || v === 'confirmed' || v === 'reserved') return 'confirmed'; if (v === 'completed' || v === 'delivered' || v === 'done') return 'completed'; if (v === 'cancelled' || v === 'canceled' || v === 'rejected') return 'cancelled'; return 'pending'; }
+function mapStatus(s) { var v = String(s || '').toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_'); if (ST[v]) return v; if (v === 'active' || v === 'approved' || v === 'reserved') return 'confirmed'; if (v === 'done') return 'completed'; if (v === 'canceled' || v === 'rejected') return 'cancelled'; if (v === 'transit' || v === 'transferring') return 'in_transit'; if (v === 'progress') return 'in_progress'; if (v === 'paid') return 'confirmed'; return 'pending'; }
 function parseServiceDate(raw) { if (!raw) return null; var m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return new Date(+m[1], +m[2] - 1, +m[3]); var d = new Date(raw); return isNaN(d.getTime()) ? null : d; }
 function extractTime(raw) { if (!raw) return ''; var m = String(raw).match(/T(\d{2}):(\d{2})/); if (m) return m[1] + ':' + m[2]; if (/^\d{1,2}:\d{2}/.test(String(raw))) return String(raw).slice(0, 5); return ''; }
 function usd(n) { return 'KES ' + Number(n || 0).toLocaleString(); }
@@ -278,7 +285,7 @@ export default function ReservationDashboard(props) {
     mapped.forEach(function (b) {
       var k = format(b.date, 'yyyy-MM-dd');
       if (!m[k]) m[k] = [];
-      var c = ST[b.status].bar;
+      var c = (ST[b.status] || ST.pending).bar;
       var existing = m[k].find(function (dot) { return dot.color === c; });
       if (existing) existing.transfer = existing.transfer || b.transferReservation;
       else m[k].push({ color: c, transfer: !!b.transferReservation });
@@ -310,8 +317,9 @@ export default function ReservationDashboard(props) {
     return Object.keys(counts).map(function (k) { var short = k.length > 14 ? k.slice(0, 14) + '\u2026' : k; return { name: short, full: k, value: counts[k] }; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 5);
   }, [mapped]);
 
-  var statusData = useMemo(function () { var counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 }; mapped.forEach(function (b) { counts[b.status]++; }); return STORD.map(function (s) { return { key: s, label: ST[s].label, value: counts[s], color: ST[s].bar }; }); }, [mapped]);
-  var filterCounts = useMemo(function () { var counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 }; mapped.forEach(function (b) { counts[b.status]++; }); return counts; }, [mapped]);
+  var zeroCounts = function () { var o = {}; STORD.forEach(function (s) { o[s] = 0; }); return o; };
+  var statusData = useMemo(function () { var counts = zeroCounts(); mapped.forEach(function (b) { counts[b.status] = (counts[b.status] || 0) + 1; }); return STORD.map(function (s) { return { key: s, label: ST[s].label, value: counts[s], color: ST[s].bar }; }); }, [mapped]);
+  var filterCounts = useMemo(function () { var counts = zeroCounts(); mapped.forEach(function (b) { counts[b.status] = (counts[b.status] || 0) + 1; }); return counts; }, [mapped]);
 
   useEffect(function () { setCalMonth(visibleMonthDate); }, [visibleMonthDate]);
   var miniCalDays = useMemo(function () {
@@ -803,7 +811,7 @@ export default function ReservationDashboard(props) {
                   <span style={{ fontSize: 12 }}>{clickedDay ? 'No bookings for ' + format(clickedDay, 'MMM d, yyyy') : 'No bookings for this period'}</span>
                 </div>
               ) : visible.map(function (b) {
-                var cf = ST[b.status];
+                var cf = ST[b.status] || ST.pending;
                 var isActive = panelBk && panelBk.id === b.id;
                 return (
                   <div key={b.id} className={'cb-r' + (isActive ? ' active' : '')} onClick={function () { setPanelBk(b); }}>
@@ -847,9 +855,9 @@ export default function ReservationDashboard(props) {
           <div className="cb-ov" onClick={function () { setPanelBk(null); }} />
           <div className="cb-panel" ref={panelRef}>
             <div className="cb-ph">
-              <div className="cb-ph-status" style={{ color: ST[panelBk.status].color }}>
-                <span className="cb-ph-pulse" style={{ background: ST[panelBk.status].color }} />
-                {ST[panelBk.status].label}
+              <div className="cb-ph-status" style={{ color: (ST[panelBk.status] || ST.pending).color }}>
+                <span className="cb-ph-pulse" style={{ background: (ST[panelBk.status] || ST.pending).color }} />
+                {(ST[panelBk.status] || ST.pending).label}
               </div>
               <button className="cb-ph-close" onClick={function () { setPanelBk(null); }}>{IC.x}</button>
             </div>
