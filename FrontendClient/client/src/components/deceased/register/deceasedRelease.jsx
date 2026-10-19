@@ -217,16 +217,17 @@ const InputFieldWrapper = styled.div`
   align-items: center;
 `;
 
-const Input = styled.input`
+const Input = styled.input.attrs({
+  autoComplete: 'off',
+  autoCorrect: 'off',
+  autoCapitalize: 'off',
+  spellCheck: false,
+})`
   width: 100%;
   height: 2.75rem;
   border: none;
   border-radius: 0;
   outline: none;
-  autoComplete: off;
-  autoCorrect: off;
-  spellCheck: false;
-  autoCapitalize:  off;
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;
@@ -1220,10 +1221,6 @@ const DeceasedReleaseForm = () => {
     lastSearchedRef.current = foundAdmissionNumber;
     releaseTimeEditedRef.current = false;
 
-    // Next of kin on the record — kept separate from the officer who physically
-    // releases the body (the "Released By" field in the sign-off section).
-    const kinName = deceased.contact_person || deceased.next_kin || deceased.next_of_kin || '';
-
     setFormData(prev => ({
       ...prev,
       admission_number: prev.admission_number || foundAdmissionNumber,
@@ -1233,12 +1230,13 @@ const DeceasedReleaseForm = () => {
       date_of_death: deceased.date_of_death || '',
       cause_of_death: deceased.cause_of_death || '',
       place_of_death: deceased.place_of_death || deceased.death_location || '',
-      next_kin: kinName,
-      contact_person: deceased.contact_person || deceased.next_kin || '',
-      relationship: deceased.relationship || deceased.kin_relationship || '',
-      // NOTE: the ID number and the primary telephone belong to the person
-      // collecting the body — they are never auto-filled from the searched
-      // record and must always be keyed in manually.
+      // The collecting next of kin is entered fresh for each release and must
+      // not carry over from the searched record or a previous release lookup.
+      next_kin: '',
+      contact_person: '',
+      relationship: '',
+      id_number: '',
+      tel_number: '',
       date_admitted: deceased.date_admitted || prev.date_admitted,
       permit_number: deceased.permit_number || deceased.permit_no || '',
     }));
@@ -1549,7 +1547,7 @@ const DeceasedReleaseForm = () => {
           </HeaderWrapper>
 
           <FormBody>
-            <form onSubmit={handleSubmit} noValidate>
+            <form onSubmit={handleSubmit} noValidate autoComplete="off">
               {/* Section 1 */}
               <Section>
                 <SectionHead>
@@ -1575,7 +1573,7 @@ const DeceasedReleaseForm = () => {
                         }}
                         $found={hasValue(formData.admission_number) && isFound}
                         placeholder="Start typing to search the database..."
-                        autoComplete="off"
+                        autoComplete="new-password"
                         autoCorrect="off"
                         autoCapitalize="off"
                         spellCheck="false"
@@ -1765,6 +1763,7 @@ const DeceasedReleaseForm = () => {
                         value={formData.next_kin}
                         onChange={handleChange}
                         placeholder="Full name of authorizing party"
+                        autoComplete="new-password"
                       />
                       {hasValue(formData.next_kin) && (
                         <TickIconWrapper>
@@ -1783,6 +1782,7 @@ const DeceasedReleaseForm = () => {
                         value={formData.relationship}
                         onChange={handleChange}
                         placeholder="e.g. Spouse, Child, Sibling"
+                        autoComplete="new-password"
                       />
                       {hasValue(formData.relationship) && (
                         <TickIconWrapper>
@@ -1805,6 +1805,7 @@ const DeceasedReleaseForm = () => {
                         value={formData.id_number}
                         onChange={handleChange}
                         placeholder="National ID number"
+                        autoComplete="new-password"
                       />
                       {hasValue(formData.id_number) && (
                         <TickIconWrapper>

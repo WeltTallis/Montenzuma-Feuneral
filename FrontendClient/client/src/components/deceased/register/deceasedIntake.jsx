@@ -301,16 +301,17 @@ const InputFieldWrapper = styled.div`
   align-items: center;
 `;
 
-const Input = styled.input`
+const Input = styled.input.attrs({
+  autoComplete: 'off',
+  autoCorrect: 'off',
+  autoCapitalize: 'off',
+  spellCheck: false,
+})`
   width: 100%;
   height: 2.75rem;
   border: none;
   border-radius: 0;
   outline: none;
-  autoComplete: off;
-  autoCorrect: off;
-  spellCheck: false;
-  autoCapitalize:  off;
   box-shadow: none;
   background: transparent;
   padding: 0 2rem 0 0;
@@ -1644,7 +1645,7 @@ const DeceasedRegistrationForm = () => {
           </HeaderWrapper>
 
           <FormBody>
-            <form onSubmit={handleSubmit} noValidate>
+            <form onSubmit={handleSubmit} noValidate autoComplete="off">
               {/* Section 1 */}
               <Section>
                 <SectionHead>
@@ -1708,6 +1709,7 @@ const DeceasedRegistrationForm = () => {
                         value={formData.full_name}
                         onChange={handleChange}
                         placeholder="Enter full legal name"
+                        autoComplete="new-password"
                       />
                       {hasValue(formData.full_name) && (
                         <TickIconWrapper>
@@ -1886,6 +1888,7 @@ const DeceasedRegistrationForm = () => {
                         value={formData.contact_person}
                         onChange={handleChange}
                         placeholder="Full name of primary contact"
+                        autoComplete="new-password"
                       />
                       {hasValue(formData.contact_person) && (
                         <TickIconWrapper>
@@ -1925,6 +1928,7 @@ const DeceasedRegistrationForm = () => {
                         value={formData.id_number}
                         onChange={handleChange}
                         placeholder="National ID number"
+                        autoComplete="new-password"
                       />
                       {hasValue(formData.id_number) && (
                         <TickIconWrapper>
@@ -1946,6 +1950,7 @@ const DeceasedRegistrationForm = () => {
                         value={formData.tel_number}
                         onChange={handleChange}
                         placeholder="e.g., 0712345678"
+                        autoComplete="new-password"
                       />
                       {hasValue(formData.tel_number) && (
                         <TickIconWrapper>

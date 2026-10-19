@@ -31,6 +31,7 @@ export function Header({
   doRefresh,
   setSearch,
   setBranch,
+  setFilters,
   setView,
   setSection,
   setTodayMode,

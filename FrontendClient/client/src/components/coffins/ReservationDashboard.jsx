@@ -18,6 +18,8 @@ import { getParentTenantSlug, getTenantId } from '../../utils/globalAuth';
 import CoffinInventory from './coffininventory';
 import CoffinTransfers from './coffinTransfers';
 import CoffinCalendarGrid from './CoffinCalendarGrid';
+import ReservationMonthGrid from './reservations/components/ReservationMonthGrid';
+import './reservations/reservations.css';
 
 var TX   = '#111827';
 var TX2  = '#374151';
@@ -125,7 +127,7 @@ export default function ReservationDashboard(props) {
     else if (effActive === 'transfers') altContent = <CoffinTransfers />;
   }
 
-  var _v = useState('month'), view = _v[0], setView = _v[1];
+  var _v = useState('full'), view = _v[0], setView = _v[1];
   var _s = useState(new Date()), sel = _s[0], setSel = _s[1];
   var _cm = useState(new Date()), calMonth = _cm[0], setCalMonth = _cm[1];
   var _l = useState(true), live = _l[0], setLive = _l[1];
@@ -288,7 +290,7 @@ export default function ReservationDashboard(props) {
     var result = mapped;
     // Month view follows the URL-driven visible month, NOT `sel` — `sel` is a
     // day/week cursor and drifts independently, which used to blank the grid.
-    if (clickedDay) { result = result.filter(function (b) { return isSameDay(b.date, clickedDay); }); }
+    if (clickedDay && view !== 'full') { result = result.filter(function (b) { return isSameDay(b.date, clickedDay); }); }
     else { result = result.filter(function (b) { if (view === 'day') return isSameDay(b.date, sel); if (view === 'week') return isSameWeek(b.date, sel, { weekStartsOn: 1 }); return isSameMonth(b.date, visibleMonthDate); }); }
     if (activeFilters.length > 0) { result = result.filter(function (b) { return activeFilters.indexOf(b.status) !== -1; }); }
     if (searchQuery) { var q = searchQuery.toLowerCase(); result = result.filter(function (b) { return (b.clientName || '').toLowerCase().indexOf(q) !== -1 || (b.deceasedName || '').toLowerCase().indexOf(q) !== -1 || (b.coffinType || '').toLowerCase().indexOf(q) !== -1 || (b.phone || '').indexOf(q) !== -1; }); }
@@ -311,16 +313,16 @@ export default function ReservationDashboard(props) {
   var statusData = useMemo(function () { var counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 }; mapped.forEach(function (b) { counts[b.status]++; }); return STORD.map(function (s) { return { key: s, label: ST[s].label, value: counts[s], color: ST[s].bar }; }); }, [mapped]);
   var filterCounts = useMemo(function () { var counts = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 }; mapped.forEach(function (b) { counts[b.status]++; }); return counts; }, [mapped]);
 
-  // Keep the mini-calendar on the same month as the grid. It is a secondary
-  // navigator, so deriving it from viewMonth/viewYear means the two can never
-  // disagree after a Back/Forward or a pasted link.
   useEffect(function () { setCalMonth(visibleMonthDate); }, [visibleMonthDate]);
-
-  var miniCalDays = useMemo(function () { return eachDayOfInterval({ start: startOfWeek(startOfMonth(calMonth), { weekStartsOn: 1 }), end: endOfWeek(endOfMonth(calMonth), { weekStartsOn: 1 }) }); }, [calMonth]);
+  var miniCalDays = useMemo(function () {
+    return eachDayOfInterval({
+      start: startOfWeek(startOfMonth(calMonth), { weekStartsOn: 1 }),
+      end: endOfWeek(endOfMonth(calMonth), { weekStartsOn: 1 }),
+    });
+  }, [calMonth]);
 
   // Paging the calendar drives `viewMonth`/`viewYear`, which drives monthRange
-  // and therefore the fetch. calMonth is derived from those via the effect
-  // above, and `sel` still tracks the day/week cursor, so both are kept in step.
+  // and therefore the fetch. `sel` still tracks the day/week cursor.
   // Paging keeps the FETCHED month in step with the cursor: day/week move the
   // cursor first and then the URL — and therefore monthRange — follows it.
   // Month view just pages the month itself; goToMonth normalises the wrap.
@@ -330,11 +332,6 @@ export default function ReservationDashboard(props) {
     if (view === 'week') { var nw = dir === 1 ? addWeeks(sel, 1) : subWeeks(sel, 1); setSel(nw); goToMonth(nw.getMonth(), nw.getFullYear()); return; }
     goToMonth(viewMonth + dir, viewYear);
   }
-  // The mini-calendar IS the month navigator: paging it changes the VISIBLE
-  // month rather than only the sidebar preview, so it rewrites the URL and
-  // refetches that month's reservations. Previously it only nudged `calMonth`,
-  // which left the list pinned to whatever month the URL opened with.
-  function miniCalNav(dir) { goToMonth(calMonth.getMonth() + dir, calMonth.getFullYear()); }
   function doRefresh() { setRefreshing(true); fetchLive().finally(function () { setRefreshing(false); showToast('Refreshed'); }); }
 
   function markAsPaid() {
@@ -345,15 +342,18 @@ export default function ReservationDashboard(props) {
     });
   }
 
-  function onMiniCalDayClick(day) {
+  function onFullCalendarDayClick(day) {
     if (clickedDay && isSameDay(day, clickedDay)) { setClickedDay(null); return; }
-    // A day belonging to another month must switch the visible month first:
-    // the reservation list is fetched month-scoped, so staying put would leave
-    // the grid on the old month while the sidebar highlighted the new one.
     if (!isSameMonth(day, visibleMonthDate)) goToMonth(day.getMonth(), day.getFullYear());
     setClickedDay(day); setSel(day);
   }
-  function toggleFilter(status) { setActiveFilters(function (prev) { if (prev.indexOf(status) !== -1) return prev.filter(function (s) { return s !== status; }); return prev.concat([status]); }); setClickedDay(null); }
+  function miniCalNav(dir) { goToMonth(calMonth.getMonth() + dir, calMonth.getFullYear()); }
+  function onMiniCalDayClick(day) {
+    if (clickedDay && isSameDay(day, clickedDay)) { setClickedDay(null); return; }
+    if (!isSameMonth(day, visibleMonthDate)) goToMonth(day.getMonth(), day.getFullYear());
+    setClickedDay(day); setSel(day);
+  }
+  function toggleFilter(status) { setActiveFilters(function (prev) { if (prev.indexOf(status) !== -1) return prev.filter(function (s) { return s !== status; }); return prev.concat([status]); }); if (view !== 'full') setClickedDay(null); }
   function goToday() { var now = new Date(); setSel(now); setClickedDay(null); goToMonth(now.getMonth(), now.getFullYear()); }
 
   if (liveError && (!liveBookings || liveBookings.length === 0)) {
@@ -531,12 +531,24 @@ export default function ReservationDashboard(props) {
     '@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}',
     '@media(max-width:1100px){.cb-side{width:260px}.cb-sr-item{padding:10px 14px}}',
     '@media(max-width:860px){.cb-side{display:none}.cb-tb{padding:8px 16px}.cb-panel{width:100%;max-width:100%}.cb-sr-item{padding:10px 14px}.cb-sr-ico{width:30px;height:30px}.cb-sr-num{font-size:16px}}',
-    '@media(max-width:640px){.cb-tb{flex-wrap:wrap;gap:6px}.cb-tb-left{flex-wrap:wrap}.cb-tb-views{display:none}.cb-tb-right{flex-wrap:wrap;justify-content:flex-end}.cb-tb-btn,.cb-tb-new,.cb-nav-pill{flex:1 1 100%;white-space:normal;text-align:center}.cb-nav-select{width:100%;min-width:120px}.cb-divider{display:none}.cb-r{grid-template-columns:3px 1fr 1fr}.cb-r .cb-cell:nth-child(n+5){display:none}.cb-lh{display:none}}',
+    '@media(max-width:640px){.cb-tb{flex-wrap:wrap;gap:6px}.cb-tb-left{flex-wrap:wrap}.cb-tb-right{flex-wrap:wrap;justify-content:flex-end}.cb-tb-btn,.cb-tb-new,.cb-nav-pill{flex:1 1 100%;white-space:normal;text-align:center}.cb-nav-select{width:100%;min-width:120px}.cb-divider{display:none}.cb-r{grid-template-columns:3px 1fr 1fr}.cb-r .cb-cell:nth-child(n+5){display:none}.cb-lh{display:none}}',
   ].join('\n');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', background: BG, color: TX, fontFamily: FONT, WebkitFontSmoothing: 'antialiased' }}>
       <style dangerouslySetInnerHTML={{ __html: css }} />
+
+      <header className="cb-topbar">
+        <div className="cb-topbar-brand">
+          <div className="cb-topbar-mark">C</div>
+          <div className="cb-topbar-title">CoffinBook<span className="sub">Reservations</span></div>
+        </div>
+        {onNewReservation && (
+          <button className="cb-btn-primary" onClick={onNewReservation}>
+            {IC.pl} New Reservation
+          </button>
+        )}
+      </header>
 
       {/* Toolbar */}
       <div className="cb-tb">
@@ -569,7 +581,7 @@ export default function ReservationDashboard(props) {
               <button className="cb-tb-nav" onClick={function () { navigate(1); }} title={'Next ' + navUnit} aria-label={'Next ' + navUnit}>{IC.cr}</button>
               <button className="cb-tb-btn" onClick={goToday}>Today</button>
               <div className="cb-tb-views">
-                {['day', 'week', 'month'].map(function (v) { return <button key={v} className={'cb-tb-v' + (view === v ? ' on' : '')} onClick={function () { setView(v); setClickedDay(null); }}>{v}</button>; })}
+                {['full', 'day', 'week', 'month'].map(function (v) { return <button key={v} className={'cb-tb-v' + (view === v ? ' on' : '')} onClick={function () { setView(v); setClickedDay(null); }}>{v === 'full' ? 'Full' : v}</button>; })}
               </div>
             </React.Fragment>
           )}
@@ -581,7 +593,7 @@ export default function ReservationDashboard(props) {
       ) : (
         <div style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%' }}>
           {/* Sidebar */}
-          <aside className="cb-side">
+          {view !== 'full' && <aside className="cb-side">
             <div className="cb-side-scroll">
               {/* Calendar with colored dots */}
               <div className="cb-mc">
@@ -686,7 +698,7 @@ export default function ReservationDashboard(props) {
                 </div>
               </div>
             </div>
-          </aside>
+          </aside>}
 
           {/* Main list */}
           <main className="cb-main">
@@ -705,7 +717,46 @@ export default function ReservationDashboard(props) {
               })}
             </div>
 
-            {clickedDay && (
+            {view === 'full' && (
+              <div className="cb-full-controls">
+                <div className="cb-full-heading">
+                  <div>
+                    <h1>{format(visibleMonthDate, 'MMMM yyyy')}</h1>
+                    <span>{stats.total} reservation{stats.total !== 1 ? 's' : ''} this month</span>
+                  </div>
+                  <label className="cb-search">
+                    {IC.search}
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={function (event) { setSearchQuery(event.target.value); }}
+                      placeholder="Search bookings..."
+                      aria-label="Search bookings"
+                    />
+                  </label>
+                </div>
+                <div className="cb-filter-chips" aria-label="Filter reservations by status">
+                  {STORD.map(function (s) {
+                    var isActive = activeFilters.indexOf(s) !== -1;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        className={'cb-fc' + (isActive ? ' on' : '')}
+                        onClick={function () { toggleFilter(s); }}
+                        aria-pressed={isActive}
+                      >
+                        <span className="cb-fc-dot" style={{ background: ST[s].color }} />
+                        {ST[s].label}
+                        <span className="cb-fc-ct">{filterCounts[s]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {clickedDay && view !== 'full' && (
               <div className="cb-df">
                 <span>{IC.cal} Showing: {format(clickedDay, 'MMM d, yyyy')} &mdash; {visible.length} booking{visible.length !== 1 ? 's' : ''}</span>
                 <button onClick={function () { setClickedDay(null); }}>Clear {IC.x}</button>
@@ -716,7 +767,15 @@ export default function ReservationDashboard(props) {
                 Previously all three rendered this same table and only the
                 filter changed, so clicking "week" gave a list rather than the
                 week laid out day by day. */}
-            {(view === 'day' || view === 'week') ? (
+            {view === 'full' ? (
+              <ReservationMonthGrid
+                visibleMonthDate={visibleMonthDate}
+                visible={visible}
+                clickedDay={clickedDay}
+                onDayClick={onFullCalendarDayClick}
+                onPick={function (booking) { setPanelBk(booking); }}
+              />
+            ) : (view === 'day' || view === 'week') ? (
               <CoffinCalendarGrid
                 view={view}
                 date={sel}

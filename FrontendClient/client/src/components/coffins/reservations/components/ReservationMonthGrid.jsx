@@ -1,73 +1,93 @@
 import React from 'react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, isSameMonth, isToday } from 'date-fns';
-import { getStatusStyle, fmtTime12 } from '../tokens';
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  isSameMonth,
+  isToday,
+} from 'date-fns';
 
-/* ============================================================================
-   ReservationMonthGrid — full-month calendar with booking chips.
-   ============================================================================ */
+const statusStyles = {
+  confirmed: { color: '#0f766e', label: 'Confirmed' },
+  pending: { color: '#64748b', label: 'Pending' },
+  completed: { color: '#16a34a', label: 'Completed' },
+  cancelled: { color: '#dc2626', label: 'Cancelled' },
+};
+
+function formatTime(time) {
+  const match = String(time || '').match(/(\d{1,2}):(\d{2})/);
+  if (!match) return '';
+  const hour = Number(match[1]);
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${match[2]} ${suffix}`;
+}
+
 export function ReservationMonthGrid({ visibleMonthDate, visible, clickedDay, onDayClick, onPick }) {
   const start = startOfWeek(startOfMonth(visibleMonthDate), { weekStartsOn: 1 });
   const end = endOfWeek(endOfMonth(visibleMonthDate), { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start, end });
-
   const byDate = new Map();
-  visible.forEach((b) => {
-    const k = format(b.date, 'yyyy-MM-dd');
-    if (!byDate.has(k)) byDate.set(k, []);
-    byDate.get(k).push(b);
-  });
 
-  const dowHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const headHtml = (
-    <div className="fc-head">
-      {dowHeaders.map((d) => (
-        <div key={d} className="fc-head-cell">{d}</div>
-      ))}
-    </div>
-  );
-
-  const daysHtml = days.map((d) => {
-    const k = format(d, 'yyyy-MM-dd');
-    const dayBookings = (byDate.get(k) || []).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-    const isTd = isToday(d);
-    const isOther = !isSameMonth(d, visibleMonthDate);
-    const isSel = clickedDay && isSameDay(d, clickedDay);
-    const cls = `fc-day${isTd ? ' today' : ''}${isOther ? ' other' : ''}${isSel ? ' selected' : ''}`;
-
-    const chipsHtml = dayBookings.slice(0, 4).map((b) => {
-      const st = getStatusStyle(b);
-      const timeStr = b.time ? `${fmtTime12(b.time).replace(/:00 /, ' ')} ` : '';
-      return (
-        <button
-          key={b.id}
-          className="fc-chip"
-          style={{ '--chip-c': st.color }}
-          onClick={(e) => { e.stopPropagation(); onPick(b); }}
-          title={`${b.clientName} · ${st.label}${b.time ? ` · ${fmtTime12(b.time)}` : ''}`}
-        >
-          {timeStr}{b.clientName}
-        </button>
-      );
-    });
-    const moreHtml = dayBookings.length > 4 ? (
-      <div className="fc-more">+{dayBookings.length - 4} more</div>
-    ) : null;
-
-    return (
-      <div key={k} className={cls} onClick={() => onDayClick(d)}>
-        <div className="fc-day-num">{d.getDate()}</div>
-        <div className="fc-day-chips">
-          {chipsHtml}
-          {moreHtml}
-        </div>
-      </div>
-    );
+  visible.forEach((booking) => {
+    const key = format(booking.date, 'yyyy-MM-dd');
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key).push(booking);
   });
 
   return (
     <div className="fc-frame">
-      {headHtml}
-      <div className="fc-grid">{daysHtml}</div>
+      <div className="fc-head">
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+          <div key={day} className="fc-head-cell">{day}</div>
+        ))}
+      </div>
+      <div className="fc-grid">
+        {days.map((day) => {
+          const key = format(day, 'yyyy-MM-dd');
+          const dayBookings = (byDate.get(key) || []).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+          const selected = clickedDay && isSameDay(day, clickedDay);
+          const classes = [
+            'fc-day',
+            isToday(day) && 'today',
+            !isSameMonth(day, visibleMonthDate) && 'other',
+            selected && 'selected',
+          ].filter(Boolean).join(' ');
+
+          return (
+            <div key={key} className={classes} onClick={() => onDayClick(day)}>
+              <div className="fc-day-num">{day.getDate()}</div>
+              <div className="fc-day-chips">
+                {dayBookings.slice(0, 4).map((booking) => {
+                  const status = statusStyles[booking.status] || statusStyles.pending;
+                  const formattedTime = formatTime(booking.time);
+                  const time = formattedTime ? `${formattedTime.replace(/:00 /, ' ')} ` : '';
+                  return (
+                    <button
+                      key={booking.id}
+                      type="button"
+                      className="fc-chip"
+                      style={{ '--chip-c': status.color }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onPick(booking);
+                      }}
+                      title={`${booking.clientName} - ${status.label}${formattedTime ? ` - ${formattedTime}` : ''}`}
+                    >
+                      {time}{booking.clientName}
+                    </button>
+                  );
+                })}
+                {dayBookings.length > 4 && <div className="fc-more">+{dayBookings.length - 4} more</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

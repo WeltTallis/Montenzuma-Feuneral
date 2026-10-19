@@ -53,10 +53,11 @@ import StoreSection from "./StoreSection";
 import FlowerAnalytics from "./florist/FlowerAnalytics";
 import SimpleCoffinInventory from "./SimpleCoffinInventory";
 import DeceasedScheduleCalendar from "./HearseCalendar";
+import DashboardOverview from "./DashboardOverview";
 import DashSidebar, { NAV_ITEMS } from "./shell/DashSidebar";
 
 /* Sidebar view → the ops section it lands on. */
-const VIEW_SECTION = { home: "command" };
+const VIEW_SECTION = { overview: "command", intake: "intake", "release-calendar": "command" };
 
 const VIEWS = [
   { id: "day", label: "Day" },
@@ -154,7 +155,7 @@ function StatsBand({ calc, money, ccy, onNavView }) {
 
   const quickActions = [
     { label: "Coffin Store", icon: <PieChartIcon size={14} />, color: "#1e3a8a", onClick: () => onNavView && onNavView("coffin-store") },
-    { label: "Operations Calendar", icon: <Calendar size={14} />, color: "#1d4ed8", onClick: () => onNavView && onNavView("home") },
+    { label: "Operations Calendar", icon: <Calendar size={14} />, color: "#1d4ed8", onClick: () => onNavView && onNavView("overview") },
     { label: "Flowers", icon: <TrendingUp size={14} />, color: "#0284c7", onClick: () => onNavView && onNavView("flowers") },
   ];
 
@@ -260,13 +261,17 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const [navView, setNavView] = useState(() => {
     try {
       const v = localStorage.getItem(NAV_VIEW_KEY);
-      return NAV_ITEMS.some((n) => n.id === v) ? v : "home";
-    } catch { return "home"; }
+      const legacyViews = { dashboard: "overview", home: "overview", deceased: "intake", schedule: "release-calendar" };
+      const restored = legacyViews[v] || v;
+      return NAV_ITEMS.some((n) => n.id === restored) ? restored : "overview";
+    } catch { return "overview"; }
   });
 
 
   const isModuleView =
     navView === "store" || navView === "flowers" || navView === "coffin-store";
+  const isOverviewView = navView === "overview";
+  const isReleaseCalendarView = navView === "release-calendar";
   const [view, setView] = useState("month");
   const [selDate, setSelDate] = useState(todayKey());
   const [calY, setCalY] = useState(new Date().getFullYear());
@@ -319,6 +324,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     calM,
     calY,
   ]);
+  const overviewCalc = useMemo(() => calcStats(scoped, scoped, calM, calY), [scoped, calM, calY]);
 
   /* ── calendar events from real case data (demo data when empty) ───────── */
   const calendarEvents = useMemo(() => {
@@ -356,6 +362,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
       };
     });
   }, [cases]);
+  const releaseEvents = useMemo(
+    () => calendarEvents.filter((event) => event.type === "release"),
+    [calendarEvents]
+  );
 
   /* ── currency formatting ── */
   const ccy = calc.charges?.currency || "KES";
@@ -404,7 +414,14 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   }, [analyticsPeriod.startKey, searched, view]);
 
   const activeNavMeta = NAV_ITEMS.find((n) => n.id === navView) || NAV_ITEMS[0];
-  const showOpsToolbar = !isModuleView;
+  const showOpsToolbar = !isModuleView && !isOverviewView && !isReleaseCalendarView;
+  const headerNav = section === "intake"
+    ? [
+        { id: "intake", label: "Intake", icon: "bed", full: "Deceased intake" },
+        NAV.find((item) => item.id === "pm"),
+        NAV.find((item) => item.id === "analytics"),
+      ]
+    : NAV;
   /* effects */
   useEffect(() => {
     try { localStorage.setItem(DARK_KEY, dark ? "1" : "0"); } catch { /* storage blocked */ }
@@ -420,6 +437,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   }, [navCollapsed]);
   useEffect(() => {
     try { localStorage.setItem(NAV_VIEW_KEY, navView); } catch { /* storage blocked */ }
+  }, [navView]);
+  useEffect(() => {
+    setSection(VIEW_SECTION[navView] || (navView === "analytics" ? "analytics" : "command"));
   }, [navView]);
   useEffect(() => {
     if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0;
@@ -553,14 +573,14 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   /* Sidebar destination picker: Home opens operations; module destinations
      replace the main column. Closes the mobile drawer after selection. */
   const onNavView = (id) => {
-    if (VIEW_SECTION[id]) {
-      setSection(VIEW_SECTION[id]);
-      setFilters([]);
-      setTodayMode(false);
-    } else if (id !== "home" && id !== "deceased") {
-      setSection("command");
-      setFilters([]);
-      setTodayMode(false);
+    const nextSection = VIEW_SECTION[id] || (id === "analytics" ? "analytics" : "command");
+    setSection(nextSection);
+    setFilters([]);
+    setTodayMode(false);
+    if (id === "release-calendar") {
+      setView("month");
+      setClickedDay(null);
+      setDayTab("all");
     }
     setNavView(id);
     setNavOpen(false);
@@ -587,7 +607,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     setTodayMode(false);
   };
   return (
-    <div className={`rpd${dark ? " dark" : ""}${section === "analytics" ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}${navView === "home" ? " rpd-home" : ""}`}>
+    <div className={`rpd${dark ? " dark" : ""}${section === "analytics" || isReleaseCalendarView ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}${isOverviewView ? " rpd-home" : ""}`}>
       <div className="app">
         <DashSidebar
           active={navView}
@@ -596,6 +616,10 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           onToggleCollapse={() => setNavCollapsed((c) => !c)}
           onCloseMobile={() => setNavOpen(false)}
           tenantSlug={tenantSlug}
+          itemBadges={{
+            intake: badges.intake,
+            "release-calendar": cases.filter((item) => !isReleased(item) && item.release?.date >= today).length,
+          }}
         />
         <div className="rpd-body">
           <div className="rpd-main">
@@ -609,7 +633,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               analyticsPeriod={analyticsPeriod}
               analyticsPeriodEventCount={analyticsPeriodEventCount}
               badges={badges}
-              NAV={NAV}
+              NAV={headerNav}
               VIEWS={VIEWS}
               search={search}
               branch={branch}
@@ -625,6 +649,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               doRefresh={doRefresh}
               setSearch={setSearch}
               setBranch={setBranch}
+              setFilters={setFilters}
               setView={setView}
               setSection={setSection}
               setTodayMode={setTodayMode}
@@ -643,7 +668,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             <div className="rpd-scroll" ref={contentScrollRef}>
       {/* ops sidebar + main */}
       <div className="shell">
-        {showOpsToolbar && section !== "analytics" && navView !== "home" ? (
+        {showOpsToolbar && section !== "analytics" ? (
           <aside className="side">
             <Sidebar
               calc={calc}
@@ -675,6 +700,22 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             <FlowerAnalytics />
           ) : navView === "coffin-store" ? (
             <SimpleCoffinInventory />
+          ) : isOverviewView ? (
+            <DashboardOverview
+              cases={scoped}
+              calc={overviewCalc}
+              loading={loading}
+              today={today}
+              onNavigate={onNavView}
+              onOpenCase={openCase}
+            />
+          ) : isReleaseCalendarView ? (
+            <DeceasedScheduleCalendar
+              events={releaseEvents}
+              branch={branch}
+              loading={loading}
+              onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)}
+            />
           ) : loading && !cases.length ? (
             <div className="empty" style={{ padding: 90 }}>
               <span className="spin" style={{ color: "var(--acc)" }}>
@@ -740,5 +781,3 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     </div>
   );
 }
-
-

@@ -2786,15 +2786,6 @@ const CoffinDashboard = () => {
               <button className="cb-tb-btn" onClick={() => setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })} title="Add new coffin">
                 <i className="fa-solid fa-plus"></i> Add Coffin
               </button>
-              <div className="cb-divider" />
-              <button className="cb-tb-new" onClick={() => {
-                const now = new Date();
-                const hh = String(now.getHours()).padStart(2, '0');
-                const mm = String(now.getMinutes()).padStart(2, '0');
-                setModal({ open: true, type: 'booking', data: { service_date: todayKey(), service_time: hh + ':' + mm } });
-              }}>
-                <i className="fa-solid fa-calendar-plus"></i> New Reservation
-              </button>
             </>
           }
         >
