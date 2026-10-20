@@ -197,7 +197,7 @@ export default function DashboardOverview({
         </button>
         <button type="button" onClick={() => onNavigate("release-calendar")}>
           <span className="overview-shortcut-icon release"><CalendarDays size={17} /></span>
-          <span><b>View release calendar</b><small>Upcoming releases and handovers</small></span>
+          <span><b>View deceased calendar</b><small>Intakes, releases and postmortems</small></span>
           <ArrowRight size={16} />
         </button>
         <button type="button" onClick={onOpenFleet}>

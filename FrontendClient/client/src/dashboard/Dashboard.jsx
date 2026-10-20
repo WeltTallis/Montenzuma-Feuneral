@@ -175,11 +175,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
       };
     });
   }, [cases]);
-  const releaseEvents = useMemo(
-    () => calendarEvents.filter((event) => event.type === "release"),
-    [calendarEvents]
-  );
-
   /* ── currency formatting ── */
   /* calendar dots — branch-scoped, one dot per event type per day */
   const calendarDots = useMemo(() => {
@@ -419,7 +414,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           tenantSlug={tenantSlug}
           itemBadges={{
             intake: badges.intake,
-            "release-calendar": cases.filter((item) => !isReleased(item) && item.release?.date >= today).length,
+            "release-calendar": calendarEvents.filter((event) => event.date >= today).length,
           }}
         />
         <div className="rpd-body">
@@ -491,7 +486,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
             />
           ) : isReleaseCalendarView ? (
             <DeceasedScheduleCalendar
-              events={releaseEvents}
+              events={calendarEvents}
               branch={branch}
               loading={loading}
               onCreateIntake={openIntakeRegistration}

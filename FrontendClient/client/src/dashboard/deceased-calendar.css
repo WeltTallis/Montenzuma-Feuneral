@@ -238,7 +238,7 @@
 }
 .rpd .deceased-schedule-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .rpd .deceased-schedule-summary article {
   display: flex;
@@ -255,7 +255,8 @@
 .rpd .deceased-schedule-summary article:nth-child(1) > svg { color: #0f766e; background: #eaf5f2; }
 .rpd .deceased-schedule-summary article:nth-child(2) > svg { color: #2563eb; background: #eff6ff; }
 .rpd .deceased-schedule-summary article:nth-child(3) > svg { color: #16804a; background: #edf8f0; }
-.rpd .deceased-schedule-summary article:nth-child(4) > svg { color: #64748b; background: #f1f4f7; }
+.rpd .deceased-schedule-summary article:nth-child(4) > svg { color: #c46a12; background: #fff5e8; }
+.rpd .deceased-schedule-summary article:nth-child(5) > svg { color: #64748b; background: #f1f4f7; }
 .rpd .deceased-schedule-summary article > svg {
   width: 30px;
   height: 30px;
@@ -401,7 +402,7 @@
 .rpd .deceased-schedule-month {
   display: flex;
   min-width: 720px;
-  min-height: 840px;
+  min-height: 870px;
   flex-direction: column;
   background: #fff;
 }
@@ -427,14 +428,14 @@
 }
 .rpd .deceased-schedule-month-head > div:last-child { border-right: 0; }
 .rpd .deceased-schedule-month-grid {
-  min-height: 806px;
+  min-height: 836px;
   flex: 1;
-  grid-template-rows: repeat(6, minmax(134px, 1fr));
+  grid-template-rows: repeat(6, minmax(139px, 1fr));
 }
 .rpd .deceased-schedule-day {
   display: flex;
   min-width: 0;
-  min-height: 134px;
+  min-height: 139px;
   flex-direction: column;
   gap: 7px;
   overflow: hidden;
@@ -620,6 +621,9 @@
 }
 @media (max-width: 720px) {
   .rpd .deceased-schedule { min-height: calc(100vh - 70px); }
+  .rpd .deceased-schedule-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rpd .deceased-schedule-summary article:nth-child(odd) { border-right: 1px solid #e8eaed; }
+  .rpd .deceased-schedule-summary article:nth-child(even) { border-right: 0; }
   .rpd .deceased-schedule-header { padding-right: 14px; padding-left: 14px; }
   .rpd .deceased-schedule-toolbar { padding-right: 12px; padding-left: 12px; }
   .rpd .deceased-schedule-toolbar-left { align-items: flex-start; flex-direction: column; }

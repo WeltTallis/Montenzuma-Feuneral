@@ -339,10 +339,10 @@ function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
                 {active && <span className="deceased-schedule-today">Today</span>}
               </div>
               <div className="deceased-schedule-day-events">
-                {dayEvents.slice(0, 3).map((event) => (
+                {dayEvents.slice(0, 4).map((event) => (
                   <MonthChip key={event.id} event={event} onClick={onEventClick} />
                 ))}
-                {dayEvents.length > 3 && <div className="deceased-schedule-more">+{dayEvents.length - 3} more</div>}
+                {dayEvents.length > 4 && <div className="deceased-schedule-more">+{dayEvents.length - 4} more</div>}
               </div>
             </div>
           );
@@ -433,6 +433,7 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
   const monthEvents = events.filter((event) => event.date.startsWith(monthPrefix));
   const intakesThisMonth = monthEvents.filter((e) => e.type === "intake").length;
   const releasesThisMonth = monthEvents.filter((e) => e.type === "release").length;
+  const postmortemsThisMonth = monthEvents.filter((e) => e.type === "pm").length;
   const statusCounts = events.reduce((counts, event) => {
     const key = statusKeyOf(event);
     counts[key] = (counts[key] || 0) + 1;
@@ -494,7 +495,7 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
           </div>
           <div>
             <h1>RestPoint <span>Deceased schedule</span></h1>
-            <p>{branch || "All branches"} · Intake, release and case activity</p>
+            <p>{branch || "All branches"} · Intake, release and postmortem schedule</p>
           </div>
         </div>
         {onCreateIntake && <button type="button" className="deceased-schedule-create" onClick={onCreateIntake}><Plus size={14} /> Register intake</button>}
@@ -535,9 +536,10 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
         </div>
       </div>
       <div className="deceased-schedule-summary">
-        <article className="month-stat"><CalendarIcon /><div><strong>{monthEvents.length}</strong><span>Selected month</span></div></article>
+        <article className="month-stat"><CalendarIcon /><div><strong>{monthEvents.length}</strong><span>All activity</span></div></article>
         <article className="intake-stat"><User /><div><strong>{intakesThisMonth}</strong><span>Intakes</span></div></article>
         <article className="release-stat"><Cross /><div><strong>{releasesThisMonth}</strong><span>Releases</span></div></article>
+        <article className="postmortem-stat"><ShieldAlert /><div><strong>{postmortemsThisMonth}</strong><span>Postmortems</span></div></article>
         <article className="today-stat"><CalendarIcon /><div><strong>{todayActivity.length}</strong><span>Today</span></div></article>
       </div>
       {mode === "calendar" && isShiftView && (

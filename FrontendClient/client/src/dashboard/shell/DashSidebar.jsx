@@ -5,7 +5,7 @@ import { Ic } from "../opsIcons";
 
 export const NAV_ITEMS = [
   { id: "overview", group: "Workspace", label: "Overview", icon: "home", full: "Overview" },
-  { id: "release-calendar", group: "Workspace", label: "Release calendar", icon: "cal", full: "Release calendar" },
+  { id: "release-calendar", group: "Workspace", label: "Deceased calendar", icon: "cal", full: "Deceased calendar" },
   { id: "fleet", group: "Workspace", label: "Hearse fleet", icon: "truck", full: "Hearse fleet" },
   { id: "store", group: "Management", label: "Store", icon: "store", full: "Store" },
   { id: "coffin-store", group: "Management", label: "Coffin inventory", icon: "store", full: "Coffin inventory" },
