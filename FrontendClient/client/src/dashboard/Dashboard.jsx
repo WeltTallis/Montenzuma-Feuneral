@@ -708,12 +708,14 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               today={today}
               onNavigate={onNavView}
               onOpenCase={openCase}
+              onOpenFleet={() => navigate(tenantSlug ? `/${tenantSlug}/fleet` : "/fleet")}
             />
           ) : isReleaseCalendarView ? (
             <DeceasedScheduleCalendar
               events={releaseEvents}
               branch={branch}
               loading={loading}
+              onCreateIntake={() => onNavView("intake")}
               onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)}
             />
           ) : loading && !cases.length ? (
@@ -746,7 +748,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               onDayTabChange={setDayTab}
             />
           ) : section === "command" ? (
-            <DeceasedScheduleCalendar events={calendarEvents} loading={loading} onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)} />
+            <DeceasedScheduleCalendar events={calendarEvents} loading={loading} onCreateIntake={() => onNavView("intake")} onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)} />
           ) : (
             <RegisterView
               section={section}

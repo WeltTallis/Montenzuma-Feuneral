@@ -3,11 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   AlertCircle,
-  CalendarDays,
   CarFront,
   CheckCircle2,
-  ChevronRight,
-  Clock3,
+  CreditCard,
   MapPin,
   RefreshCw,
   Search,
@@ -38,39 +36,6 @@ const STATUS_OPTIONS = [
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'out_of_service', label: 'Out of service' },
 ];
-
-const dayKey = (date) => {
-  const local = new Date(date);
-  return `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`;
-};
-
-const parseBookingDates = (booking) => {
-  let dates = booking.booking_dates;
-  if (typeof dates === 'string') {
-    try {
-      dates = JSON.parse(dates);
-    } catch {
-      dates = [];
-    }
-  }
-
-  if (!Array.isArray(dates)) dates = [];
-  const fallback = booking.booking_date || booking.estimated_departure_time || booking.date;
-  const values = dates.length ? dates : (fallback ? [fallback] : []);
-
-  return values
-    .map((date) => String(date).slice(0, 10))
-    .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
-    .sort();
-};
-
-const formatDate = (date) => {
-  if (!date) return 'Date not provided';
-  const parsed = new Date(`${date}T00:00:00`);
-  return Number.isNaN(parsed.getTime())
-    ? 'Date not provided'
-    : parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 const statusKey = (status) => {
   const normalized = String(status || '').toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
@@ -453,42 +418,6 @@ const Fact = styled.div`
   strong { display: block; margin-top: 5px; overflow: hidden; color: #282d39; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 `;
 
-const SectionTitle = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-  h3 { margin: 0; font-size: 15px; }
-  span { color: #858b96; font-size: 11px; }
-`;
-
-const BookingRow = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(90px, .8fr) minmax(100px, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  border-top: 1px solid #eff0f3;
-  &:first-of-type { border-top: 0; }
-  @media (max-width: 650px) { grid-template-columns: 1fr auto; }
-`;
-
-const BookingPrimary = styled.div`
-  min-width: 0;
-  strong { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-  span { display: block; margin-top: 4px; color: #7b818d; font-size: 11px; }
-`;
-
-const BookingDetail = styled.span`
-  overflow: hidden;
-  color: #737987;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  @media (max-width: 650px) { display: none; }
-`;
-
 const Empty = styled.div`
   display: grid;
   min-height: 220px;
@@ -523,11 +452,25 @@ const StatusEditor = styled.form`
   select { min-height: 38px; padding: 0 10px; border: 1px solid #e0e3e8; border-radius: 9px; background: #fff; color: #343946; font: inherit; font-size: 12px; }
 `;
 
+const FuelCardEditor = styled.form`
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eff0f3;
+  color: #777e8b;
+  svg { flex: 0 0 auto; }
+  label { display: flex; flex: 1; flex-direction: column; gap: 5px; min-width: 0; }
+  label span { color: #626977; font-size: 11px; font-weight: 700; }
+  input { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid #e0e3e8; border-radius: 9px; background: #fff; color: #343946; font: inherit; font-size: 12px; }
+  @media (max-width: 520px) { align-items: stretch; flex-wrap: wrap; label { flex-basis: 100%; } }
+`;
+
 function FleetDashboard() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [hearses, setHearses] = useState([]);
-  const [bookings, setBookings] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -536,36 +479,20 @@ function FleetDashboard() {
   const [error, setError] = useState('');
   const [statusDraft, setStatusDraft] = useState('');
   const [savingStatus, setSavingStatus] = useState(false);
+  const [fuelCardDraft, setFuelCardDraft] = useState('');
+  const [savingFuelCard, setSavingFuelCard] = useState(false);
 
   const loadFleet = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
     else setLoading(true);
     setError('');
     try {
-      const today = new Date();
-      const fromDate = new Date(today);
-      fromDate.setDate(today.getDate() - 60);
-      const toDate = new Date(today);
-      toDate.setDate(today.getDate() + 120);
-      const query = new URLSearchParams({
-        from: dayKey(fromDate),
-        to: dayKey(toDate),
-        t: String(Date.now()),
-      });
-      const [fleetResponse, bookingResponse] = await Promise.all([
-        request(`/hearses?t=${Date.now()}`),
-        request(`/hearse-bookings?${query.toString()}`),
-      ]);
+      const fleetResponse = await request(`/hearses?t=${Date.now()}`);
       if (!Array.isArray(fleetResponse.hearses)) {
         throw new Error('Fleet service returned an invalid hearse list.');
       }
-      if (!Array.isArray(bookingResponse.bookings)) {
-        throw new Error('Booking service returned an invalid booking list.');
-      }
       const fleetRows = fleetResponse.hearses;
-      const bookingRows = bookingResponse.bookings;
       setHearses(fleetRows);
-      setBookings(bookingRows);
       setSelectedId((current) => fleetRows.some((hearse) => String(hearse.id) === String(current))
         ? current
         : (fleetRows[0]?.id ?? null));
@@ -585,9 +512,8 @@ function FleetDashboard() {
     return {
       total: hearses.length,
       available: countStatus('available'),
-      booked: countStatus('booked') + countStatus('in_transit'),
       maintenance: countStatus('maintenance') + countStatus('pending_inspection'),
-      outOfService: countStatus('out_of_service'),
+      fuelCards: hearses.filter((hearse) => String(hearse.fuel_card_number || '').trim()).length,
     };
   }, [hearses]);
 
@@ -596,7 +522,7 @@ function FleetDashboard() {
     return hearses.filter((hearse) => {
       const key = statusKey(hearse.status);
       if (filter !== 'all') {
-        const inFilter = filter === 'booked'
+        const inFilter = filter === 'in_use'
           ? ['booked', 'in_transit'].includes(key)
           : filter === 'maintenance'
             ? ['maintenance', 'pending_inspection'].includes(key)
@@ -615,39 +541,8 @@ function FleetDashboard() {
     setStatusDraft(selectedHearse ? STATUS_OPTIONS.some((option) => option.value === statusKey(selectedHearse.status))
       ? statusKey(selectedHearse.status)
       : 'available' : '');
+    setFuelCardDraft(selectedHearse?.fuel_card_number || '');
   }, [selectedHearse]);
-
-  const selectedBookings = useMemo(() => {
-    if (!selectedHearse) return [];
-    const nowKey = dayKey(new Date());
-    const withDates = bookings
-      .filter((booking) => String(booking.hearse_id) === String(selectedHearse.id))
-      .map((booking) => {
-        const dates = parseBookingDates(booking);
-        return {
-          ...booking,
-          dates,
-          isUpcoming: dates.some((date) => date >= nowKey)
-            && !['completed', 'cancelled'].includes(String(booking.status).toLowerCase()),
-        };
-      })
-      .sort((left, right) => {
-        if (left.isUpcoming !== right.isUpcoming) return left.isUpcoming ? -1 : 1;
-        const leftDate = left.dates[0] || '';
-        const rightDate = right.dates[0] || '';
-        return left.isUpcoming ? leftDate.localeCompare(rightDate) : rightDate.localeCompare(leftDate);
-      });
-    return withDates
-      .slice(0, 12)
-  }, [bookings, selectedHearse]);
-
-  const upcomingCount = useMemo(() => {
-    const nowKey = dayKey(new Date());
-    return bookings.filter((booking) => {
-      const dates = parseBookingDates(booking);
-      return dates.some((date) => date >= nowKey) && !['completed', 'cancelled'].includes(String(booking.status).toLowerCase());
-    }).length;
-  }, [bookings]);
 
   const saveStatus = async (event) => {
     event.preventDefault();
@@ -670,12 +565,34 @@ function FleetDashboard() {
     }
   };
 
+  const saveFuelCard = async (event) => {
+    event.preventDefault();
+    if (!selectedHearse) return;
+    setSavingFuelCard(true);
+    try {
+      const fuelCardNumber = fuelCardDraft.trim();
+      await request(`/hearses/${encodeURIComponent(selectedHearse.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fuel_card_number: fuelCardNumber || null }),
+      });
+      setHearses((current) => current.map((hearse) => String(hearse.id) === String(selectedHearse.id)
+        ? { ...hearse, fuel_card_number: fuelCardNumber }
+        : hearse));
+      notify.success('Fuel card details updated.');
+    } catch (saveError) {
+      notify.error(saveError.message || 'Unable to update fuel card details.');
+    } finally {
+      setSavingFuelCard(false);
+    }
+  };
+
   const filters = [
     { id: 'all', label: 'All', count: hearses.length },
     { id: 'available', label: 'Available', count: counts.available },
-    { id: 'booked', label: 'Booked / transit', count: counts.booked },
+    { id: 'in_use', label: 'In use', count: hearses.filter((hearse) => ['booked', 'in_transit'].includes(statusKey(hearse.status))).length },
     { id: 'maintenance', label: 'Maintenance', count: counts.maintenance },
-    { id: 'out_of_service', label: 'Out of service', count: counts.outOfService },
+    { id: 'out_of_service', label: 'Out of service', count: hearses.filter((hearse) => statusKey(hearse.status) === 'out_of_service').length },
   ];
 
   return (
@@ -686,7 +603,7 @@ function FleetDashboard() {
             <HeaderIcon><Truck size={23} /></HeaderIcon>
             <div>
               <Title>Hearse Fleet</Title>
-              <Subtitle>Live vehicle status and booking schedule</Subtitle>
+              <Subtitle>Vehicle details, registration plates, status and fuel cards</Subtitle>
             </div>
           </TitleGroup>
           <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
@@ -694,7 +611,7 @@ function FleetDashboard() {
               <RefreshCw size={15} className={refreshing ? 'fleet-spin' : ''} /> Refresh
             </ActionButton>
             <ActionButton $primary onClick={() => navigate(`/${slug}/hearse`)}>
-              <CalendarDays size={15} /> Bookings & registration <ChevronRight size={15} />
+              <CarFront size={15} /> Vehicle registration
             </ActionButton>
           </div>
         </Header>
@@ -702,8 +619,8 @@ function FleetDashboard() {
         <SummaryGrid aria-label="Fleet summary">
           <SummaryCard><SummaryIcon><Truck size={19} /></SummaryIcon><div><SummaryValue>{counts.total}</SummaryValue><SummaryLabel>Total hearses</SummaryLabel></div></SummaryCard>
           <SummaryCard><SummaryIcon $tone="green"><CheckCircle2 size={19} /></SummaryIcon><div><SummaryValue>{counts.available}</SummaryValue><SummaryLabel>Marked available</SummaryLabel></div></SummaryCard>
-          <SummaryCard><SummaryIcon $tone="gold"><Clock3 size={19} /></SummaryIcon><div><SummaryValue>{counts.booked}</SummaryValue><SummaryLabel>Booked or in transit</SummaryLabel></div></SummaryCard>
-          <SummaryCard><SummaryIcon $tone="red"><CalendarDays size={19} /></SummaryIcon><div><SummaryValue>{upcomingCount}</SummaryValue><SummaryLabel>Upcoming bookings · 120 days</SummaryLabel></div></SummaryCard>
+          <SummaryCard><SummaryIcon $tone="gold"><Wrench size={19} /></SummaryIcon><div><SummaryValue>{counts.maintenance}</SummaryValue><SummaryLabel>Maintenance / inspection</SummaryLabel></div></SummaryCard>
+          <SummaryCard><SummaryIcon><CreditCard size={19} /></SummaryIcon><div><SummaryValue>{counts.fuelCards}</SummaryValue><SummaryLabel>Fuel cards recorded</SummaryLabel></div></SummaryCard>
         </SummaryGrid>
 
         {error && (
@@ -731,16 +648,11 @@ function FleetDashboard() {
             </ListHeader>
             <HearseList>
               {loading ? (
-                <Empty><RefreshCw size={24} /><strong>Loading fleet</strong><span>Fetching tenant hearse and booking records.</span></Empty>
+                <Empty><RefreshCw size={24} /><strong>Loading fleet</strong><span>Fetching registered vehicles.</span></Empty>
               ) : filteredHearses.length === 0 ? (
-                <Empty><CarFront size={26} /><strong>{hearses.length ? 'No matching hearses' : 'No hearses registered'}</strong><span>{hearses.length ? 'Try another search or status filter.' : 'Use Hearse bookings & registration to add the first vehicle.'}</span></Empty>
+                <Empty><CarFront size={26} /><strong>{hearses.length ? 'No matching hearses' : 'No hearses registered'}</strong><span>{hearses.length ? 'Try another search or status filter.' : 'Use Vehicle registration to add the first vehicle.'}</span></Empty>
               ) : filteredHearses.map((hearse) => {
                 const meta = statusMeta(hearse.status);
-                const nextBooking = bookings
-                  .filter((booking) => String(booking.hearse_id) === String(hearse.id))
-                  .map((booking) => ({ booking, dates: parseBookingDates(booking) }))
-                  .filter(({ booking, dates }) => dates.some((date) => date >= dayKey(new Date())) && !['completed', 'cancelled'].includes(String(booking.status).toLowerCase()))
-                  .sort((a, b) => (a.dates[0] || '').localeCompare(b.dates[0] || ''))[0];
                 return (
                   <HearseCard key={hearse.id} type="button" $selected={String(hearse.id) === String(selectedId)} onClick={() => setSelectedId(hearse.id)}>
                     <HearseCardText>
@@ -753,7 +665,7 @@ function FleetDashboard() {
                       </HearseCardTop>
                       <CardFooter>
                         <span><MapPin size={13} />{hearse.branch_name || hearse.branch_code || 'Branch not set'}</span>
-                        <span><Clock3 size={13} />{nextBooking ? formatDate(nextBooking.dates[0]) : 'No upcoming booking'}</span>
+                        <span><CreditCard size={13} />{hearse.fuel_card_number || 'No fuel card'}</span>
                       </CardFooter>
                     </HearseCardText>
                     <VehicleThumb>
@@ -789,8 +701,26 @@ function FleetDashboard() {
                     <Fact><span>Model</span><strong>{selectedHearse.model || 'Not recorded'}</strong></Fact>
                     <Fact><span>Registration</span><strong>{selectedHearse.plate_number || 'Not recorded'}</strong></Fact>
                   </FactsGrid>
+                  <FuelCardEditor onSubmit={saveFuelCard}>
+                    <CreditCard size={18} />
+                    <label>
+                      <span>Fuel card number</span>
+                      <input
+                        value={fuelCardDraft}
+                        onChange={(event) => setFuelCardDraft(event.target.value)}
+                        placeholder="Enter assigned fuel card number"
+                        aria-label="Fuel card number"
+                      />
+                    </label>
+                    <ActionButton
+                      type="submit"
+                      disabled={savingFuelCard || fuelCardDraft.trim() === String(selectedHearse.fuel_card_number || '').trim()}
+                    >
+                      {savingFuelCard ? 'Saving...' : 'Save fuel card'}
+                    </ActionButton>
+                  </FuelCardEditor>
                   {['booked', 'in_transit'].includes(statusKey(selectedHearse.status)) ? (
-                    <Subtitle style={{ marginTop: 16 }}>This status is controlled by an active booking. Manage it from Hearse Bookings.</Subtitle>
+                    <Subtitle style={{ marginTop: 16 }}>This vehicle is assigned to active work, so its operational availability is managed by the assignment workflow.</Subtitle>
                   ) : (
                     <>
                       <StatusEditor onSubmit={saveStatus} style={{ marginTop: 16 }}>
@@ -802,47 +732,16 @@ function FleetDashboard() {
                           {savingStatus ? 'Saving...' : 'Update status'}
                         </ActionButton>
                       </StatusEditor>
-                      <Subtitle style={{ marginTop: 8 }}>Booking assignments determine booked availability. Use this control for service status only.</Subtitle>
+                      <Subtitle style={{ marginTop: 8 }}>Use this control to update the vehicle’s service status.</Subtitle>
                     </>
                   )}
                 </DetailCard>
-
-                <DetailCard>
-                  <SectionTitle><h3>Booking activity</h3><span>Recent and upcoming · 120-day view</span></SectionTitle>
-                  {selectedBookings.length ? selectedBookings.map((booking) => {
-                    const datesLabel = booking.dates.length
-                      ? `${formatDate(booking.dates[0])}${booking.dates.length > 1 ? ` – ${formatDate(booking.dates[booking.dates.length - 1])}` : ''}`
-                      : 'Date not provided';
-                    const bookingStatus = statusMeta(booking.status);
-                    return (
-                      <BookingRow key={booking.booking_id || booking.id}>
-                        <BookingPrimary>
-                          <strong>{booking.client_name || booking.booking_code || `Booking ${booking.booking_id || booking.id}`}</strong>
-                          <span>{booking.booking_code || `#${booking.booking_id || booking.id}`}</span>
-                        </BookingPrimary>
-                        <BookingDetail>{datesLabel}</BookingDetail>
-                        <BookingDetail>{[booking.from_location, booking.to_location || booking.destination].filter(Boolean).join(' → ') || 'Route not recorded'}</BookingDetail>
-                        <StatusBadge $tone={bookingStatus.color}><StatusDot />{bookingStatus.label}</StatusBadge>
-                      </BookingRow>
-                    );
-                  }) : (
-                    <Empty style={{ minHeight: 150 }}>
-                      <CalendarDays size={24} />
-                      <strong>No booking activity in this period</strong>
-                      <span>Bookings for this hearse from the last 60 days and next 120 days will appear here.</span>
-                    </Empty>
-                  )}
-                </DetailCard>
-
-                <ActionButton $primary onClick={() => navigate(`/${slug}/hearse`)}>
-                  <CalendarDays size={15} /> Open hearse bookings
-                </ActionButton>
               </>
             ) : (
               <Empty style={{ minHeight: 420 }}>
                 <Truck size={30} />
                 <strong>{loading ? 'Loading fleet details' : 'Select a hearse'}</strong>
-                <span>Choose a vehicle from the list to inspect its status and linked bookings.</span>
+                <span>Choose a vehicle to inspect its registration, fuel card and service status.</span>
               </Empty>
             )}
           </Details>

@@ -3,6 +3,7 @@ import {
   ArrowRight,
   CalendarDays,
   Clock3,
+  Truck,
   DoorOpen,
   UserRoundPlus,
   UsersRound,
@@ -110,6 +111,7 @@ export default function DashboardOverview({
   today,
   onNavigate,
   onOpenCase,
+  onOpenFleet,
 }) {
   const records = cases || [];
   const care = calc?.care || {};
@@ -195,6 +197,11 @@ export default function DashboardOverview({
         <button type="button" onClick={() => onNavigate("release-calendar")}>
           <span className="overview-shortcut-icon release"><CalendarDays size={17} /></span>
           <span><b>View release calendar</b><small>Upcoming releases and handovers</small></span>
+          <ArrowRight size={16} />
+        </button>
+        <button type="button" onClick={onOpenFleet}>
+          <span className="overview-shortcut-icon fleet"><Truck size={17} /></span>
+          <span><b>Manage hearse fleet</b><small>Vehicle plates, status and fuel cards</small></span>
           <ArrowRight size={16} />
         </button>
       </div>

@@ -8,7 +8,7 @@ import { countUnseenDecisions, markDecisionsSeen } from '../../utils/leaveDecisi
 import { useSocket } from '../../utils/context/socketContext';
 // `isWorkshopAdmin` and `BookOpen` were only needed by the removed "Store
 // Journal" nav item; the Journal now lives inside the dashboard's Store view.
-import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Truck, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
+import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
 
 // ============================================================
 // DESIGN SYSTEM
@@ -787,7 +787,6 @@ const ModernSidebar = ({
     {
       section: 'Main',
       items: [
-        { icon: Truck, label: 'Fleet', path: `/${tenantSlug}/fleet` },
         { icon: Calendar, label: 'Hearse Bookings', path: `/${tenantSlug}/hearse` },
         { icon: Users, label: 'Deceased', path: `/${tenantSlug}/deceased` },
         { icon: Package, label: 'Coffins', path: `/${tenantSlug}/coffins` },

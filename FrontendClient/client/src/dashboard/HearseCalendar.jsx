@@ -1,11 +1,11 @@
 import { useMemo, useState, useCallback } from "react";
 import styled from "styled-components";
 import {
-  startOfWeek, addDays as dateAddDays, isSameDay, isSameMonth, isToday, format,
+  isSameMonth,
 } from "date-fns";
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Search, User, Cross,
-  Droplets, Flower, X, ShieldAlert, Timer, List,
+  Droplets, Flower, X, ShieldAlert, Timer, List, Plus,
 } from "lucide-react";
 import "./deceased-calendar.css";
 
@@ -148,6 +148,8 @@ function MonthChip({ event, onClick }) {
     <Chip
       $color={s.color}
       $tint={s.tint}
+      className="deceased-schedule-month-chip"
+      style={{ "--month-chip": s.color }}
       onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
       title={`${event.deceased.name} · ${s.label}`}
     >
@@ -277,59 +279,44 @@ function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
   }
   return (
     <div className="deceased-schedule-month">
-      <table>
-        <thead>
-          <tr>
-            {WEEK.map((w) => (
-              <th key={w}>
-                {w}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week, wi) => (
-            <tr key={wi}>
-              {week.map((day) => {
-                const key = toKey(day);
-                const active = key === today;
-                const evs = (events || []).filter((e) => e.date === key);
-                return (
-                  <td key={key}>
-                    <div
-                      onClick={() => onDayClick(day)}
-                      className={`deceased-schedule-day${active ? " today" : ""}${isSameMonth(day, first) ? "" : " other"}`}
-                    >
-                      <div className="deceased-schedule-day-heading">
-                        <div>
-                          {day.getDate()}
-                        </div>
-                        {active && (
-                          <span className="deceased-schedule-today">
-                            Today
-                          </span>
-                        )}
-                      </div>
-                      <div className="deceased-schedule-day-events">
-                        {evs.slice(0, 2).map((e) => (
-                          <Chip key={e.id} $color={statusOf(e).color} $tint={statusOf(e).tint} onClick={(ev) => { ev.stopPropagation(); onEventClick(e); }} className="deceased-schedule-month-chip">
-                            <span className="t">{e.time}</span>
-                            <span className="n">{typeOf(e).label}</span>
-                            <span className="m">{e.deceased.name}</span>
-                          </Chip>
-                        ))}
-                        {evs.length > 2 && (
-                          <div className="deceased-schedule-more">{evs.length - 2} more</div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="deceased-schedule-month-head">
+        {WEEK.map((day) => <div key={day}>{day}</div>)}
+      </div>
+      <div className="deceased-schedule-month-grid">
+        {weeks.flat().map((day) => {
+          const key = toKey(day);
+          const active = key === today;
+          const dayEvents = (events || []).filter((event) => event.date === key)
+            .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+          return (
+            <div
+              key={key}
+              role="button"
+              tabIndex={0}
+              aria-label={`${fmtFull(key)}${dayEvents.length ? `, ${dayEvents.length} scheduled activities` : ""}`}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onDayClick(day);
+                }
+              }}
+              onClick={() => onDayClick(day)}
+              className={`deceased-schedule-day${active ? " today" : ""}${isSameMonth(day, first) ? "" : " other"}`}
+            >
+              <div className="deceased-schedule-day-heading">
+                <span>{day.getDate()}</span>
+                {active && <span className="deceased-schedule-today">Today</span>}
+              </div>
+              <div className="deceased-schedule-day-events">
+                {dayEvents.slice(0, 3).map((event) => (
+                  <MonthChip key={event.id} event={event} onClick={onEventClick} />
+                ))}
+                {dayEvents.length > 3 && <div className="deceased-schedule-more">+{dayEvents.length - 3} more</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -400,18 +387,31 @@ function DetailPanel({ selected, onClose, onEventSelect }) {
   );
 }
 
-export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEventSelect, initialView = "month", branch = "", loading = false }) {
+export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEventSelect, onCreateIntake, initialView = "month", branch = "", loading = false }) {
   const events = useMemo(() => normEvents(eventsProp).filter((e) => !branch || e.branch === branch || e.deceased.branch === branch), [eventsProp, branch]);
   const [view, setView] = useState(initialView);
   const [mode, setMode] = useState("calendar");
   const [date, setDate] = useState(todayKey);
   const [query, setQuery] = useState("");
+  const [activeStatuses, setActiveStatuses] = useState([]);
   const [selected, setSelected] = useState(null);
   const [y, mo] = date.split("-").map(Number);
   const today = todayKey();
   const monthPrefix = `${y}-${pad(mo)}-`;
-  const intakesThisMonth = events.filter((e) => e.type === "intake" && e.date.startsWith(monthPrefix)).length;
-  const releasesThisMonth = events.filter((e) => e.type === "release" && e.date.startsWith(monthPrefix)).length;
+  const monthEvents = events.filter((event) => event.date.startsWith(monthPrefix));
+  const intakesThisMonth = monthEvents.filter((e) => e.type === "intake").length;
+  const releasesThisMonth = monthEvents.filter((e) => e.type === "release").length;
+  const statusCounts = events.reduce((counts, event) => {
+    const key = statusKeyOf(event);
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+  const availableStatuses = Object.keys(STATUS_CONFIG).filter((status) => statusCounts[status]);
+  const toggleStatus = (status) => {
+    setActiveStatuses((current) => current.includes(status)
+      ? current.filter((item) => item !== status)
+      : [...current, status]);
+  };
   const matches = (event) => [event.deceased.name, event.deceased.id, event.deceased.recordId, event.deceased.admissionNumber, event.branch, event.title, event.officer, event.deceased.age]
     .join(" ").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
   const inRange = (event) => {
@@ -421,16 +421,15 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
     if (view === "month") return event.date.startsWith(monthPrefix);
     return true;
   };
-  const listEvents = events.filter((event) => inRange(event) && matches(event)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "") || a.title.localeCompare(b.title));
-  const gridEvents = events.filter(matches);
+  const isVisible = (event) => matches(event) && (!activeStatuses.length || activeStatuses.includes(statusKeyOf(event)));
+  const listEvents = events.filter((event) => inRange(event) && isVisible(event)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "") || a.title.localeCompare(b.title));
+  const gridEvents = events.filter(isVisible);
   const gridEventsByDay = gridEvents.reduce((days, event) => {
     (days[event.date] ||= []).push(event);
     return days;
   }, {});
   const monthDate = parseKey(date);
   const todayActivity = events.filter((event) => event.date === today).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-  const upcomingEvents = events.filter((event) => event.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
-  const upcoming = upcomingEvents.slice(0, 6);
   const step = (direction) => {
     if (view === "month" || view === "all") { setView("month"); setDate(toKey(new Date(y, mo - 1 + direction, 1))); }
     else if (view === "week") setDate(addDays(date, direction * 7));
@@ -449,58 +448,61 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
             <CalendarIcon size={16} />
           </div>
           <div>
-            <h1>Deceased schedule</h1>
-            <p>{branch || "All branches"} · intake, release, postmortem and service activity</p>
+            <h1>RestPoint <span>Deceased schedule</span></h1>
+            <p>{branch || "All branches"} · Intake, release and case activity</p>
           </div>
         </div>
-        <div className="deceased-schedule-period">
+        {onCreateIntake && <button type="button" className="deceased-schedule-create" onClick={onCreateIntake}><Plus size={14} /> Register intake</button>}
+      </header>
+      <div className="deceased-schedule-toolbar">
+        <div className="deceased-schedule-toolbar-left">
+          <label className="deceased-schedule-search">
+            <SearchIcon />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search deceased records..." aria-label="Search deceased schedule" />
+          </label>
+          <span className="deceased-schedule-divider" />
+          <div className="deceased-schedule-filters" aria-label="Filter by status">
+            {availableStatuses.map((status) => {
+              const config = STATUS_CONFIG[status];
+              const active = !activeStatuses.length || activeStatuses.includes(status);
+              return (
+                <button type="button" key={status} className={`deceased-schedule-filter${active ? " active" : ""}`} aria-pressed={active} onClick={() => toggleStatus(status)}>
+                  <i style={{ background: config.color }} />{config.label}<small>{statusCounts[status]}</small>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="deceased-schedule-toolbar-right">
           <div className="deceased-schedule-period-control">
             <button type="button" onClick={() => step(-1)} aria-label="Previous period"><ChevronLeft size={15} /></button>
             <strong>{rangeTitle}</strong>
             <button type="button" onClick={() => step(1)} aria-label="Next period"><ChevronRight size={15} /></button>
           </div>
           <button type="button" className="deceased-schedule-today-button" onClick={goToday}>Today</button>
+          <span className="deceased-schedule-divider" />
+          <div className="deceased-schedule-views" role="tablist" aria-label="Calendar view">
+            {["day", "week", "month"].map((item) => (
+              <button type="button" role="tab" aria-selected={view === item} key={item} onClick={() => { setView(item); setMode("calendar"); }}>{item[0].toUpperCase() + item.slice(1)}</button>
+            ))}
+            <button type="button" role="tab" aria-selected={mode === "list"} onClick={() => setMode("list")}><List size={12} /> List</button>
+          </div>
         </div>
-      </header>
-      <div className="deceased-schedule-toolbar">
-        <div className="deceased-schedule-views" role="tablist" aria-label="Calendar view">
-          {["month", "week", "day"].map((item) => (
-            <button type="button" role="tab" aria-selected={view === item} key={item} onClick={() => setView(item)}>{item[0].toUpperCase() + item.slice(1)}</button>
-          ))}
-          <button type="button" role="tab" aria-selected={view === "today"} onClick={goToday}>Today</button>
-          <button type="button" role="tab" aria-selected={view === "all"} onClick={() => setView("all")}>All dates</button>
-        </div>
-        <div className="deceased-schedule-mode">
-          <button type="button" aria-label="Show calendar" aria-pressed={mode === "calendar"} onClick={() => setMode("calendar")}><CalendarIcon size={14} /> Calendar</button>
-          <button type="button" aria-label="Show list" aria-pressed={mode === "list"} onClick={() => setMode("list")}><List size={14} /> List</button>
-        </div>
-        <label className="deceased-schedule-search">
-          <SearchIcon />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or officer" aria-label="Search deceased schedule" />
-        </label>
       </div>
       <div className="deceased-schedule-summary">
-        <article><span>Today’s activity</span><strong>{todayActivity.length}</strong><small>Scheduled events</small></article>
-        <article><span>Intakes this month</span><strong>{intakesThisMonth}</strong><small>New admissions</small></article>
-        <article><span>Releases this month</span><strong>{releasesThisMonth}</strong><small>Handover events</small></article>
-        <article><span>Upcoming activity</span><strong>{upcomingEvents.length}</strong><small>Scheduled from today onward</small></article>
+        <article className="month-stat"><CalendarIcon /><div><strong>{monthEvents.length}</strong><span>Selected month</span></div></article>
+        <article className="intake-stat"><User /><div><strong>{intakesThisMonth}</strong><span>Intakes</span></div></article>
+        <article className="release-stat"><Cross /><div><strong>{releasesThisMonth}</strong><span>Releases</span></div></article>
+        <article className="today-stat"><CalendarIcon /><div><strong>{todayActivity.length}</strong><span>Today</span></div></article>
       </div>
-      <div className="deceased-schedule-layout">
-        <main className="deceased-schedule-content">
-          <div className="deceased-schedule-content-heading">
-            <div>
-              <h2>{rangeTitle} {mode === "list" ? "roster" : "calendar"}</h2>
-              <p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · {branch || "all branches"}</p>
-            </div>
-            <div className="deceased-schedule-legend">
-              {["pending", "booked", "scheduled", "in_transit", "completed", "cancelled"].map((status) => {
-                const config = STATUS_CONFIG[status];
-                return (
-                  <span key={status}><i style={{ background: config.color }} /> {config.label}</span>
-                );
-              })}
-            </div>
-          </div>
+      <div className="deceased-schedule-legend">
+        <strong>Status</strong>
+        {availableStatuses.map((status) => (
+          <span key={status}><i style={{ background: STATUS_CONFIG[status].color }} /> {STATUS_CONFIG[status].label}</span>
+        ))}
+        <span className="deceased-schedule-result-count">{listEvents.length} {listEvents.length === 1 ? "activity" : "activities"}</span>
+      </div>
+      <main className="deceased-schedule-content">
           {loading ? (
             <div className="deceased-schedule-empty">
               <CalendarIcon size={24} />
@@ -522,11 +524,15 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
               <span>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span>
             </div>
           )}
-        </main>
-      </div>
+      </main>
       {selected && <DetailPanel selected={selected} onClose={() => setSelected(null)} onEventSelect={onEventSelect} />}
     </section>
   );
+}
+
+function statusKeyOf(event) {
+  const status = String(event?.status || "scheduled").toLowerCase().replace(/\s+/g, "_");
+  return STATUS_CONFIG[status] ? status : "scheduled";
 }
 
 function SearchIcon() { return <Search size={15}/>; }

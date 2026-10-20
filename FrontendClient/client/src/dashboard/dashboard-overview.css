@@ -89,7 +89,7 @@
 .rpd .overview-metric-copy small { margin-top: 6px; color: #9aa3b2; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rpd .overview-shortcuts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 13px;
   margin-top: 16px;
 }
@@ -110,6 +110,7 @@
 .rpd .overview-shortcuts > button:hover { transform: translateY(-2px); border-color: #cfdbce; box-shadow: 0 9px 22px rgba(32, 43, 68, .07); }
 .rpd .overview-shortcut-icon { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border-radius: 10px; color: #3f6c4b; background: #edf2ed; }
 .rpd .overview-shortcut-icon.release { color: #19845b; background: #eaf6ef; }
+.rpd .overview-shortcut-icon.fleet { color: #536078; background: #f0f2f5; }
 .rpd .overview-shortcuts > button > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .rpd .overview-shortcuts b { color: #29364d; font-size: 11px; font-weight: 800; }
 .rpd .overview-shortcuts small { margin-top: 3px; color: #8a94a7; font-size: 9px; }
@@ -173,6 +174,7 @@
 @media (max-width: 1100px) {
   .rpd .overview-page { padding: 24px 22px 32px; }
   .rpd .overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rpd .overview-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rpd .overview-panels { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
