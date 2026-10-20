@@ -142,6 +142,7 @@ const FlowerSamples = lazy(() => import('../components/florists/Samples'));
 
 
 const HearseBookings = lazy(() => import('../components/hearse/hearseBookings'));
+const FleetDashboard = lazy(() => import('../components/hearse/FleetDashboard'));
 const DriverPortal = lazy(() => import('../components/Driver/DriverPortal'));
 const LeaveDashboard = lazy(() => import('../components/leave/Dashboard'));
 const ApplyLeave = lazy(() => import('../components/leave/ApplyLeave'));
@@ -687,6 +688,9 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="hearse" element={
           <Layout tenantData={tenantData} tenantSlug={slug}><HearseBookings /></Layout>
         } />
+        <Route path="fleet" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}><FleetDashboard /></Layout>
+        } />
 
         {/* Mini Store - All authenticated users */}
         <Route path="mini-store" element={
@@ -950,10 +954,18 @@ const RootRedirect = () => {
   return <LandingPage />;
 };
 
+const FleetRouteRedirect = () => {
+  const tenantSlug = getTenantSlug();
+  return hasSession() && tenantSlug
+    ? <Navigate to={`/${tenantSlug}/fleet`} replace />
+    : <Navigate to="/login" replace />;
+};
+
 const AppRouter = () => (
   <Suspense fallback={<RouteLoadingFallback />}>
     <Routes>
       <Route path="/" element={<RootRedirect />} />
+      <Route path="/fleet" element={<FleetRouteRedirect />} />
       <Route path="/solutions/churches" element={<ChurchFuneralWelfare />} />
       <Route path="/solutions/saccos" element={<SACCOFuneralInsurance />} />
       <Route path="/solutions/chamas" element={<ChamaWelfareManagement />} />

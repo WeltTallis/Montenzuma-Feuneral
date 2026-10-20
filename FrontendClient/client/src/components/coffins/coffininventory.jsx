@@ -1012,8 +1012,6 @@ const CoffinDashboard = () => {
   const [invQuery, setInvQuery] = useState('');
   const [bkQuery, setBkQuery] = useState('');
   const [bookingSearch, setBookingSearch] = useState('');
-  const [bookingTypeFilter, setBookingTypeFilter] = useState('all');
-  const [bookingColorFilter, setBookingColorFilter] = useState('all');
 
   // Reservations calendar/list state now lives inside <ReservationDashboard />
 
@@ -1036,8 +1034,6 @@ const CoffinDashboard = () => {
   useEffect(() => {
     if (modal.open && modal.type === 'booking') {
       setBookingSearch('');
-      setBookingTypeFilter('all');
-      setBookingColorFilter('all');
     }
   }, [modal.open, modal.type]);
 
@@ -1571,17 +1567,7 @@ const CoffinDashboard = () => {
     const matchesBranch = !coffin.branch_id || coffin.branch_id == (modal.data.branch_id || currentBranch);
     return matchesBranch;
   });
-  const bookingTypes = [...new Set(bookableCoffins.map((c) => c.type || c.name).filter(Boolean))].sort();
-  const bookingColors = [...new Set(
-    bookableCoffins
-      .filter((c) => bookingTypeFilter === 'all' || (c.type || c.name) === bookingTypeFilter)
-      .map((c) => c.color)
-      .filter(Boolean)
-  )].sort();
   const filteredBookingCoffins = bookableCoffins.filter((coffin) => {
-    const type = coffin.type || coffin.name || '';
-    if (bookingTypeFilter !== 'all' && type !== bookingTypeFilter) return false;
-    if (bookingColorFilter !== 'all' && coffin.color !== bookingColorFilter) return false;
     const query = bookingSearch.trim().toLowerCase();
     return !query || [coffin.name, coffin.type, coffin.color, coffin.size, coffin.custom_id, coffin.coffin_id]
       .some((value) => String(value || '').toLowerCase().includes(query));
@@ -2792,11 +2778,18 @@ const CoffinDashboard = () => {
           coffins={coffins}
           branches={branches}
           formatPrice={formatKES}
-          onNewReservation={() => {
+          onNewReservation={(selectedDate) => {
             const now = new Date();
             const hh = String(now.getHours()).padStart(2, '0');
             const mm = String(now.getMinutes()).padStart(2, '0');
-            setModal({ open: true, type: 'booking', data: { service_date: todayKey(), service_time: hh + ':' + mm } });
+            setModal({
+              open: true,
+              type: 'booking',
+              data: {
+                service_date: selectedDate ? toDateKey(selectedDate) : todayKey(),
+                service_time: hh + ':' + mm,
+              },
+            });
           }}
           onViewBooking={(id) => viewBooking(id)}
           navTabs={[
@@ -3265,98 +3258,80 @@ const CoffinDashboard = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={styles.fl}>Coffin type</label>
-                  <select
-                    style={styles.fs}
-                    value={bookingTypeFilter}
-                    onChange={(e) => {
-                      setBookingTypeFilter(e.target.value);
-                      setBookingColorFilter('all');
-                      setModal((prev) => ({
-                        ...prev,
-                        data: {
-                          ...prev.data,
-                          coffin_id: '',
-                          coffin_name: e.target.value === 'all' ? '' : e.target.value,
-                          color: '',
-                          size: '',
-                        },
-                      }));
-                    }}
-                  >
-                    <option value="all">Choose a type</option>
-                    {bookingTypes.map((type) => <option key={type} value={type}>{type}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={styles.fl}>Available color</label>
-                  <select
-                    style={styles.fs}
-                    value={bookingColorFilter}
-                    onChange={(e) => {
-                      setBookingColorFilter(e.target.value);
-                      setModal((prev) => ({
-                        ...prev,
-                        data: {
-                          ...prev.data,
-                          coffin_id: '',
-                          color: e.target.value === 'all' ? '' : e.target.value,
-                          size: '',
-                        },
-                      }));
-                    }}
-                  >
-                    <option value="all">Choose a color</option>
-                    {bookingColors.map((color) => <option key={color} value={color}>{color}</option>)}
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label style={styles.fl}>Inventory variant (optional)</label>
-                <select
-                  style={styles.fs}
-                  value={modal.data.coffin_id || ''}
-                  onChange={(e) => {
-                    const selected = filteredBookingCoffins.find(
-                      (coffin) => (coffin.coffin_id || coffin.id) == e.target.value
-                    );
-                    setModal((prev) => ({
+                <label style={styles.fl}>Choose a coffin color variant (optional)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10, marginTop: 7 }}>
+                  <button
+                    type="button"
+                    aria-pressed={!modal.data.coffin_id}
+                    onClick={() => setModal((prev) => ({
                       ...prev,
-                      data: {
-                        ...prev.data,
-                        coffin_id: e.target.value,
-                        coffin_name: selected?.type || selected?.name || prev.data.coffin_name || '',
-                        color: selected?.color || '',
-                        size: selected?.size || '',
-                        quantity: selected && getCoffinStock(selected) > 0
-                          ? Math.min(parseInt(prev.data.quantity, 10) || 1, getCoffinStock(selected))
-                          : prev.data.quantity,
-                        amount: selected?.price ?? selected?.exact_price ?? prev.data.amount,
-                      },
-                    }));
-                  }}
-                >
-                  <option value="">No stock variant — made to order</option>
-                  {filteredBookingCoffins.length > 0 ? filteredBookingCoffins.map((coffin) => (
-                    <option key={coffin.coffin_id || coffin.id} value={coffin.coffin_id || coffin.id}>
-                      {[coffin.type || coffin.name, coffin.color, coffin.size].filter(Boolean).join(' · ')}
-                      {' — '}{getCoffinStock(coffin)}{' available · '}{formatKES(coffin.price ?? coffin.exact_price)}
-                    </option>
-                  )) : (
-                    <option value="" disabled>
-                      {bookableCoffins.length ? 'No variants match these search filters' : 'No inventory variants (enter a type and color to make to order)'}
-                    </option>
-                  )}
-                </select>
-                {selectedBookingCoffin && (
-                  <div style={{ fontSize: 12, color: S.textMuted, marginTop: 6 }}>
-                    {selectedBookingCoffin.type || selectedBookingCoffin.name}
-                    {selectedBookingCoffin.color ? ` · ${selectedBookingCoffin.color}` : ''}
-                    {selectedBookingCoffin.size ? ` · ${selectedBookingCoffin.size}` : ''}
-                    {` · ${getCoffinStock(selectedBookingCoffin)} in stock`}
+                      data: { ...prev.data, coffin_id: '', size: '' },
+                    }))}
+                    style={{
+                      textAlign: 'left',
+                      padding: 12,
+                      borderRadius: 10,
+                      border: `1px solid ${!modal.data.coffin_id ? S.primary : S.border}`,
+                      background: !modal.data.coffin_id ? S.primaryLight : '#fff',
+                      color: S.text,
+                      cursor: 'pointer',
+                      font: 'inherit',
+                    }}
+                  >
+                    <strong style={{ display: 'block', fontSize: 13 }}>Made to order</strong>
+                    <span style={{ color: S.textMuted, fontSize: 11 }}>No inventory variant selected</span>
+                  </button>
+                  {filteredBookingCoffins.map((coffin) => {
+                    const variantId = coffin.coffin_id || coffin.id;
+                    const selected = String(modal.data.coffin_id || '') === String(variantId);
+                    const stock = getCoffinStock(coffin);
+                    return (
+                      <button
+                        type="button"
+                        key={variantId}
+                        aria-pressed={selected}
+                        onClick={() => setModal((prev) => ({
+                          ...prev,
+                          data: {
+                            ...prev.data,
+                            coffin_id: variantId,
+                            coffin_name: coffin.type || coffin.name || '',
+                            color: coffin.color || '',
+                            size: coffin.size || '',
+                            quantity: stock > 0
+                              ? Math.min(parseInt(prev.data.quantity, 10) || 1, stock)
+                              : prev.data.quantity,
+                            amount: coffin.price ?? coffin.exact_price ?? prev.data.amount,
+                          },
+                        }))}
+                        style={{
+                          textAlign: 'left',
+                          padding: 12,
+                          borderRadius: 10,
+                          border: `1px solid ${selected ? S.primary : S.border}`,
+                          background: selected ? S.primaryLight : '#fff',
+                          color: S.text,
+                          cursor: 'pointer',
+                          font: 'inherit',
+                        }}
+                      >
+                        <strong style={{ display: 'block', fontSize: 13 }}>
+                          {[coffin.type || coffin.name, coffin.color].filter(Boolean).join(' · ')}
+                        </strong>
+                        <span style={{ display: 'block', color: S.textMuted, fontSize: 11, marginTop: 4 }}>
+                          {[coffin.size, `${stock} available`].filter(Boolean).join(' · ')}
+                        </span>
+                        <span style={{ display: 'block', color: S.textMuted, fontSize: 11, marginTop: 2 }}>
+                          {formatKES(coffin.price ?? coffin.exact_price)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {filteredBookingCoffins.length === 0 && (
+                  <div style={{ color: S.textMuted, fontSize: 12, marginTop: 8 }}>
+                    No matching inventory variants. Enter the coffin type and color below for a made-to-order booking.
                   </div>
                 )}
               </div>

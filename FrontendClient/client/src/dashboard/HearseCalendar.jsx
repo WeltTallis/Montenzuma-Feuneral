@@ -4,9 +4,10 @@ import {
   startOfWeek, addDays as dateAddDays, isSameDay, isSameMonth, isToday, format,
 } from "date-fns";
 import {
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Search, User, Cross,
-  Droplets, Flower, Plus, X, ShieldAlert, Timer, MapPin, Phone, Mail, List,
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, Search, User, Cross,
+  Droplets, Flower, X, ShieldAlert, Timer, List,
 } from "lucide-react";
+import "./deceased-calendar.css";
 
 /* -------------------------------------------------------------------------
    DeceasedScheduleCalendar — clean modern calendar for deceased activity.
@@ -275,12 +276,12 @@ function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
     weeks.push(week);
   }
   return (
-    <div style={{ width: "100%", overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "5px 0" }}>
+    <div className="deceased-schedule-month">
+      <table>
         <thead>
           <tr>
             {WEEK.map((w) => (
-              <th key={w} style={{ textAlign: "left", fontSize: "10px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".08em", padding: "6px 0", width: "14.28%" }}>
+              <th key={w}>
                 {w}
               </th>
             ))}
@@ -288,43 +289,37 @@ function MonthGrid({ year, month, events, onDayClick, onEventClick, today }) {
         </thead>
         <tbody>
           {weeks.map((week, wi) => (
-            <tr key={wi} style={{ height: "90px" }}>
+            <tr key={wi}>
               {week.map((day) => {
                 const key = toKey(day);
                 const active = key === today;
                 const evs = (events || []).filter((e) => e.date === key);
                 return (
-                  <td key={key} style={{ padding: 0 }}>
+                  <td key={key}>
                     <div
                       onClick={() => onDayClick(day)}
-                      style={{
-                        border: active ? "2px solid #0f766e" : "1px solid #e2e8f0",
-                        borderRadius: "8px", padding: "6px", height: "100%",
-                        display: "flex", flexDirection: "column", gap: "4px",
-                        cursor: "pointer", background: active ? "#f0fdff" : "#ffffff",
-                        position: "relative",
-                      }}
+                      className={`deceased-schedule-day${active ? " today" : ""}${isSameMonth(day, first) ? "" : " other"}`}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
-                        <div style={{ fontSize: "14px", fontWeight: 800, color: active ? "#0f766e" : "#0f172a" }}>
+                      <div className="deceased-schedule-day-heading">
+                        <div>
                           {day.getDate()}
                         </div>
                         {active && (
-                          <span style={{ fontSize: "9px", color: "#fff", fontWeight: 700, background: "#0f766e", padding: "1px 5px", borderRadius: "10px" }}>
+                          <span className="deceased-schedule-today">
                             Today
                           </span>
                         )}
                       </div>
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden" }}>
+                      <div className="deceased-schedule-day-events">
                         {evs.slice(0, 2).map((e) => (
-                          <Chip key={e.id} $color={statusOf(e).color} $tint={statusOf(e).tint} onClick={(ev) => { ev.stopPropagation(); onEventClick(e); }} style={{ padding: "2px 6px", fontSize: "9px" }}>
+                          <Chip key={e.id} $color={statusOf(e).color} $tint={statusOf(e).tint} onClick={(ev) => { ev.stopPropagation(); onEventClick(e); }} className="deceased-schedule-month-chip">
                             <span className="t">{e.time}</span>
                             <span className="n">{typeOf(e).label}</span>
                             <span className="m">{e.deceased.name}</span>
                           </Chip>
                         ))}
                         {evs.length > 2 && (
-                          <div style={{ fontSize: "8px", color: "#94a3b8", marginTop: "1px" }}>{evs.length - 2} more</div>
+                          <div className="deceased-schedule-more">{evs.length - 2} more</div>
                         )}
                       </div>
                     </div>
@@ -434,7 +429,8 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
   }, {});
   const monthDate = parseKey(date);
   const todayActivity = events.filter((event) => event.date === today).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-  const upcoming = events.filter((event) => event.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "")).slice(0, 6);
+  const upcomingEvents = events.filter((event) => event.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
+  const upcoming = upcomingEvents.slice(0, 6);
   const step = (direction) => {
     if (view === "month" || view === "all") { setView("month"); setDate(toKey(new Date(y, mo - 1 + direction, 1))); }
     else if (view === "week") setDate(addDays(date, direction * 7));
@@ -446,124 +442,84 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
   const rangeTitle = view === "today" ? "Today" : view === "all" ? "All dates" : view === "day" ? fmtFull(date) : view === "week" ? `${fmtDayHeader(weekStartOf(date))} – ${fmtDayHeader(addDays(weekStartOf(date), 6))}` : fmtMonthYear(date);
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "12px", minHeight: 0 }}>
-      <header style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#ecfeff", display: "flex", alignItems: "center", justifyContent: "center", color: "#0f766e" }}>
+    <section className="deceased-schedule">
+      <header className="deceased-schedule-header">
+        <div className="deceased-schedule-brand">
+          <div className="deceased-schedule-mark">
             <CalendarIcon size={16} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>Deceased Schedule</h1>
-            <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>All branches · intake, release, postmortem and service activity</p>
+            <h1>Deceased schedule</h1>
+            <p>{branch || "All branches"} · intake, release, postmortem and service activity</p>
           </div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
-            <button type="button" onClick={() => step(-1)} aria-label="Previous period" style={{ padding: "6px 10px", fontSize: "13px", fontWeight: 700, color: "#64748b", background: "transparent", border: "none", cursor: "pointer" }}><ChevronLeft size={14} /></button>
-            <strong style={{ padding: "6px 12px", fontSize: "13px", color: "#0f172a", borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0" }}>{rangeTitle}</strong>
-            <button type="button" onClick={() => step(1)} aria-label="Next period" style={{ padding: "6px 10px", fontSize: "13px", fontWeight: 700, color: "#64748b", background: "transparent", border: "none", cursor: "pointer" }}><ChevronRight size={14} /></button>
+        <div className="deceased-schedule-period">
+          <div className="deceased-schedule-period-control">
+            <button type="button" onClick={() => step(-1)} aria-label="Previous period"><ChevronLeft size={15} /></button>
+            <strong>{rangeTitle}</strong>
+            <button type="button" onClick={() => step(1)} aria-label="Next period"><ChevronRight size={15} /></button>
           </div>
-          <button type="button" onClick={goToday} style={{ padding: "6px 12px", fontSize: "13px", fontWeight: 700, color: "#0f766e", background: "#ecfeff", border: "1px solid #0f766e", borderRadius: 8, cursor: "pointer" }}>Today</button>
+          <button type="button" className="deceased-schedule-today-button" onClick={goToday}>Today</button>
         </div>
       </header>
-      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #e2e8f0", background: "#ffffff", flexShrink: 0 }}>
-        <div style={{ display: "flex", gap: "6px" }}>
+      <div className="deceased-schedule-toolbar">
+        <div className="deceased-schedule-views" role="tablist" aria-label="Calendar view">
           {["month", "week", "day"].map((item) => (
-            <button type="button" role="tab" aria-selected={view === item} key={item} onClick={() => setView(item)} style={{ padding: "6px 12px", fontSize: "12px", fontWeight: 700, color: view === item ? "#fff" : "#64748b", background: view === item ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer" }}>{item[0].toUpperCase() + item.slice(1)}</button>
+            <button type="button" role="tab" aria-selected={view === item} key={item} onClick={() => setView(item)}>{item[0].toUpperCase() + item.slice(1)}</button>
           ))}
-          <button type="button" aria-selected={view === "today"} onClick={goToday} style={{ padding: "6px 12px", fontSize: "12px", fontWeight: 700, color: view === "today" ? "#fff" : "#64748b", background: view === "today" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer" }}>Today</button>
-          <button type="button" aria-selected={view === "all"} onClick={() => setView("all")} style={{ padding: "6px 12px", fontSize: "12px", fontWeight: 700, color: view === "all" ? "#fff" : "#64748b", background: view === "all" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer" }}>All dates</button>
+          <button type="button" role="tab" aria-selected={view === "today"} onClick={goToday}>Today</button>
+          <button type="button" role="tab" aria-selected={view === "all"} onClick={() => setView("all")}>All dates</button>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
-          <button type="button" aria-label="Show calendar" aria-pressed={mode === "calendar"} onClick={() => setMode("calendar")} style={{ padding: "6px 10px", fontSize: "12px", fontWeight: 700, color: mode === "calendar" ? "#fff" : "#64748b", background: mode === "calendar" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}><CalendarIcon size={13} /> Calendar</button>
-          <button type="button" aria-label="Show list" aria-pressed={mode === "list"} onClick={() => setMode("list")} style={{ padding: "6px 10px", fontSize: "12px", fontWeight: 700, color: mode === "list" ? "#fff" : "#64748b", background: mode === "list" ? "#0f766e" : "transparent", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}><List size={13} /> List</button>
+        <div className="deceased-schedule-mode">
+          <button type="button" aria-label="Show calendar" aria-pressed={mode === "calendar"} onClick={() => setMode("calendar")}><CalendarIcon size={14} /> Calendar</button>
+          <button type="button" aria-label="Show list" aria-pressed={mode === "list"} onClick={() => setMode("list")}><List size={14} /> List</button>
         </div>
-        <label style={{ position: "relative", marginLeft: "auto", width: 260 }}>
-          <SearchIcon style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or receiving officer" aria-label="Search deceased schedule" style={{ width: "100%", padding: "7px 10px 7px 32px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: 8, color: "#0f172a", background: "#fff" }} />
+        <label className="deceased-schedule-search">
+          <SearchIcon />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, ID, admission no. or officer" aria-label="Search deceased schedule" />
         </label>
       </div>
-      <div style={{ display: "flex", flex: 1, minHeight: 0, gap: "12px", overflow: "hidden" }}>
-        <aside style={{ width: 340, minWidth: 300, display: "flex", flexDirection: "column", border: "1px solid #e2e8f0", borderRadius: 10, background: "#ffffff", boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)", overflow: "hidden", minHeight: 0 }}>
-          <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <div>
-                <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Live roster</span>
-                <h2 style={{ margin: "2px 0 0 0", fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>Today’s activity</h2>
-              </div>
-              <b style={{ fontSize: "13px", color: "#0f172a" }}>{todayActivity.length}</b>
-            </div>
-          </div>
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid #f1f5f9", display: "flex", gap: "12px" }}>
-            <div style={{ flex: 1, padding: "10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc" }}>
-              <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Intakes this month</div>
-              <b style={{ fontSize: "16px", color: "#0f172a" }}>{intakesThisMonth}</b>
-            </div>
-            <div style={{ flex: 1, padding: "10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc" }}>
-              <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Releases this month</div>
-              <b style={{ fontSize: "16px", color: "#0f172a" }}>{releasesThisMonth}</b>
-            </div>
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "10px 14px" }}>
-            {todayActivity.length ? (
-              todayActivity.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick} compact />)
-            ) : (
-              <div style={{ padding: "30px 14px", textAlign: "center", color: "#94a3b8" }}>
-                <CalendarIcon size={18} style={{ marginBottom: 8, opacity: 0.5 }} />
-                <span style={{ fontSize: "13px", fontWeight: 600, color: "#64748b" }}>No activity scheduled today</span>
-              </div>
-            )}
-          </div>
-          <div style={{ padding: "10px 14px", borderTop: "1px solid #f1f5f9", fontSize: "11px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#94a3b8" }}>Upcoming</div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "10px 14px" }}>
-            {upcoming.filter((event) => event.date !== today).slice(0, 4).map((event) => (
-              <button type="button" key={event.id} onClick={() => { setDate(event.date); setView("day"); handleEventClick(event); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", marginBottom: 6, cursor: "pointer", fontSize: "12px" }}>
-                <i style={{ background: event.color, width: 8, height: 8, borderRadius: "50%", flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0, color: "#334155" }}>
-                  <b>{event.deceased.name}</b>
-                  <span style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginTop: 2 }}>{fmtFull(event.date)} · {event.title}</span>
-                </span>
-              </button>
-            ))}
-            {!upcoming.some((event) => event.date > today) && <div style={{ padding: "14px 10px", fontSize: "12px", color: "#94a3b8", textAlign: "center" }}>No upcoming events</div>}
-          </div>
-        </aside>
-        <main style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="deceased-schedule-summary">
+        <article><span>Today’s activity</span><strong>{todayActivity.length}</strong><small>Scheduled events</small></article>
+        <article><span>Intakes this month</span><strong>{intakesThisMonth}</strong><small>New admissions</small></article>
+        <article><span>Releases this month</span><strong>{releasesThisMonth}</strong><small>Handover events</small></article>
+        <article><span>Upcoming activity</span><strong>{upcomingEvents.length}</strong><small>Scheduled from today onward</small></article>
+      </div>
+      <div className="deceased-schedule-layout">
+        <main className="deceased-schedule-content">
+          <div className="deceased-schedule-content-heading">
             <div>
-              <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>{rangeTitle} {mode === "list" ? "roster" : "calendar"}</h2>
-              <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#64748b" }}>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · all branches</p>
+              <h2>{rangeTitle} {mode === "list" ? "roster" : "calendar"}</h2>
+              <p>{listEvents.length} scheduled {listEvents.length === 1 ? "activity" : "activities"} · {branch || "all branches"}</p>
             </div>
-            <div style={{ display: "flex", gap: "6px" }}>
+            <div className="deceased-schedule-legend">
               {["pending", "booked", "scheduled", "in_transit", "completed", "cancelled"].map((status) => {
                 const config = STATUS_CONFIG[status];
                 return (
-                  <span key={status} style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 700, color: config.color, background: config.tint, padding: "3px 8px", borderRadius: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: config.color }} /> {config.label}
-                  </span>
+                  <span key={status}><i style={{ background: config.color }} /> {config.label}</span>
                 );
               })}
             </div>
           </div>
           {loading ? (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", color: "#94a3b8" }}>
-              <CalendarIcon size={24} style={{ marginBottom: 8, opacity: 0.5 }} />
-              <b style={{ fontSize: "14px", color: "#64748b" }}>Loading all branch schedules…</b>
+            <div className="deceased-schedule-empty">
+              <CalendarIcon size={24} />
+              <b>Loading branch schedules…</b>
             </div>
           ) : mode === "calendar" ? (
-            <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+            <div className="deceased-schedule-grid">
               {view === "week" ? <WeekGrid weekStartKey={weekStartOf(date)} eventsByDay={gridEventsByDay} onEventClick={handleEventClick} today={today} /> : view === "day" || view === "today" ? <DayGrid dayKey={view === "today" ? today : date} events={gridEvents} onEventClick={handleEventClick} today={today} /> : <MonthGrid year={monthDate.getFullYear()} month={monthDate.getMonth()} events={gridEvents} onDayClick={(day) => { setDate(toKey(day)); setView("day"); }} onEventClick={handleEventClick} today={today} />}
-              {!listEvents.length && <div style={{ padding: "30px 16px", textAlign: "center", color: "#94a3b8" }}>No matching events in this range. Change the date or search to see more.</div>}
+              {!listEvents.length && <div className="deceased-schedule-no-events">No matching events in this range. Change the date or search to see more.</div>}
             </div>
           ) : listEvents.length ? (
-            <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "0 16px 16px 16px" }}>
+            <div className="deceased-schedule-list">
               {listEvents.map((event) => <EventListCard key={event.id} event={event} onClick={handleEventClick} />)}
             </div>
           ) : (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", color: "#94a3b8" }}>
-              <CalendarIcon size={24} style={{ marginBottom: 8, opacity: 0.5 }} />
-              <b style={{ fontSize: "14px", color: "#64748b" }}>No matching schedule activity</b>
-              <span style={{ fontSize: "12px", marginTop: 4 }}>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span>
+            <div className="deceased-schedule-empty">
+              <CalendarIcon size={24} />
+              <b>No matching schedule activity</b>
+              <span>Try another date range or search by deceased name, ID, admission number, or receiving officer.</span>
             </div>
           )}
         </main>
@@ -575,7 +531,7 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
 
 function SearchIcon() { return <Search size={15}/>; }
 
-function EventListCard({ event, onClick, compact = false }) {
+function EventListCard({ event, onClick }) {
   const t = typeOf(event);
   const s = statusOf(event);
   return (
@@ -592,12 +548,3 @@ function EventListCard({ event, onClick, compact = false }) {
     </Chip>
   );
 }
-
-
-
-
-
-
-
-
-

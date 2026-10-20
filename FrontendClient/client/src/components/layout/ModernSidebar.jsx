@@ -787,7 +787,8 @@ const ModernSidebar = ({
     {
       section: 'Main',
       items: [
-        { icon: Truck, label: 'Hearse', path: `/${tenantSlug}/hearse` },
+        { icon: Truck, label: 'Fleet', path: `/${tenantSlug}/fleet` },
+        { icon: Calendar, label: 'Hearse Bookings', path: `/${tenantSlug}/hearse` },
         { icon: Users, label: 'Deceased', path: `/${tenantSlug}/deceased` },
         { icon: Package, label: 'Coffins', path: `/${tenantSlug}/coffins` },
         { icon: Beaker, label: 'Chemicals', path: `/${tenantSlug}/chemicals` },

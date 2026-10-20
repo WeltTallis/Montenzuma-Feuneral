@@ -20,9 +20,9 @@ import { eventsOf } from "./opsData";
 import "./dashboard-overview.css";
 
 const EVENT_META = {
-  intake: { label: "Body intake", color: "#3563d8", icon: UserRoundPlus },
-  release: { label: "Body release", color: "#19845b", icon: DoorOpen },
-  pm: { label: "Postmortem", color: "#c17a23", icon: Activity },
+  intake: { label: "Body intake", color: "#3f6c4b", icon: UserRoundPlus },
+  release: { label: "Body release", color: "#66866b", icon: DoorOpen },
+  pm: { label: "Postmortem", color: "#9a7b45", icon: Activity },
 };
 
 function displayDate(key) {
@@ -75,6 +75,34 @@ function EventRow({ event, onOpenCase }) {
   );
 }
 
+function TodayOperationRow({ event, onOpenCase }) {
+  const meta = EVENT_META[event.t] || EVENT_META.intake;
+  const Icon = meta.icon;
+  const completed = event.t === "release"
+    ? event.p.release?.status === "completed"
+    : event.t === "pm" && event.completed;
+  return (
+    <button
+      type="button"
+      className="overview-today-operation"
+      onClick={() => onOpenCase(event.p.uid, event.t)}
+    >
+      <span className="overview-event-icon" style={{ color: meta.color, background: `${meta.color}14` }}>
+        <Icon size={16} />
+      </span>
+      <span className="overview-event-main">
+        <strong>{event.p.name}</strong>
+        <small>{meta.label} · {event.p.branch || "Branch not set"}</small>
+      </span>
+      <span className="overview-operation-meta">
+        <b>{event.time || "Time not set"}</b>
+        <small className={completed ? "is-complete" : ""}>{completed ? "Completed" : "Today"}</small>
+      </span>
+      <ArrowRight className="overview-event-arrow" size={15} />
+    </button>
+  );
+}
+
 export default function DashboardOverview({
   cases,
   calc,
@@ -93,14 +121,16 @@ export default function DashboardOverview({
     month
   );
   const events = eventsOf(records);
+  const todayEvents = events
+    .filter((event) => event.date === today)
+    .sort((a, b) => `${a.time || ""} ${a.t}`.localeCompare(`${b.time || ""} ${b.t}`));
+  const todayIntakes = todayEvents.filter((event) => event.t === "intake").length;
+  const todayReleases = todayEvents.filter((event) => event.t === "release").length;
+  const todayPostmortems = todayEvents.filter((event) => event.t === "pm").length;
   const upcoming = events
     .filter((event) => event.date >= today)
     .sort((a, b) => `${a.date} ${a.time || ""}`.localeCompare(`${b.date} ${b.time || ""}`))
     .slice(0, 6);
-  const recent = events
-    .filter((event) => event.date < today)
-    .sort((a, b) => `${b.date} ${b.time || ""}`.localeCompare(`${a.date} ${a.time || ""}`))
-    .slice(0, 3);
   const flow = (calc?.last7 || []).map((day) => ({
     ...day,
     label: day.dow,
@@ -169,6 +199,39 @@ export default function DashboardOverview({
         </button>
       </div>
 
+      <article className="overview-panel overview-today">
+        <div className="overview-panel-head">
+          <div>
+            <h2>Today’s operations</h2>
+            <p>Live intake, release and postmortem activity</p>
+          </div>
+          <div className="overview-today-summary" aria-label="Today's operation counts">
+            <span><b>{todayIntakes}</b> intakes</span>
+            <span><b>{todayReleases}</b> releases</span>
+            <span><b>{todayPostmortems}</b> postmortems</span>
+          </div>
+        </div>
+        {loading && !records.length ? (
+          <div className="overview-queue-empty">Loading today’s operations…</div>
+        ) : todayEvents.length ? (
+          <div className="overview-event-list">
+            {todayEvents.map((event) => (
+              <TodayOperationRow
+                key={`${event.t}-${event.p.uid}-${event.date}`}
+                event={event}
+                onOpenCase={onOpenCase}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="overview-queue-empty overview-today-empty">
+            <CalendarDays size={22} />
+            <strong>No operations scheduled today</strong>
+            <span>Today’s deceased activity will appear here when it is recorded.</span>
+          </div>
+        )}
+      </article>
+
       <div className="overview-panels">
         <article className="overview-panel overview-flow">
           <div className="overview-panel-head">
@@ -189,8 +252,8 @@ export default function DashboardOverview({
                     contentStyle={{ border: "1px solid #e6eaf1", borderRadius: 10, boxShadow: "0 8px 24px rgba(25,39,68,.08)" }}
                     labelStyle={{ color: "#47546a", fontWeight: 700 }}
                   />
-                  <Line type="monotone" dataKey="adm" name="Intakes" stroke="#4566cf" strokeWidth={2.5} dot={{ r: 3, fill: "#4566cf", strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                  <Line type="monotone" dataKey="rel" name="Releases" stroke="#19845b" strokeWidth={2.5} dot={{ r: 3, fill: "#19845b", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="adm" name="Intakes" stroke="#3f6c4b" strokeWidth={2.5} dot={{ r: 3, fill: "#3f6c4b", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="rel" name="Releases" stroke="#9a7b45" strokeWidth={2.5} dot={{ r: 3, fill: "#9a7b45", strokeWidth: 0 }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -220,12 +283,7 @@ export default function DashboardOverview({
               {upcoming.map((event) => (
                 <EventRow key={`${event.t}-${event.p.uid}-${event.date}`} event={event} onOpenCase={onOpenCase} />
               ))}
-            </div>
-          ) : recent.length ? (
-            <div className="overview-event-list">
-              {recent.map((event) => (
-                <EventRow key={`${event.t}-${event.p.uid}-${event.date}`} event={event} onOpenCase={onOpenCase} />
-              ))}
+
             </div>
           ) : (
             <div className="overview-queue-empty">

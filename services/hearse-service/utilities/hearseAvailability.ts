@@ -195,9 +195,30 @@ export function normalizeBookingDates(raw: any): string[] {
  */
 export function extractRowDates(row: any): string[] {
     if (row == null) return [];
-    const fromBookingDates = normalizeBookingDates(row.booking_dates);
-    if (fromBookingDates.length > 0) return fromBookingDates;
-    return normalizeBookingDates(row);
+    const dates = new Set<string>(normalizeBookingDates(row.booking_dates));
+
+    // Some legacy bookings have a booking_dates value containing only the start
+    // day even though their from/to timestamps span multiple days. Keep the
+    // explicit range columns too, so the final (inclusive) day remains blocked.
+    const start = row.start_date || row.startDate || row.start || row.from || row.from_timestamp;
+    const end = row.end_date || row.endDate || row.end || row.to || row.to_timestamp;
+    if (start && end) {
+        normalizeBookingDates({ start_date: start, end_date: end }).forEach((date) => dates.add(date));
+    } else {
+        if (start) {
+            normalizeBookingDates({ date: start }).forEach((date) => dates.add(date));
+        }
+        if (end) {
+            normalizeBookingDates({ date: end }).forEach((date) => dates.add(date));
+        }
+    }
+
+    const singleDate = row.booking_date || row.date || row.event_date;
+    if (singleDate) {
+        normalizeBookingDates({ booking_date: singleDate }).forEach((date) => dates.add(date));
+    }
+
+    return [...dates].sort();
 }
 
 /**

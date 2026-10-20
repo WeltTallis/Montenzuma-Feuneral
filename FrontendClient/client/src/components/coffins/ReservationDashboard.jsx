@@ -330,13 +330,6 @@ export default function ReservationDashboard(props) {
     return result;
   }, [view, sel, mapped, clickedDay, activeFilters, searchQuery, visibleMonthDate]);
 
-  // Full (month) view: clicking a day expands that day's bookings in a list
-  // under the grid. The grid itself keeps the month-wide `visible` set so the
-  // calendar never blanks out — only the list narrows to the clicked day.
-  var dayList = view === 'full' && clickedDay
-    ? visible.filter(function (b) { return isSameDay(b.date, clickedDay); })
-    : null;
-
   // Stats describe the month on screen. They previously counted the CURRENT
   // month while the grid showed the selected one, so paging away made every
   // card read 0 even with bookings on screen.
@@ -389,9 +382,9 @@ export default function ReservationDashboard(props) {
   }
 
   function onFullCalendarDayClick(day) {
-    if (clickedDay && isSameDay(day, clickedDay)) { setClickedDay(null); return; }
     if (!isSameMonth(day, visibleMonthDate)) goToMonth(day.getMonth(), day.getFullYear());
     setClickedDay(day); setSel(day);
+    if (typeof onNewReservation === 'function') onNewReservation(day);
   }
   function miniCalNav(dir) { goToMonth(calMonth.getMonth() + dir, calMonth.getFullYear()); }
   function onMiniCalDayClick(day) {
@@ -802,9 +795,9 @@ export default function ReservationDashboard(props) {
               </div>
             )}
 
-            {clickedDay && (view !== 'full' || dayList) && (
+            {clickedDay && view !== 'full' && (
               <div className="cb-df">
-                <span>{IC.cal} Showing: {format(clickedDay, 'MMM d, yyyy')} &mdash; {(view === 'full' ? dayList : visible).length} booking{(view === 'full' ? dayList : visible).length !== 1 ? 's' : ''}</span>
+                <span>{IC.cal} Showing: {format(clickedDay, 'MMM d, yyyy')} &mdash; {visible.length} booking{visible.length !== 1 ? 's' : ''}</span>
                 <button onClick={function () { setClickedDay(null); }}>Clear {IC.x}</button>
               </div>
             )}
@@ -822,35 +815,6 @@ export default function ReservationDashboard(props) {
                   onDayClick={onFullCalendarDayClick}
                   onPick={function (booking) { setPanelBk(booking); }}
                 />
-                {dayList && (
-                  <div className="cb-daylist">
-                    <div className="cb-daylist-head">
-                      {IC.cal} {format(clickedDay, 'EEEE, MMM d, yyyy')} &mdash; {dayList.length} booking{dayList.length !== 1 ? 's' : ''}
-                    </div>
-                    {dayList.length === 0 ? (
-                      <div className="cb-empty" style={{ padding: '18px 12px' }}>
-                        <div className="cb-empty-ico">{IC.cal}</div>
-                        <span style={{ fontSize: 12 }}>No bookings for {format(clickedDay, 'MMM d, yyyy')}</span>
-                      </div>
-                    ) : dayList.map(function (b) {
-                      var cf = ST[b.status] || ST.unpaid;
-                      return (
-                        <div
-                          key={b.id}
-                          className={'cb-r' + (panelBk && panelBk.id === b.id ? ' active' : '')}
-                          onClick={function () { setPanelBk(b); }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--cb-brdl)', cursor: 'pointer' }}
-                        >
-                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: cf.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--cb-ink)' }}>{b.clientName}</span>
-                          <span style={{ fontSize: 11, color: 'var(--cb-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.coffinType}</span>
-                          <span style={{ fontSize: 11, color: 'var(--cb-ink3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{b.time || '\u2014'}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: cf.color, whiteSpace: 'nowrap' }}>{cf.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </React.Fragment>
             ) : (view === 'day' || view === 'week') ? (
               <CoffinCalendarGrid
