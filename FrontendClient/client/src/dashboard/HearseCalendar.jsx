@@ -41,9 +41,9 @@ const fmtDayHeader = (k) => { const d = parseKey(k); return `${d.getDate()} ${MO
 const fmtFull = (k) => { const d = parseKey(k); return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
 
 const TYPE_META = {
-  intake:    { label: "Body Intake",    color: "#2563eb", tint: "#eff6ff", icon: User },
-  release:   { label: "Body Release",   color: "#16804a", tint: "#edf8f0", icon: Cross },
-  pm:        { label: "Postmortem",     color: "#c46a12", tint: "#fff5e8", icon: ShieldAlert },
+  intake:    { label: "Body Intake",    color: "#dc2626", tint: "#fef2f2", icon: User },
+  release:   { label: "Body Release",   color: "#16a34a", tint: "#ecfdf5", icon: Cross },
+  pm:        { label: "Postmortem",     color: "#d97706", tint: "#fffbeb", icon: ShieldAlert },
   funeral:   { label: "Funeral Service",color: "#B4534B", tint: "#FBEDEC", icon: Flower },
   transfer:  { label: "Hearse Transfer",color: "#7C3AED", tint: "#F3E8FF", icon: Droplets },
   viewing:   { label: "Viewing / Wake", color: "#8B5CF6", tint: "#F5F3FF", icon: User },
