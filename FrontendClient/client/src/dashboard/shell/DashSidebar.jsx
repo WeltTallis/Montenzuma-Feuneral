@@ -1,17 +1,15 @@
-/* Dashboard sidebar navigation (Clean White Design).
-   Home ? dashboard · Deceased ? records · Schedule ? calendar · Analytics ? reports · Store ? inventory · Settings ? configuration. */
+/* Main dashboard navigation. */
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ic } from "../opsIcons";
 
 export const NAV_ITEMS = [
-  { id: "overview", group: "Workspace", label: "Overview", desc: "Operations at a glance", icon: "home", full: "Overview — operations at a glance" },
-  { id: "intake", group: "Workspace", label: "Deceased intake", desc: "Register and manage cases", icon: "users", full: "Deceased intake — register and manage cases" },
-  { id: "release-calendar", group: "Workspace", label: "Release calendar", desc: "Scheduled body releases", icon: "cal", full: "Release calendar — scheduled body releases" },
-  { id: "analytics", group: "Management", label: "Analytics", desc: "Reports and insights", icon: "grid", full: "Analytics — reports and insights" },
-  { id: "store", group: "Management", label: "Store", desc: "Inventory and supplies", icon: "store", full: "Store — inventory and supplies" },
-  { id: "coffin-store", group: "Management", label: "Coffin inventory", desc: "Coffin stock and transfers", icon: "store", full: "Coffin inventory — stock and transfers" },
-  { id: "flowers", group: "Management", label: "Florist", desc: "Flower orders and activity", icon: "flower", full: "Florist — flower orders and activity" },
+  { id: "overview", group: "Workspace", label: "Overview", icon: "home", full: "Overview" },
+  { id: "release-calendar", group: "Workspace", label: "Release calendar", icon: "cal", full: "Release calendar" },
+  { id: "fleet", group: "Workspace", label: "Hearse fleet", icon: "truck", full: "Hearse fleet" },
+  { id: "store", group: "Management", label: "Store", icon: "store", full: "Store" },
+  { id: "coffin-store", group: "Management", label: "Coffin inventory", icon: "store", full: "Coffin inventory" },
+  { id: "flowers", group: "Management", label: "Florist", icon: "flower", full: "Florist" },
 ];
 
 export default function DashSidebar({
@@ -71,7 +69,7 @@ export default function DashSidebar({
                   aria-current={isActive ? "page" : undefined}
                 >
                   <span className="rpd-nav-ico"><Ic n={item.icon} s={16} /></span>
-                  <span className="rpd-nav-txt"><b>{item.label}</b><small>{item.desc}</small></span>
+                  <span className="rpd-nav-txt"><b>{item.label}</b></span>
                   {itemBadges[item.id] > 0 && <span className="rpd-nav-badge">{itemBadges[item.id]}</span>}
                   {isActive ? <span className="rpd-nav-bar" aria-hidden="true" /> : null}
                 </button>

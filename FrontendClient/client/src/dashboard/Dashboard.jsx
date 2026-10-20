@@ -1,27 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
 import {
   Calendar,
   Activity,
-  TrendingUp,
-  PieChart as PieChartIcon,
-  BarChart as BarChartIcon,
-  DollarSign,
   Clock,
   Users,
   ShieldAlert,
@@ -36,7 +17,6 @@ import "./dashboard-redesign.css";
 
 import { useCaseData } from "./useCaseData";
 import { schedulePeriod } from "./schedulePeriod";
-import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 
 import {
@@ -47,7 +27,6 @@ import {
 import { TipBox, useTooltip } from "./opsBits";
 import { Ic } from "./opsIcons";
 import { RegisterView } from "./opsViews";
-import { AnalyticsView } from "./opsAnalytics";
 import { CaseDrawer, ModalHost } from "./opsPanels";
 import StoreSection from "./StoreSection";
 import FlowerAnalytics from "./florist/FlowerAnalytics";
@@ -55,9 +34,10 @@ import SimpleCoffinInventory from "./SimpleCoffinInventory";
 import DeceasedScheduleCalendar from "./HearseCalendar";
 import DashboardOverview from "./DashboardOverview";
 import DashSidebar, { NAV_ITEMS } from "./shell/DashSidebar";
+const FleetDashboard = lazy(() => import("../components/hearse/FleetDashboard"));
 
 /* Sidebar view → the ops section it lands on. */
-const VIEW_SECTION = { overview: "command", intake: "intake", "release-calendar": "command" };
+const VIEW_SECTION = { overview: "command", "release-calendar": "command", fleet: "command" };
 
 const VIEWS = [
   { id: "day", label: "Day" },
@@ -78,179 +58,12 @@ const DARK_KEY = "rpd-ops-dark";
 const NAV_COLLAPSE_KEY = "rpd-nav-collapsed";
 const NAV_VIEW_KEY = "rpd-nav-view";
 
-/* The ops sub-section nav inside the Home/Deceased pages. Short labels: this
+/* The ops sub-section nav inside the dashboard. Short labels: this
    row shares the toolbar with search, branch, schedule and avatar. */
 const NAV = [
   { id: "command", label: "Operations", icon: "cal", full: "Operations" },
   { id: "pm", label: "PM", icon: "vial", full: "Postmortem Requests" },
-  { id: "analytics", label: "Analytics", icon: "grid", full: "Analytics" },
 ];
-
-const DONUT_COLORS = ["#1d4ed8", "#d97706", "#0284c7", "#059669"];
-
-/* ── stat card ── (Boltz-inspired: big circular icon, large value, trend) */
-function StatCard({ icon: Icon, label, value, sub, color, trend, trendLabel }) {
-  const isUp = trend != null && trend >= 0;
-  return (
-    <div className="rpd-stat">
-      <div className="rpd-stat-wrap" style={{ borderColor: color }}>
-        <div className="rpd-stat-ic" style={{ background: `${color}1a`, color }}>
-          <Icon size={20} />
-        </div>
-        <div className="rpd-stat-body">
-          <div className="rpd-stat-head">
-            <div className="rpd-stat-lbl">{label}</div>
-            {trend != null && (
-              <div className={`rpd-stat-trend ${isUp ? "up" : "down"}`}>
-                <span style={{ color: isUp ? "#059669" : "#dc2626" }}>
-                  {isUp ? "▲ " : "▼ "}
-                </span>
-                {Math.abs(trend)}%
-              </div>
-            )}
-          </div>
-          <div className="rpd-stat-val">{value}</div>
-          {sub != null && <div className="rpd-stat-sub">{sub}</div>}
-          {trendLabel != null && <div className="rpd-stat-trend-label">{trendLabel}</div>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── KPI cards + charts band shown at the top of the main column ── */
-function StatsBand({ calc, money, ccy, onNavView }) {
-  const care = calc.care || {};
-  const charges = calc.charges || {};
-  const nowYear = new Date().getFullYear();
-
-  const totalInCare = care.inCare || 0;
-  const totalReleased = care.released || 0;
-  const storageCap = charges.storageCapacity || 40;
-  const occupancy = storageCap > 0 ? Math.round((totalInCare / storageCap) * 100) : 0;
-
-  const kpis = [
-    { icon: Users, label: "Total Cases", value: calc.total, sub: "All branches", color: "#1d4ed8", trend: 12, trendLabel: "vs last week" },
-    { icon: Clock, label: "In Care", value: totalInCare, sub: "Awaiting release", color: "#059669", trend: -5, trendLabel: "vs last week" },
-    { icon: ShieldAlert, label: "PM Pending", value: care.pmReq, sub: "Postmortem requests", color: "#d97706", trend: 8, trendLabel: "vs last week" },
-    { icon: DollarSign, label: "Storage Accrued", value: money(charges.accrued), sub: ccy, color: "#0284c7", trend: 18, trendLabel: "vs last week" },
-    { icon: PieChartIcon, label: "Coffin Occupancy", value: `${occupancy}%`, sub: `${totalInCare} / ${storageCap}`, color: "#1e3a8a", trend: 3, trendLabel: "vs last week" },
-  ];
-
-  const donutData = [
-    { name: "In care", value: totalInCare },
-    { name: "PM pending", value: care.pmReq },
-    { name: "PM done", value: care.pmDone },
-    { name: "Released", value: totalReleased },
-  ].filter((d) => d.value > 0);
-
-  const barData = [
-    { month: "Jan", stored: 12, released: 5 },
-    { month: "Feb", stored: 15, released: 8 },
-    { month: "Mar", stored: 11, released: 12 },
-    { month: "Apr", stored: 18, released: 9 },
-    { month: "May", stored: 14, released: 14 },
-    { month: "Jun", stored: 17, released: 11 },
-  ];
-
-  const quickActions = [
-    { label: "Coffin Store", icon: <PieChartIcon size={14} />, color: "#1e3a8a", onClick: () => onNavView && onNavView("coffin-store") },
-    { label: "Operations Calendar", icon: <Calendar size={14} />, color: "#1d4ed8", onClick: () => onNavView && onNavView("overview") },
-    { label: "Flowers", icon: <TrendingUp size={14} />, color: "#0284c7", onClick: () => onNavView && onNavView("flowers") },
-  ];
-
-  return (
-    <section className="rpd-band">
-      <div className="rpd-band-grid">
-        {kpis.map((k) => (
-          <StatCard key={k.label} {...k} />
-        ))}
-      </div>
-
-      <div className="rpd-band-actions">
-        {quickActions.map((a) => (
-          <button
-            key={a.label}
-            className="rpd-action-btn"
-            style={{ borderColor: a.color, color: a.color }}
-            onClick={a.onClick}
-          >
-            {a.icon}
-            <span>{a.label}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="rpd-band-charts">
-        <div className="rpd-chart">
-          <div className="rpd-chart-head">
-            <div className="rpd-chart-title"><TrendingUp size={14} /> Monthly flow</div>
-            <div className="rpd-chart-sub">Intake vs releases · {nowYear}</div>
-          </div>
-          <div className="rpd-chart-body">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={calc.flow || []}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="adm" name="Intakes" stroke="#1d4ed8" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="rel" name="Releases" stroke="#059669" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="rpd-chart">
-          <div className="rpd-chart-head">
-            <div className="rpd-chart-title"><PieChartIcon size={14} /> Case status</div>
-            <div className="rpd-chart-sub">Bodies currently in care</div>
-          </div>
-          <div className="rpd-chart-body">
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={98}
-                  startAngle={0}
-                  endAngle={360}
-                  labelLine={false}
-                >
-                  {DONUT_COLORS.map((fill, i) => (
-                    <Cell key={i} fill={fill} />
-                  ))}
-                  <Tooltip />
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="rpd-chart">
-          <div className="rpd-chart-head">
-            <div className="rpd-chart-title"><BarChartIcon size={14} /> Coffin storage</div>
-            <div className="rpd-chart-sub">Stored vs released by month</div>
-          </div>
-          <div className="rpd-chart-body">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={barData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="stored" name="Stored" fill="#1d4ed8" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="released" name="Released" fill="#059669" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const { cases, loading, reload } = useCaseData();
@@ -261,7 +74,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const [navView, setNavView] = useState(() => {
     try {
       const v = localStorage.getItem(NAV_VIEW_KEY);
-      const legacyViews = { dashboard: "overview", home: "overview", deceased: "intake", schedule: "release-calendar" };
+      const legacyViews = { dashboard: "overview", home: "overview", deceased: "release-calendar", schedule: "release-calendar" };
       const restored = legacyViews[v] || v;
       return NAV_ITEMS.some((n) => n.id === restored) ? restored : "overview";
     } catch { return "overview"; }
@@ -269,7 +82,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
 
 
   const isModuleView =
-    navView === "store" || navView === "flowers" || navView === "coffin-store";
+    navView === "store" || navView === "flowers" || navView === "coffin-store" || navView === "fleet";
   const isOverviewView = navView === "overview";
   const isReleaseCalendarView = navView === "release-calendar";
   const [view, setView] = useState("month");
@@ -368,12 +181,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   );
 
   /* ── currency formatting ── */
-  const ccy = calc.charges?.currency || "KES";
-  const money = (n) => {
-    const v = Number(n) || 0;
-    return v > 0 ? `${ccy} ${v.toLocaleString("en-KE", { maximumFractionDigits: 0 })}` : "—";
-  };
-
   /* calendar dots — branch-scoped, one dot per event type per day */
   const calendarDots = useMemo(() => {
     const map = {};
@@ -401,27 +208,20 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   };
 
   const avatarText = initials(tenantData?.name || tenantData?.tenant_name || tenantSlug || "RestPoint");
-  const isAnalyticsPeriod = section === "analytics" && (view === "day" || view === "week");
   const isBoardPeriod = section === "command" && (view === "day" || view === "week");
-  const analyticsPeriod = schedulePeriod(view, selDate);
-  const analyticsPeriodEventCount = useMemo(() => {
+  const scheduleWindow = schedulePeriod(view, selDate);
+  const scheduleEventCount = useMemo(() => {
     if (view !== "day" && view !== "week") return 0;
     const dayKeys = view === "week"
-      ? Array.from({ length: 7 }, (_, index) => addDays(analyticsPeriod.startKey, index))
-      : [analyticsPeriod.startKey];
+      ? Array.from({ length: 7 }, (_, index) => addDays(scheduleWindow.startKey, index))
+      : [scheduleWindow.startKey];
     const daySet = new Set(dayKeys);
     return eventsOf(searched).filter((event) => daySet.has(event.date)).length;
-  }, [analyticsPeriod.startKey, searched, view]);
+  }, [scheduleWindow.startKey, searched, view]);
 
   const activeNavMeta = NAV_ITEMS.find((n) => n.id === navView) || NAV_ITEMS[0];
   const showOpsToolbar = !isModuleView && !isOverviewView && !isReleaseCalendarView;
-  const headerNav = section === "intake"
-    ? [
-        { id: "intake", label: "Intake", icon: "bed", full: "Deceased intake" },
-        NAV.find((item) => item.id === "pm"),
-        NAV.find((item) => item.id === "analytics"),
-      ]
-    : NAV;
+  const headerNav = NAV;
   /* effects */
   useEffect(() => {
     try { localStorage.setItem(DARK_KEY, dark ? "1" : "0"); } catch { /* storage blocked */ }
@@ -439,7 +239,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     try { localStorage.setItem(NAV_VIEW_KEY, navView); } catch { /* storage blocked */ }
   }, [navView]);
   useEffect(() => {
-    setSection(VIEW_SECTION[navView] || (navView === "analytics" ? "analytics" : "command"));
+    setSection(VIEW_SECTION[navView] || "command");
   }, [navView]);
   useEffect(() => {
     if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0;
@@ -532,10 +332,8 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     setSelDate(today);
     setClickedDay(null);
     setDayTab("all");
-    if (section !== "analytics") {
-      setSection("command");
-      setView("day");
-    }
+    setSection("command");
+    setView("day");
     setCalY(Number(today.slice(0, 4)));
     setCalM(Number(today.slice(5, 7)) - 1);
   };
@@ -573,7 +371,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   /* Sidebar destination picker: Home opens operations; module destinations
      replace the main column. Closes the mobile drawer after selection. */
   const onNavView = (id) => {
-    const nextSection = VIEW_SECTION[id] || (id === "analytics" ? "analytics" : "command");
+    const nextSection = VIEW_SECTION[id] || "command";
     setSection(nextSection);
     setFilters([]);
     setTodayMode(false);
@@ -584,6 +382,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     }
     setNavView(id);
     setNavOpen(false);
+  };
+  const openIntakeRegistration = () => {
+    navigate(tenantSlug ? `/${tenantSlug}/deceased/register` : "/deceased/register");
   };
 
   const setV = (id) => {
@@ -607,7 +408,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     setTodayMode(false);
   };
   return (
-    <div className={`rpd${dark ? " dark" : ""}${section === "analytics" || isReleaseCalendarView ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}${isOverviewView ? " rpd-home" : ""}`}>
+    <div className={`rpd${dark ? " dark" : ""}${isReleaseCalendarView ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}${isOverviewView ? " rpd-home" : ""}`}>
       <div className="app">
         <DashSidebar
           active={navView}
@@ -629,9 +430,8 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               section={section}
               view={view}
               isBoardPeriod={isBoardPeriod}
-              isAnalyticsPeriod={isAnalyticsPeriod}
-              analyticsPeriod={analyticsPeriod}
-              analyticsPeriodEventCount={analyticsPeriodEventCount}
+              scheduleWindow={scheduleWindow}
+              scheduleEventCount={scheduleEventCount}
               badges={badges}
               NAV={headerNav}
               VIEWS={VIEWS}
@@ -666,40 +466,18 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               avatarText={avatarText}
             />
             <div className="rpd-scroll" ref={contentScrollRef}>
-      {/* ops sidebar + main */}
       <div className="shell">
-        {showOpsToolbar && section !== "analytics" ? (
-          <aside className="side">
-            <Sidebar
-              calc={calc}
-              scoped={scoped}
-              section={section}
-              filters={filters}
-              onTogglePill={togglePill}
-              onOpenModal={openModal}
-              calY={calY}
-              calM={calM}
-              calendarDots={calendarDots}
-              selDay={selDate}
-              today={today}
-              onPickDay={pickDay}
-              view={view}
-              onViewChange={setV}
-              period={analyticsPeriod}
-              eventCount={analyticsPeriodEventCount}
-              onToday={goToday}
-              onStep={stepPeriod}
-            />
-          </aside>
-        ) : null}
-
-        <main className={`mains${isAnalyticsPeriod ? " analytics-period" : ""}${isBoardPeriod ? " schedule-mode" : ""}`}>
+        <main className={`mains${isBoardPeriod ? " schedule-mode" : ""}`}>
           {navView === "store" ? (
             <StoreSection />
           ) : navView === "flowers" ? (
             <FlowerAnalytics />
           ) : navView === "coffin-store" ? (
             <SimpleCoffinInventory />
+          ) : navView === "fleet" ? (
+            <Suspense fallback={<div className="empty" style={{ padding: 90 }}>Loading hearse fleet…</div>}>
+              <FleetDashboard embedded />
+            </Suspense>
           ) : isOverviewView ? (
             <DashboardOverview
               cases={scoped}
@@ -707,15 +485,16 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               loading={loading}
               today={today}
               onNavigate={onNavView}
+              onOpenIntake={openIntakeRegistration}
               onOpenCase={openCase}
-              onOpenFleet={() => navigate(tenantSlug ? `/${tenantSlug}/fleet` : "/fleet")}
+              onOpenFleet={() => onNavView("fleet")}
             />
           ) : isReleaseCalendarView ? (
             <DeceasedScheduleCalendar
               events={releaseEvents}
               branch={branch}
               loading={loading}
-              onCreateIntake={() => onNavView("intake")}
+              onCreateIntake={openIntakeRegistration}
               onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)}
             />
           ) : loading && !cases.length ? (
@@ -725,30 +504,8 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               </span>
               <span style={{ fontSize: 12 }}>Loading operations…</span>
             </div>
-          ) : section === "analytics" ? (
-            <AnalyticsView
-              calc={calc}
-              people={searched}
-              branch={branch}
-              calY={calY}
-              view={view}
-              selDate={selDate}
-              dayTab={dayTab}
-              now={now}
-              today={today}
-              onOpenModal={openModal}
-              onOpenCase={openCase}
-              onPickDay={(key) => {
-                setView("day");
-                setSelDate(key);
-                setClickedDay(null);
-                setDayTab("all");
-                setTodayMode(false);
-              }}
-              onDayTabChange={setDayTab}
-            />
           ) : section === "command" ? (
-            <DeceasedScheduleCalendar events={calendarEvents} loading={loading} onCreateIntake={() => onNavView("intake")} onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)} />
+            <DeceasedScheduleCalendar events={calendarEvents} loading={loading} onCreateIntake={openIntakeRegistration} onEventSelect={({ event }) => event?.uid && openCase(event.uid, event.type)} />
           ) : (
             <RegisterView
               section={section}

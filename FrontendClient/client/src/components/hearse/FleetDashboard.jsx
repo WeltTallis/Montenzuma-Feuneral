@@ -73,12 +73,12 @@ const request = async (path, options = {}) => {
 };
 
 const FleetPage = styled.main`
-  min-height: 100vh;
-  padding: 28px;
-  background: #f4f5f8;
+  min-height: ${({ $embedded }) => ($embedded ? '100%' : '100vh')};
+  padding: ${({ $embedded }) => ($embedded ? '24px 28px 36px' : '28px')};
+  background: ${({ $embedded }) => ($embedded ? 'transparent' : '#f4f5f8')};
   color: #1a1d29;
 
-  @media (max-width: 700px) { padding: 16px; }
+  @media (max-width: 700px) { padding: ${({ $embedded }) => ($embedded ? '18px 16px 28px' : '16px')}; }
 `;
 
 const PageWidth = styled.div`
@@ -467,7 +467,7 @@ const FuelCardEditor = styled.form`
   @media (max-width: 520px) { align-items: stretch; flex-wrap: wrap; label { flex-basis: 100%; } }
 `;
 
-function FleetDashboard() {
+function FleetDashboard({ embedded = false }) {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [hearses, setHearses] = useState([]);
@@ -596,7 +596,7 @@ function FleetDashboard() {
   ];
 
   return (
-    <FleetPage>
+    <FleetPage $embedded={embedded}>
       <PageWidth>
         <Header>
           <TitleGroup>

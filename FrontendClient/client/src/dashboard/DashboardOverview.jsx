@@ -110,6 +110,7 @@ export default function DashboardOverview({
   loading,
   today,
   onNavigate,
+  onOpenIntake,
   onOpenCase,
   onOpenFleet,
 }) {
@@ -189,9 +190,9 @@ export default function DashboardOverview({
       </div>
 
       <div className="overview-shortcuts" aria-label="Quick actions">
-        <button type="button" onClick={() => onNavigate("intake")}>
+        <button type="button" onClick={onOpenIntake}>
           <span className="overview-shortcut-icon"><UserRoundPlus size={17} /></span>
-          <span><b>Register a deceased</b><small>Start a new intake</small></span>
+          <span><b>Register intake</b><small>Open the deceased registration form</small></span>
           <ArrowRight size={16} />
         </button>
         <button type="button" onClick={() => onNavigate("release-calendar")}>

@@ -5,7 +5,7 @@ import {
 } from "date-fns";
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Search, User, Cross,
-  Droplets, Flower, X, ShieldAlert, Timer, List, Plus,
+  Droplets, Flower, X, ShieldAlert, Timer, List, Plus, Sun, Moon,
 } from "lucide-react";
 import "./deceased-calendar.css";
 
@@ -41,9 +41,9 @@ const fmtDayHeader = (k) => { const d = parseKey(k); return `${d.getDate()} ${MO
 const fmtFull = (k) => { const d = parseKey(k); return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
 
 const TYPE_META = {
-  intake:    { label: "Body Intake",    color: "#00296B", tint: "#EFF6FF", icon: User },
-  release:   { label: "Body Release",   color: "#132A13", tint: "#E8F5E9", icon: Cross },
-  pm:        { label: "Postmortem",     color: "#E36414", tint: "#FFEDD5", icon: ShieldAlert },
+  intake:    { label: "Body Intake",    color: "#2563eb", tint: "#eff6ff", icon: User },
+  release:   { label: "Body Release",   color: "#16804a", tint: "#edf8f0", icon: Cross },
+  pm:        { label: "Postmortem",     color: "#c46a12", tint: "#fff5e8", icon: ShieldAlert },
   funeral:   { label: "Funeral Service",color: "#B4534B", tint: "#FBEDEC", icon: Flower },
   transfer:  { label: "Hearse Transfer",color: "#7C3AED", tint: "#F3E8FF", icon: Droplets },
   viewing:   { label: "Viewing / Wake", color: "#8B5CF6", tint: "#F5F3FF", icon: User },
@@ -146,10 +146,10 @@ function MonthChip({ event, onClick }) {
   const t = typeOf(event);
   return (
     <Chip
-      $color={s.color}
-      $tint={s.tint}
+      $color={t.color}
+      $tint={t.tint}
       className="deceased-schedule-month-chip"
-      style={{ "--month-chip": s.color }}
+      style={{ "--month-chip": t.color }}
       onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
       title={`${event.deceased.name} · ${s.label}`}
     >
@@ -175,6 +175,20 @@ const parseHour = (t) => {
   return h + min / 60;
 };
 
+const shiftDateOf = (event, shift) => {
+  const hour = parseHour(event.time);
+  return shift === "night" && hour != null && hour < 6
+    ? addDays(event.date, -1)
+    : event.date;
+};
+
+const isInShift = (event, shift) => {
+  if (shift === "all") return true;
+  const hour = parseHour(event.time);
+  if (hour == null) return true;
+  return shift === "day" ? hour >= 6 && hour < 18 : hour >= 18 || hour < 6;
+};
+
 const fmtHour = (h) => {
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
@@ -188,13 +202,14 @@ function EventRow({ event, onClick }) {
   const s = statusOf(event);
   return (
     <Chip
-      $color={s.color}
-      $tint={s.tint}
+      $color={t.color}
+      $tint={t.tint}
       onClick={(ev) => { ev.stopPropagation(); onClick(event); }}
       title={`${event.deceased.name} · ${s.label}`}
+      className={`deceased-schedule-event deceased-schedule-event-${event.type}`}
       style={{ cursor: "pointer", marginBottom: "8px", flex: 1 }}
     >
-      {event.time && <span className="t">{event.time}</span>}
+      <span className="t">{event.time || "Unscheduled"} · {s.label}</span>
       <span className="n">{t.label}</span>
       <span className="m">{event.deceased.name}{event.deceased.age ? ` · ${event.deceased.age} yrs` : ""}</span>
     </Chip>
@@ -210,10 +225,12 @@ function WeekGrid({ weekStartKey, eventsByDay, onEventClick, today }) {
       {days.map((key) => {
         const day = parseKey(key);
         const evs = eventsByDay[key] || [];
+        const unscheduled = evs.filter((event) => parseHour(event.time) == null);
+        const timed = evs.filter((event) => parseHour(event.time) != null);
         const active = key === today;
         return (
-          <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid #e2e8f0", borderRadius: "10px", background: active ? "#f0fdff" : "#ffffff", minHeight: "520px", boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)" }}>
-            <div style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", borderRadius: "10px 10px 0 0" }}>
+          <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid #e2e8f0", borderRadius: "10px", background: "#ffffff", minHeight: "520px", boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)" }}>
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", background: "#ffffff", borderRadius: "10px 10px 0 0" }}>
               <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: active ? "#0f766e" : "#94a3b8" }}>
                 {WEEK[(day.getDay() + 6) % 7]}
               </div>
@@ -222,11 +239,17 @@ function WeekGrid({ weekStartKey, eventsByDay, onEventClick, today }) {
               </div>
               {active && <span style={{ fontSize: "0.7rem", color: "#fff", fontWeight: 700, background: "#0f766e", padding: "0.1rem 0.5rem", borderRadius: "20px", marginTop: "0.25rem", display: "inline-block" }}>Today</span>}
             </div>
-            <div style={{ flex: 1, padding: "0.85rem 0.9rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {evs.length ? (
-                evs.map((ev) => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)
+            <div className="deceased-schedule-week-events">
+              {unscheduled.length > 0 && (
+                <div className="deceased-schedule-unscheduled">
+                  <strong>Unscheduled</strong>
+                  {unscheduled.map((event) => <EventRow key={event.id} event={event} onClick={onEventClick} />)}
+                </div>
+              )}
+              {timed.length ? (
+                timed.map((ev) => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)
               ) : (
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "0.75rem" }}>No events</div>
+                !unscheduled.length && <div className="deceased-schedule-no-day-events">No events</div>
               )}
             </div>
           </div>
@@ -238,7 +261,9 @@ function WeekGrid({ weekStartKey, eventsByDay, onEventClick, today }) {
 
 function DayGrid({ dayKey, events, onEventClick, today }) {
   const day = parseKey(dayKey);
-  const evs = (events || []).filter((e) => e.date === dayKey).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const evs = (events || []).filter((e) => (e.shiftDate || e.date) === dayKey).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const unscheduled = evs.filter((event) => parseHour(event.time) == null);
+  const timed = evs.filter((event) => parseHour(event.time) != null);
   const active = dayKey === today;
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: "10px", background: "#ffffff", padding: "1.2rem", minHeight: "600px", boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.03)" }}>
@@ -255,8 +280,14 @@ function DayGrid({ dayKey, events, onEventClick, today }) {
         )}
       </div>
       {evs.length ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {evs.map((ev) => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)}
+        <div className="deceased-schedule-day-events-list">
+          {unscheduled.length > 0 && (
+            <div className="deceased-schedule-unscheduled">
+              <strong>Unscheduled</strong>
+              {unscheduled.map((event) => <EventRow key={event.id} event={event} onClick={onEventClick} />)}
+            </div>
+          )}
+          {timed.map((ev) => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", color: "#94a3b8", textAlign: "center" }}>
@@ -394,6 +425,7 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
   const [date, setDate] = useState(todayKey);
   const [query, setQuery] = useState("");
   const [activeStatuses, setActiveStatuses] = useState([]);
+  const [shift, setShift] = useState("all");
   const [selected, setSelected] = useState(null);
   const [y, mo] = date.split("-").map(Number);
   const today = todayKey();
@@ -414,18 +446,31 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
   };
   const matches = (event) => [event.deceased.name, event.deceased.id, event.deceased.recordId, event.deceased.admissionNumber, event.branch, event.title, event.officer, event.deceased.age]
     .join(" ").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+  const isShiftView = view === "day" || view === "today" || view === "week";
+  const eventShiftDate = (event) => shiftDateOf(event, shift);
   const inRange = (event) => {
-    if (view === "today") return event.date === today;
-    if (view === "day") return event.date === date;
-    if (view === "week") { const start = weekStartOf(date); return event.date >= start && event.date <= addDays(start, 6); }
+    const shiftDate = isShiftView ? eventShiftDate(event) : event.date;
+    if (view === "today") return shiftDate === today;
+    if (view === "day") return shiftDate === date;
+    if (view === "week") { const start = weekStartOf(date); return shiftDate >= start && shiftDate <= addDays(start, 6); }
     if (view === "month") return event.date.startsWith(monthPrefix);
     return true;
   };
-  const isVisible = (event) => matches(event) && (!activeStatuses.length || activeStatuses.includes(statusKeyOf(event)));
-  const listEvents = events.filter((event) => inRange(event) && isVisible(event)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "") || a.title.localeCompare(b.title));
-  const gridEvents = events.filter(isVisible);
+  const isVisible = (event) => matches(event)
+    && (!activeStatuses.length || activeStatuses.includes(statusKeyOf(event)))
+    && (!isShiftView || isInShift(event, shift));
+  const listEvents = events.filter((event) => inRange(event) && isVisible(event)).sort((a, b) => {
+    const aDate = isShiftView ? eventShiftDate(a) : a.date;
+    const bDate = isShiftView ? eventShiftDate(b) : b.date;
+    return aDate.localeCompare(bDate)
+      || (a.time || "").localeCompare(b.time || "")
+      || a.title.localeCompare(b.title);
+  });
+  const gridEvents = events.filter(isVisible).map((event) => isShiftView
+    ? { ...event, shiftDate: eventShiftDate(event) }
+    : event);
   const gridEventsByDay = gridEvents.reduce((days, event) => {
-    (days[event.date] ||= []).push(event);
+    (days[event.shiftDate || event.date] ||= []).push(event);
     return days;
   }, {});
   const monthDate = parseKey(date);
@@ -495,11 +540,33 @@ export default function DeceasedScheduleCalendar({ events: eventsProp = [], onEv
         <article className="release-stat"><Cross /><div><strong>{releasesThisMonth}</strong><span>Releases</span></div></article>
         <article className="today-stat"><CalendarIcon /><div><strong>{todayActivity.length}</strong><span>Today</span></div></article>
       </div>
+      {mode === "calendar" && isShiftView && (
+        <div className="deceased-schedule-shift-toolbar" role="group" aria-label="Filter calendar by shift">
+          <div className="deceased-schedule-shift-copy">
+            {shift === "night" ? <Moon size={16} /> : <Sun size={16} />}
+            <span><strong>{shift === "all" ? "All shifts" : shift === "day" ? "Day shift" : "Night shift"}</strong>
+              <small>{shift === "day" ? "6:00 AM – 6:00 PM" : shift === "night" ? "6:00 PM – 6:00 AM" : "Showing every scheduled hour"}</small>
+            </span>
+          </div>
+          <div className="deceased-schedule-shift-options">
+            {[
+              ["all", "All shifts"],
+              ["day", "Day shift"],
+              ["night", "Night shift"],
+            ].map(([key, label]) => (
+              <button key={key} type="button" data-shift={key} className={shift === key ? "active" : ""} aria-pressed={shift === key} onClick={() => setShift(key)}>
+                {key === "night" ? <Moon size={13} /> : key === "day" ? <Sun size={13} /> : null}{label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="deceased-schedule-legend">
-        <strong>Status</strong>
-        {availableStatuses.map((status) => (
-          <span key={status}><i style={{ background: STATUS_CONFIG[status].color }} /> {STATUS_CONFIG[status].label}</span>
-        ))}
+        <strong>Activity type</strong>
+        {["intake", "release", "pm"].map((type) => {
+          const meta = TYPE_META[type];
+          return <span key={type}><i style={{ background: meta.color }} /> {meta.label}</span>;
+        })}
         <span className="deceased-schedule-result-count">{listEvents.length} {listEvents.length === 1 ? "activity" : "activities"}</span>
       </div>
       <main className="deceased-schedule-content">

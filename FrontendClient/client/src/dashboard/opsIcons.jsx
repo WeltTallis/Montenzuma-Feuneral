@@ -137,6 +137,14 @@ const P = {
       <polyline points="9 22 9 12 15 12 15 22" />
     </>
   ),
+  truck: (
+    <>
+      <path d="M3 6h11v12H3z" />
+      <path d="M14 10h4l3 3v5h-7z" />
+      <circle cx="7.5" cy="18.5" r="1.5" />
+      <circle cx="17.5" cy="18.5" r="1.5" />
+    </>
+  ),
   store: (
     <>
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -177,4 +185,3 @@ const P = {
 export function Ic({ n, s = 14 }) {
   return <Svg size={s}>{P[n] || null}</Svg>;
 }
-

@@ -11,9 +11,8 @@ export function Header({
   section,
   view,
   isBoardPeriod,
-  isAnalyticsPeriod,
-  analyticsPeriod,
-  analyticsPeriodEventCount,
+  scheduleWindow,
+  scheduleEventCount,
   badges,
   NAV,
   VIEWS,
@@ -52,10 +51,8 @@ export function Header({
     setSelDate(today);
     setClickedDay(null);
     setDayTab("all");
-    if (section !== "analytics") {
-      setSection("command");
-      setView("day");
-    }
+    setSection("command");
+    setView("day");
     setCalY(Number(today.slice(0, 4)));
     setCalM(Number(today.slice(5, 7)) - 1);
   };
@@ -184,17 +181,17 @@ export function Header({
                   ›
                 </button>
               </div>
-              {isAnalyticsPeriod || isBoardPeriod ? (
+              {isBoardPeriod ? (
                 <div className="tb-period" aria-live="polite">
-                  <b>{analyticsPeriod.title}</b>
-                  <span>{analyticsPeriod.year}</span>
+                  <b>{scheduleWindow.title}</b>
+                  <span>{scheduleWindow.year}</span>
                 </div>
               ) : null}
-              {isAnalyticsPeriod || isBoardPeriod ? (
+              {isBoardPeriod ? (
                 <div className="tb-period-count">
-                  <b>{analyticsPeriodEventCount}</b>
+                  <b>{scheduleEventCount}</b>
                   <span>
-                    {analyticsPeriodEventCount === 1 ? "event" : "events"} {view === "week" ? "this week" : "today"}
+                    {scheduleEventCount === 1 ? "event" : "events"} {view === "week" ? "this week" : "today"}
                   </span>
                 </div>
               ) : null}
