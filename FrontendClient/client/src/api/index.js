@@ -8,3 +8,4 @@ export { invoiceApi } from './invoiceApi';
 export { publicApi } from './publicApi';
 export { calendarApi } from './calendar.api';
 export { workshopApi } from './axios';
+export { default } from './axios';
