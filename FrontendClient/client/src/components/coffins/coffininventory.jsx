@@ -1004,7 +1004,7 @@ const Tag = ({ cls, children }) => {
 };
 
 //  Main Component 
-const CoffinDashboard = () => {
+const CoffinDashboard = ({ showAnalytics = false }) => {
   const { socket } = useSocket();
   // Reservations ("bookings") is always the landing tab when Coffins opens.
   const [tab, setTab] = useState('bookings');
@@ -2765,7 +2765,8 @@ const CoffinDashboard = () => {
         </div>
       )}
 
-      {/* Cross-Branch Inventory Distribution */}
+      {/* Cross-Branch Inventory Distribution — only in dashboard/workshop */}
+      {showAnalytics && (<>
       <div
         style={{
           background: '#ffffff',
@@ -3004,6 +3005,7 @@ const CoffinDashboard = () => {
           </div>
         </div>
       </div>
+      </>)}
       <div style={styles.tw}>
         <div style={styles.tt}>
           <div style={styles.sbox}>
