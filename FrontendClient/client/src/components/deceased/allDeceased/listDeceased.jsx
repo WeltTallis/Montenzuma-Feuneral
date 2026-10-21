@@ -780,7 +780,7 @@ const DeceasedListPage = () => {
               <i className={`fas fa-sync-alt${refreshing ? ' fa-spin' : ''}`}></i>
               Refresh
             </Btn>
-            <Btn $primary onClick={() => setShowStkPush(true)} disabled={loading || records.length === 0}>
+            <Btn $primary onClick={() => setShowStkPush(true)} disabled={loading}>
               <i className="fas fa-mobile-alt"></i>
               STK Push
             </Btn>
@@ -882,7 +882,7 @@ const DeceasedListPage = () => {
           </MobileCardContainer>
         </ListCard>
 
-        {showStkPush && <DeceasedStkPushModal deceasedRecords={records} onClose={() => setShowStkPush(false)} />}
+        {showStkPush && <DeceasedStkPushModal onClose={() => setShowStkPush(false)} />}
 
         {/* Export Side Panel */}
         <ModalOverlay $open={showExport} onClick={() => !exporting && setShowExport(false)}>

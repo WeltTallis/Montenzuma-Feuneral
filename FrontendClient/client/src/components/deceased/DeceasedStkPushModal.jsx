@@ -11,10 +11,19 @@ const recordAdmission = record => record?.admission_number || record?.admission_
 
 const deceasedName = record => record?.full_name || record?.name || 'Unnamed deceased';
 
-const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClose }) => {
-  const records = deceased ? [deceased] : deceasedRecords;
-  const [selectedId, setSelectedId] = useState(recordKey(deceased));
-  const selectedDeceased = deceased || records.find(record => recordKey(record) === selectedId);
+// Daraja's AccountReference is limited to 12 characters. A request that is not
+// attached to a deceased record still needs a unique reference so the payer can
+// identify it on their M-Pesa statement.
+const generalAccountReference = () => {
+  const stamp = Date.now().toString(36).toUpperCase();
+  return `GEN${stamp}`.slice(0, 12);
+};
+
+const DeceasedStkPushModal = ({ deceased, nextOfKin, onClose }) => {
+  // The deceased record is optional. When the modal is opened from a list
+  // (no record handed in) the request is sent as a general payment request
+  // that is not attached to any deceased account.
+  const selectedDeceased = deceased || null;
   const admissionNumber = recordAdmission(selectedDeceased);
   const deceasedId = recordKey(selectedDeceased);
   const initialKinName = nextOfKin?.full_name || nextOfKin?.name ||
@@ -74,22 +83,12 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
     };
   }, [checkoutRequestId, paymentState]);
 
-  const selectRecord = recordId => {
-    const record = records.find(item => recordKey(item) === recordId);
-    setSelectedId(recordId);
-    setKinName(record?.contact_person || record?.next_of_kin_name || '');
-    setPhoneNumber(record?.phone_number || record?.tel_number || '');
-    setError('');
-  };
-
   const submit = async event => {
     event.preventDefault();
     setError('');
 
     const amountValue = Number(amount);
     const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
-    if (!deceasedId) return setError('Select a deceased record.');
-    if (!admissionNumber) return setError('This deceased record is missing its admission number.');
     if (!kinName.trim()) return setError('Enter the next-of-kin name.');
     if (!/^(?:\+?254|0)[17]\d{8}$/.test(cleanPhone)) return setError('Enter a valid Kenyan M-Pesa phone number, such as 0712 345 678.');
     if (!Number.isFinite(amountValue) || amountValue < 1) return setError('Enter a payment amount of at least KES 1.');
@@ -99,13 +98,18 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
     setPaymentState('starting');
     setBusy(true);
     try {
+      // Without a deceased record the request is a general payment request:
+      // it still collects the money but it is not credited to any deceased
+      // account, so the backend is told to skip the deceased metadata.
+      const accountReference = admissionNumber ? admissionNumber.slice(0, 12) : generalAccountReference();
+      const transactionDesc = admissionNumber ? `Payment ${admissionNumber}`.slice(0, 30) : 'Payment request';
       const response = await api.post('/mpesa/stkpush', {
         amount: String(Math.round(amountValue)),
         phoneNumber: cleanPhone.startsWith('+') ? cleanPhone.slice(1) : cleanPhone.startsWith('0') ? `254${cleanPhone.slice(1)}` : cleanPhone,
-        accountReference: admissionNumber.slice(0, 12),
-        transactionDesc: `Payment ${admissionNumber}`.slice(0, 30),
-        deceasedId: String(deceasedId),
-        admissionNumber: String(admissionNumber),
+        accountReference,
+        transactionDesc,
+        deceasedId: deceasedId ? String(deceasedId) : '',
+        admissionNumber: admissionNumber ? String(admissionNumber) : '',
         payerName: kinName.trim(),
         tenantSlug: getTenantSlug() || localStorage.getItem('tenantSlug') || '',
       });
@@ -137,7 +141,8 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
   }, []);
 
   const displayPhone = phoneNumber || '—';
-  const displayName = deceasedName(selectedDeceased);
+  const hasDeceased = Boolean(selectedDeceased);
+  const displayName = hasDeceased ? deceasedName(selectedDeceased) : 'General payment request';
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
   const formattedAmount = `KES ${Math.round(Number(amount) || 0).toLocaleString('en-KE')}`;
   const statusTitle = paymentState === 'paid' ? 'Payment received' :
@@ -149,7 +154,9 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
       ? (requestResult?.resultDescription || requestResult?.ResultDesc || 'The request was cancelled or could not be completed. No payment was recorded.')
       : paymentState === 'delayed'
         ? 'We have not received confirmation yet. Check the payer’s M-Pesa messages before sending another request.'
-        : 'Enter your M-Pesa PIN on the phone. The deceased’s account will only be updated after M-Pesa confirms the payment.';
+        : hasDeceased
+          ? 'Enter your M-Pesa PIN on the phone. The deceased’s account will only be updated after M-Pesa confirms the payment.'
+          : 'Enter your M-Pesa PIN on the phone. The payment is only recorded after M-Pesa confirms it.';
 
   return (
     <div
@@ -208,7 +215,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                 </ol>
                 <div className="deceased-stk-record-note">
                   <strong>{displayName}</strong>
-                  <span>Admission {admissionNumber || '—'} · {kinName.trim()}</span>
+                  <span>{hasDeceased ? `Admission ${admissionNumber || '—'} · ` : ''}{kinName.trim()}</span>
                 </div>
                 <p className="deceased-stk-secure-note">Payment is recorded only after M-Pesa confirms the transaction.</p>
               </div>
@@ -229,14 +236,16 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                   ? `${formattedAmount} received`
                   : paymentState === 'failed' ? 'Payment was not received' : 'Confirmation is taking longer than expected'}</h3>
                 <p>{paymentState === 'paid'
-                  ? `The payment is now recorded on ${displayName}’s deceased record.`
+                  ? (hasDeceased
+                    ? `The payment is now recorded on ${displayName}’s deceased record.`
+                    : 'M-Pesa confirmed this payment.')
                   : resultDescription}</p>
                 <dl className="deceased-stk-receipt">
                   {paymentState === 'paid' && (requestResult.receipt || requestResult.mpesaReceiptNumber || requestResult.MpesaReceiptNumber) && <div><dt>M-Pesa code</dt><dd className="deceased-stk-code">{requestResult.receipt || requestResult.mpesaReceiptNumber || requestResult.MpesaReceiptNumber}</dd></div>}
-                  <div><dt>Deceased</dt><dd>{displayName}</dd></div>
+                  {hasDeceased && <div><dt>Deceased</dt><dd>{displayName}</dd></div>}
                   <div><dt>Paid by</dt><dd>{kinName.trim()}</dd></div>
                   <div><dt>Phone</dt><dd>{displayPhone}</dd></div>
-                  <div><dt>Admission</dt><dd>{admissionNumber}</dd></div>
+                  {hasDeceased && <div><dt>Admission</dt><dd>{admissionNumber}</dd></div>}
                   <div className="deceased-stk-total">
                     <dt>{paymentState === 'paid' ? 'Amount paid' : 'Amount requested'}</dt>
                     <dd>{formattedAmount}</dd>
@@ -247,24 +256,18 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
             )
           ) : (
             <>
-              <div className="deceased-stk-record">
-                <div className="deceased-stk-avatar" aria-hidden="true">{initials}</div>
-                <div className="deceased-stk-record-text"><strong>{displayName}</strong><span>Admission {admissionNumber || '—'}</span></div>
-              </div>
+              {hasDeceased ? (
+                <div className="deceased-stk-record">
+                  <div className="deceased-stk-avatar" aria-hidden="true">{initials}</div>
+                  <div className="deceased-stk-record-text"><strong>{displayName}</strong><span>Admission {admissionNumber || '—'}</span></div>
+                </div>
+              ) : (
+                <div className="deceased-stk-record">
+                  <div className="deceased-stk-avatar" aria-hidden="true"><i className="fas fa-mobile-alt" /></div>
+                  <div className="deceased-stk-record-text"><strong>General payment request</strong><span>Not attached to a deceased record</span></div>
+                </div>
+              )}
               <form id="deceased-stk-form" className="deceased-stk-form" onSubmit={submit}>
-                {!deceased && (
-                  <label>
-                    <span>Deceased record</span>
-                    <select className="deceased-stk-input" value={selectedId} onChange={event => selectRecord(event.target.value)} required>
-                      <option value="" disabled>Choose a deceased record</option>
-                      {records.map(record => (
-                        <option key={recordKey(record)} value={recordKey(record)}>
-                          {deceasedName(record)} · Admission {recordAdmission(record) || '—'}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
                 <div className="deceased-stk-row">
                   <label>
                     <span>Next of kin name</span>
@@ -283,7 +286,9 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                   </div>
                 </label>
                 {error && <div className="deceased-stk-error" role="alert">{error}</div>}
-                <p className="deceased-stk-secure-note">The payment is added to this deceased record only after M-Pesa confirms it.</p>
+                <p className="deceased-stk-secure-note">{hasDeceased
+                  ? 'The payment is added to this deceased record only after M-Pesa confirms it.'
+                  : 'This request is not linked to a deceased record. The payment is only recorded after M-Pesa confirms it.'}</p>
               </form>
             </>
           )}
@@ -297,7 +302,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, deceasedRecords = [], onClo
                 {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : 'Try again'}
               </button>
             ) : (
-              <button type="submit" form="deceased-stk-form" className="deceased-stk-button is-primary" disabled={busy || !selectedDeceased}>
+              <button type="submit" form="deceased-stk-form" className="deceased-stk-button is-primary" disabled={busy}>
                 {busy ? <><span className="deceased-stk-spinner" /> Sending request…</> : `Send request${Number(amount) > 0 ? ` · ${formattedAmount}` : ''}`}
               </button>
             )}
