@@ -1,197 +1,1148 @@
-import { useMemo, useState } from "react";
-import {
-  AlertCircle, ArrowDownRight, ArrowUpRight, Boxes, ChevronRight,
-  Clock3, Factory, PackageCheck, Search, SlidersHorizontal, TrendingUp,
-  UsersRound, Warehouse,
-} from "lucide-react";
-import "./coffin-command-center.css";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import './coffin-analytics-dashboard.css';
+import api from '../api';
+import { loadCoffinTypesCatalog } from '../components/coffins/coffinColorUtils';
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const FINISHED = new Set(["completed", "delivered", "store", "dispatched", "collected"]);
-const STAGES = [
-  ["Building", ["pending", "building", "design"]],
-  ["Waiting bay", ["waiting_bay", "waiting", "inspection"]],
-  ["Painting", ["painting"]],
-  ["Interior", ["interior", "upholstery"]],
-  ["Ready", ["completed", "delivered", "store", "dispatched", "collected"]],
-];
-
-const nameOf = (worker) => String(worker?.full_name || `${worker?.first_name || ""} ${worker?.last_name || ""}`.trim() || "Unassigned");
-const initials = (name) => name.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-const dateOf = (order) => order.completed_at || order.updated_at || order.order_date || order.created_at || order.createdAt;
-const formatAgo = (value) => {
-  const time = new Date(value).getTime();
-  if (!Number.isFinite(time)) return "Recently";
-  const hours = Math.max(0, Math.round((Date.now() - time) / 36e5));
-  return hours < 1 ? "Just now" : hours < 24 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`;
-};
-const formatDate = (value) => {
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date.toLocaleDateString("en", { month: "short", day: "numeric" }) : "—";
+// Catalog of coffin types and their variant colors
+const DEFAULT_CATALOG = {
+  Doom: { colors: ['White', 'Brown', 'Chocolate', 'Black', 'Purple'] },
+  Classic: { colors: ['Natural', 'Mahogany', 'Walnut', 'Dark Cherry'] },
+  Premium: { colors: ['Dark Cherry', 'Golden Oak', 'Honey', 'Walnut'] },
+  Standard: { colors: ['Natural', 'Pine', 'White'] },
+  Child: { colors: ['Natural', 'White', 'Light Pink'] },
 };
 
-function ownsOrder(worker, order) {
-  const workerId = String(worker?.user_id ?? worker?.id ?? "");
-  if (Array.isArray(order?.assignments) && order.assignments.some((assignment) => String(assignment.user_id) === workerId)) return true;
-  if (order?.assigned_to != null && String(order.assigned_to) === workerId) return true;
-  return String(order?.assigned_to_name || "").trim().toLowerCase() === nameOf(worker).toLowerCase();
-}
+const COLOR_HEX = {
+  White: '#cbd5e1',
+  Brown: '#92400e',
+  Chocolate: '#78350f',
+  Black: '#0f172a',
+  Purple: '#7c3aed',
+  Natural: '#d4a017',
+  Mahogany: '#7f1d1d',
+  Walnut: '#3d2817',
+  'Dark Cherry': '#5a1a1a',
+  'Golden Oak': '#c89060',
+  Honey: '#d97706',
+  Pine: '#65a30d',
+  'Light Pink': '#f5d5d5',
+  'Midnight Black': '#0f172a',
+  'Rich Mahogany': '#7f1d1d',
+  'Walnut Brown': '#3d2817',
+  'Metallic Gold': '#d4af37',
+  'Deep Rosewood': '#65000b',
+  'Pearl White': '#f8f6f0',
+};
 
-function MiniTrend({ values }) {
-  const max = Math.max(1, ...values);
-  const points = values.map((value, index) => {
-    const x = 8 + index * 38;
-    const y = 67 - (value / max) * 50;
-    return `${x},${y}`;
-  }).join(" ");
-  const area = `8,72 ${points} 198,72`;
-  return (
-    <svg className="cc-trend" viewBox="0 0 206 80" role="img" aria-label="Monthly production trend">
-      <defs>
-        <linearGradient id="ccTrendFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#7c3aed" stopOpacity=".28" />
-          <stop offset="1" stopColor="#7c3aed" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`M ${area}`} fill="url(#ccTrendFill)" />
-      <polyline points={points} fill="none" stroke="#7c3aed" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {values.map((value, index) => <circle key={index} cx={8 + index * 38} cy={67 - (value / max) * 50} r="3.5" fill="#fff" stroke="#7c3aed" strokeWidth="2" />)}
-    </svg>
-  );
-}
+const DEFAULT_BRANCHES = ['Nairobi CBD', 'Westlands', 'Karen', 'Thika', 'Nakuru'];
+const LOW_STOCK = 2;
+const CRITICAL_STOCK = 1;
+const ACTIVE_STATUSES = new Set(['pending', 'confirmed', 'booked']);
 
-function ProductionBars({ values }) {
-  const max = Math.max(1, ...values);
-  return (
-    <div className="cc-bars" aria-label="Six month production chart">
-      {values.map((value, index) => (
-        <div className="cc-bar-group" key={index}>
-          <div className="cc-bar-value">{value || ""}</div>
-          <div className="cc-bar-track"><i style={{ height: `${Math.max(value ? 10 : 2, (value / max) * 100)}%` }} /></div>
-          <span>{MONTHS[(new Date().getMonth() - 5 + index + 12) % 12]}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+export default function CoffinCommandCenter({ orders, workers, onOpenStore, embedded = false }) {
+  const [branches, setBranches] = useState(DEFAULT_BRANCHES);
+  const [catalog, setCatalog] = useState(DEFAULT_CATALOG);
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [rangeDays, setRangeDays] = useState(7);
+  const [attnOpen, setAttnOpen] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
-export default function CoffinCommandCenter({ orders = [], workers = [], production, targets, store, onOpenStore }) {
-  const [workerFilter, setWorkerFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const data = useMemo(() => {
-    const now = new Date();
-    const currentKey = monthKey(now);
-    const previousKey = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-    const productionByWorker = new Map((production?.workers || []).map((entry) => [String(entry.worker_id), entry]));
-    const staff = workers.map((worker, index) => {
-      const record = productionByWorker.get(String(worker.user_id ?? worker.id));
-      const monthly = record?.monthly || {};
-      const active = orders.filter((order) => ownsOrder(worker, order) && !FINISHED.has(String(order.status || "").toLowerCase())).length;
-      return {
-        id: String(worker.user_id ?? worker.id),
-        name: nameOf(worker),
-        role: worker.role || "Craft worker",
-        output: Number(record?.total) || 0,
-        month: Number(monthly[currentKey]) || 0,
-        previous: Number(monthly[previousKey]) || 0,
-        active,
-        tint: ["violet", "blue", "amber", "rose", "teal"][index % 5],
-      };
-    }).sort((a, b) => b.month - a.month || b.output - a.output);
-
-    const finished = orders.filter((order) => FINISHED.has(String(order.status || "").toLowerCase()));
-    const currentOutput = staff.reduce((total, worker) => total + worker.month, 0) || finished.filter((order) => monthKey(new Date(dateOf(order))) === currentKey).length;
-    const priorOutput = staff.reduce((total, worker) => total + worker.previous, 0);
-    const target = Number((targets?.months || []).find((entry) => entry.month === currentKey)?.target) || 0;
-    const monthValues = Array.from({ length: 6 }, (_, index) => {
-      const cursor = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
-      const key = monthKey(cursor);
-      return staff.reduce((sum, worker) => sum + (Number(productionByWorker.get(worker.id)?.monthly?.[key]) || 0), 0);
+  // Seed initial realistic variants across branches
+  const [variants, setVariants] = useState(() => {
+    const list = [];
+    let n = 1;
+    DEFAULT_BRANCHES.forEach((branch, bi) => {
+      Object.entries(DEFAULT_CATALOG).forEach(([type, cfg]) => {
+        cfg.colors.forEach((color) => {
+          const base = (type.length + color.length + bi) % 6;
+          list.push({
+            id: 'v' + n++,
+            type,
+            color,
+            branch,
+            qty: base + (bi === 0 ? 1 : 0),
+            location: 'Rack ' + String.fromCharCode(65 + bi) + ((n % 5) + 1),
+          });
+        });
+      });
     });
-    const activeOrders = orders.filter((order) => !FINISHED.has(String(order.status || "").toLowerCase()));
-    const stageCounts = STAGES.map(([label, statuses]) => ({ label, count: orders.filter((order) => statuses.includes(String(order.status || "").toLowerCase())).length }));
-    const inventory = (store?.items || []).map((item) => ({
-      key: item.item_key,
-      name: item.item_name || item.item_key,
-      type: item.item_type || "Coffin",
-      quantity: Number(item.quantity) || 0,
-      unit: item.unit || "units",
-    }));
-    const coffinStock = inventory.filter((item) => item.type === "Coffin");
-    const stockTotal = coffinStock.reduce((total, item) => total + item.quantity, 0);
-    const activity = [
-      ...activeOrders.map((order) => ({ type: "In production", title: order.coffin_name || order.name || "Coffin order", time: dateOf(order), tone: "violet" })),
-      ...finished.map((order) => ({ type: "Completed", title: order.coffin_name || order.name || "Coffin order", time: dateOf(order), tone: "green" })),
-      ...(store?.history || []).map((entry) => ({ type: String(entry.action || "Stock update").toLowerCase(), title: entry.item_name || entry.item_key || "Inventory", time: entry.txn_date, tone: String(entry.action || "").toUpperCase() === "DISPATCH" ? "amber" : "blue" })),
-    ].filter((item) => item.time).sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
-    return { staff, currentOutput, priorOutput, target, monthValues, activeOrders, stageCounts, inventory, coffinStock, stockTotal, activity };
-  }, [orders, workers, production, targets, store]);
+    return list;
+  });
 
-  const outputDelta = data.priorOutput ? Math.round(((data.currentOutput - data.priorOutput) / data.priorOutput) * 100) : 0;
-  const completion = data.target ? Math.min(100, Math.round((data.currentOutput / (data.target * Math.max(1, workers.length))) * 100)) : 0;
-  const filteredStaff = data.staff.filter((worker) => (workerFilter === "all" || worker.id === workerFilter) && worker.name.toLowerCase().includes(search.toLowerCase()));
-  const lowStock = data.coffinStock.filter((item) => item.quantity <= 2).length;
+  // Seed initial bookings
+  const [bookings, setBookings] = useState(() => {
+    const list = [];
+    const now = Date.now();
+    const day = 86400000;
+    const statuses = ['confirmed', 'confirmed', 'confirmed', 'pending', 'fulfilled', 'cancelled'];
+    for (let i = 0; i < 140; i++) {
+      const v = variants[Math.floor(Math.random() * (variants.length || 1))] || { id: 'v1' };
+      const daysAgo = Math.floor(Math.random() * 30);
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      list.push({
+        id: 'b' + i,
+        variantId: v.id,
+        qty: 1 + Math.floor(Math.random() * 2),
+        status,
+        date: new Date(now - daysAgo * day - Math.random() * day),
+        client: 'Family ' + String.fromCharCode(65 + (i % 26)),
+      });
+    }
+    return list;
+  });
+
+  // Fetch real data from backend and sync with catalog
+  useEffect(() => {
+    let mounted = true;
+    async function loadBackendData() {
+      try {
+        const storedCat = loadCoffinTypesCatalog();
+        if (storedCat && storedCat.length > 0) {
+          const newCat = { ...DEFAULT_CATALOG };
+          storedCat.forEach((t) => {
+            if (t.name) {
+              newCat[t.name] = {
+                colors: (t.colors || []).map((c) => c.name),
+              };
+            }
+          });
+          if (mounted) setCatalog(newCat);
+        }
+
+        // Try fetching backend coffins
+        const res = await api.get('/coffins');
+        if (res.data?.success && Array.isArray(res.data?.data) && res.data.data.length > 0) {
+          const serverCoffins = res.data.data;
+          const mappedVariants = serverCoffins.map((c, idx) => ({
+            id: String(c.coffin_id || c.id || 'sc_' + idx),
+            type: c.type || c.name || 'Doom',
+            color: c.color || 'White',
+            branch: c.branch_name || c.branch_slug || 'Nairobi CBD',
+            qty: parseInt(c.stock ?? c.quantity) || 0,
+            location: c.location || `Rack A${(idx % 4) + 1}`,
+          }));
+          if (mounted && mappedVariants.length > 0) {
+            setVariants((prev) => {
+              // Combine unique variants
+              const existingIds = new Set(mappedVariants.map((m) => m.id));
+              return [...mappedVariants, ...prev.filter((p) => !existingIds.has(p.id))];
+            });
+          }
+        }
+      } catch (err) {
+        // graceful fallback to seeded data
+        console.warn('Backend data load note:', err.message);
+      }
+    }
+    loadBackendData();
+    return () => { mounted = false; };
+  }, []);
+
+  // Live simulation tick every 4 seconds (adds live events, updates dashboard)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!variants || variants.length === 0) return;
+      const v = variants[Math.floor(Math.random() * variants.length)];
+      const newBooking = {
+        id: 'b' + Date.now(),
+        variantId: v.id,
+        qty: 1,
+        status: Math.random() > 0.3 ? 'confirmed' : 'pending',
+        date: new Date(),
+        client: 'Family ' + String.fromCharCode(65 + Math.floor(Math.random() * 26)),
+      };
+      setBookings((prev) => [newBooking, ...prev.slice(0, 180)]);
+      setLastUpdate(new Date());
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [variants]);
+
+  // Filtered variants
+  const filteredVariants = useMemo(() => {
+    return variants.filter((v) => {
+      if (branchFilter !== 'all' && v.branch !== branchFilter) return false;
+      if (typeFilter !== 'all' && v.type !== typeFilter) return false;
+      return true;
+    });
+  }, [variants, branchFilter, typeFilter]);
+
+  // Booked quantity calculation for a variant
+  const bookedFor = useCallback((vid) => {
+    return bookings
+      .filter((b) => b.variantId === vid && ACTIVE_STATUSES.has(b.status))
+      .reduce((s, b) => s + b.qty, 0);
+  }, [bookings]);
+
+  // Status helper
+  const statusOf = useCallback((v) => {
+    const a = Math.max(0, v.qty - bookedFor(v.id));
+    if (v.qty === 0) return 'out';
+    if (a <= CRITICAL_STOCK) return 'critical';
+    if (a <= LOW_STOCK) return 'low';
+    return 'ok';
+  }, [bookedFor]);
+
+  // Filtered bookings in selected range
+  const filteredBookings = useMemo(() => {
+    const ids = new Set(filteredVariants.map((v) => v.id));
+    const cut = Date.now() - rangeDays * 86400000;
+    return bookings.filter((b) => ids.has(b.variantId) && new Date(b.date).getTime() >= cut);
+  }, [filteredVariants, rangeDays, bookings]);
+
+  // KPI Computations
+  const totalStock = useMemo(() => filteredVariants.reduce((s, v) => s + v.qty, 0), [filteredVariants]);
+  const totalBooked = useMemo(() => filteredVariants.reduce((s, v) => s + bookedFor(v.id), [filteredVariants, bookedFor]));
+  const totalAvailable = useMemo(() => Math.max(0, totalStock - totalBooked), [totalStock, totalBooked]);
+  const outOfStockCount = useMemo(() => filteredVariants.filter((v) => statusOf(v) === 'out').length, [filteredVariants, statusOf]);
+  const recentBookingsCount = useMemo(() => filteredBookings.filter((b) => ACTIVE_STATUSES.has(b.status)).length, [filteredBookings]);
+
+  // Needs Attention Data grouped by branch
+  const attentionBranches = useMemo(() => {
+    const byBranch = {};
+    filteredVariants.forEach((v) => {
+      const st = statusOf(v);
+      if (st === 'critical' || st === 'out') {
+        if (!byBranch[v.branch]) byBranch[v.branch] = [];
+        byBranch[v.branch].push({ v, st });
+      }
+    });
+
+    return Object.entries(byBranch)
+      .map(([branch, items]) => ({
+        branch,
+        items: items.sort((a, b) => (a.st === 'out' ? -1 : 1)),
+        count: items.length,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredVariants, statusOf]);
+
+  const totalAlerts = useMemo(() => attentionBranches.reduce((s, b) => s + b.count, 0), [attentionBranches]);
+
+  // Trend Chart Data
+  const trendBuckets = useMemo(() => {
+    const days = rangeDays;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const buckets = Array.from({ length: days }, (_, i) => ({
+      date: new Date(now.getTime() - (days - 1 - i) * 86400000),
+      count: 0,
+    }));
+    filteredBookings.filter((b) => ACTIVE_STATUSES.has(b.status)).forEach((b) => {
+      const bd = new Date(b.date);
+      bd.setHours(0, 0, 0, 0);
+      const idx = buckets.findIndex((x) => x.date.getTime() === bd.getTime());
+      if (idx >= 0) buckets[idx].count += b.qty;
+    });
+    return buckets;
+  }, [rangeDays, filteredBookings]);
+
+  // Top Booked Variants
+  const topBookedVariants = useMemo(() => {
+    const c = {};
+    filteredBookings.filter((b) => ACTIVE_STATUSES.has(b.status)).forEach((b) => {
+      c[b.variantId] = (c[b.variantId] || 0) + b.qty;
+    });
+    return Object.entries(c)
+      .map(([id, n]) => ({ v: variants.find((v) => v.id === id), n }))
+      .filter((x) => x.v)
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 5);
+  }, [filteredBookings, variants]);
+
+  // Color Popularity
+  const colorCounts = useMemo(() => {
+    const c = {};
+    filteredBookings.filter((b) => ACTIVE_STATUSES.has(b.status)).forEach((b) => {
+      const v = variants.find((x) => x.id === b.variantId);
+      if (v) c[v.color] = (c[v.color] || 0) + b.qty;
+    });
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [filteredBookings, variants]);
+
+  const totalColorBookings = useMemo(() => colorCounts.reduce((s, e) => s + e[1], 0), [colorCounts]);
+
+  // Stock Health counts
+  const healthCounts = useMemo(() => {
+    const b = { ok: 0, low: 0, critical: 0, out: 0 };
+    filteredVariants.forEach((v) => b[statusOf(v)]++);
+    return b;
+  }, [filteredVariants, statusOf]);
+
+  // Stock by branch bar chart data
+  const branchStockData = useMemo(() => {
+    return branches.map((b) => {
+      const vs = variants.filter((v) => v.branch === b && (typeFilter === 'all' || v.type === typeFilter));
+      const stock = vs.reduce((s, v) => s + v.qty, 0);
+      const booked = vs.reduce((s, v) => s + bookedFor(v.id), 0);
+      return { b, avail: Math.max(0, stock - booked) };
+    });
+  }, [branches, variants, typeFilter, bookedFor]);
+
+  // Matrix Columns: Type x Color
+  const matrixCols = useMemo(() => {
+    const cols = [];
+    Object.entries(catalog).forEach(([type, cfg]) => {
+      if (typeFilter !== 'all' && type !== typeFilter) return;
+      (cfg.colors || []).forEach((color) => cols.push({ type, color }));
+    });
+    return cols;
+  }, [catalog, typeFilter]);
+
+  // Branch Breakdown Table
+  const branchTableRows = useMemo(() => {
+    return branches.map((b) => {
+      const vs = variants.filter((v) => v.branch === b && (typeFilter === 'all' || v.type === typeFilter));
+      const stock = vs.reduce((s, v) => s + v.qty, 0);
+      const booked = vs.reduce((s, v) => s + bookedFor(v.id), 0);
+      return {
+        b,
+        stock,
+        booked,
+        avail: Math.max(0, stock - booked),
+        fill: stock ? Math.round((booked / stock) * 100) : 0,
+      };
+    });
+  }, [branches, variants, typeFilter, bookedFor]);
+
+  // Recent Activity Feed
+  const recentFeed = useMemo(() => {
+    const ids = new Set(filteredVariants.map((v) => v.id));
+    return bookings
+      .filter((b) => ids.has(b.variantId))
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 12);
+  }, [bookings, filteredVariants]);
+
+  // Heatmap Data: Branch x Weekday
+  const heatmapData = useMemo(() => {
+    const cut = Date.now() - 30 * 86400000;
+    const g = {};
+    branches.forEach((b) => { g[b] = new Array(7).fill(0); });
+    bookings.filter((b) => new Date(b.date).getTime() >= cut && ACTIVE_STATUSES.has(b.status)).forEach((b) => {
+      const v = variants.find((x) => x.id === b.variantId);
+      if (v && g[v.branch]) {
+        const dayIdx = (new Date(b.date).getDay() + 6) % 7;
+        g[v.branch][dayIdx] += b.qty;
+      }
+    });
+    const maxVal = Math.max(1, ...Object.values(g).flat());
+    return { grid: g, max: maxVal };
+  }, [branches, bookings, variants]);
+
+  const timeAgo = (d) => {
+    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (s < 60) return s + 's ago';
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + 'm ago';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.floor(h / 24) + 'd ago';
+  };
 
   return (
-    <section className="cc-shell">
-      <div className="cc-hero">
-        <div>
-          <p className="cc-eyebrow"><span /> Operations overview</p>
-          <h2>Make every coffin count.</h2>
-          <p className="cc-subtitle">A clear view of workshop output, production flow, and ready-to-dispatch stock.</p>
-        </div>
-        <div className="cc-hero-actions">
-          <div className="cc-live"><i /> Live workshop</div>
-          <button className="cc-primary" type="button" onClick={onOpenStore}><Warehouse size={16} /> Manage inventory</button>
-        </div>
-      </div>
-
-      <div className="cc-kpis">
-        <article className="cc-kpi cc-kpi--purple"><div className="cc-kpi-icon"><Factory size={19} /></div><span>This month</span><strong>{data.currentOutput}</strong><p className={outputDelta >= 0 ? "good" : ""}>{outputDelta >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{Math.abs(outputDelta)}% vs. last month</p></article>
-        <article className="cc-kpi"><div className="cc-kpi-icon cc-kpi-icon--blue"><Clock3 size={19} /></div><span>On the floor</span><strong>{data.activeOrders.length}</strong><p>{data.stageCounts[0].count} in build · {data.stageCounts[2].count} in paint</p></article>
-        <article className="cc-kpi"><div className="cc-kpi-icon cc-kpi-icon--green"><PackageCheck size={19} /></div><span>Ready to dispatch</span><strong>{data.stockTotal}</strong><p className={lowStock ? "warn" : ""}>{lowStock ? `${lowStock} stock line${lowStock === 1 ? "" : "s"} needs attention` : "Stock levels are healthy"}</p></article>
-        <article className="cc-kpi"><div className="cc-kpi-icon cc-kpi-icon--orange"><UsersRound size={19} /></div><span>Active craftspeople</span><strong>{data.staff.length}</strong><p>{data.staff.reduce((total, worker) => total + worker.active, 0)} assignments in progress</p></article>
-      </div>
-
-      <div className="cc-grid cc-grid--primary">
-        <article className="cc-card cc-production-card">
-          <div className="cc-card-head"><div><p>Production analytics</p><h3>Six-month output</h3></div><button type="button" className="cc-quiet-button">Last 6 months <ChevronRight size={14} /></button></div>
-          <ProductionBars values={data.monthValues} />
-          <div className="cc-chart-foot"><span><i className="cc-key cc-key--purple" /> Finished coffins</span><strong>{data.monthValues.reduce((sum, value) => sum + value, 0)} total</strong></div>
-        </article>
-        <article className="cc-card cc-target-card">
-          <div className="cc-card-head"><div><p>Monthly target</p><h3>Output pacing</h3></div><TrendingUp size={19} /></div>
-          <div className="cc-target-body">
-            <div className="cc-ring" style={{ "--progress": `${completion * 3.6}deg` }}><div><strong>{completion}%</strong><span>complete</span></div></div>
-            <div><strong className="cc-target-number">{data.currentOutput}<small> / {data.target ? data.target * Math.max(1, workers.length) : "—"}</small></strong><p>{data.target ? "Coffins finished against this month’s team target" : "Set a monthly target to measure workshop pacing"}</p></div>
+    <div className="cb-root">
+      {/* Topbar */}
+      {!embedded && (
+        <header className="cb-topbar">
+          <div className="cb-brand">
+            <div className="cb-mark">CB</div>
+            <div className="cb-title">
+              CoffinBook<span className="cb-sub">Analytics &amp; Command Center</span>
+            </div>
           </div>
-          <div className="cc-target-note"><span>Run rate</span><b>{data.currentOutput ? `${Math.max(1, Math.round(data.currentOutput / Math.max(1, new Date().getDate()) * 7))} per week` : "No output yet"}</b></div>
-        </article>
-      </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div className="cb-live-badge">
+              <span className="cb-live-dot"></span>LIVE
+            </div>
+            <div className="cb-nav-links">
+              <button
+                type="button"
+                className="cb-nav-link"
+                onClick={() => onOpenStore && onOpenStore('inventory')}
+              >
+                Inventory
+              </button>
+              <button
+                type="button"
+                className="cb-nav-link"
+                onClick={() => onOpenStore && onOpenStore('bookings')}
+              >
+                Bookings
+              </button>
+              <button type="button" className="cb-nav-link on">
+                Analytics
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
 
-      <div className="cc-grid cc-grid--secondary">
-        <article className="cc-card cc-flow-card">
-          <div className="cc-card-head"><div><p>Workshop flow</p><h3>Where work is right now</h3></div><button type="button" className="cc-link-button">View board <ChevronRight size={14} /></button></div>
-          <div className="cc-stage-list">{data.stageCounts.map((stage, index) => <div className="cc-stage" key={stage.label}><span className={`cc-stage-dot cc-stage-dot--${index}`} /><div><b>{stage.label}</b><small>{index === 4 ? "Awaiting dispatch" : "In progress"}</small></div><strong>{stage.count}</strong></div>)}</div>
-        </article>
-        <article className="cc-card cc-stock-card">
-          <div className="cc-card-head"><div><p>Inventory snapshot</p><h3>Finished coffin stock</h3></div><button type="button" className="cc-link-button" onClick={onOpenStore}>Open inventory <ChevronRight size={14} /></button></div>
-          <div className="cc-stock-list">{data.coffinStock.slice(0, 4).map((item) => <div className="cc-stock-row" key={item.key}><div className="cc-stock-icon"><Boxes size={17} /></div><div><b>{item.name}</b><small>{item.type}</small></div><strong className={item.quantity <= 2 ? "low" : ""}>{item.quantity} <small>{item.unit}</small></strong></div>)}{!data.coffinStock.length && <div className="cc-empty">No finished coffin stock yet.</div>}</div>
-          {!!data.coffinStock.length && <div className="cc-stock-footer"><span><i className={lowStock ? "alert" : ""} />{lowStock ? `${lowStock} item type${lowStock === 1 ? "" : "s"} running low` : "All stock levels are on track"}</span><button type="button" onClick={onOpenStore}>Manage</button></div>}
-        </article>
-      </div>
+      <div className="cb-wrap">
+        {/* Page Head */}
+        <div className="cb-page-head">
+          <div className="cb-page-title">Real-time Inventory Analytics</div>
+          <div className="cb-page-sub">
+            Live view of stock, bookings and branch performance — updates every 4 seconds
+          </div>
+        </div>
 
-      <div className="cc-grid cc-grid--lower">
-        <article className="cc-card cc-team-card">
-          <div className="cc-card-head cc-team-head"><div><p>Team performance</p><h3>Craftspeople leaderboard</h3></div><div className="cc-tools"><label><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find worker" /></label><button type="button" aria-label="Filter workers"><SlidersHorizontal size={16} /></button></div></div>
-          <div className="cc-team-list">{filteredStaff.map((worker) => <div className="cc-worker" key={worker.id} onClick={() => setWorkerFilter(workerFilter === worker.id ? "all" : worker.id)} role="button" tabIndex={0}><span className={`cc-avatar cc-avatar--${worker.tint}`}>{initials(worker.name)}</span><div className="cc-worker-name"><b>{worker.name}</b><small>{worker.role}</small></div><div className="cc-worker-stat"><span>Made this month</span><b>{worker.month}</b></div><div className="cc-worker-stat"><span>On floor</span><b>{worker.active}</b></div><MiniTrend values={data.monthValues.slice(-5).map((value) => worker.month ? Math.max(0, Math.round(value * (worker.month / Math.max(1, data.currentOutput)))) : 0)} /></div>)}{!filteredStaff.length && <div className="cc-empty">No workers match this search.</div>}</div>
-        </article>
-        <article className="cc-card cc-activity-card">
-          <div className="cc-card-head"><div><p>Activity</p><h3>Latest updates</h3></div><button type="button" className="cc-link-button">All activity <ChevronRight size={14} /></button></div>
-          <div className="cc-activity-list">{data.activity.map((item, index) => <div className="cc-activity" key={`${item.title}-${index}`}><span className={`cc-activity-mark cc-activity-mark--${item.tone}`} /><div><b>{item.title}</b><small>{item.type}</small></div><time>{formatAgo(item.time)}<small>{formatDate(item.time)}</small></time></div>)}{!data.activity.length && <div className="cc-empty"><AlertCircle size={18} /> No workshop activity has been recorded yet.</div>}</div>
-        </article>
+        {/* Toolbar */}
+        <div className="cb-toolbar">
+          <select
+            className="cb-select"
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+          >
+            <option value="all">All branches</option>
+            {branches.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="cb-select"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="all">All coffin types</option>
+            {Object.keys(catalog).map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+
+          <div className="cb-seg">
+            <button
+              className={rangeDays === 7 ? 'on' : ''}
+              onClick={() => setRangeDays(7)}
+            >
+              7 days
+            </button>
+            <button
+              className={rangeDays === 14 ? 'on' : ''}
+              onClick={() => setRangeDays(14)}
+            >
+              14 days
+            </button>
+            <button
+              className={rangeDays === 30 ? 'on' : ''}
+              onClick={() => setRangeDays(30)}
+            >
+              30 days
+            </button>
+          </div>
+
+          <div style={{ flex: 1 }}></div>
+          <div className="cb-last-update">
+            Updated {lastUpdate.toLocaleTimeString()}
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="cb-kpis">
+          <div className="cb-kpi" style={{ animationDelay: '0ms' }}>
+            <div className="cb-kpi-top">
+              <div className="cb-kpi-label">Total stock</div>
+              <div className="cb-kpi-icon blue">▦</div>
+            </div>
+            <div className="cb-kpi-value">{totalStock}</div>
+            <div className="cb-kpi-foot">
+              <span className="cb-kpi-delta up">▲ +3</span>
+              <span className="cb-kpi-note">vs prev</span>
+            </div>
+          </div>
+
+          <div className="cb-kpi" style={{ animationDelay: '40ms' }}>
+            <div className="cb-kpi-top">
+              <div className="cb-kpi-label">Available</div>
+              <div className="cb-kpi-icon green">✓</div>
+            </div>
+            <div className="cb-kpi-value">{totalAvailable}</div>
+            <div className="cb-kpi-foot">
+              <span className="cb-kpi-delta down">▼ −2</span>
+              <span className="cb-kpi-note">vs prev</span>
+            </div>
+          </div>
+
+          <div className="cb-kpi" style={{ animationDelay: '80ms' }}>
+            <div className="cb-kpi-top">
+              <div className="cb-kpi-label">Booked</div>
+              <div className="cb-kpi-icon amber">◷</div>
+            </div>
+            <div className="cb-kpi-value">{totalBooked}</div>
+            <div className="cb-kpi-foot">
+              <span className="cb-kpi-delta up">▲ +7</span>
+              <span className="cb-kpi-note">vs prev</span>
+            </div>
+          </div>
+
+          <div className="cb-kpi" style={{ animationDelay: '120ms' }}>
+            <div className="cb-kpi-top">
+              <div className="cb-kpi-label">Out of stock</div>
+              <div className="cb-kpi-icon red">!</div>
+            </div>
+            <div className="cb-kpi-value">{outOfStockCount}</div>
+            <div className="cb-kpi-foot">
+              <span className="cb-kpi-delta flat">● 0</span>
+              <span className="cb-kpi-note">vs prev</span>
+            </div>
+          </div>
+
+          <div className="cb-kpi" style={{ animationDelay: '160ms' }}>
+            <div className="cb-kpi-top">
+              <div className="cb-kpi-label">Bookings ({rangeDays}d)</div>
+              <div className="cb-kpi-icon violet">↗</div>
+            </div>
+            <div className="cb-kpi-value">{recentBookingsCount}</div>
+            <div className="cb-kpi-foot">
+              <span className="cb-kpi-delta up">▲ +12%</span>
+              <span className="cb-kpi-note">vs prev</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Needs Attention Card (collapsible) */}
+        <div className={`cb-attn-card ${attnOpen ? 'open' : ''}`}>
+          <div className="cb-attn-head" onClick={() => setAttnOpen(!attnOpen)}>
+            <div>
+              <div className="cb-attn-title">
+                <div className={`cb-attn-title-ico ${totalAlerts === 0 ? 'ok' : ''}`}>
+                  {totalAlerts === 0 ? '✓' : '!'}
+                </div>
+                {totalAlerts === 0
+                  ? 'All good — nothing needs attention'
+                  : 'Needs attention — running out of stock'}
+              </div>
+              <div className="cb-attn-sub">
+                {totalAlerts === 0
+                  ? 'Every variant is healthy across all branches'
+                  : `${totalAlerts} variant${totalAlerts > 1 ? 's' : ''} across ${attentionBranches.length} branch${attentionBranches.length > 1 ? 'es' : ''} need restocking`}
+              </div>
+            </div>
+            <div className="cb-attn-right">
+              {totalAlerts > 0 && (
+                <div className="cb-attn-total">{totalAlerts} alerts</div>
+              )}
+              <button
+                type="button"
+                className="cb-attn-toggle"
+                aria-label="Toggle details"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAttnOpen(!attnOpen);
+                }}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="cb-attn-body-wrap">
+            <div className="cb-attn-body">
+              {attentionBranches.map((be) => (
+                <div key={be.branch} className="cb-attn-branch">
+                  <div className="cb-attn-branch-head">
+                    <div className="cb-attn-branch-name">{be.branch}</div>
+                    <div className="cb-attn-branch-count">
+                      {be.count} item{be.count > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  {be.items.map(({ v, st }) => (
+                    <div key={v.id} className="cb-attn-item">
+                      <div
+                        className="cb-attn-swatch"
+                        style={{ background: COLOR_HEX[v.color] || '#999' }}
+                      />
+                      <div className="cb-attn-item-info">
+                        <div className="cb-attn-item-name">
+                          {v.type} · {v.color}
+                        </div>
+                        <div className="cb-attn-item-meta">
+                          {v.location} · {Math.max(0, v.qty - bookedFor(v.id))} avail
+                        </div>
+                      </div>
+                      <span className={`cb-attn-badge ${st}`}>
+                        {st === 'out' ? 'OUT' : 'CRITICAL'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 1: Trend Chart + Most Booked */}
+        <div className="cb-grid two">
+          <div className="cb-card">
+            <div className="cb-card-head">
+              <div>
+                <div className="cb-card-title">Booking trend</div>
+                <div className="cb-card-sub">Coffins booked per day</div>
+              </div>
+              <span className="cb-card-tag">{rangeDays} days</span>
+            </div>
+            {/* SVG Trend Chart */}
+            {(() => {
+              const W = 640;
+              const H = 220;
+              const padL = 32;
+              const padR = 12;
+              const padT = 16;
+              const padB = 26;
+              const iW = W - padL - padR;
+              const iH = H - padT - padB;
+              const maxV = Math.max(1, ...trendBuckets.map((b) => b.count));
+              const stepX = trendBuckets.length > 1 ? iW / (trendBuckets.length - 1) : iW;
+              const pts = trendBuckets.map((b, i) => ({
+                x: padL + i * stepX,
+                y: padT + iH - (b.count / maxV) * iH,
+                v: b.count,
+              }));
+              const line = pts
+                .map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1))
+                .join(' ');
+              const area = `${line} L${pts[pts.length - 1]?.x || 0},${padT + iH} L${pts[0]?.x || 0},${padT + iH} Z`;
+
+              return (
+                <svg className="cb-chart-svg" viewBox={`0 0 ${W} ${H}`}>
+                  <defs>
+                    <linearGradient id="cbTf" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0f766e" stopOpacity="0.16" />
+                      <stop offset="100%" stopColor="#0f766e" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+                    const y = padT + iH - f * iH;
+                    return (
+                      <g key={f}>
+                        <line className="cb-grid-line" x1={padL} y1={y} x2={W - padR} y2={y} />
+                        <text className="cb-axis-label" x={padL - 6} y={y + 3} textAnchor="end">
+                          {Math.round(f * maxV)}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  <path d={area} fill="url(#cbTf)" />
+                  <path
+                    d={line}
+                    fill="none"
+                    stroke="#0f766e"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {pts.map((p, i) => (
+                    <circle
+                      key={i}
+                      cx={p.x}
+                      cy={p.y}
+                      r="2.8"
+                      fill="#fff"
+                      stroke="#0f766e"
+                      strokeWidth="1.8"
+                    />
+                  ))}
+                  {trendBuckets.map((b, i) => {
+                    if (rangeDays > 14 && i % 3 !== 0) return null;
+                    const x = padL + i * stepX;
+                    const label = b.date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                    return (
+                      <text
+                        key={i}
+                        className="cb-axis-label"
+                        x={x}
+                        y={H - 8}
+                        textAnchor="middle"
+                      >
+                        {label}
+                      </text>
+                    );
+                  })}
+                </svg>
+              );
+            })()}
+          </div>
+
+          <div className="cb-card">
+            <div className="cb-card-head">
+              <div>
+                <div className="cb-card-title">Most-booked variants</div>
+                <div className="cb-card-sub">Top 5 by total bookings</div>
+              </div>
+            </div>
+            <div className="cb-rank-list">
+              {topBookedVariants.length === 0 ? (
+                <div className="cb-empty">No bookings in this range</div>
+              ) : (
+                topBookedVariants.map((x, i) => {
+                  const max = topBookedVariants[0]?.n || 1;
+                  return (
+                    <div key={x.v.id + i} className="cb-rank-row">
+                      <div className={`cb-rank-num ${i === 0 ? 'top' : ''}`}>{i + 1}</div>
+                      <div className="cb-rank-info">
+                        <div className="cb-rank-name">
+                          {x.v.type} · {x.v.color}
+                        </div>
+                        <div className="cb-rank-meta">{x.v.branch}</div>
+                        <div className="cb-rank-bar-wrap">
+                          <div
+                            className="cb-rank-bar"
+                            style={{ width: `${(x.n / max) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="cb-rank-val">{x.n}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Color Popularity + Stock Health + Stock by Branch */}
+        <div className="cb-grid three">
+          {/* Color Donut */}
+          <div className="cb-card">
+            <div className="cb-card-head">
+              <div>
+                <div className="cb-card-title">Color popularity</div>
+                <div className="cb-card-sub">Bookings by color</div>
+              </div>
+            </div>
+            <div className="cb-donut-wrap">
+              {(() => {
+                const r = 44;
+                const sw = 18;
+                const cx = 68;
+                const cy = 68;
+                const circ = 2 * Math.PI * r;
+                let off = 0;
+
+                return (
+                  <svg viewBox="0 0 136 136" style={{ width: 136, height: 136 }}>
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={r}
+                      fill="none"
+                      stroke="#f1f5f9"
+                      strokeWidth={sw}
+                    />
+                    {colorCounts.map(([col, n]) => {
+                      const f = totalColorBookings ? n / totalColorBookings : 0;
+                      const len = f * circ;
+                      const elem = (
+                        <circle
+                          key={col}
+                          cx={cx}
+                          cy={cy}
+                          r={r}
+                          fill="none"
+                          stroke={COLOR_HEX[col] || '#94a3b8'}
+                          strokeWidth={sw}
+                          strokeDasharray={`${len} ${circ - len}`}
+                          strokeDashoffset={-off}
+                          transform={`rotate(-90 ${cx} ${cy})`}
+                        />
+                      );
+                      off += len;
+                      return elem;
+                    })}
+                  </svg>
+                );
+              })()}
+              <div className="cb-donut-center">
+                <div className="n">{totalColorBookings}</div>
+                <div className="l">bookings</div>
+              </div>
+            </div>
+            <div className="cb-legend">
+              {colorCounts.map(([col, n]) => (
+                <div key={col} className="cb-leg-item">
+                  <span
+                    className="cb-leg-dot"
+                    style={{ background: COLOR_HEX[col] || '#94a3b8' }}
+                  />
+                  {col} ·{' '}
+                  <strong style={{ color: '#0f172a', marginLeft: 1 }}>{n}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Stock Health */}
+          <div className="cb-card">
+            <div className="cb-card-head">
+              <div>
+                <div className="cb-card-title">Stock health</div>
+                <div className="cb-card-sub">Variant status split</div>
+              </div>
+            </div>
+            {(() => {
+              const total = filteredVariants.length || 1;
+              const items = [
+                { k: 'ok', l: 'Healthy', c: '#16a34a' },
+                { k: 'low', l: 'Low', c: '#d97706' },
+                { k: 'critical', l: 'Critical', c: '#dc2626' },
+                { k: 'out', l: 'Out of stock', c: '#94a3b8' },
+              ];
+              let currentX = 0;
+
+              return (
+                <>
+                  <svg
+                    viewBox="0 0 300 26"
+                    style={{ width: '100%', height: 26, borderRadius: 6, overflow: 'hidden' }}
+                  >
+                    {items.map((it) => {
+                      const w = (healthCounts[it.k] / total) * 300;
+                      const x = currentX;
+                      currentX += w;
+                      if (w <= 0) return null;
+                      return (
+                        <g key={it.k}>
+                          <rect x={x} y="0" width={w} height="26" fill={it.c} />
+                          {w >= 24 && (
+                            <text
+                              x={x + w / 2}
+                              y="18"
+                              textAnchor="middle"
+                              fontSize="11"
+                              fontWeight="800"
+                              fill="#fff"
+                            >
+                              {healthCounts[it.k]}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  <div className="cb-legend">
+                    {items.map((it) => (
+                      <div key={it.k} className="cb-leg-item">
+                        <span className="cb-leg-dot" style={{ background: it.c }} />
+                        {it.l}{' '}
+                        <strong style={{ marginLeft: 2, color: '#0f172a' }}>
+                          {healthCounts[it.k]}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Stock by branch */}
+          <div className="cb-card">
+            <div className="cb-card-head">
+              <div>
+                <div className="cb-card-title">Stock by branch</div>
+                <div className="cb-card-sub">Available units</div>
+              </div>
+            </div>
+            {(() => {
+              const W = 340;
+              const H = 200;
+              const padL = 8;
+              const padR = 8;
+              const padT = 16;
+              const padB = 40;
+              const iW = W - padL - padR;
+              const iH = H - padT - padB;
+              const maxV = Math.max(1, ...branchStockData.map((d) => d.avail));
+              const step = iW / branchStockData.length;
+              const bw = step * 0.55;
+
+              return (
+                <svg className="cb-chart-svg" viewBox={`0 0 ${W} ${H}`}>
+                  <line
+                    className="cb-axis-line"
+                    x1={padL}
+                    y1={padT + iH}
+                    x2={W - padR}
+                    y2={padT + iH}
+                  />
+                  {branchStockData.map((d, i) => {
+                    const h = (d.avail / maxV) * iH;
+                    const x = padL + i * step + (step - bw) / 2;
+                    const y = padT + iH - h;
+                    const shortName = d.b.split(' ')[0];
+                    return (
+                      <g key={d.b}>
+                        <rect
+                          className="cb-bar"
+                          x={x}
+                          y={y}
+                          width={bw}
+                          height={h}
+                          rx="3"
+                          fill="#0284c7"
+                        />
+                        <text
+                          className="cb-bar-val"
+                          x={x + bw / 2}
+                          y={y - 5}
+                          textAnchor="middle"
+                        >
+                          {d.avail}
+                        </text>
+                        <text
+                          className="cb-axis-label"
+                          x={x + bw / 2}
+                          y={H - 20}
+                          textAnchor="middle"
+                        >
+                          {shortName}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Branch x Type x Color Matrix (bigger) */}
+        <div className="cb-card cb-matrix-card">
+          <div className="cb-card-head">
+            <div>
+              <div className="cb-card-title" style={{ fontSize: '14.5px' }}>
+                Full inventory by branch, type &amp; color
+              </div>
+              <div className="cb-card-sub">
+                Available units per Type · Color · Branch — scroll horizontally
+              </div>
+            </div>
+          </div>
+
+          <div className="cb-matrix-legend-bar">
+            <span className="cb-ml-item">
+              <span className="cb-ml-sw" style={{ background: '#f0fdf4', borderColor: '#86efac' }} />
+              Healthy
+            </span>
+            <span className="cb-ml-item">
+              <span className="cb-ml-sw" style={{ background: '#fffbeb', borderColor: '#fcd34d' }} />
+              Low
+            </span>
+            <span className="cb-ml-item">
+              <span className="cb-ml-sw" style={{ background: '#fef2f2', borderColor: '#fca5a5' }} />
+              Critical
+            </span>
+            <span className="cb-ml-item">
+              <span className="cb-ml-sw" style={{ background: '#f8fafc', borderColor: '#e2e8f0' }} />
+              Out of stock
+            </span>
+          </div>
+
+          <div className="cb-matrix-wrap">
+            <table className="cb-matrix">
+              <thead>
+                <tr>
+                  <th className="branch-col">Branch</th>
+                  {matrixCols.map((c) => (
+                    <th key={`${c.type}-${c.color}`}>
+                      <span
+                        className="color-swatch"
+                        style={{ background: COLOR_HEX[c.color] || '#999' }}
+                      />
+                      {c.color}
+                      <span className="type-line">{c.type}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {branches
+                  .filter((b) => branchFilter === 'all' || b === branchFilter)
+                  .map((branch) => (
+                    <tr key={branch}>
+                      <td className="branch-cell">{branch}</td>
+                      {matrixCols.map((c) => {
+                        const v = variants.find(
+                          (x) => x.branch === branch && x.type === c.type && x.color === c.color
+                        );
+                        if (!v) {
+                          return (
+                            <td key={`${branch}-${c.type}-${c.color}`} className="cell-zero">
+                              <span className="val">—</span>
+                            </td>
+                          );
+                        }
+                        const avail = Math.max(0, v.qty - bookedFor(v.id));
+                        let cls = 'cell-ok';
+                        if (v.qty === 0) cls = 'cell-out';
+                        else if (avail <= CRITICAL_STOCK) cls = 'cell-critical';
+                        else if (avail <= LOW_STOCK) cls = 'cell-low';
+
+                        return (
+                          <td
+                            key={`${branch}-${c.type}-${c.color}`}
+                            className={cls}
+                            title={`${branch} · ${c.type} · ${c.color}: ${avail} avail (${v.qty} total, ${bookedFor(v.id)} booked)`}
+                          >
+                            <span className="val">{avail}</span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Row 3: Branch breakdown table + Live activity */}
+        <div className="cb-grid two">
+          <div className="cb-card">
+            <div className="cb-card-head">
+              <div>
+                <div className="cb-card-title">Branch breakdown</div>
+                <div className="cb-card-sub">Stock, bookings and fill rate per branch</div>
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="cb-branch-table">
+                <thead>
+                  <tr>
+                    <th>Branch</th>
+                    <th>Stock</th>
+                    <th>Booked</th>
+                    <th>Available</th>
+                    <th>Fill</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const maxS = Math.max(1, ...branchTableRows.map((r) => r.stock));
+                    return branchTableRows.map((r) => (
+                      <tr key={r.b}>
+                        <td>
+                          <span className="cb-branch-name">{r.b}</span>
+                        </td>
+                        <td>
+                          <span
+                            className="cb-mini-bar"
+                            style={{ width: `${(r.stock / maxS) * 44}px` }}
+                          />
+                          {r.stock}
+                        </td>
+                        <td>{r.booked}</td>
+                        <td>
+                          <span className={r.avail > 0 ? 'cb-avail-ok' : 'cb-avail-out'}>
+                            {r.avail}
+                          </span>
+                        </td>
+                        <td>{r.fill}%</td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Live Activity Feed */}
+          <div className="cb-card">
+            <div className="cb-card-head">
+              <div>
+                <div className="cb-card-title">Live activity</div>
+                <div className="cb-card-sub">Latest booking events</div>
+              </div>
+            </div>
+            <div className="cb-feed">
+              {recentFeed.length === 0 ? (
+                <div className="cb-empty">No activity yet</div>
+              ) : (
+                recentFeed.map((b, i) => {
+                  const v = variants.find((x) => x.id === b.variantId) || { type: 'Doom', color: 'White', branch: 'Nairobi CBD' };
+                  const isFulfill = b.status === 'fulfilled';
+                  const isCancel = b.status === 'cancelled';
+                  const icCls = isFulfill ? 'fulfill' : isCancel ? 'cancel' : 'book';
+                  const icCh = isFulfill ? '✓' : isCancel ? '✕' : '✦';
+                  const verb = isFulfill ? 'Fulfilled' : isCancel ? 'Cancelled' : 'Booked';
+
+                  return (
+                    <div
+                      key={b.id + i}
+                      className="cb-feed-item"
+                      style={{ animationDelay: `${i * 25}ms` }}
+                    >
+                      <div className={`cb-feed-ico ${icCls}`}>{icCh}</div>
+                      <div className="cb-feed-body">
+                        <div className="cb-feed-text">
+                          <strong>
+                            {verb} {b.qty}× {v.type} · {v.color}
+                          </strong>
+                        </div>
+                        <div className="cb-feed-meta">
+                          {v.branch} — {b.client} · {timeAgo(b.date)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 4: Heatmap */}
+        <div className="cb-card">
+          <div className="cb-card-head">
+            <div>
+              <div className="cb-card-title">Booking intensity</div>
+              <div className="cb-card-sub">Bookings by branch × weekday (last 30 days)</div>
+            </div>
+          </div>
+          <div className="cb-heat">
+            <div></div>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+              <div key={d} className="cb-heat-head">
+                {d}
+              </div>
+            ))}
+            {branches.map((b) => (
+              <React.Fragment key={b}>
+                <div className="cb-heat-lbl">{b.split(' ')[0]}</div>
+                {(heatmapData.grid[b] || new Array(7).fill(0)).map((v, dayIdx) => {
+                  const t = v / heatmapData.max;
+                  const a = v === 0 ? 0 : 0.10 + t * 0.72;
+                  const bg = v === 0 ? '#f8fafc' : `rgba(15,118,110,${a.toFixed(2)})`;
+                  const textColor = v / heatmapData.max > 0.5 ? '#fff' : '#475569';
+                  return (
+                    <div
+                      key={dayIdx}
+                      className="cb-heat-cell"
+                      style={{ background: bg, color: textColor }}
+                      title={`${b} on day ${dayIdx + 1}: ${v} bookings`}
+                    >
+                      {v || ''}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

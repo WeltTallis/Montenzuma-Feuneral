@@ -9,6 +9,13 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import env from '../../utils/config/env';
 import { getBranchId } from '../../utils/globalAuth';
+import {
+  detectColorRGB,
+  loadCoffinTypesCatalog,
+  saveCoffinTypesCatalog,
+  COFFIN_POPULAR_PALETTE,
+  generateVariantSku,
+} from './coffinColorUtils';
 
 // --- Enhanced Color Palette ---
 const Colors = {
@@ -889,8 +896,26 @@ const RegisterCoffin = () => {
     quantity: '',
     description: ''
   });
-  const [registeredTypes, setRegisteredTypes] = useState(() => { try { return JSON.parse(localStorage.getItem('coffinTypes') || '[]'); } catch { return []; } });
-  const [registeredColors, setRegisteredColors] = useState(() => { try { return JSON.parse(localStorage.getItem('coffinColors') || '[]'); } catch { return []; } });
+  // Real Coffin Types & Color Catalog (persistent)
+  const [catalog, setCatalog] = useState(() => loadCoffinTypesCatalog());
+  const [selectedTypeId, setSelectedTypeId] = useState(() => {
+    const cats = loadCoffinTypesCatalog();
+    return cats[0]?.id || '';
+  });
+
+  // State for registering a brand new Coffin Type with all colors
+  const [isCreatingType, setIsCreatingType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeDescription, setNewTypeDescription] = useState('');
+  const [newTypeColors, setNewTypeColors] = useState([
+    { name: 'White', hex: '#FFFFFF', rgb: 'rgb(255, 255, 255)', sku: 'WHT' },
+    { name: 'Midnight Black', hex: '#111111', rgb: 'rgb(17, 17, 17)', sku: 'BLK' },
+  ]);
+
+  // Color input with live RGB auto-detection
+  const [colorInput, setColorInput] = useState('');
+  const [customHex, setCustomHex] = useState('#111111');
+  const [activeSku, setActiveSku] = useState('');
 
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -940,6 +965,181 @@ const RegisterCoffin = () => {
     const clean = String(value || '').trim();
     if (!clean) return;
     setter((current) => { const next = [...new Set([...current, clean])].sort(); localStorage.setItem(key, JSON.stringify(next)); return next; });
+  };
+
+  // Active type object
+  const activeTypeObj = catalog.find((t) => t.id === selectedTypeId) || catalog[0];
+
+  // Live RGB detection
+  const detectedColor = detectColorRGB(colorInput || customHex);
+
+  // Initialize type and color from catalog if uninitialized
+  React.useEffect(() => {
+    if (!coffinData.type && catalog.length > 0) {
+      const activeType = catalog.find((t) => t.id === selectedTypeId) || catalog[0];
+      if (activeType) {
+        setSelectedTypeId(activeType.id);
+        const firstColor = activeType.colors?.[0]?.name || '';
+        setCoffinData((prev) => ({
+          ...prev,
+          type: activeType.name,
+          name: activeType.name,
+          color: prev.color || firstColor,
+        }));
+        if (firstColor) {
+          setActiveSku(activeType.colors?.[0]?.sku || generateVariantSku(activeType.name, firstColor));
+        }
+      }
+    }
+  }, [catalog, selectedTypeId, coffinData.type]);
+
+  const handleSelectType = (typeObj) => {
+    setSelectedTypeId(typeObj.id);
+    setIsCreatingType(false);
+    const firstColor = typeObj.colors?.[0]?.name || '';
+    setCoffinData((prev) => ({
+      ...prev,
+      type: typeObj.name,
+      name: typeObj.name,
+      color: firstColor,
+    }));
+    setActiveSku(typeObj.colors?.[0]?.sku || generateVariantSku(typeObj.name, firstColor));
+  };
+
+  const handleSelectColorVariant = (colorObj) => {
+    setCoffinData((prev) => ({
+      ...prev,
+      color: colorObj.name,
+    }));
+    setActiveSku(colorObj.sku || generateVariantSku(coffinData.type, colorObj.name));
+  };
+
+  // Add color variant to currently selected type
+  const handleAddColorToCurrentType = () => {
+    const colorToAdd = detectedColor.isValid ? (detectedColor.resolvedName || colorInput.trim()) : colorInput.trim();
+    if (!colorToAdd) return;
+    const hex = detectedColor.hex || customHex;
+    const rgb = detectedColor.rgbStr;
+    const sku = generateVariantSku(coffinData.type || activeTypeObj?.name, colorToAdd);
+
+    if (activeTypeObj) {
+      const exists = (activeTypeObj.colors || []).some(
+        (c) => c.name.toLowerCase() === colorToAdd.toLowerCase()
+      );
+      if (exists) {
+        setError(`Color "${colorToAdd}" is already registered for ${activeTypeObj.name}`);
+        setTimeout(() => setError(null), 3500);
+        return;
+      }
+      const updatedType = {
+        ...activeTypeObj,
+        colors: [
+          ...(activeTypeObj.colors || []),
+          { name: colorToAdd, hex, rgb, sku },
+        ],
+      };
+      const updatedCatalog = catalog.map((t) => (t.id === activeTypeObj.id ? updatedType : t));
+      setCatalog(updatedCatalog);
+      saveCoffinTypesCatalog(updatedCatalog);
+      setColorInput('');
+      handleSelectColorVariant({ name: colorToAdd, hex, rgb, sku });
+      setSuccessMessage(`Registered color variant "${colorToAdd}" (${rgb}) to ${activeTypeObj.name}!`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+  };
+
+  // Quick add palette color
+  const handleQuickAddPalette = (paletteItem) => {
+    if (!activeTypeObj) return;
+    const exists = (activeTypeObj.colors || []).some(
+      (c) => c.name.toLowerCase() === paletteItem.name.toLowerCase()
+    );
+    if (exists) {
+      handleSelectColorVariant(activeTypeObj.colors.find((c) => c.name.toLowerCase() === paletteItem.name.toLowerCase()));
+      return;
+    }
+    const sku = generateVariantSku(activeTypeObj.name, paletteItem.name);
+    const updatedType = {
+      ...activeTypeObj,
+      colors: [
+        ...(activeTypeObj.colors || []),
+        { name: paletteItem.name, hex: paletteItem.hex, rgb: paletteItem.rgb, sku },
+      ],
+    };
+    const updatedCatalog = catalog.map((t) => (t.id === activeTypeObj.id ? updatedType : t));
+    setCatalog(updatedCatalog);
+    saveCoffinTypesCatalog(updatedCatalog);
+    handleSelectColorVariant({ name: paletteItem.name, hex: paletteItem.hex, rgb: paletteItem.rgb, sku });
+    setSuccessMessage(`Added "${paletteItem.name}" to ${activeTypeObj.name}!`);
+    setTimeout(() => setSuccessMessage(null), 2500);
+  };
+
+  // Add color to new type being created
+  const handleAddColorToNewType = () => {
+    const colorToAdd = detectedColor.isValid ? (detectedColor.resolvedName || colorInput.trim()) : colorInput.trim();
+    if (!colorToAdd) return;
+    const hex = detectedColor.hex || customHex;
+    const rgb = detectedColor.rgbStr;
+    const sku = generateVariantSku(newTypeName || 'COF', colorToAdd);
+
+    if (newTypeColors.some((c) => c.name.toLowerCase() === colorToAdd.toLowerCase())) {
+      setError(`Color "${colorToAdd}" is already in the list`);
+      setTimeout(() => setError(null), 3500);
+      return;
+    }
+
+    setNewTypeColors([...newTypeColors, { name: colorToAdd, hex, rgb, sku }]);
+    setColorInput('');
+  };
+
+  // Save new Coffin Type with all its registered colors
+  const handleSaveNewType = () => {
+    const trimmedName = newTypeName.trim();
+    if (!trimmedName) {
+      setError('Please provide a Coffin Type Name (e.g., Doom, Imperial)');
+      setTimeout(() => setError(null), 3500);
+      return;
+    }
+    if (newTypeColors.length === 0) {
+      setError('Please register at least one color variant for this coffin type');
+      setTimeout(() => setError(null), 3500);
+      return;
+    }
+
+    const typeId = `type-${Date.now()}`;
+    const newEntry = {
+      id: typeId,
+      name: trimmedName,
+      description: newTypeDescription.trim() || 'Custom registered coffin type',
+      colors: newTypeColors.map((c) => ({
+        ...c,
+        sku: generateVariantSku(trimmedName, c.name),
+      })),
+    };
+
+    const updatedCatalog = [newEntry, ...catalog];
+    setCatalog(updatedCatalog);
+    saveCoffinTypesCatalog(updatedCatalog);
+
+    setSelectedTypeId(typeId);
+    setIsCreatingType(false);
+    setNewTypeName('');
+    setNewTypeDescription('');
+    setNewTypeColors([
+      { name: 'White', hex: '#FFFFFF', rgb: 'rgb(255, 255, 255)', sku: 'WHT' },
+      { name: 'Midnight Black', hex: '#111111', rgb: 'rgb(17, 17, 17)', sku: 'BLK' },
+    ]);
+
+    setCoffinData((prev) => ({
+      ...prev,
+      type: trimmedName,
+      name: trimmedName,
+      color: newEntry.colors[0]?.name || '',
+    }));
+    setActiveSku(newEntry.colors[0]?.sku || '');
+
+    setSuccessMessage(`Successfully registered coffin type "${trimmedName}" with ${newEntry.colors.length} color variants!`);
+    setTimeout(() => setSuccessMessage(null), 3500);
   };
 
   const handleFileChange = (e) => {
@@ -1244,12 +1444,8 @@ const RegisterCoffin = () => {
                     list="registered-coffin-types"
                     required
                   />
-                  <datalist id="registered-coffin-types">{registeredTypes.map((type) => <option key={type} value={type} />)}</datalist>
-                  <Form.Text>Register a consistent type name so colors and stock stay grouped.</Form.Text>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <Form.Control type="text" name="typeDraft" placeholder="Add a new type" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); rememberOption('coffinTypes', event.currentTarget.value, setRegisteredTypes); event.currentTarget.value = ''; } }} />
-                    <button type="button" className="btn btn-outline-secondary" onClick={(event) => { const input = event.currentTarget.previousElementSibling; rememberOption('coffinTypes', input.value, setRegisteredTypes); input.value = ''; }}>Add type</button>
-                  </div>
+                  <datalist id="registered-coffin-types">{catalog.map((type) => <option key={type.id || type.name} value={type.name} />)}</datalist>
+                  <Form.Text>Select an existing registered design or create a new type with colors below.</Form.Text>
                 </StyledFormGroup>
               </Col>
             </Row>

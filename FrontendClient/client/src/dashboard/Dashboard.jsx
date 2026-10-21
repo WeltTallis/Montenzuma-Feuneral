@@ -30,6 +30,7 @@ import { RegisterView } from "./opsViews";
 import { CaseDrawer, ModalHost } from "./opsPanels";
 import StoreSection from "./StoreSection";
 import FlowerAnalytics from "./florist/FlowerAnalytics";
+import CoffinCommandCenter from "./CoffinCommandCenter";
 import SimpleCoffinInventory from "./SimpleCoffinInventory";
 import DeceasedScheduleCalendar from "./HearseCalendar";
 import DashboardOverview from "./DashboardOverview";
@@ -468,7 +469,7 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
           ) : navView === "flowers" ? (
             <FlowerAnalytics />
           ) : navView === "coffin-store" ? (
-            <SimpleCoffinInventory />
+            <CoffinCommandCenter embedded={true} />
           ) : navView === "fleet" ? (
             <Suspense fallback={<div className="empty" style={{ padding: 90 }}>Loading hearse fleet…</div>}>
               <FleetDashboard embedded />

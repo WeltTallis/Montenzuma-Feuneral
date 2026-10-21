@@ -11,6 +11,13 @@ import WeeklyView from '../views/weeklyView';
 import DailyView from '../views/dailyView';
 import env from '../../utils/config/env';
 import api from '../../api/axios';
+import {
+  detectColorRGB,
+  loadCoffinTypesCatalog,
+  saveCoffinTypesCatalog,
+  COFFIN_POPULAR_PALETTE,
+  generateVariantSku,
+} from './coffinColorUtils';
 
 import {
   getTenantSlug, getParentTenantSlug, getTenantId, getBranchId, getBranches,
@@ -1358,6 +1365,18 @@ const CoffinDashboard = () => {
       });
 
       if (res.data?.success) {
+        // Auto-deduct variant stock line upon booking
+        if (d.coffin_id && selectedCoffin) {
+          const currentStock = parseInt(selectedCoffin.quantity ?? selectedCoffin.stock) || 0;
+          const reqQty = parseInt(d.quantity) || 1;
+          const remaining = Math.max(0, currentStock - reqQty);
+          try {
+            await api.put(`/coffins/${d.coffin_id}`, { quantity: remaining });
+          } catch (deductErr) {
+            console.warn('Variant auto-deduct notice:', deductErr);
+          }
+        }
+
         if (isInterBranch) {
           try {
             const selBranchRec = branches.find((b) => b.id == selectedBranchId);
@@ -1561,8 +1580,12 @@ const CoffinDashboard = () => {
       c.branch_id === currentBranch ||
       c.branch_id == currentBranch,
   );
-  const inventoryTypes = [...new Set(branchCoffins.map((c) => c.type || c.name).filter(Boolean))].sort();
-  const inventoryColors = [...new Set(branchCoffins.map((c) => c.color).filter(Boolean))].sort();
+  const typesCatalog = loadCoffinTypesCatalog();
+  const catalogTypeNames = typesCatalog.map((t) => t.name).filter(Boolean);
+  const catalogColors = [...new Set(typesCatalog.flatMap((t) => (t.colors || []).map((c) => c.name)).filter(Boolean))];
+
+  const inventoryTypes = [...new Set([...catalogTypeNames, ...branchCoffins.map((c) => c.type || c.name).filter(Boolean)])].sort();
+  const inventoryColors = [...new Set([...catalogColors, ...branchCoffins.map((c) => c.color).filter(Boolean)])].sort();
   const bookableCoffins = coffins.filter((coffin) => {
     const matchesBranch = !coffin.branch_id || coffin.branch_id == (modal.data.branch_id || currentBranch);
     return matchesBranch;
@@ -2550,7 +2573,24 @@ const CoffinDashboard = () => {
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ ...styles.cname, overflowWrap: 'anywhere' }}>{coffin.type || coffin.name}</div>
-                            <div style={styles.sku}>{coffin.color || 'Color not set'}{coffin.size ? ` · ${coffin.size}` : ''}</div>
+                            <div style={styles.sku}>
+                              {coffin.color && (
+                                <span
+                                  title={`${coffin.color} (${detectColorRGB(coffin.color).rgbStr})`}
+                                  style={{
+                                    display: 'inline-block',
+                                    width: 9,
+                                    height: 9,
+                                    borderRadius: '50%',
+                                    background: detectColorRGB(coffin.color).hex,
+                                    marginRight: 6,
+                                    border: '1px solid rgba(0,0,0,0.25)',
+                                    verticalAlign: 'middle',
+                                  }}
+                                />
+                              )}
+                              {coffin.color || 'Color not set'}{coffin.size ? ` · ${coffin.size}` : ''}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -2591,6 +2631,18 @@ const CoffinDashboard = () => {
                               {details.map(([k, v]) => (
                                 <span key={k} style={styles.cchip} title={`${k}: ${v}`}>
                                   <span style={styles.cchipKey}>{k}</span>
+                                  {k === 'Color' && (
+                                    <span style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: '50%',
+                                      background: detectColorRGB(v).hex,
+                                      marginRight: 4,
+                                      border: '1px solid rgba(0,0,0,0.2)',
+                                      display: 'inline-block',
+                                      verticalAlign: 'middle'
+                                    }} />
+                                  )}
                                   {v}
                                 </span>
                               ))}
@@ -2888,27 +2940,6 @@ const CoffinDashboard = () => {
             </div>
             <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
               <div style={styles.fg}>
-                <label style={styles.fl}>Color variant * — inventory and bookings depend on this</label>
-                <input
-                  style={styles.fi}
-                  required
-                  list="coffin-inventory-colors"
-                  value={modal.data.color || ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
-                  }
-                  placeholder="Choose or enter a color, e.g. White, Gold, Black"
-                />
-                <datalist id="coffin-inventory-colors">
-                  {inventoryColors.map((color) => <option key={color} value={color} />)}
-                </datalist>
-                <span style={{ color: S.textMuted, fontSize: 12, marginTop: 5 }}>
-                  Register one color per variant. To add another color for the same design, use the same coffin type and choose a different color.
-                </span>
-              </div>
-            </div>
-            <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
-              <div style={styles.fg}>
                 <label style={styles.fl}>Coffin type / name *</label>
                 <input
                   style={styles.fi}
@@ -2918,11 +2949,139 @@ const CoffinDashboard = () => {
                   onChange={(e) =>
                     setModal({ ...modal, data: { ...modal.data, name: e.target.value } })
                   }
-                  placeholder="Mahogany Heritage"
+                  placeholder="e.g. Doom, Presidential, Classic, Heritage Oak"
                 />
                 <datalist id="coffin-inventory-types">
                   {inventoryTypes.map((type) => <option key={type} value={type} />)}
                 </datalist>
+
+                {/* Registered color variant chips for this design */}
+                {(() => {
+                  const matchedType = typesCatalog.find(
+                    (t) => t.name.toLowerCase() === (modal.data.name || '').toLowerCase()
+                  );
+                  if (!matchedType || !matchedType.colors?.length) return null;
+                  return (
+                    <div style={{ marginTop: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: S.textMuted }}>
+                        Registered colors for {matchedType.name}:
+                      </span>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                        {matchedType.colors.map((c) => (
+                          <button
+                            type="button"
+                            key={c.name}
+                            onClick={() => setModal({ ...modal, data: { ...modal.data, color: c.name } })}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '4px 9px',
+                              borderRadius: 14,
+                              border: `1px solid ${modal.data.color === c.name ? S.primary : S.border}`,
+                              background: modal.data.color === c.name ? S.primaryLight : '#fff',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.hex, border: '1px solid rgba(0,0,0,0.2)' }} />
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
+              <div style={styles.fg}>
+                <label style={styles.fl}>Color variant * — inventory and bookings depend on this</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    style={{ ...styles.fi, flex: 1 }}
+                    required
+                    list="coffin-inventory-colors"
+                    value={modal.data.color || ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
+                    }
+                    placeholder="Type color e.g. Black, balck, White, Gold, Mahogany"
+                  />
+                  <input
+                    type="color"
+                    value={detectColorRGB(modal.data.color || '#000000').hex}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
+                    }
+                    title="Pick exact shade"
+                    style={{ width: 38, height: 38, borderRadius: 8, border: `1px solid ${S.border}`, padding: 2, cursor: 'pointer' }}
+                  />
+                </div>
+                <datalist id="coffin-inventory-colors">
+                  {inventoryColors.map((color) => <option key={color} value={color} />)}
+                </datalist>
+
+                {/* Live RGB Detection Swatch & Readout */}
+                {(() => {
+                  const det = detectColorRGB(modal.data.color || '');
+                  return (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginTop: 6,
+                      padding: '6px 10px',
+                      background: S.bg,
+                      borderRadius: 8,
+                      border: `1px solid ${S.border}`,
+                      fontSize: 11.5
+                    }}>
+                      <span style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: det.hex,
+                        border: '1px solid rgba(0,0,0,0.2)',
+                        flexShrink: 0
+                      }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <strong style={{ color: S.text }}>{det.resolvedName || modal.data.color || 'Type color...'}</strong>
+                        <span style={{ color: S.textMuted, marginLeft: 8, fontFamily: 'monospace' }}>
+                          RGB: {det.rgbStr} · HEX: {det.hex}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Quick Add Palette buttons */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                  {COFFIN_POPULAR_PALETTE.slice(0, 8).map((pal) => (
+                    <button
+                      type="button"
+                      key={pal.name}
+                      onClick={() => setModal({ ...modal, data: { ...modal.data, color: pal.name } })}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        padding: '3px 7px',
+                        borderRadius: 12,
+                        background: '#fff',
+                        border: `1px solid ${S.border}`,
+                        fontSize: 10.5,
+                        cursor: 'pointer',
+                        color: S.textLight,
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: pal.hex }} />
+                      {pal.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div style={styles.fr}>

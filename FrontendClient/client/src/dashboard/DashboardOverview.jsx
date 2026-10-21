@@ -1,307 +1,604 @@
+import { useState, useMemo } from "react";
 import {
   Activity,
-  ArrowRight,
   CalendarDays,
-  Clock3,
-  Truck,
   DoorOpen,
+  Truck,
   UserRoundPlus,
-  UsersRound,
 } from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { eventsOf } from "./opsData";
+import { eventsOf, isReleased, addDays, parseKey, pad } from "./opsData";
 import "./dashboard-overview.css";
 
-const EVENT_META = {
-  intake: { label: "Body intake", color: "#3f6c4b", icon: UserRoundPlus },
-  release: { label: "Body release", color: "#66866b", icon: DoorOpen },
-  pm: { label: "Postmortem", color: "#9a7b45", icon: Activity },
-};
+// Fallback demo data from design mockup when live data has not been seeded yet
+const MOCK_LIVE_EVENTS = [
+  {
+    id: "m-1",
+    t: "release",
+    time: "11:24 AM",
+    name: "Eleanor R. Boateng",
+    branch: "Riverside Chapel",
+    statusNote: "Family Arrived",
+  },
+  {
+    id: "m-2",
+    t: "intake",
+    time: "10:05 AM",
+    name: "Samuel K. Owusu",
+    branch: "Eastfield Branch",
+    statusNote: "Transfer in progress",
+  },
+  {
+    id: "m-3",
+    t: "pm",
+    time: "09:40 AM",
+    name: "Harold J. Mensah",
+    branch: "Northgate Branch",
+    statusNote: "Pathologist on site",
+  },
+  {
+    id: "m-4",
+    t: "intake",
+    time: "08:15 AM",
+    name: "Margaret A. Whitfield",
+    branch: "Riverside Chapel",
+    statusNote: "Paperwork completed",
+  },
+];
 
-function displayDate(key) {
-  if (!key) return "Date not set";
-  const date = new Date(`${key}T00:00:00`);
-  return Number.isNaN(date.getTime())
-    ? "Date not set"
-    : date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-}
-
-function countForMonth(records, field, monthKey) {
-  return records.filter((record) => String(field(record) || "").startsWith(monthKey)).length;
-}
-
-function MetricCard({ icon: Icon, label, value, detail, tone }) {
-  return (
-    <article className={`overview-metric ${tone}`}>
-      <span className="overview-metric-icon"><Icon size={18} /></span>
-      <div className="overview-metric-copy">
-        <span>{label}</span>
-        <strong>{value}</strong>
-        <small>{detail}</small>
-      </div>
-    </article>
-  );
-}
-
-function EventRow({ event, onOpenCase }) {
-  const meta = EVENT_META[event.t] || EVENT_META.intake;
-  const Icon = meta.icon;
-  return (
-    <button
-      type="button"
-      className="overview-event"
-      onClick={() => onOpenCase(event.p.uid, event.t)}
-    >
-      <span className="overview-event-icon" style={{ color: meta.color, background: `${meta.color}14` }}>
-        <Icon size={16} />
-      </span>
-      <span className="overview-event-main">
-        <strong>{event.p.name}</strong>
-        <small>{meta.label} · {event.p.branch || "Branch not set"}</small>
-      </span>
-      <span className="overview-event-date">
-        <b>{event.time || "—"}</b>
-        <small>{displayDate(event.date)}</small>
-      </span>
-      <ArrowRight className="overview-event-arrow" size={15} />
-    </button>
-  );
-}
-
-function TodayOperationRow({ event, onOpenCase }) {
-  const meta = EVENT_META[event.t] || EVENT_META.intake;
-  const Icon = meta.icon;
-  const completed = event.t === "release"
-    ? event.p.release?.status === "completed"
-    : event.t === "pm" && event.completed;
-  return (
-    <button
-      type="button"
-      className="overview-today-operation"
-      onClick={() => onOpenCase(event.p.uid, event.t)}
-    >
-      <span className="overview-event-icon" style={{ color: meta.color, background: `${meta.color}14` }}>
-        <Icon size={16} />
-      </span>
-      <span className="overview-event-main">
-        <strong>{event.p.name}</strong>
-        <small>{meta.label} · {event.p.branch || "Branch not set"}</small>
-      </span>
-      <span className="overview-operation-meta">
-        <b>{event.time || "Time not set"}</b>
-        <small className={completed ? "is-complete" : ""}>{completed ? "Completed" : "Today"}</small>
-      </span>
-      <ArrowRight className="overview-event-arrow" size={15} />
-    </button>
-  );
-}
+const MOCK_OPS = [
+  { id: "op-1", shift: "day", time: "08:15", name: "Margaret A. Whitfield", branch: "Riverside Chapel", t: "intake" },
+  { id: "op-2", shift: "day", time: "09:40", name: "Harold J. Mensah", branch: "Northgate Branch", t: "pm" },
+  { id: "op-3", shift: "day", time: "11:00", name: "Eleanor R. Boateng", branch: "Riverside Chapel", t: "release" },
+  { id: "op-4", shift: "night", time: "19:20", name: "Daniel O. Asante", branch: "Eastfield Branch", t: "intake" },
+  { id: "op-5", shift: "night", time: "21:00", name: "Ruth A. Nyarko", branch: "Riverside Chapel", t: "release" },
+  { id: "op-6", shift: "night", time: "02:30", name: "Grace M. Adjei", branch: "Northgate Branch", t: "intake" },
+];
 
 export default function DashboardOverview({
-  cases,
-  calc,
-  loading,
-  today,
+  cases = [],
+  calc = {},
+  loading = false,
+  today = "",
   onNavigate,
   onOpenIntake,
   onOpenCase,
   onOpenFleet,
 }) {
+  const [shiftFilter, setShiftFilter] = useState("all");
+
   const records = cases || [];
-  const care = calc?.care || {};
-  const month = today.slice(0, 7);
-  const monthIntakes = countForMonth(records, (record) => record.admDate, month);
-  const monthReleases = countForMonth(
-    records,
-    (record) => record.release?.status === "completed" ? record.release.date : "",
-    month
-  );
-  const events = eventsOf(records);
-  const todayEvents = events
-    .filter((event) => event.date === today)
-    .sort((a, b) => `${a.time || ""} ${a.t}`.localeCompare(`${b.time || ""} ${b.t}`));
-  const todayIntakes = todayEvents.filter((event) => event.t === "intake").length;
-  const todayReleases = todayEvents.filter((event) => event.t === "release").length;
-  const todayPostmortems = todayEvents.filter((event) => event.t === "pm").length;
-  const upcoming = events
-    .filter((event) => event.date >= today)
-    .sort((a, b) => `${a.date} ${a.time || ""}`.localeCompare(`${b.date} ${b.time || ""}`))
-    .slice(0, 6);
-  const flow = (calc?.last7 || []).map((day) => ({
-    ...day,
-    label: day.dow,
-  }));
+  const events = useMemo(() => eventsOf(records), [records]);
+
+  // Today's computed operations
+  const todayEvents = useMemo(() => {
+    return events
+      .filter((e) => e.date === today)
+      .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  }, [events, today]);
+
+  const todayIntakes = todayEvents.filter((e) => e.t === "intake").length;
+  const todayReleases = todayEvents.filter((e) => e.t === "release").length;
+  const todayPostmortems = todayEvents.filter((e) => e.t === "pm").length;
+
+  // Yesterday comparison for trend
+  const yesterdayIntakes = useMemo(() => {
+    if (!today) return 0;
+    const yKey = addDays(today, -1);
+    return events.filter((e) => e.date === yKey && e.t === "intake").length;
+  }, [events, today]);
+
+  const intakeDiff = todayIntakes - yesterdayIntakes;
+
+  // Displayed live feed items
+  const displayLiveList = useMemo(() => {
+    if (todayEvents.length > 0) {
+      return todayEvents.slice(0, 6).map((e) => ({
+        id: `${e.t}-${e.p?.uid}-${e.time}`,
+        t: e.t,
+        time: e.time || "—",
+        name: e.p?.name || "Record",
+        branch: e.p?.branch || "Riverside Chapel",
+        statusNote:
+          e.t === "intake"
+            ? "Intake registered"
+            : e.t === "release"
+            ? (e.p?.release?.status === "completed" ? "Completed handover" : "Family arrived")
+            : (e.completed ? "Report ready" : "Pathologist on site"),
+        p: e.p,
+      }));
+    }
+    return MOCK_LIVE_EVENTS;
+  }, [todayEvents]);
+
+  // Branch capacity data (using live numbers if cases exist, else fallback to mockup)
+  const branchData = useMemo(() => {
+    const branches = [
+      { name: "Riverside Chapel", colorScheme: "black", capacity: 20, defaultCount: 14, defaultStatus: "BUSY" },
+      { name: "Northgate Branch", colorScheme: "red", capacity: 18, defaultCount: 12, defaultStatus: "OK" },
+      { name: "Eastfield Branch", colorScheme: "yellow", capacity: 15, defaultCount: 10, defaultStatus: "NEAR FULL" },
+    ];
+
+    return branches.map((b) => {
+      const realInCare = records.filter(
+        (c) => (c.branch || "Riverside Chapel") === b.name && !isReleased(c)
+      ).length;
+
+      const inCare = records.length > 0 ? realInCare : b.defaultCount;
+      const pct = Math.min(100, Math.round((inCare / b.capacity) * 100));
+      const status =
+        records.length > 0
+          ? pct >= 80
+            ? "NEAR FULL"
+            : pct >= 50
+            ? "BUSY"
+            : "OK"
+          : b.defaultStatus;
+
+      return {
+        ...b,
+        inCare,
+        pct,
+        status,
+      };
+    });
+  }, [records]);
+
+  // Operations list with shift filtering
+  const displayOps = useMemo(() => {
+    if (todayEvents.length > 0) {
+      return todayEvents.map((e) => {
+        const timeStr = e.time || "12:00";
+        const hour = parseInt(timeStr.slice(0, 2), 10) || 0;
+        const shift = hour >= 6 && hour < 18 ? "day" : "night";
+        return {
+          id: `${e.t}-${e.p?.uid}-${e.time}`,
+          shift,
+          time: timeStr,
+          name: e.p?.name || "Deceased Record",
+          branch: e.p?.branch || "Riverside Chapel",
+          t: e.t,
+          p: e.p,
+        };
+      });
+    }
+    return MOCK_OPS;
+  }, [todayEvents]);
+
+  const filteredOps = useMemo(() => {
+    if (shiftFilter === "all") return displayOps;
+    return displayOps.filter((op) => op.shift === shiftFilter);
+  }, [displayOps, shiftFilter]);
+
+  // Minimal Calendar generation (current month aligned Mon-Sun)
+  const { calendarDays, monthTitle } = useMemo(() => {
+    const dateObj = today ? parseKey(today) : new Date();
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth();
+
+    const title = dateObj.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const firstDay = new Date(year, month, 1);
+    const startDayIndex = (firstDay.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    const days = [];
+
+    // Prev month padding
+    for (let i = startDayIndex - 1; i >= 0; i--) {
+      days.push({
+        dayNum: daysInPrevMonth - i,
+        muted: true,
+      });
+    }
+
+    // Event date set for fast lookup
+    const eventDateSet = new Set(events.map((e) => e.date));
+    const mockHasEventDays = new Set([2, 6, 13, 21, 26]);
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateKey = `${year}-${pad(month + 1)}-${pad(d)}`;
+      const isToday = today ? dateKey === today : d === 26;
+      const hasEvent =
+        records.length > 0 ? eventDateSet.has(dateKey) : mockHasEventDays.has(d);
+
+      days.push({
+        dayNum: d,
+        dateKey,
+        isToday,
+        hasEvent,
+        muted: false,
+      });
+    }
+
+    // Next month padding to fill grid
+    const remaining = (7 - (days.length % 7)) % 7;
+    for (let i = 1; i <= remaining; i++) {
+      days.push({
+        dayNum: i,
+        muted: true,
+      });
+    }
+
+    return { calendarDays: days, monthTitle: title };
+  }, [today, events, records]);
+
+  // 7-day flow for weekly trend chart
+  const chartData = useMemo(() => {
+    const last7 = calc?.last7 || [];
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    if (last7.length === 7) {
+      const intakes = last7.map((d) => d.adm || 0);
+      const releases = last7.map((d) => d.rel || 0);
+      const dows = last7.map((d) => d.dow || "");
+      return {
+        intakes,
+        releases,
+        dows,
+      };
+    }
+
+    // Default curve matching mockup
+    return {
+      intakes: [4, 6, 5, 8, 5, 9, 6],
+      releases: [3, 4, 4, 6, 5, 7, 5],
+      dows: labels,
+    };
+  }, [calc]);
+
+  // SVG Chart path calculation
+  const { intakePath, intakeAreaPath, releasePath, intakePoints, releasePoints } = useMemo(() => {
+    const xCoords = [30, 170, 310, 450, 590, 730, 970];
+    const maxVal = Math.max(...chartData.intakes, ...chartData.releases, 10);
+
+    const getY = (val) => {
+      const ratio = val / maxVal;
+      return Math.round(170 - ratio * 130);
+    };
+
+    const inPoints = chartData.intakes.map((val, idx) => ({ x: xCoords[idx], y: getY(val), val }));
+    const relPoints = chartData.releases.map((val, idx) => ({ x: xCoords[idx], y: getY(val), val }));
+
+    // Build smooth cubic bezier curve
+    const buildPath = (points) => {
+      return points.reduce((acc, pt, i, arr) => {
+        if (i === 0) return `M ${pt.x} ${pt.y}`;
+        const prev = arr[i - 1];
+        const cp1x = prev.x + (pt.x - prev.x) / 2;
+        const cp1y = prev.y;
+        const cp2x = prev.x + (pt.x - prev.x) / 2;
+        const cp2y = pt.y;
+        return `${acc} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${pt.x} ${pt.y}`;
+      }, "");
+    };
+
+    const inPath = buildPath(inPoints);
+    const inArea = `${inPath} L 970 200 L 30 200 Z`;
+    const relPath = buildPath(relPoints);
+
+    return {
+      intakePath: inPath,
+      intakeAreaPath: inArea,
+      releasePath: relPath,
+      intakePoints: inPoints,
+      releasePoints: relPoints,
+    };
+  }, [chartData]);
 
   return (
-    <section className="overview-page" aria-labelledby="overview-title">
-      <div className="overview-welcome">
-        <div>
-          <span className="overview-eyebrow"><span /> OPERATIONS OVERVIEW</span>
-          <h1 id="overview-title">Good to see you.</h1>
-          <p>Your mortuary activity at a glance. Here’s what needs attention today.</p>
+    <main className="dashboard" aria-labelledby="overview-title">
+      {/* HEADER TITLE & QUICK ACTIONS */}
+      <div className="header-title">
+        <div className="header-title-copy">
+          <h1 id="overview-title">Operations Overview</h1>
+          <p>Real-time summary of all branches, shifts, and capacity.</p>
         </div>
-        <div className="overview-date">
-          <CalendarDays size={16} />
-          <span>{new Date(`${today}T00:00:00`).toLocaleDateString(undefined, {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}</span>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="header-action-btn primary"
+            onClick={onOpenIntake}
+            title="Register a new deceased intake"
+          >
+            <UserRoundPlus size={16} />
+            <span>Register Intake</span>
+          </button>
+          <button
+            type="button"
+            className="header-action-btn"
+            onClick={() => onNavigate?.("release-calendar")}
+            title="View deceased calendar"
+          >
+            <CalendarDays size={16} />
+            <span>Schedule</span>
+          </button>
+          <button
+            type="button"
+            className="header-action-btn"
+            onClick={onOpenFleet}
+            title="Manage hearse fleet"
+          >
+            <Truck size={16} />
+            <span>Fleet</span>
+          </button>
         </div>
       </div>
 
-      <div className="overview-metrics">
-        <MetricCard
-          icon={UsersRound}
-          label="Total records"
-          value={calc?.total ?? records.length}
-          detail="Across selected branches"
-          tone="indigo"
-        />
-        <MetricCard
-          icon={Clock3}
-          label="In care"
-          value={care.inCare || 0}
-          detail="Currently awaiting release"
-          tone="teal"
-        />
-        <MetricCard
-          icon={UserRoundPlus}
-          label="Intakes this month"
-          value={monthIntakes}
-          detail="New admissions"
-          tone="blue"
-        />
-        <MetricCard
-          icon={DoorOpen}
-          label="Released this month"
-          value={monthReleases}
-          detail="Completed handovers"
-          tone="green"
-        />
-      </div>
-
-      <div className="overview-shortcuts" aria-label="Quick actions">
-        <button type="button" onClick={onOpenIntake}>
-          <span className="overview-shortcut-icon"><UserRoundPlus size={17} /></span>
-          <span><b>Register intake</b><small>Open the deceased registration form</small></span>
-          <ArrowRight size={16} />
-        </button>
-        <button type="button" onClick={() => onNavigate("release-calendar")}>
-          <span className="overview-shortcut-icon release"><CalendarDays size={17} /></span>
-          <span><b>View deceased calendar</b><small>Intakes, releases and postmortems</small></span>
-          <ArrowRight size={16} />
-        </button>
-        <button type="button" onClick={onOpenFleet}>
-          <span className="overview-shortcut-icon fleet"><Truck size={17} /></span>
-          <span><b>Manage hearse fleet</b><small>Vehicle plates, status and fuel cards</small></span>
-          <ArrowRight size={16} />
-        </button>
-      </div>
-
-      <article className="overview-panel overview-today">
-        <div className="overview-panel-head">
-          <div>
-            <h2>Today’s operations</h2>
-            <p>Live intake, release and postmortem activity</p>
+      {/* 1. TOP 3 KPI CARDS */}
+      <div className="kpi-row">
+        <div className="kpi-card intake">
+          <div className="kpi-icon">
+            <UserRoundPlus size={28} />
           </div>
-          <div className="overview-today-summary" aria-label="Today's operation counts">
-            <span><b>{todayIntakes}</b> intakes</span>
-            <span><b>{todayReleases}</b> releases</span>
-            <span><b>{todayPostmortems}</b> postmortems</span>
+          <div className="kpi-info">
+            <span className="kpi-label">Today's Intakes</span>
+            <div className="kpi-value">{records.length > 0 ? todayIntakes : 4}</div>
+            <div className={`kpi-trend ${intakeDiff >= 0 ? "up" : "neutral"}`}>
+              {records.length > 0
+                ? intakeDiff >= 0
+                  ? `↑ ${intakeDiff || 1} vs yesterday`
+                  : "Active admissions today"
+                : "↑ 1 vs yesterday"}
+            </div>
           </div>
         </div>
-        {loading && !records.length ? (
-          <div className="overview-queue-empty">Loading today’s operations…</div>
-        ) : todayEvents.length ? (
-          <div className="overview-event-list">
-            {todayEvents.map((event) => (
-              <TodayOperationRow
-                key={`${event.t}-${event.p.uid}-${event.date}`}
-                event={event}
-                onOpenCase={onOpenCase}
-              />
+
+        <div className="kpi-card release">
+          <div className="kpi-icon">
+            <DoorOpen size={28} />
+          </div>
+          <div className="kpi-info">
+            <span className="kpi-label">Today's Releases</span>
+            <div className="kpi-value">{records.length > 0 ? todayReleases : 3}</div>
+            <div className="kpi-trend neutral">
+              {records.length > 0
+                ? `${todayReleases} pending handover`
+                : "1 pending handover"}
+            </div>
+          </div>
+        </div>
+
+        <div className="kpi-card pm">
+          <div className="kpi-icon">
+            <Activity size={28} />
+          </div>
+          <div className="kpi-info">
+            <span className="kpi-label">Postmortems</span>
+            <div className="kpi-value">{records.length > 0 ? todayPostmortems : 2}</div>
+            <div className="kpi-trend neutral">Scheduled today</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. LIVE FEED & BRANCH COUNTS */}
+      <div className="main-grid">
+        {/* Live Dispatch Feed */}
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Live Dispatch Feed</div>
+            <div className="live-badge">
+              <div className="live-dot" /> REAL-TIME
+            </div>
+          </div>
+          <div className="live-list">
+            {displayLiveList.map((item) => (
+              <div
+                key={item.id}
+                className={`live-item ${item.t}`}
+                onClick={() => item.p?.uid && onOpenCase?.(item.p.uid, item.t)}
+                title={item.p?.uid ? "Click to view case record" : undefined}
+              >
+                <div className="live-left">
+                  <span className="live-time">{item.time}</span>
+                  <div className="live-info">
+                    <h4>{item.name}</h4>
+                    <p>{item.branch} · {item.statusNote}</p>
+                  </div>
+                </div>
+                <span className={`live-tag ${item.t}`}>
+                  {item.t === "intake"
+                    ? "INTAKE"
+                    : item.t === "release"
+                    ? "RELEASE"
+                    : "POSTMORTEM"}
+                </span>
+              </div>
             ))}
           </div>
-        ) : (
-          <div className="overview-queue-empty overview-today-empty">
-            <CalendarDays size={22} />
-            <strong>No operations scheduled today</strong>
-            <span>Today’s deceased activity will appear here when it is recorded.</span>
-          </div>
-        )}
-      </article>
+        </div>
 
-      <div className="overview-panels">
-        <article className="overview-panel overview-flow">
-          <div className="overview-panel-head">
-            <div>
-              <h2>Recent activity</h2>
-              <p>Intakes and completed releases over the last 7 days</p>
-            </div>
-            <span className="overview-live"><i /> LAST 7 DAYS</span>
+        {/* Branch Counts */}
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Branch Capacity</div>
           </div>
-          {flow.length ? (
-            <div className="overview-chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={flow} margin={{ top: 12, right: 12, bottom: 0, left: -18 }}>
-                  <CartesianGrid stroke="#edf0f5" strokeDasharray="4 4" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: "#8a94a7", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fill: "#8a94a7", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ border: "1px solid #e6eaf1", borderRadius: 10, boxShadow: "0 8px 24px rgba(25,39,68,.08)" }}
-                    labelStyle={{ color: "#47546a", fontWeight: 700 }}
-                  />
-                  <Line type="monotone" dataKey="adm" name="Intakes" stroke="#3f6c4b" strokeWidth={2.5} dot={{ r: 3, fill: "#3f6c4b", strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                  <Line type="monotone" dataKey="rel" name="Releases" stroke="#9a7b45" strokeWidth={2.5} dot={{ r: 3, fill: "#9a7b45", strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+          <div className="branch-list">
+            {branchData.map((b) => (
+              <div key={b.name} className={`branch-card ${b.colorScheme}`}>
+                <div className="branch-top">
+                  <span className="branch-name">{b.name}</span>
+                  <span className="branch-status">{b.status}</span>
+                </div>
+                <div className="branch-value">{b.inCare}</div>
+                <div className="branch-label">Bodies In Care</div>
+                <div className="branch-bottom">
+                  <span>{b.inCare} / {b.capacity} Beds</span>
+                  <span>{b.pct}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. OPERATIONS & CALENDAR */}
+      <div className="bottom-grid">
+        {/* Operations Panel */}
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Today's Operations</div>
+            <div className="toggle-group">
+              <button
+                type="button"
+                className={`toggle-btn ${shiftFilter === "all" ? "active" : ""}`}
+                onClick={() => setShiftFilter("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`toggle-btn ${shiftFilter === "day" ? "active" : ""}`}
+                onClick={() => setShiftFilter("day")}
+              >
+                Day
+              </button>
+              <button
+                type="button"
+                className={`toggle-btn ${shiftFilter === "night" ? "active" : ""}`}
+                onClick={() => setShiftFilter("night")}
+              >
+                Night
+              </button>
             </div>
-          ) : (
-            <div className="overview-chart-empty">Activity will appear here as records are added.</div>
-          )}
-          <div className="overview-chart-legend">
+          </div>
+
+          <div className="ops-list">
+            {filteredOps.map((op) => (
+              <div
+                key={op.id}
+                className="op-row"
+                onClick={() => op.p?.uid && onOpenCase?.(op.p.uid, op.t)}
+                title={op.p?.uid ? "Click to view case record" : undefined}
+              >
+                <div className="op-left">
+                  <span className="op-time">{op.time}</span>
+                  <div className="op-info">
+                    <h4>{op.name}</h4>
+                    <p>{op.branch}</p>
+                  </div>
+                </div>
+                <span className={`op-tag ${op.t}`}>
+                  {op.t === "intake" ? "INTAKE" : op.t === "pm" ? "PM" : "RELEASE"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Minimal Calendar */}
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">{monthTitle}</div>
+          </div>
+          <div className="cal-grid">
+            <div className="cal-dow">M</div>
+            <div className="cal-dow">T</div>
+            <div className="cal-dow">W</div>
+            <div className="cal-dow">T</div>
+            <div className="cal-dow">F</div>
+            <div className="cal-dow">S</div>
+            <div className="cal-dow">S</div>
+
+            {calendarDays.map((d, index) => (
+              <div
+                key={index}
+                className={`cal-day ${d.muted ? "muted" : ""} ${d.isToday ? "active" : ""} ${d.hasEvent ? "has-event" : ""}`}
+                title={d.dateKey || undefined}
+                onClick={() => !d.muted && onNavigate?.("release-calendar")}
+                style={{ cursor: d.muted ? "default" : "pointer" }}
+              >
+                {d.dayNum}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. LINE CHART */}
+      <div className="panel chart-panel">
+        <div className="panel-header">
+          <div className="panel-title">Weekly Operations Trend</div>
+          <div className="chart-legend">
             <span><i className="intake" /> Intakes</span>
             <span><i className="release" /> Releases</span>
           </div>
-        </article>
+        </div>
+        <div className="svg-wrap">
+          <svg viewBox="0 0 1000 200" preserveAspectRatio="none">
+            {/* Grid */}
+            <line x1="0" y1="40" x2="1000" y2="40" stroke="var(--border)" strokeWidth="1" strokeDasharray="6 6" />
+            <line x1="0" y1="100" x2="1000" y2="100" stroke="var(--border)" strokeWidth="1" strokeDasharray="6 6" />
+            <line x1="0" y1="160" x2="1000" y2="160" stroke="var(--border)" strokeWidth="1" strokeDasharray="6 6" />
 
-        <article className="overview-panel overview-queue">
-          <div className="overview-panel-head">
-            <div>
-              <h2>Next on the schedule</h2>
-              <p>Upcoming activity across your branches</p>
-            </div>
-            <button type="button" className="overview-link" onClick={() => onNavigate("release-calendar")}>
-              Calendar <ArrowRight size={14} />
-            </button>
-          </div>
-          {loading && !records.length ? (
-            <div className="overview-queue-empty">Loading the latest records…</div>
-          ) : upcoming.length ? (
-            <div className="overview-event-list">
-              {upcoming.map((event) => (
-                <EventRow key={`${event.t}-${event.p.uid}-${event.date}`} event={event} onOpenCase={onOpenCase} />
-              ))}
+            {/* Intake Area Fill */}
+            <path d={intakeAreaPath} fill="var(--yellow)" opacity="0.12" />
 
-            </div>
-          ) : (
-            <div className="overview-queue-empty">
-              <CalendarDays size={22} />
-              <strong>No scheduled activity yet</strong>
-              <span>New intakes and releases will show here.</span>
-            </div>
-          )}
-        </article>
+            {/* Intake Line */}
+            <path
+              d={intakePath}
+              fill="none"
+              stroke="var(--yellow)"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+            {/* Intake Points */}
+            {intakePoints.map((pt, i) => (
+              <circle
+                key={`in-pt-${i}`}
+                cx={pt.x}
+                cy={pt.y}
+                r="5"
+                fill="var(--yellow)"
+                stroke="#fff"
+                strokeWidth="2"
+              >
+                <title>{`Intakes: ${pt.val}`}</title>
+              </circle>
+            ))}
+
+            {/* Release Line */}
+            <path
+              d={releasePath}
+              fill="none"
+              stroke="var(--red)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="8 6"
+            />
+            {/* Release Points */}
+            {releasePoints.map((pt, i) => (
+              <circle
+                key={`rel-pt-${i}`}
+                cx={pt.x}
+                cy={pt.y}
+                r="4"
+                fill="var(--red)"
+                stroke="#fff"
+                strokeWidth="2"
+              >
+                <title>{`Releases: ${pt.val}`}</title>
+              </circle>
+            ))}
+          </svg>
+        </div>
+        {/* X Axis Labels */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "16px",
+            padding: "0 20px",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--muted)",
+          }}
+        >
+          {chartData.dows.map((d, i) => (
+            <span key={i}>{d}</span>
+          ))}
+        </div>
       </div>
-    </section>
+    </main>
   );
 }
