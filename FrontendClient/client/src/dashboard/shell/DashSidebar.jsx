@@ -23,6 +23,95 @@ const TRANSITIONS = {
   default: "0.3s cubic-bezier(0.4, 0, 0.2, 1)",
 };
 
+/* ── Styled Components ─────────────────────────────────────────────── */
+
+const SidebarNav = styled.nav`
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+`;
+
+const NavSection = styled.div`
+  margin-bottom: 2px;
+`;
+
+const NavSectionTitle = styled.div`
+  padding: 16px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: ${COLORS.textLight};
+`;
+
+const MenuItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 16px;
+  border: none;
+  background: ${({ $active }) => ($active ? COLORS.greenBg : "transparent")};
+  color: ${({ $active }) => ($active ? COLORS.green : COLORS.textMain)};
+  font-size: 13.5px;
+  font-weight: ${({ $active }) => ($active ? 600 : 400)};
+  cursor: pointer;
+  text-align: left;
+  transition: background ${TRANSITIONS.default}, color ${TRANSITIONS.default};
+  border-radius: 6px;
+  margin: 0 8px;
+  width: calc(100% - 16px);
+
+  &:hover {
+    background: ${({ $active }) => ($active ? COLORS.greenBg : COLORS.grayHover)};
+  }
+`;
+
+const Footer = styled.div`
+  border-top: 1px solid ${COLORS.border};
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const FooterButtonGhost = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: ${COLORS.textMuted};
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background ${TRANSITIONS.default};
+
+  &:hover {
+    background: ${COLORS.grayHover};
+  }
+`;
+
+const ToggleButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  color: ${COLORS.textLight};
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background ${TRANSITIONS.default};
+
+  &:hover {
+    background: ${COLORS.grayHover};
+  }
+`;
+
 export const NAV_ITEMS = [
   { id: "overview", group: "Workspace", label: "Overview", icon: "home", full: "Overview" },
   { id: "release-calendar", group: "Workspace", label: "Deceased calendar", icon: "cal", full: "Deceased calendar" },
