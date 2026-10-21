@@ -2531,8 +2531,6 @@ const CoffinDashboard = () => {
       </div>
     );
   }
-
-  // â”€â”€â”€ Render Inventory Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderInventory = () => (
     <>
       {/* Quick Action Toolbar for Coffin Types, Colors & Stock */}

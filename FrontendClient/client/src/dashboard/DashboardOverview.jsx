@@ -59,8 +59,8 @@ export default function DashboardOverview({
         e.t === "intake"
           ? "Intake registered"
           : e.t === "release"
-          ? (e.p?.release?.status === "completed" ? "Completed handover" : "Family arrived")
-          : (e.completed ? "Report ready" : "Pathologist on site"),
+            ? (e.p?.release?.status === "completed" ? "Completed handover" : "Family arrived")
+            : (e.completed ? "Report ready" : "Pathologist on site"),
       p: e.p,
     }));
   }, [todayEvents, events]);
@@ -374,30 +374,33 @@ export default function DashboardOverview({
               </div>
             ) : (
               displayLiveList.map((item) => (
-              <div
-                key={item.id}
-                className={`live-item ${item.t}`}
-                onClick={() => item.p?.uid && onOpenCase?.(item.p.uid, item.t)}
-                title={item.p?.uid ? "Click to view case record" : undefined}
-              >
-                <div className="live-left">
-                  <span className="live-time">{item.time}</span>
-                  <div className="live-info">
-                    <h4>{item.name}</h4>
-                    <p>{item.branch} · {item.statusNote}</p>
+                <div
+                  key={item.id}
+                  className={`live-item ${item.t}`}
+                  onClick={() => item.p?.uid && onOpenCase?.(item.p.uid, item.t)}
+                  title={item.p?.uid ? "Click to view case record" : undefined}
+                >
+                  <div className="live-left">
+                    <span className="live-time">{item.time}</span>
+                    <div className="live-info">
+                      <h4>{item.name}</h4>
+                      <p>{item.branch} · {item.statusNote}</p>
+                    </div>
                   </div>
+                  <span className={`live-tag ${item.t}`}>
+                    {item.t === "intake"
+                      ? "INTAKE"
+                      : item.t === "release"
+                        ? "RELEASE"
+                        : "POSTMORTEM"}
+                  </span>
                 </div>
-                <span className={`live-tag ${item.t}`}>
-                  {item.t === "intake"
-                    ? "INTAKE"
-                    : item.t === "release"
-                    ? "RELEASE"
-                    : "POSTMORTEM"}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
+
           </div>
         </div>
+
 
         {/* Branch Counts */}
         <div className="panel">
@@ -461,24 +464,25 @@ export default function DashboardOverview({
               </div>
             ) : (
               filteredOps.map((op) => (
-              <div
-                key={op.id}
-                className="op-row"
-                onClick={() => op.p?.uid && onOpenCase?.(op.p.uid, op.t)}
-                title={op.p?.uid ? "Click to view case record" : undefined}
-              >
-                <div className="op-left">
-                  <span className="op-time">{op.time}</span>
-                  <div className="op-info">
-                    <h4>{op.name}</h4>
-                    <p>{op.branch}</p>
+                <div
+                  key={op.id}
+                  className="op-row"
+                  onClick={() => op.p?.uid && onOpenCase?.(op.p.uid, op.t)}
+                  title={op.p?.uid ? "Click to view case record" : undefined}
+                >
+                  <div className="op-left">
+                    <span className="op-time">{op.time}</span>
+                    <div className="op-info">
+                      <h4>{op.name}</h4>
+                      <p>{op.branch}</p>
+                    </div>
                   </div>
+                  <span className={`op-tag ${op.t}`}>
+                    {op.t === "intake" ? "INTAKE" : op.t === "pm" ? "PM" : "RELEASE"}
+                  </span>
                 </div>
-                <span className={`op-tag ${op.t}`}>
-                  {op.t === "intake" ? "INTAKE" : op.t === "pm" ? "PM" : "RELEASE"}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
