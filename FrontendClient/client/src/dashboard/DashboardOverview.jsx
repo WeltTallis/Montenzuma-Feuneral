@@ -6,53 +6,10 @@ import {
   Truck,
   UserRoundPlus,
 } from "lucide-react";
-import { eventsOf, isReleased, addDays, parseKey, pad } from "./opsData";
+import { eventsOf, isReleased, addDays, parseKey, pad, todayKey } from "./opsData";
+import { formatBranchDisplayName } from "../components/coffins/coffinColorUtils";
+import { getBranches } from "../utils/globalAuth";
 import "./dashboard-overview.css";
-
-// Fallback demo data from design mockup when live data has not been seeded yet
-const MOCK_LIVE_EVENTS = [
-  {
-    id: "m-1",
-    t: "release",
-    time: "11:24 AM",
-    name: "Eleanor R. Boateng",
-    branch: "Riverside Chapel",
-    statusNote: "Family Arrived",
-  },
-  {
-    id: "m-2",
-    t: "intake",
-    time: "10:05 AM",
-    name: "Samuel K. Owusu",
-    branch: "Eastfield Branch",
-    statusNote: "Transfer in progress",
-  },
-  {
-    id: "m-3",
-    t: "pm",
-    time: "09:40 AM",
-    name: "Harold J. Mensah",
-    branch: "Northgate Branch",
-    statusNote: "Pathologist on site",
-  },
-  {
-    id: "m-4",
-    t: "intake",
-    time: "08:15 AM",
-    name: "Margaret A. Whitfield",
-    branch: "Riverside Chapel",
-    statusNote: "Paperwork completed",
-  },
-];
-
-const MOCK_OPS = [
-  { id: "op-1", shift: "day", time: "08:15", name: "Margaret A. Whitfield", branch: "Riverside Chapel", t: "intake" },
-  { id: "op-2", shift: "day", time: "09:40", name: "Harold J. Mensah", branch: "Northgate Branch", t: "pm" },
-  { id: "op-3", shift: "day", time: "11:00", name: "Eleanor R. Boateng", branch: "Riverside Chapel", t: "release" },
-  { id: "op-4", shift: "night", time: "19:20", name: "Daniel O. Asante", branch: "Eastfield Branch", t: "intake" },
-  { id: "op-5", shift: "night", time: "21:00", name: "Ruth A. Nyarko", branch: "Riverside Chapel", t: "release" },
-  { id: "op-6", shift: "night", time: "02:30", name: "Grace M. Adjei", branch: "Northgate Branch", t: "intake" },
-];
 
 export default function DashboardOverview({
   cases = [],
@@ -89,54 +46,81 @@ export default function DashboardOverview({
 
   const intakeDiff = todayIntakes - yesterdayIntakes;
 
-  // Displayed live feed items
+  // Displayed live feed items using real deceased data
   const displayLiveList = useMemo(() => {
-    if (todayEvents.length > 0) {
-      return todayEvents.slice(0, 6).map((e) => ({
-        id: `${e.t}-${e.p?.uid}-${e.time}`,
-        t: e.t,
-        time: e.time || "—",
-        name: e.p?.name || "Record",
-        branch: e.p?.branch || "Riverside Chapel",
-        statusNote:
-          e.t === "intake"
-            ? "Intake registered"
-            : e.t === "release"
-            ? (e.p?.release?.status === "completed" ? "Completed handover" : "Family arrived")
-            : (e.completed ? "Report ready" : "Pathologist on site"),
-        p: e.p,
-      }));
-    }
-    return MOCK_LIVE_EVENTS;
-  }, [todayEvents]);
+    const sourceList = todayEvents.length > 0 ? todayEvents : events;
+    return sourceList.slice(0, 6).map((e) => ({
+      id: `${e.t}-${e.p?.uid || Math.random()}-${e.time || e.date}`,
+      t: e.t,
+      time: e.time || "—",
+      name: e.p?.name || "Record",
+      branch: formatBranchDisplayName(e.p?.branch) || "Main Branch",
+      statusNote:
+        e.t === "intake"
+          ? "Intake registered"
+          : e.t === "release"
+          ? (e.p?.release?.status === "completed" ? "Completed handover" : "Family arrived")
+          : (e.completed ? "Report ready" : "Pathologist on site"),
+      p: e.p,
+    }));
+  }, [todayEvents, events]);
 
-  // Branch capacity data (using live numbers if cases exist, else fallback to mockup)
+  // Real Branch capacity data
   const branchData = useMemo(() => {
-    const branches = [
-      { name: "Riverside Chapel", colorScheme: "black", capacity: 20, defaultCount: 14, defaultStatus: "BUSY" },
-      { name: "Northgate Branch", colorScheme: "red", capacity: 18, defaultCount: 12, defaultStatus: "OK" },
-      { name: "Eastfield Branch", colorScheme: "yellow", capacity: 15, defaultCount: 10, defaultStatus: "NEAR FULL" },
-    ];
+    let cached = [];
+    try {
+      cached = getBranches();
+    } catch {
+      // fallback
+    }
 
-    return branches.map((b) => {
+    const branchesFromCases = [...new Set(records.map((c) => c.branch).filter(Boolean))];
+
+    const branchMap = new Map();
+    if (Array.isArray(cached) && cached.length > 0) {
+      cached.forEach((b) => {
+        const raw = b.branchName || b.branch_name || b.name || b.branchSlug || b.branch_slug || "";
+        const clean = formatBranchDisplayName(raw);
+        if (clean && !branchMap.has(clean)) {
+          branchMap.set(clean, { id: b.id || b.branchId, raw, name: clean });
+        }
+      });
+    }
+
+    branchesFromCases.forEach((raw) => {
+      const clean = formatBranchDisplayName(raw);
+      if (clean && !branchMap.has(clean)) {
+        branchMap.set(clean, { id: raw, raw, name: clean });
+      }
+    });
+
+    if (branchMap.size === 0) {
+      branchMap.set("Main Branch", { id: "main", raw: "main", name: "Main Branch" });
+    }
+
+    const colorSchemes = ["black", "yellow", "red", "blue"];
+    let idx = 0;
+
+    return Array.from(branchMap.values()).map((b) => {
       const realInCare = records.filter(
-        (c) => (c.branch || "Riverside Chapel") === b.name && !isReleased(c)
+        (c) =>
+          !isReleased(c) &&
+          (formatBranchDisplayName(c.branch) === b.name ||
+            String(c.branch_id) === String(b.id) ||
+            String(c.branch || "").toLowerCase() === b.name.toLowerCase())
       ).length;
 
-      const inCare = records.length > 0 ? realInCare : b.defaultCount;
-      const pct = Math.min(100, Math.round((inCare / b.capacity) * 100));
-      const status =
-        records.length > 0
-          ? pct >= 80
-            ? "NEAR FULL"
-            : pct >= 50
-            ? "BUSY"
-            : "OK"
-          : b.defaultStatus;
+      const capacity = 20;
+      const pct = Math.min(100, Math.round((realInCare / capacity) * 100));
+      const status = pct >= 80 ? "NEAR FULL" : pct >= 50 ? "BUSY" : "OK";
+      const colorScheme = colorSchemes[idx % colorSchemes.length];
+      idx++;
 
       return {
-        ...b,
-        inCare,
+        name: b.name,
+        colorScheme,
+        capacity,
+        inCare: realInCare,
         pct,
         status,
       };
@@ -145,31 +129,29 @@ export default function DashboardOverview({
 
   // Operations list with shift filtering
   const displayOps = useMemo(() => {
-    if (todayEvents.length > 0) {
-      return todayEvents.map((e) => {
-        const timeStr = e.time || "12:00";
-        const hour = parseInt(timeStr.slice(0, 2), 10) || 0;
-        const shift = hour >= 6 && hour < 18 ? "day" : "night";
-        return {
-          id: `${e.t}-${e.p?.uid}-${e.time}`,
-          shift,
-          time: timeStr,
-          name: e.p?.name || "Deceased Record",
-          branch: e.p?.branch || "Riverside Chapel",
-          t: e.t,
-          p: e.p,
-        };
-      });
-    }
-    return MOCK_OPS;
-  }, [todayEvents]);
+    const sourceList = todayEvents.length > 0 ? todayEvents : events;
+    return sourceList.slice(0, 10).map((e) => {
+      const timeStr = e.time || "12:00";
+      const hour = parseInt(timeStr.slice(0, 2), 10) || 12;
+      const shift = hour >= 6 && hour < 18 ? "day" : "night";
+      return {
+        id: `${e.t}-${e.p?.uid || Math.random()}-${e.time || e.date}`,
+        shift,
+        time: timeStr,
+        name: e.p?.name || "Deceased Record",
+        branch: formatBranchDisplayName(e.p?.branch) || "Main Branch",
+        t: e.t,
+        p: e.p,
+      };
+    });
+  }, [todayEvents, events]);
 
   const filteredOps = useMemo(() => {
     if (shiftFilter === "all") return displayOps;
     return displayOps.filter((op) => op.shift === shiftFilter);
   }, [displayOps, shiftFilter]);
 
-  // Minimal Calendar generation (current month aligned Mon-Sun)
+  // Calendar generation (current month aligned Mon-Sun)
   const { calendarDays, monthTitle } = useMemo(() => {
     const dateObj = today ? parseKey(today) : new Date();
     const year = dateObj.getFullYear();
@@ -193,14 +175,12 @@ export default function DashboardOverview({
 
     // Event date set for fast lookup
     const eventDateSet = new Set(events.map((e) => e.date));
-    const mockHasEventDays = new Set([2, 6, 13, 21, 26]);
 
     // Current month days
     for (let d = 1; d <= daysInMonth; d++) {
       const dateKey = `${year}-${pad(month + 1)}-${pad(d)}`;
-      const isToday = today ? dateKey === today : d === 26;
-      const hasEvent =
-        records.length > 0 ? eventDateSet.has(dateKey) : mockHasEventDays.has(d);
+      const isToday = today ? dateKey === today : false;
+      const hasEvent = eventDateSet.has(dateKey);
 
       days.push({
         dayNum: d,
@@ -221,13 +201,11 @@ export default function DashboardOverview({
     }
 
     return { calendarDays: days, monthTitle: title };
-  }, [today, events, records]);
+  }, [today, events]);
 
-  // 7-day flow for weekly trend chart
+  // 7-day flow for weekly trend chart (real values)
   const chartData = useMemo(() => {
     const last7 = calc?.last7 || [];
-    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
     if (last7.length === 7) {
       const intakes = last7.map((d) => d.adm || 0);
       const releases = last7.map((d) => d.rel || 0);
@@ -239,13 +217,25 @@ export default function DashboardOverview({
       };
     }
 
-    // Default curve matching mockup
+    const dows = [];
+    const intakes = [];
+    const releases = [];
+    for (let i = 6; i >= 0; i--) {
+      const dKey = addDays(today || todayKey(), -i);
+      const dObj = parseKey(dKey);
+      const dayName = dObj.toLocaleDateString("en-US", { weekday: "short" });
+      dows.push(dayName);
+      const dayEvents = events.filter((e) => e.date === dKey);
+      intakes.push(dayEvents.filter((e) => e.t === "intake").length);
+      releases.push(dayEvents.filter((e) => e.t === "release").length);
+    }
+
     return {
-      intakes: [4, 6, 5, 8, 5, 9, 6],
-      releases: [3, 4, 4, 6, 5, 7, 5],
-      dows: labels,
+      intakes,
+      releases,
+      dows,
     };
-  }, [calc]);
+  }, [calc, events, today]);
 
   // SVG Chart path calculation
   const { intakePath, intakeAreaPath, releasePath, intakePoints, releasePoints } = useMemo(() => {
@@ -333,13 +323,9 @@ export default function DashboardOverview({
           </div>
           <div className="kpi-info">
             <span className="kpi-label">Today's Intakes</span>
-            <div className="kpi-value">{records.length > 0 ? todayIntakes : 4}</div>
+            <div className="kpi-value">{todayIntakes}</div>
             <div className={`kpi-trend ${intakeDiff >= 0 ? "up" : "neutral"}`}>
-              {records.length > 0
-                ? intakeDiff >= 0
-                  ? `↑ ${intakeDiff || 1} vs yesterday`
-                  : "Active admissions today"
-                : "↑ 1 vs yesterday"}
+              {intakeDiff >= 0 ? `↑ ${intakeDiff} vs yesterday` : `${todayIntakes} registered today`}
             </div>
           </div>
         </div>
@@ -350,11 +336,9 @@ export default function DashboardOverview({
           </div>
           <div className="kpi-info">
             <span className="kpi-label">Today's Releases</span>
-            <div className="kpi-value">{records.length > 0 ? todayReleases : 3}</div>
+            <div className="kpi-value">{todayReleases}</div>
             <div className="kpi-trend neutral">
-              {records.length > 0
-                ? `${todayReleases} pending handover`
-                : "1 pending handover"}
+              {todayReleases > 0 ? `${todayReleases} pending handover` : "None scheduled today"}
             </div>
           </div>
         </div>
@@ -365,8 +349,10 @@ export default function DashboardOverview({
           </div>
           <div className="kpi-info">
             <span className="kpi-label">Postmortems</span>
-            <div className="kpi-value">{records.length > 0 ? todayPostmortems : 2}</div>
-            <div className="kpi-trend neutral">Scheduled today</div>
+            <div className="kpi-value">{todayPostmortems}</div>
+            <div className="kpi-trend neutral">
+              {todayPostmortems > 0 ? `${todayPostmortems} scheduled today` : "None scheduled today"}
+            </div>
           </div>
         </div>
       </div>
@@ -382,7 +368,12 @@ export default function DashboardOverview({
             </div>
           </div>
           <div className="live-list">
-            {displayLiveList.map((item) => (
+            {displayLiveList.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted, #64748b)", fontSize: 13 }}>
+                No active operations recorded
+              </div>
+            ) : (
+              displayLiveList.map((item) => (
               <div
                 key={item.id}
                 className={`live-item ${item.t}`}
@@ -464,7 +455,12 @@ export default function DashboardOverview({
           </div>
 
           <div className="ops-list">
-            {filteredOps.map((op) => (
+            {filteredOps.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted, #64748b)", fontSize: 13 }}>
+                No operations scheduled for this shift
+              </div>
+            ) : (
+              filteredOps.map((op) => (
               <div
                 key={op.id}
                 className="op-row"

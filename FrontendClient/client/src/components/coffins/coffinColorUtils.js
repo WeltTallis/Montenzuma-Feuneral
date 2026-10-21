@@ -356,3 +356,197 @@ function syncLegacyStores(catalog) {
     // ignore
   }
 }
+
+/**
+ * Load Registered Coffin Colors Catalog from localStorage
+ */
+export function loadRegisteredColors() {
+  if (typeof window === 'undefined') return COFFIN_POPULAR_PALETTE;
+  try {
+    const raw = localStorage.getItem('coffinColorsCatalog');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  // Default clean seed of funeral casket colors
+  const defaults = COFFIN_POPULAR_PALETTE.map((p) => {
+    const det = detectColorRGB(p.name);
+    return {
+      name: p.name,
+      hex: p.hex || det.hex,
+      rgb: p.rgb || det.rgbStr,
+      isDark: det.isDark,
+    };
+  });
+
+  try {
+    localStorage.setItem('coffinColorsCatalog', JSON.stringify(defaults));
+    localStorage.setItem('coffinColors', JSON.stringify(defaults.map((c) => c.name)));
+  } catch {
+    // ignore
+  }
+
+  return defaults;
+}
+
+/**
+ * Save Registered Coffin Colors Catalog to localStorage
+ */
+export function saveRegisteredColors(colors) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('coffinColorsCatalog', JSON.stringify(colors));
+    localStorage.setItem('coffinColors', JSON.stringify(colors.map((c) => c.name)));
+  } catch (e) {
+    console.error('Error saving coffin colors catalog:', e);
+  }
+}
+
+/**
+ * Register a new color (with automatic RGB / Hex resolution or optional custom Hex)
+ */
+export function addRegisteredColor(colorName, customHex = null) {
+  if (!colorName || !colorName.trim()) return loadRegisteredColors();
+  const current = loadRegisteredColors();
+  const cleanName = colorName.trim();
+  const existingIndex = current.findIndex(
+    (c) => c.name.toLowerCase() === cleanName.toLowerCase()
+  );
+
+  const detected = detectColorRGB(customHex || cleanName);
+  const newColorEntry = {
+    name: detected.resolvedName || cleanName,
+    hex: customHex || detected.hex,
+    rgb: detected.rgbStr,
+    isDark: detected.isDark,
+  };
+
+  let updated;
+  if (existingIndex >= 0) {
+    updated = [...current];
+    updated[existingIndex] = newColorEntry;
+  } else {
+    updated = [newColorEntry, ...current];
+  }
+
+  saveRegisteredColors(updated);
+  return updated;
+}
+
+/**
+ * Remove a registered color
+ */
+export function removeRegisteredColor(colorName) {
+  if (!colorName) return loadRegisteredColors();
+  const current = loadRegisteredColors();
+  const updated = current.filter(
+    (c) => c.name.toLowerCase() !== colorName.trim().toLowerCase()
+  );
+  saveRegisteredColors(updated);
+  return updated;
+}
+
+/**
+ * Add or update a coffin type in the catalog
+ */
+export function addCoffinType({ name, description = '', colors = [] }) {
+  if (!name || !name.trim()) return loadCoffinTypesCatalog();
+  const current = loadCoffinTypesCatalog();
+  const cleanName = name.trim();
+  const id = `type-${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`;
+  
+  const existingIdx = current.findIndex(
+    (t) => t.name.toLowerCase() === cleanName.toLowerCase()
+  );
+
+  const newEntry = {
+    id: existingIdx >= 0 ? current[existingIdx].id : id,
+    name: cleanName,
+    description: description.trim(),
+    colors: colors.map((c) => {
+      const det = detectColorRGB(c.hex || c.name);
+      return {
+        name: c.name || det.resolvedName,
+        hex: c.hex || det.hex,
+        rgb: c.rgb || det.rgbStr,
+        sku: generateVariantSku(cleanName, c.name),
+      };
+    }),
+  };
+
+  let updated;
+  if (existingIdx >= 0) {
+    updated = [...current];
+    updated[existingIdx] = newEntry;
+  } else {
+    updated = [...current, newEntry];
+  }
+
+  saveCoffinTypesCatalog(updated);
+  return updated;
+}
+
+/**
+ * Remove a coffin type from the catalog
+ */
+export function removeCoffinType(typeIdOrName) {
+  if (!typeIdOrName) return loadCoffinTypesCatalog();
+  const current = loadCoffinTypesCatalog();
+  const target = String(typeIdOrName).toLowerCase();
+  const updated = current.filter(
+    (t) => t.id.toLowerCase() !== target && t.name.toLowerCase() !== target
+  );
+  saveCoffinTypesCatalog(updated);
+  return updated;
+}
+
+/**
+ * Cleanly formats a branch name or branch slug into a human-friendly branch name
+ * e.g., 'restpoint-thika' -> 'Thika', 'restpoint_co_ke_thika' -> 'Thika', 'thika' -> 'Thika'
+ */
+export function formatBranchDisplayName(rawName, rawSlug) {
+  let val = String(rawName || rawSlug || '').trim();
+  if (!val) return 'Main Branch';
+
+  // If it's a UUID, return 'Main Branch'
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)) {
+    return 'Main Branch';
+  }
+
+  // Remove web domains like .co.ke, .com, etc.
+  val = val.replace(/\.co\.ke|\.com|\.org|\.net/gi, '');
+
+  // Strip known tenant prefixes e.g. "restpoint-", "restpoint_", "tenant-"
+  val = val.replace(/^(restpoint|tenant|rest_point|restpoint_co_ke|restpoint-co-ke)[_\-\s]+/i, '');
+  val = val.replace(/^(branch)[_\-\s]+/i, '');
+
+  // Strip trailing _branch, -branch, _db, -db
+  val = val.replace(/[_\-\s]+(branch|db|database)$/i, '');
+
+  // Strip leading and trailing punctuation
+  val = val.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+
+  // Replace underscores and dashes with spaces
+  val = val.replace(/[_\-]+/g, ' ').trim();
+
+  // If after stripping it's empty or just "main", return "Main Branch"
+  if (!val || val.toLowerCase() === 'main') {
+    return 'Main Branch';
+  }
+
+  // Proper Title Case, preserving acronyms like CBD
+  return val
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => {
+      if (word.toUpperCase() === 'CBD') return 'CBD';
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
