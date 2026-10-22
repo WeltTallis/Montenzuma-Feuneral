@@ -48,11 +48,11 @@ const VIEWS = [
 
 /* Calendar chip / row styling per event type (mirrors the flowbite palette). */
 const CAL_TYPE = {
-  intake: { label: "Body Intake", status: "confirmed", color: "#1d4ed8", bg: "#eff6ff", icon: <Users size={12} /> },
-  release: { label: "Body Release", status: "completed", color: "#059669", bg: "#ecfdf5", icon: <ShieldAlert size={12} /> },
-  pm: { label: "Postmortem Exam", status: "scheduled", color: "#d97706", bg: "#fffbeb", icon: <Activity size={12} /> },
-  funeral: { label: "Funeral Service", status: "scheduled", color: "#0284c7", bg: "#f0f9ff", icon: <Calendar size={12} /> },
-  transfer: { label: "Hearse Transfer", status: "in_transit", color: "#1d4ed8", bg: "#eff6ff", icon: <Clock size={12} /> },
+  intake: { label: "Body Intake", status: "confirmed", color: "#00296B", bg: "#eff4fa", icon: <Users size={12} /> },
+  release: { label: "Body Release", status: "completed", color: "#132A13", bg: "#eff5ef", icon: <ShieldAlert size={12} /> },
+  pm: { label: "Postmortem Exam", status: "scheduled", color: "#5F0F40", bg: "#faf0f6", icon: <Activity size={12} /> },
+  funeral: { label: "Funeral Service", status: "scheduled", color: "#0f766e", bg: "#f0fdfa", icon: <Calendar size={12} /> },
+  transfer: { label: "Hearse Transfer", status: "in_transit", color: "#00296B", bg: "#eff4fa", icon: <Clock size={12} /> },
 };
 
 const DARK_KEY = "rpd-ops-dark";

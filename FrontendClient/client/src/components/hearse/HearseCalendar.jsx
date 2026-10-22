@@ -219,34 +219,20 @@ const Shell = styled.div`
   .fc .fc-daygrid-day-events {
     margin-top: 2px;
     display: flex;
+    flex-direction: column;
     gap: 2px;
-    justify-content: center;
-    flex-wrap: wrap;
-    min-height: 8px;
+    min-height: 16px;
   }
 
-  .fc-daygrid-day-events .fc-event-dot-wrapper {
-    display: flex;
-    gap: 2px;
-    justify-content: center;
-    flex-wrap: wrap;
+  .fc .fc-daygrid-event-harness {
+    margin-bottom: 2px !important;
   }
 
-  .fc-event-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-
-  .fc .fc-daygrid-day-bottom {
-    font-size: 10px;
-    font-weight: 600;
-    color: #999999;
-  }
-
-  .fc .fc-daygrid-day-events .fc-daygrid-day-event {
-    display: none !important;
+  .fc .fc-daygrid-event {
+    margin: 1px 0 !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background: transparent !important;
   }
 
   .fc .fc-daygrid-more-link {
@@ -712,9 +698,9 @@ const LegendDot = styled.div`
 
 const CalendarWrapper = styled.div`
   flex: 1;
-  min-height: 550px;
+  min-height: 600px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   width: 100%;
   box-sizing: border-box;
 `;
@@ -896,12 +882,27 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       .map((b) => {
         const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
         const dates = getBookingDates(b);
-        const startDate = dates[0];
-        const endDate = dates[1] || b.end_date || b.estimated_arrival_time || startDate;
-
+        const bookingDates = getBookingDates(b);
+        const startDate = bookingDates[0];
         if (!startDate) return null;
 
         const isAllDay = !String(startDate).includes('T') && !String(startDate).includes(':');
+
+        let fcEnd = undefined;
+        if (isAllDay) {
+          if (bookingDates.length > 1) {
+            // FullCalendar all-day end is exclusive: add 1 day to the last date
+            const last = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00');
+            last.setDate(last.getDate() + 1);
+            fcEnd = toDateKey(last);
+          } else {
+            // Single-day all-day booking: omit end completely so duration is not 0
+            fcEnd = undefined;
+          }
+        } else {
+          const rawEnd = bookingDates[1] || b.end_date || b.estimated_arrival_time;
+          fcEnd = rawEnd && rawEnd !== startDate ? rawEnd : undefined;
+        }
 
         let startTime = '';
         let endTime = '';
@@ -910,8 +911,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           if (!isNaN(sd.getTime())) {
             startTime = sd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
-          const ed = new Date(endDate);
-          if (!isNaN(ed.getTime())) {
+          const ed = new Date(fcEnd || startDate);
+          if (!isNaN(ed.getTime()) && fcEnd) {
             endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           }
         } catch (e) { }
@@ -928,7 +929,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         );
 
         // Detect multi-day bookings
-        const bookingDates = getBookingDates(b);
         const isMultiDay = bookingDates.length > 1 || (() => {
           if (bookingDates.length === 1) {
             const d = new Date(bookingDates[0]);
@@ -945,7 +945,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           bookingId: readableId,
           title: b.client_name || b.client || 'Unknown Client',
           start: startDate,
-          end: endDate || startDate,
+          end: fcEnd,
           allDay: isAllDay,
           backgroundColor: status.color,
           borderColor: status.color,
@@ -1088,15 +1088,64 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
-    // Month view - hide events (show dots instead)
+    const itemColor = props.statusColor || '#00296B';
+    const itemBg = props.statusBg || '#EFF6FF';
+
+    // Month view event chip — clear, readable, click-responsive
     if (isMonthView) {
-      return null;
+      return (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '2px 5px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontWeight: 600,
+            background: itemBg,
+            color: itemColor,
+            borderLeft: `3px solid ${itemColor}`,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            width: '100%',
+            cursor: 'pointer',
+            boxSizing: 'border-box',
+          }}
+          title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
+        >
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: itemColor,
+              flexShrink: 0,
+            }}
+          />
+          {props.startTime && (
+            <span style={{ fontSize: '9px', opacity: 0.8, fontWeight: 700, flexShrink: 0 }}>
+              {props.startTime}
+            </span>
+          )}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {props.clientName || 'Booking'}
+          </span>
+          {props.plate && props.plate !== '—' && (
+            <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'monospace', flexShrink: 0 }}>
+              {props.plate}
+            </span>
+          )}
+        </div>
+      );
     }
 
     const isMultiDay = props.isMultiDay;
     const multiDayStyle = isMultiDay ? {
-      background: `repeating-linear-gradient(45deg, ${status.color}, ${status.color} 4px, ${status.color}dd 4px, ${status.color}dd 8px)`,
-      border: `2px solid ${status.color}`,
+      background: `repeating-linear-gradient(45deg, ${itemColor}, ${itemColor} 4px, ${itemColor}dd 4px, ${itemColor}dd 8px)`,
+      border: `2px solid ${itemColor}`,
     } : {};
 
     // Week/Day view card.
@@ -1123,7 +1172,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         ...multiDayStyle
       }}>
         {isMultiDay && (
-          <div style={{ fontSize: '7px', fontWeight: 700, color: status.color, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+          <div style={{ fontSize: '7px', fontWeight: 700, color: itemColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
             Multi-Day
           </div>
         )}
@@ -1273,56 +1322,15 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
     const dateStr = fmtDS(info.date);
 
-    const dayEvents = bookings.filter((b) => {
+    const hasEvents = bookings.some((b) => {
       const dates = getBookingDates(b);
-      return dates.some(d => {
-        if (!d) return false;
-        const dStr = String(d).split('T')[0];
-        return dStr === dateStr;
-      });
+      return dates.some(d => d && String(d).split('T')[0] === dateStr);
     });
 
-    // Highlight booked dates with a subtle neutral tint (matches the
-    // day-timeline status colours instead of a loud red wash)
-    if (dayEvents.length > 0) {
-      info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.05)', 'important');
+    // Highlight booked dates with a subtle neutral tint
+    if (hasEvents) {
+      info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.03)', 'important');
       info.el.style.setProperty('border-radius', '6px', 'important');
-    }
-
-    if (dayEvents.length === 0) return;
-
-    const container = document.createElement('div');
-    container.className = 'fc-event-dot-wrapper';
-    container.style.cssText = 'display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; margin-top: 2px;';
-
-    // Show dots for each event (max 3)
-    const maxDots = Math.min(dayEvents.length, 3);
-    for (let i = 0; i < maxDots; i++) {
-      const status = STATUS_CONFIG[dayEvents[i].status] || STATUS_CONFIG.pending;
-      const dot = document.createElement('span');
-      dot.className = 'fc-event-dot';
-      dot.style.cssText = `width: 5px; height: 5px; border-radius: 50%; background: ${status.color}; display: inline-block;`;
-      container.appendChild(dot);
-    }
-
-    // If more than 3 events, show +N
-    if (dayEvents.length > 3) {
-      const more = document.createElement('span');
-      more.style.cssText = 'font-size: 7px; font-weight: 600; color: #999; padding: 0 2px;';
-      more.textContent = `+${dayEvents.length - 3}`;
-      container.appendChild(more);
-    }
-
-    const eventsContainer = info.el.querySelector('.fc-daygrid-day-events');
-    if (eventsContainer) {
-      eventsContainer.innerHTML = '';
-      eventsContainer.appendChild(container);
-    } else {
-      const newContainer = document.createElement('div');
-      newContainer.className = 'fc-daygrid-day-events';
-      newContainer.style.cssText = 'margin-top: 2px; display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; min-height: 8px;';
-      newContainer.appendChild(container);
-      info.el.appendChild(newContainer);
     }
   }, [bookings, calendarView]);
 
@@ -1424,7 +1432,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           viewDidMount={handleViewChange}
           eventContent={renderEventContent}
           dayCellDidMount={renderDayCell}
-          height="100%"
+          height={calendarView === 'dayGridMonth' ? 'auto' : 750}
+          contentHeight={calendarView === 'dayGridMonth' ? 'auto' : 700}
           firstDay={0}
           weekends={true}
           nowIndicator={true}

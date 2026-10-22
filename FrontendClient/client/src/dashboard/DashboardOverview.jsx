@@ -532,13 +532,13 @@ export default function DashboardOverview({
             <line x1="0" y1="160" x2="1000" y2="160" stroke="var(--border)" strokeWidth="1" strokeDasharray="6 6" />
 
             {/* Intake Area Fill */}
-            <path d={intakeAreaPath} fill="var(--yellow)" opacity="0.12" />
+            <path d={intakeAreaPath} fill="#00296B" opacity="0.12" />
 
             {/* Intake Line */}
             <path
               d={intakePath}
               fill="none"
-              stroke="var(--yellow)"
+              stroke="#00296B"
               strokeWidth="4"
               strokeLinecap="round"
             />
@@ -549,7 +549,7 @@ export default function DashboardOverview({
                 cx={pt.x}
                 cy={pt.y}
                 r="5"
-                fill="var(--yellow)"
+                fill="#00296B"
                 stroke="#fff"
                 strokeWidth="2"
               >
@@ -561,7 +561,7 @@ export default function DashboardOverview({
             <path
               d={releasePath}
               fill="none"
-              stroke="var(--red)"
+              stroke="#132A13"
               strokeWidth="3"
               strokeLinecap="round"
               strokeDasharray="8 6"
@@ -573,7 +573,7 @@ export default function DashboardOverview({
                 cx={pt.x}
                 cy={pt.y}
                 r="4"
-                fill="var(--red)"
+                fill="#132A13"
                 stroke="#fff"
                 strokeWidth="2"
               >

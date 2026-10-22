@@ -373,7 +373,7 @@ export default function DeceasedScheduleCalendar({
               className={`cb-fc ${selectedType === "intake" ? "on" : ""}`}
               onClick={() => setSelectedType(selectedType === "intake" ? "all" : "intake")}
             >
-              <span className="cb-fc-dot" style={{ background: "#16a34a" }} />
+              <span className="cb-fc-dot" style={{ background: "#00296B" }} />
               Intake <span className="cb-fc-ct">{allEvents.filter((e) => e.type === "intake").length}</span>
             </button>
             <button
@@ -381,7 +381,7 @@ export default function DeceasedScheduleCalendar({
               className={`cb-fc ${selectedType === "release" ? "on" : ""}`}
               onClick={() => setSelectedType(selectedType === "release" ? "all" : "release")}
             >
-              <span className="cb-fc-dot" style={{ background: "#0284c7" }} />
+              <span className="cb-fc-dot" style={{ background: "#132A13" }} />
               Release <span className="cb-fc-ct">{allEvents.filter((e) => e.type === "release").length}</span>
             </button>
             <button
@@ -389,7 +389,7 @@ export default function DeceasedScheduleCalendar({
               className={`cb-fc ${selectedType === "pm" ? "on" : ""}`}
               onClick={() => setSelectedType(selectedType === "pm" ? "all" : "pm")}
             >
-              <span className="cb-fc-dot" style={{ background: "#7c3aed" }} />
+              <span className="cb-fc-dot" style={{ background: "#5F0F40" }} />
               Postmortem <span className="cb-fc-ct">{allEvents.filter((e) => e.type === "pm").length}</span>
             </button>
           </div>
@@ -463,7 +463,7 @@ export default function DeceasedScheduleCalendar({
               <div className="cb-sr-label">Total Operations</div>
             </div>
           </div>
-          <div className="cb-sr-item" style={{ background: "#16a34a" }}>
+          <div className="cb-sr-item" style={{ background: "#00296B" }}>
             <div className="cb-sr-ico">
               <UserRoundPlus size={16} />
             </div>
@@ -472,7 +472,7 @@ export default function DeceasedScheduleCalendar({
               <div className="cb-sr-label">Intakes</div>
             </div>
           </div>
-          <div className="cb-sr-item" style={{ background: "#0284c7" }}>
+          <div className="cb-sr-item" style={{ background: "#132A13" }}>
             <div className="cb-sr-ico">
               <DoorOpen size={16} />
             </div>
@@ -481,7 +481,7 @@ export default function DeceasedScheduleCalendar({
               <div className="cb-sr-label">Releases</div>
             </div>
           </div>
-          <div className="cb-sr-item" style={{ background: "#7c3aed" }}>
+          <div className="cb-sr-item" style={{ background: "#5F0F40" }}>
             <div className="cb-sr-ico">
               <Activity size={16} />
             </div>
@@ -603,6 +603,7 @@ export default function DeceasedScheduleCalendar({
 
                     const intakeCount = dayEvents.filter((e) => e.type === "intake").length;
                     const releaseCount = dayEvents.filter((e) => e.type === "release").length;
+                    const pmCount = dayEvents.filter((e) => e.type === "pm").length;
 
                     return (
                       <div
@@ -621,6 +622,11 @@ export default function DeceasedScheduleCalendar({
                             {releaseCount > 0 && (
                               <span className="count-badge release" title={`${releaseCount} Releases`}>
                                 Out: {releaseCount}
+                              </span>
+                            )}
+                            {pmCount > 0 && (
+                              <span className="count-badge pm" title={`${pmCount} Postmortems`}>
+                                PM: {pmCount}
                               </span>
                             )}
                           </div>

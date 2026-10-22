@@ -513,12 +513,16 @@
   letter-spacing: 0.2px;
 }
 .deceased-schedule .count-badge.intake {
-  background: #ecfdf5;
-  color: #16a34a;
+  background: #EFF4FA;
+  color: #00296B;
 }
 .deceased-schedule .count-badge.release {
-  background: #f0f9ff;
-  color: #0284c7;
+  background: #EFF5EF;
+  color: #132A13;
+}
+.deceased-schedule .count-badge.pm {
+  background: #FAF0F6;
+  color: #5F0F40;
 }
 
 .deceased-schedule .mg-chips {
