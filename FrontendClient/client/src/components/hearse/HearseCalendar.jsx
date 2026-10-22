@@ -105,9 +105,6 @@ const Shell = styled.div`
     min-height: 600px;
   }
 
-  /* FullCalendar owns its own height. No !important overrides on .fc, harness,
-     scrollgrid, scroller, scroller-liquid-absolute, or sync-table — those all
-     break auto-height month mode. */
   .fc {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     width: 100% !important;
@@ -141,16 +138,20 @@ const Shell = styled.div`
   .fc .fc-button-primary:not(:disabled).fc-button-active { background: #000000; color: #FFFFFF; border-color: #000000; }
   .fc .fc-button-primary:focus { box-shadow: none; }
 
-  /* ===== MONTH VIEW STYLES ===== */
+  /* ===== MONTH VIEW STYLES =====
+     Big cells (200px) so a full 62px pastel card + a second card fit before
+     "+N more". The event wrapper itself is a pure pass-through — all visual
+     styling is painted by renderEventContent's inline card. */
   .fc .fc-daygrid-day {
     cursor: pointer;
-    transition: all 0.2s ease;
-    min-height: 100px !important;
+    transition: background .15s ease;
+    min-height: 200px !important;
+    vertical-align: top !important;
   }
   .fc .fc-daygrid-day:hover { background: #F9FAFB; }
   .fc .fc-daygrid-day-frame {
-    padding: 4px;
-    min-height: 100px !important;
+    padding: 4px !important;
+    min-height: 200px !important;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -161,9 +162,10 @@ const Shell = styled.div`
     justify-content: space-between !important;
     align-items: center !important;
     padding: 2px 4px !important;
+    margin-bottom: 4px !important;
   }
   .fc .fc-daygrid-day-number {
-    font-size: 13px !important;
+    font-size: 14px !important;
     font-weight: 700 !important;
     color: #111827 !important;
     padding: 2px 6px !important;
@@ -171,11 +173,12 @@ const Shell = styled.div`
     text-decoration: none !important;
     display: inline-block !important;
   }
-  /* GREEN today marker — restored */
   .fc .fc-day-today .fc-daygrid-day-number {
     background: #2E7D32 !important;
     color: #FFFFFF !important;
     border-radius: 50% !important;
+    min-width: 26px !important;
+    text-align: center !important;
   }
   .fc .fc-daygrid-day.fc-day-today {
     background: #E8F5E9 !important;
@@ -184,22 +187,21 @@ const Shell = styled.div`
     opacity: 0.35 !important;
   }
   .fc .fc-daygrid-day-events {
-    margin-top: 2px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-height: 16px;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    min-height: 0 !important;
+    flex: 1 !important;
   }
   .fc .fc-daygrid-event-harness {
-    margin-bottom: 3px !important;
+    margin: 0 !important;
   }
 
-  /* Month event — the CUSTOM renderer paints bg/colour on the inner div, so
-     this outer element must not force any colour. Everything visual comes
-     from the renderer below. */
+  /* Pass-through: let the inner pastel card own its size and colour. */
   .fc .fc-daygrid-event {
     margin: 0 !important;
-    border-radius: 4px !important;
+    border-radius: 0 !important;
     border: none !important;
     padding: 0 !important;
     background: transparent !important;
@@ -208,17 +210,26 @@ const Shell = styled.div`
     cursor: pointer !important;
     min-height: 0 !important;
   }
+  .fc .fc-daygrid-event .fc-event-main,
+  .fc .fc-daygrid-event .fc-event-main-frame {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
 
   .fc .fc-daygrid-more-link {
-    font-size: 10px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
     color: #00296B !important;
     cursor: pointer !important;
-    padding: 1px 4px !important;
+    padding: 3px 6px !important;
     border-radius: 4px !important;
     margin-top: 2px !important;
+    align-self: flex-start !important;
+    background: #EFF6FF !important;
   }
-  .fc .fc-daygrid-more-link:hover { background: #EFF6FF !important; }
+  .fc .fc-daygrid-more-link:hover { background: #DBEAFE !important; }
 
   /* ===== WEEK & DAY VIEW ===== */
   .fc .fc-timegrid-axis {
@@ -378,7 +389,6 @@ const Shell = styled.div`
   .fc .fc-timegrid-event .fc-event-title,
   .fc .fc-timegrid-all-day-event .fc-event-title { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; min-width: 0 !important; }
 
-  /* Popover */
   .fc .fc-popover {
     border-radius: 12px !important;
     border: 1px solid #EEEEEE !important;
@@ -403,8 +413,8 @@ const Shell = styled.div`
     .fc .fc-timegrid-axis { width: 35px !important; }
     .fc .fc-timegrid-axis-cushion { font-size: 9px !important; }
     .fc .fc-timegrid-slot-label { height: 40px !important; }
-    .fc .fc-daygrid-day { min-height: 80px !important; }
-    .fc .fc-daygrid-day-frame { min-height: 80px !important; }
+    .fc .fc-daygrid-day { min-height: 160px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 160px !important; }
     .fc .fc-timegrid-event { padding: 4px 6px !important; min-height: 32px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 10px !important; padding: 2px 6px !important; min-height: 22px !important; }
   }
@@ -413,14 +423,14 @@ const Shell = styled.div`
     .fc .fc-toolbar { flex-direction: column; gap: 8px; }
     .fc .fc-toolbar-chunk { display: flex; justify-content: center; width: 100%; }
     .fc .fc-daygrid-day-number { font-size: 12px !important; padding: 1px 4px !important; }
-    .fc .fc-daygrid-day-frame { min-height: 60px !important; padding: 2px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 120px !important; padding: 2px !important; }
     .fc .fc-col-header-cell { padding: 4px 0 !important; }
     .fc .fc-col-header-cell-cushion { font-size: 9px !important; }
     .fc .fc-timegrid-event { padding: 3px 4px !important; min-height: 28px !important; }
     .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; }
     .fc .fc-timegrid-event .fc-event-time { font-size: 8px !important; }
     .fc .fc-timegrid-now-indicator-line::before { display: none !important; }
-    .fc .fc-daygrid-day { min-height: 60px !important; }
+    .fc .fc-daygrid-day { min-height: 120px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 9px !important; padding: 2px 4px !important; min-height: 20px !important; }
   }
 `;
@@ -499,7 +509,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           : new Date();
     const m = d.getMonth();
     const y = d.getFullYear();
-
     const key = `${y}-${m}`;
     if (lastReportedMonth.current === key) return;
     lastReportedMonth.current = key;
@@ -548,10 +557,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     return name || 'Unknown';
   };
 
-  // Bookings → FullCalendar events. `backgroundColor` carries the saturated
-  // `status.color` for the default renderer / popovers; the month CUSTOM
-  // renderer paints using extendedProps.statusBg / statusColor to match the
-  // exact palette from statusColors.js.
   const events = useMemo(() => {
     if (!Array.isArray(bookings)) return [];
 
@@ -620,8 +625,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             ...b,
             status: b.status,
             statusLabel: status.label,
-            statusColor: status.color,   // saturated — text/border
-            statusBg: status.bg,         // pastel — card background
+            statusColor: status.color,
+            statusBg: status.bg,
             statusTextColor: status.textColor,
             dest: b.destination || b.to_location || '—',
             from: b.from_location || b.origin || '—',
@@ -718,71 +723,83 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   // ── Event renderer ────────────────────────────────────────────────────────
   //
-  // MONTH: full-width pastel card. Background = status.bg (bluish #EFF6FF for
-  // Booked, orangey #FFEDD5 for In Transit, greenish #E8F5E9 for Delivered,
-  // pinkish #FCE7F3 for Completed, reddish #FEE2E2 for Cancelled). Text and
-  // left accent border = status.color. That's the exact palette the user
-  // remembers — pastel card, saturated text.
+  // MONTH: BIG pastel card, same visual spec as the coffin calendar chip.
+  //   • minHeight 62px, three stacked lines: time / name / status+plate
+  //   • pastel fill (status.bg) + 4px saturated left border (status.color)
+  //   • dark ink (#111827) text so the card is readable on the pastel
+  //   • generous padding so it reads as a real, visible block
   //
-  // WEEK / DAY: multi-line detail card (WHEN → WHO → WHERE) as before.
-  //
-  // Colour comes ONLY from STATUS_CONFIG — no fallbacks that change the hue.
+  // WEEK / DAY: multi-line detail card (WHEN → WHO → WHERE) — unchanged.
   const renderEventContent = useCallback((eventInfo) => {
     const isMonthView = calendarView === 'dayGridMonth';
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
-    const itemColor = props.statusColor || '#00296B';   // saturated — used on every card
-    const itemBg = props.statusBg || '#EFF6FF';         // pastel — month card fill
+    const itemColor = props.statusColor || '#00296B';
+    const itemBg = props.statusBg || '#EFF6FF';
 
     if (isMonthView) {
       return (
         <div
           style={{
             width: '100%',
+            minHeight: '62px',
             background: itemBg,
-            color: itemColor,
-            borderLeft: `3px solid ${itemColor}`,
-            borderRadius: '4px',
-            padding: '3px 6px',
+            color: '#111827',
+            borderLeft: `4px solid ${itemColor}`,
+            borderRadius: '6px',
+            padding: '8px 10px',
             display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            overflow: 'hidden',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            gap: '3px',
             boxSizing: 'border-box',
+            overflow: 'hidden',
             cursor: 'pointer',
-            minHeight: '22px',
-            fontSize: '11px',
-            fontWeight: 600,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
           }}
           title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
         >
-          {props.startTime && (
-            <span style={{ fontSize: '9px', fontWeight: 700, opacity: 0.85, flexShrink: 0 }}>
-              {props.startTime}
-            </span>
-          )}
+          {/* Line 1 — time */}
           <span style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            color: '#6b7280',
+            letterSpacing: '0.2px',
+            whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
+          }}>
+            {props.startTime || 'All Day'}{props.endTime ? ` – ${props.endTime}` : ''}
+          </span>
+
+          {/* Line 2 — client name (dark, bold) */}
+          <span style={{
+            fontSize: '14px',
+            fontWeight: 700,
+            color: '#111827',
+            lineHeight: 1.2,
             whiteSpace: 'nowrap',
-            flex: 1,
-            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}>
             {props.clientName || 'Booking'}
           </span>
-          {props.plate && props.plate !== '—' && (
-            <span style={{
-              fontSize: '9px',
-              fontWeight: 600,
-              opacity: 0.7,
-              fontFamily: 'monospace',
-              flexShrink: 0,
-            }}>
-              {props.plate}
-            </span>
-          )}
+
+          {/* Line 3 — status mark + plate */}
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 800,
+            color: itemColor,
+            textTransform: 'uppercase',
+            letterSpacing: '0.4px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {props.statusLabel || ''}
+            {props.plate && props.plate !== '—' ? ` · ${props.plate}` : ''}
+          </span>
         </div>
       );
     }
@@ -951,13 +968,11 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   const renderDayCell = useCallback((info) => {
     if (calendarView !== 'dayGridMonth') return;
-
     const dateStr = fmtDS(info.date);
     const hasEvents = bookings.some((b) => {
       const dates = getBookingDates(b);
       return dates.some(d => d && String(d).split('T')[0] === dateStr);
     });
-
     if (hasEvents) {
       info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.02)', 'important');
       info.el.style.setProperty('border-radius', '6px', 'important');
@@ -1066,7 +1081,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
           slotLabelInterval="01:00"
           buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
-          eventMinHeight={25}
+          eventMinHeight={60}
           eventMaxStack={10}
           slotEventOverlap={true}
           expandRows={true}
