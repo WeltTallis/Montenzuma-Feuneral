@@ -72,14 +72,12 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const location = useLocation();
 
   const [section, setSection] = useState("command");
-  const [navView, setNavView] = useState(() => {
-    try {
-      const v = localStorage.getItem(NAV_VIEW_KEY);
-      const legacyViews = { dashboard: "overview", home: "overview", deceased: "release-calendar", schedule: "release-calendar" };
-      const restored = legacyViews[v] || v;
-      return NAV_ITEMS.some((n) => n.id === restored) ? restored : "overview";
-    } catch { return "overview"; }
-  });
+  // Always land on 'overview' when entering the dashboard
+  const [navView, setNavView] = useState("overview");
+
+  useEffect(() => {
+    setNavView("overview");
+  }, [location.pathname]);
 
 
   const isModuleView =
@@ -231,9 +229,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   useEffect(() => {
     try { localStorage.setItem(NAV_COLLAPSE_KEY, navCollapsed ? "1" : "0"); } catch { /* storage blocked */ }
   }, [navCollapsed]);
-  useEffect(() => {
-    try { localStorage.setItem(NAV_VIEW_KEY, navView); } catch { /* storage blocked */ }
-  }, [navView]);
   useEffect(() => {
     setSection(VIEW_SECTION[navView] || "command");
   }, [navView]);

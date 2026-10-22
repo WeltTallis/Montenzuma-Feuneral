@@ -70,7 +70,9 @@ export function Header({
         </button>
         <div className="rpd-topbar-title">
           <b>{activeNavMeta.label}</b>
-          <small>{activeNavMeta.full}</small>
+          {activeNavMeta.full && activeNavMeta.full.toLowerCase() !== activeNavMeta.label.toLowerCase() && (
+            <small>{activeNavMeta.full}</small>
+          )}
         </div>
         <div className="rpd-topbar-sp" />
         <span className="rpd-topbar-date">{now.day} · {now.date}</span>

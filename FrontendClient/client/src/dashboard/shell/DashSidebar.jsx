@@ -157,9 +157,31 @@ export default function DashSidebar({
         <button type="button" className="rpd-nav-burger" onClick={onCloseMobile} aria-label="Close navigation">
           <Ic n="menu" s={18} />
         </button>
-        <div className="rpd-shell-brand">
-          <span className="rpd-shell-mark">RP</span>
-          <span className="rpd-shell-brand-copy"><b>RestPoint</b><small>Care operations</small></span>
+        <div className="rpd-shell-brand" style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", gap: "8px" }}>
+          <span className="rpd-shell-mark" title="RestPoint">RP</span>
+          <button
+            type="button"
+            className="rpd-nav-collapse-top-btn"
+            onClick={() => onToggleCollapse()}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            style={{
+              background: "transparent",
+              border: "1px solid #e2e8f0",
+              borderRadius: "6px",
+              width: "28px",
+              height: "28px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "#64748b",
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            <Ic n={collapsed ? "chevronRight" : "chevronLeft"} s={16} />
+          </button>
         </div>
         <SidebarNav>
         {NAV_ITEMS.map((item, index) => {

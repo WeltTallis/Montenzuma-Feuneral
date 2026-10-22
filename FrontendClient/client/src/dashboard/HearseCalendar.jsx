@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -10,25 +10,31 @@ import {
   UserRoundPlus,
   DoorOpen,
   Activity,
+  Truck,
+  ArrowRight,
+  User,
+  Building,
+  Clock,
+  FileText,
 } from "lucide-react";
 import "./deceased-calendar.css";
 
 /* ============================================================
-   TYPE & STATUS CONFIGS
+   TYPE & STATUS CONFIGS (Matches Coffin Full Calendar Palette)
    ============================================================ */
 const TYPE_STYLES = {
-  intake:  { label: "INTAKE",  color: "#FFC107", textColor: "#111827" },
-  release: { label: "RELEASE", color: "#FF4757", textColor: "#FFFFFF" },
-  pm:      { label: "POSTMORTEM", color: "#111827", textColor: "#FFFFFF" },
-  funeral: { label: "FUNERAL", color: "#7C3AED", textColor: "#FFFFFF" },
-  transfer:{ label: "TRANSFER", color: "#0284C7", textColor: "#FFFFFF" },
+  intake:   { label: "INTAKE",      color: "#16a34a", bg: "#ecfdf5", border: "#bbf7d0", mark: "INTAKE" },
+  release:  { label: "RELEASE",     color: "#0284c7", bg: "#f0f9ff", border: "#bae6fd", mark: "RELEASE" },
+  pm:       { label: "POSTMORTEM",  color: "#7c3aed", bg: "#faf5ff", border: "#e9d5ff", mark: "PM" },
+  funeral:  { label: "FUNERAL",     color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4", mark: "FUNERAL" },
+  transfer: { label: "TRANSFER",    color: "#d97706", bg: "#fffbeb", border: "#fde68a", mark: "TRANSFER" },
 };
 
 const STATUS_STYLES = {
-  pending:   { label: "Pending",   color: "#d97706", bg: "#FFFBEB" },
-  completed: { label: "Completed", color: "#16a34a", bg: "#f0fdf4" },
-  scheduled: { label: "Scheduled", color: "#0f172a", bg: "#f1f5f9" },
-  in_transit:{ label: "In Transit",color: "#ea580c", bg: "#fff7ed" },
+  pending:    { label: "Pending",     color: "#d97706", bg: "#fffbeb" },
+  completed:  { label: "Completed",   color: "#16a34a", bg: "#ecfdf5" },
+  scheduled:  { label: "Scheduled",   color: "#0284c7", bg: "#f0f9ff" },
+  in_transit: { label: "In Transit",  color: "#ea580c", bg: "#fff7ed" },
 };
 
 /* ============================================================
@@ -71,18 +77,23 @@ function fmtMD(d) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function fmtTime(d) {
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+function fmtTime(d, fallbackTime = "") {
+  if (!d) return fallbackTime || "";
+  try {
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  } catch {
+    return fallbackTime || "";
+  }
 }
 
 function parseToDate(dateVal, timeVal) {
   if (dateVal instanceof Date) return dateVal;
   if (!dateVal) return new Date();
-  
+
   const [y, m, d] = String(dateVal).split("-").map(Number);
   let hours = 9;
   let minutes = 0;
-  
+
   if (timeVal) {
     const parts = String(timeVal).match(/(\d{1,2}):(\d{2})/);
     if (parts) {
@@ -90,38 +101,8 @@ function parseToDate(dateVal, timeVal) {
       minutes = parseInt(parts[2], 10);
     }
   }
-  
-  return new Date(y || 2026, (m || 1) - 1, d || 1, hours, minutes);
-}
 
-/* ============================================================
-   FALLBACK EVENTS WHEN PROPS ARE EMPTY
-   ============================================================ */
-function getMockEvents() {
-  const now = new Date();
-  const Y = now.getFullYear();
-  const M = now.getMonth();
-  const D = now.getDate();
-
-  return [
-    { id: "EV-001", name: "Margaret A. Whitfield", branch: "Riverside", type: "intake",  status: "completed", date: new Date(Y, M, D, 8, 15) },
-    { id: "EV-002", name: "Harold J. Mensah",      branch: "Northgate", type: "pm",      status: "completed", date: new Date(Y, M, D, 9, 40) },
-    { id: "EV-003", name: "Eleanor R. Boateng",    branch: "Riverside", type: "release", status: "completed", date: new Date(Y, M, D, 11, 0) },
-    { id: "EV-004", name: "Samuel K. Owusu",       branch: "Eastfield", type: "intake",  status: "scheduled", date: new Date(Y, M, D, 13, 30) },
-    { id: "EV-005", name: "Beatrice N. Adeyemi",   branch: "Northgate", type: "release", status: "pending",   date: new Date(Y, M, D + 1, 8, 0) },
-    { id: "EV-006", name: "Daniel O. Asante",      branch: "Eastfield", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 9, 0) },
-    { id: "EV-007", name: "Ruth A. Nyarko",        branch: "Riverside", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 10, 0) },
-    { id: "EV-008", name: "Kofi B. Danso",         branch: "Northgate", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 11, 0) },
-    { id: "EV-009", name: "Grace M. Adjei",        branch: "Northgate", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 12, 0) },
-    { id: "EV-010", name: "Joseph T. Appiah",      branch: "Eastfield", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 13, 0) },
-    { id: "EV-011", name: "Comfort E. Sarpong",    branch: "Riverside", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 14, 0) },
-    { id: "EV-012", name: "William A. Osei",       branch: "Eastfield", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 15, 0) },
-    { id: "EV-016", name: "David K. Boateng",      branch: "Riverside", type: "intake",  status: "scheduled", date: new Date(Y, M, D + 1, 16, 0) },
-    { id: "EV-017", name: "Sarah A. Mensah",       branch: "Northgate", type: "release", status: "scheduled", date: new Date(Y, M, D + 1, 17, 0) },
-    { id: "EV-013", name: "Victoria M. Ansah",     branch: "Northgate", type: "release", status: "completed", date: new Date(Y, M, D - 1, 10, 0) },
-    { id: "EV-014", name: "Kwame A. Mensah",       branch: "Riverside", type: "intake",  status: "completed", date: new Date(Y, M, D - 2, 14, 0) },
-    { id: "EV-015", name: "Abena O. Serwaa",       branch: "Eastfield", type: "release", status: "pending",   date: new Date(Y, M, D + 3, 11, 0) },
-  ];
+  return new Date(y || new Date().getFullYear(), (m || 1) - 1, d || 1, hours, minutes);
 }
 
 /* ============================================================
@@ -142,59 +123,82 @@ export default function DeceasedScheduleCalendar({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBranch, setSelectedBranch] = useState(initialBranch || "all");
+  const [selectedType, setSelectedType] = useState("all");
   const [selectedEvent, setSelectedEvent] = useState(null);
 
-  // Normalize incoming event objects into uniform calendar events
+  // Normalize incoming event objects into uniform calendar events (REAL DATA ONLY - no mock events!)
   const allEvents = useMemo(() => {
-    if (eventsProp && eventsProp.length > 0) {
-      return eventsProp.map((e, index) => {
-        const d = e.deceased || {};
-        const p = e.p || {};
-        const name = d.name || p.name || e.name || e.title || "Record";
-        const branch = e.branch || d.branch || p.branch || "Riverside";
-        const type = (e.type || e.t || "intake").toLowerCase();
-        const status = (e.status || (e.release && e.release.status) || "scheduled").toLowerCase();
-        const dateObj = parseToDate(e.date || e.start, e.time);
-
-        return {
-          id: e.id || e.uid || `EVT-${index + 1}`,
-          uid: e.uid || d.id || p.uid || "",
-          name,
-          branch,
-          type: TYPE_STYLES[type] ? type : "intake",
-          status: STATUS_STYLES[status] ? status : "scheduled",
-          date: dateObj,
-          raw: e,
-        };
-      });
+    if (!eventsProp || !Array.isArray(eventsProp) || eventsProp.length === 0) {
+      return [];
     }
-    return getMockEvents();
+
+    return eventsProp.map((e, index) => {
+      const d = e.deceased || {};
+      const p = e.p || {};
+      const name = d.name || p.name || e.name || e.title || "Record";
+      const branch = e.branch || d.branch || p.branch || "";
+      const type = (e.type || e.t || "intake").toLowerCase();
+      const status = (e.status || (e.release && e.release.status) || "completed").toLowerCase();
+      const officer =
+        e.officer ||
+        p.officer ||
+        d.officer ||
+        e.raw?.receiving_officer ||
+        e.raw?.received_by ||
+        p.raw?.receiving_officer ||
+        p.raw?.received_by ||
+        "";
+      const admissionNumber = d.admissionNumber || p.adm || e.admissionNumber || e.id || "";
+      const receivedFrom = e.receivedFrom || p.receivedFrom || d.receivedFrom || "";
+      const dateObj = parseToDate(e.date || e.start, e.time);
+
+      return {
+        id: e.id || e.uid || `EVT-${index + 1}`,
+        uid: e.uid || d.id || p.uid || "",
+        admissionNumber,
+        name,
+        branch,
+        officer,
+        receivedFrom,
+        type: TYPE_STYLES[type] ? type : "intake",
+        status: STATUS_STYLES[status] ? status : "completed",
+        date: dateObj,
+        time: e.time || "",
+        raw: e,
+      };
+    });
   }, [eventsProp]);
 
-  // Extract available branch options
+  // Extract available branch options from actual real data
   const branchOptions = useMemo(() => {
     const set = new Set();
     allEvents.forEach((e) => {
-      if (e.branch) set.add(e.branch);
+      if (e.branch && String(e.branch).trim() !== "") {
+        set.add(String(e.branch).trim());
+      }
     });
-    return Array.from(set);
+    return Array.from(set).sort();
   }, [allEvents]);
 
-  // Filter events based on search, branch, and current view date
+  // Filter events based on search (ID, name, receiving officer), branch, type, and date
   const filteredEvents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    // 1. Text & Branch filters
+    // 1. Text (ID, Name, Officer, Received From), Branch, and Type filters
     const matched = allEvents.filter((e) => {
       const matchSearch =
         !q ||
         e.name.toLowerCase().includes(q) ||
-        e.branch.toLowerCase().includes(q) ||
-        String(e.id).toLowerCase().includes(q);
+        String(e.admissionNumber || "").toLowerCase().includes(q) ||
+        String(e.id || "").toLowerCase().includes(q) ||
+        String(e.officer || "").toLowerCase().includes(q) ||
+        String(e.receivedFrom || "").toLowerCase().includes(q) ||
+        e.branch.toLowerCase().includes(q);
 
-      const matchBranch = selectedBranch === "all" || e.branch === selectedBranch;
+      const matchBranch = selectedBranch === "all" || e.branch.toLowerCase() === selectedBranch.toLowerCase();
+      const matchType = selectedType === "all" || e.type === selectedType;
 
-      return matchSearch && matchBranch;
+      return matchSearch && matchBranch && matchType;
     });
 
     // 2. Date filters based on view
@@ -206,10 +210,13 @@ export default function DeceasedScheduleCalendar({
       const we = addDays(ws, 7);
       return matched.filter((e) => e.date >= ws && e.date < we);
     }
-    // Month or List
-    const monthFirst = new Date(viewYear, viewMonth, 1);
-    return matched.filter((e) => isSameMonth(e.date, monthFirst));
-  }, [allEvents, searchQuery, selectedBranch, view, selectedDate, viewYear, viewMonth]);
+    if (view === "month") {
+      const monthFirst = new Date(viewYear, viewMonth, 1);
+      return matched.filter((e) => isSameMonth(e.date, monthFirst));
+    }
+    // List view shows matched events
+    return matched;
+  }, [allEvents, searchQuery, selectedBranch, selectedType, view, selectedDate, viewYear, viewMonth]);
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -263,6 +270,7 @@ export default function DeceasedScheduleCalendar({
   const handleRefresh = useCallback(() => {
     setSearchQuery("");
     setSelectedBranch("all");
+    setSelectedType("all");
     handleToday();
   }, [handleToday]);
 
@@ -277,8 +285,8 @@ export default function DeceasedScheduleCalendar({
   const currentDateLabel = useMemo(() => {
     if (view === "day") {
       return selectedDate.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
+        weekday: "short",
+        month: "short",
         day: "numeric",
         year: "numeric",
       });
@@ -294,146 +302,188 @@ export default function DeceasedScheduleCalendar({
     });
   }, [view, selectedDate, viewYear, viewMonth]);
 
-  // Today marker
   const todayDate = useMemo(() => new Date(), []);
 
   return (
     <div className="deceased-schedule">
-      {/* ─── TOPBAR ─── */}
-      <header className="topbar">
-        <div className="topbar-left">
-          <div className="topbar-mark">MO</div>
-          <div className="topbar-brand-text">
-            <h2>Mortuary OS</h2>
-            <p>Deceased Schedule & Hearse Dispatch</p>
-          </div>
-        </div>
+      {/* ─── COFFIN-STYLE TOOLBAR (NO DUPLICATE HEADER) ─── */}
+      <div className="cb-tb">
+        <div className="cb-tb-left">
+          <button type="button" className="cb-tb-btn sq" onClick={handlePrev} title="Previous period">
+            <ChevronLeft size={16} />
+          </button>
+          <button type="button" className="cb-tb-btn sq" onClick={handleNext} title="Next period">
+            <ChevronRight size={16} />
+          </button>
+          <button type="button" className="cb-tb-btn" onClick={handleToday}>
+            Today
+          </button>
+          <div className="current-date-label">{currentDateLabel}</div>
 
-        <div className="topbar-center">
-          <div className="search-box">
-            <Search size={16} />
+          <div className="cb-divider" />
+
+          {/* Search by ID, Name, Receiving Officer */}
+          <div className="cb-search">
+            <Search size={14} />
             <input
               type="text"
-              placeholder="Search name, branch, or record ID..."
+              placeholder="Search ID, name, or receiving officer…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ink4)" }}
+                aria-label="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
-          <select
-            className="filter-select"
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-          >
-            <option value="all">All Branches</option>
-            {branchOptions.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
+
+          {/* Branch filter */}
+          {branchOptions.length > 0 && (
+            <select
+              className="cb-branch-select"
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+            >
+              <option value="all">All Branches</option>
+              {branchOptions.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Type filter chips (Coffin style) */}
+          <div className="cb-filter-chips">
+            <button
+              type="button"
+              className={`cb-fc ${selectedType === "all" ? "on" : ""}`}
+              onClick={() => setSelectedType("all")}
+            >
+              All <span className="cb-fc-ct">{allEvents.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`cb-fc ${selectedType === "intake" ? "on" : ""}`}
+              onClick={() => setSelectedType(selectedType === "intake" ? "all" : "intake")}
+            >
+              <span className="cb-fc-dot" style={{ background: "#16a34a" }} />
+              Intake <span className="cb-fc-ct">{allEvents.filter((e) => e.type === "intake").length}</span>
+            </button>
+            <button
+              type="button"
+              className={`cb-fc ${selectedType === "release" ? "on" : ""}`}
+              onClick={() => setSelectedType(selectedType === "release" ? "all" : "release")}
+            >
+              <span className="cb-fc-dot" style={{ background: "#0284c7" }} />
+              Release <span className="cb-fc-ct">{allEvents.filter((e) => e.type === "release").length}</span>
+            </button>
+            <button
+              type="button"
+              className={`cb-fc ${selectedType === "pm" ? "on" : ""}`}
+              onClick={() => setSelectedType(selectedType === "pm" ? "all" : "pm")}
+            >
+              <span className="cb-fc-dot" style={{ background: "#7c3aed" }} />
+              Postmortem <span className="cb-fc-ct">{allEvents.filter((e) => e.type === "pm").length}</span>
+            </button>
+          </div>
         </div>
 
-        <div className="topbar-right">
+        <div className="cb-tb-right">
+          {/* View switcher */}
+          <div className="cb-tb-views">
+            <button
+              type="button"
+              className={`cb-tb-v ${view === "month" ? "on" : ""}`}
+              onClick={() => setView("month")}
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              className={`cb-tb-v ${view === "week" ? "on" : ""}`}
+              onClick={() => setView("week")}
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              className={`cb-tb-v ${view === "day" ? "on" : ""}`}
+              onClick={() => setView("day")}
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              className={`cb-tb-v ${view === "list" ? "on" : ""}`}
+              onClick={() => setView("list")}
+            >
+              List
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="cb-tb-btn sq"
+            onClick={handleRefresh}
+            title="Reset filters & go to today"
+          >
+            <RotateCw size={13} />
+          </button>
+
           {onCreateIntake && (
             <button
               type="button"
-              className="btn-create-intake"
+              className="cb-btn-primary"
               onClick={onCreateIntake}
               title="Register a new deceased intake"
             >
-              <Plus size={15} />
+              <Plus size={14} />
               <span>Register Intake</span>
             </button>
           )}
-          <button type="button" className="btn-refresh" onClick={handleRefresh} title="Reset filters">
-            <RotateCw size={14} />
-            <span>Refresh</span>
-          </button>
         </div>
-      </header>
+      </div>
 
       <div className="app">
-        {/* ─── TOOLBAR (DATES & VIEWS) ─── */}
-        <div className="cb-tb">
-          <div className="cb-tb-left">
-            <button type="button" className="cb-tb-btn sq" onClick={handlePrev} title="Previous period">
-              <ChevronLeft size={16} />
-            </button>
-            <button type="button" className="cb-tb-btn sq" onClick={handleNext} title="Next period">
-              <ChevronRight size={16} />
-            </button>
-            <button type="button" className="cb-tb-btn" onClick={handleToday}>
-              Today
-            </button>
-            <div className="current-date-label">{currentDateLabel}</div>
-          </div>
-
-          <div className="cb-tb-right">
-            <div className="cb-tb-views">
-              <button
-                type="button"
-                className={`cb-tb-v ${view === "day" ? "on" : ""}`}
-                onClick={() => setView("day")}
-              >
-                Day
-              </button>
-              <button
-                type="button"
-                className={`cb-tb-v ${view === "week" ? "on" : ""}`}
-                onClick={() => setView("week")}
-              >
-                Week
-              </button>
-              <button
-                type="button"
-                className={`cb-tb-v ${view === "month" ? "on" : ""}`}
-                onClick={() => setView("month")}
-              >
-                Month
-              </button>
-              <button
-                type="button"
-                className={`cb-tb-v ${view === "list" ? "on" : ""}`}
-                onClick={() => setView("list")}
-              >
-                List
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── STAT STRIP ─── */}
+        {/* ─── COFFIN-STYLE STAT STRIP ─── */}
         <div className="cb-sr">
-          <div className="cb-sr-item" style={{ background: "#3b82f6" }}>
+          <div className="cb-sr-item" style={{ background: "#0f766e" }}>
             <div className="cb-sr-ico">
-              <CalendarIcon size={18} />
+              <CalendarIcon size={16} />
             </div>
             <div className="cb-sr-info">
               <div className="cb-sr-num">{stats.total}</div>
-              <div className="cb-sr-label">Total Events</div>
+              <div className="cb-sr-label">Total Operations</div>
             </div>
           </div>
-          <div className="cb-sr-item" style={{ background: "#eab308" }}>
+          <div className="cb-sr-item" style={{ background: "#16a34a" }}>
             <div className="cb-sr-ico">
-              <UserRoundPlus size={18} />
+              <UserRoundPlus size={16} />
             </div>
             <div className="cb-sr-info">
               <div className="cb-sr-num">{stats.intakes}</div>
               <div className="cb-sr-label">Intakes</div>
             </div>
           </div>
-          <div className="cb-sr-item" style={{ background: "#ef4444" }}>
+          <div className="cb-sr-item" style={{ background: "#0284c7" }}>
             <div className="cb-sr-ico">
-              <DoorOpen size={18} />
+              <DoorOpen size={16} />
             </div>
             <div className="cb-sr-info">
               <div className="cb-sr-num">{stats.releases}</div>
               <div className="cb-sr-label">Releases</div>
             </div>
           </div>
-          <div className="cb-sr-item" style={{ background: "#111827" }}>
+          <div className="cb-sr-item" style={{ background: "#7c3aed" }}>
             <div className="cb-sr-ico">
-              <Activity size={18} />
+              <Activity size={16} />
             </div>
             <div className="cb-sr-info">
               <div className="cb-sr-num">{stats.pms}</div>
@@ -442,24 +492,35 @@ export default function DeceasedScheduleCalendar({
           </div>
         </div>
 
-        {/* ─── MAIN CONTENT AREA ─── */}
+        {/* ─── MAIN CONTENT AREA (COFFIN GRID SYSTEM) ─── */}
         <main className="cb-main">
-          {filteredEvents.length === 0 ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "100%",
-                color: "var(--ink4)",
-                fontWeight: 600,
-                fontSize: "15px",
-              }}
-            >
-              No events match your search or filters.
+          {loading && allEvents.length === 0 ? (
+            <div className="cb-empty-state">
+              <div className="cb-spinner" />
+              <p>Loading real deceased records…</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="cb-empty-state">
+              <CalendarIcon size={36} style={{ color: "var(--ink4)", marginBottom: 10 }} />
+              <h3>No operations found</h3>
+              <p>
+                {searchQuery || selectedBranch !== "all" || selectedType !== "all"
+                  ? "No deceased records match your search or filter criteria."
+                  : "No deceased intakes or releases scheduled for this period."}
+              </p>
+              {(searchQuery || selectedBranch !== "all" || selectedType !== "all") && (
+                <button
+                  type="button"
+                  className="cb-tb-btn"
+                  onClick={handleRefresh}
+                  style={{ marginTop: 12 }}
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           ) : view === "day" || view === "week" ? (
-            /* 1. Board View (Day & Week) */
+            /* 1. Day & Week View (Coffin Week Grid) */
             <div className="board-frame">
               {(view === "week"
                 ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(selectedDate), i))
@@ -479,20 +540,11 @@ export default function DeceasedScheduleCalendar({
                         </div>
                         <div className="day-date">{d.getDate()}</div>
                       </div>
-                      <div className="day-count">{dayEvents.length} events</div>
+                      <div className="day-count">{dayEvents.length} records</div>
                     </div>
                     <div className="board-col-body">
                       {dayEvents.length === 0 ? (
-                        <div
-                          style={{
-                            textAlign: "center",
-                            padding: "20px",
-                            color: "var(--ink4)",
-                            fontSize: "12px",
-                          }}
-                        >
-                          No events
-                        </div>
+                        <div className="col-empty">No events</div>
                       ) : (
                         dayEvents.map((e) => {
                           const style = TYPE_STYLES[e.type] || TYPE_STYLES.intake;
@@ -500,28 +552,22 @@ export default function DeceasedScheduleCalendar({
                             <button
                               type="button"
                               key={e.id}
-                              className="event-chip"
+                              className="fc-chip"
                               style={{
                                 "--chip-c": style.color,
-                                color: style.textColor,
+                                "--chip-bg": style.bg,
+                                "--chip-b": style.border,
                               }}
                               onClick={() => setSelectedEvent(e)}
                             >
-                              <span className="time">{fmtTime(e.date)}</span>
-                              <span className="name">{e.name}</span>
-                              <span className="meta">
-                                {e.branch}
-                                <span
-                                  className="type-badge"
-                                  style={{
-                                    background:
-                                      style.textColor === "#111827"
-                                        ? "rgba(0,0,0,0.15)"
-                                        : "rgba(255,255,255,0.2)",
-                                  }}
-                                >
-                                  {style.label}
-                                </span>
+                              <div className="chip-time">{fmtTime(e.date, e.time)}</div>
+                              <div className="chip-name">{e.name}</div>
+                              <div className="chip-meta">
+                                {e.admissionNumber && <span className="chip-id">{e.admissionNumber}</span>}
+                                {e.officer && <span className="chip-officer">Rec: {e.officer}</span>}
+                              </div>
+                              <span className="chip-badge" style={{ color: style.color, background: "#fff" }}>
+                                {style.mark}
                               </span>
                             </button>
                           );
@@ -533,7 +579,7 @@ export default function DeceasedScheduleCalendar({
               })}
             </div>
           ) : view === "month" ? (
-            /* 2. Month Grid View */
+            /* 2. Month Grid View (Exact Coffin Month Grid) */
             <div className="mg-frame">
               <div className="mg-header">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
@@ -569,65 +615,47 @@ export default function DeceasedScheduleCalendar({
                           <div className="mg-day-counts">
                             {intakeCount > 0 && (
                               <span className="count-badge intake" title={`${intakeCount} Intakes`}>
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="3"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <line x1="7" y1="7" x2="17" y2="17" />
-                                  <polyline points="17 7 17 17 7 17" />
-                                </svg>
-                                {intakeCount}
+                                In: {intakeCount}
                               </span>
                             )}
                             {releaseCount > 0 && (
                               <span className="count-badge release" title={`${releaseCount} Releases`}>
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="3"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <line x1="7" y1="17" x2="17" y2="7" />
-                                  <polyline points="7 7 17 7 17 17" />
-                                </svg>
-                                {releaseCount}
+                                Out: {releaseCount}
                               </span>
                             )}
                           </div>
                         </div>
 
                         <div className="mg-chips">
-                          {dayEvents.map((e) => {
+                          {dayEvents.slice(0, 4).map((e) => {
                             const style = TYPE_STYLES[e.type] || TYPE_STYLES.intake;
                             return (
                               <button
                                 type="button"
                                 key={e.id}
-                                className="event-chip"
+                                className="fc-chip"
                                 style={{
                                   "--chip-c": style.color,
-                                  color: style.textColor,
-                                  padding: "8px 10px",
-                                  boxShadow: "none",
+                                  "--chip-bg": style.bg,
+                                  "--chip-b": style.border,
                                 }}
                                 onClick={(ev) => {
                                   ev.stopPropagation();
                                   setSelectedEvent(e);
                                 }}
+                                title={`${e.name} (${e.admissionNumber || e.id}) - ${style.label} ${e.officer ? `| Rec: ${e.officer}` : ""}`}
                               >
-                                <span className="time">{fmtTime(e.date)}</span>
-                                <span className="name" style={{ fontSize: "13px" }}>
-                                  {e.name}
+                                <span className="chip-time">{fmtTime(e.date, e.time)}</span>
+                                <span className="chip-name">{e.name}</span>
+                                <span className="chip-badge" style={{ color: style.color, background: "#fff" }}>
+                                  {style.mark}
                                 </span>
                               </button>
                             );
                           })}
+                          {dayEvents.length > 4 && (
+                            <div className="fc-more">+{dayEvents.length - 4} more</div>
+                          )}
                         </div>
                       </div>
                     );
@@ -639,16 +667,19 @@ export default function DeceasedScheduleCalendar({
             /* 3. List View */
             <div className="list-frame">
               <div className="list-header">
-                <div>Deceased Name</div>
-                <div>Branch</div>
                 <div>Date & Time</div>
-                <div>Event Type</div>
+                <div>Admission No</div>
+                <div>Deceased Name</div>
+                <div>Receiving Officer</div>
+                <div>Branch</div>
+                <div>Operation</div>
                 <div>Status</div>
+                <div style={{ textAlign: "right" }}>Action</div>
               </div>
               <div className="list-body">
                 {filteredEvents.map((e) => {
                   const typeStyle = TYPE_STYLES[e.type] || TYPE_STYLES.intake;
-                  const statusStyle = STATUS_STYLES[e.status] || STATUS_STYLES.scheduled;
+                  const statusStyle = STATUS_STYLES[e.status] || STATUS_STYLES.completed;
                   return (
                     <div
                       key={e.id}
@@ -656,20 +687,27 @@ export default function DeceasedScheduleCalendar({
                       onClick={() => setSelectedEvent(e)}
                     >
                       <div>
-                        <div className="list-nm">{e.name}</div>
-                        <div className="list-sub">{e.id}</div>
+                        <div className="list-nm">{fmtMDY(e.date)}</div>
+                        <div className="list-sub">{fmtTime(e.date, e.time)}</div>
                       </div>
-                      <div className="list-val">{e.branch}</div>
+                      <div className="list-id-badge">
+                        {e.admissionNumber || e.id || "—"}
+                      </div>
                       <div>
-                        <div className="list-val">{fmtMDY(e.date)}</div>
-                        <div className="list-sub">{fmtTime(e.date)}</div>
+                        <div className="list-nm" style={{ fontWeight: 700 }}>{e.name}</div>
+                        {e.receivedFrom && <div className="list-sub">From: {e.receivedFrom}</div>}
                       </div>
+                      <div className="list-val">
+                        {e.officer || "—"}
+                      </div>
+                      <div className="list-val">{e.branch || "—"}</div>
                       <div>
                         <span
                           className="status-badge"
                           style={{
-                            background: typeStyle.color,
-                            color: typeStyle.textColor,
+                            background: typeStyle.bg,
+                            color: typeStyle.color,
+                            border: `1px solid ${typeStyle.border}`,
                           }}
                         >
                           {typeStyle.label}
@@ -694,6 +732,19 @@ export default function DeceasedScheduleCalendar({
                           {statusStyle.label}
                         </span>
                       </div>
+                      <div style={{ textAlign: "right" }}>
+                        <button
+                          type="button"
+                          className="cb-tb-btn"
+                          style={{ padding: "4px 10px", height: 28, fontSize: 11 }}
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setSelectedEvent(e);
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -703,7 +754,7 @@ export default function DeceasedScheduleCalendar({
         </main>
       </div>
 
-      {/* ─── DETAIL PANEL / SLIDE-IN MODAL ─── */}
+      {/* ─── DETAIL PANEL / SLIDE-IN MODAL (COFFIN STYLE) ─── */}
       {selectedEvent && (
         <>
           <div className="cb-ov" onClick={() => setSelectedEvent(null)} />
@@ -712,9 +763,11 @@ export default function DeceasedScheduleCalendar({
               <div
                 className="status-badge"
                 style={{
-                  background: (TYPE_STYLES[selectedEvent.type] || TYPE_STYLES.intake).color,
-                  color: (TYPE_STYLES[selectedEvent.type] || TYPE_STYLES.intake).textColor,
+                  background: (TYPE_STYLES[selectedEvent.type] || TYPE_STYLES.intake).bg,
+                  color: (TYPE_STYLES[selectedEvent.type] || TYPE_STYLES.intake).color,
+                  border: `1px solid ${(TYPE_STYLES[selectedEvent.type] || TYPE_STYLES.intake).border}`,
                   fontSize: "12px",
+                  fontWeight: 700,
                 }}
               >
                 {(TYPE_STYLES[selectedEvent.type] || TYPE_STYLES.intake).label}
@@ -723,38 +776,51 @@ export default function DeceasedScheduleCalendar({
                 type="button"
                 className="cb-ph-close"
                 onClick={() => setSelectedEvent(null)}
+                aria-label="Close panel"
               >
                 <X size={16} />
               </button>
             </div>
             <div className="cb-pb">
               <div className="cb-pb-client">{selectedEvent.name}</div>
-              <div className="cb-pb-code">Record ID: {selectedEvent.id}</div>
+              <div className="cb-pb-code">
+                Admission No: <b>{selectedEvent.admissionNumber || selectedEvent.id}</b>
+              </div>
               <div className="cb-pb-grid">
                 <div className="cb-pb-card">
                   <div className="cb-pb-card-l">Branch</div>
-                  <div className="cb-pb-card-v">{selectedEvent.branch}</div>
+                  <div className="cb-pb-card-v">{selectedEvent.branch || "Main"}</div>
                 </div>
                 <div className="cb-pb-card">
-                  <div className="cb-pb-card-l">Date</div>
-                  <div className="cb-pb-card-v">{fmtMDY(selectedEvent.date)}</div>
+                  <div className="cb-pb-card-l">Receiving Officer</div>
+                  <div className="cb-pb-card-v" style={{ color: "#0f766e", fontWeight: 700 }}>
+                    {selectedEvent.officer || "—"}
+                  </div>
                 </div>
                 <div className="cb-pb-card">
-                  <div className="cb-pb-card-l">Time</div>
-                  <div className="cb-pb-card-v">{fmtTime(selectedEvent.date)}</div>
+                  <div className="cb-pb-card-l">Date & Time</div>
+                  <div className="cb-pb-card-v">
+                    {fmtMDY(selectedEvent.date)} · {fmtTime(selectedEvent.date, selectedEvent.time)}
+                  </div>
                 </div>
                 <div className="cb-pb-card">
                   <div className="cb-pb-card-l">Status</div>
                   <div
                     className="cb-pb-card-v"
                     style={{
-                      color: (STATUS_STYLES[selectedEvent.status] || STATUS_STYLES.scheduled).color,
+                      color: (STATUS_STYLES[selectedEvent.status] || STATUS_STYLES.completed).color,
                       fontWeight: 800,
                     }}
                   >
-                    {(STATUS_STYLES[selectedEvent.status] || STATUS_STYLES.scheduled).label}
+                    {(STATUS_STYLES[selectedEvent.status] || STATUS_STYLES.completed).label}
                   </div>
                 </div>
+                {selectedEvent.receivedFrom && (
+                  <div className="cb-pb-card wide">
+                    <div className="cb-pb-card-l">Received From / Referral Source</div>
+                    <div className="cb-pb-card-v">{selectedEvent.receivedFrom}</div>
+                  </div>
+                )}
                 <div className="cb-pb-card wide">
                   <div className="cb-pb-card-l">Operational Notes</div>
                   <div
@@ -767,7 +833,7 @@ export default function DeceasedScheduleCalendar({
                     }}
                   >
                     {selectedEvent.raw?.note ||
-                      "Standard mortuary dispatch protocol applies. Ensure identification tags, release authorization, and vehicle transfer logs are verified prior to handover."}
+                      "Verified intake record. Standard identification, tags, and mortuary storage protocol active."}
                   </div>
                 </div>
               </div>
