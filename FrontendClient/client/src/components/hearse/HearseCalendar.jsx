@@ -98,12 +98,12 @@ const Shell = styled.div`
   border-radius: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #000000;
-  height: 100%;
+  height: auto;
   min-height: 700px;
   display: flex;
   flex-direction: column;
   padding: 14px 10px;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   width: 100%;
   box-sizing: border-box;
@@ -117,7 +117,8 @@ const Shell = styled.div`
   /* FullCalendar custom styles */
   .fc {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-    height: 100% !important;
+    height: auto !important;
+    min-height: 650px !important;
     width: 100% !important;
     max-width: 100% !important;
     flex: 1 !important;
@@ -170,50 +171,99 @@ const Shell = styled.div`
   }
 
   /* ===== MONTH VIEW STYLES ===== */
+  .fc .fc-view-harness {
+    min-height: 550px !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+
+  .fc .fc-view-harness-active > .fc-view {
+    position: relative !important;
+    min-height: 550px !important;
+    height: auto !important;
+  }
+
+  .fc .fc-scrollgrid {
+    height: auto !important;
+    min-height: 550px !important;
+    border: 1px solid #E5E7EB !important;
+  }
+
+  .fc .fc-scroller {
+    min-height: 480px !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .fc .fc-scroller-liquid-absolute {
+    position: relative !important;
+    min-height: 480px !important;
+    height: auto !important;
+  }
+
   .fc .fc-daygrid-body {
-    min-height: 300px !important;
+    min-height: 480px !important;
+    width: 100% !important;
+  }
+
+  .fc .fc-scrollgrid-sync-table {
+    min-height: 480px !important;
+    height: 100% !important;
+    width: 100% !important;
   }
 
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: all 0.2s ease;
-    min-height: 80px !important;
+    min-height: 90px !important;
+    height: auto !important;
   }
 
   .fc .fc-daygrid-day:hover {
-    background: #F5F5F5;
+    background: #F9FAFB;
   }
 
   .fc .fc-daygrid-day-frame {
     padding: 4px;
-    min-height: 80px !important;
+    min-height: 90px !important;
+    height: 100% !important;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fc .fc-daygrid-day-top {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 2px 4px !important;
   }
 
   .fc .fc-daygrid-day-number {
-    font-size: 14px;
-    font-weight: 600;
-    color: #000000;
-    padding: 4px 8px;
-    border-radius: 50%;
-    transition: all 0.2s ease;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #111827 !important;
+    padding: 2px 6px !important;
+    border-radius: 4px;
+    text-decoration: none !important;
+    display: inline-block !important;
   }
 
   .fc .fc-day-today .fc-daygrid-day-number {
-    background: #2E7D32;
-    color: #FFFFFF;
+    background: #00296B !important;
+    color: #FFFFFF !important;
+    border-radius: 50% !important;
   }
 
   .fc .fc-daygrid-day.fc-day-today {
-    background: transparent;
+    background: #EFF6FF !important;
   }
 
   .fc .fc-daygrid-day-other .fc-daygrid-day-number {
-    opacity: 0.3;
+    opacity: 0.35 !important;
   }
 
   .fc .fc-daygrid-day-events {
@@ -1433,7 +1483,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           eventContent={renderEventContent}
           dayCellDidMount={renderDayCell}
           height={calendarView === 'dayGridMonth' ? 'auto' : 750}
-          contentHeight={calendarView === 'dayGridMonth' ? 'auto' : 700}
           firstDay={0}
           weekends={true}
           nowIndicator={true}
