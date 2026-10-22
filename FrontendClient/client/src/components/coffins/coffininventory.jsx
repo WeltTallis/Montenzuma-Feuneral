@@ -24,7 +24,6 @@ import {
   formatBranchDisplayName,
   COFFIN_POPULAR_PALETTE,
   generateVariantSku,
-  objToStr,
 } from './coffinColorUtils';
 
 import {
@@ -2872,7 +2871,7 @@ const CoffinDashboard = () => {
           boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
         }}
       >
-        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           {branchInventoryStats.map((bStat) => {
             const isCurrent = String(bStat.id) === String(currentBranch);
             return (

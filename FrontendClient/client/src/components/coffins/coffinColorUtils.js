@@ -4,9 +4,6 @@
  * Typo Correction (e.g., 'balck' -> 'black'), and Coffin Types Catalog.
  */
 
-// Common typos and shorthand mapping
-export const TYPO_COLOR_MAP = {
-
 /**
  * Converts a CSS style object to a string for inline style attributes
  * e.g., {color: 'red', fontSize: '14px'} -> "color: red; font-size: 14px"
@@ -16,6 +13,9 @@ export const objToStr = (obj) => {
   if (typeof obj === 'string') return obj;
   return Object.keys(obj).reduce((acc, key) => `${acc}${key}:${obj[key]}; `, '').trim();
 };
+
+// Common typos and shorthand mapping
+export const TYPO_COLOR_MAP = {
   balck: 'black',
   blck: 'black',
   bak: 'black',

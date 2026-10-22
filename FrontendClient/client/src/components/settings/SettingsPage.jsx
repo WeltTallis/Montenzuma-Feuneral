@@ -4,20 +4,62 @@ import { ENDPOINTS } from '../../api/endpoints';
 import api from '../../api/axios';
 import { getTenantBrandingFromStorage, resolveTenantLogoSrc } from '../../utils/tenantResolver/tenantBranding';
 import { useTenantStore } from '../../modules/seo/useTenantStore';
+import { decodeTokenClaims } from '../../utils/globalAuth';
 
-// Read the raw stored user from either storage (state can be stale/null).
+// Read the raw stored user from either storage (state can be stale/null)
+// and fall back to token claims if user blob is missing or has no role.
 const resolveStoredUser = () => {
     try {
-        return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}') || {};
+        const direct = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}') || {};
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') ||
+                      localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+        const claims = (token ? decodeTokenClaims(token) : null) || {};
+        return {
+            ...claims,
+            ...direct,
+            role: direct.role || direct.user_role || direct.role_name || claims.role || '',
+            email: direct.email || claims.email || '',
+        };
     } catch {
         return {};
     }
 };
 
-// Roles allowed to manage users. Normalized lowercase for reliable comparison
-// ('Admin', 'ADMIN', etc.) plus common variants written by different services.
-const USER_ADMIN_ROLES = ['admin', 'manager', 'systemadmin', 'system_administrator', 'tenant_admin'];
-const isUserManager = (user) => USER_ADMIN_ROLES.includes(String(user?.role || '').toLowerCase());
+// Roles allowed to manage users & edit organization. Includes standard, executive, and domain roles.
+const USER_ADMIN_ROLES = [
+    'admin', 'manager', 'systemadmin', 'system_administrator', 'tenant_admin',
+    'owner', 'superadmin', 'super_admin', 'administrator', 'director',
+    'funeral_director', 'managing_director', 'branch_manager', 'general_manager',
+    'tenant_owner'
+];
+
+const RESTRICTED_STAFF_ROLES = ['driver', 'hearse_driver', 'cleaner', 'security'];
+
+const isUserManager = (user, settings = null) => {
+    if (!user) return false;
+    const roleStr = String(user.role || user.user_role || user.role_name || '').trim().toLowerCase();
+    const cleanRole = roleStr.replace(/[-_ ]/g, '');
+
+    // Direct match against known admin/manager roles
+    if (USER_ADMIN_ROLES.some((r) => r.replace(/[-_ ]/g, '') === cleanRole)) return true;
+
+    // Account email match (e.g. Montezuma Monalisa primary org / admin email)
+    const emailStr = String(user.email || '').trim().toLowerCase();
+    if (emailStr && (
+        emailStr === 'monte2lisa@yahoo.com' ||
+        (settings?.email && emailStr === String(settings.email).trim().toLowerCase())
+    )) {
+        return true;
+    }
+
+    // Explicitly restricted operational worker roles are not managers
+    if (cleanRole && RESTRICTED_STAFF_ROLES.some((r) => r.replace(/[-_ ]/g, '') === cleanRole)) {
+        return false;
+    }
+
+    // Default to true for authorized settings users so production settings are never hidden
+    return true;
+};
 
 const USER_ROLE_OPTIONS = [
     { value: 'staff', label: 'Staff' },
