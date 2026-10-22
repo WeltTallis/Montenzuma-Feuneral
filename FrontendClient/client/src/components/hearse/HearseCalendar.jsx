@@ -1,4 +1,3 @@
-
 import { toDateKey, formatTimeAmPm } from '../../utils/dates/parseDates';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -30,8 +29,6 @@ export const COLORS = {
   border: '#d1d5db',
   text: '#111827',
   bg: '#f5f7fa',
-
-
 
   textMuted: '#9ca3af',
   success: '#10b981',
@@ -80,7 +77,7 @@ export const getTimeInfo = b => {
   return { sd, ed, allDay, sm, dur, fs, fe, range: allDay ? 'All Day' : (fe ? fs + ' – ' + fe : fs) };
 };
 
-//  HELPER: Get booking dates safely 
+// HELPER: Get booking dates safely
 const getBookingDates = (b) => {
   if (b.booking_dates) {
     try {
@@ -98,7 +95,6 @@ const Shell = styled.div`
   border-radius: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #000000;
-  height: auto;
   min-height: 700px;
   display: flex;
   flex-direction: column;
@@ -110,18 +106,20 @@ const Shell = styled.div`
 
   @media (max-width: 640px) {
     padding: 12px 10px;
-    height: 100%;
     min-height: 600px;
   }
 
-  /* FullCalendar custom styles */
+  /* ── FullCalendar: LET IT OWN ITS OWN HEIGHT ───────────────────────────────
+     FullCalendar's auto-height month mode measures natural content and sets
+     inline heights on .fc-view-harness, .fc-scroller and .fc-scroller-liquid-
+     absolute. Any !important override on those nodes (height / position /
+     display / overflow) collapses the day-grid body to 0px, which is why the
+     month view could show only the weekday header row and nothing below it.
+     Only visual styling lives here — nothing that constrains layout. */
   .fc {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-    height: auto !important;
-    min-height: 650px !important;
     width: 100% !important;
     max-width: 100% !important;
-    flex: 1 !important;
   }
 
   .fc table {
@@ -170,55 +168,14 @@ const Shell = styled.div`
     box-shadow: none;
   }
 
-  /* ===== MONTH VIEW STYLES ===== */
-  .fc .fc-view-harness {
-    min-height: 550px !important;
-    height: auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: visible !important;
-  }
-
-  .fc .fc-view-harness-active > .fc-view {
-    position: relative !important;
-    min-height: 550px !important;
-    height: auto !important;
-  }
-
-  .fc .fc-scrollgrid {
-    height: auto !important;
-    min-height: 550px !important;
-    border: 1px solid #E5E7EB !important;
-  }
-
-  .fc .fc-scroller {
-    min-height: 480px !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  .fc .fc-scroller-liquid-absolute {
-    position: relative !important;
-    min-height: 480px !important;
-    height: auto !important;
-  }
-
-  .fc .fc-daygrid-body {
-    min-height: 480px !important;
-    width: 100% !important;
-  }
-
-  .fc .fc-scrollgrid-sync-table {
-    min-height: 480px !important;
-    height: 100% !important;
-    width: 100% !important;
-  }
-
+  /* ===== MONTH VIEW STYLES =====
+     Only day-cell styling. No sizing overrides on daygrid body / scrollgrid /
+     sync-table — FullCalendar computes those from the day cells' own
+     min-height, and overriding them breaks auto-height. */
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: all 0.2s ease;
     min-height: 90px !important;
-    height: auto !important;
   }
 
   .fc .fc-daygrid-day:hover {
@@ -228,7 +185,6 @@ const Shell = styled.div`
   .fc .fc-daygrid-day-frame {
     padding: 4px;
     min-height: 90px !important;
-    height: 100% !important;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -301,15 +257,8 @@ const Shell = styled.div`
 
   /* ===== WEEK & DAY VIEW =====
      Same colours as everywhere else in this calendar (status palette from
-     ./statusColors, the #2E7D32 today marker, the #D32F2F now-line). What was
-     reworked is the SHAPE: the grid used to be 36 fat 50px half-hour rows with
-     a 1px border on every single one, which drew a wireframe box around the
-     whole day and left events clipped inside a 40px card. Now the hairlines sit
-     on the hour only, the axis is a quiet gutter, and each column reads as one
-     clean surface. */
-
-  /* Time gutter. Narrow, muted, and only the hour is labelled (see
-     slotLabelInterval in the view config) so the axis is a scale, not noise. */
+     ./statusColors, the #2E7D32 today marker, the #D32F2F now-line). What is
+     styled here is the SHAPE: hairlines on the hour only, quiet gutter. */
   .fc .fc-timegrid-axis {
     width: 56px !important;
     background: #FAFAFA !important;
@@ -329,8 +278,6 @@ const Shell = styled.div`
     text-align: right !important;
   }
 
-  /* The hour rule is the only line that spans the grid. Half-hour slots stay
-     unlined, which is what turns the wireframe back into a calendar. */
   .fc .fc-timegrid-slot {
     border-bottom: 1px solid transparent !important;
   }
@@ -353,8 +300,6 @@ const Shell = styled.div`
     background: #FAFAFA !important;
   }
 
-  /* Column header: weekday as a quiet uppercase eyebrow, the date as the thing
-     you actually scan for. Same ink, better hierarchy. */
   .fc .fc-col-header-cell {
     background: #FFFFFF !important;
     border-bottom: 1px solid #EEEEEE !important;
@@ -385,12 +330,6 @@ const Shell = styled.div`
     color: #2E7D32 !important;
   }
 
-  /* Event cards.
-     The card used to be a 40px box holding a time line, a title, a destination,
-     a "from", a plate number AND a status pill — six pieces of type in a box
-     built for two, so the bottom of every job was silently clipped. Now the
-     card grows with the booking and the detail lines drop away only when the
-     card genuinely has no room, instead of all of them fighting for 40px. */
   .fc .fc-timegrid-event {
     border-radius: 6px !important;
     border: none !important;
@@ -409,8 +348,6 @@ const Shell = styled.div`
     z-index: 10 !important;
   }
 
-  /* A 3px status edge gives each card the same identity as its month-view dot
-     without tinting the whole tile. */
   .fc .fc-timegrid-event-harness > .fc-timegrid-event {
     border-left: 3px solid transparent !important;
   }
@@ -426,8 +363,6 @@ const Shell = styled.div`
     overflow: hidden !important;
   }
 
-  /* Time reads as a quiet eyebrow above the name, the way the dashboard sets
-     its micro-labels — it is context, not the headline. */
   .fc .fc-timegrid-event .fc-event-time {
     font-size: 9px !important;
     font-weight: 700 !important;
@@ -479,8 +414,6 @@ const Shell = styled.div`
     font-family: var(--mono, monospace) !important;
   }
 
-  /* Status as a compact dot + word rather than a boxed pill: it keeps the
-     status legible at a glance without adding a second box per card. */
   .fc .fc-timegrid-event .fc-event-status {
     font-size: 9px !important;
     font-weight: 700 !important;
@@ -494,7 +427,6 @@ const Shell = styled.div`
     border-radius: 0 !important;
   }
 
-
   .fc .fc-timegrid-now-indicator-line {
     border-color: #D32F2F !important;
     border-width: 2px !important;
@@ -506,7 +438,6 @@ const Shell = styled.div`
     top: -5px !important;
   }
 
-  /* All-day row styling */
   .fc .fc-timegrid-axis-frame {
     background: #FAFAFA !important;
   }
@@ -537,12 +468,11 @@ const Shell = styled.div`
     align-items: center !important;
   }
 
-    .fc .fc-timegrid-all-day-event .fc-event-title {
+  .fc .fc-timegrid-all-day-event .fc-event-title {
     font-weight: 700 !important;
     font-size: 12px !important;
   }
 
-  /* Week/Day view event card overflow fix */
   .fc .fc-timegrid-event,
   .fc .fc-timegrid-all-day-event {
     min-width: 0 !important;
@@ -663,17 +593,16 @@ const Shell = styled.div`
       flex-direction: column;
       gap: 8px;
     }
-    
+
     .fc .fc-toolbar-chunk {
       display: flex;
       justify-content: center;
       width: 100%;
     }
-    
+
     .fc .fc-daygrid-day-number {
-      font-size: 12px;
-      width: 26px;
-      height: 26px;
+      font-size: 12px !important;
+      padding: 1px 4px !important;
     }
 
     .fc .fc-daygrid-day-frame {
@@ -800,16 +729,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const calendarRef = useRef(null);
   const wrapperRef = useRef(null);
-  // Last month reported to the parent. A view switch (Month -> Week -> Day)
-  // also fires datesSet, and we must not treat that as a month change.
   const lastReportedMonth = useRef(null);
 
-  // ── Month is owned by the parent ───────────────────────────────────────
-  // The parent holds it in the URL (?month=September&year=2026) because it
-  // also drives WHICH bookings get fetched. FullCalendar keeps its own visible
-  // date, so the two are synced both ways: a prop change jumps the grid, and a
-  // user pressing the grid's arrows reports the new month back up so the parent
-  // can refetch just that month.
+  // Month is owned by the parent (URL ?month=…). Sync the grid both ways.
   useEffect(() => {
     const api = calendarRef.current?.getApi?.();
     if (!api || !month) return;
@@ -818,56 +740,27 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     api.gotoDate(month);
   }, [month]);
 
-  // ── Report the month the user is LOOKING at, not a range's leading edge ───
-  // Two different ranges have to be told apart here:
-  //
-  //   * `arg.start` — the first VISIBLE cell. In dayGridMonth that is the
-  //     Sunday on/before the 1st, usually in the PREVIOUS month. Reporting it
-  //     made the grid walk backwards one month at a time (Sep 2026 -> Aug ->
-  //     Jul -> ... -> Mar 2026, where Mar 1 is a Sunday and the drift finally
-  //     stopped). That is why the calendar used to jump to March.
-  //
-  //   * `view.currentStart` — the "current" range, trimmed by FullCalendar to
-  //     the view's granularity. For `currentRangeUnit === 'month'` it is trimmed
-  //     to the 1st, so it WAS correct in month view. But the week views use
-  //     `currentRangeUnit === 'week'`, so `currentStart` is the Sunday/Monday
-  //     the week BEGINS on — and a week that opens in August while displaying
-  //     September (Aug 30 – Sep 5) reports August. The parent then wrote
-  //     ?month=August and the month-sync effect called gotoDate(Aug 1), dragging
-  //     the calendar backwards the instant you pressed "Week". This is why the
-  //     URL flipped to the wrong month when switching to week view.
-  //
-  // The cursor date (`api.getDate()`) is the one value guaranteed to lie inside
-  // the visible range for EVERY view: month, week and day ranges are all derived
-  // from it, and prev/next/today/gotoDate move it. It therefore always names the
-  // month the user is actually focused on. The view ranges stay as fallbacks for
-  // the first render, before the ref is populated (initialView is dayGridMonth,
-  // where currentStart is already the 1st).
+  // Report the month the user is looking at — cursor, not range edge. See
+  // notes in history for why view.currentStart is wrong for week views.
   const handleDatesSet = useCallback((arg) => {
     if (!onMonthChange) return;
     const view = arg?.view || {};
     const api = calendarRef.current?.getApi?.();
     const cursor = api && typeof api.getDate === 'function' ? api.getDate() : null;
     const d = cursor ? new Date(cursor)
-            : view.currentStart ? new Date(view.currentStart)
-            : view.currentEnd ? new Date(view.currentEnd)
-            : new Date();
+      : view.currentStart ? new Date(view.currentStart)
+        : view.currentEnd ? new Date(view.currentEnd)
+          : new Date();
     const m = d.getMonth();
     const y = d.getFullYear();
 
-    // Changing ONLY the view fires datesSet too. If the month is the same we
-    // write nothing at all: no setState, no setSearchParams, no history entry.
-    // The parent refetches purely on viewMonth -> viewYear -> monthRange, so
-    // skipping here is what guarantees that opening Week view re-uses the
-    // bookings already in memory instead of hitting the API again.
     const key = `${y}-${m}`;
     if (lastReportedMonth.current === key) return;
     lastReportedMonth.current = key;
     onMonthChange(m, y);
   }, [onMonthChange]);
 
-  // Build a branch lookup map from cached branches to resolve branch_id → branch_name
-  // Also maps branch_slug → branchName for slug-based lookups
+  // Branch lookup: id / slug → name
   const branchLookup = useMemo(() => {
     try {
       const branches = getBranches();
@@ -878,8 +771,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         const name = b.branchName || b.branch_name || b.name || '';
         if (id && name) map.set(`id:${String(id)}`, name);
         if (slug && name) map.set(`slug:${slug}`, name);
-        // Also map slug → name for partial slug matches
-        if (slug && name) map.set(`slug:${slug}`, name);
       });
       return map;
     } catch (e) {
@@ -887,51 +778,40 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     }
   }, []);
 
-  // Extract a readable branch name from a slug like "org-home-machakos" → "Machakos"
   const slugToReadableName = (slug) => {
     if (!slug) return '';
     const parts = slug.split('-');
-    // Take the last meaningful part (e.g., "machakos" from "org-home-machakos")
     const lastPart = parts[parts.length - 1];
-    // Capitalize first letter
     return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
   };
 
   const resolveBranchName = (branchId, branchSlug, bookingBranchName) => {
-    // Skip generic fallback names like "Main Branch", "Main", "Default"
     const GENERIC = new Set(['main branch', 'main', 'default', 'unknown', 'n/a', '—', '']);
     const name = (bookingBranchName || '').trim();
-    if (name && !GENERIC.has(name.toLowerCase())) {
-      return name;
-    }
-    // Lookup by branch ID
+    if (name && !GENERIC.has(name.toLowerCase())) return name;
     if (branchId) {
       const byId = branchLookup.get(`id:${String(branchId)}`);
       if (byId) return byId;
     }
-    // Lookup by branch slug (complete slug like "org-home-machakos")
     if (branchSlug) {
       const bySlug = branchLookup.get(`slug:${branchSlug}`);
       if (bySlug) return bySlug;
-      // Try the global BRANCH_SLUG_TO_NAME map
       if (BRANCH_SLUG_TO_NAME[branchSlug]) return BRANCH_SLUG_TO_NAME[branchSlug];
-      // Extract readable name from slug (last segment after dash)
       return slugToReadableName(branchSlug);
     }
-    // If we have a generic name, try the legacy BR lookup
     if (name && BR[name.toLowerCase()]) return BR[name.toLowerCase()].name;
-    // Last resort
     return name || 'Unknown';
   };
 
-  // Convert bookings to FullCalendar events with rich data
+  // Bookings → FullCalendar events. `backgroundColor`/`borderColor` carry the
+  // solid status colour so month view's default rendering (and any custom
+  // renderer that paints itemColor) both show the same solid card.
   const events = useMemo(() => {
     if (!Array.isArray(bookings)) return [];
 
     return bookings
       .map((b) => {
         const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
-        const dates = getBookingDates(b);
         const bookingDates = getBookingDates(b);
         const startDate = bookingDates[0];
         if (!startDate) return null;
@@ -941,12 +821,10 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         let fcEnd = undefined;
         if (isAllDay) {
           if (bookingDates.length > 1) {
-            // FullCalendar all-day end is exclusive: add 1 day to the last date
             const last = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00');
             last.setDate(last.getDate() + 1);
             fcEnd = toDateKey(last);
           } else {
-            // Single-day all-day booking: omit end completely so duration is not 0
             fcEnd = undefined;
           }
         } else {
@@ -978,13 +856,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           b.branch_name || b.branchName || b.hearse_branch_name || b.branch
         );
 
-        // Detect multi-day bookings
         const isMultiDay = bookingDates.length > 1 || (() => {
           if (bookingDates.length === 1) {
             const d = new Date(bookingDates[0]);
-            const nextDay = new Date(d);
-            nextDay.setDate(nextDay.getDate() + 1);
-            // Check if booking spans past midnight
             return b.end_date && new Date(b.end_date).toDateString() !== d.toDateString();
           }
           return false;
@@ -1024,7 +898,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       .filter(e => e !== null && e.start);
   }, [bookings, branchLookup]);
 
-  // Calculate daily stats for the selected date
   const getDailyStats = useCallback(() => {
     if (!selectedDate) return { total: 0, booked: 0, transit: 0, pending: 0, completed: 0 };
 
@@ -1033,8 +906,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       const dates = getBookingDates(b);
       return dates.some(d => {
         if (!d) return false;
-        const dStr = String(d).split('T')[0];
-        return dStr === dateStr;
+        return String(d).split('T')[0] === dateStr;
       });
     });
 
@@ -1049,20 +921,12 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   const dailyStats = getDailyStats();
 
-  // Handle date click
   const handleDateClick = useCallback((info) => {
     const dateStr = info.dateStr.split('T')[0];
     if (onDateSelect) onDateSelect(dateStr);
     if (onDateClick) onDateClick(dateStr);
   }, [onDateSelect, onDateClick]);
 
-  // Handle event click — open ONLY the booking details side panel (the parent
-  // passes openDrawer). This used to ALSO pop a centered MultiDayOverlay modal
-  // whenever `isMultiDay` was set, so a single click opened the modal AND the
-  // drawer stacked on top of each other. The drawer already shows everything
-  // the modal showed (status, client, the full date list with per-day chips,
-  // route, hearse, service charge, branch and the status actions), so the
-  // modal was deleted — side panel only, for every booking.
   const handleEventClick = useCallback((info) => {
     if (onItemClick) onItemClick(info.event.extendedProps);
   }, [onItemClick]);
@@ -1070,15 +934,10 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const updateCalendarSize = useCallback(() => {
     const api = calendarRef.current?.getApi?.();
     if (api && typeof api.updateSize === 'function') {
-      try {
-        api.updateSize();
-      } catch (e) {
-        // safe ignore
-      }
+      try { api.updateSize(); } catch (e) { /* safe ignore */ }
     }
   }, []);
 
-  // Handle view change
   const handleViewChange = useCallback((view) => {
     setCalendarView(view.type);
     requestAnimationFrame(updateCalendarSize);
@@ -1086,15 +945,11 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     setTimeout(updateCalendarSize, 200);
   }, [updateCalendarSize]);
 
-  // ── Fix FullCalendar "scattered" / mismeasured layout on open / navigation ───
-  // FullCalendar sizes its table columns on mount. When mounting inside a dynamic
-  // tab or flex container (or during client-side navigation), the container dimensions
-  // may take multiple ticks to stabilize. Without continuous size updates, FullCalendar
-  // stays frozen with 0px / distorted column widths until a browser reload.
-  // We use ResizeObserver, staggered timers, and window listeners to guarantee crisp sizing.
+  // Size stabilization for the container's flex sizing — safe for auto-height
+  // because updateSize() re-measures after content settles; it never forces a
+  // fixed height onto the grid.
   useEffect(() => {
     updateCalendarSize();
-
     const frame = requestAnimationFrame(updateCalendarSize);
     const timers = [
       setTimeout(updateCalendarSize, 50),
@@ -1125,23 +980,27 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     };
   }, [updateCalendarSize]);
 
-  // Also update FullCalendar size when events change or load asynchronously
   useEffect(() => {
     updateCalendarSize();
     const t = setTimeout(updateCalendarSize, 100);
     return () => clearTimeout(t);
   }, [events, updateCalendarSize]);
 
-  // Custom event renderer - Full cards for week/day view with all details
+  // Custom event renderer.
+  //
+  // Month view: solid status colour card (background = status.color, white
+  // text), matching the "big coloured cards" look the app has always had —
+  // not a pastel pill.
+  //
+  // Week/Day view: multi-line detail card (WHEN → WHO → WHERE), with a small
+  // status dot next to the client name. Colour still comes from STATUS_CONFIG.
   const renderEventContent = useCallback((eventInfo) => {
     const isMonthView = calendarView === 'dayGridMonth';
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
     const itemColor = props.statusColor || '#00296B';
-    const itemBg = props.statusBg || '#EFF6FF';
 
-    // Month view event chip — clear, readable, click-responsive
     if (isMonthView) {
       return (
         <div
@@ -1149,14 +1008,13 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            padding: '2px 5px',
+            padding: '3px 6px',
             borderRadius: '4px',
             fontSize: '11px',
             fontWeight: 600,
-            background: itemBg,
-            color: itemColor,
-            borderLeft: `3px solid ${itemColor}`,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            background: itemColor,
+            color: '#FFFFFF',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
             overflow: 'hidden',
             whiteSpace: 'nowrap',
             textOverflow: 'ellipsis',
@@ -1166,17 +1024,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           }}
           title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
         >
-          <span
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: itemColor,
-              flexShrink: 0,
-            }}
-          />
           {props.startTime && (
-            <span style={{ fontSize: '9px', opacity: 0.8, fontWeight: 700, flexShrink: 0 }}>
+            <span style={{ fontSize: '9px', opacity: 0.9, fontWeight: 700, flexShrink: 0 }}>
               {props.startTime}
             </span>
           )}
@@ -1184,7 +1033,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             {props.clientName || 'Booking'}
           </span>
           {props.plate && props.plate !== '—' && (
-            <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'monospace', flexShrink: 0 }}>
+            <span style={{ fontSize: '9px', opacity: 0.85, fontFamily: 'monospace', flexShrink: 0 }}>
               {props.plate}
             </span>
           )}
@@ -1198,16 +1047,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       border: `2px solid ${itemColor}`,
     } : {};
 
-    // Week/Day view card.
-    //
-    // Same facts as before, ordered so the card reads top-down by importance:
-    // WHEN → WHO → WHERE. Two changes make it legible instead of a stack of
-    // seven clipped lines:
-    //   • the status moved from a boxed pill sitting on the title row to a
-    //     small dot beside the name, so the title gets the full column width;
-    //   • `justifyContent` is flex-start (it was center, which vertically
-    //     centred a clipped overflow and made every card look misaligned).
-    // Colour still comes from STATUS_CONFIG — nothing about the palette changed.
     return (
       <div style={{
         padding: isAllDay ? '3px 6px' : '4px 6px',
@@ -1227,7 +1066,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           </div>
         )}
 
-        {/* WHEN — a quiet uppercase eyebrow, context for the name below. */}
         <div style={{
           fontSize: '9px',
           fontWeight: 700,
@@ -1244,7 +1082,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           <Clock size={9} /> {props.startTime}{props.endTime ? ` – ${props.endTime}` : ''}
         </div>
 
-        {/* WHO — the headline, given the full width of the card. */}
         <div style={{
           fontWeight: 700,
           fontSize: '12px',
@@ -1262,7 +1099,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
-                background: props.statusColor || status.color,
+                background: itemColor,
                 flexShrink: 0,
                 display: 'inline-block'
               }}
@@ -1278,7 +1115,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           }}>{props.clientName}</span>
         </div>
 
-        {/* WHERE — destination first, then the quieter supporting detail. */}
         {props.dest && props.dest !== '—' && (
           <div style={{
             fontSize: '10px',
@@ -1322,7 +1158,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         )}
         {props.from && props.from !== '—' && !isAllDay && (
           <div style={{
-            fontSize: isAllDay ? '7px' : '7px',
+            fontSize: '7px',
             opacity: 0.65,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -1336,7 +1172,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         )}
         {props.plate && props.plate !== '—' && (
           <div style={{
-            fontSize: isAllDay ? '7px' : '7px',
+            fontSize: '7px',
             opacity: 0.6,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -1366,7 +1202,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     );
   }, [calendarView]);
 
-  // Custom day cell renderer for month view dots
   const renderDayCell = useCallback((info) => {
     if (calendarView !== 'dayGridMonth') return;
 
@@ -1377,7 +1212,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       return dates.some(d => d && String(d).split('T')[0] === dateStr);
     });
 
-    // Highlight booked dates with a subtle neutral tint
     if (hasEvents) {
       info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.03)', 'important');
       info.el.style.setProperty('border-radius', '6px', 'important');
@@ -1386,8 +1220,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   return (
     <Shell>
-
-
       {calendarView === 'timeGridDay' && selectedDate && dailyStats.total > 0 && (
         <StatsBar>
           <StatCard color="#00296B" tint="#EFF6FF" border="#DBEAFE">
@@ -1446,14 +1278,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
               slotMinTime: '05:00:00',
               slotMaxTime: '23:00:00',
               slotDuration: '00:30:00',
-              // Label the hour only. At 00:30 granularity every slot carried a
-              // label, so the gutter was a wall of repeated "9:00 / 9:30 / 10:00"
-              // competing with the jobs for attention. SlotMin/Max are unchanged
-              // so a booking at 05:00 or 23:00 can never be pushed out of sight.
               slotLabelInterval: '01:00:00',
-              // Open on the working day rather than wherever the scroll happens
-              // to be sitting — a hearse day starts early, and the old view
-              // always opened on an empty early-morning band.
               scrollTime: '06:00:00',
               expandRows: true,
               allDaySlot: true,
@@ -1483,6 +1308,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           eventContent={renderEventContent}
           dayCellDidMount={renderDayCell}
           height={calendarView === 'dayGridMonth' ? 'auto' : 750}
+          contentHeight={calendarView === 'dayGridMonth' ? 'auto' : 700}
           firstDay={0}
           weekends={true}
           nowIndicator={true}
