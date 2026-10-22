@@ -184,6 +184,10 @@ const Shell = styled.div`
   }
   .fc .fc-daygrid-event-harness:last-child { margin-bottom: 0 !important; }
 
+  /* IMPORTANT: no background override here — the inline backgroundColor
+     from FC (status.color, the RICH saturated colour) must paint the
+     wrapper. This is the OUTER safety layer; the inner card below paints
+     the same colour on top. */
   .fc .fc-daygrid-event {
     display: block !important;
     width: 100% !important;
@@ -191,16 +195,15 @@ const Shell = styled.div`
     height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
-    /* Let FC's inline background-color paint the outer wrapper as a safety
-       backdrop; if our inner card's background ever fails, the wrapper's
-       pastel shows through. */
     border: none !important;
-    border-radius: 0 !important;
+    border-radius: 6px !important;
     box-shadow: none !important;
     overflow: visible !important;
     cursor: pointer !important;
+    color: #FFFFFF !important;
   }
 
+  /* FC's inner wrapper must be transparent so the card paints through. */
   .fc .fc-daygrid-event .fc-event-main,
   .fc .fc-daygrid-event .fc-event-main-frame {
     display: block !important;
@@ -211,6 +214,7 @@ const Shell = styled.div`
     margin: 0 !important;
     overflow: visible !important;
     background: transparent !important;
+    color: #FFFFFF !important;
   }
 
   .fc .fc-daygrid-more-link {
@@ -545,9 +549,13 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         start: startDate,
         end: fcEnd,
         allDay: isAllDay,
-        backgroundColor: status.bg,
+        /* RICH saturated status colour — solid background (blue / orange /
+           green / pink-red etc). Both FC's outer wrapper (this backgroundColor)
+           AND the inner card (statusColor) use the same saturated hex, so the
+           whole card fills with the rich colour. */
+        backgroundColor: status.color,
         borderColor: status.color,
-        textColor: '#111827',
+        textColor: '#FFFFFF',
         extendedProps: {
           ...b,
           status: b.status,
@@ -649,13 +657,13 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   // ── Renderer ──────────────────────────────────────────────────────────────
   //
-  // MONTH: full-tint pastel card. To guarantee the color is VISIBLE:
-  //   • `backgroundColor` (specific) — not the `background` shorthand
-  //   • a `linear-gradient` fallback that browsers always paint (background-image
-  //     can't be "skipped" the way a background-color sometimes can when an
-  //     ancestor's `background: transparent !important` is in play)
-  //   • the gradient stacks `itemBg` (pastel) with a light tint of `itemColor`
-  //     so even the palest pastels (#FFFBEB, #EFF6FF) show clearly on white
+  // MONTH: SOLID RICH status colour fills the entire card, white text on top.
+  //   • background = status.color (the RICH saturated hex — #00296B, #E36414,
+  //     #132A13, #5F0F40, #DD2D4A, #d97706, #0c0b0f, #03071E)
+  //   • color = #FFFFFF
+  //   • same colour on the FC wrapper (via backgroundColor on the event object)
+  //     AND the inner card (this renderer), so if either layer fails the other
+  //     still paints — belt and suspenders.
   //
   // WEEK/DAY: unchanged multi-line detail card.
   const renderEventContent = useCallback((eventInfo) => {
@@ -663,11 +671,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
-    const itemColor = props.statusColor || '#00296B';
-    const itemBg = props.statusBg || '#EFF6FF';
-    // 8-digit hex: itemColor + '26' ≈ 15% alpha — mixed over the pastel it
-    // gives a slightly stronger, unmistakable tint of the same hue.
-    const tintOverlay = `${itemColor}26`;
+    const itemColor = props.statusColor || '#00296B';   // rich saturated hex
 
     if (isMonthView) {
       return (
@@ -675,13 +679,12 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           style={{
             width: '100%',
             minHeight: '62px',
-            /* Primary: explicit background-color. */
-            backgroundColor: itemBg,
-            /* Guaranteed paint: a solid linear-gradient of pastel + saturated tint. */
-            background: `linear-gradient(${tintOverlay}, ${tintOverlay}), ${itemBg}`,
-            backgroundImage: `linear-gradient(${tintOverlay}, ${tintOverlay})`,
-            color: '#111827',
-            borderLeft: `4px solid ${itemColor}`,
+            height: '100%',
+            /* Solid rich status colour — no tint, no gradient, no shorthand
+               trickery. `backgroundColor` alone is the most reliable way to
+               paint and cannot be swallowed by FC's CSS. */
+            backgroundColor: itemColor,
+            color: '#FFFFFF',
             borderRadius: '6px',
             padding: '8px 10px',
             display: 'flex',
@@ -691,28 +694,31 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             boxSizing: 'border-box',
             overflow: 'hidden',
             cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           }}
           title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
         >
+          {/* Line 1 — time (white, slightly muted) */}
           <span style={{
-            fontSize: '11px', fontWeight: 700, color: '#4b5563',
+            fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.9)',
             letterSpacing: '0.2px',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {props.startTime || 'All Day'}{props.endTime ? ` – ${props.endTime}` : ''}
           </span>
 
+          {/* Line 2 — client name (white, bold, headline) */}
           <span style={{
-            fontSize: '14px', fontWeight: 700, color: '#111827',
+            fontSize: '14px', fontWeight: 700, color: '#FFFFFF',
             lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {props.clientName || 'Booking'}
           </span>
 
+          {/* Line 3 — status + plate (white, bold uppercase) */}
           <span style={{
-            fontSize: '11px', fontWeight: 800, color: itemColor,
+            fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.95)',
             textTransform: 'uppercase', letterSpacing: '0.4px',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
@@ -723,7 +729,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       );
     }
 
-    // ── Week / Day card ─────────────────────────────────────────────────
+    // ── Week / Day card (unchanged) ─────────────────────────────────────
     const isMultiDay = props.isMultiDay;
     const multiDayStyle = isMultiDay ? {
       background: `repeating-linear-gradient(45deg, ${itemColor}, ${itemColor} 4px, ${itemColor}dd 4px, ${itemColor}dd 8px)`,
