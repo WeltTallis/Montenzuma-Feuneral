@@ -14,33 +14,14 @@ import { BR, BRANCH_SLUG_TO_NAME } from './viewerShared';
 export { STATUS_CONFIG };
 
 export const COLORS = {
-  textSecondary: '#6b7280',
-  successLight: '#d1fae5',
-  primaryLight: '#2c8ac9',
-  primaryDark: '#134b5f',
-  borderLight: '#e5e7eb',
-
-  white: '#FFFFFF',
-  surface: '#ffffff',
-  primary: '#1a5f7a',
-  border: '#d1d5db',
-  text: '#111827',
-  bg: '#f5f7fa',
-
-  textMuted: '#9ca3af',
-  success: '#10b981',
-
-  successDark: '#059669',
-  warningLight: '#fef3c7',
-  warningDark: '#d97706',
-  warning: '#f59e0b',
-
-  danger: '#ef4444',
-  dangerLight: '#fee2e2',
-  dangerDark: '#dc2626',
-  info: '#3b82f6',
-  infoLight: '#dbeafe',
-  infoDark: '#2563eb',
+  textSecondary: '#6b7280', successLight: '#d1fae5', primaryLight: '#2c8ac9',
+  primaryDark: '#134b5f', borderLight: '#e5e7eb',
+  white: '#FFFFFF', surface: '#ffffff', primary: '#1a5f7a', border: '#d1d5db',
+  text: '#111827', bg: '#f5f7fa',
+  textMuted: '#9ca3af', success: '#10b981', successDark: '#059669',
+  warningLight: '#fef3c7', warningDark: '#d97706', warning: '#f59e0b',
+  danger: '#ef4444', dangerLight: '#fee2e2', dangerDark: '#dc2626',
+  info: '#3b82f6', infoLight: '#dbeafe', infoDark: '#2563eb',
 };
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -138,20 +119,26 @@ const Shell = styled.div`
   .fc .fc-button-primary:not(:disabled).fc-button-active { background: #000000; color: #FFFFFF; border-color: #000000; }
   .fc .fc-button-primary:focus { box-shadow: none; }
 
-  /* ===== MONTH VIEW STYLES =====
-     Big cells (200px) so a full 62px pastel card + a second card fit before
-     "+N more". The event wrapper itself is a pure pass-through — all visual
-     styling is painted by renderEventContent's inline card. */
+  /* ===== MONTH VIEW =====
+     FullCalendar compresses month events via FC's own layout: it sets inline
+     `position: absolute`, `top: Xpx` and a computed `height` on BOTH
+     .fc-daygrid-event-harness and .fc-daygrid-event. That made the whole card
+     render as a ~22px dot no matter what renderEventContent drew inside it.
+
+     The rules below force the harness back into normal document flow and force
+     both wrappers to 62px. Because the harness is `position: relative` and its
+     top/left/right/bottom are reset, events stack in order inside the flex
+     column that is .fc-daygrid-day-events — no overlap, no clipping. */
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: background .15s ease;
-    min-height: 200px !important;
+    min-height: 240px !important;
     vertical-align: top !important;
   }
   .fc .fc-daygrid-day:hover { background: #F9FAFB; }
   .fc .fc-daygrid-day-frame {
     padding: 4px !important;
-    min-height: 200px !important;
+    min-height: 240px !important;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -163,6 +150,7 @@ const Shell = styled.div`
     align-items: center !important;
     padding: 2px 4px !important;
     margin-bottom: 4px !important;
+    flex-shrink: 0 !important;
   }
   .fc .fc-daygrid-day-number {
     font-size: 14px !important;
@@ -193,29 +181,48 @@ const Shell = styled.div`
     gap: 4px !important;
     min-height: 0 !important;
     flex: 1 !important;
-  }
-  .fc .fc-daygrid-event-harness {
-    margin: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
   }
 
-  /* Pass-through: let the inner pastel card own its size and colour. */
-  .fc .fc-daygrid-event {
-    margin: 0 !important;
-    border-radius: 0 !important;
-    border: none !important;
-    padding: 0 !important;
-    background: transparent !important;
+  /* Force FC's month harness into normal flow and force its size. */
+  .fc .fc-daygrid-event-harness {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    min-height: 62px !important;
+    height: auto !important;
+    width: 100% !important;
     overflow: visible !important;
-    box-shadow: none !important;
-    cursor: pointer !important;
-    min-height: 0 !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
   }
+  /* Force the FC event wrapper to fill the harness. */
+  .fc .fc-daygrid-event {
+    min-height: 62px !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    cursor: pointer !important;
+  }
+  /* Kill FC's inner wrapper padding/margin so the card is full-width. */
   .fc .fc-daygrid-event .fc-event-main,
   .fc .fc-daygrid-event .fc-event-main-frame {
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
     display: block !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .fc .fc-daygrid-more-link {
@@ -228,6 +235,7 @@ const Shell = styled.div`
     margin-top: 2px !important;
     align-self: flex-start !important;
     background: #EFF6FF !important;
+    flex-shrink: 0 !important;
   }
   .fc .fc-daygrid-more-link:hover { background: #DBEAFE !important; }
 
@@ -240,8 +248,7 @@ const Shell = styled.div`
   .fc .fc-timegrid-slot { height: 1.5em !important; }
   .fc .fc-timegrid-axis-cushion,
   .fc .fc-timegrid-slot-label-cushion {
-    font-size: 11px !important;
-    font-weight: 600 !important;
+    font-size: 11px !important; font-weight: 600 !important;
     color: #999999 !important;
     padding: 0 8px 0 0 !important;
     text-align: right !important;
@@ -294,7 +301,6 @@ const Shell = styled.div`
   }
   .fc .fc-timegrid-event:hover { box-shadow: 0 4px 12px rgba(0,0,0,.16) !important; z-index: 10 !important; }
   .fc .fc-timegrid-event-harness > .fc-timegrid-event { border-left: 3px solid transparent !important; }
-
   .fc .fc-timegrid-event .fc-event-main {
     display: flex !important;
     flex-direction: column !important;
@@ -413,8 +419,8 @@ const Shell = styled.div`
     .fc .fc-timegrid-axis { width: 35px !important; }
     .fc .fc-timegrid-axis-cushion { font-size: 9px !important; }
     .fc .fc-timegrid-slot-label { height: 40px !important; }
-    .fc .fc-daygrid-day { min-height: 160px !important; }
-    .fc .fc-daygrid-day-frame { min-height: 160px !important; }
+    .fc .fc-daygrid-day { min-height: 200px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 200px !important; }
     .fc .fc-timegrid-event { padding: 4px 6px !important; min-height: 32px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 10px !important; padding: 2px 6px !important; min-height: 22px !important; }
   }
@@ -423,14 +429,14 @@ const Shell = styled.div`
     .fc .fc-toolbar { flex-direction: column; gap: 8px; }
     .fc .fc-toolbar-chunk { display: flex; justify-content: center; width: 100%; }
     .fc .fc-daygrid-day-number { font-size: 12px !important; padding: 1px 4px !important; }
-    .fc .fc-daygrid-day-frame { min-height: 120px !important; padding: 2px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 160px !important; padding: 2px !important; }
     .fc .fc-col-header-cell { padding: 4px 0 !important; }
     .fc .fc-col-header-cell-cushion { font-size: 9px !important; }
     .fc .fc-timegrid-event { padding: 3px 4px !important; min-height: 28px !important; }
     .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; }
     .fc .fc-timegrid-event .fc-event-time { font-size: 8px !important; }
     .fc .fc-timegrid-now-indicator-line::before { display: none !important; }
-    .fc .fc-daygrid-day { min-height: 120px !important; }
+    .fc .fc-daygrid-day { min-height: 160px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 9px !important; padding: 2px 4px !important; min-height: 20px !important; }
   }
 `;
@@ -445,41 +451,27 @@ const CalendarWrapper = styled.div`
 `;
 
 const StatsBar = styled.div`
-  display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-bottom: 10px;
-  background: #FFFFFF;
-  border-radius: 10px;
-  flex-wrap: wrap;
-  border: 1px solid #E8ECEF;
-  flex-shrink: 0;
+  display: flex; gap: 8px; padding: 8px 12px;
+  margin-bottom: 10px; background: #FFFFFF;
+  border-radius: 10px; flex-wrap: wrap;
+  border: 1px solid #E8ECEF; flex-shrink: 0;
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 `;
 
 const StatCard = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 12px 5px 6px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: ${props => props.color || '#111827'};
-  background: ${props => (props.tint || props.color || '#F3F4F6')};
-  border: 1px solid ${props => props.border || 'transparent'};
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px 5px 6px; border-radius: 8px;
+  font-size: 12px; font-weight: 600;
+  color: ${p => p.color || '#111827'};
+  background: ${p => (p.tint || p.color || '#F3F4F6')};
+  border: 1px solid ${p => p.border || 'transparent'};
   white-space: nowrap;
 `;
 
 const StatIcon = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  color: #FFFFFF;
-  background: ${props => props.color || '#111827'};
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 6px;
+  color: #FFFFFF; background: ${p => p.color || '#111827'};
   flex-shrink: 0;
 `;
 
@@ -527,9 +519,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         if (slug && name) map.set(`slug:${slug}`, name);
       });
       return map;
-    } catch (e) {
-      return new Map();
-    }
+    } catch (e) { return new Map(); }
   }, []);
 
   const slugToReadableName = (slug) => {
@@ -722,14 +712,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   }, [events, updateCalendarSize]);
 
   // ── Event renderer ────────────────────────────────────────────────────────
-  //
-  // MONTH: BIG pastel card, same visual spec as the coffin calendar chip.
-  //   • minHeight 62px, three stacked lines: time / name / status+plate
-  //   • pastel fill (status.bg) + 4px saturated left border (status.color)
-  //   • dark ink (#111827) text so the card is readable on the pastel
-  //   • generous padding so it reads as a real, visible block
-  //
-  // WEEK / DAY: multi-line detail card (WHEN → WHO → WHERE) — unchanged.
+  // MONTH: 62px card, 3 lines (time / name / status+plate), pastel fill + 4px
+  // saturated left border + dark ink text. Same spec as the coffin-chip look.
+  // WEEK/DAY: multi-line detail card, unchanged.
   const renderEventContent = useCallback((eventInfo) => {
     const isMonthView = calendarView === 'dayGridMonth';
     const props = eventInfo.event.extendedProps;
@@ -743,6 +728,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         <div
           style={{
             width: '100%',
+            height: '100%',
             minHeight: '62px',
             background: itemBg,
             color: '#111827',
@@ -760,42 +746,26 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           }}
           title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
         >
-          {/* Line 1 — time */}
           <span style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            color: '#6b7280',
+            fontSize: '11px', fontWeight: 700, color: '#6b7280',
             letterSpacing: '0.2px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {props.startTime || 'All Day'}{props.endTime ? ` – ${props.endTime}` : ''}
           </span>
 
-          {/* Line 2 — client name (dark, bold) */}
           <span style={{
-            fontSize: '14px',
-            fontWeight: 700,
-            color: '#111827',
+            fontSize: '14px', fontWeight: 700, color: '#111827',
             lineHeight: 1.2,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {props.clientName || 'Booking'}
           </span>
 
-          {/* Line 3 — status mark + plate */}
           <span style={{
-            fontSize: '11px',
-            fontWeight: 800,
-            color: itemColor,
-            textTransform: 'uppercase',
-            letterSpacing: '0.4px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            fontSize: '11px', fontWeight: 800, color: itemColor,
+            textTransform: 'uppercase', letterSpacing: '0.4px',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {props.statusLabel || ''}
             {props.plate && props.plate !== '—' ? ` · ${props.plate}` : ''}
@@ -804,7 +774,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       );
     }
 
-    // ── Week / Day view card ────────────────────────────────────────────────
+    // ── Week / Day card ─────────────────────────────────────────────────
     const isMultiDay = props.isMultiDay;
     const multiDayStyle = isMultiDay ? {
       background: `repeating-linear-gradient(45deg, ${itemColor}, ${itemColor} 4px, ${itemColor}dd 4px, ${itemColor}dd 8px)`,
@@ -814,13 +784,10 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     return (
       <div style={{
         padding: isAllDay ? '3px 6px' : '4px 6px',
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
+        width: '100%', height: '100%',
+        display: 'flex', flexDirection: 'column',
         justifyContent: 'flex-start',
-        overflow: 'hidden',
-        gap: '1px',
+        overflow: 'hidden', gap: '1px',
         boxSizing: 'border-box',
         ...multiDayStyle
       }}>
@@ -831,90 +798,57 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         )}
 
         <div style={{
-          fontSize: '9px',
-          fontWeight: 700,
-          letterSpacing: '.3px',
-          textTransform: 'uppercase',
-          opacity: .75,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '3px',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
+          fontSize: '9px', fontWeight: 700, letterSpacing: '.3px',
+          textTransform: 'uppercase', opacity: .75,
+          display: 'flex', alignItems: 'center', gap: '3px',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
         }}>
           <Clock size={9} /> {props.startTime}{props.endTime ? ` – ${props.endTime}` : ''}
         </div>
 
         <div style={{
-          fontWeight: 700,
-          fontSize: '12px',
-          lineHeight: 1.25,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          minWidth: 0
+          fontWeight: 700, fontSize: '12px', lineHeight: 1.25,
+          display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0
         }}>
           {props.statusLabel && (
             <span
               aria-label={props.statusLabel}
               title={props.statusLabel}
               style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: itemColor,
-                flexShrink: 0,
-                display: 'inline-block'
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: itemColor, flexShrink: 0, display: 'inline-block'
               }}
             />
           )}
           <span style={{
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flex: 1,
-            minWidth: 0
+            display: 'block', overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            flex: 1, minWidth: 0
           }}>{props.clientName}</span>
         </div>
 
         {props.dest && props.dest !== '—' && (
           <div style={{
-            fontSize: '10px',
-            fontWeight: 500,
-            opacity: .85,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px'
+            fontSize: '10px', fontWeight: 500, opacity: .85,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: 'flex', alignItems: 'center', gap: '3px'
           }}>
             <MapPin size={8} /> {props.dest}
           </div>
         )}
         {props.branchName && (
           <div style={{
-            fontSize: '9px',
-            opacity: .75,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px'
+            fontSize: '9px', opacity: .75,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: 'flex', alignItems: 'center', gap: '3px'
           }}>
             <Building size={8} /> {props.branchName}
           </div>
         )}
         {!isAllDay && props.bookingCode && (
           <div style={{
-            fontSize: '7px',
-            opacity: 0.6,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            fontSize: '7px', opacity: 0.6,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             fontFamily: 'monospace'
           }}>
             {props.bookingCode}
@@ -922,42 +856,27 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         )}
         {props.from && props.from !== '—' && !isAllDay && (
           <div style={{
-            fontSize: '7px',
-            opacity: 0.65,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px'
+            fontSize: '7px', opacity: 0.65,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: 'flex', alignItems: 'center', gap: '3px'
           }}>
             <Home size={8} /> {props.from}
           </div>
         )}
         {props.plate && props.plate !== '—' && (
           <div style={{
-            fontSize: '7px',
-            opacity: 0.6,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px'
+            fontSize: '7px', opacity: 0.6,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: 'flex', alignItems: 'center', gap: '3px'
           }}>
             <Car size={8} /> {props.plate}
           </div>
         )}
         {props.phone && props.phone !== '—' && !isAllDay && (
           <div style={{
-            fontSize: '7px',
-            opacity: 0.55,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px'
+            fontSize: '7px', opacity: 0.55,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: 'flex', alignItems: 'center', gap: '3px'
           }}>
             <Phone size={8} /> {props.phone}
           </div>
