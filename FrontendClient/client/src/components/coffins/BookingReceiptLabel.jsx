@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import bwipjs from '@bwip-js/browser';
 import { format } from 'date-fns';
 import { useTenantStore } from '../../modules/seo/useTenantStore';
-import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
+import { resolveTenantBranding } from '../../utils/tenantResolver/tenantBranding';
 
 /* Booking receipt label — opened from the reservation detail side panel
  * ("Print Label") for every booking.
