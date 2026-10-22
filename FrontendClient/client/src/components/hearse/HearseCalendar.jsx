@@ -10,7 +10,6 @@ import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Ca
 import { STATUS_CONFIG } from './statusColors';
 import { BR, BRANCH_SLUG_TO_NAME } from './viewerShared';
 
-// ===== SHARED CONSTANTS =====
 export { STATUS_CONFIG };
 
 export const COLORS = {
@@ -27,14 +26,10 @@ export const COLORS = {
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-export const START_HOUR = 6;
-export const END_HOUR = 22;
+export const START_HOUR = 6, END_HOUR = 22;
 export const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
-export const HOUR_H = 60;
-export const TIME_W = 65;
+export const HOUR_H = 60, TIME_W = 65;
 
-// ===== SHARED HELPERS =====
 export const pad = n => String(n).padStart(2, '0');
 export const fmtDS = toDateKey;
 export const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
@@ -60,13 +55,12 @@ const getBookingDates = (b) => {
     try {
       const dates = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : b.booking_dates;
       if (Array.isArray(dates) && dates.length) return dates;
-    } catch (x) { /* fall through */ }
+    } catch (x) { }
   }
   const date = b.booking_date || b.estimated_departure_time || b.date || b.start_date;
   return date ? [date] : [];
 };
 
-// ===== STYLED COMPONENTS =====
 const Shell = styled.div`
   background: #FFFFFF;
   border-radius: 0;
@@ -119,21 +113,29 @@ const Shell = styled.div`
   .fc .fc-button-primary:not(:disabled).fc-button-active { background: #000000; color: #FFFFFF; border-color: #000000; }
   .fc .fc-button-primary:focus { box-shadow: none; }
 
- 
+  
+
+  /* Day cell — tall enough for a 62px card + day header + a second card. */
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: background .15s ease;
     min-height: 240px !important;
+    height: auto !important;
     vertical-align: top !important;
+    overflow: visible !important;
   }
   .fc .fc-daygrid-day:hover { background: #F9FAFB; }
+
+  /* Day frame — block layout (NOT flex). Just a padded container. */
   .fc .fc-daygrid-day-frame {
     padding: 4px !important;
     min-height: 240px !important;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
+    height: auto !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    overflow: visible !important;
   }
+
   .fc .fc-daygrid-day-top {
     display: flex !important;
     flex-direction: row-reverse !important;
@@ -141,7 +143,6 @@ const Shell = styled.div`
     align-items: center !important;
     padding: 2px 4px !important;
     margin-bottom: 4px !important;
-    flex-shrink: 0 !important;
   }
   .fc .fc-daygrid-day-number {
     font-size: 14px !important;
@@ -159,61 +160,62 @@ const Shell = styled.div`
     min-width: 26px !important;
     text-align: center !important;
   }
-  .fc .fc-daygrid-day.fc-day-today {
-    background: #E8F5E9 !important;
-  }
-  .fc .fc-daygrid-day-other .fc-daygrid-day-number {
-    opacity: 0.35 !important;
-  }
+  .fc .fc-daygrid-day.fc-day-today { background: #E8F5E9 !important; }
+  .fc .fc-daygrid-day-other .fc-daygrid-day-number { opacity: 0.35 !important; }
+
+  /* Events container — block, min-height for content, never clips children. */
   .fc .fc-daygrid-day-events {
     margin: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4px !important;
-    min-height: 0 !important;
-    flex: 1 !important;
-    overflow: visible !important;
     padding: 0 !important;
+    display: block !important;
+    position: relative !important;
+    min-height: 200px !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  /* Force FC's month harness into normal flow and force its size. */
+  /* Harness — take it OUT of FC's absolute positioning and put it in flow. */
   .fc .fc-daygrid-event-harness {
     position: relative !important;
     top: auto !important;
     left: auto !important;
     right: auto !important;
     bottom: auto !important;
+    display: block !important;
+    width: 100% !important;
     min-height: 62px !important;
     height: auto !important;
-    width: 100% !important;
+    margin: 0 0 6px 0 !important;
     overflow: visible !important;
-    margin: 0 !important;
-    flex-shrink: 0 !important;
   }
-  /* Force the FC event wrapper to fill the harness. */
+  .fc .fc-daygrid-event-harness:last-child { margin-bottom: 0 !important; }
+
+  /* Event — same treatment, block layout, force min-height. */
   .fc .fc-daygrid-event {
+    display: block !important;
+    width: 100% !important;
     min-height: 62px !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
     box-shadow: none !important;
     overflow: visible !important;
     cursor: pointer !important;
   }
-  /* Kill FC's inner wrapper padding/margin so the card is full-width. */
+
+  /* Event main — same. */
   .fc .fc-daygrid-event .fc-event-main,
   .fc .fc-daygrid-event .fc-event-main-frame {
+    display: block !important;
+    width: 100% !important;
+    min-height: 62px !important;
+    height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
   }
 
   .fc .fc-daygrid-more-link {
@@ -223,10 +225,9 @@ const Shell = styled.div`
     cursor: pointer !important;
     padding: 3px 6px !important;
     border-radius: 4px !important;
-    margin-top: 2px !important;
-    align-self: flex-start !important;
+    margin-top: 4px !important;
+    display: inline-block !important;
     background: #EFF6FF !important;
-    flex-shrink: 0 !important;
   }
   .fc .fc-daygrid-more-link:hover { background: #DBEAFE !important; }
 
@@ -309,59 +310,36 @@ const Shell = styled.div`
     letter-spacing: .3px !important;
     text-transform: uppercase !important;
     opacity: .75 !important;
-    display: block !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
   }
   .fc .fc-timegrid-event .fc-event-title {
-    font-weight: 700 !important;
-    font-size: 12px !important;
+    font-weight: 700 !important; font-size: 12px !important;
     line-height: 1.25 !important;
-    display: block !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
   }
   .fc .fc-timegrid-event .fc-event-destination {
-    font-size: 10px !important;
-    font-weight: 500 !important;
-    line-height: 1.25 !important;
+    font-size: 10px !important; font-weight: 500 !important;
     opacity: .85 !important;
-    display: block !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
   }
   .fc .fc-timegrid-event .fc-event-from,
   .fc .fc-timegrid-event .fc-event-plate {
-    font-size: 9px !important;
-    opacity: .7 !important;
-    display: block !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    font-size: 9px !important; opacity: .7 !important;
+    white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
   }
   .fc .fc-timegrid-event .fc-event-status {
-    font-size: 9px !important;
-    font-weight: 700 !important;
+    font-size: 9px !important; font-weight: 700 !important;
     letter-spacing: .2px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 4px !important;
+    display: inline-flex !important; align-items: center !important; gap: 4px !important;
     align-self: flex-start !important;
-    margin-top: 1px !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
+    padding: 0 !important; border-radius: 0 !important;
   }
   .fc .fc-timegrid-now-indicator-line { border-color: #D32F2F !important; border-width: 2px !important; }
   .fc .fc-timegrid-now-indicator-arrow { border-color: #D32F2F !important; border-width: 5px !important; top: -5px !important; }
   .fc .fc-timegrid-axis-frame { background: #FAFAFA !important; }
   .fc .fc-timegrid-axis-frame .fc-timegrid-axis-cushion {
-    font-size: 9px !important;
-    font-weight: 700 !important;
-    color: #999999 !important;
-    text-transform: uppercase !important;
+    font-size: 9px !important; font-weight: 700 !important;
+    color: #999999 !important; text-transform: uppercase !important;
   }
   .fc .fc-timegrid-all-day-events { min-height: 35px !important; background: #FFFFFF !important; padding: 2px !important; }
   .fc .fc-timegrid-all-day-event {
@@ -379,12 +357,6 @@ const Shell = styled.div`
   .fc .fc-timegrid-all-day-event .fc-event-title { font-weight: 700 !important; font-size: 12px !important; }
   .fc .fc-timegrid-event,
   .fc .fc-timegrid-all-day-event { min-width: 0 !important; overflow: hidden !important; }
-  .fc .fc-timegrid-event .fc-event-main,
-  .fc .fc-timegrid-all-day-event .fc-event-main { min-width: 0 !important; width: 100% !important; overflow: hidden !important; }
-  .fc .fc-timegrid-event .fc-event-content,
-  .fc .fc-timegrid-all-day-event .fc-event-content { min-width: 0 !important; width: 100% !important; overflow: hidden !important; }
-  .fc .fc-timegrid-event .fc-event-title,
-  .fc .fc-timegrid-all-day-event .fc-event-title { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; min-width: 0 !important; }
 
   .fc .fc-popover {
     border-radius: 12px !important;
@@ -466,7 +438,6 @@ const StatIcon = styled.span`
   flex-shrink: 0;
 `;
 
-// ===== MAIN CALENDAR COMPONENT =====
 const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick, month, onMonthChange }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const calendarRef = useRef(null);
@@ -490,8 +461,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       : view.currentStart ? new Date(view.currentStart)
         : view.currentEnd ? new Date(view.currentEnd)
           : new Date();
-    const m = d.getMonth();
-    const y = d.getFullYear();
+    const m = d.getMonth(), y = d.getFullYear();
     const key = `${y}-${m}`;
     if (lastReportedMonth.current === key) return;
     lastReportedMonth.current = key;
@@ -540,91 +510,84 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   const events = useMemo(() => {
     if (!Array.isArray(bookings)) return [];
+    return bookings.map((b) => {
+      const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
+      const bookingDates = getBookingDates(b);
+      const startDate = bookingDates[0];
+      if (!startDate) return null;
 
-    return bookings
-      .map((b) => {
-        const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
-        const bookingDates = getBookingDates(b);
-        const startDate = bookingDates[0];
-        if (!startDate) return null;
-
-        const isAllDay = !String(startDate).includes('T') && !String(startDate).includes(':');
-
-        let fcEnd = undefined;
-        if (isAllDay) {
-          if (bookingDates.length > 1) {
-            const last = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00');
-            last.setDate(last.getDate() + 1);
-            fcEnd = toDateKey(last);
-          } else {
-            fcEnd = undefined;
-          }
-        } else {
-          const rawEnd = bookingDates[1] || b.end_date || b.estimated_arrival_time;
-          fcEnd = rawEnd && rawEnd !== startDate ? rawEnd : undefined;
+      const isAllDay = !String(startDate).includes('T') && !String(startDate).includes(':');
+      let fcEnd = undefined;
+      if (isAllDay) {
+        if (bookingDates.length > 1) {
+          const last = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00');
+          last.setDate(last.getDate() + 1);
+          fcEnd = toDateKey(last);
         }
+      } else {
+        const rawEnd = bookingDates[1] || b.end_date || b.estimated_arrival_time;
+        fcEnd = rawEnd && rawEnd !== startDate ? rawEnd : undefined;
+      }
 
-        let startTime = '';
-        let endTime = '';
-        try {
-          const sd = new Date(startDate);
-          if (!isNaN(sd.getTime())) startTime = sd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-          const ed = new Date(fcEnd || startDate);
-          if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        } catch (e) { }
+      let startTime = '', endTime = '';
+      try {
+        const sd = new Date(startDate);
+        if (!isNaN(sd.getTime())) startTime = sd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const ed = new Date(fcEnd || startDate);
+        if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      } catch (e) { }
 
-        const hearseName = b.hearse_name || b.hearse_plate || b.plate_number || 'H';
-        const clientName = (b.client_name || b.client || 'client').toString();
-        const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
-        const randPart = Math.random().toString(36).substring(2, 7).toUpperCase();
-        const readableId = `BK-${hearseName}-${clientName}-${datePart}-${randPart}`;
-        const resolvedBranchName = resolveBranchName(
-          b.branch_id,
-          b.booking_branch_slug || b.branch_slug || b.branchSlug,
-          b.branch_name || b.branchName || b.hearse_branch_name || b.branch
-        );
+      const hearseName = b.hearse_name || b.hearse_plate || b.plate_number || 'H';
+      const clientName = (b.client_name || b.client || 'client').toString();
+      const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
+      const randPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+      const readableId = `BK-${hearseName}-${clientName}-${datePart}-${randPart}`;
+      const resolvedBranchName = resolveBranchName(
+        b.branch_id,
+        b.booking_branch_slug || b.branch_slug || b.branchSlug,
+        b.branch_name || b.branchName || b.hearse_branch_name || b.branch
+      );
 
-        const isMultiDay = bookingDates.length > 1 || (() => {
-          if (bookingDates.length === 1) {
-            const d = new Date(bookingDates[0]);
-            return b.end_date && new Date(b.end_date).toDateString() !== d.toDateString();
-          }
-          return false;
-        })();
+      const isMultiDay = bookingDates.length > 1 || (() => {
+        if (bookingDates.length === 1) {
+          const d = new Date(bookingDates[0]);
+          return b.end_date && new Date(b.end_date).toDateString() !== d.toDateString();
+        }
+        return false;
+      })();
 
-        return {
-          id: b.booking_id || b.id || `booking-${Math.random()}`,
-          bookingId: readableId,
-          title: b.client_name || b.client || 'Unknown Client',
-          start: startDate,
-          end: fcEnd,
-          allDay: isAllDay,
-          backgroundColor: status.color,
-          borderColor: status.color,
-          textColor: '#FFFFFF',
-          extendedProps: {
-            ...b,
-            status: b.status,
-            statusLabel: status.label,
-            statusColor: status.color,
-            statusBg: status.bg,
-            statusTextColor: status.textColor,
-            dest: b.destination || b.to_location || '—',
-            from: b.from_location || b.origin || '—',
-            plate: b.plate_number || b.hearse_plate || b.number_plate || '—',
-            branchName: resolvedBranchName,
-            isMultiDay,
-            multiDayDates: bookingDates,
-            phone: b.client_phone || b.phone || '',
-            clientName: clientName,
-            startTime,
-            endTime,
-            bookingCode: readableId,
-            hearseName,
-          }
-        };
-      })
-      .filter(e => e !== null && e.start);
+      return {
+        id: b.booking_id || b.id || `booking-${Math.random()}`,
+        bookingId: readableId,
+        title: b.client_name || b.client || 'Unknown Client',
+        start: startDate,
+        end: fcEnd,
+        allDay: isAllDay,
+        backgroundColor: status.bg,     // pastel — so FC default (if used) also reads right
+        borderColor: status.color,
+        textColor: '#111827',
+        extendedProps: {
+          ...b,
+          status: b.status,
+          statusLabel: status.label,
+          statusColor: status.color,
+          statusBg: status.bg,
+          statusTextColor: status.textColor,
+          dest: b.destination || b.to_location || '—',
+          from: b.from_location || b.origin || '—',
+          plate: b.plate_number || b.hearse_plate || b.number_plate || '—',
+          branchName: resolvedBranchName,
+          isMultiDay,
+          multiDayDates: bookingDates,
+          phone: b.client_phone || b.phone || '',
+          clientName,
+          startTime,
+          endTime,
+          bookingCode: readableId,
+          hearseName,
+        }
+      };
+    }).filter(e => e !== null && e.start);
   }, [bookings, branchLookup]);
 
   const getDailyStats = useCallback(() => {
@@ -658,7 +621,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const updateCalendarSize = useCallback(() => {
     const api = calendarRef.current?.getApi?.();
     if (api && typeof api.updateSize === 'function') {
-      try { api.updateSize(); } catch (e) { /* safe ignore */ }
+      try { api.updateSize(); } catch (e) { }
     }
   }, []);
 
@@ -702,10 +665,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     return () => clearTimeout(t);
   }, [events, updateCalendarSize]);
 
-  // ── Event renderer ────────────────────────────────────────────────────────
-  // MONTH: 62px card, 3 lines (time / name / status+plate), pastel fill + 4px
-  // saturated left border + dark ink text. Same spec as the coffin-chip look.
-  // WEEK/DAY: multi-line detail card, unchanged.
+  // ── Renderer ──────────────────────────────────────────────────────────────
+  // MONTH: solid pastel card (bg + 4px left border + ink text), 3 stacked lines.
+  // WEEK/DAY: unchanged multi-line detail card.
   const renderEventContent = useCallback((eventInfo) => {
     const isMonthView = calendarView === 'dayGridMonth';
     const props = eventInfo.event.extendedProps;
@@ -719,7 +681,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         <div
           style={{
             width: '100%',
-            height: '100%',
             minHeight: '62px',
             background: itemBg,
             color: '#111827',
@@ -765,7 +726,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       );
     }
 
-    // ── Week / Day card ─────────────────────────────────────────────────
     const isMultiDay = props.isMultiDay;
     const multiDayStyle = isMultiDay ? {
       background: `repeating-linear-gradient(45deg, ${itemColor}, ${itemColor} 4px, ${itemColor}dd 4px, ${itemColor}dd 8px)`,
@@ -787,7 +747,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             Multi-Day
           </div>
         )}
-
         <div style={{
           fontSize: '9px', fontWeight: 700, letterSpacing: '.3px',
           textTransform: 'uppercase', opacity: .75,
@@ -796,20 +755,15 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         }}>
           <Clock size={9} /> {props.startTime}{props.endTime ? ` – ${props.endTime}` : ''}
         </div>
-
         <div style={{
           fontWeight: 700, fontSize: '12px', lineHeight: 1.25,
           display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0
         }}>
           {props.statusLabel && (
-            <span
-              aria-label={props.statusLabel}
-              title={props.statusLabel}
-              style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                background: itemColor, flexShrink: 0, display: 'inline-block'
-              }}
-            />
+            <span style={{
+              width: '6px', height: '6px', borderRadius: '50%',
+              background: itemColor, flexShrink: 0, display: 'inline-block'
+            }} />
           )}
           <span style={{
             display: 'block', overflow: 'hidden',
@@ -817,7 +771,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             flex: 1, minWidth: 0
           }}>{props.clientName}</span>
         </div>
-
         {props.dest && props.dest !== '—' && (
           <div style={{
             fontSize: '10px', fontWeight: 500, opacity: .85,
@@ -837,21 +790,8 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           </div>
         )}
         {!isAllDay && props.bookingCode && (
-          <div style={{
-            fontSize: '7px', opacity: 0.6,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            fontFamily: 'monospace'
-          }}>
+          <div style={{ fontSize: '7px', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'monospace' }}>
             {props.bookingCode}
-          </div>
-        )}
-        {props.from && props.from !== '—' && !isAllDay && (
-          <div style={{
-            fontSize: '7px', opacity: 0.65,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            display: 'flex', alignItems: 'center', gap: '3px'
-          }}>
-            <Home size={8} /> {props.from}
           </div>
         )}
         {props.plate && props.plate !== '—' && (
@@ -861,15 +801,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             display: 'flex', alignItems: 'center', gap: '3px'
           }}>
             <Car size={8} /> {props.plate}
-          </div>
-        )}
-        {props.phone && props.phone !== '—' && !isAllDay && (
-          <div style={{
-            fontSize: '7px', opacity: 0.55,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            display: 'flex', alignItems: 'center', gap: '3px'
-          }}>
-            <Phone size={8} /> {props.phone}
           </div>
         )}
       </div>
@@ -991,14 +922,14 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
           slotLabelInterval="01:00"
           buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
-          eventMinHeight={60}
+          eventMinHeight={62}
           eventMaxStack={10}
           slotEventOverlap={true}
-          expandRows={true}
+          expandRows={false}
           stickyHeaderDates={true}
           weekNumbers={false}
-          displayEventTime={true}
-          displayEventEnd={true}
+          displayEventTime={false}
+          displayEventEnd={false}
           forceEventDuration={true}
         />
       </CalendarWrapper>
