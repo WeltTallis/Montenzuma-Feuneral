@@ -113,9 +113,6 @@ const Shell = styled.div`
   .fc .fc-button-primary:not(:disabled).fc-button-active { background: #000000; color: #FFFFFF; border-color: #000000; }
   .fc .fc-button-primary:focus { box-shadow: none; }
 
-  
-
-  /* Day cell — tall enough for a 62px card + day header + a second card. */
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: background .15s ease;
@@ -126,7 +123,6 @@ const Shell = styled.div`
   }
   .fc .fc-daygrid-day:hover { background: #F9FAFB; }
 
-  /* Day frame — block layout (NOT flex). Just a padded container. */
   .fc .fc-daygrid-day-frame {
     padding: 4px !important;
     min-height: 240px !important;
@@ -163,7 +159,6 @@ const Shell = styled.div`
   .fc .fc-daygrid-day.fc-day-today { background: #E8F5E9 !important; }
   .fc .fc-daygrid-day-other .fc-daygrid-day-number { opacity: 0.35 !important; }
 
-  /* Events container — block, min-height for content, never clips children. */
   .fc .fc-daygrid-day-events {
     margin: 0 !important;
     padding: 0 !important;
@@ -174,7 +169,6 @@ const Shell = styled.div`
     overflow: visible !important;
   }
 
-  /* Harness — take it OUT of FC's absolute positioning and put it in flow. */
   .fc .fc-daygrid-event-harness {
     position: relative !important;
     top: auto !important;
@@ -190,7 +184,6 @@ const Shell = styled.div`
   }
   .fc .fc-daygrid-event-harness:last-child { margin-bottom: 0 !important; }
 
-  /* Event — same treatment, block layout, force min-height. */
   .fc .fc-daygrid-event {
     display: block !important;
     width: 100% !important;
@@ -198,7 +191,9 @@ const Shell = styled.div`
     height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
-    background: transparent !important;
+    /* Let FC's inline background-color paint the outer wrapper as a safety
+       backdrop; if our inner card's background ever fails, the wrapper's
+       pastel shows through. */
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -206,7 +201,6 @@ const Shell = styled.div`
     cursor: pointer !important;
   }
 
-  /* Event main — same. */
   .fc .fc-daygrid-event .fc-event-main,
   .fc .fc-daygrid-event .fc-event-main-frame {
     display: block !important;
@@ -216,6 +210,7 @@ const Shell = styled.div`
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
+    background: transparent !important;
   }
 
   .fc .fc-daygrid-more-link {
@@ -231,7 +226,6 @@ const Shell = styled.div`
   }
   .fc .fc-daygrid-more-link:hover { background: #DBEAFE !important; }
 
-  /* ===== WEEK & DAY VIEW ===== */
   .fc .fc-timegrid-axis {
     width: 56px !important;
     background: #FAFAFA !important;
@@ -246,14 +240,8 @@ const Shell = styled.div`
     text-align: right !important;
   }
   .fc .fc-timegrid-slot { border-bottom: 1px solid transparent !important; }
-  .fc .fc-timegrid-slot-minor {
-    border-top-style: dotted !important;
-    border-top-color: #F3F4F6 !important;
-  }
-  .fc .fc-timegrid-col {
-    border-right: 1px solid #EEEEEE !important;
-    background: #FFFFFF;
-  }
+  .fc .fc-timegrid-slot-minor { border-top-style: dotted !important; border-top-color: #F3F4F6 !important; }
+  .fc .fc-timegrid-col { border-right: 1px solid #EEEEEE !important; background: #FFFFFF; }
   .fc .fc-timegrid-col:last-child { border-right: 0 !important; }
   .fc .fc-timegrid-col.fc-day-today { background: #FAFAFA !important; }
 
@@ -304,11 +292,9 @@ const Shell = styled.div`
     overflow: hidden !important;
   }
   .fc .fc-timegrid-event .fc-event-time {
-    font-size: 9px !important;
-    font-weight: 700 !important;
+    font-size: 9px !important; font-weight: 700 !important;
     line-height: 1.2 !important;
-    letter-spacing: .3px !important;
-    text-transform: uppercase !important;
+    letter-spacing: .3px !important; text-transform: uppercase !important;
     opacity: .75 !important;
     white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
   }
@@ -343,20 +329,16 @@ const Shell = styled.div`
   }
   .fc .fc-timegrid-all-day-events { min-height: 35px !important; background: #FFFFFF !important; padding: 2px !important; }
   .fc .fc-timegrid-all-day-event {
-    border-radius: 6px !important;
-    border: none !important;
+    border-radius: 6px !important; border: none !important;
     padding: 4px 8px !important;
     margin: 2px 3px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
+    font-size: 12px !important; font-weight: 600 !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
     min-height: 28px !important;
-    display: flex !important;
-    align-items: center !important;
+    display: flex !important; align-items: center !important;
   }
   .fc .fc-timegrid-all-day-event .fc-event-title { font-weight: 700 !important; font-size: 12px !important; }
-  .fc .fc-timegrid-event,
-  .fc .fc-timegrid-all-day-event { min-width: 0 !important; overflow: hidden !important; }
+  .fc .fc-timegrid-event, .fc .fc-timegrid-all-day-event { min-width: 0 !important; overflow: hidden !important; }
 
   .fc .fc-popover {
     border-radius: 12px !important;
@@ -563,7 +545,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         start: startDate,
         end: fcEnd,
         allDay: isAllDay,
-        backgroundColor: status.bg,     // pastel — so FC default (if used) also reads right
+        backgroundColor: status.bg,
         borderColor: status.color,
         textColor: '#111827',
         extendedProps: {
@@ -666,7 +648,15 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   }, [events, updateCalendarSize]);
 
   // ── Renderer ──────────────────────────────────────────────────────────────
-  // MONTH: solid pastel card (bg + 4px left border + ink text), 3 stacked lines.
+  //
+  // MONTH: full-tint pastel card. To guarantee the color is VISIBLE:
+  //   • `backgroundColor` (specific) — not the `background` shorthand
+  //   • a `linear-gradient` fallback that browsers always paint (background-image
+  //     can't be "skipped" the way a background-color sometimes can when an
+  //     ancestor's `background: transparent !important` is in play)
+  //   • the gradient stacks `itemBg` (pastel) with a light tint of `itemColor`
+  //     so even the palest pastels (#FFFBEB, #EFF6FF) show clearly on white
+  //
   // WEEK/DAY: unchanged multi-line detail card.
   const renderEventContent = useCallback((eventInfo) => {
     const isMonthView = calendarView === 'dayGridMonth';
@@ -675,6 +665,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
     const itemColor = props.statusColor || '#00296B';
     const itemBg = props.statusBg || '#EFF6FF';
+    // 8-digit hex: itemColor + '26' ≈ 15% alpha — mixed over the pastel it
+    // gives a slightly stronger, unmistakable tint of the same hue.
+    const tintOverlay = `${itemColor}26`;
 
     if (isMonthView) {
       return (
@@ -682,7 +675,11 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           style={{
             width: '100%',
             minHeight: '62px',
-            background: itemBg,
+            /* Primary: explicit background-color. */
+            backgroundColor: itemBg,
+            /* Guaranteed paint: a solid linear-gradient of pastel + saturated tint. */
+            background: `linear-gradient(${tintOverlay}, ${tintOverlay}), ${itemBg}`,
+            backgroundImage: `linear-gradient(${tintOverlay}, ${tintOverlay})`,
             color: '#111827',
             borderLeft: `4px solid ${itemColor}`,
             borderRadius: '6px',
@@ -699,7 +696,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
         >
           <span style={{
-            fontSize: '11px', fontWeight: 700, color: '#6b7280',
+            fontSize: '11px', fontWeight: 700, color: '#4b5563',
             letterSpacing: '0.2px',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
@@ -726,6 +723,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       );
     }
 
+    // ── Week / Day card ─────────────────────────────────────────────────
     const isMultiDay = props.isMultiDay;
     const multiDayStyle = isMultiDay ? {
       background: `repeating-linear-gradient(45deg, ${itemColor}, ${itemColor} 4px, ${itemColor}dd 4px, ${itemColor}dd 8px)`,
