@@ -9,7 +9,6 @@ import { getTenantHeaders } from '../../api/endpoints';
 import styled, { keyframes } from 'styled-components';
 import HearseCalendar from './HearseCalendar';
 import env from '../../utils/config/env';
-import DayTimeline from './DayTimeline';
 import notify from '../../utils/notify';
 import {
   Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical,
@@ -703,7 +702,6 @@ const HearseBookings = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState(formatDateStr(new Date()));
-  const [timelineDate, setTimelineDate] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [newBookingOpen, setNewBookingOpen] = useState(false);
@@ -1261,9 +1259,17 @@ const HearseBookings = () => {
           {viewMode === 'calendar' && (
             <HearseCalendar
               bookings={filtered}
+              allBookings={bookings}
+              hearses={allHearses}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
-              onDateClick={(date) => { setSelectedDate(date); setTimelineDate(date); }}
+              onDateClick={(date) => {
+                const [year, month] = date.split('-').map(Number);
+                if (Number.isInteger(year) && Number.isInteger(month)
+                  && (month - 1 !== viewMonth || year !== viewYear)) {
+                  goToMonth(month - 1, year);
+                }
+              }}
               onItemClick={openDrawer}
               onCreateBooking={onCreateBooking}
               month={new Date(viewYear, viewMonth, 1)}
@@ -1271,17 +1277,6 @@ const HearseBookings = () => {
             />
           )}
 
-          {/* Timeline */}
-          {timelineDate && (
-            <div style={{ marginTop: '1rem' }}>
-              <DayTimeline
-                date={timelineDate}
-                bookings={calendarItems.filter(i => i.date === String(timelineDate).slice(0, 10))}
-                onClose={() => setTimelineDate(null)}
-                onItemClick={openDrawer}
-              />
-            </div>
-          )}
         </TableCard>
       </MainContent>
 

@@ -6,7 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
 import { getBranches } from '../../utils/globalAuth';
-import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Phone, Building } from '../../utils/icons/icons';
+import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Building } from '../../utils/icons/icons';
 import { STATUS_CONFIG } from './statusColors';
 import { BR, BRANCH_SLUG_TO_NAME } from './viewerShared';
 
@@ -399,6 +399,229 @@ const CalendarWrapper = styled.div`
   box-sizing: border-box;
 `;
 
+const DaySchedule = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  align-items: start;
+  gap: 20px;
+  min-height: 600px;
+  padding: 8px 4px 20px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+`;
+
+const DayPanel = styled.section`
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #ece7ea;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 17, 20, .03);
+`;
+
+const DayPanelHeader = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 84px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f2f4;
+
+  h2 { margin: 2px 0 0; color: #111827; font-size: 17px; font-weight: 800; }
+  p { margin: 0; color: #9ca3af; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  span { color: #8a8f98; font-size: 11px; font-weight: 700; white-space: nowrap; }
+`;
+
+const BackToCalendar = styled.button`
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #e6e7ea;
+  border-radius: 9px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  &:hover { background: #f7f8f9; }
+`;
+
+const DayBookingRow = styled.button`
+  display: grid;
+  width: 100%;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 16px 20px;
+  border: 0;
+  border-bottom: 1px solid #f4f5f7;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  &:last-child { border-bottom: 0; }
+  &:hover { background: #fbfbfc; }
+  @media (max-width: 520px) {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    padding: 13px 12px;
+  }
+`;
+
+const DayAvatar = styled.span`
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 800;
+`;
+
+const DayBookingContent = styled.span`
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const DayBookingTitle = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+`;
+
+const DayDetailGrid = styled.span`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 16px;
+  width: 100%;
+  @media (max-width: 1000px) { grid-template-columns: minmax(0, 1fr); }
+`;
+
+const DayDetail = styled.span`
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  strong {
+    color: #9ca3af;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+  span {
+    overflow-wrap: anywhere;
+    color: #374151;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.4;
+  }
+`;
+
+const BookingStatus = styled.span`
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: ${p => p.$bg};
+  color: ${p => p.$color};
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+`;
+
+const EmptyDay = styled.div`
+  padding: 28px 20px;
+  color: #8a8f98;
+  font-size: 12px;
+  font-weight: 600;
+`;
+
+const DayPicker = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f2f4;
+`;
+
+const DayPickerButton = styled.button`
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 2px;
+  border: 1px solid ${p => p.$active ? "#111827" : "transparent"};
+  border-radius: 9px;
+  background: ${p => p.$active ? "#111827" : "#fbfbfc"};
+  color: ${p => p.$active ? "#fff" : "#111827"};
+  cursor: pointer;
+  font: inherit;
+  .dow { color: ${p => p.$active ? "#fff" : "#9ca3af"}; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+  .day { font-size: 12px; font-weight: 800; }
+  &:hover { background: ${p => p.$active ? "#111827" : "#f3f4f6"}; }
+`;
+
+const HearseRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 15px;
+  border-bottom: 1px solid #f4f5f7;
+  &:last-child { border-bottom: 0; }
+`;
+
+const HearseAvatar = styled(DayAvatar)`
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+`;
+
+const HearseInfo = styled.div`
+  min-width: 0;
+  flex: 1;
+  strong { display: block; color: #111827; font-size: 11px; font-weight: 800; }
+`;
+
+const HearseDetails = styled.span`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+`;
+
+const HearseDetail = styled.small`
+  color: #6b7280;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  strong { display: inline; margin-right: 3px; color: #9ca3af; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+`;
+
+const AvailabilityPill = styled.span`
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: ${p => p.$free ? "#ecfdf5" : "#fef2f2"};
+  color: ${p => p.$free ? "#15803d" : "#b91c1c"};
+  font-size: 9px;
+  font-weight: 800;
+`;
+
 const StatsBar = styled.div`
   display: flex; gap: 8px; padding: 8px 12px;
   margin-bottom: 10px; background: #FFFFFF;
@@ -424,8 +647,9 @@ const StatIcon = styled.span`
   flex-shrink: 0;
 `;
 
-const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick, month, onMonthChange }) => {
+const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick, month, onMonthChange }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
+  const [dayViewDate, setDayViewDate] = useState(null);
   const calendarRef = useRef(null);
   const wrapperRef = useRef(null);
   const lastReportedMonth = useRef(null);
@@ -597,9 +821,54 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   }, [bookings, selectedDate]);
 
   const dailyStats = getDailyStats();
+  const dayBookings = useMemo(() => {
+    if (!dayViewDate) return [];
+    return bookings
+      .filter((booking) => getBookingDates(booking).some((date) => String(date).slice(0, 10) === dayViewDate))
+      .sort((a, b) => {
+        const aTime = getTimeInfo(a).sm;
+        const bTime = getTimeInfo(b).sm;
+        return aTime - bTime;
+      });
+  }, [bookings, dayViewDate]);
+  const dayFleet = useMemo(() => {
+    if (!dayViewDate) return { free: [], busy: [], unavailable: [] };
+    const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
+    const unavailableStatuses = new Set(['maintenance', 'out_of_service', 'disabled', 'inactive']);
+    const bookedHearses = new Map();
+    (allBookings || []).forEach((booking) => {
+      if (!activeStatuses.has(String(booking.status || '').toLowerCase())) return;
+      if (!getBookingDates(booking).some((date) => String(date).slice(0, 10) === dayViewDate)) return;
+      const hearseId = booking.hearse_id ?? booking.hearseId ?? booking.hearse?.id;
+      if (hearseId != null && !bookedHearses.has(String(hearseId))) {
+        bookedHearses.set(String(hearseId), booking);
+      }
+    });
+
+    return (hearses || []).reduce((result, hearse) => {
+      const id = String(hearse.id ?? hearse.hearse_id ?? '');
+      const booking = bookedHearses.get(id);
+      const status = String(hearse.status || '').toLowerCase();
+      if (unavailableStatuses.has(status)) result.unavailable.push(hearse);
+      else if (booking) result.busy.push({ hearse, booking });
+      else result.free.push(hearse);
+      return result;
+    }, { free: [], busy: [], unavailable: [] });
+  }, [allBookings, dayViewDate, hearses]);
+  const weekDates = useMemo(() => {
+    if (!dayViewDate) return [];
+    const start = new Date(`${dayViewDate}T00:00:00`);
+    start.setDate(start.getDate() - start.getDay());
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      return toDateKey(date);
+    });
+  }, [dayViewDate]);
 
   const handleDateClick = useCallback((info) => {
     const dateStr = info.dateStr.split('T')[0];
+    setDayViewDate(dateStr);
     if (onDateSelect) onDateSelect(dateStr);
     if (onDateClick) onDateClick(dateStr);
   }, [onDateSelect, onDateClick]);
@@ -859,84 +1128,227 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         </StatsBar>
       )}
 
-      <CalendarWrapper ref={wrapperRef}>
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          initialDate={month || undefined}
-          datesSet={handleDatesSet}
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-          }}
-          views={{
-            dayGridMonth: {
-              titleFormat: { year: 'numeric', month: 'long' },
-              dayHeaderFormat: { weekday: 'short' },
-              dayMaxEvents: 3,
-              moreLinkText: '+%d more',
-            },
-            timeGridWeek: {
-              titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
-              dayHeaderFormat: { weekday: 'short', month: 'short', day: 'numeric' },
-              slotMinTime: '05:00:00',
-              slotMaxTime: '23:00:00',
-              slotDuration: '00:30:00',
-              slotLabelInterval: '01:00:00',
-              scrollTime: '06:00:00',
-              expandRows: true,
-              allDaySlot: true,
-              nowIndicator: true,
-              dayMaxEvents: 10,
-              moreLinkText: '+%d more',
-            },
-            timeGridDay: {
-              titleFormat: { year: 'numeric', month: 'long', day: 'numeric' },
-              dayHeaderFormat: { weekday: 'long', month: 'long', day: 'numeric' },
-              slotMinTime: '05:00:00',
-              slotMaxTime: '23:00:00',
-              slotDuration: '00:30:00',
-              slotLabelInterval: '01:00:00',
-              scrollTime: '06:00:00',
-              expandRows: true,
-              allDaySlot: true,
-              nowIndicator: true,
-              dayMaxEvents: 10,
-              moreLinkText: '+%d more',
-            }
-          }}
-          events={events}
-          dateClick={handleDateClick}
-          eventClick={handleEventClick}
-          viewDidMount={handleViewChange}
-          eventContent={renderEventContent}
-          dayCellDidMount={renderDayCell}
-          height={calendarView === 'dayGridMonth' ? 'auto' : 750}
-          contentHeight={calendarView === 'dayGridMonth' ? 'auto' : 700}
-          firstDay={0}
-          weekends={true}
-          nowIndicator={true}
-          selectable={true}
-          unselectAuto={true}
-          dayMaxEvents={3}
-          moreLinkText="+%d more"
-          eventTimeFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
-          slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
-          slotLabelInterval="01:00"
-          buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
-          eventMinHeight={62}
-          eventMaxStack={10}
-          slotEventOverlap={true}
-          expandRows={false}
-          stickyHeaderDates={true}
-          weekNumbers={false}
-          displayEventTime={false}
-          displayEventEnd={false}
-          forceEventDuration={true}
-        />
-      </CalendarWrapper>
+      {dayViewDate ? (
+        <DaySchedule>
+          <DayPanel>
+            <DayPanelHeader>
+              <div>
+                <p>Daily schedule</p>
+                <h2>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h2>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span>{dayBookings.length} booking{dayBookings.length === 1 ? '' : 's'}</span>
+                <BackToCalendar type="button" onClick={() => setDayViewDate(null)}>Back to calendar</BackToCalendar>
+              </div>
+            </DayPanelHeader>
+            {dayBookings.length ? dayBookings.map((booking) => {
+              const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
+              const schedule = getTimeInfo(booking);
+              const hearse = hearses.find((item) => String(item.id ?? item.hearse_id) === String(booking.hearse_id ?? booking.hearse?.id));
+              const hearseName = booking.hearse_name || booking.hearse?.hearse_name || hearse?.hearse_name || 'Hearse not assigned';
+              const plate = booking.plate_number || booking.hearse_plate || booking.hearse?.plate_number || hearse?.plate_number || '';
+              const bookingId = booking.booking_code || booking.booking_id || booking.id || '—';
+              const branchName = booking.branch_name || booking.branchName || booking.branch || '—';
+              const clientName = booking.client_name || booking.client || '—';
+              const clientPhone = booking.client_phone || booking.phone || '—';
+              const routeFrom = booking.from_location || booking.from || booking.origin || '—';
+              const routeTo = booking.destination || booking.to_location || booking.dest || '—';
+              return (
+                <DayBookingRow
+                  key={booking.booking_id || booking.id}
+                  type="button"
+                  onClick={() => onItemClick?.(booking)}
+                >
+                  <DayAvatar>{getInitials(hearseName)}</DayAvatar>
+                  <DayBookingContent>
+                    <DayBookingTitle>
+                      {clientName}
+                      <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
+                    </DayBookingTitle>
+                    <DayDetailGrid>
+                      <DayDetail><strong>Hearse</strong><span>{hearseName}{[booking.model || hearse?.model, plate].filter(Boolean).length ? ` · ${[booking.model || hearse?.model, plate].filter(Boolean).join(' · ')}` : ''}</span></DayDetail>
+                      <DayDetail><strong>Client / contact</strong><span>{clientName} · {clientPhone}</span></DayDetail>
+                      <DayDetail><strong>Route</strong><span>{routeFrom} → {routeTo}</span></DayDetail>
+                      <DayDetail><strong>Date / time</strong><span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {schedule.range}</span></DayDetail>
+                      <DayDetail><strong>Branch</strong><span>{branchName}</span></DayDetail>
+                      <DayDetail><strong>Booking reference</strong><span>{bookingId}</span></DayDetail>
+                    </DayDetailGrid>
+                  </DayBookingContent>
+                </DayBookingRow>
+              );
+            }) : (
+              <EmptyDay>No bookings for this day. Check the fleet panel for available hearses.</EmptyDay>
+            )}
+          </DayPanel>
+
+          <DayPanel>
+            <DayPanelHeader>
+              <div><p>Fleet availability</p><h2>Free hearses</h2></div>
+              <span>{dayFleet.free.length} of {hearses.length} free</span>
+            </DayPanelHeader>
+            <DayPicker aria-label="Choose a day in this week">
+              {weekDates.map((key) => {
+                const date = new Date(`${key}T00:00:00`);
+                return (
+                  <DayPickerButton
+                    key={key}
+                    type="button"
+                    $active={key === dayViewDate}
+                    aria-pressed={key === dayViewDate}
+                    onClick={() => {
+                      setDayViewDate(key);
+                      onDateSelect?.(key);
+                      onDateClick?.(key);
+                    }}
+                  >
+                    <span className="dow">{date.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                    <span className="day">{date.getDate()}</span>
+                  </DayPickerButton>
+                );
+              })}
+            </DayPicker>
+            {dayFleet.free.map((hearse) => (
+              <HearseRow key={hearse.id || hearse.hearse_id}>
+                <HearseAvatar>{getInitials(hearse.hearse_name || hearse.name || 'Hearse')}</HearseAvatar>
+                <HearseInfo>
+                  <strong>{hearse.hearse_name || hearse.name || 'Hearse'}</strong>
+                  <HearseDetails>
+                    {hearse.plate_number && <HearseDetail><strong>Plate</strong>{hearse.plate_number}</HearseDetail>}
+                    {hearse.model && <HearseDetail><strong>Model</strong>{hearse.model}</HearseDetail>}
+                    {hearse.capacity && <HearseDetail><strong>Capacity</strong>{hearse.capacity}</HearseDetail>}
+                    {(hearse.branch_name || hearse.branch) && <HearseDetail><strong>Branch</strong>{hearse.branch_name || hearse.branch}</HearseDetail>}
+                    {hearse.fuel_card_number && <HearseDetail><strong>Fuel card</strong>{hearse.fuel_card_number}</HearseDetail>}
+                  </HearseDetails>
+                </HearseInfo>
+                <AvailabilityPill $free>Free</AvailabilityPill>
+              </HearseRow>
+            ))}
+            {!dayFleet.free.length && <EmptyDay>There are no free hearses on this day.</EmptyDay>}
+            {!!dayFleet.busy.length && (
+              <>
+                <div style={{ padding: '13px 15px 7px', color: '#9ca3af', fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' }}>
+                  Booked hearses ({dayFleet.busy.length})
+                </div>
+                {dayFleet.busy.map(({ hearse, booking }) => (
+                  <HearseRow key={hearse.id || hearse.hearse_id}>
+                    <HearseAvatar>{getInitials(hearse.hearse_name || hearse.name || 'Hearse')}</HearseAvatar>
+                    <HearseInfo>
+                      <strong>{hearse.hearse_name || hearse.name || 'Hearse'}</strong>
+                      <HearseDetails>
+                        {hearse.plate_number && <HearseDetail><strong>Plate</strong>{hearse.plate_number}</HearseDetail>}
+                        {hearse.model && <HearseDetail><strong>Model</strong>{hearse.model}</HearseDetail>}
+                        <HearseDetail><strong>Client</strong>{booking.client_name || booking.client || 'Booked'}</HearseDetail>
+                        <HearseDetail><strong>Time</strong>{getTimeInfo(booking).range}</HearseDetail>
+                      </HearseDetails>
+                    </HearseInfo>
+                    <AvailabilityPill>Busy</AvailabilityPill>
+                  </HearseRow>
+                ))}
+              </>
+            )}
+            {!!dayFleet.unavailable.length && (
+              <>
+                <div style={{ padding: '13px 15px 7px', color: '#9ca3af', fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' }}>
+                  Out of service ({dayFleet.unavailable.length})
+                </div>
+                {dayFleet.unavailable.map((hearse) => (
+                  <HearseRow key={hearse.id || hearse.hearse_id}>
+                    <HearseAvatar>{getInitials(hearse.hearse_name || hearse.name || 'Hearse')}</HearseAvatar>
+                    <HearseInfo>
+                      <strong>{hearse.hearse_name || hearse.name || 'Hearse'}</strong>
+                      <HearseDetails>
+                        {hearse.plate_number && <HearseDetail><strong>Plate</strong>{hearse.plate_number}</HearseDetail>}
+                        {hearse.model && <HearseDetail><strong>Model</strong>{hearse.model}</HearseDetail>}
+                        <HearseDetail><strong>Status</strong>{hearse.status}</HearseDetail>
+                      </HearseDetails>
+                    </HearseInfo>
+                    <AvailabilityPill>Unavailable</AvailabilityPill>
+                  </HearseRow>
+                ))}
+              </>
+            )}
+          </DayPanel>
+        </DaySchedule>
+      ) : (
+        <CalendarWrapper ref={wrapperRef}>
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            initialDate={month || undefined}
+            datesSet={handleDatesSet}
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            }}
+            views={{
+              dayGridMonth: {
+                titleFormat: { year: 'numeric', month: 'long' },
+                dayHeaderFormat: { weekday: 'short' },
+                dayMaxEvents: 3,
+                moreLinkText: '+%d more',
+              },
+              timeGridWeek: {
+                titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+                dayHeaderFormat: { weekday: 'short', month: 'short', day: 'numeric' },
+                slotMinTime: '05:00:00',
+                slotMaxTime: '23:00:00',
+                slotDuration: '00:30:00',
+                slotLabelInterval: '01:00:00',
+                scrollTime: '06:00:00',
+                expandRows: true,
+                allDaySlot: true,
+                nowIndicator: true,
+                dayMaxEvents: 10,
+                moreLinkText: '+%d more',
+              },
+              timeGridDay: {
+                titleFormat: { year: 'numeric', month: 'long', day: 'numeric' },
+                dayHeaderFormat: { weekday: 'long', month: 'long', day: 'numeric' },
+                slotMinTime: '05:00:00',
+                slotMaxTime: '23:00:00',
+                slotDuration: '00:30:00',
+                slotLabelInterval: '01:00:00',
+                scrollTime: '06:00:00',
+                expandRows: true,
+                allDaySlot: true,
+                nowIndicator: true,
+                dayMaxEvents: 10,
+                moreLinkText: '+%d more',
+              }
+            }}
+            events={events}
+            dateClick={handleDateClick}
+            eventClick={handleEventClick}
+            viewDidMount={handleViewChange}
+            eventContent={renderEventContent}
+            dayCellDidMount={renderDayCell}
+            height={calendarView === 'dayGridMonth' ? 'auto' : 750}
+            contentHeight={calendarView === 'dayGridMonth' ? 'auto' : 700}
+            firstDay={0}
+            weekends={true}
+            nowIndicator={true}
+            selectable={true}
+            unselectAuto={true}
+            dayMaxEvents={3}
+            moreLinkText="+%d more"
+            eventTimeFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
+            slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
+            slotLabelInterval="01:00"
+            buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
+            eventMinHeight={62}
+            eventMaxStack={10}
+            slotEventOverlap={true}
+            expandRows={false}
+            stickyHeaderDates={true}
+            weekNumbers={false}
+            displayEventTime={false}
+            displayEventEnd={false}
+            forceEventDuration={true}
+          />
+        </CalendarWrapper>
+      )}
     </Shell>
   );
 };
