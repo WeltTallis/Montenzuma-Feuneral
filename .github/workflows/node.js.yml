@@ -43,3 +43,8 @@ jobs:
 cd /opt/restpoint
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --force-recreate mpesa-service
 docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=80 mpesa-service
+
+
+
+
+on the  d eceased   dashbor d use   this   for    intake  colr  #00296B  this  for   released  #132A13  this    for  postmortem now  #5F0F40
