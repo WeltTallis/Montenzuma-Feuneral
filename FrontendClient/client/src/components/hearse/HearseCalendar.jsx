@@ -1088,9 +1088,32 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
-    // Month view - hide events (show dots instead)
+    // Month view - render compact event pills so bookings are visible
     if (isMonthView) {
-      return null;
+      const status = STATUS_CONFIG[props.status] || STATUS_CONFIG.pending;
+      return (
+        <div
+          style={{
+            padding: '1px 5px',
+            fontSize: '10px',
+            fontWeight: 700,
+            color: '#111827',
+            background: status.color + '1a',
+            border: `1px solid ${status.color}`,
+            borderRadius: '4px',
+            display: 'block',
+            width: '100%',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            margin: '1px 0'
+          }}
+          title={props.clientName || 'Booking'}
+        >
+          {props.clientName || 'Booking'}
+        </div>
+      );
     }
 
     const isMultiDay = props.isMultiDay;
@@ -1315,7 +1338,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
     const eventsContainer = info.el.querySelector('.fc-daygrid-day-events');
     if (eventsContainer) {
-      eventsContainer.innerHTML = '';
+      // Append dots without wiping events FullCalendar may have already rendered
       eventsContainer.appendChild(container);
     } else {
       const newContainer = document.createElement('div');
