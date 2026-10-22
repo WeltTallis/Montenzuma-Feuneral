@@ -23,9 +23,9 @@ import "./deceased-calendar.css";
    TYPE & STATUS CONFIGS (Matches Coffin Full Calendar Palette)
    ============================================================ */
 const TYPE_STYLES = {
-  intake:   { label: "INTAKE",      color: "#16a34a", bg: "#ecfdf5", border: "#bbf7d0", mark: "INTAKE" },
-  release:  { label: "RELEASE",     color: "#0284c7", bg: "#f0f9ff", border: "#bae6fd", mark: "RELEASE" },
-  pm:       { label: "POSTMORTEM",  color: "#7c3aed", bg: "#faf5ff", border: "#e9d5ff", mark: "PM" },
+  intake:   { label: "INTAKE",      color: "#00296B", bg: "#EFF4FA", border: "#C5D8F5", mark: "INTAKE" },
+  release:  { label: "RELEASE",     color: "#132A13", bg: "#EFF5EF", border: "#C6DAC6", mark: "RELEASE" },
+  pm:       { label: "POSTMORTEM",  color: "#5F0F40", bg: "#FAF0F6", border: "#E8BBD5", mark: "PM" },
   funeral:  { label: "FUNERAL",     color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4", mark: "FUNERAL" },
   transfer: { label: "TRANSFER",    color: "#d97706", bg: "#fffbeb", border: "#fde68a", mark: "TRANSFER" },
 };
