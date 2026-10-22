@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import './coffin-analytics-dashboard.css';
 import { CoffinAPI } from '../api/coffinApi';
-import { loadCoffinTypesCatalog } from '../components/coffins/coffinColorUtils';
-import { getParentTenantSlug, getTenantSlug } from '../utils/globalAuth';
+import { loadCoffinTypesCatalog, formatBranchDisplayName } from '../components/coffins/coffinColorUtils';
+import { getParentTenantSlug, getTenantSlug, getBranches } from '../utils/globalAuth';
 
 /* ── Colour hex map for swatches ─────────────────────────────────── */
 const COLOR_HEX = {
@@ -12,10 +12,11 @@ const COLOR_HEX = {
   'Golden Oak': '#c89060', Honey: '#d97706', Pine: '#65a30d',
   'Light Pink': '#f5d5d5', 'Midnight Black': '#0f172a',
   'Rich Mahogany': '#7f1d1d', 'Walnut Brown': '#3d2817',
-  'Metallic Gold': '#d4af37', 'Deep Rosewood': '#65000b',
-  'Pearl White': '#f8f6f0', Red: '#dc2626', Blue: '#2563eb',
+  'Metallic Gold': '#d4af37', Gold: '#d4af37', 'Deep Rosewood': '#65000b',
+  'Pearl White': '#f8f6f0', 'Pure White': '#ffffff', 'Crisp White': '#f8fafc',
+  'Natural Oak': '#8a6642', Red: '#dc2626', Blue: '#2563eb',
   Grey: '#6b7280', Gray: '#6b7280', Silver: '#94a3b8',
-  Cream: '#fef3c7', Beige: '#d4c5a9',
+  Cream: '#fef3c7', Beige: '#d4c5a9', Ivory: '#fffff0',
 };
 
 const LOW_STOCK = 2;
@@ -42,6 +43,8 @@ export default function CoffinCommandCenter({ onOpenStore, embedded = false }) {
     setError(null);
     try {
       const parentSlug = getParentTenantSlug() || getTenantSlug();
+      const tenantSlug = getTenantSlug();
+      const cachedBranches = getBranches() || [];
 
       // Fetch real coffin inventory across all branches
       let coffinsData = [];
@@ -58,12 +61,50 @@ export default function CoffinCommandCenter({ onOpenStore, embedded = false }) {
         } catch { /* no data available */ }
       }
 
+      // Helper to cleanly resolve branch display name
+      const resolveBranchName = (item) => {
+        const rawBranchId = item.branch_id || item.branchId;
+        const rawSlug = item.branch_slug || item.branchSlug || item.branch_db_name;
+        const rawName = item.branch_name || item.branchName;
+
+        if (cachedBranches.length > 0) {
+          const match = cachedBranches.find(b =>
+            (rawBranchId && String(b.branchId || b.branch_id || b.id) === String(rawBranchId)) ||
+            (rawSlug && (b.branchSlug === rawSlug || b.branchDbName === rawSlug))
+          );
+          if (match) {
+            const clean = formatBranchDisplayName(
+              match.branchName || match.branch_name || match.name,
+              match.branchSlug || match.branch_slug || match.branchDbName
+            );
+            if (clean && clean.toLowerCase() !== (tenantSlug || '').toLowerCase()) return clean;
+          }
+        }
+
+        // Avoid using tenant slug like 'montenzuma-monalisa'
+        if (rawSlug === parentSlug || rawSlug === tenantSlug) {
+          const mainB = cachedBranches.find(b => b.isMain || b.is_main) || cachedBranches[0];
+          if (mainB) {
+            const clean = formatBranchDisplayName(mainB.branchName || mainB.name);
+            if (clean && clean.toLowerCase() !== (tenantSlug || '').toLowerCase()) return clean;
+          }
+          return 'Main Branch';
+        }
+
+        const formatted = formatBranchDisplayName(rawName, rawSlug);
+        if (tenantSlug && formatted.toLowerCase() === tenantSlug.toLowerCase()) {
+          const mainB = cachedBranches.find(b => b.isMain || b.is_main) || cachedBranches[0];
+          return mainB ? formatBranchDisplayName(mainB.branchName || mainB.name) : 'Main Branch';
+        }
+        return formatted || 'Main Branch';
+      };
+
       // Map coffins to variant objects
       const mappedVariants = coffinsData.map((c, idx) => ({
         id: String(c.coffin_id || c.id || `c_${idx}`),
         type: c.type || c.coffin_type || c.name || 'Unknown',
         color: c.color || c.coffin_color || 'Unknown',
-        branch: c.branch_name || c.branch_slug || 'Main',
+        branch: resolveBranchName(c),
         qty: parseInt(c.stock ?? c.quantity ?? c.qty) || 0,
         location: c.location || c.rack || '',
       }));
@@ -88,12 +129,29 @@ export default function CoffinCommandCenter({ onOpenStore, embedded = false }) {
         amount: parseFloat(o.amount || o.total || 0),
       }));
 
-      // Derive branches from actual data
+      // Derive branches from system registered branches + actual variant data
       const branchSet = new Set();
-      mappedVariants.forEach(v => branchSet.add(v.branch));
+      if (Array.isArray(cachedBranches) && cachedBranches.length > 0) {
+        cachedBranches.forEach(b => {
+          const name = formatBranchDisplayName(
+            b.branchName || b.branch_name || b.name,
+            b.branchSlug || b.branch_slug || b.branchDbName
+          );
+          if (name && (!tenantSlug || name.toLowerCase() !== tenantSlug.toLowerCase())) {
+            branchSet.add(name);
+          }
+        });
+      }
+      mappedVariants.forEach(v => {
+        if (v.branch && (!tenantSlug || v.branch.toLowerCase() !== tenantSlug.toLowerCase())) {
+          branchSet.add(v.branch);
+        }
+      });
       mappedBookings.forEach(b => {
         const v = mappedVariants.find(x => x.id === b.variantId);
-        if (v) branchSet.add(v.branch);
+        if (v && v.branch && (!tenantSlug || v.branch.toLowerCase() !== tenantSlug.toLowerCase())) {
+          branchSet.add(v.branch);
+        }
       });
       const derivedBranches = [...branchSet].filter(Boolean).sort();
 
@@ -117,7 +175,7 @@ export default function CoffinCommandCenter({ onOpenStore, embedded = false }) {
 
       setVariants(mappedVariants);
       setBookings(mappedBookings);
-      setBranches(derivedBranches.length > 0 ? derivedBranches : []);
+      setBranches(derivedBranches.length > 0 ? derivedBranches : ['Main Branch']);
       setCatalog(newCat);
       setLastUpdate(new Date());
     } catch (err) {
@@ -860,38 +918,42 @@ export default function CoffinCommandCenter({ onOpenStore, embedded = false }) {
             </div>
 
             {/* Branch x Type x Color Matrix */}
-            {matrixCols.length > 0 && branches.length > 0 && (
-              <div className="cb-card cb-matrix-card">
-                <div className="cb-card-head">
-                  <div>
-                    <div className="cb-card-title" style={{ fontSize: '14.5px' }}>
-                      Full inventory by branch, type &amp; color
-                    </div>
-                    <div className="cb-card-sub">
-                      Available units per Type · Color · Branch — scroll horizontally
-                    </div>
+            <div className="cb-card cb-matrix-card">
+              <div className="cb-card-head">
+                <div>
+                  <div className="cb-card-title" style={{ fontSize: '15px' }}>
+                    Full inventory by branch, type &amp; color
+                  </div>
+                  <div className="cb-card-sub">
+                    Available units per Type · Color · Branch — scroll horizontally
                   </div>
                 </div>
+              </div>
 
-                <div className="cb-matrix-legend-bar">
-                  <span className="cb-ml-item">
-                    <span className="cb-ml-sw" style={{ background: '#f0fdf4', borderColor: '#86efac' }} />
-                    Healthy
-                  </span>
-                  <span className="cb-ml-item">
-                    <span className="cb-ml-sw" style={{ background: '#fffbeb', borderColor: '#fcd34d' }} />
-                    Low
-                  </span>
-                  <span className="cb-ml-item">
-                    <span className="cb-ml-sw" style={{ background: '#fef2f2', borderColor: '#fca5a5' }} />
-                    Critical
-                  </span>
-                  <span className="cb-ml-item">
-                    <span className="cb-ml-sw" style={{ background: '#f8fafc', borderColor: '#e2e8f0' }} />
-                    Out of stock
-                  </span>
+              <div className="cb-matrix-legend-bar">
+                <span className="cb-ml-item">
+                  <span className="cb-ml-sw" style={{ background: '#f0fdf4', borderColor: '#86efac' }} />
+                  Healthy
+                </span>
+                <span className="cb-ml-item">
+                  <span className="cb-ml-sw" style={{ background: '#fffbeb', borderColor: '#fcd34d' }} />
+                  Low
+                </span>
+                <span className="cb-ml-item">
+                  <span className="cb-ml-sw" style={{ background: '#fef2f2', borderColor: '#fca5a5' }} />
+                  Critical
+                </span>
+                <span className="cb-ml-item">
+                  <span className="cb-ml-sw" style={{ background: '#f8fafc', borderColor: '#e2e8f0' }} />
+                  Out of stock
+                </span>
+              </div>
+
+              {matrixCols.length === 0 || branches.length === 0 ? (
+                <div style={{ padding: '36px 20px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                  No coffin matrix data available yet. Register coffin types or add inventory in the Coffin Store.
                 </div>
-
+              ) : (
                 <div className="cb-matrix-wrap">
                   <table className="cb-matrix">
                     <thead>
@@ -913,12 +975,25 @@ export default function CoffinCommandCenter({ onOpenStore, embedded = false }) {
                           <tr key={branch}>
                             <td className="branch-cell">{branch}</td>
                             {matrixCols.map(c => {
-                              const v = variants.find(
-                                x => x.branch === branch && x.type === c.type && x.color === c.color
-                              );
+                              const norm = (s) => String(s || '').trim().toLowerCase();
+                              const v = variants.find(x => {
+                                if (norm(x.branch) !== norm(branch)) return false;
+                                const xType = norm(x.type);
+                                const cType = norm(c.type);
+                                const typeMatch = xType === cType || xType.includes(cType) || cType.includes(xType);
+                                if (!typeMatch) return false;
+                                const xCol = norm(x.color);
+                                const cCol = norm(c.color);
+                                return xCol === cCol || xCol.includes(cCol) || cCol.includes(xCol);
+                              });
+
                               if (!v) {
                                 return (
-                                  <td key={`${branch}-${c.type}-${c.color}`} className="cell-zero">
+                                  <td
+                                    key={`${branch}-${c.type}-${c.color}`}
+                                    className="cell-zero"
+                                    title={`${branch} · ${c.type} · ${c.color}: 0 units registered`}
+                                  >
                                     <span className="val">—</span>
                                   </td>
                                 );
@@ -944,8 +1019,8 @@ export default function CoffinCommandCenter({ onOpenStore, embedded = false }) {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Row 3: Branch breakdown table + Live activity */}
             <div className="cb-grid two">

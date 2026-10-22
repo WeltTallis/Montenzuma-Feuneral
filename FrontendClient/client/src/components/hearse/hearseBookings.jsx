@@ -966,7 +966,14 @@ const HearseBookings = () => {
       // Register at TENANT level only — no branch stamping. The x-tenant-id
       // header sent by api.registerHearse() is what scopes this hearse to the
       // whole tenant, so every branch sees the same shared fleet.
-      await api.registerHearse({ ...hearseForm });
+      const payload = { ...hearseForm };
+      const fuelCard = String(payload.fuel_card_number || '').trim();
+      if (fuelCard) payload.fuel_card_number = fuelCard;
+      else delete payload.fuel_card_number;
+      payload.plate_number = String(payload.plate_number || '').trim();
+      payload.hearse_name = String(payload.hearse_name || '').trim();
+      if (payload.model) payload.model = String(payload.model).trim();
+      await api.registerHearse(payload);
       notify.success('Hearse registered successfully!');
       setRegisterHearseOpen(false);
       setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '', fuel_card_number: '' });
@@ -1485,14 +1492,14 @@ const HearseBookings = () => {
                   <Select value={hearseForm.status} onChange={e => setHearseForm(p => ({ ...p, status: e.target.value }))} style={{ width: '100%' }}>
                     <option value="available">Available</option>
                     <option value="maintenance">Maintenance</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="out_of_service">Out of Service</option>
                   </Select>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   <div>
                     <ModalLabel>Fuel Card Number</ModalLabel>
                     <ModalInput placeholder="e.g., FC-12345" value={hearseForm.fuel_card_number}
-                      onChange={e => setHearseForm(p => ({ ...p, fuel_card_number: e.target.value }))} />
+                      onChange={e => setHearseForm(p => ({ ...p, fuel_card_number: e.target.value }))} maxLength={50} />
                   </div>
                 </div>
                 <ModalFoot>

@@ -4,6 +4,7 @@ import multer, { FileFilterCallback } from 'multer';
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import { getHearsePool } from '../database';
+import { hasHearseColumn } from '../utilities/hearseSchema';
 import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, FLEET_CACHE_TTL } from '../utilities/hearseCache';
 import { getKenyaTimeISO, getKenyaDate } from '@montezuma/shared-utils';
 
@@ -118,10 +119,14 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         const hearseNumber = String((countResult[0]?.count || 0) + 1).padStart(3, '0');
         const hearse_code = `HRS-${hearseNumber}`;
 
-        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'active_bookings', 'tenant_id', 'tenant_slug', 'fuel_card_number', 'created_at', 'updated_at'];
+        // Only include `fuel_card_number` when the effective schema actually has
+        // the column — otherwise the INSERT fails with "Unknown column".
+        const includeFuelCard = await hasHearseColumn('fuel_card_number');
+
+        const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'active_bookings', 'tenant_id', 'tenant_slug', ...(includeFuelCard ? ['fuel_card_number'] : []), 'created_at', 'updated_at'];
         const insertValues = [
             hearse_code, hearse_name || null, plate_number.trim(), model || null, capacity || 8, status || 'available',
-            assignedBranchId, branchNameValue, branchCodeValue, 0, tenantId, tenantSlug, fuel_card_number || null, now, now
+            assignedBranchId, branchNameValue, branchCodeValue, 0, tenantId, tenantSlug, ...(includeFuelCard ? [fuel_card_number || null] : []), now, now
         ];
 
         const placeholders = insertValues.map(() => '?').join(', ');
@@ -179,7 +184,16 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
         if (model) { fields.push('model = ?'); values.push(model); }
         if (capacity !== undefined && capacity !== null) { fields.push('capacity = ?'); values.push(capacity); }
         if (status) { fields.push('status = ?'); values.push(status); }
-        if (fuel_card_number !== undefined) { fields.push('fuel_card_number = ?'); values.push(fuel_card_number || null); }
+        if (fuel_card_number !== undefined) {
+            const includeFuelCard = await hasHearseColumn('fuel_card_number');
+            if (includeFuelCard) {
+                fields.push('fuel_card_number = ?');
+                values.push(fuel_card_number || null);
+            } else if (String(fuel_card_number || '').trim() !== '') {
+                res.status(409).json({ success: false, message: 'Fuel-card storage is not available on this database (fuel_card_number column missing). Run migrations.' });
+                return;
+            }
+        }
         
         // Handle branch update - support both branch_id and branch_code
         if (branch_code && !branch_id) {

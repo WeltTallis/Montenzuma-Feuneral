@@ -1004,7 +1004,7 @@ const Tag = ({ cls, children }) => {
 };
 
 //  Main Component 
-const CoffinDashboard = ({ showAnalytics = false }) => {
+const CoffinDashboard = () => {
   const { socket } = useSocket();
   // Reservations ("bookings") is always the landing tab when Coffins opens.
   const [tab, setTab] = useState('bookings');
@@ -1037,6 +1037,25 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
   const [drawer, setDrawer] = useState({ open: false, title: '', content: '' });
   const [modal, setModal] = useState({ open: false, type: '', data: {} });
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  // Dropdown menus for actions/management to prevent crowded navigation
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef(null);
+  const [invMenuOpen, setInvMenuOpen] = useState(false);
+  const invMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target)) {
+        setHeaderMenuOpen(false);
+      }
+      if (invMenuRef.current && !invMenuRef.current.contains(e.target)) {
+        setInvMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const faId = 'font-awesome-cdn-inject';
@@ -2563,62 +2582,6 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
           <button
             type="button"
             onClick={() =>
-              setModal({
-                open: true,
-                type: 'registerTypes',
-                data: { name: '', description: '', selectedColors: [] },
-              })
-            }
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 15px',
-              borderRadius: 8,
-              border: `1px solid ${S.border}`,
-              background: '#f8fafc',
-              color: S.text,
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <i className="fa-solid fa-shapes" style={{ color: S.primary }}></i>
-            Register Types ({typesCatalog.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setModal({
-                open: true,
-                type: 'registerColors',
-                data: { colorName: '', customHex: '#111111' },
-              })
-            }
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 15px',
-              borderRadius: 8,
-              border: `1px solid ${S.border}`,
-              background: '#f8fafc',
-              color: S.text,
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <i className="fa-solid fa-palette" style={{ color: '#8b5cf6' }}></i>
-            Register Colors ({registeredColors.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
               setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })
             }
             style={{
@@ -2641,47 +2604,179 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
             Add Coffin Variant
           </button>
 
-          <button
-            type="button"
-            onClick={() => openFindStock()}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 15px',
-              borderRadius: 8,
-              border: `1px solid ${S.border}`,
-              background: '#ffffff',
-              color: S.text,
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <i className="fa-solid fa-network-wired" style={{ color: '#2563eb' }}></i>
-            Find in Other Branches
-          </button>
+          {/* Manage & Register Dropdown */}
+          <div ref={invMenuRef} style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              type="button"
+              onClick={() => setInvMenuOpen(!invMenuOpen)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '9px 15px',
+                borderRadius: 8,
+                border: `1px solid ${invMenuOpen ? S.primary : S.border}`,
+                background: invMenuOpen ? '#f1f5f9' : '#f8fafc',
+                color: S.text,
+                fontSize: 12.5,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <i className="fa-solid fa-sliders" style={{ color: S.primary }}></i>
+              <span>Register &amp; Manage</span>
+              <i className={`fa-solid fa-chevron-${invMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 10, color: S.textMuted }}></i>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => fetchAllData()}
-            title="Refresh inventory"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '9px 12px',
-              borderRadius: 8,
-              border: `1px solid ${S.border}`,
-              background: '#ffffff',
-              color: S.textMuted,
-              fontSize: 12.5,
-              cursor: 'pointer',
-            }}
-          >
-            <i className="fa-solid fa-arrows-rotate"></i>
-          </button>
+            {invMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  background: '#ffffff',
+                  borderRadius: 10,
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                  minWidth: 240,
+                  zIndex: 100,
+                  padding: 6,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 3,
+                }}
+              >
+                <button
+                  type="button"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    borderRadius: 7,
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textAlign: 'left',
+                    width: '100%',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => {
+                    setInvMenuOpen(false);
+                    setModal({
+                      open: true,
+                      type: 'registerTypes',
+                      data: { name: '', description: '', selectedColors: [] },
+                    });
+                  }}
+                >
+                  <i className="fa-solid fa-shapes" style={{ color: S.primary, width: 16 }}></i>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>Register Types</div>
+                    <div style={{ fontSize: 11, color: S.textMuted }}>{typesCatalog.length} models registered</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    borderRadius: 7,
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textAlign: 'left',
+                    width: '100%',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => {
+                    setInvMenuOpen(false);
+                    setModal({
+                      open: true,
+                      type: 'registerColors',
+                      data: { colorName: '', customHex: '#111111' },
+                    });
+                  }}
+                >
+                  <i className="fa-solid fa-palette" style={{ color: '#8b5cf6', width: 16 }}></i>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>Register Colors</div>
+                    <div style={{ fontSize: 11, color: S.textMuted }}>{registeredColors.length} color finishes</div>
+                  </div>
+                </button>
+
+                <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+
+                <button
+                  type="button"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    borderRadius: 7,
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textAlign: 'left',
+                    width: '100%',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => {
+                    setInvMenuOpen(false);
+                    openFindStock();
+                  }}
+                >
+                  <i className="fa-solid fa-network-wired" style={{ color: '#2563eb', width: 16 }}></i>
+                  <span>Find in Other Branches</span>
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    borderRadius: 7,
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textAlign: 'left',
+                    width: '100%',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => {
+                    setInvMenuOpen(false);
+                    fetchAllData();
+                  }}
+                >
+                  <i className="fa-solid fa-arrows-rotate" style={{ color: S.textMuted, width: 16 }}></i>
+                  <span>Refresh Inventory</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2765,8 +2860,7 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
         </div>
       )}
 
-      {/* Cross-Branch Inventory Distribution — only in dashboard/workshop */}
-      {showAnalytics && (<>
+      {/* Cross-Branch Inventory Distribution */}
       <div
         style={{
           background: '#ffffff',
@@ -3005,7 +3099,6 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
           </div>
         </div>
       </div>
-      </>)}
       <div style={styles.tw}>
         <div style={styles.tt}>
           <div style={styles.sbox}>
@@ -3279,16 +3372,16 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
           </table>
         </div>
       </div>
-    </>
-  );
+      </>
+      );
 
-  // â”€â”€â”€ Render sections via shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Transfers tab UI extracted into ./coffinTransfers.jsx (rendered inside the ReservationDashboard shell below)
+      // â”€â”€â”€ Render sections via shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Transfers tab UI extracted into ./coffinTransfers.jsx (rendered inside the ReservationDashboard shell below)
 
-  // â”€â”€â”€ Main Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  return (
-    <div style={styles.W}>
-      <style>{`
+      // â”€â”€â”€ Main Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      return (
+      <div style={styles.W}>
+        <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         .drawer-btn {
           display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -3342,825 +3435,447 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
         tr:hover td { background: #f1f5f9; }
       `}</style>
 
-      <ToastContainer position="top-center" autoClose={3000} />
+        <ToastContainer position="top-center" autoClose={3000} />
 
 
-      {/* Tab content: ReservationDashboard IS the page shell - its hoisted toolbar hosts the top navigation */}
-      {/* Full-height, uncapped: the shell always fills the entire screen and scrolls internally. */}
-      <div
-        style={{
-          height: '100vh',
-          minHeight: 0,
-          overflow: 'hidden',
-          borderRadius: 0,
-          border: 'none',
-          boxShadow: 'none',
-          background: 'transparent',
-        }}
-      >
-        <ReservationDashboard
-          bookings={branchBookings}
-          coffins={coffins}
-          branches={branches}
-          formatPrice={formatKES}
-          onNewReservation={(selectedDate) => {
-            const now = new Date();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            setModal({
-              open: true,
-              type: 'booking',
-              data: {
-                service_date: selectedDate ? toDateKey(selectedDate) : todayKey(),
-                service_time: hh + ':' + mm,
-              },
-            });
+        {/* Tab content: ReservationDashboard IS the page shell - its hoisted toolbar hosts the top navigation */}
+        {/* Full-height, uncapped: the shell always fills the entire screen and scrolls internally. */}
+        <div
+          style={{
+            height: '100vh',
+            minHeight: 0,
+            overflow: 'hidden',
+            borderRadius: 0,
+            border: 'none',
+            boxShadow: 'none',
+            background: 'transparent',
           }}
-          onViewBooking={(id) => viewBooking(id)}
-          navTabs={[
-            { key: 'bookings', icon: 'fa-calendar-check', label: 'Reservations' },
-            { key: 'inventory', icon: 'fa-boxes-stacked', label: 'Inventory' },
-            {
-              key: 'transfers',
-              icon: 'fa-right-left',
-              label: 'Transfers',
-              badge: pendingReqCount,
-            },
-          ]}
-          activeNav={tab}
-          onNavChange={setTab}
-          branchSelector={
-            branches.length > 0
-              ? {
-                value: currentBranch || '',
-                onChange: (e) => {
-                  // Branch ids are strings/UUIDs - do NOT parseInt() (that yields NaN).
-                  fetchAllData(e.target.value);
-                },
-                options: branches.map((b) => ({ value: b.id, label: b.name })),
-              }
-              : null
-          }
-          headerActions={
-            <>
-              <button
-                className="cb-tb-btn"
-                onClick={() =>
-                  setModal({
-                    open: true,
-                    type: 'registerTypes',
-                    data: { name: '', description: '', selectedColors: [] },
-                  })
-                }
-                title="Register and manage standard coffin types"
-                style={{ fontWeight: 600, borderColor: '#cbd5e1' }}
-              >
-                <i className="fa-solid fa-shapes" style={{ color: S.primary }}></i> Register Types
-              </button>
-              <button
-                className="cb-tb-btn"
-                onClick={() =>
-                  setModal({
-                    open: true,
-                    type: 'registerColors',
-                    data: { colorName: '', customHex: '#111111' },
-                  })
-                }
-                title="Register and manage casket colors with live RGB detection"
-                style={{ fontWeight: 600, borderColor: '#cbd5e1' }}
-              >
-                <i className="fa-solid fa-palette" style={{ color: '#8b5cf6' }}></i> Register Colors
-              </button>
-              <button
-                className="cb-tb-btn"
-                onClick={() =>
-                  setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })
-                }
-                title="Add new coffin variant to inventory"
-              >
-                <i className="fa-solid fa-plus"></i> Add Coffin
-              </button>
-              <button className="cb-tb-btn" onClick={() => openFindStock()} title="Search other branches">
-                <i className="fa-solid fa-network-wired"></i> Find Stock
-              </button>
-              <button className="cb-tb-btn" onClick={() => fetchAllData()} title="Refresh data">
-                <i className="fa-solid fa-arrows-rotate"></i> Refresh
-              </button>
-            </>
-          }
         >
-          {tab === 'inventory' && renderInventory()}
-          {tab === 'transfers' && (
-            <CoffinTransfers
-              stockRequests={stockRequests}
-              coffins={coffins}
-              branches={branches}
-              currentBranch={currentBranch}
-              onStockAction={handleStockAction}
-              onRefresh={fetchAllData}
-            />
-          )}
-        </ReservationDashboard>
-      </div>
-
-
-
-
-      {/* Register Coffin Types Sidebar */}
-      <div
-        style={{
-          ...styles.bkOverlay,
-          ...(modal.open && modal.type === 'registerTypes' ? styles.bkOverlayOpen : {}),
-        }}
-        onClick={() => setModal({ open: false, type: '', data: {} })}
-      ></div>
-      <div
-        style={{
-          ...styles.bkSidebar,
-          maxWidth: 580,
-          ...(modal.open && modal.type === 'registerTypes' ? styles.bkSidebarOpen : {}),
-        }}
-      >
-        <div style={styles.bkHeader}>
-          <div style={{ minWidth: 0 }}>
-            <h2 style={styles.bkHeaderH2}>
-              <span style={styles.bkHeaderIcon}>
-                <i className="fa-solid fa-shapes"></i>
-              </span>
-              Register Coffin Types
-            </h2>
-            <span style={styles.bkHeaderSub}>
-              Define coffin models and assign their available color finishes
-            </span>
-          </div>
-          <button
-            style={styles.bkClose}
-            onClick={() => setModal({ open: false, type: '', data: {} })}
-            title="Close"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: S.bg }}>
-          {/* Add New Type Form Card */}
-          <form
-            onSubmit={handleSaveCoffinType}
-            style={{
-              background: '#fff',
-              border: `1px solid ${S.border}`,
-              borderRadius: 12,
-              padding: 20,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              marginBottom: 24,
+          <ReservationDashboard
+            bookings={branchBookings}
+            coffins={coffins}
+            branches={branches}
+            formatPrice={formatKES}
+            onNewReservation={(selectedDate) => {
+              const now = new Date();
+              const hh = String(now.getHours()).padStart(2, '0');
+              const mm = String(now.getMinutes()).padStart(2, '0');
+              setModal({
+                open: true,
+                type: 'booking',
+                data: {
+                  service_date: selectedDate ? toDateKey(selectedDate) : todayKey(),
+                  service_time: hh + ':' + mm,
+                },
+              });
             }}
-          >
-            <div style={{ fontWeight: 700, fontSize: 15, color: S.text, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="fa-solid fa-circle-plus" style={{ color: S.primary }}></i>
-              Add New Coffin Type
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={styles.fl}>Coffin Type Name *</label>
-              <input
-                style={styles.fi}
-                required
-                value={modal.data.name || ''}
-                onChange={(e) =>
-                  setModal({ ...modal, data: { ...modal.data, name: e.target.value } })
+            onViewBooking={(id) => viewBooking(id)}
+            navTabs={[
+              { key: 'bookings', icon: 'fa-calendar-check', label: 'Reservations' },
+              { key: 'inventory', icon: 'fa-boxes-stacked', label: 'Inventory' },
+              {
+                key: 'transfers',
+                icon: 'fa-right-left',
+                label: 'Transfers',
+                badge: pendingReqCount,
+              },
+            ]}
+            activeNav={tab}
+            onNavChange={setTab}
+            branchSelector={
+              branches.length > 0
+                ? {
+                  value: currentBranch || '',
+                  onChange: (e) => {
+                    // Branch ids are strings/UUIDs - do NOT parseInt() (that yields NaN).
+                    fetchAllData(e.target.value);
+                  },
+                  options: branches.map((b) => ({ value: b.id, label: b.name })),
                 }
-                placeholder="e.g. Doom, Presidential Heritage, Executive Oak, Cathedral"
-              />
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={styles.fl}>Description / Build Specifications</label>
-              <input
-                style={styles.fi}
-                value={modal.data.description || ''}
-                onChange={(e) =>
-                  setModal({ ...modal, data: { ...modal.data, description: e.target.value } })
-                }
-                placeholder="e.g. Solid mahogany with velvet lining and gold-accent swing bars"
-              />
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label style={{ ...styles.fl, margin: 0 }}>Assign Available Colors to this Type</label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setModal({
-                      open: true,
-                      type: 'registerColors',
-                      data: { colorName: '', customHex: '#111111' },
-                    })
-                  }
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: S.primary,
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  + Add new color
-                </button>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, maxHeight: 150, overflowY: 'auto', padding: 8, background: '#f8fafc', borderRadius: 8, border: `1px solid ${S.border}` }}>
-                {registeredColors.map((color) => {
-                  const isSelected = (modal.data.selectedColors || []).includes(color.name);
-                  return (
-                    <button
-                      type="button"
-                      key={color.name}
-                      onClick={() => {
-                        const cur = modal.data.selectedColors || [];
-                        const next = isSelected
-                          ? cur.filter((c) => c !== color.name)
-                          : [...cur, color.name];
-                        setModal({ ...modal, data: { ...modal.data, selectedColors: next } });
-                      }}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '5px 10px',
-                        borderRadius: 16,
-                        border: `1px solid ${isSelected ? S.primary : S.border}`,
-                        background: isSelected ? S.primaryLight : '#fff',
-                        color: isSelected ? S.primary : S.text,
-                        fontSize: 12,
-                        fontWeight: isSelected ? 700 : 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          background: color.hex,
-                          border: '1px solid rgba(0,0,0,0.2)',
-                        }}
-                      />
-                      {color.name}
-                      {isSelected && <i className="fa-solid fa-check" style={{ fontSize: 10 }}></i>}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{ fontSize: 11, color: S.textMuted, marginTop: 4 }}>
-                Selected colors will be offered when adding inventory or taking bookings for this type.
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              style={{
-                ...styles.btn,
-                ...styles.btnP,
-                width: '100%',
-                padding: '11px',
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              <i className="fa-solid fa-check"></i> Save Coffin Type
-            </button>
-          </form>
-
-          {/* List of Registered Coffin Types */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: S.text }}>
-                Registered Coffin Models ({typesCatalog.length})
-              </div>
-              <span style={{ fontSize: 12, color: S.textMuted }}>Synced with variants &amp; booking</span>
-            </div>
-
-            <div style={{ display: 'grid', gap: 10 }}>
-              {typesCatalog.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 24, color: S.textMuted, background: '#fff', borderRadius: 8 }}>
-                  No coffin types registered yet. Add one above!
-                </div>
-              ) : (
-                typesCatalog.map((type) => (
-                  <div
-                    key={type.id || type.name}
+                : null
+            }
+            headerActions={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {/* Unified Inventory & Registration Dropdown */}
+                <div ref={headerMenuRef} style={{ position: 'relative', display: 'inline-block' }}>
+                  <button
+                    type="button"
+                    className="cb-tb-btn"
+                    onClick={() => setHeaderMenuOpen(!headerMenuOpen)}
                     style={{
-                      background: '#fff',
-                      border: `1px solid ${S.border}`,
-                      borderRadius: 10,
-                      padding: '14px 16px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 12,
+                      fontWeight: 700,
+                      borderColor: headerMenuOpen ? S.primary : '#cbd5e1',
+                      background: headerMenuOpen ? '#f1f5f9' : '#ffffff',
+                      color: headerMenuOpen ? S.primary : '#0f172a',
                     }}
+                    title="Inventory actions, register types and colors"
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: S.text }}>
-                        {type.name}
-                      </div>
-                      {type.description && (
-                        <div style={{ fontSize: 12, color: S.textMuted, marginTop: 2 }}>
-                          {type.description}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-                        {(type.colors && type.colors.length > 0) ? (
-                          type.colors.map((c) => (
-                            <span
-                              key={c.name}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                background: '#f1f5f9',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: 12,
-                                padding: '3px 8px',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: '#334155',
-                              }}
-                            >
-                              <span
-                                style={{
-                                  width: 9,
-                                  height: 9,
-                                  borderRadius: '50%',
-                                  background: c.hex,
-                                  border: '1px solid rgba(0,0,0,0.2)',
-                                }}
-                              />
-                              {c.name}
-                              <span style={{ color: '#94a3b8', fontSize: 10 }}>({c.sku})</span>
-                            </span>
-                          ))
-                        ) : (
-                          <span style={{ fontSize: 11, color: S.textMuted }}>No colors assigned</span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCoffinType(type.id || type.name, type.name)}
-                      title={`Remove ${type.name}`}
+                    <i className="fa-solid fa-boxes-stacked" style={{ color: S.primary }}></i>
+                    <span>Inventory &amp; Register</span>
+                    <i
+                      className={`fa-solid fa-chevron-${headerMenuOpen ? 'up' : 'down'}`}
+                      style={{ fontSize: 9, marginLeft: 2, color: S.textMuted }}
+                    ></i>
+                  </button>
+
+                  {headerMenuOpen && (
+                    <div
                       style={{
-                        background: '#fef2f2',
-                        border: '1px solid #fecaca',
-                        color: S.danger,
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        flexShrink: 0,
+                        position: 'absolute',
+                        top: 'calc(100% + 6px)',
+                        right: 0,
+                        background: '#ffffff',
+                        borderRadius: 10,
+                        border: '1px solid #cbd5e1',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                        minWidth: 260,
+                        zIndex: 1000,
+                        padding: 6,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
                       }}
                     >
-                      <i className="fa-solid fa-trash-can"></i>
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Register Coffin Colors Sidebar with Live RGB Detection */}
-      <div
-        style={{
-          ...styles.bkOverlay,
-          ...(modal.open && modal.type === 'registerColors' ? styles.bkOverlayOpen : {}),
-        }}
-        onClick={() => setModal({ open: false, type: '', data: {} })}
-      ></div>
-      <div
-        style={{
-          ...styles.bkSidebar,
-          maxWidth: 580,
-          ...(modal.open && modal.type === 'registerColors' ? styles.bkSidebarOpen : {}),
-        }}
-      >
-        <div style={styles.bkHeader}>
-          <div style={{ minWidth: 0 }}>
-            <h2 style={styles.bkHeaderH2}>
-              <span style={styles.bkHeaderIcon}>
-                <i className="fa-solid fa-palette"></i>
-              </span>
-              Register Coffin Colors
-            </h2>
-            <span style={styles.bkHeaderSub}>
-              Real-time RGB detection, Hex resolution, and color variant catalog
-            </span>
-          </div>
-          <button
-            style={styles.bkClose}
-            onClick={() => setModal({ open: false, type: '', data: {} })}
-            title="Close"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: S.bg }}>
-          {/* Add Color Card */}
-          <form
-            onSubmit={handleSaveColor}
-            style={{
-              background: '#fff',
-              border: `1px solid ${S.border}`,
-              borderRadius: 12,
-              padding: 20,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              marginBottom: 24,
-            }}
-          >
-            <div style={{ fontWeight: 700, fontSize: 15, color: S.text, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="fa-solid fa-droplet" style={{ color: '#8b5cf6' }}></i>
-              Register New Color Finish
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={styles.fl}>Color Name / Typo / Shade *</label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  style={{ ...styles.fi, flex: 1 }}
-                  required
-                  value={modal.data.colorName || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const det = detectColorRGB(val);
-                    setModal({
-                      ...modal,
-                      data: {
-                        ...modal.data,
-                        colorName: val,
-                        customHex: det.isValid ? det.hex : modal.data.customHex,
-                      },
-                    });
-                  }}
-                  placeholder="Type any color e.g. Midnight Black, balck, Rosewood, Mahogany"
-                />
-                <input
-                  type="color"
-                  value={modal.data.customHex || '#111111'}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, customHex: e.target.value } })
-                  }
-                  title="Pick exact custom shade"
-                  style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${S.border}`, padding: 2, cursor: 'pointer' }}
-                />
-              </div>
-              <div style={{ fontSize: 11, color: S.textMuted, marginTop: 4 }}>
-                Instant auto-correction: typing "balck" automatically resolves to Black with true casket RGB.
-              </div>
-            </div>
-
-            {/* Live RGB Detection Swatch & Readout */}
-            {(() => {
-              const det = detectColorRGB(modal.data.customHex || modal.data.colorName || '');
-              return (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 14px',
-                    background: '#f8fafc',
-                    borderRadius: 10,
-                    border: '1px solid #e2e8f0',
-                    marginBottom: 16,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      background: modal.data.customHex || det.hex,
-                      border: '2px solid rgba(0,0,0,0.15)',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong style={{ color: S.text, fontSize: 13 }}>
-                        {det.resolvedName || modal.data.colorName || 'Awaiting input...'}
-                      </strong>
-                      <span
+                      <button
+                        type="button"
                         style={{
-                          fontSize: 10,
-                          padding: '1px 6px',
-                          borderRadius: 10,
-                          background: det.isDark ? '#334155' : '#e2e8f0',
-                          color: det.isDark ? '#fff' : '#0f172a',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          borderRadius: 7,
+                          border: 'none',
+                          background: tab === 'inventory' ? '#f0fdfa' : 'transparent',
+                          color: tab === 'inventory' ? S.primary : '#0f172a',
+                          fontSize: 13,
                           fontWeight: 600,
+                          textAlign: 'left',
+                          width: '100%',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (tab !== 'inventory') e.currentTarget.style.background = '#f8fafc';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (tab !== 'inventory') e.currentTarget.style.background = 'transparent';
+                        }}
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          setTab('inventory');
                         }}
                       >
-                        {det.isDark ? 'Dark Tone' : 'Light Tone'}
-                      </span>
+                        <i className="fa-solid fa-boxes-stacked" style={{ color: S.primary, width: 16 }}></i>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>Coffin Inventory</div>
+                          <div style={{ fontSize: 11, color: S.textMuted }}>{coffins.length} variants in stock</div>
+                        </div>
+                        {tab === 'inventory' && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: S.primary, background: '#ccfbf1', padding: '2px 6px', borderRadius: 4 }}>
+                            Active
+                          </span>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          borderRadius: 7,
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#0f172a',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          width: '100%',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } });
+                        }}
+                      >
+                        <i className="fa-solid fa-circle-plus" style={{ color: '#16a34a', width: 16 }}></i>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>Add Coffin Variant</div>
+                          <div style={{ fontSize: 11, color: S.textMuted }}>Add new stock or casket model</div>
+                        </div>
+                      </button>
+
+                      <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+
+                      <button
+                        type="button"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          borderRadius: 7,
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#0f172a',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          width: '100%',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          setModal({
+                            open: true,
+                            type: 'registerTypes',
+                            data: { name: '', description: '', selectedColors: [] },
+                          });
+                        }}
+                      >
+                        <i className="fa-solid fa-shapes" style={{ color: S.primary, width: 16 }}></i>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>Register Types</div>
+                          <div style={{ fontSize: 11, color: S.textMuted }}>{typesCatalog.length} models registered</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          borderRadius: 7,
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#0f172a',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          width: '100%',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          setModal({
+                            open: true,
+                            type: 'registerColors',
+                            data: { colorName: '', customHex: '#111111' },
+                          });
+                        }}
+                      >
+                        <i className="fa-solid fa-palette" style={{ color: '#8b5cf6', width: 16 }}></i>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>Register Colors</div>
+                          <div style={{ fontSize: 11, color: S.textMuted }}>{registeredColors.length} color finishes</div>
+                        </div>
+                      </button>
+
+                      <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+
+                      <button
+                        type="button"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          borderRadius: 7,
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#0f172a',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          width: '100%',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          openFindStock();
+                        }}
+                      >
+                        <i className="fa-solid fa-network-wired" style={{ color: '#2563eb', width: 16 }}></i>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>Find in Other Branches</div>
+                          <div style={{ fontSize: 11, color: S.textMuted }}>Cross-branch stock check</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          borderRadius: 7,
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#0f172a',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          width: '100%',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          fetchAllData();
+                        }}
+                      >
+                        <i className="fa-solid fa-arrows-rotate" style={{ color: S.textMuted, width: 16 }}></i>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>Refresh Data</div>
+                          <div style={{ fontSize: 11, color: S.textMuted }}>Reload all stock &amp; orders</div>
+                        </div>
+                      </button>
                     </div>
-                    <div style={{ fontSize: 11, color: S.textMuted, marginTop: 2, fontFamily: 'monospace' }}>
-                      HEX: {modal.data.customHex || det.hex} · RGB: {det.rgbStr}
-                    </div>
-                  </div>
+                  )}
                 </div>
-              );
-            })()}
 
-            <button
-              type="submit"
-              style={{
-                ...styles.btn,
-                ...styles.btnP,
-                width: '100%',
-                padding: '11px',
-                fontSize: 13,
-                fontWeight: 700,
-                background: '#8b5cf6',
-              }}
-            >
-              <i className="fa-solid fa-plus"></i> Register Color
-            </button>
-          </form>
-
-          {/* Quick Add From Recommended Funeral Palette */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: S.text, marginBottom: 8 }}>
-              Quick-Add From Classic Casket Palette
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {COFFIN_POPULAR_PALETTE.map((pal) => {
-                const alreadyRegistered = registeredColors.some(
-                  (rc) => rc.name.toLowerCase() === pal.name.toLowerCase()
-                );
-                if (alreadyRegistered) return null;
-                return (
-                  <button
-                    type="button"
-                    key={pal.name}
-                    onClick={() => {
-                      const updated = addRegisteredColor(pal.name, pal.hex);
-                      setRegisteredColors(updated);
-                      toast.success(`Added ${pal.name} to registered colors`);
-                    }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '4px 9px',
-                      borderRadius: 14,
-                      border: `1px solid ${S.border}`,
-                      background: '#fff',
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: pal.hex,
-                        border: '1px solid rgba(0,0,0,0.2)',
-                      }}
-                    />
-                    + {pal.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Registered Colors Grid */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: S.text }}>
-                Registered Casket Colors ({registeredColors.length})
-              </div>
-              <span style={{ fontSize: 12, color: S.textMuted }}>Used in inventory variants</span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-              {registeredColors.map((color) => (
-                <div
-                  key={color.name}
+                {/* Quick Add Coffin Button */}
+                <button
+                  type="button"
+                  className="cb-tb-btn"
+                  onClick={() =>
+                    setModal({ open: true, type: 'coffin', data: { stock: 0, price: 0 } })
+                  }
+                  title="Quick add coffin variant"
                   style={{
-                    background: '#fff',
-                    border: `1px solid ${S.border}`,
-                    borderRadius: 10,
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 10,
+                    background: S.primary,
+                    color: '#ffffff',
+                    borderColor: S.primary,
+                    fontWeight: 700,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <span
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: '50%',
-                        background: color.hex,
-                        border: '1px solid rgba(0,0,0,0.2)',
-                        flexShrink: 0,
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                      }}
-                    />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: S.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {color.name}
-                      </div>
-                      <div style={{ fontSize: 10.5, color: S.textMuted, fontFamily: 'monospace' }}>
-                        {color.hex}
-                      </div>
-                    </div>
-                  </div>
+                  <i className="fa-solid fa-plus"></i>
+                  <span>Add Coffin</span>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteColor(color.name)}
-                    title={`Remove ${color.name}`}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#94a3b8',
-                      cursor: 'pointer',
-                      padding: 4,
-                      fontSize: 13,
-                    }}
-                    onMouseOver={(e) => (e.currentTarget.style.color = S.danger)}
-                    onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
-                  >
-                    <i className="fa-solid fa-trash-can"></i>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Register Coffin Sidebar — same beautiful chrome as New Reservation */}
-      <div
-        style={{
-          ...styles.bkOverlay,
-          ...(modal.open && modal.type === 'coffin' ? styles.bkOverlayOpen : {}),
-        }}
-        onClick={() => setModal({ open: false, type: '', data: {} })}
-      ></div>
-      <div
-        style={{
-          ...styles.bkSidebar,
-          ...(modal.open && modal.type === 'coffin' ? styles.bkSidebarOpen : {}),
-        }}
-      >
-        <div style={styles.bkHeader}>
-          <div style={{ minWidth: 0 }}>
-            <h2 style={styles.bkHeaderH2}>
-              <span style={styles.bkHeaderIcon}>
-                <i className="fa-solid fa-box-open"></i>
-              </span>
-              Register Coffin
-            </h2>
-            <span style={styles.bkHeaderSub}>Add a new coffin to this branch's inventory</span>
-          </div>
-          <button
-            style={styles.bkClose}
-            onClick={() => setModal({ open: false, type: '', data: {} })}
-            title="Close"
+                {/* Quick Refresh Icon Button */}
+                <button
+                  type="button"
+                  className="cb-tb-btn sq"
+                  onClick={() => fetchAllData()}
+                  title="Refresh"
+                >
+                  <i className="fa-solid fa-arrows-rotate"></i>
+                </button>
+              </div>
+            }
           >
-            &times;
-          </button>
+            {tab === 'inventory' && renderInventory()}
+            {tab === 'transfers' && (
+              <CoffinTransfers
+                stockRequests={stockRequests}
+                coffins={coffins}
+                branches={branches}
+                currentBranch={currentBranch}
+                onStockAction={handleStockAction}
+                onRefresh={fetchAllData}
+              />
+            )}
+          </ReservationDashboard>
         </div>
 
-        <form onSubmit={handleCreateCoffin} style={styles.bkForm}>
-          <div style={styles.bkBody}>
-            <div style={styles.bkSectionHead}>
-              <span>Design and color variant</span>
-              <span style={styles.bkSectionRule} />
+
+
+
+        {/* Register Coffin Types Sidebar */}
+        <div
+          style={{
+            ...styles.bkOverlay,
+            ...(modal.open && modal.type === 'registerTypes' ? styles.bkOverlayOpen : {}),
+          }}
+          onClick={() => setModal({ open: false, type: '', data: {} })}
+        ></div>
+        <div
+          style={{
+            ...styles.bkSidebar,
+            maxWidth: 580,
+            ...(modal.open && modal.type === 'registerTypes' ? styles.bkSidebarOpen : {}),
+          }}
+        >
+          <div style={styles.bkHeader}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={styles.bkHeaderH2}>
+                <span style={styles.bkHeaderIcon}>
+                  <i className="fa-solid fa-shapes"></i>
+                </span>
+                Register Coffin Types
+              </h2>
+              <span style={styles.bkHeaderSub}>
+                Define coffin models and assign their available color finishes
+              </span>
             </div>
-            <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
-              <div style={styles.fg}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={styles.fl}>Coffin type / name *</label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setModal({
-                        open: true,
-                        type: 'registerTypes',
-                        data: { name: '', description: '', selectedColors: [] },
-                      })
-                    }
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: S.primary,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    + Manage Types
-                  </button>
-                </div>
+            <button
+              style={styles.bkClose}
+              onClick={() => setModal({ open: false, type: '', data: {} })}
+              title="Close"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: S.bg }}>
+            {/* Add New Type Form Card */}
+            <form
+              onSubmit={handleSaveCoffinType}
+              style={{
+                background: '#fff',
+                border: `1px solid ${S.border}`,
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                marginBottom: 24,
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 15, color: S.text, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fa-solid fa-circle-plus" style={{ color: S.primary }}></i>
+                Add New Coffin Type
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={styles.fl}>Coffin Type Name *</label>
                 <input
                   style={styles.fi}
                   required
-                  list="coffin-inventory-types"
                   value={modal.data.name || ''}
                   onChange={(e) =>
                     setModal({ ...modal, data: { ...modal.data, name: e.target.value } })
                   }
-                  placeholder="e.g. Doom, Presidential, Classic, Heritage Oak"
+                  placeholder="e.g. Doom, Presidential Heritage, Executive Oak, Cathedral"
                 />
-                <datalist id="coffin-inventory-types">
-                  {inventoryTypes.map((type) => <option key={type} value={type} />)}
-                </datalist>
-
-                {/* Quick Select from Registered Coffin Types */}
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-                  {catalogTypeNames.map((tName) => {
-                    const isSelected = (modal.data.name || '').toLowerCase() === tName.toLowerCase();
-                    return (
-                      <button
-                        type="button"
-                        key={tName}
-                        onClick={() => setModal({ ...modal, data: { ...modal.data, name: tName } })}
-                        style={{
-                          padding: '3px 8px',
-                          borderRadius: 12,
-                          border: `1px solid ${isSelected ? S.primary : S.border}`,
-                          background: isSelected ? S.primaryLight : '#fff',
-                          color: isSelected ? S.primary : S.textLight,
-                          fontSize: 11,
-                          fontWeight: isSelected ? 700 : 500,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {tName}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Registered color variant chips for this design */}
-                {(() => {
-                  const matchedType = typesCatalog.find(
-                    (t) => t.name.toLowerCase() === (modal.data.name || '').toLowerCase()
-                  );
-                  if (!matchedType || !matchedType.colors?.length) return null;
-                  return (
-                    <div style={{ marginTop: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: S.textMuted }}>
-                        Registered colors for {matchedType.name}:
-                      </span>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                        {matchedType.colors.map((c) => (
-                          <button
-                            type="button"
-                            key={c.name}
-                            onClick={() => setModal({ ...modal, data: { ...modal.data, color: c.name } })}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              padding: '4px 9px',
-                              borderRadius: 14,
-                              border: `1px solid ${modal.data.color === c.name ? S.primary : S.border}`,
-                              background: modal.data.color === c.name ? S.primaryLight : '#fff',
-                              fontSize: 11,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.hex, border: '1px solid rgba(0,0,0,0.2)' }} />
-                            {c.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
-            </div>
 
-            <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
-              <div style={styles.fg}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={styles.fl}>Color variant * — inventory and bookings depend on this</label>
+              <div style={{ marginBottom: 14 }}>
+                <label style={styles.fl}>Description / Build Specifications</label>
+                <input
+                  style={styles.fi}
+                  value={modal.data.description || ''}
+                  onChange={(e) =>
+                    setModal({ ...modal, data: { ...modal.data, description: e.target.value } })
+                  }
+                  placeholder="e.g. Solid mahogany with velvet lining and gold-accent swing bars"
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ ...styles.fl, margin: 0 }}>Assign Available Colors to this Type</label>
                   <button
                     type="button"
                     onClick={() =>
@@ -4173,591 +3888,553 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#8b5cf6',
-                      fontSize: 11,
+                      color: S.primary,
+                      fontSize: 11.5,
                       fontWeight: 600,
                       cursor: 'pointer',
                       textDecoration: 'underline',
                     }}
                   >
-                    + Manage Colors
+                    + Add new color
                   </button>
                 </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, maxHeight: 150, overflowY: 'auto', padding: 8, background: '#f8fafc', borderRadius: 8, border: `1px solid ${S.border}` }}>
+                  {registeredColors.map((color) => {
+                    const isSelected = (modal.data.selectedColors || []).includes(color.name);
+                    return (
+                      <button
+                        type="button"
+                        key={color.name}
+                        onClick={() => {
+                          const cur = modal.data.selectedColors || [];
+                          const next = isSelected
+                            ? cur.filter((c) => c !== color.name)
+                            : [...cur, color.name];
+                          setModal({ ...modal, data: { ...modal.data, selectedColors: next } });
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '5px 10px',
+                          borderRadius: 16,
+                          border: `1px solid ${isSelected ? S.primary : S.border}`,
+                          background: isSelected ? S.primaryLight : '#fff',
+                          color: isSelected ? S.primary : S.text,
+                          fontSize: 12,
+                          fontWeight: isSelected ? 700 : 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            background: color.hex,
+                            border: '1px solid rgba(0,0,0,0.2)',
+                          }}
+                        />
+                        {color.name}
+                        {isSelected && <i className="fa-solid fa-check" style={{ fontSize: 10 }}></i>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: S.textMuted, marginTop: 4 }}>
+                  Selected colors will be offered when adding inventory or taking bookings for this type.
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  ...styles.btn,
+                  ...styles.btnP,
+                  width: '100%',
+                  padding: '11px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <i className="fa-solid fa-check"></i> Save Coffin Type
+              </button>
+            </form>
+
+            {/* List of Registered Coffin Types */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: S.text }}>
+                  Registered Coffin Models ({typesCatalog.length})
+                </div>
+                <span style={{ fontSize: 12, color: S.textMuted }}>Synced with variants &amp; booking</span>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                {typesCatalog.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 24, color: S.textMuted, background: '#fff', borderRadius: 8 }}>
+                    No coffin types registered yet. Add one above!
+                  </div>
+                ) : (
+                  typesCatalog.map((type) => (
+                    <div
+                      key={type.id || type.name}
+                      style={{
+                        background: '#fff',
+                        border: `1px solid ${S.border}`,
+                        borderRadius: 10,
+                        padding: '14px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: S.text }}>
+                          {type.name}
+                        </div>
+                        {type.description && (
+                          <div style={{ fontSize: 12, color: S.textMuted, marginTop: 2 }}>
+                            {type.description}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                          {(type.colors && type.colors.length > 0) ? (
+                            type.colors.map((c) => (
+                              <span
+                                key={c.name}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  background: '#f1f5f9',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 12,
+                                  padding: '3px 8px',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: '#334155',
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    width: 9,
+                                    height: 9,
+                                    borderRadius: '50%',
+                                    background: c.hex,
+                                    border: '1px solid rgba(0,0,0,0.2)',
+                                  }}
+                                />
+                                {c.name}
+                                <span style={{ color: '#94a3b8', fontSize: 10 }}>({c.sku})</span>
+                              </span>
+                            ))
+                          ) : (
+                            <span style={{ fontSize: 11, color: S.textMuted }}>No colors assigned</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCoffinType(type.id || type.name, type.name)}
+                        title={`Remove ${type.name}`}
+                        style={{
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          color: S.danger,
+                          borderRadius: 6,
+                          padding: '6px 10px',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <i className="fa-solid fa-trash-can"></i>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Register Coffin Colors Sidebar with Live RGB Detection */}
+        <div
+          style={{
+            ...styles.bkOverlay,
+            ...(modal.open && modal.type === 'registerColors' ? styles.bkOverlayOpen : {}),
+          }}
+          onClick={() => setModal({ open: false, type: '', data: {} })}
+        ></div>
+        <div
+          style={{
+            ...styles.bkSidebar,
+            maxWidth: 580,
+            ...(modal.open && modal.type === 'registerColors' ? styles.bkSidebarOpen : {}),
+          }}
+        >
+          <div style={styles.bkHeader}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={styles.bkHeaderH2}>
+                <span style={styles.bkHeaderIcon}>
+                  <i className="fa-solid fa-palette"></i>
+                </span>
+                Register Coffin Colors
+              </h2>
+              <span style={styles.bkHeaderSub}>
+                Real-time RGB detection, Hex resolution, and color variant catalog
+              </span>
+            </div>
+            <button
+              style={styles.bkClose}
+              onClick={() => setModal({ open: false, type: '', data: {} })}
+              title="Close"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: S.bg }}>
+            {/* Add Color Card */}
+            <form
+              onSubmit={handleSaveColor}
+              style={{
+                background: '#fff',
+                border: `1px solid ${S.border}`,
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                marginBottom: 24,
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 15, color: S.text, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fa-solid fa-droplet" style={{ color: '#8b5cf6' }}></i>
+                Register New Color Finish
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={styles.fl}>Color Name / Typo / Shade *</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
                     style={{ ...styles.fi, flex: 1 }}
                     required
-                    list="coffin-inventory-colors"
-                    value={modal.data.color || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
-                    }
-                    placeholder="Type color e.g. Black, balck, White, Gold, Mahogany"
+                    value={modal.data.colorName || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const det = detectColorRGB(val);
+                      setModal({
+                        ...modal,
+                        data: {
+                          ...modal.data,
+                          colorName: val,
+                          customHex: det.isValid ? det.hex : modal.data.customHex,
+                        },
+                      });
+                    }}
+                    placeholder="Type any color e.g. Midnight Black, balck, Rosewood, Mahogany"
                   />
                   <input
                     type="color"
-                    value={detectColorRGB(modal.data.color || '#000000').hex}
+                    value={modal.data.customHex || '#111111'}
                     onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
+                      setModal({ ...modal, data: { ...modal.data, customHex: e.target.value } })
                     }
-                    title="Pick exact shade"
-                    style={{ width: 38, height: 38, borderRadius: 8, border: `1px solid ${S.border}`, padding: 2, cursor: 'pointer' }}
+                    title="Pick exact custom shade"
+                    style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${S.border}`, padding: 2, cursor: 'pointer' }}
                   />
                 </div>
-                <datalist id="coffin-inventory-colors">
-                  {inventoryColors.map((color) => <option key={color} value={color} />)}
-                </datalist>
-
-                {/* Quick Select from Registered Colors */}
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-                  {catalogColors.slice(0, 10).map((cName) => {
-                    const isSelected = (modal.data.color || '').toLowerCase() === cName.toLowerCase();
-                    const det = detectColorRGB(cName);
-                    return (
-                      <button
-                        type="button"
-                        key={cName}
-                        onClick={() => setModal({ ...modal, data: { ...modal.data, color: cName } })}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 8px',
-                          borderRadius: 12,
-                          border: `1px solid ${isSelected ? S.primary : S.border}`,
-                          background: isSelected ? S.primaryLight : '#fff',
-                          color: isSelected ? S.primary : S.textLight,
-                          fontSize: 11,
-                          fontWeight: isSelected ? 700 : 500,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: det.hex }} />
-                        {cName}
-                      </button>
-                    );
-                  })}
+                <div style={{ fontSize: 11, color: S.textMuted, marginTop: 4 }}>
+                  Instant auto-correction: typing "balck" automatically resolves to Black with true casket RGB.
                 </div>
+              </div>
 
-                {/* Live RGB Detection Swatch & Readout */}
-                {(() => {
-                  const det = detectColorRGB(modal.data.color || '');
-                  return (
-                    <div style={{
+              {/* Live RGB Detection Swatch & Readout */}
+              {(() => {
+                const det = detectColorRGB(modal.data.customHex || modal.data.colorName || '');
+                return (
+                  <div
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 8,
-                      marginTop: 6,
-                      padding: '6px 10px',
-                      background: S.bg,
-                      borderRadius: 8,
-                      border: `1px solid ${S.border}`,
-                      fontSize: 11.5
-                    }}>
-                      <span style={{
-                        width: 18,
-                        height: 18,
+                      gap: 12,
+                      padding: '10px 14px',
+                      background: '#f8fafc',
+                      borderRadius: 10,
+                      border: '1px solid #e2e8f0',
+                      marginBottom: 16,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 32,
+                        height: 32,
                         borderRadius: '50%',
-                        background: det.hex,
-                        border: '1px solid rgba(0,0,0,0.2)',
-                        flexShrink: 0
-                      }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <strong style={{ color: S.text }}>{det.resolvedName || modal.data.color || 'Type color...'}</strong>
-                        <span style={{ color: S.textMuted, marginLeft: 8, fontFamily: 'monospace' }}>
-                          RGB: {det.rgbStr} · HEX: {det.hex}
+                        background: modal.data.customHex || det.hex,
+                        border: '2px solid rgba(0,0,0,0.15)',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <strong style={{ color: S.text, fontSize: 13 }}>
+                          {det.resolvedName || modal.data.colorName || 'Awaiting input...'}
+                        </strong>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            padding: '1px 6px',
+                            borderRadius: 10,
+                            background: det.isDark ? '#334155' : '#e2e8f0',
+                            color: det.isDark ? '#fff' : '#0f172a',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {det.isDark ? 'Dark Tone' : 'Light Tone'}
                         </span>
                       </div>
+                      <div style={{ fontSize: 11, color: S.textMuted, marginTop: 2, fontFamily: 'monospace' }}>
+                        HEX: {modal.data.customHex || det.hex} · RGB: {det.rgbStr}
+                      </div>
                     </div>
-                  );
-                })()}
+                  </div>
+                );
+              })()}
 
-                {/* Quick Add Palette buttons */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-                  {COFFIN_POPULAR_PALETTE.slice(0, 8).map((pal) => (
+              <button
+                type="submit"
+                style={{
+                  ...styles.btn,
+                  ...styles.btnP,
+                  width: '100%',
+                  padding: '11px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: '#8b5cf6',
+                }}
+              >
+                <i className="fa-solid fa-plus"></i> Register Color
+              </button>
+            </form>
+
+            {/* Quick Add From Recommended Funeral Palette */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: S.text, marginBottom: 8 }}>
+                Quick-Add From Classic Casket Palette
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {COFFIN_POPULAR_PALETTE.map((pal) => {
+                  const alreadyRegistered = registeredColors.some(
+                    (rc) => rc.name.toLowerCase() === pal.name.toLowerCase()
+                  );
+                  if (alreadyRegistered) return null;
+                  return (
                     <button
                       type="button"
                       key={pal.name}
-                      onClick={() => setModal({ ...modal, data: { ...modal.data, color: pal.name } })}
+                      onClick={() => {
+                        const updated = addRegisteredColor(pal.name, pal.hex);
+                        setRegisteredColors(updated);
+                        toast.success(`Added ${pal.name} to registered colors`);
+                      }}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 5,
-                        padding: '3px 7px',
-                        borderRadius: 12,
-                        background: '#fff',
+                        gap: 6,
+                        padding: '4px 9px',
+                        borderRadius: 14,
                         border: `1px solid ${S.border}`,
-                        fontSize: 10.5,
+                        background: '#fff',
+                        fontSize: 11.5,
+                        fontWeight: 600,
                         cursor: 'pointer',
-                        color: S.textLight,
                       }}
                     >
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: pal.hex }} />
-                      {pal.name}
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: pal.hex,
+                          border: '1px solid rgba(0,0,0,0.2)',
+                        }}
+                      />
+                      + {pal.name}
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Registered Colors Grid */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: S.text }}>
+                  Registered Casket Colors ({registeredColors.length})
                 </div>
+                <span style={{ fontSize: 12, color: S.textMuted }}>Used in inventory variants</span>
               </div>
-            </div>
-            <div style={styles.fr}>
-              <div style={styles.fg}>
-                <label style={styles.fl}>Size (ft)</label>
-                <input
-                  style={styles.fi}
-                  value={modal.data.size ?? selectedBookingCoffin?.size ?? ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, size: e.target.value } })
-                  }
-                  placeholder="e.g. 6ft, 7ft"
-                />
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+                {registeredColors.map((color) => (
+                  <div
+                    key={color.name}
+                    style={{
+                      background: '#fff',
+                      border: `1px solid ${S.border}`,
+                      borderRadius: 10,
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <span
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: color.hex,
+                          border: '1px solid rgba(0,0,0,0.2)',
+                          flexShrink: 0,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        }}
+                      />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: S.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {color.name}
+                        </div>
+                        <div style={{ fontSize: 10.5, color: S.textMuted, fontFamily: 'monospace' }}>
+                          {color.hex}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteColor(color.name)}
+                      title={`Remove ${color.name}`}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: 4,
+                        fontSize: 13,
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.color = S.danger)}
+                      onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                    >
+                      <i className="fa-solid fa-trash-can"></i>
+                    </button>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div style={styles.fr}>
-              <div style={styles.fg}>
-                <label style={styles.fl}>Price (KES) *</label>
-                <input
-                  style={styles.fi}
-                  required
-                  type="number"
-                  value={modal.data.price || ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, price: e.target.value } })
-                  }
-                />
-              </div>
-              <div style={styles.fg}>
-                <label style={styles.fl}>Stock</label>
-                <input
-                  style={styles.fi}
-                  type="number"
-                  value={modal.data.stock || 0}
-                  onChange={(e) =>
-                    setModal({
-                      ...modal,
-                      data: { ...modal.data, stock: parseInt(e.target.value) || 0 },
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div style={styles.bkSectionHead}>
-              <span>Media &amp; notes</span>
-              <span style={styles.bkSectionRule} />
-            </div>
-            <div style={styles.fg}>
-              <label style={styles.fl}>Images</label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files);
-                  if (files.length > 10) {
-                    toast.error('Select no more than 10 images');
-                    e.target.value = '';
-                    return;
-                  }
-                  const oversized = files.find((file) => file.size > 10 * 1024 * 1024);
-                  if (oversized) {
-                    toast.error(`${oversized.name} exceeds the 10 MB limit`);
-                    e.target.value = '';
-                    return;
-                  }
-                  setModal({ ...modal, data: { ...modal.data, images: files } });
-                }}
-                style={styles.bkFile}
-              />
-              <div style={{ fontSize: 12, color: S.textMuted, marginTop: 4 }}>
-                Upload up to 10 images, 10 MB each. {modal.data.images?.length ? `${modal.data.images.length} selected.` : ''}
-              </div>
-            </div>
-            <div style={styles.fg}>
-              <label style={styles.fl}>Notes</label>
-              <textarea
-                style={{ ...styles.fi, minHeight: 80, resize: 'vertical' }}
-                value={modal.data.notes || ''}
-                onChange={(e) =>
-                  setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })
-                }
-                placeholder="Any notes..."
-              />
             </div>
           </div>
+        </div>
 
-          <div style={styles.bkFooter}>
+        {/* Register Coffin Sidebar — same beautiful chrome as New Reservation */}
+        <div
+          style={{
+            ...styles.bkOverlay,
+            ...(modal.open && modal.type === 'coffin' ? styles.bkOverlayOpen : {}),
+          }}
+          onClick={() => setModal({ open: false, type: '', data: {} })}
+        ></div>
+        <div
+          style={{
+            ...styles.bkSidebar,
+            ...(modal.open && modal.type === 'coffin' ? styles.bkSidebarOpen : {}),
+          }}
+        >
+          <div style={styles.bkHeader}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={styles.bkHeaderH2}>
+                <span style={styles.bkHeaderIcon}>
+                  <i className="fa-solid fa-box-open"></i>
+                </span>
+                Register Coffin
+              </h2>
+              <span style={styles.bkHeaderSub}>Add a new coffin to this branch's inventory</span>
+            </div>
             <button
-              type="button"
-              style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
+              style={styles.bkClose}
               onClick={() => setModal({ open: false, type: '', data: {} })}
+              title="Close"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
-              disabled={submitLoading}
-            >
-              {submitLoading ? 'Saving...' : 'Save Coffin'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Stock Adjustment Modal */}
-      <div
-        style={{
-          ...styles.moOverlay,
-          ...(modal.open && modal.type === 'stockAdjust' ? styles.moOpen : {}),
-        }}
-        onClick={() => setModal({ open: false, type: '', data: {} })}
-      >
-        <div style={styles.md} onClick={(e) => e.stopPropagation()}>
-          <div style={styles.mh}>
-            <h2 style={styles.mh2}>
-              {modal.data.mode === 'remove' ? 'Subtract Inventory' : 'Add Inventory'}
-            </h2>
-            <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>
               &times;
             </button>
           </div>
-          <form onSubmit={handleAdjustCoffinStock}>
-            <div style={styles.mb}>
-              <div style={{ ...styles.detailSection, marginBottom: 16 }}>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailRowSpan}>Coffin</span>
-                  <strong style={styles.detailRowStrong}>{modal.data.name || 'N/A'}</strong>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailRowSpan}>Current Stock</span>
-                  <strong style={styles.detailRowStrong}>{modal.data.current_stock ?? 0}</strong>
-                </div>
-              </div>
 
-              <div style={styles.fg}>
-                <label style={styles.fl}>Action</label>
-                <select
-                  style={styles.fs}
-                  value={modal.data.mode || 'add'}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, mode: e.target.value } })
-                  }
-                >
-                  <option value="add">Add Inventory</option>
-                  <option value="remove">Subtract Inventory</option>
-                </select>
-              </div>
-
-              <div style={styles.fg}>
-                <label style={styles.fl}>
-                  {modal.data.mode === 'remove' ? 'Quantity to remove' : 'Quantity to add'}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  style={styles.fi}
-                  value={modal.data.quantity || 1}
-                  onChange={(e) =>
-                    setModal({
-                      ...modal,
-                      data: { ...modal.data, quantity: parseInt(e.target.value) || 1 },
-                    })
-                  }
-                />
-              </div>
-
-              <div style={styles.fg}>
-                <label style={styles.fl}>New Stock Total</label>
-                <input
-                  type="number"
-                  style={styles.fi}
-                  readOnly
-                  value={Math.max(
-                    0,
-                    (parseInt(modal.data.current_stock) || 0) +
-                    ((modal.data.mode || 'add') === 'add'
-                      ? (parseInt(modal.data.quantity) || 0)
-                      : -(parseInt(modal.data.quantity) || 0)),
-                  )}
-                />
-              </div>
-            </div>
-            <div style={styles.mf}>
-              <button
-                type="button"
-                style={{ ...styles.btn, ...styles.btnG }}
-                onClick={() => setModal({ open: false, type: '', data: {} })}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                style={{ ...styles.btn, ...styles.btnP }}
-                disabled={submitLoading}
-              >
-                {submitLoading ? 'Updating...' : modal.data.mode === 'remove' ? 'Save Reduction' : 'Save Addition'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* Booking Sidebar - New Reservation */}
-      <div
-        style={{
-          ...styles.bkOverlay,
-          ...(modal.open && modal.type === 'booking' ? styles.bkOverlayOpen : {}),
-        }}
-        onClick={() => setModal({ open: false, type: '', data: {} })}
-      ></div>
-      <div
-        style={{
-          ...styles.bkSidebar,
-          ...(modal.open && modal.type === 'booking' ? styles.bkSidebarOpen : {}),
-        }}
-      >
-        <div style={styles.bkHeader}>
-          <div style={{ minWidth: 0 }}>
-            <h2 style={styles.bkHeaderH2}>
-              <span style={styles.bkHeaderIcon}>
-                <i className="fa-solid fa-calendar-plus"></i>
-              </span>
-              New Reservation
-            </h2>
-            <span style={styles.bkHeaderSub}>Reserve a coffin and lock the service date</span>
-          </div>
-          <button
-            style={styles.bkClose}
-            onClick={() => setModal({ open: false, type: '', data: {} })}
-            title="Close"
-          >
-            &times;
-          </button>
-        </div>
-
-        <form onSubmit={handleCreateBooking} style={styles.bkForm}>
-          <div style={styles.bkBody}>
-            <div style={{ display: 'grid', gap: 16 }}>
+          <form onSubmit={handleCreateCoffin} style={styles.bkForm}>
+            <div style={styles.bkBody}>
               <div style={styles.bkSectionHead}>
-                <span>Schedule</span>
+                <span>Design and color variant</span>
                 <span style={styles.bkSectionRule} />
               </div>
-
-              {/* Service Date + Time */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 14 }}>
-                <div>
-                  <label style={styles.fl}>Service Date *</label>
-                  <input
-                    type="date"
-                    style={styles.fi}
-                    required
-                    value={modal.data.service_date || todayKey()}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, service_date: e.target.value } })
-                    }
-                  />
-                </div>
-                <div>
-                  <label style={styles.fl}>Time</label>
-                  <input
-                    type="time"
-                    style={styles.fi}
-                    value={modal.data.service_time || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, service_time: e.target.value } })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div style={styles.bkSectionHead}>
-                <span>Client</span>
-                <span style={styles.bkSectionRule} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={styles.fl}>Client Name *</label>
-                  <input
-                    style={styles.fi}
-                    required
-                    value={modal.data.client_name || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, client_name: e.target.value } })
-                    }
-                    placeholder="John Doe"
-                  />
-                </div>
-
-                <div>
-                  <label style={styles.fl}>Client Phone</label>
-                  <input
-                    style={styles.fi}
-                    value={modal.data.client_phone || ''}
-                    onChange={(e) =>
-                      setModal({
-                        ...modal,
-                        data: { ...modal.data, client_phone: e.target.value },
-                      })
-                    }
-                    placeholder="0712-345-678"
-                  />
-                </div>
-              </div>
-
-              <div style={styles.bkSectionHead}>
-                <span>Booking details</span>
-                <span style={styles.bkSectionRule} />
-              </div>
-
-              <div>
-                <label style={styles.fl}>Deceased (optional)</label>
-                <input
-                  style={styles.fi}
-                  value={modal.data.deceased_name || ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, deceased_name: e.target.value } })
-                  }
-                  placeholder="Jane Doe"
-                />
-              </div>
-
-              <div>
-                <label style={styles.fl}>Search available coffin types and colors</label>
-                <input
-                  style={styles.fi}
-                  type="search"
-                  value={bookingSearch}
-                  onChange={(e) => setBookingSearch(e.target.value)}
-                  placeholder="Search by coffin name, type, color, or size"
-                />
-              </div>
-
-              <div>
-                <label style={styles.fl}>Choose a coffin color variant (optional)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10, marginTop: 7 }}>
-                  <button
-                    type="button"
-                    aria-pressed={!modal.data.coffin_id}
-                    onClick={() => setModal((prev) => ({
-                      ...prev,
-                      data: { ...prev.data, coffin_id: '', size: '' },
-                    }))}
-                    style={{
-                      textAlign: 'left',
-                      padding: 12,
-                      borderRadius: 10,
-                      border: `1px solid ${!modal.data.coffin_id ? S.primary : S.border}`,
-                      background: !modal.data.coffin_id ? S.primaryLight : '#fff',
-                      color: S.text,
-                      cursor: 'pointer',
-                      font: 'inherit',
-                    }}
-                  >
-                    <strong style={{ display: 'block', fontSize: 13 }}>Made to order</strong>
-                    <span style={{ color: S.textMuted, fontSize: 11 }}>No inventory variant selected</span>
-                  </button>
-                  {filteredBookingCoffins.map((coffin) => {
-                    const variantId = coffin.coffin_id || coffin.id;
-                    const selected = String(modal.data.coffin_id || '') === String(variantId);
-                    const stock = getCoffinStock(coffin);
-                    return (
-                      <button
-                        type="button"
-                        key={variantId}
-                        aria-pressed={selected}
-                        onClick={() => setModal((prev) => ({
-                          ...prev,
-                          data: {
-                            ...prev.data,
-                            coffin_id: variantId,
-                            coffin_name: coffin.type || coffin.name || '',
-                            color: coffin.color || '',
-                            size: coffin.size || '',
-                            quantity: stock > 0
-                              ? Math.min(parseInt(prev.data.quantity, 10) || 1, stock)
-                              : prev.data.quantity,
-                            amount: coffin.price ?? coffin.exact_price ?? prev.data.amount,
-                          },
-                        }))}
-                        style={{
-                          textAlign: 'left',
-                          padding: 12,
-                          borderRadius: 10,
-                          border: `1px solid ${selected ? S.primary : S.border}`,
-                          background: selected ? S.primaryLight : '#fff',
-                          color: S.text,
-                          cursor: 'pointer',
-                          font: 'inherit',
-                        }}
-                      >
-                        <strong style={{ display: 'block', fontSize: 13 }}>
-                          {[coffin.type || coffin.name, coffin.color].filter(Boolean).join(' · ')}
-                        </strong>
-                        <span style={{ display: 'block', color: S.textMuted, fontSize: 11, marginTop: 4 }}>
-                          {[coffin.size, `${stock} available`].filter(Boolean).join(' · ')}
-                        </span>
-                        <span style={{ display: 'block', color: S.textMuted, fontSize: 11, marginTop: 2 }}>
-                          {formatKES(coffin.price ?? coffin.exact_price)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {filteredBookingCoffins.length === 0 && (
-                  <div style={{ color: S.textMuted, fontSize: 12, marginTop: 8 }}>
-                    No matching inventory variants. Enter the coffin type and color below for a made-to-order booking.
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
+              <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
+                <div style={styles.fg}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label style={styles.fl}>Coffin type *</label>
-                    <span style={{ fontSize: 11, color: S.textMuted }}>Model</span>
+                    <label style={styles.fl}>Coffin type / name *</label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setModal({
+                          open: true,
+                          type: 'registerTypes',
+                          data: { name: '', description: '', selectedColors: [] },
+                        })
+                      }
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: S.primary,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      + Manage Types
+                    </button>
                   </div>
                   <input
                     style={styles.fi}
                     required
-                    list="booking-coffin-types"
-                    value={modal.data.coffin_name ?? selectedBookingCoffin?.type ?? selectedBookingCoffin?.name ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setModal((prev) => ({
-                        ...prev,
-                        data: { ...prev.data, coffin_name: val, coffin_id: '' },
-                      }));
-                    }}
-                    placeholder="e.g. Doom, Presidential"
+                    list="coffin-inventory-types"
+                    value={modal.data.name || ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, name: e.target.value } })
+                    }
+                    placeholder="e.g. Doom, Presidential, Classic, Heritage Oak"
                   />
-                  <datalist id="booking-coffin-types">
-                    {inventoryTypes.map((type) => (
-                      <option key={type} value={type} />
-                    ))}
+                  <datalist id="coffin-inventory-types">
+                    {inventoryTypes.map((type) => <option key={type} value={type} />)}
                   </datalist>
 
-                  {/* Registered Types Quick Pills */}
+                  {/* Quick Select from Registered Coffin Types */}
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-                    {catalogTypeNames.slice(0, 6).map((tName) => {
-                      const isCurrent = (modal.data.coffin_name || '').toLowerCase() === tName.toLowerCase();
+                    {catalogTypeNames.map((tName) => {
+                      const isSelected = (modal.data.name || '').toLowerCase() === tName.toLowerCase();
                       return (
                         <button
                           type="button"
                           key={tName}
-                          onClick={() => {
-                            setModal((prev) => ({
-                              ...prev,
-                              data: { ...prev.data, coffin_name: tName, coffin_id: '' },
-                            }));
-                          }}
+                          onClick={() => setModal({ ...modal, data: { ...modal.data, name: tName } })}
                           style={{
                             padding: '3px 8px',
                             borderRadius: 12,
-                            border: `1px solid ${isCurrent ? S.primary : S.border}`,
-                            background: isCurrent ? S.primaryLight : '#fff',
-                            color: isCurrent ? S.primary : S.textLight,
+                            border: `1px solid ${isSelected ? S.primary : S.border}`,
+                            background: isSelected ? S.primaryLight : '#fff',
+                            color: isSelected ? S.primary : S.textLight,
                             fontSize: 11,
-                            fontWeight: isCurrent ? 700 : 500,
+                            fontWeight: isSelected ? 700 : 500,
                             cursor: 'pointer',
                           }}
                         >
@@ -4766,480 +4443,261 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
                       );
                     })}
                   </div>
-                </div>
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label style={styles.fl}>Color *</label>
-                    <span style={{ fontSize: 11, color: S.textMuted }}>Finish</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input
-                      style={{ ...styles.fi, flex: 1 }}
-                      required
-                      list="booking-coffin-colors"
-                      value={modal.data.color ?? selectedBookingCoffin?.color ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setModal((prev) => ({
-                          ...prev,
-                          data: { ...prev.data, color: val, coffin_id: '' },
-                        }));
-                      }}
-                      placeholder="e.g. White, Black, Mahogany"
-                    />
-                    <span
-                      title="Color preview"
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: '50%',
-                        background: detectColorRGB(modal.data.color || selectedBookingCoffin?.color || '#cccccc').hex,
-                        border: '1.5px solid rgba(0,0,0,0.2)',
-                        flexShrink: 0,
-                      }}
-                    />
-                  </div>
-                  <datalist id="booking-coffin-colors">
-                    {inventoryColors.map((color) => (
-                      <option key={color} value={color} />
-                    ))}
-                  </datalist>
-
-                  {/* Registered Colors Quick Pills */}
+                  {/* Registered color variant chips for this design */}
                   {(() => {
-                    const currentType = typesCatalog.find(
-                      (t) => t.name.toLowerCase() === (modal.data.coffin_name || '').toLowerCase()
+                    const matchedType = typesCatalog.find(
+                      (t) => t.name.toLowerCase() === (modal.data.name || '').toLowerCase()
                     );
-                    const suggestedColors = (currentType?.colors?.length)
-                      ? currentType.colors.map((c) => c.name)
-                      : catalogColors.slice(0, 6);
-
+                    if (!matchedType || !matchedType.colors?.length) return null;
                     return (
-                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-                        {suggestedColors.map((cName) => {
-                          const isCurrent = (modal.data.color || '').toLowerCase() === cName.toLowerCase();
-                          const det = detectColorRGB(cName);
-                          return (
+                      <div style={{ marginTop: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: S.textMuted }}>
+                          Registered colors for {matchedType.name}:
+                        </span>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                          {matchedType.colors.map((c) => (
                             <button
                               type="button"
-                              key={cName}
-                              onClick={() => {
-                                setModal((prev) => ({
-                                  ...prev,
-                                  data: { ...prev.data, color: cName, coffin_id: '' },
-                                }));
-                              }}
+                              key={c.name}
+                              onClick={() => setModal({ ...modal, data: { ...modal.data, color: c.name } })}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 4,
-                                padding: '3px 8px',
-                                borderRadius: 12,
-                                border: `1px solid ${isCurrent ? S.primary : S.border}`,
-                                background: isCurrent ? S.primaryLight : '#fff',
-                                color: isCurrent ? S.primary : S.textLight,
+                                gap: 6,
+                                padding: '4px 9px',
+                                borderRadius: 14,
+                                border: `1px solid ${modal.data.color === c.name ? S.primary : S.border}`,
+                                background: modal.data.color === c.name ? S.primaryLight : '#fff',
                                 fontSize: 11,
-                                fontWeight: isCurrent ? 700 : 500,
+                                fontWeight: 600,
                                 cursor: 'pointer',
                               }}
                             >
-                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: det.hex }} />
-                              {cName}
+                              <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.hex, border: '1px solid rgba(0,0,0,0.2)' }} />
+                              {c.name}
                             </button>
-                          );
-                        })}
+                          ))}
+                        </div>
                       </div>
                     );
                   })()}
                 </div>
               </div>
 
-              {/* Real-time Inventory Matching Badge */}
-              {(() => {
-                const currentName = String(modal.data.coffin_name || selectedBookingCoffin?.type || selectedBookingCoffin?.name || '').trim().toLowerCase();
-                const currentColor = String(modal.data.color || selectedBookingCoffin?.color || '').trim().toLowerCase();
-
-                if (!currentName || !currentColor) return null;
-
-                const matchedVariant = branchCoffins.find((c) => {
-                  const tMatch = String(c.type || c.name || '').trim().toLowerCase() === currentName;
-                  const cMatch = String(c.color || '').trim().toLowerCase() === currentColor;
-                  return tMatch && cMatch;
-                });
-
-                if (matchedVariant) {
-                  const stock = getCoffinStock(matchedVariant);
-                  const isLinked = String(modal.data.coffin_id || '') === String(matchedVariant.coffin_id || matchedVariant.id);
-                  return (
-                    <div
+              <div style={{ ...styles.fr, gridTemplateColumns: '1fr' }}>
+                <div style={styles.fg}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={styles.fl}>Color variant * — inventory and bookings depend on this</label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setModal({
+                          open: true,
+                          type: 'registerColors',
+                          data: { colorName: '', customHex: '#111111' },
+                        })
+                      }
                       style={{
-                        background: '#f0fdf4',
-                        border: '1px solid #86efac',
-                        borderRadius: 8,
-                        padding: '10px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 10,
+                        background: 'none',
+                        border: 'none',
+                        color: '#8b5cf6',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <i className="fa-solid fa-circle-check" style={{ color: '#16a34a', fontSize: 16 }}></i>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 12.5, color: '#166534' }}>
-                            Variant In Stock Locally ({stock} available)
-                          </div>
-                          <div style={{ fontSize: 11, color: '#15803d' }}>
-                            {branches.find((b) => b.id == currentBranch)?.name || 'Current Branch'} · SKU: {generateVariantSku(matchedVariant.type || matchedVariant.name, matchedVariant.color)} · {formatKES(matchedVariant.price ?? matchedVariant.exact_price)}
-                          </div>
-                        </div>
-                      </div>
-                      {!isLinked && (
+                      + Manage Colors
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      style={{ ...styles.fi, flex: 1 }}
+                      required
+                      list="coffin-inventory-colors"
+                      value={modal.data.color || ''}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
+                      }
+                      placeholder="Type color e.g. Black, balck, White, Gold, Mahogany"
+                    />
+                    <input
+                      type="color"
+                      value={detectColorRGB(modal.data.color || '#000000').hex}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, color: e.target.value } })
+                      }
+                      title="Pick exact shade"
+                      style={{ width: 38, height: 38, borderRadius: 8, border: `1px solid ${S.border}`, padding: 2, cursor: 'pointer' }}
+                    />
+                  </div>
+                  <datalist id="coffin-inventory-colors">
+                    {inventoryColors.map((color) => <option key={color} value={color} />)}
+                  </datalist>
+
+                  {/* Quick Select from Registered Colors */}
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+                    {catalogColors.slice(0, 10).map((cName) => {
+                      const isSelected = (modal.data.color || '').toLowerCase() === cName.toLowerCase();
+                      const det = detectColorRGB(cName);
+                      return (
                         <button
                           type="button"
-                          onClick={() => {
-                            setModal((prev) => ({
-                              ...prev,
-                              data: {
-                                ...prev.data,
-                                coffin_id: matchedVariant.coffin_id || matchedVariant.id,
-                                amount: matchedVariant.price ?? matchedVariant.exact_price ?? prev.data.amount,
-                                size: matchedVariant.size || prev.data.size,
-                              },
-                            }));
-                          }}
+                          key={cName}
+                          onClick={() => setModal({ ...modal, data: { ...modal.data, color: cName } })}
                           style={{
-                            background: '#16a34a',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 6,
-                            padding: '4px 10px',
-                            fontSize: 11.5,
-                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
+                            borderRadius: 12,
+                            border: `1px solid ${isSelected ? S.primary : S.border}`,
+                            background: isSelected ? S.primaryLight : '#fff',
+                            color: isSelected ? S.primary : S.textLight,
+                            fontSize: 11,
+                            fontWeight: isSelected ? 700 : 500,
                             cursor: 'pointer',
-                            whiteSpace: 'nowrap',
                           }}
                         >
-                          Lock Stock
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: det.hex }} />
+                          {cName}
                         </button>
-                      )}
-                    </div>
-                  );
-                }
+                      );
+                    })}
+                  </div>
 
-                // Check other branches
-                const otherBranchMatch = coffins.find((c) => {
-                  const tMatch = String(c.type || c.name || '').trim().toLowerCase() === currentName;
-                  const cMatch = String(c.color || '').trim().toLowerCase() === currentColor;
-                  return tMatch && cMatch && c.branch_id != currentBranch;
-                });
-
-                if (otherBranchMatch) {
-                  const otherBranchName = branches.find((b) => b.id == otherBranchMatch.branch_id)?.name || 'another branch';
-                  return (
-                    <div
-                      style={{
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
-                        borderRadius: 8,
-                        padding: '10px 14px',
+                  {/* Live RGB Detection Swatch & Readout */}
+                  {(() => {
+                    const det = detectColorRGB(modal.data.color || '');
+                    return (
+                      <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
-                      }}
-                    >
-                      <i className="fa-solid fa-arrow-right-arrow-left" style={{ color: '#2563eb', fontSize: 16 }}></i>
-                      <div style={{ fontSize: 12, color: '#1e40af' }}>
-                        <strong>Available in {otherBranchName}</strong> ({getCoffinStock(otherBranchMatch)} units). You can book as custom or request an inter-branch transfer.
+                        gap: 8,
+                        marginTop: 6,
+                        padding: '6px 10px',
+                        background: S.bg,
+                        borderRadius: 8,
+                        border: `1px solid ${S.border}`,
+                        fontSize: 11.5
+                      }}>
+                        <span style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          background: det.hex,
+                          border: '1px solid rgba(0,0,0,0.2)',
+                          flexShrink: 0
+                        }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <strong style={{ color: S.text }}>{det.resolvedName || modal.data.color || 'Type color...'}</strong>
+                          <span style={{ color: S.textMuted, marginLeft: 8, fontFamily: 'monospace' }}>
+                            RGB: {det.rgbStr} · HEX: {det.hex}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                }
+                    );
+                  })()}
 
-                return (
-                  <div
-                    style={{
-                      background: '#fffbeb',
-                      border: '1px solid #fde68a',
-                      borderRadius: 8,
-                      padding: '10px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                    }}
-                  >
-                    <i className="fa-solid fa-tools" style={{ color: '#d97706', fontSize: 16 }}></i>
-                    <div style={{ fontSize: 12, color: '#92400e' }}>
-                      <strong>Made-to-Order Booking:</strong> This variant is not currently stocked locally. It will be scheduled for production/workshop fulfillment.
-                    </div>
+                  {/* Quick Add Palette buttons */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                    {COFFIN_POPULAR_PALETTE.slice(0, 8).map((pal) => (
+                      <button
+                        type="button"
+                        key={pal.name}
+                        onClick={() => setModal({ ...modal, data: { ...modal.data, color: pal.name } })}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '3px 7px',
+                          borderRadius: 12,
+                          background: '#fff',
+                          border: `1px solid ${S.border}`,
+                          fontSize: 10.5,
+                          cursor: 'pointer',
+                          color: S.textLight,
+                        }}
+                      >
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: pal.hex }} />
+                        {pal.name}
+                      </button>
+                    ))}
                   </div>
-                );
-              })()}
-
-              <div>
-                <label style={styles.fl}>Size (optional)</label>
-                <input
-                  style={styles.fi}
-                  value={modal.data.size || ''}
-                  onChange={(e) =>
-                    setModal((prev) => ({
-                      ...prev,
-                      data: { ...prev.data, size: e.target.value },
-                    }))
-                  }
-                  placeholder="Leave blank and let the workshop decide"
-                />
-                <div style={{ fontSize: 12, color: S.textMuted, marginTop: 5 }}>
-                  Leave blank for a made-to-order booking. If a matching no-size variant has stock, it will be reserved.
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16 }}>
-                <div>
-                  <label style={styles.fl}>Quantity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={selectedBookingCoffin ? getCoffinStock(selectedBookingCoffin) : undefined}
-                    style={styles.fi}
-                    value={modal.data.quantity || 1}
-                    onChange={(e) =>
-                      setModal((prev) => ({
-                        ...prev,
-                        data: { ...prev.data, quantity: parseInt(e.target.value) || 1 },
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label style={styles.fl}>Paid</label>
-                  <select
-                    style={styles.fs}
-                    value={modal.data.paid ? 'yes' : 'no'}
-                    onChange={(e) =>
-                      setModal((prev) => ({
-                        ...prev,
-                        data: { ...prev.data, paid: e.target.value === 'yes' },
-                      }))
-                    }
-                  >
-                    <option value="no">No</option>
-                    <option value="yes">Yes</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={styles.fl}>Amount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    style={styles.fi}
-                    value={modal.data.amount || ''}
-                    onChange={(e) =>
-                      setModal((prev) => ({
-                        ...prev,
-                        data: { ...prev.data, amount: e.target.value },
-                      }))
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div>
-                  <label style={styles.fl}>Deposit</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    style={styles.fi}
-                    value={modal.data.deposit || ''}
-                    onChange={(e) =>
-                      setModal((prev) => ({
-                        ...prev,
-                        data: { ...prev.data, deposit: e.target.value },
-                      }))
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={styles.fl}>Notes</label>
-                <textarea
-                  style={{ ...styles.fi, minHeight: 80 }}
-                  value={modal.data.notes || ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })
-                  }
-                />
-              </div>
-            </div>
-          </div>
-
-          <div style={styles.bkFooter}>
-            <button
-              type="button"
-              style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
-              onClick={() => setModal({ open: false, type: '', data: {} })}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
-              disabled={submitLoading}
-            >
-              {submitLoading ? 'Saving...' : 'Create Reservation'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Stock Request Modal */}
-      <div
-        style={{
-          ...styles.moOverlay,
-          ...(modal.open && modal.type === 'stockRequest' ? styles.moOpen : {}),
-        }}
-        onClick={() => setModal({ open: false, type: '', data: {} })}
-      >
-        <div style={styles.md} onClick={(e) => e.stopPropagation()}>
-          <div style={styles.mh}>
-            <h2 style={styles.mh2}>New Stock Request</h2>
-            <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>
-              &times;
-            </button>
-          </div>
-          <form onSubmit={handleCreateStockRequest}>
-            <div style={styles.mb}>
-              <div style={styles.fr}>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Request From *</label>
-                  <select
-                    style={styles.fs}
-                    required
-                    value={modal.data.from_branch_id || modal.data.to_branch_id || ''}
-                    onChange={(e) =>
-                      setModal({
-                        ...modal,
-                        data: { ...modal.data, from_branch_id: e.target.value },
-                      })
-                    }
-                  >
-                    <option value="">Select source branch</option>
-                    {branches
-                      .filter((b) => b.id != currentBranch)
-                      .map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Coffin *</label>
-                  <select
-                    style={styles.fs}
-                    required
-                    value={modal.data.coffin_id || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, coffin_id: e.target.value } })
-                    }
-                  >
-                    <option value="">Select coffin</option>
-                    {(() => {
-                      // Only offer coffins stocked at the SOURCE branch being
-                      // requested from (plus shared central stock without a
-                      // branch assignment) — never my own branch's stock.
-                      const sourceBranchId =
-                        modal.data.from_branch_id || modal.data.to_branch_id || '';
-                      const sourceCoffins = coffins.filter((c) => {
-                        const matchesSource =
-                          !c.branch_id || c.branch_id == sourceBranchId;
-                        const hasStock = (parseInt(c.stock) || 0) > 0;
-                        return sourceBranchId && matchesSource && hasStock;
-                      });
-                      return sourceCoffins.length > 0 ? (
-                        sourceCoffins.map((c) => (
-                          <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
-                            {c.name} ({c.stock} left)
-                          </option>
-                        ))
-                      ) : (
-                        <option value="" disabled>
-                          {sourceBranchId
-                            ? 'No coffins available at this branch'
-                            : 'Select a source branch first'}
-                        </option>
-                      );
-                    })()}
-                  </select>
                 </div>
               </div>
               <div style={styles.fr}>
                 <div style={styles.fg}>
-                  <label style={styles.fl}>Quantity</label>
+                  <label style={styles.fl}>Size (ft)</label>
+                  <input
+                    style={styles.fi}
+                    value={modal.data.size ?? selectedBookingCoffin?.size ?? ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, size: e.target.value } })
+                    }
+                    placeholder="e.g. 6ft, 7ft"
+                  />
+                </div>
+              </div>
+              <div style={styles.fr}>
+                <div style={styles.fg}>
+                  <label style={styles.fl}>Price (KES) *</label>
+                  <input
+                    style={styles.fi}
+                    required
+                    type="number"
+                    value={modal.data.price || ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, price: e.target.value } })
+                    }
+                  />
+                </div>
+                <div style={styles.fg}>
+                  <label style={styles.fl}>Stock</label>
                   <input
                     style={styles.fi}
                     type="number"
-                    min={1}
-                    value={modal.data.quantity || 1}
+                    value={modal.data.stock || 0}
                     onChange={(e) =>
                       setModal({
                         ...modal,
-                        data: { ...modal.data, quantity: parseInt(e.target.value) || 1 },
+                        data: { ...modal.data, stock: parseInt(e.target.value) || 0 },
                       })
                     }
                   />
                 </div>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Client Name</label>
-                  <input
-                    style={styles.fi}
-                    value={modal.data.client_name || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, client_name: e.target.value } })
-                    }
-                  />
-                </div>
               </div>
-              <div style={styles.fr}>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Client Phone</label>
-                  <input
-                    style={styles.fi}
-                    value={modal.data.client_phone || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, client_phone: e.target.value } })
-                    }
-                  />
-                </div>
-                <div style={styles.fg}>
-                  <label style={styles.fl}>Deceased Name</label>
-                  <input
-                    style={styles.fi}
-                    value={modal.data.deceased_name || ''}
-                    onChange={(e) =>
-                      setModal({ ...modal, data: { ...modal.data, deceased_name: e.target.value } })
-                    }
-                  />
-                </div>
+              <div style={styles.bkSectionHead}>
+                <span>Media &amp; notes</span>
+                <span style={styles.bkSectionRule} />
               </div>
               <div style={styles.fg}>
-                <label style={styles.fl}>Expected Date (optional)</label>
+                <label style={styles.fl}>Images</label>
                 <input
-                  type="date"
-                  style={styles.fi}
-                  value={modal.data.service_date || ''}
-                  onChange={(e) =>
-                    setModal({ ...modal, data: { ...modal.data, service_date: e.target.value } })
-                  }
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 10) {
+                      toast.error('Select no more than 10 images');
+                      e.target.value = '';
+                      return;
+                    }
+                    const oversized = files.find((file) => file.size > 10 * 1024 * 1024);
+                    if (oversized) {
+                      toast.error(`${oversized.name} exceeds the 10 MB limit`);
+                      e.target.value = '';
+                      return;
+                    }
+                    setModal({ ...modal, data: { ...modal.data, images: files } });
+                  }}
+                  style={styles.bkFile}
                 />
+                <div style={{ fontSize: 12, color: S.textMuted, marginTop: 4 }}>
+                  Upload up to 10 images, 10 MB each. {modal.data.images?.length ? `${modal.data.images.length} selected.` : ''}
+                </div>
               </div>
               <div style={styles.fg}>
                 <label style={styles.fl}>Notes</label>
@@ -5249,51 +4707,921 @@ const CoffinDashboard = ({ showAnalytics = false }) => {
                   onChange={(e) =>
                     setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })
                   }
+                  placeholder="Any notes..."
                 />
               </div>
             </div>
-            <div style={styles.mf}>
+
+            <div style={styles.bkFooter}>
               <button
                 type="button"
-                style={{ ...styles.btn, ...styles.btnG }}
+                style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
                 onClick={() => setModal({ open: false, type: '', data: {} })}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                style={{ ...styles.btn, ...styles.btnP }}
+                style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
                 disabled={submitLoading}
               >
-                {submitLoading ? 'Sending...' : 'Send Request'}
+                {submitLoading ? 'Saving...' : 'Save Coffin'}
               </button>
             </div>
           </form>
         </div>
-      </div>
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DRAWER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div
-        style={{ ...styles.drawerOverlay, ...(drawer.open ? styles.drawerOverlayOpen : {}) }}
-        onClick={closeDrawer}
-      ></div>
-      <div style={{ ...styles.drawer, ...(drawer.open ? styles.drawerOpen : {}) }}>
-        <div style={styles.drawerHeader}>
-          <h2 style={styles.drawerHeaderH2}>{drawer.title}</h2>
-          <button style={styles.mx} onClick={closeDrawer}>
-            &times;
-          </button>
+        {/* Stock Adjustment Modal */}
+        <div
+          style={{
+            ...styles.moOverlay,
+            ...(modal.open && modal.type === 'stockAdjust' ? styles.moOpen : {}),
+          }}
+          onClick={() => setModal({ open: false, type: '', data: {} })}
+        >
+          <div style={styles.md} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.mh}>
+              <h2 style={styles.mh2}>
+                {modal.data.mode === 'remove' ? 'Subtract Inventory' : 'Add Inventory'}
+              </h2>
+              <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleAdjustCoffinStock}>
+              <div style={styles.mb}>
+                <div style={{ ...styles.detailSection, marginBottom: 16 }}>
+                  <div style={styles.detailRow}>
+                    <span style={styles.detailRowSpan}>Coffin</span>
+                    <strong style={styles.detailRowStrong}>{modal.data.name || 'N/A'}</strong>
+                  </div>
+                  <div style={styles.detailRow}>
+                    <span style={styles.detailRowSpan}>Current Stock</span>
+                    <strong style={styles.detailRowStrong}>{modal.data.current_stock ?? 0}</strong>
+                  </div>
+                </div>
+
+                <div style={styles.fg}>
+                  <label style={styles.fl}>Action</label>
+                  <select
+                    style={styles.fs}
+                    value={modal.data.mode || 'add'}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, mode: e.target.value } })
+                    }
+                  >
+                    <option value="add">Add Inventory</option>
+                    <option value="remove">Subtract Inventory</option>
+                  </select>
+                </div>
+
+                <div style={styles.fg}>
+                  <label style={styles.fl}>
+                    {modal.data.mode === 'remove' ? 'Quantity to remove' : 'Quantity to add'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    style={styles.fi}
+                    value={modal.data.quantity || 1}
+                    onChange={(e) =>
+                      setModal({
+                        ...modal,
+                        data: { ...modal.data, quantity: parseInt(e.target.value) || 1 },
+                      })
+                    }
+                  />
+                </div>
+
+                <div style={styles.fg}>
+                  <label style={styles.fl}>New Stock Total</label>
+                  <input
+                    type="number"
+                    style={styles.fi}
+                    readOnly
+                    value={Math.max(
+                      0,
+                      (parseInt(modal.data.current_stock) || 0) +
+                      ((modal.data.mode || 'add') === 'add'
+                        ? (parseInt(modal.data.quantity) || 0)
+                        : -(parseInt(modal.data.quantity) || 0)),
+                    )}
+                  />
+                </div>
+              </div>
+              <div style={styles.mf}>
+                <button
+                  type="button"
+                  style={{ ...styles.btn, ...styles.btnG }}
+                  onClick={() => setModal({ open: false, type: '', data: {} })}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ ...styles.btn, ...styles.btnP }}
+                  disabled={submitLoading}
+                >
+                  {submitLoading ? 'Updating...' : modal.data.mode === 'remove' ? 'Save Reduction' : 'Save Addition'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <div style={styles.drawerBody} dangerouslySetInnerHTML={{ __html: drawer.content }} />
+
+        {/* Booking Sidebar - New Reservation */}
+        <div
+          style={{
+            ...styles.bkOverlay,
+            ...(modal.open && modal.type === 'booking' ? styles.bkOverlayOpen : {}),
+          }}
+          onClick={() => setModal({ open: false, type: '', data: {} })}
+        ></div>
+        <div
+          style={{
+            ...styles.bkSidebar,
+            ...(modal.open && modal.type === 'booking' ? styles.bkSidebarOpen : {}),
+          }}
+        >
+          <div style={styles.bkHeader}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={styles.bkHeaderH2}>
+                <span style={styles.bkHeaderIcon}>
+                  <i className="fa-solid fa-calendar-plus"></i>
+                </span>
+                New Reservation
+              </h2>
+              <span style={styles.bkHeaderSub}>Reserve a coffin and lock the service date</span>
+            </div>
+            <button
+              style={styles.bkClose}
+              onClick={() => setModal({ open: false, type: '', data: {} })}
+              title="Close"
+            >
+              &times;
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateBooking} style={styles.bkForm}>
+            <div style={styles.bkBody}>
+              <div style={{ display: 'grid', gap: 16 }}>
+                <div style={styles.bkSectionHead}>
+                  <span>Schedule</span>
+                  <span style={styles.bkSectionRule} />
+                </div>
+
+                {/* Service Date + Time */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 14 }}>
+                  <div>
+                    <label style={styles.fl}>Service Date *</label>
+                    <input
+                      type="date"
+                      style={styles.fi}
+                      required
+                      value={modal.data.service_date || todayKey()}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, service_date: e.target.value } })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label style={styles.fl}>Time</label>
+                    <input
+                      type="time"
+                      style={styles.fi}
+                      value={modal.data.service_time || ''}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, service_time: e.target.value } })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.bkSectionHead}>
+                  <span>Client</span>
+                  <span style={styles.bkSectionRule} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <label style={styles.fl}>Client Name *</label>
+                    <input
+                      style={styles.fi}
+                      required
+                      value={modal.data.client_name || ''}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, client_name: e.target.value } })
+                      }
+                      placeholder="John Doe"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.fl}>Client Phone</label>
+                    <input
+                      style={styles.fi}
+                      value={modal.data.client_phone || ''}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          data: { ...modal.data, client_phone: e.target.value },
+                        })
+                      }
+                      placeholder="0712-345-678"
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.bkSectionHead}>
+                  <span>Booking details</span>
+                  <span style={styles.bkSectionRule} />
+                </div>
+
+                <div>
+                  <label style={styles.fl}>Deceased (optional)</label>
+                  <input
+                    style={styles.fi}
+                    value={modal.data.deceased_name || ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, deceased_name: e.target.value } })
+                    }
+                    placeholder="Jane Doe"
+                  />
+                </div>
+
+                <div>
+                  <label style={styles.fl}>Search available coffin types and colors</label>
+                  <input
+                    style={styles.fi}
+                    type="search"
+                    value={bookingSearch}
+                    onChange={(e) => setBookingSearch(e.target.value)}
+                    placeholder="Search by coffin name, type, color, or size"
+                  />
+                </div>
+
+                <div>
+                  <label style={styles.fl}>Choose a coffin color variant (optional)</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10, marginTop: 7 }}>
+                    <button
+                      type="button"
+                      aria-pressed={!modal.data.coffin_id}
+                      onClick={() => setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, coffin_id: '', size: '' },
+                      }))}
+                      style={{
+                        textAlign: 'left',
+                        padding: 12,
+                        borderRadius: 10,
+                        border: `1px solid ${!modal.data.coffin_id ? S.primary : S.border}`,
+                        background: !modal.data.coffin_id ? S.primaryLight : '#fff',
+                        color: S.text,
+                        cursor: 'pointer',
+                        font: 'inherit',
+                      }}
+                    >
+                      <strong style={{ display: 'block', fontSize: 13 }}>Made to order</strong>
+                      <span style={{ color: S.textMuted, fontSize: 11 }}>No inventory variant selected</span>
+                    </button>
+                    {filteredBookingCoffins.map((coffin) => {
+                      const variantId = coffin.coffin_id || coffin.id;
+                      const selected = String(modal.data.coffin_id || '') === String(variantId);
+                      const stock = getCoffinStock(coffin);
+                      return (
+                        <button
+                          type="button"
+                          key={variantId}
+                          aria-pressed={selected}
+                          onClick={() => setModal((prev) => ({
+                            ...prev,
+                            data: {
+                              ...prev.data,
+                              coffin_id: variantId,
+                              coffin_name: coffin.type || coffin.name || '',
+                              color: coffin.color || '',
+                              size: coffin.size || '',
+                              quantity: stock > 0
+                                ? Math.min(parseInt(prev.data.quantity, 10) || 1, stock)
+                                : prev.data.quantity,
+                              amount: coffin.price ?? coffin.exact_price ?? prev.data.amount,
+                            },
+                          }))}
+                          style={{
+                            textAlign: 'left',
+                            padding: 12,
+                            borderRadius: 10,
+                            border: `1px solid ${selected ? S.primary : S.border}`,
+                            background: selected ? S.primaryLight : '#fff',
+                            color: S.text,
+                            cursor: 'pointer',
+                            font: 'inherit',
+                          }}
+                        >
+                          <strong style={{ display: 'block', fontSize: 13 }}>
+                            {[coffin.type || coffin.name, coffin.color].filter(Boolean).join(' · ')}
+                          </strong>
+                          <span style={{ display: 'block', color: S.textMuted, fontSize: 11, marginTop: 4 }}>
+                            {[coffin.size, `${stock} available`].filter(Boolean).join(' · ')}
+                          </span>
+                          <span style={{ display: 'block', color: S.textMuted, fontSize: 11, marginTop: 2 }}>
+                            {formatKES(coffin.price ?? coffin.exact_price)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {filteredBookingCoffins.length === 0 && (
+                    <div style={{ color: S.textMuted, fontSize: 12, marginTop: 8 }}>
+                      No matching inventory variants. Enter the coffin type and color below for a made-to-order booking.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={styles.fl}>Coffin type *</label>
+                      <span style={{ fontSize: 11, color: S.textMuted }}>Model</span>
+                    </div>
+                    <input
+                      style={styles.fi}
+                      required
+                      list="booking-coffin-types"
+                      value={modal.data.coffin_name ?? selectedBookingCoffin?.type ?? selectedBookingCoffin?.name ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, coffin_name: val, coffin_id: '' },
+                        }));
+                      }}
+                      placeholder="e.g. Doom, Presidential"
+                    />
+                    <datalist id="booking-coffin-types">
+                      {inventoryTypes.map((type) => (
+                        <option key={type} value={type} />
+                      ))}
+                    </datalist>
+
+                    {/* Registered Types Quick Pills */}
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+                      {catalogTypeNames.slice(0, 6).map((tName) => {
+                        const isCurrent = (modal.data.coffin_name || '').toLowerCase() === tName.toLowerCase();
+                        return (
+                          <button
+                            type="button"
+                            key={tName}
+                            onClick={() => {
+                              setModal((prev) => ({
+                                ...prev,
+                                data: { ...prev.data, coffin_name: tName, coffin_id: '' },
+                              }));
+                            }}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: 12,
+                              border: `1px solid ${isCurrent ? S.primary : S.border}`,
+                              background: isCurrent ? S.primaryLight : '#fff',
+                              color: isCurrent ? S.primary : S.textLight,
+                              fontSize: 11,
+                              fontWeight: isCurrent ? 700 : 500,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {tName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={styles.fl}>Color *</label>
+                      <span style={{ fontSize: 11, color: S.textMuted }}>Finish</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        style={{ ...styles.fi, flex: 1 }}
+                        required
+                        list="booking-coffin-colors"
+                        value={modal.data.color ?? selectedBookingCoffin?.color ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, color: val, coffin_id: '' },
+                          }));
+                        }}
+                        placeholder="e.g. White, Black, Mahogany"
+                      />
+                      <span
+                        title="Color preview"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: detectColorRGB(modal.data.color || selectedBookingCoffin?.color || '#cccccc').hex,
+                          border: '1.5px solid rgba(0,0,0,0.2)',
+                          flexShrink: 0,
+                        }}
+                      />
+                    </div>
+                    <datalist id="booking-coffin-colors">
+                      {inventoryColors.map((color) => (
+                        <option key={color} value={color} />
+                      ))}
+                    </datalist>
+
+                    {/* Registered Colors Quick Pills */}
+                    {(() => {
+                      const currentType = typesCatalog.find(
+                        (t) => t.name.toLowerCase() === (modal.data.coffin_name || '').toLowerCase()
+                      );
+                      const suggestedColors = (currentType?.colors?.length)
+                        ? currentType.colors.map((c) => c.name)
+                        : catalogColors.slice(0, 6);
+
+                      return (
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+                          {suggestedColors.map((cName) => {
+                            const isCurrent = (modal.data.color || '').toLowerCase() === cName.toLowerCase();
+                            const det = detectColorRGB(cName);
+                            return (
+                              <button
+                                type="button"
+                                key={cName}
+                                onClick={() => {
+                                  setModal((prev) => ({
+                                    ...prev,
+                                    data: { ...prev.data, color: cName, coffin_id: '' },
+                                  }));
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '3px 8px',
+                                  borderRadius: 12,
+                                  border: `1px solid ${isCurrent ? S.primary : S.border}`,
+                                  background: isCurrent ? S.primaryLight : '#fff',
+                                  color: isCurrent ? S.primary : S.textLight,
+                                  fontSize: 11,
+                                  fontWeight: isCurrent ? 700 : 500,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: det.hex }} />
+                                {cName}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Real-time Inventory Matching Badge */}
+                {(() => {
+                  const currentName = String(modal.data.coffin_name || selectedBookingCoffin?.type || selectedBookingCoffin?.name || '').trim().toLowerCase();
+                  const currentColor = String(modal.data.color || selectedBookingCoffin?.color || '').trim().toLowerCase();
+
+                  if (!currentName || !currentColor) return null;
+
+                  const matchedVariant = branchCoffins.find((c) => {
+                    const tMatch = String(c.type || c.name || '').trim().toLowerCase() === currentName;
+                    const cMatch = String(c.color || '').trim().toLowerCase() === currentColor;
+                    return tMatch && cMatch;
+                  });
+
+                  if (matchedVariant) {
+                    const stock = getCoffinStock(matchedVariant);
+                    const isLinked = String(modal.data.coffin_id || '') === String(matchedVariant.coffin_id || matchedVariant.id);
+                    return (
+                      <div
+                        style={{
+                          background: '#f0fdf4',
+                          border: '1px solid #86efac',
+                          borderRadius: 8,
+                          padding: '10px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <i className="fa-solid fa-circle-check" style={{ color: '#16a34a', fontSize: 16 }}></i>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 12.5, color: '#166534' }}>
+                              Variant In Stock Locally ({stock} available)
+                            </div>
+                            <div style={{ fontSize: 11, color: '#15803d' }}>
+                              {branches.find((b) => b.id == currentBranch)?.name || 'Current Branch'} · SKU: {generateVariantSku(matchedVariant.type || matchedVariant.name, matchedVariant.color)} · {formatKES(matchedVariant.price ?? matchedVariant.exact_price)}
+                            </div>
+                          </div>
+                        </div>
+                        {!isLinked && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModal((prev) => ({
+                                ...prev,
+                                data: {
+                                  ...prev.data,
+                                  coffin_id: matchedVariant.coffin_id || matchedVariant.id,
+                                  amount: matchedVariant.price ?? matchedVariant.exact_price ?? prev.data.amount,
+                                  size: matchedVariant.size || prev.data.size,
+                                },
+                              }));
+                            }}
+                            style={{
+                              background: '#16a34a',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '4px 10px',
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Lock Stock
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Check other branches
+                  const otherBranchMatch = coffins.find((c) => {
+                    const tMatch = String(c.type || c.name || '').trim().toLowerCase() === currentName;
+                    const cMatch = String(c.color || '').trim().toLowerCase() === currentColor;
+                    return tMatch && cMatch && c.branch_id != currentBranch;
+                  });
+
+                  if (otherBranchMatch) {
+                    const otherBranchName = branches.find((b) => b.id == otherBranchMatch.branch_id)?.name || 'another branch';
+                    return (
+                      <div
+                        style={{
+                          background: '#eff6ff',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: 8,
+                          padding: '10px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                        }}
+                      >
+                        <i className="fa-solid fa-arrow-right-arrow-left" style={{ color: '#2563eb', fontSize: 16 }}></i>
+                        <div style={{ fontSize: 12, color: '#1e40af' }}>
+                          <strong>Available in {otherBranchName}</strong> ({getCoffinStock(otherBranchMatch)} units). You can book as custom or request an inter-branch transfer.
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      style={{
+                        background: '#fffbeb',
+                        border: '1px solid #fde68a',
+                        borderRadius: 8,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                      }}
+                    >
+                      <i className="fa-solid fa-tools" style={{ color: '#d97706', fontSize: 16 }}></i>
+                      <div style={{ fontSize: 12, color: '#92400e' }}>
+                        <strong>Made-to-Order Booking:</strong> This variant is not currently stocked locally. It will be scheduled for production/workshop fulfillment.
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div>
+                  <label style={styles.fl}>Size (optional)</label>
+                  <input
+                    style={styles.fi}
+                    value={modal.data.size || ''}
+                    onChange={(e) =>
+                      setModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, size: e.target.value },
+                      }))
+                    }
+                    placeholder="Leave blank and let the workshop decide"
+                  />
+                  <div style={{ fontSize: 12, color: S.textMuted, marginTop: 5 }}>
+                    Leave blank for a made-to-order booking. If a matching no-size variant has stock, it will be reserved.
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16 }}>
+                  <div>
+                    <label style={styles.fl}>Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedBookingCoffin ? getCoffinStock(selectedBookingCoffin) : undefined}
+                      style={styles.fi}
+                      value={modal.data.quantity || 1}
+                      onChange={(e) =>
+                        setModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, quantity: parseInt(e.target.value) || 1 },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label style={styles.fl}>Paid</label>
+                    <select
+                      style={styles.fs}
+                      value={modal.data.paid ? 'yes' : 'no'}
+                      onChange={(e) =>
+                        setModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, paid: e.target.value === 'yes' },
+                        }))
+                      }
+                    >
+                      <option value="no">No</option>
+                      <option value="yes">Yes</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <label style={styles.fl}>Amount</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      style={styles.fi}
+                      value={modal.data.amount || ''}
+                      onChange={(e) =>
+                        setModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, amount: e.target.value },
+                        }))
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.fl}>Deposit</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      style={styles.fi}
+                      value={modal.data.deposit || ''}
+                      onChange={(e) =>
+                        setModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, deposit: e.target.value },
+                        }))
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={styles.fl}>Notes</label>
+                  <textarea
+                    style={{ ...styles.fi, minHeight: 80 }}
+                    value={modal.data.notes || ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.bkFooter}>
+              <button
+                type="button"
+                style={{ ...styles.bkFooterBtn, ...styles.bkFooterGhost }}
+                onClick={() => setModal({ open: false, type: '', data: {} })}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{ ...styles.bkFooterBtn, ...styles.bkFooterPrimary }}
+                disabled={submitLoading}
+              >
+                {submitLoading ? 'Saving...' : 'Create Reservation'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Stock Request Modal */}
+        <div
+          style={{
+            ...styles.moOverlay,
+            ...(modal.open && modal.type === 'stockRequest' ? styles.moOpen : {}),
+          }}
+          onClick={() => setModal({ open: false, type: '', data: {} })}
+        >
+          <div style={styles.md} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.mh}>
+              <h2 style={styles.mh2}>New Stock Request</h2>
+              <button style={styles.mx} onClick={() => setModal({ open: false, type: '', data: {} })}>
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleCreateStockRequest}>
+              <div style={styles.mb}>
+                <div style={styles.fr}>
+                  <div style={styles.fg}>
+                    <label style={styles.fl}>Request From *</label>
+                    <select
+                      style={styles.fs}
+                      required
+                      value={modal.data.from_branch_id || modal.data.to_branch_id || ''}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          data: { ...modal.data, from_branch_id: e.target.value },
+                        })
+                      }
+                    >
+                      <option value="">Select source branch</option>
+                      {branches
+                        .filter((b) => b.id != currentBranch)
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div style={styles.fg}>
+                    <label style={styles.fl}>Coffin *</label>
+                    <select
+                      style={styles.fs}
+                      required
+                      value={modal.data.coffin_id || ''}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, coffin_id: e.target.value } })
+                      }
+                    >
+                      <option value="">Select coffin</option>
+                      {(() => {
+                        // Only offer coffins stocked at the SOURCE branch being
+                        // requested from (plus shared central stock without a
+                        // branch assignment) — never my own branch's stock.
+                        const sourceBranchId =
+                          modal.data.from_branch_id || modal.data.to_branch_id || '';
+                        const sourceCoffins = coffins.filter((c) => {
+                          const matchesSource =
+                            !c.branch_id || c.branch_id == sourceBranchId;
+                          const hasStock = (parseInt(c.stock) || 0) > 0;
+                          return sourceBranchId && matchesSource && hasStock;
+                        });
+                        return sourceCoffins.length > 0 ? (
+                          sourceCoffins.map((c) => (
+                            <option key={c.coffin_id || c.id} value={c.coffin_id || c.id}>
+                              {c.name} ({c.stock} left)
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>
+                            {sourceBranchId
+                              ? 'No coffins available at this branch'
+                              : 'Select a source branch first'}
+                          </option>
+                        );
+                      })()}
+                    </select>
+                  </div>
+                </div>
+                <div style={styles.fr}>
+                  <div style={styles.fg}>
+                    <label style={styles.fl}>Quantity</label>
+                    <input
+                      style={styles.fi}
+                      type="number"
+                      min={1}
+                      value={modal.data.quantity || 1}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          data: { ...modal.data, quantity: parseInt(e.target.value) || 1 },
+                        })
+                      }
+                    />
+                  </div>
+                  <div style={styles.fg}>
+                    <label style={styles.fl}>Client Name</label>
+                    <input
+                      style={styles.fi}
+                      value={modal.data.client_name || ''}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, client_name: e.target.value } })
+                      }
+                    />
+                  </div>
+                </div>
+                <div style={styles.fr}>
+                  <div style={styles.fg}>
+                    <label style={styles.fl}>Client Phone</label>
+                    <input
+                      style={styles.fi}
+                      value={modal.data.client_phone || ''}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, client_phone: e.target.value } })
+                      }
+                    />
+                  </div>
+                  <div style={styles.fg}>
+                    <label style={styles.fl}>Deceased Name</label>
+                    <input
+                      style={styles.fi}
+                      value={modal.data.deceased_name || ''}
+                      onChange={(e) =>
+                        setModal({ ...modal, data: { ...modal.data, deceased_name: e.target.value } })
+                      }
+                    />
+                  </div>
+                </div>
+                <div style={styles.fg}>
+                  <label style={styles.fl}>Expected Date (optional)</label>
+                  <input
+                    type="date"
+                    style={styles.fi}
+                    value={modal.data.service_date || ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, service_date: e.target.value } })
+                    }
+                  />
+                </div>
+                <div style={styles.fg}>
+                  <label style={styles.fl}>Notes</label>
+                  <textarea
+                    style={{ ...styles.fi, minHeight: 80, resize: 'vertical' }}
+                    value={modal.data.notes || ''}
+                    onChange={(e) =>
+                      setModal({ ...modal, data: { ...modal.data, notes: e.target.value } })
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.mf}>
+                <button
+                  type="button"
+                  style={{ ...styles.btn, ...styles.btnG }}
+                  onClick={() => setModal({ open: false, type: '', data: {} })}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ ...styles.btn, ...styles.btnP }}
+                  disabled={submitLoading}
+                >
+                  {submitLoading ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+
+        <div
+          style={{ ...styles.drawerOverlay, ...(drawer.open ? styles.drawerOverlayOpen : {}) }}
+          onClick={closeDrawer}
+        ></div>
+        <div style={{ ...styles.drawer, ...(drawer.open ? styles.drawerOpen : {}) }}>
+          <div style={styles.drawerHeader}>
+            <h2 style={styles.drawerHeaderH2}>{drawer.title}</h2>
+            <button style={styles.mx} onClick={closeDrawer}>
+              &times;
+            </button>
+          </div>
+          <div style={styles.drawerBody} dangerouslySetInnerHTML={{ __html: drawer.content }} />
+        </div>
       </div>
-    </div>
-  );
+      );
 };
 
-// â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 const objToStr = (obj) => {
   if (!obj) return '';
-  return Object.entries(obj)
+      return Object.entries(obj)
     .map(([key, val]) => {
       const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
       if (typeof val === 'number' && !['opacity', 'zIndex', 'fontWeight', 'flex'].includes(key)) {
@@ -5301,7 +5629,7 @@ const objToStr = (obj) => {
       }
       return `${cssKey}:${val}`;
     })
-    .join(';');
+      .join(';');
 };
 
-export default CoffinDashboard;
+      export default CoffinDashboard;

@@ -147,7 +147,7 @@ export default function ReservationDashboard(props) {
   // Coffin Inventory / Coffin Transfers modules for the active view.
   var altContent = childrenProp;
   if (!altContent && showAltSection) {
-    if (effActive === 'inventory') altContent = <CoffinInventory showAnalytics={true} />;
+    if (effActive === 'inventory') altContent = <CoffinInventory />;
     else if (effActive === 'transfers') altContent = <CoffinTransfers />;
   }
 

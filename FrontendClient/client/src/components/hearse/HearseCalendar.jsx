@@ -98,24 +98,33 @@ const Shell = styled.div`
   border-radius: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #000000;
-  height: 100vh;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 700px;
   display: flex;
   flex-direction: column;
   padding: 14px 10px;
   overflow: hidden;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
 
   @media (max-width: 640px) {
-    padding: 12px 16px;
-    height: 100vh;
-    min-height: 100vh;
+    padding: 12px 10px;
+    height: 100%;
+    min-height: 600px;
   }
 
   /* FullCalendar custom styles */
   .fc {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     height: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
     flex: 1 !important;
+  }
+
+  .fc table {
+    width: 100% !important;
   }
 
   .fc .fc-toolbar {
@@ -703,9 +712,11 @@ const LegendDot = styled.div`
 
 const CalendarWrapper = styled.div`
   flex: 1;
-  min-height: 0;
+  min-height: 550px;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 // ===== STATS BAR =====
@@ -752,6 +763,7 @@ const StatIcon = styled.span`
 const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick, month, onMonthChange }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const calendarRef = useRef(null);
+  const wrapperRef = useRef(null);
   // Last month reported to the parent. A view switch (Month -> Week -> Day)
   // also fires datesSet, and we must not treat that as a month change.
   const lastReportedMonth = useRef(null);
@@ -1005,28 +1017,70 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     if (onItemClick) onItemClick(info.event.extendedProps);
   }, [onItemClick]);
 
+  const updateCalendarSize = useCallback(() => {
+    const api = calendarRef.current?.getApi?.();
+    if (api && typeof api.updateSize === 'function') {
+      try {
+        api.updateSize();
+      } catch (e) {
+        // safe ignore
+      }
+    }
+  }, []);
+
   // Handle view change
   const handleViewChange = useCallback((view) => {
     setCalendarView(view.type);
-    // Re-measure after a view switch so week/day columns settle at the
-    // correct width instead of rendering oversized ("big") columns.
-    requestAnimationFrame(() => {
-      const api = calendarRef.current?.getApi?.();
-      if (api) api.updateSize();
-    });
-  }, []);
+    requestAnimationFrame(updateCalendarSize);
+    setTimeout(updateCalendarSize, 60);
+    setTimeout(updateCalendarSize, 200);
+  }, [updateCalendarSize]);
 
-  // ── Fix "big columns" on first load ──────────────────────────────────
-  // FullCalendar sizes the grid when it mounts. If the container hasn't
-  // settled its final dimensions yet (flex 100vh shell), the initial
-  // paint uses a wrong width/height and the week/day columns render
-  // oversized. Re-measure once the DOM has laid out.
+  // ── Fix FullCalendar "scattered" / mismeasured layout on open / navigation ───
+  // FullCalendar sizes its table columns on mount. When mounting inside a dynamic
+  // tab or flex container (or during client-side navigation), the container dimensions
+  // may take multiple ticks to stabilize. Without continuous size updates, FullCalendar
+  // stays frozen with 0px / distorted column widths until a browser reload.
+  // We use ResizeObserver, staggered timers, and window listeners to guarantee crisp sizing.
   useEffect(() => {
-    const api = calendarRef.current?.getApi?.();
-    if (!api) return;
-    const frame = requestAnimationFrame(() => api.updateSize());
-    return () => cancelAnimationFrame(frame);
-  }, []);
+    updateCalendarSize();
+
+    const frame = requestAnimationFrame(updateCalendarSize);
+    const timers = [
+      setTimeout(updateCalendarSize, 50),
+      setTimeout(updateCalendarSize, 120),
+      setTimeout(updateCalendarSize, 250),
+      setTimeout(updateCalendarSize, 500),
+      setTimeout(updateCalendarSize, 850),
+      setTimeout(updateCalendarSize, 1200),
+    ];
+
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined' && wrapperRef.current) {
+      ro = new ResizeObserver(() => {
+        requestAnimationFrame(updateCalendarSize);
+      });
+      ro.observe(wrapperRef.current);
+    }
+
+    window.addEventListener('resize', updateCalendarSize);
+    window.addEventListener('orientationchange', updateCalendarSize);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      timers.forEach(clearTimeout);
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', updateCalendarSize);
+      window.removeEventListener('orientationchange', updateCalendarSize);
+    };
+  }, [updateCalendarSize]);
+
+  // Also update FullCalendar size when events change or load asynchronously
+  useEffect(() => {
+    updateCalendarSize();
+    const t = setTimeout(updateCalendarSize, 100);
+    return () => clearTimeout(t);
+  }, [events, updateCalendarSize]);
 
   // Custom event renderer - Full cards for week/day view with all details
   const renderEventContent = useCallback((eventInfo) => {
@@ -1217,7 +1271,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const renderDayCell = useCallback((info) => {
     if (calendarView !== 'dayGridMonth') return;
 
-    const dateStr = info.date.toISOString().split('T')[0];
+    const dateStr = fmtDS(info.date);
 
     const dayEvents = bookings.filter((b) => {
       const dates = getBookingDates(b);
@@ -1309,7 +1363,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         </StatsBar>
       )}
 
-      <CalendarWrapper>
+      <CalendarWrapper ref={wrapperRef}>
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1371,7 +1425,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           eventContent={renderEventContent}
           dayCellDidMount={renderDayCell}
           height="100%"
-          contentHeight="100%"
           firstDay={0}
           weekends={true}
           nowIndicator={true}

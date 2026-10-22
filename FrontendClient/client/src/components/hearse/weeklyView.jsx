@@ -548,6 +548,30 @@ export default function WeeklyView({
     }
   }, [currentDate]);
 
+  // Keep FullCalendar properly sized on mount and container layout
+  useEffect(() => {
+    const update = () => {
+      if (calendarRef.current) {
+        try {
+          calendarRef.current.getApi()?.updateSize();
+        } catch (e) {}
+      }
+    };
+    const frame = requestAnimationFrame(update);
+    const timers = [
+      setTimeout(update, 60),
+      setTimeout(update, 180),
+      setTimeout(update, 400),
+      setTimeout(update, 800),
+    ];
+    window.addEventListener('resize', update);
+    return () => {
+      cancelAnimationFrame(frame);
+      timers.forEach(clearTimeout);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
   return (
     <WeeklyWrapper>
       <StatsBar>

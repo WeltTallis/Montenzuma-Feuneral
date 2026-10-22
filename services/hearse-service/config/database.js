@@ -59,6 +59,7 @@ const initializeHearseDatabase = async () => {
         \`branch_name\` VARCHAR(100) NOT NULL,
         \`branch_code\` VARCHAR(50),
         \`image\` VARCHAR(500),
+        \`fuel_card_number\` VARCHAR(50),
         \`min_charge_ksh\` DECIMAL(10,2) DEFAULT 0.00,
         \`max_charge_ksh\` DECIMAL(10,2) DEFAULT 0.00,
         \`is_own_branch\` TINYINT(1) DEFAULT 1,
