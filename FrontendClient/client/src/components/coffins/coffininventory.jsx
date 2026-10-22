@@ -24,6 +24,7 @@ import {
   formatBranchDisplayName,
   COFFIN_POPULAR_PALETTE,
   generateVariantSku,
+  objToStr,
 } from './coffinColorUtils';
 
 import {
@@ -2871,22 +2872,7 @@ const CoffinDashboard = () => {
           boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: S.text, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="fa-solid fa-network-wired" style={{ color: S.primary }}></i>
-              Inventory by Branch Location
-            </h3>
-            <p style={{ margin: '3px 0 0', fontSize: 12, color: S.textMuted }}>
-              Cross-branch stock quantities, variants count, and availability across all company branches
-            </p>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, background: '#f1f5f9', padding: '4px 10px', borderRadius: 12 }}>
-            {branches.length} Active {branches.length === 1 ? 'Branch' : 'Branches'}
-          </span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+        
           {branchInventoryStats.map((bStat) => {
             const isCurrent = String(bStat.id) === String(currentBranch);
             return (

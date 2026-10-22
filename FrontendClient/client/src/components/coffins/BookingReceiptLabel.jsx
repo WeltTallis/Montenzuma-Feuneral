@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import bwipjs from '@bwip-js/browser';
 import { format } from 'date-fns';
+import { useTenantStore } from '../../modules/seo/useTenantStore';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 
 /* Booking receipt label — opened from the reservation detail side panel
  * ("Print Label") for every booking.
@@ -22,9 +24,9 @@ import { format } from 'date-fns';
 /* ── Payment state → receipt badge ────────────────────────────────────────
    Keys match ReservationDashboard's ST / mapped[].status (paid/deposited/unpaid). */
 const PAY = {
-  paid:      { badge: 'mz-rct-badge-paid',      label: 'Paid' },
+  paid: { badge: 'mz-rct-badge-paid', label: 'Paid' },
   deposited: { badge: 'mz-rct-badge-deposited', label: 'Deposited' },
-  unpaid:    { badge: 'mz-rct-badge-reserved',  label: 'Reserved' },
+  unpaid: { badge: 'mz-rct-badge-reserved', label: 'Reserved' },
 };
 
 /* Escape a value before it goes into the HTML string (client names, notes …). */
@@ -171,7 +173,7 @@ function receiptHtml(b, fmt, printedAt, barcodeText) {
   var price = Number(b.price || 0);
   var collected = b.status === 'paid' ? price
     : b.status === 'deposited' ? Math.min(Number(b.deposit || 0), price)
-    : 0;
+      : 0;
   var balance = Math.max(price - collected, 0);
   var dateStr = b.date ? format(b.date, 'dd MMM yyyy') : '—';
   var timeStr = b.time ? fmt12(b.time) + ' EAT' : '—';
@@ -185,82 +187,92 @@ function receiptHtml(b, fmt, printedAt, barcodeText) {
   ];
   var coffinSvg =
     '<svg viewBox="0 0 24 24" fill="none" stroke="#f4d03f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M8 3h8l2.5 5v11a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2V8z"/>' +
-      '<line x1="12" y1="10" x2="12" y2="20"/>' +
-      '<line x1="9.5" y1="13" x2="14.5" y2="13"/>' +
+    '<path d="M8 3h8l2.5 5v11a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2V8z"/>' +
+    '<line x1="12" y1="10" x2="12" y2="20"/>' +
+    '<line x1="9.5" y1="13" x2="14.5" y2="13"/>' +
     '</svg>';
 
   return '' +
     '<div class="mz-rct-receipt">' +
-      '<div class="mz-rct-hdr">' +
-        '<div class="mz-rct-brandmark">' + coffinSvg + '</div>' +
-        '<div class="mz-rct-brandname">MNOTENZUMA</div>' +
-        '<div class="mz-rct-brandsub">Coffin Reservation Receipt</div>' +
-      '</div>' +
+    '<div class="mz-rct-hdr">' +
+    '<div class="mz-rct-brandmark">' + coffinSvg + '</div>' +
+    '<div class="mz-rct-brandname">' + (brand?.name || 'tenant') + '</div>' +
 
-      '<div class="mz-rct-summary">' +
-        '<div class="mz-rct-cicon">' + coffinSvg + '</div>' +
-        '<div class="mz-rct-cinfo">' +
-          '<p class="mz-rct-model">' + esc(b.coffinType || 'Coffin') + '</p>' +
-          '<p class="mz-rct-meta">' + esc(b.phone ? 'Client phone ' + b.phone : 'Coffin reservation') + '</p>' +
-          '<p class="mz-rct-qty">Quantity: 1' + (b.notes ? ' &middot; ' + esc(b.notes) : '') + '</p>' +
-        '</div>' +
-        '<span class="mz-rct-badge ' + pay.badge + '">' + esc(pay.label) + '</span>' +
-      '</div>' +
+    '<div class="mz-rct-summary">' +
+    '<div class="mz-rct-cicon">' + coffinSvg + '</div>' +
+    '<div class="mz-rct-cinfo">' +
+    '<p class="mz-rct-model">' + esc(b.coffinType || 'Coffin') + '</p>' +
+    '<p class="mz-rct-meta">' + esc(b.phone ? 'Client phone ' + b.phone : 'Coffin reservation') + '</p>' +
+    '<p class="mz-rct-qty">Quantity: 1' + (b.notes ? ' &middot; ' + esc(b.notes) : '') + '</p>' +
+    '</div>' +
+    '<span class="mz-rct-badge ' + pay.badge + '">' + esc(pay.label) + '</span>' +
+    '</div>' +
 
-      '<hr class="mz-rct-divider">' +
+    '<hr class="mz-rct-divider">' +
 
-      '<div class="mz-rct-rows">' +
-        rows.map(function (r) {
-          return '<div class="mz-rct-row"><span class="lbl">' + esc(r[0]) + '</span>' +
-            '<span class="val' + (r[2] ? ' mono' : '') + '">' + esc(r[1]) + '</span></div>';
-        }).join('') +
-        '<div class="mz-rct-row"><span class="lbl">Coffin Price</span><span class="val">' + esc(fmt(price)) + '</span></div>' +
-        '<div class="mz-rct-row"><span class="lbl">Balance Due</span><span class="val">' + esc(fmt(balance)) + '</span></div>' +
-      '</div>' +
+    '<div class="mz-rct-rows">' +
+    rows.map(function (r) {
+      return '<div class="mz-rct-row"><span class="lbl">' + esc(r[0]) + '</span>' +
+        '<span class="val' + (r[2] ? ' mono' : '') + '">' + esc(r[1]) + '</span></div>';
+    }).join('') +
+    '<div class="mz-rct-row"><span class="lbl">Coffin Price</span><span class="val">' + esc(fmt(price)) + '</span></div>' +
+    '<div class="mz-rct-row"><span class="lbl">Balance Due</span><span class="val">' + esc(fmt(balance)) + '</span></div>' +
+    '</div>' +
 
-      '<hr class="mz-rct-divider">' +
+    '<hr class="mz-rct-divider">' +
 
-      '<div class="mz-rct-amount">' +
-        '<span class="lbl">Amount Paid</span>' +
-        '<span class="val">' + esc(fmt(collected)) + '</span>' +
-      '</div>' +
+    '<div class="mz-rct-amount">' +
+    '<span class="lbl">Amount Paid</span>' +
+    '<span class="val">' + esc(fmt(collected)) + '</span>' +
+    '</div>' +
 
-      '<div class="mz-rct-status">' +
-        '<div class="mz-rct-statusicon">' +
-          '<span class="mz-rct-circle red"></span>' +
-          '<span class="mz-rct-circle green"></span>' +
-        '</div>' +
-        '<div>' +
-          '<p class="mz-rct-statuslabel">' + esc(pay.label) +
-            (b.status === 'deposited' && b.deposit > 0 ? ' &middot; ' + esc(fmt(b.deposit)) : '') +
-          '</p>' +
-          '<p class="mz-rct-statusts">' + esc(printedAt) + ' EAT</p>' +
-        '</div>' +
-      '</div>' +
+    '<div class="mz-rct-status">' +
+    '<div class="mz-rct-statusicon">' +
+    '<span class="mz-rct-circle red"></span>' +
+    '<span class="mz-rct-circle green"></span>' +
+    '</div>' +
+    '<div>' +
+    '<p class="mz-rct-statuslabel">' + esc(pay.label) +
+    (b.status === 'deposited' && b.deposit > 0 ? ' &middot; ' + esc(fmt(b.deposit)) : '') +
+    '</p>' +
+    '<p class="mz-rct-statusts">' + esc(printedAt) + ' EAT</p>' +
+    '</div>' +
+    '</div>' +
 
-      '<div class="mz-rct-barcode-sec">' +
-        '<div class="mz-rct-bc" data-code="' + esc(barcodeText) + '"></div>' +
-        '<div class="mz-rct-bcnum">' + esc(barcodeText) + '</div>' +
-      '</div>' +
+    '<div class="mz-rct-barcode-sec">' +
+    '<div class="mz-rct-bc" data-code="' + esc(barcodeText) + '"></div>' +
+    '<div class="mz-rct-bcnum">' + esc(barcodeText) + '</div>' +
+    '</div>' +
 
-      '<p class="mz-rct-foot">' +
-        'Please retain this receipt for your records. For inquiries, contact ' +
-        '<a href="#">mnotenzuma.co.ke/support</a> or call +254 720 100 100.<br>' +
-        'PIN No. P051288372R &middot; Receipt valid for 30 days' +
-      '</p>' +
+    'For inquiries, contact ' +
+    '<a href="https://montezumamonalisa.com/support" target="_blank" style="text-decoration:none;">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;">' +
+    '<circle cx="12" cy="12" r="10"/>' +
+    '<path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4"/>' +
+    '<path d="M12 17h.01"/>' +
+    '</svg>' +
+    'https://montezumamonalisa.com/support</a>' +
+    ' or call ' +
+    '<a href="tel:+254722827652" style="text-decoration:none;white-space:nowrap;">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;">' +
+    '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.79a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.89.34 1.83.58 2.79.7A2 2 0 0 1 22 16.92z"/>' +
+    '</svg>' +
+    '+254 722 827 652</a><br>' +
+    '</p>' +
     '</div>';
 }
 
 export default function BookingReceiptLabel({ booking, money, onClose }) {
   var rootRef = useRef(null);
   var fmt = typeof money === 'function' ? money : function (n) { return 'KES ' + Number(n || 0).toLocaleString(); };
+  var { tenantData } = useTenantStore();
+  var brand = useMemo(function () { return resolveTenantBranding(tenantData); }, [tenantData]);
   var barcodeText = useMemo(function () { return barcodeTextFor(booking); }, [booking]);
   var printedAt = useMemo(function () { return format(new Date(), 'yyyy-MM-dd HH:mm'); }, [booking]);
   var html = useMemo(function () {
     if (!booking) return '';
-    return receiptHtml(booking, fmt, printedAt, barcodeText);
-  }, [booking, fmt, printedAt, barcodeText]);
+    return receiptHtml(booking, fmt, printedAt, barcodeText, brand);
+  }, [booking, fmt, printedAt, barcodeText, brand]);
 
   /* Paint the real Code 128 into the preview slot. */
   useEffect(function () {
