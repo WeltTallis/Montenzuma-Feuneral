@@ -119,16 +119,7 @@ const Shell = styled.div`
   .fc .fc-button-primary:not(:disabled).fc-button-active { background: #000000; color: #FFFFFF; border-color: #000000; }
   .fc .fc-button-primary:focus { box-shadow: none; }
 
-  /* ===== MONTH VIEW =====
-     FullCalendar compresses month events via FC's own layout: it sets inline
-     `position: absolute`, `top: Xpx` and a computed `height` on BOTH
-     .fc-daygrid-event-harness and .fc-daygrid-event. That made the whole card
-     render as a ~22px dot no matter what renderEventContent drew inside it.
-
-     The rules below force the harness back into normal document flow and force
-     both wrappers to 62px. Because the harness is `position: relative` and its
-     top/left/right/bottom are reset, events stack in order inside the flex
-     column that is .fc-daygrid-day-events — no overlap, no clipping. */
+ 
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: background .15s ease;
