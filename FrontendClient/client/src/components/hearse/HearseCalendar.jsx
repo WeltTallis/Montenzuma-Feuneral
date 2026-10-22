@@ -11,9 +11,6 @@ import { STATUS_CONFIG } from './statusColors';
 import { BR, BRANCH_SLUG_TO_NAME } from './viewerShared';
 
 // ===== SHARED CONSTANTS =====
-// STATUS_CONFIG below is imported from ./statusColors — the exact status →
-// colour map used by the Day Timeline, so the monthly/weekly/day calendar
-// views render every status with the same colour.
 export { STATUS_CONFIG };
 
 export const COLORS = {
@@ -77,7 +74,6 @@ export const getTimeInfo = b => {
   return { sd, ed, allDay, sm, dur, fs, fe, range: allDay ? 'All Day' : (fe ? fs + ' – ' + fe : fs) };
 };
 
-// HELPER: Get booking dates safely
 const getBookingDates = (b) => {
   if (b.booking_dates) {
     try {
@@ -109,22 +105,16 @@ const Shell = styled.div`
     min-height: 600px;
   }
 
-  /* ── FullCalendar: LET IT OWN ITS OWN HEIGHT ───────────────────────────────
-     FullCalendar's auto-height month mode measures natural content and sets
-     inline heights on .fc-view-harness, .fc-scroller and .fc-scroller-liquid-
-     absolute. Any !important override on those nodes (height / position /
-     display / overflow) collapses the day-grid body to 0px, which is why the
-     month view could show only the weekday header row and nothing below it.
-     Only visual styling lives here — nothing that constrains layout. */
+  /* FullCalendar owns its own height. No !important overrides on .fc, harness,
+     scrollgrid, scroller, scroller-liquid-absolute, or sync-table — those all
+     break auto-height month mode. */
   .fc {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     width: 100% !important;
     max-width: 100% !important;
   }
 
-  .fc table {
-    width: 100% !important;
-  }
+  .fc table { width: 100% !important; }
 
   .fc .fc-toolbar {
     flex-wrap: wrap;
@@ -132,11 +122,7 @@ const Shell = styled.div`
     margin-bottom: 12px !important;
   }
 
-  .fc .fc-toolbar-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #000000;
-  }
+  .fc .fc-toolbar-title { font-size: 18px; font-weight: 700; color: #000000; }
 
   .fc .fc-button {
     background: #FFFFFF;
@@ -150,46 +136,25 @@ const Shell = styled.div`
     text-transform: capitalize;
     height: auto !important;
   }
-
-  .fc .fc-button:hover {
-    background: #000000;
-    color: #FFFFFF;
-    border-color: #000000;
-  }
-
+  .fc .fc-button:hover { background: #000000; color: #FFFFFF; border-color: #000000; }
   .fc .fc-button-primary:not(:disabled):active,
-  .fc .fc-button-primary:not(:disabled).fc-button-active {
-    background: #000000;
-    color: #FFFFFF;
-    border-color: #000000;
-  }
+  .fc .fc-button-primary:not(:disabled).fc-button-active { background: #000000; color: #FFFFFF; border-color: #000000; }
+  .fc .fc-button-primary:focus { box-shadow: none; }
 
-  .fc .fc-button-primary:focus {
-    box-shadow: none;
-  }
-
-  /* ===== MONTH VIEW STYLES =====
-     Only day-cell styling. No sizing overrides on daygrid body / scrollgrid /
-     sync-table — FullCalendar computes those from the day cells' own
-     min-height, and overriding them breaks auto-height. */
+  /* ===== MONTH VIEW STYLES ===== */
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: all 0.2s ease;
-    min-height: 90px !important;
+    min-height: 100px !important;
   }
-
-  .fc .fc-daygrid-day:hover {
-    background: #F9FAFB;
-  }
-
+  .fc .fc-daygrid-day:hover { background: #F9FAFB; }
   .fc .fc-daygrid-day-frame {
     padding: 4px;
-    min-height: 90px !important;
+    min-height: 100px !important;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
   }
-
   .fc .fc-daygrid-day-top {
     display: flex !important;
     flex-direction: row-reverse !important;
@@ -197,7 +162,6 @@ const Shell = styled.div`
     align-items: center !important;
     padding: 2px 4px !important;
   }
-
   .fc .fc-daygrid-day-number {
     font-size: 13px !important;
     font-weight: 700 !important;
@@ -207,21 +171,18 @@ const Shell = styled.div`
     text-decoration: none !important;
     display: inline-block !important;
   }
-
+  /* GREEN today marker — restored */
   .fc .fc-day-today .fc-daygrid-day-number {
-    background: #00296B !important;
+    background: #2E7D32 !important;
     color: #FFFFFF !important;
     border-radius: 50% !important;
   }
-
   .fc .fc-daygrid-day.fc-day-today {
-    background: #EFF6FF !important;
+    background: #E8F5E9 !important;
   }
-
   .fc .fc-daygrid-day-other .fc-daygrid-day-number {
     opacity: 0.35 !important;
   }
-
   .fc .fc-daygrid-day-events {
     margin-top: 2px;
     display: flex;
@@ -229,46 +190,43 @@ const Shell = styled.div`
     gap: 2px;
     min-height: 16px;
   }
-
   .fc .fc-daygrid-event-harness {
-    margin-bottom: 2px !important;
+    margin-bottom: 3px !important;
   }
 
+  /* Month event — the CUSTOM renderer paints bg/colour on the inner div, so
+     this outer element must not force any colour. Everything visual comes
+     from the renderer below. */
   .fc .fc-daygrid-event {
-    margin: 1px 0 !important;
+    margin: 0 !important;
     border-radius: 4px !important;
     border: none !important;
+    padding: 0 !important;
     background: transparent !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    min-height: 0 !important;
   }
 
   .fc .fc-daygrid-more-link {
     font-size: 10px !important;
-    font-weight: 600 !important;
-    color: #6b7280 !important;
+    font-weight: 700 !important;
+    color: #00296B !important;
     cursor: pointer !important;
     padding: 1px 4px !important;
     border-radius: 4px !important;
     margin-top: 2px !important;
   }
+  .fc .fc-daygrid-more-link:hover { background: #EFF6FF !important; }
 
-  .fc .fc-daygrid-more-link:hover {
-    background: #F3F4F6 !important;
-  }
-
-  /* ===== WEEK & DAY VIEW =====
-     Same colours as everywhere else in this calendar (status palette from
-     ./statusColors, the #2E7D32 today marker, the #D32F2F now-line). What is
-     styled here is the SHAPE: hairlines on the hour only, quiet gutter. */
+  /* ===== WEEK & DAY VIEW ===== */
   .fc .fc-timegrid-axis {
     width: 56px !important;
     background: #FAFAFA !important;
     border-right: 1px solid #EEEEEE !important;
   }
-
-  .fc .fc-timegrid-slot {
-    height: 1.5em !important;
-  }
-
+  .fc .fc-timegrid-slot { height: 1.5em !important; }
   .fc .fc-timegrid-axis-cushion,
   .fc .fc-timegrid-slot-label-cushion {
     font-size: 11px !important;
@@ -277,28 +235,17 @@ const Shell = styled.div`
     padding: 0 8px 0 0 !important;
     text-align: right !important;
   }
-
-  .fc .fc-timegrid-slot {
-    border-bottom: 1px solid transparent !important;
-  }
-
+  .fc .fc-timegrid-slot { border-bottom: 1px solid transparent !important; }
   .fc .fc-timegrid-slot-minor {
     border-top-style: dotted !important;
     border-top-color: #F3F4F6 !important;
   }
-
   .fc .fc-timegrid-col {
     border-right: 1px solid #EEEEEE !important;
     background: #FFFFFF;
   }
-
-  .fc .fc-timegrid-col:last-child {
-    border-right: 0 !important;
-  }
-
-  .fc .fc-timegrid-col.fc-day-today {
-    background: #FAFAFA !important;
-  }
+  .fc .fc-timegrid-col:last-child { border-right: 0 !important; }
+  .fc .fc-timegrid-col.fc-day-today { background: #FAFAFA !important; }
 
   .fc .fc-col-header-cell {
     background: #FFFFFF !important;
@@ -307,11 +254,7 @@ const Shell = styled.div`
     padding: 0 !important;
     vertical-align: middle !important;
   }
-
-  .fc .fc-col-header-cell.fc-day-today {
-    border-top-color: #2E7D32 !important;
-  }
-
+  .fc .fc-col-header-cell.fc-day-today { border-top-color: #2E7D32 !important; }
   .fc .fc-col-header-cell-cushion {
     display: flex !important;
     flex-direction: column !important;
@@ -325,32 +268,21 @@ const Shell = styled.div`
     text-decoration: none !important;
     width: 100% !important;
   }
-
-  .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
-    color: #2E7D32 !important;
-  }
+  .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion { color: #2E7D32 !important; }
 
   .fc .fc-timegrid-event {
     border-radius: 6px !important;
     border: none !important;
     cursor: pointer !important;
-    transition: box-shadow .15s ease, transform .15s ease !important;
+    transition: box-shadow .15s ease !important;
     padding: 0 !important;
     margin: 1px 3px 1px 4px !important;
     overflow: hidden !important;
     box-shadow: 0 1px 2px rgba(0,0,0,.08) !important;
     min-height: 26px !important;
   }
-
-  .fc .fc-timegrid-event:hover {
-    transform: none !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,.16) !important;
-    z-index: 10 !important;
-  }
-
-  .fc .fc-timegrid-event-harness > .fc-timegrid-event {
-    border-left: 3px solid transparent !important;
-  }
+  .fc .fc-timegrid-event:hover { box-shadow: 0 4px 12px rgba(0,0,0,.16) !important; z-index: 10 !important; }
+  .fc .fc-timegrid-event-harness > .fc-timegrid-event { border-left: 3px solid transparent !important; }
 
   .fc .fc-timegrid-event .fc-event-main {
     display: flex !important;
@@ -362,7 +294,6 @@ const Shell = styled.div`
     box-sizing: border-box !important;
     overflow: hidden !important;
   }
-
   .fc .fc-timegrid-event .fc-event-time {
     font-size: 9px !important;
     font-weight: 700 !important;
@@ -375,7 +306,6 @@ const Shell = styled.div`
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
-
   .fc .fc-timegrid-event .fc-event-title {
     font-weight: 700 !important;
     font-size: 12px !important;
@@ -385,7 +315,6 @@ const Shell = styled.div`
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
-
   .fc .fc-timegrid-event .fc-event-destination {
     font-size: 10px !important;
     font-weight: 500 !important;
@@ -396,8 +325,8 @@ const Shell = styled.div`
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
-
-  .fc .fc-timegrid-event .fc-event-from {
+  .fc .fc-timegrid-event .fc-event-from,
+  .fc .fc-timegrid-event .fc-event-plate {
     font-size: 9px !important;
     opacity: .7 !important;
     display: block !important;
@@ -405,15 +334,6 @@ const Shell = styled.div`
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
-
-  .fc .fc-timegrid-event .fc-event-plate {
-    font-size: 9px !important;
-    font-weight: 600 !important;
-    opacity: .8 !important;
-    display: inline-block !important;
-    font-family: var(--mono, monospace) !important;
-  }
-
   .fc .fc-timegrid-event .fc-event-status {
     font-size: 9px !important;
     font-weight: 700 !important;
@@ -426,35 +346,16 @@ const Shell = styled.div`
     padding: 0 !important;
     border-radius: 0 !important;
   }
-
-  .fc .fc-timegrid-now-indicator-line {
-    border-color: #D32F2F !important;
-    border-width: 2px !important;
-  }
-
-  .fc .fc-timegrid-now-indicator-arrow {
-    border-color: #D32F2F !important;
-    border-width: 5px !important;
-    top: -5px !important;
-  }
-
-  .fc .fc-timegrid-axis-frame {
-    background: #FAFAFA !important;
-  }
-
+  .fc .fc-timegrid-now-indicator-line { border-color: #D32F2F !important; border-width: 2px !important; }
+  .fc .fc-timegrid-now-indicator-arrow { border-color: #D32F2F !important; border-width: 5px !important; top: -5px !important; }
+  .fc .fc-timegrid-axis-frame { background: #FAFAFA !important; }
   .fc .fc-timegrid-axis-frame .fc-timegrid-axis-cushion {
     font-size: 9px !important;
     font-weight: 700 !important;
     color: #999999 !important;
     text-transform: uppercase !important;
   }
-
-  .fc .fc-timegrid-all-day-events {
-    min-height: 35px !important;
-    background: #FFFFFF !important;
-    padding: 2px !important;
-  }
-
+  .fc .fc-timegrid-all-day-events { min-height: 35px !important; background: #FFFFFF !important; padding: 2px !important; }
   .fc .fc-timegrid-all-day-event {
     border-radius: 6px !important;
     border: none !important;
@@ -467,212 +368,61 @@ const Shell = styled.div`
     display: flex !important;
     align-items: center !important;
   }
-
-  .fc .fc-timegrid-all-day-event .fc-event-title {
-    font-weight: 700 !important;
-    font-size: 12px !important;
-  }
-
+  .fc .fc-timegrid-all-day-event .fc-event-title { font-weight: 700 !important; font-size: 12px !important; }
   .fc .fc-timegrid-event,
-  .fc .fc-timegrid-all-day-event {
-    min-width: 0 !important;
-    overflow: hidden !important;
-  }
-
+  .fc .fc-timegrid-all-day-event { min-width: 0 !important; overflow: hidden !important; }
   .fc .fc-timegrid-event .fc-event-main,
-  .fc .fc-timegrid-all-day-event .fc-event-main {
-    min-width: 0 !important;
-    width: 100% !important;
-    overflow: hidden !important;
-  }
-
+  .fc .fc-timegrid-all-day-event .fc-event-main { min-width: 0 !important; width: 100% !important; overflow: hidden !important; }
   .fc .fc-timegrid-event .fc-event-content,
-  .fc .fc-timegrid-all-day-event .fc-event-content {
-    min-width: 0 !important;
-    width: 100% !important;
-    overflow: hidden !important;
-  }
-
+  .fc .fc-timegrid-all-day-event .fc-event-content { min-width: 0 !important; width: 100% !important; overflow: hidden !important; }
   .fc .fc-timegrid-event .fc-event-title,
-  .fc .fc-timegrid-all-day-event .fc-event-title {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    min-width: 0 !important;
-  }
+  .fc .fc-timegrid-all-day-event .fc-event-title { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; min-width: 0 !important; }
 
-  /* Popover styling */
+  /* Popover */
   .fc .fc-popover {
     border-radius: 12px !important;
     border: 1px solid #EEEEEE !important;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important;
     background: #FFFFFF !important;
   }
-
   .fc .fc-popover-header {
     padding: 10px 14px !important;
     background: #FAFAFA !important;
     border-bottom: 1px solid #EEEEEE !important;
     border-radius: 12px 12px 0 0 !important;
   }
+  .fc .fc-popover-title { font-size: 13px !important; font-weight: 700 !important; color: #000000 !important; }
+  .fc .fc-popover-body { padding: 6px 10px !important; }
+  .fc .fc-popover-body .fc-event { border-radius: 6px !important; padding: 6px 10px !important; margin: 3px 0 !important; min-height: 30px !important; }
+  .fc .fc-popover-body .fc-event .fc-event-title { font-weight: 600 !important; font-size: 12px !important; }
 
-  .fc .fc-popover-title {
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    color: #000000 !important;
-  }
-
-  .fc .fc-popover-body {
-    padding: 6px 10px !important;
-  }
-
-  .fc .fc-popover-body .fc-event {
-    border-radius: 6px !important;
-    padding: 6px 10px !important;
-    margin: 3px 0 !important;
-    min-height: 30px !important;
-  }
-
-  .fc .fc-popover-body .fc-event .fc-event-title {
-    font-weight: 600 !important;
-    font-size: 12px !important;
-  }
-
-  /* Mobile responsive */
   @media (max-width: 768px) {
-    .fc .fc-col-header-cell-cushion {
-      font-size: 10px !important;
-    }
-
-    .fc .fc-timegrid-event .fc-event-title {
-      font-size: 11px !important;
-    }
-
-    .fc .fc-timegrid-event .fc-event-time {
-      font-size: 9px !important;
-    }
-
-    .fc .fc-timegrid-event .fc-event-destination {
-      font-size: 9px !important;
-    }
-
-    .fc .fc-timegrid-axis {
-      width: 35px !important;
-    }
-
-    .fc .fc-timegrid-axis-cushion {
-      font-size: 9px !important;
-    }
-
-    .fc .fc-timegrid-slot-label {
-      height: 40px !important;
-    }
-
-    .fc .fc-daygrid-day {
-      min-height: 60px !important;
-    }
-
-    .fc .fc-daygrid-day-frame {
-      min-height: 60px !important;
-    }
-
-    .fc .fc-timegrid-event {
-      padding: 4px 6px !important;
-      min-height: 32px !important;
-    }
-
-    .fc .fc-timegrid-all-day-event {
-      font-size: 10px !important;
-      padding: 2px 6px !important;
-      min-height: 22px !important;
-    }
+    .fc .fc-col-header-cell-cushion { font-size: 10px !important; }
+    .fc .fc-timegrid-event .fc-event-title { font-size: 11px !important; }
+    .fc .fc-timegrid-event .fc-event-time { font-size: 9px !important; }
+    .fc .fc-timegrid-axis { width: 35px !important; }
+    .fc .fc-timegrid-axis-cushion { font-size: 9px !important; }
+    .fc .fc-timegrid-slot-label { height: 40px !important; }
+    .fc .fc-daygrid-day { min-height: 80px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 80px !important; }
+    .fc .fc-timegrid-event { padding: 4px 6px !important; min-height: 32px !important; }
+    .fc .fc-timegrid-all-day-event { font-size: 10px !important; padding: 2px 6px !important; min-height: 22px !important; }
   }
 
   @media (max-width: 640px) {
-    .fc .fc-toolbar {
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .fc .fc-toolbar-chunk {
-      display: flex;
-      justify-content: center;
-      width: 100%;
-    }
-
-    .fc .fc-daygrid-day-number {
-      font-size: 12px !important;
-      padding: 1px 4px !important;
-    }
-
-    .fc .fc-daygrid-day-frame {
-      min-height: 50px !important;
-      padding: 2px !important;
-    }
-
-    .fc .fc-col-header-cell {
-      padding: 4px 0 !important;
-    }
-
-    .fc .fc-col-header-cell-cushion {
-      font-size: 9px !important;
-    }
-
-    .fc .fc-timegrid-event {
-      padding: 3px 4px !important;
-      min-height: 28px !important;
-    }
-
-    .fc .fc-timegrid-event .fc-event-title {
-      font-size: 10px !important;
-    }
-
-    .fc .fc-timegrid-event .fc-event-time {
-      font-size: 8px !important;
-    }
-
-    .fc .fc-timegrid-now-indicator-line::before {
-      display: none !important;
-    }
-
-    .fc .fc-daygrid-day {
-      min-height: 50px !important;
-    }
-
-    .fc .fc-timegrid-all-day-event {
-      font-size: 9px !important;
-      padding: 2px 4px !important;
-      min-height: 20px !important;
-    }
+    .fc .fc-toolbar { flex-direction: column; gap: 8px; }
+    .fc .fc-toolbar-chunk { display: flex; justify-content: center; width: 100%; }
+    .fc .fc-daygrid-day-number { font-size: 12px !important; padding: 1px 4px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 60px !important; padding: 2px !important; }
+    .fc .fc-col-header-cell { padding: 4px 0 !important; }
+    .fc .fc-col-header-cell-cushion { font-size: 9px !important; }
+    .fc .fc-timegrid-event { padding: 3px 4px !important; min-height: 28px !important; }
+    .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; }
+    .fc .fc-timegrid-event .fc-event-time { font-size: 8px !important; }
+    .fc .fc-timegrid-now-indicator-line::before { display: none !important; }
+    .fc .fc-daygrid-day { min-height: 60px !important; }
+    .fc .fc-timegrid-all-day-event { font-size: 9px !important; padding: 2px 4px !important; min-height: 20px !important; }
   }
-`;
-
-const Legend = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  background: #FAFAFA;
-  border-radius: 8px;
-  flex-wrap: wrap;
-  border: 1px solid #EEEEEE;
-  flex-shrink: 0;
-`;
-
-const LegendItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #999999;
-`;
-
-const LegendDot = styled.div`
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: ${props => props.color};
 `;
 
 const CalendarWrapper = styled.div`
@@ -684,7 +434,6 @@ const CalendarWrapper = styled.div`
   box-sizing: border-box;
 `;
 
-// ===== STATS BAR =====
 const StatsBar = styled.div`
   display: flex;
   gap: 8px;
@@ -731,7 +480,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
   const wrapperRef = useRef(null);
   const lastReportedMonth = useRef(null);
 
-  // Month is owned by the parent (URL ?month=…). Sync the grid both ways.
   useEffect(() => {
     const api = calendarRef.current?.getApi?.();
     if (!api || !month) return;
@@ -740,8 +488,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     api.gotoDate(month);
   }, [month]);
 
-  // Report the month the user is looking at — cursor, not range edge. See
-  // notes in history for why view.currentStart is wrong for week views.
   const handleDatesSet = useCallback((arg) => {
     if (!onMonthChange) return;
     const view = arg?.view || {};
@@ -760,7 +506,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     onMonthChange(m, y);
   }, [onMonthChange]);
 
-  // Branch lookup: id / slug → name
   const branchLookup = useMemo(() => {
     try {
       const branches = getBranches();
@@ -803,9 +548,10 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     return name || 'Unknown';
   };
 
-  // Bookings → FullCalendar events. `backgroundColor`/`borderColor` carry the
-  // solid status colour so month view's default rendering (and any custom
-  // renderer that paints itemColor) both show the same solid card.
+  // Bookings → FullCalendar events. `backgroundColor` carries the saturated
+  // `status.color` for the default renderer / popovers; the month CUSTOM
+  // renderer paints using extendedProps.statusBg / statusColor to match the
+  // exact palette from statusColors.js.
   const events = useMemo(() => {
     if (!Array.isArray(bookings)) return [];
 
@@ -836,13 +582,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
         let endTime = '';
         try {
           const sd = new Date(startDate);
-          if (!isNaN(sd.getTime())) {
-            startTime = sd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-          }
+          if (!isNaN(sd.getTime())) startTime = sd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           const ed = new Date(fcEnd || startDate);
-          if (!isNaN(ed.getTime()) && fcEnd) {
-            endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-          }
+          if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
         } catch (e) { }
 
         const hearseName = b.hearse_name || b.hearse_plate || b.plate_number || 'H';
@@ -878,8 +620,9 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
             ...b,
             status: b.status,
             statusLabel: status.label,
-            statusColor: status.color,
-            statusBg: status.bg,
+            statusColor: status.color,   // saturated — text/border
+            statusBg: status.bg,         // pastel — card background
+            statusTextColor: status.textColor,
             dest: b.destination || b.to_location || '—',
             from: b.from_location || b.origin || '—',
             plate: b.plate_number || b.hearse_plate || b.number_plate || '—',
@@ -900,16 +643,11 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
 
   const getDailyStats = useCallback(() => {
     if (!selectedDate) return { total: 0, booked: 0, transit: 0, pending: 0, completed: 0 };
-
     const dateStr = selectedDate.split('T')[0];
     const dayBookings = bookings.filter((b) => {
       const dates = getBookingDates(b);
-      return dates.some(d => {
-        if (!d) return false;
-        return String(d).split('T')[0] === dateStr;
-      });
+      return dates.some(d => d && String(d).split('T')[0] === dateStr);
     });
-
     return {
       total: dayBookings.length,
       booked: dayBookings.filter(b => b.status === 'booked' || b.status === 'confirmed').length,
@@ -945,9 +683,6 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     setTimeout(updateCalendarSize, 200);
   }, [updateCalendarSize]);
 
-  // Size stabilization for the container's flex sizing — safe for auto-height
-  // because updateSize() re-measures after content settles; it never forces a
-  // fixed height onto the grid.
   useEffect(() => {
     updateCalendarSize();
     const frame = requestAnimationFrame(updateCalendarSize);
@@ -959,18 +694,13 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       setTimeout(updateCalendarSize, 850),
       setTimeout(updateCalendarSize, 1200),
     ];
-
     let ro = null;
     if (typeof ResizeObserver !== 'undefined' && wrapperRef.current) {
-      ro = new ResizeObserver(() => {
-        requestAnimationFrame(updateCalendarSize);
-      });
+      ro = new ResizeObserver(() => { requestAnimationFrame(updateCalendarSize); });
       ro.observe(wrapperRef.current);
     }
-
     window.addEventListener('resize', updateCalendarSize);
     window.addEventListener('orientationchange', updateCalendarSize);
-
     return () => {
       cancelAnimationFrame(frame);
       timers.forEach(clearTimeout);
@@ -986,54 +716,70 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     return () => clearTimeout(t);
   }, [events, updateCalendarSize]);
 
-  // Custom event renderer.
+  // ── Event renderer ────────────────────────────────────────────────────────
   //
-  // Month view: solid status colour card (background = status.color, white
-  // text), matching the "big coloured cards" look the app has always had —
-  // not a pastel pill.
+  // MONTH: full-width pastel card. Background = status.bg (bluish #EFF6FF for
+  // Booked, orangey #FFEDD5 for In Transit, greenish #E8F5E9 for Delivered,
+  // pinkish #FCE7F3 for Completed, reddish #FEE2E2 for Cancelled). Text and
+  // left accent border = status.color. That's the exact palette the user
+  // remembers — pastel card, saturated text.
   //
-  // Week/Day view: multi-line detail card (WHEN → WHO → WHERE), with a small
-  // status dot next to the client name. Colour still comes from STATUS_CONFIG.
+  // WEEK / DAY: multi-line detail card (WHEN → WHO → WHERE) as before.
+  //
+  // Colour comes ONLY from STATUS_CONFIG — no fallbacks that change the hue.
   const renderEventContent = useCallback((eventInfo) => {
     const isMonthView = calendarView === 'dayGridMonth';
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
-    const itemColor = props.statusColor || '#00296B';
+    const itemColor = props.statusColor || '#00296B';   // saturated — used on every card
+    const itemBg = props.statusBg || '#EFF6FF';         // pastel — month card fill
 
     if (isMonthView) {
       return (
         <div
           style={{
+            width: '100%',
+            background: itemBg,
+            color: itemColor,
+            borderLeft: `3px solid ${itemColor}`,
+            borderRadius: '4px',
+            padding: '3px 6px',
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            padding: '3px 6px',
-            borderRadius: '4px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            overflow: 'hidden',
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+            minHeight: '22px',
             fontSize: '11px',
             fontWeight: 600,
-            background: itemColor,
-            color: '#FFFFFF',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-            textOverflow: 'ellipsis',
-            width: '100%',
-            cursor: 'pointer',
-            boxSizing: 'border-box',
           }}
           title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
         >
           {props.startTime && (
-            <span style={{ fontSize: '9px', opacity: 0.9, fontWeight: 700, flexShrink: 0 }}>
+            <span style={{ fontSize: '9px', fontWeight: 700, opacity: 0.85, flexShrink: 0 }}>
               {props.startTime}
             </span>
           )}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          <span style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1,
+            minWidth: 0,
+          }}>
             {props.clientName || 'Booking'}
           </span>
           {props.plate && props.plate !== '—' && (
-            <span style={{ fontSize: '9px', opacity: 0.85, fontFamily: 'monospace', flexShrink: 0 }}>
+            <span style={{
+              fontSize: '9px',
+              fontWeight: 600,
+              opacity: 0.7,
+              fontFamily: 'monospace',
+              flexShrink: 0,
+            }}>
               {props.plate}
             </span>
           )}
@@ -1041,6 +787,7 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
       );
     }
 
+    // ── Week / Day view card ────────────────────────────────────────────────
     const isMultiDay = props.isMultiDay;
     const multiDayStyle = isMultiDay ? {
       background: `repeating-linear-gradient(45deg, ${itemColor}, ${itemColor} 4px, ${itemColor}dd 4px, ${itemColor}dd 8px)`,
@@ -1206,14 +953,13 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
     if (calendarView !== 'dayGridMonth') return;
 
     const dateStr = fmtDS(info.date);
-
     const hasEvents = bookings.some((b) => {
       const dates = getBookingDates(b);
       return dates.some(d => d && String(d).split('T')[0] === dateStr);
     });
 
     if (hasEvents) {
-      info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.03)', 'important');
+      info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.02)', 'important');
       info.el.style.setProperty('border-radius', '6px', 'important');
     }
   }, [bookings, calendarView]);
@@ -1316,23 +1062,10 @@ const HearseCalendar = ({ bookings = [], onItemClick, onCreateBooking, selectedD
           unselectAuto={true}
           dayMaxEvents={3}
           moreLinkText="+%d more"
-          eventTimeFormat={{
-            hour: 'numeric',
-            minute: '2-digit',
-            meridiem: 'short'
-          }}
-          slotLabelFormat={{
-            hour: 'numeric',
-            minute: '2-digit',
-            meridiem: 'short'
-          }}
+          eventTimeFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
+          slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
           slotLabelInterval="01:00"
-          buttonText={{
-            today: 'Today',
-            month: 'Month',
-            week: 'Week',
-            day: 'Day'
-          }}
+          buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
           eventMinHeight={25}
           eventMaxStack={10}
           slotEventOverlap={true}
