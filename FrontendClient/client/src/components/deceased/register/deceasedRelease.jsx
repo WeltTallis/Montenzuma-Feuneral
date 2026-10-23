@@ -336,6 +336,13 @@ const ErrorMessage = styled.span`
   font-family: 'Saira', sans-serif;
 `;
 
+const TransportNote = styled.p`
+  margin: 8px 0 0;
+  color: ${COLORS.gray};
+  font-size: 0.78rem;
+  line-height: 1.45;
+`;
+
 /* Green "length of stay" label — plain green text on the sheet with a small
    green underline, matching the database-search tick green. */
 const InCareBadge = styled.div`
@@ -1164,6 +1171,7 @@ const DeceasedReleaseForm = () => {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : processedValue,
+      ...(name === 'mode_of_transport' && value === 'outsourced' ? { plate_number: '' } : {}),
     }));
     if (name === 'release_time') releaseTimeEditedRef.current = true;
 
@@ -1174,6 +1182,9 @@ const DeceasedReleaseForm = () => {
 
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    if (name === 'mode_of_transport' && value === 'outsourced' && errors.plate_number) {
+      setErrors(prev => ({ ...prev, plate_number: '' }));
     }
     if (message.text) setMessage({ type: '', text: '' });
   };
@@ -1311,7 +1322,9 @@ const DeceasedReleaseForm = () => {
     if (!formData.next_kin.trim()) newErrors.next_kin = 'Next of kin is required';
     if (!formData.id_number.trim()) newErrors.id_number = 'ID number is required';
     if (!formData.tel_number.trim()) newErrors.tel_number = 'Telephone number is required';
-    if (!formData.plate_number.trim()) newErrors.plate_number = 'Vehicle plate number is required';
+    if (formData.mode_of_transport !== 'outsourced' && !formData.plate_number.trim()) {
+      newErrors.plate_number = 'Vehicle plate number is required';
+    }
     if (!formData.final_destination.trim()) newErrors.final_destination = 'Final destination is required';
     if (!formData.terms_accepted) newErrors.terms_accepted = 'You must accept the terms';
 
@@ -1890,6 +1903,7 @@ const DeceasedReleaseForm = () => {
                         onChange={handleChange}
                       >
                         <option value="hearse">Hearse / Van</option>
+                        <option value="outsourced">Outsourced Hearse</option>
                         <option value="air">Air Transport</option>
                         <option value="rail">Rail</option>
                         <option value="private">Private Vehicle</option>
@@ -1907,22 +1921,30 @@ const DeceasedReleaseForm = () => {
 
                 <Row>
                   <Col>
-                    <Label>Vehicle Plate Number <span style={{ color: COLORS.red }}>*</span></Label>
-                    <InputFieldWrapper>
-                      <Input
-                        type="text"
-                        name="plate_number"
-                        value={formData.plate_number}
-                        onChange={handleChange}
-                        placeholder="e.g., KCA 123A"
-                      />
-                      {hasValue(formData.plate_number) && (
-                        <TickIconWrapper>
-                          <Check size={16} strokeWidth={2.5} />
-                        </TickIconWrapper>
-                      )}
-                    </InputFieldWrapper>
-                    {errors.plate_number && <ErrorMessage>{errors.plate_number}</ErrorMessage>}
+                    {formData.mode_of_transport === 'outsourced' ? (
+                      <TransportNote>
+                        Outsourced hearse selected. No vehicle plate number is required.
+                      </TransportNote>
+                    ) : (
+                      <>
+                        <Label>Vehicle Plate Number <span style={{ color: COLORS.red }}>*</span></Label>
+                        <InputFieldWrapper>
+                          <Input
+                            type="text"
+                            name="plate_number"
+                            value={formData.plate_number}
+                            onChange={handleChange}
+                            placeholder="e.g., KCA 123A"
+                          />
+                          {hasValue(formData.plate_number) && (
+                            <TickIconWrapper>
+                              <Check size={16} strokeWidth={2.5} />
+                            </TickIconWrapper>
+                          )}
+                        </InputFieldWrapper>
+                        {errors.plate_number && <ErrorMessage>{errors.plate_number}</ErrorMessage>}
+                      </>
+                    )}
                   </Col>
                   <Col2>
                     {/* Where the body is taken after handover — home, cemetery,

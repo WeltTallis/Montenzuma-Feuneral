@@ -358,8 +358,22 @@ const ReleaseTab = ({ deceased, deceasedId, refreshVersion = 0, branchSlug }) =>
       <SectionHead $mt0><span>03</span> Transport &amp; Release Officer</SectionHead>
       <DetailGrid>
         <DetailItem><DetailLabel>Permit Number</DetailLabel><DetailValue>{releaseData?.permit_number || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Mode of Transport</DetailLabel><DetailValue>{releaseData?.mode_of_transport || '—'}</DetailValue></DetailItem>
-        <DetailItem><DetailLabel>Vehicle Plate Number</DetailLabel><DetailValue>{releaseData?.plate_number || '—'}</DetailValue></DetailItem>
+        <DetailItem>
+          <DetailLabel>Mode of Transport</DetailLabel>
+          <DetailValue>
+            {releaseData?.mode_of_transport === 'outsourced'
+              ? 'Outsourced Hearse'
+              : releaseData?.mode_of_transport || '—'}
+          </DetailValue>
+        </DetailItem>
+        <DetailItem>
+          <DetailLabel>Vehicle Plate Number</DetailLabel>
+          <DetailValue>
+            {releaseData?.mode_of_transport === 'outsourced'
+              ? 'Not required — outsourced hearse'
+              : releaseData?.plate_number || '—'}
+          </DetailValue>
+        </DetailItem>
         <DetailItem><DetailLabel>Final Destination / Location</DetailLabel><DetailValue>{releaseData?.final_destination || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Released By (Staff)</DetailLabel><DetailValue>{releaseData?.staff_name || releaseData?.received_by || releaseData?.released_by || '—'}</DetailValue></DetailItem>
         <DetailItem><DetailLabel>Recorded On</DetailLabel><DetailValue>{releaseData?.created_at ? formatDateTime(releaseData.created_at) : '—'}</DetailValue></DetailItem>
