@@ -125,10 +125,8 @@ const Shell = styled.div`
 
   .fc .fc-daygrid-day-frame {
     padding: 4px !important;
-    min-height: 220px !important;
+    min-height: 120px !important;
     box-sizing: border-box !important;
-    display: block !important;
-    overflow: visible !important;
   }
 
   .fc .fc-daygrid-day-top {
@@ -161,38 +159,22 @@ const Shell = styled.div`
   .fc .fc-daygrid-day-events {
     margin: 0 !important;
     padding: 0 !important;
-    display: block !important;
-    position: relative !important;
-    overflow: visible !important;
   }
 
-  /* Keep FullCalendar's event harness positioning intact: it uses those
-     coordinates to stack bookings and span multi-day bookings across cells. */
+  /* Keep FullCalendar's flex wrappers and event harness sizing intact. */
   .fc .fc-daygrid-event {
-    display: block !important;
-    width: 100% !important;
-    min-height: 62px !important;
-    height: auto !important;
     padding: 0 !important;
     margin: 2px 0 !important;
     border: none !important;
     border-radius: 6px !important;
     box-shadow: none !important;
-    overflow: visible !important;
     cursor: pointer !important;
     color: #FFFFFF !important;
   }
 
-  /* FC's inner wrapper must be transparent so the card paints through. */
+  /* Only customize paint; leave FullCalendar's event wrapper layout untouched. */
   .fc .fc-daygrid-event .fc-event-main,
   .fc .fc-daygrid-event .fc-event-main-frame {
-    display: block !important;
-    width: 100% !important;
-    min-height: 62px !important;
-    height: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
     background: transparent !important;
     color: #FFFFFF !important;
   }
@@ -348,7 +330,6 @@ const Shell = styled.div`
     .fc .fc-timegrid-axis { width: 35px !important; }
     .fc .fc-timegrid-axis-cushion { font-size: 9px !important; }
     .fc .fc-timegrid-slot-label { height: 40px !important; }
-    .fc .fc-daygrid-day-frame { min-height: 200px !important; }
     .fc .fc-timegrid-event { padding: 4px 6px !important; min-height: 32px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 10px !important; padding: 2px 6px !important; min-height: 22px !important; }
   }
@@ -357,14 +338,13 @@ const Shell = styled.div`
     .fc .fc-toolbar { flex-direction: column; gap: 8px; }
     .fc .fc-toolbar-chunk { display: flex; justify-content: center; width: 100%; }
     .fc .fc-daygrid-day-number { font-size: 12px !important; padding: 1px 4px !important; }
-    .fc .fc-daygrid-day-frame { min-height: 160px !important; padding: 2px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 100px !important; padding: 2px !important; }
     .fc .fc-col-header-cell { padding: 4px 0 !important; }
     .fc .fc-col-header-cell-cushion { font-size: 9px !important; }
     .fc .fc-timegrid-event { padding: 3px 4px !important; min-height: 28px !important; }
     .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; }
     .fc .fc-timegrid-event .fc-event-time { font-size: 8px !important; }
     .fc .fc-timegrid-now-indicator-line::before { display: none !important; }
-    .fc .fc-daygrid-day-frame { min-height: 160px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 9px !important; padding: 2px 4px !important; min-height: 20px !important; }
   }
 `;
@@ -413,6 +393,23 @@ const DailyHeadingMeta = styled.div`
   font-weight: 800;
   letter-spacing: .11em;
   text-transform: uppercase;
+`;
+
+const StandbyDriverBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+  padding: 9px 12px;
+  border: 1px solid #d1fae5;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  span { color: #15803d; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  @media (max-width: 520px) { align-self: flex-start; }
 `;
 
 const ViewSwitch = styled.div`
@@ -689,16 +686,17 @@ const BookingLineup = styled.div`
 const BackToCalendar = styled.button`
   min-height: 34px;
   padding: 0 11px;
-  border: 1px solid #e6e7ea;
+  border: 1px solid #fecaca;
   border-radius: 9px;
-  background: #fff;
-  color: #374151;
+  background: #fef2f2;
+  color: #b91c1c;
   cursor: pointer;
   font: inherit;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
-  &:hover { background: #f7f8f9; }
+  transition: background .15s ease, border-color .15s ease;
+  &:hover { background: #fee2e2; border-color: #fca5a5; }
 `;
 
 const DayBookingRow = styled.button`
@@ -1071,6 +1069,12 @@ const HearseCalendar = ({
   }, [bookings, selectedDate]);
 
   const dailyStats = getDailyStats();
+  const standbyDriver = standbyDriverId != null && String(standbyDriverId) !== ''
+    ? drivers.find((driver) => String(driver.driver_id ?? driver.id) === String(standbyDriverId))
+    : null;
+  const standbyDriverName = standbyDriver
+    ? standbyDriver.driver_name || standbyDriver.full_name || `Driver ${standbyDriverId}`
+    : standbyDriverId ? `Driver ${standbyDriverId}` : 'Not assigned';
   const dayBookings = useMemo(() => {
     if (!dayViewDate) return [];
     return bookings
@@ -1247,7 +1251,6 @@ const HearseCalendar = ({
           style={{
             width: '100%',
             minHeight: '62px',
-            height: '100%',
             /* Solid rich status colour — no tint, no gradient, no shorthand
                trickery. `backgroundColor` alone is the most reliable way to
                paint and cannot be swallowed by FC's CSS. */
@@ -1432,9 +1435,12 @@ const HearseCalendar = ({
           <DailyHeading>
             <div>
               <DailyHeadingMeta>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</DailyHeadingMeta>
-              <h1>Booking schedule</h1>
-              <p>Today’s services and the hearses ready to take them.</p>
             </div>
+            <StandbyDriverBadge>
+              <Users size={14} />
+              <span>Standby</span>
+              {standbyDriverName}
+            </StandbyDriverBadge>
             <ViewSwitch aria-label="Daily schedule view">
               <ViewSwitchButton type="button" $active={dayViewMode === 'schedule'} onClick={() => setDayViewMode('schedule')}>
                 <span aria-hidden="true">☷</span> Schedule
@@ -1579,7 +1585,7 @@ const HearseCalendar = ({
                     <DayAvatar>{getInitials(hearseName)}</DayAvatar>
                     <DayBookingContent>
                       <DayBookingTitle>
-                        {dayViewMode === 'lineup' ? assignedDriverName : clientName}
+                        {dayViewMode === 'lineup' ? assignedDriverName : hearseName}
                         <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
                       </DayBookingTitle>
                       <DayDetailGrid>
@@ -1588,7 +1594,6 @@ const HearseCalendar = ({
                         <DayDetail><strong>Route</strong><span>{routeFrom} → {routeTo}</span></DayDetail>
                         <DayDetail><strong>Date / time</strong><span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {schedule.range}</span></DayDetail>
                         <DayDetail><strong>Branch</strong><span>{branchName}</span></DayDetail>
-                        <DayDetail><strong>Booking reference</strong><span>{bookingId}</span></DayDetail>
                         {dayViewMode === 'lineup' && <DayDetail><strong>Assigned driver</strong><span>{assignedDriverName}</span></DayDetail>}
                         {(booking.assistant_name || dayViewMode === 'lineup') && <DayDetail><strong>Assistant</strong><span>{booking.assistant_name || 'Not assigned'}{booking.assistant_phone ? ` · ${booking.assistant_phone}` : ''}</span></DayDetail>}
                       </DayDetailGrid>

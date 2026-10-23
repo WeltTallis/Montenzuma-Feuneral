@@ -98,7 +98,8 @@ const FleetPage = styled.main`
   background: ${({ $embedded }) => ($embedded ? 'transparent' : '#f4f5f8')};
   color: #1a1d29;
 
-  @media (max-width: 700px) { padding: ${({ $embedded }) => ($embedded ? '18px 16px 28px' : '16px')}; }
+  @media (max-width: 700px) { padding: ${({ $embedded }) => ($embedded ? '8px 8px 16px' : '10px')}; }
+  @media (max-width: 380px) { padding: ${({ $embedded }) => ($embedded ? '6px 5px 12px' : '8px')}; }
 `;
 
 const PageWidth = styled.div`
@@ -113,12 +114,21 @@ const Header = styled.header`
   gap: 18px;
   margin-bottom: 22px;
   flex-wrap: wrap;
+  @media (max-width: 600px) {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+    & > div:last-child { width: 100%; }
+    & > div:last-child button { flex: 1 1 0; min-width: 0; padding: 0 8px; font-size: 11px; }
+  }
 `;
 
 const TitleGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
+  @media (max-width: 600px) { gap: 10px; }
 `;
 
 const HeaderIcon = styled.div`
@@ -129,6 +139,7 @@ const HeaderIcon = styled.div`
   border-radius: 14px;
   background: #1a1d29;
   color: #f4d03f;
+  @media (max-width: 600px) { width: 40px; height: 40px; flex: 0 0 40px; }
 `;
 
 const Title = styled.h1`
@@ -141,27 +152,31 @@ const Subtitle = styled.p`
   margin: 4px 0 0;
   color: #6b7280;
   font-size: 13px;
+  @media (max-width: 600px) { font-size: 11px; }
 `;
 
 const ActionButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid ${({ $primary }) => ($primary ? '#1a1d29' : '#e1e4e9')};
-  border-radius: 10px;
-  background: ${({ $primary }) => ($primary ? '#1a1d29' : '#fff')};
-  color: ${({ $primary }) => ($primary ? '#fff' : '#343946')};
-  font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-  &:focus-visible { outline: 2px solid #315f95; outline-offset: 2px; }
-  transition: transform .15s ease, background .15s ease;
-  &:hover { transform: translateY(-1px); background: ${({ $primary }) => ($primary ? '#2b3040' : '#f8f8fa')}; }
-  &:disabled { opacity: .55; cursor: wait; transform: none; }
+  && {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid ${({ $primary }) => ($primary ? '#1a1d29' : '#e1e4e9')};
+    border-radius: 10px;
+    appearance: none;
+    background: ${({ $primary }) => ($primary ? '#1a1d29' : '#fff')};
+    color: ${({ $primary }) => ($primary ? '#fff' : '#343946')};
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform .15s ease, background .15s ease;
+  }
+  &&:focus-visible { outline: 2px solid #315f95; outline-offset: 2px; }
+  &&:hover { transform: translateY(-1px); background: ${({ $primary }) => ($primary ? '#2b3040' : '#f8f8fa')}; }
+  &&:disabled { opacity: .55; cursor: wait; transform: none; }
 `;
 
 const SummaryGrid = styled.section`
@@ -170,6 +185,7 @@ const SummaryGrid = styled.section`
   gap: 12px;
   margin-bottom: 18px;
   @media (max-width: 900px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 600px) { gap: 8px; margin-bottom: 12px; }
 `;
 
 const SummaryCard = styled.div`
@@ -182,6 +198,7 @@ const SummaryCard = styled.div`
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 2px 8px #1a1d2908;
+  @media (max-width: 600px) { min-height: 72px; gap: 9px; padding: 10px; border-radius: 11px; }
 `;
 
 const SummaryIcon = styled.span`
@@ -193,6 +210,7 @@ const SummaryIcon = styled.span`
   border-radius: 12px;
   background: ${({ $tone }) => $tone === 'gold' ? '#fff7d6' : $tone === 'green' ? '#eaf8ef' : $tone === 'red' ? '#fff0ef' : '#eef2f8'};
   color: ${({ $tone }) => $tone === 'gold' ? '#9d7600' : $tone === 'green' ? '#16824b' : $tone === 'red' ? '#bd4237' : '#44516b'};
+  @media (max-width: 600px) { width: 34px; height: 34px; border-radius: 10px; }
 `;
 
 const SummaryValue = styled.div`
@@ -200,12 +218,14 @@ const SummaryValue = styled.div`
   line-height: 1.1;
   font-weight: 750;
   letter-spacing: -0.04em;
+  @media (max-width: 600px) { font-size: 20px; }
 `;
 
 const SummaryLabel = styled.div`
   margin-top: 4px;
   color: #737987;
   font-size: 12px;
+  @media (max-width: 600px) { font-size: 10px; line-height: 1.25; }
 `;
 
 const MainGrid = styled.section`
@@ -218,6 +238,7 @@ const MainGrid = styled.section`
   background: #fff;
   box-shadow: 0 8px 28px #1a1d2908;
   @media (max-width: 900px) { grid-template-columns: minmax(0, 1fr); }
+  @media (max-width: 600px) { min-height: 0; border-radius: 12px; }
 `;
 
 const FleetList = styled.div`
@@ -229,6 +250,7 @@ const FleetList = styled.div`
 const ListHeader = styled.div`
   padding: 20px;
   border-bottom: 1px solid #eceef2;
+  @media (max-width: 600px) { padding: 12px; }
 `;
 
 const ListTitleRow = styled.div`
@@ -261,25 +283,29 @@ const FilterRow = styled.div`
 `;
 
 const FilterButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 20px;
-  background: ${({ $active }) => ($active ? '#1a1d29' : '#f0f1f4')};
-  color: ${({ $active }) => ($active ? '#fff' : '#646a76')};
-  font: inherit;
-  font-size: 11px;
-  font-weight: 650;
-  cursor: pointer;
+  && {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 20px;
+    appearance: none;
+    background: ${({ $active }) => ($active ? '#1a1d29' : '#f0f1f4')};
+    color: ${({ $active }) => ($active ? '#fff' : '#646a76')};
+    font: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+  }
 `;
 
 const HearseList = styled.div`
-  max-height: 670px;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   padding: 12px;
+  @media (max-width: 600px) { padding: 8px; }
 `;
 
 const HearseCard = styled.div`
@@ -357,6 +383,7 @@ const CardFooter = styled.div`
   margin-top: 10px;
   color: #747a87;
   font-size: 11px;
+  @media (max-width: 600px) { gap: 7px 10px; font-size: 10px; }
   span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
   svg { flex: 0 0 auto; }
 `;
@@ -377,7 +404,7 @@ const Details = styled.div`
   min-width: 0;
   padding: 22px;
   background: #f7f8fa;
-  @media (max-width: 600px) { padding: 15px; }
+  @media (max-width: 600px) { padding: 10px; }
 `;
 
 const DetailCard = styled.section`
@@ -386,6 +413,7 @@ const DetailCard = styled.section`
   border: 1px solid #e7e9ee;
   border-radius: 14px;
   background: #fff;
+  @media (max-width: 600px) { margin-bottom: 10px; padding: 12px; border-radius: 11px; }
 `;
 
 const DetailHeader = styled.div`
@@ -400,6 +428,8 @@ const VehicleIdentity = styled.div`
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
+  @media (max-width: 600px) { gap: 9px; }
 `;
 
 const VehicleMark = styled.div`
@@ -411,12 +441,15 @@ const VehicleMark = styled.div`
   border-radius: 13px;
   background: #f4d03f;
   color: #1a1d29;
+  @media (max-width: 600px) { width: 42px; height: 42px; border-radius: 10px; }
 `;
 
 const DetailTitle = styled.h2`
   margin: 0;
   font-size: 22px;
   letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+  @media (max-width: 600px) { font-size: 18px; }
 `;
 
 const DetailSub = styled.p`
@@ -431,6 +464,7 @@ const FactsGrid = styled.div`
   gap: 10px;
   margin-top: 20px;
   @media (max-width: 650px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 600px) { gap: 7px; margin-top: 12px; }
 `;
 
 const Fact = styled.div`
@@ -438,6 +472,7 @@ const Fact = styled.div`
   padding: 12px;
   border-radius: 10px;
   background: #f6f7f9;
+  @media (max-width: 600px) { padding: 9px; }
   span { display: block; color: #818794; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
   strong { display: block; margin-top: 5px; overflow: hidden; color: #282d39; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 `;
@@ -467,6 +502,7 @@ const InlineAlert = styled.div`
   background: #fff5f4;
   color: #a1372f;
   font-size: 13px;
+  @media (max-width: 600px) { align-items: flex-start; margin-bottom: 10px; padding: 10px; font-size: 11px; overflow-wrap: anywhere; }
 `;
 
 const StatusEditor = styled.form`
@@ -497,6 +533,7 @@ const FuelPanel = styled.section`
   border: 1px solid #e7e9ee;
   border-radius: 12px;
   background: #fff;
+  @media (max-width: 600px) { margin-top: 12px; padding: 11px; }
 `;
 
 const FuelChartsGrid = styled.div`
@@ -504,7 +541,7 @@ const FuelChartsGrid = styled.div`
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin: 16px 0;
-  @media (max-width: 640px) { grid-template-columns: 1fr; }
+  @media (max-width: 700px) { grid-template-columns: 1fr; gap: 10px; margin: 12px 0; }
 `;
 
 const FuelMetricCard = styled.section`
@@ -518,6 +555,7 @@ const FuelMetricCard = styled.section`
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 2px 8px #00000005;
+  @media (max-width: 600px) { min-height: 245px; padding: 14px; }
 `;
 
 const FuelMetricHeader = styled.div`
@@ -559,6 +597,7 @@ const BalanceDonut = styled.div`
   width: 150px;
   height: 150px;
   margin: 2px auto 0;
+  @media (max-width: 600px) { width: 135px; height: 135px; }
 `;
 
 const DonutCenter = styled.div`
@@ -647,6 +686,7 @@ const FuelPanelHeader = styled.div`
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 15px;
+  @media (max-width: 600px) { align-items: flex-start; margin-bottom: 10px; }
   h3 { margin: 0; color: #282d39; font-size: 14px; font-weight: 800; }
 `;
 
@@ -672,18 +712,27 @@ const AccountPanel = styled.section`
   background: #fff;
   box-shadow: 0 4px 18px #1a1d2908;
   @media (max-width: 850px) { grid-template-columns: 1fr; }
+  @media (max-width: 600px) { gap: 14px; margin-bottom: 12px; padding: 12px; border-radius: 12px; grid-template-columns: minmax(0, 1fr); }
 `;
 
 const AccountOverview = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  @media (max-width: 600px) { gap: 12px; }
 `;
 
 const AccountBrand = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  @media (max-width: 600px) {
+    gap: 9px;
+    img { width: 42px; height: 42px; flex: 0 0 42px; }
+    h2 { font-size: 16px; }
+  }
   img { width: 54px; height: 54px; object-fit: contain; }
   h2 { margin: 0; color: #252a36; font-size: 18px; }
   p { margin: 4px 0 0; color: #747a87; font-size: 11px; line-height: 1.4; }
@@ -698,12 +747,14 @@ const AccountStats = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  @media (max-width: 600px) { gap: 7px; }
 `;
 
 const AccountStat = styled.div`
   padding: 12px;
   border-radius: 10px;
   background: #f6f7f9;
+  @media (max-width: 600px) { padding: 9px; }
   strong { display: block; color: #343946; font-size: 16px; }
   span { display: block; margin-top: 3px; color: #818794; font-size: 10px; }
 `;
@@ -713,7 +764,7 @@ const AccountControls = styled.div`
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
   gap: 12px;
-  @media (max-width: 560px) { grid-template-columns: 1fr; }
+  @media (max-width: 700px) { grid-template-columns: 1fr; gap: 9px; }
 `;
 
 const LedgerForm = styled.form`
@@ -724,6 +775,8 @@ const LedgerForm = styled.form`
   border: 1px solid #eceef2;
   border-radius: 12px;
   background: #fcfcfd;
+  min-width: 0;
+  @media (max-width: 600px) { gap: 7px; padding: 10px; }
   h3 { margin: 0 0 2px; color: #343946; font-size: 12px; }
   input, select {
     width: 100%;
@@ -743,6 +796,7 @@ const FuelFacts = styled.div`
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
   margin: 14px 0;
+  @media (max-width: 600px) { gap: 7px; margin: 10px 0; }
 `;
 
 const FuelFact = styled.div`
@@ -760,6 +814,7 @@ const FuelHistory = styled.section`
   border: 1px solid #e5e7ec;
   border-radius: 14px;
   background: #fff;
+  @media (max-width: 600px) { margin-bottom: 12px; padding: 11px; border-radius: 11px; }
   h2 { margin: 0 0 12px; color: #343946; font-size: 14px; }
 `;
 
@@ -773,7 +828,15 @@ const FuelHistoryRow = styled.div`
   color: #626977;
   font-size: 11px;
   strong { color: #343946; font-size: 11px; }
-  @media (max-width: 600px) { grid-template-columns: 1fr auto; }
+  @media (max-width: 600px) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 8px;
+    padding: 8px 0;
+    overflow-wrap: anywhere;
+    & > span:nth-of-type(1) { grid-column: 1; }
+    & > span:nth-of-type(2) { grid-column: 1; color: #8a8f98; }
+    & > strong:last-child { grid-column: 2; grid-row: 1 / span 3; text-align: right; white-space: nowrap; }
+  }
 `;
 
 function FleetDashboard({ embedded = false }) {
@@ -990,8 +1053,7 @@ function FleetDashboard({ embedded = false }) {
             <AccountBrand>
               <img src="https://apifactory.totalenergies.com/images/total_energies_logo.png" alt="TotalEnergies" />
               <div>
-                  <h2>TotalEnergies main account</h2>
-                <p>RestPoint ledger · manually recorded funds, not a live provider connection</p>
+                <h2>TotalEnergies main account</h2>
               </div>
             </AccountBrand>
             <AccountBalance>
@@ -1042,7 +1104,7 @@ function FleetDashboard({ embedded = false }) {
         {(fuelWallet?.transactions || []).length > 0 && (
           <FuelHistory>
             <h2>Recent fuel account activity</h2>
-            {fuelWallet.transactions.slice(0, 6).map((transaction) => {
+            {fuelWallet.transactions.slice(0, 3).map((transaction) => {
               const label = transaction.transaction_type === 'deposit'
                 ? 'Cheque / account deposit'
                 : transaction.transaction_type === 'allocation'
