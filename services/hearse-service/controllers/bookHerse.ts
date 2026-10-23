@@ -307,6 +307,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
         const tenantSlugVal = headerOf('x-tenant-slug') || (req as any).tenant?.tenant_slug || (req as any).tenantSlug || null;
         const branchIdVal = headerOf('x-branch-id') || req.body?.branch_id || req.body?.branchId || null;
         const branchSlugVal = headerOf('x-branch-slug') || req.body?.branch_slug || null;
+        const branchCodeVal = headerOf('x-branch-code') || req.body?.branch_code || null;
         const branchNameVal = String(req.body?.branch_name || '').trim().slice(0, 255) || null;
         const bookingStatus = 'booked';
 
@@ -316,8 +317,8 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
              client_name, client_phone, destination,
              from_location, to_location,
              from_timestamp, booking_date, booking_dates, status, created_at, updated_at,
-             branch_id, branch_slug, branch_name, booked_by, service_charge)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             branch_id, branch_code, branch_slug, branch_name, booked_by, service_charge)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertParams = [
@@ -338,6 +339,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
             now,
             now,
             branchIdVal,
+            branchCodeVal,
             branchSlugVal,
             branchNameVal,
             createdByName,
@@ -701,14 +703,14 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         // UUIDs (or NULL), not the integers of the old schema.
         // decorateBranchNames() resolves the REAL branch name from the branch
         // registry afterwards and can never fail the request.
-        // `hb.tenant_slug` / `hb.tenant_db_name` / `hb.branch_id` are selected
-        // only so the registry can be matched per row; they are stripped again
-        // before the payload is sent (see below).
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.from_timestamp, hb.branch_name AS branch_name, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.driver_id, hb.assistant_name, hb.assistant_phone, d.full_name AS assigned_driver_name, hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug, hb.tenant_db_name AS tenant_db_name, hb.branch_id AS booking_branch_id, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id LEFT JOIN drivers d ON d.id = hb.driver_id ${whereSQL} ORDER BY hb.created_at DESC`;
+        // Tenant identifiers are selected only for registry matching and are
+        // stripped before the payload is sent. Branch identity comes from the
+        // booking, not the hearse, because they can belong to different branches.
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.from_timestamp, hb.branch_name, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.driver_id, hb.assistant_name, hb.assistant_phone, d.full_name AS assigned_driver_name, hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug, hb.tenant_db_name AS tenant_db_name, hb.branch_id, hb.branch_code, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id AS hearse_branch_id, h.branch_code AS hearse_branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id LEFT JOIN drivers d ON d.id = hb.driver_id ${whereSQL} ORDER BY hb.created_at DESC`;
 
         const bookings = await decorateBranchNames(
             await safeQuery(query, params) as any[],
-            { strip: ['booking_branch_id', 'tenant_slug', 'tenant_db_name'] }
+            { strip: ['tenant_slug', 'tenant_db_name'] }
         );
         let allBranches: any[] = [];
         try {

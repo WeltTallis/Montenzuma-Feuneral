@@ -94,8 +94,10 @@ function getBranchOptions(branches, user) {
     };
   }).filter((branch) => branch.key && branch.name);
 
-  const userBranchId = user.branchId || user.branch_id || localStorage.getItem('branchId') || '';
+  const userBranchId = user.branchId || user.branch_id || user.branch?.branchId
+    || user.branch?.branch_id || localStorage.getItem('branchId') || '';
   const userBranchSlug = user.branchSlug || user.branch_slug || user.branchDbName
+    || user.branch?.branchSlug || user.branch?.branch_slug
     || localStorage.getItem('branchSlug') || localStorage.getItem('branchDbName') || '';
   const hasCurrentBranch = options.some((branch) =>
     (userBranchId && branch.id === String(userBranchId))
@@ -107,7 +109,7 @@ function getBranchOptions(branches, user) {
       key: String(userBranchId || userBranchSlug),
       id: String(userBranchId || ''),
       slug: String(userBranchSlug || ''),
-      code: String(user.branchCode || user.branch_code || ''),
+      code: String(user.branchCode || user.branch_code || user.branch?.branchCode || user.branch?.branch_code || ''),
       name: String(userBranchName).trim(),
     });
   }
@@ -383,8 +385,9 @@ export default function BookNewHearseModal({
     const d = Array.isArray(initialDatesRef.current) ? initialDatesRef.current.filter(Boolean) : [];
     setDates(d);
     const u = safeUser();
-    const branchId = u.branchId || u.branch_id || localStorage.getItem('branchId') || '';
+    const branchId = u.branchId || u.branch_id || u.branch?.branchId || u.branch?.branch_id || localStorage.getItem('branchId') || '';
     const branchSlug = u.branchSlug || u.branch_slug || u.branchDbName
+      || u.branch?.branchSlug || u.branch?.branch_slug
       || localStorage.getItem('branchSlug') || localStorage.getItem('branchDbName') || '';
     const defaultBranch = branchOptions.find((branch) =>
       (branchId && branch.id === String(branchId))
@@ -396,8 +399,8 @@ export default function BookNewHearseModal({
       from_location: '', to_location: '',
       branch_id: defaultBranch?.id || String(branchId),
       branch_slug: defaultBranch?.slug || String(branchSlug),
-      branch_code: defaultBranch?.code || u.branchCode || u.branch_code || '',
-      branch_name: defaultBranch?.name || u.branchName || u.branch_name || '',
+      branch_code: defaultBranch?.code || u.branchCode || u.branch_code || u.branch?.branchCode || u.branch?.branch_code || '',
+      branch_name: defaultBranch?.name || u.branchName || u.branch_name || u.branch?.branchName || u.branch?.branch_name || '',
       service_charge: 0,
     });
     setBookingTime('');
@@ -411,8 +414,9 @@ export default function BookNewHearseModal({
   useEffect(() => {
     if (!open || selectedBranchKey || !branchOptions.length) return;
     const u = safeUser();
-    const branchId = u.branchId || u.branch_id || localStorage.getItem('branchId') || '';
+    const branchId = u.branchId || u.branch_id || u.branch?.branchId || u.branch?.branch_id || localStorage.getItem('branchId') || '';
     const branchSlug = u.branchSlug || u.branch_slug || u.branchDbName
+      || u.branch?.branchSlug || u.branch?.branch_slug
       || localStorage.getItem('branchSlug') || localStorage.getItem('branchDbName') || '';
     const defaultBranch = branchOptions.find((branch) =>
       (branchId && branch.id === String(branchId))
