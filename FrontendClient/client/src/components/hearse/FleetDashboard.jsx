@@ -13,6 +13,15 @@ import {
   Truck,
   Wrench,
 } from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+} from 'recharts';
 import env from '../../utils/config/env';
 import { getTenantHeaders } from '../../api/endpoints';
 import notify from '../../utils/notify';
@@ -90,20 +99,6 @@ const FleetPage = styled.main`
   @media (max-width: 700px) { padding: ${({ $embedded }) => ($embedded ? '18px 16px 28px' : '16px')}; }
 `;
 
-const CardBalance = styled.span`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid ${({ $low }) => ($low ? '#fde68a' : '#edf0f3')};
-  border-radius: 10px;
-  background: ${({ $low }) => ($low ? '#fffbeb' : '#f7f8fa')};
-  small { display: inline-flex; align-items: center; gap: 5px; color: #777e8b; font-size: 10px; font-weight: 700; }
-  strong { color: #1a1d29; font-size: 21px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-  em { color: ${({ $low }) => ($low ? '#b45309' : '#747a87')}; font-size: 10px; font-style: normal; font-weight: 700; overflow-wrap: anywhere; }
-`;
-
 const PageWidth = styled.div`
   max-width: 1600px;
   margin: 0 auto;
@@ -161,6 +156,7 @@ const ActionButton = styled.button`
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
+  &:focus-visible { outline: 2px solid #315f95; outline-offset: 2px; }
   transition: transform .15s ease, background .15s ease;
   &:hover { transform: translateY(-1px); background: ${({ $primary }) => ($primary ? '#2b3040' : '#f8f8fa')}; }
   &:disabled { opacity: .55; cursor: wait; transform: none; }
@@ -211,18 +207,21 @@ const SummaryLabel = styled.div`
 `;
 
 const MainGrid = styled.section`
-  display: block;
-  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(330px, 410px) minmax(0, 1fr);
+  min-height: 620px;
   overflow: hidden;
   border: 1px solid #e5e7ec;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 8px 28px #1a1d2908;
+  @media (max-width: 900px) { grid-template-columns: minmax(0, 1fr); }
 `;
 
 const FleetList = styled.div`
   min-width: 0;
-  border-bottom: 1px solid #e8e9ed;
+  border-right: 1px solid #e8e9ed;
+  @media (max-width: 900px) { border-right: 0; border-bottom: 1px solid #e8e9ed; }
 `;
 
 const ListHeader = styled.div`
@@ -276,17 +275,16 @@ const FilterButton = styled.button`
 `;
 
 const HearseList = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: 12px;
-  padding: 16px;
+  max-height: 670px;
+  overflow-y: auto;
+  padding: 12px;
 `;
 
-const HearseCard = styled.button`
+const HearseCard = styled.div`
   display: flex;
-  flex-direction: column;
   width: 100%;
-  min-height: 190px;
+  min-height: 100px;
+  margin-bottom: 9px;
   padding: 0;
   overflow: hidden;
   border: 1px solid ${({ $selected }) => ($selected ? '#e5c531' : '#e8e9ed')};
@@ -299,16 +297,14 @@ const HearseCard = styled.button`
   &:hover { border-color: ${({ $selected }) => ($selected ? '#e5c531' : '#c9cdd5')}; }
 `;
 
-const HearseCardText = styled.span`
-  display: flex;
+const HearseCardText = styled.div`
+  display: block;
   flex: 1;
-  flex-direction: column;
   min-width: 0;
-  gap: 12px;
-  padding: 15px;
+  padding: 13px 14px;
 `;
 
-const HearseCardTop = styled.span`
+const HearseCardTop = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -351,16 +347,63 @@ const StatusDot = styled.span`
   background: currentColor;
 `;
 
-const CardFooter = styled.span`
+const CardFooter = styled.div`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: auto;
+  margin-top: 10px;
   color: #747a87;
   font-size: 11px;
   span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
   svg { flex: 0 0 auto; }
+`;
+
+const CardBalance = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  strong { color: #252a36; font-size: 13px; font-variant-numeric: tabular-nums; }
+  span { color: ${({ $low }) => ($low ? '#b45309' : '#747a87')}; font-size: 10px; font-weight: 700; }
+`;
+
+const CardChart = styled.div`
+  height: 112px;
+  margin-top: 8px;
+  padding: 7px 6px 2px;
+  border: 1px solid #edf0f3;
+  border-radius: 9px;
+  background: #fbfcfd;
+`;
+
+const CardChartLabel = styled.div`
+  margin: 0 0 2px 4px;
+  color: #747a87;
+  font-size: 9px;
+  font-weight: 700;
+`;
+
+const CardChartEmpty = styled.div`
+  display: grid;
+  height: 80px;
+  place-items: center;
+  color: #818794;
+  font-size: 10px;
+  text-align: center;
+`;
+
+const VehicleThumb = styled.span`
+  display: grid;
+  width: 88px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  background: #f5f6f8;
+  color: #747a87;
+  img { width: 100%; height: 100%; object-fit: cover; }
+  @media (max-width: 520px) { width: 64px; }
 `;
 
 const Details = styled.div`
@@ -709,7 +752,6 @@ function FleetDashboard({ embedded = false }) {
   const selectedFuelCard = fuelWallet?.cards.find((card) => String(card.hearse_id) === String(selectedHearse?.id)) || null;
   const lowBalanceThreshold = Number(fuelWallet?.low_balance_threshold || 0);
   const lowFuelCards = (fuelWallet?.cards || []).filter((card) => card.is_low);
-
   useEffect(() => {
     setStatusDraft(selectedHearse ? STATUS_OPTIONS.some((option) => option.value === statusKey(selectedHearse.status))
       ? statusKey(selectedHearse.status)
@@ -925,8 +967,39 @@ function FleetDashboard({ embedded = false }) {
               ) : filteredHearses.map((hearse) => {
                 const meta = statusMeta(hearse.status);
                 const cardBalance = fuelWallet?.cards.find((card) => String(card.hearse_id) === String(hearse.id));
+                const cardActivity = (fuelWallet?.transactions || []).reduce((activityByDate, transaction) => {
+                  if (String(transaction.fuel_card_number || '') !== String(hearse.fuel_card_number || '')) return activityByDate;
+                  const date = String(transaction.transaction_date || transaction.created_at || '').slice(0, 10);
+                  const amount = Number(transaction.amount);
+                  const field = transaction.transaction_type === 'allocation'
+                    ? 'allocations'
+                    : transaction.transaction_type === 'fuel_purchase'
+                      ? 'purchases'
+                      : null;
+                  if (!date || !field || !Number.isFinite(amount)) return activityByDate;
+                  const row = activityByDate.get(date) || { date, allocations: 0, purchases: 0 };
+                  row[field] += amount;
+                  activityByDate.set(date, row);
+                  return activityByDate;
+                }, new Map());
+                const chartData = [...cardActivity.values()]
+                  .sort((left, right) => left.date.localeCompare(right.date))
+                  .map((row) => ({ ...row, label: row.date.slice(5) }));
                 return (
-                  <HearseCard key={hearse.id} type="button" $selected={String(hearse.id) === String(selectedId)} onClick={() => setSelectedId(hearse.id)}>
+                  <HearseCard
+                    key={hearse.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={String(hearse.id) === String(selectedId)}
+                    $selected={String(hearse.id) === String(selectedId)}
+                    onClick={() => setSelectedId(hearse.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedId(hearse.id);
+                      }
+                    }}
+                  >
                     <HearseCardText>
                       <HearseCardTop>
                         <span>
@@ -935,24 +1008,39 @@ function FleetDashboard({ embedded = false }) {
                         </span>
                         <StatusBadge $tone={meta.color}><StatusDot />{meta.label}</StatusBadge>
                       </HearseCardTop>
-                      <CardBalance $low={cardBalance?.is_low}>
-                        <small><CreditCard size={13} />Fuel-card balance</small>
-                        <strong>
-                          {hearse.fuel_card_number
-                            ? fuelWallet ? formatKES(cardBalance?.balance || 0) : 'Loading...'
-                            : 'No card assigned'}
-                        </strong>
-                        <em>
-                          {hearse.fuel_card_number
-                            ? `${hearse.fuel_card_number}${cardBalance?.is_low ? ' · Low balance' : ''}`
-                            : 'Add a TotalEnergies card to track funds'}
-                        </em>
-                      </CardBalance>
                       <CardFooter>
                         <span><MapPin size={13} />{hearse.branch_name || hearse.branch_code || 'Branch not set'}</span>
-                        {hearse.capacity && <span><Truck size={13} />{hearse.capacity} seats</span>}
+                        <span><CreditCard size={13} />{hearse.fuel_card_number || 'No fuel card'}</span>
                       </CardFooter>
+                      {hearse.fuel_card_number && (
+                        <>
+                          <CardBalance $low={cardBalance?.is_low}>
+                            <strong>{fuelWallet ? formatKES(cardBalance?.balance || 0) : 'Loading balance...'}</strong>
+                            <span>{cardBalance?.is_low ? 'LOW BALANCE' : 'CARD BALANCE'}</span>
+                          </CardBalance>
+                          <CardChart aria-label={`${hearse.plate_number || 'Hearse'} fuel-card activity chart`}>
+                            <CardChartLabel>Card activity · KES</CardChartLabel>
+                            {chartData.length ? (
+                              <ResponsiveContainer width="100%" height="82%">
+                                <BarChart data={chartData} margin={{ top: 3, right: 4, bottom: 0, left: 0 }}>
+                                  <CartesianGrid stroke="#eef0f4" vertical={false} />
+                                  <XAxis dataKey="label" tick={{ fontSize: 8, fill: '#747a87' }} />
+                                  <Tooltip labelFormatter={(label) => `Date: ${label}`} formatter={(value) => formatKES(Number(value))} />
+                                  <Legend wrapperStyle={{ fontSize: 8, lineHeight: '10px' }} />
+                                  <Bar dataKey="allocations" name="Added" fill="#547eb5" radius={[2, 2, 0, 0]} />
+                                  <Bar dataKey="purchases" name="Used" fill="#d88445" radius={[2, 2, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            ) : (
+                              <CardChartEmpty>No card activity recorded yet.</CardChartEmpty>
+                            )}
+                          </CardChart>
+                        </>
+                      )}
                     </HearseCardText>
+                    <VehicleThumb>
+                      {hearse.image ? <img src={imageUrl(hearse.image)} alt="" /> : <Truck size={25} />}
+                    </VehicleThumb>
                   </HearseCard>
                 );
               })}
