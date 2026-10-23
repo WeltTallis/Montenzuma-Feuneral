@@ -1,16 +1,16 @@
 import { autoInitSystemAdmin } from './scripts/auto-init-system-admin';
 import express, { Request, Response, NextFunction } from 'express';
+import Logger from '../../packages/shared-logger/dist/index';
 import { rateLimit } from 'express-rate-limit';
 import authRoutes from './routes/authRoutes';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
+import type { Server } from 'http';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import hpp from 'hpp';
 import cors from 'cors';
-import type { Server } from 'http';
-import Logger from '../../packages/shared-logger/dist/index';
 
 // Load environment variables from the repo-root .env before any env value is
 // read below. (Imports are hoisted, so this still runs after every import.)
@@ -31,7 +31,7 @@ app.use(helmet({
 
 // 1c. HPP - prevent HTTP parameter pollution
 app.use(hpp({
-  whitelist: ['page', 'limit', 'status', 'search'], 
+  whitelist: ['page', 'limit', 'status', 'search'],
 }));
 // 1d. Body parsing with limits
 app.use(express.json({ limit: '1mb' }));
@@ -107,7 +107,7 @@ if (process.env.LOG_LEVEL !== 'silent') {
 
 
 app.get('/health', (_req: Request, res: Response) => {
-  
+
   res.json({
     status: 'OK',
     service: 'auth-service',
@@ -187,7 +187,7 @@ async function startServer() {
     const adminUser = process.env.DB_ADMIN_USER || process.env.ROOT_DB_USER;
     const adminPass = process.env.DB_ADMIN_PASSWORD || process.env.ROOT_DB_PASSWORD;
     if (!adminUser || !adminPass) {
-    
+
       return false;
     }
 

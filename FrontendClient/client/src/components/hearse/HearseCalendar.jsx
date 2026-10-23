@@ -116,8 +116,6 @@ const Shell = styled.div`
   .fc .fc-daygrid-day {
     cursor: pointer;
     transition: background .15s ease;
-    min-height: 240px !important;
-    height: auto !important;
     vertical-align: top !important;
     overflow: visible !important;
   }
@@ -125,8 +123,7 @@ const Shell = styled.div`
 
   .fc .fc-daygrid-day-frame {
     padding: 4px !important;
-    min-height: 240px !important;
-    height: auto !important;
+    min-height: 220px !important;
     box-sizing: border-box !important;
     display: block !important;
     overflow: visible !important;
@@ -164,37 +161,18 @@ const Shell = styled.div`
     padding: 0 !important;
     display: block !important;
     position: relative !important;
-    min-height: 200px !important;
-    height: auto !important;
     overflow: visible !important;
   }
 
-  .fc .fc-daygrid-event-harness {
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    display: block !important;
-    width: 100% !important;
-    min-height: 62px !important;
-    height: auto !important;
-    margin: 0 0 6px 0 !important;
-    overflow: visible !important;
-  }
-  .fc .fc-daygrid-event-harness:last-child { margin-bottom: 0 !important; }
-
-  /* IMPORTANT: no background override here — the inline backgroundColor
-     from FC (status.color, the RICH saturated colour) must paint the
-     wrapper. This is the OUTER safety layer; the inner card below paints
-     the same colour on top. */
+  /* Keep FullCalendar's event harness positioning intact: it uses those
+     coordinates to stack bookings and span multi-day bookings across cells. */
   .fc .fc-daygrid-event {
     display: block !important;
     width: 100% !important;
     min-height: 62px !important;
     height: auto !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 2px 0 !important;
     border: none !important;
     border-radius: 6px !important;
     box-shadow: none !important;
@@ -368,7 +346,6 @@ const Shell = styled.div`
     .fc .fc-timegrid-axis { width: 35px !important; }
     .fc .fc-timegrid-axis-cushion { font-size: 9px !important; }
     .fc .fc-timegrid-slot-label { height: 40px !important; }
-    .fc .fc-daygrid-day { min-height: 200px !important; }
     .fc .fc-daygrid-day-frame { min-height: 200px !important; }
     .fc .fc-timegrid-event { padding: 4px 6px !important; min-height: 32px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 10px !important; padding: 2px 6px !important; min-height: 22px !important; }
@@ -385,7 +362,7 @@ const Shell = styled.div`
     .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; }
     .fc .fc-timegrid-event .fc-event-time { font-size: 8px !important; }
     .fc .fc-timegrid-now-indicator-line::before { display: none !important; }
-    .fc .fc-daygrid-day { min-height: 160px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 160px !important; }
     .fc .fc-timegrid-all-day-event { font-size: 9px !important; padding: 2px 4px !important; min-height: 20px !important; }
   }
 `;
@@ -434,6 +411,85 @@ const DayPanelHeader = styled.div`
   h2 { margin: 2px 0 0; color: #111827; font-size: 17px; font-weight: 800; }
   p { margin: 0; color: #9ca3af; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
   span { color: #8a8f98; font-size: 11px; font-weight: 700; white-space: nowrap; }
+`;
+
+const LineupControls = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f2f4;
+  background: #fafbfc;
+  input, select {
+    width: 100%;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0 9px;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    background: #fff;
+    color: #343946;
+    font: inherit;
+    font-size: 11px;
+  }
+  button {
+    min-height: 36px;
+    padding: 0 11px;
+    border: 1px solid #1a1d29;
+    border-radius: 8px;
+    background: #1a1d29;
+    color: #fff;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    &:disabled { opacity: .55; cursor: wait; }
+  }
+  @media (max-width: 520px) { grid-template-columns: minmax(0, 1fr); }
+`;
+
+const BookingLineup = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 8px;
+  padding: 12px 20px 14px 74px;
+  border-bottom: 1px solid #f4f5f7;
+  background: #fbfcfd;
+  label { display: grid; min-width: 0; gap: 4px; color: #818794; font-size: 9px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+  input, select {
+    width: 100%;
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 8px;
+    border: 1px solid #e1e4e8;
+    border-radius: 7px;
+    background: #fff;
+    color: #343946;
+    font: inherit;
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  button {
+    min-height: 34px;
+    padding: 0 10px;
+    border: 1px solid #1a1d29;
+    border-radius: 7px;
+    background: #1a1d29;
+    color: #fff;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    &:disabled { opacity: .55; cursor: wait; }
+  }
+  @media (max-width: 700px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 11px 12px;
+    button { grid-column: 1 / -1; }
+  }
 `;
 
 const BackToCalendar = styled.button`
@@ -647,12 +703,37 @@ const StatIcon = styled.span`
   flex-shrink: 0;
 `;
 
-const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], onItemClick, onCreateBooking, selectedDate, onDateSelect, onDateClick, month, onMonthChange }) => {
+const HearseCalendar = ({
+  bookings = [],
+  allBookings = bookings,
+  hearses = [],
+  drivers = [],
+  standbyDriverId = '',
+  lineupLoading = false,
+  savingStandby = false,
+  savingBookingLineup = null,
+  onSaveStandby,
+  onSaveBookingLineup,
+  onItemClick,
+  onCreateBooking,
+  selectedDate,
+  onDateSelect,
+  onDateClick,
+  month,
+  onMonthChange,
+}) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [dayViewDate, setDayViewDate] = useState(null);
+  const [standbyDraft, setStandbyDraft] = useState('');
+  const [lineupDrafts, setLineupDrafts] = useState({});
+
+  useEffect(() => {
+    setStandbyDraft(standbyDriverId == null ? '' : String(standbyDriverId));
+  }, [dayViewDate, standbyDriverId]);
   const calendarRef = useRef(null);
   const wrapperRef = useRef(null);
   const lastReportedMonth = useRef(null);
+  const sizeUpdateFrame = useRef(null);
 
   useEffect(() => {
     const api = calendarRef.current?.getApi?.();
@@ -720,7 +801,7 @@ const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], o
 
   const events = useMemo(() => {
     if (!Array.isArray(bookings)) return [];
-    return bookings.map((b) => {
+    return bookings.map((b, index) => {
       const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
       const bookingDates = getBookingDates(b);
       const startDate = bookingDates[0];
@@ -750,8 +831,8 @@ const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], o
       const hearseName = b.hearse_name || b.hearse_plate || b.plate_number || 'H';
       const clientName = (b.client_name || b.client || 'client').toString();
       const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
-      const randPart = Math.random().toString(36).substring(2, 7).toUpperCase();
-      const readableId = `BK-${hearseName}-${clientName}-${datePart}-${randPart}`;
+      const stableId = b.booking_code || b.booking_id || b.id || `${clientName}-${datePart}-${index}`;
+      const readableId = b.booking_code || `BK-${hearseName}-${clientName}-${datePart}-${stableId}`;
       const resolvedBranchName = resolveBranchName(
         b.branch_id,
         b.booking_branch_slug || b.branch_slug || b.branchSlug,
@@ -767,7 +848,7 @@ const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], o
       })();
 
       return {
-        id: b.booking_id || b.id || `booking-${Math.random()}`,
+        id: String(b.booking_id || b.id || `booking-${clientName}-${datePart}-${index}`),
         bookingId: readableId,
         title: b.client_name || b.client || 'Unknown Client',
         start: startDate,
@@ -878,43 +959,46 @@ const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], o
   }, [onItemClick]);
 
   const updateCalendarSize = useCallback(() => {
-    const api = calendarRef.current?.getApi?.();
-    if (api && typeof api.updateSize === 'function') {
-      try { api.updateSize(); } catch (e) { }
-    }
+    if (sizeUpdateFrame.current !== null) cancelAnimationFrame(sizeUpdateFrame.current);
+    sizeUpdateFrame.current = requestAnimationFrame(() => {
+      sizeUpdateFrame.current = null;
+      calendarRef.current?.getApi?.()?.updateSize();
+    });
   }, []);
 
   const handleViewChange = useCallback((view) => {
     setCalendarView(view.type);
-    requestAnimationFrame(updateCalendarSize);
-    setTimeout(updateCalendarSize, 60);
-    setTimeout(updateCalendarSize, 200);
   }, [updateCalendarSize]);
 
   useEffect(() => {
     updateCalendarSize();
-    const frame = requestAnimationFrame(updateCalendarSize);
-    const timers = [
-      setTimeout(updateCalendarSize, 50),
-      setTimeout(updateCalendarSize, 120),
-      setTimeout(updateCalendarSize, 250),
-      setTimeout(updateCalendarSize, 500),
-      setTimeout(updateCalendarSize, 850),
-      setTimeout(updateCalendarSize, 1200),
-    ];
     let ro = null;
     if (typeof ResizeObserver !== 'undefined' && wrapperRef.current) {
-      ro = new ResizeObserver(() => { requestAnimationFrame(updateCalendarSize); });
+      let lastWidth = wrapperRef.current.getBoundingClientRect().width;
+      ro = new ResizeObserver(([entry]) => {
+        const width = entry?.contentRect.width;
+        if (width !== undefined && Math.abs(width - lastWidth) > 0.5) {
+          lastWidth = width;
+          updateCalendarSize();
+        }
+      });
       ro.observe(wrapperRef.current);
     }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') updateCalendarSize();
+    };
     window.addEventListener('resize', updateCalendarSize);
     window.addEventListener('orientationchange', updateCalendarSize);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      cancelAnimationFrame(frame);
-      timers.forEach(clearTimeout);
+      if (sizeUpdateFrame.current !== null) {
+        cancelAnimationFrame(sizeUpdateFrame.current);
+        sizeUpdateFrame.current = null;
+      }
       if (ro) ro.disconnect();
       window.removeEventListener('resize', updateCalendarSize);
       window.removeEventListener('orientationchange', updateCalendarSize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [updateCalendarSize]);
 
@@ -1141,6 +1225,42 @@ const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], o
                 <BackToCalendar type="button" onClick={() => setDayViewDate(null)}>Back to calendar</BackToCalendar>
               </div>
             </DayPanelHeader>
+            <LineupControls>
+              <label style={{ gridColumn: '1 / -1', color: '#737987', fontSize: 10, fontWeight: 750 }}>
+                Standby driver for the day
+                <select
+                  value={standbyDraft}
+                  onChange={(event) => setStandbyDraft(event.target.value)}
+                  disabled={lineupLoading || savingStandby}
+                  aria-label="Standby driver for this day"
+                >
+                  <option value="">No standby driver selected</option>
+                  {drivers.map((driver) => {
+                    const driverId = driver.driver_id ?? driver.id;
+                    const alreadyAssigned = dayBookings.some((booking) =>
+                      String(booking.driver_id || '') === String(driverId)
+                      && !['completed', 'cancelled', 'postponed'].includes(String(booking.status || '').toLowerCase()));
+                    return (
+                      <option
+                        key={driverId}
+                        value={driverId}
+                        disabled={alreadyAssigned && String(driverId) !== String(standbyDriverId)}
+                      >
+                        {driver.driver_name || driver.full_name || `Driver ${driverId}`}
+                        {alreadyAssigned && String(driverId) !== String(standbyDriverId) ? ' · assigned to booking' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={lineupLoading || savingStandby || standbyDraft === String(standbyDriverId || '')}
+                onClick={() => onSaveStandby?.(standbyDraft)}
+              >
+                {savingStandby ? 'Saving standby…' : standbyDraft ? 'Save standby driver' : 'Clear standby'}
+              </button>
+            </LineupControls>
             {dayBookings.length ? dayBookings.map((booking) => {
               const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
               const schedule = getTimeInfo(booking);
@@ -1153,28 +1273,109 @@ const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], o
               const clientPhone = booking.client_phone || booking.phone || '—';
               const routeFrom = booking.from_location || booking.from || booking.origin || '—';
               const routeTo = booking.destination || booking.to_location || booking.dest || '—';
+              const bookingKey = String(booking.booking_id || booking.id);
+              const lineup = lineupDrafts[bookingKey] || {
+                driverId: booking.driver_id == null ? '' : String(booking.driver_id),
+                assistantName: booking.assistant_name || '',
+                assistantPhone: booking.assistant_phone || '',
+              };
+              const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
               return (
-                <DayBookingRow
-                  key={booking.booking_id || booking.id}
-                  type="button"
-                  onClick={() => onItemClick?.(booking)}
-                >
-                  <DayAvatar>{getInitials(hearseName)}</DayAvatar>
-                  <DayBookingContent>
-                    <DayBookingTitle>
-                      {clientName}
-                      <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
-                    </DayBookingTitle>
-                    <DayDetailGrid>
-                      <DayDetail><strong>Hearse</strong><span>{hearseName}{[booking.model || hearse?.model, plate].filter(Boolean).length ? ` · ${[booking.model || hearse?.model, plate].filter(Boolean).join(' · ')}` : ''}</span></DayDetail>
-                      <DayDetail><strong>Client / contact</strong><span>{clientName} · {clientPhone}</span></DayDetail>
-                      <DayDetail><strong>Route</strong><span>{routeFrom} → {routeTo}</span></DayDetail>
-                      <DayDetail><strong>Date / time</strong><span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {schedule.range}</span></DayDetail>
-                      <DayDetail><strong>Branch</strong><span>{branchName}</span></DayDetail>
-                      <DayDetail><strong>Booking reference</strong><span>{bookingId}</span></DayDetail>
-                    </DayDetailGrid>
-                  </DayBookingContent>
-                </DayBookingRow>
+                <React.Fragment key={bookingKey}>
+                  <DayBookingRow
+                    type="button"
+                    onClick={() => onItemClick?.(booking)}
+                  >
+                    <DayAvatar>{getInitials(hearseName)}</DayAvatar>
+                    <DayBookingContent>
+                      <DayBookingTitle>
+                        {clientName}
+                        <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
+                      </DayBookingTitle>
+                      <DayDetailGrid>
+                        <DayDetail><strong>Hearse</strong><span>{hearseName}{[booking.model || hearse?.model, plate].filter(Boolean).length ? ` · ${[booking.model || hearse?.model, plate].filter(Boolean).join(' · ')}` : ''}</span></DayDetail>
+                        <DayDetail><strong>Client / contact</strong><span>{clientName} · {clientPhone}</span></DayDetail>
+                        <DayDetail><strong>Route</strong><span>{routeFrom} → {routeTo}</span></DayDetail>
+                        <DayDetail><strong>Date / time</strong><span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {schedule.range}</span></DayDetail>
+                        <DayDetail><strong>Branch</strong><span>{branchName}</span></DayDetail>
+                        <DayDetail><strong>Booking reference</strong><span>{bookingId}</span></DayDetail>
+                        {booking.assigned_driver_name && <DayDetail><strong>Assigned driver</strong><span>{booking.assigned_driver_name}</span></DayDetail>}
+                        {booking.assistant_name && <DayDetail><strong>Assistant</strong><span>{booking.assistant_name}{booking.assistant_phone ? ` · ${booking.assistant_phone}` : ''}</span></DayDetail>}
+                      </DayDetailGrid>
+                    </DayBookingContent>
+                  </DayBookingRow>
+                  <BookingLineup>
+                    <label>
+                      Driver
+                      <select
+                        value={lineup.driverId}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setLineupDrafts((current) => ({
+                          ...current,
+                          [bookingKey]: { ...lineup, driverId: event.target.value },
+                        }))}
+                        aria-label={`Assign driver for booking ${bookingId}`}
+                      >
+                        <option value="">Unassigned</option>
+                        {drivers.map((driver) => {
+                          const driverId = driver.driver_id ?? driver.id;
+                          const assignedElsewhere = dayBookings.some((other) =>
+                            String(other.booking_id || other.id) !== bookingKey
+                            && String(other.driver_id || '') === String(driverId)
+                            && activeStatuses.has(String(other.status || '').toLowerCase()));
+                          const isStandby = String(standbyDriverId || '') === String(driverId);
+                          return (
+                            <option
+                              key={driverId}
+                              value={driverId}
+                              disabled={(assignedElsewhere || isStandby) && String(lineup.driverId) !== String(driverId)}
+                            >
+                              {driver.driver_name || driver.full_name || `Driver ${driverId}`}
+                              {isStandby ? ' · standby' : assignedElsewhere ? ' · assigned to another booking' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </label>
+                    <label>
+                      Assistant name
+                      <input
+                        value={lineup.assistantName}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setLineupDrafts((current) => ({
+                          ...current,
+                          [bookingKey]: { ...lineup, assistantName: event.target.value },
+                        }))}
+                        placeholder="Enter assistant name"
+                        aria-label={`Assistant name for booking ${bookingId}`}
+                      />
+                    </label>
+                    <label>
+                      Assistant phone
+                      <input
+                        value={lineup.assistantPhone}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setLineupDrafts((current) => ({
+                          ...current,
+                          [bookingKey]: { ...lineup, assistantPhone: event.target.value },
+                        }))}
+                        placeholder="Optional contact"
+                        aria-label={`Assistant phone for booking ${bookingId}`}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={String(savingBookingLineup || '') === bookingKey}
+                      onClick={() => onSaveBookingLineup?.(booking.booking_id || booking.id, {
+                        driver_id: lineup.driverId || null,
+                        assistant_name: lineup.assistantName,
+                        assistant_phone: lineup.assistantPhone,
+                      })}
+                    >
+                      {String(savingBookingLineup || '') === bookingKey ? 'Saving…' : 'Save lineup'}
+                    </button>
+                  </BookingLineup>
+                </React.Fragment>
               );
             }) : (
               <EmptyDay>No bookings for this day. Check the fleet panel for available hearses.</EmptyDay>
@@ -1326,6 +1527,7 @@ const HearseCalendar = ({ bookings = [], allBookings = bookings, hearses = [], o
             dayCellDidMount={renderDayCell}
             height={calendarView === 'dayGridMonth' ? 'auto' : 750}
             contentHeight={calendarView === 'dayGridMonth' ? 'auto' : 700}
+            fixedWeekCount={true}
             firstDay={0}
             weekends={true}
             nowIndicator={true}

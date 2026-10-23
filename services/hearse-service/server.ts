@@ -1,12 +1,13 @@
+import { safeTenantQuery, safeTenantExecute, resolveDatabase, getTenantDB, getRootPool } from '../../shared/dbConfig';
+import express, { Request, Response, NextFunction } from 'express';
+import { validateTenantActive } from '../../shared/tenancy';
+import { Server as SocketIOServer } from 'socket.io';
+import asyncHandler from 'express-async-handler';
 import dotenv from 'dotenv';
 import path from 'path';
-import express, { Request, Response, NextFunction } from 'express';
+
 import http from 'http';
 import cors from 'cors';
-import { Server as SocketIOServer } from 'socket.io';
-import { safeTenantQuery, safeTenantExecute, resolveDatabase, getTenantDB, getRootPool } from '../../shared/dbConfig';
-import { validateTenantActive } from '../../shared/tenancy';
-import asyncHandler from 'express-async-handler';
 
 // Load .env files (service folder + repo root; supports the compiled
 // `services/hearse-service/dist/services/hearse-service` layout)
@@ -38,7 +39,7 @@ runMigrations().catch((err: Error) => {
 });
 
 
-     
+
 
 
 
@@ -48,7 +49,7 @@ const corsOptions = {
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-slug', 'x-branch-code', 'x-branch-db']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'x-branch-id', 'x-branch-slug', 'x-branch-code', 'x-branch-db']
 };
 
 

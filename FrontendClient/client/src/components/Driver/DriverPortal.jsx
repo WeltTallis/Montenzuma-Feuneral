@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     RefreshCw, LogOut, Calendar, Clock, AlertCircle, CheckCircle,
-    MapPin, Route as RouteIcon, Loader2, Info, Plus,
+    MapPin, Route as RouteIcon, Loader2, Info, Plus, CreditCard, Fuel,
 } from '../../utils/icons/icons';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
@@ -349,10 +349,10 @@ const css = `
 #rp-driver .stat.c-red .num i{ background:var(--red); }
 
 /* ═══ tabs ═══ */
-#rp-driver .tabs{ display:flex; gap:22px; border-bottom:1px solid var(--line); margin-bottom:18px; }
+#rp-driver .tabs{ display:flex; gap:22px; overflow-x:auto; border-bottom:1px solid var(--line); margin-bottom:18px; }
 #rp-driver .tabs button{ padding:9px 1px 11px; color:var(--faint); font:600 .88rem var(--disp);
   display:flex; align-items:center; gap:7px; border-bottom:2px solid transparent;
-  margin-bottom:-1px; transition:.15s; }
+  margin-bottom:-1px; transition:.15s; flex:0 0 auto; white-space:nowrap; }
 #rp-driver .tabs button:hover{ color:var(--dim); }
 #rp-driver .tabs button.on{ color:var(--text); border-bottom-color:var(--teal-b); }
 #rp-driver .tabs button.on.k-orange{ border-bottom-color:var(--orange-b); }
@@ -360,6 +360,31 @@ const css = `
   background:rgba(255,255,255,.09); color:var(--dim); }
 #rp-driver .tabs button.on .n{ background:rgba(79,168,196,.18); color:var(--teal-b); }
 #rp-driver .tabs button.on.k-orange .n{ background:rgba(255,138,61,.16); color:var(--orange-b); }
+
+/* fuel-card records */
+#rp-driver .fuel-panel{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:17px; margin-bottom:12px; }
+#rp-driver .fuel-panel h2{ font:700 1rem var(--disp); margin:0 0 5px; }
+#rp-driver .fuel-muted{ color:var(--faint); font-size:.76rem; margin:0 0 15px; }
+#rp-driver .fuel-cards{ display:grid; gap:10px; margin-bottom:16px; }
+#rp-driver .fuel-vehicle{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px;
+  border:1px solid var(--line); border-radius:10px; background:var(--card2); }
+#rp-driver .fuel-vehicle strong{ display:block; font:600 .9rem var(--disp); }
+#rp-driver .fuel-vehicle small{ display:block; color:var(--faint); margin-top:3px; }
+#rp-driver .fuel-amount{ font:700 .95rem var(--mono); white-space:nowrap; }
+#rp-driver .fuel-amount.low{ color:var(--orange-b); }
+#rp-driver .fuel-form{ display:grid; gap:10px; }
+#rp-driver .fuel-form label{ display:grid; gap:5px; color:var(--dim); font-size:.7rem; font-weight:600; }
+#rp-driver .fuel-form input,#rp-driver .fuel-form select{ width:100%; min-height:42px; padding:0 11px;
+  color:var(--text); background:var(--card2); border:1px solid var(--line2); border-radius:8px; font:inherit; }
+#rp-driver .fuel-form button{ min-height:42px; display:flex; justify-content:center; align-items:center; gap:8px;
+  border-radius:8px; background:var(--teal); color:#fff; font:600 .82rem 'Inter'; }
+#rp-driver .fuel-form button:disabled{ opacity:.55; cursor:wait; }
+#rp-driver .fuel-history{ border-top:1px solid var(--line); margin-top:16px; padding-top:13px; }
+#rp-driver .fuel-history h3{ color:var(--dim); font:600 .7rem 'Inter'; text-transform:uppercase; letter-spacing:.1em; margin:0 0 6px; }
+#rp-driver .fuel-transaction{ display:flex; justify-content:space-between; gap:10px; padding:8px 0;
+  border-bottom:1px solid var(--line); color:var(--dim); font-size:.72rem; }
+#rp-driver .fuel-transaction:last-child{ border-bottom:0; }
+#rp-driver .fuel-transaction strong{ color:var(--text); white-space:nowrap; }
 
 /* ═══ card ═══ */
 #rp-driver .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:12px; }
@@ -786,6 +811,12 @@ const DriverPortal = () => {
     const [showLeaveApplication, setShowLeaveApplication] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [driverFuelCards, setDriverFuelCards] = useState([]);
+    const [driverFuelTransactions, setDriverFuelTransactions] = useState([]);
+    const [driverFuelLoading, setDriverFuelLoading] = useState(true);
+    const [driverFuelBusy, setDriverFuelBusy] = useState(false);
+    const [fuelForm, setFuelForm] = useState({ hearseId: '', amount: '', station: '', reference: '', transactionDate: dayKey(getNairobiNow()) });
+    const [fuelError, setFuelError] = useState('');
 
     const slug = getTenantSlug();
     const user = getUser();
@@ -840,6 +871,29 @@ const DriverPortal = () => {
         } finally { setLoadingP(false); setRefreshing(false); }
     }, [driverId, driverName]);
 
+    const loadDriverFuel = useCallback(async () => {
+        setDriverFuelLoading(true);
+        setFuelError('');
+        try {
+            const r = await fetch(`${API_BASE_URL}/hearse-fuel/driver-cards?t=${Date.now()}`, { headers: getAuthHeaders() });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.message || 'Unable to load your fuel card.');
+            const cards = Array.isArray(data.cards) ? data.cards : [];
+            setDriverFuelCards(cards);
+            setDriverFuelTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+            setFuelForm((current) => ({
+                ...current,
+                hearseId: cards.some((card) => String(card.hearse_id) === String(current.hearseId))
+                    ? current.hearseId
+                    : String(cards[0]?.hearse_id || ''),
+            }));
+        } catch (loadError) {
+            setFuelError(loadError.message || 'Unable to load your assigned fuel card.');
+        } finally {
+            setDriverFuelLoading(false);
+        }
+    }, []);
+
     const loadL = useCallback(async () => {
         setLoadingL(true);
         try {
@@ -853,8 +907,8 @@ const DriverPortal = () => {
 
     useEffect(() => {
         if (!slug || slug === 'default') { setError('No tenant configured.'); return; }
-        loadB(); loadP(); loadL();
-    }, [slug, loadB, loadP, loadL]);
+        loadB(); loadP(); loadL(); loadDriverFuel();
+    }, [slug, loadB, loadP, loadL, loadDriverFuel]);
 
 useEffect(() => {
         if (!socket || !connected) return;
@@ -888,9 +942,9 @@ useEffect(() => {
 
     // Keep the feeds fresh without the driver having to pull-to-refresh.
     useEffect(() => {
-        const t = setInterval(() => { loadB(true); loadP(true); }, 5 * 60 * 1000);
+        const t = setInterval(() => { loadB(true); loadP(true); loadDriverFuel(); }, 5 * 60 * 1000);
         return () => clearInterval(t);
-    }, [loadB, loadP]);
+    }, [loadB, loadP, loadDriverFuel]);
 
     /* ─── actions ─── */
     const changeStatus = async (id, s) => {
@@ -932,9 +986,38 @@ useEffect(() => {
         } finally { setBusy(false); }
     };
 
+    const recordDriverFuelling = async (event) => {
+        event.preventDefault();
+        setDriverFuelBusy(true);
+        setFuelError('');
+        try {
+            const r = await fetch(`${API_BASE_URL}/hearse-fuel/driver-purchases`, {
+                method: 'POST',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    hearse_id: fuelForm.hearseId,
+                    amount: fuelForm.amount,
+                    station: fuelForm.station,
+                    reference: fuelForm.reference,
+                    transaction_date: fuelForm.transactionDate,
+                }),
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.message || 'Unable to record fuelling.');
+            setDriverFuelCards(Array.isArray(data.cards) ? data.cards : []);
+            setDriverFuelTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+            setFuelForm((current) => ({ ...current, amount: '', station: '', reference: '' }));
+            say(setSuccess, 'Fuelling recorded. The amount has been deducted from your vehicle card.');
+        } catch (fuelSaveError) {
+            setFuelError(fuelSaveError.message || 'Unable to record fuelling.');
+        } finally {
+            setDriverFuelBusy(false);
+        }
+    };
+
     const refresh = () => {
         setRefreshing(true);
-        setTimeout(() => { loadB(true); loadP(true); loadL(); }, 700);
+        setTimeout(() => { loadB(true); loadP(true); loadL(); loadDriverFuel(); }, 700);
     };
 
     const logout = () => {
@@ -962,6 +1045,7 @@ useEffect(() => {
     const TABS = [
         { k: 'trips', l: 'Trips', Icon: RouteIcon, n: active.length, cls: '' },
         { k: 'pickups', l: 'Pickups', Icon: MapPin, n: pendingPicks, cls: 'k-orange' },
+        { k: 'fuel', l: 'Fuelling', Icon: Fuel, n: driverFuelCards.length, cls: '' },
         { k: 'leaves', l: 'Leaves', Icon: Calendar, n: leaves.length, cls: '' },
     ];
 
@@ -1061,6 +1145,73 @@ return (
                             ) : pickups.map((p, i) => (
                                 <PickupCard key={p.rowId} pickup={p} onRespond={respondPickup} i={i} busy={busy} />
                             ))
+                    )}
+
+                    {tab === 'fuel' && (
+                        driverFuelLoading ? <Loading text="Loading your assigned fuel card…" /> :
+                            <section className="fuel-panel">
+                                <h2><CreditCard size={17} style={{ display: 'inline', verticalAlign: '-3px', marginRight: 7, color: T.tealB }} />Vehicle fuel card</h2>
+                                <p className="fuel-muted">Record the amount paid at the station. It will be deducted from your assigned card’s RestPoint balance.</p>
+                                {fuelError && <div className="notice hot" role="alert"><AlertCircle size={15} />{fuelError}</div>}
+                                {driverFuelCards.length === 0 ? (
+                                    <Empty emoji="💳" title="No fuel card assigned" sub="Ask your fleet manager to assign your vehicle and TotalEnergies card to your driver account." />
+                                ) : (
+                                    <>
+                                        <div className="fuel-cards">
+                                            {driverFuelCards.map((card) => (
+                                                <div className="fuel-vehicle" key={card.hearse_id}>
+                                                    <div>
+                                                        <strong>{card.plate_number}</strong>
+                                                        <small>{card.hearse_name || 'Assigned hearse'} · Card ending {card.card_last_four}</small>
+                                                    </div>
+                                                    <span className={`fuel-amount${card.is_low ? ' low' : ''}`}>{new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(Number(card.balance) || 0)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <form className="fuel-form" onSubmit={recordDriverFuelling}>
+                                            {driverFuelCards.length > 1 && (
+                                                <label>
+                                                    Vehicle
+                                                    <select required value={fuelForm.hearseId} onChange={(event) => setFuelForm((current) => ({ ...current, hearseId: event.target.value }))}>
+                                                        {driverFuelCards.map((card) => <option key={card.hearse_id} value={card.hearse_id}>{card.plate_number} · Card ending {card.card_last_four}</option>)}
+                                                    </select>
+                                                </label>
+                                            )}
+                                            <label>
+                                                Petrol station / location
+                                                <input required maxLength={150} value={fuelForm.station} onChange={(event) => setFuelForm((current) => ({ ...current, station: event.target.value }))} placeholder="e.g. TotalEnergies Westlands" />
+                                            </label>
+                                            <label>
+                                                Amount paid (KES)
+                                                <input required type="number" min="0.01" step="0.01" value={fuelForm.amount} onChange={(event) => setFuelForm((current) => ({ ...current, amount: event.target.value }))} placeholder="Enter amount" />
+                                            </label>
+                                            <label>
+                                                Date
+                                                <input required type="date" value={fuelForm.transactionDate} onChange={(event) => setFuelForm((current) => ({ ...current, transactionDate: event.target.value }))} />
+                                            </label>
+                                            <label>
+                                                Receipt / transaction reference (optional)
+                                                <input maxLength={120} value={fuelForm.reference} onChange={(event) => setFuelForm((current) => ({ ...current, reference: event.target.value }))} placeholder="Receipt or transaction number" />
+                                            </label>
+                                            <button type="submit" disabled={driverFuelBusy || !fuelForm.hearseId}>
+                                                {driverFuelBusy ? <Loader2 size={16} className="anim-spin" /> : <Fuel size={16} />}
+                                                {driverFuelBusy ? 'Recording fuelling…' : 'Record fuelling'}
+                                            </button>
+                                        </form>
+                                        {driverFuelTransactions.length > 0 && (
+                                            <div className="fuel-history">
+                                                <h3>Your recent fuelling records</h3>
+                                                {driverFuelTransactions.map((transaction) => (
+                                                    <div className="fuel-transaction" key={transaction.id}>
+                                                        <span>{transaction.hearse_plate} · {transaction.station || 'Station'} · {String(transaction.transaction_date).slice(0, 10)}</span>
+                                                        <strong>−{new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(Number(transaction.amount) || 0)}</strong>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </section>
                     )}
 
                     {tab === 'leaves' && (

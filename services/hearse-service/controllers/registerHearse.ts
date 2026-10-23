@@ -122,11 +122,22 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         // Only include `fuel_card_number` when the effective schema actually has
         // the column — otherwise the INSERT fails with "Unknown column".
         const includeFuelCard = await hasHearseColumn('fuel_card_number');
+        const normalizedFuelCard = String(fuel_card_number || '').trim();
+        if (includeFuelCard && normalizedFuelCard && tenantId) {
+            const [cardRows] = await pool.query(
+                'SELECT id FROM hearses WHERE tenant_id = ? AND fuel_card_number = ? LIMIT 1',
+                [tenantId, normalizedFuelCard]
+            ) as any;
+            if (cardRows.length > 0) {
+                res.status(409).json({ success: false, message: 'This fuel card is already assigned to another hearse.' });
+                return;
+            }
+        }
 
         const insertFields = ['hearse_code', 'hearse_name', 'plate_number', 'model', 'capacity', 'status', 'branch_id', 'branch_name', 'branch_code', 'active_bookings', 'tenant_id', 'tenant_slug', ...(includeFuelCard ? ['fuel_card_number'] : []), 'created_at', 'updated_at'];
         const insertValues = [
             hearse_code, hearse_name || null, plate_number.trim(), model || null, capacity || 8, status || 'available',
-            assignedBranchId, branchNameValue, branchCodeValue, 0, tenantId, tenantSlug, ...(includeFuelCard ? [fuel_card_number || null] : []), now, now
+            assignedBranchId, branchNameValue, branchCodeValue, 0, tenantId, tenantSlug, ...(includeFuelCard ? [normalizedFuelCard || null] : []), now, now
         ];
 
         const placeholders = insertValues.map(() => '?').join(', ');
@@ -171,7 +182,10 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
     try {
         const { id } = req.params;
         const pool = await getHearsePool();
-        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id, description, fuel_card_number } = req.body;
+        const {
+            plate_number, hearse_name, model, capacity, status, branch_id, branch_code,
+            driver_id, description, fuel_card_number
+        } = req.body;
         const image = req.file ? `uploads/hearses/${req.file.filename}` : null;
         const now = getKenyaTimeISO();
 
@@ -187,14 +201,27 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
         if (fuel_card_number !== undefined) {
             const includeFuelCard = await hasHearseColumn('fuel_card_number');
             if (includeFuelCard) {
+                const normalizedFuelCard = String(fuel_card_number || '').trim();
+                const tenantHeader = req.headers['x-tenant-id'];
+                const tenantId = (req as any).tenant?.id || (req as any).tenant?.tenant_id
+                    || (Array.isArray(tenantHeader) ? tenantHeader[0] : tenantHeader);
+                if (normalizedFuelCard && tenantId) {
+                    const [cardRows] = await pool.query(
+                        'SELECT id FROM hearses WHERE tenant_id = ? AND fuel_card_number = ? AND id <> ? LIMIT 1',
+                        [tenantId, normalizedFuelCard, id]
+                    ) as any;
+                    if (cardRows.length > 0) {
+                        res.status(409).json({ success: false, message: 'This fuel card is already assigned to another hearse.' });
+                        return;
+                    }
+                }
                 fields.push('fuel_card_number = ?');
-                values.push(fuel_card_number || null);
+                values.push(normalizedFuelCard || null);
             } else if (String(fuel_card_number || '').trim() !== '') {
                 res.status(409).json({ success: false, message: 'Fuel-card storage is not available on this database (fuel_card_number column missing). Run migrations.' });
                 return;
             }
         }
-        
         // Handle branch update - support both branch_id and branch_code
         if (branch_code && !branch_id) {
             // Look up branch_id from branch_code

@@ -690,7 +690,7 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         // `hb.tenant_slug` / `hb.tenant_db_name` / `hb.branch_id` are selected
         // only so the registry can be matched per row; they are stripped again
         // before the payload is sent (see below).
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug, hb.tenant_db_name AS tenant_db_name, hb.branch_id AS booking_branch_id, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id ${whereSQL} ORDER BY hb.created_at DESC`;
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.driver_id, hb.assistant_name, hb.assistant_phone, d.full_name AS assigned_driver_name, hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug, hb.tenant_db_name AS tenant_db_name, hb.branch_id AS booking_branch_id, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id LEFT JOIN drivers d ON d.id = hb.driver_id ${whereSQL} ORDER BY hb.created_at DESC`;
 
         const bookings = await decorateBranchNames(
             await safeQuery(query, params) as any[],
@@ -973,7 +973,7 @@ export const getBookingsByDriver = asyncHandler(async (req: Request, res: Respon
             return;
         }
 
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status AS booking_status, hb.booking_dates, hb.created_at, h.id AS hearse_id, h.plate_number, h.model, h.status AS hearse_status FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE h.driver_id = ? ORDER BY hb.created_at DESC`;
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status AS booking_status, hb.booking_dates, hb.created_at, hb.driver_id, hb.assistant_name, hb.assistant_phone, h.id AS hearse_id, h.plate_number, h.model, h.status AS hearse_status FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE COALESCE(hb.driver_id, h.driver_id) = ? ORDER BY hb.created_at DESC`;
         const bookings = await safeQuery(query, [driver_id]);
         res.status(200).json({ status: 'success', total: bookings.length, bookings });
     } catch (error) {

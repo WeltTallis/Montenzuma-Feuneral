@@ -34,7 +34,10 @@ export const getHearseColumns = async (): Promise<Set<string>> => {
         // On introspection failure, be conservative: assume the column exists
         // so we don't silently drop data; the migration guarantees it exists.
         console.warn('[hearse-schema] column introspection failed:', e?.message || e);
-        cache = { at: now, columns: new Set<string>(['fuel_card_number']) };
+        cache = {
+            at: now,
+            columns: new Set<string>(['fuel_card_number']),
+        };
         return cache.columns;
     }
 };

@@ -237,6 +237,39 @@ const api = {
     const r = await fetch(`${API_BASE_URL}/hearses`, { headers: { ...getTenantHeaders(), ...getAuthHeaders() } });
     return r.ok ? (await r.json()).hearses || [] : [];
   },
+  getDrivers: async () => {
+    const r = await fetch(`${API_BASE_URL}/all-drivers`, { headers: getAuthHeaders() });
+    if (!r.ok) throw new Error('Failed to load drivers');
+    const data = await r.json();
+    return Array.isArray(data.drivers) ? data.drivers : [];
+  },
+  getDailyLineup: async (date) => {
+    const r = await fetch(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
+    if (!r.ok) throw new Error('Failed to load the daily driver lineup');
+    return r.json();
+  },
+  saveStandbyDriver: async (date, driverId) => {
+    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+    const r = await fetch(`${API_BASE_URL}/hearse-lineups/standby`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ date, driver_id: driverId || null }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || 'Failed to save the standby driver');
+    return data;
+  },
+  assignBookingLineup: async (bookingId, lineup) => {
+    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+    const r = await fetch(`${API_BASE_URL}/hearse-bookings/${encodeURIComponent(bookingId)}/lineup`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(lineup),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || 'Failed to save the booking lineup');
+    return data;
+  },
   //updates    hearses
   updateStatus: async (id, status, reason) => {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
@@ -689,6 +722,11 @@ const HearseBookings = () => {
 
   const [bookings, setBookings] = useState([]);
   const [allHearses, setAllHearses] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [standbyDriverId, setStandbyDriverId] = useState('');
+  const [lineupLoading, setLineupLoading] = useState(false);
+  const [savingStandby, setSavingStandby] = useState(false);
+  const [savingBookingLineup, setSavingBookingLineup] = useState(null);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
@@ -800,12 +838,13 @@ const HearseBookings = () => {
       // Only the visible month is requested. Branches and the fleet do not
       // change month-to-month, so they are still fetched once per call but the
       // (large) bookings payload is now bounded to ~30 days.
-      const [bks, brs, hrs] = await Promise.all([
+      const [bks, brs, hrs, drs] = await Promise.all([
         api.getBookings({ from: monthRange.from, to: monthRange.to }),
         api.getBranches(),
         api.getAllHearses(),
+        api.getDrivers(),
       ]);
-      setBookings(bks); setBranches(brs); setAllHearses(hrs);
+      setBookings(bks); setBranches(brs); setAllHearses(hrs); setDrivers(drs);
     } catch (e) { notify.error('Failed to load data'); }
     setLoading(false);
   }, [monthRange.from, monthRange.to]);
@@ -817,17 +856,60 @@ const HearseBookings = () => {
   // feels like the whole page reloading.
   const refreshData = useCallback(async () => {
     try {
-      const [bks, brs, hrs] = await Promise.all([
+      const [bks, brs, hrs, drs] = await Promise.all([
         api.getBookings({ from: monthRange.from, to: monthRange.to }),
         api.getBranches(),
         api.getAllHearses(),
+        api.getDrivers(),
       ]);
-      setBookings(bks); setBranches(brs); setAllHearses(hrs);
+      setBookings(bks); setBranches(brs); setAllHearses(hrs); setDrivers(drs);
     } catch (e) { notify.error('Failed to refresh data'); }
   }, [monthRange.from, monthRange.to]);
 
   // Refetch whenever the month on screen changes.
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    let current = true;
+    setLineupLoading(true);
+    api.getDailyLineup(selectedDate)
+      .then((lineup) => {
+        if (current) setStandbyDriverId(lineup.standby_driver_id == null ? '' : String(lineup.standby_driver_id));
+      })
+      .catch((error) => {
+        if (current) notify.error(error.message || 'Failed to load the standby driver.');
+      })
+      .finally(() => {
+        if (current) setLineupLoading(false);
+      });
+    return () => { current = false; };
+  }, [selectedDate]);
+
+  const saveStandby = useCallback(async (driverId) => {
+    setSavingStandby(true);
+    try {
+      const lineup = await api.saveStandbyDriver(selectedDate, driverId);
+      setStandbyDriverId(lineup.standby_driver_id == null ? '' : String(lineup.standby_driver_id));
+      notify.success(driverId ? 'Standby driver assigned for this day.' : 'Standby driver removed.');
+    } catch (error) {
+      notify.error(error.message || 'Failed to save the standby driver.');
+    } finally {
+      setSavingStandby(false);
+    }
+  }, [selectedDate]);
+
+  const saveBookingLineup = useCallback(async (bookingId, lineup) => {
+    setSavingBookingLineup(String(bookingId));
+    try {
+      await api.assignBookingLineup(bookingId, lineup);
+      await refreshData();
+      notify.success('Booking driver and assistant lineup saved.');
+    } catch (error) {
+      notify.error(error.message || 'Failed to save the booking lineup.');
+    } finally {
+      setSavingBookingLineup(null);
+    }
+  }, [refreshData]);
 
   useEffect(() => {
     if (!socket) return;
@@ -1261,6 +1343,13 @@ const HearseBookings = () => {
               bookings={filtered}
               allBookings={bookings}
               hearses={allHearses}
+              drivers={drivers}
+              standbyDriverId={standbyDriverId}
+              lineupLoading={lineupLoading}
+              savingStandby={savingStandby}
+              savingBookingLineup={savingBookingLineup}
+              onSaveStandby={saveStandby}
+              onSaveBookingLineup={saveBookingLineup}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onDateClick={(date) => {

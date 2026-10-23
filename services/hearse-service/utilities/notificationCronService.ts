@@ -102,7 +102,7 @@ export class NotificationCronService {
         });
 
         this.isRunning = true;
-        console.log('✅ Notification cron service started');
+
     }
 
     /**
@@ -110,7 +110,7 @@ export class NotificationCronService {
      */
     stop(): void {
         this.isRunning = false;
-        console.log('🛑 Notification cron service stopped');
+
     }
 
     /**
@@ -243,7 +243,7 @@ export class NotificationCronService {
 
                     this.emitNotification('urgent_bookings_2h', {
                         type: 'urgent_reminder',
-                        title: '⚠️ Urgent: Bookings in Next 2 Hours',
+                        title: ' Urgent: Bookings in Next 2 Hours',
                         message,
                         bookings: tenantBookings.map(b => ({
                             bookingCode: b.booking_code,
@@ -336,7 +336,7 @@ export class NotificationCronService {
 
                     this.emitNotification('weekly_bookings_summary', {
                         type: 'weekly_summary',
-                        title: '📋 Weekly Bookings Summary',
+                        title: 'Weekly Bookings Summary',
                         message,
                         totalBookings: tenantBookings.length,
                         bookings: tenantBookings.map((b: any) => ({
@@ -384,7 +384,7 @@ export class NotificationCronService {
             // Emit through socketio service via HTTP POST
             const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
             const targetTenant = tenantSlug || 'system';
-            
+
             axios.post(`${socketioServiceUrl}/emit/${eventName}`, {
                 tenantSlug: targetTenant,
                 data: {
@@ -422,6 +422,7 @@ export function initializeNotificationCron(io: any): NotificationCronService {
     }
     return notificationCronService;
 }
+
 
 /**
  * Get the notification cron service instance

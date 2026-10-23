@@ -1,1 +1,0 @@
-$c = Get-Content "C:\Users\User\Downloads\restpoint\FrontendClient\client\build.log" -Raw; $c = $c -replace "`x00",""; $c = $c -replace "\x1b\[[0-9;]*m",""; [System.IO.File]::WriteAllText("C:\Users\User\Downloads\restpoint\FrontendClient\client\build.clean.txt", $c); "cleaned done"

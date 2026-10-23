@@ -6,6 +6,7 @@ import {
   CarFront,
   CheckCircle2,
   CreditCard,
+  Fuel,
   MapPin,
   RefreshCw,
   Search,
@@ -54,6 +55,15 @@ const imageUrl = (image) => {
   const apiRoot = API_BASE_URL.replace(/\/api\/v1\/restpoint\/?$/, '');
   return `${apiRoot}/${String(image).replace(/^\/+/, '')}`;
 };
+
+const formatKES = (amount) => new Intl.NumberFormat('en-KE', {
+  style: 'currency',
+  currency: 'KES',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+}).format(Number(amount) || 0);
+
+const todayDate = () => new Date().toISOString().slice(0, 10);
 
 const request = async (path, options = {}) => {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -331,6 +341,7 @@ const StatusDot = styled.span`
 const CardFooter = styled.span`
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 10px;
   color: #747a87;
@@ -467,6 +478,149 @@ const FuelCardEditor = styled.form`
   @media (max-width: 520px) { align-items: stretch; flex-wrap: wrap; label { flex-basis: 100%; } }
 `;
 
+const FuelPanel = styled.section`
+  margin-top: 18px;
+  padding: 17px;
+  border: 1px solid #e7e9ee;
+  border-radius: 12px;
+  background: #fff;
+`;
+
+const FuelPanelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 15px;
+  h3 { margin: 0; color: #282d39; font-size: 14px; font-weight: 800; }
+`;
+
+const FuelBalanceBadge = styled.span`
+  padding: 4px 9px;
+  border: 1px solid ${({ $tone }) => $tone === 'low' ? '#fde68a' : '#a7f3d0'};
+  border-radius: 999px;
+  background: ${({ $tone }) => $tone === 'low' ? '#fffbeb' : '#ecfdf5'};
+  color: ${({ $tone }) => $tone === 'low' ? '#b45309' : '#047857'};
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+`;
+
+const AccountPanel = styled.section`
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.2fr);
+  gap: 22px;
+  margin-bottom: 18px;
+  padding: 22px;
+  border: 1px solid #e5e7ec;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 18px #1a1d2908;
+  @media (max-width: 850px) { grid-template-columns: 1fr; }
+`;
+
+const AccountOverview = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const AccountBrand = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  img { width: 54px; height: 54px; object-fit: contain; }
+  h2 { margin: 0; color: #252a36; font-size: 18px; }
+  p { margin: 4px 0 0; color: #747a87; font-size: 11px; line-height: 1.4; }
+`;
+
+const AccountBalance = styled.div`
+  strong { display: block; color: #1a1d29; font-size: clamp(27px, 4vw, 38px); letter-spacing: -.05em; line-height: 1.1; }
+  span { display: block; margin-top: 5px; color: #747a87; font-size: 12px; }
+`;
+
+const AccountStats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+`;
+
+const AccountStat = styled.div`
+  padding: 12px;
+  border-radius: 10px;
+  background: #f6f7f9;
+  strong { display: block; color: #343946; font-size: 16px; }
+  span { display: block; margin-top: 3px; color: #818794; font-size: 10px; }
+`;
+
+const AccountControls = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 12px;
+  @media (max-width: 560px) { grid-template-columns: 1fr; }
+`;
+
+const LedgerForm = styled.form`
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid #eceef2;
+  border-radius: 12px;
+  background: #fcfcfd;
+  h3 { margin: 0 0 2px; color: #343946; font-size: 12px; }
+  input, select {
+    width: 100%;
+    min-height: 36px;
+    padding: 0 9px;
+    border: 1px solid #e0e3e8;
+    border-radius: 8px;
+    background: #fff;
+    color: #343946;
+    font: inherit;
+    font-size: 12px;
+  }
+`;
+
+const FuelFacts = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 14px 0;
+`;
+
+const FuelFact = styled.div`
+  min-width: 0;
+  padding: 11px;
+  border-radius: 9px;
+  background: #f6f7f9;
+  span { display: block; color: #818794; font-size: 10px; }
+  strong { display: block; margin-top: 4px; overflow-wrap: anywhere; color: #343946; font-size: 14px; }
+`;
+
+const FuelHistory = styled.section`
+  margin-bottom: 18px;
+  padding: 16px 20px;
+  border: 1px solid #e5e7ec;
+  border-radius: 14px;
+  background: #fff;
+  h2 { margin: 0 0 12px; color: #343946; font-size: 14px; }
+`;
+
+const FuelHistoryRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) minmax(90px, .7fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid #eff0f3;
+  color: #626977;
+  font-size: 11px;
+  strong { color: #343946; font-size: 11px; }
+  @media (max-width: 600px) { grid-template-columns: 1fr auto; }
+`;
+
 function FleetDashboard({ embedded = false }) {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -477,22 +631,36 @@ function FleetDashboard({ embedded = false }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [fuelWallet, setFuelWallet] = useState(null);
   const [statusDraft, setStatusDraft] = useState('');
   const [savingStatus, setSavingStatus] = useState(false);
   const [fuelCardDraft, setFuelCardDraft] = useState('');
   const [savingFuelCard, setSavingFuelCard] = useState(false);
+  const [savingFuelAction, setSavingFuelAction] = useState('');
+  const [depositDraft, setDepositDraft] = useState({ amount: '', reference: '', transactionDate: todayDate() });
+  const [allocationDraft, setAllocationDraft] = useState({ amount: '', reference: '', transactionDate: todayDate() });
+  const [purchaseDraft, setPurchaseDraft] = useState({ amount: '', station: '', reference: '', transactionDate: todayDate() });
+  const [thresholdDraft, setThresholdDraft] = useState('5000.00');
 
   const loadFleet = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
     else setLoading(true);
     setError('');
     try {
-      const fleetResponse = await request(`/hearses?t=${Date.now()}`);
+      const [fleetResponse, walletResponse] = await Promise.all([
+        request(`/hearses?t=${Date.now()}`),
+        request(`/hearse-fuel?t=${Date.now()}`),
+      ]);
       if (!Array.isArray(fleetResponse.hearses)) {
         throw new Error('Fleet service returned an invalid hearse list.');
       }
+      if (!Array.isArray(walletResponse.cards) || !Array.isArray(walletResponse.transactions)) {
+        throw new Error('Fuel account service returned an invalid account summary.');
+      }
       const fleetRows = fleetResponse.hearses;
       setHearses(fleetRows);
+      setFuelWallet(walletResponse);
+      setThresholdDraft(walletResponse.low_balance_threshold);
       setSelectedId((current) => fleetRows.some((hearse) => String(hearse.id) === String(current))
         ? current
         : (fleetRows[0]?.id ?? null));
@@ -513,9 +681,9 @@ function FleetDashboard({ embedded = false }) {
       total: hearses.length,
       available: countStatus('available'),
       maintenance: countStatus('maintenance') + countStatus('pending_inspection'),
-      fuelCards: hearses.filter((hearse) => String(hearse.fuel_card_number || '').trim()).length,
+      lowFuelCards: (fuelWallet?.cards || []).filter((card) => card.is_low).length,
     };
-  }, [hearses]);
+  }, [hearses, fuelWallet]);
 
   const filteredHearses = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -536,6 +704,9 @@ function FleetDashboard({ embedded = false }) {
   }, [hearses, filter, search]);
 
   const selectedHearse = hearses.find((hearse) => String(hearse.id) === String(selectedId)) || null;
+  const selectedFuelCard = fuelWallet?.cards.find((card) => String(card.hearse_id) === String(selectedHearse?.id)) || null;
+  const lowBalanceThreshold = Number(fuelWallet?.low_balance_threshold || 0);
+  const lowFuelCards = (fuelWallet?.cards || []).filter((card) => card.is_low);
 
   useEffect(() => {
     setStatusDraft(selectedHearse ? STATUS_OPTIONS.some((option) => option.value === statusKey(selectedHearse.status))
@@ -579,11 +750,34 @@ function FleetDashboard({ embedded = false }) {
       setHearses((current) => current.map((hearse) => String(hearse.id) === String(selectedHearse.id)
         ? { ...hearse, fuel_card_number: fuelCardNumber }
         : hearse));
+      await loadFleet(true);
       notify.success('Fuel card details updated.');
     } catch (saveError) {
       notify.error(saveError.message || 'Unable to update fuel card details.');
     } finally {
       setSavingFuelCard(false);
+    }
+  };
+
+  const submitFuelAction = async (event, action, path, body, successMessage) => {
+    event.preventDefault();
+    setSavingFuelAction(action);
+    try {
+      const response = await request(path, {
+        method: action === 'threshold' ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      setFuelWallet(response);
+      setThresholdDraft(response.low_balance_threshold);
+      if (action === 'deposit') setDepositDraft({ amount: '', reference: '', transactionDate: todayDate() });
+      if (action === 'allocation') setAllocationDraft({ amount: '', reference: '', transactionDate: todayDate() });
+      if (action === 'purchase') setPurchaseDraft({ amount: '', station: '', reference: '', transactionDate: todayDate() });
+      notify.success(successMessage);
+    } catch (actionError) {
+      notify.error(actionError.message || 'Unable to save the fuel account transaction.');
+    } finally {
+      setSavingFuelAction('');
     }
   };
 
@@ -616,11 +810,87 @@ function FleetDashboard({ embedded = false }) {
           </div>
         </Header>
 
+        <AccountPanel aria-label="TotalEnergies fuel account">
+          <AccountOverview>
+            <AccountBrand>
+              <img src="https://apifactory.totalenergies.com/images/total_energies_logo.png" alt="TotalEnergies" />
+              <div>
+                  <h2>TotalEnergies main account</h2>
+                <p>RestPoint ledger · manually recorded funds, not a live provider connection</p>
+              </div>
+            </AccountBrand>
+            <AccountBalance>
+              <strong>{fuelWallet ? formatKES(fuelWallet.account_balance) : 'Loading...'}</strong>
+              <span>Unallocated balance available in the TotalEnergies account</span>
+            </AccountBalance>
+            <AccountStats>
+              <AccountStat><strong>{fuelWallet ? formatKES(fuelWallet.total_on_cards) : '...'}</strong><span>Remaining on fuel cards</span></AccountStat>
+              <AccountStat><strong>{fuelWallet ? formatKES(fuelWallet.total_spent) : '...'}</strong><span>Recorded fuel purchases</span></AccountStat>
+            </AccountStats>
+          </AccountOverview>
+          <AccountControls>
+            <LedgerForm onSubmit={(event) => submitFuelAction(
+              event,
+              'deposit',
+              '/hearse-fuel/deposits',
+              { amount: depositDraft.amount, reference: depositDraft.reference, transaction_date: depositDraft.transactionDate },
+              'Cheque deposit added to the TotalEnergies ledger.'
+            )}>
+              <h3>Load cheque / deposit</h3>
+              <input type="number" min="0.01" step="0.01" required value={depositDraft.amount} onChange={(event) => setDepositDraft((current) => ({ ...current, amount: event.target.value }))} placeholder="Amount (KES)" aria-label="Cheque deposit amount in KES" />
+              <input type="text" value={depositDraft.reference} onChange={(event) => setDepositDraft((current) => ({ ...current, reference: event.target.value }))} placeholder="Cheque or deposit reference" aria-label="Cheque or deposit reference" />
+              <input type="date" required value={depositDraft.transactionDate} onChange={(event) => setDepositDraft((current) => ({ ...current, transactionDate: event.target.value }))} aria-label="Cheque deposit date" />
+              <ActionButton type="submit" $primary disabled={savingFuelAction !== ''}>{savingFuelAction === 'deposit' ? 'Recording...' : 'Record deposit'}</ActionButton>
+            </LedgerForm>
+            <LedgerForm onSubmit={(event) => submitFuelAction(
+              event,
+              'threshold',
+              '/hearse-fuel/threshold',
+              { low_balance_threshold: thresholdDraft },
+              'Low-balance alert threshold updated.'
+            )}>
+              <h3>Low card balance alert</h3>
+              <input type="number" min="0" step="0.01" required value={thresholdDraft} onChange={(event) => setThresholdDraft(event.target.value)} aria-label="Low fuel-card balance threshold in KES" />
+              <p style={{ margin: 0, color: '#747a87', fontSize: 11 }}>Alert when an assigned card balance falls below this KES amount.</p>
+              <ActionButton type="submit" disabled={savingFuelAction !== '' || Number(thresholdDraft) === lowBalanceThreshold}>{savingFuelAction === 'threshold' ? 'Saving...' : 'Save threshold'}</ActionButton>
+            </LedgerForm>
+          </AccountControls>
+        </AccountPanel>
+
+        {lowFuelCards.length > 0 && (
+          <InlineAlert role="status">
+            <AlertCircle size={17} />
+            <span><strong>{lowFuelCards.length} fuel card{lowFuelCards.length === 1 ? '' : 's'} below threshold:</strong> {lowFuelCards.map((card) => `${card.plate_number} (${formatKES(card.balance)})`).join(', ')}</span>
+          </InlineAlert>
+        )}
+
+        {(fuelWallet?.transactions || []).length > 0 && (
+          <FuelHistory>
+            <h2>Recent fuel account activity</h2>
+            {fuelWallet.transactions.slice(0, 6).map((transaction) => {
+              const label = transaction.transaction_type === 'deposit'
+                ? 'Cheque / account deposit'
+                : transaction.transaction_type === 'allocation'
+                  ? `Allocated to ${transaction.hearse_plate || 'fuel card'}`
+                  : `Fuel purchase · ${transaction.station || 'station not entered'}`;
+              const signedAmount = transaction.transaction_type === 'deposit' ? `+${formatKES(transaction.amount)}` : `−${formatKES(transaction.amount)}`;
+              return (
+                <FuelHistoryRow key={transaction.id}>
+                  <strong>{label}</strong>
+                  <span>{transaction.reference || transaction.fuel_card_number || 'No reference'}</span>
+                  <span>{String(transaction.transaction_date).slice(0, 10)}</span>
+                  <strong>{signedAmount}</strong>
+                </FuelHistoryRow>
+              );
+            })}
+          </FuelHistory>
+        )}
+
         <SummaryGrid aria-label="Fleet summary">
           <SummaryCard><SummaryIcon><Truck size={19} /></SummaryIcon><div><SummaryValue>{counts.total}</SummaryValue><SummaryLabel>Total hearses</SummaryLabel></div></SummaryCard>
           <SummaryCard><SummaryIcon $tone="green"><CheckCircle2 size={19} /></SummaryIcon><div><SummaryValue>{counts.available}</SummaryValue><SummaryLabel>Marked available</SummaryLabel></div></SummaryCard>
           <SummaryCard><SummaryIcon $tone="gold"><Wrench size={19} /></SummaryIcon><div><SummaryValue>{counts.maintenance}</SummaryValue><SummaryLabel>Maintenance / inspection</SummaryLabel></div></SummaryCard>
-          <SummaryCard><SummaryIcon><CreditCard size={19} /></SummaryIcon><div><SummaryValue>{counts.fuelCards}</SummaryValue><SummaryLabel>Fuel cards recorded</SummaryLabel></div></SummaryCard>
+          <SummaryCard><SummaryIcon $tone={counts.lowFuelCards ? 'red' : 'green'}><CreditCard size={19} /></SummaryIcon><div><SummaryValue>{counts.lowFuelCards}</SummaryValue><SummaryLabel>Cards below balance threshold</SummaryLabel></div></SummaryCard>
         </SummaryGrid>
 
         {error && (
@@ -653,6 +923,7 @@ function FleetDashboard({ embedded = false }) {
                 <Empty><CarFront size={26} /><strong>{hearses.length ? 'No matching hearses' : 'No hearses registered'}</strong><span>{hearses.length ? 'Try another search or status filter.' : 'Use Vehicle registration to add the first vehicle.'}</span></Empty>
               ) : filteredHearses.map((hearse) => {
                 const meta = statusMeta(hearse.status);
+                const cardBalance = fuelWallet?.cards.find((card) => String(card.hearse_id) === String(hearse.id));
                 return (
                   <HearseCard key={hearse.id} type="button" $selected={String(hearse.id) === String(selectedId)} onClick={() => setSelectedId(hearse.id)}>
                     <HearseCardText>
@@ -666,6 +937,7 @@ function FleetDashboard({ embedded = false }) {
                       <CardFooter>
                         <span><MapPin size={13} />{hearse.branch_name || hearse.branch_code || 'Branch not set'}</span>
                         <span><CreditCard size={13} />{hearse.fuel_card_number || 'No fuel card'}</span>
+                        {cardBalance && <span><Fuel size={13} />{formatKES(cardBalance.balance)}{cardBalance.is_low ? ' · Low' : ''}</span>}
                       </CardFooter>
                     </HearseCardText>
                     <VehicleThumb>
@@ -701,6 +973,53 @@ function FleetDashboard({ embedded = false }) {
                     <Fact><span>Model</span><strong>{selectedHearse.model || 'Not recorded'}</strong></Fact>
                     <Fact><span>Registration</span><strong>{selectedHearse.plate_number || 'Not recorded'}</strong></Fact>
                   </FactsGrid>
+                  <FuelPanel>
+                    <FuelPanelHeader>
+                      <h3><CreditCard size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />Fuel-card funds</h3>
+                      {selectedFuelCard && <FuelBalanceBadge $tone={selectedFuelCard.is_low ? 'low' : 'good'}>{selectedFuelCard.is_low ? 'Low balance' : 'Balance OK'}</FuelBalanceBadge>}
+                    </FuelPanelHeader>
+                    {!selectedHearse.fuel_card_number ? (
+                      <Subtitle>Assign a TotalEnergies card to this vehicle before recording its balance or transactions.</Subtitle>
+                    ) : (
+                      <>
+                        <FuelFacts>
+                          <FuelFact><span>Recorded card</span><strong>{selectedHearse.fuel_card_number}</strong></FuelFact>
+                          <FuelFact><span>Recorded balance</span><strong>{formatKES(selectedFuelCard?.balance || 0)}</strong></FuelFact>
+                        </FuelFacts>
+                        <AccountControls>
+                          <LedgerForm onSubmit={(event) => submitFuelAction(
+                            event,
+                            'allocation',
+                            '/hearse-fuel/allocations',
+                            { hearse_id: selectedHearse.id, amount: allocationDraft.amount, reference: allocationDraft.reference, transaction_date: allocationDraft.transactionDate },
+                            `Funds allocated to ${selectedHearse.plate_number}.`
+                          )}>
+                            <h3>Allocate account funds to this card</h3>
+                            <p style={{ margin: 0, color: '#747a87', fontSize: 11 }}>Available to allocate: {formatKES(fuelWallet?.available_to_allocate)}</p>
+                            <input type="number" min="0.01" step="0.01" required value={allocationDraft.amount} onChange={(event) => setAllocationDraft((current) => ({ ...current, amount: event.target.value }))} placeholder="Amount (KES)" aria-label="Card allocation amount in KES" />
+                            <input type="text" value={allocationDraft.reference} onChange={(event) => setAllocationDraft((current) => ({ ...current, reference: event.target.value }))} placeholder="Optional transfer reference" aria-label="Card allocation reference" />
+                            <input type="date" required value={allocationDraft.transactionDate} onChange={(event) => setAllocationDraft((current) => ({ ...current, transactionDate: event.target.value }))} aria-label="Card allocation date" />
+                            <ActionButton type="submit" disabled={savingFuelAction !== ''}>{savingFuelAction === 'allocation' ? 'Allocating...' : 'Allocate funds'}</ActionButton>
+                          </LedgerForm>
+                          <LedgerForm onSubmit={(event) => submitFuelAction(
+                            event,
+                            'purchase',
+                            '/hearse-fuel/purchases',
+                            { hearse_id: selectedHearse.id, amount: purchaseDraft.amount, station: purchaseDraft.station, reference: purchaseDraft.reference, transaction_date: purchaseDraft.transactionDate },
+                            `Fuel purchase recorded for ${selectedHearse.plate_number}.`
+                          )}>
+                            <h3>Record station fuelling</h3>
+                            <p style={{ margin: 0, color: '#747a87', fontSize: 11 }}>The amount is deducted from this card’s recorded balance.</p>
+                            <input type="number" min="0.01" step="0.01" required value={purchaseDraft.amount} onChange={(event) => setPurchaseDraft((current) => ({ ...current, amount: event.target.value }))} placeholder="Amount paid (KES)" aria-label="Fuel purchase amount in KES" />
+                            <input type="text" required value={purchaseDraft.station} onChange={(event) => setPurchaseDraft((current) => ({ ...current, station: event.target.value }))} placeholder="Petrol station" aria-label="Petrol station name" />
+                            <input type="text" value={purchaseDraft.reference} onChange={(event) => setPurchaseDraft((current) => ({ ...current, reference: event.target.value }))} placeholder="Optional receipt / transaction ref" aria-label="Fuel purchase receipt reference" />
+                            <input type="date" required value={purchaseDraft.transactionDate} onChange={(event) => setPurchaseDraft((current) => ({ ...current, transactionDate: event.target.value }))} aria-label="Fuel purchase date" />
+                            <ActionButton type="submit" $primary disabled={savingFuelAction !== ''}>{savingFuelAction === 'purchase' ? 'Recording...' : 'Record fuelling'}</ActionButton>
+                          </LedgerForm>
+                        </AccountControls>
+                      </>
+                    )}
+                  </FuelPanel>
                   <FuelCardEditor onSubmit={saveFuelCard}>
                     <CreditCard size={18} />
                     <label>
