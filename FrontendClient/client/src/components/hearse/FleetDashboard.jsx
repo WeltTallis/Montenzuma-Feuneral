@@ -14,10 +14,12 @@ import {
   Wrench,
 } from 'lucide-react';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Legend,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -359,41 +361,6 @@ const CardFooter = styled.div`
   svg { flex: 0 0 auto; }
 `;
 
-const CardBalance = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  strong { color: #252a36; font-size: 13px; font-variant-numeric: tabular-nums; }
-  span { color: ${({ $low }) => ($low ? '#b45309' : '#747a87')}; font-size: 10px; font-weight: 700; }
-`;
-
-const CardChart = styled.div`
-  height: 112px;
-  margin-top: 8px;
-  padding: 7px 6px 2px;
-  border: 1px solid #edf0f3;
-  border-radius: 9px;
-  background: #fbfcfd;
-`;
-
-const CardChartLabel = styled.div`
-  margin: 0 0 2px 4px;
-  color: #747a87;
-  font-size: 9px;
-  font-weight: 700;
-`;
-
-const CardChartEmpty = styled.div`
-  display: grid;
-  height: 80px;
-  place-items: center;
-  color: #818794;
-  font-size: 10px;
-  text-align: center;
-`;
-
 const VehicleThumb = styled.span`
   display: grid;
   width: 88px;
@@ -530,6 +497,148 @@ const FuelPanel = styled.section`
   border: 1px solid #e7e9ee;
   border-radius: 12px;
   background: #fff;
+`;
+
+const FuelChartsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
+`;
+
+const FuelMetricCard = styled.section`
+  display: flex;
+  min-width: 0;
+  min-height: 290px;
+  flex-direction: column;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid #eaeaea;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px #00000005;
+`;
+
+const FuelMetricHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+`;
+
+const FuelMetricTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #111;
+  font-size: 14px;
+  font-weight: 650;
+`;
+
+const FuelMetricIcon = styled.span`
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: #111;
+  color: #fff;
+`;
+
+const FuelMetricTotal = styled.div`
+  text-align: right;
+  strong { display: block; color: #111; font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  span { display: block; margin-top: 3px; color: #888; font-size: 10px; }
+`;
+
+const BalanceDonut = styled.div`
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 2px auto 0;
+`;
+
+const DonutCenter = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  strong { color: #111; font-size: 19px; font-weight: 800; letter-spacing: -.03em; }
+  span { margin-top: 3px; color: #888; font-size: 10px; font-weight: 600; }
+`;
+
+const FuelStatRow = styled.div`
+  display: flex;
+  gap: 18px;
+  margin-top: auto;
+  padding-top: 13px;
+`;
+
+const FuelStat = styled.div`
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  strong { overflow: hidden; color: #111; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  span { color: #888; font-size: 10px; }
+`;
+
+const FuelTrendChart = styled.div`
+  width: 100%;
+  height: 145px;
+  margin-top: auto;
+`;
+
+const FuelActivityValue = styled.div`
+  margin: 6px 0 0;
+  color: #111;
+  font-size: 33px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+`;
+
+const FuelActivitySparkline = styled.div`
+  width: 100%;
+  height: 92px;
+  margin-top: auto;
+`;
+
+const FuelGaugeWrap = styled.div`
+  position: relative;
+  width: 190px;
+  height: 125px;
+  margin: auto auto 0;
+`;
+
+const FuelGaugeCenter = styled.div`
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  strong { color: #111; font-size: 25px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  span { margin-top: 4px; color: #888; font-size: 10px; font-weight: 600; }
+`;
+
+const NoChartData = styled.div`
+  display: grid;
+  min-height: 90px;
+  flex: 1;
+  place-items: center;
+  color: #888;
+  font-size: 11px;
+  text-align: center;
 `;
 
 const FuelPanelHeader = styled.div`
@@ -752,6 +861,29 @@ function FleetDashboard({ embedded = false }) {
   const selectedFuelCard = fuelWallet?.cards.find((card) => String(card.hearse_id) === String(selectedHearse?.id)) || null;
   const lowBalanceThreshold = Number(fuelWallet?.low_balance_threshold || 0);
   const lowFuelCards = (fuelWallet?.cards || []).filter((card) => card.is_low);
+  const cardBalance = Number(selectedFuelCard?.balance) || 0;
+  const cardSpent = Number(selectedFuelCard?.total_spent) || 0;
+  const cardAllocated = Number(selectedFuelCard?.total_allocated) || 0;
+  const spentThisMonth = Number(selectedFuelCard?.spent_this_month) || 0;
+  const balanceHistory = selectedFuelCard?.balance_history || [];
+  const balanceDonutData = [
+    { name: 'Available', value: Math.max(cardBalance, 0), color: '#315f95' },
+    { name: 'Spent', value: Math.max(cardSpent, 0), color: '#E53935' },
+  ];
+  const activityTotal = Number(selectedFuelCard?.latest_activity?.amount) || 0;
+  const latestActivityLabel = selectedFuelCard?.latest_activity?.transaction_type === 'fuel_purchase'
+    ? 'Fuel purchase'
+    : selectedFuelCard?.latest_activity?.transaction_type === 'allocation'
+      ? 'Funds added'
+      : selectedFuelCard?.latest_activity?.transaction_type === 'deposit'
+        ? 'Account deposit'
+        : 'No recent activity';
+  const monthlyFunds = Math.max(cardBalance + spentThisMonth, 0);
+  const monthlyRemaining = Math.max(monthlyFunds - spentThisMonth, 0);
+  const consumptionData = [
+    { name: 'Spent', value: spentThisMonth, color: '#E53935' },
+    { name: 'Remaining', value: monthlyRemaining, color: '#F0F0F0' },
+  ];
   useEffect(() => {
     setStatusDraft(selectedHearse ? STATUS_OPTIONS.some((option) => option.value === statusKey(selectedHearse.status))
       ? statusKey(selectedHearse.status)
@@ -966,25 +1098,6 @@ function FleetDashboard({ embedded = false }) {
                 <Empty><CarFront size={26} /><strong>{hearses.length ? 'No matching hearses' : 'No hearses registered'}</strong><span>{hearses.length ? 'Try another search or status filter.' : 'Use Vehicle registration to add the first vehicle.'}</span></Empty>
               ) : filteredHearses.map((hearse) => {
                 const meta = statusMeta(hearse.status);
-                const cardBalance = fuelWallet?.cards.find((card) => String(card.hearse_id) === String(hearse.id));
-                const cardActivity = (fuelWallet?.transactions || []).reduce((activityByDate, transaction) => {
-                  if (String(transaction.fuel_card_number || '') !== String(hearse.fuel_card_number || '')) return activityByDate;
-                  const date = String(transaction.transaction_date || transaction.created_at || '').slice(0, 10);
-                  const amount = Number(transaction.amount);
-                  const field = transaction.transaction_type === 'allocation'
-                    ? 'allocations'
-                    : transaction.transaction_type === 'fuel_purchase'
-                      ? 'purchases'
-                      : null;
-                  if (!date || !field || !Number.isFinite(amount)) return activityByDate;
-                  const row = activityByDate.get(date) || { date, allocations: 0, purchases: 0 };
-                  row[field] += amount;
-                  activityByDate.set(date, row);
-                  return activityByDate;
-                }, new Map());
-                const chartData = [...cardActivity.values()]
-                  .sort((left, right) => left.date.localeCompare(right.date))
-                  .map((row) => ({ ...row, label: row.date.slice(5) }));
                 return (
                   <HearseCard
                     key={hearse.id}
@@ -1012,31 +1125,6 @@ function FleetDashboard({ embedded = false }) {
                         <span><MapPin size={13} />{hearse.branch_name || hearse.branch_code || 'Branch not set'}</span>
                         <span><CreditCard size={13} />{hearse.fuel_card_number || 'No fuel card'}</span>
                       </CardFooter>
-                      {hearse.fuel_card_number && (
-                        <>
-                          <CardBalance $low={cardBalance?.is_low}>
-                            <strong>{fuelWallet ? formatKES(cardBalance?.balance || 0) : 'Loading balance...'}</strong>
-                            <span>{cardBalance?.is_low ? 'LOW BALANCE' : 'CARD BALANCE'}</span>
-                          </CardBalance>
-                          <CardChart aria-label={`${hearse.plate_number || 'Hearse'} fuel-card activity chart`}>
-                            <CardChartLabel>Card activity · KES</CardChartLabel>
-                            {chartData.length ? (
-                              <ResponsiveContainer width="100%" height="82%">
-                                <BarChart data={chartData} margin={{ top: 3, right: 4, bottom: 0, left: 0 }}>
-                                  <CartesianGrid stroke="#eef0f4" vertical={false} />
-                                  <XAxis dataKey="label" tick={{ fontSize: 8, fill: '#747a87' }} />
-                                  <Tooltip labelFormatter={(label) => `Date: ${label}`} formatter={(value) => formatKES(Number(value))} />
-                                  <Legend wrapperStyle={{ fontSize: 8, lineHeight: '10px' }} />
-                                  <Bar dataKey="allocations" name="Added" fill="#547eb5" radius={[2, 2, 0, 0]} />
-                                  <Bar dataKey="purchases" name="Used" fill="#d88445" radius={[2, 2, 0, 0]} />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            ) : (
-                              <CardChartEmpty>No card activity recorded yet.</CardChartEmpty>
-                            )}
-                          </CardChart>
-                        </>
-                      )}
                     </HearseCardText>
                     <VehicleThumb>
                       {hearse.image ? <img src={imageUrl(hearse.image)} alt="" /> : <Truck size={25} />}
@@ -1084,6 +1172,132 @@ function FleetDashboard({ embedded = false }) {
                           <FuelFact><span>Recorded card</span><strong>{selectedHearse.fuel_card_number}</strong></FuelFact>
                           <FuelFact><span>Recorded balance</span><strong>{fuelWallet ? formatKES(selectedFuelCard?.balance || 0) : 'Loading...'}</strong></FuelFact>
                         </FuelFacts>
+                        <FuelChartsGrid aria-label={`${selectedHearse.plate_number || 'Selected hearse'} fuel charts`}>
+                          <FuelMetricCard>
+                            <FuelMetricHeader>
+                              <FuelMetricTitle><FuelMetricIcon><CreditCard size={14} /></FuelMetricIcon>Fuel Card Balance</FuelMetricTitle>
+                              <FuelMetricTotal>
+                                <strong>{formatKES(cardAllocated)}</strong>
+                                <span>Total allocated</span>
+                              </FuelMetricTotal>
+                            </FuelMetricHeader>
+                            {cardAllocated > 0 ? (
+                              <BalanceDonut>
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie data={balanceDonutData} dataKey="value" nameKey="name" innerRadius={47} outerRadius={66} paddingAngle={2} startAngle={90} endAngle={-270}>
+                                      {balanceDonutData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                                    </Pie>
+                                    <Tooltip formatter={(value) => formatKES(Number(value))} />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                                <DonutCenter>
+                                  <strong>{formatKES(cardBalance)}</strong>
+                                  <span>Available</span>
+                                </DonutCenter>
+                              </BalanceDonut>
+                            ) : (
+                              <NoChartData>No allocated funds recorded for this card yet.</NoChartData>
+                            )}
+                            <FuelStatRow>
+                              <FuelStat><strong>{formatKES(cardSpent)}</strong><span>Spent to date</span></FuelStat>
+                              <FuelStat><strong>{formatKES(spentThisMonth)}</strong><span>Spent this month</span></FuelStat>
+                            </FuelStatRow>
+                          </FuelMetricCard>
+
+                          <FuelMetricCard>
+                            <FuelMetricHeader>
+                              <FuelMetricTitle><FuelMetricIcon><Truck size={14} /></FuelMetricIcon>Card Balance Trend</FuelMetricTitle>
+                              <FuelMetricTotal>
+                                <strong>{formatKES(cardBalance)}</strong>
+                                <span>Current balance</span>
+                              </FuelMetricTotal>
+                            </FuelMetricHeader>
+                            <FuelTrendChart>
+                              {balanceHistory.length ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={balanceHistory} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+                                    <CartesianGrid stroke="#f0f0f0" strokeDasharray="2 2" />
+                                    <XAxis dataKey="date" tickFormatter={(date) => date.slice(5)} tick={{ fontSize: 9, fill: '#a1a1aa' }} />
+                                    <Tooltip labelFormatter={(date) => `Date: ${date}`} formatter={(value) => formatKES(Number(value))} />
+                                    <Line type="monotone" dataKey="balance" name="Recorded balance" stroke="#E53935" strokeWidth={2} dot={{ r: 2, fill: '#E53935' }} activeDot={{ r: 4 }} />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              ) : (
+                                <NoChartData>No balance history recorded this week.</NoChartData>
+                              )}
+                            </FuelTrendChart>
+                            <FuelStatRow>
+                              <FuelStat><strong>{statusMeta(selectedHearse.status).label}</strong><span>Current hearse status</span></FuelStat>
+                              <FuelStat><strong>7 days</strong><span>Recorded balance history</span></FuelStat>
+                            </FuelStatRow>
+                          </FuelMetricCard>
+
+                          <FuelMetricCard>
+                            <FuelMetricHeader>
+                              <FuelMetricTitle><FuelMetricIcon><CreditCard size={14} /></FuelMetricIcon>Latest Activity</FuelMetricTitle>
+                              <FuelMetricTotal>
+                                <strong>{selectedFuelCard?.latest_activity?.transaction_date
+                                  ? String(selectedFuelCard.latest_activity.transaction_date).slice(0, 10)
+                                  : '—'}</strong>
+                                <span>{selectedFuelCard?.latest_activity?.station || selectedFuelCard?.latest_activity?.reference || 'Card ledger'}</span>
+                              </FuelMetricTotal>
+                            </FuelMetricHeader>
+                            <FuelStat><span>{latestActivityLabel}</span></FuelStat>
+                            <FuelActivityValue>
+                              {selectedFuelCard?.latest_activity
+                                ? `${selectedFuelCard.latest_activity.transaction_type === 'fuel_purchase' ? '−' : '+'}${formatKES(activityTotal)}`
+                                : 'No activity'}
+                            </FuelActivityValue>
+                            <FuelActivitySparkline>
+                              {balanceHistory.length ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={balanceHistory} margin={{ top: 8, right: 2, bottom: 0, left: 2 }}>
+                                    <CartesianGrid stroke="#f0f0f0" strokeDasharray="2 2" />
+                                    <Tooltip labelFormatter={(date) => `Date: ${date}`} formatter={(value) => formatKES(Number(value))} />
+                                    <Line type="monotone" dataKey="purchases" name="Recorded fuel purchases" stroke="#E53935" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              ) : (
+                                <NoChartData>No recent card activity.</NoChartData>
+                              )}
+                            </FuelActivitySparkline>
+                          </FuelMetricCard>
+
+                          <FuelMetricCard>
+                            <FuelMetricHeader>
+                              <FuelMetricTitle><FuelMetricIcon><Settings2 size={14} /></FuelMetricIcon>Fuel Spend</FuelMetricTitle>
+                              <FuelMetricTotal>
+                                <strong>{formatKES(spentThisMonth)}</strong>
+                                <span>This month · KES</span>
+                              </FuelMetricTotal>
+                            </FuelMetricHeader>
+                            {monthlyFunds > 0 ? (
+                              <>
+                                <FuelGaugeWrap>
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie data={consumptionData} dataKey="value" nameKey="name" cx="50%" cy="82%" innerRadius={53} outerRadius={72} startAngle={180} endAngle={0} paddingAngle={2}>
+                                        {consumptionData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                                      </Pie>
+                                      <Tooltip formatter={(value) => formatKES(Number(value))} />
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                  <FuelGaugeCenter>
+                                    <strong>{monthlyFunds ? `${Math.round((spentThisMonth / monthlyFunds) * 100)}%` : '0%'}</strong>
+                                    <span>of recorded funds used</span>
+                                  </FuelGaugeCenter>
+                                </FuelGaugeWrap>
+                                <FuelStatRow>
+                                  <FuelStat><strong>{formatKES(monthlyRemaining)}</strong><span>Remaining on card</span></FuelStat>
+                                  <FuelStat><strong>{formatKES(monthlyFunds)}</strong><span>Funds available this month</span></FuelStat>
+                                </FuelStatRow>
+                              </>
+                            ) : (
+                              <NoChartData>No card funds or purchases recorded this month.</NoChartData>
+                            )}
+                          </FuelMetricCard>
+                        </FuelChartsGrid>
                         <AccountControls>
                           <LedgerForm onSubmit={(event) => submitFuelAction(
                             event,

@@ -97,7 +97,7 @@ async function ensureAccount(pool: Pool | PoolConnection, tenantKey: string): Pr
 async function getSummary(pool: Pool, tenantKey: string) {
     await ensureAccount(pool, tenantKey);
     const tenantScope = hearseTenantScope(tenantKey, 'h');
-    const [[accountRows], [totalsRows], [cardRows], [historyRows]]: any = await Promise.all([
+    const [[accountRows], [totalsRows], [cardRows], [historyRows], [activityRows], [latestActivityRows], [currentDateRows]]: any = await Promise.all([
         pool.query('SELECT low_balance_threshold FROM hearse_fuel_accounts WHERE tenant_key = ?', [tenantKey]),
         pool.query(
             `SELECT
@@ -113,7 +113,15 @@ async function getSummary(pool: Pool, tenantKey: string) {
                     WHEN t.transaction_type = 'allocation' THEN t.amount
                     WHEN t.transaction_type = 'fuel_purchase' THEN -t.amount
                     ELSE 0
-                END), 0) AS balance
+                END), 0) AS balance,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'allocation' THEN t.amount ELSE 0 END), 0) AS total_allocated,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'fuel_purchase' THEN t.amount ELSE 0 END), 0) AS total_spent,
+                COALESCE(SUM(CASE
+                    WHEN t.transaction_type = 'fuel_purchase'
+                     AND t.transaction_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+                     AND t.transaction_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                    THEN t.amount ELSE 0
+                END), 0) AS spent_this_month
              FROM hearses h
              LEFT JOIN hearse_fuel_transactions t
                 ON t.tenant_key = ? AND t.fuel_card_number = h.fuel_card_number
@@ -131,17 +139,80 @@ async function getSummary(pool: Pool, tenantKey: string) {
              LIMIT 20`,
             [tenantKey]
         ),
+        pool.query(
+             `SELECT fuel_card_number,
+                 DATE_FORMAT(transaction_date, '%Y-%m-%d') AS activity_date,
+                 COALESCE(SUM(CASE WHEN transaction_type = 'allocation' THEN amount ELSE 0 END), 0) AS allocations,
+                 COALESCE(SUM(CASE WHEN transaction_type = 'fuel_purchase' THEN amount ELSE 0 END), 0) AS purchases
+              FROM hearse_fuel_transactions
+              WHERE tenant_key = ?
+                AND transaction_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                AND transaction_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+              GROUP BY fuel_card_number, DATE(transaction_date)
+              ORDER BY activity_date`,
+             [tenantKey]
+        ),
+        pool.query(
+             `SELECT t.fuel_card_number, t.transaction_type, t.amount, t.station,
+                 t.reference, t.transaction_date, t.created_at
+              FROM hearse_fuel_transactions t
+              INNER JOIN (
+                  SELECT fuel_card_number, MAX(id) AS id
+                  FROM hearse_fuel_transactions
+                  WHERE tenant_key = ? AND fuel_card_number IS NOT NULL
+                  GROUP BY fuel_card_number
+              ) latest ON latest.id = t.id`,
+             [tenantKey]
+        ),
+        pool.query("SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS current_date"),
     ]);
     const totals = totalsRows[0];
     const deposited = Number(totals.deposited);
     const allocated = Number(totals.allocated);
     const spent = Number(totals.spent);
     const threshold = Number(accountRows[0]?.low_balance_threshold ?? DEFAULT_LOW_BALANCE_THRESHOLD);
-    const cards = cardRows.map((card: any) => ({
-        ...card,
-        balance: Number(card.balance),
-        is_low: Number(card.balance) < threshold,
-    }));
+    const cards = cardRows.map((card: any) => {
+        const balance = Number(card.balance);
+        const cardActivity = activityRows.filter((activity: any) =>
+            String(activity.fuel_card_number) === String(card.fuel_card_number)
+        );
+        const activityByDate = new Map(cardActivity.map((activity: any) => [
+            String(activity.activity_date),
+            {
+                allocations: Number(activity.allocations),
+                purchases: Number(activity.purchases),
+            },
+        ]));
+        const todayUtc = new Date(`${currentDateRows[0].current_date}T00:00:00.000Z`);
+        let closingBalance = balance;
+        const balanceHistory = [];
+        for (let offset = 6; offset >= 0; offset -= 1) {
+            const date = new Date(todayUtc);
+            date.setUTCDate(date.getUTCDate() - offset);
+            const activityDate = date.toISOString().slice(0, 10);
+            const dayActivity = activityByDate.get(activityDate) || { allocations: 0, purchases: 0 };
+            balanceHistory.push({
+                date: activityDate,
+                balance: closingBalance,
+                allocations: dayActivity.allocations,
+                purchases: dayActivity.purchases,
+            });
+            closingBalance -= dayActivity.allocations - dayActivity.purchases;
+        }
+        const latestActivity = latestActivityRows.find((activity: any) =>
+            String(activity.fuel_card_number) === String(card.fuel_card_number)
+        ) || null;
+        return {
+            ...card,
+            balance,
+            total_allocated: Number(card.total_allocated),
+            total_spent: Number(card.total_spent),
+            spent_this_month: Number(card.spent_this_month),
+            balance_history: balanceHistory,
+            latest_activity: latestActivity,
+            is_low: balance < threshold,
+        };
+    });
 
     return {
         account_balance: (deposited - allocated).toFixed(2),
