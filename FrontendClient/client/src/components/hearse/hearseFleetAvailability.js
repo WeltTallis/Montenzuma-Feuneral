@@ -32,69 +32,121 @@
 // any date, even when an old booking row still references them.
 // ============================================================
 
+const NORMALIZE_STATUS = (value) =>
+  String(value == null ? '' : value)
+    .toLowerCase()
+    .trim()
+    .replace(/[-\s]+/g, '_');
+
+const DEFAULT_EXCLUDED_STATUSES = [
+  'maintenance',
+  'out_of_service',
+  'disabled',
+  'pending_inspection',
+];
+
+const toExcludedSet = (excludedStatuses) => {
+  const list = Array.isArray(excludedStatuses)
+    ? excludedStatuses
+    : excludedStatuses == null
+      ? []
+      : [excludedStatuses];
+  const set = new Set(DEFAULT_EXCLUDED_STATUSES.map(NORMALIZE_STATUS));
+  for (const status of list) {
+    const normalized = NORMALIZE_STATUS(status);
+    if (normalized) set.add(normalized);
+  }
+  return set;
+};
+
+const toDays = (dayResults) => {
+  if (Array.isArray(dayResults)) return dayResults.filter(Boolean);
+  if (dayResults && typeof dayResults === 'object') return [dayResults];
+  return [];
+};
+
+const asArray = (value) => (Array.isArray(value) ? value : []);
+
 export function mergeFleetAvailability(hearses, dayResults, excludedStatuses = []) {
-    const fleet = {};
+  const fleet = {};
+  const excludedSet = toExcludedSet(excludedStatuses);
 
-    // 1) Seed from the full fleet list so every hearse has a row even when no
-    //    bucket mentions it (the prop carries model + charge + global status).
-    (hearses || []).forEach((h) => {
-        fleet[String(h.id)] = {
-            status: 'available',
-            bookedFor: [],
-            hearse: {
-                id: h.id,
-                hearse_code: h.hearse_code,
-                hearse_name: h.hearse_name || h.plate_number || '',
-                plate_number: h.plate_number || '',
-                model: h.model || '',
-                capacity: h.capacity,
-                status: h.status || 'available',
-                service_charge_ksh: Number(h.service_charge_ksh ?? h.service_charge) || 0,
-            },
-        };
+  // 1) Seed from the full fleet list so every hearse has a row even when no
+  //    bucket mentions it (the prop carries model + charge + global status).
+  (Array.isArray(hearses) ? hearses : []).forEach((h) => {
+    if (h == null) return;
+    const key = String(h.id ?? h.hearse_id ?? '');
+    if (!key) return;
+    const status = NORMALIZE_STATUS(h.status);
+    fleet[key] = {
+      status: 'available',
+      bookedFor: [],
+      hearse: {
+        id: h.id ?? h.hearse_id,
+        hearse_code: h.hearse_code,
+        hearse_name: h.hearse_name || h.plate_number || '',
+        plate_number: h.plate_number || '',
+        model: h.model || '',
+        capacity: h.capacity,
+        status: h.status || 'available',
+        service_charge_ksh: Number(h.service_charge_ksh ?? h.service_charge) || 0,
+      },
+    };
+    // A hearse whose global status is already excluded is never bookable,
+    // even before any day bucket is merged.
+    if (excludedSet.has(status)) {
+      fleet[key].status = 'maintenance';
+    }
+  });
+
+  const days = toDays(dayResults);
+
+  // PASS 1 — availability + metadata for every selected day.
+  days.forEach((day) => {
+    asArray(day && day.avail).forEach((a) => {
+      if (a == null) return;
+      const key = String(a.id ?? a.hearse_id ?? '');
+      if (!key) return;
+      if (!fleet[key]) fleet[key] = { status: 'available', bookedFor: [], hearse: {} };
+      fleet[key].hearse = { ...fleet[key].hearse, ...a };
+      // Never clobber a booking or an out-of-service mark (defensive:
+      // pass 1 runs before bookings, but the invariant is explicit here).
+      if (fleet[key].status !== 'booked' && fleet[key].status !== 'maintenance') {
+        fleet[key].status = 'available';
+      }
     });
+  });
 
-    const days = (dayResults || []).filter(Boolean);
-
-    // PASS 1 — availability + metadata for every selected day.
-    days.forEach((day) => {
-        (day.avail || []).forEach((a) => {
-            const key = String(a.id);
-            if (!fleet[key]) fleet[key] = { status: 'available', bookedFor: [], hearse: {} };
-            fleet[key].hearse = { ...fleet[key].hearse, ...a };
-            // Never clobber a booking or an out-of-service mark (defensive:
-            // pass 1 runs before bookings, but the invariant is explicit here).
-            if (fleet[key].status !== 'booked' && fleet[key].status !== 'maintenance') {
-                fleet[key].status = 'available';
-            }
+  // PASS 2 — a booking on ANY selected date makes the hearse 'booked' for
+  // the whole selection. Runs strictly after pass 1 so no avail list can
+  // undo it, no matter which date the conflict falls on.
+  days.forEach((day) => {
+    const date = day && day.date;
+    asArray(day && day.booked).forEach((bh) => {
+      if (bh == null) return;
+      const id = String(bh.hearse_id ?? bh.id ?? '');
+      if (!id) return;
+      if (!fleet[id]) fleet[id] = { status: 'booked', bookedFor: [], hearse: { ...bh } };
+      fleet[id].status = 'booked';
+      if (!fleet[id].bookedFor.some((x) => x && x.date === date)) {
+        fleet[id].bookedFor.push({
+          date,
+          client: bh.client_name || bh.booking_code || 'Booked',
         });
+      }
+      fleet[id].hearse = { ...fleet[id].hearse, ...bh };
     });
+  });
 
-    // PASS 2 — a booking on ANY selected date makes the hearse 'booked' for
-    // the whole selection. Runs strictly after pass 1 so no avail list can
-    // undo it, no matter which date the conflict falls on.
-    days.forEach((day) => {
-        (day.booked || []).forEach((bh) => {
-            const id = String(bh.hearse_id || bh.id);
-            if (!fleet[id]) fleet[id] = { status: 'booked', bookedFor: [], hearse: { ...bh } };
-            fleet[id].status = 'booked';
-            if (!fleet[id].bookedFor.some((x) => x.date === day.date)) {
-                fleet[id].bookedFor.push({
-                    date: day.date,
-                    client: bh.client_name || bh.booking_code || 'Booked',
-                });
-            }
-            fleet[id].hearse = { ...fleet[id].hearse, ...bh };
-        });
-    });
+  // 3) Out-of-service hearses are never bookable — highest precedence.
+  (Array.isArray(hearses) ? hearses : []).forEach((h) => {
+    if (h == null) return;
+    const key = String(h.id ?? h.hearse_id ?? '');
+    if (!key || !fleet[key]) return;
+    if (excludedSet.has(NORMALIZE_STATUS(h.status))) {
+      fleet[key].status = 'maintenance';
+    }
+  });
 
-    // 3) Out-of-service hearses are never bookable — highest precedence.
-    (hearses || []).forEach((h) => {
-        const key = String(h.id);
-        if (fleet[key] && (excludedStatuses || []).includes(h.status)) {
-            fleet[key].status = 'maintenance';
-        }
-    });
-
-    return fleet;
+  return fleet;
 }

@@ -353,6 +353,7 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
             return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
         };
         const tenantId = headerOf('x-tenant-id') || (req.query as any)?.tenant_id || (req as any).tenant?.id || (req as any).tenant?.tenant_id || null;
+        const tenantSlug = headerOf('x-tenant-slug') || (req.query as any)?.tenant_slug || (req as any).tenant?.tenant_slug || (req as any).tenantSlug || null;
 
         // ─── REDIS CACHE ─────────────────────────────────────────────────────
         // The fleet page is a pure tenant-scoped read, so it is the safest thing
@@ -373,9 +374,25 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
 
         let sql = `SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h`;
         const params: any[] = [];
-        if (tenantId) {
-            sql += ` WHERE h.tenant_id = ?`;
-            params.push(tenantId);
+        if (tenantId || tenantSlug) {
+            const clauses: string[] = [];
+            const paramsForTenant: any[] = [];
+            if (tenantId) {
+                clauses.push('h.tenant_id = ?');
+                paramsForTenant.push(tenantId);
+            }
+            if (tenantSlug) {
+                clauses.push('h.tenant_slug = ?');
+                paramsForTenant.push(tenantSlug);
+            }
+            // Include legacy rows that were stored with a NULL tenant id but a
+            // matching tenant slug so they still appear in the fleet list.
+            if (tenantId && tenantSlug) {
+                clauses.push('(h.tenant_id IS NULL AND h.tenant_slug = ?)');
+                paramsForTenant.push(tenantSlug);
+            }
+            sql += ` WHERE (${clauses.join(' OR ')})`;
+            params.push(...paramsForTenant);
         }
         sql += ` ORDER BY h.created_at DESC`;
 

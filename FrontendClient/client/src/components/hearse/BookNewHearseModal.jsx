@@ -14,7 +14,7 @@ const API_BASE_URL = import.meta.env.PROD
 // array on every render, so the useCallback identity changed on every render and
 // the loader effect re-ran continuously — each pass firing another burst of
 // availability requests (the "too many requests" symptom).
-const EXCLUDED = ['maintenance', 'out_of_service', 'disabled'];
+const EXCLUDED = ['maintenance', 'out_of_service', 'disabled', 'pending_inspection'];
 
 /* ─── the reference design's palette, verbatim ─── */
 const C = {

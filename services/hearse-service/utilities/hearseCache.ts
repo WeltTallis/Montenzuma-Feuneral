@@ -76,8 +76,25 @@ export async function hearseCacheSet(req: Request, key: string, value: any, ttl:
  * Call this after ANY create / update / status change / deletion.
  */
 export async function invalidateHearseCache(req: Request): Promise<void> {
+  const scopes = new Set<string>();
+  scopes.add(hearseCacheScope(req));
+
+  // Resolve every plausible tenant scope so a stale entry written under a
+  // different identifier (id vs. slug vs. shared bucket) is also purged.
+  const headerOf = (name: string): string | null => {
+    const v = (req.headers as any)?.[name];
+    return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
+  };
+  const tenantId = headerOf('x-tenant-id') || (req as any).tenant?.id || (req as any).tenant?.tenant_id || null;
+  const tenantSlug = headerOf('x-tenant-slug') || (req as any).tenant?.tenant_slug || (req as any).tenantSlug || null;
+  if (tenantId != null && String(tenantId).trim() !== '') scopes.add(`id-${String(tenantId).trim()}`);
+  if (tenantSlug && tenantSlug !== 'system') scopes.add(`slug-${tenantSlug}`);
+  scopes.add('shared');
+
   try {
-    await clearServiceCache(HEARSE_SERVICE_NAME, hearseCacheScope(req));
+    for (const scope of scopes) {
+      await clearServiceCache(HEARSE_SERVICE_NAME, scope);
+    }
   } catch {
     // Non-critical: the TTL bounds staleness if Redis is unreachable.
   }
