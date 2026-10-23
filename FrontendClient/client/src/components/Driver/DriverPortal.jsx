@@ -622,6 +622,7 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
     const vehicle = b.vehicle_name || b.hearse_name || b.model || 'Assigned';
     const plate = b.plate_number || b.number_plate || '';
 
+    const done = ['completed', 'cancelled', 'declined'].includes(String(b.status || '').toLowerCase());
     const action = b.status === 'in_transit'
         ? <button className="btn plum press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'completed')}>✓&nbsp; Complete Trip</button>
         : <button className="btn teal press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'in_transit')}>Accept Trip →</button>;
