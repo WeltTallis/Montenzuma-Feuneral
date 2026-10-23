@@ -1,7 +1,7 @@
 import { resolveBranchName, isMultiDay, getBookingDateRange, getMultiDayColor } from './viewerShared';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getTenantId, getBranchId, getBranchSlug } from '../../utils/globalAuth';
+import { getTenantId, getBranchId, getBranchSlug, getBranches as getCachedBranches } from '../../utils/globalAuth';
 import { useSocket } from '../../utils/context/socketContext';
 import useAuthStore from '../../utils/store/useAuthStore';
 import BookNewHearseModal from './BookNewHearseModal';
@@ -228,8 +228,13 @@ const api = {
   getBranches: async () => {
     try {
       const r = await fetch(`${API_BASE_URL}/tenant/${getTenantSlug()}/branches`, { headers: getAuthHeaders() });
-      return r.ok ? (await r.json()).data || [] : [];
-    } catch { return []; }
+      if (r.ok) {
+        const payload = await r.json();
+        const list = Array.isArray(payload) ? payload : payload.data || payload.branches || [];
+        if (Array.isArray(list) && list.length) return list;
+      }
+    } catch { /* use the branch list cached during authentication */ }
+    return getCachedBranches();
   },
 
   //get   all  herases

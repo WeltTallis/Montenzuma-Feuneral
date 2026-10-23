@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import env from '../../utils/config/env';
-import { X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
+import { X, ChevronLeft, ChevronRight, Clock } from '../../utils/icons/icons';
 import { mergeFleetAvailability } from './hearseFleetAvailability';
 
 const API_BASE_URL = import.meta.env.PROD
@@ -33,6 +33,12 @@ const formatDateStr = (d) => {
 };
 const pad = (n) => String(n).padStart(2, '0');
 const fmtDay = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+const formatTimeLabel = (value) => {
+  if (!value) return '';
+  const [rawHour, minute] = value.split(':').map(Number);
+  const period = rawHour >= 12 ? 'PM' : 'AM';
+  return `${rawHour % 12 || 12}:${pad(minute)} ${period}`;
+};
 
 const getTenantSlug = () => {
   const direct = localStorage.getItem('tenantSlug') || localStorage.getItem('tenant_slug');
@@ -75,6 +81,39 @@ const getLocalUserName = () => {
 };
 const safeUser = () => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } };
 
+function getBranchOptions(branches, user) {
+  const options = (Array.isArray(branches) ? branches : []).map((branch) => {
+    const id = branch.branchId || branch.branch_id || branch.id || '';
+    const slug = branch.branchSlug || branch.branch_slug || branch.slug || branch.branchDbName || branch.branch_db_name || '';
+    return {
+      key: String(id || slug),
+      id: String(id || ''),
+      slug: String(slug || ''),
+      code: String(branch.branchCode || branch.branch_code || ''),
+      name: String(branch.branchName || branch.branch_name || branch.name || '').trim(),
+    };
+  }).filter((branch) => branch.key && branch.name);
+
+  const userBranchId = user.branchId || user.branch_id || localStorage.getItem('branchId') || '';
+  const userBranchSlug = user.branchSlug || user.branch_slug || user.branchDbName
+    || localStorage.getItem('branchSlug') || localStorage.getItem('branchDbName') || '';
+  const hasCurrentBranch = options.some((branch) =>
+    (userBranchId && branch.id === String(userBranchId))
+    || (userBranchSlug && branch.slug.toLowerCase() === String(userBranchSlug).toLowerCase())
+  );
+  const userBranchName = user.branchName || user.branch_name || user.branch?.branchName || user.branch?.branch_name || '';
+  if (!hasCurrentBranch && (userBranchId || userBranchSlug) && userBranchName) {
+    options.push({
+      key: String(userBranchId || userBranchSlug),
+      id: String(userBranchId || ''),
+      slug: String(userBranchSlug || ''),
+      code: String(user.branchCode || user.branch_code || ''),
+      name: String(userBranchName).trim(),
+    });
+  }
+  return options;
+}
+
 /* ══════════════════════════ STYLES — mirrors the reference HTML 1:1 ══════════════════════════ */
 const pulse = keyframes`0%,100%{opacity:.4}50%{opacity:1}`;
 const rot = keyframes`to{transform:rotate(360deg)}`;
@@ -85,13 +124,13 @@ const Scrim = styled.div`
   transition:opacity .3s ease;
 `;
 const Panel = styled.aside`
-  position:fixed;top:0;right:0;bottom:0;z-index:6100;width:min(50vw,760px);background:#fff;
+  position:fixed;top:0;right:0;bottom:0;z-index:6100;width:min(88vw,1180px);background:#fff;
   display:flex;flex-direction:column;box-shadow:-30px 0 80px rgba(2,12,27,.35);
   transform:translateX(${p => (p.$open ? '0' : '103%')});
   visibility:${p => (p.$open ? 'visible' : 'hidden')};
   transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear ${p => (p.$open ? '0s' : '.38s')};
   font-family:'Inter',system-ui,sans-serif;color:${C.text};
-  @media(max-width:900px){width:min(74vw,680px)}
+  @media(max-width:900px){width:min(94vw,900px)}
   @media(max-width:560px){width:100vw}
 `;
 const PHead = styled.header`
@@ -109,11 +148,11 @@ const XBtn = styled.button`
 const PBody = styled.div`
   flex:1;min-height:0;overflow-y:auto;padding:1.25rem 1.5rem 1.5rem;
   @media(min-width:1100px){
-    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:1.5rem;
+    display:grid;grid-template-columns:minmax(250px,.85fr) minmax(300px,1fr) minmax(300px,1fr);column-gap:1.5rem;
     align-content:start;
     & > section:first-child{grid-column:1;grid-row:1}
     & > section:nth-child(2){grid-column:2;grid-row:1}
-    & > section:nth-child(3){grid-column:1 / -1;grid-row:2}
+    & > section:nth-child(3){grid-column:3;grid-row:1}
   }
   @media(max-width:560px){padding:1rem}
   &::-webkit-scrollbar{width:8px}
@@ -218,6 +257,51 @@ const ChargeWrap = styled.div`
     color:${C.muted2};border-right:1px solid ${C.line}}
   input{border:none;box-shadow:none;flex:1;min-width:0;&:focus{box-shadow:none}}
 `;
+const BranchSelect = styled.select`
+  width:100%;padding:.6rem .7rem;font:inherit;font-size:.82rem;color:${C.text};
+  border:1px solid #d1d5db;border-radius:9px;outline:none;background:#fff;
+  &:focus{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
+`;
+const TimePickerWrap = styled.div`position:relative;`;
+const TimeTrigger = styled.button`
+  width:100%;height:44px;padding:0 .8rem;display:flex;align-items:center;gap:.65rem;
+  border:1.5px solid ${p => p.$open ? C.text : C.line};border-radius:12px;background:#fff;
+  color:${C.text};font:inherit;font-size:.86rem;font-weight:700;cursor:pointer;text-align:left;
+  box-shadow:${p => p.$open ? '0 0 0 4px rgba(17,24,39,.07)' : 'none'};
+  svg{color:${C.muted2};flex-shrink:0}
+  span{flex:1}
+`;
+const TimePickerCard = styled.div`
+  position:absolute;top:calc(100% + 8px);left:0;z-index:20;width:min(300px, calc(100vw - 40px));
+  padding:14px 16px 16px;background:#fff;border:1px solid ${C.line};border-radius:16px;
+  box-shadow:0 18px 48px rgba(15,23,42,.18);
+`;
+const TimePickerTitle = styled.div`
+  margin-bottom:8px;color:${C.muted};font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+`;
+const TimePickerValue = styled.div`
+  margin-bottom:12px;color:${C.text};font-size:1.75rem;font-weight:800;font-variant-numeric:tabular-nums;
+  span{margin-left:6px;color:${C.muted};font-size:.78rem;letter-spacing:.04em}
+`;
+const TimeControls = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:10px;`;
+const TimeControl = styled.label`
+  display:grid;gap:5px;color:${C.muted2};font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+`;
+const TimeSelect = styled.select`
+  width:100%;height:44px;padding:0 10px;border:1px solid ${C.line};border-radius:10px;
+  color:${C.text};background:#fff;font:inherit;font-size:1rem;font-weight:700;
+`;
+const PeriodButtons = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;`;
+const PeriodButton = styled.button`
+  height:36px;border:1px solid ${p => p.$active ? C.text : C.line};border-radius:9px;
+  color:${p => p.$active ? '#fff' : C.muted2};background:${p => p.$active ? C.text : '#fff'};
+  font:inherit;font-size:.72rem;font-weight:800;cursor:pointer;
+`;
+const TimeActions = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;`;
+const TimeAction = styled.button`
+  height:38px;border:0;border-radius:10px;background:${p => p.$primary ? C.text : '#f3f4f6'};
+  color:${p => p.$primary ? '#fff' : C.muted2};font:inherit;font-size:.72rem;font-weight:800;cursor:pointer;
+`;
 const ErrBox = styled.div`
   display:${p => (p.$show ? 'block' : 'none')};margin-top:.5rem;padding:.5rem .65rem;border-radius:9px;
   background:#fee2e2;color:${C.bad};font-size:.72rem;font-weight:600;
@@ -250,12 +334,13 @@ const Spin = styled.span`
 
 // ═══════════════════════════════════════════════════════
 export default function BookNewHearseModal({
-  open = false, initialDates = [], hearses = [], branches = [], // branches: kept for API compat — detected internally, never displayed
+  open = false, initialDates = [], hearses = [], branches = [],
   onClose, onCreated, showToast,
 }) {
   const [form, setForm] = useState({
     hearse_id: '', client_name: '', client_phone: '', deceased_name: '',
-    from_location: '', to_location: '', branch_id: '', branch_code: '', service_charge: 0,
+    from_location: '', to_location: '', branch_id: '', branch_slug: '',
+    branch_code: '', branch_name: '', service_charge: 0,
   });
   const [dates, setDates] = useState([]);          // confirmed selection — LIVE, no popover needed
   const [anchor, setAnchor] = useState(null);      // in-progress range start (START → END picking)
@@ -266,6 +351,25 @@ export default function BookNewHearseModal({
   const [fleet, setFleet] = useState({});
   const [checkError, setCheckError] = useState(null);
   const [err, setErr] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [draftHour, setDraftHour] = useState('9');
+  const [draftMinute, setDraftMinute] = useState('00');
+  const [draftPeriod, setDraftPeriod] = useState('AM');
+  const [selectedBranchKey, setSelectedBranchKey] = useState('');
+  const userProfile = safeUser();
+  const branchOptions = useMemo(() => getBranchOptions(branches, userProfile), [branches]);
+
+  const selectBranch = (branch) => {
+    setSelectedBranchKey(branch?.key || '');
+    setForm((current) => ({
+      ...current,
+      branch_id: branch?.id || '',
+      branch_slug: branch?.slug || '',
+      branch_code: branch?.code || '',
+      branch_name: branch?.name || '',
+    }));
+  };
 
   /* initialDates is frequently a NEW array on every parent render — depending on
      it directly re-ran the reset effect while the officer was typing, wiping the
@@ -279,16 +383,43 @@ export default function BookNewHearseModal({
     const d = Array.isArray(initialDatesRef.current) ? initialDatesRef.current.filter(Boolean) : [];
     setDates(d);
     const u = safeUser();
-    const db = u?.dbName || u?.branchDbName || '';
+    const branchId = u.branchId || u.branch_id || localStorage.getItem('branchId') || '';
+    const branchSlug = u.branchSlug || u.branch_slug || u.branchDbName
+      || localStorage.getItem('branchSlug') || localStorage.getItem('branchDbName') || '';
+    const defaultBranch = branchOptions.find((branch) =>
+      (branchId && branch.id === String(branchId))
+      || (branchSlug && branch.slug.toLowerCase() === String(branchSlug).toLowerCase())
+    ) || (branchOptions.length === 1 ? branchOptions[0] : null);
+    setSelectedBranchKey(defaultBranch?.key || '');
     setForm({
       hearse_id: '', client_name: '', client_phone: '', deceased_name: '',
-      from_location: '', to_location: '', branch_id: u?.branch_id || '',
-      branch_code: db.split('-').pop() || '', service_charge: 0,
+      from_location: '', to_location: '',
+      branch_id: defaultBranch?.id || String(branchId),
+      branch_slug: defaultBranch?.slug || String(branchSlug),
+      branch_code: defaultBranch?.code || u.branchCode || u.branch_code || '',
+      branch_name: defaultBranch?.name || u.branchName || u.branch_name || '',
+      service_charge: 0,
     });
+    setBookingTime('');
+    setTimePickerOpen(false);
+    setDraftHour('9'); setDraftMinute('00'); setDraftPeriod('AM');
     setAnchor(null); setFleet({}); setCheckError(null); setErr('');
     setPkM(d[0] ? new Date(d[0] + 'T00:00:00').getMonth() : new Date().getMonth());
     setPkY(d[0] ? new Date(d[0] + 'T00:00:00').getFullYear() : new Date().getFullYear());
   }, [open]);
+
+  useEffect(() => {
+    if (!open || selectedBranchKey || !branchOptions.length) return;
+    const u = safeUser();
+    const branchId = u.branchId || u.branch_id || localStorage.getItem('branchId') || '';
+    const branchSlug = u.branchSlug || u.branch_slug || u.branchDbName
+      || localStorage.getItem('branchSlug') || localStorage.getItem('branchDbName') || '';
+    const defaultBranch = branchOptions.find((branch) =>
+      (branchId && branch.id === String(branchId))
+      || (branchSlug && branch.slug.toLowerCase() === String(branchSlug).toLowerCase())
+    ) || (branchOptions.length === 1 ? branchOptions[0] : null);
+    if (defaultBranch) selectBranch(defaultBranch);
+  }, [open, branchOptions, selectedBranchKey]);
 
   /* Escape closes the panel, like the reference */
   useEffect(() => {
@@ -502,6 +633,8 @@ export default function BookNewHearseModal({
       : '';
     if (dPart && form.hearse_id) {
       let t = `${dPart} · ${selHearse.hearse_name || 'Hearse'}`;
+      if (bookingTime) t += ` · ${formatTimeLabel(bookingTime)}`;
+      if (form.branch_name) t += ` · ${form.branch_name}`;
       if (selTotal > 0) t += ` · KSH ${selTotal.toLocaleString()}`;
       return { t, ok: true };
     }
@@ -511,7 +644,8 @@ export default function BookNewHearseModal({
 
   const canSubmit = !loading && hasD && !!form.hearse_id && !selBlocked
     && !!form.client_name.trim() && !!form.deceased_name.trim()
-    && !!form.from_location.trim() && !!form.to_location.trim();
+    && !!form.from_location.trim() && !!form.to_location.trim()
+    && !!bookingTime && (!branchOptions.length || !!selectedBranchKey);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -522,6 +656,8 @@ export default function BookNewHearseModal({
     if (!form.deceased_name.trim()) missing.push('deceased name');
     if (!form.from_location.trim()) missing.push('"from"');
     if (!form.to_location.trim()) missing.push('"to"');
+    if (!bookingTime) missing.push('pickup time');
+    if (branchOptions.length && !selectedBranchKey) missing.push('branch');
     if (missing.length) { setErr('Please add ' + missing.join(', ') + '.'); return; }
     if (checking) { setErr('Still checking availability — try again in a moment.'); return; }
     if (selBlocked) { setErr('That hearse is booked on the selected date(s) — pick another.'); return; }
@@ -530,10 +666,11 @@ export default function BookNewHearseModal({
     try {
       const hdr = getAuthHeaders(); hdr['Content-Type'] = 'application/json';
       const u = safeUser();
-      if (u?.branch_id) hdr['x-branch-id'] = u.branch_id;
+      if (form.branch_id) hdr['x-branch-id'] = form.branch_id;
+      if (form.branch_slug) hdr['x-branch-slug'] = form.branch_slug;
       if (u?.email) hdr['x-user-email'] = u.email;
       hdr['x-user-name'] = u?.full_name || u?.username || u?.name || 'System';
-      const fd = dates[0] + 'T00:00:00';
+      const fd = `${dates[0]}T${bookingTime}:00`;
       const svcCharge = Math.round((Number(form.service_charge) || 0) * 100) / 100;
       const body = {
         hearse_id: form.hearse_id,
@@ -544,11 +681,14 @@ export default function BookNewHearseModal({
         to_location: form.to_location.trim(),
         destination: form.to_location.trim(),
         from_timestamp: fd,
-        booking_date: fd,
+        booking_time: bookingTime,
+        booking_date: dates[0],
         booking_dates: dates,
         booked_by: getLocalUserName() || u?.email || 'System',
-        branch_id: form.branch_id || u?.branch_id || '',
-        branch_code: form.branch_code || u?.branch_code || '',
+        branch_id: form.branch_id || '',
+        branch_slug: form.branch_slug || '',
+        branch_name: form.branch_name || '',
+        branch_code: form.branch_code || '',
         service_charge: svcCharge,
       };
       const r = await fetch(`${API_BASE_URL}/hearse-bookings`, { method: 'POST', headers: hdr, body: JSON.stringify(body) });
@@ -579,6 +719,12 @@ export default function BookNewHearseModal({
   const fleetHint = !hasD ? 'pick a date first'
     : checking ? 'checking…'
       : `${avCount} of ${(hearses || []).length} free`;
+  const confirmBookingTime = () => {
+    const hour12 = Number(draftHour);
+    const hour24 = (hour12 % 12) + (draftPeriod === 'PM' ? 12 : 0);
+    setBookingTime(`${pad(hour24)}:${draftMinute}`);
+    setTimePickerOpen(false);
+  };
 
   return (
     <>
@@ -687,6 +833,87 @@ export default function BookNewHearseModal({
           {/* ── 3 · Details ── */}
           <Sec>
             <SecT><h2><i>3</i>Details</h2></SecT>
+            <Fld>
+              <Lbl>Branch {branchOptions.length > 0 && <em>*</em>}</Lbl>
+              {branchOptions.length > 0 ? (
+                <BranchSelect
+                  value={selectedBranchKey}
+                  onChange={(event) => {
+                    const branch = branchOptions.find((option) => option.key === event.target.value);
+                    selectBranch(branch);
+                  }}
+                  required
+                >
+                  <option value="">Select the booking branch</option>
+                  {branchOptions.map((branch) => (
+                    <option key={branch.key} value={branch.key}>{branch.name}</option>
+                  ))}
+                </BranchSelect>
+              ) : (
+                <Inp value={form.branch_name || 'Branch name unavailable'} readOnly aria-readonly="true" />
+              )}
+            </Fld>
+            <Fld>
+              <Lbl>Pickup time <em>*</em></Lbl>
+              <TimePickerWrap>
+                <TimeTrigger
+                  type="button"
+                  $open={timePickerOpen}
+                  aria-haspopup="dialog"
+                  aria-expanded={timePickerOpen}
+                  onClick={() => {
+                    if (!timePickerOpen) {
+                      const [hour, minute] = bookingTime ? bookingTime.split(':').map(Number) : [9, 0];
+                      setDraftHour(String(hour % 12 || 12));
+                      setDraftMinute(pad(minute));
+                      setDraftPeriod(hour >= 12 ? 'PM' : 'AM');
+                    }
+                    setTimePickerOpen((value) => !value);
+                  }}
+                >
+                  <Clock size={18} />
+                  <span>{bookingTime ? formatTimeLabel(bookingTime) : 'Select pickup time'}</span>
+                  <ChevronRight size={15} />
+                </TimeTrigger>
+                {timePickerOpen && (
+                  <TimePickerCard role="dialog" aria-label="Select pickup time">
+                    <TimePickerTitle>Pickup time</TimePickerTitle>
+                    <TimePickerValue>
+                      {draftHour}:{draftMinute}<span>{draftPeriod}</span>
+                    </TimePickerValue>
+                    <TimeControls>
+                      <TimeControl>
+                        Hour
+                        <TimeSelect value={draftHour} onChange={(event) => setDraftHour(event.target.value)}>
+                          {Array.from({ length: 12 }, (_, index) => String(index + 1)).map((hour) => (
+                            <option key={hour} value={hour}>{hour}</option>
+                          ))}
+                        </TimeSelect>
+                      </TimeControl>
+                      <TimeControl>
+                        Minute
+                        <TimeSelect value={draftMinute} onChange={(event) => setDraftMinute(event.target.value)}>
+                          {Array.from({ length: 12 }, (_, index) => pad(index * 5)).map((minute) => (
+                            <option key={minute} value={minute}>{minute}</option>
+                          ))}
+                        </TimeSelect>
+                      </TimeControl>
+                    </TimeControls>
+                    <PeriodButtons>
+                      {['AM', 'PM'].map((period) => (
+                        <PeriodButton key={period} type="button" $active={draftPeriod === period} onClick={() => setDraftPeriod(period)}>
+                          {period}
+                        </PeriodButton>
+                      ))}
+                    </PeriodButtons>
+                    <TimeActions>
+                      <TimeAction type="button" onClick={() => setTimePickerOpen(false)}>Cancel</TimeAction>
+                      <TimeAction type="button" $primary onClick={confirmBookingTime}>Done</TimeAction>
+                    </TimeActions>
+                  </TimePickerCard>
+                )}
+              </TimePickerWrap>
+            </Fld>
             <Row2>
               <Fld>
                 <Lbl>Client <em>*</em></Lbl>

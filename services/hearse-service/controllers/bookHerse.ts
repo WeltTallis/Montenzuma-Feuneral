@@ -224,6 +224,17 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
             });
             return;
         }
+        const requestedTime = String(req.body.booking_time || '').trim();
+        const legacyTimeMatch = String(from_timestamp || '').match(/(?:T|\s)(\d{2}:\d{2})(?::\d{2})?/);
+        const bookingTime = requestedTime || legacyTimeMatch?.[1] || '';
+        if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(bookingTime)) {
+            res.status(400).json({
+                status: 'error',
+                message: 'A valid booking time is required in 24-hour HH:mm format.'
+            });
+            return;
+        }
+        const bookingStartTimestamp = `${finalBookingDates[0]}T${bookingTime}:00`;
         const bookingDatesJson = JSON.stringify(finalBookingDates);
 
         // ===== Service charge (OPTIONAL total for the whole booking) =====
@@ -296,6 +307,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
         const tenantSlugVal = headerOf('x-tenant-slug') || (req as any).tenant?.tenant_slug || (req as any).tenantSlug || null;
         const branchIdVal = headerOf('x-branch-id') || req.body?.branch_id || req.body?.branchId || null;
         const branchSlugVal = headerOf('x-branch-slug') || req.body?.branch_slug || null;
+        const branchNameVal = String(req.body?.branch_name || '').trim().slice(0, 255) || null;
         const bookingStatus = 'booked';
 
         const insertQuery = `
@@ -303,9 +315,9 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
             (booking_code, hearse_id, tenant_db_name, tenant_id, tenant_slug,
              client_name, client_phone, destination,
              from_location, to_location,
-             booking_date, booking_dates, status, created_at, updated_at,
-                          branch_id, branch_slug, booked_by, service_charge)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             from_timestamp, booking_date, booking_dates, status, created_at, updated_at,
+             branch_id, branch_slug, branch_name, booked_by, service_charge)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertParams = [
@@ -319,18 +331,20 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
             derivedDestination,
             finalFrom,
             finalTo,
+            bookingStartTimestamp,
             finalBookingDates[0],
             bookingDatesJson,
-                        bookingStatus,
+            bookingStatus,
             now,
             now,
             branchIdVal,
             branchSlugVal,
+            branchNameVal,
             createdByName,
             serviceCharge
         ];
 
-        const selectBookingQuery = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.service_charge, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`;
+        const selectBookingQuery = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.from_timestamp, hb.branch_name, hb.status, hb.booking_dates, hb.created_at, hb.service_charge, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`;
 
         let bookingDbId: number;
         let booking: any;
@@ -478,7 +492,7 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
             bookingDbId = result.insertId;
 
             const bookingRows = await safeQuery(
-                `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.service_charge, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`,
+                `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.from_timestamp, hb.branch_name, hb.status, hb.booking_dates, hb.created_at, hb.service_charge, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.id = ?`,
                 [bookingDbId]
             );
             booking = (bookingRows as any[])[0];
@@ -690,7 +704,7 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
         // `hb.tenant_slug` / `hb.tenant_db_name` / `hb.branch_id` are selected
         // only so the registry can be matched per row; they are stripped again
         // before the payload is sent (see below).
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.driver_id, hb.assistant_name, hb.assistant_phone, d.full_name AS assigned_driver_name, hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug, hb.tenant_db_name AS tenant_db_name, hb.branch_id AS booking_branch_id, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id LEFT JOIN drivers d ON d.id = hb.driver_id ${whereSQL} ORDER BY hb.created_at DESC`;
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.from_timestamp, hb.branch_name AS branch_name, hb.status, hb.booking_dates, hb.created_at, hb.updated_at, hb.booked_by, hb.cancel_reason, hb.service_charge, hb.driver_id, hb.assistant_name, hb.assistant_phone, d.full_name AS assigned_driver_name, hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug, hb.tenant_db_name AS tenant_db_name, hb.branch_id AS booking_branch_id, h.id AS hearse_id, h.plate_number, h.hearse_name, h.model, h.status AS hearse_status, h.capacity, h.branch_id, h.branch_code AS branch_code, h.branch_name AS hearse_branch_name FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id LEFT JOIN drivers d ON d.id = hb.driver_id ${whereSQL} ORDER BY hb.created_at DESC`;
 
         const bookings = await decorateBranchNames(
             await safeQuery(query, params) as any[],

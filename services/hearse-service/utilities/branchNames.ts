@@ -162,8 +162,8 @@ export async function decorateBranchNames(
         const hearseName = String(row.hearse_branch_name || '').trim();
 
         row.branch_name =
-            (entry?.branch_name)
-            || (!isGenericBranchName(ownName) ? ownName : '')
+            (!isGenericBranchName(ownName) ? ownName : '')
+            || (entry?.branch_name)
             || (!isGenericBranchName(hearseName) ? hearseName : '')
             || ownName
             || hearseName

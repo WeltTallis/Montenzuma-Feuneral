@@ -39,6 +39,8 @@ export const fmtHour = h => h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? 
 export const getTimeInfo = b => {
   let s = '', e = '';
   if (b.booking_dates) { try { const d = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : b.booking_dates; if (Array.isArray(d) && d.length) { s = d[0]; if (d.length > 1) e = d[1]; } } catch (x) { } }
+  if (b.from_timestamp) s = b.from_timestamp;
+  if (b.to_timestamp) e = b.to_timestamp;
   if (!s) s = b.booking_date || b.estimated_departure_time || b.date || '';
   if (!e) e = b.end_date || b.estimated_arrival_time || '';
   let sd = null, ed = null, allDay = false;
@@ -804,17 +806,15 @@ const HearseCalendar = ({
     return bookings.map((b, index) => {
       const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
       const bookingDates = getBookingDates(b);
-      const startDate = bookingDates[0];
+      const startDate = b.from_timestamp || bookingDates[0];
       if (!startDate) return null;
 
       const isAllDay = !String(startDate).includes('T') && !String(startDate).includes(':');
       let fcEnd = undefined;
-      if (isAllDay) {
-        if (bookingDates.length > 1) {
-          const last = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00');
-          last.setDate(last.getDate() + 1);
-          fcEnd = toDateKey(last);
-        }
+      if (bookingDates.length > 1) {
+        const last = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00');
+        last.setDate(last.getDate() + 1);
+        fcEnd = toDateKey(last);
       } else {
         const rawEnd = bookingDates[1] || b.end_date || b.estimated_arrival_time;
         fcEnd = rawEnd && rawEnd !== startDate ? rawEnd : undefined;
