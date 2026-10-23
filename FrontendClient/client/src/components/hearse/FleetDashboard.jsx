@@ -6,7 +6,6 @@ import {
   CarFront,
   CheckCircle2,
   CreditCard,
-  Fuel,
   MapPin,
   RefreshCw,
   Search,
@@ -89,6 +88,20 @@ const FleetPage = styled.main`
   color: #1a1d29;
 
   @media (max-width: 700px) { padding: ${({ $embedded }) => ($embedded ? '18px 16px 28px' : '16px')}; }
+`;
+
+const CardBalance = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid ${({ $low }) => ($low ? '#fde68a' : '#edf0f3')};
+  border-radius: 10px;
+  background: ${({ $low }) => ($low ? '#fffbeb' : '#f7f8fa')};
+  small { display: inline-flex; align-items: center; gap: 5px; color: #777e8b; font-size: 10px; font-weight: 700; }
+  strong { color: #1a1d29; font-size: 21px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  em { color: ${({ $low }) => ($low ? '#b45309' : '#747a87')}; font-size: 10px; font-style: normal; font-weight: 700; overflow-wrap: anywhere; }
 `;
 
 const PageWidth = styled.div`
@@ -198,21 +211,18 @@ const SummaryLabel = styled.div`
 `;
 
 const MainGrid = styled.section`
-  display: grid;
-  grid-template-columns: minmax(330px, 410px) minmax(0, 1fr);
-  min-height: 620px;
+  display: block;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid #e5e7ec;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 8px 28px #1a1d2908;
-  @media (max-width: 900px) { grid-template-columns: 1fr; }
 `;
 
 const FleetList = styled.div`
   min-width: 0;
-  border-right: 1px solid #e8e9ed;
-  @media (max-width: 900px) { border-right: 0; border-bottom: 1px solid #e8e9ed; }
+  border-bottom: 1px solid #e8e9ed;
 `;
 
 const ListHeader = styled.div`
@@ -266,16 +276,17 @@ const FilterButton = styled.button`
 `;
 
 const HearseList = styled.div`
-  max-height: 670px;
-  overflow-y: auto;
-  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  padding: 16px;
 `;
 
 const HearseCard = styled.button`
   display: flex;
+  flex-direction: column;
   width: 100%;
-  min-height: 100px;
-  margin-bottom: 9px;
+  min-height: 190px;
   padding: 0;
   overflow: hidden;
   border: 1px solid ${({ $selected }) => ($selected ? '#e5c531' : '#e8e9ed')};
@@ -289,10 +300,12 @@ const HearseCard = styled.button`
 `;
 
 const HearseCardText = styled.span`
-  display: block;
-  min-width: 0;
+  display: flex;
   flex: 1;
-  padding: 13px 14px;
+  flex-direction: column;
+  min-width: 0;
+  gap: 12px;
+  padding: 15px;
 `;
 
 const HearseCardTop = styled.span`
@@ -343,21 +356,11 @@ const CardFooter = styled.span`
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: auto;
   color: #747a87;
   font-size: 11px;
   span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
   svg { flex: 0 0 auto; }
-`;
-
-const VehicleThumb = styled.span`
-  display: grid;
-  width: 76px;
-  flex: 0 0 auto;
-  place-items: center;
-  background: linear-gradient(135deg, #f5f6f8, #eceef2);
-  color: #858b98;
-  img { width: 100%; height: 100%; object-fit: cover; }
 `;
 
 const Details = styled.div`
@@ -639,7 +642,6 @@ function FleetDashboard({ embedded = false }) {
   const [savingFuelAction, setSavingFuelAction] = useState('');
   const [depositDraft, setDepositDraft] = useState({ amount: '', reference: '', transactionDate: todayDate() });
   const [allocationDraft, setAllocationDraft] = useState({ amount: '', reference: '', transactionDate: todayDate() });
-  const [purchaseDraft, setPurchaseDraft] = useState({ amount: '', station: '', reference: '', transactionDate: todayDate() });
   const [thresholdDraft, setThresholdDraft] = useState('5000.00');
 
   const loadFleet = useCallback(async (quiet = false) => {
@@ -772,7 +774,6 @@ function FleetDashboard({ embedded = false }) {
       setThresholdDraft(response.low_balance_threshold);
       if (action === 'deposit') setDepositDraft({ amount: '', reference: '', transactionDate: todayDate() });
       if (action === 'allocation') setAllocationDraft({ amount: '', reference: '', transactionDate: todayDate() });
-      if (action === 'purchase') setPurchaseDraft({ amount: '', station: '', reference: '', transactionDate: todayDate() });
       notify.success(successMessage);
     } catch (actionError) {
       notify.error(actionError.message || 'Unable to save the fuel account transaction.');
@@ -934,15 +935,24 @@ function FleetDashboard({ embedded = false }) {
                         </span>
                         <StatusBadge $tone={meta.color}><StatusDot />{meta.label}</StatusBadge>
                       </HearseCardTop>
+                      <CardBalance $low={cardBalance?.is_low}>
+                        <small><CreditCard size={13} />Fuel-card balance</small>
+                        <strong>
+                          {hearse.fuel_card_number
+                            ? fuelWallet ? formatKES(cardBalance?.balance || 0) : 'Loading...'
+                            : 'No card assigned'}
+                        </strong>
+                        <em>
+                          {hearse.fuel_card_number
+                            ? `${hearse.fuel_card_number}${cardBalance?.is_low ? ' · Low balance' : ''}`
+                            : 'Add a TotalEnergies card to track funds'}
+                        </em>
+                      </CardBalance>
                       <CardFooter>
                         <span><MapPin size={13} />{hearse.branch_name || hearse.branch_code || 'Branch not set'}</span>
-                        <span><CreditCard size={13} />{hearse.fuel_card_number || 'No fuel card'}</span>
-                        {cardBalance && <span><Fuel size={13} />{formatKES(cardBalance.balance)}{cardBalance.is_low ? ' · Low' : ''}</span>}
+                        {hearse.capacity && <span><Truck size={13} />{hearse.capacity} seats</span>}
                       </CardFooter>
                     </HearseCardText>
-                    <VehicleThumb>
-                      {hearse.image ? <img src={imageUrl(hearse.image)} alt="" /> : <Truck size={25} />}
-                    </VehicleThumb>
                   </HearseCard>
                 );
               })}
@@ -979,12 +989,12 @@ function FleetDashboard({ embedded = false }) {
                       {selectedFuelCard && <FuelBalanceBadge $tone={selectedFuelCard.is_low ? 'low' : 'good'}>{selectedFuelCard.is_low ? 'Low balance' : 'Balance OK'}</FuelBalanceBadge>}
                     </FuelPanelHeader>
                     {!selectedHearse.fuel_card_number ? (
-                      <Subtitle>Assign a TotalEnergies card to this vehicle before recording its balance or transactions.</Subtitle>
+                      <Subtitle>Assign a TotalEnergies card to this vehicle to display and track its balance. Drivers record fuelling from the Drivers Portal.</Subtitle>
                     ) : (
                       <>
                         <FuelFacts>
                           <FuelFact><span>Recorded card</span><strong>{selectedHearse.fuel_card_number}</strong></FuelFact>
-                          <FuelFact><span>Recorded balance</span><strong>{formatKES(selectedFuelCard?.balance || 0)}</strong></FuelFact>
+                          <FuelFact><span>Recorded balance</span><strong>{fuelWallet ? formatKES(selectedFuelCard?.balance || 0) : 'Loading...'}</strong></FuelFact>
                         </FuelFacts>
                         <AccountControls>
                           <LedgerForm onSubmit={(event) => submitFuelAction(
@@ -1000,21 +1010,6 @@ function FleetDashboard({ embedded = false }) {
                             <input type="text" value={allocationDraft.reference} onChange={(event) => setAllocationDraft((current) => ({ ...current, reference: event.target.value }))} placeholder="Optional transfer reference" aria-label="Card allocation reference" />
                             <input type="date" required value={allocationDraft.transactionDate} onChange={(event) => setAllocationDraft((current) => ({ ...current, transactionDate: event.target.value }))} aria-label="Card allocation date" />
                             <ActionButton type="submit" disabled={savingFuelAction !== ''}>{savingFuelAction === 'allocation' ? 'Allocating...' : 'Allocate funds'}</ActionButton>
-                          </LedgerForm>
-                          <LedgerForm onSubmit={(event) => submitFuelAction(
-                            event,
-                            'purchase',
-                            '/hearse-fuel/purchases',
-                            { hearse_id: selectedHearse.id, amount: purchaseDraft.amount, station: purchaseDraft.station, reference: purchaseDraft.reference, transaction_date: purchaseDraft.transactionDate },
-                            `Fuel purchase recorded for ${selectedHearse.plate_number}.`
-                          )}>
-                            <h3>Record station fuelling</h3>
-                            <p style={{ margin: 0, color: '#747a87', fontSize: 11 }}>The amount is deducted from this card’s recorded balance.</p>
-                            <input type="number" min="0.01" step="0.01" required value={purchaseDraft.amount} onChange={(event) => setPurchaseDraft((current) => ({ ...current, amount: event.target.value }))} placeholder="Amount paid (KES)" aria-label="Fuel purchase amount in KES" />
-                            <input type="text" required value={purchaseDraft.station} onChange={(event) => setPurchaseDraft((current) => ({ ...current, station: event.target.value }))} placeholder="Petrol station" aria-label="Petrol station name" />
-                            <input type="text" value={purchaseDraft.reference} onChange={(event) => setPurchaseDraft((current) => ({ ...current, reference: event.target.value }))} placeholder="Optional receipt / transaction ref" aria-label="Fuel purchase receipt reference" />
-                            <input type="date" required value={purchaseDraft.transactionDate} onChange={(event) => setPurchaseDraft((current) => ({ ...current, transactionDate: event.target.value }))} aria-label="Fuel purchase date" />
-                            <ActionButton type="submit" $primary disabled={savingFuelAction !== ''}>{savingFuelAction === 'purchase' ? 'Recording...' : 'Record fuelling'}</ActionButton>
                           </LedgerForm>
                         </AccountControls>
                       </>
