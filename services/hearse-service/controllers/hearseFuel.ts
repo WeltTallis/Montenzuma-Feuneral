@@ -154,7 +154,7 @@ async function getSummary(pool: Pool, tenantKey: string) {
         ),
         pool.query(
              `SELECT t.fuel_card_number, t.transaction_type, t.amount, t.station,
-                 t.reference, t.transaction_date, t.created_at
+                 t.reference, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS transaction_date, t.created_at
               FROM hearse_fuel_transactions t
               INNER JOIN (
                   SELECT fuel_card_number, MAX(id) AS id
@@ -164,7 +164,7 @@ async function getSummary(pool: Pool, tenantKey: string) {
               ) latest ON latest.id = t.id`,
              [tenantKey]
         ),
-        pool.query("SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS current_date"),
+        pool.query("SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS today_date"),
     ]);
     const totals = totalsRows[0];
     const deposited = Number(totals.deposited);
@@ -176,14 +176,14 @@ async function getSummary(pool: Pool, tenantKey: string) {
         const cardActivity = activityRows.filter((activity: any) =>
             String(activity.fuel_card_number) === String(card.fuel_card_number)
         );
-        const activityByDate = new Map(cardActivity.map((activity: any) => [
+        const activityByDate = new Map<string, { allocations: number; purchases: number }>(cardActivity.map((activity: any) => [
             String(activity.activity_date),
             {
                 allocations: Number(activity.allocations),
                 purchases: Number(activity.purchases),
             },
         ]));
-        const todayUtc = new Date(`${currentDateRows[0].current_date}T00:00:00.000Z`);
+        const todayUtc = new Date(`${currentDateRows[0].today_date}T00:00:00.000Z`);
         let closingBalance = balance;
         const balanceHistory = [];
         for (let offset = 6; offset >= 0; offset -= 1) {

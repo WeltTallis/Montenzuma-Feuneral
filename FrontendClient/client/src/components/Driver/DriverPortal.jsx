@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     RefreshCw, LogOut, Calendar, Clock, AlertCircle, CheckCircle,
@@ -910,7 +910,7 @@ const DriverPortal = () => {
         loadB(); loadP(); loadL(); loadDriverFuel();
     }, [slug, loadB, loadP, loadL, loadDriverFuel]);
 
-useEffect(() => {
+    useEffect(() => {
         if (!socket || !connected) return;
         const handleNewBooking = (data) => {
             if (data.booking) setBookings(prev => [data.booking, ...prev]);
@@ -1049,7 +1049,7 @@ useEffect(() => {
         { k: 'leaves', l: 'Leaves', Icon: Calendar, n: leaves.length, cls: '' },
     ];
 
-return (
+    return (
         <div id="rp-driver">
             <style>{css}</style>
 
@@ -1114,7 +1114,7 @@ return (
                 {/* ─── CONTENT ─── */}
                 <div className="anim-up" style={{ animationDelay: '.15s' }}>
 
-{tab === 'trips' && (
+                    {tab === 'trips' && (
                         loadingB ? <Loading text="Loading trips…" /> :
                             active.length === 0 ? (
                                 <Empty
