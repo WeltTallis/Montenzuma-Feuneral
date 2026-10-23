@@ -1695,10 +1695,6 @@ const HearseCalendar = ({
                   <strong>{hearse.hearse_name || hearse.name || 'Hearse'}</strong>
                   <HearseDetails>
                     {hearse.plate_number && <HearseDetail><strong>Plate</strong>{hearse.plate_number}</HearseDetail>}
-                    {hearse.model && <HearseDetail><strong>Model</strong>{hearse.model}</HearseDetail>}
-                    {hearse.capacity && <HearseDetail><strong>Capacity</strong>{hearse.capacity}</HearseDetail>}
-                    {(hearse.branch_name || hearse.branch) && <HearseDetail><strong>Branch</strong>{hearse.branch_name || hearse.branch}</HearseDetail>}
-                    {hearse.fuel_card_number && <HearseDetail><strong>Fuel card</strong>{hearse.fuel_card_number}</HearseDetail>}
                   </HearseDetails>
                 </HearseInfo>
                 <AvailabilityPill $free>Free</AvailabilityPill>
