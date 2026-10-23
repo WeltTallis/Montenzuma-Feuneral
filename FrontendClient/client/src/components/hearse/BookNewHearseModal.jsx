@@ -3,6 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import env from '../../utils/config/env';
 import { X, ChevronLeft, ChevronRight, Clock } from '../../utils/icons/icons';
 import { mergeFleetAvailability } from './hearseFleetAvailability';
+import { getBranches as getCachedBranches } from '../../utils/globalAuth';
 
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://restpoint.co.ke/api/v1/restpoint'
@@ -82,36 +83,70 @@ const getLocalUserName = () => {
 const safeUser = () => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } };
 
 function getBranchOptions(branches, user) {
-  const options = (Array.isArray(branches) ? branches : []).map((branch) => {
+  const genericNames = new Set(['main branch', 'main', 'default', 'branch', 'unknown', 'n/a', 'na', '—', '-']);
+  const cachedBranches = getCachedBranches();
+  const candidates = [...(Array.isArray(branches) ? branches : []), ...cachedBranches];
+  const optionsByKey = new Map();
+
+  candidates.forEach((branch) => {
+    if (!branch) return;
     const id = branch.branchId || branch.branch_id || branch.id || '';
     const slug = branch.branchSlug || branch.branch_slug || branch.slug || branch.branchDbName || branch.branch_db_name || '';
-    return {
-      key: String(id || slug),
-      id: String(id || ''),
-      slug: String(slug || ''),
-      code: String(branch.branchCode || branch.branch_code || ''),
-      name: String(branch.branchName || branch.branch_name || branch.name || '').trim(),
+    const key = String(id || slug);
+    if (!key) return;
+
+    const cachedBranch = cachedBranches.find((cached) => {
+      const cachedId = cached.branchId || cached.branch_id || cached.id || '';
+      const cachedSlug = cached.branchSlug || cached.branch_slug || cached.slug || cached.branchDbName || cached.branch_db_name || '';
+      return (id && String(cachedId) === String(id))
+        || (slug && String(cachedSlug).toLowerCase() === String(slug).toLowerCase());
+    });
+    const apiName = String(branch.branchName || branch.branch_name || branch.name || '').trim();
+    const cachedName = String(cachedBranch?.branchName || cachedBranch?.branch_name || cachedBranch?.name || '').trim();
+    const apiNameIsGeneric = genericNames.has(apiName.toLowerCase());
+    const name = apiNameIsGeneric ? cachedName : (apiName || cachedName);
+    if (!name || genericNames.has(name.toLowerCase())) return;
+
+    const option = {
+      key: String(id || cachedBranch?.branchId || cachedBranch?.branch_id || cachedBranch?.id || slug || cachedBranch?.branchSlug || cachedBranch?.branch_slug || ''),
+      id: String(id || cachedBranch?.branchId || cachedBranch?.branch_id || cachedBranch?.id || ''),
+      slug: String(slug || cachedBranch?.branchSlug || cachedBranch?.branch_slug || cachedBranch?.slug || cachedBranch?.branchDbName || cachedBranch?.branch_db_name || ''),
+      code: String(branch.branchCode || branch.branch_code || cachedBranch?.branchCode || cachedBranch?.branch_code || ''),
+      name,
     };
-  }).filter((branch) => branch.key && branch.name);
+    const existing = optionsByKey.get(key);
+    if (!existing || genericNames.has(existing.name.toLowerCase())) optionsByKey.set(key, option);
+  });
 
   const userBranchId = user.branchId || user.branch_id || user.branch?.branchId
     || user.branch?.branch_id || localStorage.getItem('branchId') || '';
   const userBranchSlug = user.branchSlug || user.branch_slug || user.branchDbName
     || user.branch?.branchSlug || user.branch?.branch_slug
     || localStorage.getItem('branchSlug') || localStorage.getItem('branchDbName') || '';
+  const options = Array.from(optionsByKey.values());
   const hasCurrentBranch = options.some((branch) =>
     (userBranchId && branch.id === String(userBranchId))
     || (userBranchSlug && branch.slug.toLowerCase() === String(userBranchSlug).toLowerCase())
   );
-  const userBranchName = user.branchName || user.branch_name || user.branch?.branchName || user.branch?.branch_name || '';
+  const userBranchName = String(user.branchName || user.branch_name || user.branch?.branchName || user.branch?.branch_name || '').trim();
   if (!hasCurrentBranch && (userBranchId || userBranchSlug) && userBranchName) {
-    options.push({
-      key: String(userBranchId || userBranchSlug),
-      id: String(userBranchId || ''),
-      slug: String(userBranchSlug || ''),
-      code: String(user.branchCode || user.branch_code || user.branch?.branchCode || user.branch?.branch_code || ''),
-      name: String(userBranchName).trim(),
-    });
+    if (!genericNames.has(userBranchName.toLowerCase())) {
+      options.push({
+        key: String(userBranchId || userBranchSlug),
+        id: String(userBranchId || ''),
+        slug: String(userBranchSlug || ''),
+        code: String(user.branchCode || user.branch_code || user.branch?.branchCode || user.branch?.branch_code || ''),
+        name: userBranchName,
+      });
+    } else if (userBranchSlug && !options.some((branch) => branch.slug.toLowerCase() === String(userBranchSlug).toLowerCase())) {
+      options.push({
+        key: String(userBranchId || userBranchSlug),
+        id: String(userBranchId || ''),
+        slug: String(userBranchSlug || ''),
+        code: String(user.branchCode || user.branch_code || user.branch?.branchCode || user.branch?.branch_code || ''),
+        name: String(userBranchSlug),
+      });
+    }
   }
   return options;
 }

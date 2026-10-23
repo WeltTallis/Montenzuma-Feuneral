@@ -6,6 +6,7 @@ import asyncHandler from 'express-async-handler';
 import { getHearsePool } from '../database';
 import { hasHearseColumn } from '../utilities/hearseSchema';
 import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, FLEET_CACHE_TTL } from '../utilities/hearseCache';
+import { getBranchRegistry } from '../utilities/branchNames';
 import { getKenyaTimeISO, getKenyaDate } from '@montezuma/shared-utils';
 
 // Hearse images live in the ONE shared uploads folder (/opt/storage/uploads in
@@ -46,7 +47,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
             return;
         }
 
-        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_code, driver_id, fuel_card_number } = req.body;
+        const { plate_number, hearse_name, model, capacity, status, branch_id, branch_slug, branch_name, branch_code, driver_id, fuel_card_number } = req.body;
         const image = req.file ? `uploads/hearses/${req.file.filename}` : null;
 
         if (!plate_number) {
@@ -72,49 +73,37 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         const now = getKenyaTimeISO();
         const pool = await getHearsePool();
 
-        let resolvedBranchCode = branch_code || headerBranchSlug || null;
-        let assignedBranchId: string | null = headerBranchId || branch_id || null;
+        const cleanValue = (value: unknown): string | null => {
+            const cleaned = String(value ?? '').trim();
+            return cleaned && cleaned !== 'undefined' && cleaned !== 'null' ? cleaned : null;
+        };
+        const isGenericBranchName = (value: unknown): boolean => {
+            const name = String(value ?? '').trim().toLowerCase();
+            return ['main branch', 'main', 'default', 'branch', 'unknown', 'n/a', 'na', '—', '-'].includes(name);
+        };
 
-        // Resolve branch_code from a UUID/int branch_id (or branch_id from
-        // branch_code) against the shared branches registry. Single-branch tenants
-        // may omit both — the hearse is then simply owned by the tenant.
-        if (!assignedBranchId && branch_code) {
-            try {
-                const [branchRows] = await pool.query('SELECT branch_id, branch_name FROM branches WHERE branch_code = ? AND is_active = TRUE', [branch_code]);
-                const branchRow = branchRows[0];
-                if (branchRow) {
-                    assignedBranchId = branchRow.branch_id;
-                    resolvedBranchCode = branch_code;
-                }
-            } catch (e) { /* lookup failed - keep provided values */ }
+        const assignedBranchId = cleanValue(headerBranchId || branch_id);
+        const submittedBranchSlug = cleanValue(branch_slug || headerBranchSlug);
+        const submittedBranchCode = cleanValue(branch_code);
+        const submittedBranchName = cleanValue(branch_name);
+        const branchRegistry = await getBranchRegistry();
+        const branchEntry = [submittedBranchSlug, submittedBranchCode, assignedBranchId]
+            .filter((key): key is string => !!key)
+            .map((key) => branchRegistry.get(key.toLowerCase()))
+            .find((entry) => !!entry);
+        const registryBranchName = cleanValue(branchEntry?.branch_name);
+        const branchNameValue = registryBranchName && !isGenericBranchName(registryBranchName)
+            ? registryBranchName
+            : submittedBranchName && !isGenericBranchName(submittedBranchName)
+                ? submittedBranchName
+                : null;
 
-        } else if (assignedBranchId) {
-
-            try {
-
-                const [branchRows] = await pool.query('SELECT branch_code, branch_name FROM branches WHERE branch_id = ? AND is_active = TRUE', [assignedBranchId]);
-
-                const branchRow = branchRows[0];
-
-                if (branchRow) {
-
-                    resolvedBranchCode = branchRow.branch_code || `BRANCH-${assignedBranchId}`;
-
-                } else {
-
-                    resolvedBranchCode = resolvedBranchCode || `BRANCH-${assignedBranchId}`;
-
-                }
-            } catch (e) {
-
-                resolvedBranchCode = resolvedBranchCode || (assignedBranchId ? `BRANCH-${assignedBranchId}` : 'MAIN');
-
-            }
-
+        if (!branchNameValue) {
+            res.status(400).json({ success: false, message: 'A valid branch name is required. Select a branch or enter its actual name.' });
+            return;
         }
 
-        const branchNameValue = assignedBranchId ? `Branch ${assignedBranchId}` : 'Main Branch';
-        const branchCodeValue = resolvedBranchCode || (assignedBranchId ? `BRANCH-${assignedBranchId}` : 'MAIN');
+        const branchCodeValue = cleanValue(branchEntry?.branch_code) || submittedBranchCode;
         const [countResult] = await pool.query('SELECT COUNT(*) as count FROM hearses');
         const hearseNumber = String((countResult[0]?.count || 0) + 1).padStart(3, '0');
         const hearse_code = `HRS-${hearseNumber}`;
@@ -166,7 +155,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
 
         res.status(201).json({
             success: true, message: 'Hearse registered successfully.',
-            data: { id: result.insertId, hearse_code, hearse_name: hearse_name || null, plate_number, image_path: image, branch_id: assignedBranchId, tenant_id: tenantId, tenant_slug: tenantSlug, status: status || 'available' }
+            data: { id: result.insertId, hearse_code, hearse_name: hearse_name || null, plate_number, image_path: image, branch_id: assignedBranchId, branch_name: branchNameValue, branch_code: branchCodeValue, tenant_id: tenantId, tenant_slug: tenantSlug, status: status || 'available' }
         });
         return;
     } catch (error) {

@@ -230,7 +230,11 @@ const api = {
       const r = await fetch(`${API_BASE_URL}/tenant/${getTenantSlug()}/branches`, { headers: getAuthHeaders() });
       if (r.ok) {
         const payload = await r.json();
-        const list = Array.isArray(payload) ? payload : payload.data || payload.branches || [];
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.data)
+            ? payload.data
+            : payload.data?.branches || payload.branches || [];
         if (Array.isArray(list) && list.length) return list;
       }
     } catch { /* use the branch list cached during authentication */ }
@@ -756,7 +760,7 @@ const HearseBookings = () => {
 
   // Register hearse
   const [registerHearseOpen, setRegisterHearseOpen] = useState(false);
-  const [hearseForm, setHearseForm] = useState({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '', fuel_card_number: '' });
+  const [hearseForm, setHearseForm] = useState({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_id: '', branch_slug: '', branch_name: '', branch_code: '', fuel_card_number: '' });
   const [registerLoading, setRegisterLoading] = useState(false);
 
   // Cancel modal
@@ -1046,11 +1050,16 @@ const HearseBookings = () => {
       notify.error('Plate number and name are required');
       return;
     }
+    if (registrationBranches.length > 0 && !hearseForm.branch_id && !hearseForm.branch_slug) {
+      notify.error('Select the branch this hearse belongs to');
+      return;
+    }
+    if (!hearseForm.branch_name.trim()) {
+      notify.error('Enter or select a branch name');
+      return;
+    }
     setRegisterLoading(true);
     try {
-      // Register at TENANT level only — no branch stamping. The x-tenant-id
-      // header sent by api.registerHearse() is what scopes this hearse to the
-      // whole tenant, so every branch sees the same shared fleet.
       const payload = { ...hearseForm };
       const fuelCard = String(payload.fuel_card_number || '').trim();
       if (fuelCard) payload.fuel_card_number = fuelCard;
@@ -1058,10 +1067,11 @@ const HearseBookings = () => {
       payload.plate_number = String(payload.plate_number || '').trim();
       payload.hearse_name = String(payload.hearse_name || '').trim();
       if (payload.model) payload.model = String(payload.model).trim();
+      payload.branch_name = String(payload.branch_name || '').trim();
       await api.registerHearse(payload);
       notify.success('Hearse registered successfully!');
       setRegisterHearseOpen(false);
-      setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_code: '', fuel_card_number: '' });
+      setHearseForm({ plate_number: '', hearse_name: '', model: '', capacity: '8', status: 'available', branch_id: '', branch_slug: '', branch_name: '', branch_code: '', fuel_card_number: '' });
       // Refresh only the data in place — do NOT call loadData() here because
       // that toggles a full-screen spinner (setLoading(true)) which makes the
       // whole page swap to a spinner, i.e. a "whole page refresh". Using
@@ -1120,6 +1130,24 @@ const HearseBookings = () => {
      crashes the page with React error #310 ("Rendered more hooks than during
      the previous render"). */
   const branchOptions = branches.length > 0 ? branches : [];
+  const registrationBranches = useMemo(() => {
+    const byKey = new Map();
+    branchOptions.forEach((branch) => {
+      const id = branch?.branch_id || branch?.branchId || branch?.id || '';
+      const slug = branch?.branch_slug || branch?.branchSlug || branch?.slug || branch?.branch_db_name || branch?.branchDbName || '';
+      const name = String(branch?.branch_name || branch?.branchName || branch?.name || '').trim();
+      const key = String(id || slug);
+      if (!key || !name || GENERIC_BRANCH_NAMES.has(name.toLowerCase())) return;
+      byKey.set(key, {
+        key,
+        id: String(id),
+        slug: String(slug),
+        code: String(branch?.branch_code || branch?.branchCode || ''),
+        name,
+      });
+    });
+    return Array.from(byKey.values());
+  }, [branchOptions]);
   const branchNameByKey = useMemo(() => {
     const m = new Map();
     branchOptions.forEach((br) => {
@@ -1241,7 +1269,25 @@ const HearseBookings = () => {
 
             <SecondaryButton onClick={loadData} style={{ marginLeft: 'auto' }}>{Icons.refresh} Refresh</SecondaryButton>
             <PrimaryButton onClick={() => openNewBooking('')}>{Icons.plus} Book Hearse</PrimaryButton>
-            <PrimaryButton onClick={() => setRegisterHearseOpen(true)} $bg={COLORS.success}>{Icons.plus} Register Hearse</PrimaryButton>
+            <PrimaryButton
+              onClick={() => {
+                const currentBranchId = String(getBranchId() || '');
+                const currentBranchSlug = String(getBranchSlug() || '');
+                const currentBranch = registrationBranches.find((branch) =>
+                  (currentBranchId && branch.id === currentBranchId)
+                  || (currentBranchSlug && branch.slug.toLowerCase() === currentBranchSlug.toLowerCase())
+                );
+                setHearseForm((form) => ({
+                  ...form,
+                   branch_id: currentBranch?.id || '',
+                  branch_slug: currentBranch?.slug || '',
+                  branch_name: currentBranch?.name || '',
+                  branch_code: currentBranch?.code || '',
+                }));
+                setRegisterHearseOpen(true);
+              }}
+              $bg={COLORS.success}
+            >{Icons.plus} Register Hearse</PrimaryButton>
           </FilterRow>
         </FilterCard>
 
@@ -1583,6 +1629,38 @@ const HearseBookings = () => {
                     <option value="maintenance">Maintenance</option>
                     <option value="out_of_service">Out of Service</option>
                   </Select>
+                </div>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <ModalLabel>Branch *</ModalLabel>
+                  {registrationBranches.length > 0 ? (
+                    <Select
+                      value={hearseForm.branch_id || hearseForm.branch_slug}
+                      onChange={(e) => {
+                        const selectedBranch = registrationBranches.find((branch) => branch.key === e.target.value);
+                        setHearseForm((form) => ({
+                          ...form,
+                          branch_id: selectedBranch?.id || '',
+                          branch_slug: selectedBranch?.slug || '',
+                          branch_name: selectedBranch?.name || '',
+                          branch_code: selectedBranch?.code || '',
+                        }));
+                      }}
+                      style={{ width: '100%' }}
+                      required
+                    >
+                      <option value="">Select branch</option>
+                      {registrationBranches.map((branch) => (
+                        <option key={branch.key} value={branch.key}>{branch.name}</option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <ModalInput
+                      placeholder="e.g., Nairobi or Thika"
+                      value={hearseForm.branch_name}
+                      onChange={(e) => setHearseForm((form) => ({ ...form, branch_name: e.target.value }))}
+                      required
+                    />
+                  )}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   <div>
