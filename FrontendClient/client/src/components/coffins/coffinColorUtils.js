@@ -4,6 +4,7 @@
  * Typo Correction (e.g., 'balck' -> 'black'), and Coffin Types Catalog.
  */
 
+<<<<<<< Updated upstream
 /**
  * Converts a CSS style object to a string for inline style attributes
  * e.g., {color: 'red', fontSize: '14px'} -> "color: red; font-size: 14px"
@@ -14,6 +15,8 @@ export const objToStr = (obj) => {
   return Object.keys(obj).reduce((acc, key) => `${acc}${key}:${obj[key]}; `, '').trim();
 };
 
+=======
+>>>>>>> Stashed changes
 // Common typos and shorthand mapping
 export const TYPO_COLOR_MAP = {
   balck: 'black',
@@ -47,6 +50,16 @@ export const TYPO_COLOR_MAP = {
   rosewd: 'rosewood',
   ivry: 'ivory',
   chery: 'cherry',
+};
+
+/**
+ * Converts a CSS style object to a string for inline style attributes
+ * e.g., {color: 'red', fontSize: '14px'} -> "color: red; font-size: 14px"
+ */
+export const objToStr = (obj) => {
+  if (!obj) return '';
+  if (typeof obj === 'string') return obj;
+  return Object.keys(obj).reduce((acc, key) => `${acc}${key}:${obj[key]}; `, '').trim();
 };
 
 // Specialized funeral coffin & casket colors with verified RGB / Hex values

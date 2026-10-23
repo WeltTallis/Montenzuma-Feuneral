@@ -2951,7 +2951,6 @@ const CoffinDashboard = () => {
             );
           })}
         </div>
-      </div>
 
       {/* Most Booked Popularity Insights (Types & Colors) */}
       <div
