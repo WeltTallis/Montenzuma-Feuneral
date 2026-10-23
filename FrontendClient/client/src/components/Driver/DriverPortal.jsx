@@ -1,8 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    RefreshCw, LogOut, Calendar, Clock, AlertCircle, CheckCircle,
-    MapPin, Route as RouteIcon, Loader2, Info, Plus, CreditCard, Fuel,
+    RefreshCw, LogOut, Calendar, Clock, AlertCircle, CheckCircle, MapPin, Route as RouteIcon, Loader2, Info, Plus, CreditCard, Fuel,
 } from '../../utils/icons/icons';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
@@ -51,6 +50,7 @@ const getAuthHeaders = () => {
     if (tenantId) headers['x-tenant-id'] = tenantId;
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
+
 };
 
 function getNairobiNow() {
@@ -623,9 +623,11 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
     const plate = b.plate_number || b.number_plate || '';
 
     const done = ['completed', 'cancelled', 'declined'].includes(String(b.status || '').toLowerCase());
-    const action = b.status === 'in_transit'
-        ? <button className="btn plum press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'completed')}>✓&nbsp; Complete Trip</button>
-        : <button className="btn teal press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'in_transit')}>Accept Trip →</button>;
+    const action = done
+        ? null
+        : b.status === 'in_transit'
+            ? <button className="btn plum press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'completed')}>✓&nbsp; Complete Trip</button>
+            : <button className="btn teal press" disabled={busy} onClick={() => onStatusChange(b.booking_id, 'in_transit')}>Accept Trip →</button>;
 
     return (
         <article className={`card anim-up ${done ? '' : 'pickup-pending'}`} style={{ animationDelay: `${i * .05}s` }}>

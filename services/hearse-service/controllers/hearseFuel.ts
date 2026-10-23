@@ -44,10 +44,40 @@ function getDriverContext(req: Request, res: Response): { ids: number[]; primary
     return { ids, primaryId: ids[0] };
 }
 
-function hearseTenantScope(tenantKey: string, alias = ''): { clause: string; value: string } {
-    const [kind, value] = tenantKey.split(':', 2);
-    const column = kind === 'id' ? 'tenant_id' : 'tenant_slug';
-    return { clause: `${alias ? `${alias}.` : ''}\`${column}\` = ?`, value };
+function hearseTenantScope(tenantKey: string, alias = '', tenantSlugOverride: string | null = null): { clause: string; params: any[] } {
+    const tenantId = tenantKey.startsWith('id:') ? tenantKey.slice(3).trim() : null;
+    const slug = tenantKey.startsWith('slug:')
+        ? tenantKey.slice(5).trim()
+        : (tenantSlugOverride ? String(tenantSlugOverride).trim() : null);
+    const prefix = alias ? `${alias}.` : '';
+    const clauses: string[] = [];
+    const params: any[] = [];
+    if (tenantId) {
+        clauses.push(`${prefix}\`tenant_id\` = ?`);
+        params.push(tenantId);
+    }
+    if (slug) {
+        clauses.push(`${prefix}\`tenant_slug\` = ?`);
+        params.push(slug);
+    }
+    if (tenantId && slug) {
+        clauses.push(`(${prefix}\`tenant_id\` IS NULL AND ${prefix}\`tenant_slug\` = ?)`);
+        params.push(slug);
+    }
+    if (!clauses.length) {
+        clauses.push(`${prefix}\`tenant_slug\` = ?`);
+        params.push(tenantKey);
+    }
+    return { clause: `(${clauses.join(' OR ')})`, params };
+}
+
+function getTenantSlug(req: Request): string | null {
+    const headerOf = (name: string): string | null => {
+        const value = req.headers[name];
+        return Array.isArray(value) ? value[0] : value ? String(value) : null;
+    };
+    return (req as any).tenantSlug || (req as any).user?.tenantSlug || (req as any).user?.tenant_slug
+        || headerOf('x-tenant-slug') || (req as any).tenant?.tenant_slug || null;
 }
 
 function requireTenant(req: Request, res: Response): string | null {
@@ -94,9 +124,9 @@ async function ensureAccount(pool: Pool | PoolConnection, tenantKey: string): Pr
 
 
 
-async function getSummary(pool: Pool, tenantKey: string) {
+async function getSummary(pool: Pool, tenantKey: string, tenantSlug: string | null = null) {
     await ensureAccount(pool, tenantKey);
-    const tenantScope = hearseTenantScope(tenantKey, 'h');
+    const tenantScope = hearseTenantScope(tenantKey, 'h', tenantSlug);
     const [[accountRows], [totalsRows], [cardRows], [historyRows], [activityRows], [latestActivityRows], [currentDateRows]]: any = await Promise.all([
         pool.query('SELECT low_balance_threshold FROM hearse_fuel_accounts WHERE tenant_key = ?', [tenantKey]),
         pool.query(
@@ -128,7 +158,7 @@ async function getSummary(pool: Pool, tenantKey: string) {
              WHERE ${tenantScope.clause} AND h.fuel_card_number IS NOT NULL AND TRIM(h.fuel_card_number) <> ''
              GROUP BY h.id, h.plate_number, h.hearse_name, h.fuel_card_number
              ORDER BY h.plate_number`,
-            [tenantKey, tenantScope.value]
+            [tenantKey, ...tenantScope.params]
         ),
         pool.query(
             `SELECT id, transaction_type, amount, hearse_plate, fuel_card_number,
@@ -236,9 +266,9 @@ async function getSummary(pool: Pool, tenantKey: string) {
 
 
 
-async function getDriverFuelSummary(pool: Pool, tenantKey: string, driverIds: number[]) {
-    const summary = await getSummary(pool, tenantKey);
-    const tenantScope = hearseTenantScope(tenantKey, 'h');
+async function getDriverFuelSummary(pool: Pool, tenantKey: string, driverIds: number[], tenantSlug: string | null = null) {
+    const summary = await getSummary(pool, tenantKey, tenantSlug);
+    const tenantScope = hearseTenantScope(tenantKey, 'h', tenantSlug);
     const [hearseRows]: any = await pool.query(
         `SELECT h.id AS hearse_id, h.plate_number, h.hearse_name, h.fuel_card_number
          FROM hearses h
@@ -254,7 +284,7 @@ async function getDriverFuelSummary(pool: Pool, tenantKey: string, driverIds: nu
            )
            AND h.fuel_card_number IS NOT NULL AND TRIM(h.fuel_card_number) <> ''
          ORDER BY h.plate_number`,
-        [tenantScope.value, driverIds, driverIds]
+        [...tenantScope.params, driverIds, driverIds]
     );
     const cards = hearseRows.map((hearse: any) => {
         const card = summary.cards.find((item: any) => String(item.hearse_id) === String(hearse.hearse_id));
@@ -315,12 +345,12 @@ async function withLockedWallet<T>(
 
 
 
-async function getHearseCard(connection: PoolConnection, tenantKey: string, hearseId: unknown) {
-    const tenantScope = hearseTenantScope(tenantKey);
+async function getHearseCard(connection: PoolConnection, tenantKey: string, hearseId: unknown, tenantSlug: string | null = null) {
+    const tenantScope = hearseTenantScope(tenantKey, '', tenantSlug);
     const [rows]: any = await connection.query(
         `SELECT id, plate_number, fuel_card_number
          FROM hearses WHERE id = ? AND ${tenantScope.clause} FOR UPDATE`,
-        [hearseId, tenantScope.value]
+        [hearseId, ...tenantScope.params]
     );
     const hearse = rows[0];
     if (!hearse) throw new WalletError(404, 'Hearse not found for this tenant.');
@@ -429,7 +459,7 @@ export const getFuelWallet = asyncHandler(async (req: Request, res: Response) =>
     if (!tenantKey) return;
     try {
         const pool = await getHearsePool();
-        res.json({ success: true, ...await getSummary(pool, tenantKey) });
+        res.json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
         sendError(res, error, 'Unable to load the fuel account.');
     }
@@ -461,7 +491,7 @@ export const addFuelDeposit = asyncHandler(async (req: Request, res: Response) =
             notes: String(req.body.notes || '').trim().slice(0, 500) || null,
         }));
         const pool = await getHearsePool();
-        res.status(201).json({ success: true, ...await getSummary(pool, tenantKey) });
+        res.status(201).json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
         sendError(res, error, 'Unable to record the cheque deposit.');
     }
@@ -490,7 +520,7 @@ export const allocateFuelFunds = asyncHandler(async (req: Request, res: Response
             if (Math.round(Number(amount) * 100) > Math.round(available * 100)) {
                 throw new WalletError(400, 'Allocation exceeds the unallocated TotalEnergies balance.');
             }
-            const hearse = await getHearseCard(connection, tenantKey, hearseId);
+            const hearse = await getHearseCard(connection, tenantKey, hearseId, getTenantSlug(req));
             await recordTransaction(connection, tenantKey, {
                 type: 'allocation',
                 amount,
@@ -501,7 +531,7 @@ export const allocateFuelFunds = asyncHandler(async (req: Request, res: Response
             });
         });
         const pool = await getHearsePool();
-        res.status(201).json({ success: true, ...await getSummary(pool, tenantKey) });
+        res.status(201).json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
         sendError(res, error, 'Unable to allocate fuel-card funds.');
     }
@@ -524,7 +554,7 @@ export const recordFuelPurchase = asyncHandler(async (req: Request, res: Respons
     }
     try {
         await withLockedWallet(tenantKey, async (connection) => {
-            const hearse = await getHearseCard(connection, tenantKey, hearseId);
+            const hearse = await getHearseCard(connection, tenantKey, hearseId, getTenantSlug(req));
             const cardBalance = await getCardBalance(connection, tenantKey, hearse.fuel_card_number);
             if (Math.round(Number(amount) * 100) > Math.round(cardBalance * 100)) {
                 throw new WalletError(400, 'Fuel purchase exceeds this card’s available balance.');
@@ -540,7 +570,7 @@ export const recordFuelPurchase = asyncHandler(async (req: Request, res: Respons
             });
         });
         const pool = await getHearsePool();
-        res.status(201).json({ success: true, ...await getSummary(pool, tenantKey) });
+        res.status(201).json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
         sendError(res, error, 'Unable to record the fuel purchase.');
     }
@@ -555,7 +585,7 @@ export const getDriverFuelCards = asyncHandler(async (req: Request, res: Respons
     if (!driver) return;
     try {
         const pool = await getHearsePool();
-        res.json({ success: true, ...await getDriverFuelSummary(pool, tenantKey, driver.ids) });
+        res.json({ success: true, ...await getDriverFuelSummary(pool, tenantKey, driver.ids, getTenantSlug(req)) });
     } catch (error) {
         sendError(res, error, 'Unable to load your assigned fuel card.');
     }
@@ -577,30 +607,31 @@ export const recordDriverFuelPurchase = asyncHandler(async (req: Request, res: R
 
     }
     try {
+        const tenantSlug = getTenantSlug(req);
         await withLockedWallet(tenantKey, async (connection) => {
-            const tenantScope = hearseTenantScope(tenantKey);
+            const tenantScope = hearseTenantScope(tenantKey, '', tenantSlug);
             const [rows]: any = await connection.query(
                 `SELECT id, plate_number, fuel_card_number
                  FROM hearses
                  WHERE id = ? AND ${tenantScope.clause} FOR UPDATE`,
-                [hearseId, tenantScope.value]
+                [hearseId, ...tenantScope.params]
             );
             const hearse = rows[0];
             if (!hearse) throw new WalletError(403, 'This vehicle is not assigned to your driver account.');
             const [legacyRows]: any = await connection.query(
                 `SELECT id FROM hearses
                  WHERE id = ? AND ${tenantScope.clause} AND driver_id IN (?)`,
-                [hearseId, tenantScope.value, driver.ids]
+                [hearseId, ...tenantScope.params, driver.ids]
             );
             if (!legacyRows.length) {
                 const [bookingRows]: any = await connection.query(
                     `SELECT hb.booking_dates, hb.booking_date, hb.from_timestamp, hb.to_timestamp
                      FROM hearse_bookings hb
                      WHERE hb.hearse_id = ? AND hb.driver_id IN (?)
-                       AND ${hearseTenantScope(tenantKey, 'hb').clause}
+                       AND ${hearseTenantScope(tenantKey, 'hb', tenantSlug).clause}
                        AND hb.status IN ('pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress')
                      FOR UPDATE`,
-                    [hearseId, driver.ids, tenantScope.value]
+                    [hearseId, driver.ids, ...hearseTenantScope(tenantKey, 'hb', tenantSlug).params]
                 );
                 const isAssignedForDate = bookingRows.some((booking: any) =>
                     extractRowDates(booking).includes(transactionDate)
@@ -627,7 +658,7 @@ export const recordDriverFuelPurchase = asyncHandler(async (req: Request, res: R
             });
         });
         const pool = await getHearsePool();
-        res.status(201).json({ success: true, ...await getDriverFuelSummary(pool, tenantKey, driver.ids) });
+        res.status(201).json({ success: true, ...await getDriverFuelSummary(pool, tenantKey, driver.ids, tenantSlug) });
     } catch (error) {
         sendError(res, error, 'Unable to record the fuelling.');
     }
@@ -649,7 +680,7 @@ export const updateFuelThreshold = asyncHandler(async (req: Request, res: Respon
             'UPDATE hearse_fuel_accounts SET low_balance_threshold = ? WHERE tenant_key = ?',
             [Number(threshold).toFixed(2), tenantKey]
         );
-        res.json({ success: true, ...await getSummary(pool, tenantKey) });
+        res.json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
         sendError(res, error, 'Unable to update the low-balance threshold.');
     }
