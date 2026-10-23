@@ -1,621 +1,664 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 
-import { BR, HH, MAX_H, SC, SM, VIEWER_CSS, dk, ft, layout, resolveBranchName, resolveBranchColor, isMultiDay, getMultiDayColor, getBookingDateRange } from './viewerShared';
-
-
-// --- Constants ---
-const DF = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-// Default operational window shown for date-only (untimed / all-day) bookings.
-const START_DEFAULT = 6;
-const END_DEFAULT = 22;
-
-// --- Main Component ---
-export default function DispatchBoard({ 
-  bookings: externalBookings = {}, 
-  onBookingClick, 
-  onBookingUpdate,
-  onBookingDelete,
-  selectedDate,
-  onDateChange 
-}) {
-  const [curDay, setCurDay] = useState(() => {
-    const d = selectedDate ? new Date(selectedDate) : new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  
-  const [bookings, setBookings] = useState(() => {
-    return externalBookings || {};
-  });
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewingId, setViewingId] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [selBr, setSelBr] = useState('nairobi');
-  const [selSt, setSelSt] = useState('booked');
-  const gridWrapRef = useRef(null);
-
-  useEffect(() => {
-    if (externalBookings) {
-      setBookings(externalBookings);
-    }
-  }, [externalBookings]);
-
-  useEffect(() => {
-    if (selectedDate) {
-      const d = new Date(selectedDate);
-      d.setHours(0, 0, 0, 0);
-      setCurDay(d);
-    }
-  }, [selectedDate]);
-
-  const findB = useCallback((id) => {
-    for (const k in bookings) {
-      const f = bookings[k].find(b => b.id === id);
-      if (f) return f;
-    }
-    return null;
-  }, [bookings]);
-
-  const getDayRange = useCallback((bks) => {
-    if (!bks || !bks.length) return { sh: 6, eh: 22 };
-    let mn = 24, mx = 0;
-    bks.forEach(b => { 
-      const start = b.start || b.start_time || 0;
-      const end = b.end || b.end_time || 0;
-      if (start < mn) mn = start; 
-      if (end > mx) mx = end; 
-    });
-    return { sh: Math.max(0, Math.floor(mn) - 1), eh: Math.min(24, Math.ceil(mx) + 1) };
-  }, []);
-
-  const normalizeBooking = useCallback((b) => {
-    // Preserve ALL branch-related fields so resolveBranchName() can find the
-    // real name. The backend may send branch_slug (complete slug like
-    // "org-home-machakos"), branch_name ("Main Branch" fallback), branch_id,
-    // or branch (short slug). We keep them all and let resolveBranchName()
-    // pick the best one.
-    return {
-      id: b.id || b.booking_id,
-      client: b.client || b.client_name || b.booking_code || '—',
-      dest: b.dest || b.destination || b.to_location || '—',
-      from: b.from || b.from_location || '',
-      start: b.start || (typeof b.start_time === 'number' ? b.start_time : START_DEFAULT),
-      end: b.end || (typeof b.end_time === 'number' ? b.end_time : END_DEFAULT),
-      allDay: b.allDay === true || (!b.start && !b.start_time && !b.estimated_departure_time && !b.end && !b.end_time && !b.estimated_arrival_time),
-      status: b.status || b.booking_status || 'booked',
-      phone: b.phone || b.client_phone || '',
-      plate: b.plate || b.plate_number || b.hearse_plate || '—',
-      // Keep original fields for branch resolution
-      branch: b.branch || b.branch_slug || b.branchSlug || b.branch_name || 'nairobi',
-      branch_slug: b.booking_branch_slug || b.branch_slug || b.branchSlug || b.branch || '',
-      booking_branch_slug: b.booking_branch_slug || '',
-      branchName: b.branchName || b.branch_name || '',
-      branch_id: b.branch_id || b.branchId || null,
-      // Preserve multi-day fields
-      start_date: b.start_date || b.startDate || b.date || null,
-      end_date: b.end_date || b.endDate || null,
-      is_multi_day: b.is_multi_day || b.multi_day || b.isMultiDay || false,
-    };
-  }, []);
-
-  const renderFloats = useCallback(() => {
-    const k = dk(curDay);
-    const rawBks = bookings[k] || [];
-    const bks = rawBks.map(b => normalizeBooking(b));
-
-    const tr = bks.filter(b => b.status === 'transit' || b.status === 'in_transit').length;
-    const pn = bks.filter(b => b.status === 'pending').length;
-    let items = [];
-    if (bks.length) items.push(<div className="fb" style={{ animationDelay: '0s' }} key="nb"><div className="fp" style={{ background: '#2563EB', color: '#2563EB' }}></div><span style={{ color: '#2563EB' }}>{bks.length} Booking{bks.length !== 1 ? 's' : ''} Today</span></div>);
-    if (tr > 0) items.push(<div className="fb" style={{ animationDelay: '.1s' }} key="tr"><div className="fp" style={{ background: '#DC2626', color: '#DC2626' }}></div><span style={{ color: '#DC2626' }}>{tr} In Transit</span></div>);
-    if (pn > 0) items.push(<div className="fb" style={{ animationDelay: '.2s' }} key="pn"><div className="fp" style={{ background: '#D97706', color: '#D97706' }}></div><span style={{ color: '#D97706' }}>{pn} Pending Confirmation</span></div>);
-    if (!bks.length) items.push(<div className="fb" style={{ animationDelay: '0s' }} key="clr"><div className="fp" style={{ background: '#2563EB', color: '#2563EB' }}></div><span style={{ color: '#2563EB' }}>All Clear Today</span></div>);
-    return <div className="fl">{items}</div>;
-  }, [curDay, bookings, normalizeBooking]);
-
-  const renderDayHeader = useCallback(() => {
-    const td = new Date(); td.setHours(0, 0, 0, 0);
-    const isToday = curDay.getTime() === td.getTime();
-    const k = dk(curDay);
-    const rawBks = bookings[k] || [];
-    const bks = rawBks.map(b => normalizeBooking(b));
-    const cnt = bks.length;
-    const range = getDayRange(bks);
-    return (
-      <div className="dh">
-        <div className="dhs"></div>
-        <div className="dhc">
-          <span className="dn">{isToday ? 'Today' : DF[curDay.getDay()]}</span>
-          <span className={`dd ${isToday ? 'tm' : ''}`}>{curDay.getDate()}</span>
-          <span className="db">{cnt} booking{cnt !== 1 ? 's' : ''}</span>
-          <span className="dr">{ft(range.sh)} — {ft(range.eh)}</span>
-        </div>
-      </div>
-    );
-  }, [curDay, bookings, getDayRange, normalizeBooking]);
-
-
-  const renderSidebar = useCallback(() => {
-    if (!viewingId) return null;
-    const b = findB(viewingId);
-    if (!b) return null;
-    const br = BR[b.branch] || BR.nairobi;
-    const dur = b.end - b.start;
-    const dh = Math.floor(dur), dm = Math.round((dur - dh) * 60);
-    const ds = `${dh > 0 ? dh + 'h ' : ''}${dm > 0 ? dm + 'm' : ''}`.trim() || '0m';
-    const steps = [
-      { l: 'Booking Created', dn: true },
-      { l: 'Confirmed & Assigned', dn: ['booked', 'transit', 'completed', 'reserved', 'standby'].includes(b.status) },
-      { l: 'Hearse Dispatched', dn: ['transit', 'completed'].includes(b.status), ac: b.status === 'transit' },
-      { l: 'Arrived at Destination', dn: b.status === 'completed' },
-      { l: 'Service Completed', dn: b.status === 'completed', ac: b.status === 'completed' },
-    ];
-
-    const handleDelete = () => {
-      if (!viewingId) return;
-      if (onBookingDelete) {
-        onBookingDelete(viewingId);
-      } else {
-        const updated = { ...bookings };
-        for (const k in updated) updated[k] = updated[k].filter(bk => bk.id !== viewingId);
-        setBookings(updated);
-      }
-      setSidebarOpen(false);
-      setViewingId(null);
-      toast('Booking deleted');
-    };
-
-    const handleEdit = () => {
-      const bk = findB(viewingId);
-      setSidebarOpen(false);
-      if (bk) setTimeout(() => openEditModal(bk), 250);
-    };
-
-    // Resolve the REAL branch name from the booking data (not the hardcoded BR object).
-    const realBranchName = resolveBranchName(b);
-    const realBranchColor = resolveBranchColor(b);
-    const multiDay = isMultiDay(b);
-    const bookingDates = multiDay ? getBookingDateRange(b) : [];
-    const multiDayColor = multiDay ? getMultiDayColor(b) : realBranchColor;
-
-    return (
+const Icon = ({ name, size = 18 }) => {
+  const paths = {
+    calendar: (
       <>
-        <div className={`sov ${sidebarOpen ? 'op' : ''}`} onClick={() => { setSidebarOpen(false); setViewingId(null); }}></div>
-        <aside className={`sb ${sidebarOpen ? 'op' : ''}`} role="dialog" aria-label="Booking details">
-          <div className="sbh"><h3>Booking Details</h3><button className="cbtn" onClick={() => { setSidebarOpen(false); setViewingId(null); }} aria-label="Close"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button></div>
-          <div className="sbd">
-            <div className="scb" style={{ background: multiDay ? multiDayColor : realBranchColor }}></div>
-
-            {/* Multi-day booking badge */}
-            {multiDay && (
-              <div style={{ background: multiDayColor, color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                Multi-Day Booking ({bookingDates.length} days)
-              </div>
-            )}
-
-            <div className="sbs"><div className="sbst">Client Information</div><div className="sig"><div className="sic"><div className="sil">Client</div><div className="siv">{b.client}</div></div><div className="sic"><div className="sil">Phone</div><div className="siv">{b.phone}</div></div></div></div>
-            <div className="sbs"><div className="sbst">Schedule</div>
-              <div className="sdr"><span className="sdl">{multiDay ? 'Start Date' : 'Date'}</span><span className="sdvl">{DF[curDay.getDay()]}, {MN[curDay.getMonth()]} {curDay.getDate()}</span></div>
-              {multiDay && bookingDates.length > 1 && (
-                <div className="sdr"><span className="sdl">End Date</span><span className="sdvl">{(() => { const d = new Date(bookingDates[bookingDates.length - 1] + 'T00:00:00'); return `${DF[d.getDay()]}, ${MN[d.getMonth()]} ${d.getDate()}`; })()}</span></div>
-              )}
-              <div className="sdr"><span className="sdl">Time</span><span className="sdvl">{ft(b.start)} — {ft(b.end)}</span></div>
-              <div className="sdr"><span className="sdl">Duration</span><span className="sdvl">{ds}</span></div>
-              <div className="sdr"><span className="sdl">Status</span><span className="sdvl" style={{ color: SC[b.status] || '#000' }}>{SM[b.status] || b.status}</span></div>
-              <div className="sdr"><span className="sdl">Branch</span><span className="sdvl" style={{ color: multiDayColor, fontWeight: 700 }}>{realBranchName}</span></div>
-            </div>
-            {/* Multi-day booking: show all dates */}
-            {multiDay && bookingDates.length > 1 && (
-              <div className="sbs"><div className="sbst">Booking Dates</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {bookingDates.map((dateStr, idx) => {
-                    const d = new Date(dateStr + 'T00:00:00');
-                    return (
-                      <span key={dateStr} style={{
-                        background: multiDayColor,
-                        color: '#fff',
-                        padding: '3px 8px',
-                        borderRadius: 6,
-                        fontSize: 10,
-                        fontWeight: 600,
-                        opacity: idx === 0 || idx === bookingDates.length - 1 ? 1 : 0.85,
-                      }}>
-                        {d.getDate()}/{d.getMonth() + 1}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="sbs"><div className="sbst">Route</div><div className="srt"><div className="srl"><div className="srdt" style={{ borderColor: multiDayColor }}></div><div className="srdsh"></div><div className="srdt" style={{ borderColor: multiDayColor }}></div></div><div className="sri"><div><div className="srpt">{b.from}</div><div className="srsb">Departure Point</div></div><div><div className="srpt">{b.dest}</div><div className="srsb">Destination</div></div></div></div></div>
-            <div className="sbs"><div className="sbst">Vehicle</div><div className="sig"><div className="sic"><div className="sil">Plate</div><div className="siv">{b.plate}</div></div><div className="sic"><div className="sil">Type</div><div className="siv">Hearse</div></div></div></div>
-            <div className="sbs"><div className="sbst">Progress</div><div className="stl">{steps.map((s, i) => <div className={`sts${s.dn ? ' dn' : ''}${s.ac ? ' ac' : ''}`} key={i}><div className="std"></div><div className="stt">{s.l}</div></div>)}</div></div>
-          </div>
-          <div className="sbf">
-            <button className="sbb sbdn" onClick={handleDelete}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /></svg>Delete</button>
-            <button className="sbb sbg" onClick={handleEdit}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>Edit</button>
-            <button className="sbb sbp" onClick={() => { setSidebarOpen(false); setViewingId(null); }}>Close</button>
-          </div>
-        </aside>
+        <path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z" />
       </>
-    );
-  }, [viewingId, findB, bookings, curDay, sidebarOpen, onBookingDelete, onBookingUpdate]);
-
-  const openEditModal = useCallback((b) => {
-    setEditingId(b.id);
-    document.getElementById('mTitle').textContent = 'Edit Booking';
-    document.getElementById('mSave').textContent = 'Update Booking';
-    populateForm();
-    document.getElementById('fStart').value = b.start;
-    document.getElementById('fEnd').value = b.end;
-    document.getElementById('fClient').value = b.client;
-    document.getElementById('fDest').value = b.dest;
-    document.getElementById('fFrom').value = b.from;
-    document.getElementById('fPlate').value = b.plate;
-    document.getElementById('fPhone').value = b.phone;
-    setSelBr(b.branch);
-    setSelSt(b.status);
-    document.querySelectorAll('#brPick .brc').forEach(c => c.classList.toggle('sel', c.dataset.br === b.branch));
-    document.querySelectorAll('#stPick .brc').forEach(c => c.classList.toggle('sel', c.dataset.st === b.status));
-    setModalOpen(true);
-    setTimeout(() => document.getElementById('fClient').focus(), 100);
-  }, []);
-
-  const populateForm = useCallback(() => {
-    const ss = document.getElementById('fStart'), se = document.getElementById('fEnd');
-    ss.innerHTML = ''; se.innerHTML = '';
-    for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 15) {
-      const t = h + m / 60;
-      const l = ft(t);
-      ss.innerHTML += `<option value="${t}">${l}</option>`;
-      se.innerHTML += `<option value="${t}">${l}</option>`;
-    }
-    se.innerHTML += `<option value="24">12:00 AM</option>`;
-    ss.value = 9; se.value = 10;
-
-    const brPick = document.getElementById('brPick');
-    brPick.innerHTML = Object.entries(BR).map(([k, v]) => `<div class="brc${selBr === k ? ' sel' : ''}" style="background:${v.color}" data-br="${k}">${v.name}</div>`).join('');
-    brPick.querySelectorAll('.brc').forEach(c => c.onclick = () => {
-      brPick.querySelectorAll('.brc').forEach(x => x.classList.remove('sel'));
-      c.classList.add('sel');
-      setSelBr(c.dataset.br);
-    });
-
-    const stPick = document.getElementById('stPick');
-    stPick.innerHTML = Object.entries(SM).map(([k, v]) => `<div class="brc${selSt === k ? ' sel' : ''}" style="background:${SC[k]}" data-st="${k}">${v}</div>`).join('');
-    stPick.querySelectorAll('.brc').forEach(c => c.onclick = () => {
-      stPick.querySelectorAll('.brc').forEach(x => x.classList.remove('sel'));
-      c.classList.add('sel');
-      setSelSt(c.dataset.st);
-    });
-  }, [selBr, selSt]);
-
-  const renderModal = useCallback(() => {
-    if (!modalOpen) return null;
-    return (
-      <div className={`mov ${modalOpen ? 'op' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
-        <div className="mod" role="dialog" aria-label="Add booking">
-          <div className="moh"><h3 id="mTitle">New Booking</h3><button className="cbtn" onClick={() => setModalOpen(false)} aria-label="Close"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button></div>
-          <div className="fg"><label>Client Name</label><input type="text" id="fClient" placeholder="e.g. John Doe" /></div>
-          <div className="fr"><div className="fg"><label>Destination</label><input type="text" id="fDest" placeholder="e.g. Greenwood Cemetery" /></div><div className="fg"><label>Departure From</label><input type="text" id="fFrom" placeholder="e.g. City Mortuary" /></div></div>
-          <div className="fr"><div className="fg"><label>Start Time</label><select id="fStart"></select></div><div className="fg"><label>End Time</label><select id="fEnd"></select></div></div>
-          <div className="fr"><div className="fg"><label>Vehicle Plate</label><input type="text" id="fPlate" placeholder="e.g. HF-001" /></div><div className="fg"><label>Client Phone</label><input type="text" id="fPhone" placeholder="e.g. 555-0100" /></div></div>
-          <div className="fg"><label>Branch</label><div className="brpk" id="brPick"></div></div>
-          <div className="fg"><label>Status</label><div className="brpk" id="stPick"></div></div>
-          <div className="moa"><button className="sbb sbg" style={{ flex: 'none', padding: '7px 16px' }} onClick={() => setModalOpen(false)}>Cancel</button><button className="sbb sbp" style={{ flex: 'none', padding: '7px 20px' }} id="mSave" onClick={saveBooking}>Save Booking</button></div>
-        </div>
-      </div>
-    );
-  }, [modalOpen, selBr, selSt, populateForm]);
-
-  const saveBooking = useCallback(() => {
-    const client = document.getElementById('fClient').value.trim();
-    const dest = document.getElementById('fDest').value.trim();
-    const from = document.getElementById('fFrom').value.trim() || 'TBD';
-    const plate = document.getElementById('fPlate').value.trim() || 'TBD';
-    const phone = document.getElementById('fPhone').value.trim() || '—';
-    const start = parseFloat(document.getElementById('fStart').value);
-    const end = parseFloat(document.getElementById('fEnd').value);
-    if (!client) { toast('Enter client name'); return; }
-    if (!dest) { toast('Enter destination'); return; }
-    if (end <= start) { toast('End must be after start'); return; }
-    
-    const k = dk(curDay);
-    const bookingData = { 
-      id: editingId || `${k}-${Date.now()}`, 
-      client, 
-      dest, 
-      from, 
-      start, 
-      end, 
-      status: selSt, 
-      phone, 
-      plate, 
-      branch: selBr 
-    };
-
-    if (onBookingUpdate && !editingId) {
-      onBookingUpdate(bookingData, 'create');
-    } else {
-      const updated = { ...bookings };
-      if (!updated[k]) updated[k] = [];
-      if (editingId) {
-        for (const x in updated) updated[x] = updated[x].filter(b => b.id !== editingId);
-        updated[k].push(bookingData);
-        toast('Booking updated');
-      } else {
-        updated[k].push(bookingData);
-        toast('Booking created');
-      }
-      setBookings(updated);
-    }
-    
-    setModalOpen(false);
-    setEditingId(null);
-  }, [curDay, bookings, editingId, selSt, selBr, onBookingUpdate]);
-
-  const toast = useCallback((msg) => {
-    const id = Date.now();
-    const el = document.createElement('div');
-    el.className = 'tm';
-    el.innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>${msg}`;
-    document.getElementById('toastArea').appendChild(el);
-    setTimeout(() => { if (el.parentNode) el.remove(); }, 3000);
-  }, []);
-
-  const scrollToNow = useCallback(() => {
-    const now = new Date();
-    const nh = now.getHours() + now.getMinutes() / 60;
-    const k = dk(curDay);
-    const rawBks = bookings[k] || [];
-    const bks = rawBks.map(b => normalizeBooking(b));
-    const range = getDayRange(bks);
-    if (nh >= range.sh && nh < range.eh && gridWrapRef.current) {
-      gridWrapRef.current.scrollTo({ top: Math.max(0, (nh - range.sh - 1.5) * HH), behavior: 'smooth' });
-    }
-  }, [curDay, bookings, getDayRange, normalizeBooking]);
-
-  useEffect(() => {
-    if (modalOpen) populateForm();
-  }, [modalOpen, populateForm]);
-
-  useEffect(() => {
-    const timer = setTimeout(scrollToNow, 250);
-    return () => clearTimeout(timer);
-  }, [scrollToNow]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBookings(prev => ({ ...prev }));
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const openAddModal = useCallback((hour) => {
-    setEditingId(null);
-    document.getElementById('mTitle').textContent = 'New Booking';
-    document.getElementById('mSave').textContent = 'Save Booking';
-    populateForm();
-    if (hour !== undefined) {
-      document.getElementById('fStart').value = hour;
-      document.getElementById('fEnd').value = Math.min(24, hour + 1);
-    }
-    document.getElementById('fClient').value = '';
-    document.getElementById('fDest').value = '';
-    document.getElementById('fFrom').value = '';
-    document.getElementById('fPlate').value = '';
-    document.getElementById('fPhone').value = '';
-    setSelBr('nairobi');
-    setSelSt('booked');
-    document.querySelectorAll('#brPick .brc').forEach((c, i) => c.classList.toggle('sel', i === 0));
-    document.querySelectorAll('#stPick .brc').forEach((c, i) => c.classList.toggle('sel', i === 0));
-    setModalOpen(true);
-    setTimeout(() => document.getElementById('fClient').focus(), 100);
-  }, [populateForm]);
-
-  const handleGridClick = useCallback((e) => {
-    const cell = e.target.closest('.hc');
-    if (cell) openAddModal(parseFloat(cell.dataset.hour));
-  }, [openAddModal]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') {
-        setModalOpen(false);
-        setSidebarOpen(false);
-      }
-      if (e.key === 'Enter' && modalOpen) saveBooking();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [modalOpen, saveBooking]);
+    ),
+    'chevron-left': <path d="m15 18-6-6 6-6" />,
+    'chevron-right': <path d="m9 18 6-6-6-6" />,
+    filter: <path d="M4 6h16M7 12h10M10 18h4" />,
+    list: (
+      <>
+        <path d="M9 6h11M9 12h11M9 18h11" />
+        <path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth="3" />
+      </>
+    ),
+    more: (
+      <>
+        <circle cx="5" cy="12" r="1" fill="currentColor" />
+        <circle cx="12" cy="12" r="1" fill="currentColor" />
+        <circle cx="19" cy="12" r="1" fill="currentColor" />
+      </>
+    ),
+    plus: <path d="M12 5v14M5 12h14" />,
+    search: (
+      <>
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-4-4" />
+      </>
+    ),
+    settings: (
+      <>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19 15.5 21 17l-4 4-1.5-2a8 8 0 0 1-3.5 1l-.5 2h-5l-.5-2a8 8 0 0 1-3.5-2L1 17l3-3a8 8 0 0 1 0-4L1 7l4-4 2 2a8 8 0 0 1 4 0l2-2 4 4-2 2a8 8 0 0 1 0 4l2 2.5Z" />
+      </>
+    ),
+    users: (
+      <>
+        <circle cx="9" cy="8" r="4" />
+        <path d="M2 21a7 7 0 0 1 14 0M17 4a4 4 0 0 1 0 8M18 15a6 6 0 0 1 4 6" />
+      </>
+    ),
+  };
 
   return (
-    <div className="dispatch-board">
-      <style>{VIEWER_CSS}</style>
-      
-      <div className="main">
-        <div className={`cal ${sidebarOpen ? 'sh' : ''}`}>
-          <div className="gw" onClick={handleGridClick} ref={gridWrapRef}>
-            {renderFloats()}
-            {renderDayHeader()}
-            <div className="tg" id="timeGrid">
-              {(() => {
-                const k = dk(curDay);
-                const rawBks = bookings[k] || [];
-                const dayBks = rawBks.map(b => normalizeBooking(b));
-                const range = getDayRange(dayBks);
-                const { sh, eh } = range;
-                const laid = layout(dayBks);
-                let rows = [];
-                for (let h = sh; h < eh; h++) {
-                  const l = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
-                  rows.push(
-                    <React.Fragment key={h}>
-                      <div className="tl">{l}</div>
-                      <div className="dc"><div className="hc" data-hour={h} style={{ position: 'relative' }}></div></div>
-                    </React.Fragment>
-                  );
-                }
-                const now = new Date();
-                const td = new Date(); td.setHours(0, 0, 0, 0);
-                const isToday = td.getTime() === curDay.getTime();
-                const nh = now.getHours() + now.getMinutes() / 60;
-                const showLine = isToday && nh >= sh && nh < eh;
-                let bookingElements = [];
-                if (laid.length) {
-                  laid.forEach((b, i) => {
-                    const top = Math.min((b.start - sh) * HH, eh * HH - MAX_H);
-                    const height = Math.min(MAX_H, Math.max(HH * 0.2, (Math.min(b.end, eh) - Math.max(b.start, sh)) * HH));
-                    const wp = 100 / b._t;
-                    const lp = b._c * wp;
-                    const multiDay = isMultiDay(b);
-                    const branchColor = multiDay ? getMultiDayColor(b) : resolveBranchColor(b);
-                    const branchName = resolveBranchName(b);
-                    const bookingDates = multiDay ? getBookingDateRange(b) : [];
-                    const showTm = height > 30;
-                    const showDs = height > 48;
-                    const showDt = height > 66;
-                    const showPl = height > 42;
-                    bookingElements.push(
-                      <div
-                        key={b.id}
-                        className="bb"
-                        style={{
-                          top: `${top}px`,
-                          height: `${height}px`,
-                          left: `calc(${lp}% + 2px)`,
-                          width: `calc(${wp}% - 4px)`,
-                          background: branchColor,
-                          animationDelay: `${i * 0.04}s`,
-                          border: multiDay ? `2px solid ${branchColor}` : 'none',
-                          boxShadow: multiDay ? `0 0 0 1px ${branchColor}40` : 'none',
-                        }}
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          if (onBookingClick) { onBookingClick(b); return; }
-                          setViewingId(b.id); 
-                          setSidebarOpen(true);
-                        }}
-                      >
-                        <div className="bb-sp">{SM[b.status] || b.status}</div>
-                        {multiDay && (
-                          <div style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: 3, display: 'inline-flex', alignItems: 'center', gap: 2, marginBottom: 2 }}>
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            {bookingDates.length}d
-                          </div>
-                        )}
-                        <div className="bb-br">{branchName}</div>
-                        <div className="bb-cl">{b.client}</div>
-                        {showTm && <div className="bb-tm">{b.allDay ? 'All Day' : `${ft(b.start)} – ${ft(b.end)}`}</div>}
-                        {showDs && <div className="bb-ds">{b.dest}</div>}
-                        {showDt && <div className="bb-dt">{b.from}</div>}
-                        {showPl && <div className="bb-pl">{b.plate}</div>}
-                      </div>
-                    );
-                  });
-                }
-                // Collect multi-day bookings that span this date (for overlay bar at top)
-                const allBookings = Object.values(bookings).flat();
-                const multiDayBookings = allBookings.filter(b => {
-                  if (!isMultiDay(b)) return false;
-                  const dates = getBookingDateRange(b);
-                  return dates.includes(k);
-                });
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {paths[name]}
+    </svg>
+  );
+};
 
-                return (
-                  <>
-                    {/* Multi-day booking overlay bar at top of grid */}
-                    {multiDayBookings.length > 0 && (
-                      <div style={{
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 10,
-                        background: '#fff',
-                        borderBottom: '2px solid #E5E7EB',
-                        padding: '6px 12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                      }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#9CA3AF' }}>
-                          Multi-Day Bookings
-                        </div>
-                        {multiDayBookings.map((b, idx) => {
-                          const color = getMultiDayColor(b);
-                          const dates = getBookingDateRange(b);
-                          const branchName = resolveBranchName(b);
-                          return (
-                            <div
-                              key={`md-${b.id}`}
-                              onClick={(e) => { e.stopPropagation(); setViewingId(b.id); setSidebarOpen(true); }}
-                              style={{
-                                background: color,
-                                color: '#fff',
-                                padding: '5px 10px',
-                                borderRadius: 6,
-                                fontSize: 11,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: 8,
-                                boxShadow: '0 1px 3px rgba(0,0,0,.1)',
-                              }}
-                            >
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                {b.client}
-                              </span>
-                              <span style={{ fontSize: 10, opacity: 0.9 }}>
-                                {branchName} · {dates.length}d
-                              </span>
-                            </div>
-                          );
-                        })}
+export default function HearseDailyView({
+  bookings = [],
+  fleet = [],
+  drivers = [],
+  selectedDate,
+  onDateChange,
+  onBookingClick,
+  onBookingUpdate,
+  onBookingDelete,
+  onVehicleSelect,
+  onDriverSelect,
+  branchName = 'Operations',
+  branchLocation = 'Main Branch',
+}) {
+  const [view, setView] = useState('schedule');
+  const [activeDayIndex, setActiveDayIndex] = useState(2);
+  const [query, setQuery] = useState('');
+  const [selectedVehicle, setSelectedVehicle] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const today = new Date();
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const days = useMemo(() => {
+    const arr = [];
+    for (let i = -3; i <= 3; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      arr.push({
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+        label: dayLabels[d.getDay()],
+        date: d.getDate(),
+        isToday: i === 0,
+      });
+    }
+    return arr;
+  }, []);
+
+  const activeDay = days[activeDayIndex] || days[2];
+
+  const filteredBookings = useMemo(() => {
+    const value = query.toLowerCase().trim();
+    if (!value) return bookings;
+    return bookings.filter((booking) =>
+      [
+        booking.client,
+        booking.driver,
+        booking.vehicle,
+        booking.plate,
+        booking.from,
+        booking.dest,
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(value),
+    );
+  }, [query, bookings]);
+
+  const activeDayLabel = () => {
+    const d = new Date(activeDay.key);
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  };
+
+  const dayBookings = filteredBookings.filter((b) => {
+    const bd = b.date || b.booking_date || b.created_at || b.start_time;
+    if (!bd) return true;
+    const bKey = String(bd).slice(0, 10);
+    return bKey === activeDay.key;
+  });
+
+  const flash = (message) => {
+    setNotice(message);
+    setTimeout(() => setNotice(''), 2800);
+  };
+
+  const statusColor = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('confirm'))
+      return { bg: '#DCFCE7', text: '#166534', border: '#86EFAC' };
+    if (s.includes('pending') || s.includes('assign'))
+      return { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D' };
+    if (s.includes('transit'))
+      return { bg: '#DBEAFE', text: '#1D4ED8', border: '#93C5FD' };
+    if (s.includes('mainten') || s.includes('out') || s.includes('disabled'))
+      return { bg: '#FEE2E2', text: '#991B1B', border: '#FCA5A5' };
+    return { bg: '#E5E7EB', text: '#4B5563', border: '#D1D5DB' };
+  };
+
+  const avatarColor = (name) => {
+    const colors = ['#1E3A8A', '#15803D', '#B45309', '#7C3AED', '#DB2777', '#0891B2'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getInitials = (name) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  };
+
+  return (
+    <div className="hdv">
+      <style>{`
+        .hdv{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#F8FAFC;color:#0F172A;min-height:100vh}
+        .hdv *{box-sizing:border-box}
+        .hdv .shell{display:flex;height:100vh;overflow:hidden}
+        .hdv .rail{width:56px;flex-shrink:0;background:#FFF;border-right:1px solid #E2E8F0;display:flex;flex-direction:column;padding:16px 4px;position:sticky;top:0;z-index:10}
+        .hdv .logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#2563EB 0%,#7C3AED 100%);color:#FFF;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;margin:0 auto 24px}
+        .hdv nav{display:flex;flex-direction:column;gap:6px}
+        .hdv nav button{width:40px;height:40px;border-radius:10px;border:none;background:transparent;color:#64748B;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;transition:all 0.2s}
+        .hdv nav button.active{background:#EFF6FF;color:#2563EB}
+        .hdv nav button:hover:not(.active){background:#F1F5F9;color:#0F172A}
+        .hdv .rail-spacer{flex:1}
+        .hdv .rail-bottom{margin-top:auto}
+        .hdv .rail-settings,.hdv .avatar-button{width:40px;height:40px;border-radius:10px;border:none;background:transparent;color:#64748B;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;transition:all 0.2s}
+        .hdv .rail-settings:hover{background:#F1F5F9}
+        .hdv .avatar-button{background:#E2E8F0;color:#334155;font-weight:700;font-size:13px;border-radius:50%}
+        .hdv .avatar-button:hover{background:#CBD5E1}
+        .hdv .page{flex:1;display:flex;flex-direction:column;overflow:hidden}
+        .hdv .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:#FFF;border-bottom:1px solid #E2E8F0;flex-shrink:0}
+        .hdv .branch{display:flex;align-items:center;gap:8px}
+        .hdv .branch span{font-size:12px;color:#64748B;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+        .hdv .branch strong{font-size:15px;font-weight:700;color:#0F172A}
+        .hdv .topbar-actions{display:flex;align-items:center;gap:10px}
+        .hdv .search{position:relative;display:flex;align-items:center}
+        .hdv .search svg{position:absolute;left:10px;color:#94A3B8;width:16px;height:16px}
+        .hdv .search input{padding:7px 10px 7px 32px;height:34px;border:1px solid #E2E8F0;border-radius:20px;font-size:13px;color:#0F172A;outline:none;width:240px;transition:all 0.2s}
+        .hdv .search input:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+        .hdv .btn-primary{display:flex;align-items:center;gap:7px;padding:7px 16px;height:34px;border:none;border-radius:10px;background:#0F172A;color:#FFF;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s}
+        .hdv .btn-primary:hover{background:#1E293B}
+        .hdv main{flex:1;overflow-y:auto;padding:20px 24px}
+        .hdv .heading{margin-bottom:16px}
+        .hdv .heading p{font-size:12px;color:#64748B;margin:0 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+        .hdv .heading h1{font-size:20px;font-weight:700;margin:0 0 4px;color:#0F172A}
+        .hdv .heading span{font-size:13px;color:#64748B}
+        .hdv .view-switch{display:flex;gap:4px;margin-top:8px}
+        .hdv .view-switch button{padding:6px 12px;border-radius:8px;border:1px solid #E2E8F0;background:#FFF;color:#64748B;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s}
+        .hdv .view-switch button.active{border-color:#2563EB;background:#EFF6FF;color:#2563EB}
+        .hdv .view-switch button:hover:not(.active){border-color:#CBD5E1;background:#F8FAFC}
+        .hdv .date-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+        .hdv .date-arrow{width:34px;height:34px;border-radius:10px;border:1px solid #E2E8F0;background:#FFF;color:#334155;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
+        .hdv .date-arrow:hover{border-color:#2563EB;color:#2563EB;background:#EFF6FF}
+        .hdv .dates{display:flex;gap:8px;flex:1;overflow-x:auto;padding:2px 0}
+        .hdv .dates button{min-width:56px;padding:8px 6px;border-radius:10px;border:none;background:transparent;color:#64748B;font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all 0.2s;white-space:nowrap}
+        .hdv .dates button:hover{background:#F1F5F9;color:#0F172A}
+        .hdv .dates button.active{background:#2563EB;color:#FFF}
+        .hdv .dates button.active span{color:#FFF}
+        .hdv .dates button.active strong{color:#FFF}
+        .hdv .dates button .today-tag{font-size:9px;font-weight:800;margin-top:1px;opacity:0.9}
+        .hdv .dates button span{font-size:11px}
+        .hdv .dates button strong{font-size:15px;font-weight:800}
+        .hdv .schedule-layout{display:grid;grid-template-columns:1fr 300px;gap:20px}
+        .hdv .list-panel{background:#FFF;border-radius:12px;border:1px solid #E2E8F0;display:flex;flex-direction:column;min-height:420px;overflow:hidden}
+        .hdv .panel-title{padding:14px 18px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;background:#FAFAFA;border-radius:12px 12px 0 0}
+        .hdv .panel-title > div{display:flex;flex-direction:column;gap:3px}
+        .hdv .panel-title h2{font-size:14px;font-weight:700;margin:0;color:#0F172A}
+        .hdv .panel-title p{font-size:12px;color:#64748B;margin:0}
+        .hdv .panel-title .count{font-size:12px;font-weight:700;color:#2563EB}
+        .hdv .panel-title .text-button{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid #E2E8F0;border-radius:8px;background:transparent;color:#64748B;font-size:12px;cursor:pointer;transition:all 0.2s}
+        .hdv .panel-title .text-button:hover{border-color:#2563EB;color:#2563EB}
+        .hdv .booking-columns{padding:10px 18px;display:flex;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid #F8FAFC}
+        .hdv .booking-columns span{flex:1}
+        .hdv .booking-rows{display:flex;flex-direction:column;border-top:1px solid #F8FAFC}
+        .hdv .booking-row{display:flex;align-items:center;padding:12px 18px;border:none;background:transparent;cursor:pointer;transition:all 0.15s;text-align:left;border-bottom:1px solid #F8FAFC}
+        .hdv .booking-row:hover{background:#F8FAFC}
+        .hdv .booking-row:last-child{border-bottom:none}
+        .hdv .booking-row.empty{justify-content:center;color:#94A3B8;font-size:13px;cursor:default}
+        .hdv .booking-time{display:flex;flex-direction:column;min-width:70px}
+        .hdv .booking-time strong{font-size:13px;font-weight:700;color:#0F172A}
+        .hdv .booking-time small{font-size:11px;color:#94A3B8}
+        .hdv .booking-details{flex:1;min-width:0}
+        .hdv .booking-details strong{font-size:13px;font-weight:600;color:#0F172A;display:block;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .hdv .booking-details small{font-size:12px;color:#334155;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .hdv .booking-details em{font-size:11px;color:#64748B;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .hdv .booking-assignment{min-width:130px}
+        .hdv .booking-assignment strong{font-size:13px;font-weight:600;color:#0F172A;display:block;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .hdv .booking-assignment small{font-size:11px;color:#94A3B8;margin-bottom:2px}
+        .hdv .booking-assignment em{font-size:11px;color:#64748B;font-style:normal}
+        .hdv .status{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;min-width:70px;text-align:center;white-space:nowrap}
+        .hdv .status i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+        .hdv .fleet-list-panel{background:#FFF;border-radius:12px;border:1px solid #E2E8F0;display:flex;flex-direction:column;min-height:420px;overflow:hidden}
+        .hdv .fleet-rows{display:flex;flex-direction:column;padding:14px 18px;flex:1;overflow-y:auto}
+        .hdv .fleet-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;border:1px solid transparent;background:transparent;cursor:pointer;transition:all 0.15s;margin-bottom:6px}
+        .hdv .fleet-row:hover{background:#F8FAFC;border-color:#E2E8F0}
+        .hdv .fleet-row.selected{background:#EFF6FF;border-color:#2563EB}
+        .hdv .fleet-status{width:9px;height:9px;border-radius:50%;background:#10B981;flex-shrink:0}
+        .hdv .fleet-row > span:nth-child(2){min-width:0;flex:1}
+        .hdv .fleet-row strong{font-size:13px;font-weight:600;color:#0F172A;display:block}
+        .hdv .fleet-row small{font-size:11px;color:#64748B}
+        .hdv .fleet-row em{font-size:11px;color:#94A3B8;font-style:normal;margin-left:auto}
+        .hdv .fleet-action{width:100%;padding:10px;margin:0 18px 18px;border:1px solid #E2E8F0;border-radius:8px;background:#FFF;color:#2563EB;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s}
+        .hdv .fleet-action:hover{background:#EFF6FF;border-color:#2563EB}
+        .hdv .lineup-panel{background:#FFF;border-radius:12px;border:1px solid #E2E8F0;overflow:hidden}
+        .hdv .lineup-title{padding:14px 18px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;background:#FAFAFA;border-radius:12px 12px 0 0}
+        .hdv .lineup-title > div{display:flex;flex-direction:column;gap:3px}
+        .hdv .updated{font-size:11px;color:#64748B;font-weight:500}
+        .hdv .standby-row{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #E2E8F0;background:#FEF3C7}
+        .hdv .standby-accent{width:3px;flex-shrink:0;background:#F59E0B;border-radius:0 4px 4px 0}
+        .hdv .driver-avatar.standby{width:32px;height:32px;border-radius:50%;background:#F59E0B;color:#FFF;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+        .hdv .standby-row .driver-name{flex:1;min-width:0}
+        .hdv .standby-row .driver-name em{font-size:11px;color:#92400E;font-style:normal;font-weight:600;display:block;margin-bottom:2px}
+        .hdv .standby-row .driver-name strong{font-size:14px;font-weight:700;color:#0F172A;display:block}
+        .hdv .standby-row .driver-name small{font-size:11px;color:#64748B}
+        .hdv .standby-copy{min-width:140px}
+        .hdv .standby-copy strong{font-size:12px;font-weight:700;color:#0F172A;display:block}
+        .hdv .standby-copy small{font-size:11px;color:#64748B}
+        .hdv .assistant-cell{min-width:120px;text-align:right}
+        .hdv .assistant-cell small{font-size:11px;color:#64748B;display:block;margin-bottom:2px}
+        .hdv .assistant-cell strong{font-size:12px;font-weight:700;color:#0F172A}
+        .hdv .assistant-button{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid #E2E8F0;border-radius:8px;background:#FFF;color:#334155;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;margin-left:auto}
+        .hdv .assistant-button:hover{border-color:#2563EB;color:#2563EB}
+        .hdv .assistant-button.standby-button{background:#FEF3C7;border-color:#F59E0B;color:#92400E}
+        .hdv .driver-columns{display:flex;padding:10px 18px;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid #F8FAFC}
+        .hdv .driver-columns span{flex:1}
+        .hdv .driver-columns span:last-child{flex:0}
+        .hdv .driver-rows{display:flex;flex-direction:column;border-top:1px solid #F8FAFC}
+        .hdv .driver-row{display:flex;align-items:center;padding:12px 18px;border-bottom:1px solid #F8FAFC;background:transparent}
+        .hdv .driver-row:last-child{border-bottom:none}
+        .hdv .driver-profile{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+        .hdv .driver-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFF;font-weight:800;font-size:13px;flex-shrink:0}
+        .hdv .driver-name{min-width:0}
+        .hdv .driver-name strong{font-size:13px;font-weight:600;color:#0F172A;display:block}
+        .hdv .driver-name small{font-size:11px;color:#64748B}
+        .hdv .driver-name em{font-size:11px;color:#94A3B8;font-style:normal}
+        .hdv .driver-booking,.hdv .driver-vehicle{min-width:130px}
+        .hdv .driver-booking strong,.hdv .driver-vehicle strong{font-size:13px;font-weight:600;color:#0F172A;display:block}
+        .hdv .driver-booking small,.hdv .driver-vehicle small{font-size:11px;color:#64748B}
+        .hdv .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:8px;background:#0F172A;color:#FFF;font-size:13px;font-weight:500;z-index:50;box-shadow:0 10px 15px -3px rgba(0,0,0,0.2);animation:slideUp 0.3s ease}
+        @keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+        @media (max-width:900px){.hdv .schedule-layout{grid-template-columns:1fr}.hdv .topbar{padding:14px 16px}.hdv main{padding:16px 16px}}
+        @media (max-width:640px){.hdv .rail{display:none}.hdv .search input{width:140px}.hdv .date-bar{flex-direction:column;align-items:stretch;gap:12px}.hdv .dates{overflow-x:auto}}
+      `}</style>
+
+      <div className="shell">
+        <aside className="rail">
+          <div className="logo">P</div>
+          <nav aria-label="Primary">
+            <button
+              className={view === 'schedule' ? 'active' : ''}
+              onClick={() => setView('schedule')}
+              aria-label="Booking schedule"
+            >
+              <Icon name="list" />
+            </button>
+            <button
+              className={view === 'lineup' ? 'active' : ''}
+              onClick={() => setView('lineup')}
+              aria-label="Driver lineup"
+            >
+              <Icon name="users" />
+            </button>
+            <button aria-label="Calendar">
+              <Icon name="calendar" />
+            </button>
+          </nav>
+          <div className="rail-spacer" />
+          <div className="rail-bottom">
+            <button className="rail-settings" aria-label="Settings">
+              <Icon name="settings" />
+            </button>
+            <button className="avatar-button" aria-label="Profile">
+              {getInitials(branchName)}
+            </button>
+          </div>
+        </aside>
+
+        <div className="page">
+          <header className="topbar">
+            <div className="branch">
+              <span>{branchLocation}</span>
+              <strong>{branchName}</strong>
+            </div>
+            <div className="topbar-actions">
+              <label className="search">
+                <Icon name="search" size={16} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search bookings"
+                />
+              </label>
+              <button
+                className="btn-primary"
+                onClick={() => flash('New booking draft opened')}
+              >
+                <Icon name="plus" size={16} />
+                New booking
+              </button>
+            </div>
+          </header>
+
+          <main>
+            <section className="heading">
+              <div>
+                <p>{activeDayLabel()}</p>
+                <h1>
+                  {view === 'schedule' ? 'Booking schedule' : 'Driver lineup'}
+                </h1>
+                <span>
+                  {view === 'schedule'
+                    ? "Today's services and available fleet."
+                    : 'Every driver, assigned booking, vehicle and assistant.'}
+                </span>
+              </div>
+              <div className="view-switch" aria-label="Choose view">
+                <button
+                  className={view === 'schedule' ? 'active' : ''}
+                  onClick={() => setView('schedule')}
+                >
+                  <Icon name="list" size={15} />
+                  Schedule
+                </button>
+                <button
+                  className={view === 'lineup' ? 'active' : ''}
+                  onClick={() => setView('lineup')}
+                >
+                  <Icon name="users" size={15} />
+                  Driver lineup
+                </button>
+              </div>
+            </section>
+
+            <section className="date-bar">
+              <button
+                className="date-arrow"
+                onClick={() => setActiveDayIndex((p) => Math.max(0, p - 1))}
+                aria-label="Previous day"
+              >
+                <Icon name="chevron-left" size={17} />
+              </button>
+              <div className="dates">
+                {days.map((item, index) => (
+                  <button
+                    key={item.key}
+                    className={activeDayIndex === index ? 'active' : ''}
+                    onClick={() => setActiveDayIndex(index)}
+                  >
+                    <span>{item.label}</span>
+                    <strong>{item.date}</strong>
+                    {item.isToday && <span className="today-tag">Today</span>}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="date-arrow"
+                onClick={() =>
+                  setActiveDayIndex((p) => Math.min(days.length - 1, p + 1))
+                }
+                aria-label="Next day"
+              >
+                <Icon name="chevron-right" size={17} />
+              </button>
+            </section>
+
+            {view === 'schedule' ? (
+              <div className="schedule-layout">
+                <section className="list-panel">
+                  <div className="panel-title">
+                    <div>
+                      <h2>Services</h2>
+                      <p>{dayBookings.length} bookings today</p>
+                    </div>
+                    <button className="text-button">
+                      <Icon name="filter" size={15} />
+                      Filter
+                    </button>
+                  </div>
+                  <div className="booking-columns">
+                    <span>Time</span>
+                    <span>Booking</span>
+                    <span>Vehicle &amp; driver</span>
+                    <span>Status</span>
+                  </div>
+                  <div className="booking-rows">
+                    {dayBookings.length > 0 ? (
+                      dayBookings.map((booking) => {
+                        const meta = statusColor(booking.status);
+                        return (
+                          <button
+                            className="booking-row"
+                            key={
+                              booking.id ||
+                              `${booking.time}-${booking.client}`
+                            }
+                            onClick={() =>
+                              onBookingClick
+                                ? onBookingClick(booking)
+                                : flash(`${booking.client} booking opened`)
+                            }
+                          >
+                            <span className="booking-time">
+                              <strong>{booking.time || '—'}</strong>
+                              <small>{booking.end || ''}</small>
+                            </span>
+                            <span className="booking-details">
+                              <strong>{booking.client || '—'}</strong>
+                              <small>{booking.service || '—'}</small>
+                              <em>
+                                {(booking.from || '—')} →
+                                {(booking.dest || '—')}
+                              </em>
+                            </span>
+                            <span className="booking-assignment">
+                              <strong>{booking.vehicle || '—'}</strong>
+                              <small>{booking.plate || '—'}</small>
+                              <em>{booking.driver || '—'}</em>
+                            </span>
+                            <span className="status" style={meta}>
+                              <i />
+                              {booking.status || '—'}
+                            </span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <button className="booking-row empty" disabled>
+                        No bookings scheduled for this day
+                      </button>
+                    )}
+                  </div>
+                </section>
+
+                <aside className="fleet-list-panel">
+                  <div className="panel-title">
+                    <div>
+                      <h2>Available hearses</h2>
+                      <p>For {activeDayLabel()}</p>
+                    </div>
+                    <span className="count">{fleet.length} free</span>
+                  </div>
+                  <div className="fleet-rows">
+                    {fleet.length > 0 ? (
+                      fleet.map((vehicle) => (
+                        <button
+                          key={vehicle.plate || vehicle.id}
+                          className={
+                            selectedVehicle ===
+                            (vehicle.plate || vehicle.id)
+                              ? 'fleet-row selected'
+                              : 'fleet-row'
+                          }
+                          onClick={() => {
+                            setSelectedVehicle(
+                              vehicle.plate || vehicle.id,
+                            );
+                            if (onVehicleSelect) onVehicleSelect(vehicle);
+                            else
+                              flash(
+                                `${vehicle.name || 'Vehicle'} selected`,
+                              );
+                          }}
+                        >
+                          <span className="fleet-status" />
+                          <span>
+                            <strong>{vehicle.name || '—'}</strong>
+                            <small>
+                              {(vehicle.plate || '—')} ·
+                              {(vehicle.seats || '—')}
+                            </small>
+                          </span>
+                          <em>{vehicle.availability || '—'}</em>
+                          <Icon name="chevron-right" size={15} />
+                        </button>
+                      ))
+                    ) : (
+                      <div className="booking-row empty">
+                        No vehicles available
                       </div>
                     )}
+                  </div>
+                  <button className="fleet-action">
+                    View complete fleet
+                  </button>
+                </aside>
+              </div>
+            ) : (
+              <section className="lineup-panel">
+                <div className="panel-title lineup-title">
+                  <div>
+                    <h2>{activeDayLabel()} driver lineup</h2>
+                    <p>
+                      {drivers.length} assigned driver · 1 standby
+                    </p>
+                  </div>
+                  <span className="updated">Live</span>
+                </div>
 
-                    {rows}
-                    <div className="tg-ov">
-                      {bookingElements}
-                      {showLine && (
-                        <div className="nl" style={{ top: (nh - sh) * HH + 'px' }}>
-                          <span className="nl-l">{ft(nh)}</span>
-                        </div>
-                      )}
-                      {!laid.length && (
-                        <div className="empty-ctr">
-                          <div style={{ textAlign: 'center' }}>
-                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                              <rect x="3" y="4" width="18" height="18" rx="2" />
-                              <line x1="16" y1="2" x2="16" y2="6" />
-                              <line x1="8" y1="2" x2="8" y2="6" />
-                              <line x1="3" y1="10" x2="21" y2="10" />
-                            </svg>
-                            <p style={{ marginTop: '8px' }}>No bookings for this day</p>
+                <div className="standby-row">
+                  <span className="standby-accent" />
+                  <span className="driver-avatar standby">DW</span>
+                  <span className="driver-name">
+                    <em>Standby driver · Free now</em>
+                    <strong>Standby Driver</strong>
+                    <small>Shift 08:00–16:30</small>
+                  </span>
+                  <span className="standby-copy">
+                    <strong>Ready for assignment</strong>
+                    <small>No booking or vehicle assigned</small>
+                  </span>
+                  <span className="assistant-cell">
+                    <small>Assistant</small>
+                    <strong>None</strong>
+                  </span>
+                  <button
+                    className="assistant-button standby-button"
+                    onClick={() => flash('Assistant assigned')}
+                  >
+                    <Icon name="plus" size={15} />
+                    Add assistant
+                  </button>
+                </div>
+
+                <div className="driver-columns">
+                  <span>Driver</span>
+                  <span>Assigned booking</span>
+                  <span>Vehicle</span>
+                  <span>Assistant</span>
+                  <span />
+                </div>
+                <div className="driver-rows">
+                  {drivers.length > 0 ? (
+                    drivers.map((driver) => {
+                      const color = avatarColor(driver.name || 'Driver');
+                      return (
+                        <article
+                          className="driver-row"
+                          key={driver.name || driver.id}
+                        >
+                          <div className="driver-profile">
+                            <span
+                              className="driver-avatar"
+                              style={{ background: color }}
+                            >
+                              {getInitials(driver.name || 'Driver')}
+                            </span>
+                            <span className="driver-name">
+                              <strong>{driver.name || '—'}</strong>
+                              <small>{driver.shift || '—'}</small>
+                              <em>{driver.status || '—'}</em>
+                            </span>
                           </div>
-                        </div>
-                      )}
+                          <div className="driver-booking">
+                            <strong>{driver.family || '—'}</strong>
+                            <small>{driver.time || '—'}</small>
+                          </div>
+                          <div className="driver-vehicle">
+                            <strong>{driver.vehicle || '—'}</strong>
+                            <small>{driver.plate || '—'}</small>
+                          </div>
+                          <div className="assistant-cell">
+                            <strong>Not assigned</strong>
+                            <small>No assistant</small>
+                          </div>
+                          <button
+                            className="assistant-button"
+                            onClick={() => flash('Assistant added')}
+                          >
+                            <Icon name="plus" size={15} />
+                            Add assistant
+                          </button>
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <div className="booking-row empty">
+                      No drivers scheduled
                     </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </main>
         </div>
       </div>
 
-      {renderSidebar()}
-      {renderModal()}
-      <div className="ta" id="toastArea"></div>
+      {notice && (
+        <div className="toast">{notice}</div>
+      )}
     </div>
   );
 }
