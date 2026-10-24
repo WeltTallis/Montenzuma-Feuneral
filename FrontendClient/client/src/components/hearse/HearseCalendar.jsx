@@ -708,6 +708,20 @@ const FleetAction = styled.button`
   &:hover { background: #1e293b; }
 `;
 
+const DayPanelHeader = styled.div`
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #f1f2f4;
+
+  h2 { margin: 2px 0 0; color: #111827; font-size: 15px; font-weight: 800; }
+  p { margin: 0; color: #9ca3af; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  span { color: #8a8f98; font-size: 11px; font-weight: 700; white-space: nowrap; }
+`;
+
 const LineupControls = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
