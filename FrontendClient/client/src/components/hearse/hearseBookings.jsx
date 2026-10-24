@@ -1,7 +1,7 @@
 import { resolveBranchName, isMultiDay, getBookingDateRange, getMultiDayColor } from './viewerShared';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getTenantId, getBranchId, getBranchSlug, getBranches as getCachedBranches } from '../../utils/globalAuth';
+import { getTenantId, getBranchId, getBranchSlug, getBranches as getCachedBranches, getParentTenantSlug } from '../../utils/globalAuth';
 import { useSocket } from '../../utils/context/socketContext';
 import useAuthStore from '../../utils/store/useAuthStore';
 import BookNewHearseModal from './BookNewHearseModal';
@@ -247,10 +247,62 @@ const api = {
     return r.ok ? (await r.json()).hearses || [] : [];
   },
   getDrivers: async () => {
-    const r = await fetch(`${API_BASE_URL}/all-drivers`, { headers: getAuthHeaders() });
-    if (!r.ok) throw new Error('Failed to load drivers');
-    const data = await r.json();
-    return Array.isArray(data.drivers) ? data.drivers : [];
+    const candidates = [
+      getParentTenantSlug(),
+      getTenantSlug(),
+      localStorage.getItem('tenantSlug'),
+      localStorage.getItem('parentTenantSlug'),
+    ].filter((slug, index, slugs) => slug && slugs.indexOf(slug) === index);
+    if (!candidates.length) {
+      throw new Error('Could not resolve your organisation to load drivers. Please sign in again.');
+    }
+
+    const isDriver = (user) => {
+      const role = String(user?.role || '').toLowerCase().replace(/[\s_-]+/g, '_');
+      return role.includes('driver');
+    };
+    let lastUserList = [];
+
+    for (const slug of candidates) {
+      const response = await fetch(`${API_BASE_URL}/tenant/${encodeURIComponent(slug)}/users`, {
+        headers: { ...getAuthHeaders(), 'x-tenant-slug': slug },
+      });
+      if (response.status === 404) continue;
+      if (!response.ok) {
+        throw new Error(`Failed to load tenant users for driver lineup (${response.status}).`);
+      }
+
+      const payload = await response.json();
+      const users = Array.isArray(payload)
+        ? payload
+        : payload.data?.users || payload.data || payload.users;
+      if (!Array.isArray(users)) {
+        throw new Error('The tenant user service returned an invalid user list.');
+      }
+
+      lastUserList = users;
+      const drivers = users
+        .filter(isDriver)
+        .map((user) => ({
+          id: user.driver_id ?? user.user_id ?? user.id,
+          driver_id: user.driver_id ?? user.user_id ?? user.id,
+          driver_name: user.driver_name || user.full_name
+            || `${user.first_name || ''} ${user.last_name || ''}`.trim()
+            || user.username || '',
+          phone_number: user.driver_phone || user.phone_number || user.phone || '',
+          role: user.role,
+        }))
+        .filter((driver) => driver.id != null && driver.driver_name);
+      if (drivers.length) return drivers;
+    }
+
+    const roles = [...new Set(lastUserList.map((user) => String(user?.role || '')).filter(Boolean))];
+    console.warn('[HearseBookings] No tenant users matched a driver role.', {
+      triedSlugs: candidates,
+      userCount: lastUserList.length,
+      roles,
+    });
+    return [];
   },
   getDailyLineup: async (date) => {
     const r = await fetch(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
@@ -854,7 +906,7 @@ const HearseBookings = () => {
         api.getDrivers(),
       ]);
       setBookings(bks); setBranches(brs); setAllHearses(hrs); setDrivers(drs);
-    } catch (e) { notify.error('Failed to load data'); }
+    } catch (e) { notify.error(e.message || 'Failed to load data'); }
     setLoading(false);
   }, [monthRange.from, monthRange.to]);
 
@@ -872,7 +924,7 @@ const HearseBookings = () => {
         api.getDrivers(),
       ]);
       setBookings(bks); setBranches(brs); setAllHearses(hrs); setDrivers(drs);
-    } catch (e) { notify.error('Failed to refresh data'); }
+    } catch (e) { notify.error(e.message || 'Failed to refresh data'); }
   }, [monthRange.from, monthRange.to]);
 
   // Refetch whenever the month on screen changes.

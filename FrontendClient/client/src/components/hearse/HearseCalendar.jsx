@@ -385,7 +385,6 @@ const DailyFleetPanel = styled.section`
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 17, 20, .03);
   display: flex;
-  max-height: 600px;
   flex-direction: column;
 `;
 
@@ -430,10 +429,8 @@ const DailyFleetCount = styled.span`
 
 const DailyFleetList = styled.div`
   display: flex;
-  min-height: 0;
   flex-direction: column;
   gap: 7px;
-  overflow-y: auto;
   padding: 10px;
 `;
 
@@ -820,21 +817,6 @@ const BookingTools = styled.div`
   input { flex: 1; }
   select { flex: 0 0 auto; }
   @media (max-width: 520px) { flex-wrap: wrap; input, select { flex: 1 1 100%; } }
-`;
-
-const LineupColumns = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  padding: 10px 20px;
-  border-bottom: 1px solid #f1f2f4;
-  background: #fafafa;
-  color: #9ca3af;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  @media (max-width: 640px) { display: none; }
 `;
 
 const FleetAction = styled.button`
@@ -1920,7 +1902,7 @@ const HearseCalendar = ({
                   disabled={lineupLoading || savingStandby}
                   aria-label="Standby driver for this day"
                 >
-                  <option value="">No standby driver selected</option>
+                  <option value="">{drivers.length ? 'No standby driver selected' : 'No drivers found for this tenant'}</option>
                   {drivers.map((driver) => {
                     const driverId = driver.driver_id ?? driver.id;
                     const alreadyAssigned = dayBookings.some((booking) =>
@@ -1947,9 +1929,6 @@ const HearseCalendar = ({
                 {savingStandby ? 'Saving standby…' : standbyDraft ? 'Save standby driver' : 'Clear standby'}
               </button>
             </LineupControls>
-            <LineupColumns>
-              <span>Driver and assistant</span><span>Assigned booking</span><span>Vehicle</span><span>Status</span>
-            </LineupColumns>
               </>
             )}
             {visibleDayBookings.length ? visibleDayBookings.map((booking) => {
@@ -1986,48 +1965,73 @@ const HearseCalendar = ({
                     onClick={() => onItemClick?.(booking)}
                   >
                     <DayBookingHeader>
-                      <DayBookingVehicle>
+                      {dayViewMode === 'schedule' && <DayBookingVehicle>
                         {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
                         <DayBookingVehicleText>
                           <HearseTitle>
                             {[hearseName, booking.model || hearse?.model].filter(Boolean).join(' · ')}
                           </HearseTitle>
                         </DayBookingVehicleText>
-                      </DayBookingVehicle>
+                      </DayBookingVehicle>}
                       <DayBookingMeta>
                         {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
                         <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
                       </DayBookingMeta>
                     </DayBookingHeader>
                     <DayBookingBody>
-                      <DayDetail>
-                        <strong>Route / itinerary</strong>
-                        <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
-                      </DayDetail>
-                      <DayDetail>
-                        <strong>Client / contact</strong>
-                        <DayClient><span>{clientName}</span><span>{clientPhone}</span></DayClient>
-                      </DayDetail>
-                      <DayDetail>
-                        <strong>Schedule &amp; assigned driver</strong>
-                        <DayBookingSchedule>
-                          <span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                          <span>{schedule.range}</span>
-                        </DayBookingSchedule>
-                        <DayDriver>
-                          <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
-                          <DayDriverInfo>
-                            <span>{assignedDriverName}</span>
-                            {driverPhone && <small>{driverPhone}</small>}
-                          </DayDriverInfo>
-                        </DayDriver>
-                        {(booking.assistant_name || dayViewMode === 'lineup') && (
-                          <DayAssistant>
-                            Assistant: {booking.assistant_name || 'Not assigned'}
-                            {booking.assistant_phone ? ` · ${booking.assistant_phone}` : ''}
-                          </DayAssistant>
-                        )}
-                      </DayDetail>
+                      {dayViewMode === 'lineup' ? (
+                        <>
+                          <DayDetail>
+                            <strong>Hearse</strong>
+                            <span>{[hearseName, booking.model || hearse?.model, plate].filter(Boolean).join(' · ')}</span>
+                          </DayDetail>
+                          <DayDetail>
+                            <strong>Driver</strong>
+                            <DayDriver>
+                              <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
+                              <DayDriverInfo>
+                                <span>{assignedDriverName}</span>
+                                {driverPhone && <small>{driverPhone}</small>}
+                              </DayDriverInfo>
+                            </DayDriver>
+                            {(booking.assistant_name || booking.assistant_phone) && (
+                              <DayAssistant>
+                                Assistant: {booking.assistant_name || 'Not assigned'}
+                                {booking.assistant_phone ? ` · ${booking.assistant_phone}` : ''}
+                              </DayAssistant>
+                            )}
+                          </DayDetail>
+                          <DayDetail>
+                            <strong>Route</strong>
+                            <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
+                          </DayDetail>
+                        </>
+                      ) : (
+                        <>
+                          <DayDetail>
+                            <strong>Route / itinerary</strong>
+                            <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
+                          </DayDetail>
+                          <DayDetail>
+                            <strong>Client / contact</strong>
+                            <DayClient><span>{clientName}</span><span>{clientPhone}</span></DayClient>
+                          </DayDetail>
+                          <DayDetail>
+                            <strong>Schedule &amp; assigned driver</strong>
+                            <DayBookingSchedule>
+                              <span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              <span>{schedule.range}</span>
+                            </DayBookingSchedule>
+                            <DayDriver>
+                              <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
+                              <DayDriverInfo>
+                                <span>{assignedDriverName}</span>
+                                {driverPhone && <small>{driverPhone}</small>}
+                              </DayDriverInfo>
+                            </DayDriver>
+                          </DayDetail>
+                        </>
+                      )}
                     </DayBookingBody>
                   </DayBookingRow>
                   {dayViewMode === 'lineup' && <BookingLineup>
@@ -2042,7 +2046,7 @@ const HearseCalendar = ({
                         }))}
                         aria-label={`Assign driver for booking ${bookingId}`}
                       >
-                        <option value="">Unassigned</option>
+                        <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
                         {drivers.map((driver) => {
                           const driverId = driver.driver_id ?? driver.id;
                           const assignedElsewhere = dayBookings.some((other) =>
@@ -2191,9 +2195,6 @@ const HearseCalendar = ({
                 <EmptyDay>There are no free hearses on this day.</EmptyDay>
               )}
             </DailyFleetList>
-            <FleetAction type="button" onClick={() => onCreateBooking?.()}>
-              Create a booking
-            </FleetAction>
           </DailyFleetPanel>
         </DaySchedule>
         </DailyView>
