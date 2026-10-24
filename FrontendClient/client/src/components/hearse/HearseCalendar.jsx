@@ -377,6 +377,165 @@ const DaySchedule = styled.div`
   }
 `;
 
+const DailyFleetPanel = styled.section`
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #ece7ea;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 17, 20, .03);
+  display: flex;
+  max-height: 600px;
+  flex-direction: column;
+`;
+
+const DailyFleetHeader = styled.div`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
+  h2 { margin: 0; color: #0f172a; font-size: 14px; font-weight: 800; }
+  p { margin: 3px 0 0; color: #64748b; font-size: 10px; font-weight: 600; }
+  @media (max-width: 520px) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+`;
+
+const DailyFleetCounts = styled.div`
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+`;
+
+const DailyFleetCount = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border: 1px solid ${p => p.$tone === 'booked' ? '#ffe4e6' : p.$tone === 'service' ? '#fef3c7' : '#dcfce7'};
+  border-radius: 6px;
+  background: ${p => p.$tone === 'booked' ? '#fff1f2' : p.$tone === 'service' ? '#fffbeb' : '#f0fdf4'};
+  color: ${p => p.$tone === 'booked' ? '#be123c' : p.$tone === 'service' ? '#b45309' : '#15803d'};
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+`;
+
+const DailyFleetList = styled.div`
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 7px;
+  overflow-y: auto;
+  padding: 10px;
+`;
+
+const FleetSectionLabel = styled.div`
+  padding: 5px 2px 1px;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+`;
+
+const DailyFleetItem = styled.div`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: ${p => p.$booked ? '#f8fafc' : '#fff'};
+  opacity: ${p => p.$booked ? '.92' : '1'};
+`;
+
+const DailyFleetDot = styled.span`
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 50%;
+  background: ${p => p.$tone === 'booked' ? '#f43f5e' : p.$tone === 'service' ? '#fbbf24' : '#10b981'};
+  box-shadow: 0 0 0 4px ${p => p.$tone === 'booked' ? '#fff1f2' : p.$tone === 'service' ? '#fffbeb' : '#ecfdf5'};
+`;
+
+const DailyFleetVehicle = styled.div`
+  min-width: 0;
+  flex: 1;
+`;
+
+const DailyFleetTopLine = styled.div`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+`;
+
+const DailyFleetPlate = styled.span`
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid #d97706;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #fbbf24;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .04em;
+`;
+
+const DailyFleetCapacity = styled.span`
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+`;
+
+const DailyFleetName = styled.div`
+  overflow: hidden;
+  margin-top: 3px;
+  color: ${p => p.$booked ? '#475569' : '#1e293b'};
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const DailyFleetBooking = styled.div`
+  overflow: hidden;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const DailyFleetState = styled.div`
+  flex: 0 0 auto;
+  text-align: right;
+  strong {
+    display: block;
+    color: ${p => p.$tone === 'booked' ? '#e11d48' : p.$tone === 'service' ? '#d97706' : '#059669'};
+    font-size: 11px;
+    font-weight: 800;
+  }
+  span { display: block; margin-top: 2px; color: #64748b; font-size: 9px; font-weight: 600; }
+`;
+
 const DailyView = styled.div`
   padding: 8px 4px 20px;
 `;
@@ -678,21 +837,6 @@ const LineupColumns = styled.div`
   @media (max-width: 640px) { display: none; }
 `;
 
-const FleetStatGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-  padding: 13px 15px;
-  border-bottom: 1px solid #f1f2f4;
-  background: #fafafa;
-`;
-
-const FleetStat = styled.div`
-  text-align: center;
-  strong { display: block; color: ${p => p.$tone || '#111827'}; font-size: 20px; font-weight: 800; }
-  span { color: #9ca3af; font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-`;
-
 const FleetAction = styled.button`
   width: calc(100% - 28px);
   min-height: 38px;
@@ -818,12 +962,9 @@ const BackToCalendar = styled.button`
 `;
 
 const DayBookingRow = styled.button`
-  display: grid;
+  display: block;
   width: 100%;
-  grid-template-columns: 40px minmax(0, 1fr);
-  align-items: start;
-  gap: 14px;
-  padding: 16px 20px;
+  padding: 0;
   border: 0;
   border-bottom: 1px solid #f4f5f7;
   background: #fff;
@@ -832,90 +973,228 @@ const DayBookingRow = styled.button`
   font: inherit;
   text-align: left;
   &:last-child { border-bottom: 0; }
-  &:hover { background: #fbfbfc; }
+  &:hover { background: #fff; }
+`;
+
+const DayBookingHeader = styled.span`
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 16px;
+  background: #0f172a;
+  color: #fff;
   @media (max-width: 520px) {
-    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: flex-start;
+    flex-direction: column;
     gap: 10px;
-    padding: 13px 12px;
+    padding: 12px;
   }
 `;
 
-const DayAvatar = styled.span`
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: 50%;
-  background: #f3f4f6;
-  color: #374151;
-  font-size: 11px;
-  font-weight: 800;
+const DayBookingVehicle = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
 `;
 
-const DayBookingContent = styled.span`
+const DayBookingVehicleText = styled.span`
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 10px;
-`;
-
-const DayBookingTitle = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-  color: #111827;
-  font-size: 13px;
-  font-weight: 800;
+  gap: 3px;
 `;
 
 const HearseTitle = styled.span`
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const HearsePlateBadge = styled.span`
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  padding: 3px 8px;
-  border: 1px solid #bfdbfe;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid #d97706;
   border-radius: 5px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 10px;
+  border-bottom-width: 2px;
+  background: #fbbf24;
+  color: #111827;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
   font-weight: 850;
-  letter-spacing: .045em;
+  letter-spacing: .06em;
   line-height: 1;
   white-space: nowrap;
 `;
 
-const DayDetailGrid = styled.span`
+const DayBookingMeta = styled.span`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  @media (max-width: 520px) { width: 100%; justify-content: flex-start; }
+`;
+
+const DayBranchBadge = styled.span`
+  max-width: 190px;
+  overflow: hidden;
+  padding: 5px 9px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const DayBookingBody = styled.span`
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px 16px;
-  width: 100%;
-  @media (max-width: 1000px) { grid-template-columns: minmax(0, 1fr); }
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, .85fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: 16px;
+  background: #fff;
+  @media (max-width: 760px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 520px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+    padding: 14px 12px;
+  }
 `;
 
 const DayDetail = styled.span`
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 7px;
+  padding-right: 14px;
+  border-right: 1px solid #f1f5f9;
+  &:last-child { padding-right: 0; border-right: 0; }
   strong {
-    color: #9ca3af;
-    font-size: 8px;
+    color: #94a3b8;
+    font-size: 9px;
     font-weight: 800;
-    letter-spacing: .09em;
+    letter-spacing: .08em;
     text-transform: uppercase;
   }
-  span {
+  & > span {
     overflow-wrap: anywhere;
-    color: #374151;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+  @media (max-width: 760px) {
+    padding: 0;
+    border: 0;
+  }
+`;
+
+const DayRoute = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  & > span {
+    max-width: 100%;
+    padding: 4px 7px;
+    border: 1px solid #e0e7ff;
+    border-radius: 5px;
+    background: #eef2ff;
+    color: #3730a3;
     font-size: 11px;
-    font-weight: 650;
-    line-height: 1.4;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  & > b { color: #94a3b8; font-size: 13px; }
+`;
+
+const DayClient = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  & > span:first-child { color: #0f172a; font-size: 12px; font-weight: 800; }
+  & > span:last-child {
+    color: #64748b;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+`;
+
+const DayBookingSchedule = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  & > span:first-child { color: #0f172a; font-size: 12px; font-weight: 700; }
+  & > span:last-child { color: #64748b; font-size: 11px; }
+`;
+
+const DayDriver = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  padding: 6px 7px;
+  border: 1px solid #e0e7ff;
+  border-radius: 7px;
+  background: #eef2ff;
+  color: #312e81;
+  font-size: 11px;
+  font-weight: 750;
+  & > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  small {
+    overflow: hidden;
+    color: #6366a2;
+    font-size: 10px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const DayDriverInitials = styled.span`
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+`;
+
+const DayDriverInfo = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 5px;
+`;
+
+const DayAssistant = styled.span`
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 10px;
   }
 `;
 
@@ -934,53 +1213,6 @@ const EmptyDay = styled.div`
   color: #8a8f98;
   font-size: 12px;
   font-weight: 600;
-`;
-
-const HearseRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 15px;
-  border-bottom: 1px solid #f4f5f7;
-  &:last-child { border-bottom: 0; }
-`;
-
-const HearseAvatar = styled(DayAvatar)`
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-`;
-
-const HearseInfo = styled.div`
-  min-width: 0;
-  flex: 1;
-  strong { display: block; color: #111827; font-size: 11px; font-weight: 800; }
-`;
-
-const HearseDetails = styled.span`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-top: 4px;
-`;
-
-const HearseDetail = styled.small`
-  color: #6b7280;
-  font-size: 9px;
-  font-weight: 650;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  strong { display: inline; margin-right: 3px; color: #9ca3af; font-size: 8px; font-weight: 800; text-transform: uppercase; }
-`;
-
-const AvailabilityPill = styled.span`
-  flex: 0 0 auto;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: ${p => p.$free ? "#ecfdf5" : "#fef2f2"};
-  color: ${p => p.$free ? "#15803d" : "#b91c1c"};
-  font-size: 9px;
-  font-weight: 800;
 `;
 
 const StatsBar = styled.div`
@@ -1739,6 +1971,7 @@ const HearseCalendar = ({
               const clientPhone = booking.client_phone || booking.phone || '—';
               const routeFrom = booking.from_location || booking.from || booking.origin || '—';
               const routeTo = booking.destination || booking.to_location || booking.dest || '—';
+              const driverPhone = assignedDriver?.phone_number || assignedDriver?.phone || '';
               const bookingKey = String(booking.booking_id || booking.id);
               const lineup = lineupDrafts[bookingKey] || {
                 driverId: booking.driver_id == null ? '' : String(booking.driver_id),
@@ -1752,31 +1985,50 @@ const HearseCalendar = ({
                     type="button"
                     onClick={() => onItemClick?.(booking)}
                   >
-                    <DayAvatar>{getInitials(hearseName)}</DayAvatar>
-                    <DayBookingContent>
-                      <DayBookingTitle>
-                        {dayViewMode === 'lineup' ? (
-                          assignedDriverName
-                        ) : (
-                          <>
-                            <HearseTitle>
-                              {[hearseName, booking.model || hearse?.model].filter(Boolean).join(' · ')}
-                            </HearseTitle>
-                            {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
-                          </>
-                        )}
+                    <DayBookingHeader>
+                      <DayBookingVehicle>
+                        {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
+                        <DayBookingVehicleText>
+                          <HearseTitle>
+                            {[hearseName, booking.model || hearse?.model].filter(Boolean).join(' · ')}
+                          </HearseTitle>
+                        </DayBookingVehicleText>
+                      </DayBookingVehicle>
+                      <DayBookingMeta>
+                        {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
                         <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
-                      </DayBookingTitle>
-                      <DayDetailGrid>
-                        <DayDetail><strong>Hearse</strong><span>{hearseName}{[booking.model || hearse?.model, plate].filter(Boolean).length ? ` · ${[booking.model || hearse?.model, plate].filter(Boolean).join(' · ')}` : ''}</span></DayDetail>
-                        <DayDetail><strong>Client / contact</strong><span>{clientName} · {clientPhone}</span></DayDetail>
-                        <DayDetail><strong>Route</strong><span>{routeFrom} → {routeTo}</span></DayDetail>
-                        <DayDetail><strong>Date / time</strong><span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {schedule.range}</span></DayDetail>
-                        <DayDetail><strong>Branch</strong><span>{branchName}</span></DayDetail>
-                        {dayViewMode === 'lineup' && <DayDetail><strong>Assigned driver</strong><span>{assignedDriverName}</span></DayDetail>}
-                        {(booking.assistant_name || dayViewMode === 'lineup') && <DayDetail><strong>Assistant</strong><span>{booking.assistant_name || 'Not assigned'}{booking.assistant_phone ? ` · ${booking.assistant_phone}` : ''}</span></DayDetail>}
-                      </DayDetailGrid>
-                    </DayBookingContent>
+                      </DayBookingMeta>
+                    </DayBookingHeader>
+                    <DayBookingBody>
+                      <DayDetail>
+                        <strong>Route / itinerary</strong>
+                        <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
+                      </DayDetail>
+                      <DayDetail>
+                        <strong>Client / contact</strong>
+                        <DayClient><span>{clientName}</span><span>{clientPhone}</span></DayClient>
+                      </DayDetail>
+                      <DayDetail>
+                        <strong>Schedule &amp; assigned driver</strong>
+                        <DayBookingSchedule>
+                          <span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          <span>{schedule.range}</span>
+                        </DayBookingSchedule>
+                        <DayDriver>
+                          <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
+                          <DayDriverInfo>
+                            <span>{assignedDriverName}</span>
+                            {driverPhone && <small>{driverPhone}</small>}
+                          </DayDriverInfo>
+                        </DayDriver>
+                        {(booking.assistant_name || dayViewMode === 'lineup') && (
+                          <DayAssistant>
+                            Assistant: {booking.assistant_name || 'Not assigned'}
+                            {booking.assistant_phone ? ` · ${booking.assistant_phone}` : ''}
+                          </DayAssistant>
+                        )}
+                      </DayDetail>
+                    </DayBookingBody>
                   </DayBookingRow>
                   {dayViewMode === 'lineup' && <BookingLineup>
                     <label>
@@ -1862,76 +2114,87 @@ const HearseCalendar = ({
             )}
           </DayPanel>
 
-          <DayPanel>
-            <DayPanelHeader>
-              <div><p>Daily fleet</p><h2>Available hearses</h2></div>
-              <span>{dayFleet.free.length} free</span>
-            </DayPanelHeader>
-            <FleetStatGrid>
-              <FleetStat $tone="#046a3a"><strong>{dayFleet.free.length}</strong><span>Available</span></FleetStat>
-              <FleetStat $tone="#b45309"><strong>{dayFleet.busy.length}</strong><span>Booked</span></FleetStat>
-              <FleetStat $tone="#b91c1c"><strong>{dayFleet.unavailable.length}</strong><span>Service</span></FleetStat>
-            </FleetStatGrid>
-            {dayFleet.free.map((hearse) => (
-              <HearseRow key={hearse.id || hearse.hearse_id}>
-                <HearseAvatar>{getInitials(hearse.hearse_name || hearse.name || 'Hearse')}</HearseAvatar>
-                <HearseInfo>
-                  <strong>{hearse.hearse_name || hearse.name || 'Hearse'}</strong>
-                  <HearseDetails>
-                    {hearse.plate_number && <HearseDetail><strong>Plate</strong>{hearse.plate_number}</HearseDetail>}
-                  </HearseDetails>
-                </HearseInfo>
-                <AvailabilityPill $free>Free</AvailabilityPill>
-              </HearseRow>
-            ))}
-            {!dayFleet.free.length && <EmptyDay>There are no free hearses on this day.</EmptyDay>}
-            {!!dayFleet.busy.length && (
-              <>
-                <div style={{ padding: '13px 15px 7px', color: '#9ca3af', fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' }}>
-                  Booked hearses ({dayFleet.busy.length})
-                </div>
-                {dayFleet.busy.map(({ hearse, booking }) => (
-                  <HearseRow key={hearse.id || hearse.hearse_id}>
-                    <HearseAvatar>{getInitials(hearse.hearse_name || hearse.name || 'Hearse')}</HearseAvatar>
-                    <HearseInfo>
-                      <strong>{hearse.hearse_name || hearse.name || 'Hearse'}</strong>
-                      <HearseDetails>
-                        {hearse.plate_number && <HearseDetail><strong>Plate</strong>{hearse.plate_number}</HearseDetail>}
-                        {hearse.model && <HearseDetail><strong>Model</strong>{hearse.model}</HearseDetail>}
-                        <HearseDetail><strong>Client</strong>{booking.client_name || booking.client || 'Booked'}</HearseDetail>
-                        <HearseDetail><strong>Time</strong>{getTimeInfo(booking).range}</HearseDetail>
-                      </HearseDetails>
-                    </HearseInfo>
-                    <AvailabilityPill>Busy</AvailabilityPill>
-                  </HearseRow>
-                ))}
-              </>
-            )}
-            {!!dayFleet.unavailable.length && (
-              <>
-                <div style={{ padding: '13px 15px 7px', color: '#9ca3af', fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' }}>
-                  Out of service ({dayFleet.unavailable.length})
-                </div>
-                {dayFleet.unavailable.map((hearse) => (
-                  <HearseRow key={hearse.id || hearse.hearse_id}>
-                    <HearseAvatar>{getInitials(hearse.hearse_name || hearse.name || 'Hearse')}</HearseAvatar>
-                    <HearseInfo>
-                      <strong>{hearse.hearse_name || hearse.name || 'Hearse'}</strong>
-                      <HearseDetails>
-                        {hearse.plate_number && <HearseDetail><strong>Plate</strong>{hearse.plate_number}</HearseDetail>}
-                        {hearse.model && <HearseDetail><strong>Model</strong>{hearse.model}</HearseDetail>}
-                        <HearseDetail><strong>Status</strong>{hearse.status}</HearseDetail>
-                      </HearseDetails>
-                    </HearseInfo>
-                    <AvailabilityPill>Unavailable</AvailabilityPill>
-                  </HearseRow>
-                ))}
-              </>
-            )}
+          <DailyFleetPanel>
+            <DailyFleetHeader>
+              <div>
+                <h2>Fleet status</h2>
+                <p>For {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              </div>
+              <DailyFleetCounts>
+                <DailyFleetCount><span aria-hidden="true">●</span>{dayFleet.free.length} Free</DailyFleetCount>
+                <DailyFleetCount $tone="booked"><span aria-hidden="true">●</span>{dayFleet.busy.length} Booked</DailyFleetCount>
+                {!!dayFleet.unavailable.length && (
+                  <DailyFleetCount $tone="service"><span aria-hidden="true">●</span>{dayFleet.unavailable.length} Service</DailyFleetCount>
+                )}
+              </DailyFleetCounts>
+            </DailyFleetHeader>
+            <DailyFleetList>
+              {dayFleet.free.map((hearse) => (
+                <DailyFleetItem key={hearse.id || hearse.hearse_id}>
+                  <DailyFleetDot />
+                  <DailyFleetVehicle>
+                    <DailyFleetTopLine>
+                      {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
+                        <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
+                      )}
+                      {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
+                    </DailyFleetTopLine>
+                    <DailyFleetName>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
+                  </DailyFleetVehicle>
+                  <DailyFleetState><strong>Free</strong></DailyFleetState>
+                </DailyFleetItem>
+              ))}
+              {!dayFleet.free.length && !dayFleet.busy.length && !dayFleet.unavailable.length && (
+                <EmptyDay>No hearses are registered in the fleet.</EmptyDay>
+              )}
+              {dayFleet.busy.length > 0 && (
+                <FleetSectionLabel>Currently booked</FleetSectionLabel>
+              )}
+              {dayFleet.busy.map(({ hearse, booking }) => (
+                <DailyFleetItem key={hearse.id || hearse.hearse_id} $booked>
+                  <DailyFleetDot $tone="booked" />
+                  <DailyFleetVehicle>
+                    <DailyFleetTopLine>
+                      {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
+                        <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
+                      )}
+                      {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
+                    </DailyFleetTopLine>
+                    <DailyFleetName $booked>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
+                    <DailyFleetBooking>Booked: {booking.client_name || booking.client || 'Client not listed'}</DailyFleetBooking>
+                  </DailyFleetVehicle>
+                  <DailyFleetState $tone="booked">
+                    <strong>Booked</strong>
+                    <span>{getTimeInfo(booking).fs}</span>
+                  </DailyFleetState>
+                </DailyFleetItem>
+              ))}
+              {dayFleet.unavailable.length > 0 && (
+                <FleetSectionLabel>Out of service</FleetSectionLabel>
+              )}
+              {dayFleet.unavailable.map((hearse) => (
+                <DailyFleetItem key={hearse.id || hearse.hearse_id} $booked>
+                  <DailyFleetDot $tone="service" />
+                  <DailyFleetVehicle>
+                    <DailyFleetTopLine>
+                      {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
+                        <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
+                      )}
+                      {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
+                    </DailyFleetTopLine>
+                    <DailyFleetName $booked>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
+                  </DailyFleetVehicle>
+                  <DailyFleetState $tone="service"><strong>Service</strong></DailyFleetState>
+                </DailyFleetItem>
+              ))}
+              {!dayFleet.free.length && (dayFleet.busy.length > 0 || dayFleet.unavailable.length > 0) && (
+                <EmptyDay>There are no free hearses on this day.</EmptyDay>
+              )}
+            </DailyFleetList>
             <FleetAction type="button" onClick={() => onCreateBooking?.()}>
               Create a booking
             </FleetAction>
-          </DayPanel>
+          </DailyFleetPanel>
         </DaySchedule>
         </DailyView>
       ) : (
