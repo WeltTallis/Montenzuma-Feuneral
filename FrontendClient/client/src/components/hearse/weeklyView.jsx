@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import timeGridPlugin from '@fullcalendar/timegrid';
+import timeGridPluginf rom '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { toDateKey } from '../../utils/dates/parseDates';
 import styled from 'styled-components';

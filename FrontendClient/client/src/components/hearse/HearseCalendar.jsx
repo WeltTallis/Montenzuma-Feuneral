@@ -33,6 +33,12 @@ export const HOUR_H = 60, TIME_W = 65;
 export const pad = n => String(n).padStart(2, '0');
 export const fmtDS = toDateKey;
 export const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
+const getIsoWeekNumber = (date) => {
+  const value = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  value.setUTCDate(value.getUTCDate() + 4 - (value.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
+  return Math.ceil((((value - yearStart) / 86400000) + 1) / 7);
+};
 export const getInitials = n => { if (!n) return '?'; const p = n.split(' '); return p.length === 1 ? p[0].charAt(0).toUpperCase() : (p[0].charAt(0) + p[p.length - 1].charAt(0)).toUpperCase(); };
 export const fmtHour = h => h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM';
 
@@ -377,13 +383,13 @@ const DailyView = styled.div`
 
 const DailyHeading = styled.div`
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px 20px;
   margin: 0 0 20px;
   flex-wrap: wrap;
-  h1 { margin: 0; color: #111827; font-size: clamp(22px, 3vw, 28px); font-weight: 800; letter-spacing: -.035em; }
-  p { margin: 4px 0 0; color: #6b7280; font-size: 13px; font-weight: 500; }
+  h1 { margin: 2px 0 0; color: #111827; font-size: clamp(22px, 3vw, 28px); font-weight: 800; letter-spacing: -.035em; }
+  @media (max-width: 640px) { align-items: flex-start; gap: 12px; margin-bottom: 14px; }
 `;
 
 const DailyHeadingMeta = styled.div`
@@ -393,6 +399,24 @@ const DailyHeadingMeta = styled.div`
   font-weight: 800;
   letter-spacing: .11em;
   text-transform: uppercase;
+`;
+
+const DailyHeadingActions = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+  min-width: 0;
+  @media (max-width: 640px) { justify-content: flex-start; width: 100%; }
+  @media (max-width: 420px) { gap: 7px; }
+`;
+
+const BookingCount = styled.span`
+  color: #8a8f98;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
 `;
 
 const StandbyDriverBadge = styled.div`
@@ -439,66 +463,161 @@ const ViewSwitchButton = styled.button`
 `;
 
 const DateStrip = styled.div`
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
   margin-bottom: 16px;
-  padding: 6px;
-  border: 1px solid #e5e7eb;
-  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid #e4e7ec;
   background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .04);
 `;
 
-const DateArrow = styled.button`
+const DateStripHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e4e7ec;
+  @media (max-width: 560px) { gap: 8px; padding: 9px 10px; }
+`;
+
+const DateMonthNav = styled.div`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+`;
+
+const DateMonthLabel = styled.strong`
+  min-width: 110px;
+  color: #101828;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  @media (max-width: 560px) { min-width: 86px; font-size: 11px; }
+`;
+
+const DateNavButton = styled.button`
   display: grid;
-  width: 34px;
-  flex: 0 0 34px;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  border: 1px solid #e5e7eb;
-  border-radius: 9px;
+  border: 1px solid #e4e7ec;
+  border-radius: 5px;
   background: #fff;
-  color: #374151;
-  font-size: 20px;
+  color: #667085;
+  font-size: 19px;
+  line-height: 1;
   cursor: pointer;
-  &:hover { border-color: #111827; background: #f9fafb; }
+  &:hover { border-color: #d0d5dd; background: #f9fafb; color: #101828; }
+  @media (max-width: 560px) { width: 27px; height: 27px; }
+`;
+
+const SelectedDateBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 11px;
+  border: 1px solid #abefc6;
+  border-radius: 5px;
+  background: #ecfdf3;
+  color: #054f31;
+  .dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #12b76a; box-shadow: 0 0 0 3px rgba(18, 183, 106, .12); }
+  .label { color: #027a48; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .date { font-size: 11px; font-weight: 700; white-space: nowrap; }
+  @media (max-width: 560px) {
+    gap: 6px;
+    padding: 6px 8px;
+    .date { font-size: 10px; }
+    .label { display: none; }
+  }
+`;
+
+const TodayButton = styled.button`
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid #101828;
+  border-radius: 5px;
+  background: #101828;
+  color: #fff;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  &:hover { border-color: #1d2939; background: #1d2939; }
+  @media (max-width: 560px) { min-height: 27px; padding: 0 8px; }
 `;
 
 const DateStripDays = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  width: 100%;
+`;
+
+const DateStripFooter = styled.div`
   display: flex;
-  flex: 1;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 31px;
+  padding: 5px 16px;
+  border-top: 1px solid #e4e7ec;
+  background: #fafbfc;
+  color: #667085;
+  font-size: 9px;
+  @media (max-width: 560px) { padding: 5px 10px; }
+`;
+
+const DateLegend = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const DateLegendItem = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  .dot { width: 6px; height: 6px; border-radius: ${p => p.$round ? '50%' : '1px'}; background: ${p => p.$green ? '#12b76a' : '#475467'}; }
+`;
+
+const DateStripWeek = styled.span`
+  white-space: nowrap;
 `;
 
 const DateStripButton = styled.button`
   display: flex;
-  min-width: 78px;
-  flex: 1 0 68px;
+  min-width: 0;
+  min-height: 74px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 7px 4px;
-  border: 1px solid ${p => p.$active ? '#0f172a' : 'transparent'};
-  border-radius: 9px;
-  background: ${p => p.$active ? '#0f172a' : 'transparent'};
-  color: ${p => p.$active ? '#fff' : '#374151'};
+  gap: 5px;
+  padding: 9px 3px;
+  border: 0;
+  border-right: 1px solid #f0f2f5;
+  background: ${p => p.$today ? '#12b76a' : p.$active ? '#eef2f6' : p.$weekend ? '#fcfcfd' : '#fff'};
+  color: ${p => p.$today ? '#fff' : '#344054'};
   cursor: pointer;
   font: inherit;
-  .dow { color: ${p => p.$active ? '#e5e7eb' : '#9ca3af'}; font-size: 9px; font-weight: 800; text-transform: uppercase; }
-  .day { font-size: 14px; font-weight: 800; }
+  transition: background .15s ease;
+  &:last-child { border-right: 0; }
+  .dow { color: ${p => p.$today ? '#d1fadf' : '#98a2b3'}; font-size: 9px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; }
+  .day { color: ${p => p.$today ? '#fff' : '#344054'}; font-size: 16px; font-weight: ${p => p.$active || p.$today ? 750 : 550}; line-height: 1.2; }
+  .event-dot { width: 4px; height: 4px; border-radius: 1px; background: ${p => p.$today ? '#fff' : '#475467'}; }
+  .event-dot.empty { visibility: hidden; }
   .availability {
-    padding: 2px 6px;
-    border-radius: 999px;
-    background: ${p => p.$active ? '#ffffff24' : p.$free === 0 ? '#fee2e2' : p.$free < 3 ? '#fef3c7' : '#dcfce7'};
-    color: ${p => p.$active ? '#fff' : p.$free === 0 ? '#b91c1c' : p.$free < 3 ? '#b45309' : '#166534'};
+    color: ${p => p.$today ? '#e6fff0' : p.$free === 0 ? '#b91c1c' : p.$free < 3 ? '#b45309' : '#667085'};
     font-size: 8px;
-    font-weight: 800;
+    font-weight: 700;
     white-space: nowrap;
   }
-  &:hover { background: ${p => p.$active ? '#1e293b' : '#f9fafb'}; }
+  &:hover { background: ${p => p.$today ? '#0e9f5a' : p.$active ? '#e4e7ec' : '#f9fafb'}; }
+  @media (max-width: 560px) { min-height: 66px; gap: 4px; padding: 7px 1px; .dow { font-size: 8px; } .day { font-size: 14px; } .availability { font-size: 7px; } }
 `;
 
 const DayPanel = styled.section`
@@ -587,21 +706,6 @@ const FleetAction = styled.button`
   font-weight: 700;
   cursor: pointer;
   &:hover { background: #1e293b; }
-`;
-
-const DayPanelHeader = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  min-height: 84px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f1f2f4;
-
-  h2 { margin: 2px 0 0; color: #111827; font-size: 17px; font-weight: 800; }
-  p { margin: 0; color: #9ca3af; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-  span { color: #8a8f98; font-size: 11px; font-weight: 700; white-space: nowrap; }
 `;
 
 const LineupControls = styled.div`
@@ -749,6 +853,27 @@ const DayBookingTitle = styled.span`
   color: #111827;
   font-size: 13px;
   font-weight: 800;
+`;
+
+const HearseTitle = styled.span`
+  min-width: 0;
+  overflow-wrap: anywhere;
+`;
+
+const HearsePlateBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .045em;
+  line-height: 1;
+  white-space: nowrap;
 `;
 
 const DayDetailGrid = styled.span`
@@ -1112,7 +1237,7 @@ const HearseCalendar = ({
   const weekDates = useMemo(() => {
     if (!dayViewDate) return [];
     const start = new Date(`${dayViewDate}T00:00:00`);
-    start.setDate(start.getDate() - start.getDay());
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
     return Array.from({ length: 7 }, (_, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
@@ -1160,9 +1285,13 @@ const HearseCalendar = ({
     onDateClick?.(dateKey);
   }, [onDateClick, onDateSelect]);
 
-  const shiftDayWeek = useCallback((amount) => {
+  const shiftCalendarMonth = useCallback((amount) => {
     const current = new Date(`${dayViewDate}T00:00:00`);
-    current.setDate(current.getDate() + amount * 7);
+    const day = current.getDate();
+    current.setDate(1);
+    current.setMonth(current.getMonth() + amount);
+    const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+    current.setDate(Math.min(day, lastDay));
     selectDay(toDateKey(current));
   }, [dayViewDate, selectDay]);
 
@@ -1434,61 +1563,88 @@ const HearseCalendar = ({
         <DailyView>
           <DailyHeading>
             <div>
-              <DailyHeadingMeta>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</DailyHeadingMeta>
+              <DailyHeadingMeta>{dayViewMode === 'schedule' ? 'Daily schedule' : 'Driver assignments'}</DailyHeadingMeta>
+              <h1>{dayViewMode === 'schedule' ? 'Bookings' : 'Driver lineup'}</h1>
             </div>
-            <StandbyDriverBadge>
-              <Users size={14} />
-              <span>Standby</span>
-              {standbyDriverName}
-            </StandbyDriverBadge>
-            <ViewSwitch aria-label="Daily schedule view">
-              <ViewSwitchButton type="button" $active={dayViewMode === 'schedule'} onClick={() => setDayViewMode('schedule')}>
-                <span aria-hidden="true">☷</span> Schedule
-              </ViewSwitchButton>
-              <ViewSwitchButton type="button" $active={dayViewMode === 'lineup'} onClick={() => setDayViewMode('lineup')}>
-                <Users size={14} /> Driver lineup
-              </ViewSwitchButton>
-            </ViewSwitch>
+            <DailyHeadingActions>
+              <StandbyDriverBadge>
+                <Users size={14} />
+                <span>Standby</span>
+                {standbyDriverName}
+              </StandbyDriverBadge>
+              <BookingCount>{visibleDayBookings.length} booking{visibleDayBookings.length === 1 ? '' : 's'}</BookingCount>
+              <BackToCalendar type="button" onClick={() => setDayViewDate(null)}>Back to calendar</BackToCalendar>
+              <ViewSwitch aria-label="Daily schedule view">
+                <ViewSwitchButton type="button" $active={dayViewMode === 'schedule'} onClick={() => setDayViewMode('schedule')}>
+                  <span aria-hidden="true">☷</span> Schedule
+                </ViewSwitchButton>
+                <ViewSwitchButton type="button" $active={dayViewMode === 'lineup'} onClick={() => setDayViewMode('lineup')}>
+                  <Users size={14} /> Driver lineup
+                </ViewSwitchButton>
+              </ViewSwitch>
+            </DailyHeadingActions>
           </DailyHeading>
 
           <DateStrip aria-label="Choose a day">
-            <DateArrow type="button" aria-label="Previous week" onClick={() => shiftDayWeek(-1)}>‹</DateArrow>
+            <DateStripHeader>
+              <DateMonthNav aria-label="Calendar month">
+                <DateNavButton type="button" aria-label="Previous month" onClick={() => shiftCalendarMonth(-1)}>‹</DateNavButton>
+                <DateMonthLabel>
+                  {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                </DateMonthLabel>
+                <DateNavButton type="button" aria-label="Next month" onClick={() => shiftCalendarMonth(1)}>›</DateNavButton>
+              </DateMonthNav>
+              <SelectedDateBadge>
+                <span className="dot" />
+                <span className="label">{dayViewDate === toDateKey(new Date()) ? 'Today' : 'Selected'}</span>
+                <span className="date">
+                  {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                </span>
+              </SelectedDateBadge>
+              <TodayButton type="button" onClick={() => selectDay(toDateKey(new Date()))}>Today</TodayButton>
+            </DateStripHeader>
             <DateStripDays>
               {weekDates.map((key) => {
                 const date = new Date(`${key}T00:00:00`);
+                const isToday = key === toDateKey(new Date());
+                const hasBookings = (allBookings || []).some((booking) =>
+                  getBookingDates(booking).some((bookingDate) => String(bookingDate).slice(0, 10) === key)
+                );
                 return (
                   <DateStripButton
                     key={key}
                     type="button"
                     $active={key === dayViewDate}
+                    $today={isToday}
+                    $weekend={date.getDay() === 0 || date.getDay() === 6}
                     $free={weeklyAvailability[key] ?? 0}
                     aria-pressed={key === dayViewDate}
+                    aria-label={`${date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}, ${weeklyAvailability[key] ?? 0} free hearses${hasBookings ? ', bookings scheduled' : ''}`}
+                    title={`${weeklyAvailability[key] ?? 0} free hearses${hasBookings ? ' · bookings scheduled' : ''}`}
                     onClick={() => selectDay(key)}
                   >
                     <span className="dow">{date.toLocaleDateString(undefined, { weekday: 'short' })}</span>
                     <span className="day">{date.getDate()}</span>
-                    <span className="availability">
-                      {weeklyAvailability[key] ?? 0} free
-                    </span>
+                    <span className={`event-dot${hasBookings ? '' : ' empty'}`} aria-hidden="true" />
+                    <span className="availability">{weeklyAvailability[key] ?? 0} free</span>
                   </DateStripButton>
                 );
               })}
             </DateStripDays>
-            <DateArrow type="button" aria-label="Next week" onClick={() => shiftDayWeek(1)}>›</DateArrow>
+            <DateStripFooter>
+              <DateLegend>
+                <DateLegendItem $green><span className="dot" />Today</DateLegendItem>
+                <DateLegendItem><span className="dot" />Bookings</DateLegendItem>
+              </DateLegend>
+              <DateStripWeek>
+                Week {weekDates.length ? getIsoWeekNumber(new Date(`${weekDates[0]}T00:00:00`)) : ''}
+                {' · '}{new Date(`${dayViewDate}T00:00:00`).getFullYear()}
+              </DateStripWeek>
+            </DateStripFooter>
           </DateStrip>
 
         <DaySchedule>
           <DayPanel>
-            <DayPanelHeader>
-              <div>
-                <p>{dayViewMode === 'schedule' ? 'Daily schedule' : 'Driver assignments'}</p>
-                <h2>{dayViewMode === 'schedule' ? 'Bookings' : 'Driver lineup'}</h2>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span>{visibleDayBookings.length} booking{visibleDayBookings.length === 1 ? '' : 's'}</span>
-                <BackToCalendar type="button" onClick={() => setDayViewDate(null)}>Back to calendar</BackToCalendar>
-              </div>
-            </DayPanelHeader>
             {dayViewMode === 'schedule' ? (
               <BookingTools>
                 <input
@@ -1585,7 +1741,16 @@ const HearseCalendar = ({
                     <DayAvatar>{getInitials(hearseName)}</DayAvatar>
                     <DayBookingContent>
                       <DayBookingTitle>
-                        {dayViewMode === 'lineup' ? assignedDriverName : hearseName}
+                        {dayViewMode === 'lineup' ? (
+                          assignedDriverName
+                        ) : (
+                          <>
+                            <HearseTitle>
+                              {[hearseName, booking.model || hearse?.model].filter(Boolean).join(' · ')}
+                            </HearseTitle>
+                            {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
+                          </>
+                        )}
                         <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
                       </DayBookingTitle>
                       <DayDetailGrid>

@@ -941,11 +941,10 @@ function FleetDashboard({ embedded = false }) {
       : selectedFuelCard?.latest_activity?.transaction_type === 'deposit'
         ? 'Account deposit'
         : 'No recent activity';
-  const monthlyFunds = Math.max(cardBalance + spentThisMonth, 0);
-  const monthlyRemaining = Math.max(monthlyFunds - spentThisMonth, 0);
+  const allocatedFunds = Math.max(cardAllocated, 0);
   const consumptionData = [
-    { name: 'Spent', value: spentThisMonth, color: '#E53935' },
-    { name: 'Remaining', value: monthlyRemaining, color: '#F0F0F0' },
+    { name: 'Spent', value: Math.max(cardSpent, 0), color: '#E53935' },
+    { name: 'Remaining', value: Math.max(cardBalance, 0), color: '#F0F0F0' },
   ];
   useEffect(() => {
     setStatusDraft(selectedHearse ? STATUS_OPTIONS.some((option) => option.value === statusKey(selectedHearse.status))
@@ -1330,11 +1329,11 @@ function FleetDashboard({ embedded = false }) {
                             <FuelMetricHeader>
                               <FuelMetricTitle><FuelMetricIcon><Settings2 size={14} /></FuelMetricIcon>Fuel Spend</FuelMetricTitle>
                               <FuelMetricTotal>
-                                <strong>{formatKES(spentThisMonth)}</strong>
-                                <span>This month · KES</span>
+                                <strong>{formatKES(cardSpent)}</strong>
+                                <span>Spent to date · KES</span>
                               </FuelMetricTotal>
                             </FuelMetricHeader>
-                            {monthlyFunds > 0 ? (
+                            {allocatedFunds > 0 ? (
                               <>
                                 <FuelGaugeWrap>
                                   <ResponsiveContainer width="100%" height="100%">
@@ -1346,17 +1345,17 @@ function FleetDashboard({ embedded = false }) {
                                     </PieChart>
                                   </ResponsiveContainer>
                                   <FuelGaugeCenter>
-                                    <strong>{monthlyFunds ? `${Math.round((spentThisMonth / monthlyFunds) * 100)}%` : '0%'}</strong>
-                                    <span>of recorded funds used</span>
+                                    <strong>{Math.round((cardSpent / allocatedFunds) * 100)}%</strong>
+                                    <span>of allocated funds used</span>
                                   </FuelGaugeCenter>
                                 </FuelGaugeWrap>
                                 <FuelStatRow>
-                                  <FuelStat><strong>{formatKES(monthlyRemaining)}</strong><span>Remaining on card</span></FuelStat>
-                                  <FuelStat><strong>{formatKES(monthlyFunds)}</strong><span>Funds available this month</span></FuelStat>
+                                  <FuelStat><strong>{formatKES(cardBalance)}</strong><span>Remaining on card</span></FuelStat>
+                                  <FuelStat><strong>{formatKES(cardAllocated)}</strong><span>Total allocated</span></FuelStat>
                                 </FuelStatRow>
                               </>
                             ) : (
-                              <NoChartData>No card funds or purchases recorded this month.</NoChartData>
+                              <NoChartData>No funds have been allocated to this card yet.</NoChartData>
                             )}
                           </FuelMetricCard>
                         </FuelChartsGrid>
