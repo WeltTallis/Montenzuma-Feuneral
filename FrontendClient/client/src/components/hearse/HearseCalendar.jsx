@@ -1629,6 +1629,9 @@ const HearseCalendar = ({
   const standbyDriver = standbyDriverId != null && String(standbyDriverId) !== ''
     ? drivers.find((driver) => String(driver.driver_id ?? driver.id) === String(standbyDriverId))
     : null;
+  const registeredDrivers = drivers.filter((driver) =>
+    /^[1-9]\d*$/.test(String(driver.driver_id ?? driver.id ?? ''))
+  );
   const standbyDriverName = standbyDriver
     ? standbyDriver.driver_name || standbyDriver.full_name || `Driver ${standbyDriverId}`
     : standbyDriverId ? `Driver ${standbyDriverId}` : 'Not assigned';
@@ -2106,8 +2109,8 @@ const HearseCalendar = ({
                   disabled={lineupLoading || savingStandby}
                   aria-label="Standby driver for this day"
                 >
-                  <option value="">{drivers.length ? 'No standby driver selected' : 'No drivers found for this tenant'}</option>
-                  {drivers.map((driver) => {
+                  <option value="">{registeredDrivers.length ? 'No standby driver selected' : 'No hearse-service drivers available'}</option>
+                  {registeredDrivers.map((driver) => {
                     const driverId = driver.driver_id ?? driver.id;
                     const alreadyAssigned = dayBookings.some((booking) =>
                       String(booking.driver_id || '') === String(driverId)
@@ -2264,10 +2267,21 @@ const HearseCalendar = ({
                       <select
                         value={lineup.driverId}
                         onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => setLineupDrafts((current) => ({
-                          ...current,
-                          [bookingKey]: { ...lineup, driverId: event.target.value, driverName: '' },
-                        }))}
+                        onChange={(event) => {
+                          const selectedId = event.target.value;
+                          const selectedDriver = drivers.find((driver) =>
+                            String(driver.driver_id ?? driver.id) === selectedId
+                          );
+                          const isNumericDriverId = /^[1-9]\d*$/.test(selectedId);
+                          setLineupDrafts((current) => ({
+                            ...current,
+                            [bookingKey]: {
+                              ...lineup,
+                              driverId: isNumericDriverId ? selectedId : '',
+                              driverName: isNumericDriverId ? '' : selectedDriver?.driver_name || selectedDriver?.full_name || '',
+                            },
+                          }));
+                        }}
                         aria-label={`Assign driver for booking ${bookingId}`}
                       >
                         <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>

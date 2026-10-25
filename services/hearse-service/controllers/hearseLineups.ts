@@ -14,7 +14,9 @@ class LineupError extends Error {
     }
 }
 
-function getTenantScope(req: Request): { key: string; clause: string; value: string } | null {
+type TenantScope = { key: string; value: string; fallbackValue: string };
+
+function getTenantScope(req: Request): TenantScope | null {
     const headerOf = (name: string): string | null => {
         const value = req.headers[name];
         return Array.isArray(value) ? value[0] : value ? String(value) : null;
@@ -25,13 +27,29 @@ function getTenantScope(req: Request): { key: string; clause: string; value: str
         || headerOf('x-tenant-slug') || (req as any).tenant?.tenant_slug;
     if (tenantId && String(tenantId).trim()) {
         const value = String(tenantId).trim();
-        return { key: `id:${value}`, clause: '(hb.tenant_id = ? OR (hb.tenant_id IS NULL AND hb.tenant_db_name = ?))', value };
+        return { key: `id:${value}`, value, fallbackValue: String(tenantSlug || value).trim() };
     }
     if (tenantSlug && String(tenantSlug).trim()) {
         const value = String(tenantSlug).trim();
-        return { key: `slug:${value}`, clause: 'hb.tenant_db_name = ?', value };
+        return { key: `slug:${value}`, value, fallbackValue: value };
     }
     return null;
+}
+
+async function getBookingTenantFilter(connection: PoolConnection, tenantScope: TenantScope) {
+    if (tenantScope.key.startsWith('id:')) {
+        const [columns]: any = await connection.query("SHOW COLUMNS FROM hearse_bookings LIKE 'tenant_id'");
+        if (columns.length) {
+            return {
+                clause: '(hb.tenant_id = ? OR (hb.tenant_id IS NULL AND hb.tenant_db_name = ?))',
+                params: [tenantScope.value, tenantScope.fallbackValue],
+            };
+        }
+    }
+    return {
+        clause: 'hb.tenant_db_name = ?',
+        params: [tenantScope.fallbackValue],
+    };
 }
 
 function requireTenant(req: Request, res: Response) {
@@ -64,16 +82,15 @@ async function lockDriver(connection: PoolConnection, driverId: number): Promise
     if (!rows.length) throw new LineupError(404, 'Selected driver was not found.');
 }
 
-async function getTenantBookings(connection: PoolConnection, tenantScope: NonNullable<ReturnType<typeof getTenantScope>>, driverId: number) {
-    const params = tenantScope.key.startsWith('id:')
-        ? [tenantScope.value, tenantScope.value, driverId, ...ACTIVE_BOOKING_STATUSES]
-        : [tenantScope.value, driverId, ...ACTIVE_BOOKING_STATUSES];
+async function getTenantBookings(connection: PoolConnection, tenantScope: TenantScope, driverId: number) {
+    const tenantFilter = await getBookingTenantFilter(connection, tenantScope);
+    const params = [...tenantFilter.params, driverId, ...ACTIVE_BOOKING_STATUSES];
     const [rows]: any = await connection.query(
         `SELECT hb.id, hb.booking_dates, hb.booking_date, hb.from_timestamp, hb.to_timestamp,
                 COALESCE(hb.driver_id, h.driver_id) AS assigned_driver_id, hb.status
          FROM hearse_bookings hb
          LEFT JOIN hearses h ON h.id = hb.hearse_id
-         WHERE ${tenantScope.clause}
+         WHERE ${tenantFilter.clause}
            AND COALESCE(hb.driver_id, h.driver_id) = ?
            AND hb.status IN (${ACTIVE_BOOKING_STATUSES.map(() => '?').join(', ')})
          FOR UPDATE`,
@@ -191,13 +208,12 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
     const connection = await getHearseConnection();
     try {
         await connection.beginTransaction();
+        const tenantFilter = await getBookingTenantFilter(connection, tenantScope);
         const [bookingRows]: any = await connection.query(
             `SELECT id, booking_dates, booking_date, from_timestamp, to_timestamp, status
-             FROM hearse_bookings
-             WHERE id = ? AND ${tenantScope.clause} FOR UPDATE`,
-            tenantScope.key.startsWith('id:')
-                ? [bookingId, tenantScope.value, tenantScope.value]
-                : [bookingId, tenantScope.value]
+             FROM hearse_bookings hb
+             WHERE hb.id = ? AND ${tenantFilter.clause} FOR UPDATE`,
+            [bookingId, ...tenantFilter.params]
         );
         const booking = bookingRows[0];
         if (!booking) throw new LineupError(404, 'Booking not found for this tenant.');
@@ -208,10 +224,10 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
             await assertDriverAvailable(connection, tenantScope, driverId, dates, bookingId);
         }
         await connection.query(
-            `UPDATE hearse_bookings
+            `UPDATE hearse_bookings hb
              SET driver_id = ?, manual_driver_name = ?, assistant_name = ?, assistant_phone = ?, updated_at = ?
-             WHERE id = ?`,
-            [driverId, driverId === null ? manualDriverName || null : null, assistantName || null, assistantPhone || null, new Date(), bookingId]
+             WHERE hb.id = ? AND ${tenantFilter.clause}`,
+            [driverId, driverId === null ? manualDriverName || null : null, assistantName || null, assistantPhone || null, new Date(), bookingId, ...tenantFilter.params]
         );
         await connection.commit();
         await invalidateHearseCache(req);
