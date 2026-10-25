@@ -174,16 +174,17 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
     if (!tenantScope) return;
     const bookingId = Number(req.params.booking_id);
     const driverId = req.body.driver_id == null || req.body.driver_id === '' ? null : Number(req.body.driver_id);
+    const manualDriverName = String(req.body.driver_name || '').trim();
     const assistantName = String(req.body.assistant_name || '').trim();
     const assistantPhone = String(req.body.assistant_phone || '').trim();
     if (!Number.isInteger(bookingId) || bookingId < 1
         || (driverId !== null && (!Number.isInteger(driverId) || driverId < 1))
-        || assistantName.length > 200 || assistantPhone.length > 50) {
+        || manualDriverName.length > 200 || assistantName.length > 200 || assistantPhone.length > 50) {
         res.status(400).json({ success: false, message: 'Enter valid booking, driver and assistant details.' });
         return;
     }
-    if (driverId !== null && !assistantName) {
-        res.status(400).json({ success: false, message: 'Enter the assistant name assigned with this driver.' });
+    if (driverId !== null && manualDriverName) {
+        res.status(400).json({ success: false, message: 'Choose a driver or enter a driver name, not both.' });
         return;
     }
 
@@ -208,9 +209,9 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
         }
         await connection.query(
             `UPDATE hearse_bookings
-             SET driver_id = ?, assistant_name = ?, assistant_phone = ?, updated_at = ?
+             SET driver_id = ?, manual_driver_name = ?, assistant_name = ?, assistant_phone = ?, updated_at = ?
              WHERE id = ?`,
-            [driverId, driverId === null ? null : assistantName, driverId === null ? null : assistantPhone || null, new Date(), bookingId]
+            [driverId, driverId === null ? manualDriverName || null : null, assistantName || null, assistantPhone || null, new Date(), bookingId]
         );
         await connection.commit();
         await invalidateHearseCache(req);
@@ -218,8 +219,9 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
             success: true,
             booking_id: bookingId,
             driver_id: driverId,
-            assistant_name: driverId === null ? null : assistantName,
-            assistant_phone: driverId === null ? null : assistantPhone || null,
+            driver_name: driverId === null ? manualDriverName || null : null,
+            assistant_name: assistantName || null,
+            assistant_phone: assistantPhone || null,
         });
     } catch (error) {
         await connection.rollback();

@@ -12,6 +12,7 @@ const API_BASE_URL = env.FULL_API_URL;
 const getTenantSlug = () =>
     localStorage.getItem('tenantSlug') || sessionStorage.getItem('tenantSlug') || '';
 
+
 const getUser = () => {
     try { const u = localStorage.getItem('user'); return u ? JSON.parse(u) : {}; }
     catch { return {}; }
@@ -151,6 +152,15 @@ function tripTimeMs(b) {
 const tripDay = (b) => {
     const keys = bookingDateKeys(b).sort();
     return keys[0] || null;
+};
+
+const normalizeDriverName = (name) => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+const isAssignedToDriver = (booking, driverId, driverName) => {
+    const bookingDriverId = booking?.driver_id ?? booking?.assigned_driver_id ?? booking?.driverId;
+    if (driverId && bookingDriverId != null && String(bookingDriverId) === String(driverId)) return true;
+    const assignedName = normalizeDriverName(booking?.assigned_driver_name || booking?.driver_name);
+    return !!assignedName && !!normalizeDriverName(driverName) && assignedName === normalizeDriverName(driverName);
 };
 
 // Departure time for the trip card — the first time-bearing column the row has.
@@ -347,6 +357,23 @@ const css = `
 #rp-driver .stat.c-blue .num i{ background:var(--blue-b); }
 #rp-driver .stat.c-red .num{ color:var(--red); }
 #rp-driver .stat.c-red .num i{ background:var(--red); }
+
+/* compact trip calendar */
+#rp-driver .trip-calendar{ margin:0 0 18px; padding:13px; border:1px solid var(--line);
+  border-radius:12px; background:var(--card); }
+#rp-driver .trip-calendar-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+#rp-driver .trip-calendar-head strong{ font:600 .82rem var(--disp); }
+#rp-driver .trip-calendar-head small{ color:var(--faint); font-size:.65rem; }
+#rp-driver .trip-days{ display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+#rp-driver .trip-day{ min-width:0; min-height:66px; display:flex; flex-direction:column; align-items:center;
+  flex:1 0 58px; justify-content:center; gap:3px; padding:7px 3px; border:1px solid var(--line); border-radius:9px;
+  background:var(--card2); color:var(--dim); transition:background .15s,border-color .15s,color .15s; }
+#rp-driver .trip-day:hover{ border-color:var(--line2); color:var(--text); }
+#rp-driver .trip-day.on{ border-color:var(--teal-b); background:rgba(19,75,95,.38); color:var(--text); }
+#rp-driver .trip-day.today .td-dow{ color:var(--orange-b); }
+#rp-driver .trip-day .td-dow{ font:600 .55rem 'Inter'; color:var(--faint); text-transform:uppercase; }
+#rp-driver .trip-day .td-date{ font:700 1rem var(--disp); }
+#rp-driver .trip-day .td-count{ min-height:12px; color:var(--teal-b); font:600 .52rem 'Inter'; white-space:nowrap; }
 
 /* ═══ tabs ═══ */
 #rp-driver .tabs{ display:flex; gap:22px; overflow-x:auto; border-bottom:1px solid var(--line); margin-bottom:18px; }
@@ -673,6 +700,12 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
                             <span className="v mono">{b.client_phone}</span>
                         </div>
                     )}
+                    {(b.assistant_name || b.assistant_phone) && (
+                        <div className="kv-row">
+                            <span className="k">Assistant</span>
+                            <span className="v">{b.assistant_name || 'Not assigned'}{b.assistant_phone ? ` · ${b.assistant_phone}` : ''}</span>
+                        </div>
+                    )}
                 </div>
 
                 <RouteBlock
@@ -689,6 +722,12 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
                         <div className="kv-row">
                             <span className="k">Plate</span>
                             <span className="v mono t">{plate}</span>
+                        </div>
+                    )}
+                    {(b.branch_name || b.hearse_branch_name) && (
+                        <div className="kv-row">
+                            <span className="k">Branch</span>
+                            <span className="v">{b.branch_name || b.hearse_branch_name}</span>
                         </div>
                     )}
                 </div>
@@ -811,6 +850,7 @@ const DriverPortal = () => {
     const [success, setSuccess] = useState('');
     const [info, setInfo] = useState('');
     const [tab, setTab] = useState('trips');
+    const [selectedTripDate, setSelectedTripDate] = useState(() => dayKey(getNairobiNow()));
     const [showLeaveApplication, setShowLeaveApplication] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -1031,22 +1071,47 @@ const DriverPortal = () => {
 
     /* ─── derived ─── */
     const nowN = getNairobiNow();
-    const rated = bookings
+    const assignedBookings = bookings.filter((booking) => isAssignedToDriver(booking, driverId, driverName));
+    const rated = assignedBookings
         .map(b => ({ b, kind: tripKind(b, nowN) }))
         .filter(x => x.kind)
         .sort((a, z) => (a.kind === z.kind ? tripTimeMs(a.b) - tripTimeMs(z.b) : a.kind === 'upcoming' ? -1 : 1));
 
-    const active = rated.map(x => x.b);
     const upcomingCount = rated.filter(x => x.kind === 'upcoming').length;
     const overdueCount = rated.filter(x => x.kind === 'overdue').length;
-    const overdueIds = new Set(rated.filter(x => x.kind === 'overdue').map(x => x.b.booking_id));
-    const transit = bookings.filter(b => b.status === 'in_transit').length;
+    const overdueIds = new Set(rated.filter(x => x.kind === 'overdue').map(x => String(x.b.booking_id)));
+    const transit = assignedBookings.filter(b => b.status === 'in_transit').length;
     const pendingPicks = pickups.filter(p => p.status === 'pending').length;
+    const todayKey = dayKey(nowN);
+    const tripCalendarDays = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(nowN);
+        date.setDate(date.getDate() + index);
+        const key = dayKey(date);
+        const count = assignedBookings.filter((booking) =>
+            !CLOSED_STATUSES.includes(String(booking.status || '').toLowerCase())
+            && bookingDateKeys(booking).includes(key)
+        ).length;
+        return { key, date, count };
+    });
+    const selectedDayBookings = assignedBookings
+        .filter((booking) => !CLOSED_STATUSES.includes(String(booking.status || '').toLowerCase()))
+        .filter((booking) => bookingDateKeys(booking).includes(selectedTripDate))
+        .sort((a, b) => tripTimeMs(a) - tripTimeMs(b));
+    const overdueForToday = selectedTripDate === todayKey
+        ? rated.filter((trip) => trip.kind === 'overdue').map((trip) => trip.b)
+        : [];
+    const visibleTripBookings = [...new Map(
+        [...overdueForToday, ...selectedDayBookings].map((booking) => [String(booking.booking_id), booking])
+    ).values()];
+    const overdueTripIds = new Set(overdueForToday.map((booking) => String(booking.booking_id)));
+    const assignedTripCount = assignedBookings.filter(
+        (booking) => !CLOSED_STATUSES.includes(String(booking.status || '').toLowerCase())
+    ).length;
 
     const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
     const TABS = [
-        { k: 'trips', l: 'Trips', Icon: RouteIcon, n: active.length, cls: '' },
+        { k: 'trips', l: 'Trips', Icon: RouteIcon, n: assignedTripCount, cls: '' },
         { k: 'pickups', l: 'Pickups', Icon: MapPin, n: pendingPicks, cls: 'k-orange' },
         { k: 'fuel', l: 'Fuelling', Icon: Fuel, n: driverFuelCards.length, cls: '' },
         { k: 'leaves', l: 'Leaves', Icon: Calendar, n: leaves.length, cls: '' },
@@ -1119,22 +1184,46 @@ const DriverPortal = () => {
 
                     {tab === 'trips' && (
                         loadingB ? <Loading text="Loading trips…" /> :
-                            active.length === 0 ? (
-                                <Empty
-                                    emoji="🚗"
-                                    title="All Clear"
-                                    sub="No trips in the next 24 hours and no open past trips right now. You'll be notified when one is assigned."
-                                />
-                            ) : active.map((b, i) => (
-                                <TripCard
-                                    key={b.booking_id}
-                                    booking={b}
-                                    onStatusChange={changeStatus}
-                                    i={i}
-                                    overdue={overdueIds.has(b.booking_id)}
-                                    busy={busy}
-                                />
-                            ))
+                            <>
+                                <section className="trip-calendar" aria-label="Assigned trips by day">
+                                    <div className="trip-calendar-head">
+                                        <strong>My trip schedule</strong>
+                                        <small>{fmtFull(selectedTripDate)}</small>
+                                    </div>
+                                    <div className="trip-days">
+                                        {tripCalendarDays.map(({ key, date, count }) => (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                className={`trip-day${selectedTripDate === key ? ' on' : ''}${key === todayKey ? ' today' : ''}`}
+                                                aria-pressed={selectedTripDate === key}
+                                                aria-label={`${fmtFull(key)}${count ? `, ${count} assigned trip${count === 1 ? '' : 's'}` : ', no assigned trips'}`}
+                                                onClick={() => setSelectedTripDate(key)}
+                                            >
+                                                <span className="td-dow">{key === todayKey ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                                                <span className="td-date">{date.getDate()}</span>
+                                                <span className="td-count">{count ? `${count} trip${count === 1 ? '' : 's'}` : '—'}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+                                {visibleTripBookings.length === 0 ? (
+                                    <Empty
+                                        emoji="🚗"
+                                        title="No trips scheduled"
+                                        sub={`You have no assigned trips for ${fmtFull(selectedTripDate)}. Select another day to view your schedule.`}
+                                    />
+                                ) : visibleTripBookings.map((b, i) => (
+                                    <TripCard
+                                        key={b.booking_id}
+                                        booking={b}
+                                        onStatusChange={changeStatus}
+                                        i={i}
+                                        overdue={overdueTripIds.has(String(b.booking_id)) || overdueIds.has(String(b.booking_id))}
+                                        busy={busy}
+                                    />
+                                ))}
+                            </>
                     )}
 
                     {tab === 'pickups' && (

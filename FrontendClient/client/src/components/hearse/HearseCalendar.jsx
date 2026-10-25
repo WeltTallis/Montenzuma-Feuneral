@@ -23,6 +23,13 @@ export const COLORS = {
   info: '#3b82f6', infoLight: '#dbeafe', infoDark: '#2563eb',
 };
 
+const DRIVER_LINEUP_THEMES = [
+  { primary: '#d97706', light: '#fef3c7' },
+  { primary: '#be185d', light: '#fce7f3' },
+  { primary: '#1d4ed8', light: '#dbeafe' },
+  { primary: '#15803d', light: '#dcfce7' },
+];
+
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -850,80 +857,109 @@ const DayPanelHeader = styled.div`
 
 const LineupControls = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  padding: 12px 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 14px 16px;
   border-bottom: 1px solid #f1f2f4;
-  background: #fafbfc;
+  background: #f8fafc;
+  label {
+    display: grid;
+    min-width: 0;
+    gap: 6px;
+    color: #475569;
+    font-size: 10px;
+    font-weight: 800;
+  }
+  input, select {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #1e293b;
+    font: inherit;
+    font-size: 11px;
+    &:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
+  }
+  button {
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid #0f172a;
+    border-radius: 8px;
+    background: #0f172a;
+    color: #fff;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background .15s ease;
+    &:hover:not(:disabled) { background: #1e293b; }
+    &:disabled { opacity: .55; cursor: wait; }
+  }
+  @media (max-width: 520px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+    padding: 12px;
+    button { width: 100%; }
+  }
+`;
+
+const BookingLineup = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 10px;
+  margin: 0 12px 14px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: #f8fafc;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .04);
+  label { display: grid; min-width: 0; gap: 5px; color: #64748b; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
   input, select {
     width: 100%;
     min-width: 0;
     min-height: 36px;
     padding: 0 9px;
-    border: 1px solid #e1e4e8;
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     background: #fff;
-    color: #343946;
-    font: inherit;
-    font-size: 11px;
-  }
-  button {
-    min-height: 36px;
-    padding: 0 11px;
-    border: 1px solid #1a1d29;
-    border-radius: 8px;
-    background: #1a1d29;
-    color: #fff;
-    font: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    &:disabled { opacity: .55; cursor: wait; }
-  }
-  @media (max-width: 520px) { grid-template-columns: minmax(0, 1fr); }
-`;
-
-const BookingLineup = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  align-items: end;
-  gap: 8px;
-  padding: 12px 20px 14px 74px;
-  border-bottom: 1px solid #f4f5f7;
-  background: #fbfcfd;
-  label { display: grid; min-width: 0; gap: 4px; color: #818794; font-size: 9px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
-  input, select {
-    width: 100%;
-    min-width: 0;
-    min-height: 34px;
-    padding: 0 8px;
-    border: 1px solid #e1e4e8;
-    border-radius: 7px;
-    background: #fff;
-    color: #343946;
+    color: #1e293b;
     font: inherit;
     font-size: 11px;
     text-transform: none;
     letter-spacing: normal;
+    &:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
   }
   button {
-    min-height: 34px;
-    padding: 0 10px;
-    border: 1px solid #1a1d29;
-    border-radius: 7px;
-    background: #1a1d29;
+    min-height: 36px;
+    padding: 0 13px;
+    border: 1px solid #0f172a;
+    border-radius: 8px;
+    background: #0f172a;
     color: #fff;
     font: inherit;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 800;
     white-space: nowrap;
     cursor: pointer;
+    transition: background .15s ease, transform .15s ease;
+    &:hover:not(:disabled) { background: #1e293b; transform: translateY(-1px); }
     &:disabled { opacity: .55; cursor: wait; }
   }
   @media (max-width: 700px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 11px 12px;
+    margin: 0 8px 12px;
+    padding: 11px;
     button { grid-column: 1 / -1; }
+  }
+  @media (max-width: 420px) {
+    grid-template-columns: minmax(0, 1fr);
+    button { grid-column: auto; }
   }
 `;
 
@@ -945,34 +981,100 @@ const BackToCalendar = styled.button`
 
 const DayBookingRow = styled.button`
   display: block;
-  width: 100%;
+  width: ${p => p.$lineup ? 'calc(100% - 24px)' : '100%'};
+  margin: ${p => p.$lineup ? '14px 12px 0' : '0'};
   padding: 0;
-  border: 0;
-  border-bottom: 1px solid #f4f5f7;
+  border: ${p => p.$lineup ? '1px solid #e2e8f0' : '0'};
+  border-bottom: ${p => p.$lineup ? '0' : '1px solid #f4f5f7'};
+  border-radius: ${p => p.$lineup ? '12px 12px 0 0' : '0'};
   background: #fff;
   color: inherit;
   cursor: pointer;
   font: inherit;
   text-align: left;
+  overflow: hidden;
+  box-shadow: ${p => p.$lineup ? '0 4px 12px rgba(15, 23, 42, .05)' : 'none'};
+  transition: ${p => p.$lineup ? 'transform .18s ease, box-shadow .18s ease' : 'none'};
   &:last-child { border-bottom: 0; }
   &:hover { background: #fff; }
+  &:hover { ${p => p.$lineup ? 'transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 23, 42, .09);' : ''} }
 `;
 
 const DayBookingHeader = styled.span`
-  display: flex;
-  min-height: 62px;
+  display: ${p => p.$lineup ? 'grid' : 'flex'};
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-height: ${p => p.$lineup ? '64px' : '62px'};
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 11px 16px;
-  background: #0f172a;
+  gap: ${p => p.$lineup ? '14px' : '14px'};
+  padding: ${p => p.$lineup ? '14px 20px' : '11px 16px'};
+  background: ${p => p.$lineup ? p.$theme?.primary || '#1d4ed8' : '#0f172a'};
   color: #fff;
-  @media (max-width: 520px) {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
+  @media (max-width: 850px) {
+    ${p => p.$lineup && `
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: start;
+      gap: 10px;
+      padding: 14px 16px;
+    `}
   }
+  @media (max-width: 520px) {
+    ${p => !p.$lineup && `
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+    `}
+  }
+`;
+
+const LineupHeaderItem = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  svg { flex: 0 0 auto; }
+  & > span, & > strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @media (max-width: 850px) { justify-self: start; }
+`;
+
+const LineupDriverHeader = styled(LineupHeaderItem)`
+  font-size: 13px;
+  font-weight: 850;
+`;
+
+const LineupAssistantHeader = styled(LineupHeaderItem)`
+  justify-self: center;
+  span { color: rgba(255, 255, 255, .88); font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+  strong { color: #fff; font-size: 11px; font-weight: 800; }
+  @media (max-width: 850px) { justify-self: start; }
+`;
+
+const LineupVehicleHeader = styled(LineupHeaderItem)`
+  justify-self: end;
+  font-size: 11px;
+  strong { font-weight: 850; }
+  @media (max-width: 850px) { justify-self: start; }
+`;
+
+const LineupPlate = styled.span`
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #fff;
+  color: ${p => p.$theme?.primary || '#1d4ed8'};
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  white-space: nowrap;
 `;
 
 const DayBookingVehicle = styled.span`
@@ -1052,6 +1154,108 @@ const DayBookingBody = styled.span`
     gap: 13px;
     padding: 14px 12px;
   }
+`;
+
+const LineupCardBody = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 17px 20px;
+  background: #fff;
+  @media (max-width: 850px) {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+`;
+
+const LineupRouteSection = styled.span`
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+`;
+
+const LineupNumber = styled.span`
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  border: 2px solid ${p => p.$theme?.primary || '#1d4ed8'};
+  border-radius: 50%;
+  background: ${p => p.$theme?.light || '#dbeafe'};
+  color: ${p => p.$theme?.primary || '#1d4ed8'};
+  font-size: 18px;
+  font-weight: 900;
+`;
+
+const LineupRouteDetails = styled.span`
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 850;
+  }
+`;
+
+const LineupRoutePath = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 650;
+  svg { flex: 0 0 auto; color: ${p => p.$theme?.primary || '#1d4ed8'}; }
+`;
+
+const LineupMetaSection = styled.span`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 18px;
+  @media (max-width: 850px) {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+  }
+`;
+
+const LineupTimeBox = styled.span`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  strong { color: #0f172a; font-size: 14px; font-weight: 850; }
+  small { color: #94a3b8; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  @media (max-width: 850px) { align-items: flex-start; }
+`;
+
+const LineupStatus = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1.5px solid ${p => p.$theme?.primary || '#1d4ed8'};
+  border-radius: 8px;
+  background: ${p => p.$theme?.light || '#dbeafe'};
+  color: ${p => p.$theme?.primary || '#1d4ed8'};
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  white-space: nowrap;
+  &::before { width: 7px; height: 7px; border-radius: 50%; background: currentColor; content: ''; }
 `;
 
 const DayDetail = styled.span`
@@ -1894,7 +2098,7 @@ const HearseCalendar = ({
             ) : (
               <>
             <LineupControls>
-              <label style={{ gridColumn: '1 / -1', color: '#737987', fontSize: 10, fontWeight: 750 }}>
+              <label>
                 Standby driver for the day
                 <select
                   value={standbyDraft}
@@ -1931,29 +2135,36 @@ const HearseCalendar = ({
             </LineupControls>
               </>
             )}
-            {visibleDayBookings.length ? visibleDayBookings.map((booking) => {
+            {visibleDayBookings.length ? visibleDayBookings.map((booking, lineupIndex) => {
               const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
               const schedule = getTimeInfo(booking);
               const hearse = hearses.find((item) => String(item.id ?? item.hearse_id) === String(booking.hearse_id ?? booking.hearse?.id));
               const hearseName = booking.hearse_name || booking.hearse?.hearse_name || hearse?.hearse_name || 'Hearse not assigned';
               const plate = booking.plate_number || booking.hearse_plate || booking.hearse?.plate_number || hearse?.plate_number || '';
+              const vehicleTitle = booking.model || hearse?.model || booking.hearse?.model || hearseName;
+              const assignedDriverId = booking.driver_id ?? booking.driverId ?? booking.assigned_driver_id;
               const assignedDriver = drivers.find((driver) =>
-                String(driver.driver_id ?? driver.id) === String(booking.driver_id ?? booking.driverId ?? '')
+                String(driver.driver_id ?? driver.id) === String(assignedDriverId ?? '')
               );
               const assignedDriverName = booking.assigned_driver_name
                 || assignedDriver?.driver_name
                 || assignedDriver?.full_name
-                || (booking.driver_id ? `Driver ${booking.driver_id}` : 'Unassigned');
+                || (assignedDriverId ? `Driver ${assignedDriverId}` : 'Unassigned');
               const bookingId = booking.booking_code || booking.booking_id || booking.id || '—';
               const branchName = booking.branch_name || booking.branchName || booking.branch || '—';
               const clientName = booking.client_name || booking.client || '—';
               const clientPhone = booking.client_phone || booking.phone || '—';
               const routeFrom = booking.from_location || booking.from || booking.origin || '—';
               const routeTo = booking.destination || booking.to_location || booking.dest || '—';
-              const driverPhone = assignedDriver?.phone_number || assignedDriver?.phone || '';
+              const driverPhone = assignedDriver?.driver_phone || assignedDriver?.phone_number || assignedDriver?.phone || '';
+              const assistantName = booking.assistant_name || 'Not assigned';
+              const routeTitle = booking.service_name || booking.service_type || booking.booking_title
+                || booking.booking_type || booking.client_name || booking.client || 'Hearse service';
+              const lineupTheme = DRIVER_LINEUP_THEMES[lineupIndex % DRIVER_LINEUP_THEMES.length];
               const bookingKey = String(booking.booking_id || booking.id);
               const lineup = lineupDrafts[bookingKey] || {
                 driverId: booking.driver_id == null ? '' : String(booking.driver_id),
+                driverName: booking.manual_driver_name || (!booking.driver_id ? booking.assigned_driver_name || '' : ''),
                 assistantName: booking.assistant_name || '',
                 assistantPhone: booking.assistant_phone || '',
               };
@@ -1962,52 +2173,66 @@ const HearseCalendar = ({
                 <React.Fragment key={bookingKey}>
                   <DayBookingRow
                     type="button"
+                    $lineup={dayViewMode === 'lineup'}
                     onClick={() => onItemClick?.(booking)}
                   >
-                    <DayBookingHeader>
-                      {dayViewMode === 'schedule' && <DayBookingVehicle>
-                        {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
-                        <DayBookingVehicleText>
-                          <HearseTitle>
-                            {[hearseName, booking.model || hearse?.model].filter(Boolean).join(' · ')}
-                          </HearseTitle>
-                        </DayBookingVehicleText>
-                      </DayBookingVehicle>}
-                      <DayBookingMeta>
-                        {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
-                        <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
-                      </DayBookingMeta>
-                    </DayBookingHeader>
-                    <DayBookingBody>
+                    <DayBookingHeader $lineup={dayViewMode === 'lineup'} $theme={lineupTheme}>
                       {dayViewMode === 'lineup' ? (
                         <>
-                          <DayDetail>
-                            <strong>Hearse</strong>
-                            <span>{[hearseName, booking.model || hearse?.model, plate].filter(Boolean).join(' · ')}</span>
-                          </DayDetail>
-                          <DayDetail>
-                            <strong>Driver</strong>
-                            <DayDriver>
-                              <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
-                              <DayDriverInfo>
-                                <span>{assignedDriverName}</span>
-                                {driverPhone && <small>{driverPhone}</small>}
-                              </DayDriverInfo>
-                            </DayDriver>
-                            {(booking.assistant_name || booking.assistant_phone) && (
-                              <DayAssistant>
-                                Assistant: {booking.assistant_name || 'Not assigned'}
-                                {booking.assistant_phone ? ` · ${booking.assistant_phone}` : ''}
-                              </DayAssistant>
-                            )}
-                          </DayDetail>
-                          <DayDetail>
-                            <strong>Route</strong>
-                            <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
-                          </DayDetail>
+                          <LineupDriverHeader>
+                            <Users size={17} aria-hidden="true" />
+                            <span>{assignedDriverName}</span>
+                          </LineupDriverHeader>
+                          <LineupAssistantHeader>
+                            <span>Assisted by</span>
+                            <strong>{assistantName}</strong>
+                          </LineupAssistantHeader>
+                          <LineupVehicleHeader>
+                            <Car size={17} aria-hidden="true" />
+                            <strong>{vehicleTitle}</strong>
+                            {plate && <LineupPlate $theme={lineupTheme}>{plate}</LineupPlate>}
+                          </LineupVehicleHeader>
                         </>
                       ) : (
                         <>
+                          <DayBookingVehicle>
+                            {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
+                            <DayBookingVehicleText>
+                              <HearseTitle>{vehicleTitle}</HearseTitle>
+                            </DayBookingVehicleText>
+                          </DayBookingVehicle>
+                          <DayBookingMeta>
+                            {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
+                            <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
+                          </DayBookingMeta>
+                        </>
+                      )}
+                    </DayBookingHeader>
+                    {dayViewMode === 'lineup' ? (
+                      <LineupCardBody>
+                        <LineupRouteSection>
+                          <LineupNumber $theme={lineupTheme}>{String(lineupIndex + 1).padStart(2, '0')}</LineupNumber>
+                          <LineupRouteDetails>
+                            <h3>{routeTitle}</h3>
+                            <LineupRoutePath $theme={lineupTheme}>
+                              <span>{routeFrom}</span>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M5 12h14M12 5l7 7-7 7" />
+                              </svg>
+                              <span>{routeTo}</span>
+                            </LineupRoutePath>
+                          </LineupRouteDetails>
+                        </LineupRouteSection>
+                        <LineupMetaSection>
+                          <LineupTimeBox>
+                            <small>Time</small>
+                            <strong>{schedule.allDay ? 'All Day' : schedule.fs || 'Not set'}</strong>
+                          </LineupTimeBox>
+                          <LineupStatus $theme={lineupTheme}>{status.label}</LineupStatus>
+                        </LineupMetaSection>
+                      </LineupCardBody>
+                    ) : (
+                      <DayBookingBody>
                           <DayDetail>
                             <strong>Route / itinerary</strong>
                             <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
@@ -2030,19 +2255,18 @@ const HearseCalendar = ({
                               </DayDriverInfo>
                             </DayDriver>
                           </DayDetail>
-                        </>
-                      )}
-                    </DayBookingBody>
+                      </DayBookingBody>
+                    )}
                   </DayBookingRow>
                   {dayViewMode === 'lineup' && <BookingLineup>
                     <label>
-                      Driver
+                      Select driver (optional)
                       <select
                         value={lineup.driverId}
                         onClick={(event) => event.stopPropagation()}
                         onChange={(event) => setLineupDrafts((current) => ({
                           ...current,
-                          [bookingKey]: { ...lineup, driverId: event.target.value },
+                          [bookingKey]: { ...lineup, driverId: event.target.value, driverName: '' },
                         }))}
                         aria-label={`Assign driver for booking ${bookingId}`}
                       >
@@ -2068,7 +2292,20 @@ const HearseCalendar = ({
                       </select>
                     </label>
                     <label>
-                      Assistant name
+                      Or enter driver name
+                      <input
+                        value={lineup.driverName}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setLineupDrafts((current) => ({
+                          ...current,
+                          [bookingKey]: { ...lineup, driverId: '', driverName: event.target.value },
+                        }))}
+                        placeholder="Type driver name"
+                        aria-label={`Enter driver name for booking ${bookingId}`}
+                      />
+                    </label>
+                    <label>
+                      Assistant name (optional)
                       <input
                         value={lineup.assistantName}
                         onClick={(event) => event.stopPropagation()}
@@ -2097,7 +2334,8 @@ const HearseCalendar = ({
                       type="button"
                       disabled={String(savingBookingLineup || '') === bookingKey}
                       onClick={() => onSaveBookingLineup?.(booking.booking_id || booking.id, {
-                        driver_id: lineup.driverId || null,
+                        driver_id: lineup.driverName.trim() ? null : lineup.driverId || null,
+                        driver_name: lineup.driverName.trim(),
                         assistant_name: lineup.assistantName,
                         assistant_phone: lineup.assistantPhone,
                       })}

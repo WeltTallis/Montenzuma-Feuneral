@@ -4,8 +4,9 @@ import { useSearchParams } from 'react-router-dom';
 import { getTenantId, getBranchId, getBranchSlug, getBranches as getCachedBranches, getParentTenantSlug } from '../../utils/globalAuth';
 import { useSocket } from '../../utils/context/socketContext';
 import useAuthStore from '../../utils/store/useAuthStore';
+import apiClient from '../../api/axios';
+import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import BookNewHearseModal from './BookNewHearseModal';
-import { getTenantHeaders } from '../../api/endpoints';
 import styled, { keyframes } from 'styled-components';
 import HearseCalendar from './HearseCalendar';
 import env from '../../utils/config/env';
@@ -258,28 +259,42 @@ const api = {
     }
 
     const isDriver = (user) => {
-      const role = String(user?.role || '').toLowerCase().replace(/[\s_-]+/g, '_');
-      return role.includes('driver');
+      const roles = [
+        user?.role,
+        user?.role_name,
+        user?.user_role,
+        ...(Array.isArray(user?.roles) ? user.roles : []),
+      ].map((role) => String(typeof role === 'object' ? role?.name || role?.role : role || '')
+        .toLowerCase()
+        .replace(/[\s_-]+/g, '_'));
+      return roles.some((role) => role === 'driver' || role.includes('driver'));
     };
     let lastUserList = [];
+    let successfulLookup = false;
+    let lastLookupError = null;
 
     for (const slug of candidates) {
-      const response = await fetch(`${API_BASE_URL}/tenant/${encodeURIComponent(slug)}/users`, {
-        headers: { ...getAuthHeaders(), 'x-tenant-slug': slug },
-      });
-      if (response.status === 404) continue;
-      if (!response.ok) {
-        throw new Error(`Failed to load tenant users for driver lineup (${response.status}).`);
+      let response;
+      try {
+        response = await apiClient.get(ENDPOINTS.TENANT.USERS(slug));
+      } catch (error) {
+        if (error?.response?.status === 404) continue;
+        lastLookupError = error;
+        console.warn(`[HearseBookings] Tenant user lookup failed for "${slug}".`, error?.response?.data || error?.message);
+        continue;
       }
 
-      const payload = await response.json();
+      const payload = response?.data;
       const users = Array.isArray(payload)
         ? payload
-        : payload.data?.users || payload.data || payload.users;
+        : payload?.data?.users || payload?.data || payload?.users;
       if (!Array.isArray(users)) {
-        throw new Error('The tenant user service returned an invalid user list.');
+        lastLookupError = new Error(`Tenant user service returned an invalid list for "${slug}".`);
+        console.warn(`[HearseBookings] Tenant user service returned an invalid list for "${slug}".`, payload);
+        continue;
       }
 
+      successfulLookup = true;
       lastUserList = users;
       const drivers = users
         .filter(isDriver)
@@ -289,13 +304,16 @@ const api = {
           driver_name: user.driver_name || user.full_name
             || `${user.first_name || ''} ${user.last_name || ''}`.trim()
             || user.username || '',
-          phone_number: user.driver_phone || user.phone_number || user.phone || '',
+          driver_phone: user.driver_phone || user.phone_number || user.phone || '',
           role: user.role,
         }))
         .filter((driver) => driver.id != null && driver.driver_name);
       if (drivers.length) return drivers;
     }
 
+    if (!successfulLookup && lastLookupError) {
+      throw new Error(lastLookupError?.response?.data?.message || lastLookupError.message || 'Unable to load tenant users for driver lineup.');
+    }
     const roles = [...new Set(lastUserList.map((user) => String(user?.role || '')).filter(Boolean))];
     console.warn('[HearseBookings] No tenant users matched a driver role.', {
       triedSlugs: candidates,
