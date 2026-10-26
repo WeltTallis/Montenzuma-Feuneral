@@ -1848,14 +1848,7 @@ const HearseCalendar = ({
             </span>
           )}
 
-          <span style={{
-            fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.9)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {props.clientName || 'Booking'} · {props.statusLabel || ''}
-          </span>
-
-          {/* Month view intentionally omits booking time to keep vehicle and location prominent. */}
+          {/* Month view intentionally omits client name and booking time to keep vehicle and location prominent. */}
         </div>
       );
     }
