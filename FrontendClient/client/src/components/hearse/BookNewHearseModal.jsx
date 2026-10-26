@@ -354,6 +354,11 @@ const Inp = styled.input`
   &::placeholder{color:#b6c2d1}
   &:focus{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
 `;
+const BranchSelect = styled.select`
+  width:100%;padding:.5rem .65rem;font:inherit;font-size:.8rem;color:${C.text};
+  border:1px solid #d1d5db;border-radius:9px;outline:none;transition:.15s;background:#fff;
+  &:focus{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
+`;
 const ChargeWrap = styled.div`
   display:flex;align-items:stretch;border:1px solid #d1d5db;border-radius:9px;overflow:hidden;transition:.15s;background:#fff;
   &:focus-within{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
