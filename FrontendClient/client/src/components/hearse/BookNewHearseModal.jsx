@@ -739,7 +739,11 @@ export default function BookNewHearseModal({
       if (selTotal > 0) t += ` · KSH ${selTotal.toLocaleString()}`;
       return { t, ok: true };
     }
-    if (dPart) return { t: `${dPart} — pick a hearse` };
+    if (dPart) {
+      const timePart = bookingTime ? ` · ${formatTimeLabel(bookingTime)}` : '';
+      return { t: `${dPart}${timePart} — pick a hearse` };
+    }
+    if (bookingTime) return { t: `Pickup time · ${formatTimeLabel(bookingTime)}` };
     return { t: 'Select a date to start' };
   })();
 

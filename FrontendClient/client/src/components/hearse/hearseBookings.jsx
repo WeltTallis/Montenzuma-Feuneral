@@ -128,6 +128,17 @@ const fmtBookingDates = (b) => {
   return `${first} - ${last}`;
 };
 
+const fmtBookingTime = (b) => {
+  const raw = b?.booking_time || b?.from_timestamp || b?.estimated_departure_time || b?.start_time;
+  if (!raw) return 'Not specified';
+  const match = String(raw).match(/(?:^|[T\s])(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (!match) return 'Not specified';
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return 'Not specified';
+  return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
+};
+
 const fmtRoute = (b) => {
   if (b?.from_location && (b?.to_location || b?.destination)) {
     return `${b.from_location} → ${b.to_location || b.destination}`;
@@ -1424,7 +1435,10 @@ const HearseBookings = () => {
                               {b.plate_number && <div style={{ fontSize: '0.68rem', color: COLORS.textMuted }}>{b.plate_number}</div>}
                             </TableCell>
                             <TableCell><div style={{ fontSize: '0.78rem' }}>{branchLabel(b)}</div></TableCell>
-                            <TableCell><div style={{ fontSize: '0.78rem' }}>{fmtBookingDates(b)}</div></TableCell>
+                            <TableCell>
+                              <div style={{ fontSize: '0.78rem' }}>{fmtBookingDates(b)}</div>
+                              <div style={{ fontSize: '0.7rem', color: COLORS.textMuted }}>Pickup: {fmtBookingTime(b)}</div>
+                            </TableCell>
                             <TableCell>
                               <StatusBadge $status={b.status}>{STATUS_CONFIG[b.status]?.label || b.status}</StatusBadge>
                             </TableCell>
@@ -1538,6 +1552,10 @@ const HearseBookings = () => {
                 <DetailItem>
                   <DetailLabel>Route</DetailLabel>
                   <DetailValue>{fmtRoute(selectedBooking)}</DetailValue>
+                </DetailItem>
+                <DetailItem>
+                  <DetailLabel>Pickup time</DetailLabel>
+                  <DetailValue>{fmtBookingTime(selectedBooking)}</DetailValue>
                 </DetailItem>
                 <DetailItem>
                   <DetailLabel>Dates</DetailLabel>
