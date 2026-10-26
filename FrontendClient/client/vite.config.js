@@ -25,6 +25,7 @@ export default defineConfig({
 
   resolve: {
     alias: {
+            '@hr': import.meta.dirname + '/./src/hr-payroll',
             '@': import.meta.dirname + '/./src',
     },
     // Guarantee a single copy of React across the whole module graph, even if

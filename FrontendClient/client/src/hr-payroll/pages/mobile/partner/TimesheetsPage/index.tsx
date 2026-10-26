@@ -1,0 +1,359 @@
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { TimesheetPageHeaderMobile } from "@hr/components/timesheet/mobile/TimesheetPageHeaderMobile";
+import { TimesheetDisplaySection } from "@hr/components/timesheet/TimesheetDisplaySection";
+import {
+  TimesheetsExportDialog,
+  TimesheetsExportParams,
+} from "@hr/components/timesheet/TimesheetsExportDialog";
+import { BCCUploadModal } from "@hr/components/timesheet/BCCUploadModal";
+import { UploadHistorySheet } from "@hr/components/timesheet/UploadHistorySheet";
+import { ExportSaoKeDialog } from "@hr/components/transaction/ExportSaoKeDialog";
+import { PaymentHistorySheet } from "@hr/components/payroll/PaymentHistorySheet";
+import { Skeleton } from "@hr/components/ui/skeleton";
+import { MissingBankDetailsSection } from "@hr/components/employees/MissingBankDetailsSection";
+import { GroupedStatCard } from "@hr/components/shared/GroupedStatCard";
+import { MobilePageShell, MobileSurface } from "@hr/components/shared/MobilePageShell";
+import { Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { useTimesheetManagement } from "@hr/hooks/timesheet/useTimesheetManagement";
+import { useEmployeeModals, useTimesheetModals } from "@hr/hooks/useModalNavigation";
+import { useExportApprovedTimesheets } from "@hr/hooks/api/usePayrolls";
+import { useSettingByKey } from "@hr/hooks/api/useSettings";
+import { useCreateEditRequest } from "@hr/hooks/api/useTimesheetEditRequests";
+import { useTimesheetStatsConfig } from "@hr/hooks/useTimesheetStatsConfig";
+import { MobileTimesheetEntry } from "@hr/components/sheets/timesheet-entry/mobile/MobileTimesheetEntry";
+import type { Employee } from "@hr/types/api/employee.types";
+import type { Timesheet } from "@hr/types/api/timesheet.types";
+
+export default function TimesheetsPageMobile() {
+  const [approvedTimesheetsDialogOpen, setApprovedTimesheetsDialogOpen] =
+    useState(false);
+  const [exportSaoKeOpen, setExportSaoKeOpen] = useState(false);
+  const [bccUploadOpen, setBccUploadOpen] = useState(false);
+  const [bccHistoryOpen, setBccHistoryOpen] = useState(false);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { openTimesheetEntry, openTimesheetDetails } = useTimesheetModals();
+  const { openEmployeeDetails } = useEmployeeModals();
+  const queryClient = useQueryClient();
+
+  const handleEmployeeClick = useCallback(
+    (employee: Employee) => openEmployeeDetails(employee.id.toString()),
+    [openEmployeeDetails],
+  );
+
+  const createEditRequestMutation = useCreateEditRequest();
+  const [requestingTimesheetId, setRequestingTimesheetId] = useState<
+    number | null
+  >(null);
+
+  // Full-page entry mode when modal=timesheet_entry
+  const isEntryMode = searchParams.get("modal") === "timesheet_entry";
+  const urlProjectId = searchParams.get("projectId");
+  const urlProjectFilter = searchParams.get("project");
+  const entryEmployeeId = searchParams.get("employeeId");
+
+  const urlViewMode = searchParams.get("view") as "table" | "calendar" | null;
+  const viewEmployeeId = searchParams.get("employee");
+
+  const handleEntryClose = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("modal");
+    params.delete("projectId");
+    params.delete("employeeId");
+    navigate(`/partner/timesheet${params.toString() ? `?${params}` : ""}`, {
+      replace: true,
+    });
+  }, [navigate, searchParams]);
+
+  // View mode state
+  const [viewMode, setViewMode] = useState<"table" | "calendar">(() => {
+    if (urlViewMode === "table" || urlViewMode === "calendar")
+      return urlViewMode;
+    return viewEmployeeId ? "calendar" : "table";
+  });
+
+  const timesheetManagement = useTimesheetManagement({
+    userRole: "partner",
+    useYearToDate: true,
+  });
+  const { data: bulkTransferSetting } = useSettingByKey(
+    "bulk_transfer_payment_percentage",
+  );
+  const bulkTransferPercentage = bulkTransferSetting?.value
+    ? parseFloat(bulkTransferSetting.value)
+    : 0;
+
+  const statsFilters = useMemo(() => ({
+    project_id: timesheetManagement.selectedProject !== "all" ? parseInt(timesheetManagement.selectedProject) : undefined,
+    fromDate: timesheetManagement.selectedMonth !== "all" ? `${timesheetManagement.selectedMonth}-01` : undefined,
+    toDate: timesheetManagement.selectedMonth !== "all" ? (() => {
+      const parts = timesheetManagement.selectedMonth.split("-");
+      const lastDay = new Date(parseInt(parts[0]), parseInt(parts[1]), 0).getDate();
+      return `${timesheetManagement.selectedMonth}-${lastDay.toString().padStart(2, "0")}`;
+    })() : undefined,
+  }), [timesheetManagement.selectedProject, timesheetManagement.selectedMonth]);
+
+  const timesheetStats = useTimesheetStatsConfig(statsFilters);
+
+  // Preserve the project-scoped shortcut used by the desktop project list.
+  useEffect(() => {
+    if (
+      urlProjectFilter &&
+      urlProjectFilter !== timesheetManagement.selectedProject
+    ) {
+      timesheetManagement.setSelectedProject(urlProjectFilter);
+    }
+    // Only initialize from the incoming route; subsequent changes are owned by
+    // the page filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync employee selection from URL
+  useEffect(() => {
+    if (
+      viewEmployeeId &&
+      viewEmployeeId !== timesheetManagement.selectedEmployee
+    ) {
+      timesheetManagement.setSelectedEmployee(viewEmployeeId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update URL when selection changes
+  useEffect(() => {
+    const newParams = new URLSearchParams(searchParams);
+    const isSpecific =
+      timesheetManagement.selectedEmployee &&
+      timesheetManagement.selectedEmployee !== "all" &&
+      timesheetManagement.selectedEmployee.trim() !== "";
+
+    if (isSpecific) {
+      newParams.set("employee", timesheetManagement.selectedEmployee);
+      newParams.set("view", viewMode);
+    } else {
+      newParams.delete("employee");
+      newParams.delete("view");
+      if (viewMode !== "table") setViewMode("table");
+    }
+
+    if (newParams.toString() !== searchParams.toString()) {
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [
+    timesheetManagement.selectedEmployee,
+    viewMode,
+    searchParams,
+    setSearchParams,
+  ]);
+
+  // All hooks must be called BEFORE any early returns
+  const exportApprovedTimesheetsMutation = useExportApprovedTimesheets();
+
+  const handleRequestEdit = useCallback(
+    async (timesheet: Timesheet, onSuccess?: () => Promise<void> | void) => {
+      if (createEditRequestMutation.isPending) return;
+      setRequestingTimesheetId(timesheet.id);
+      try {
+        await createEditRequestMutation.mutateAsync(timesheet.id);
+        if (onSuccess) await onSuccess();
+      } finally {
+        setRequestingTimesheetId(null);
+      }
+    },
+    [createEditRequestMutation],
+  );
+
+  const handleApprovedTimesheetsExportSubmit = async (
+    params: TimesheetsExportParams,
+  ) => {
+    try {
+      await exportApprovedTimesheetsMutation.mutateAsync(params);
+      setApprovedTimesheetsDialogOpen(false);
+    } catch {
+      /* handled by mutation */
+    }
+  };
+
+  const handleDelete = async (timesheet: Timesheet) => {
+    await timesheetManagement.handleDelete(timesheet);
+  };
+
+  // Render full-page entry view AFTER all hooks are defined
+  if (isEntryMode) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col overflow-x-clip bg-card pb-[env(safe-area-inset-bottom)]">
+        <MobileTimesheetEntry
+          isOpen={true}
+          onClose={handleEntryClose}
+          projectId={urlProjectId ? Number(urlProjectId) : undefined}
+          employeeId={entryEmployeeId ? Number(entryEmployeeId) : undefined}
+        />
+        <div id="datepicker-portal" />
+      </div>
+    );
+  }
+
+  if (
+    timesheetManagement.isLoading &&
+    timesheetManagement.timesheets.length === 0
+  ) {
+    return (
+      <MobilePageShell className="space-y-3">
+        {/* Mobile header skeleton */}
+        <div className="flex justify-between gap-2">
+          <div className="space-y-1 flex-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-3.5 w-48" />
+          </div>
+          <Skeleton className="h-9 w-20 shrink-0" />
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+        </div>
+        {/* Filters skeleton */}
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-24" />
+          <Skeleton className="h-9 flex-1" />
+          <Skeleton className="h-9 flex-1" />
+        </div>
+        {/* List skeleton */}
+        <Skeleton className="h-80" />
+      </MobilePageShell>
+    );
+  }
+
+  return (
+    <MobilePageShell className="space-y-3">
+      <TimesheetPageHeaderMobile
+        onAddTimesheet={() => openTimesheetEntry()}
+        onApprovedTimesheetsExport={() => setApprovedTimesheetsDialogOpen(true)}
+        onPayrollReportExport={() => setExportSaoKeOpen(true)}
+        onBccUpload={() => setBccUploadOpen(true)}
+        onBccHistory={() => setBccHistoryOpen(true)}
+        onPaymentHistory={() => setPaymentHistoryOpen(true)}
+        isApprovedExportPending={exportApprovedTimesheetsMutation.isPending}
+        userRole="partner"
+        monthValue={timesheetManagement.selectedMonth}
+        onMonthChange={timesheetManagement.setSelectedMonth}
+      />
+
+      {/* Summary stats */}
+      {timesheetStats.summary && (
+        <div className="space-y-3">
+          <GroupedStatCard
+            title="Tổng quan"
+            icon={Calendar}
+            stats={[
+              { label: "Employees", value: timesheetStats.summary.totalEmployees ?? 0 },
+              { label: "Tổng công", value: timesheetStats.summary.totalEntries },
+              {
+                label: "Approved",
+                value: timesheetStats.summary.approvedEntries,
+                variant: timesheetManagement.statusFilter === "approved"
+                  ? "accent" as const
+                  : "default" as const,
+                isPressed: timesheetManagement.statusFilter === "approved",
+                onClick: timesheetStats.summary.approvedEntries > 0
+                  ? () => timesheetManagement.setStatusFilter(
+                      timesheetManagement.statusFilter === "approved"
+                        ? "all"
+                        : "approved",
+                    )
+                  : undefined,
+              },
+            ]}
+          />
+          {(timesheetStats.summary.pendingApproval > 0 || (timesheetStats.summary.pendingEmployees ?? 0) > 0) && (
+            <GroupedStatCard
+              title="Cần xử lý"
+              icon={AlertCircle}
+              stats={[
+                {
+                  label: "Pending approval",
+                  value: timesheetStats.summary.pendingApproval,
+                  variant: "accent" as const,
+                  onClick: () => timesheetManagement.setStatusFilter(
+                    timesheetManagement.statusFilter === "pending_approval" ? "all" : "pending_approval"
+                  ),
+                },
+                {
+                  label: "NV chờ TT",
+                  value: timesheetStats.summary.pendingEmployees ?? 0,
+                  variant: "accent" as const,
+                  onClick: () => timesheetManagement.setStatusFilter(
+                    timesheetManagement.statusFilter === "pending_payment" ? "all" : "pending_payment"
+                  ),
+                },
+              ]}
+            />
+          )}
+        </div>
+      )}
+
+      <MobileSurface className="p-3">
+        <MissingBankDetailsSection onEmployeeClick={handleEmployeeClick} />
+      </MobileSurface>
+
+      <MobileSurface className="overflow-hidden p-3">
+        <TimesheetDisplaySection
+          timesheetManagement={timesheetManagement}
+          onEdit={timesheetManagement.handleEdit}
+          onDelete={handleDelete}
+          onAddTimesheet={() => openTimesheetEntry()}
+          bulkTransferPercentage={bulkTransferPercentage}
+          onRequestEdit={handleRequestEdit}
+          requestingTimesheetId={requestingTimesheetId}
+          showEditRequestTable={true}
+          userRole="partner"
+          onEditRequestRowClick={(timesheet) => {
+            queryClient.setQueryData(
+              ["timesheets", "detail", timesheet.id],
+              timesheet,
+            );
+            openTimesheetDetails(timesheet.id.toString());
+          }}
+        />
+      </MobileSurface>
+
+      <TimesheetsExportDialog
+        open={approvedTimesheetsDialogOpen}
+        onOpenChange={setApprovedTimesheetsDialogOpen}
+        onExport={handleApprovedTimesheetsExportSubmit}
+        isLoading={exportApprovedTimesheetsMutation.isPending}
+      />
+
+      <ExportSaoKeDialog
+        open={exportSaoKeOpen}
+        onOpenChange={setExportSaoKeOpen}
+      />
+
+      <BCCUploadModal
+        open={bccUploadOpen}
+        onClose={() => setBccUploadOpen(false)}
+        projectId={
+          timesheetManagement.selectedProject !== "all"
+            ? parseInt(timesheetManagement.selectedProject, 10)
+            : 0
+        }
+        projects={timesheetManagement.projects}
+      />
+
+      <UploadHistorySheet
+        open={bccHistoryOpen}
+        onClose={() => setBccHistoryOpen(false)}
+        projectId={
+          timesheetManagement.selectedProject !== "all"
+            ? parseInt(timesheetManagement.selectedProject, 10)
+            : undefined
+        }
+        projects={timesheetManagement.projects}
+      />
+
+      <PaymentHistorySheet
+        isOpen={paymentHistoryOpen}
+        onClose={() => setPaymentHistoryOpen(false)}
+      />
+    </MobilePageShell>
+  );
+}

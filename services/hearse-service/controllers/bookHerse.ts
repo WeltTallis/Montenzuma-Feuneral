@@ -14,6 +14,7 @@ import {
 } from '../models/hearseBookingDto';
 import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, BOOKING_CACHE_TTL, FLEET_CACHE_TTL } from '../utilities/hearseCache';
 import { decorateBranchNames } from '../utilities/branchNames';
+import { emitHearseDataChanged } from '../utilities/hearseRealtime';
 
 // Types
 interface HearseBooking {
@@ -451,6 +452,10 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
                 // The booking list, availability and fleet views are all derived from
                 // hearse_bookings, so a new booking must drop the tenant's cache.
                 await invalidateHearseCache(req);
+                await emitHearseDataChanged(req, 'booking_created', {
+                    bookingId: bookedRow?.booking_id || newBookingId,
+                    hearseId: bookedRow?.hearse_id || hearse_id,
+                });
 
                 res.status(201).json({
                     status: 'success',
@@ -537,6 +542,10 @@ export const checkHearseAvailability = asyncHandler(async (req: Request, res: Re
             // The booking list, availability and fleet views are all derived from
             // hearse_bookings, so a new booking must drop the tenant's cache.
             await invalidateHearseCache(req);
+            await emitHearseDataChanged(req, 'booking_created', {
+                bookingId: booking?.booking_id || booking?.id,
+                hearseId: booking?.hearse_id || hearse_id,
+            });
 
                                     res.status(201).json({
                 status: 'success',
@@ -772,6 +781,7 @@ export const assignDriverToBooking = asyncHandler(async (req: Request, res: Resp
         await safeQuery('UPDATE hearses SET driver_id = ?, updated_at = ? WHERE id = ?', [driver_id, getKenyaTimeISO(), booking.hearse_id]);
 
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'hearse_driver_updated', { bookingId: booking_id, hearseId: booking.hearse_id });
 
         res.status(200).json({ status: 'success', message: `Driver ${driverName} assigned successfully to the hearse.`, booking_id, driver_id, driver_name: driverName });
     } catch (error) {
@@ -861,6 +871,7 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
 
         // The booking list (and the fleet rows joined into it) just changed.
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'booking_status_updated', { bookingId: booking_id, hearseId: booking.hearse_id, status });
 
         res.status(200).json({ status: 'success', message: `Booking status updated to '${status}'.`, booking_id, booking: updatedBooking });
     } catch (error) {
@@ -938,6 +949,7 @@ export const postponeHearseBooking = asyncHandler(async (req: Request, res: Resp
         }
 
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'booking_postponed', { bookingId: booking_id });
 
         res.status(200).json({ status: 'success', message: 'Booking postponed successfully.', data: { booking_id, new_departure_time, reason, status: 'pending' } });
     } catch (error) {

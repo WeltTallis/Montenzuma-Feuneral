@@ -1,0 +1,1604 @@
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { AlertCircle, Briefcase01, CheckVerified01, ChevronDown, Clock, ClockStopwatch, LogOut02, MarkerPin01, RefreshCw05, Settings01, Wallet01 } from "@untitledui/icons";
+import { Button } from "@hr/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@hr/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  ATTENDANCE_QUERY_KEYS,
+  useTodayAttendance,
+  useCheckIn,
+  useCheckOut,
+  useLogAttendanceDeviceAttempt,
+} from "@hr/hooks/api/useAttendance";
+import { getErrorMessage } from "@hr/utils/error-handler";
+import {
+  getTimingErrorGuidance,
+  hasLocationErrorGuidance,
+  scrollToLocationGuidance,
+  type TimingErrorGuidance,
+} from "@hr/utils/attendance-error-guidance";
+import { toast } from "@hr/components/ui/sonner";
+import { EMPLOYEE_BRAND_COLOR } from "@hr/constants/branding";
+import { formatCurrency } from "@hr/utils/formatters";
+import {
+  getAttendanceIssueSummary,
+  getCheckoutWindowSummary,
+  isSalaryRecorded,
+  type AttendanceIssueDetail,
+} from "@hr/utils/attendanceHelpers";
+import {
+  createPoorAccuracyLocationIssue,
+  getLocationPermissionIssue,
+  isGeolocationError,
+  isPoorLocationAccuracyMessage,
+  type LocationAcquisitionProgress,
+  type LocationSample,
+  type LocationPermissionIssue,
+} from "@hr/utils/geolocation";
+import { useContinuousLocation, isAbortedSubmitError } from "@hr/hooks/useContinuousLocation";
+import {
+  getCheckInGeofenceGuidance,
+  getCheckInGeofenceInstruction,
+  type CheckInGeofenceGuidance,
+} from "@hr/utils/checkInGeofenceGuidance";
+import { formatVnDayMonth, formatVnTime, parseEpochMs } from "@hr/utils/vn-time";
+import type { AttendanceScheduleWindow, CheckInTarget } from "@hr/types/api/auth.types";
+import {
+  EmployeeAttendanceActionDock,
+  type AttendanceDockAction,
+} from "./EmployeeAttendanceActionDock";
+
+const EmployeeLocationMap = lazy(() =>
+  import("./EmployeeLocationMap").then((module) => ({ default: module.EmployeeLocationMap }))
+);
+
+// Server instants are RFC 3339 with a +07:00 offset; render them in the
+// business timezone via vn-time so the display does not follow the device.
+function safeFormatTime(time: string | undefined | null, fallback = "--:--"): string {
+  return formatVnTime(time) || fallback;
+}
+
+interface EmployeeCheckInCardProps {
+  className?: string;
+  checkInTarget?: CheckInTarget | null;
+  /** Deferred activation: when set, the service is pending and this date is
+   *  when it activates (day 1 of next month). Renders a countdown-only card. */
+  pendingEffectiveFrom?: string;
+  isPendingActivation?: boolean;
+  /** Advisory shift window (from the profile DTO). Null/absent = no timing gate. */
+  shiftStart?: string;
+  shiftEnd?: string;
+  checkInWindowStart?: string;
+  checkInWindowEnd?: string;
+  checkOutWindowStart?: string;
+  checkOutWindowEnd?: string;
+  scheduleWindows?: AttendanceScheduleWindow[];
+  activeScheduleWindow?: AttendanceScheduleWindow | null;
+  onAdvanceRequest: () => void;
+  style?: React.CSSProperties;
+}
+
+// Returns true only for the two checkout-WINDOW violations (too early / too late),
+// which the backend lets the employee override via confirm_no_salary. The orphaned
+// (past-shift expiry) and auto-rejected records are terminal states.
+// guards run BEFORE the override branch in CheckOut, so they are intentionally NOT
+// matched here — offering the dialog for them would dead-end (the confirmed call is
+// re-rejected with the same message).
+function canConfirmNoSalaryCheckout(message: string): boolean {
+  return (
+    message.includes("Chỉ có thể tan ca từ") ||
+    message.includes("Bạn chỉ được tan ca từ")
+  );
+}
+
+const CONFIRMED_NO_SALARY_MARKER = "Nhân viên đã xác nhận tan ca không ghi nhận tiền lương";
+
+function isConfirmedNoSalaryAttendance(attendance: { salary_reject_reason?: string | null } | null | undefined): boolean {
+  return Boolean(attendance?.salary_reject_reason?.includes(CONFIRMED_NO_SALARY_MARKER));
+}
+
+function IssueDetailChips({ details, tone }: { details: AttendanceIssueDetail[]; tone: "amber" | "orange" }) {
+  if (details.length === 0) return null;
+
+  const toneClass =
+    tone === "orange"
+      ? "border-utility-warning-300 bg-[var(--employee-surface)]/80 text-[var(--employee-warning-strong)]"
+      : "border-[var(--employee-warning-border)] bg-[var(--employee-surface)]/80 text-[var(--employee-warning-strong)]";
+
+  return (
+    <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.18fr)] gap-2">
+      {details.map((detail) => (
+        <div key={detail.label} className={`rounded-lg border px-2.5 py-2 ${toneClass}`}>
+          <p className="employee-type-pill whitespace-nowrap uppercase text-fg-tertiary">{detail.label}</p>
+          <p className="employee-type-body mt-0.5 font-semibold">{detail.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MapFallback() {
+  return (
+    <div className="employee-type-body-sm rounded-xl border border-[var(--employee-info-border)] bg-[var(--employee-surface)] px-3 py-3 font-medium text-fg-secondary">
+      Loading location map...
+    </div>
+  );
+}
+
+function formatAccuracy(accuracy: number | undefined): string | null {
+  if (typeof accuracy !== "number") return null;
+  return `${Math.round(accuracy)}m`;
+}
+
+function createBoundaryLocationIssue(
+  guidance: CheckInGeofenceGuidance
+): LocationPermissionIssue | null {
+  const instruction = getCheckInGeofenceInstruction(guidance);
+  if (guidance.status !== "inaccurate" || !instruction) return null;
+
+  return {
+    type: "inaccurate",
+    title: "Move closer to the centre of the area",
+    description: instruction,
+    canRetry: true,
+    requiresSettings: false,
+  };
+}
+
+function getLocationAcquisitionMessage(
+  progress: LocationAcquisitionProgress | null,
+  guidance: CheckInGeofenceGuidance
+): string {
+  const geofenceInstruction = getCheckInGeofenceInstruction(guidance);
+  if (geofenceInstruction) return geofenceInstruction;
+
+  const bestAccuracy = formatAccuracy(progress?.bestAccuracy);
+  const requiredAccuracy = formatAccuracy(progress?.requiredAccuracyMeters);
+  if (!progress || progress.sampleCount === 0 || !bestAccuracy) {
+    return "Checking your location. Keep your phone still for a few seconds.";
+  }
+
+  if (progress.status === "excellent" || progress.status === "acceptable") {
+    return "GPS signal acquired. Sending your attendance for verification.";
+  }
+
+  return `Attendance could not be recorded. Current accuracy is about ${bestAccuracy}${
+    requiredAccuracy ? `; it must be within ${requiredAccuracy}` : ""
+  }. Move to an open area and keep your phone still for a few seconds.`;
+}
+
+function getDeviceGpsStatus(issue: LocationPermissionIssue): "denied" | "timeout" | "unavailable" | "unsupported" {
+  switch (issue.type) {
+    case "denied":
+    case "timeout":
+    case "unsupported":
+      return issue.type;
+    case "unavailable":
+    default:
+      return "unavailable";
+  }
+}
+
+function isGeofenceOutsideMessage(message: string): boolean {
+  return message.includes("ngoài khu vực chấm công");
+}
+
+function createOutsideGeofenceLocationIssue(isCheckOut = false): LocationPermissionIssue {
+  return {
+    type: "unknown",
+    title: "Outside the attendance area",
+    description: isCheckOut
+      ? "You are outside the attendance area. Move closer to the gate or contact your manager for help completing your shift."
+      : "Move into the marked area and try again.",
+    canRetry: true,
+    requiresSettings: false,
+  };
+}
+
+// Schedule timestamps are API instants. Render them with the device-local
+// HH:mm formatter used elsewhere in this card; dates and timezone suffixes are
+// intentionally not shown in the compact employee reference.
+
+export function AttendanceReference({
+  checkInTarget,
+  shiftStart,
+  shiftEnd,
+  checkInWindowStart,
+  checkInWindowEnd,
+  checkOutWindowStart,
+  checkOutWindowEnd,
+  scheduleWindows,
+  activeScheduleWindow,
+}: Pick<
+  EmployeeCheckInCardProps,
+  | "checkInTarget"
+  | "shiftStart"
+  | "shiftEnd"
+  | "checkInWindowStart"
+  | "checkInWindowEnd"
+  | "checkOutWindowStart"
+  | "checkOutWindowEnd"
+  | "scheduleWindows"
+  | "activeScheduleWindow"
+>) {
+  const legacySchedule =
+    shiftStart && shiftEnd && checkInWindowStart && checkInWindowEnd && checkOutWindowStart && checkOutWindowEnd
+      ? [{
+          shift_start: shiftStart,
+          shift_end: shiftEnd,
+          check_in_window_start: checkInWindowStart,
+          check_in_window_end: checkInWindowEnd,
+          check_out_window_start: checkOutWindowStart,
+          check_out_window_end: checkOutWindowEnd,
+        }]
+      : [];
+  const schedules = scheduleWindows?.length ? scheduleWindows : legacySchedule;
+  const gates = checkInTarget?.gates ?? [];
+  const activeIndex = schedules.findIndex(
+    (schedule) =>
+      activeScheduleWindow?.shift_start === schedule.shift_start &&
+      activeScheduleWindow.shift_end === schedule.shift_end
+  );
+  const [selectedShiftIndex, setSelectedShiftIndex] = useState(activeIndex >= 0 ? activeIndex : 0);
+  const selectedSchedule = schedules[selectedShiftIndex] ?? schedules[0];
+  const shiftSelectorId = useId();
+  const selectedShiftTabId = `${shiftSelectorId}-tab-${selectedShiftIndex}`;
+  const selectedShiftPanelId = `${shiftSelectorId}-panel`;
+  const additionalGatesId = `${shiftSelectorId}-additional-gates`;
+  const [showAdditionalGates, setShowAdditionalGates] = useState(false);
+
+  if (schedules.length === 0 && gates.length === 0) return null;
+
+  // resolveShiftLabel returns the admin-chosen name when set, falling back to
+  // the legacy index-based label so unnamed configs keep today's behavior.
+  const resolveShiftLabel = (schedule: AttendanceScheduleWindow, index: number) =>
+    schedule.shift_name?.trim() || (index === 0 ? "Day shift" : "Night shift");
+
+  return (
+    <section className="mt-6 space-y-6 border-t border-[var(--employee-border-strong)] pt-5" aria-label="Attendance details">
+      {schedules.length > 0 ? (
+        <div>
+          <h3 className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-[var(--employee-text)]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--employee-accent-soft)] text-[var(--employee-accent)]">
+              <ClockStopwatch className="h-5 w-5" aria-hidden="true" />
+            </span>
+            Shift
+          </h3>
+          {schedules.length > 1 ? (
+            <div className="mt-5 grid grid-cols-2 rounded-2xl border border-[var(--employee-border-strong)] bg-[var(--employee-page)] p-1.5" role="tablist" aria-label="Choose a shift">
+              {schedules.map((schedule, index) => (
+                <button
+                  key={`${schedule.shift_start}-${schedule.shift_end}`}
+                  type="button"
+                  role="tab"
+                  id={`${shiftSelectorId}-tab-${index}`}
+                  aria-controls={selectedShiftPanelId}
+                  aria-selected={selectedShiftIndex === index}
+                  onClick={() => setSelectedShiftIndex(index)}
+                  className={`employee-type-action min-h-12 rounded-xl font-semibold transition-colors duration-200 ${selectedShiftIndex === index ? "bg-[var(--employee-accent)] text-white" : "text-fg-secondary hover:bg-[var(--employee-surface)] hover:text-[var(--employee-text)]"}`}
+                >
+                  {resolveShiftLabel(schedule, index)}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {selectedSchedule ? (
+            <div
+              id={selectedShiftPanelId}
+              aria-labelledby={selectedShiftTabId}
+              className="mt-5 overflow-hidden rounded-[22px] border border-[var(--employee-border-strong)] bg-[var(--employee-surface)]"
+              role="tabpanel"
+            >
+              <div role="table" aria-label="Shift times">
+                <div role="row" className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,0.7fr)_minmax(4.5rem,0.7fr)] border-b border-[var(--employee-border)] bg-[var(--employee-surface-muted)]/70 px-5 py-2.5">
+                  <span role="columnheader" aria-label="Time type" />
+                  <span role="columnheader" className="employee-type-pill text-center uppercase text-fg-tertiary">From</span>
+                  <span role="columnheader" className="employee-type-pill text-center uppercase text-fg-tertiary">To</span>
+                </div>
+                {[
+                  { label: "Shift", startIso: selectedSchedule.shift_start, endIso: selectedSchedule.shift_end },
+                  { label: "Clock in", startIso: selectedSchedule.check_in_window_start, endIso: selectedSchedule.check_in_window_end },
+                  { label: "Clock out", startIso: selectedSchedule.check_out_window_start, endIso: selectedSchedule.check_out_window_end },
+                ].map((row) => {
+                  const start = safeFormatTime(row.startIso);
+                  const end = safeFormatTime(row.endIso);
+                  return (
+                    <div key={row.label} role="row" className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,0.7fr)_minmax(4.5rem,0.7fr)] items-center border-b border-[var(--employee-border)] px-5 py-4 last:border-b-0">
+                      <span role="rowheader" className="employee-type-body font-semibold text-fg-secondary">{row.label}</span>
+                      <span role="cell" className="text-center text-lg font-bold tracking-tight text-[var(--employee-text)]">{start}</span>
+                      <span role="cell" className="text-center text-lg font-bold tracking-tight text-[var(--employee-text)]">{end}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {gates.length > 0 ? (
+        <div>
+          <h3 className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-[var(--employee-text)]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--employee-accent-soft)] text-[var(--employee-accent)]">
+              <MarkerPin01 className="h-5 w-5" aria-hidden="true" />
+            </span>
+            {gates.length} attendance points
+          </h3>
+          <ul className="mt-5 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_0.48fr] gap-2.5" aria-label="Attendance points">
+            {gates.slice(0, 2).map((gate, index) => (
+              <li
+                key={`${gate.name}-${gate.lat}-${gate.lng}`}
+                className="employee-type-body-sm flex h-14 items-center rounded-xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] px-3 font-semibold leading-5 text-[var(--employee-text)]"
+              >
+                {gate.name || `Attendance point ${index + 1}`}
+              </li>
+            ))}
+            {gates.length > 2 ? (
+              <li>
+                <button
+                  type="button"
+                  aria-label={`${showAdditionalGates ? "Hide" : "Show"} ${gates.length - 2} more attendance points`}
+                  aria-controls={additionalGatesId}
+                  aria-expanded={showAdditionalGates}
+                  onClick={() => setShowAdditionalGates((visible) => !visible)}
+                  className={`employee-type-action flex h-14 w-full items-center justify-center rounded-xl border px-3 text-center font-semibold transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--employee-focus-ring)] ${showAdditionalGates ? "border-[var(--employee-border-strong)] bg-[var(--employee-page)] text-[var(--employee-text)]" : "border-[var(--employee-border-strong)] bg-[var(--employee-surface)] text-[var(--employee-text)] hover:border-[var(--employee-border-strong)]"}`}
+                >
+                  <strong className="text-xl leading-none">+{gates.length - 2}</strong>
+                </button>
+              </li>
+            ) : null}
+          </ul>
+          {gates.length > 2 && showAdditionalGates ? (
+            <ul id={additionalGatesId} className="attendance-gates-reveal mt-3 grid gap-2 sm:grid-cols-2" aria-label="Other attendance points">
+              {gates.slice(2).map((gate, index) => (
+                <li
+                  key={`${gate.name}-${gate.lat}-${gate.lng}`}
+                  className="employee-type-body-sm flex h-14 items-center rounded-xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] px-4 font-semibold leading-5 text-[var(--employee-text)]"
+                >
+                  {gate.name || `Attendance point ${index + 3}`}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function EmployeeCheckInCard({
+  className,
+  checkInTarget,
+  pendingEffectiveFrom,
+  isPendingActivation,
+  shiftStart,
+  shiftEnd,
+  checkInWindowStart,
+  checkInWindowEnd,
+  checkOutWindowStart,
+  checkOutWindowEnd,
+  scheduleWindows,
+  activeScheduleWindow,
+  onAdvanceRequest,
+  style,
+}: EmployeeCheckInCardProps) {
+  const { data: attendanceResponse, isLoading, isError: attendanceError, isFetching: attendanceFetching, refetch: refetchAttendance } = useTodayAttendance();
+  const checkInMutation = useCheckIn();
+  const checkOutMutation = useCheckOut();
+  const logDeviceAttemptMutation = useLogAttendanceDeviceAttempt();
+  const queryClient = useQueryClient();
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationIssue, setLocationIssue] = useState<LocationPermissionIssue | null>(null);
+  const [timingGuidance, setTimingGuidance] = useState<TimingErrorGuidance | null>(null);
+  const [noSalaryReason, setNoSalaryReason] = useState<string | null>(null);
+  const [showNoSalaryConfirm, setShowNoSalaryConfirm] = useState(false);
+  // The map is shown by default — a worker checking status should not have to
+  // discover a disclosure first. The toggle still lets them collapse it, and a
+  // manual close stays respected (see the boundary-episode effect below).
+  const [showLocationMap, setShowLocationMap] = useState(true);
+  const [attendanceConfirmation, setAttendanceConfirmation] = useState<{ action: "check_in" | "check_out"; time: string } | null>(null);
+  const [showWindowOpen, setShowWindowOpen] = useState(false);
+  const locationMapRegionId = useId();
+  const locationMapRef = useRef<HTMLDivElement>(null);
+  const previousActionableBoundaryRef = useRef<string | null>(null);
+  // Synchronous in-flight guard. The button's `disabled` only takes effect after
+  // the next render, so a rapid double-tap (common on mobile) can fire handleAction
+  // twice before `isLocating`/`isPending` flips — sending a second request that the
+  // backend rejects with 400 ("Bạn đã vào làm/tan ca rồi"), producing a duplicate
+  // toast. This ref is set in the same call stack, closing that race.
+  const submittingRef = useRef(false);
+  // Brief lockout after a GPS/geofence checkout failure. Just a 1s debounce so
+  // a double-tap doesn't fire a second request while the toast lands; the
+  // backend dedups identical failures in its own window regardless.
+  const CHECKOUT_GPS_COOLDOWN_MS = 1_000;
+  const [checkoutCooldownUntil, setCheckoutCooldownUntil] = useState<number | null>(null);
+  const checkoutCooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attendanceConfirmationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkoutCoolingDown = checkoutCooldownUntil !== null && Date.now() < checkoutCooldownUntil;
+  const armCheckoutCooldown = () => {
+    setCheckoutCooldownUntil(Date.now() + CHECKOUT_GPS_COOLDOWN_MS);
+    if (checkoutCooldownTimer.current) clearTimeout(checkoutCooldownTimer.current);
+    checkoutCooldownTimer.current = setTimeout(() => setCheckoutCooldownUntil(null), CHECKOUT_GPS_COOLDOWN_MS);
+  };
+  useEffect(() => {
+    const timer = checkoutCooldownTimer;
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      if (attendanceConfirmationTimer.current) clearTimeout(attendanceConfirmationTimer.current);
+    };
+  }, []);
+
+  const attendance = attendanceResponse?.data;
+  const canStartCorrectShift = attendance?.status === "completed" && isConfirmedNoSalaryAttendance(attendance);
+  // The continuous GPS watch runs whenever an action is conceptually possible and
+  // STAYS running during a tap's submit-await. A fix warmed before the tap is then
+  // submitted instantly, instead of the tap cold-starting a 25-30s acquisition
+  // that times out before the phone's first GNSS fix — the dominant on-site check-
+  // in failure. (The old canPreviewCheckLocation gate toggled off during isLocating,
+  // which defeated warm reuse.)
+  // Deliberately NOT gated on `isLoading`: the card's isLoading early-return only
+  // swaps in a skeleton, but this hook still runs (hooks run before any return),
+  // so letting the watch warm during the brief load makes the first actionable
+  // tap instant. It also prevents a useTodayAttendance refetch mid-cold-tap from
+  // toggling the watch off and stalling the awaiter for the full 30s.
+  const locationEnabled =
+    Boolean(checkInTarget) &&
+    (attendance?.status === "checked_in" || !attendance || canStartCorrectShift);
+  const location = useContinuousLocation({
+    target: checkInTarget,
+    enabled: locationEnabled,
+  });
+  // Aliases so the existing JSX (converging-accuracy banner, map preview) reads the
+  // continuous watch's reactive state unchanged.
+  const locationProgress: LocationAcquisitionProgress | null = location.progress;
+  const fatalLocationIssue = location.fatalError
+    ? getLocationPermissionIssue(location.fatalError)
+    : null;
+  const checkInGuidance = useMemo(
+    () => getCheckInGeofenceGuidance(checkInTarget, location.sample),
+    [checkInTarget, location.sample]
+  );
+  const geofenceInstruction = getCheckInGeofenceInstruction(checkInGuidance);
+  const isActionableBoundaryGuidance =
+    checkInGuidance.status === "inaccurate" && geofenceInstruction !== null;
+  const actionableBoundaryEpisodeKey = isActionableBoundaryGuidance
+    ? [
+        checkInTarget?.project_id ?? "unknown-project",
+        checkInTarget?.radius_meters ?? "unknown-radius",
+        checkInGuidance.nearestGate?.lat ?? "unknown-lat",
+        checkInGuidance.nearestGate?.lng ?? "unknown-lng",
+      ].join(":")
+    : null;
+
+  // Open the map only on entry into the actionable boundary state. A worker who
+  // closes it keeps that choice while GPS samples continue updating; leaving and
+  // later re-entering the state starts a new guidance episode and may open it again.
+  useEffect(() => {
+    if (
+      actionableBoundaryEpisodeKey &&
+      previousActionableBoundaryRef.current !== actionableBoundaryEpisodeKey
+    ) {
+      setShowLocationMap(true);
+    }
+    previousActionableBoundaryRef.current = actionableBoundaryEpisodeKey;
+  }, [actionableBoundaryEpisodeKey]);
+
+  const showLocationGuidance = useCallback(
+    (issue: LocationPermissionIssue) => {
+      setLocationIssue(issue);
+      if (checkInTarget?.gates.length) {
+        setShowLocationMap(true);
+        scrollToLocationGuidance(locationMapRef.current);
+      }
+    },
+    [checkInTarget]
+  );
+
+  // Clear a stale location-recovery banner when the user returns to the tab.
+  // useTodayAttendance refetches on window focus, so if the user fixed the OS
+  // location permission elsewhere and comes back, the banner — which is only
+  // ever set from a failed handleAction — should not linger. The next attempt
+  // (or a successful refetch) re-establishes correct state.
+  useEffect(() => {
+    const clearOnReturn = () => setLocationIssue(null);
+    window.addEventListener("focus", clearOnReturn);
+    return () => window.removeEventListener("focus", clearOnReturn);
+  }, []);
+
+  // The 12s preview effect that used to live here is gone: the continuous watch
+  // (useContinuousLocation above) now warms the fix while the card is mounted, and
+  // handleAction submits the warm sample instantly or awaits the watch's next
+  // inside-gate sample. See plans/260704-1034-checkin-gps-continuous-warmup.
+
+  const buildPayload = (sample: LocationSample) => {
+    const p = location.progress;
+    return {
+      lat: sample.lat,
+      lng: sample.lng,
+      accuracy: sample.accuracy,
+      gps_at: sample.timestamp,
+      gps_sample_count: p?.sampleCount ?? 1,
+      gps_best_accuracy: p?.bestAccuracy ?? sample.accuracy,
+      gps_elapsed_ms: p?.elapsedMs ?? 0,
+    };
+  };
+
+  const showAttendanceConfirmation = (action: "check_in" | "check_out") => {
+    setAttendanceConfirmation({ action, time: formatVnTime(new Date().toISOString()) });
+    if (attendanceConfirmationTimer.current) clearTimeout(attendanceConfirmationTimer.current);
+    attendanceConfirmationTimer.current = setTimeout(() => setAttendanceConfirmation(null), 3500);
+  };
+
+  // Centralized error classification shared by the warm and cold submit paths.
+  // Geolocation errors (cold-tap timeout / inaccurate / fatal-permission) →
+  // recovery banner + failed-attempt log. Backend errors (poor accuracy, outside
+  // geofence, no-salary window) → existing classification and dialog flow. The
+  // contract is identical to the previous inline handler; only the acquisition
+  // source changed (continuous watch vs. one-shot requestBestCurrentLocation).
+  const onActionError = async (
+    error: unknown,
+    type: "check_in" | "check_out",
+    options?: { confirmNoSalary?: boolean }
+  ) => {
+    if (isAbortedSubmitError(error)) {
+      // Watch was paused/restarted or the card unmounted during the cold-tap wait.
+      // Silent cancellation: no banner, no failed-attempt log — the worker abandoned
+      // the attempt; the device did not fail.
+      return;
+    }
+    if (!isGeolocationError(error)) {
+      // Backend rejection.
+      if (type === "check_out") {
+        // useCheckOut.onError is a no-op, so the card owns all checkout error UI.
+        const message = getErrorMessage(error);
+        if (isPoorLocationAccuracyMessage(message)) {
+          showLocationGuidance(
+            createBoundaryLocationIssue(checkInGuidance) ||
+              createPoorAccuracyLocationIssue(
+                location.progress?.bestAccuracy,
+                location.progress?.requiredAccuracyMeters
+              )
+          );
+          toast({ title: "Attendance could not be recorded", variant: "destructive" });
+          armCheckoutCooldown();
+          return;
+        }
+        if (isGeofenceOutsideMessage(message)) {
+          showLocationGuidance(createOutsideGeofenceLocationIssue(true));
+          toast({ title: "Attendance could not be recorded", variant: "destructive" });
+          armCheckoutCooldown();
+          return;
+        }
+        if (!options?.confirmNoSalary && canConfirmNoSalaryCheckout(message)) {
+          // First attempt outside the checkout window: show the real reason and
+          // offer the confirmed no-salary path. The dialog is the UI — no toast.
+          setNoSalaryReason(message);
+          setShowNoSalaryConfirm(true);
+        } else {
+          if (hasLocationErrorGuidance(error)) {
+            showLocationGuidance(createOutsideGeofenceLocationIssue(true));
+            return;
+          }
+          const timing = getTimingErrorGuidance(error, type);
+          if (timing) {
+            setTimingGuidance(timing);
+            return;
+          }
+          // A confirmed no-salary call that failed (e.g. the shift was auto-
+          // rejected while the dialog was open) or a non-overridable error:
+          // close any stale dialog, surface the message once, and refetch today's
+          // attendance so the card reflects the real (possibly rejected) state.
+          setShowNoSalaryConfirm(false);
+          setNoSalaryReason(null);
+          toast({ title: message || "Could not clock out", variant: "destructive" });
+          queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.today() });
+        }
+      } else {
+        const message = getErrorMessage(error);
+        if (isPoorLocationAccuracyMessage(message)) {
+          showLocationGuidance(
+            createBoundaryLocationIssue(checkInGuidance) ||
+              createPoorAccuracyLocationIssue(
+                location.progress?.bestAccuracy,
+                location.progress?.requiredAccuracyMeters
+              )
+          );
+        } else if (isGeofenceOutsideMessage(message)) {
+          showLocationGuidance(createOutsideGeofenceLocationIssue());
+        } else if (getTimingErrorGuidance(error, type)) {
+          setTimingGuidance(getTimingErrorGuidance(error, type)!);
+        } else if (hasLocationErrorGuidance(error)) {
+          showLocationGuidance(createOutsideGeofenceLocationIssue());
+        } else {
+          toast({ title: message || "Could not clock in", variant: "destructive" });
+        }
+      }
+      return;
+    }
+
+    // Geolocation error from awaitSubmitReady rejection (timeout / inaccurate) or
+    // a fatal watch error (permission denied). Same recovery UX + failed-attempt
+    // logging as before.
+    const issue = getLocationPermissionIssue(error);
+    showLocationGuidance(issue);
+    logDeviceAttemptMutation.mutate({
+      attempt_type: type,
+      gps_status: getDeviceGpsStatus(issue),
+    });
+    // The persistent amber recovery panel below renders the full title +
+    // description + retry, so the toast only carries the headline (no
+    // description) to avoid showing the same text twice.
+    toast({ title: issue.title, variant: "destructive" });
+  };
+
+  const handleAction = async (type: "check_in" | "check_out", options?: { confirmNoSalary?: boolean }) => {
+    if (type === "check_out" && checkoutCoolingDown) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    // Clear any stale recovery banner so it doesn't linger during the new attempt.
+    setLocationIssue(null);
+
+    // No configured gate: the watch can never produce an inside-gate sample, so
+    // surface the configuration issue immediately instead of making the worker
+    // wait 30s for a misleading "inaccurate" timeout. Mirrors the backend
+    // validateGeofence "no gates configured" message.
+    const hasValidGate =
+      !!checkInTarget &&
+      Array.isArray(checkInTarget.gates) &&
+      checkInTarget.gates.length > 0 &&
+      (checkInTarget.radius_meters ?? 0) > 0;
+    if (!hasValidGate) {
+      setLocationIssue({
+        type: "unknown",
+        title: "Attendance location is not configured",
+        description: "No attendance gate has been set for this project. Contact your manager.",
+        canRetry: false,
+        requiresSettings: false,
+      });
+      submittingRef.current = false;
+      return;
+    }
+
+    const submit = async (sample: LocationSample) => {
+      const payload = buildPayload(sample);
+      if (type === "check_in") {
+        await checkInMutation.mutateAsync(payload);
+      } else {
+        await checkOutMutation.mutateAsync({
+          ...payload,
+          confirm_no_salary: options?.confirmNoSalary,
+        });
+      }
+      showAttendanceConfirmation(type);
+      setLocationIssue(null);
+      setNoSalaryReason(null);
+      setShowNoSalaryConfirm(false);
+    };
+
+    // Warm path: the continuous watch already has a fresh, gate-inside sample —
+    // submit it instantly with no spinner. This is the seamless case (worker
+    // opened the app at the gate, GPS warmed during mount, tap submits in <1s).
+    if (location.isSubmitReady && location.sample) {
+      try {
+        await submit(location.sample);
+      } catch (error: unknown) {
+        await onActionError(error, type, options);
+      } finally {
+        submittingRef.current = false;
+      }
+      return;
+    }
+
+    // Cold path: submit the first fresh fix that meets the 50 m attendance
+    // accuracy threshold, even when client guidance says "outside". The server is
+    // the geofence authority and records validation failures; waiting for an
+    // "inside" sample here would leave outside-geofence taps unaudited.
+    setIsLocating(true);
+    try {
+      const sample = await location.awaitAccurateSample();
+      await submit(sample);
+    } catch (error: unknown) {
+      await onActionError(error, type, options);
+    } finally {
+      setIsLocating(false);
+      submittingRef.current = false;
+    }
+  };
+
+  // --- Check-in readiness gate (GPS + geofence + timing) ---
+  // Combines three signals: GPS stability (useContinuousLocation.isSubmitReady),
+  // geofence position (from guidance), and the shift timing window (from the
+  // profile DTO — Phase 1). The button shows only when all three are green.
+  //
+  // Re-evaluates at minute resolution: the original useMemo read Date.now() but
+  // only depended on the window strings, so the result froze until those props
+  // changed — a worker parked on the "outside-window" branch just before the
+  // window opened would stay gated indefinitely. The minute tick forces a
+  // recompute so the countdown advances and the ready pop fires on the crossing.
+  // These hooks live BEFORE the isLoading early return (Rules of Hooks).
+  const gpsReady = location.isSubmitReady;
+  const gpsAcquiring = location.isWatching && !gpsReady && !location.fatalError;
+  const nowTick = useRef(Date.now());
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      nowTick.current = Date.now();
+      forceTick((n) => n + 1);
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+  // Window gate. The server sends absolute instants (RFC 3339 with a +07:00
+  // offset), so we compare epoch milliseconds directly — this is independent of
+  // the device timezone. A worker whose phone is set to UTC must still be able
+  // to check in to a 20:00 Vietnam shift at 20:17 Vietnam time. The previous
+  // implementation parsed HH:mm strings and compared getHours() (device-local),
+  // which mis-gated anyone whose device timezone was not Africa/Nairobi.
+  //
+  // The bounds are STRICTLY exclusive to mirror the server, which accepts
+  // check-in only in (T-1h, T+1h) — validateCheckInWindow / checkInFitsShift,
+  // backend/internal/app/services/attendance/attendance_shift.go:44-46. The
+  // inclusive `>=`/`<=` used to sit one boundary away from the rule the server
+  // actually enforces.
+  const windowBounds = useMemo(() => {
+    const startMs = parseEpochMs(checkInWindowStart);
+    const endMs = parseEpochMs(checkInWindowEnd);
+    if (startMs === null || endMs === null) return null; // no shift configured
+    return { startMs, endMs };
+  }, [checkInWindowStart, checkInWindowEnd]);
+
+  const withinWindow = useMemo(() => {
+    if (!windowBounds) return true;
+    const now = nowTick.current;
+    return now > windowBounds.startMs && now < windowBounds.endMs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowBounds, nowTick.current]);
+
+  // The window has closed for good. Tracked separately from `withinWindow`
+  // because "not open yet" and "no longer open" need opposite guidance: the
+  // first tells the worker to wait, the second must not — telling someone who
+  // arrived an hour late that it is "not yet time" is what stranded a worker at
+  // 22:03 on a shift whose window closed at 21:00, and there is no employee-side
+  // remediation for a missed check-in, so the honest instruction is to escalate.
+  const windowPassed = useMemo(() => {
+    if (!windowBounds) return false;
+    return nowTick.current >= windowBounds.endMs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowBounds, nowTick.current]);
+
+  // Seconds until the check-in window opens, for the outside-window hint
+  // countdown. Recomputed on the minute tick (minute precision is sufficient;
+  // showing seconds would require a 1s timer and is noisy on mobile). Computed
+  // from the absolute window-start epoch so it is correct regardless of device
+  // timezone.
+  const secondsUntilWindow = useMemo(() => {
+    if (!windowBounds || withinWindow) return null;
+    const now = nowTick.current;
+    if (windowBounds.startMs <= now) return null; // window already opened or closed
+    return Math.round((windowBounds.startMs - now) / 1000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowBounds, withinWindow, nowTick.current]);
+
+  // Became-ready pop: fire a one-shot CSS class when transitioning to ready.
+  // All hooks below run on every render (before the isLoading early return) to
+  // satisfy the Rules of Hooks; isPending is derived from mutation/loading flags
+  // that are all available pre-return.
+  const isPending = checkInMutation.isPending || checkOutMutation.isPending || isLocating;
+  const [showReadyPop, setShowReadyPop] = useState(false);
+  const prevReadyRef = useRef(false);
+  useEffect(() => {
+    const ready = withinWindow && gpsReady && !isPending;
+    if (ready && !prevReadyRef.current) {
+      setShowReadyPop(true);
+      const t = setTimeout(() => setShowReadyPop(false), 500);
+      prevReadyRef.current = true;
+      return () => clearTimeout(t);
+    }
+    if (!ready) prevReadyRef.current = false;
+  }, [withinWindow, gpsReady, isPending]);
+  const previousWithinWindow = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (previousWithinWindow.current === false && withinWindow) {
+      setShowWindowOpen(true);
+      const timer = setTimeout(() => setShowWindowOpen(false), 2600);
+      previousWithinWindow.current = withinWindow;
+      return () => clearTimeout(timer);
+    }
+    previousWithinWindow.current = withinWindow;
+  }, [withinWindow]);
+
+  // Deferred activation: the check-in service was enabled by an admin but has
+  // not activated yet (activates day 1 of next month). Show a countdown-only
+  // card — no check-in/out actions, no geofence reference.
+  if (isPendingActivation) {
+    const effectiveLabel = pendingEffectiveFrom
+      ? formatVnDayMonth(pendingEffectiveFrom)
+      : "the 1st of next month";
+    return (
+      <>
+        <div
+          className={`rounded-2xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] p-4 ${className ?? ""}`}
+          style={style}
+        >
+          <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+            <ClockStopwatch className="h-8 w-8 text-[var(--employee-accent)]" aria-hidden="true" />
+            <p className="employee-type-card-title text-[var(--employee-text)]">
+              Self-service attendance will be available from {effectiveLabel}
+            </p>
+            <p className="employee-type-body-sm text-[var(--employee-text-secondary)]">
+              You will be able to clock in and out here.
+            </p>
+          </div>
+        </div>
+        <EmployeeAttendanceActionDock
+          action="loading"
+          actionLabel="Not active yet"
+          actionDisabled
+          onAdvanceRequest={onAdvanceRequest}
+        />
+      </>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <>
+        <div
+          className={`rounded-2xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] p-4 ${className ?? ""}`}
+          style={style}
+        >
+          <div className="animate-pulse flex flex-col items-center justify-center space-y-4 h-32">
+            <div className="h-6 w-32 bg-utility-gray-200 rounded"></div>
+            <div className="h-10 w-48 bg-utility-gray-200 rounded-full"></div>
+          </div>
+        </div>
+        <EmployeeAttendanceActionDock
+          action="loading"
+          actionLabel="Loading attendance…"
+          actionDisabled
+          onAdvanceRequest={onAdvanceRequest}
+        />
+      </>
+    );
+  }
+
+  if (attendanceError && attendanceResponse === undefined) {
+    return (
+      <>
+        <section className={`employee-surface-card px-4 py-6 text-center ${className ?? ""}`} style={style} role="alert" aria-labelledby="employee-attendance-error-title">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--employee-radius-card)] bg-[var(--employee-warning-soft)] text-[var(--employee-warning)]">
+            <AlertCircle className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <h2 id="employee-attendance-error-title" className="employee-type-card-title mt-3 text-[var(--employee-text)]">Could not load attendance status</h2>
+          <p className="employee-type-body-sm mx-auto mt-1 max-w-sm text-[var(--employee-text-secondary)]">Refresh before clocking in or out to avoid recording the wrong status.</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="employee-type-action mt-4 min-h-11 rounded-[var(--employee-radius-control)] border-[var(--employee-border-strong)]"
+            disabled={attendanceFetching}
+            onClick={() => { if (!attendanceFetching) void refetchAttendance(); }}
+          >
+            <RefreshCw05 className={`h-4 w-4 ${attendanceFetching ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden="true" />
+            {attendanceFetching ? "Refreshing…" : "Refresh attendance"}
+          </Button>
+        </section>
+        <EmployeeAttendanceActionDock
+          action="attention"
+          actionLabel="Attendance unavailable"
+          actionDisabled
+          onAdvanceRequest={onAdvanceRequest}
+        />
+      </>
+    );
+  }
+
+  const salaryRecorded = attendance ? isSalaryRecorded(attendance) : false;
+  // The next action is fully determined by the attendance status — there is no
+  // need to track the last-tapped action separately (doing so defaulted it to
+  // "check_in" and could mislabel the recovery CTA on a fresh check_out).
+  const actionType = attendance?.status === "checked_in" ? "check_out" : "check_in";
+  // A denial cannot be retried in-page, so the CTA must not promise a retry.
+  const locationRecoveryText = locationIssue?.type === "denied" ? "Refresh" : "Try again";
+  // Geofence failures already expand and scroll to the checkpoint map. Keeping
+  // a second outside-area retry banner above it duplicates the same
+  // guidance, so reserve this recovery panel for device/GPS permission issues.
+  const showLocationRecovery =
+    locationIssue?.title !== "Outside the attendance area" &&
+    Boolean(locationIssue) &&
+    (attendance?.status === "checked_in" || !attendance || canStartCorrectShift);
+  const visibleLocationSample = location.sample;
+
+  const locationPreview = checkInTarget && showLocationMap ? (
+    <div
+      id={locationMapRegionId}
+      className="mt-2"
+    >
+      <Suspense fallback={<MapFallback />}>
+        <EmployeeLocationMap target={checkInTarget} sample={visibleLocationSample} />
+      </Suspense>
+    </div>
+  ) : null;
+  const locationMapDisclosure = checkInTarget ? (
+    <div ref={locationMapRef} className="mt-2 scroll-mt-24 border-t border-[var(--employee-border)] pt-1" tabIndex={-1}>
+      <Button
+        type="button"
+        variant="ghost"
+        className="employee-type-action h-11 w-full justify-between rounded-lg px-2 text-[var(--employee-info)] hover:bg-[var(--employee-info-soft)] hover:text-[var(--employee-info)]"
+        aria-expanded={showLocationMap}
+        aria-controls={locationMapRegionId}
+        onClick={() => setShowLocationMap((isOpen) => !isOpen)}
+      >
+        <span className="inline-flex items-center gap-2">
+          <MarkerPin01 className="h-4 w-4" aria-hidden="true" />
+          {showLocationMap ? "Hide map" : "View map"}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${showLocationMap ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        />
+      </Button>
+      {locationPreview}
+    </div>
+  ) : null;
+  const attendanceReference = (
+    <AttendanceReference
+      checkInTarget={checkInTarget}
+      shiftStart={shiftStart}
+      shiftEnd={shiftEnd}
+      checkInWindowStart={checkInWindowStart}
+      checkInWindowEnd={checkInWindowEnd}
+      checkOutWindowStart={checkOutWindowStart}
+      checkOutWindowEnd={checkOutWindowEnd}
+      scheduleWindows={scheduleWindows}
+      activeScheduleWindow={activeScheduleWindow}
+    />
+  );
+  const showRecoveryDescription =
+    Boolean(locationIssue) &&
+    (!checkInTarget || locationIssue?.requiresSettings || locationIssue?.type !== "unknown");
+  const noSalaryWindow = getCheckoutWindowSummary(noSalaryReason);
+  const salaryIssue = getAttendanceIssueSummary(
+    attendance?.salary_reject_reason || attendance?.salary_message,
+    "Check the shift time window."
+  );
+  const rejectedIssue = getAttendanceIssueSummary(attendance?.salary_reject_reason);
+  let dockAction: AttendanceDockAction = "attention";
+  let dockActionLabel = "Needs attention";
+  let dockActionDisabled = true;
+  let handleDockAttendanceAction: (() => void) | undefined;
+
+  // A closed check-in window is terminal for the shift. Nothing on the location
+  // side can reopen it, so it has to outrank the location states below — a
+  // worker who missed the window was shown "Reload page" in the dock while
+  // the card above said it was not time to clock in, and reloading only lands back on
+  // the same dead end. GPS only matters for check-in while the window is open,
+  // and for check-out once the worker is checked in (handled below).
+  const awaitingCheckIn = !attendance || canStartCorrectShift;
+
+  if (locationEnabled && awaitingCheckIn && windowPassed) {
+    dockActionLabel = "Window closed";
+  } else if (locationEnabled && location.needsPermission) {
+    dockAction = "attention";
+    dockActionLabel = "Allow location";
+    dockActionDisabled = false;
+    handleDockAttendanceAction = location.requestPermission;
+  } else if (locationEnabled && location.fatalError) {
+    // A browser permission denial is decided: nothing re-prompts in-page, and
+    // iOS Safari keeps the per-page answer for the document's lifetime. So the
+    // only action that can work is a reload, which re-reads the OS grant. A
+    // retry here is a no-op that leaves the worker stuck on the same banner.
+    dockAction = "attention";
+    dockActionLabel = "Reload page";
+    dockActionDisabled = false;
+    handleDockAttendanceAction = location.reload;
+  } else if (attendance?.status === "checked_in") {
+    dockAction = checkoutCoolingDown || isLocating ? "loading" : "check_out";
+    dockActionLabel = checkoutCoolingDown
+      ? "Waiting for GPS…"
+      : isLocating
+        ? "Getting your location…"
+        : "Clock out";
+    dockActionDisabled = isPending || checkoutCoolingDown;
+    handleDockAttendanceAction = () => handleAction("check_out");
+  } else if (!attendance || canStartCorrectShift) {
+    if (!withinWindow) {
+      // Never claim a closed window is still upcoming — that reads as "wait"
+      // and leaves a worker who arrived late with no idea they already missed it.
+      dockActionLabel = windowPassed ? "Window closed" : "Not yet";
+    } else if (geofenceInstruction) {
+      dockAction = "check_in";
+      dockActionLabel = checkInGuidance.status === "inaccurate" ? "Move closer to centre" : "Move closer to gate";
+      dockActionDisabled = isPending;
+      handleDockAttendanceAction = () => handleAction("check_in");
+    } else if (gpsAcquiring || isLocating) {
+      dockAction = "loading";
+      dockActionLabel = "Checking GPS…";
+    } else {
+      dockAction = "check_in";
+      dockActionLabel = "Clock in";
+      dockActionDisabled = isPending;
+      handleDockAttendanceAction = () => handleAction("check_in");
+    }
+  } else if (attendance?.status === "completed") {
+    dockAction = "completed";
+    dockActionLabel = "Clocked out";
+  }
+  if (attendanceConfirmation) {
+    dockAction = "completed";
+    dockActionLabel = `${attendanceConfirmation.action === "check_in" ? "Clocked in" : "Clocked out"} ${attendanceConfirmation.time}`;
+    dockActionDisabled = true;
+    handleDockAttendanceAction = undefined;
+  }
+
+  return (
+    <div className={className} style={style}>
+      {showWindowOpen ? (
+        <div className="attendance-window-open mb-3 flex items-center gap-2 rounded-xl border border-[var(--employee-accent-border)] bg-[var(--employee-accent-soft)] px-3 py-2.5 text-fg-brand-primary" role="status">
+          <Clock className="h-4 w-4 shrink-0 text-[var(--employee-accent)]" aria-hidden="true" />
+          <span className="employee-type-body-sm font-semibold">Your attendance window is open</span>
+        </div>
+      ) : null}
+      {attendanceConfirmation ? (
+        <div className="attendance-action-confirm mb-3 flex items-center gap-2 rounded-xl border border-[var(--employee-accent-border)] bg-[var(--employee-accent-soft)] px-3 py-2.5 text-fg-brand-primary" role="status">
+          <CheckVerified01 className="h-5 w-5 shrink-0 text-[var(--employee-accent)]" aria-hidden="true" />
+          <span className="employee-type-body-sm font-semibold">
+            {attendanceConfirmation.action === "check_in" ? "Clocked in" : "Clocked out"} at {attendanceConfirmation.time}
+          </span>
+        </div>
+      ) : null}
+      <AlertDialog open={showNoSalaryConfirm} onOpenChange={setShowNoSalaryConfirm}>
+        <AlertDialogContent className="max-w-[calc(100vw-32px)] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="employee-type-hero-title">
+              Clocking out outside the allowed window
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Clock out within the allowed window for your shift's pay to be recorded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 px-5 py-4">
+            <div className="rounded-lg border border-[var(--employee-accent-border)] bg-[var(--employee-accent-soft)]/80 p-4">
+              <div className="flex items-center gap-2 text-fg-brand-primary">
+                <Clock className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <p className="text-sm font-semibold leading-5">Allowed times</p>
+              </div>
+              {noSalaryWindow ? (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {noSalaryWindow.checkInTime ? (
+                    <div>
+                      <p className="text-xs font-medium leading-4 text-[var(--employee-accent)]">Clock in</p>
+                      <p className="employee-type-strong mt-1 text-[var(--employee-text)]">
+                        {noSalaryWindow.checkInTime}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className={noSalaryWindow.checkInTime ? "" : "col-span-2"}>
+                    <p className="text-xs font-medium leading-4 text-[var(--employee-accent)]">Clock out</p>
+                    <p className="employee-type-strong mt-1 text-[var(--employee-text)]">
+                      {noSalaryWindow.validStartTime} - {noSalaryWindow.validEndTime}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm font-medium leading-5 text-[var(--employee-text)]">
+                  {noSalaryReason || "Your clock-out time is outside the allowed window for this shift."}
+                </p>
+              )}
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border border-utility-error-200 bg-[var(--employee-error-soft)] p-4 text-fg-error-primary">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-fg-error-secondary" aria-hidden="true" />
+              <div>
+                <p className="employee-type-strong">This shift will not be paid</p>
+                <p className="mt-1 text-sm font-medium leading-5 text-fg-error-primary">
+                  Continue only if you want to cancel this shift.
+                </p>
+              </div>
+            </div>
+          </div>
+          <AlertDialogFooter className="grid grid-cols-2 gap-3 px-5 pb-5 pt-3">
+            <AlertDialogCancel
+              disabled={isPending}
+              className="employee-type-action mt-0 h-12 w-full rounded-lg"
+            >
+              Back
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              className="employee-type-action h-12 w-full rounded-lg"
+              onClick={(event) => {
+                event.preventDefault();
+                handleAction("check_out", { confirmNoSalary: true });
+              }}
+            >
+              {isPending ? <RefreshCw05 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <LogOut02 className="mr-2 h-4 w-4" />}
+              Cancel shift
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={Boolean(timingGuidance)}
+        onOpenChange={(open) => {
+          if (!open) setTimingGuidance(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-[calc(100vw-32px)] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="employee-type-hero-title">
+              {timingGuidance?.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {timingGuidance?.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {timingGuidance?.windowStart && timingGuidance.windowEnd ? (
+            <div className="px-5 py-4">
+              <div className="block rounded-xl border border-[var(--employee-warning-border)] bg-[var(--employee-warning-soft)] p-4 text-[var(--employee-warning-strong)] shadow-none">
+                <p className="employee-type-label-caps font-semibold text-fg-warning-primary">
+                  {timingGuidance.actionLabel}
+                </p>
+                <p className="employee-type-strong mt-1 text-[var(--employee-text)]">
+                  {timingGuidance.windowStart} - {timingGuidance.windowEnd}
+                </p>
+              </div>
+            </div>
+          ) : null}
+          <AlertDialogFooter className="px-5 pb-5">
+            <AlertDialogAction
+              className="employee-type-action h-12 w-full rounded-lg"
+              onClick={() => setTimingGuidance(null)}
+            >
+              Understood
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {isLocating ? (
+        <div className="mb-3 rounded-xl border border-[var(--employee-info-border)] bg-[var(--employee-info-soft)] p-3 text-[var(--employee-text)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-surface)] text-[var(--employee-info)]">
+              <RefreshCw05 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="employee-type-card-title font-semibold">Checking your location...</p>
+              <p className="employee-type-body-sm mt-0.5 font-medium text-[var(--employee-info)]">
+                {getLocationAcquisitionMessage(locationProgress, checkInGuidance)}
+              </p>
+            </div>
+          </div>
+          {locationProgress?.sampleCount ? (
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="min-w-0 rounded-lg bg-[var(--employee-surface)]/80 px-2.5 py-2">
+                <p className="employee-type-label-caps font-semibold text-[var(--employee-info)]">Accuracy</p>
+                <p className="employee-type-body mt-0.5 truncate font-semibold text-[var(--employee-text)]">
+                  {formatAccuracy(locationProgress.bestAccuracy) || "--"}
+                </p>
+              </div>
+              <div className="min-w-0 rounded-lg bg-[var(--employee-surface)]/80 px-2.5 py-2">
+                <p className="employee-type-label-caps font-semibold text-[var(--employee-info)]">Required</p>
+                <p className="employee-type-body mt-0.5 truncate font-semibold text-[var(--employee-text)]">
+                  {"≤"}
+                  {formatAccuracy(locationProgress.requiredAccuracyMeters) || "50m"}
+                </p>
+              </div>
+              <div className="min-w-0 rounded-lg bg-[var(--employee-surface)]/80 px-2.5 py-2">
+                <p className="employee-type-label-caps font-semibold text-[var(--employee-info)]">Samples</p>
+                <p className="employee-type-body mt-0.5 truncate font-semibold text-[var(--employee-text)]">
+                  {locationProgress.sampleCount}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {showLocationRecovery ? (
+        <div className="mb-3 rounded-xl border border-[var(--employee-warning-border)] bg-[var(--employee-warning-soft)] p-3 text-[var(--employee-warning-strong)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--employee-surface)] text-fg-warning-primary">
+              {locationIssue.requiresSettings ? <Settings01 className="h-5 w-5" aria-hidden="true" /> : <MarkerPin01 className="h-5 w-5" aria-hidden="true" />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="employee-type-card-title truncate font-semibold">{locationIssue.title}</p>
+              {showRecoveryDescription ? (
+                <p className="employee-type-body-sm mt-0.5 font-medium text-fg-warning-primary">{locationIssue.description}</p>
+              ) : null}
+            </div>
+              {locationIssue.canRetry ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="employee-type-action h-11 shrink-0 gap-2 rounded-lg border-utility-warning-300 bg-[var(--employee-surface)] px-3 font-semibold text-[var(--employee-warning-strong)] hover:bg-utility-warning-100"
+                  disabled={isPending}
+                  onClick={() => {
+                    // A permission denial is terminal in-page: re-attempting it
+                    // would just write another failed-attempt row and leave the
+                    // same banner up. Reload so the browser re-reads the OS
+                    // grant the worker just enabled in Settings.
+                    if (locationIssue.type === "denied") {
+                      location.reload();
+                      return;
+                    }
+                    // Restart the watch (re-arms GPS) before re-attempting, so
+                    // Retry restarts a failed location watch as well as transient errors.
+                    location.retry();
+                    setLocationIssue(null);
+                    handleAction(actionType);
+                  }}
+                >
+                  {isPending ? (
+                    <RefreshCw05 className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw05 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  )}
+                  <span>{isLocating ? "Working..." : locationRecoveryText}</span>
+                </Button>
+              ) : null}
+          </div>
+        </div>
+      ) : null}
+      {attendance?.status === "completed" ? (
+        <div className="rounded-2xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] p-3">
+          <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-accent-soft)] text-[var(--employee-accent)]">
+                <CheckVerified01 className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="employee-type-card-title font-semibold text-[var(--employee-text)]">Today's shift is complete</p>
+                <p className="employee-type-body-sm mt-0.5 font-semibold text-fg-secondary">
+                  {safeFormatTime(attendance.check_in_time)} — {safeFormatTime(attendance.check_out_time)}
+                </p>
+              </div>
+            </div>
+          <div
+            className={`mt-3 rounded-lg border px-3 py-2.5 ${
+              salaryRecorded
+                ? "border-[var(--employee-accent-border)] bg-[var(--employee-accent-soft)] text-fg-brand-primary"
+                : "border-[var(--employee-warning-border)] bg-[var(--employee-warning-soft)] text-[var(--employee-warning-strong)]"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-surface)] ${
+                  salaryRecorded ? "text-[var(--employee-accent)]" : "text-fg-warning-primary"
+                }`}
+              >
+                {salaryRecorded ? <Wallet01 className="h-4 w-4" aria-hidden="true" /> : <AlertCircle className="h-4 w-4" aria-hidden="true" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="employee-type-body font-semibold">
+                  {salaryRecorded ? `Shift pay: ${formatCurrency(attendance.earning_amount)}` : salaryIssue.title}
+                </p>
+                <p className="employee-type-body-sm mt-0.5 font-medium opacity-85">
+                  {salaryRecorded ? "You can request a salary advance if you have an available balance." : salaryIssue.description}
+                </p>
+                {!salaryRecorded ? <IssueDetailChips details={salaryIssue.details} tone="amber" /> : null}
+              </div>
+            </div>
+          </div>
+
+          {canStartCorrectShift ? (
+            <>
+              {attendanceReference}
+              {locationMapDisclosure}
+              <Button
+                size="lg"
+                className="employee-type-action mt-2 hidden min-h-11 h-12 w-full rounded-xl bg-[var(--employee-accent)] font-semibold text-white hover:bg-[var(--employee-accent-strong)] lg:inline-flex"
+                style={{
+                  boxShadow: `0 10px 24px ${EMPLOYEE_BRAND_COLOR}30`,
+                }}
+                disabled={isPending}
+                onClick={() => handleAction("check_in")}
+              >
+                {isPending ? (
+                  <RefreshCw05 className="w-5 h-5 animate-spin mr-2 motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <Briefcase01 className="w-5 h-5 mr-2" aria-hidden="true" />
+                )}
+                {isLocating ? "Getting your location..." : "Clock in"}
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ) : attendance?.status === "checked_in" ? (
+        <div className="rounded-2xl border border-[var(--employee-accent-border)] bg-[var(--employee-surface)] p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success_subtle text-fg-success-primary">
+                <Briefcase01 className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="employee-type-label-caps text-fg-success-primary">On shift</p>
+                <p className="employee-type-hero-title mt-1 text-[var(--employee-text)]">Working</p>
+                <p className="employee-type-body mt-1 text-fg-secondary">
+                  {safeFormatTime(attendance.check_in_time)} — now · Clock out to record your pay
+                </p>
+              </div>
+            </div>
+          {attendanceReference}
+          {locationMapDisclosure}
+          <Button
+            size="lg"
+            className="employee-type-action mt-4 hidden h-12 w-full rounded-xl bg-[var(--employee-accent)] font-semibold text-white hover:bg-[var(--employee-accent-strong)] lg:inline-flex"
+            disabled={isPending || checkoutCoolingDown}
+            onClick={() => handleAction("check_out")}
+          >
+            {isPending || checkoutCoolingDown ? (
+              <RefreshCw05 className="w-5 h-5 animate-spin mr-2 motion-reduce:animate-none" aria-hidden="true" />
+            ) : (
+              <LogOut02 className="w-5 h-5 mr-2" aria-hidden="true" />
+            )}
+            {checkoutCoolingDown ? "Waiting for GPS..." : isLocating ? "Getting your location..." : "Clock out"}
+          </Button>
+        </div>
+      ) : attendance?.status === "orphaned" ? (
+        <div className="rounded-2xl border border-utility-error-200 bg-[var(--employee-error-soft)] p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-surface)] text-fg-error-secondary">
+              <AlertCircle className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="employee-type-card-title font-semibold text-fg-error-primary">Shift needs review</p>
+              <p className="employee-type-body-sm mt-0.5 font-medium text-[var(--employee-error)]">
+                You did not clock out after your previous shift. Contact your manager to review your pay.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : attendance?.status === "rejected" ? (
+        <div className="rounded-2xl border border-utility-warning-200 bg-[var(--employee-warning-soft)] p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-surface)] text-fg-warning-primary">
+              <AlertCircle className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="employee-type-card-title font-semibold text-[var(--employee-warning-strong)]">
+                {rejectedIssue.title === "Cần quản lý kiểm tra" ? "Shift rejected" : rejectedIssue.title}
+              </p>
+              <p className="employee-type-body-sm mt-0.5 font-medium text-fg-warning-primary">
+                {rejectedIssue.description}
+              </p>
+              <IssueDetailChips details={rejectedIssue.details} tone="orange" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* Outside-window hint: show shift time + countdown instead of the button */}
+          {!withinWindow ? (
+            <div className="check-in-hint-fade overflow-hidden rounded-[28px] border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--employee-warning-border)] bg-[var(--employee-warning-soft)] text-fg-warning-primary">
+                  <Clock className="h-6 w-6" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="employee-type-label-caps font-bold tracking-[0.14em] text-fg-warning-primary">
+                    {windowPassed ? "Today's shift" : "Next shift"}
+                  </p>
+                  <p className="employee-type-card-title mt-1 font-bold text-[var(--employee-text)]">
+                    {windowPassed ? "The clock-in window has closed" : "It is not time to clock in yet"}
+                  </p>
+                  <p className="employee-type-body-sm mt-1.5 leading-6 text-fg-secondary">
+                    {shiftStart
+                      ? `Your shift starts at ${safeFormatTime(shiftStart)}. Clock in between ${safeFormatTime(checkInWindowStart)} and ${safeFormatTime(checkInWindowEnd)}.`
+                      : "No shift has been configured."}
+                  </p>
+                  {windowPassed ? (
+                    // The check-in window is closed and nothing in the app can
+                    // reopen it — only an admin can enter a check-in for the
+                    // shift. Say so, instead of leaving the worker staring at a
+                    // "not yet" screen with no way forward.
+                    <p className="employee-type-body-sm mt-2 rounded-lg border border-utility-error-200 bg-[var(--employee-error-soft)] px-3 py-2 font-semibold text-[var(--employee-error)]">
+                      Contact your manager to record your clock-in.
+                    </p>
+                  ) : null}
+                  {secondsUntilWindow != null && (
+                    <p className="employee-type-body-sm mt-2 inline-flex rounded-full border border-[var(--employee-warning-border)] bg-[var(--employee-surface)] px-3 py-1 font-semibold text-[var(--employee-warning)]">
+                      {(() => {
+                        const m = Math.floor(secondsUntilWindow / 60);
+                        const s = secondsUntilWindow % 60;
+                        if (m >= 60) {
+                          const h = Math.floor(m / 60);
+                          return `About ${h} hour${h === 1 ? "" : "s"} and ${m % 60} minute${m % 60 === 1 ? "" : "s"} to go.`;
+                        }
+                        if (m > 0) return `About ${m} minute${m === 1 ? "" : "s"} to go.`;
+                        return `About ${s} second${s === 1 ? "" : "s"} to go.`;
+                      })()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {attendanceReference}
+              {locationMapDisclosure}
+            </div>
+          ) : gpsReady ? (
+              <div className="rounded-2xl border border-[var(--employee-accent-border)] bg-[var(--employee-accent-soft)] p-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-accent-ring)] text-[var(--employee-accent-strong)]">
+                    <MarkerPin01 className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="employee-type-card-title font-semibold text-[var(--employee-text)]">Ready to clock in</p>
+                    <p className="employee-type-body-sm mt-0.5 font-medium text-fg-brand-primary">Location confirmed</p>
+                  </div>
+                </div>
+              {attendanceReference}
+              {locationMapDisclosure}
+              <Button
+                size="lg"
+                className={`employee-type-action mt-2 hidden min-h-11 h-12 w-full rounded-xl bg-[var(--employee-accent)] font-semibold text-white hover:bg-[var(--employee-accent-strong)] lg:inline-flex ${showReadyPop ? "check-in-ready-pop" : ""}`}
+                style={{ boxShadow: `0 10px 24px ${EMPLOYEE_BRAND_COLOR}30` }}
+                disabled={isPending}
+                onClick={() => handleAction("check_in")}
+              >
+                {isPending ? (
+                  <RefreshCw05 className="w-5 h-5 animate-spin mr-2 motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <Briefcase01 className="w-5 h-5 mr-2" aria-hidden="true" />
+                )}
+                {isLocating ? "Getting your location..." : "Clock in"}
+              </Button>
+            </div>
+          ) : geofenceInstruction ? (
+              <div className="rounded-2xl border border-[var(--employee-warning-border)] bg-[var(--employee-surface)] p-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-warning-soft)] text-fg-warning-primary">
+                    <MarkerPin01 className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="employee-type-card-title font-semibold text-[var(--employee-text)]">
+                      {checkInGuidance.status === "inaccurate" ? "Move closer to the centre" : "Outside the area"}
+                    </p>
+                    <p className="employee-type-body-sm mt-0.5 font-medium text-fg-secondary">
+                      {geofenceInstruction}
+                    </p>
+                  </div>
+                </div>
+              {attendanceReference}
+              {locationMapDisclosure}
+              <Button
+                size="lg"
+                className="employee-type-action mt-2 hidden min-h-11 h-12 w-full rounded-xl bg-[var(--employee-accent)] font-semibold text-white hover:bg-[var(--employee-accent-strong)] lg:inline-flex"
+                style={{ boxShadow: `0 4px 12px ${EMPLOYEE_BRAND_COLOR}20` }}
+                disabled={isPending}
+                onClick={() => handleAction("check_in")}
+              >
+                {isPending ? (
+                  <RefreshCw05 className="mr-2 h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <MarkerPin01 className="mr-2 h-5 w-5" aria-hidden="true" />
+                )}
+                {checkInGuidance.status === "inaccurate" ? "Move closer to the centre and try again" : "Move closer to the gate and try again"}
+              </Button>
+            </div>
+          ) : location.needsPermission ? (
+              <div className="rounded-2xl border border-[var(--employee-accent-border)] bg-[var(--employee-accent-soft)] p-3" role="status">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-accent-ring)] text-[var(--employee-accent-strong)]">
+                    <MarkerPin01 className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="employee-type-card-title font-semibold text-[var(--employee-text)]">Allow location access</p>
+                    <p className="employee-type-body-sm mt-0.5 font-medium text-fg-brand-primary">
+                      The app uses GPS to verify your attendance location.
+                    </p>
+                  </div>
+                </div>
+              {attendanceReference}
+              {locationMapDisclosure}
+              <Button
+                size="lg"
+                className="employee-type-action mt-2 hidden min-h-11 h-12 w-full rounded-xl bg-[var(--employee-accent)] font-semibold text-white hover:bg-[var(--employee-accent-strong)] lg:inline-flex"
+                style={{ boxShadow: `0 4px 12px ${EMPLOYEE_BRAND_COLOR}20` }}
+                onClick={location.requestPermission}
+              >
+                <MarkerPin01 className="mr-2 h-5 w-5" aria-hidden="true" />
+                Allow location
+              </Button>
+            </div>
+          ) : gpsAcquiring ? (
+              <div
+                className="rounded-2xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] p-3"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-accent-soft)] text-[var(--employee-accent)]">
+                    <RefreshCw05 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="employee-type-card-title font-semibold text-[var(--employee-text)]">
+                      Improving GPS accuracy to ≤50 m…
+                    </p>
+                    <p className="employee-type-body-sm mt-0.5 font-medium text-fg-secondary">
+                      {geofenceInstruction || (locationProgress?.bestAccuracy
+                        ? `Current accuracy: ${formatAccuracy(locationProgress.bestAccuracy)}. Waiting for a steadier signal.`
+                        : "Finding GPS. Move outdoors if needed.")}
+                    </p>
+                  </div>
+                </div>
+              {attendanceReference}
+              {locationMapDisclosure}
+              <Button
+                size="lg"
+                className="employee-type-action check-in-warming mt-2 hidden h-12 w-full rounded-xl bg-[var(--employee-accent)] font-semibold text-white lg:inline-flex"
+                style={{ boxShadow: `0 4px 12px ${EMPLOYEE_BRAND_COLOR}20` }}
+                disabled
+              >
+                <RefreshCw05 className="w-5 h-5 animate-spin mr-2 motion-reduce:animate-none" aria-hidden="true" />
+                Getting your location...
+              </Button>
+            </div>
+          ) : location.fatalError ? (
+            <div className="rounded-2xl border border-utility-error-200 bg-[var(--employee-error-soft)] p-3" role="alert">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-utility-error-100 text-fg-error-primary">
+                  <MarkerPin01 className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="employee-type-card-title font-semibold text-[var(--employee-text)]">{fatalLocationIssue?.title}</p>
+                  <p className="employee-type-body-sm mt-0.5 font-medium text-fg-secondary">
+                    {fatalLocationIssue?.description}
+                  </p>
+                </div>
+              </div>
+              {attendanceReference}
+              {locationMapDisclosure}
+              <Button
+                size="lg"
+                variant="outline"
+                className="employee-type-action mt-2 hidden min-h-11 h-12 w-full rounded-xl border-utility-error-300 bg-[var(--employee-surface)] font-semibold text-fg-error-primary hover:bg-utility-error-50 lg:inline-flex"
+                onClick={location.reload}
+              >
+                <RefreshCw05 className="mr-2 h-5 w-5" aria-hidden="true" />
+                Reload page
+              </Button>
+            </div>
+          ) : (
+              <div className="rounded-2xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface)] p-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--employee-accent-soft)] text-[var(--employee-accent)]">
+                    <MarkerPin01 className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="employee-type-card-title font-semibold text-[var(--employee-text)]">Ready to clock in</p>
+                    <p className="employee-type-body-sm mt-0.5 font-medium text-fg-secondary">Select Clock in when you reach the gate.</p>
+                  </div>
+                </div>
+              {attendanceReference}
+              {locationMapDisclosure}
+              <Button
+                size="lg"
+                className="employee-type-action mt-2 hidden min-h-11 h-12 w-full rounded-xl bg-[var(--employee-accent)] font-semibold text-white hover:bg-[var(--employee-accent-strong)] lg:inline-flex"
+                style={{ boxShadow: `0 10px 24px ${EMPLOYEE_BRAND_COLOR}30` }}
+                disabled={isPending}
+                onClick={() => handleAction("check_in")}
+              >
+                {isPending ? (
+                  <RefreshCw05 className="w-5 h-5 animate-spin mr-2 motion-reduce:animate-none" aria-hidden="true" />
+                ) : (
+                  <Briefcase01 className="w-5 h-5 mr-2" aria-hidden="true" />
+                )}
+                {isLocating ? "Getting your location..." : "Clock in"}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      <EmployeeAttendanceActionDock
+        action={dockAction}
+        actionLabel={dockActionLabel}
+        actionDisabled={dockActionDisabled}
+        onAdvanceRequest={onAdvanceRequest}
+        onAttendanceAction={handleDockAttendanceAction}
+      />
+    </div>
+  );
+}

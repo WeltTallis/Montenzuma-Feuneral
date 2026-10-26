@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, BarChart3, Users, Package, X, LogOut } from '../../utils/icons/icons';
 
 const menuItems = [
-    { path: '/deceased', label: 'Deceased', icon: Users },
+    { path: '/deceased', label: 'Morgue', icon: Users },
     { path: '/coffins', label: 'Coffins', icon: Package },
 ];
 

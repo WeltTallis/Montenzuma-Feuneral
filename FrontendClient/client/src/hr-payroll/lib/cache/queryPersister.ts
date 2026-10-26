@@ -1,0 +1,98 @@
+/**
+ * TanStack Query Persistence Layer
+ *
+ * Persists query cache to sessionStorage (survives page refreshes within same tab).
+ * NOT localStorage — query data is tab-scoped, avoids stale cross-tab issues.
+ *
+ * Strategy:
+ * - Auth/user data: NOT persisted (always fresh from server)
+ * - Static/semi-static data: persisted (employees list, salary config, etc.)
+ * - Max age: 24 hours (stale data auto-discarded)
+ *
+ * Why sessionStorage, not localStorage:
+ * - localStorage persists forever across tabs → stale data risk
+ * - sessionStorage clears on tab close → clean state for new session
+ * - Perfect for "survive refresh" use case without stale data buildup
+ */
+
+import { QueryClient } from '@tanstack/react-query';
+import {
+  persistQueryClient,
+} from '@tanstack/react-query-persist-client';
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+
+// Keys that should NOT be persisted (always fetch fresh)
+const DO_NOT_PERSIST_KEYS = [
+  'auth',        // auth state
+  'notifications', // real-time notifications
+  'me',          // current user profile
+  'attendance',  // mobile check-in/out state must always be fresh
+  'audit-logs',  // audit trail
+  'assets',      // action-critical (roster download button) — a persisted
+                 // empty list once disabled the banner's "Tải file" until the
+                 // next successful refetch; these must never restore stale
+];
+
+/**
+ * Check if a query key should be persisted
+ */
+function shouldPersist(queryKey: readonly unknown[]): boolean {
+  if (!Array.isArray(queryKey) || queryKey.length === 0) return false;
+  const rootKey = String(queryKey[0]);
+  if (rootKey === 'employee' && queryKey[1] === 'profile') return false;
+  return !DO_NOT_PERSIST_KEYS.includes(rootKey);
+}
+
+/**
+ * Create sessionStorage persister
+ */
+function createPersister() {
+  return createSyncStoragePersister({
+    storage: window.sessionStorage,
+    key: 'payroll-query-cache',
+    // Serialize/deserialize with error handling
+    serialize: (data) => JSON.stringify(data),
+    deserialize: (str) => {
+      try {
+        const parsed = JSON.parse(str);
+        // Strip stale promise references from cached queries.
+        // Promises cannot survive JSON serialization — they become plain objects
+        // and cause "promise.then is not a function" errors on cache restore.
+        if (parsed?.clientState?.queries) {
+          for (const query of parsed.clientState.queries) {
+            if (query?.state) delete query.state.promise;
+          }
+        }
+        return parsed;
+      } catch {
+        // Corrupted cache — clear and start fresh
+        sessionStorage.removeItem('payroll-query-cache');
+        return undefined;
+      }
+    },
+  });
+}
+
+/**
+ * Setup query persistence on the QueryClient
+ * Call once after QueryClient creation
+ */
+export function setupQueryPersistence(queryClient: QueryClient): void {
+  // Only run in browser
+  if (typeof window === 'undefined') return;
+
+  const persister = createPersister();
+
+  persistQueryClient({
+    queryClient,
+    persister,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    dehydrateOptions: {
+      shouldDehydrateQuery: (query) => {
+        // Never persist pending queries — their promise field breaks on restore
+        if (query.state.status === 'pending') return false;
+        return shouldPersist(query.queryKey);
+      },
+    },
+  } as Parameters<typeof persistQueryClient>[0]);
+}

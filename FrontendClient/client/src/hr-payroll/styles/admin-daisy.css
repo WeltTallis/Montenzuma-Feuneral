@@ -1,0 +1,530 @@
+[data-admin-ui] {
+    color: hsl(var(--foreground));
+    font-family: var(--admin-font-body);
+    font-feature-settings: "tnum" 1, "liga" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  [data-admin-ui] ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  /* Keep browser autofill from painting a contrasting blue strip inside login fields. */
+  [data-login-ui] input:-webkit-autofill,
+  [data-login-ui] input:-webkit-autofill:hover,
+  [data-login-ui] input:-webkit-autofill:focus,
+  [data-login-ui] input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px rgb(248 244 236) inset !important;
+    box-shadow: 0 0 0 1000px rgb(248 244 236) inset !important;
+    caret-color: hsl(var(--foreground));
+    transition: background-color 9999s ease-out;
+  }
+
+  [data-admin-ui] [data-radix-popper-content-wrapper] {
+    z-index: 80 !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-admin-ui] *,
+    [data-admin-ui] *::before,
+    [data-admin-ui] *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+}
+
+[data-admin-ui].admin-shell-scope {
+    width: 100%;
+    min-width: 0;
+    min-height: 100dvh;
+    color: hsl(var(--foreground));
+  }
+
+  [data-admin-ui] .admin-shell {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(circle at top left, rgba(8, 120, 62, 0.055), transparent 30rem),
+      hsl(var(--background));
+  }
+
+  [data-admin-ui] .admin-shell::before {
+    content: none;
+  }
+
+  [data-admin-ui] .admin-shell::after {
+    content: none;
+  }
+
+  [data-admin-ui] .admin-main {
+    position: relative;
+  }
+
+  [data-admin-ui] .admin-page-frame {
+    position: relative;
+    min-height: 100%;
+    margin: 0 auto;
+    max-width: min(100%, 1440px);
+    padding: 0;
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+  }
+
+  [data-admin-ui] .admin-page-frame::before {
+    content: none;
+  }
+
+  [data-admin-ui] .admin-page-inner {
+    position: relative;
+    min-height: 100%;
+    border-radius: 1.4rem;
+  }
+
+  [data-admin-ui] .admin-shell-rail {
+    display: none;
+  }
+
+  [data-admin-ui] .admin-sidebar-surface {
+    background:
+      linear-gradient(180deg, rgba(246, 240, 227, 0.08), transparent 16%),
+      linear-gradient(180deg, hsl(var(--sidebar-background)) 0%, hsl(149 42% 15%) 100%);
+    border-right: 1px solid hsl(var(--sidebar-border));
+  }
+
+  [data-admin-ui] .admin-sidebar-surface [data-sidebar="sidebar"] {
+    background:
+      radial-gradient(circle at 35% 0%, rgba(255, 224, 148, 0.09), transparent 14rem),
+      linear-gradient(180deg, hsl(var(--sidebar-background)) 0%, hsl(149 43% 14%) 100%);
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-sidebar-logo {
+    position: relative;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
+  }
+
+  [data-admin-ui] .admin-sidebar-logo::after {
+    content: "";
+    position: absolute;
+    inset: auto 1rem 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 226, 161, 0.32), transparent);
+  }
+
+  [data-admin-ui] .admin-sidebar-surface a[aria-current="page"] > div {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.055));
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-sidebar-header {
+    padding: 0.625rem;
+    border-bottom: 1px solid hsl(var(--sidebar-border));
+  }
+
+  [data-admin-ui] .admin-sidebar-brand {
+    position: relative;
+    overflow: hidden;
+    min-height: 3.75rem;
+    border: 1px solid hsl(var(--sidebar-border));
+    border-radius: 1rem;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 55%),
+      linear-gradient(180deg, rgba(255, 248, 230, 0.1) 0%, rgba(12, 39, 29, 0.2) 100%);
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-sidebar-brand::after {
+    content: "";
+    position: absolute;
+    inset: auto 1rem 0.9rem 1rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 230, 180, 0.45), transparent);
+  }
+
+  [data-admin-ui] .admin-sidebar-scroll {
+    padding-bottom: 1rem;
+  }
+
+  [data-admin-ui] .admin-sidebar-divider {
+    height: 1px;
+    margin: 0;
+    background: linear-gradient(90deg, transparent, hsl(var(--sidebar-border)), transparent);
+  }
+
+  [data-admin-ui] .admin-sidebar-account {
+    border: 1px solid hsl(var(--sidebar-border));
+    background:
+      linear-gradient(180deg, rgba(255, 248, 230, 0.08), transparent 42%),
+      rgba(10, 28, 21, 0.38);
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-dropdown-surface {
+    border: 1px solid hsl(var(--border) / 0.9);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-mobile-nav {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 50;
+    border-top: 1px solid hsl(var(--border) / 0.85);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: none;
+  }
+
+  /* The blur lives on an inner layer, never on the fixed root: a
+     backdrop-filter on a position:fixed bar misplaces it during scroll on
+     iOS Safari (it detaches from the viewport bottom). */
+  [data-admin-ui] .admin-mobile-nav-backdrop {
+    backdrop-filter: blur(18px);
+  }
+
+  [data-admin-ui] .admin-mobile-nav::before { content: none; }
+
+  [data-admin-ui] .admin-mobile-sheet {
+    display: flex;
+    max-height: 82dvh;
+    flex-direction: column;
+    overflow: hidden;
+    border-top: 1px solid hsl(var(--border));
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: none;
+    backdrop-filter: blur(18px);
+  }
+
+  [data-admin-ui] .admin-mobile-tile {
+    border: 1px solid hsl(var(--border) / 0.95);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-toggle-tab {
+    border-color: hsl(var(--sidebar-border));
+    background:
+      linear-gradient(180deg, rgba(255, 248, 230, 0.14), rgba(22, 49, 37, 0.92));
+    box-shadow: none;
+    color: hsl(var(--sidebar-foreground) / 0.76);
+  }
+
+  /* Self-carding: the page canvas is a dark sage (WCAG 1.4.11 card/canvas
+     separation), so header text must sit on a light surface. Pages wrapped in
+     AdminPageHeaderCard already carry the frosted card; the inner fill is
+     seamless. Bare usages (timesheet, wallet, mobile pages) get a readable
+     card instead of falling onto the canvas. */
+  [data-admin-ui] .admin-page-header {
+    position: relative;
+    overflow: visible;
+    gap: 0.9rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    background: hsl(var(--card));
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-page-header::before {
+    content: none;
+  }
+
+  [data-admin-ui] .admin-page-header [data-slot="page-header-icon"] {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid hsl(var(--primary) / 0.14);
+    border-radius: 1rem;
+    background: hsl(var(--primary) / 0.07);
+    color: hsl(var(--primary));
+  }
+
+  [data-admin-ui] .admin-page-header [data-slot="page-header-icon"] svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    color: hsl(var(--primary));
+  }
+
+  [data-admin-ui] .admin-page-header [data-slot="page-header-eyebrow"] {
+    display: none;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  [data-admin-ui] .admin-page-header h1 {
+    margin-top: 0.3rem;
+    font-family: var(--admin-font-display);
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+    font-weight: 750;
+  }
+
+  [data-admin-ui] .admin-page-header [data-slot="page-header-description"] {
+    max-width: 46rem;
+    margin-top: 0.45rem;
+    line-height: 1.55;
+  }
+
+  [data-admin-ui] .admin-page-header [data-slot="page-header-controls"] button,
+  [data-admin-ui] .admin-page-header [data-slot="page-header-controls"] [role="combobox"] {
+    border-radius: 0.8rem;
+  }
+
+  /* Button height is owned by the Button component (h-9 at every device
+     size); only non-button controls keep the 2.75rem floor. */
+  [data-admin-ui] .admin-page-header [data-slot="page-header-controls"] [role="combobox"] {
+    min-height: 2.75rem;
+  }
+
+  [data-admin-ui] .admin-payment-history-page {
+    background: transparent;
+  }
+
+  [data-admin-ui] .admin-payment-history-header {
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* This page's filter row already sits inside the workspace card via its own
+   * bordered wrapper — the shared .admin-filter-bar card treatment on top of
+   * that reads as a card nested inside a card, so flatten it here only. */
+  [data-admin-ui] .admin-payment-history-workspace .admin-filter-bar {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-filter-bar {
+    gap: 0.55rem;
+    padding: 0.75rem;
+    border: 1px solid hsl(var(--border) / 0.78);
+    border-radius: 1.15rem;
+    background: hsl(var(--card) / 0.9);
+    box-shadow: var(--admin-card-shadow);
+  }
+
+  [data-admin-ui] .admin-filter-bar button,
+  [data-admin-ui] .admin-filter-bar input,
+  [data-admin-ui] .admin-filter-bar [role="combobox"] {
+    border-radius: 0.75rem;
+  }
+
+  [data-admin-ui] .admin-filter-bar input,
+  [data-admin-ui] .admin-filter-bar [role="combobox"] {
+    min-height: 2.75rem;
+  }
+
+  [data-admin-ui] .admin-empty-state {
+    padding-inline: 1.25rem;
+    border: 1px dashed hsl(var(--border));
+    border-radius: 1.25rem;
+    background: hsl(var(--card) / 0.72);
+  }
+
+  [data-admin-ui] [data-slot="data-table-desktop"] {
+    border-color: hsl(var(--border));
+    border-radius: 1.2rem;
+    /* Opaque white: translucent card fill composited over the tinted canvas
+       read as a mismatched gray band behind the header row. */
+    background: hsl(var(--card));
+    box-shadow: var(--admin-card-shadow);
+  }
+
+  /* Header shares the card surface exactly - no translucent tint, no seam
+     against the sticky first-column cell (also bg-card). */
+  [data-admin-ui] [data-slot="data-table-desktop"] thead {
+    background: hsl(var(--card));
+  }
+
+  [data-admin-ui] [data-slot="data-table-desktop"] th {
+    height: 3rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  [data-admin-ui] [data-slot="data-table-desktop"] td {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  [data-admin-ui] [data-slot="mobile-table-row"],
+  [data-admin-ui] [data-slot="mobile-table-empty"] {
+    border-color: hsl(var(--border) / 0.82);
+    border-radius: 1.2rem;
+    background: hsl(var(--card) / 0.96);
+    box-shadow: var(--admin-card-shadow);
+  }
+
+  [data-admin-ui] .admin-pagination {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  [data-admin-ui] .admin-dashboard-panel,
+  [data-admin-ui] .admin-dashboard-ledger-surface,
+  [data-admin-ui] .admin-dashboard-mobile-disclosure,
+  [data-admin-ui] .admin-dashboard-mobile-monthbar {
+    border-color: hsl(var(--border) / 0.82);
+    background: hsl(var(--card) / 0.96);
+    box-shadow: none;
+  }
+
+  [data-admin-ui] .admin-dashboard-page-mobile :where([class*="shadow"]) {
+    box-shadow: none !important;
+  }
+
+  [data-admin-ui] .admin-dashboard-page-mobile :where(
+    [class*="hover:-translate"],
+    [class*="hover:scale"],
+    [class*="active:scale"]
+  ) {
+    transform: none !important;
+  }
+
+  [data-admin-ui] .admin-dashboard-bento .admin-dashboard-panel,
+  [data-admin-ui] .admin-dashboard-bento :where([class*="shadow"]),
+  [data-admin-ui] .admin-dashboard-bento :where([class*="ring-border"]) {
+    box-shadow: none !important;
+  }
+
+  [data-admin-ui] .admin-dashboard-bento :where(
+    [class*="hover:-translate"],
+    [class*="hover:scale"],
+    [class*="active:scale"]
+  ) {
+    transform: none !important;
+  }
+
+  [data-admin-ui] .admin-dashboard-section-header {
+    padding-left: 0.15rem;
+  }
+
+  [data-admin-ui] .admin-dashboard-ledger-strip {
+    border-top: 1px solid hsl(var(--border) / 0.68);
+    border-bottom: 1px solid hsl(var(--border) / 0.68);
+    background: hsl(var(--muted) / 0.42);
+  }
+
+  [data-admin-ui] .admin-dashboard-bento [role="button"] {
+    min-height: 2.75rem;
+  }
+
+  [data-admin-ui] .admin-page-inner .bg-white {
+    background-color: hsl(var(--card));
+  }
+
+  [data-admin-ui] .admin-page-inner :is(table, [data-slot="mobile-table"]) {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Form controls (input/textarea) are excluded — their parent wrapper already
+     advertises focus via :focus-within, and a second ring on the nested
+     control draws the duplicate inner rectangle around the text. */
+  [data-admin-ui] .admin-page-inner :is(button, a, [role="button"], [role="combobox"]):focus-visible,
+  html.admin-route-active :is([role="dialog"], [role="menu"], [role="listbox"])
+    :is(button, a, [role="button"], [role="option"]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  html.admin-route-active [role="dialog"] {
+    border-color: hsl(var(--border));
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+  }
+
+  html.admin-route-active :is([role="menu"], [role="listbox"]) {
+    border-color: hsl(var(--border));
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+  }
+
+  @media (min-width: 1024px) {
+    [data-admin-ui] .admin-page-frame {
+      padding-bottom: 0;
+    }
+
+    [data-admin-ui] .admin-page-header {
+      padding: 0.625rem 0.875rem;
+    }
+  }
+
+  /* Data-dense 36px header/filter inputs are a DESKTOP decision (>=1200px).
+     Tablets (768–1199px) keep the 2.75rem touch floor instead — see the
+     tablet touch floor in variables.css. Buttons are exempt: the Button
+     component owns one height (h-9) at every device size. */
+  @media (min-width: 1200px) {
+    [data-admin-ui] .admin-page-header [data-slot="page-header-controls"] [role="combobox"],
+    [data-admin-ui] .admin-filter-bar input,
+    [data-admin-ui] .admin-filter-bar [role="combobox"],
+    [data-admin-ui] .admin-dashboard-bento [role="button"] {
+      min-height: 2.25rem;
+    }
+  }
+
+  @media (max-width: 639px) {
+    [data-admin-ui] .admin-page-header {
+      border-radius: 1.1rem;
+    }
+
+    [data-admin-ui] .admin-page-header [data-slot="page-header-controls"] {
+      width: 100%;
+    }
+
+    [data-admin-ui] .admin-page-header [data-slot="page-header-controls"] > * {
+      min-width: 2.75rem;
+    }
+
+    [data-admin-ui] .admin-filter-bar {
+      border-radius: 1rem;
+    }
+
+    [data-admin-ui] .admin-pagination {
+      flex-wrap: wrap;
+    }
+
+    [data-admin-ui] .admin-pagination button,
+    [data-admin-ui] .admin-pagination [role="combobox"] {
+      min-width: 2.75rem;
+      border-radius: 0.75rem;
+    }
+
+    [data-admin-ui] .admin-pagination [role="combobox"] {
+      min-height: 2.75rem;
+    }
+}
+
+[data-admin-ui] .admin-kicker {
+    /* Was sidebar-foreground (near-white, for the dark sidebar) at 0.62 —
+       ~1.7:1 on white cards. Kickers sit on white; use the dark muted token. */
+    color: hsl(var(--admin-muted-foreground));
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  [data-admin-ui] .admin-subtle-copy {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+
+  [data-admin-ui] .admin-tabular {
+    font-family: var(--admin-font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}

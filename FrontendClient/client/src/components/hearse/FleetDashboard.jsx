@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import env from '../../utils/config/env';
 import { getTenantHeaders } from '../../api/endpoints';
+import { useSocket } from '../../utils/context/socketContext';
 import notify from '../../utils/notify';
 
 const API_BASE_URL = import.meta.env.PROD
@@ -842,6 +843,7 @@ const FuelHistoryRow = styled.div`
 function FleetDashboard({ embedded = false }) {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { socket, connected } = useSocket();
   const [hearses, setHearses] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [filter, setFilter] = useState('all');
@@ -892,6 +894,21 @@ function FleetDashboard({ embedded = false }) {
 
   useEffect(() => { loadFleet(); }, [loadFleet]);
 
+  useEffect(() => {
+    if (!socket || !connected) return undefined;
+    loadFleet(true);
+    const handleHearseChange = (event = {}) => {
+      loadFleet(true);
+      if (event.changeType === 'driver_fuel_purchase') {
+        const driver = event.driverName || 'A driver';
+        const vehicle = event.plateNumber ? ` for ${event.plateNumber}` : '';
+        notify.info(`${driver} recorded fuelling${vehicle}.`);
+      }
+    };
+    socket.on('hearse_data_changed', handleHearseChange);
+    return () => socket.off('hearse_data_changed', handleHearseChange);
+  }, [socket, connected, loadFleet]);
+
   const counts = useMemo(() => {
     const countStatus = (key) => hearses.filter((hearse) => statusKey(hearse.status) === key).length;
     return {
@@ -941,6 +958,8 @@ function FleetDashboard({ embedded = false }) {
       : selectedFuelCard?.latest_activity?.transaction_type === 'deposit'
         ? 'Account deposit'
         : 'No recent activity';
+  const latestActivityDriver = String(selectedFuelCard?.latest_activity?.notes || '')
+    .match(/Driver fuelling(?: by: ([^·]+))?/i)?.[1]?.trim();
   const allocatedFunds = Math.max(cardAllocated, 0);
   const consumptionData = [
     { name: 'Spent', value: Math.max(cardSpent, 0), color: '#E53935' },
@@ -1304,7 +1323,7 @@ function FleetDashboard({ embedded = false }) {
                                 <span>{selectedFuelCard?.latest_activity?.station || selectedFuelCard?.latest_activity?.reference || 'Card ledger'}</span>
                               </FuelMetricTotal>
                             </FuelMetricHeader>
-                            <FuelStat><span>{latestActivityLabel}</span></FuelStat>
+                            <FuelStat><span>{latestActivityDriver ? `Driver fuelling · ${latestActivityDriver}` : latestActivityLabel}</span></FuelStat>
                             <FuelActivityValue>
                               {selectedFuelCard?.latest_activity
                                 ? `${selectedFuelCard.latest_activity.transaction_type === 'fuel_purchase' ? '−' : '+'}${formatKES(activityTotal)}`

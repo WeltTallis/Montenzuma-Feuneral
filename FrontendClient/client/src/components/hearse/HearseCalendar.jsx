@@ -5,7 +5,6 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
-import { getBranches } from '../../utils/globalAuth';
 import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Building, Users } from '../../utils/icons/icons';
 import { STATUS_CONFIG } from './statusColors';
 import { BR, BRANCH_SLUG_TO_NAME } from './viewerShared';
@@ -1430,6 +1429,7 @@ const HearseCalendar = ({
   bookings = [],
   allBookings = bookings,
   hearses = [],
+  branches = [],
   drivers = [],
   standbyDriverId = '',
   lineupLoading = false,
@@ -1486,42 +1486,38 @@ const HearseCalendar = ({
   }, [onMonthChange]);
 
   const branchLookup = useMemo(() => {
-    try {
-      const branches = getBranches();
-      const map = new Map();
-      branches.forEach((b) => {
-        const id = b.branchId || b.branch_id || b.id;
-        const slug = b.branchSlug || b.branch_slug || '';
-        const name = b.branchName || b.branch_name || b.name || '';
-        if (id && name) map.set(`id:${String(id)}`, name);
-        if (slug && name) map.set(`slug:${slug}`, name);
+    const map = new Map();
+    branches.forEach((branch) => {
+      const name = String(branch?.branch_name || branch?.branchName || branch?.name || '').trim();
+      if (!name) return;
+      [
+        branch?.branch_id, branch?.branchId, branch?.id,
+        branch?.branch_slug, branch?.branchSlug, branch?.slug,
+        branch?.branch_db_name, branch?.branchDbName, branch?.branch_code, branch?.branchCode,
+      ].forEach((key) => {
+        if (key != null && key !== '') map.set(String(key).toLowerCase(), name);
       });
-      return map;
-    } catch (e) { return new Map(); }
-  }, []);
-
-  const slugToReadableName = (slug) => {
-    if (!slug) return '';
-    const parts = slug.split('-');
-    const lastPart = parts[parts.length - 1];
-    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
-  };
+    });
+    return map;
+  }, [branches]);
 
   const resolveBranchName = (branchId, branchSlug, bookingBranchName) => {
-    const GENERIC = new Set(['main branch', 'main', 'default', 'unknown', 'n/a', '—', '']);
-    const name = (bookingBranchName || '').trim();
-    if (name && !GENERIC.has(name.toLowerCase())) return name;
-    if (branchId) {
-      const byId = branchLookup.get(`id:${String(branchId)}`);
-      if (byId) return byId;
+    const genericNames = new Set(['main branch', 'main', 'default', 'unknown', 'n/a', '—', '']);
+    const name = String(bookingBranchName || '').trim();
+    if (name && !genericNames.has(name.toLowerCase())) return name;
+    for (const key of [branchId, branchSlug]) {
+      if (key == null || key === '') continue;
+      const resolved = branchLookup.get(String(key).toLowerCase());
+      if (resolved && !genericNames.has(resolved.toLowerCase())) return resolved;
     }
-    if (branchSlug) {
-      const bySlug = branchLookup.get(`slug:${branchSlug}`);
-      if (bySlug) return bySlug;
-      if (BRANCH_SLUG_TO_NAME[branchSlug]) return BRANCH_SLUG_TO_NAME[branchSlug];
-      return slugToReadableName(branchSlug);
+    if (branchSlug && BRANCH_SLUG_TO_NAME[String(branchSlug).toLowerCase()]) {
+      return BRANCH_SLUG_TO_NAME[String(branchSlug).toLowerCase()];
     }
     if (name && BR[name.toLowerCase()]) return BR[name.toLowerCase()].name;
+    if (branchSlug) {
+      const lastPart = String(branchSlug).split('-').pop();
+      if (lastPart) return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+    }
     return name || 'Unknown';
   };
 
@@ -1552,14 +1548,15 @@ const HearseCalendar = ({
         if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       } catch (e) { }
 
-      const hearseName = b.hearse_name || b.hearse_plate || b.plate_number || 'H';
+      const hearseName = [b.hearse_name || b.model || 'Hearse', b.model && b.hearse_name ? b.model : '']
+        .filter(Boolean).join(' · ');
       const clientName = (b.client_name || b.client || 'client').toString();
       const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
       const stableId = b.booking_code || b.booking_id || b.id || `${clientName}-${datePart}-${index}`;
       const readableId = b.booking_code || `BK-${hearseName}-${clientName}-${datePart}-${stableId}`;
       const resolvedBranchName = resolveBranchName(
         b.branch_id,
-        b.booking_branch_slug || b.branch_slug || b.branchSlug,
+        b.booking_branch_slug || b.branch_slug || b.branchSlug || b.branch,
         b.branch_name || b.branchName || b.hearse_branch_name || b.branch
       );
 
@@ -1574,7 +1571,7 @@ const HearseCalendar = ({
       return {
         id: String(b.booking_id || b.id || `booking-${clientName}-${datePart}-${index}`),
         bookingId: readableId,
-        title: b.client_name || b.client || 'Unknown Client',
+        title: hearseName,
         start: startDate,
         end: fcEnd,
         allDay: isAllDay,
@@ -1831,35 +1828,34 @@ const HearseCalendar = ({
             cursor: 'pointer',
             boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           }}
-          title={`${props.clientName || 'Booking'} · ${props.hearseName || ''} (${props.statusLabel || ''})`}
+          title={`${props.hearseName || 'Hearse'} · ${props.dest || 'Location not listed'} · ${props.clientName || 'Client not listed'} (${props.statusLabel || ''})`}
         >
-          {/* Line 1 — time (white, slightly muted) */}
-          <span style={{
-            fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.9)',
-            letterSpacing: '0.2px',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {props.startTime || 'All Day'}{props.endTime ? ` – ${props.endTime}` : ''}
-          </span>
-
-          {/* Line 2 — client name (white, bold, headline) */}
           <span style={{
             fontSize: '14px', fontWeight: 700, color: '#FFFFFF',
             lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
-            {props.clientName || 'Booking'}
-          </span>
-
-          {/* Line 3 — status + plate (white, bold uppercase) */}
-          <span style={{
-            fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.95)',
-            textTransform: 'uppercase', letterSpacing: '0.4px',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {props.statusLabel || ''}
+            {props.hearseName || 'Hearse'}
             {props.plate && props.plate !== '—' ? ` · ${props.plate}` : ''}
           </span>
+
+          {props.dest && props.dest !== '—' && (
+            <span style={{
+              fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.95)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              <MapPin size={10} /> {props.dest}
+            </span>
+          )}
+
+          <span style={{
+            fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.9)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {props.clientName || 'Booking'} · {props.statusLabel || ''}
+          </span>
+
+          {/* Month view intentionally omits booking time to keep vehicle and location prominent. */}
         </div>
       );
     }

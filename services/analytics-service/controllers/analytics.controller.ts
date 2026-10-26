@@ -361,7 +361,7 @@ export const getMortuaryAnalytics = async (req: any, res: any): Promise<void> =>
           failedQueries++;
           return { name: queryDef.name, success: false, error: error.message };
         }
-}
+});
 
       await Promise.allSettled(batchPromises);
     }
@@ -694,7 +694,7 @@ async function processQueryResult(queryName, data, responseData) {
           if (month >= 0 && month < 12) {
             chemicalsData[chemical].monthly[month] = safeFormatNumber(item.quantity, 0, 1);
           }
-}
+});
         responseData.chemicalsData = chemicalsData;
         break;
 

@@ -41,7 +41,7 @@ export const getDeceasedCount = async (req: any, res: any): Promise<void> => {
                 released: result?.released || 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Deceased count error:`, error);
         res.status(500).json({ success: false, message: error.message });
@@ -74,7 +74,7 @@ export const getCaseStatusDistribution = async (req: any, res: any): Promise<voi
             success: true,
             data: (results || []).map(r => ({ status: r.status, count: r.count })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Case status error:`, error);
         res.status(500).json({ success: false, message: error.message });
@@ -112,7 +112,7 @@ export const getDeceasedTrends = async (req: any, res: any): Promise<void> => {
                 count: r.count
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Deceased trends error:`, error);
         res.status(500).json({ success: false, message: error.message });

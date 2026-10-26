@@ -103,7 +103,7 @@ const DOCKER_SERVICE_DEFAULTS = {
   workshop: 'http://restpoint_workshop_service:6969',
   extra: 'http://restpoint_extra_services:5000',
   hearse: 'http://restpoint_hearse_service:5000',
-  leave: 'http://restpoint_leave_service:5000',
+  leave: 'http://restpoint_hr_service:5000',
   support: 'http://restpoint_support_service:5000',
   // Florist service IS a container now (services/florist-service/Dockerfile,
   // container restpoint_florist_service on the restpoint_network, internal port

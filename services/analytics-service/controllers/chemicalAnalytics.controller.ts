@@ -38,7 +38,7 @@ export const getChemicalStockSummary = async (req: any, res: any): Promise<void>
                 lastUsed: r.last_used || null
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Chemical stock error:`, error);
         res.status(500).json({ success: false, message: error.message });
@@ -80,7 +80,7 @@ export const getChemicalUsageTrends = async (req: any, res: any): Promise<void> 
                 unit: r.unit
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Chemical trends error:`, error);
         res.status(500).json({ success: false, message: error.message });

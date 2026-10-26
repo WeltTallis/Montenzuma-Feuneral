@@ -1,0 +1,536 @@
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { useSearchParams } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@hr/components/ui/alert-dialog';
+import { Button } from '@hr/components/ui/button';
+import { Input } from '@hr/components/ui/input';
+import { Label } from '@hr/components/ui/label';
+import { Textarea } from '@hr/components/ui/textarea';
+import { ButtonGroup } from '@hr/components/ui/button-group';
+import { FileUpload } from '@hr/components/ui/FileUpload';
+import { UrlInput } from '@hr/components/ui/UrlInput';
+import { formatCurrency } from '@hr/utils/formatters';
+import { CheckCircle, X, Receipt, Calendar, DollarSign, FileText, Loader2 } from 'lucide-react';
+import { useModalNavigation } from '@hr/hooks/useModalNavigation';
+import { useUploadAsset } from '@hr/hooks/api/useAssets';
+import { useSettleTransaction } from '@hr/hooks/transactions/useSettleTransaction';
+import { transactionService, getTransactionRemainingAmount } from '@hr/services/api/transaction.service';
+import { formatDate } from '@hr/utils/formatters';
+import type { ModalConfig } from '@hr/types/modal-config.types';
+import type { Transaction } from '@hr/services/api/transaction.service';
+
+export const modalConfig: ModalConfig = {
+  id: 'settle-transaction',
+  name: 'Settle Transaction',
+  description: 'Settle a pending transaction with payment details',
+  category: 'ledger',
+  permissions: {
+    action: 'update',
+    subject: 'Transaction',
+    roles: ['admin', 'partner'],
+  },
+  deeplink: {
+    enabled: true,
+    params: ['id'],
+    example: '?modal=settle_transaction&id=123',
+  },
+  requiresAuth: true,
+  encryptData: false,
+};
+
+interface SettleTransactionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  transaction: Transaction;
+}
+
+interface FormData {
+  amount: string;
+  settlement_date: string;
+  payment_method: string;
+  notes: string;
+  evidenceUrl?: string;
+}
+
+function SettleTransactionModalComponent({
+  isOpen,
+  onClose,
+  transaction,
+}: SettleTransactionModalProps) {
+  const [step, setStep] = useState<'form' | 'confirm'>('form');
+  const [evidenceType, setEvidenceType] = useState<'url' | 'file'>('url');
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData | null>(null);
+
+  const settleTransaction = useSettleTransaction();
+  const uploadAsset = useUploadAsset();
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<FormData>({
+    defaultValues: {
+      amount: '',
+      settlement_date: new Date().toISOString().split('T')[0],
+      payment_method: '',
+      notes: '',
+      evidenceUrl: '',
+    },
+  });
+
+  const watchedAmount = watch('amount');
+
+  // Initialize form when opening
+  useEffect(() => {
+    if (isOpen) {
+      // For partial settlements, use remaining amount if available, otherwise full amount
+      const amountToSettle = getTransactionRemainingAmount(transaction);
+      const formattedAmount = amountToSettle.toLocaleString('en-KE');
+      reset({
+        amount: formattedAmount,
+        settlement_date: new Date().toISOString().split('T')[0],
+        payment_method: '',
+        notes: '',
+        evidenceUrl: '',
+      });
+      setStep('form');
+      setEvidenceType('url');
+      setEvidenceFile(null);
+      setFileUploadError(null);
+      setFormData(null);
+    }
+  }, [isOpen, reset, transaction]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/[^0-9]/g, '');
+    if (value) {
+      value = parseInt(value).toLocaleString('en-KE');
+    }
+    setValue('amount', value);
+  };
+
+  const handleFileUpload = (files: File[]) => {
+    const file = files[0];
+    if (!file) return;
+
+    setEvidenceFile(file);
+    setFileUploadError(null);
+  };
+
+  const handleRemoveFile = () => {
+    setEvidenceFile(null);
+    setFileUploadError(null);
+  };
+
+  const onFormSubmit = async (data: FormData) => {
+    // Store form data for confirmation step
+    setFormData(data);
+    setStep('confirm');
+  };
+
+  const handleConfirm = async () => {
+    if (!formData) return;
+
+    try {
+      let proofAssetId: number | undefined;
+
+      // Upload evidence file if needed
+      if (evidenceType === 'file' && evidenceFile) {
+        try {
+          setFileUploadError(null);
+          const uploadResult = await uploadAsset.mutateAsync({
+            data: {
+              file: evidenceFile,
+              upload_type: 'ledger_evidence',
+            }
+          });
+          proofAssetId = uploadResult.data.id;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          setFileUploadError(`Không thể tải lên file: ${errorMessage}`);
+          setStep('form');
+          return;
+        }
+      }
+
+      // Parse amount from formatted string
+      const parsedAmount = parseFloat(formData.amount.replace(/\./g, ''));
+
+      // Call settlement API with proper data
+      await settleTransaction.mutateAsync({
+        id: transaction.id,
+        data: {
+          amount: parsedAmount,
+          settlement_date: formData.settlement_date,
+          proof_url: evidenceType === 'url' ? formData.evidenceUrl : undefined,
+          proof_asset_id: evidenceType === 'file' ? proofAssetId : undefined,
+          payment_method: formData.payment_method || undefined,
+          notes: formData.notes || undefined,
+        },
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Settlement error:', error);
+      setStep('form');
+    }
+  };
+
+  const handleBack = () => {
+    setStep('form');
+  };
+
+  const isLoading = settleTransaction.isPending || uploadAsset.isPending;
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={onClose}>
+      <AlertDialogContent
+        overlayClassName="bg-slate-950/80 backdrop-blur-[3px]"
+        className="max-h-[calc(100dvh-1rem)] max-w-3xl shadow-none sm:max-h-[calc(100dvh-2rem)]"
+      >
+        <AlertDialogHeader className="border-b border-emerald-900 bg-emerald-950 pb-5 text-white">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${
+              transaction.transaction_type === 'revenue' ? 'bg-emerald-400/15' : 'bg-red-400/15'
+            }`}>
+              <CheckCircle className={`h-5 w-5 ${
+                transaction.transaction_type === 'revenue' ? 'text-emerald-300' : 'text-red-300'
+              }`} />
+            </div>
+            <div className="min-w-0">
+              <AlertDialogTitle className="text-lg font-semibold text-white">
+                {step === 'form' ? 'Thanh toán giao dịch' : 'Xác nhận thanh toán'}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-emerald-100/70">
+                {step === 'form' ? 'Nhập thông tin thanh toán' : 'Kiểm tra lại thông tin trước khi xác nhận'}
+              </AlertDialogDescription>
+            </div>
+          </div>
+        </AlertDialogHeader>
+
+        {step === 'form' && (
+          <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
+            {/* Two Column Layout: Transaction Info & Payment Details (Left) | Evidence & Notes (Right) */}
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 md:grid-cols-2 md:gap-6">
+              {/* Left Pane: Transaction Info & Payment Details */}
+              <div className="space-y-4">
+                {/* Original Transaction Info */}
+                <div className="bg-muted/50 rounded-xl p-3 space-y-2">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Thông tin giao dịch</div>
+                  <div className="space-y-1 typography-body-small">
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="text-muted-foreground">Số tiền gốc:</span>
+                      <span className="text-right font-medium">{formatCurrency(transaction.amount)}</span>
+                    </div>
+                    {transaction.settled_amount !== undefined && transaction.settled_amount > 0 && (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <span className="text-muted-foreground">Đã thanh toán:</span>
+                          <span className="text-right font-medium text-green-700">{formatCurrency(transaction.settled_amount)}</span>
+                        </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <span className="text-muted-foreground">Còn lại:</span>
+                          <span className="text-right font-medium text-amber-700">{formatCurrency(getTransactionRemainingAmount(transaction))}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="shrink-0 text-muted-foreground">Đối tượng:</span>
+                      <span className="min-w-0 break-words text-right font-medium">{transaction.party}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amount */}
+                <div className="space-y-2">
+                  <Label htmlFor="amount" className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Số tiền thanh toán *
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="amount"
+                      value={watchedAmount}
+                      onChange={handleAmountChange}
+                      placeholder="0"
+                      className={`pr-12 text-right ${errors.amount ? 'border-red-500' : ''}`}
+                      required
+                    />
+                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">
+                      ₫
+                    </span>
+                  </div>
+                  {errors.amount && (
+                    <p className="text-xs text-red-700">{errors.amount.message}</p>
+                  )}
+                </div>
+
+                {/* Settlement Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="settlement_date" className="text-sm font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Ngày thanh toán *
+                  </Label>
+                  <Input
+                    id="settlement_date"
+                    type="date"
+                    {...register('settlement_date', { required: 'Ngày thanh toán là bắt buộc' })}
+                    className={errors.settlement_date ? 'border-red-500' : ''}
+                  />
+                  {errors.settlement_date && (
+                    <p className="text-xs text-red-700">{errors.settlement_date.message}</p>
+                  )}
+                </div>
+
+
+              </div>
+
+              {/* Right Pane: Evidence Upload & Notes */}
+              <div className="space-y-4">
+                {/* Evidence Upload */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Chứng từ thanh toán</Label>
+
+                  <ButtonGroup
+                    options={[
+                      { value: 'url', label: 'Link URL' },
+                      { value: 'file', label: 'Tải lên file' }
+                    ]}
+                    value={evidenceType}
+                    onChange={(value) => {
+                      setEvidenceType(value as 'url' | 'file');
+                      if (value === 'file') {
+                        setValue('evidenceUrl', '');
+                      } else {
+                        setEvidenceFile(null);
+                      }
+                      setFileUploadError(null);
+                    }}
+                    fullWidth
+                  />
+
+                  {evidenceType === 'url' && (
+                    <UrlInput
+                      value={watch('evidenceUrl') || ''}
+                      onChange={(url) => setValue('evidenceUrl', url)}
+                      placeholder="https://drive.google.com/..."
+                      label=""
+                      helperText="Dán đường dẫn đầy đủ tới chứng từ."
+                    />
+                  )}
+
+                  {evidenceType === 'file' && (
+                    <div className="space-y-2">
+                      {!evidenceFile ? (
+                        <FileUpload
+                          onFilesSelected={handleFileUpload}
+                          multiple={false}
+                          maxFiles={1}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-between gap-2 p-3 bg-green-50 rounded border">
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <Receipt className="h-4 w-4 text-green-700" />
+                            <span className="min-w-0 break-all text-sm text-green-700">
+                              {evidenceFile.name}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRemoveFile}
+                            className="h-11 w-11 p-0 text-muted-foreground hover:text-red-700"
+                            aria-label="Xóa file chứng từ"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {fileUploadError && (
+                        <p className="text-xs text-red-700">{fileUploadError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Notes
+                  </Label>
+                  <Textarea
+                    id="notes"
+                    {...register('notes')}
+                    placeholder="Ghi chú về khoản thanh toán này..."
+                    className="text-sm resize-none"
+                    rows={4}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <AlertDialogFooter className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isLoading}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              >
+                Tiếp tục
+              </button>
+            </AlertDialogFooter>
+          </form>
+        )}
+
+        {step === 'confirm' && formData && (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+              <div className="bg-muted/50 rounded-xl p-3 space-y-3">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Thông tin thanh toán
+                </div>
+
+                <div className="space-y-2 typography-body-small">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Số tiền thanh toán:</span>
+                    <span className="font-semibold">
+                      {formatCurrency(parseFloat(formData.amount.replace(/\./g, '')))}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Ngày thanh toán:</span>
+                    <span className="font-medium">{formatDate(formData.settlement_date)}</span>
+                  </div>
+
+                  {formData.payment_method && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Phương thức:</span>
+                      <span className="font-medium">{formData.payment_method}</span>
+                    </div>
+                  )}
+
+                  {formData.notes && (
+                    <div className="pt-2 border-t border-border">
+                      <span className="text-muted-foreground">Ghi chú:</span>
+                      <div className="mt-1">{formData.notes}</div>
+                    </div>
+                  )}
+
+                  {evidenceType === 'url' && formData.evidenceUrl && (
+                    <div className="pt-2 border-t border-border">
+                      <span className="text-muted-foreground">Chứng từ (URL):</span>
+                      <div className="mt-1 break-all text-xs">{formData.evidenceUrl}</div>
+                    </div>
+                  )}
+
+                  {evidenceType === 'file' && evidenceFile && (
+                    <div className="pt-2 border-t border-border">
+                      <span className="text-muted-foreground">Chứng từ (File):</span>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Receipt className="h-4 w-4" />
+                      <span className="min-w-0 break-all">{evidenceFile.name}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="typography-body-small text-amber-800">
+                  Hành động này sẽ thanh toán giao dịch và không thể hoàn tác.
+                </p>
+              </div>
+            </div>
+
+            <AlertDialogFooter className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={handleBack}
+                disabled={isLoading}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={isLoading}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Xác nhận thanh toán
+                  </>
+                )}
+              </button>
+            </AlertDialogFooter>
+          </div>
+        )}
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/**
+ * Container component that provides URL synchronization
+ */
+export function SettleTransactionModal({
+  isOpen: propIsOpen,
+  onClose: propOnClose,
+  transaction,
+}: SettleTransactionModalProps) {
+  const [searchParams] = useSearchParams();
+  const { closeModal } = useModalNavigation();
+
+  const modalId = searchParams.get('modal');
+  const isOpenViaUrl = modalId === 'settle_transaction';
+
+  const isOpen = isOpenViaUrl || propIsOpen;
+
+  const handleClose = () => {
+    if (isOpenViaUrl) {
+      closeModal();
+    } else {
+      propOnClose();
+    }
+  };
+
+  return (
+    <SettleTransactionModalComponent
+      isOpen={isOpen}
+      onClose={handleClose}
+      transaction={transaction}
+    />
+  );
+}
+
+export default SettleTransactionModal;

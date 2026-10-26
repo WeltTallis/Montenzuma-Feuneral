@@ -1,0 +1,306 @@
+import { formatCurrency, formatNumber } from "@hr/utils/formatters";
+import {
+  formatPayrollMonthRange,
+  getAdvanceQuotaSummary,
+} from "@hr/utils/advancePaymentHelpers";
+import type { AdvancePaymentHistoryItem, AdvancePaymentInfo } from "@hr/types/api/advance-payment.types";
+import type { EmployeeProfile } from "@hr/types/api/auth.types";
+
+export type EmployeeActionIcon =
+  | "advance"
+  | "attendance"
+  | "history"
+  | "account"
+  | "timesheet"
+  | "notification";
+
+export type EmployeeNudgeTone = "employee" | "amber" | "slate";
+
+export interface EmployeeQuickAction {
+  id: string;
+  label: string;
+  icon: EmployeeActionIcon;
+  targetId?: string;
+  intent?: "notifications";
+  disabled?: boolean;
+}
+
+export interface EmployeeNudge {
+  id: string;
+  title: string;
+  description: string;
+  icon: EmployeeActionIcon;
+  tone: EmployeeNudgeTone;
+  targetId?: string;
+  intent?: "notifications";
+}
+
+export interface EmployeeWalletMetric {
+  label: string;
+  value: string;
+  tone?: EmployeeNudgeTone;
+  sensitive?: boolean;
+}
+
+export interface EmployeeHomeViewModel {
+  eyebrow: string;
+  title: string;
+  amountLabel: string;
+  amount: string;
+  amountDescription: string;
+  amountDescriptionLabel?: string;
+  periodLabel?: string;
+  metricsTitle?: string;
+  metrics: EmployeeWalletMetric[];
+  quickActions: EmployeeQuickAction[];
+  nudges: EmployeeNudge[];
+}
+
+function amountsMatch(left: number, right: number): boolean {
+  return Math.abs(left - right) < 0.5;
+}
+
+interface FlexibleEmployeeHomeInput {
+  info: AdvancePaymentInfo;
+  history: AdvancePaymentHistoryItem[];
+  hasCheckIn: boolean;
+  hasBankInfo: boolean;
+}
+
+interface RegularEmployeeHomeInput {
+  monthLabel: string;
+  monthlyTotalSalary: number;
+  monthlyTotalHours: number;
+  totalPayable: number;
+  totalPaid: number;
+  workDayCount: number;
+  totalRecords: number;
+  hasBankInfo: boolean;
+  unreadCount?: number;
+}
+
+export function formatPayrollMonth(value?: string): string {
+  if (!value || !/^\d{4}-\d{2}/.test(value)) return "Kỳ lương hiện tại";
+  return formatPayrollMonthRange(value);
+}
+
+function formatNumericMonth(value?: string): string {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) return value ?? "";
+  return `${value.slice(5, 7)}/${value.slice(0, 4)}`;
+}
+
+function extractNumericMonth(value?: string): string | undefined {
+  const match = value?.match(/(\d{2})\/(\d{4})/);
+  return match ? `${match[1]}/${match[2]}` : undefined;
+}
+
+export function getEmployeeAccountHolder(profile?: EmployeeProfile | null): string | undefined {
+  return profile?.bank_account_name?.trim() || profile?.fullname?.trim();
+}
+
+export function hasEmployeeBankInfo(profile?: EmployeeProfile | null): boolean {
+  return Boolean(profile?.bank_account_number && profile.bank?.branch_name);
+}
+
+export function createFlexibleEmployeeHomeModel({
+  info,
+  history,
+  hasCheckIn,
+}: FlexibleEmployeeHomeInput): EmployeeHomeViewModel {
+  const pendingRequests = history.filter((item) => item.status === "PENDING").length;
+  const quota = getAdvanceQuotaSummary(info, history);
+  const requestBlocked = !info.canRequest;
+  const blockedDescription =
+    info.canRequestReason || info.canRequestTitle || "Chưa thể gửi yêu cầu lúc này.";
+  const showingFallbackQuota =
+    requestBlocked &&
+    quota.forMonth !== info.forMonth &&
+    (quota.maxAdvanceAmount > 0 || quota.completedAmount > 0 || quota.pendingAmount > 0);
+  const metricsMonthLabel = requestBlocked
+    ? extractNumericMonth(info.canRequestTitle) ||
+      (showingFallbackQuota ? formatNumericMonth(quota.forMonth) : undefined)
+    : undefined;
+  const quickActions: EmployeeQuickAction[] = [
+    ...(info.canRequest
+      ? [
+          {
+            id: "advance",
+            label: "Salary advance",
+            icon: "advance" as const,
+            targetId: "employee-advance-request",
+          },
+        ]
+      : []),
+    ...(hasCheckIn
+      ? [
+          {
+            id: "attendance",
+            label: "Attendance",
+            icon: "attendance" as const,
+            targetId: "employee-check-in",
+          },
+        ]
+      : []),
+    {
+      id: "history",
+      label: "History",
+      icon: "history",
+      targetId: "employee-history",
+    },
+    {
+      id: "account",
+      label: "Tài khoản",
+      icon: "account",
+      targetId: "employee-bank",
+    },
+  ];
+
+  const nudges: EmployeeNudge[] = [];
+  if (hasCheckIn) {
+    nudges.push({
+      id: "check-in-today",
+      title: "Chấm công hôm nay",
+      description: "Kiểm tra vị trí và ca làm trước khi bắt đầu.",
+      icon: "attendance",
+      tone: "employee",
+      targetId: "employee-check-in",
+    });
+  }
+  if (pendingRequests > 0) {
+    nudges.unshift({
+      id: "pending-request",
+      title: "Yêu cầu đang chờ",
+      description: `${pendingRequests} yêu cầu đang được xử lý.`,
+      icon: "history",
+      tone: "amber",
+      targetId: "employee-history",
+    });
+  }
+
+  return {
+    eyebrow: "Ví lương",
+    title: "Gói lương sớm",
+    amountLabel: requestBlocked ? "Hạn mức còn lại" : "Có thể ứng",
+    amount: formatCurrency(quota.remainingAmount),
+    amountDescription: info.canRequest
+      ? "Sẵn sàng gửi yêu cầu ứng lương."
+      : blockedDescription,
+    metricsTitle: metricsMonthLabel ? `Ứng lương ${metricsMonthLabel}` : undefined,
+    metrics: [
+      {
+        label: "Đã nhận",
+        value: formatCurrency(quota.completedAmount),
+        tone: "employee",
+        sensitive: true,
+      },
+      {
+        label: "Đang chờ",
+        value: formatCurrency(quota.pendingAmount),
+        tone: "amber",
+        sensitive: true,
+      },
+      {
+        label: "Hạn mức",
+        value: formatCurrency(quota.maxAdvanceAmount),
+        tone: "slate",
+        sensitive: true,
+      },
+    ],
+    quickActions,
+    nudges,
+  };
+}
+
+export function createRegularEmployeeHomeModel({
+  monthLabel,
+  monthlyTotalSalary,
+  monthlyTotalHours,
+  totalPayable,
+  totalPaid,
+  workDayCount,
+  totalRecords,
+  unreadCount,
+}: RegularEmployeeHomeInput): EmployeeHomeViewModel {
+  const metrics: EmployeeWalletMetric[] = [
+    {
+      label: "Tổng công",
+      value: `${monthlyTotalHours % 1 === 0 ? monthlyTotalHours : formatNumber(monthlyTotalHours, 1)} giờ`,
+      tone: "employee",
+    },
+  ];
+
+  if (
+    !amountsMatch(totalPayable, monthlyTotalSalary) &&
+    !amountsMatch(totalPayable, totalPaid)
+  ) {
+    metrics.push({
+      label: "Có thể trả",
+      value: formatCurrency(totalPayable),
+      tone: "slate",
+      sensitive: true,
+    });
+  }
+
+  if (!amountsMatch(totalPaid, monthlyTotalSalary)) {
+    metrics.push({
+      label: "Đã nhận",
+      value: formatCurrency(totalPaid),
+      tone: "amber",
+      sensitive: true,
+    });
+  }
+
+  const nudges: EmployeeNudge[] = [
+    {
+      id: "timesheet-current-month",
+      title: "Xem bảng công tháng này",
+      description: `${totalRecords} dòng công trong ${monthLabel.toLowerCase()}.`,
+      icon: "timesheet",
+      tone: "employee",
+      targetId: "employee-timesheets",
+    },
+  ];
+
+  if (unreadCount && unreadCount > 0) {
+    nudges.unshift({
+      id: "unread-notifications",
+      title: "Thông báo mới",
+      description: `${unreadCount > 9 ? "9+" : unreadCount} thông báo cần xem.`,
+      icon: "notification",
+      tone: "amber",
+      intent: "notifications",
+    });
+  }
+
+  return {
+    eyebrow: "Tổng quan lương",
+    title: "Kỳ lương của bạn",
+    amountLabel: "Tổng lương trong kỳ",
+    amount: formatCurrency(monthlyTotalSalary),
+    amountDescription: `${workDayCount} ngày`,
+    amountDescriptionLabel: "Ngày làm việc",
+    periodLabel: monthLabel,
+    metrics,
+    quickActions: [
+      {
+        id: "timesheet",
+        label: "Timesheets",
+        icon: "timesheet",
+        targetId: "employee-timesheets",
+      },
+      {
+        id: "account",
+        label: "Tài khoản",
+        icon: "account",
+        targetId: "employee-bank",
+      },
+      {
+        id: "notification",
+        label: "Notifications",
+        icon: "notification",
+        intent: "notifications",
+      },
+    ],
+    nudges,
+  };
+}

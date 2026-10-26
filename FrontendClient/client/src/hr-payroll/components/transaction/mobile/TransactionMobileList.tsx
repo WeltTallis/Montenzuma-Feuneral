@@ -1,0 +1,131 @@
+import { Badge } from '@hr/components/ui/badge';
+import { format } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { useMetadata } from '@hr/contexts';
+import { transactionService } from '@hr/services/api/transaction.service';
+import { MobilePagination } from '@hr/components/shared/MobilePagination';
+import { EmptyState } from '@hr/components/shared/EmptyState';
+import { cn } from '@hr/lib/utils';
+import type { Transaction } from '@hr/services/api/transaction.service';
+
+interface TransactionMobileListProps {
+  transactions: Transaction[];
+  isLoading?: boolean;
+  onRowClick?: (transaction: Transaction) => void;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    totalRecords: number;
+  } | null;
+  onPageChange?: (page: number) => void;
+}
+
+export function TransactionMobileList({
+  transactions,
+  isLoading = false,
+  onRowClick,
+  pagination,
+  onPageChange,
+}: TransactionMobileListProps) {
+  const { transactionMetadata } = useMetadata();
+
+  const fmtDate = (d: string) => {
+    try { return format(new Date(d), 'dd/MM', { locale: vi }); } catch { return d; }
+  };
+
+  const fmtCurrency = (amount: number) => transactionService.formatCurrency(amount);
+
+  const typeColors: Record<string, string> = {
+    revenue: 'bg-emerald-100 text-emerald-800',
+    expense: 'bg-red-100 text-red-800',
+    capital: 'bg-teal-100 text-teal-800',
+    write_off: 'bg-amber-100 text-amber-800',
+  };
+
+  const statusColors: Record<string, string> = {
+    settled: 'bg-emerald-600 text-white',
+    pending: 'border border-yellow-500 text-yellow-800 bg-yellow-50',
+    partially_settled: 'border border-teal-500 text-teal-800 bg-teal-50',
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse">
+            <div className="flex justify-between mb-2">
+              <div className="h-4 bg-gray-200 rounded w-2/3" />
+              <div className="h-4 bg-gray-200 rounded w-1/5" />
+            </div>
+            <div className="h-3 bg-muted rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (transactions.length === 0) {
+    return (
+      <EmptyState title="Không tìm thấy giao dịch" description="Thử điều chỉnh bộ lọc" size="sm" />
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-2">
+        {transactions.map((tx) => {
+          const isRevenue = tx.transaction_type === 'revenue';
+          const typeLabel = transactionService.getTransactionTypeDisplay(tx.transaction_type, transactionMetadata);
+          const statusLabel = transactionService.getStatusDisplay(tx.status, transactionMetadata);
+
+          return (
+            <div
+              key={tx.id}
+              onClick={() => onRowClick?.(tx)}
+              className="bg-card border border-border rounded-xl p-3.5 shadow-sm card-lift transition-all cursor-pointer touch-manipulation"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onRowClick?.(tx); }}
+            >
+              {/* Top row: description + amount */}
+              <div className="mb-1.5 grid grid-cols-1 gap-1 min-[380px]:flex min-[380px]:items-start min-[380px]:justify-between min-[380px]:gap-3">
+                <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground min-[380px]:flex-1">
+                  {tx.description}
+                </p>
+                <p className={cn(
+                  'break-words text-sm font-bold tabular-nums min-[380px]:shrink-0 min-[380px]:text-right',
+                  isRevenue ? 'text-emerald-700' : 'text-red-700'
+                )}>
+                  {isRevenue ? '+' : '-'}{fmtCurrency(tx.amount)}
+                </p>
+              </div>
+
+              {/* Bottom row: party + date + badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="min-w-0 max-w-full truncate text-xs text-muted-foreground min-[380px]:max-w-[120px]">{tx.party}</span>
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="text-xs text-muted-foreground shrink-0">{fmtDate(tx.created_at)}</span>
+                <span className={cn('text-xs font-medium px-1.5 py-0.5 rounded-full shrink-0', typeColors[tx.transaction_type] || 'bg-muted text-foreground')}>
+                  {typeLabel}
+                </span>
+                <span className={cn('text-xs font-medium px-1.5 py-0.5 rounded-full shrink-0', statusColors[tx.status] || 'bg-muted text-foreground')}>
+                  {statusLabel}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pagination — restores desktop paging capability */}
+      {pagination && pagination.totalPages > 1 && onPageChange && (
+        <MobilePagination
+          pagination={pagination}
+          onPageChange={onPageChange}
+          className="pt-4"
+        />
+      )}
+    </>
+  );
+}

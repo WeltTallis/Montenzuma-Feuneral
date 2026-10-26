@@ -1,0 +1,45 @@
+import { apiClient, ApiResponse } from './client';
+import { API_ENDPOINTS } from '@hr/config/api.config';
+
+/** Scope of a machine API key — which integration surface it may authenticate. */
+export type APIKeyScope = 'tinghire' | 'timesheet_read' | 'chatbot';
+
+/** Admin view of a machine API key (plaintext key is never included here). */
+export interface APIKey {
+  id: number;
+  name: string;
+  /** Stored scope; a retired legacy value renders as "Không còn hỗ trợ". */
+  scope: APIKeyScope;
+  key_prefix: string;
+  created_by: number;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export interface CreateAPIKeyPayload {
+  name: string;
+  /** Required — there is no default scope. */
+  scope: APIKeyScope;
+}
+
+/** Create response includes the one-time plaintext `key`. */
+export interface CreateAPIKeyResult extends APIKey {
+  key: string;
+}
+
+class ApiKeysService {
+  async list(): Promise<ApiResponse<APIKey[]>> {
+    return apiClient.get<APIKey[]>(API_ENDPOINTS.apiKeys.base);
+  }
+
+  async create(payload: CreateAPIKeyPayload): Promise<ApiResponse<CreateAPIKeyResult>> {
+    return apiClient.post<CreateAPIKeyResult>(API_ENDPOINTS.apiKeys.base, payload);
+  }
+
+  async revoke(id: number): Promise<ApiResponse<void>> {
+    return apiClient.delete<void>(API_ENDPOINTS.apiKeys.byId(id));
+  }
+}
+
+export const apiKeysService = new ApiKeysService();

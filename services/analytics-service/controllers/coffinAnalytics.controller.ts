@@ -55,7 +55,7 @@ export const getCoffinInventorySummary = async (req: any, res: any): Promise<voi
                 byType: (byType || []).map(t => ({ type: t.type, count: t.count, stock: t.stock, avgPrice: parseFloat(t.avg_price || 0).toFixed(2) }))
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Coffin inventory error:`, error);
         res.status(500).json({ success: false, message: error.message });
@@ -98,7 +98,7 @@ export const getCoffinSales = async (req: any, res: any): Promise<void> => {
                 available: Math.max(0, r.available || 0)
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Coffin sales error:`, error);
         res.status(500).json({ success: false, message: error.message });

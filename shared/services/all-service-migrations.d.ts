@@ -9,7 +9,7 @@
  *   import { ALL_TENANT_MIGRATIONS } from './all-service-migrations';
  *   const result = await migrationService.runTenantMigrations(dbName, ALL_TENANT_MIGRATIONS, config);
  *
- * NOTE: Leave Management has its own migration system (leave-service).
+ * NOTE: Leave Management migrations are owned by the HR service.
  * NOTE: EDocuments has been removed - unnecessary module.
  * NOTE: JWT secrets managed in tenant_tracking DB by Tenant.model.ts.
  */

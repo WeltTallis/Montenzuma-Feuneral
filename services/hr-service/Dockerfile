@@ -1,0 +1,136 @@
+# syntax=docker/dockerfile:1
+# ===========================================================================
+# RestPoint HR service — multi-stage production image
+#
+# Why 4 stages: the legacy single-stage image shipped build tools (python3/
+# make/g++), ALL devDependencies (typescript, nodemon, …), a global tsx, and a
+# `chown -R nodejs:nodejs /usr/src/app` layer that duplicated the whole app
+# (+504MB). This build only ships production node_modules + built shared
+# package dists + runtime sources.
+# Plain-JS service (package.json main: server.js) — no tsx needed.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1/4 — deps: full dependency tree (incl. dev) just for building
+# ---------------------------------------------------------------------------
+FROM node:24-alpine AS deps
+WORKDIR /usr/src/app
+# Do NOT use --omit=optional anywhere: it prunes sharp's platform binaries
+# (@img/sharp-linuxmusl-x64 / @img/sharp-libvips-linuxmusl-x64) on Alpine.
+ENV NODE_OPTIONS=--max-old-space-size=2048
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/shared-config/package.json ./packages/shared-config/
+COPY packages/shared-logger/package.json ./packages/shared-logger/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY packages/shared-services/package.json ./packages/shared-services/
+COPY shared/package.json ./shared/
+COPY services/hr-service/package.json ./services/hr-service/
+
+RUN npm config set fetch-timeout 1200000 \
+ && npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 120000 \
+ && npm config set fetch-retry-maxtimeout 600000 && npm install --legacy-peer-deps --no-audit --no-fund
+
+# ---------------------------------------------------------------------------
+# Stage 2/4 — build: compile shared package dists (discarded afterwards)
+# ---------------------------------------------------------------------------
+FROM deps AS build
+COPY services/configurations/ ./configurations/
+COPY packages/ ./packages/
+COPY shared/ ./shared/
+COPY services/app-global/ ./services/app-global/
+COPY services/hr-service/server.js ./services/hr-service/server.js
+COPY services/hr-service/leaveController.js ./services/hr-service/leaveController.js
+COPY services/hr-service/leaveRoutes.js ./services/hr-service/leaveRoutes.js
+COPY services/hr-service/migrate-tenant-tables.js ./services/hr-service/migrate-tenant-tables.js
+COPY services/hr-service/run-migrations.js ./services/hr-service/run-migrations.js
+
+# Build shared packages in dependency order (shared-config → shared-logger →
+# shared-utils → shared-services → shared-stamps). Only THIS stage needs the
+# dev toolchain (typescript); it is never shipped.
+RUN cd packages/shared-config && npm run build && cd ../.. && \
+    cd packages/shared-logger && npm run build && cd ../.. && \
+    cd packages/shared-utils && npm run build && cd ../.. && \
+    cd packages/shared-services && npm run build && cd ../..
+
+# ---------------------------------------------------------------------------
+# Stage 3/4 — prod-deps: production-only node_modules (--omit=dev)
+# ---------------------------------------------------------------------------
+FROM node:24-alpine AS prod-deps
+WORKDIR /usr/src/app
+ENV NODE_OPTIONS=--max-old-space-size=2048
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/shared-config/package.json ./packages/shared-config/
+COPY packages/shared-logger/package.json ./packages/shared-logger/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY packages/shared-services/package.json ./packages/shared-services/
+COPY shared/package.json ./shared/
+COPY services/api-gateway/package.json ./services/api-gateway/
+COPY services/analytics-service/package.json ./services/analytics-service/
+COPY services/auth-service/package.json ./services/auth-service/
+COPY services/billing-service/package.json ./services/billing-service/
+COPY services/bodycheckout-service/package.json ./services/bodycheckout-service/
+COPY services/chemical-service/package.json ./services/chemical-service/
+COPY services/coffin-service/package.json ./services/coffin-service/
+COPY services/deceased-service/package.json ./services/deceased-service/
+COPY services/documents-service/package.json ./services/documents-service/
+COPY services/extra-services/package.json ./services/extra-services/
+COPY services/florist-service/package.json ./services/florist-service/
+COPY services/hearse-service/package.json ./services/hearse-service/
+COPY services/hr-service/package.json ./services/hr-service/
+COPY services/invoice-service/package.json ./services/invoice-service/
+COPY services/leave-service/package.json ./services/leave-service/
+COPY services/socketio-service/package.json ./services/socketio-service/
+COPY services/support-service/package.json ./services/support-service/
+COPY services/tenant-service/package.json ./services/tenant-service/
+COPY services/workshop-service/package.json ./services/workshop-service/
+
+RUN npm config set fetch-timeout 1200000 \
+ && npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 120000 \
+ && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund
+
+# ---------------------------------------------------------------------------
+# Stage 4/4 — runtime: final image
+# ---------------------------------------------------------------------------
+FROM node:24-alpine AS runtime
+
+RUN apk add --no-cache dumb-init wget \
+ && addgroup -g 1001 -S nodejs \
+ && adduser -S nodejs -u 1001
+
+WORKDIR /usr/src/app
+
+# Production-only dependency tree (dev toolchain excluded by --omit=dev)
+COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/node_modules ./node_modules
+# Shared packages incl. their built dist/ (relative @montezuma/* symlinks
+# inside node_modules resolve against this path)
+COPY --from=build --chown=nodejs:nodejs /usr/src/app/packages ./packages
+# Runtime sources: TS files executed by tsx + JS services + shared modules
+COPY --chown=nodejs:nodejs tsconfig.base.json ./
+COPY --chown=nodejs:nodejs shared/ ./shared/
+COPY --chown=nodejs:nodejs services/app-global/ ./services/app-global/
+COPY --chown=nodejs:nodejs services/configurations/ ./configurations/
+COPY --chown=nodejs:nodejs services/hr-service/server.js ./services/hr-service/server.js
+COPY --chown=nodejs:nodejs services/hr-service/leaveController.js ./services/hr-service/leaveController.js
+COPY --chown=nodejs:nodejs services/hr-service/leaveRoutes.js ./services/hr-service/leaveRoutes.js
+COPY --chown=nodejs:nodejs services/hr-service/migrate-tenant-tables.js ./services/hr-service/migrate-tenant-tables.js
+COPY --chown=nodejs:nodejs services/hr-service/run-migrations.js ./services/hr-service/run-migrations.js
+
+# Writable runtime dirs (empty — tiny layer; uploads/data are bind-mounted
+# over these in compose). Ownership via chown on EMPTY dirs: never chown -R
+# over copied content, that duplicates the whole layer.
+RUN mkdir -p /usr/src/app/data \
+ && chown -R nodejs:nodejs /usr/src/app/data
+
+USER nodejs
+
+EXPOSE 5000
+ENV NODE_ENV=production
+ENV PORT=5000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node","services/hr-service/server.js"]

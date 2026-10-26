@@ -65,7 +65,7 @@ export const getWorkshopSummary = async (req: any, res: any): Promise<void> => {
                 workers: workerCount?.count || 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Workshop summary error:`, error);
         res.status(500).json({ success: false, message: error.message });
@@ -106,7 +106,7 @@ export const getWorkshopProductionStatus = async (req: any, res: any): Promise<v
                 pending: s.pending || 0
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Workshop production error:`, error);
         res.status(500).json({ success: false, message: error.message });

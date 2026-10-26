@@ -4,7 +4,7 @@ import backgroundJob from '../services/backgroundJob';
 import { logger } from '@montezuma/shared-logger';
 
 // Start a background dashboard job
-export export const startDashboardBackground = async (req: any, res: any): Promise<void> => {
+export const startDashboardBackground = async (req: any, res: any): Promise<void> => {
   try {
     const { startDate, endDate } = (req as any).body || req.query || {};
     const tenantId = (req as any).tenant?.id || 'default';
@@ -33,7 +33,7 @@ export export const startDashboardBackground = async (req: any, res: any): Promi
 }
 
 // Get job status/result
-export export const getJobStatus = async (req: any, res: any): Promise<void> => {
+export const getJobStatus = async (req: any, res: any): Promise<void> => {
   try {
     const jobId = (req as any).params.id;
     const job = await backgroundJob.getJob(jobId);

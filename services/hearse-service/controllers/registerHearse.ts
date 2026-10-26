@@ -7,6 +7,7 @@ import { getHearsePool } from '../database';
 import { hasHearseColumn } from '../utilities/hearseSchema';
 import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, FLEET_CACHE_TTL } from '../utilities/hearseCache';
 import { getBranchRegistry } from '../utilities/branchNames';
+import { emitHearseDataChanged } from '../utilities/hearseRealtime';
 import { getKenyaTimeISO, getKenyaDate } from '@montezuma/shared-utils';
 
 // Hearse images live in the ONE shared uploads folder (/opt/storage/uploads in
@@ -152,6 +153,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         }
 
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'hearse_registered', { hearseId: result.insertId, plateNumber: plate_number.trim() });
 
         res.status(201).json({
             success: true, message: 'Hearse registered successfully.',
@@ -289,6 +291,7 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
         }
 
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'hearse_updated', { hearseId: id });
 
         res.json({ success: true, message: 'Hearse updated successfully.' });
         return;
@@ -317,6 +320,7 @@ export const deleteHearse = asyncHandler(async (req: Request, res: Response) => 
 
         await pool.query('DELETE FROM hearses WHERE id = ?', [id]);
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'hearse_deleted', { hearseId: id });
         res.json({ success: true, message: 'Hearse deleted successfully.' });
         return;
     } catch (error) {

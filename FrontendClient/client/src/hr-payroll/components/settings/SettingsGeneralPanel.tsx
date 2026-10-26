@@ -1,0 +1,382 @@
+import { type LucideIcon, Building2, Landmark, Percent, Wallet } from 'lucide-react';
+import { useId, type ReactNode } from 'react';
+
+import { SettingCard } from '@hr/components/settings/SettingCard';
+import { Button } from '@hr/components/ui/button';
+import { Label } from '@hr/components/ui/label';
+import { Switch } from '@hr/components/ui/switch';
+import type { SettingsFormState } from '@hr/hooks/settings/useSettingsForm';
+
+interface SettingsSectionProps {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  children: ReactNode;
+}
+
+interface SettingToggleCardProps {
+  title: string;
+  description: string;
+  checked: boolean;
+  originalChecked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  onSave: () => void;
+  onReset: () => void;
+  isSaving: boolean;
+}
+
+const SettingToggleCard = ({
+  title,
+  description,
+  checked,
+  originalChecked,
+  onCheckedChange,
+  onSave,
+  onReset,
+  isSaving,
+}: SettingToggleCardProps) => {
+  const generatedId = useId().replace(/:/g, '');
+  const switchId = `setting-toggle-${generatedId}`;
+  const descriptionId = `${switchId}-description`;
+  const isDirty = checked !== originalChecked;
+
+  return (
+    <div
+      data-slot="setting-row"
+      className={`group min-w-0 px-4 py-4 transition-colors sm:px-5 ${isDirty ? 'bg-warning/5' : ''}`}
+    >
+      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] md:items-start md:gap-6">
+        <div className="min-w-0 space-y-1 md:py-2">
+          <Label
+            htmlFor={switchId}
+            className="block break-words text-sm font-semibold leading-5 text-foreground"
+          >
+            {title}
+          </Label>
+          <p id={descriptionId} className="break-words text-sm leading-relaxed text-balance text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <div className="flex min-w-0 items-center gap-2 md:justify-end md:pt-2">
+          <Switch
+            id={switchId}
+            checked={checked}
+            onCheckedChange={onCheckedChange}
+            aria-describedby={descriptionId}
+            disabled={isSaving}
+          />
+          {isDirty && (
+            <>
+              <Button size="sm" onClick={onSave} disabled={isSaving}>
+                Save
+              </Button>
+              <Button size="sm" variant="outline" onClick={onReset} disabled={isSaving}>
+                Hoàn tác
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SettingsSection = ({ icon: Icon, title, description, children }: SettingsSectionProps) => {
+  const generatedId = useId().replace(/:/g, '');
+  const headingId = `settings-section-${generatedId}`;
+
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="grid gap-5 border-b bg-card px-4 py-7 first:rounded-t-2xl last:rounded-b-2xl last:border-b-0 last:pb-7 lg:grid-cols-[minmax(12rem,0.65fr)_minmax(0,1.35fr)] lg:gap-8 lg:px-6"
+    >
+      <div className="flex min-w-0 items-start gap-3 lg:pt-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-primary shadow-sm">
+          <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
+        </div>
+        <div className="min-w-0 pt-0.5">
+          <h2 id={headingId} className="text-sm font-bold leading-6 text-foreground">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground text-balance">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <div
+        data-slot="settings-group"
+        className="min-w-0 divide-y overflow-hidden rounded-2xl border bg-card shadow-sm"
+      >
+        {children}
+      </div>
+    </section>
+  );
+};
+
+interface SettingsGeneralPanelProps {
+  form: SettingsFormState;
+}
+
+export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
+  <div className="space-y-0">
+    <SettingsSection
+      icon={Percent}
+      title="Giới hạn thanh toán"
+      description="Kiểm soát số tiền và tỷ lệ ngân sách được phép giải ngân."
+    >
+      <SettingCard
+        title="Giới hạn tổng tiền mỗi file Chuyển lô"
+        description="Hệ thống tự tách file để tổng tiền mỗi file luôn nhỏ hơn giới hạn này."
+        value={form.bulkTransferWorkbookLimitVnd}
+        originalValue={form.originalBulkTransferWorkbookLimitVnd}
+        onChange={form.setBulkTransferWorkbookLimitVnd}
+        onSave={form.handleSaveBulkTransferWorkbookLimitVnd}
+        onReset={() =>
+          form.setBulkTransferWorkbookLimitVnd(form.originalBulkTransferWorkbookLimitVnd)
+        }
+        isDirty={
+          form.bulkTransferWorkbookLimitVnd !== form.originalBulkTransferWorkbookLimitVnd
+        }
+        isSaving={form.isSaving}
+        displayMode="currency-slider"
+        min="100000000"
+        max="500000000"
+        sliderPresets={[
+          '100000000',
+          '200000000',
+          '300000000',
+          '400000000',
+          '500000000',
+        ]}
+        errorMessage={form.bulkTransferWorkbookLimitSaveError}
+        unavailableMessage={form.bulkTransferWorkbookLimitUnavailableMessage}
+        onRetry={form.retryLoading}
+      />
+      <SettingCard
+        title="Tỷ lệ trả lương tuần"
+        description="Phần trăm ngân sách được phép trả theo chu kỳ tuần."
+        value={form.weeklyPaymentPercentage}
+        originalValue={form.originalWeeklyPayment}
+        onChange={form.setWeeklyPaymentPercentage}
+        onSave={form.handleSaveWeeklyPayment}
+        onReset={() => form.setWeeklyPaymentPercentage(form.originalWeeklyPayment)}
+        isDirty={form.weeklyPaymentPercentage !== form.originalWeeklyPayment}
+        isSaving={form.isSaving}
+        type="number"
+        suffix="%"
+      />
+      <SettingCard
+        title="Tỷ lệ trả lương tháng"
+        description="Phần trăm ngân sách được phép trả theo chu kỳ tháng."
+        value={form.monthlyPaymentPercentage}
+        originalValue={form.originalMonthlyPayment}
+        onChange={form.setMonthlyPaymentPercentage}
+        onSave={form.handleSaveMonthlyPayment}
+        onReset={() => form.setMonthlyPaymentPercentage(form.originalMonthlyPayment)}
+        isDirty={form.monthlyPaymentPercentage !== form.originalMonthlyPayment}
+        isSaving={form.isSaving}
+        type="number"
+        suffix="%"
+      />
+      <SettingCard
+        title="Tỷ lệ ứng lương tự chấm công"
+        description="Phần trăm tiền công đã ghi nhận được cộng vào hạn mức ứng lương."
+        value={form.selfCheckInAdvancePercentage}
+        originalValue={form.originalSelfCheckInAdvancePercentage}
+        onChange={form.setSelfCheckInAdvancePercentage}
+        onSave={form.handleSaveSelfCheckInAdvancePercentage}
+        onReset={() =>
+          form.setSelfCheckInAdvancePercentage(form.originalSelfCheckInAdvancePercentage)
+        }
+        isDirty={
+          form.selfCheckInAdvancePercentage !== form.originalSelfCheckInAdvancePercentage
+        }
+        isSaving={form.isSaving}
+        type="number"
+        min={1}
+        max={100}
+        step={1}
+        suffix="%"
+      />
+      <SettingCard
+        title="Thời gian chờ ứng lương tự chấm công sau khi tan ca"
+        description="Số giờ chờ trước khi tiền công của ca hoàn tất được cộng vào hạn mức ứng lương."
+        value={form.selfCheckInAdvanceHoldHours}
+        originalValue={form.originalSelfCheckInAdvanceHoldHours}
+        onChange={form.setSelfCheckInAdvanceHoldHours}
+        onSave={form.handleSaveSelfCheckInAdvanceHoldHours}
+        onReset={() =>
+          form.setSelfCheckInAdvanceHoldHours(form.originalSelfCheckInAdvanceHoldHours)
+        }
+        isDirty={
+          form.selfCheckInAdvanceHoldHours !== form.originalSelfCheckInAdvanceHoldHours
+        }
+        isSaving={form.isSaving}
+        type="number"
+        min={0}
+        max={720}
+        step={1}
+        wholeNumber
+        suffix="giờ"
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Wallet}
+      title="Cảnh báo số dư ví tiền"
+      description="Thông báo đẩy đến mọi quản trị viên khi số dư ví tiền chạm ngưỡng, mỗi lần chạm ngưỡng một lần."
+    >
+      <SettingCard
+        title="Ngưỡng cảnh báo số dư ví tiền"
+        description="Khi số dư ví tiền xuống dưới ngưỡng này, hệ thống gửi thông báo đẩy đến toàn bộ quản trị viên. Mỗi lần giảm chạm ngưỡng chỉ nhận một thông báo."
+        value={form.walletBalanceAlertThresholdVnd}
+        originalValue={form.originalWalletBalanceAlertThresholdVnd}
+        onChange={form.setWalletBalanceAlertThresholdVnd}
+        onSave={form.handleSaveWalletBalanceAlertThresholdVnd}
+        onReset={() =>
+          form.setWalletBalanceAlertThresholdVnd(form.originalWalletBalanceAlertThresholdVnd)
+        }
+        isDirty={form.walletBalanceAlertThresholdVnd !== form.originalWalletBalanceAlertThresholdVnd}
+        isSaving={form.isSaving}
+        displayMode="currency-slider"
+        min="1000000"
+        max="1000000000"
+        sliderPresets={[
+          '10000000',
+          '50000000',
+          '100000000',
+          '200000000',
+          '500000000',
+        ]}
+        errorMessage={form.walletBalanceAlertThresholdSaveError}
+        unavailableMessage={form.walletBalanceAlertThresholdUnavailableMessage}
+        onRetry={form.retryLoading}
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Building2}
+      title="Thông tin đối tác"
+      description="Tên doanh nghiệp hiển thị trong các nghiệp vụ tạm ứng."
+    >
+      <SettingCard
+        title="Tên khách hàng"
+        description="Tên công ty đối tác sử dụng dịch vụ tạm ứng."
+        value={form.partnerCompany}
+        originalValue={form.originalPartnerCompany}
+        onChange={form.setPartnerCompany}
+        onSave={form.handleSavePartnerCompany}
+        onReset={() => form.setPartnerCompany(form.originalPartnerCompany)}
+        isDirty={form.partnerCompany !== form.originalPartnerCompany}
+        isSaving={form.isSaving}
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Landmark}
+      title="Tài khoản nhận chuyển khoản lương tuần"
+      description="Thông tin thụ hưởng in trên email sao kê lương tuần và file Excel đính kèm."
+    >
+      <SettingToggleCard
+        title="Hiện tài khoản nhận chuyển khoản lương tuần"
+        description="Khi tắt, sao kê lương tuần (email và file Excel) chỉ là thông báo đối chiếu, không kèm thông tin chuyển khoản."
+        checked={form.transferBankVisible}
+        originalChecked={form.originalTransferBankVisible}
+        onCheckedChange={form.setTransferBankVisible}
+        onSave={form.handleSaveTransferBankVisible}
+        onReset={() => form.setTransferBankVisible(form.originalTransferBankVisible)}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="Chủ tài khoản lương tuần"
+        description="Tên chủ tài khoản thụ hưởng in trên sao kê lương tuần."
+        value={form.transferBankHolder}
+        originalValue={form.originalTransferBankHolder}
+        onChange={form.setTransferBankHolder}
+        onSave={form.handleSaveTransferBank}
+        onReset={() => form.setTransferBankHolder(form.originalTransferBankHolder)}
+        isDirty={form.transferBankHolder !== form.originalTransferBankHolder}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="Số tài khoản lương tuần"
+        description="Số tài khoản nhận chuyển khoản in trên sao kê lương tuần."
+        value={form.transferBankNumber}
+        originalValue={form.originalTransferBankNumber}
+        onChange={form.setTransferBankNumber}
+        onSave={form.handleSaveTransferBank}
+        onReset={() => form.setTransferBankNumber(form.originalTransferBankNumber)}
+        isDirty={form.transferBankNumber !== form.originalTransferBankNumber}
+        isSaving={form.isSaving}
+        displayMode="account-number"
+      />
+      <SettingCard
+        title="Ngân hàng lương tuần"
+        description="Tên ngân hàng nhận chuyển khoản in trên sao kê lương tuần."
+        value={form.transferBankName}
+        originalValue={form.originalTransferBankName}
+        onChange={form.setTransferBankName}
+        onSave={form.handleSaveTransferBank}
+        onReset={() => form.setTransferBankName(form.originalTransferBankName)}
+        isDirty={form.transferBankName !== form.originalTransferBankName}
+        isSaving={form.isSaving}
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Landmark}
+      title="Tài khoản nhận chuyển khoản FlexPay (OnePay)"
+      description="Thông tin thụ hưởng in trên email sao kê FlexPay và file Excel đối chiếu đính kèm. Để trống sẽ dùng chung tài khoản lương tuần."
+    >
+      <SettingToggleCard
+        title="Hiện tài khoản nhận chuyển khoản FlexPay"
+        description="Khi tắt, sao kê FlexPay (email và file Excel) chỉ là thông báo đối chiếu, không kèm thông tin chuyển khoản."
+        checked={form.flexPayTransferBankVisible}
+        originalChecked={form.originalFlexPayTransferBankVisible}
+        onCheckedChange={form.setFlexPayTransferBankVisible}
+        onSave={form.handleSaveFlexPayTransferBankVisible}
+        onReset={() => form.setFlexPayTransferBankVisible(form.originalFlexPayTransferBankVisible)}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="Chủ tài khoản FlexPay"
+        description="Tên chủ tài khoản thụ hưởng in trên sao kê FlexPay."
+        value={form.flexPayTransferBankHolder}
+        originalValue={form.originalFlexPayTransferBankHolder}
+        onChange={form.setFlexPayTransferBankHolder}
+        onSave={form.handleSaveFlexPayTransferBank}
+        onReset={() =>
+          form.setFlexPayTransferBankHolder(form.originalFlexPayTransferBankHolder)
+        }
+        isDirty={form.flexPayTransferBankHolder !== form.originalFlexPayTransferBankHolder}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="Số tài khoản FlexPay"
+        description="Số tài khoản nhận chuyển khoản in trên sao kê FlexPay."
+        value={form.flexPayTransferBankNumber}
+        originalValue={form.originalFlexPayTransferBankNumber}
+        onChange={form.setFlexPayTransferBankNumber}
+        onSave={form.handleSaveFlexPayTransferBank}
+        onReset={() =>
+          form.setFlexPayTransferBankNumber(form.originalFlexPayTransferBankNumber)
+        }
+        isDirty={form.flexPayTransferBankNumber !== form.originalFlexPayTransferBankNumber}
+        isSaving={form.isSaving}
+        displayMode="account-number"
+      />
+      <SettingCard
+        title="Ngân hàng FlexPay"
+        description="Tên ngân hàng nhận chuyển khoản in trên sao kê FlexPay."
+        value={form.flexPayTransferBankName}
+        originalValue={form.originalFlexPayTransferBankName}
+        onChange={form.setFlexPayTransferBankName}
+        onSave={form.handleSaveFlexPayTransferBank}
+        onReset={() => form.setFlexPayTransferBankName(form.originalFlexPayTransferBankName)}
+        isDirty={form.flexPayTransferBankName !== form.originalFlexPayTransferBankName}
+        isSaving={form.isSaving}
+      />
+    </SettingsSection>
+  </div>
+);

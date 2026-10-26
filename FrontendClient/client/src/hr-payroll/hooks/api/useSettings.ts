@@ -1,0 +1,101 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { settingsService } from '@hr/services/api/settings.service';
+import { QueryKeys } from '@hr/lib/queryKeys';
+import { showSuccessNotification } from '@hr/utils/error-handler';
+import type { CreateSettingData, SettingsFilters, UpdateSettingData } from '@hr/types/api/settings.types';
+import { REFERENCE_DATA_STALE_TIME_MS } from '@hr/lib/cache/queryCacheTimes';
+
+// Get paginated settings list
+export const useSettings = (filters?: SettingsFilters) => {
+  return useQuery({
+    queryKey: QueryKeys.settings.list(filters),
+    queryFn: () => settingsService.getSettings(filters),
+    staleTime: REFERENCE_DATA_STALE_TIME_MS, // Admin saves invalidate these keys on success
+  });
+};
+
+// Get single setting by ID
+export const useSetting = (id: number, enabled = true) => {
+  return useQuery({
+    queryKey: QueryKeys.settings.detail(id),
+    queryFn: () => settingsService.getSettingById(id),
+    enabled,
+    staleTime: REFERENCE_DATA_STALE_TIME_MS,
+  });
+};
+
+// Get single setting by key
+export const useSettingByKey = (key: string, enabled = true) => {
+  return useQuery({
+    queryKey: QueryKeys.settings.byKey(key),
+    queryFn: () => settingsService.getSettingByKey(key),
+    enabled: enabled && key.length > 0,
+    staleTime: REFERENCE_DATA_STALE_TIME_MS,
+  });
+};
+
+// Update setting
+export const useUpdateSetting = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateSettingData }) =>
+      settingsService.updateSetting(id, data),
+    onSuccess: (response) => {
+      // Invalidate all settings queries to refresh
+      queryClient.invalidateQueries({ queryKey: QueryKeys.settings.all });
+
+      if (response?.message) {
+        showSuccessNotification(response.message);
+      }
+    },
+    // Error handling is now done globally in React Query - will display response.message from backend
+  });
+};
+
+// Create setting (upsert path for keys that may not exist yet)
+export const useCreateSetting = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateSettingData) => settingsService.createSetting(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.settings.all });
+    },
+  });
+};
+
+// Get multiple settings by keys. Missing keys (never-configured rows, a 404
+// from the by-key endpoint) resolve to undefined instead of failing the whole
+// query. A total failure is different: it means the API or the session is
+// unavailable, and silently rendering empty fields would hide that, so the
+// first error is rethrown for the caller's page-level error state.
+export const useMultipleSettings = (keys: string[]) => {
+  return useQuery({
+    queryKey: [...QueryKeys.settings.all, 'multiple', keys],
+    queryFn: async () => {
+      const results = await Promise.allSettled(
+        keys.map((key) =>
+          settingsService.getSettingByKey(key).catch((error) => {
+            const status =
+              (error as { http_status?: number } | null | undefined)?.http_status ??
+              (error as { response?: { status?: number } } | null | undefined)?.response?.status;
+            if (status === 404) {
+              return undefined;
+            }
+            throw error;
+          }),
+        ),
+      );
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      );
+      if (failures.length > 0 && failures.length === results.length) {
+        throw failures[0].reason;
+      }
+      return results.map((result) => (result.status === 'fulfilled' ? result.value : undefined));
+    },
+    enabled: keys.length > 0,
+    staleTime: REFERENCE_DATA_STALE_TIME_MS,
+  });
+};

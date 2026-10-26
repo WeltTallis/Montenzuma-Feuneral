@@ -1,0 +1,298 @@
+import { useEffect, useState } from "react";
+import { AlertCircle, Loader2 } from "lucide-react";
+
+import { Alert, AlertDescription } from "@hr/components/ui/alert";
+import { Button } from "@hr/components/ui/button";
+import { Checkbox } from "@hr/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@hr/components/ui/dialog";
+import { Label } from "@hr/components/ui/label";
+import { SearchableSelect } from "@hr/components/ui/searchable-select";
+import {
+  useAdminAttendances,
+  useAdminCheckInShifts,
+  useAdminCreateCheckIn,
+  useApproveAttendance,
+} from "@hr/hooks/api/useAdminAttendance";
+import type { AdminAttendanceResponse, AdminCheckInShift } from "@hr/types/api/attendance.types";
+import { formatVnDayMonth, formatVnTime } from "@hr/utils/vn-time";
+
+interface CheckInMarkAttendanceDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  employee: { id: number; name: string } | null;
+  projectId: number | null;
+  projectName?: string;
+}
+
+function vietnamBusinessDate(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Nairobi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function getPastDate(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Nairobi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+const attendanceStatusLabel: Record<string, string> = {
+  checked_in: "Clocked in at",
+  orphaned: "Missed clock-out (clock-in at)",
+  rejected: "Automatically rejected (clock-in at)",
+};
+
+export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, projectId, projectName }: CheckInMarkAttendanceDialogProps) {
+  const [shiftIndex, setShiftIndex] = useState<string>("");
+  const [withCheckout, setWithCheckout] = useState(false);
+
+  const today = vietnamBusinessDate();
+  const yesterday = getPastDate(1);
+  const fromDate = getPastDate(2);
+  const [selectedDate, setSelectedDate] = useState<string>(today);
+  const createCheckIn = useAdminCreateCheckIn();
+  const approve = useApproveAttendance({ successMessage: "Clock-out recorded for the employee." });
+  const recordQuery = useAdminAttendances(
+    {
+      employee_id: employee?.id,
+      project_id: projectId ?? undefined,
+      from_date: fromDate,
+      to_date: today,
+      pageSize: 10,
+    },
+    { enabled: open && employee !== null && projectId !== null },
+  );
+  const records = recordQuery.data?.data ?? [];
+  const openRecord = records.find((r) => r.status !== "completed");
+  const todayCompletedRecord = records.find((r) => r.date === today && r.status === "completed");
+  const record: AdminAttendanceResponse | undefined = openRecord ?? todayCompletedRecord;
+
+  const shiftsQuery = useAdminCheckInShifts(
+    employee?.id ?? null,
+    projectId ?? null,
+    selectedDate,
+    { enabled: open && employee !== null && projectId !== null && !record },
+  );
+  const shifts = shiftsQuery.data?.shifts ?? [];
+  const selectedShift: AdminCheckInShift | undefined = shifts.find((s) => String(s.index) === shiftIndex);
+  const shiftStarted = selectedShift ? new Date(selectedShift.start) <= new Date() : false;
+  const shiftEnded = selectedShift ? new Date(selectedShift.end) <= new Date() : false;
+
+  useEffect(() => {
+    if (!open) {
+      setShiftIndex("");
+      setWithCheckout(false);
+      setSelectedDate(today);
+      return;
+    }
+  }, [open, today]);
+
+  const canCreate = employee !== null && projectId !== null && shiftIndex !== "" && shiftStarted && !createCheckIn.isPending;
+  const mutationError = createCheckIn.error instanceof Error ? createCheckIn.error.message : null;
+  const shiftsError = shiftsQuery.error instanceof Error ? shiftsQuery.error.message : null;
+  const errorMessage = mutationError ?? shiftsError;
+
+  const handleCreate = () => {
+    if (!employee || !projectId || shiftIndex === "") return;
+    createCheckIn.mutate(
+      {
+        employee_id: employee.id,
+        project_id: projectId,
+        date: selectedDate,
+        shift_index: Number(shiftIndex),
+        with_checkout: withCheckout && shiftEnded,
+      },
+      { onSuccess: () => onOpenChange(false) },
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden p-0 sm:w-full">
+        <DialogHeader className="border-b px-4 pb-3 pt-4 sm:px-6">
+          <DialogTitle>Record attendance for an employee</DialogTitle>
+          <DialogDescription>
+            Record today's attendance{projectName ? ` for ${projectName}` : ""} for an employee who cannot clock in themselves.
+          </DialogDescription>
+        </DialogHeader>
+        {recordQuery.isLoading ? (
+          <div className="flex flex-1 items-center justify-center py-10">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          </div>
+        ) : record && record.status === "completed" ? (
+          <div className="flex flex-1 flex-col justify-center gap-2 px-4 py-10 text-center sm:px-6">
+            <p className="text-sm font-medium text-foreground">The employee has completed today's attendance.</p>
+            <p className="text-sm text-muted-foreground">
+              Clocked in at {formatVnTime(record.check_in_time)}
+              {record.check_out_time ? ` · Clocked out at ${formatVnTime(record.check_out_time)}` : ""}
+            </p>
+          </div>
+        ) : record ? (
+          <div className="flex flex-1 flex-col gap-3 px-4 py-5 sm:px-6">
+            <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+              <p className="text-sm font-medium text-foreground">
+                {attendanceStatusLabel[record.status] ?? "Clocked in at"} {formatVnTime(record.check_in_time)}
+                {record.date !== today ? (
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">
+                    (on {formatVnDayMonth(record.check_in_time)})
+                  </span>
+                ) : null}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Confirmation records the clock-out at the scheduled shift end and calculates the full shift's pay.
+              </p>
+            </div>
+            {approve.error ? (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {approve.error instanceof Error ? approve.error.message : "Could not confirm the clock-out."}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+        ) : shiftsQuery.isLoading ? (
+          <div className="flex flex-1 items-center justify-center py-10">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          </div>
+        ) : (
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-medium">Work date</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={selectedDate === today ? "default" : "outline"}
+                  size="sm"
+                  className="min-h-10 text-xs sm:text-sm"
+                  onClick={() => {
+                    setSelectedDate(today);
+                    setShiftIndex("");
+                  }}
+                >
+                  Hôm nay ({formatVnDayMonth(new Date().toISOString())})
+                </Button>
+                <Button
+                  type="button"
+                  variant={selectedDate === yesterday ? "default" : "outline"}
+                  size="sm"
+                  className="min-h-10 text-xs sm:text-sm"
+                  onClick={() => {
+                    setSelectedDate(yesterday);
+                    setShiftIndex("");
+                  }}
+                >
+                  Hôm qua ({formatVnDayMonth(new Date(Date.now() - 86400000).toISOString())})
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="mark-attendance-shift" className="text-sm font-medium">
+                {selectedDate === today ? "Ca làm việc hôm nay" : "Ca làm việc hôm qua"}
+              </Label>
+              <SearchableSelect
+                triggerId="mark-attendance-shift"
+                value={shiftIndex}
+                onChange={setShiftIndex}
+                placeholder="Chọn ca làm việc"
+                searchPlaceholder="Tìm ca làm việc..."
+                triggerClassName="min-h-11"
+                options={shifts.map((shift) => ({
+                  value: String(shift.index),
+                  label: `${shift.label}${shift.position ? ` · ${shift.position}` : ""}`,
+                }))}
+              />
+              {employee && projectId && shifts.length === 0 && !shiftsQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground">Không có ca làm việc hợp lệ cho phân công này.</p>
+              ) : null}
+              {selectedShift && !shiftStarted ? (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Ca làm việc chưa bắt đầu. Chỉ có thể tạo check-in khi ca đã bắt đầu.
+                </p>
+              ) : null}
+            </div>
+
+            {shiftEnded && shiftIndex !== "" ? (
+              <div className="flex items-start gap-2.5 rounded-lg border px-3 py-2.5">
+                <Checkbox
+                  id="mark-attendance-checkout"
+                  checked={withCheckout}
+                  onCheckedChange={(checked) => setWithCheckout(checked === true)}
+                  className="mt-0.5"
+                />
+                <div className="min-w-0 space-y-0.5">
+                  <Label htmlFor="mark-attendance-checkout" className="text-sm font-medium leading-5">
+                    Nhân viên đã tan ca
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Tạo bản ghi hoàn chỉnh: vào {selectedShift ? formatShiftTime(selectedShift.start) : ""} — tan {selectedShift ? formatShiftTime(selectedShift.end) : ""}, thu nhập tính theo cấu hình ca.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {withCheckout && shiftEnded ? null : (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Check-in do quản trị viên tạo không thay cho checkout GPS của nhân viên.
+                </AlertDescription>
+              </Alert>
+            )}
+            {errorMessage ? (
+              <Alert variant="destructive">
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+        )}
+        <DialogFooter className="border-t px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => onOpenChange(false)}
+            disabled={createCheckIn.isPending || approve.isPending}
+          >
+            Close
+          </Button>
+          {record && record.status !== "completed" ? (
+            <Button
+              type="button"
+              className="min-h-11"
+              disabled={approve.isPending}
+              onClick={() => approve.mutate({ id: record.id }, { onSuccess: () => onOpenChange(false) })}
+            >
+              {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+              Xác nhận đã tan ca
+            </Button>
+          ) : !record && !recordQuery.isLoading ? (
+            <Button type="button" className="min-h-11" disabled={!canCreate} onClick={handleCreate}>
+              {createCheckIn.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+              {withCheckout && shiftEnded ? "Tạo check-in & tan ca" : "Tạo check-in"}
+            </Button>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function formatShiftTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-KE", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+}

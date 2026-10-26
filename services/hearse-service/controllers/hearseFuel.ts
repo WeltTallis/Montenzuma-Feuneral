@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import { Pool, PoolConnection } from 'mysql2/promise';
 import { getHearsePool } from '../database';
 import { extractRowDates } from '../utilities/hearseAvailability';
+import { emitHearseDataChanged } from '../utilities/hearseRealtime';
 
 const DEFAULT_LOW_BALANCE_THRESHOLD = '5000.00';
 
@@ -184,7 +185,7 @@ async function getSummary(pool: Pool, tenantKey: string, tenantSlug: string | nu
         ),
         pool.query(
              `SELECT t.fuel_card_number, t.transaction_type, t.amount, t.station,
-                 t.reference, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS transaction_date, t.created_at
+                 t.reference, t.notes, t.driver_id, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS transaction_date, t.created_at
               FROM hearse_fuel_transactions t
               INNER JOIN (
                   SELECT fuel_card_number, MAX(id) AS id
@@ -490,6 +491,7 @@ export const addFuelDeposit = asyncHandler(async (req: Request, res: Response) =
             reference: String(req.body.reference || '').trim().slice(0, 120) || null,
             notes: String(req.body.notes || '').trim().slice(0, 500) || null,
         }));
+        await emitHearseDataChanged(req, 'fuel_deposit_recorded', { amount, transactionDate });
         const pool = await getHearsePool();
         res.status(201).json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
@@ -530,6 +532,7 @@ export const allocateFuelFunds = asyncHandler(async (req: Request, res: Response
                 notes: String(req.body.notes || '').trim().slice(0, 500) || null,
             });
         });
+        await emitHearseDataChanged(req, 'fuel_funds_allocated', { hearseId, amount, transactionDate });
         const pool = await getHearsePool();
         res.status(201).json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
@@ -569,6 +572,7 @@ export const recordFuelPurchase = asyncHandler(async (req: Request, res: Respons
                 notes: String(req.body.notes || '').trim().slice(0, 500) || null,
             });
         });
+        await emitHearseDataChanged(req, 'fuel_purchase_recorded', { hearseId, amount, transactionDate });
         const pool = await getHearsePool();
         res.status(201).json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
@@ -608,6 +612,9 @@ export const recordDriverFuelPurchase = asyncHandler(async (req: Request, res: R
     }
     try {
         const tenantSlug = getTenantSlug(req);
+        const user = (req as any).user || {};
+        const driverName = String(user.name || user.full_name || user.driver_name || '').trim();
+        let hearsePlate = '';
         await withLockedWallet(tenantKey, async (connection) => {
             const tenantScope = hearseTenantScope(tenantKey, '', tenantSlug);
             const [rows]: any = await connection.query(
@@ -618,6 +625,7 @@ export const recordDriverFuelPurchase = asyncHandler(async (req: Request, res: R
             );
             const hearse = rows[0];
             if (!hearse) throw new WalletError(403, 'This vehicle is not assigned to your driver account.');
+            hearsePlate = String(hearse.plate_number || '');
             const [legacyRows]: any = await connection.query(
                 `SELECT id FROM hearses
                  WHERE id = ? AND ${tenantScope.clause} AND driver_id IN (?)`,
@@ -654,8 +662,20 @@ export const recordDriverFuelPurchase = asyncHandler(async (req: Request, res: R
                 driverId: driver.primaryId,
                 station,
                 reference: String(req.body.reference || '').trim().slice(0, 120) || null,
-                notes: String(req.body.notes || '').trim().slice(0, 500) || null,
+                notes: [
+                    driverName ? `Driver fuelling by: ${driverName}` : 'Driver fuelling',
+                    String(req.body.notes || '').trim(),
+                ].filter(Boolean).join(' · ').slice(0, 500),
             });
+        });
+        await emitHearseDataChanged(req, 'driver_fuel_purchase', {
+            hearseId,
+            plateNumber: hearsePlate,
+            amount,
+            transactionDate,
+            station,
+            driverId: driver.primaryId,
+            driverName,
         });
         const pool = await getHearsePool();
         res.status(201).json({ success: true, ...await getDriverFuelSummary(pool, tenantKey, driver.ids, tenantSlug) });
@@ -680,6 +700,7 @@ export const updateFuelThreshold = asyncHandler(async (req: Request, res: Respon
             'UPDATE hearse_fuel_accounts SET low_balance_threshold = ? WHERE tenant_key = ?',
             [Number(threshold).toFixed(2), tenantKey]
         );
+        await emitHearseDataChanged(req, 'fuel_threshold_updated', { threshold: Number(threshold).toFixed(2) });
         res.json({ success: true, ...await getSummary(pool, tenantKey, getTenantSlug(req)) });
     } catch (error) {
         sendError(res, error, 'Unable to update the low-balance threshold.');

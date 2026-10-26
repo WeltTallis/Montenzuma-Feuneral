@@ -1,0 +1,644 @@
+import { apiClient, buildQueryString, ApiResponse } from './client';
+import { API_ENDPOINTS } from '@hr/config/api.config';
+import { triggerBlobDownload, extractFilenameFromHeaders } from '@hr/utils/file-download';
+import type {
+  Employee,
+  EmployeeSummary,
+  CreateEmployeeData,
+  UpdateEmployeeData,
+  EmployeeFilters,
+  EmployeesResponse,
+  EmployeePayrollResponse,
+  EmployeePayrollFilters,
+  EmployeeProjectAssignment,
+  EmployeeProjectsResponse,
+  EmployeeIndividualSummary,
+  EmployeeTimesheetResponse,
+  EmployeeTimesheetFilters,
+  EmployeeTimesheetEntry,
+  EmployeeImportStatus,
+  EmployeeImportResponse,
+  MobileBackfillResult,
+  CurrentProjectWithTimesheets,
+  EmployeeCurrentProjectsResponse,
+  EmployeeCurrentProjectsFilters,
+  EmployeeUser,
+  EmployeeUsersResponse,
+  GrantEmployeeAccessData,
+  DuplicateCheckResponse,
+  DuplicateMobilesData
+} from '@hr/types/api/employee.types';
+
+class EmployeeService {
+  /**
+   * Get employees summary statistics
+   */
+  async getSummary(): Promise<EmployeeSummary> {
+    const response = await apiClient.get<EmployeeSummary>(
+      API_ENDPOINTS.employees.summary
+    );
+    if (!response.data) {
+      throw new Error('API response missing expected data');
+    }
+    return response.data;
+  }
+
+  /**
+   * Get paginated list of employees
+   */
+  async getEmployees(filters?: EmployeeFilters): Promise<EmployeesResponse> {
+    // Convert month to date range if provided and no explicit fromDate/toDate
+    let apiFilters = filters;
+    if (filters?.month && !filters.fromDate && !filters.toDate) {
+      const { fromDate, toDate } = this.convertMonthToDateRange(filters.month);
+      apiFilters = {
+        ...filters,
+        fromDate,
+        toDate,
+        month: undefined
+      };
+    }
+
+    const queryString = apiFilters ? buildQueryString(apiFilters) : '';
+    const response = await apiClient.get<Employee[]>(
+      `${API_ENDPOINTS.employees.base}${queryString}`
+    );
+
+    // The API client returns the full response with status, data, message, pagination
+    // We need to extract just the data and pagination for our interface
+    return {
+      status: 'success' as const,
+      data: (response.data as Employee[]) || [],
+      pagination: response.pagination || {
+        page: 1,
+        pageSize: 100,
+        totalPages: 1,
+        totalRecords: 0
+      },
+      message: response.message || '',
+    };
+  }
+
+  /**
+   * Get employees with missing bank details
+   */
+  async getEmployeesWithMissingBankDetails(filters?: EmployeeFilters): Promise<EmployeesResponse> {
+    // Convert month to date range if provided and no explicit fromDate/toDate
+    let apiFilters = filters;
+    if (filters?.month && !filters.fromDate && !filters.toDate) {
+      const { fromDate, toDate } = this.convertMonthToDateRange(filters.month);
+      apiFilters = {
+        ...filters,
+        fromDate,
+        toDate,
+        month: undefined
+      };
+    }
+
+    const queryString = apiFilters ? buildQueryString(apiFilters as Record<string, unknown>) : '';
+    const response = await apiClient.get<Employee[]>(
+      `${API_ENDPOINTS.employees.missingBankDetails}${queryString}`
+    );
+
+    return {
+      status: 'success' as const,
+      data: (response.data as Employee[]) || [],
+      pagination: response.pagination || {
+        page: 1,
+        pageSize: 100,
+        totalPages: 1,
+        totalRecords: 0
+      },
+      message: response.message || '',
+    };
+  }
+
+  /**
+   * Get active employees with an empty mobile (same envelope and item shape
+   * as getEmployeesWithMissingBankDetails). Already partner-scoped server-side.
+   */
+  async getEmployeesWithMissingMobile(filters?: EmployeeFilters): Promise<EmployeesResponse> {
+    // Convert month to date range if provided and no explicit fromDate/toDate
+    let apiFilters = filters;
+    if (filters?.month && !filters.fromDate && !filters.toDate) {
+      const { fromDate, toDate } = this.convertMonthToDateRange(filters.month);
+      apiFilters = {
+        ...filters,
+        fromDate,
+        toDate,
+        month: undefined
+      };
+    }
+
+    const queryString = apiFilters ? buildQueryString(apiFilters as Record<string, unknown>) : '';
+    const response = await apiClient.get<Employee[]>(
+      `${API_ENDPOINTS.employees.missingMobile}${queryString}`
+    );
+
+    return {
+      status: 'success' as const,
+      data: (response.data as Employee[]) || [],
+      pagination: response.pagination || {
+        page: 1,
+        pageSize: 100,
+        totalPages: 1,
+        totalRecords: 0
+      },
+      message: response.message || '',
+    };
+  }
+
+  /**
+   * Get duplicate mobile groups: one group per phone number carried by more
+   * than one employee, with out-of-scope members counted in `hidden_count`.
+   */
+  async getDuplicateMobiles(): Promise<DuplicateMobilesData> {
+    const response = await apiClient.get<DuplicateMobilesData>(
+      API_ENDPOINTS.employees.duplicateMobiles
+    );
+    if (!response.data) {
+      throw new Error('API response missing expected data');
+    }
+    return response.data;
+  }
+
+  /**
+   * Convert month filter (YYYY-MM) to date range
+   */
+  private convertMonthToDateRange(month: string): { fromDate: string; toDate: string } {
+    const [year, monthNum] = month.split('-').map(Number);
+    const firstDay = new Date(year, monthNum - 1, 1);
+    const lastDay = new Date(year, monthNum, 0);
+
+    return {
+      fromDate: firstDay.toISOString().split('T')[0],
+      toDate: lastDay.toISOString().split('T')[0]
+    };
+  }
+
+  /**
+   * Search employees using the base employees endpoint
+   */
+  async searchEmployees(params: {
+    search: string;
+    pageSize?: number;
+    status?: 'working' | 'unassigned';
+    month?: string;
+    project_id?: number;
+    fromDate?: string;
+    toDate?: string;
+    scope?: 'global';
+  }): Promise<EmployeesResponse> {
+    // Convert month to date range if provided and no explicit fromDate/toDate
+    const apiParams: Record<string, unknown> = { ...params };
+    if (params.month && !params.fromDate && !params.toDate) {
+      const { fromDate, toDate } = this.convertMonthToDateRange(params.month);
+      apiParams.fromDate = fromDate;
+      apiParams.toDate = toDate;
+      delete apiParams.month;
+    }
+
+    const queryString = buildQueryString(apiParams);
+    const response = await apiClient.get<Employee[]>(
+      `${API_ENDPOINTS.employees.base}${queryString}`
+    );
+
+    return {
+      status: 'success' as const,
+      data: response.data || [],
+      pagination: response.pagination || {
+        page: 1,
+        pageSize: params.pageSize || 50,
+        totalPages: 1,
+        totalRecords: response.data?.length || 0
+      },
+      message: response.message || '',
+    };
+  }
+
+  /**
+   * Get single employee by ID
+   */
+  async getEmployeeById(id: number): Promise<Employee> {
+    const response = await apiClient.get<Employee>(
+      API_ENDPOINTS.employees.byId(id)
+    );
+    if (!response.data) {
+      throw new Error('API response missing expected data');
+    }
+    return response.data;
+  }
+
+  /**
+   * Get employee summary by ID
+   */
+  async getEmployeeSummaryById(id: number): Promise<EmployeeIndividualSummary> {
+    const response = await apiClient.get<EmployeeIndividualSummary>(
+      API_ENDPOINTS.employees.summaryById(id)
+    );
+    if (!response.data) {
+      throw new Error('API response missing expected data');
+    }
+    return response.data;
+  }
+
+  /**
+   * Get single employee by CCCD
+   */
+  async getEmployeeByCCCD(cccd: string): Promise<Employee> {
+    const response = await apiClient.get<Employee>(
+      API_ENDPOINTS.employees.byCCCD(cccd)
+    );
+    if (!response.data) {
+      throw new Error('API response missing expected data');
+    }
+    return response.data;
+  }
+
+  /**
+   * Create new employee
+   */
+  async createEmployee(data: CreateEmployeeData): Promise<ApiResponse<Employee>> {
+    const response = await apiClient.post<Employee>(
+      API_ENDPOINTS.employees.base,
+      data
+    );
+    return response;
+  }
+
+  /**
+   * Update existing employee
+   */
+  async updateEmployee(id: number, data: UpdateEmployeeData): Promise<ApiResponse<Employee>> {
+    const response = await apiClient.put<Employee>(
+      API_ENDPOINTS.employees.byId(id),
+      data
+    );
+    return response;
+  }
+
+  /**
+   * Mark employee as inactive (soft delete)
+   */
+  async deleteEmployee(id: number): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete<void>(API_ENDPOINTS.employees.byId(id));
+    return response;
+  }
+
+  /**
+   * Get employee project assignments
+   */
+  async getEmployeeProjects(id: number, params?: {
+    status?: 'active' | 'ended' | 'inactive';
+    page?: number;
+    pageSize?: number;
+  }): Promise<EmployeeProjectsResponse> {
+    const queryString = params ? buildQueryString(params) : '';
+    const response = await apiClient.get<EmployeeProjectAssignment[]>(
+      `${API_ENDPOINTS.employees.projects(id)}${queryString}`
+    );
+
+    return {
+      data: (response.data as EmployeeProjectAssignment[]) || [],
+      pagination: response.pagination || {
+        page: 1,
+        pageSize: 20,
+        totalPages: 1,
+        totalRecords: 0
+      }
+    };
+  }
+
+  /**
+   * Get employee current projects with timesheets
+   */
+  async getEmployeeCurrentProjects(
+    id: number,
+    filters?: EmployeeCurrentProjectsFilters
+  ): Promise<EmployeeCurrentProjectsResponse> {
+    const queryString = filters ? buildQueryString(filters) : '';
+    const response = await apiClient.get<CurrentProjectWithTimesheets[]>(
+      `${API_ENDPOINTS.employees.currentProjects(id)}${queryString}`
+    );
+
+    return {
+      data: (response.data as CurrentProjectWithTimesheets[]) || []
+    };
+  }
+
+  /**
+   * Get employee timesheet summary
+   */
+  async getEmployeeTimesheetSummary(
+    id: number,
+    params?: { project_id?: number; fromDate?: string; toDate?: string }
+  ) {
+    const queryString = params ? buildQueryString(params) : '';
+    const response = await apiClient.get(
+      `${API_ENDPOINTS.employees.timesheetSummary(id)}${queryString}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Import employees from Excel file (async)
+   * Returns an import ID that can be used to track progress
+   */
+  async importEmployees(file: File): Promise<EmployeeImportResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.post<EmployeeImportResponse>(
+      API_ENDPOINTS.employees.import,
+      formData
+    );
+    if (!response.data) {
+      throw new Error('API response missing import_id');
+    }
+    return response.data;
+  }
+
+  /**
+   * Get employee import status by import ID
+   */
+  async getImportStatus(importId: string): Promise<EmployeeImportStatus> {
+    const response = await apiClient.get<EmployeeImportStatus>(
+      API_ENDPOINTS.employees.importStatus(importId)
+    );
+    if (!response.data) {
+      throw new Error('API response missing import status');
+    }
+    return response.data;
+  }
+
+  /**
+   * Backfill missing employee mobile numbers from the "NV chưa có SĐT"
+   * export with the Mobile column filled in. Matches employees by CCCD and
+   * only fills blank mobile fields.
+   */
+  async backfillMobiles(
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<MobileBackfillResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.upload<MobileBackfillResult>(
+      API_ENDPOINTS.employees.importMobiles,
+      formData,
+      onProgress
+    );
+    if (!response.data) {
+      throw new Error('API response missing mobile backfill result');
+    }
+    return response.data;
+  }
+
+  /**
+   * Export employees to Excel
+   */
+  async exportEmployees(filters?: EmployeeFilters): Promise<ApiResponse<void>> {
+    // Convert month to date range if provided and no explicit fromDate/toDate
+    let apiFilters = filters;
+    if (filters?.month && !filters.fromDate && !filters.toDate) {
+      const { fromDate, toDate } = this.convertMonthToDateRange(filters.month);
+      apiFilters = {
+        ...filters,
+        fromDate,
+        toDate,
+        month: undefined
+      };
+    }
+
+    const queryString = apiFilters ? buildQueryString(apiFilters) : '';
+    await apiClient.download(
+      `${API_ENDPOINTS.employees.export}${queryString}`,
+      `employees_export_${new Date().toISOString().split('T')[0]}.xlsx`
+    );
+    return { status: 'success' as const, message: 'Export started' };
+  }
+
+  /**
+   * Export single employee detail to Excel using HoSoNhanSu template
+   */
+  async exportEmployeeDetail(id: number, fullname: string): Promise<void> {
+    const filename = `HoSoNhanSu_${fullname}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    await apiClient.download(
+      API_ENDPOINTS.employees.exportDetail(id),
+      filename
+    );
+  }
+
+  /**
+   * Export employees who received salary or a completed FlexPay advance in the
+   * last N months but have no mobile number on file (admin only).
+   */
+  async exportPaidWithoutMobile(months: number): Promise<void> {
+    const response = await apiClient['client'].post(
+      API_ENDPOINTS.employees.exportPaidWithoutMobile,
+      { months },
+      { responseType: 'blob' }
+    );
+
+    const filename = extractFilenameFromHeaders(response.headers) ||
+      `employees_paid_without_mobile_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    triggerBlobDownload(blob, filename);
+  }
+
+  /**
+   * Check for duplicate employees by CCCD, mobile, or email before creating.
+   * Global by design — surfaces employees created by other partners.
+   * Only identifiers the requester typed are revealed, masked.
+   */
+  async duplicateCheck(params: {
+    cccd?: string;
+    mobile?: string;
+    email?: string;
+  }): Promise<DuplicateCheckResponse> {
+    const response = await apiClient.get<DuplicateCheckResponse>(
+      `${API_ENDPOINTS.employees.base}/duplicate-check`,
+      { params }
+    );
+    return (
+      response.data || { has_duplicates: false, data: [] }
+    );
+  }
+
+  /**
+   * Partner self-service claim: add an employee from the global pool to the
+   * partner's managed list. Idempotent.
+   */
+  async requestEmployeeAccess(employeeId: number): Promise<{ message?: string }> {
+    const response = await apiClient.post<null>(
+      `${API_ENDPOINTS.employees.base}/${employeeId}/request-access`
+    );
+    return { message: response.message };
+  }
+
+  /**
+   * Get employee payroll history
+   */
+  async getEmployeePayroll(id: number, filters?: EmployeePayrollFilters): Promise<EmployeePayrollResponse> {
+    const queryString = filters ? buildQueryString(filters) : '';
+    const response = await apiClient.get<EmployeePayrollResponse>(
+      `${API_ENDPOINTS.employees.payroll(id)}${queryString}`
+    );
+    if (!response.data) {
+      throw new Error('API response missing expected data');
+    }
+    return response.data;
+  }
+
+  /**
+   * Get employee timesheet history
+   */
+  async getEmployeeTimesheet(id: number, filters?: EmployeeTimesheetFilters): Promise<EmployeeTimesheetResponse> {
+    const queryString = filters ? buildQueryString(filters) : '';
+    const response = await apiClient.get<EmployeeTimesheetEntry[]>(
+      `${API_ENDPOINTS.employees.timesheet(id)}${queryString}`
+    );
+    return {
+      status: 'success' as const,
+      data: (response.data as EmployeeTimesheetEntry[]) || [],
+      pagination: response.pagination || {
+        page: 1,
+        pageSize: 100,
+        totalPages: 1,
+        totalRecords: 0
+      },
+      message: response.message || '',
+    };
+  }
+
+  /**
+   * Bulk import employees with enhanced validation
+   */
+  async bulkImportEmployees(
+    file: File,
+    options?: {
+      validate_only?: boolean;
+      skip_duplicates?: boolean;
+      update_existing?: boolean;
+    },
+    onProgress?: (progress: number) => void
+  ) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (options) {
+      Object.entries(options).forEach(([key, value]) => {
+        formData.append(key, value.toString());
+      });
+    }
+
+    const response = await apiClient.upload(
+      `${API_ENDPOINTS.employees.base}/bulk-import`,
+      formData,
+      onProgress
+    );
+    return response.data;
+  }
+
+  /**
+   * Get employee working statistics
+   */
+  async getEmployeeWorkingStatistics(
+    id: number,
+    params?: {
+      period?: number; // days
+      fromDate?: string;
+      toDate?: string;
+    }
+  ) {
+    const queryString = params ? buildQueryString(params) : '';
+    const response = await apiClient.get(
+      `${API_ENDPOINTS.employees.byId(id)}/working-statistics${queryString}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Change employee password (Admin/Partner only)
+   */
+  async changeEmployeePassword(
+    id: number,
+    data: { new_password: string }
+  ): Promise<ApiResponse<void>> {
+    const response = await apiClient.put<void>(
+      API_ENDPOINTS.employees.changePassword(id),
+      data
+    );
+    return response;
+  }
+
+  /**
+   * Combined update: employee info + username + password in one call.
+   * Uses the dedicated adv-partner endpoint.
+   */
+  async updateAdvPartnerUser(
+    id: number,
+    data: {
+      fullname?: string;
+      email?: string;
+      cccd?: string;
+      mobile?: string;
+      bank_id?: number;
+      bank_account_number?: string;
+      bank_account_name?: string;
+      username?: string;
+      password?: string;
+    }
+  ): Promise<ApiResponse<Employee>> {
+    const response = await apiClient.put<Employee>(
+      API_ENDPOINTS.advPartner.updateUser(id),
+      data
+    );
+    return response;
+  }
+
+  /**
+   * Get users who have access to an employee
+   */
+  async getEmployeeUsers(employeeId: number): Promise<EmployeeUsersResponse> {
+    const response = await apiClient.get<EmployeeUser[]>(
+      API_ENDPOINTS.employees.users(employeeId)
+    );
+    return {
+      status: 'success' as const,
+      data: (response.data as EmployeeUser[]) || [],
+      message: response.message || '',
+    };
+  }
+
+  /**
+   * Grant access to an employee for a specific user
+   */
+  async grantEmployeeAccess(
+    employeeId: number,
+    data: GrantEmployeeAccessData
+  ): Promise<ApiResponse<void>> {
+    const response = await apiClient.post<void>(
+      API_ENDPOINTS.employees.users(employeeId),
+      data
+    );
+    return response;
+  }
+
+  /**
+   * Revoke employee access from a user
+   */
+  async revokeEmployeeAccess(
+    employeeId: number,
+    userId: number
+  ): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete<void>(
+      API_ENDPOINTS.employees.userAccess(employeeId, userId)
+    );
+    return response;
+  }
+
+}
+
+export const employeeService = new EmployeeService();

@@ -93,6 +93,7 @@ const TENANT_ROUTE_SEGMENTS = new Set([
   'settings', 'leaves', 'support', 'support-dashboard', 'store', 'mini-store',
   'driver-portal', 'receptionist', 'reception', 'financials', 'financial-details',
   'monitoring', 'scanner', 'system-admin', 'release-form', 'requests',
+  'hr',
   'postmortem-form', 'postmortem-qr', 'postmortem-results', 'postmortem-request',
   'postmortem-verify', 'visitors', 'chemicals', 'invoices', 'documents',
 ]);

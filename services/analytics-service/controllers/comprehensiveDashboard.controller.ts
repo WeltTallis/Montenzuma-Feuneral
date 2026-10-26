@@ -67,7 +67,7 @@ export const getComprehensiveDashboard = async (req: any, res: any): Promise<voi
                 metadata: { currency: 'KES', executionTime: 0, timestamp: new Date().toISOString(), note: 'Database unavailable - Docker not running' }
             },
             metadata: { requestId, timestamp: new Date().toISOString(), executionTime: 0 }
-}
+        });
     }
 
     try {
@@ -245,7 +245,7 @@ export const getComprehensiveDashboard = async (req: any, res: any): Promise<voi
             success: true,
             data,
             metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Comprehensive dashboard error:`, error);
         res.status(200).json({
@@ -262,9 +262,8 @@ export const getComprehensiveDashboard = async (req: any, res: any): Promise<voi
                 metadata: { currency: 'KES', executionTime: Date.now() - startTime, timestamp: new Date().toISOString(), error: error.message }
             },
             metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-}
+        });
     }
-}
 
 /**
  * Fetch comparative data between N branches dynamically
@@ -282,7 +281,7 @@ export const getComparisonDashboard = async (req: any, res: any): Promise<void> 
         } else {
             return res.status(400).json({ success: false, message: 'branches query parameter is required (comma separated).' });
         }
-    }
+        });
 
     const branchList = branches.split(',').map(b => b.trim()).filter(Boolean);
     if (branchList.length < 2) {
@@ -460,7 +459,7 @@ export const getComparisonDashboard = async (req: any, res: any): Promise<void> 
                 maxHearseBookings = h.totalBookings;
                 mostBookedHearseOverall = { ...h, branchName: b.branchName };
             }
-}
+        });
 
         if (b.hearses?.available === 0 && b.hearses?.total > 0) {
             recommendations.push(`⚠️ ${b.branchName}: All hearses are currently booked. Consider fleet expansion.`);
@@ -471,7 +470,7 @@ export const getComparisonDashboard = async (req: any, res: any): Promise<void> 
         if (b.deceased?.thisMonth > (b.deceased?.total / 12) * 1.5) {
             recommendations.push(`📈 ${b.branchName}: Deceased cases this month (${b.deceased.thisMonth}) are significantly above average.`);
         }
-}
+    });
 
     // Build comparison metrics
     const comparison = {
@@ -521,7 +520,7 @@ export const getComparisonDashboard = async (req: any, res: any): Promise<void> 
             }
         },
         metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-}
-});
+    });
+};
 
 export { getComprehensiveDashboard, getComparisonDashboard };

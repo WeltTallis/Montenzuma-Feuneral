@@ -6,7 +6,7 @@ import { Ic } from "./opsIcons";
    ============================================================================ */
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "home", desc: "Overview & KPIs" },
-  { id: "deceased", label: "Deceased", icon: "users", desc: "Intake & records" },
+  { id: "deceased", label: "Morgue", icon: "users", desc: "Intake & records" },
   { id: "schedule", label: "Schedule", icon: "cal", desc: "Calendar & events" },
   { id: "analytics", label: "Analytics", icon: "grid", desc: "Reports & insights" },
   { id: "store", label: "Store", icon: "store", desc: "Inventory & supplies" },
@@ -72,5 +72,4 @@ export function Sidebar({
 }
 
 export default Sidebar;
-
 

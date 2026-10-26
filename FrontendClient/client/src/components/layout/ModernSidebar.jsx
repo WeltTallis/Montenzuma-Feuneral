@@ -788,7 +788,7 @@ const ModernSidebar = ({
       section: 'Main',
       items: [
         { icon: Calendar, label: 'Hearse Bookings', path: `/${tenantSlug}/hearse` },
-        { icon: Users, label: 'Deceased', path: `/${tenantSlug}/deceased` },
+        { icon: Users, label: 'Morgue', path: `/${tenantSlug}/deceased` },
         { icon: Package, label: 'Coffins', path: `/${tenantSlug}/coffins` },
         { icon: Beaker, label: 'Chemicals', path: `/${tenantSlug}/chemicals` },
         { icon: Hammer, label: 'Workshop', path: `/${tenantSlug}/workshop` },
@@ -796,6 +796,7 @@ const ModernSidebar = ({
         { icon: Box, label: 'Mini Store', path: `/${tenantSlug}/mini-store` },
         { icon: LayoutDashboard, label: 'Dashboard', path: `/${tenantSlug}/dashboard` },
         { icon: Activity, label: 'Insurance', path: `/${tenantSlug}/insurance` },
+        { icon: Users, label: 'HR & Payroll', path: `/${tenantSlug}/hr` },
       ]
     },
     {

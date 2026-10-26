@@ -637,7 +637,7 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       timestamp: new Date().toISOString()
     };
 
-    const noPrefixEvents = ['ticket_response', 'ticket_updated', 'onboarding-progress'];
+    const noPrefixEvents = ['ticket_response', 'ticket_updated', 'onboarding-progress', 'hearse_data_changed'];
     const eventName = noPrefixEvents.includes(event) ? event : `notification:${event}`;
 
     if (target) {

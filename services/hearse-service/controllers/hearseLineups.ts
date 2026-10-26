@@ -4,6 +4,7 @@ import { PoolConnection } from 'mysql2/promise';
 import { getHearseConnection, getHearsePool } from '../database';
 import { extractRowDates, isValidDateKey } from '../utilities/hearseAvailability';
 import { invalidateHearseCache } from '../utilities/hearseCache';
+import { emitHearseDataChanged } from '../utilities/hearseRealtime';
 
 class LineupError extends Error {
     status: number;
@@ -177,6 +178,7 @@ export const saveStandbyDriver = asyncHandler(async (req: Request, res: Response
         }
         await connection.commit();
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'standby_driver_updated', { date, driverId });
         res.json({ success: true, date, standby_driver_id: driverId });
     } catch (error) {
         await connection.rollback();
@@ -231,6 +233,7 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
         );
         await connection.commit();
         await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'booking_lineup_updated', { bookingId, driverId, driverName: manualDriverName || null });
         res.json({
             success: true,
             booking_id: bookingId,

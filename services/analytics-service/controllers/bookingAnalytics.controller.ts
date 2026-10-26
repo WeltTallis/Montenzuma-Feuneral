@@ -41,7 +41,7 @@ export const getBookingCounts = async (req: any, res: any): Promise<void> => {
                 inProgress: result?.in_progress || 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Booking counts error:`, error);
         res.status(500).json({ success: false, message: error.message });
@@ -81,7 +81,7 @@ export const getHearseFleetStatus = async (req: any, res: any): Promise<void> =>
                 total: Object.values(statusMap).reduce((a, b) => a + b, 0)
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Hearse fleet error:`, error);
         res.status(500).json({ success: false, message: error.message });

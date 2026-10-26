@@ -914,8 +914,8 @@ const DriverPortal = () => {
         } finally { setLoadingP(false); setRefreshing(false); }
     }, [driverId, driverName]);
 
-    const loadDriverFuel = useCallback(async () => {
-        setDriverFuelLoading(true);
+    const loadDriverFuel = useCallback(async (silent = false) => {
+        if (!silent) setDriverFuelLoading(true);
         setFuelError('');
         try {
             const r = await fetch(`${API_BASE_URL}/hearse-fuel/driver-cards?t=${Date.now()}`, { headers: getAuthHeaders() });
@@ -955,6 +955,9 @@ const DriverPortal = () => {
 
     useEffect(() => {
         if (!socket || !connected) return;
+        loadB(true);
+        loadP(true);
+        loadDriverFuel(true);
         const handleNewBooking = (data) => {
             if (data.booking) setBookings(prev => [data.booking, ...prev]);
             else loadB(true);
@@ -969,23 +972,31 @@ const DriverPortal = () => {
             setRefreshing(false);
         };
         const handlePickup = () => loadP(true);
+        const handleHearseChange = (data = {}) => {
+            loadB(true);
+            if (String(data.changeType || '').startsWith('fuel_') || data.changeType === 'driver_fuel_purchase') {
+                loadDriverFuel(true);
+            }
+        };
         socket.on('new_booking', handleNewBooking);
         socket.on('booking_status_updated', handleStatusUpdate);
         socket.on('booking_postponed', handlePickup);
         socket.on('store:dispatch', handlePickup);
         socket.on('store:pickup_response', handlePickup);
+        socket.on('hearse_data_changed', handleHearseChange);
         return () => {
             socket.off('new_booking', handleNewBooking);
             socket.off('booking_status_updated', handleStatusUpdate);
             socket.off('booking_postponed', handlePickup);
             socket.off('store:dispatch', handlePickup);
             socket.off('store:pickup_response', handlePickup);
+            socket.off('hearse_data_changed', handleHearseChange);
         };
-    }, [loadB, loadP, socket, connected]);
+    }, [loadB, loadP, loadDriverFuel, socket, connected]);
 
     // Keep the feeds fresh without the driver having to pull-to-refresh.
     useEffect(() => {
-        const t = setInterval(() => { loadB(true); loadP(true); loadDriverFuel(); }, 5 * 60 * 1000);
+        const t = setInterval(() => { loadB(true); loadP(true); loadDriverFuel(true); }, 60 * 1000);
         return () => clearInterval(t);
     }, [loadB, loadP, loadDriverFuel]);
 

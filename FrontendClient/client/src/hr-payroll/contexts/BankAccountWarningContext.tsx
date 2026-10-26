@@ -1,0 +1,149 @@
+import React, { createContext, useCallback, useContext, useState } from "react";
+import { AlertTriangle, ArrowRight, Check, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@hr/components/ui/alert-dialog";
+import {
+  getBankAccountNameMismatch,
+  getBankAccountWarningTitle,
+  type BankAccountWarning,
+} from "@hr/utils/bank-account-warning";
+
+/**
+ * BankAccountWarningContext surfaces a click-to-dismiss modal dialog when a
+ * saved employee has an invalid bank account. The save itself succeeds
+ * (HTTP 200); this dialog forces the admin/partner to acknowledge the
+ * problem so payments don't silently fail later.
+ *
+ * Unlike a toast (which auto-dismisses and is easily missed), this is a
+ * centered modal that requires an explicit close action.
+ */
+
+interface BankAccountWarningContextValue {
+  showBankAccountWarning: (warning: BankAccountWarning) => void;
+}
+
+const BankAccountWarningContext = createContext<BankAccountWarningContextValue | null>(null);
+
+export function BankAccountWarningProvider({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [warning, setWarning] = useState<BankAccountWarning | null>(null);
+  const nameMismatch = warning
+    ? getBankAccountNameMismatch(warning.reason, warning.accountName)
+    : null;
+  const warningTitle = warning
+    ? getBankAccountWarningTitle(warning.reason)
+    : "Tài khoản ngân hàng cần kiểm tra";
+  const accountNumberComparison =
+    !nameMismatch && warning?.attemptedAccountNumber
+      ? {
+          original: warning.originalAccountNumber,
+          attempted: warning.attemptedAccountNumber,
+        }
+      : null;
+
+  const showBankAccountWarning = useCallback((w: BankAccountWarning) => {
+    setWarning(w);
+    setOpen(true);
+  }, []);
+
+  return (
+    <BankAccountWarningContext.Provider value={{ showBankAccountWarning }}>
+      {children}
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent
+          className="max-w-lg border-0"
+          overlayClassName="bg-slate-950/85 backdrop-blur-sm"
+        >
+          <AlertDialogHeader className="flex-row items-start gap-3 space-y-0 pb-4 text-left sm:px-6">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-700 ring-8 ring-rose-50/60">
+              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <AlertDialogTitle className="text-xl">
+                {warningTitle}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="sr-only">
+                {nameMismatch
+                  ? "So sánh tên đã nhập với tên do ngân hàng cung cấp."
+                  : "Vui lòng kiểm tra và cập nhật thông tin tài khoản."}
+              </AlertDialogDescription>
+            </div>
+          </AlertDialogHeader>
+
+          {(nameMismatch || accountNumberComparison) && (
+            <div className="grid gap-3 border-y border-border bg-muted/35 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-4 sm:px-6">
+              <div className="min-w-0">
+                <div
+                  className={`mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${
+                    nameMismatch ? "text-rose-700" : "text-emerald-700"
+                  }`}
+                >
+                  {nameMismatch ? (
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {nameMismatch ? "Tên đã nhập" : "Đang lưu"}
+                </div>
+                <p className="break-words text-base font-semibold text-foreground">
+                  {nameMismatch
+                    ? nameMismatch.enteredName
+                    : accountNumberComparison?.original || "Chưa có"}
+                </p>
+              </div>
+
+              <ArrowRight
+                className="h-5 w-5 rotate-90 text-muted-foreground sm:rotate-0"
+                aria-hidden="true"
+              />
+
+              <div className="min-w-0">
+                <div
+                  className={`mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${
+                    nameMismatch ? "text-emerald-700" : "text-rose-700"
+                  }`}
+                >
+                  {nameMismatch ? (
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {nameMismatch ? "Ngân hàng ghi" : "Vừa nhập"}
+                </div>
+                <p className="break-words text-base font-semibold text-foreground">
+                  {nameMismatch
+                    ? nameMismatch.bankName
+                    : accountNumberComparison?.attempted}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-border px-5 py-4 sm:px-6">
+            <AlertDialogAction
+              className="w-full"
+              onClick={() => setOpen(false)}
+            >
+              Close
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+    </BankAccountWarningContext.Provider>
+  );
+}
+
+export function useBankAccountWarning(): BankAccountWarningContextValue {
+  const ctx = useContext(BankAccountWarningContext);
+  if (!ctx) {
+    // Graceful no-op if the provider isn't mounted (e.g. in isolated tests).
+    return { showBankAccountWarning: () => {} };
+  }
+  return ctx;
+}

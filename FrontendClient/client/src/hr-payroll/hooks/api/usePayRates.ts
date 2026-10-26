@@ -1,0 +1,368 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { payRateService } from '@hr/services/api/payrate.service';
+import { showErrorNotification, showSuccessNotification } from '@hr/utils/error-handler';
+import type {
+  PayRate,
+  PayRateListParams,
+  CreatePayRateRequest,
+  UpdatePayRateRequest,
+  RateCategory
+} from '@hr/types/api/payrate.types';
+
+// Type guard for checking the HTTP status of an error (axios or API error shape)
+function hasHttpStatus(error: unknown, status: number): boolean {
+  if (!error || typeof error !== 'object') return false;
+
+  // Check axios error format
+  if ('response' in error) {
+    const axiosError = error as { response?: { status?: number } };
+    return axiosError.response?.status === status;
+  }
+
+  // Check API error format
+  if ('http_status' in error) {
+    const apiError = error as { http_status?: number };
+    return apiError.http_status === status;
+  }
+
+  return false;
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return hasHttpStatus(error, 404);
+}
+
+// 403 = the caller's role has no access to this project (authorization
+// middleware IDOR guard). Retrying cannot change the answer.
+export function isForbiddenError(error: unknown): boolean {
+  return hasHttpStatus(error, 403);
+}
+
+// Shared retry policy for payrate queries: 404 (no payrate exists) and 403
+// (no project access) are terminal; retry only transient errors, max 3 times.
+export function payrateQueryRetry(failureCount: number, error: unknown): boolean {
+  if (isNotFoundError(error) || isForbiddenError(error)) return false;
+  return failureCount < 3;
+}
+
+// ========== PAY RATE QUERIES ==========
+
+/**
+ * Get current active or nearest upcoming payrate for a project
+ */
+export function useCurrentPayRate(projectId: number, enabled = true) {
+  return useQuery<PayRate>({
+    queryKey: ['projects', projectId, 'payrate'],
+    queryFn: async () => {
+      const response = await payRateService.getCurrentProjectPayRate(projectId);
+      return response.data;
+    },
+    enabled: enabled && !!projectId,
+    gcTime: 15 * 60 * 1000, // 15 minutes
+    retry: payrateQueryRetry,
+  });
+}
+
+/**
+ * Get pay rates for a specific project
+ */
+export function useProjectPayRates(
+  projectId: number,
+  params: PayRateListParams = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ['projects', projectId, 'payrates', params],
+    queryFn: () => payRateService.getProjectPayRates(projectId, params),
+    enabled,
+    gcTime: 15 * 60 * 1000, // 15 minutes
+    retry: payrateQueryRetry,
+  });
+}
+
+
+/**
+ * Get specific pay rate by ID
+ */
+export function usePayRate(payRateId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['payrates', payRateId],
+    queryFn: () => payRateService.getPayRate(payRateId),
+    enabled,
+    gcTime: 30 * 60 * 1000, // 30 minutes
+  });
+}
+
+/**
+ * List pay rates with optional filtering
+ */
+export function usePayRates(params: PayRateListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: ['payrates', 'list', params],
+    queryFn: () => payRateService.listPayRates(params),
+    enabled,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+// Removed pending pay rate approvals function - no approval workflow needed
+
+// ========== PAY RATE MUTATIONS ==========
+
+/**
+ * Create new pay rate configuration
+ */
+export function useCreatePayRate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreatePayRateRequest) =>
+      payRateService.createPayRate(data),
+    onSuccess: (result) => {
+      const projectId = (result as { data: { project_id: number } }).data.project_id;
+
+      // Invalidate and refetch all payrate queries to get fresh data from server
+      // This ensures current/upcoming payrates are correctly determined
+      queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'payrates'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'payrate'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['payrates', 'list'],
+        refetchType: 'active'
+      });
+
+      if (result.message) {
+        showSuccessNotification(result.message);
+      }
+    },
+  });
+}
+
+/**
+ * Create pay rate for specific project
+ */
+export function useCreateProjectPayRate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, data }: { projectId: number; data: CreatePayRateRequest }) =>
+      payRateService.createProjectPayRate(projectId, data),
+    onSuccess: (result) => {
+      const projectId = (result as { data: { project_id: number } }).data.project_id;
+
+      // Invalidate and refetch all payrate queries to get fresh data from server
+      // This ensures current/upcoming payrates are correctly determined
+      queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'payrates'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'payrate'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['payrates', 'list'],
+        refetchType: 'active'
+      });
+
+      if (result.message) {
+        showSuccessNotification(result.message);
+      }
+    },
+  });
+}
+
+/**
+ * Update existing pay rate configuration
+ */
+export function useUpdatePayRate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ payRateId, data }: { payRateId: number; data: UpdatePayRateRequest }) =>
+      payRateService.updatePayRate(payRateId, data),
+    onSuccess: (result) => {
+      const payRateId = (result as { data: { id: number; project_id: number } }).data.id;
+      const projectId = (result as { data: { id: number; project_id: number } }).data.project_id;
+
+      // Invalidate and refetch all payrate queries to get fresh data from server
+      // This ensures current/upcoming payrates are correctly determined after update
+      queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'payrates'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'payrate'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['payrates', payRateId],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['payrates', 'list'],
+        refetchType: 'active'
+      });
+
+      if (result.message) {
+        showSuccessNotification(result.message);
+      }
+    },
+  });
+}
+
+/**
+ * Delete pay rate configuration (Admin only)
+ */
+export function useDeletePayRate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ payRateId }: { payRateId: number; projectId?: number }) => payRateService.deletePayRate(payRateId),
+    onSuccess: (_, variables) => {
+      const { payRateId, projectId } = variables ?? { payRateId: undefined, projectId: undefined };
+      // Get pay rate data from cache to invalidate related queries
+      const payRateData = payRateId ? queryClient.getQueryData(['payrates', payRateId]) : undefined;
+
+      queryClient.removeQueries({ queryKey: ['payrates', payRateId] });
+      queryClient.invalidateQueries({ queryKey: ['payrates', 'list'] });
+
+      const targetProjectId = projectId ?? (payRateData ? (payRateData as { project_id: number }).project_id : undefined);
+      if (targetProjectId) {
+        queryClient.invalidateQueries({ queryKey: ['projects', targetProjectId, 'payrates'] });
+        queryClient.invalidateQueries({ queryKey: ['projects', targetProjectId, 'payrate'] });
+      }
+    },
+  });
+}
+
+// ========== APPROVAL WORKFLOW REMOVED ==========
+// No approval process needed - payrates are immediately active when created
+
+// ========== UTILITY MUTATIONS ==========
+
+/**
+ * Validate pay rate configuration
+ */
+export function useValidatePayRate() {
+  return useMutation({
+    mutationFn: (data: {
+      project_id: number;
+      rates: Record<string, RateCategory>;
+      effective_from: string;
+      exclude_rate_id?: number;
+    }) => (payRateService as unknown as { validatePayRate: (d: unknown) => Promise<{ data: { valid: boolean; errors: string[]; warnings: string[] } }> }).validatePayRate(data),
+  });
+}
+
+/**
+ * Copy pay rate to another project
+ */
+export function useCopyPayRate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      sourceRateId,
+      targetProjectId,
+      options
+    }: {
+      sourceRateId: number;
+      targetProjectId: number;
+      options: {
+        effective_from: string;
+        modify_rates?: {
+          adjustment_type: 'percentage' | 'fixed';
+          adjustment_value: number;
+        };
+      };
+    }) => payRateService.copyPayRate(sourceRateId, targetProjectId, options),
+    onSuccess: (result) => {
+      const projectId = (result as { data: { project_id: number } }).data.project_id;
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'payrates'] });
+    },
+  });
+}
+
+/**
+ * Create standard Vietnamese pay rate structure
+ */
+
+// ========== CONVENIENCE HOOKS ==========
+
+/**
+ * Hook for comprehensive pay rate management
+ */
+export function usePayRateManager(projectId: number) {
+  const currentRate = useCurrentPayRate(projectId);
+  const projectRates = useProjectPayRates(projectId);
+  const createMutation = useCreateProjectPayRate();
+  const updateMutation = useUpdatePayRate();
+  const validateMutation = useValidatePayRate();
+
+  const createWithValidation = async (data: CreatePayRateRequest) => {
+    // Validate first
+    const validation = await validateMutation.mutateAsync({
+      project_id: projectId,
+      rates: data.rates as unknown as Record<string, RateCategory>,
+      effective_from: data.effective_from,
+    });
+
+    if (!(validation as { data: { valid: boolean; errors: string[] } }).data.valid) {
+      throw new Error(`Validation failed: ${(validation as { data: { errors: string[] } }).data.errors.join(', ')}`);
+    }
+
+    if ((validation as { data: { warnings: string[] } }).data.warnings.length > 0) {
+      console.warn('Pay rate warnings:', (validation as { data: { warnings: string[] } }).data.warnings);
+    }
+
+    return createMutation.mutateAsync({ projectId, data });
+  };
+
+  return {
+    currentRate,
+    projectRates,
+    createWithValidation,
+    isCreating: createMutation.isPending,
+    isValidating: validateMutation.isPending,
+    isLoading: currentRate.isLoading || projectRates.isLoading,
+    error: createMutation.error || updateMutation.error || validateMutation.error,
+  };
+}
+
+/**
+ * Hook for pay rate validation with real-time feedback
+ */
+export function usePayRateValidation() {
+  const validateMutation = useValidatePayRate();
+
+  const validateInRealTime = async (data: {
+    project_id: number;
+    rates: Record<string, RateCategory>;
+    effective_from: string;
+    exclude_rate_id?: number;
+  }) => {
+    try {
+      const result = await validateMutation.mutateAsync(data);
+      return (result as { data: unknown }).data;
+    } catch (error) {
+      return {
+        valid: false,
+        errors: ['Validation request failed'],
+        warnings: [],
+        conflicts: []
+      };
+    }
+  };
+
+  return {
+    validateInRealTime,
+    isValidating: validateMutation.isPending,
+    lastValidation: validateMutation.data as unknown,
+  };
+}

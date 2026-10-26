@@ -38,7 +38,7 @@ export const getRevenueSummary = async (req: any, res: any): Promise<void> => {
                     : 0
             },
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Revenue summary error:`, error);
         res.status(500).json({ success: false, message: error.message });
@@ -80,7 +80,7 @@ export const getMonthlyRevenueTrends = async (req: any, res: any): Promise<void>
                 outstanding: parseFloat(r.outstanding || 0).toFixed(2)
             })),
             metadata: { requestId, timestamp: new Date().toISOString() }
-}
+        });
     } catch (error) {
         (logger as any).error(`[${requestId}] Revenue trends error:`, error);
         res.status(500).json({ success: false, message: error.message });

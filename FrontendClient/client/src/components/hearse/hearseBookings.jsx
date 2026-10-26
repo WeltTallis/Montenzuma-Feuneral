@@ -838,7 +838,7 @@ const HearseBookings = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
 
-  const { socket } = useSocket();
+  const { socket, connected } = useSocket();
   const { user } = useAuthStore();
 
   const getDateRange = useCallback((filter) => {
@@ -991,20 +991,31 @@ const HearseBookings = () => {
   }, [refreshData]);
 
   useEffect(() => {
-    if (!socket) return;
-    socket.on('new_booking', (d) => {
+    if (!socket || !connected) return;
+    refreshData();
+    const handleNewBooking = (d) => {
       if (d.booking) {
         setBookings(p => [d.booking, ...p]);
         const code = d.booking_code || `BK-${d.booking_id}`;
         notify.success(`New booking: ${code} - ${d.booking_client_name || 'Client'}`);
       }
-    });
-    socket.on('booking_status_updated', (d) => {
+    };
+    const handleStatusUpdate = (d) => {
       setBookings(p => p.map(b => b.booking_id === d.booking_id ? { ...b, status: d.status, ...d.booking } : b));
-    });
-    socket.on('booking_postponed', () => loadData());
-    return () => { socket.off('new_booking'); socket.off('booking_status_updated'); socket.off('booking_postponed'); };
-  }, [socket, loadData]);
+    };
+    const handleBookingPostponed = () => loadData();
+    const handleHearseChange = () => refreshData();
+    socket.on('new_booking', handleNewBooking);
+    socket.on('booking_status_updated', handleStatusUpdate);
+    socket.on('booking_postponed', handleBookingPostponed);
+    socket.on('hearse_data_changed', handleHearseChange);
+    return () => {
+      socket.off('new_booking', handleNewBooking);
+      socket.off('booking_status_updated', handleStatusUpdate);
+      socket.off('booking_postponed', handleBookingPostponed);
+      socket.off('hearse_data_changed', handleHearseChange);
+    };
+  }, [socket, connected, loadData, refreshData]);
 
   const filtered = useMemo(() => {
     let result = [...bookings];
@@ -1464,6 +1475,7 @@ const HearseBookings = () => {
               bookings={filtered}
               allBookings={bookings}
               hearses={allHearses}
+              branches={branches}
               drivers={drivers}
               standbyDriverId={standbyDriverId}
               lineupLoading={lineupLoading}

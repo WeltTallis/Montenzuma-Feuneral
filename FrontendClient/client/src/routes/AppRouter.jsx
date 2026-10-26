@@ -15,6 +15,7 @@ import FlowerBookingGuard from '../components/florists/FlowerBookingGuard';
 import { tenantApi } from '../api/tenant.api';
 
 const UpcomingIntegrations = lazy(() => import('../modules/integrations/UpcomingIntegrations'));
+const HrPayrollWorkspace = lazy(() => import('../hr-payroll/HrPayrollWorkspace'));
 const ChamaWelfareManagement = lazy(() => import('../modules/landing/ChamaWelfareManagement'));
 const SACCOFuneralInsurance = lazy(() => import('../modules/landing/SACCOFuneralInsurance'));
 const ChurchFuneralWelfare = lazy(() => import('../modules/landing/ChurchFuneralWelfare'));
@@ -93,6 +94,30 @@ const ContactPage = lazy(() => import('../modules/pages/ContactPage'));
 const WhyUsPage = lazy(() => import('../modules/pages/WhyUsPage'));
 const AboutPage = lazy(() => import('../modules/pages/AboutPage'));
 const LoginPage = lazy(() => import('../components/auth/login'));
+
+const PayrollRouteRedirect = () => {
+  const location = useLocation();
+  const tenantSlug = getTenantSlug();
+  const [, sourceRole, ...segments] = location.pathname.split('/');
+
+  if (!tenantSlug) return <Navigate to="/login" replace />;
+
+  const path = segments.join('/').replace(/^timesheet(?=\/|$)/, 'timesheets');
+  const destination = sourceRole === 'employee' || sourceRole === 'accountant'
+    ? `dashboard${path ? `/${path}` : ''}`
+    : path || 'dashboard';
+
+  return (
+    <Navigate
+      to={{
+        pathname: `/${tenantSlug}/hr/${destination}`,
+        search: location.search,
+        hash: location.hash,
+      }}
+      replace
+    />
+  );
+};
 
 
 const FinancialDetailsPage = lazy(() => import('../components/deceased/financialDetails/FinancialDetailsPage'));
@@ -547,6 +572,12 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
           </Suspense>
         } />
 
+        {/* Payroll lives in the shared app shell and uses the RestPoint session. */}
+        <Route path="hr/*" element={
+          <Layout tenantData={tenantData} tenantSlug={slug}>
+            <Suspense fallback={<RouteLoadingFallback />}><HrPayrollWorkspace /></Suspense>
+          </Layout>
+        } />
 
         {/* Deceased Management - All authenticated users */}
         <Route path="all-deceased" element={
@@ -1071,6 +1102,12 @@ const AppRouter = () => (
       {/* Legacy /tenant/<slug>/... URLs → the slug-first equivalent. */}
       <Route path="/tenant" element={<Navigate to="/dashboard" replace />} />
       <Route path="/tenant/*" element={<LegacyTenantRedirect />} />
+
+      {/* Payroll's original links use role-based root paths; keep them tenant-scoped. */}
+      <Route path="/admin/*" element={<PayrollRouteRedirect />} />
+      <Route path="/partner/*" element={<PayrollRouteRedirect />} />
+      <Route path="/employee/*" element={<PayrollRouteRedirect />} />
+      <Route path="/accountant/*" element={<PayrollRouteRedirect />} />
 
       {/* Main Tenant Route - All authenticated routes (slug-first: /<slug>/…) */}
       <Route path="/:slug/*" element={<ProtectedRoute><TenantResolver /></ProtectedRoute>} />

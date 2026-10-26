@@ -57,7 +57,7 @@ export const getFlowerBookingAnalytics = async (req: any, res: any): Promise<voi
       success: true,
       data: getEmptyAnalyticsData(requestId, tenantSlug),
       metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime, tenantSlug }
-}
+    });
     return;
   }
 
@@ -226,7 +226,7 @@ export const getFlowerBookingAnalytics = async (req: any, res: any): Promise<voi
         timestamp: new Date().toISOString(),
         executionTime: Date.now() - startTime
       }
-}
+    });
 
   } catch (error: any) {
     (logger as any).error(`[${requestId}] Flower booking analytics error:`, error.message || error);
@@ -235,7 +235,7 @@ export const getFlowerBookingAnalytics = async (req: any, res: any): Promise<voi
       message: error.message,
       data: getEmptyAnalyticsData(requestId, tenantSlug),
       metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-}
+    });
   }
 };
 
@@ -342,7 +342,7 @@ const getEmptyAnalyticsData = (requestId: string, tenantSlug: string): FlowerBoo
     currentMonth: new Date().getMonth() + 1,
     currentYear: new Date().getFullYear()
   }
-}
+});
 
 export default {
   getFlowerBookingAnalytics

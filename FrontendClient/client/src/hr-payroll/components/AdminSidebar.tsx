@@ -1,0 +1,562 @@
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+// UU PRO restyle (W13a): lucide → verified @untitledui/icons. The dark
+// --admin-sidebar-* surface stays the role identity (variables.css remains
+// authoritative); only glyph + token vocabulary changes here.
+import {
+  Activity,
+  Bank,
+  Bell01,
+  BookOpen01,
+  Briefcase01,
+  CalendarCheck01,
+  ChevronDown,
+  ChevronUp,
+  Clipboard,
+  Clock,
+  CoinsHand,
+  Home01,
+  Key01,
+  LogOut01,
+  Receipt,
+  Settings01,
+  UserCircle,
+  UserEdit,
+  Users01,
+  Wallet01,
+} from "@untitledui/icons";
+import { cn } from "@hr/lib/utils";
+import { authManager } from "@hr/lib/auth";
+import {
+  getSidebarCollapsedState,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarSeparator,
+  useSidebar,
+} from "@hr/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@hr/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@hr/components/ui/tooltip";
+import { UserAvatar } from "@hr/components/ui/user-avatar";
+import { UserProfileSheet } from "@hr/components/sheets/UserProfileSheet";
+import { SidebarToggle } from "@hr/components/shared/SidebarToggle";
+import { useAuth } from "@hr/contexts";
+import { useModalNavigation } from "@hr/hooks/useModalNavigation";
+import { MODAL_IDS } from "@hr/constants/modalRegistry";
+import { useUnreadNotifications } from "@hr/hooks/api/useNotifications";
+import { generateAvatarUrl } from "@hr/utils/avatarHelpers";
+
+
+type MenuItem = {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+  end?: boolean;
+  badge?: string;
+  group: string;
+};
+
+export const ADMIN_MENU_ITEMS: MenuItem[] = [
+  { title: "Overview", icon: Home01, path: "/admin", end: true, group: "top" },
+  { title: "Users", icon: UserEdit, path: "/admin/users", group: "management" },
+  { title: "Projects", icon: Briefcase01, path: "/admin/projects", group: "management" },
+  { title: "Employees", icon: Users01, path: "/admin/employees", group: "management" },
+  { title: "Timesheets", icon: CalendarCheck01, path: "/admin/timesheet", group: "management" },
+  { title: "Salary advances", icon: CoinsHand, path: "/admin/advance-payments", group: "management" },
+  { title: "Payment history", icon: Receipt, path: "/admin/payment-history", group: "finance" },
+  { title: "Ledger", icon: BookOpen01, path: "/admin/ledger", group: "finance" },
+  { title: "Loans", icon: Bank, path: "/admin/loans", group: "finance" },
+  { title: "API health", icon: Activity, path: "/admin/system-health", group: "system" },
+  { title: "Scheduled jobs", icon: Clock, path: "/admin/cron-health", group: "system" },
+  { title: "Audit log", icon: Clipboard, path: "/admin/audit-log", group: "system" },
+  { title: "Settings", icon: Settings01, path: "/admin/settings", group: "system" },
+  { title: "Wallet", icon: Wallet01, path: "/admin/wallet", group: "finance" },
+];
+
+const menuGroups = [
+  { key: "top", label: null },
+  { key: "management", label: "Management" },
+  { key: "finance", label: "Finance" },
+  { key: "system", label: "System" },
+] as const;
+
+interface NavItemProps {
+  item: MenuItem;
+  isCollapsed: boolean;
+  onNavigate: () => void;
+}
+
+const NavItem = React.memo(({ item, isCollapsed, onNavigate }: NavItemProps) => {
+  const location = useLocation();
+  const isActive = item.end
+    ? location.pathname === item.path
+    : location.pathname.startsWith(item.path);
+
+  const inner = (
+    <NavLink to={item.path} className="block w-full" onClick={onNavigate}>
+      <div
+        className={cn(
+          "relative flex items-center gap-2.5 rounded-lg transition-all duration-150 ease-out cursor-pointer select-none",
+          isCollapsed
+            ? isActive
+              ? "h-9 w-9 justify-center mx-auto bg-card/[0.08] ring-1 ring-white/[0.12]"
+              : "h-9 w-9 justify-center mx-auto"
+            : "h-11 px-2.5 lg:h-10",
+          isActive
+            ? "bg-card/[0.08] text-white"
+            : "text-white/85 hover:bg-card/[0.06] hover:text-white"
+        )}
+      >
+        {/* Gliding active pill — slides in with a scale animation */}
+        {isActive && !isCollapsed && (
+          <span className="absolute inset-y-2 left-0 w-[3px] origin-center rounded-r-full bg-[hsl(var(--admin-accent))] animate-pill-appear" />
+        )}
+        <item.icon
+          className={cn(
+            "shrink-0 transition-all duration-150",
+            isCollapsed ? "w-[17px] h-[17px]" : "w-[15px] h-[15px]",
+            // Icon morphs from outline-weight to accent color when active
+            isActive ? "text-[hsl(var(--admin-accent))]" : "text-white/90"
+          )}
+        />
+        {!isCollapsed && (
+          <span className={cn(
+            "text-base leading-none truncate flex-1 transition-all duration-150",
+            isActive ? "font-medium text-white" : "font-normal"
+          )}>
+            {item.title}
+          </span>
+        )}
+        {item.badge && !isCollapsed && (
+          <span className="ml-auto bg-utility-error-600 text-white text-xs px-1.5 py-0.5 rounded-full shrink-0 font-semibold">
+            {item.badge}
+          </span>
+        )}
+        {item.badge && isCollapsed && (
+          <span className="absolute -top-0.5 -right-0.5 bg-utility-error-600 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+            {item.badge}
+          </span>
+        )}
+      </div>
+    </NavLink>
+  );
+
+  if (isCollapsed) {
+    return (
+      <SidebarMenuItem>
+        <Tooltip>
+          <TooltipTrigger asChild>{inner}</TooltipTrigger>
+          <TooltipContent side="right" align="center" className="font-medium">
+            {item.title}
+          </TooltipContent>
+        </Tooltip>
+      </SidebarMenuItem>
+    );
+  }
+
+  return <SidebarMenuItem>{inner}</SidebarMenuItem>;
+});
+NavItem.displayName = "NavItem";
+
+interface NavGroupProps {
+  label: string;
+  groupKey: string;
+  items: MenuItem[];
+  isCollapsed: boolean;
+  isExpanded: boolean;
+  onToggle: (key: string) => void;
+  onNavigate: () => void;
+}
+
+const NavGroup = React.memo(
+  ({ label, groupKey, items, isCollapsed, isExpanded, onToggle, onNavigate }: NavGroupProps) => {
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
+
+    // Re-measure whenever isCollapsed changes (remount scenario) or items change
+    useEffect(() => {
+      const el = contentRef.current;
+      if (!el) return;
+      // Measure immediately
+      setContentHeight(el.scrollHeight);
+      const ro = new ResizeObserver(() => setContentHeight(el.scrollHeight));
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, [isCollapsed, items]);
+
+    if (isCollapsed) {
+      return (
+        <div className="flex flex-col items-center gap-1 py-1.5">
+          <div className="w-5 h-px bg-card/[0.08] my-1" />
+          {items.map((item) => (
+            <NavItem key={item.path} item={item} isCollapsed={isCollapsed} onNavigate={onNavigate} />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div data-group={groupKey}>
+        <button
+          type="button"
+          onClick={() => onToggle(groupKey)}
+          className="mt-4 flex min-h-10 w-full cursor-pointer select-none items-center px-2.5 py-1 group/label"
+          aria-expanded={isExpanded}
+        >
+          <span className="flex-1 text-left text-xs font-semibold uppercase tracking-[0.1em] text-white/75 group-hover/label:text-white/90 transition-colors">
+            {label}
+          </span>
+          <ChevronDown
+            className={cn(
+              "w-3.5 h-3.5 shrink-0 text-white/60 group-hover/label:text-white/80 transition-all duration-200",
+              isExpanded && "rotate-180"
+            )}
+          />
+        </button>
+        <div
+          className={cn(
+            "overflow-hidden",
+            // Only animate when we have a measured height; skip transition on initial mount
+            contentHeight !== undefined && "transition-[height,opacity] duration-300 ease-out"
+          )}
+          style={{
+            height: isExpanded ? (contentHeight ?? "auto") : 0,
+            opacity: isExpanded ? 1 : 0,
+          }}
+          aria-hidden={!isExpanded}
+        >
+          <div ref={contentRef}>
+            <SidebarMenu className="px-2 pb-1 gap-0.5">
+              {items.map((item) => (
+                <NavItem key={item.path} item={item} isCollapsed={isCollapsed} onNavigate={onNavigate} />
+              ))}
+            </SidebarMenu>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+NavGroup.displayName = "NavGroup";
+
+const AdminSidebar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, logout } = useAuth();
+  const { isMobile, setOpenMobile, open, openMobile } = useSidebar();
+  const { openModal } = useModalNavigation();
+  const isCollapsed = getSidebarCollapsedState({ isMobile, open, openMobile });
+  const { data: unreadData } = useUnreadNotifications();
+  const unreadCount = unreadData?.count || 0;
+  const isAdvPartner = user?.role === 'adv_partner';
+
+  const [showProfile, setShowProfile] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const topItems = useMemo(() => {
+    const items = ADMIN_MENU_ITEMS.filter((i) => i.group === "top");
+    if (isAdvPartner) return [];
+    return items;
+  }, [isAdvPartner]);
+
+  const filteredMenuItems = useMemo(() => {
+    if (!isAdvPartner) return ADMIN_MENU_ITEMS;
+    const basePath = "/adv-partner";
+    const allowed = ["/admin/advance-payments", "/admin/users"];
+    return ADMIN_MENU_ITEMS
+      .filter((i) => allowed.includes(i.path))
+      .map((i) => ({
+        ...i,
+        path: i.path.replace("/admin", basePath),
+        ...(i.path === "/admin/users" ? { title: "Employees" } : {}),
+      }));
+  }, [isAdvPartner]);
+
+  const activeGroupKey = useMemo(() => {
+    for (const item of filteredMenuItems) {
+      const isActive = item.end
+        ? location.pathname === item.path
+        : location.pathname.startsWith(item.path);
+      if (isActive) return item.group;
+    }
+    return null;
+  }, [location.pathname, filteredMenuItems]);
+
+  const allGroupKeys = useMemo(
+    () => new Set(menuGroups.filter((g) => g.label !== null).map((g) => g.key)),
+    []
+  );
+
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => isAdvPartner
+      ? (activeGroupKey && activeGroupKey !== "top" ? new Set([activeGroupKey]) : new Set<string>())
+      : new Set(allGroupKeys)
+  );
+
+  const autoCollapsedRef = useRef(false);
+  const overflowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset auto-collapse state when sidebar opens so groups restore properly
+  const prevCollapsedRef = useRef(isCollapsed);
+  useEffect(() => {
+    if (prevCollapsedRef.current && !isCollapsed) {
+      if (autoCollapsedRef.current) {
+        autoCollapsedRef.current = false;
+        setExpandedGroups(
+          isAdvPartner
+            ? (activeGroupKey && activeGroupKey !== "top" ? new Set([activeGroupKey]) : new Set<string>())
+            : new Set(allGroupKeys)
+        );
+      }
+    }
+    prevCollapsedRef.current = isCollapsed;
+  }, [isCollapsed, activeGroupKey, isAdvPartner, allGroupKeys]);
+
+  useEffect(() => {
+    let observer: ResizeObserver | null = null;
+    const animationFrame = requestAnimationFrame(() => {
+      const el = contentRef.current;
+      if (!el || isCollapsed) return;
+
+      const checkOverflow = () => {
+        if (overflowTimerRef.current) clearTimeout(overflowTimerRef.current);
+        overflowTimerRef.current = setTimeout(() => {
+          // Skip check if sidebar is currently collapsed (avoids false positives during animation)
+          if (!contentRef.current || prevCollapsedRef.current) return;
+          const overflowing = el.scrollHeight > el.clientHeight + 2;
+          if (overflowing && !autoCollapsedRef.current) {
+            autoCollapsedRef.current = true;
+            setExpandedGroups(
+              activeGroupKey && activeGroupKey !== "top" ? new Set([activeGroupKey]) : new Set()
+            );
+          } else if (!overflowing && autoCollapsedRef.current) {
+            autoCollapsedRef.current = false;
+            setExpandedGroups(
+              isAdvPartner
+                ? (activeGroupKey && activeGroupKey !== "top" ? new Set([activeGroupKey]) : new Set<string>())
+                : new Set(allGroupKeys)
+            );
+          }
+        }, 300);
+      };
+
+      observer = new ResizeObserver(checkOverflow);
+      observer.observe(el);
+      checkOverflow();
+    });
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer?.disconnect();
+      if (overflowTimerRef.current) clearTimeout(overflowTimerRef.current);
+    };
+  }, [isCollapsed, isMobile, activeGroupKey, allGroupKeys, isAdvPartner]);
+
+  useEffect(() => {
+    if (activeGroupKey && activeGroupKey !== "top" && autoCollapsedRef.current) {
+      setExpandedGroups(new Set([activeGroupKey]));
+    }
+  }, [activeGroupKey]);
+
+  const handleToggleGroup = useCallback((key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const handleNavigate = useCallback(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [isMobile, setOpenMobile]);
+
+  const handleLogout = useCallback(() => {
+    authManager.removeToken();
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("username");
+    logout();
+    navigate("/login");
+  }, [logout, navigate]);
+
+  const groupedSections = useMemo(() => menuGroups.filter((g) => g.label !== null), []);
+
+  return (
+    <>
+      <Sidebar
+        collapsible="icon"
+        aria-label="Main navigation"
+        className="admin-sidebar-surface border-r border-white/[0.06] bg-[hsl(var(--sidebar-background))]"
+      >
+        {/* Header — logo */}
+        <SidebarHeader className="p-0 shrink-0 border-b border-white/[0.06]">
+          <div
+            className={cn(
+              "admin-sidebar-logo flex h-14 items-center",
+              isCollapsed ? "justify-center px-1" : "justify-between gap-2 px-3"
+            )}
+          >
+            {isCollapsed ? (
+              <SidebarToggle />
+            ) : (
+              <>
+                <div className="flex min-w-0 items-center gap-2.5" aria-label="TingTing">
+                  <img src="/logo-square.png" alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
+                  <img src="/tingting-white.png" alt="TingTing" className="h-6 w-auto object-contain" />
+                </div>
+                <SidebarToggle />
+              </>
+            )}
+          </div>
+        </SidebarHeader>
+
+        {/* Nav */}
+        <SidebarContent
+          ref={contentRef}
+          className="py-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        >
+          {/* Top items */}
+          <SidebarMenu className={cn("px-2 gap-0.5", isCollapsed && "items-center")}>
+            {topItems.map((item) => (
+              <NavItem key={item.path} item={item} isCollapsed={isCollapsed} onNavigate={handleNavigate} />
+            ))}
+          </SidebarMenu>
+
+          {/* Grouped sections */}
+          {groupedSections.map(({ key, label }) => {
+            const items = filteredMenuItems.filter((i) => i.group === key);
+            if (!items.length) return null;
+            return (
+              <NavGroup
+                key={key}
+                label={label!}
+                groupKey={key}
+                items={items}
+                isCollapsed={isCollapsed}
+                isExpanded={expandedGroups.has(key)}
+                onToggle={handleToggleGroup}
+                onNavigate={handleNavigate}
+              />
+            );
+          })}
+        </SidebarContent>
+
+        {/* Footer — user menu */}
+        <SidebarSeparator className="bg-card/[0.06] m-0 shrink-0" />
+        <SidebarFooter className="p-2 shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={
+                  user
+                    ? `Account: ${user.name}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ""}`
+                      : "Account"
+                }
+                aria-haspopup="menu"
+                className={cn(
+                  "admin-sidebar-account relative flex items-center w-full rounded-xl transition-all duration-200 cursor-pointer outline-none",
+                  "bg-card/[0.04] border border-white/[0.06]",
+                  "hover:bg-card/[0.08] hover:border-white/[0.1]",
+                  isCollapsed ? "h-9 w-9 justify-center self-center" : "h-auto min-h-11 px-2.5 py-2 gap-2.5 lg:min-h-[40px]"
+                )}
+              >
+                {isCollapsed && user && (
+                  // Neutral glyph rather than a letter monogram, so the
+                  // collapsed rail matches the avatar language used everywhere
+                  // else.
+                  <img
+                    src={generateAvatarUrl()}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-6 w-6 rounded-full"
+                  />
+                )}
+                {!isCollapsed && user && (
+                  <>
+                    <div className="flex flex-col min-w-0 flex-1 text-left">
+                      <span className="text-xs text-white/75 truncate leading-tight uppercase font-semibold tracking-wide">Hello</span>
+                      <span className="text-base font-medium truncate leading-tight text-white/90">{user.name}</span>
+                    </div>
+                    <ChevronUp className="w-3.5 h-3.5 shrink-0 text-white/60" />
+                  </>
+                )}
+                {unreadCount > 0 && (
+                  <span className={cn(
+                    "absolute h-4 min-w-4 flex items-center justify-center px-1",
+                    isCollapsed ? "-top-0.5 -right-0.5" : "-top-1.5 -right-1.5",
+                    "text-xs font-semibold rounded-full bg-utility-error-600 text-white",
+                    "animate-badge-pulse"
+                  )}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-56 z-[9999]"
+              side="top"
+              align={isCollapsed ? "center" : "end"}
+              sideOffset={8}
+            >
+              {user && (
+                <>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-sm font-semibold">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <p className="text-xs text-muted-foreground">{isAdvPartner ? 'Advance manager' : 'Administrator'}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem onClick={() => setShowProfile(true)}>
+                <UserCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+                My profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openModal(MODAL_IDS.CHANGE_PASSWORD)}>
+                <Key01 className="mr-2 h-4 w-4" aria-hidden="true" />
+                Change password
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openModal(MODAL_IDS.NOTIFICATION_SHEET)}>
+                <Bell01 className="mr-2 h-4 w-4" aria-hidden="true" />
+                Notifications
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-fg-error-primary focus:text-fg-error-primary">
+                <LogOut01 className="mr-2 h-4 w-4" aria-hidden="true" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {!isCollapsed && (
+            <p className="text-xs text-white/70 text-center pt-1 pb-1 tracking-wide select-none">
+              v{__APP_VERSION__}
+            </p>
+          )}
+        </SidebarFooter>
+      </Sidebar>
+
+      <UserProfileSheet isOpen={showProfile} onClose={() => setShowProfile(false)} />
+    </>
+  );
+};
+
+export default AdminSidebar;
