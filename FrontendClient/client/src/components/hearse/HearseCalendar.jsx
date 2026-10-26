@@ -1832,7 +1832,7 @@ const HearseCalendar = ({
             cursor: 'pointer',
             boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           }}
-          title={`${props.hearseName || 'Hearse'} · ${from !== '—' ? from : ''} → ${dest !== '—' ? dest : ''} · ${props.statusLabel || ''}`}
+          // title removed per user request — only hearse name, route, and plate should be visible
         >
           {/* Hearse name — big and prominent at top */}
           <span style={{
@@ -1841,8 +1841,18 @@ const HearseCalendar = ({
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {props.hearseName || 'Hearse'}
-            {props.plate && props.plate !== '—' ? ` · ${props.plate}` : ''}
           </span>
+
+          {/* Plate number — below hearse name, secondary */}
+          {props.plate && props.plate !== '—' && (
+            <span style={{
+              fontSize: '11px', color: 'rgba(255,255,255,0.8)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              marginTop: '2px',
+            }}>
+              {props.plate}
+            </span>
+          )}
 
           {/* From → Destination route line */}
           {(from !== '—' || dest !== '—') && (
