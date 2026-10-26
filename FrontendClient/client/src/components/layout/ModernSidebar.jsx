@@ -796,7 +796,7 @@ const ModernSidebar = ({
         { icon: Box, label: 'Mini Store', path: `/${tenantSlug}/mini-store` },
         { icon: LayoutDashboard, label: 'Dashboard', path: `/${tenantSlug}/dashboard` },
         { icon: Activity, label: 'Insurance', path: `/${tenantSlug}/insurance` },
-        { icon: Users, label: 'HR & Payroll', path: `/${tenantSlug}/hr` },
+        { icon: Users, label: 'HR Attendance', path: `/${tenantSlug}/hr` },
       ]
     },
     {

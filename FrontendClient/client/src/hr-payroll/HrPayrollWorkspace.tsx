@@ -77,7 +77,7 @@ const ROLE_NAV: Record<AppRole, Array<{ label: string; path: string }>> = {
 
 const PageLoading = () => (
   <div className="flex min-h-40 items-center justify-center text-sm text-slate-500" role="status">
-    Loading payroll…
+    Loading   Attedance…
   </div>
 );
 
@@ -179,46 +179,46 @@ const HrPayrollWorkspace = () => {
           data-admin-ui={role === 'admin' ? '' : undefined}
           data-partner-ui={role === 'partner' ? '' : undefined}
         >
-        <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Link to={`/${slug}/hr`} className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              RestPoint HR
-            </Link>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">HR &amp; Payroll</h1>
-          </div>
-        </header>
+          <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <Link to={`/${slug}/hr`} className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                RestPoint HR
+              </Link>
+              <h1 className="mt-1 text-2xl font-bold text-slate-900">HR &amp; Payroll</h1>
+            </div>
+          </header>
 
-        <div className="mb-5 space-y-3" role="status">
-          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-            Payroll data is not connected yet. HR requests are fail-closed; no payroll API calls or payroll sign-in are enabled.
+          <div className="mb-5 space-y-3" role="status">
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              Payroll data is not connected yet. HR requests are fail-closed; no payroll API calls or payroll sign-in are enabled.
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+              <h2 className="font-semibold text-slate-900">ZKTeco K40 attendance</h2>
+              <p className="mt-1">
+                Assign each employee a unique ID on the K40, then enrol their fingerprint using the terminal's user
+                management menu. Fingerprint templates stay on the device; the supplied SDK can read users and
+                attendance logs but does not enrol fingerprint templates. Cloud sync still needs an office connector
+                that sends records over an outbound encrypted connection. Do not expose the terminal directly to the
+                internet. The connector is not configured yet.
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-            <h2 className="font-semibold text-slate-900">ZKTeco K40 attendance</h2>
-            <p className="mt-1">
-              Assign each employee a unique ID on the K40, then enrol their fingerprint using the terminal's user
-              management menu. Fingerprint templates stay on the device; the supplied SDK can read users and
-              attendance logs but does not enrol fingerprint templates. Cloud sync still needs an office connector
-              that sends records over an outbound encrypted connection. Do not expose the terminal directly to the
-              internet. The connector is not configured yet.
-            </p>
-          </div>
-        </div>
 
-        <nav aria-label="HR and payroll" className="mb-5 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `shrink-0 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-emerald-100 text-emerald-900' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+          <nav aria-label="HR and payroll" className="mb-5 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `shrink-0 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-emerald-100 text-emerald-900' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
 
-        <Suspense fallback={<PageLoading />}>
-          <PayrollRoutes role={role} />
-        </Suspense>
+          <Suspense fallback={<PageLoading />}>
+            <PayrollRoutes role={role} />
+          </Suspense>
         </section>
       </AppProviders>
     </QueryClientProvider>

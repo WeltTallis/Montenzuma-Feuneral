@@ -55,8 +55,8 @@ function HistorySkeleton() {
 function EmptyState() {
   return (
     <SharedEmptyState
-      title="Chưa có lịch sử"
-      description="Chưa có file kết quả chuyển tiền nào được tải lên."
+      title="comming   soon"
+      description="sooner."
       size="sm"
     />
   );
@@ -298,7 +298,7 @@ export const BulkTransferHistoryDialog = memo(function BulkTransferHistoryDialog
                   {isFetching && (
                     <div className="flex items-center gap-1.5 text-xs text-slate-600">
                       <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      Đang tải thêm...
+                      Submit  ...
                     </div>
                   )}
                 </div>
@@ -306,7 +306,7 @@ export const BulkTransferHistoryDialog = memo(function BulkTransferHistoryDialog
 
               {!hasMore && histories.length > 0 && (
                 <p className="py-3 text-center text-xs text-slate-600">
-                  {histories.length} kết quả
+                  {histories.length} ket
                 </p>
               )}
             </>

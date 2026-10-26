@@ -14,7 +14,7 @@ export function CapitalContributionsCard({ contributions, isLoading }: CapitalCo
 
   if (isLoading) {
     return (
-      <div className="h-full overflow-hidden rounded-xl border border-border/70 bg-card" aria-busy="true" aria-label="Đang tải vốn chủ sở hữu">
+      <div className="h-full overflow-hidden rounded-xl border border-border/70 bg-card" aria-busy="true" aria-label="B  . Class">
         <div className="border-b border-border/60 px-4 py-2.5">
           <Skeleton className="h-3 w-28" />
         </div>

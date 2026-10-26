@@ -239,7 +239,7 @@ export const BulkTransferHistoryDetailDialog = memo(function BulkTransferHistory
               )}
             </>
           ) : (
-            <EmptyState title="Không tìm thấy dữ liệu" size="sm" />
+            <EmptyState title="coming soon" size="sm" />
           )}
         </div>
       </DialogContent>

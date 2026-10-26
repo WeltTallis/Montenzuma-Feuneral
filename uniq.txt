@@ -1,0 +1,3229 @@
+"${dayType}" của vị trí "${position}" phải có ít nhất một khung giờ
+${Math.abs(days)} ngày trước
+${actionLabel} điểm danh cho ${employee.employee_name}
+${amount} đã được chuyển vào tài khoản
+${bankData?.projects.length.toLocaleString('en-KE') ?? '--'} dự án
+${baseMsg} ${retryAfter} giây
+${baseMsg} (thử lại sau ${retryAfter} giây)
+${binRange}: ${count} nhân viên
+${calibrationSamples} dự báo cùng thời hạn đã được đối chiếu.
+${calibrationSamples} dự báo đã được đối chiếu; chưa đủ để hiệu chỉnh độ chính xác.
+${calibrationSamples} dự báo đã được đối chiếu; chưa đủ để kết luận độ chính xác.
+${cell.label}: ${cell.count} yêu cầu
+${dashboardSummary?.total_working_employees.toLocaleString('en-KE') ?? '--'} đang làm
+${data.dashboardSummary.total_employees.toLocaleString('en-KE')} nhân viên · ${data.dashboardSummary.employees_hired_this_month.toLocaleString('en-KE')} mới
+${day.totalHours % 1 === 0 ? day.totalHours : formatNumber(day.totalHours, 1)} giờ
+${dayName} hàng tuần lúc ${fmtTime(hour, min)}
+${daysAgo} ngày trước
+${days} ngày
+${day} tháng ${month} ${year}
+${diffDays} ngày
+${diffDay} ngày trước
+${diffHour} giờ trước
+${diffMin} phút trước
+${employee.timesheet_summary!.pending_timesheets} bảng công chờ duyệt
+${employeeName} đã được gỡ khỏi dự án ${project.name}
+${entry.payrate?.toLocaleString("en-KE")}${entry.projectIsFlexible ? "₫/ca" : "₫/giờ"}
+${field.show ? "Ẩn" : "Hiện"} ${field.label.toLowerCase()}
+${fieldName} đã tồn tại
+${firstUser.fullname} và ${normalizedSelectedIds.length - 1} người khác
+${formatCurrency(rate)}/giờ
+${formatVND(dashboardSummary?.total_profit_this_month ?? 0)} lợi nhuận
+${fromDay} - ${toDay} Tháng ${month}
+${group.count} dòng
+${group.dates.length === 1 ? 'ngày' : 'các ngày'} ${shown}${truncated ? '…' : ''}
+${group.rows.length === 1 ? 'dòng' : 'các dòng'} ${shown}${truncated ? '…' : ''}
+${hoursAgo} giờ trước
+${hours} giờ
+${hours} giờ ${String(remainMins).padStart(2, '0')} phút
+${hours} giờ trước
+${isExpanded ? "Thu gọn" : "Xem"} bảng công của ${group.employeeName || group.employeeCode || "nhân viên"}
+${job.is_enabled ? "Tắt" : "Bật"} tác vụ ${job.name.replace(/_/g, " ")}
+${kind === "otp" ? "Đã gửi OTP mẫu" : "Đã gửi mẫu thông báo lương"} (msg_id: ${result.msg_id || "—"})
+${label}: phân bổ ${values.length} nhân viên theo khung lương. Trung bình ${formatCurrency(summary.mean)}, thấp nhất ${formatCurrency(summary.min)}, cao nhất ${formatCurrency(summary.max)}. ${chartData.map((item) =>
+${ledgerService.formatCurrency(entry.credit)} (Có)
+${ledgerService.formatCurrency(entry.debit)} (Nợ)
+${mins} phút
+${mins} phút ${secs} giây
+${minutesAgo} phút trước
+${minutes} phút trước
+${monthlyTotalHours % 1 === 0 ? monthlyTotalHours : formatNumber(monthlyTotalHours, 1)} giờ
+${normalizedSelectedIds.length} người được chọn
+${notification.title}. ${isUnread ? 'Chưa đọc' : 'Đã đọc'}.
+${noun.charAt(0).toUpperCase()}${noun.slice(1)} "${label}" chưa có trong bảng lương của dự án
+${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% so tháng trước
+${pendingRequests} yêu cầu đang được xử lý.
+${postings.length} bút toán ngân hàng
+${project.employeeCount} nhân viên
+${project.entries.length} mục
+${project.total_employees.toLocaleString('en-KE')} nhân viên
+${row.email || "Không có email"} • ${projectInfo}
+${rows.length} giao dịch · Tổng tiền: ${formatVND(total)}
+${selectedEmployees.length} nhân viên
+${selectedProjectIds.length} dự án
+${selectedProjects.length} dự án
+${stats.total.toLocaleString()} yêu cầu
+${statusBreakdown.approved} đã duyệt
+${statusBreakdown.draft} nháp
+${statusBreakdown.pending_approval} chờ duyệt
+${statusBreakdown.rejected} loại
+${summary.remaining_groups} nhóm · ${formatCurrency(summary.remaining_amount)}
+${summary.total_eligible_groups} nhóm · ${formatCurrency(summary.total_eligible_amount)}
+${taskAction} thành công
+${testResult.kind === "otp" ? "OTP mẫu" : "Mẫu thông báo lương"} lỗi ${testResult.error_code}
+${timesheet.employeeName} - ${timesheet.hours_worked} giờ - ${format(new Date(timesheet.date), 'dd/MM/yyyy')}
+${timesheet.hours_worked} giờ × ${formatCurrency(timesheet.payrate)}
+${timesheetIds.length} bảng công đã được đánh dấu là Đã thanh toán.
+${totalHoursWorked} giờ
+${totalRecords.toLocaleString('en-KE')} bản ghi
+${totalRecords.toLocaleString('en-KE')} kết quả
+${totalRecords} dòng công trong ${monthLabel.toLowerCase()}.
+${totalSecs} giây
+${unreadCount > 9 ? "9+" : unreadCount} thông báo cần xem.
+${uploadProgress.processedRows} / ${uploadProgress.totalRows} dòng
+${value} nhân viên
+${waiting.toLocaleString('en-KE')} yêu cầu chờ duyệt
+${waitingCount.toLocaleString('en-KE')} chờ duyệt
+${weeks} tuần gần đây
+${workDayCount} ngày
+${workdayCount} ngày công
+'Tháng' M
+'Tháng' M/yyyy
+(bắt buộc)
+(các ngày 25/06/2026, 26/06/2026)
+(mức tối thiểu
+(tháng này)
+(tùy chọn)
+, bước hiện tại
+, chưa thực hiện
+, ngân hàng ghi:
+, đã hoàn tất
+... (hệ thống ghi:
+... (ngân hàng ghi: NGUYEN VAN A)
+...sau N giây
+/ giao dịch
+0 = cuối tháng
+0 = đầu tháng
+0 dòng
+0 yêu cầu sửa · 0 bị loại
+01 - 07 Tháng ${currentMonthNumber}
+01 - 07 Tháng 11
+01 tháng sau
+1 giờ 05 phút
+1 tuần gần đây
+12 tháng gần nhất
+14 ngày
+15 - 21 Tháng ${monthNumber}
+15 - 21 Tháng 04
+150.000đ/h
+180 ngày gần đây
+2 năm gần đây
+22 - ${lastDay} Tháng ${monthNumber}
+22 - ${prevLastDay} Tháng ${prevMonthNumber}
+3 mục
+3 tháng gần đây
+30 ngày
+404: Người dùng truy cập đường dẫn không tồn tại:
+42 giây
+5 phút 40 giây
+5/10 người
+6 tháng
+60 ngày
+7 ngày
+8 ký tự trở lên
+8.5 giờ/người
+: 'Chưa có công'}
+<30 giây
+<5 phút
+>5 phút
+@${calculatedRate.toLocaleString(locale)} ₫/giờ
+Ai nhìn thấy chiến dịch này, và trong khoảng thời gian nào.
+An toàn để xuất
+App ID từ Zalo OA Console
+Bao phủ khoảng
+Biên LN
+Biểu phí giải ngân
+Biểu phí ứng lương
+Biểu đồ cơ cấu nhân sự
+Biểu đồ đường thể hiện lợi nhuận lũy kế theo tuần của các dự án trong 12 tháng gần nhất. Có thể dùng các nút tên dự án phía trên để lọc dữ liệu.
+Biểu đồ đường thể hiện lợi nhuận lũy kế theo tuần của tối đa tám dự án trong 84 ngày gần nhất. Có thể dùng các nút tên dự án phía trên để hiện hoặc ẩn từng dòng.
+Bán kính ${formatDistanceMeters(radiusMeters)}
+Báo cáo sao kê
+Báo cáo thuế
+Báo cáo thuế thu nhập cá nhân
+Bên cho vay
+Bình Thường
+Bút toán
+Bút toán ngân hàng
+Bút toán ngân hàng theo nhân viên và kỳ lương.
+Bút toán này đã được đảo ngược
+Bút toán đảo
+BĐ: ${format(new Date(firstProject.start_date), 'dd/MM/yyyy')}
+BĐ: ${format(new Date(project.start_date), 'dd/MM/yyyy')}
+Bạn
+Bạn chưa được phân quyền truy cập vào dự án nào.
+Bạn chỉ được tan ca từ
+Bạn có chắc chắn muốn hủy dự án "${project?.name}"? Dự án sẽ được đánh dấu là đã hủy và không thể khôi phục.
+Bạn có chắc chắn muốn xóa người dùng "${user.fullname}" (@${user.username})? Hành động này không thể hoàn thành.
+Bạn có chắc chắn muốn đánh dấu dự án "${project?.name}" là hoàn thành? Sau khi hoàn thành, bạn sẽ không thể thêm/xóa nhân viên hoặc tạo timesheet mới.
+Bạn có thay đổi chưa được lưu. Nếu thoát bây giờ, các thay đổi sẽ bị mất.
+Bạn không có quyền thực hiện thao tác này
+Bạn không có quyền truy cập bảng lương của dự án này.
+Bạn không có quyền truy cập chức năng này.
+Bạn không có quyền truy cập modal: ${currentModal}
+Bạn không có quyền xem bảng lương của dự án này
+Bạn đang ở ${nearestGateName}
+Bạn đang ở đây
+Bạn đã vào làm/tan ca rồi
+Bản ghi chưa được duyệt
+Bản ghi đã duyệt — hãy cẩn thận khi chỉnh sửa.
+Bản nháp
+Bản xem trước email
+Bản đồ
+Bản đồ chấm công
+Bản đồ hiển thị vị trí của bạn và ${nearestGateName}, cách ${formatDistanceMeters(guidance.distanceMeters)}
+Bản đồ hướng tới ${nearestGateName}, cách ${formatDistanceMeters(guidance.distanceMeters)} theo đường thẳng
+Bản đồ khu vực chấm công
+Bản đồ lần chấm công
+Bản đồ vệ tinh có thể kéo và phóng to
+Bảng chấm công
+Bảng chấm công chưa được gửi phê duyệt
+Bảng chấm công nhân viên
+Bảng chấm công đang được xử lý
+Bảng chấm công đã bị loại
+Bảng chấm công đã thanh toán
+Bảng chấm công đã được phê duyệt
+Bảng công chờ duyệt
+Bảng công cá nhân
+Bảng công tháng này
+Bảng lương
+Bảng lương chi tiết
+Bảng lương chi tiết đầy đủ thông tin
+Bảng lương trọn ca
+Bảng lịch sử thanh toán
+Bảng mức lương theo giờ
+Bảo hiểm
+Bất thường quota — ${anomLabel}${monthSuffix}
+Bậc đầu tiên phải có giá trị từ 0
+Bật
+Bật thông báo ZNS lương linh hoạt
+Bật thông báo đẩy
+Bật thông báo đẩy trên thiết bị
+Bật tự chấm công
+Bật đặt lại mật khẩu qua Zalo
+Bắt buộc số điện thoại khi thêm nhân viên mới
+Bắt đầu
+Bắt đầu bằng cách nhập công cho nhân viên trong kỳ.
+Bị loại
+Bỏ chọn tất cả
+Bỏ duyệt
+Bỏ duyệt hết
+Bỏ duyệt tất cả bảng công
+Bỏ lọc
+Bỏ lọc dự án: ${projects.find((p) => p.id === projectId)?.name ?? "Projects"}
+Bỏ lọc tháng: ${monthOptions.find((m) => m.value === month)?.label ?? month}
+Bỏ lọc trạng thái: ${statusFilter === "working" ? "Đang làm việc" : "Chưa phân công"}
+Bỏ qua nhắc nhở
+Bỏ tệp ${file.name}
+Bộ lọc
+Bộ lọc nhật ký
+CCCD chỉ được chứa chữ cái và số
+CCCD là bắt buộc
+CCCD phải có đúng 12 chữ số
+Ca 12h ngày
+Ca 12h đêm
+Ca chiều
+Ca không có lương
+Ca không được ghi nhận vì đã quá hạn tan ca.
+Ca làm
+Ca làm này đã bị từ chối. Liên hệ quản lý nếu bạn cần kiểm tra lại.
+Ca làm thiếu giờ tan ca nên chưa thể ghi nhận đầy đủ.
+Ca làm việc ban ngày
+Ca làm việc ban đêm
+Ca làm việc hôm nay
+Ca làm việc hôm qua
+Ca ngày
+Ca qua đêm
+Ca sáng
+Ca đã hoàn thành nhưng tiền công chưa được ghi nhận.
+Ca đêm
+Cao nhất
+Chatbot (Cũ)
+Chi phí
+Chi phí hoạt động
+Chi phí vận hành
+Chi tiết bút toán
+Chi tiết bảng chấm công
+Chi tiết bảng công
+Chi tiết dự án
+Chi tiết giao dịch
+Chi tiết giao dịch (${batch.rows.length})
+Chi tiết kết quả xử lý file Excel chuyển tiền hàng loạt.
+Chi tiết lương
+Chi tiết người dùng
+Chi tiết nhân viên
+Chi tiết phê duyệt
+Chi tiết xử lý file Excel chuyển tiền ứng lương
+Chi trả
+Chi trả lương
+Chi trả theo nhân viên — ${monthLabel}
+Chi trả và biến động
+Chi trả và biến động nhân sự
+Chia sẻ dự án
+Chia sẻ nhân viên
+Cho phép nhân viên nhận OTP đặt lại mật khẩu qua Zalo.
+Cho phép vị trí
+Cho phép ứng lương${employeeName ?
+Chu kỳ chờ áp dụng
+Chu kỳ hiện tại
+Chu kỳ thanh toán
+Chu kỳ từ
+Chu kỳ đến
+Chuyển OnePay
+Chuyển giao hàng loạt
+Chuyển giao timesheet hàng loạt
+Chuyển khoá "${apiKey.name}" về chỉ đọc? Agent sẽ bị chặn mọi thao tác ghi ở lượt gọi tiếp theo.
+Chuyển khoá MCP "${apiKey.name}" sang ALL? Khoá sẽ được phép ghi dữ liệu với quyền quản trị của người tạo khoá. Yêu cầu phiên đã xác thực OTP.
+Chuyển khoá MCP "${apiKey.name}" về chỉ đọc (READ ONLY)? Agent sẽ bị chặn mọi thao tác ghi ở lượt gọi tiếp theo.
+Chuyển khoản ngân hàng
+Chuyển lô
+Chuyển lô qua nhà cung cấp
+Chuyển lô tự động chưa được kích hoạt.
+Chuyển lô ứng lương
+Chuyển tab
+Chuyển tiền
+Chuyển tiền tới tài khoản này
+Chuyển đến trang dự án ID: ${projectId}
+Chuyển đến trang hoạt động chi tiết.
+Chuẩn bị
+Chuẩn bị sao kê
+Chưa chạy
+Chưa chọn dự án
+Chưa chọn file. Vui lòng chọn file Excel để tải lên
+Chưa có
+Chưa có bảng công nào cho ngày này
+Chưa có bảng lương
+Chưa có ca làm việc
+Chưa có chủ nợ nào
+Chưa có cấu hình lương cho dự án này
+Chưa có cấu hình phí
+Chưa có dòng nào trong lô này.
+Chưa có dữ liệu
+Chưa có dữ liệu chấm công
+Chưa có dữ liệu chấm công cho kỳ này
+Chưa có dữ liệu ngân hàng
+Chưa có dữ liệu thanh toán
+Chưa có dữ liệu để hiển thị.
+Chưa có dự án
+Chưa có dự án nào
+Chưa có dự án nào được cấp cho tài khoản này
+Chưa có email nào
+Chưa có giao dịch nào
+Chưa có giao dịch đã hoàn tất
+Chưa có hoạt động nào
+Chưa có hoạt động nào được ghi nhận gần đây
+Chưa có hạn mức
+Chưa có khoản vay nào
+Chưa có khu vực chấm công
+Chưa có khách hàng
+Chưa có kết quả thực tế để đo độ chính xác.
+Chưa có lô chuyển tiền nào
+Chưa có lịch
+Chưa có lịch sử thanh toán nào trong khoảng thời gian này.
+Chưa có người nhận nào
+Chưa có nhân viên
+Chưa có nhân viên FlexPay nào.
+Chưa có nhân viên nào trong các dự án được phân quyền.
+Chưa có nhân viên nào được giao
+Chưa có nhân viên trong dự án
+Chưa có nhật ký hoạt động
+Chưa có sao kê nào
+Chưa có thanh toán nào
+Chưa có thông báo nào
+Chưa có thông tin
+Chưa có thông tin ngân hàng
+Chưa có thời hạn
+Chưa có tài khoản nhận tiền
+Chưa có tệp chứng từ
+Chưa có tệp nào được tải lên
+Chưa có yêu cầu nào
+Chưa cấp quyền GPS
+Chưa cấp quyền chấm công
+Chưa cấu hình
+Chưa cấu hình bảng lương cho dự án
+Chưa cấu hình ca
+Chưa cấu hình mức lương phù hợp cho ca làm việc
+Chưa cấu hình vị trí
+Chưa cập nhật
+Chưa cập nhật khách hàng
+Chưa dùng
+Chưa ghi lương
+Chưa ghi nhận lương
+Chưa giải ngân
+Chưa hiệu chỉnh
+Chưa kết nối
+Chưa mở
+Chưa phát sinh
+Chưa phân
+Chưa phân công
+Chưa thanh toán
+Chưa thể gửi yêu cầu lúc này.
+Chưa thể xác minh
+Chưa thể ứng lương
+Chưa trả
+Chưa tải được bảng công
+Chưa tải được dự án
+Chưa tải được lịch chấm công
+Chưa xác định
+Chưa điểm danh
+Chưa đăng nhập
+Chưa đặt tên
+Chưa đọc
+Chưa đủ lịch sử để ước tính phần chưa phát sinh; số tiền hiện tại chủ yếu dựa trên hàng chờ hiện có.
+Chạy mô phỏng
+Chấm công bị khoá
+Chấm công chờ duyệt
+Chấm công hôm nay
+Chấm công ra thành công
+Chấm công ra thành công${monthSuffix}
+Chấm công tự động, chính xác từng ca làm
+Chế độ soạn email
+Chỉ Admin mới có thể bỏ duyệt timesheet
+Chỉ Admin mới có thể loại bảng công chưa thanh toán
+Chỉ Admin mới có thể loại timesheet
+Chỉ Admin mới có thể phê duyệt timesheet
+Chỉ Admin mới có thể thêm timesheet vào kỳ lương
+Chỉ Admin mới có thể đặt lại trạng thái timesheet
+Chỉ chấp nhận file Excel (.xls, .xlsx)
+Chỉ các GET — không thể thay đổi dữ liệu
+Chỉ các GET — mặc định an toàn khi tạo khoá
+Chỉ có thể tan ca từ
+Chỉ có thể thêm nhân viên vào dự án đang hoạt động
+Chỉ dự án linh động mới sử dụng cấu hình điểm danh.
+Chỉ nhập khi cần thay đổi
+Chỉ nhập số nguyên dương, không nhập số lẻ
+Chỉ được phép tải lên tối đa ${maxFiles} file
+Chỉ được đính kèm tối đa ${maxFiles} file
+Chỉ đọc (READ ONLY)
+Chỉ đọc, dành cho đối tác bên ngoài: xem danh sách dự án, nhân viên và bảng chấm công. Không thể ghi dữ liệu.
+Chỉnh khung giờ ${s.start}-${s.end}
+Chỉnh sửa bảng công
+Chỉnh sửa chiến dịch
+Chỉnh sửa chủ nợ
+Chỉnh sửa cấu hình lương
+Chỉnh sửa dự án
+Chỉnh sửa hồ sơ
+Chỉnh sửa người dùng
+Chỉnh sửa nhân viên ${emp.fullname}
+Chỉnh sửa phân công
+Chỉnh sửa thông tin cá nhân
+Chỉnh sửa thông tin dự án
+Chỉnh sửa thông tin người dùng
+Chỉnh sửa thông tin và mật khẩu người dùng.
+Chọn ${r.employeeName}
+Chọn ca làm việc
+Chọn chu kỳ trả lương
+Chọn chủ nợ
+Chọn cột hiển thị
+Chọn dự án
+Chọn dự án...
+Chọn khoản vay
+Chọn khoảng thời gian và bộ lọc để xuất file Excel
+Chọn khoảng thời gian để chuyển tiền tự động qua nhà cung cấp
+Chọn khung giờ
+Chọn khung giờ làm việc
+Chọn kỳ dữ liệu
+Chọn kỳ lương tuần để tạo file chuyển tiền OnePay
+Chọn kỳ thanh toán
+Chọn loại ca
+Chọn loại giờ
+Chọn loại khoản vay
+Chọn loại ngày
+Chọn loại tin nhắn gửi thử
+Chọn một dự án, khoảng ngày và lý do áp dụng cho toàn bộ đợt.
+Chọn mức độ
+Chọn nghiệp vụ được phép gửi qua kênh ZNS. Hai dịch vụ hoạt động độc lập trên cùng một kết nối.
+Chọn ngày
+Chọn ngày sao kê trước khi chuẩn bị.
+Chọn ngày để tải báo cáo sao kê
+Chọn ngân hàng
+Chọn ngân hàng...
+Chọn người dùng để cấp quyền...
+Chọn người dùng...
+Chọn người góp vốn
+Chọn người góp vốn...
+Chọn người nhận
+Chọn người nhận...
+Chọn nhanh nhóm người nhận
+Chọn nhanh số tiền
+Chọn nhà cung cấp
+Chọn nhân viên
+Chọn nhân viên cần tra cứu
+Chọn nhân viên từ dự án
+Chọn nhân viên...
+Chọn nhóm khác để tiếp tục quản lý.
+Chọn năm
+Chọn năm điểm danh
+Chọn phương thức để lấy dữ liệu đối soát.
+Chọn phạm vi truy cập cho khoá MCP
+Chọn phạm vi truy cập cho khoá ops
+Chọn quản lý để cấp quyền...
+Chọn tháng
+Chọn tháng ${monthLabel} năm ${pickerYear}
+Chọn tháng hoặc kỳ lương khác để xem lịch sử.
+Chọn tháng khác
+Chọn tháng khác để xem
+Chọn tháng kỳ lương, hiện tại ${displayValue}
+Chọn tháng năm ${pickerYear}
+Chọn tháng và năm
+Chọn tháng điểm danh. Đang chọn tháng ${label}
+Chọn tháng để tải xuống sao kê ứng lương
+Chọn thời gian kết thúc hợp lệ
+Chọn thời hạn để xem ngày kết thúc
+Chọn trạng thái
+Chọn tài khoản
+Chọn tất cả
+Chọn tệp Excel
+Chọn tệp để tải lên
+Chọn vai trò
+Chọn vị trí
+Chọn địa chỉ gửi
+Chọn...
+Chốt lương
+Chốt lương chuyển tiền
+Chờ TT
+Chờ bảng lương tháng ${viewedMonthLabel}
+Chờ chi
+Chờ chi trả
+Chờ kích hoạt
+Chờ phê duyệt
+Chờ thanh toán
+Chờ thu
+Chờ trả
+Chờ xử lý
+Chủ nhật
+Chủ nợ
+Chủ tài khoản
+Chủ tài khoản FlexPay
+Chủ tài khoản lương tuần
+Chức năng khác
+Chức năng thêm nhân viên sẽ được triển khai.
+Chức năng tạo dự án sẽ được triển khai.
+Chữ hoa
+Chữ số
+Chữ thường
+Cuối tháng
+Cuộn để tải thêm
+Cài đặt MCP vào agent của bạn
+Cài đặt hệ thống
+Cài đặt thông báo
+Cài đặt điểm danh
+Các bản ghi "Wallet disbursement" sẽ xuất hiện trong vài giây.
+Các bậc phải tăng dần theo số tiền tối thiểu
+Các hồ sơ vừa được thêm để đối chiếu biên chế dự án.
+Các khoảng lương điển hình để kiểm tra độ lệch trước khi giải ngân.
+Cách ${formatDistanceMeters(distanceMeters)}
+Còn ${daysLeft} ngày
+Còn ${hours} giờ ${minutes} phút
+Còn ${minutes} phút
+Còn lại
+Còn lại ${transactionService.formatCurrency(remaining)}
+Còn lỗi ở ${errorCount} dòng
+Còn thiếu: dự án
+Còn thiếu: tệp bảng chấm công
+Có
+Có bảng công 14 ngày qua
+Có giao dịch chưa được bao phủ, cảnh báo, hoặc đối soát sổ cái lệch.
+Có hiệu lực từ
+Có leo thang
+Có lỗi cần sửa
+Có lỗi không xác định xảy ra
+Có lỗi kết nối
+Có lỗi xảy ra
+Có lỗi xảy ra khi gỡ nhân viên khỏi dự án
+Có lỗi xảy ra khi tìm kiếm dự án
+Có lỗi xảy ra khi tìm kiếm nhân viên
+Có lỗi xảy ra khi tạo khoản vay
+Có lỗi xảy ra khi tải lên file BCC
+Có lỗi xảy ra khi tải modal.
+Có lỗi xảy ra khi tải thông tin phê duyệt.
+Có lỗi xảy ra trong quá trình import.
+Có thể nghỉ
+Có thể trả
+Có thể ứng
+Có vấn đề
+Có yêu cầu đã leo thang — cần quyết định
+Công Nhân
+Công chờ duyệt
+Công nợ phải thu
+Công nợ phải trả
+Cùng ngày
+Cũ nhất trước
+Cảnh Báo
+Cảnh báo
+Cảnh báo số dư ví tiền
+Cấp bởi
+Cấp ghi (8h)
+Cấp ghi (ALL)
+Cấp lúc
+Cấp quyền ghi cho agent "${apiKey.name}"? Khoá sẽ được mọi thao tác (POST/PUT/PATCH/DELETE) với quyền quản trị và TỰ HỒI về chỉ đọc sau 8 giờ. Yêu cầu phiên đã xác thực OTP.
+Cấp quyền truy cập
+Cấp quyền truy cập thành công
+Cấu hình
+Cấu hình cho "${dayType}" của vị trí "${position}" không hợp lệ
+Cấu hình cho vị trí "${position}" không hợp lệ
+Cấu hình kết nối
+Cấu hình lương theo cấp bậc / danh mục công việc.
+Cấu hình lương theo từng ca làm việc (ca ngày, ca đêm, tăng ca).
+Cấu hình mức lương
+Cấu hình payrate phải là object
+Cấu hình phí giao dịch chi hộ
+Cấu hình phí ứng lương
+Cấu hình điểm danh
+Cấu trúc lương không được để trống
+Cần App ID và khóa bí mật để hệ thống tự làm mới mã truy cập.
+Cần chọn dự án và tệp để tiếp tục
+Cần cung cấp ít nhất URL hoặc tệp chứng từ
+Cần có ít nhất một cấu hình mức lương
+Cần duyệt
+Cần duyệt GPS
+Cần duyệt lại
+Cần kiểm tra
+Cần kết nối Zalo trước khi bật thông báo lương linh hoạt
+Cần quản lý kiểm tra
+Cần sửa
+Cần theo dõi
+Cần xử lý
+Cần ít nhất một bậc phí
+Cần ít nhất một nút hành động
+Cần đăng nhập
+Cần đăng nhập để truy cập
+Cập nhật
+Cập nhật chiến dịch thất bại
+Cập nhật chu kỳ thanh toán thành công
+Cập nhật chứng từ
+Cập nhật chứng từ thất bại:
+Cập nhật cấu hình phí giao dịch chi hộ thành công
+Cập nhật cấu hình phí thành công
+Cập nhật cấu hình phí trả lương tuần thành công
+Cập nhật hàng loạt thành công
+Cập nhật lúc
+Cập nhật mức lương cho cấu hình hiện tại
+Cập nhật nhân viên thành công
+Cập nhật thành công
+Cập nhật thông tin cá nhân
+Cập nhật thông tin thành công
+Cập nhật trạng thái cron job thành công
+Cập nhật trạng thái thất bại. Vui lòng thử lại.
+Cổng chấm công
+Cổng tan
+Cổng vào
+Danh sách bút toán
+Danh sách chủ nợ và thông tin liên quan
+Danh sách các lần thanh toán lương
+Danh sách các lần thanh toán lương cho nhân viên
+Danh sách cảnh báo thông tin ngân hàng
+Danh sách cấu hình điểm danh
+Danh sách dự án
+Danh sách giao dịch chuyển tiền thành công
+Danh sách khoản vay
+Danh sách người dùng
+Danh sách nhân viên
+Danh sách nhân viên khả dụng để thêm vào dự án
+Danh sách nhân viên thiếu số điện thoại
+Danh sách nhân viên trong các dự án được phân quyền
+Danh sách số điện thoại trùng
+Danh sách thông báo của bạn
+Diễn giải
+Diễn giải là bắt buộc
+Doanh thu, Chi phí, Lợi nhuận
+Duyệt & Lưu
+Duyệt (${selected.size})
+Duyệt bảng công
+Duyệt bảng công theo dự án
+Duyệt công
+Duyệt dự án
+Duyệt dự án thành công
+Duyệt ghi nhận chấm công
+Duyệt hàng loạt
+Duyệt hàng loạt thành công
+Duyệt hết
+Duyệt hết bảng công
+Duyệt lại
+Duyệt nhóm
+Duyệt nhóm bảng công
+Duyệt sẽ thực thi hành động (ví dụ đưa email vào hàng đợi gửi) và ghi lại kết quả.
+Duyệt thành công
+Duyệt yêu cầu
+Dành cho hệ thống tuyển dụng TingHire: tra cứu nhân viên, đặt lại mật khẩu OTP qua Zalo, tự chấm công và đồng bộ Zalo OA.
+Dán HTML đã soạn (ưu tiên table và inline CSS để tương thích Gmail)...
+Dán nội dung đã định dạng từ Gmail, Google Docs hoặc trình soạn thảo khác...
+Dán đường dẫn đầy đủ tới chứng từ.
+Dòng Tiền Ròng
+Dòng tiền
+Dòng tiền ròng
+Dòng tiền và hiệu quả
+Dư nợ
+Dư nợ hiện tại
+Dịch vụ
+Dịch vụ sử dụng kết nối
+Dịch vụ tự chấm công dùng được ngay, tính từ ngày 1 tháng này.
+Dịch vụ xác minh tài khoản hiện chưa sẵn sàng. Vui lòng thử lại sau.
+Dữ liệu bảng công đã được cập nhật.
+Dữ liệu chưa hợp lệ
+Dữ liệu dashboard đã được cập nhật.
+Dữ liệu không hợp lệ
+Dữ liệu không hợp lệ.
+Dữ liệu không đúng định dạng
+Dữ liệu sẽ xuất hiện khi nhân viên có thông tin nhận lương.
+Dữ liệu đã tồn tại
+Dữ liệu đã được lưu, nhưng một số bước đồng bộ sau khi lưu chưa hoàn tất.
+Dữ liệu đã được lưu. Cảnh báo sau khi lưu: ${warnings.join(' ')}
+Dự báo tiền trả kỳ ${data.ky}
+Dự án "${newProject.name}" đã được tạo thành công.
+Dự án #${groupId}
+Dự án #${id}
+Dự án #${item.project_id}
+Dự án & tài khoản ngân hàng
+Dự án / Khách hàng
+Dự án ABC - Mô tả ngắn
+Dự án chưa có bảng lương
+Dự án chưa có cấu hình loại giờ.
+Dự án chưa có cấu hình lương.
+Dự án chưa xác định
+Dự án hiện tại
+Dự án là bắt buộc
+Dự án này chưa có cấu hình mức lương. Vui lòng cấu hình mức lương trước khi tạo chấm công.
+Dự án · Loại ngày
+Dự án · Đơn giá
+Dự án đang có nhân viên được giao — kết thúc phân công của tất cả nhân viên trước khi xóa
+Dự án đang hoạt động
+Dự án đã chọn
+Dự án đã được xóa khỏi hệ thống.
+Dự án, ngân hàng và sức khỏe hệ thống
+Dự án: ${match.current_project_names.join(', ')}
+Dự án: ${row.original.projectName}
+Dự án: ${selectedProject.name}
+EEEE, d 'tháng' M
+Email Sao kê ứng lương
+Email không hợp lệ
+Email không được để trống
+Email là bắt buộc
+Email người dùng
+Email sao kê
+Email sao kê lương
+Email sao kê đã được gửi thành công
+Email sao kê ứng lương
+Email đã tồn tại trong danh sách
+Email đã được sử dụng
+Excel thành công
+Export danh sách nhân viên
+Export nhân viên
+Export thành công
+File Excel danh sách nhân viên lịch trả lương linh hoạt
+File Excel đã được tải về.
+File Excel định dạng cho chuyển khoản tự động
+File chưa khớp dữ liệu đối soát.
+File không hợp lệ
+File quá lớn
+File quá lớn. Kích thước tối đa cho phép là 10MB
+File quá lớn. Kích thước tối đa: ${FILE_LIMITS.excel.maxSize / 1024 / 1024}MB
+File quá lớn. Kích thước tối đa: ${maxSizeMb}MB
+File quá lớn. Tối đa ${FILE_LIMITS.excel.maxSize / 1024 / 1024}MB
+File template đã được tải xuống.
+File đang được xử lý.
+GPS chưa rõ
+GPS không chính xác
+GPS nhân viên
+GPS phản hồi chậm
+GPS vào
+GPS yếu
+Ghi chú (không bắt buộc)
+Ghi chú CK
+Ghi chú nội bộ kèm quyết định.
+Ghi chú thêm (nếu có)
+Ghi chú về khoản giải ngân này...
+Ghi chú về khoản thanh toán này...
+Ghi nhận chấm công
+Ghi nhận doanh thu
+Ghi nhận doanh thu dự án
+Ghi nhận vốn chủ sở hữu
+Gia hạn chiến dịch
+Giao dịch
+Giao dịch thành công (${successfulRows.length})
+Giao dịch thất bại
+Giao dịch đã hoàn tất
+Giao dịch đã được khởi tạo
+Giao nhiệm vụ
+Giá trị
+Giá trị không được để trống
+Giá trị nút ${index + 1}
+Giá trị nút hành động không hợp lệ: số điện thoại là chữ số (6–15), đường dẫn bắt đầu bằng https://
+Giá trị phải là số
+Giá trị phải là số nguyên
+Giá trị phải từ ${formatVndDigits(String(min))} ₫ đến ${formatVndDigits(String(max))} ₫
+Giá trị phải từ ${min} đến ${max}
+Giá trị đã xóa
+Giá trị được ghi nhận
+Giá trị được tạo
+Giám Sát
+Giám sát hiệu suất và lỗi của hệ thống
+Giải ngân
+Giải ngân khoản vay
+Giảm
+Giảm Phải thu
+Giảm tiền mặt
+Giới hạn thanh toán
+Giới hạn tổng tiền mỗi file Chuyển lô
+Giờ công
+Giờ hành chính
+Giờ hành chính: 8h, Làm thêm: ${hours - 8}h
+Giờ trung bình
+Giờ tăng ca ngoài ca
+Giờ vào làm không hợp lệ
+Giữ lại
+Gói lương sớm
+Góp vốn
+Gạch đầu dòng ${index + 1}
+Gọi hotline
+Gọi điện (tel:)
+Gỡ bỏ
+Gỡ khỏi dự án
+Gửi OTP mẫu
+Gửi báo cáo sao kê ứng lương tháng qua email
+Gửi bảng công để phê duyệt
+Gửi email
+Gửi email sao kê thất bại
+Gửi email thành công
+Gửi email thất bại
+Gửi hạn mức và hạn yêu cầu sau khi nhập bảng lương linh hoạt · 400 ₫/tin.
+Gửi lúc ${sentAtLabel}
+Gửi mẫu lương
+Gửi một trong hai mẫu đến số điện thoại kiểm tra trước khi đưa kênh vào sử dụng.
+Gửi sao kê
+Gửi thông báo
+Gửi thông báo (Cmd/Ctrl + Enter)
+Gửi thử thất bại: ${message}
+Gửi tiền cho chủ nợ
+Gửi yêu cầu
+Gửi đến tất cả Admin
+Gửi đến tất cả Nhân viên
+Gửi đến tất cả Quản lý
+Hai Anh đã tạo dự án mới
+Hiện dòng này
+Hiện mật khẩu
+Hiện mật khẩu hiện tại
+Hiện mật khẩu mới
+Hiện số tiền
+Hiện tài khoản nhận chuyển khoản FlexPay
+Hiện tài khoản nhận chuyển khoản lương tuần
+Hiện tại không có yêu cầu phê duyệt nào
+Hiện điều hướng
+Hiệu lực từ ngày
+Hiệu suất xử lý
+Hoàn thành một phần
+Hoàn tác ${hourType}
+Hoàn tác xóa
+Hoàn tác xóa dòng chấm công
+Hoàn tất
+Hoàn tất (một số lỗi)
+Hoàn tất kết nối trước khi bật dịch vụ.
+Hoạt động
+Hoạt động (${monthLabel})
+Hoạt động cuối
+Hoạt động gần đây
+Hoạt động theo dự án
+Hoạt động đáng nghi
+Huỷ / không gửi lại
+Huỷ là chốt hạ: không thử lại, không leo thang. Yêu cầu này sẽ không được thực thi.
+Huỷ vĩnh viễn
+Huỷ yêu cầu
+Hà Nội, Việt Nam
+Hàng ngày lúc ${fmtTime(hour, min)}
+Hàng đợi duyệt
+Hành chính
+Hành động
+Hành động này không thể hoàn tác
+Hãy kiểm tra lại bộ lọc hoặc thử tìm kiếm khác.
+Hãy thêm nhân viên đầu tiên để bắt đầu quản lý.
+Hãy tạo dự án đầu tiên để bắt đầu quản lý nhân viên và bảng lương.
+Hãy tạo dự án đầu tiên để bắt đầu quản lý.
+Hãy tạo người dùng đầu tiên để bắt đầu quản lý.
+Hãy tạo người dùng đầu tiên.
+Hôm nay
+Hôm qua
+Hướng dẫn cấu hình phí
+Hạn chót
+Hạn mức
+Hạn mức còn lại
+Hạn mức cũ còn tồn tại
+Hạn mức ứng lương theo tháng
+Hạn mức ứng lương đã sử dụng
+Hẹn lịch
+Hết hôm nay
+Hết hạn
+Hệ thống chưa có nhân viên nào. Hãy thêm nhân viên đầu tiên.
+Hệ thống chưa ghi nhận email thanh toán nào được gửi đi.
+Hệ thống sẽ tự kích hoạt vào ngày 1 của tháng sau.
+Hệ thống tuyển dụng TingHire đang dùng khoá này sẽ mất kết nối ngay.
+Hệ thống tự tách file để tổng tiền mỗi file luôn nhỏ hơn giới hạn này.
+Họ tên chỉ được chứa chữ cái và khoảng trắng
+Họ tên không hợp lệ
+Họ tên không được chứa số hoặc ký tự đặc biệt
+Họ tên là bắt buộc
+Họ và tên
+Họ và tên *
+Học Việc
+Hồ sơ
+Hồ sơ người dùng
+Hỗn hợp
+Hủy bỏ
+Hủy chỉnh sửa
+Hủy chờ
+Hủy chờ tất cả ${summary?.pending ?? 0} nhân viên
+Hủy cập nhật
+Hủy dự án
+Hủy giao dịch
+Hủy giao dịch thành công
+Hủy kích hoạt đang chờ của ${bulkCount} nhân viên?
+Hủy thay đổi chu kỳ
+Hủy thay đổi chu kỳ thanh toán thành công
+Hủy yêu cầu
+ID bảng công
+ID bảng lương
+Import danh sách nhân viên từ file
+Import nhân viên
+Import thành công
+Import thất bại
+Khi bật, mọi luồng tạo nhân viên mới (thêm tay, import Excel, import bảng công) đều phải có số điện thoại. Lưu ý: số điện thoại trùng luôn bị chặn ở mọi luồng.
+Khi số dư ví tiền xuống dưới ngưỡng này, hệ thống gửi thông báo đẩy đến toàn bộ quản trị viên. Mỗi lần giảm chạm ngưỡng chỉ nhận một thông báo.
+Khi tắt, sao kê FlexPay (email và file Excel) chỉ là thông báo đối chiếu, không kèm thông tin chuyển khoản.
+Khi tắt, sao kê lương tuần (email và file Excel) chỉ là thông báo đối chiếu, không kèm thông tin chuyển khoản.
+Khoá API cho ${revealed.name}
+Khoá MCP cho ${revealed.name}
+Khoá ops cho ${revealed.name}
+Khoá tích hợp cũ trước khi phân tách phạm vi.
+Khoản vay ${loan.loan_code}
+Khoảng ngày tối đa là ${MAX_RANGE_DAYS} ngày
+Khoảng thời gian
+Khu vực chấm công
+Khung giờ ca làm việc mới
+Khung giờ là bắt buộc
+Khung lương: ${label}
+Khác
+Khách hàng
+Khách hàng / Người trả
+Khóa bí mật (Secret Key)
+Không
+Không bảng công 14 ngày qua
+Không còn hỗ trợ
+Không còn nhân viên chưa điểm danh cần tắt
+Không còn nhân viên chờ kích hoạt
+Không có
+Không có ai chấm công ra thành công trong tháng này
+Không có bản ghi khớp với bộ lọc hiện tại
+Không có bản ghi nào
+Không có bảng công chưa thanh toán phù hợp
+Không có bảng công pending nào cho dự án này.
+Không có bảng công trong 14 ngày gần nhất
+Không có bảng công đang chờ xử lý
+Không có bảng công đang chờ xử lý trên toàn hệ thống.
+Không có bất thường quota
+Không có bậc nào
+Không có ca hôm nay
+Không có ca không có lương trong tháng này
+Không có ca thiếu dữ liệu ghép cặp trong tháng này
+Không có ca tự động huỷ trong tháng này
+Không có ca đang chấm công trong tháng này
+Không có chứng từ
+Không có diễn giải
+Không có dữ liệu bảng công
+Không có dữ liệu cho khoảng thời gian này
+Không có dữ liệu để hiển thị.
+Không có dữ liệu để xuất
+Không có dữ liệu để xuất PDF
+Không có dữ liệu độ trễ
+Không có dự án khả dụng
+Không có dự án linh động
+Không có dự án nào
+Không có dự án phù hợp. Thử thay đổi từ khóa hoặc xóa bộ lọc.
+Không có dự án đang hoạt động
+Không có giao dịch nào
+Không có giao dịch thành công trong lô này.
+Không có giao dịch thành công để xuất PDF
+Không có giao dịch thất bại.
+Không có kết quả nào cho "${searchTerm.trim()}"
+Không có kết quả phù hợp với bộ lọc của bạn.
+Không có kết quả phù hợp với từ khoá tìm kiếm.
+Không có kết quả phù hợp.
+Không có lần chấm thất bại
+Không có lỗi
+Không có lỗi trong 24h qua
+Không có người dùng bất thường
+Không có người dùng khả dụng
+Không có nhân viên khả dụng
+Không có nhân viên nào
+Không có nhân viên nào nghỉ việc
+Không có nhân viên nào phù hợp với từ khóa tìm kiếm.
+Không có nhân viên nào đang làm việc
+Không có nhân viên nào đăng nhập
+Không có nhân viên nào được trả lương trong kỳ này
+Không có nhân viên nào đủ điều kiện trong kỳ này — file tải về đang rỗng
+Không có nhân viên trong nhóm này
+Không có nội dung email
+Không có quyền truy cập
+Không có thông báo chưa đọc
+Không có widget nào
+Không có yêu cầu chờ duyệt
+Không có yêu cầu nào
+Không có yêu cầu đang chờ
+Không có đủ dữ liệu GPS để hiển thị bản đồ.
+Không hoạt động
+Không hỗ trợ tự chấm công
+Không lấy được vị trí GPS
+Không nhận được kết quả mô phỏng
+Không rõ ngân hàng
+Không rõ người gửi
+Không rõ nhân viên
+Không thuộc dự án tự chấm công
+Không thể chuẩn bị yêu cầu — kiểm tra ngày sao kê (ngày 11–23 không hợp lệ).
+Không thể chuẩn bị — kiểm tra ngày sao kê.
+Không thể có cả nợ và có trong cùng một bút toán
+Không thể cập nhật chứng từ giao dịch
+Không thể cập nhật người dùng
+Không thể cập nhật nhóm nhân viên. Vui lòng thử lại.
+Không thể cập nhật thông tin dự án. Vui lòng thử lại.
+Không thể cập nhật thông tin phân công
+Không thể cập nhật trạng thái
+Không thể cập nhật trạng thái cron job
+Không thể cập nhật trạng thái dự án. Vui lòng thử lại.
+Không thể cập nhật điểm danh. Vui lòng thử lại.
+Không thể duyệt bảng công dự án.
+Không thể duyệt bảng công. Vui lòng thử lại.
+Không thể duyệt hàng loạt. Vui lòng thử lại.
+Không thể giao nhân viên vào dự án
+Không thể gỡ nhân viên khỏi dự án
+Không thể gửi thông báo
+Không thể hủy giao dịch
+Không thể import file. Vui lòng thử lại.
+Không thể kiểm tra tài khoản
+Không thể kiểm tra. Vui lòng thử lại.
+Không thể kích chạy chốt lương. Vui lòng thử lại.
+Không thể kết nối tới máy chủ. Vui lòng thử lại.
+Không thể loại bảng công. Vui lòng thử lại.
+Không thể loại timesheet.
+Không thể loại yêu cầu
+Không thể loại yêu cầu nào
+Không thể lưu bảng công. Vui lòng thử lại.
+Không thể lưu giới hạn file Chuyển lô. Kiểm tra giá trị và thử lại.
+Không thể lưu ngưỡng cảnh báo số dư ví tiền. Kiểm tra giá trị và thử lại.
+Không thể lưu thông tin
+Không thể lưu thông tin kết nối
+Không thể lưu: Có ${validationErrors.length} nhân viên vượt quá giới hạn 24 giờ/ngày. Vui lòng điều chỉnh trước khi lưu.
+Không thể nhập dữ liệu bảng công. Vui lòng thử lại.
+Không thể nhập phí OnePay
+Không thể phân công nhân viên. Vui lòng thử lại.
+Không thể phê duyệt timesheet.
+Không thể phê duyệt yêu cầu
+Không thể phê duyệt yêu cầu nào
+Không thể phê duyệt: ${getErrorMessage(error)}
+Không thể sao chép khoá
+Không thể sao chép nội dung
+Không thể sao chép tiền tố
+Không thể thanh toán giao dịch
+Không thể tra cứu tài khoản. Vui lòng thử lại sau.
+Không thể tính lại số dư. Vui lòng thử lại.
+Không thể tạo PDF
+Không thể tạo bút toán đảo ngược. Vui lòng thử lại.
+Không thể tạo bút toán. Vui lòng thử lại.
+Không thể tạo bản ghi cho khung giờ cấm (mức lương = 0)
+Không thể tạo bảng chấm công
+Không thể tạo dự án mới. Vui lòng thử lại.
+Không thể tạo file template. Vui lòng thử lại.
+Không thể tạo file xuất. Vui lòng thử lại.
+Không thể tạo giao dịch
+Không thể tạo giao dịch. Vui lòng thử lại.
+Không thể tạo hồ sơ nhân viên
+Không thể tạo yêu cầu: ${getErrorMessage(error)}
+Không thể tải
+Không thể tải cài đặt. Vui lòng thử lại.
+Không thể tải cấu hình bảng lương. Vui lòng thử lại.
+Không thể tải danh sách dự án. Vui lòng thử lại.
+Không thể tải danh sách khoản vay. Vui lòng thử lại.
+Không thể tải danh sách người dùng. Vui lòng thử lại.
+Không thể tải danh sách nhân viên
+Không thể tải danh sách nhân viên thiếu số điện thoại
+Không thể tải danh sách nhân viên thiếu thông tin ngân hàng
+Không thể tải danh sách nhân viên. Vui lòng thử lại.
+Không thể tải danh sách phân công của dự án.
+Không thể tải danh sách phê duyệt.
+Không thể tải danh sách số điện thoại trùng
+Không thể tải danh sách tác vụ. Vui lòng thử lại.
+Không thể tải dữ liệu
+Không thể tải dữ liệu bảng công. Vui lòng thử lại.
+Không thể tải dữ liệu. Vui lòng thử lại.
+Không thể tải file xuống. Vui lòng thử lại.
+Không thể tải file. Vui lòng thử lại.
+Không thể tải file: File rỗng hoặc không tồn tại
+Không thể tải file: Phản hồi không hợp lệ từ server
+Không thể tải hàng đợi toàn hệ thống. Làm mới số liệu để thử lại.
+Không thể tải hàng đợi toàn hệ thống. Làm mới để thử lại.
+Không thể tải lên file chứng từ
+Không thể tải lên file: ${errorMessage}
+Không thể tải lịch sử trả lương
+Không thể tải nhật ký hoạt động. Vui lòng thử lại.
+Không thể tải thêm người dùng. Danh sách đã tải vẫn được giữ lại.
+Không thể tải thêm nhân viên. Danh sách đã tải vẫn được giữ lại.
+Không thể tải thêm nhật ký. Các bản ghi đã tải vẫn được giữ lại.
+Không thể tải thông báo
+Không thể tải thông tin dự án. Vui lòng thử lại.
+Không thể tải thông tin người dùng
+Không thể tải thông tin nhân viên
+Không thể tải thông tin nhân viên. Vui lòng thử lại trước khi chỉnh sửa.
+Không thể tải thông tin phê duyệt.
+Không thể tải thư viện PDF
+Không thể tải thư viện tạo PDF. Vui lòng thử lại.
+Không thể tải xuống mẫu file
+Không thể tải đầy đủ danh sách dự án
+Không thể từ chối: ${getErrorMessage(error)}
+Không thể xuất danh sách. Vui lòng thử lại.
+Không thể xuất file XLS. Vui lòng thử lại.
+Không thể xuất hồ sơ nhân viên. Vui lòng thử lại.
+Không thể xác định cách tính lương của dự án. Vui lòng thử lại.
+Không thể xóa cấu hình mức lương.
+Không thể xóa dự án. Vui lòng thử lại.
+Không thể xóa: chủ nợ còn ${linkedLoanCount} khoản vay liên kết trong hệ thống.
+Không thể xử lý dòng dữ liệu này
+Không thể xử lý file nào.
+Không thể xử lý tệp. Vui lòng kiểm tra lại định dạng.
+Không thể đảo ngược bút toán
+Không thể đảo ngược giao dịch
+Không thể đồng bộ số dư
+Không thể đổi mật khẩu
+Không tìm thấy ID người dùng trong URL
+Không tìm thấy ID nhân viên trong URL
+Không tìm thấy bút toán nào
+Không tìm thấy cài đặt giới hạn file Chuyển lô. Vui lòng thử tải lại.
+Không tìm thấy cài đặt ngưỡng cảnh báo số dư ví tiền. Vui lòng thử tải lại.
+Không tìm thấy dữ liệu bảng công
+Không tìm thấy dự án
+Không tìm thấy dự án nào
+Không tìm thấy dự án nào.
+Không tìm thấy dự án.
+Không tìm thấy giao dịch
+Không tìm thấy giao dịch khớp bộ lọc
+Không tìm thấy import
+Không tìm thấy kết quả
+Không tìm thấy lịch sử thanh toán
+Không tìm thấy modal với ID: ${modalId}
+Không tìm thấy mã file sau khi tải lên
+Không tìm thấy ngân hàng nào
+Không tìm thấy người dùng nào
+Không tìm thấy người dùng phù hợp
+Không tìm thấy nhân viên
+Không tìm thấy nhân viên nào
+Không tìm thấy nhân viên phù hợp
+Không tìm thấy nhân viên. Vui lòng chọn lại từ danh sách.
+Không tìm thấy thông tin modal.
+Không tìm thấy thông tin modal: ${modalId}
+Không tìm thấy tài khoản
+Không tìm thấy tài nguyên
+Không tìm thấy tệp nào
+Không tìm thấy tệp phù hợp
+Không tìm thấy yêu cầu phù hợp với bộ lọc
+Không tìm thấy.
+Không tải được
+Không tải được nền bản đồ.
+Không xác định
+Không được có vị trí trùng lặp
+Không được để trống
+Không đổi
+Khấu trừ
+Khẩn cấp
+Khớp
+Khởi tạo dự án mới
+Khởi tạo giao dịch chuyển tiền thủ công
+Kinh Nghiệm
+Kiểm soát
+Kiểm soát số tiền và tỷ lệ ngân sách được phép giải ngân.
+Kiểm tra các kỳ đã chi trả cho nhân sự
+Kiểm tra các lần tải lên
+Kiểm tra dữ liệu nhận tiền theo dự án
+Kiểm tra gửi thực tế
+Kiểm tra khóa đã lưu với Zalo mà không gửi tin nhắn.
+Kiểm tra lại khung giờ ca làm.
+Kiểm tra lại thông tin trước khi xác nhận
+Kiểm tra phạm vi trước khi xác nhận thao tác không thể hoàn tác.
+Kiểm tra số dư và lịch chuyển tiền
+Kiểm tra số tiền thực nhận và tài khoản nhận tiền
+Kiểm tra vị trí và ca làm trước khi bắt đầu.
+Kiểm tra...
+Kích hoạt
+Kích thước file không được vượt quá 10MB.
+Kích thước file vượt quá ${maxFileSize}MB
+Kích thước file vượt quá ${sizeMB}MB
+Kích thước tệp không được vượt quá 10MB.
+Ký tự đặc biệt
+Kết nối
+Kết nối Zalo hợp lệ — App ID, Secret Key và Refresh Token đều chính xác
+Kết nối Zalo trước khi bật tính năng
+Kết nối thất bại: ${message}
+Kết quả chuyển khoản
+Kết quả chuyển tiền
+Kết quả chuyển tiền ứng lương
+Kết quả nhập
+Kết quả nhập bảng chấm công
+Kết quả thanh toán sao kê
+Kết quả xác minh
+Kết quả ứng lương
+Kết thúc
+Kỳ ${monthLabel}
+Kỳ ${schedule.period} — không thể hoàn tác sau khi xác nhận
+Kỳ 1 · ngày 1–7
+Kỳ 2 · ngày 8–14
+Kỳ 3 · ngày 15–21
+Kỳ 4 · ngày 22–cuối tháng
+Kỳ công
+Kỳ hạn (tháng)
+Kỳ hạn (tháng) phải lớn hơn 0
+Kỳ lương
+Kỳ lương của bạn
+Kỳ lương hiện tại
+Kỳ lương tháng ${month.shortLabel}
+Kỳ lương tháng ${month.shortLabel}. Nhấn để chọn tháng và năm khác
+Kỳ thanh toán
+Kỳ tháng ${formatMonthShort(currentMonth)} đang mở — chọn kỳ hiện tại để ứng tiếp.
+Kỳ ứng lương ${viewedMonthLabel} kết thúc
+Kỳ ứng lương này đã đóng, chọn kỳ hiện tại để tiếp tục.
+Kỳ ứng lương tháng ${formatMonthShort(currentMonth)} sẽ mở vào ngày ${ADVANCE_REQUEST_WINDOW_OPEN_DAY}/${now.getMonth() + 1}.
+Kỳ: ${pendingHint.forMonth}
+Kỳ: ${pendingHint.fromDate} → ${pendingHint.toDate}
+Kỹ Thuật
+Linh Hoạt
+Linh hoạt
+Linh động
+Link chứng từ
+Liên hệ
+Liên hệ quản lý cập nhật thông tin ngân hàng để ứng lương.
+Liên kết thiếu mã dự án hợp lệ.
+Loại
+Loại GD
+Loại ca
+Loại công
+Loại giao dịch
+Loại giờ từ cấu hình
+Loại hàng loạt thành công
+Loại lương
+Loại ngày
+Loại ngày cho ${emp.fullname}, ${activeDate}
+Loại ngày cho ${entry.employee?.fullname || "nhân viên"}, ${entry.date}
+Loại nút ${index + 1}
+Loại thành công
+Loại tài khoản là bắt buộc
+Loại tất cả
+Loại tất cả bảng công trong nhóm
+Loại từ modal chấm công
+Loại yêu cầu
+Làm mới
+Làm mới dữ liệu
+Làm mới hoạt động gần đây
+Làm mới số liệu
+Làm thêm
+Lái xe nâng
+Lãi suất
+Lãi suất (%/năm)
+Lãi suất phải lớn hơn 0%
+Lãi đã trả
+Lô #${batch.id}
+Lô #${batch.id} · ${batch.filename}
+Lô #${selectedId}
+Lô nhập liệu
+Lô xuất liệu
+Lù Văn Hà
+Lý do
+Lý do / hướng dẫn (bắt buộc)
+Lý do huỷ, lưu lại cùng lịch sử yêu cầu.
+Lý do trả ngoài, kênh sử dụng, v.v.
+Lý do từ chối
+Lũy kế ${formatVND(data.dashboardSummary.total_profit)}
+Lưu Bảng Công
+Lưu chấm công
+Lưu thay đổi
+Lưu thay đổi trước khi kiểm tra.
+Lưu thông tin
+Lưu thất bại. Vui lòng thử lại.
+Lương
+Lương CB
+Lương TB/tuần
+Lương brutto
+Lương chờ giải ngân
+Lương cơ bản
+Lương tháng
+Lương tháng này
+Lương thực nhận
+Lương trọn ca
+Lương trọn ca cho ${pos}, ca ${s.start}-${s.end}
+Lương trọn ca: ${formatCurrency(timesheet.payrate)}
+Lương và nhân sự
+Lương: ${label}
+Lấy dữ liệu lịch sử thành công
+Lấy từ Zalo OA Console → Token quản trị trang. Có hiệu lực khoảng 24 giờ; hệ thống tự làm mới qua Refresh Token.
+Lần chấm thất bại${filter ? ' — ' + filter : ''}${monthSuffix}
+Lập sao kê thanh toán
+Lễ
+Lệch
+Lệch quota (salary ≠ max_adv)
+Lịch sử BCC
+Lịch sử chuyển tiền
+Lịch sử chuyển tiền hàng loạt
+Lịch sử cấu hình phí chi hộ
+Lịch sử cấu hình phí ứng lương
+Lịch sử email đã gửi
+Lịch sử file
+Lịch sử import và kết quả
+Lịch sử sao kê
+Lịch sử thanh toán
+Lịch sử thao tác của người dùng trong hệ thống
+Lịch sử trả lương
+Lịch sử trả lương theo nhân viên và kỳ lương.
+Lịch sử tài chính
+Lịch sử tải lên BCC
+Lịch sử yêu cầu, cuộn để xem thêm
+Lọc chủ nợ
+Lọc dự án này
+Lọc nhân viên
+Lọc phân bổ ngân hàng theo dự án
+Lọc theo dự án
+Lọc theo trạng thái
+Lọc tháng bảng công
+Lọc tháng nhân viên
+Lọc thông báo
+Lọc trạng thái bảng công
+Lọc trạng thái khoản vay
+Lọc trạng thái nhân viên
+Lọc trạng thái yêu cầu ứng lương
+Lọc trạng thái điểm danh
+Lọc vai trò người dùng
+Lỗi
+Lỗi 24h
+Lỗi 7 ngày
+Lỗi ZNS: ${result.error_msg}
+Lỗi cần xử lý
+Lỗi cập nhật dự án
+Lỗi cập nhật trạng thái
+Lỗi dữ liệu
+Lỗi hệ thống
+Lỗi import
+Lỗi khi gỡ nhân viên
+Lỗi khi tính toán lịch trả (amortization)
+Lỗi khi tạo lịch trả nợ (flat rate)
+Lỗi khi tải lên file. Vui lòng thử lại
+Lỗi khác
+Lỗi không xác định
+Lỗi không xác định khi kiểm tra dữ liệu
+Lỗi khởi tạo hệ thống modal
+Lỗi kết nối
+Lỗi kết nối mạng
+Lỗi máy chủ
+Lỗi nhập bảng công
+Lỗi tan ca
+Lỗi truy vấn trạng thái đối soát
+Lỗi tạo dự án
+Lỗi tạo template
+Lỗi tải dữ liệu
+Lỗi tải file
+Lỗi tải file: ${error.message}
+Lỗi vào làm
+Lỗi xuất Excel
+Lỗi xuất file
+Lỗi xuất file XLS:
+Lỗi xác thực
+Lỗi xóa dự án
+Lỗi xử lý file
+Lỗi yêu cầu hôm nay
+Lợi nhuận
+Lợi nhuận dự án
+Lợi nhuận kỳ này
+Menu người dùng
+Menu tài khoản
+Modal ID không hợp lệ: ${modalParam}
+Modal chưa được triển khai
+Modal không tồn tại
+Mong đợi
+Máy chủ tạm thời không phản hồi. Vui lòng thử lại sau ít phút.
+Máy tính phí thử
+Mã
+Mã FT
+Mã GD ngân hàng
+Mã SWIFT
+Mã SWIFT không hợp lệ
+Mã SWIFT là bắt buộc
+Mã SWIFT phải có 8–11 ký tự chữ hoặc số.
+Mã VFIC
+Mã biểu phí
+Mã dự án
+Mã dự án không được vượt quá 50 ký tự
+Mã dự án là bắt buộc
+Mã dự án phải theo định dạng PRJ-YYYY-XXX
+Mã giao dịch (TXN)
+Mã giao dịch hoặc số chứng từ (nếu có)
+Mã giao dịch ngân hàng (nếu có)
+Mã khoản vay
+Mã làm mới (Refresh Token)
+Mã ngân hàng
+Mã nhân viên
+Mã nhân viên nhà máy
+Mã phản hồi
+Mã số thuế
+Mã tham chiếu
+Mã tham chiếu ngân hàng
+Mã truy cập (Access Token)
+Mã tỉnh/thành phố không hợp lệ
+Mã yêu cầu
+Mã đợt thanh toán
+Mô tả chi tiết về dự án...
+Mô tả chi tiết về giao dịch
+Mô tả khoản vay (nếu có)
+Mô tả không được vượt quá 1000 ký tự
+Mạnh
+Mẫu file chấm công không đúng
+Mẫu thông báo lương đã gửi thành công
+Mật khẩu hiện tại
+Mật khẩu không được vượt quá 72 ký tự
+Mật khẩu là bắt buộc
+Mật khẩu mới
+Mật khẩu phải chứa ít nhất một chữ hoa
+Mật khẩu phải chứa ít nhất một chữ thường
+Mật khẩu phải chứa ít nhất một ký tự đặc biệt (!@#$%^&*()_+-=[]{}|;:,.<>?)
+Mật khẩu phải chứa ít nhất một số
+Mật khẩu phải có ${passwordErrors.join(", ")}
+Mật khẩu phải có ít nhất 1 chữ hoa
+Mật khẩu phải có ít nhất 1 chữ thường
+Mật khẩu phải có ít nhất 1 ký tự đặc biệt
+Mật khẩu phải có ít nhất 1 số
+Mật khẩu phải có ít nhất 6 ký tự
+Mật khẩu phải có ít nhất 8 ký tự
+Mật khẩu đã đổi thành công
+Mọi khoản ứng đều tính 1,5%
+Mọi khoản ứng đều tính 2%
+Mọi thao tác (POST/PUT/PATCH/DELETE) — tự hồi về chỉ đọc sau cửa sổ ghi
+Mốc 3.000.000 ₫ và 10.000.000 ₫
+Mỗi giờ lúc :${min}
+Mỗi gạch đầu dòng tối đa 200 ký tự
+Mỗi phút
+Một người đã được chọn
+Một phần
+Một số bản ghi có dữ liệu không đầy đủ
+Mới
+Mới nhất trước
+Mở cài đặt thông báo hệ thống.
+Mở danh sách bảng công để rà soát theo dự án
+Mở file
+Mở link trong tab mới
+Mở lịch chọn ngày bắt đầu, ${formatDisplayDate(startDate)}
+Mở lịch chọn ngày kết thúc, ${formatDisplayDate(endDate)}
+Mở rộng ${employee.fullname}
+Mở thông tin nhân viên ${employee.fullname}
+Mở thông tin nhân viên ${member.fullname}
+Mở đường dẫn chứng từ
+Mức bậc ${minErrIdxs.map((i) => Number(i) + 1).join(", ")}: phải tăng dần
+Mức lương
+Mức lương ${position}, ${dayType}, ${hourType}
+Mức lương cho "${hourType}" của "${dayType}" - vị trí "${position}" phải là số không âm
+Mức lương cho ${position}
+Mức lương cho ca "${shift}" của vị trí "${position}" phải là số không âm
+Mức phí không được âm
+NGUYỄN VĂN A
+NV chưa có SĐT
+NV chờ TT
+NV chờ thanh toán
+NV làm việc
+NV làm việc, Doanh thu, Phải thu
+NV tháng này
+NV đã thanh toán
+Nghiêm Trọng
+Nghỉ
+Nghỉ phép
+Nghỉ việc
+Ngoài giờ tan ca
+Ngoài giờ vào làm
+Ngoài khu vực
+Ngoài khu vực chấm công
+Nguyễn Văn A
+Nguồn thông tin tra cứu
+Ngày ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}
+Ngày ${day} hàng tháng
+Ngày ${dom} hàng tháng lúc ${fmtTime(hour, min)}
+Ngày ${project.salary_period_from}
+Ngày ${project.salary_period_to}
+Ngày 01
+Ngày TT tới
+Ngày bắt đầu
+Ngày bắt đầu không được sau ngày kết thúc.
+Ngày bắt đầu phân công
+Ngày bắt đầu: ${startValidation.error}
+Ngày chấm công chưa đến
+Ngày chấm công không thể trước ngày bắt đầu làm việc (${format(startDate, "dd/MM/yyyy", { locale: vi })})
+Ngày chấm công không thể trước ngày bắt đầu làm việc (${formattedStartDate})
+Ngày cuối tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'dd/MM/yyyy')}
+Ngày còn lại
+Ngày cập nhật
+Ngày duyệt
+Ngày giao dịch
+Ngày giải ngân
+Ngày giải ngân là bắt buộc
+Ngày hiệu lực
+Ngày hiệu lực phải là hôm nay hoặc tương lai
+Ngày hiệu lực: ${errors.effectiveDate}
+Ngày không hợp lệ
+Ngày không thể trong tương lai
+Ngày kết thúc
+Ngày kết thúc phân công
+Ngày kết thúc phải sau ngày bắt đầu
+Ngày kết thúc: ${endValidation.error}
+Ngày là bắt buộc
+Ngày làm
+Ngày làm việc
+Ngày làm việc bình thường (Thứ 2 - Thứ 6)
+Ngày làm việc bình thường (Thứ 2-6)
+Ngày làm việc là bắt buộc
+Ngày lễ
+Ngày lễ quốc gia
+Ngày nghỉ
+Ngày nghỉ (Chủ nhật hoặc Thứ 7 nghỉ)
+Ngày nghỉ trong tuần (Chủ nhật, Thứ 7 nghỉ)
+Ngày nộp
+Ngày phải có định dạng YYYY-MM-DD
+Ngày sao kê
+Ngày sinh
+Ngày sinh phải có định dạng YYYY-MM-DD
+Ngày thanh toán là bắt buộc
+Ngày thanh toán phải từ 1 đến 28
+Ngày thanh toán từ 1 đến 28
+Ngày tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth(), Math.min(salaryPeriodTo, daysInThisMonth)), 'dd/MM/yyyy')}
+Ngày tháng trước, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth() - 1, salaryPeriodFrom), 'dd/MM/yyyy')}
+Ngày thường
+Ngày trả
+Ngày tạo: ${project.startDate}
+Ngày đầu tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'dd/MM/yyyy')}
+Ngân hàng
+Ngân hàng FlexPay
+Ngân hàng Quân đội (MB)
+Ngân hàng ghi
+Ngân hàng khác
+Ngân hàng lương tuần
+Ngân hàng nhận lương
+Ngân hàng nhận tiền
+Ngân hàng, số tài khoản, lý do nạp...
+Ngân hàng: ${value.branch_name}
+Ngân sách đã sử dụng
+Người duyệt
+Người dùng #${id}
+Người dùng sẽ phải sử dụng mật khẩu mới này để đăng nhập.
+Người gửi: ${senderValue}
+Người nhận
+Người nhận đã chọn
+Người trả
+Người tạo
+Người yêu cầu
+Ngưỡng cảnh báo số dư ví tiền
+Ngừng hoạt động
+Nhà cung cấp / Người nhận
+Nhà cung cấp chưa thể đưa ra kết quả xác nhận. Vui lòng thử lại sau.
+Nhà cung cấp hiện không hỗ trợ chuyển lô tự động.
+Nhà cung cấp không thể xác minh tài khoản lúc này. Vui lòng thử lại sau.
+Nhà cung cấp xác nhận tài khoản không hợp lệ hoặc không tồn tại.
+Nhà cung cấp đã xác nhận tài khoản có thể đối chiếu.
+Nháp
+Nhân Viên
+Nhân sự
+Nhân sự đang làm
+Nhân viên chưa có đủ thông tin ngân hàng đã lưu để tra cứu.
+Nhân viên chưa tham gia dự án nào
+Nhân viên chỉ có thể làm việc cho một dự án trong một ngày
+Nhân viên chờ thanh toán
+Nhân viên có thể đã nghỉ
+Nhân viên cấu hình điểm danh
+Nhân viên cần kiểm tra
+Nhân viên dự án
+Nhân viên kiểm thử
+Nhân viên là bắt buộc
+Nhân viên mới
+Nhân viên mới nhất
+Nhân viên nhận lương cao nhất trong kỳ đang xem.
+Nhân viên sẽ không thể tạo yêu cầu ứng lương mới. Các yêu cầu đang chờ hoặc đã duyệt vẫn được giữ nguyên.
+Nhân viên sẽ phải sử dụng mật khẩu mới này để đăng nhập.
+Nhân viên · Ngày
+Nhân viên đang làm
+Nhân viên đang làm việc
+Nhân viên đã làm việc quá 12 giờ trong ngày
+Nhân viên đã làm việc quá 16 giờ trong ngày
+Nhân viên đã xác nhận tan ca không ghi nhận tiền lương
+Nhân viên đã được gỡ khỏi dự án
+Nhân viên đã được phân công vào dự án này hoặc có xung đột thời gian.
+Nhân viên đăng nhập
+Nhân viên được trả lương
+Nhân viên: ${selectedEmployee.fullname}
+Nhãn nút ${index + 1}
+Nhãn nút hành động là bắt buộc
+Nhãn nút hành động tối đa 40 ký tự
+Nhấn Gửi sao kê để tạo báo cáo
+Nhấn nút "Thêm nhân viên" ở cuối trang để giao nhân viên vào dự án này
+Nhấn để đổi thời gian ca
+Nhấn để đổi tên vị trí
+Nhấn để đổi tên: ${hourType}
+Nhận vốn góp
+Nhập KQ
+Nhập KQ chuyển lô
+Nhập SĐT
+Nhập SĐT nhận thử
+Nhập bút toán kép
+Nhập bảng chấm công
+Nhập bảng công
+Nhập bảng công thành công
+Nhập bảng lương
+Nhập công
+Nhập danh sách nhân viên
+Nhập danh sách nhân viên từ file
+Nhập dữ liệu
+Nhập dữ liệu thành công
+Nhập dữ liệu từ Excel
+Nhập email
+Nhập file Excel chứa thông tin ứng lương
+Nhập file thành công: ${response.total_rows} dòng, ${response.created_count} nhân viên mới, ${response.updated_count} đã cập nhật
+Nhập file thành công: ${result.totalRows} dòng, ${result.employeesCreated} nhân viên mới, ${result.assignmentsCreated} phân công mới
+Nhập ghi chú (nếu có)
+Nhập ghi chú...
+Nhập họ và tên
+Nhập kết quả
+Nhập kết quả sao kê thành công
+Nhập kết quả thanh toán từ ngân hàng
+Nhập link đầy đủ tới file chứng từ (ví dụ: Google Drive, Dropbox, hoặc website khác)
+Nhập lý do loại chung cho tất cả mục trong nhóm...
+Nhập lý do loại...
+Nhập lý do tại sao cần đảo ngược bút toán này...
+Nhập lý do áp dụng cho tất cả bảng công...
+Nhập lý do đảo ngược bút toán...
+Nhập lại mật khẩu mới
+Nhập mô tả chi tiết về dự án...
+Nhập mật khẩu
+Nhập mật khẩu hiện tại
+Nhập mật khẩu mới
+Nhập nhanh
+Nhập nhân viên
+Nhập nội dung thông báo...
+Nhập phí OnePay
+Nhập số CCCD
+Nhập số tiền...
+Nhập số điện thoại
+Nhập thông tin chuyển tiền
+Nhập thông tin giải ngân
+Nhập thông tin khoản vay mới
+Nhập thông tin thanh toán
+Nhập thông tin ứng dụng và mã truy cập từ Zalo OA Console. Khóa bảo mật không hiển thị lại sau khi lưu.
+Nhập tiêu đề email
+Nhập tiêu đề thông báo...
+Nhập tên cho danh mục mới
+Nhập tên chủ nợ
+Nhập tên dự án
+Nhập tên khoá API
+Nhập tên khoá MCP
+Nhập tên khoá ops (tên agent)
+Nhập tên khách hàng
+Nhập tối thiểu 3 ký tự để tìm kiếm
+Nhập từ admin
+Nhập vị trí công việc
+Nhập đủ thông tin để gửi
+Nhật ký hoạt động
+Nhắc tôi sau
+Những gì nhân viên đọc được trong thông báo.
+Nút hành động
+Nút đầu tiên là hành động chính, hiển thị nổi bật nhất.
+Năm này
+Năm sau
+Năm trước
+Nạp tiền
+Nạp ví nội bộ
+Nội dung
+Nội dung chuyển khoản
+Nội dung chuyển khoản (nếu có)
+Nội dung chỉ chứa chữ, số và khoảng trắng (không dấu, không ký tự đặc biệt)
+Nội dung email có định dạng
+Nội dung không được để trống
+Nội dung được sao chép; thời gian bắt đầu từ hôm nay. Chiến dịch cũ giữ nguyên số liệu.
+Nộp BC
+Nộp bảng công
+Nợ gốc
+OTP mẫu đã gửi thành công
+PQC Nam Định
+Phiên làm việc hết hạn
+Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.
+Phiếu lương
+Phiếu lương PDF cho từng nhân viên
+Phát hiện ${approvedErrors.length} bản chấm công đã phê duyệt trong tháng ${monthLabel}. Vui lòng chọn tháng chưa phê duyệt hoặc liên hệ quản trị viên.
+Phát hiện ${duplicateErrors.length} bản chấm công trùng lặp. Vui lòng kiểm tra lại dữ liệu trong tệp.
+Phát hiện ${errors.length} lỗi khi xử lý tệp. Vui lòng kiểm tra chi tiết bên dưới.
+Phát hiện phân bổ lương bất thường, đối chiếu nhóm nhận cao và hồ sơ vừa được thêm.
+Phát sinh Phải thu
+Phân bổ lương
+Phân bổ ngân hàng nhận lương: ${distributionSummary}
+Phân bổ nhân sự theo ngân hàng để rà soát dữ liệu nhận tiền.
+Phân công
+Phân công dự án
+Phân công nhân viên
+Phân công nhân viên vào dự án
+Phân công nhân viên vào dự án.
+Phân trang
+Phân trang dự án
+Phân tích
+Phân tích chi trả
+Phân tầng 2% / 1,3%
+Phân tầng 2,5% / 2% / 1,5%
+Phân tầng — ${parts.join(" · ")}
+Phê duyệt hàng loạt thành công
+Phê duyệt thành công
+Phí
+Phí /nv
+Phí /yc
+Phí cho khoản 5,000,000 VND
+Phí cố định ${formatPct(state.tiers[0].percentage)}
+Phí cố định 1,5%
+Phí cố định 2%
+Phí dự kiến trên một số khoản mẫu:
+Phí giao dịch
+Phí thu
+Phí thu được
+Phí trả lương tuần
+Phí tối thiểu khá cao — kiểm tra lại
+Phí tối thiểu không được âm
+Phí tối thiểu: ${errors.minFee}
+Phí vượt quá khoản rút — kiểm tra lại %
+Phí ước tính
+Phương thức
+Phải bằng 0 hoặc lớn hơn 0
+Phải có ít nhất một người nhận
+Phải có ít nhất một vị trí
+Phải là hôm nay hoặc tương lai
+Phải lớn hơn bậc trước
+Phải thu
+Phải trả
+Phải từ 0 đến 100
+Phản hồi
+Phản hồi từ máy chủ không hợp lệ
+Phần còn lại
+Phần trăm bậc ${idx + 1}
+Phần trăm bậc ${pctErrIdxs.map((i) => Number(i) + 1).join(", ")}: sai khoảng
+Phần trăm ngân sách được phép trả theo chu kỳ tháng.
+Phần trăm ngân sách được phép trả theo chu kỳ tuần.
+Phần trăm phí phải nằm trong khoảng 0–100
+Phần trăm tiền công đã ghi nhận được cộng vào hạn mức ứng lương.
+Phổ Thông
+Phụ cấp
+QL Chủ nợ
+Qua đêm
+Quay lại bộ lọc
+Quay lại khoản vay
+Quay lại tổng quan
+Quota cũ sau khi disable
+Quy tắc bắt buộc khi tạo hồ sơ nhân viên mới.
+Quá hạn
+Quá hạn tan ca
+Quá nhiều yêu cầu
+Quá nhiều yêu cầu, vui lòng thử lại sau
+Quá nhiều yêu cầu. Vui lòng thử lại sau
+Quá nhiều yêu cầu. Vui lòng thử lại sau ${retryAfter} giây
+Quý này
+Quản Lý
+Quản lý chủ nợ
+Quản lý chủ nợ và các khoản vay của công ty
+Quản lý các cài đặt nghiệp vụ của hệ thống
+Quản lý cấu hình hệ thống
+Quản lý khoản vay
+Quản lý thu chi và dòng tiền
+Quản lý thông tin ${totalEmployees} nhân viên trong hệ thống
+Quản lý thông tin nhân viên
+Quản lý thời gian làm việc
+Quản lý tài khoản người dùng
+Quản lý tài khoản người dùng và phân quyền truy cập hệ thống
+Quản lý và theo dõi các dự án được phân quyền
+Quản lý và theo dõi các lượt chuyển tiền ứng lương
+Quản lý ví
+Quản lý ứng lương
+Quản lý: ${match.created_by_name}
+Quản trị
+Quản trị viên
+Quản Đốc
+Quảng cáo
+Quảng cáo hiển thị trên trang chủ của nhân viên thuộc các dự án được chọn.
+Reset hàng loạt
+Rà soát lịch sử tài chính, cơ cấu ngân hàng và lợi nhuận theo từng dự án.
+Rà soát lỗi chấm công và hạn mức ứng lương trước khi chốt kỳ.
+Rà soát tài khoản nhận lương, chấm công và hạn mức ứng.
+Sai lệch hạn mức
+Sai số GPS
+Sai số WAPE
+Sai thông tin
+Sai định dạng file
+Sai định dạng tệp
+Sai định dạng — cần HH:MM-HH:MM (24 giờ)
+Sao chép
+Sao chép sang cả hàng
+Sao chép tiền tố ${apiKey.key_prefix}
+Sao chép tiền tố khoá
+Sao kê
+So sánh cấu hình phí ứng lương
+So sánh phí trên một số khoản mẫu (Hiện tại → Mới):
+So sánh tên đã nhập với tên do ngân hàng cung cấp.
+Soạn email HTML, chọn địa chỉ gửi đã xác minh và xem trước trước khi gửi.
+SĐT
+Sắp hoàn thành
+Sắp xếp
+Sắp xếp giảm dần
+Sắp xếp khoản vay
+Sắp xếp người dùng
+Sắp xếp nhân viên
+Sắp xếp theo
+Sắp xếp tăng dần
+Sẵn sàng gửi
+Sẵn sàng gửi yêu cầu ứng lương.
+Sẵn sàng tải lên
+Sẽ hiển thị khi có nhân viên được thanh toán trong ${periodLabel}.
+Số CCCD
+Số CCCD không hợp lệ
+Số Dư Cuối Kỳ
+Số Dư Đầu Kỳ
+Số bản ghi
+Số chứng từ / ghi chú giải ngân (tùy chọn)
+Số dòng mỗi trang
+Số dư sau giao dịch (ước tính)
+Số dư ví không đủ — cần thêm ${(estimatedTotal - walletBalance).toLocaleString('en-KE')} ₫.
+Số dư đã đồng bộ: ${formatCurrency(result.local_balance)}
+Số dư được đồng bộ tự động từ nhà cung cấp.
+Số giờ chờ trước khi tiền công của ca hoàn tất được cộng vào hạn mức ứng lương.
+Số giờ là bắt buộc
+Số giờ làm
+Số giờ làm việc
+Số giờ làm việc không thể vượt quá 24 giờ
+Số giờ làm việc không thể âm
+Số giờ phải là số
+Số giờ phải từ 0 đến 24
+Số hóa đơn
+Số lượng
+Số lần trả lương
+Số ngày có chấm công
+Số nhà, đường, quận/huyện, tỉnh/thành phố
+Số tháng
+Số tháng phải lớn hơn 0
+Số tháng và số tiền phải lớn hơn 0
+Số tiền không hợp lệ
+Số tiền không thể âm
+Số tiền không được vượt quá ${formatCurrency(selectedQuotaRemaining)}
+Số tiền không được vượt quá ${remainingAmount.toLocaleString('en-KE')} ₫
+Số tiền muốn ứng
+Số tiền nợ hoặc có phải lớn hơn 0
+Số tiền phải là bội số của 1.000 ₫
+Số tiền phải là bội số của 5.000 ₫
+Số tiền phải là số nguyên (₫)
+Số tiền phải lớn hơn 0
+Số tiền phải từ ${MIN_AMOUNT.toLocaleString("en-KE")} ₫ trở lên
+Số tiền sẽ giải ngân sau khi chốt công kỳ ${monthLabel}.
+Số tiền thực nhận không được vượt quá ${formatCurrency(providerMax)}
+Số tiền thực nhận sau phí phải tối thiểu ${formatCurrency(providerMin)}
+Số tiền thực thu
+Số tiền tt tiếp theo
+Số tiền tối thiểu là ${formatCurrency(ADVANCE_PAYMENT_CONSTANTS.MIN_AMOUNT)}
+Số tiền tối thiểu là ${minAmount.toLocaleString('en-KE')} ₫
+Số tiền tối đa ${MAX_AMOUNT.toLocaleString("en-KE")} ₫
+Số tiền vay
+Số tiền vay phải lớn hơn 0
+Số tiền vượt quá nợ gốc còn lại (${formatVND(selectedLoan.outstanding_principal)})
+Số tiền yêu cầu
+Số tiền đã thanh toán
+Số tiền đã trả
+Số tiền ứng tối đa
+Số tiền ₫
+Số tài khoản
+Số tài khoản FlexPay
+Số tài khoản NH
+Số tài khoản chỉ gồm chữ số (6-24 số)
+Số tài khoản không hợp lệ
+Số tài khoản là bắt buộc
+Số tài khoản là bắt buộc khi có thông tin ngân hàng
+Số tài khoản lương tuần
+Số tài khoản ngân hàng
+Số tài khoản nhận chuyển khoản in trên sao kê FlexPay.
+Số tài khoản nhận chuyển khoản in trên sao kê lương tuần.
+Số tài khoản phải có 6–20 chữ số
+Số tài khoản phải có 6–20 chữ số.
+Số tài khoản phải có từ 9 đến 14 chữ số
+Số điện thoại chỉ được chứa số
+Số điện thoại không hợp lệ
+Số điện thoại không được là số CCCD (12 chữ số)
+Số điện thoại là bắt buộc
+Sổ Cái
+Sổ chi phí, doanh thu và lợi nhuận tích lũy 12 tháng gần nhất.
+Sổ dòng tiền
+Sổ vận hành
+Sức khỏe vận hành
+Sử dụng nút Tải lên BCC để nhập dữ liệu bảng công từ tệp Excel
+Sửa
+Sửa cấu hình lương
+Sửa cấu hình phí
+Sửa cấu hình phí giao dịch chi hộ
+Sửa cấu hình phí trả lương tuần
+Sửa cấu hình sắp có hiệu lực
+TING TING SOFTWARE SOLUTIONS xin thông báo
+TT thiếu
+Tan ca thành công
+Tan tới cổng ${formatDistanceMeters(row.check_out_nearest_checkpoint_distance_meters)}
+Tham chiếu giải ngân
+Tham số không hợp lệ
+Tham số được cung cấp không hợp lệ cho modal này.
+Thanh khoản hiện tại
+Thanh toán giao dịch
+Thanh toán giao dịch thành công
+Thanh toán giao dịch với thông tin chi tiết
+Thanh toán không thành công
+Thanh toán lúc
+Thanh toán ngoài hệ thống
+Thanh toán thiếu
+Thanh toán tiếp theo
+Thanh toán đã bị hủy
+Thao tác
+Thao tác hàng loạt
+Thao tác khác
+Thao tác yêu cầu ứng lương của ${row.original.employeeName}
+Thay đổi chu kỳ
+Thay đổi cấu hình
+Theo Tháng
+Theo Tuần
+Theo danh mục
+Theo dõi bảng công, nhân viên đang làm và hồ sơ mới.
+Theo dõi chi trả
+Theo dõi số liệu vận hành, nhân sự và tài chính theo kỳ
+Theo dõi tiến trình chuyển tiền
+Theo dõi và duyệt bảng công
+Theo dõi và quản lý bảng công
+Theo dõi và quản lý tất cả dự án trong công ty
+Theo dõi đà lợi nhuận và dự án đang kéo kết quả kỳ lương.
+Theo khung giờ
+Theo lãi suất
+Theo lịch trả
+Thiết bị
+Thiết bị không hỗ trợ GPS
+Thiết lập ca làm việc (khung giờ) và mức lương theo vị trí, loại ngày
+Thiết lập mức lương theo vị trí, loại ngày và khung giờ
+Thiếu check-out
+Thiếu dòng hạn mức
+Thiếu dữ liệu bắt buộc
+Thiếu dữ liệu ghép cặp
+Thiếu dự trữ
+Thiếu ngân hàng
+Thiếu row quota
+Thiếu số tài khoản
+Thiếu tan ca
+Thiếu thông tin
+Thiếu thông tin nhân viên hoặc dự án.
+Thiếu tên chủ tài khoản
+Thiếu tọa độ hoặc điểm chấm
+Thoát
+Thoát mà không lưu?
+Thu gọn
+Thu gọn ${employee.fullname}
+Thu gọn chi tiết
+Thu gọn lịch chấm công
+Thu hẹp kết quả theo thời gian, hành động và đối tượng
+Thu hồi khoá "${apiKey.name}" (${scopeLabel})? ${impact}
+Thu hồi khoá MCP "${apiKey.name}" (${scopeLabel(apiKey.scope)})? Agent đang dùng khoá này sẽ mất quyền truy cập ngay.
+Thu hồi khoá ops "${apiKey.name}" (${scopeLabel(apiKey.effective_scope)})? Agent đang dùng khoá này sẽ mất quyền truy cập ngay.
+Thu hồi quyền
+Thu hồi quyền của ${employeeUser.user_fullname}
+Thu hồi quyền của ${projectUser.user_fullname}
+Thu hồi quyền truy cập
+Thu hồi quyền truy cập thành công
+Thu hồi token
+Thu tiền khách hàng
+Thu tiền từ khách hàng
+Thu vào
+Thuế TNCN
+Thuộc nhiều dự án
+Thành công: ${data.completed_txn}
+Thành tiền
+Tháng
+Tháng ${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}
+Tháng ${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}
+Tháng ${date.getMonth() + 1}, ${date.getFullYear()}
+Tháng ${format(start, "MM, yyyy")}
+Tháng ${month.split("-").reverse().join("/")}
+Tháng ${monthIndex + 1} năm ${pickerYear}
+Tháng ${monthNum}/${year}
+Tháng ${month}
+Tháng ${month} năm ${year}
+Tháng ${month}/${year}
+Tháng 07, 2026
+Tháng 1
+Tháng 10
+Tháng 11
+Tháng 12
+Tháng 2
+Tháng 3
+Tháng 3/2026
+Tháng 4
+Tháng 5
+Tháng 6
+Tháng 7
+Tháng 8
+Tháng 9
+Tháng chấm công
+Tháng khác
+Tháng này
+Tháng sau
+Tháng trước
+Tháng điểm danh ${label}
+Tháng ứng lương
+Tháng: ${label}
+Thêm
+Thêm ${label}
+Thêm Giao Dịch
+Thêm NV
+Thêm ca từ bảng bên dưới để bắt đầu nhập mức lương
+Thêm chấm công
+Thêm chủ nợ
+Thêm chủ nợ đầu tiên để bắt đầu quản lý khoản vay.
+Thêm cấu hình
+Thêm cấu hình phí
+Thêm cấu hình phí giao dịch chi hộ
+Thêm cấu hình phí trả lương tuần
+Thêm cấu hình đầu tiên để bắt đầu áp dụng cho các giao dịch chi hộ
+Thêm cấu hình đầu tiên để bắt đầu áp dụng cho các giao dịch ứng lương
+Thêm cấu hình đầu tiên để bắt đầu áp dụng cho các kỳ trả lương tuần
+Thêm danh mục mới
+Thêm dự án
+Thêm dự án mới
+Thêm giao dịch
+Thêm giao dịch mới
+Thêm người dùng
+Thêm người dùng mới
+Thêm nhân viên
+Thêm nhân viên mới
+Thêm nhân viên mới vào hệ thống
+Thêm nhân viên thành công
+Thêm nhân viên vào dự án
+Thêm tháng này
+Thêm tùy chọn
+Thêm widget đầu tiên
+Thêm widget để tùy chỉnh dashboard của bạn
+Thêm ít nhất một ca làm việc
+Thêm ít nhất một vị trí
+Thêm ít nhất một vị trí và một ca làm việc
+Thông báo (${unreadCount} chưa đọc)
+Thông báo môi trường phát triển
+Thông báo mới
+Thông báo đẩy đến mọi quản trị viên khi số dư ví tiền chạm ngưỡng, mỗi lần chạm ngưỡng một lần.
+Thông báo${unreadCount > 0 ?
+Thông tin NV
+Thông tin cá nhân
+Thông tin dự án đã được cập nhật.
+Thông tin liên quan
+Thông tin ngân hàng
+Thông tin thông báo
+Thông tin thụ hưởng in trên email sao kê FlexPay và file Excel đối chiếu đính kèm. Để trống sẽ dùng chung tài khoản lương tuần.
+Thông tin thụ hưởng in trên email sao kê lương tuần và file Excel đính kèm.
+Thông tin tài khoản
+Thông tin đầy đủ của giao dịch này
+Thông tin đối tác
+Thường
+Thưởng
+Thả file vào đây
+Thấp
+Thấp nhất
+Thất bại: ${data.failed_txn}
+Thẻ ATM / Ví điện tử
+Thời gian
+Thời gian chờ ứng lương tự chấm công sau khi tan ca
+Thời gian hiển thị tối đa ${MAX_LIFETIME_DAYS} ngày
+Thời gian xử lý
+Thời điểm tạo: ${new Date().toLocaleString('en-KE')}
+Thợ Cơ Khí
+Thợ Hàn
+Thợ Điện
+Thủ Kho
+Thứ 2
+Thứ 3
+Thứ 4
+Thứ 5
+Thứ 6
+Thứ 7
+Thứ Ba
+Thứ Bảy
+Thứ Hai
+Thứ Năm
+Thứ Sáu
+Thứ Tư
+Thử bỏ bộ lọc hoặc đổi từ khoá tìm kiếm.
+Thử lại
+Thử lại ngày mai
+Thử thay đổi bộ lọc hoặc tìm kiếm khác.
+Thử thay đổi bộ lọc để xem kết quả khác
+Thử tên, CCCD hoặc mã nhân viên khác.
+Thử tải thêm nhân viên
+Thử từ khóa khác hoặc xóa bộ lọc.
+Thử điều chỉnh bộ lọc
+Thử điều chỉnh bộ lọc để xem kết quả
+Thử điều chỉnh hoặc xoá bộ lọc để xem thêm kết quả.
+Thử điều chỉnh trạng thái để xem kết quả khác.
+Thử đổi bộ lọc hoặc tìm kiếm khác.
+Thực lãnh
+Thực nhận
+Thực nhận (kỳ)
+Timesheet đã được đặt lại thành công
+Ting Ting Software Solutions — Đồng hành cùng người lao động.
+Tiêu đề không được để trống
+Tiêu đề là bắt buộc
+Tiêu đề quảng cáo
+Tiêu đề thông báo
+Tiêu đề tối đa 255 ký tự
+Tiến độ
+Tiến độ thiết lập Zalo ZNS
+Tiến độ yêu cầu
+Tiền TT tới
+Tiền gần nhất
+Tiền mặt
+Tiền mặt khả dụng trên sổ cái
+Tiền mặt, Công nợ
+Tiền đã trả
+Tiền ứng
+Toàn quyền (ALL)
+Trang chấm công tiếp
+Trang chấm công trước
+Trang cuối
+Trang dự án sau
+Trang dự án trước
+Trang tiếp
+Trang trước
+Trang đầu
+Trong khu vực
+Trong kỳ đang xem
+Trung bình
+Trung bình ${summary.averageHoursPerDay} giờ/ngày
+Trung tâm điều khiển bảng công
+Truy cập bị từ chối
+Trạng thái dự án đã được cập nhật.
+Trạng thái thanh toán
+Trạng thái xử lý ứng lương
+Trạng thái ứng lương: ${selected.label}
+Trả gần nhất
+Trả hàng tháng
+Trả lúc
+Trả lương
+Trả lương gần nhất
+Trả lương nhân viên
+Trả tháng cuối
+Trống
+Trợ giúp
+Tuần
+Tuần này
+Tài chính theo tháng
+Tài khoản
+Tài khoản hợp lệ
+Tài khoản không hợp lệ
+Tài khoản ngân hàng
+Tài khoản ngân hàng cần kiểm tra
+Tài khoản ngân hàng không hợp lệ
+Tài khoản nhận chuyển khoản FlexPay (OnePay)
+Tài khoản nhận chuyển khoản lương tuần
+Tác vụ định kỳ
+Tên Dự án
+Tên chi nhánh
+Tên chủ nợ
+Tên chủ nợ là bắt buộc
+Tên chủ tài khoản
+Tên chủ tài khoản không khớp
+Tên chủ tài khoản không được chứa số hoặc ký tự đặc biệt
+Tên chủ tài khoản là bắt buộc khi có thông tin ngân hàng
+Tên chủ tài khoản phải có 3–100 ký tự.
+Tên chủ tài khoản phải có ít nhất 3 ký tự
+Tên chủ tài khoản thụ hưởng in trên sao kê FlexPay.
+Tên chủ tài khoản thụ hưởng in trên sao kê lương tuần.
+Tên chủ tài khoản tối đa 100 ký tự
+Tên công ty khách hàng
+Tên công ty đối tác sử dụng dịch vụ tạm ứng.
+Tên cổng
+Tên danh mục
+Tên doanh nghiệp hiển thị trong các nghiệp vụ tạm ứng.
+Tên dự án
+Tên dự án không được vượt quá 100 ký tự
+Tên dự án là bắt buộc
+Tên hoặc CCCD
+Tên hoặc CCCD...
+Tên hoặc mã dự án
+Tên khung giờ ${hourType}
+Tên khách hàng
+Tên khách hàng không được vượt quá 100 ký tự
+Tên khách hàng là bắt buộc
+Tên không xác định
+Tên không được để trống
+Tên ngân hàng
+Tên ngân hàng nhận chuyển khoản in trên sao kê FlexPay.
+Tên ngân hàng nhận chuyển khoản in trên sao kê lương tuần.
+Tên người dùng
+Tên nhà cung cấp
+Tên nhân viên
+Tên nhân viên, mã chuyển khoản hoặc mã ngân hàng
+Tên này trùng với một khung giờ đã có (không phân biệt hoa thường và dấu).
+Tên tài khoản
+Tên tài khoản NH
+Tên tệp
+Tên vị trí không được để trống
+Tên vị trí...
+Tên xác nhận
+Tên đã lưu
+Tên đã lưu khác với tên được nhà cung cấp xác nhận.
+Tên đã nhập
+Tên đăng nhập
+Tên đăng nhập là bắt buộc
+Tên đăng nhập đã tồn tại
+Tên, CCCD hoặc mã nhân viên...
+Tìm ca làm việc...
+Tìm chủ nợ...
+Tìm diễn giải, đối tượng...
+Tìm dự án theo tên hoặc mã...
+Tìm dự án, khách hàng...
+Tìm dự án...
+Tìm kiếm chủ nợ...
+Tìm kiếm diễn giải, đối tượng...
+Tìm kiếm dự án...
+Tìm kiếm lệnh hoặc điều hướng...
+Tìm kiếm ngân hàng
+Tìm kiếm ngân hàng...
+Tìm kiếm người dùng
+Tìm kiếm người dùng...
+Tìm kiếm người nhận
+Tìm kiếm nhân viên...
+Tìm kiếm theo tên, email hoặc vai trò...
+Tìm kiếm trong hệ thống
+Tìm kiếm tên hoặc CCCD...
+Tìm kiếm yêu cầu...
+Tìm kiếm...
+Tìm loại giao dịch...
+Tìm loại tài khoản...
+Tìm mã vay, chủ nợ...
+Tìm ngân hàng / mã SWIFT...
+Tìm ngân hàng nhận tiền
+Tìm ngân hàng...
+Tìm người nhận hoặc mã tham chiếu
+Tìm nhân viên
+Tìm nhân viên theo tên hoặc CCCD
+Tìm nhân viên, dự án...
+Tìm nhân viên...
+Tìm theo tên file hoặc người tải lên
+Tìm theo tên file hoặc người tải lên…
+Tìm theo tên hoặc CCCD...
+Tìm theo tên tệp
+Tìm theo tên tệp…
+Tìm theo tên, CCCD hoặc mã nhân viên
+Tìm theo tên, CCCD...
+Tìm theo tên, email...
+Tìm tài khoản...
+Tìm tên dự án, mã, khách hàng…
+Tìm tên hoặc CCCD...
+Tìm tên, CCCD hoặc số điện thoại...
+Tìm tên, CCCD...
+Tìm tên, SĐT, CCCD, dự án...
+Tìm tên, email...
+Tình trạng API
+Tín hiệu GPS không đủ chính xác
+Tính lại số dư
+Tóm tắt chấm công
+Tóm tắt kỳ lương
+Tùy chỉnh
+Tùy chọn
+Tùy chọn cho vị trí ${position}
+Tùy chọn khác
+Tăng
+Tạm dừng
+Tạm ngừng
+Tạm ngừng ứng lương?
+Tạm ứng
+Tạo
+Tạo "${searchValue}"
+Tạo DA
+Tạo KQ CK
+Tạo bút toán đảo ngược để hủy giao dịch
+Tạo bút toán đảo ngược để hủy giao dịch này
+Tạo bản ghi nạp tiền thất bại
+Tạo bảng chấm công mới
+Tạo bảng công
+Tạo check-in
+Tạo check-in & tan ca
+Tạo chiến dịch quảng cáo
+Tạo chiến dịch thất bại
+Tạo chấm công
+Tạo cấu hình
+Tạo cấu hình lương
+Tạo cấu hình lương mới
+Tạo cấu hình phí giao dịch chi hộ thành công
+Tạo cấu hình phí thành công
+Tạo cấu hình phí trả lương tuần thành công
+Tạo dự án
+Tạo dự án mới
+Tạo dự án mới trong hệ thống
+Tạo dự án thành công
+Tạo file kết quả chuyển khoản từ file chuyển lô đã gửi ngân hàng.
+Tạo giao dịch
+Tạo giao dịch thành công
+Tạo hoặc chỉnh sửa bảng chấm công
+Tạo hàng loạt
+Tạo hàng loạt bảng chấm công thành công: 3
+Tạo hàng loạt thành công
+Tạo hồ sơ nhân viên mới
+Tạo khoản vay
+Tạo khoản vay đầu tiên để bắt đầu quản lý.
+Tạo lúc
+Tạo mới thành công
+Tạo mới thông tin chủ nợ
+Tạo ngân hàng thành công
+Tạo người dùng
+Tạo nhân viên thành công
+Tạo tài khoản người dùng mới
+Tạo và gửi thông báo đến người dùng
+Tạo: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+Tạo: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm", { locale: vi })} · Xử lý trong ${latency}
+Tạo: ${format(new Date(row.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })} · Thanh toán: ${format(new Date(row.paidAt ?? row.completedAt!), "dd/MM/yyyy HH:mm", { locale: vi })}
+Tạo: ${new Date(match.created_at).toLocaleDateString('en-KE')}
+Tải KQ Excel
+Tải KQ thất bại
+Tải dữ liệu đã duyệt
+Tải dữ liệu đối soát thất bại
+Tải file
+Tải file Excel thất bại
+Tải file đối soát phí tháng của OnePay
+Tải file đối soát thất bại
+Tải lên & Đối soát
+Tải lên BCC
+Tải lên chứng từ
+Tải lên file
+Tải lên file Excel chứa kết quả chuyển tiền để cập nhật trạng thái thanh toán.
+Tải lên file Excel kết quả chuyển tiền để cập nhật trạng thái
+Tải lên file Yêu cầu chuyển tiền (.xlsx) từ Bảng công để tạo lô đầu tiên.
+Tải lên file Yêu cầu chuyển tiền (.xlsx) đã xuất từ Bảng công để xử lý.
+Tải lên kết quả sao kê
+Tải lên sao kê
+Tải lên thành công
+Tải lên thất bại
+Tải lên tập tin
+Tải lên và xử lý file điều chỉnh thành công
+Tải lại danh sách
+Tải lại danh sách khoá API
+Tải lại danh sách khoá MCP
+Tải lại danh sách khoá ops
+Tải lại trang
+Tải mẫu nhập công thành công
+Tải template thành công
+Tải thêm
+Tải thêm nhân viên
+Tải về tệp gốc
+Tải xuống chứng từ
+Tải xuống danh sách nhân viên
+Tải xuống dữ liệu chấm công
+Tải xuống hoặc tải lên file sao kê thanh toán
+Tất cả
+Tất cả ${skippedTimesheets} timesheets đã được thanh toán trước đó
+Tất cả dự án
+Tất cả dự án (${projects.length})
+Tất cả endpoint, kể cả tạo/sửa/xoá
+Tất cả giao dịch chưa đối soát sẽ được bao phủ bởi các lần xuất đã mô phỏng.
+Tất cả kỳ lương
+Tất cả loại
+Tất cả nhân viên
+Tất cả tháng
+Tất cả thời gian
+Tất cả trạng thái
+Tất cả vai trò
+Tất cả đã được xử lý
+Tắt
+Tắt thông báo đẩy
+Tắt tất cả ${summary?.inactive ?? 0} nhân viên chưa điểm danh
+Tắt điểm danh cho ${bulkCount} nhân viên?
+Tệp chuyển khoản hàng loạt
+Tệp quá lớn
+Tệp tin
+Tệp đang chờ xử lý
+Tối thiểu 8 ký tự
+Tối đa
+Tối đa ${MAX_BULLETS} gạch đầu dòng
+Tối đa ${MAX_CTAS} nút hành động
+Tối đa 72 ký tự
+Tổ Trưởng
+Tổng
+Tổng ${data.dashboardSummary.total_employees.toLocaleString('en-KE')} nhân viên
+Tổng NV
+Tổng bảng chấm
+Tổng chi phí
+Tổng chi trả
+Tổng chưa đối soát
+Tổng công
+Tổng dòng
+Tổng dự án
+Tổng giao dịch
+Tổng giờ làm
+Tổng kết quá trình xử lý file Excel
+Tổng lãi
+Tổng lương trong kỳ
+Tổng nhân viên
+Tổng nợ phải bằng tổng có
+Tổng phí thu
+Tổng quan
+Tổng quan kỳ ứng lương
+Tổng quan lương
+Tổng quan tài chính
+Tổng số
+Tổng số bản ghi: ${data.total_txn}
+Tổng số dòng
+Tổng thanh toán
+Tổng thu nhập
+Tổng tiền trả phải lớn hơn hoặc bằng số tiền vay
+Tổng vay
+Tổng vốn
+Tổng yêu cầu
+Tổng đã chi
+Tổng đã chi trả
+Tổng đã nhận
+Tổng đã trả
+Tổng đã trả ${formatVND(data.dashboardSummary.total_paid_salary)}
+Tổng ứng
+Từ ${formatBankTransferDate(record.from_date)} đến ${formatBankTransferDate(record.to_date)}
+Từ ${formatCurrency(display.intervalLower)} đến ${formatCurrency(display.intervalUpper)}
+Từ ${startDate} đến ${formatVietnameseDate(next.effectiveDate)}
+Từ ${startDate} đến nay
+Từ (cố định: 0)
+Từ 01/01/2020 đến nay
+Từ 3.500.000 ₫: phí giảm còn 1,3%
+Từ chối bởi partner
+Từ chối hàng loạt
+Từ chối quyền truy cập
+Từ chối — thử lại ngày mai
+Từ nay, công nhân dự án có thể chấm công tự động và ứng lương ngay trên điện thoại.
+Từ ngày
+Từ ngày phải nhỏ hơn hoặc bằng đến ngày
+Từ số tiền (₫)
+Từ số tiền bậc ${idx + 1}
+Tự chấm công và hạn mức ứng lương
+Tự động huỷ
+Tự động huỷ (hết giờ)
+Tự động huỷ do quá hạn tan ca
+Tự động huỷ lúc
+Tỷ Lệ Lỗi
+Tỷ lệ phí phải từ 0 đến 100
+Tỷ lệ rất cao — kiểm tra lại
+Tỷ lệ rất thấp — có chắc không?
+Tỷ lệ trả lương tháng
+Tỷ lệ trả lương tuần
+Tỷ lệ ứng lương tự chấm công
+URL hợp lệ
+URL không hợp lệ
+URL không hợp lệ. Vui lòng nhập URL đầy đủ (bao gồm http:// hoặc https://)
+Upload file kết quả chuyển khoản (.xlsx) để cập nhật trạng thái thanh toán.
+Upload thất bại
+VD: Ca làm, Ca đêm…
+VD: ca chiều
+VNĐ
+Vai trò
+Vai trò là bắt buộc
+Vay nợ
+Vendor — bảng chấm công
+Việc cần theo dõi
+Vui lòng chọn chủ nợ
+Vui lòng chọn dự án
+Vui lòng chọn hoặc nhập mã ngân hàng
+Vui lòng chọn khoản vay
+Vui lòng chọn khoảng ngày
+Vui lòng chọn kỳ thanh toán
+Vui lòng chọn một dự án.
+Vui lòng chọn ngày
+Vui lòng chọn ngày giải ngân
+Vui lòng chọn ngày hiệu lực
+Vui lòng chọn ngày thanh toán
+Vui lòng chọn ngân hàng
+Vui lòng chọn người góp vốn
+Vui lòng chọn nhân viên
+Vui lòng chọn ít nhất một người nhận hoặc chọn gửi đến tất cả
+Vui lòng chọn ít nhất một nhân viên.
+Vui lòng chọn đầy đủ khoảng ngày.
+Vui lòng chọn địa chỉ gửi, nhập người nhận, tiêu đề và nội dung email.
+Vui lòng kiểm tra kết nối và thử lại.
+Vui lòng kiểm tra lại thông tin.
+Vui lòng kiểm tra thông tin lương ca làm.
+Vui lòng kiểm tra và cập nhật thông tin tài khoản.
+Vui lòng kiểm tra và điền đầy đủ thông tin bắt buộc
+Vui lòng kiểm tra và điền đầy đủ thông tin.
+Vui lòng nhập ${label}
+Vui lòng nhập danh sách nhân viên
+Vui lòng nhập file bảng lương để xem danh sách nhân viên.
+Vui lòng nhập link hoặc tải lên file chứng từ
+Vui lòng nhập lý do loại.
+Vui lòng nhập lý do đảo ngược
+Vui lòng nhập mật khẩu hiện tại
+Vui lòng nhập mật khẩu mới
+Vui lòng nhập nội dung chuyển khoản
+Vui lòng nhập số tài khoản
+Vui lòng nhập tên chủ tài khoản
+Vui lòng nhập ít nhất một giờ làm việc
+Vui lòng nhập: ${missingFields.map(field => field.label).join(', ')}
+Vui lòng quay lại trong kỳ ứng lương tiếp theo.
+Vui lòng tạo lịch trả
+Vui lòng tạo lịch trả trước khi tạo khoản vay
+Vui lòng tải lên file Excel (.xlsx).
+Vui lòng tải lên tệp Excel (.xlsx).
+Vui lòng xác định loại ngày cho Thứ 7
+Vui lòng điền đầy đủ thông tin
+Vui lòng điền đầy đủ thông tin cho tất cả các lịch trả
+Vui lòng đăng nhập để truy cập chức năng này.
+Vui lòng đợi...
+Vào làm
+Vào làm thành công
+Vào · ${formatGpsAccuracy(row.check_in_accuracy)}
+Ví dụ: "gửi mai, hôm nay dữ liệu chưa đủ" — ghi chú này định hướng lần chuẩn bị lại.
+Ví dụ: 10000000
+Ví dụ: 100000000
+Ví dụ: 12
+Ví dụ: 9pay điều chỉnh giá từ 01/06
+Ví dụ: Claude Code trên máy chủ báo cáo
+Ví dụ: Giao dịch bị trùng, sai thông tin...
+Ví dụ: TingHire Production, Đối tác chấm công...
+Ví dụ: VCB-20260509-XYZ123
+Ví dụ: giảm phí dịch vụ từ 2% xuống 1,8% để các cấu hình placeholder
+Ví dụ: hermes, claude-code-bao-cao
+Ví lương
+Ví tiền
+Vượt quá 12h, chú ý tăng ca
+Vượt quá 16h, kiểm tra lại
+Về chỉ đọc
+Vệ tinh
+Vị trí
+Vị trí "${position}" chưa có ca làm việc
+Vị trí "${position}" cần có ít nhất một ca làm việc
+Vị trí công việc
+Vị trí không xác định
+Vị trí là bắt buộc
+Vị trí lúc tan ca
+Vị trí lúc vào làm
+Vị trí nhân viên không có sẵn
+Vị trí: ${employee.position}
+Vốn CSH
+Vừa nhập
+Vừa xong
+Xem ${additionalCount} cấu hình khác sắp có hiệu lực
+Xem ${errors.length} lỗi${groups.length < errors.length ?
+Xem ${parsedErrors.length} lỗi cần xử lý
+Xem ${weeks + 1} tuần gần đây
+Xem biểu đồ
+Xem bảng công tháng này
+Xem chi tiết
+Xem chi tiết ${user.fullname}
+Xem chi tiết bút toán
+Xem chi tiết bảng chấm công
+Xem chi tiết dự án
+Xem chi tiết dự án ${project.name}
+Xem chi tiết dự án, nhân viên và cấu hình lương.
+Xem chi tiết giao dịch
+Xem chi tiết nhân viên ${employee.fullname}
+Xem chi tiết phê duyệt
+Xem chi tiết thông tin bút toán
+Xem chi tiết ứng lương của ${emp.fullname}
+Xem chứng từ
+Xem các dự án
+Xem các đợt chi trả
+Xem cảnh báo bên dưới
+Xem danh sách
+Xem danh sách dự án
+Xem danh sách người dùng
+Xem danh sách nhân viên
+Xem hàng đợi bảng công trên toàn hệ thống
+Xem hồ sơ
+Xem lại & lưu
+Xem lại & tạo
+Xem người dùng
+Xem nhân viên trong dự án
+Xem phí và chi tiết
+Xem sao kê
+Xem tháng sau
+Xem tháng trước
+Xem tháng điểm danh sau
+Xem tháng điểm danh trước
+Xem thêm
+Xem thông báo
+Xem thông tin chi tiết
+Xem thông tin chi tiết dự án
+Xem thông tin chi tiết nhân viên
+Xem thông tin cá nhân
+Xem tiến độ
+Xem toàn bộ lịch chấm công
+Xem trang tổng quan chính
+Xem trước
+Xem trước phí
+Xem tài liệu trợ giúp
+Xem tất cả (${employeesArray.length})
+Xem tất cả (${rankedProjects.length})
+Xem tất cả (${sortedMonths.length})
+Xem tất cả hoạt động
+Xem tổng quan dự án
+Xem tổng quan hệ thống
+Xem và Dự án
+Xem và chỉnh sửa hồ sơ cá nhân
+Xem và chỉnh sửa thông tin chi tiết của nhân viên, bao gồm phân quyền truy cập.
+Xem và chỉnh sửa thông tin cá nhân của bạn.
+Xem và chỉnh sửa thông tin người dùng
+Xem và chỉnh sửa thông tin tài khoản
+Xem và quản lý các yêu cầu ứng lương của nhân viên
+Xoá bộ lọc
+Xoá vị trí
+Xung đột
+Xung đột dữ liệu
+Xuất Excel
+Xuất Excel hồ sơ nhân viên
+Xuất Excel thành công
+Xuất PDF thất bại
+Xuất báo cáo thành công
+Xuất bảng công
+Xuất bảng công thành công
+Xuất bảng công đã duyệt
+Xuất chuyển lô
+Xuất chấm công
+Xuất danh sách
+Xuất danh sách nhân viên
+Xuất danh sách nhân viên ứng lương
+Xuất danh sách tự chấm công ra Excel
+Xuất dữ liệu
+Xuất dữ liệu thành công
+Xuất file
+Xuất file OnePay thất bại
+Xuất file chuyển lô
+Xuất file thành công
+Xuất lô chuyển tiền
+Xuất lô chuyển tiền (Chuyển lô)
+Xuất lịch sử thanh toán thành công
+Xuất sao kê
+Xuất sao kê lương
+Xuất sao kê thành công
+Xuất sao kê ứng lương
+Xác nhận cập nhật cấu hình
+Xác nhận giao dịch
+Xác nhận giải ngân
+Xác nhận gửi tiền
+Xác nhận hoàn thành dự án
+Xác nhận hủy
+Xác nhận hủy chờ
+Xác nhận hủy dự án
+Xác nhận loại
+Xác nhận lưu
+Xác nhận mật khẩu mới
+Xác nhận nhận tiền · tải file · đối soát
+Xác nhận thanh toán
+Xác nhận thông tin chuyển tiền
+Xác nhận thông tin thanh toán
+Xác nhận tạo cấu hình mới
+Xác nhận tắt
+Xác nhận từ ${effectiveDate}
+Xác nhận xóa
+Xác nhận xóa dự án
+Xác nhận xóa người dùng
+Xác nhận xóa?
+Xác nhận yêu cầu ứng lương
+Xác nhận đảo ngược
+Xác nhận đối soát thất bại
+Xác nhận đổi tháng
+Xác thực thất bại
+Xóa ${email}
+Xóa URL
+Xóa bậc ${idx + 1}
+Xóa bộ lọc
+Xóa ca ${key}
+Xóa chiến dịch "${banner.title}"? Số liệu lượt bấm sẽ không còn hiển thị.
+Xóa chiến dịch ${banner.title}
+Xóa chấm công ngày này
+Xóa chứng từ đã chọn
+Xóa cấu hình
+Xóa cấu hình sắp có hiệu lực
+Xóa cột ${hourType}
+Xóa dòng
+Xóa dòng chấm công
+Xóa dự án
+Xóa file
+Xóa file chứng từ
+Xóa gạch đầu dòng ${index + 1}
+Xóa hàng loạt thành công
+Xóa khoản vay
+Xóa khung giờ ${hourType}
+Xóa lọc tháng ${currentMonthLabel}
+Xóa lọc trạng thái ${currentStatusLabel}
+Xóa lọc vai trò
+Xóa ngân hàng đã chọn
+Xóa người cho vay
+Xóa người cho vay khỏi danh sách.
+Xóa người dùng
+Xóa người nhận
+Xóa nhân viên
+Xóa nhân viên khỏi dự án
+Xóa nhân viên thành công
+Xóa nút ${index + 1}
+Xóa thành công
+Xóa tìm kiếm
+Xóa tìm kiếm ngân hàng
+Xóa tệp
+Xóa từ khóa
+Xóa đường dẫn chứng từ
+Xếp Hạng Lợi Nhuận
+Xử lý các bảng công này trước khi khóa sổ lương.
+Xử lý các yêu cầu cần duyệt
+Xử lý các yêu cầu phê duyệt
+Xử lý file đối soát thất bại
+Xử lý thành công ${successCount}/${totalCount} file.
+Yêu cầu
+Yêu cầu ${amount} thất bại, vui lòng liên hệ quản lý
+Yêu cầu chuyển tiền
+Yêu cầu chỉnh sửa
+Yêu cầu chỉnh sửa đang chờ duyệt.
+Yêu cầu chỉnh sửa đã được gửi thành công
+Yêu cầu chỉnh sửa đã được hủy thành công
+Yêu cầu của tôi
+Yêu cầu không hợp lệ
+Yêu cầu kẹt pending
+Yêu cầu lỗi
+Yêu cầu phê duyệt
+Yêu cầu phê duyệt của tôi
+Yêu cầu sẽ được chuẩn bị lại lúc 08:00 ngày mai và quay lại hàng chờ duyệt. Sau 3 lần từ chối, yêu cầu sẽ được leo thang.
+Yêu cầu sửa
+Yêu cầu thay đổi chu kỳ thanh toán thành công
+Yêu cầu đang chờ
+Yêu cầu đang chờ duyệt
+Yêu cầu đang chờ duyệt hoặc đã leo thang.
+Yêu cầu đã bị hủy
+Yêu cầu đã bị từ chối
+Yêu cầu đã được phê duyệt
+Yêu cầu ứng hoàn tất
+Yêu cầu ứng hoàn tất/tổng
+Yêu cầu ứng lương
+Yêu cầu ứng lương ${amount} đã bị hủy
+Yêu cầu ứng lương sẽ hiển thị tại đây
+Yêu cầu ứng lương sẽ hiển thị tại đây sau khi nhân viên gửi.
+Yêu cầu ứng tổng cộng
+Yếu
+bạn
+bản ghi
+bảng công
+bảng công 14 ngày qua
+bảng lương
+bắt buộc
+bị hủy
+ca có mức lương
+ca làm \
+ca làm việc
+ca ngày
+ca đêm
+cho khoản dưới
+cho khoản từ
+chuyên gia
+chấm công
+chắc chắn
+chờ
+chờ xử lý
+cuối tháng
+cuối tuần
+các bảng công được chọn
+còn ${days} ngày nữa
+công nhân
+cấu hình lương
+cập nhật
+dd MMMM yyyy 'lúc' HH:mm
+duyệt
+dùng chung
+dự án
+echo -n "pk_ops_DÁN_KHOÁ_VỪA-TẠO-VÀO-ĐÂY" > ~/.secrets/payroll-ops-agent.key
+giám sát
+giây
+giờ
+giờ/người
+gửi bảng công
+hoàn thành
+hoạt động
+hôm nay
+hôm qua
+hướng dẫn
+học việc
+input[placeholder*="tìm kiếm"], input[placeholder*="Search"]
+khung giờ
+khôi phục trạng thái chờ duyệt
+không bảng công 14 ngày
+không có mã swift
+không có trong cấu hình lương…
+không hợp lệ
+không thể tạo bảng chấm công
+không thể tạo nhân viên
+không tìm thấy
+không tìm thấy mức lương
+kinh nghiệm
+kết quả
+kỹ thuật
+linh động
+loại
+lái xe nâng
+lúc vào · tới điểm chấm
+lương tháng
+lương tuần
+lượt lỗi
+lễ
+lỗi gần đây
+mỗi giờ
+mở
+mục
+mức tối thiểu 0 ₫
+nghỉ
+ngoài khu vực chấm công
+ngoài tháng
+ngày chấm công chưa đến
+ngày lễ
+ngày mai
+ngày nghỉ
+ngày thường
+ngày trong tương lai
+người
+người dùng
+ngừng hoạt động
+nhân viên
+nhân viên này
+nhập
+nhập email của bạn
+nội dung
+nộp bảng công
+phê duyệt
+phổ thông
+phổ thông.ngày nghỉ.ca ngày
+phổ thông.ngày thường.ca ngày
+quá hạn tan ca
+quản đốc
+reason (các ngày …)
+sai mật khẩu
+sau ${days} ngày
+số tài khoản không hợp lệ
+thanh toán
+thiếu
+thành công
+thành công: 3
+tháng ${monthNumber}/${year}
+tháng ${m}/${y}
+tháng 5
+tháng hiện tại
+thêm dự án
+thêm nhân viên
+thấp
+thợ cơ khí
+thợ hàn
+thợ điện
+thủ kho
+trang nhân viên
+trong bán kính ${formatDistanceMeters(radiusMeters)}
+trung bình
+trùng
+trở lên
+trợ giúp
+tên chủ tài khoản không khớp
+tăng ca
+tạm ngừng ứng lương
+tạo
+tạo dự án
+tạo nhân viên
+tất cả
+tất cả ${stats.totalCount} bảng công pending
+tất cả bảng công của ${contextInfo?.employeeName} ngày ${formatDate(contextInfo?.date || '')}
+tất cả bảng công pending của dự án "${contextInfo?.projectName}"
+tất cả thời gian
+tồn tại
+tổ trưởng
+tổng quan
+tới điểm chấm
+từ
+tự động từ chối
+vượt ${formatDistanceMeters(deltaMeters)}
+với mức tối thiểu
+vừa xong
+xóa
+· ngày ${project.salary_period_from}–${project.salary_period_to}
+· thử lại ${formatDateTime(item.scheduled_at)}
+· thử lại lúc ${formatDateTime(item.scheduled_at)}
+· đã thử lại ${item.retry_count} lần
+· đã thử lại ${request.retry_count} lần
+Áp dụng thay đổi
+Ít nhất 1 chữ hoa
+Ít nhất 1 chữ thường
+Ít nhất 1 ký tự đặc biệt
+Ít nhất 1 số
+Ít nhất 8 ký tự
+ít nhất 1 chữ hoa
+ít nhất 1 chữ thường
+ít nhất 1 ký tự đặc biệt
+ít nhất 1 số
+ít nhất 8 ký tự
+ô có giá trị
+Đang bật
+Đang chuẩn bị...
+Đang chuẩn bị…
+Đang chạy
+Đang chạy trên môi trường phát triển
+Đang chấm công
+Đang chốt lương...
+Đang chờ
+Đang chờ FT
+Đang chờ checkout
+Đang chờ duyệt
+Đang chờ người phê duyệt xem xét
+Đang chờ quá lâu
+Đang chờ xử lý
+Đang chờ xử lý...
+Đang cập nhật
+Đang cập nhật...
+Đang duyệt…
+Đang ghi sổ
+Đang gỡ...
+Đang gửi OTP qua Zalo cho nhân viên.
+Đang gửi OTP…
+Đang gửi email...
+Đang gửi mẫu lương…
+Đang gửi...
+Đang học từ kết quả thực tế
+Đang hủy...
+Đang hủy…
+Đang khởi tạo
+Đang khởi tạo hệ thống modal...
+Đang kiểm tra...
+Đang loại...
+Đang làm
+Đang làm việc
+Đang lưu
+Đang lưu...
+Đang lưu…
+Đang mở
+Đang nhập...
+Đang nạp...
+Đang phân công...
+Đang reset...
+Đang theo dõi tiến trình chuyển tiền qua nhà cung cấp
+Đang thêm...
+Đang tìm kiếm...
+Đang tính lại...
+Đang tính toán...
+Đang tính...
+Đang tạm ngừng
+Đang tạo file...
+Đang tạo...
+Đang tải bảng công
+Đang tải cấu hình lương...
+Đang tải cấu hình mức lương cho dự án này...
+Đang tải dự báo tiền trả
+Đang tải dự án...
+Đang tải dự án…
+Đang tải file…
+Đang tải hàng đợi bảng công trên toàn hệ thống
+Đang tải hàng đợi bảng công trên toàn hệ thống.
+Đang tải lên...
+Đang tải lại…
+Đang tải lịch sử email
+Đang tải lịch sử giao dịch
+Đang tải lịch sử thanh toán
+Đang tải lịch sử trả lương
+Đang tải lịch sử yêu cầu
+Đang tải nhân viên
+Đang tải phân bổ ngân hàng
+Đang tải thêm...
+Đang tải thông tin người dùng...
+Đang tải thông tin người gửi
+Đang tải thông tin nhân viên
+Đang tải thông tin nhân viên...
+Đang tải tổng quan tài chính
+Đang tải…
+Đang tắt
+Đang vay
+Đang xem
+Đang xem xét
+Đang xuất
+Đang xuất hồ sơ nhân viên
+Đang xuất...
+Đang xóa...
+Đang xử lý bảng chấm công…
+Đang xử lý...
+Đang đổi...
+Đang…
+Đi đến Tổng quan
+Điền thông tin để tạo hồ sơ nhân viên
+Điền thông tin để tạo tài khoản người dùng mới trong hệ thống.
+Điều hành lương
+Điều hướng
+Điều hướng chính
+Điểm GPS của nhân viên
+Điểm chấm
+Điểm chấm gần nhất
+Điểm danh
+Điểm danh hộ ${employee.employee_name}
+Điểm gần nhất
+Điện thoại
+Đánh dấu tất cả đã đọc
+Đánh dấu xuất hiện trong kỳ trả lương tiếp theo
+Đánh dấu đã xong
+Đánh dấu đã đọc
+Đây là bút toán đảo; hãy tạo bút toán điều chỉnh mới nếu cần sửa
+Đã ${verbMap[operationType]} ${affected} bản ghi
+Đã ${verbMap[operationType]} ${affected} bản ghi, ${total_failed || failed} thất bại
+Đã ${verbMap[operationType]} ${affected} bản ghi, bỏ qua ${skipped} bản đã phê duyệt
+Đã ${verbMap[operationType]} ${affected} bản ghi, bỏ qua ${skipped} bản đã phê duyệt, ${total_failed || failed} thất bại
+Đã TT
+Đã bao phủ
+Đã bật Zalo OTP
+Đã bật lại ứng lương cho nhân viên
+Đã bật điểm danh cho ${variables.employeeIds.length} nhân viên
+Đã bật điểm danh từ đầu tháng này
+Đã bật — nhận thông báo ngay trên thiết bị
+Đã chuyển khoá MCP sang ALL — khoá được phép ghi dữ liệu
+Đã chuyển khoá MCP về READ ONLY
+Đã chuyển khoá sang read_only
+Đã chuyển khoá sang read_write — tự hồi về read_only sau cửa sổ ghi
+Đã chọn ${normalizedSelectedIds.length} người
+Đã chọn ${selectedEmployees.length} nhân viên
+Đã chọn ${selectedProjects.length} dự án
+Đã chọn ${selectionCount} nhân viên${estimatedTotal ?
+Đã chọn ${value.length}
+Đã chọn ${value.length} nhân viên
+Đã có thông tin ngân hàng
+Đã cập nhật
+Đã cập nhật chiến dịch
+Đã cập nhật email.
+Đã cập nhật thông tin người dùng
+Đã cập nhật trạng thái cho ${selectedEmployeeIds.length} nhân viên.
+Đã duyệt ${timesheetIds.length} bảng công.
+Đã duyệt bảng công cho ${timesheet.employeeName}.
+Đã duyệt yêu cầu
+Đã dùng
+Đã dùng hết
+Đã dùng hết hạn mức
+Đã ghi nhận
+Đã ghi nhận lương
+Đã ghi nhận thanh toán ngoài app
+Đã giải ngân
+Đã gửi email thành công
+Đã gửi email thành công cho tháng ${variables.forMonth}
+Đã gửi file import
+Đã gửi thông báo thành công
+Đã gửi yêu cầu #${filed.id} chờ duyệt — bản thảo email đính kèm yêu cầu.
+Đã gửi yêu cầu #${filed.id} chờ duyệt.
+Đã hiển thị tất cả ${employees.length} nhân viên
+Đã hoàn
+Đã hoàn tiền
+Đã huỷ
+Đã huỷ yêu cầu
+Đã hết hạn
+Đã hết hạn tan ca
+Đã hủy chờ kích hoạt cho ${result.disabled_count} nhân viên
+Đã hủy thay đổi chu kỳ thanh toán
+Đã hủy yêu cầu bật điểm danh đang chờ kích hoạt
+Đã import ${status.created_count} nhân viên mới, cập nhật ${status.updated_count} nhân viên.
+Đã kích chạy chốt lương
+Đã kích hoạt chiến dịch
+Đã kết nối
+Đã kết thúc
+Đã loại
+Đã loại ${rejectedIds.length} yêu cầu${failedIds.length > 0 ?
+Đã loại ${result.rejected_count} bảng công chưa thanh toán
+Đã loại bảng công cho ${timesheet.employeeName}.
+Đã loại timesheet.
+Đã lưu ${result?.data?.total_created ?? 0} bản ghi
+Đã lưu bảng công thành công
+Đã lưu thông tin kết nối Zalo
+Đã lưu thông tin nhân viên
+Đã nghỉ việc
+Đã nhận
+Đã nhận tệp. Đang chờ xử lý…
+Đã nhập
+Đã phân công nhân viên vào dự án thành công.
+Đã phê duyệt
+Đã phê duyệt ${approvedIds.length} yêu cầu${failedIds.length > 0 ?
+Đã phê duyệt timesheet.
+Đã phê duyệt, chờ thanh toán
+Đã quá giờ tan ca
+Đã quá hạn
+Đã sao chép
+Đã sao chép khoá API vào clipboard
+Đã sao chép khoá MCP vào clipboard
+Đã sao chép khoá ops vào clipboard
+Đã sao chép tiền tố "${prefix}"
+Đã sao chép vào clipboard
+Đã sử dụng
+Đã tan ca rồi
+Đã thanh toán
+Đã thanh toán ${transactionService.formatCurrency(settled)}
+Đã thanh toán ${transactionService.formatCurrency(settled)} / ${transactionService.formatCurrency(totalAmount)}
+Đã thanh toán hoàn tất
+Đã thanh toán — không thể chỉnh sửa.
+Đã thu hồi khoá API
+Đã thu hồi khoá MCP
+Đã thu hồi khoá ops
+Đã thêm ${employee.fullname} vào dự án ${project.name}
+Đã thêm ${selectedEmployee.fullname} vào dự án ${project.name}
+Đã thêm người dùng mới
+Đã thêm nhân viên vào danh sách quản lý của bạn
+Đã thực hiện hành động cho tác vụ ID: ${taskId}.
+Đã trả
+Đã trả ${amount}
+Đã trả ${formatVND(dashboardSummary.paid_salary_this_month)}
+Đã trả kỳ này
+Đã trả lương
+Đã trả đủ
+Đã tính lại số dư sổ cái.
+Đã tạm dừng chiến dịch
+Đã tạm ngừng ứng lương cho nhân viên
+Đã tạo ${result.filename} với ${result.totalCount} giao dịch. Tải file về và nhập lại qua "Nhập KQ chuyển lô".
+Đã tạo bút toán mới.
+Đã tạo bút toán đảo ngược.
+Đã tạo chi phí OnePay ${data.summary.total_fee.toLocaleString('en-KE')} ₫.
+Đã tạo chiến dịch
+Đã tạo file ${selectedExportFormat.name}
+Đã tạo giao dịch với ${data.total_entries} bút toán.
+Đã tạo khoá API
+Đã tạo khoá MCP
+Đã tạo khoá ops
+Đã tải PDF giao dịch thành công
+Đã tải file KQ
+Đã tải lên ${data.total_count} dòng — đang xử lý
+Đã tải lên thành công ${successCount} file chứng từ
+Đã tải xuống: ${filename}
+Đã tắt Zalo OTP
+Đã tắt điểm danh cho ${result.disabled_count} nhân viên chưa điểm danh
+Đã tắt điểm danh cho ${variables.employeeIds.length} nhân viên
+Đã tắt điểm danh cho nhân viên
+Đã tồn tại
+Đã từ chối
+Đã từ chối — sẽ thử lại theo lịch
+Đã vào làm rồi
+Đã xong
+Đã xuất ${data.totalCount} dòng, bỏ qua ${data.skippedCount} nhân viên thiếu thông tin ngân hàng
+Đã xuất danh sách nhân viên thành công
+Đã xuất file Excel thành công
+Đã xuất file OnePay (${data.totalCount} dòng)
+Đã xác minh
+Đã xác nhận nhận tiền và xử lý đối soát thành công
+Đã xóa chiến dịch
+Đã xóa cấu hình phí
+Đã xóa cấu hình phí giao dịch chi hộ
+Đã xảy ra lỗi khi tải danh sách hoạt động
+Đã xảy ra lỗi khi tải lịch sử email.
+Đã xảy ra lỗi khi tải lịch sử email. Vui lòng thử lại.
+Đã xảy ra lỗi khi tải thông tin bút toán.
+Đã xảy ra lỗi không xác định
+Đã xử lý
+Đã xử lý ${processedTimesheets} timesheets mới, bỏ qua ${skippedTimesheets} đã thanh toán
+Đã xử lý file đối soát thành công
+Đã xử lý thành công ${successCount} file.
+Đã điểm danh
+Đã đo bằng kết quả thực tế
+Đã đánh dấu ${itemIds.length} yêu cầu đang xem xét
+Đã đóng
+Đã đăng ký bật điểm danh từ ngày 1 tháng sau
+Đã đảo ngược
+Đã đảo ngược nhóm bút toán của giao dịch
+Đã đổi mật khẩu thành công
+Đóng bản đồ
+Đóng chi tiết giao dịch
+Đóng chi tiết nhật ký
+Đóng chỉnh sửa nhân viên
+Đóng cấu hình
+Đóng cửa sổ
+Đóng hộp thoại tra cứu tài khoản
+Đóng lịch sử email
+Đóng quảng cáo
+Đóng thông báo
+Đóng thông tin cá nhân
+Đóng điều hướng
+Đăng chiến dịch
+Đăng nhập bằng
+Đăng nhập cuối
+Đăng nhập thành công
+Đăng nhập thất bại
+Đăng xuất thành công
+Đơn giá
+Đường dẫn (https://)
+Được giao bởi
+Đảo Ngược
+Đảo ngược
+Đảo ngược bút toán
+Đảo ngược giao dịch
+Đảo ngược giao dịch thành công
+Đặt lại mật khẩu
+Đặt lại mật khẩu cho người dùng
+Đến ngày
+Để trống nếu bạn muốn giữ nguyên khóa hiện tại.
+Để trống nếu không đổi
+Để trống sẽ sử dụng CCCD
+Để trống để tự động tạo
+Địa chỉ
+Địa chỉ gửi
+Định dạng file không hợp lệ. Chỉ chấp nhận: ${allowedFormats.join(', ')}
+Định dạng file không hợp lệ. Chỉ chấp nhận: ảnh (JPG, PNG, GIF), PDF, Word, Excel, TXT
+Định dạng file không hợp lệ. Vui lòng chọn file Excel (.xls hoặc .xlsx)
+Định dạng file không được hỗ trợ. Chấp nhận: ${acceptedFiles.join(', ')}
+Định dạng ngày phải là DD/MM/YYYY
+Đọc + ghi (READ WRITE)
+Đối chiếu phân bổ lương, lợi nhuận và người nhận lương cao nhất.
+Đối soát
+Đối soát & Sao kê
+Đối soát giao dịch
+Đối soát hoàn tất. Vui lòng làm mới để xem kết quả.
+Đối soát hoàn tất: ${j.matched} khớp, ${j.unmatched} không khớp
+Đối soát sổ cái
+Đối soát ví trả lương
+Đối tác
+Đối tác đang dùng khoá này sẽ mất quyền xem bảng chấm công ngay.
+Đối tượng
+Đối tượng & lịch chạy
+Đối tượng là bắt buộc
+Đồng bộ số dư
+Đồng bộ số dư với nhà cung cấp
+Đổi mật khẩu
+Đổi mật khẩu thành công
+Đổi mật khẩu tài khoản
+Đổi tháng kích hoạt
+Độ lệch
+Độ trễ
+Độ ưu tiên
+đ
+đã
+đã có
+đã duyệt
+đã nghỉ việc
+đêm
+đến
+Ưu tiên
+ước tính
+Ảnh đại diện
+Ảnh đại diện của ${name}
+Ẩn biểu đồ
+Ẩn chi tiết
+Ẩn chi tiết cần xử lý
+Ẩn các cấu hình khác
+Ẩn danh sách
+Ẩn dòng bảng công này
+Ẩn dòng này khỏi danh sách
+Ẩn lỗi
+Ẩn mật khẩu
+Ẩn mật khẩu hiện tại
+Ẩn mật khẩu mới
+Ẩn số tiền
+Ẩn thông tin chi tiết
+Ẩn điều hướng
+Ẩn/hiện điều hướng
+Ở lại
+Ứng dụng
+Ứng lương ${metricsMonthLabel}
+Ứng lương thành công
+Ứng lương thất bại
+— gọi một endpoint REST bất kỳ. Params:
+— liệt kê mọi endpoint mà khoá có thể truy cập.
+…sau 60 giây (thử lại sau 60 giây)
+₫/giờ
