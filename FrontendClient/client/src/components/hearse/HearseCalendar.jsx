@@ -1550,8 +1550,7 @@ const HearseCalendar = ({
         if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       } catch (e) { }
 
-      const hearseName = [b.hearse_name || b.model || 'Hearse', b.model && b.hearse_name ? b.model : '']
-        .filter(Boolean).join(' · ');
+      const hearseName = b.hearse_name || 'Hearse';
       const clientName = (b.client_name || b.client || 'client').toString();
       const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
       const stableId = b.booking_code || b.booking_id || b.id || `${clientName}-${datePart}-${index}`;
