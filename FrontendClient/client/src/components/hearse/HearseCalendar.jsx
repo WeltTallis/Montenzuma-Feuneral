@@ -1809,6 +1809,8 @@ const HearseCalendar = ({
     const itemColor = props.statusColor || '#00296B';   // rich saturated hex
 
     if (isMonthView) {
+      const from = props.from || '—';
+      const dest = props.dest || '—';
       return (
         <div
           style={{
@@ -1824,14 +1826,15 @@ const HearseCalendar = ({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-start',
-            gap: '3px',
+            gap: '4px',
             boxSizing: 'border-box',
             overflow: 'hidden',
             cursor: 'pointer',
             boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           }}
-          title={`${props.hearseName || 'Hearse'} · ${props.dest || 'Location not listed'} · ${props.statusLabel || ''}`}
+          title={`${props.hearseName || 'Hearse'} · ${from !== '—' ? from : ''} → ${dest !== '—' ? dest : ''} · ${props.statusLabel || ''}`}
         >
+          {/* Hearse name — big and prominent at top */}
           <span style={{
             fontSize: '14px', fontWeight: 700, color: '#FFFFFF',
             lineHeight: 1.2,
@@ -1841,16 +1844,18 @@ const HearseCalendar = ({
             {props.plate && props.plate !== '—' ? ` · ${props.plate}` : ''}
           </span>
 
-          {props.dest && props.dest !== '—' && (
+          {/* From → Destination route line */}
+          {(from !== '—' || dest !== '—') && (
             <span style={{
               fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.95)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              display: 'flex', alignItems: 'center', gap: '3px',
             }}>
-              <MapPin size={10} /> {props.dest}
+              {from !== '—' && <span>{from}</span>}
+              {from !== '—' && dest !== '—' && <span style={{ color: 'rgba(255,255,255,0.6)' }}>→</span>}
+              {dest !== '—' && <span>{dest}</span>}
             </span>
           )}
-
-          {/* Month view intentionally omits client name and booking time to keep vehicle and location prominent. */}
         </div>
       );
     }
