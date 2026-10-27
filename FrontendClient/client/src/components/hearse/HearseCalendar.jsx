@@ -7,7 +7,7 @@ import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
 import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Building, Users } from '../../utils/icons/icons';
 import { STATUS_CONFIG } from './statusColors';
-import { BR, BRANCH_SLUG_TO_NAME } from './viewerShared';
+import { BR, BRANCH_SLUG_TO_NAME, getBookingRoute } from './viewerShared';
 
 export { STATUS_CONFIG };
 
@@ -1568,6 +1568,7 @@ const HearseCalendar = ({
         }
         return false;
       })();
+      const route = getBookingRoute(b);
 
       return {
         id: String(b.booking_id || b.id || `booking-${clientName}-${datePart}-${index}`),
@@ -1590,8 +1591,8 @@ const HearseCalendar = ({
           statusColor: status.color,
           statusBg: status.bg,
           statusTextColor: status.textColor,
-          dest: b.destination || b.to_location || '—',
-          from: b.from_location || b.origin || '—',
+          from: route.from,
+          dest: route.to,
           plate: b.plate_number || b.hearse_plate || b.number_plate || '—',
           branchName: resolvedBranchName,
           isMultiDay,
@@ -2007,6 +2008,14 @@ const HearseCalendar = ({
               <h1>{dayViewMode === 'schedule' ? 'Bookings' : 'Driver lineup'}</h1>
             </div>
             <DailyHeadingActions>
+              <SelectedDateBadge>
+                <span className="dot" />
+                <span className="label">{dayViewDate === toDateKey(new Date()) ? 'Today' : 'Selected'}</span>
+                <span className="date">
+                  {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                </span>
+              </SelectedDateBadge>
+              <TodayButton type="button" onClick={() => selectDay(toDateKey(new Date()))}>Today</TodayButton>
               <StandbyDriverBadge>
                 <Users size={14} />
                 <span>Standby</span>
@@ -2026,23 +2035,6 @@ const HearseCalendar = ({
           </DailyHeading>
 
           <DateStrip aria-label="Choose a day">
-            <DateStripHeader>
-              <DateMonthNav aria-label="Calendar month">
-                <DateNavButton type="button" aria-label="Previous month" onClick={() => shiftCalendarMonth(-1)}>‹</DateNavButton>
-                <DateMonthLabel>
-                  {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                </DateMonthLabel>
-                <DateNavButton type="button" aria-label="Next month" onClick={() => shiftCalendarMonth(1)}>›</DateNavButton>
-              </DateMonthNav>
-              <SelectedDateBadge>
-                <span className="dot" />
-                <span className="label">{dayViewDate === toDateKey(new Date()) ? 'Today' : 'Selected'}</span>
-                <span className="date">
-                  {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                </span>
-              </SelectedDateBadge>
-              <TodayButton type="button" onClick={() => selectDay(toDateKey(new Date()))}>Today</TodayButton>
-            </DateStripHeader>
             <DateStripDays>
               {weekDates.map((key) => {
                 const date = new Date(`${key}T00:00:00`);
@@ -2071,16 +2063,6 @@ const HearseCalendar = ({
                 );
               })}
             </DateStripDays>
-            <DateStripFooter>
-              <DateLegend>
-                <DateLegendItem $green><span className="dot" />Today</DateLegendItem>
-                <DateLegendItem><span className="dot" />Bookings</DateLegendItem>
-              </DateLegend>
-              <DateStripWeek>
-                Week {weekDates.length ? getIsoWeekNumber(new Date(`${weekDates[0]}T00:00:00`)) : ''}
-                {' · '}{new Date(`${dayViewDate}T00:00:00`).getFullYear()}
-              </DateStripWeek>
-            </DateStripFooter>
           </DateStrip>
 
           <DaySchedule>
@@ -2162,8 +2144,7 @@ const HearseCalendar = ({
                 const branchName = booking.branch_name || booking.branchName || booking.branch || '—';
                 const clientName = booking.client_name || booking.client || '—';
                 const clientPhone = booking.client_phone || booking.phone || '—';
-                const routeFrom = booking.from_location || booking.from || booking.origin || '—';
-                const routeTo = booking.destination || booking.to_location || booking.dest || '—';
+                const { from: routeFrom, to: routeTo } = getBookingRoute(booking);
                 const driverPhone = assignedDriver?.driver_phone || assignedDriver?.phone_number || assignedDriver?.phone || '';
                 const assistantName = booking.assistant_name || 'Not assigned';
                 const routeTitle = booking.service_name || booking.service_type || booking.booking_title

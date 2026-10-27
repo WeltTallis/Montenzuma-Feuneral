@@ -172,6 +172,23 @@ export function isMultiDay(booking) {
   return false;
 }
 
+export function getBookingRoute(booking) {
+  if (!booking) return { from: '—', to: '—' };
+
+  const from = booking.from_location || booking.from || booking.origin || booking.pickup_location || '—';
+  const explicitTo = booking.to_location || booking.dest || booking.destination_name || booking.delivery_location;
+  const destination = booking.destination || '';
+  const routeParts = typeof destination === 'string'
+    ? destination.split(/\s*(?:→|->|➜|⟶)\s*/)
+    : [];
+  const legacyTo = routeParts.length > 1 ? routeParts[routeParts.length - 1] : destination;
+
+  return {
+    from,
+    to: explicitTo || legacyTo || '—',
+  };
+}
+
 // Get all dates a booking covers as an array of "YYYY-MM-DD" strings.
 export function getBookingDateRange(booking) {
   const startDate = booking.start_date || booking.startDate || booking.date;
