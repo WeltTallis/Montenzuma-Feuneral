@@ -1,16 +1,18 @@
 // controllers/invoice.ts
+import { getKenyaTimeISO, getKenyaTimeFormatted } from '../../../packages/shared-utils/dist/timestamps';
+import { loadTenantBranding, toUploadsUrl } from './tenantBranding';
 import { Request, Response, NextFunction } from 'express';
+import { safeQuery } from '../../../shared/config/db';
+import { AppError } from '../middlewares/errorHandler';
+import PDFDocument from 'pdfkit';
 import Redis from 'ioredis';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import PDFDocument from 'pdfkit';
-import { AppError } from '../middlewares/errorHandler';
 
-// Standardized to ES Imports
-import { safeQuery } from '../../../shared/config/db';
-import { getKenyaTimeISO, getKenyaTimeFormatted } from '../../../packages/shared-utils/dist/timestamps';
-import { loadTenantBranding, toUploadsUrl } from './tenantBranding';
+
+
+
 
 // Shared uploads base — the ONE folder every service writes to and the
 // tenant-service serves at /uploads/... (host bind mount /opt/storage).
@@ -596,7 +598,7 @@ export const recordConfirmedMpesaPayment = async (req: Request, res: Response): 
   } = req.body || {};
   const paymentAmount = Number(amount);
   if (!tenantSlug || !deceasedId || !admissionNumber || !checkoutRequestId ||
-      !receiptNumber || !Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+    !receiptNumber || !Number.isFinite(paymentAmount) || paymentAmount <= 0) {
     res.status(400).json({ success: false, message: 'Confirmed payment callback is missing required details' });
     return;
   }
