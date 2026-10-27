@@ -38,6 +38,9 @@ const formatDateStr = (d) => {
 };
 const pad = (n) => String(n).padStart(2, '0');
 const fmtDay = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+
+/* Location suggestions — clickable chips (not a dropdown). Manual typing still works. */
+const LOC_SUGG = ['Montenzuma Thika', 'Montenzuma Nairobi', 'Montenzuma Machakos', 'Home'];
 const formatTimeLabel = (value) => {
   if (!value) return '';
   const [rawHour, minute] = value.split(':').map(Number);
@@ -354,6 +357,23 @@ const Inp = styled.input`
   &::placeholder{color:#b6c2d1}
   &:focus{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
 `;
+const BranchSelect = styled.select`
+  width:100%;padding:.5rem .65rem;font:inherit;font-size:.8rem;color:${C.text};
+  border:1px solid #d1d5db;border-radius:9px;outline:none;transition:.15s;background:#fff;
+  &:focus{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
+`;
+/* location suggestions — chips, not a dropdown */
+const SuggWrap = styled.div`
+  display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.35rem;
+`;
+const SuggChip = styled.button`
+  display:inline-flex;align-items:center;gap:.35rem;
+  padding:.32rem .6rem;border:1px solid #d1d5db;border-radius:999px;
+  background:#fff;color:${C.muted2};font-size:.7rem;font-weight:700;
+  cursor:pointer;transition:.16s;white-space:nowrap;
+  &:hover{border-color:${C.primary};color:${C.primary};background:${C.primarySoft};}
+  &:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(26,95,122,.16);}
+`;
 const ChargeWrap = styled.div`
   display:flex;align-items:stretch;border:1px solid #d1d5db;border-radius:9px;overflow:hidden;transition:.15s;background:#fff;
   &:focus-within{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
@@ -456,6 +476,8 @@ export default function BookNewHearseModal({
   const [draftMinute, setDraftMinute] = useState('00');
   const [draftPeriod, setDraftPeriod] = useState('AM');
   const [selectedBranchKey, setSelectedBranchKey] = useState('');
+  const [showFromSugg, setShowFromSugg] = useState(false);
+  const [showToSugg, setShowToSugg] = useState(false);
   const userProfile = safeUser();
   const branchOptions = useMemo(() => getBranchOptions(branches, userProfile), [branches]);
 
@@ -468,6 +490,16 @@ export default function BookNewHearseModal({
       branch_code: branch?.code || '',
       branch_name: branch?.name || '',
     }));
+  };
+
+  /* location suggestion pickers — fill the field, manual typing still allowed */
+  const pickFrom = (loc) => {
+    setForm((p) => ({ ...p, from_location: loc }));
+    setShowFromSugg(false);
+  };
+  const pickTo = (loc) => {
+    setForm((p) => ({ ...p, to_location: loc }));
+    setShowToSugg(false);
   };
 
   /* initialDates is frequently a NEW array on every parent render — depending on
@@ -1049,12 +1081,34 @@ export default function BookNewHearseModal({
             <Fld>
               <Lbl>From <em>*</em></Lbl>
               <Inp placeholder="e.g., Nairobi CBD" value={form.from_location}
-                onChange={e => setForm(p => ({ ...p, from_location: e.target.value }))} />
+                onChange={e => setForm(p => ({ ...p, from_location: e.target.value }))}
+                onFocus={() => setShowFromSugg(true)}
+                onBlur={() => setTimeout(() => setShowFromSugg(false), 120)} />
+              {showFromSugg && (
+                <SuggWrap>
+                  {LOC_SUGG.map((loc) => (
+                    <SuggChip key={loc} type="button" onClick={() => pickFrom(loc)}>
+                      {loc}
+                    </SuggChip>
+                  ))}
+                </SuggWrap>
+              )}
             </Fld>
             <Fld>
               <Lbl>To <em>*</em></Lbl>
               <Inp placeholder="e.g., Karen Memorial Park" value={form.to_location}
-                onChange={e => setForm(p => ({ ...p, to_location: e.target.value }))} />
+                onChange={e => setForm(p => ({ ...p, to_location: e.target.value }))}
+                onFocus={() => setShowToSugg(true)}
+                onBlur={() => setTimeout(() => setShowToSugg(false), 120)} />
+              {showToSugg && (
+                <SuggWrap>
+                  {LOC_SUGG.map((loc) => (
+                    <SuggChip key={loc} type="button" onClick={() => pickTo(loc)}>
+                      {loc}
+                    </SuggChip>
+                  ))}
+                </SuggWrap>
+              )}
             </Fld>
             {/* Branch is detected internally from auth headers / user profile —
                 form.branch_id & branch_code are auto-filled and sent, nothing to ask. */}

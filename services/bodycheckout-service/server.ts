@@ -105,6 +105,11 @@ process.on('unhandledRejection', (reason: any) => {
     });
 
     server?.close(() => {
+        Logger.error({
+
+            message: "  Process   Closed  and  exited Bodycheckout  service",
+
+        })
         process.exit(1);
     });
 

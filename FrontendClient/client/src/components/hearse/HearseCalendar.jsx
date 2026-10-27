@@ -39,12 +39,14 @@ export const HOUR_H = 60, TIME_W = 65;
 export const pad = n => String(n).padStart(2, '0');
 export const fmtDS = toDateKey;
 export const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
+
 const getIsoWeekNumber = (date) => {
   const value = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   value.setUTCDate(value.getUTCDate() + 4 - (value.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
   return Math.ceil((((value - yearStart) / 86400000) + 1) / 7);
 };
+
 export const getInitials = n => { if (!n) return '?'; const p = n.split(' '); return p.length === 1 ? p[0].charAt(0).toUpperCase() : (p[0].charAt(0) + p[p.length - 1].charAt(0)).toUpperCase(); };
 export const fmtHour = h => h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM';
 
@@ -1548,8 +1550,7 @@ const HearseCalendar = ({
         if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       } catch (e) { }
 
-      const hearseName = [b.hearse_name || b.model || 'Hearse', b.model && b.hearse_name ? b.model : '']
-        .filter(Boolean).join(' · ');
+      const hearseName = b.hearse_name || 'Hearse';
       const clientName = (b.client_name || b.client || 'client').toString();
       const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
       const stableId = b.booking_code || b.booking_id || b.id || `${clientName}-${datePart}-${index}`;
@@ -1807,6 +1808,8 @@ const HearseCalendar = ({
     const itemColor = props.statusColor || '#00296B';   // rich saturated hex
 
     if (isMonthView) {
+      const from = props.from || '—';
+      const dest = props.dest || '—';
       return (
         <div
           style={{
@@ -1822,40 +1825,46 @@ const HearseCalendar = ({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-start',
-            gap: '3px',
+            gap: '4px',
             boxSizing: 'border-box',
             overflow: 'hidden',
             cursor: 'pointer',
             boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           }}
-          title={`${props.hearseName || 'Hearse'} · ${props.dest || 'Location not listed'} · ${props.clientName || 'Client not listed'} (${props.statusLabel || ''})`}
+          // title removed per user request — only hearse name, route, and plate should be visible
         >
+          {/* Hearse name — big and prominent at top */}
           <span style={{
             fontSize: '14px', fontWeight: 700, color: '#FFFFFF',
             lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {props.hearseName || 'Hearse'}
-            {props.plate && props.plate !== '—' ? ` · ${props.plate}` : ''}
           </span>
 
-          {props.dest && props.dest !== '—' && (
+          {/* Plate number — below hearse name, secondary */}
+          {props.plate && props.plate !== '—' && (
             <span style={{
-              fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.95)',
+              fontSize: '11px', color: 'rgba(255,255,255,0.8)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              marginTop: '2px',
             }}>
-              <MapPin size={10} /> {props.dest}
+              {props.plate}
             </span>
           )}
 
-          <span style={{
-            fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.9)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {props.clientName || 'Booking'} · {props.statusLabel || ''}
-          </span>
-
-          {/* Month view intentionally omits booking time to keep vehicle and location prominent. */}
+          {/* From → Destination route line */}
+          {(from !== '—' || dest !== '—') && (
+            <span style={{
+              fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.95)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              display: 'flex', alignItems: 'center', gap: '3px',
+            }}>
+              {from !== '—' && <span>{from}</span>}
+              {from !== '—' && dest !== '—' && <span style={{ color: 'rgba(255,255,255,0.6)' }}>→</span>}
+              {dest !== '—' && <span>{dest}</span>}
+            </span>
+          )}
         </div>
       );
     }
@@ -2074,164 +2083,164 @@ const HearseCalendar = ({
             </DateStripFooter>
           </DateStrip>
 
-        <DaySchedule>
-          <DayPanel>
-            {dayViewMode === 'schedule' ? (
-              <BookingTools>
-                <input
-                  type="search"
-                  value={dayBookingSearch}
-                  onChange={(event) => setDayBookingSearch(event.target.value)}
-                  placeholder="Search booking, hearse, route..."
-                  aria-label="Search daily bookings"
-                />
-                <select value={dayBookingStatus} onChange={(event) => setDayBookingStatus(event.target.value)} aria-label="Filter daily bookings">
-                  <option value="all">All statuses</option>
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="in_transit">In transit</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </BookingTools>
-            ) : (
-              <>
-            <LineupControls>
-              <label>
-                Standby driver for the day
-                <select
-                  value={standbyDraft}
-                  onChange={(event) => setStandbyDraft(event.target.value)}
-                  disabled={lineupLoading || savingStandby}
-                  aria-label="Standby driver for this day"
-                >
-                  <option value="">{registeredDrivers.length ? 'No standby driver selected' : 'No hearse-service drivers available'}</option>
-                  {registeredDrivers.map((driver) => {
-                    const driverId = driver.driver_id ?? driver.id;
-                    const alreadyAssigned = dayBookings.some((booking) =>
-                      String(booking.driver_id || '') === String(driverId)
-                      && !['completed', 'cancelled', 'postponed'].includes(String(booking.status || '').toLowerCase()));
-                    return (
-                      <option
-                        key={driverId}
-                        value={driverId}
-                        disabled={alreadyAssigned && String(driverId) !== String(standbyDriverId)}
+          <DaySchedule>
+            <DayPanel>
+              {dayViewMode === 'schedule' ? (
+                <BookingTools>
+                  <input
+                    type="search"
+                    value={dayBookingSearch}
+                    onChange={(event) => setDayBookingSearch(event.target.value)}
+                    placeholder="Search booking, hearse, route..."
+                    aria-label="Search daily bookings"
+                  />
+                  <select value={dayBookingStatus} onChange={(event) => setDayBookingStatus(event.target.value)} aria-label="Filter daily bookings">
+                    <option value="all">All statuses</option>
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="in_transit">In transit</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </BookingTools>
+              ) : (
+                <>
+                  <LineupControls>
+                    <label>
+                      Standby driver for the day
+                      <select
+                        value={standbyDraft}
+                        onChange={(event) => setStandbyDraft(event.target.value)}
+                        disabled={lineupLoading || savingStandby}
+                        aria-label="Standby driver for this day"
                       >
-                        {driver.driver_name || driver.full_name || `Driver ${driverId}`}
-                        {alreadyAssigned && String(driverId) !== String(standbyDriverId) ? ' · assigned to booking' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-              <button
-                type="button"
-                disabled={lineupLoading || savingStandby || standbyDraft === String(standbyDriverId || '')}
-                onClick={() => onSaveStandby?.(standbyDraft)}
-              >
-                {savingStandby ? 'Saving standby…' : standbyDraft ? 'Save standby driver' : 'Clear standby'}
-              </button>
-            </LineupControls>
-              </>
-            )}
-            {visibleDayBookings.length ? visibleDayBookings.map((booking, lineupIndex) => {
-              const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
-              const schedule = getTimeInfo(booking);
-              const hearse = hearses.find((item) => String(item.id ?? item.hearse_id) === String(booking.hearse_id ?? booking.hearse?.id));
-              const hearseName = booking.hearse_name || booking.hearse?.hearse_name || hearse?.hearse_name || 'Hearse not assigned';
-              const plate = booking.plate_number || booking.hearse_plate || booking.hearse?.plate_number || hearse?.plate_number || '';
-              const vehicleTitle = booking.model || hearse?.model || booking.hearse?.model || hearseName;
-              const assignedDriverId = booking.driver_id ?? booking.driverId ?? booking.assigned_driver_id;
-              const assignedDriver = drivers.find((driver) =>
-                String(driver.driver_id ?? driver.id) === String(assignedDriverId ?? '')
-              );
-              const assignedDriverName = booking.assigned_driver_name
-                || assignedDriver?.driver_name
-                || assignedDriver?.full_name
-                || (assignedDriverId ? `Driver ${assignedDriverId}` : 'Unassigned');
-              const bookingId = booking.booking_code || booking.booking_id || booking.id || '—';
-              const branchName = booking.branch_name || booking.branchName || booking.branch || '—';
-              const clientName = booking.client_name || booking.client || '—';
-              const clientPhone = booking.client_phone || booking.phone || '—';
-              const routeFrom = booking.from_location || booking.from || booking.origin || '—';
-              const routeTo = booking.destination || booking.to_location || booking.dest || '—';
-              const driverPhone = assignedDriver?.driver_phone || assignedDriver?.phone_number || assignedDriver?.phone || '';
-              const assistantName = booking.assistant_name || 'Not assigned';
-              const routeTitle = booking.service_name || booking.service_type || booking.booking_title
-                || booking.booking_type || booking.client_name || booking.client || 'Hearse service';
-              const lineupTheme = DRIVER_LINEUP_THEMES[lineupIndex % DRIVER_LINEUP_THEMES.length];
-              const bookingKey = String(booking.booking_id || booking.id);
-              const lineup = lineupDrafts[bookingKey] || {
-                driverId: booking.driver_id == null ? '' : String(booking.driver_id),
-                driverName: booking.manual_driver_name || (!booking.driver_id ? booking.assigned_driver_name || '' : ''),
-                assistantName: booking.assistant_name || '',
-                assistantPhone: booking.assistant_phone || '',
-              };
-              const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
-              return (
-                <React.Fragment key={bookingKey}>
-                  <DayBookingRow
-                    type="button"
-                    $lineup={dayViewMode === 'lineup'}
-                    onClick={() => onItemClick?.(booking)}
-                  >
-                    <DayBookingHeader $lineup={dayViewMode === 'lineup'} $theme={lineupTheme}>
+                        <option value="">{registeredDrivers.length ? 'No standby driver selected' : 'No hearse-service drivers available'}</option>
+                        {registeredDrivers.map((driver) => {
+                          const driverId = driver.driver_id ?? driver.id;
+                          const alreadyAssigned = dayBookings.some((booking) =>
+                            String(booking.driver_id || '') === String(driverId)
+                            && !['completed', 'cancelled', 'postponed'].includes(String(booking.status || '').toLowerCase()));
+                          return (
+                            <option
+                              key={driverId}
+                              value={driverId}
+                              disabled={alreadyAssigned && String(driverId) !== String(standbyDriverId)}
+                            >
+                              {driver.driver_name || driver.full_name || `Driver ${driverId}`}
+                              {alreadyAssigned && String(driverId) !== String(standbyDriverId) ? ' · assigned to booking' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={lineupLoading || savingStandby || standbyDraft === String(standbyDriverId || '')}
+                      onClick={() => onSaveStandby?.(standbyDraft)}
+                    >
+                      {savingStandby ? 'Saving standby…' : standbyDraft ? 'Save standby driver' : 'Clear standby'}
+                    </button>
+                  </LineupControls>
+                </>
+              )}
+              {visibleDayBookings.length ? visibleDayBookings.map((booking, lineupIndex) => {
+                const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
+                const schedule = getTimeInfo(booking);
+                const hearse = hearses.find((item) => String(item.id ?? item.hearse_id) === String(booking.hearse_id ?? booking.hearse?.id));
+                const hearseName = booking.hearse_name || booking.hearse?.hearse_name || hearse?.hearse_name || 'Hearse not assigned';
+                const plate = booking.plate_number || booking.hearse_plate || booking.hearse?.plate_number || hearse?.plate_number || '';
+                const vehicleTitle = booking.model || hearse?.model || booking.hearse?.model || hearseName;
+                const assignedDriverId = booking.driver_id ?? booking.driverId ?? booking.assigned_driver_id;
+                const assignedDriver = drivers.find((driver) =>
+                  String(driver.driver_id ?? driver.id) === String(assignedDriverId ?? '')
+                );
+                const assignedDriverName = booking.assigned_driver_name
+                  || assignedDriver?.driver_name
+                  || assignedDriver?.full_name
+                  || (assignedDriverId ? `Driver ${assignedDriverId}` : 'Unassigned');
+                const bookingId = booking.booking_code || booking.booking_id || booking.id || '—';
+                const branchName = booking.branch_name || booking.branchName || booking.branch || '—';
+                const clientName = booking.client_name || booking.client || '—';
+                const clientPhone = booking.client_phone || booking.phone || '—';
+                const routeFrom = booking.from_location || booking.from || booking.origin || '—';
+                const routeTo = booking.destination || booking.to_location || booking.dest || '—';
+                const driverPhone = assignedDriver?.driver_phone || assignedDriver?.phone_number || assignedDriver?.phone || '';
+                const assistantName = booking.assistant_name || 'Not assigned';
+                const routeTitle = booking.service_name || booking.service_type || booking.booking_title
+                  || booking.booking_type || booking.client_name || booking.client || 'Hearse service';
+                const lineupTheme = DRIVER_LINEUP_THEMES[lineupIndex % DRIVER_LINEUP_THEMES.length];
+                const bookingKey = String(booking.booking_id || booking.id);
+                const lineup = lineupDrafts[bookingKey] || {
+                  driverId: booking.driver_id == null ? '' : String(booking.driver_id),
+                  driverName: booking.manual_driver_name || (!booking.driver_id ? booking.assigned_driver_name || '' : ''),
+                  assistantName: booking.assistant_name || '',
+                  assistantPhone: booking.assistant_phone || '',
+                };
+                const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
+                return (
+                  <React.Fragment key={bookingKey}>
+                    <DayBookingRow
+                      type="button"
+                      $lineup={dayViewMode === 'lineup'}
+                      onClick={() => onItemClick?.(booking)}
+                    >
+                      <DayBookingHeader $lineup={dayViewMode === 'lineup'} $theme={lineupTheme}>
+                        {dayViewMode === 'lineup' ? (
+                          <>
+                            <LineupDriverHeader>
+                              <Users size={17} aria-hidden="true" />
+                              <span>{assignedDriverName}</span>
+                            </LineupDriverHeader>
+                            <LineupAssistantHeader>
+                              <span>Assisted by</span>
+                              <strong>{assistantName}</strong>
+                            </LineupAssistantHeader>
+                            <LineupVehicleHeader>
+                              <Car size={17} aria-hidden="true" />
+                              <strong>{vehicleTitle}</strong>
+                              {plate && <LineupPlate $theme={lineupTheme}>{plate}</LineupPlate>}
+                            </LineupVehicleHeader>
+                          </>
+                        ) : (
+                          <>
+                            <DayBookingVehicle>
+                              {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
+                              <DayBookingVehicleText>
+                                <HearseTitle>{vehicleTitle}</HearseTitle>
+                              </DayBookingVehicleText>
+                            </DayBookingVehicle>
+                            <DayBookingMeta>
+                              {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
+                              <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
+                            </DayBookingMeta>
+                          </>
+                        )}
+                      </DayBookingHeader>
                       {dayViewMode === 'lineup' ? (
-                        <>
-                          <LineupDriverHeader>
-                            <Users size={17} aria-hidden="true" />
-                            <span>{assignedDriverName}</span>
-                          </LineupDriverHeader>
-                          <LineupAssistantHeader>
-                            <span>Assisted by</span>
-                            <strong>{assistantName}</strong>
-                          </LineupAssistantHeader>
-                          <LineupVehicleHeader>
-                            <Car size={17} aria-hidden="true" />
-                            <strong>{vehicleTitle}</strong>
-                            {plate && <LineupPlate $theme={lineupTheme}>{plate}</LineupPlate>}
-                          </LineupVehicleHeader>
-                        </>
+                        <LineupCardBody>
+                          <LineupRouteSection>
+                            <LineupNumber $theme={lineupTheme}>{String(lineupIndex + 1).padStart(2, '0')}</LineupNumber>
+                            <LineupRouteDetails>
+                              <h3>{routeTitle}</h3>
+                              <LineupRoutePath $theme={lineupTheme}>
+                                <span>{routeFrom}</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M5 12h14M12 5l7 7-7 7" />
+                                </svg>
+                                <span>{routeTo}</span>
+                              </LineupRoutePath>
+                            </LineupRouteDetails>
+                          </LineupRouteSection>
+                          <LineupMetaSection>
+                            <LineupTimeBox>
+                              <small>Time</small>
+                              <strong>{schedule.allDay ? 'All Day' : schedule.fs || 'Not set'}</strong>
+                            </LineupTimeBox>
+                            <LineupStatus $theme={lineupTheme}>{status.label}</LineupStatus>
+                          </LineupMetaSection>
+                        </LineupCardBody>
                       ) : (
-                        <>
-                          <DayBookingVehicle>
-                            {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
-                            <DayBookingVehicleText>
-                              <HearseTitle>{vehicleTitle}</HearseTitle>
-                            </DayBookingVehicleText>
-                          </DayBookingVehicle>
-                          <DayBookingMeta>
-                            {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
-                            <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
-                          </DayBookingMeta>
-                        </>
-                      )}
-                    </DayBookingHeader>
-                    {dayViewMode === 'lineup' ? (
-                      <LineupCardBody>
-                        <LineupRouteSection>
-                          <LineupNumber $theme={lineupTheme}>{String(lineupIndex + 1).padStart(2, '0')}</LineupNumber>
-                          <LineupRouteDetails>
-                            <h3>{routeTitle}</h3>
-                            <LineupRoutePath $theme={lineupTheme}>
-                              <span>{routeFrom}</span>
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M5 12h14M12 5l7 7-7 7" />
-                              </svg>
-                              <span>{routeTo}</span>
-                            </LineupRoutePath>
-                          </LineupRouteDetails>
-                        </LineupRouteSection>
-                        <LineupMetaSection>
-                          <LineupTimeBox>
-                            <small>Time</small>
-                            <strong>{schedule.allDay ? 'All Day' : schedule.fs || 'Not set'}</strong>
-                          </LineupTimeBox>
-                          <LineupStatus $theme={lineupTheme}>{status.label}</LineupStatus>
-                        </LineupMetaSection>
-                      </LineupCardBody>
-                    ) : (
-                      <DayBookingBody>
+                        <DayBookingBody>
                           <DayDetail>
                             <strong>Route / itinerary</strong>
                             <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
@@ -2254,197 +2263,197 @@ const HearseCalendar = ({
                               </DayDriverInfo>
                             </DayDriver>
                           </DayDetail>
-                      </DayBookingBody>
-                    )}
-                  </DayBookingRow>
-                  {dayViewMode === 'lineup' && <BookingLineup>
-                    <label>
-                      Select driver (optional)
-                      <select
-                        value={lineup.driverId}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => {
-                          const selectedId = event.target.value;
-                          const selectedDriver = drivers.find((driver) =>
-                            String(driver.driver_id ?? driver.id) === selectedId
-                          );
-                          const isNumericDriverId = /^[1-9]\d*$/.test(selectedId);
-                          setLineupDrafts((current) => ({
+                        </DayBookingBody>
+                      )}
+                    </DayBookingRow>
+                    {dayViewMode === 'lineup' && <BookingLineup>
+                      <label>
+                        Select driver (optional)
+                        <select
+                          value={lineup.driverId}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => {
+                            const selectedId = event.target.value;
+                            const selectedDriver = drivers.find((driver) =>
+                              String(driver.driver_id ?? driver.id) === selectedId
+                            );
+                            const isNumericDriverId = /^[1-9]\d*$/.test(selectedId);
+                            setLineupDrafts((current) => ({
+                              ...current,
+                              [bookingKey]: {
+                                ...lineup,
+                                driverId: isNumericDriverId ? selectedId : '',
+                                driverName: isNumericDriverId ? '' : selectedDriver?.driver_name || selectedDriver?.full_name || '',
+                              },
+                            }));
+                          }}
+                          aria-label={`Assign driver for booking ${bookingId}`}
+                        >
+                          <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
+                          {drivers.map((driver) => {
+                            const driverId = driver.driver_id ?? driver.id;
+                            const assignedElsewhere = dayBookings.some((other) =>
+                              String(other.booking_id || other.id) !== bookingKey
+                              && String(other.driver_id || '') === String(driverId)
+                              && activeStatuses.has(String(other.status || '').toLowerCase()));
+                            const isStandby = String(standbyDriverId || '') === String(driverId);
+                            return (
+                              <option
+                                key={driverId}
+                                value={driverId}
+                                disabled={(assignedElsewhere || isStandby) && String(lineup.driverId) !== String(driverId)}
+                              >
+                                {driver.driver_name || driver.full_name || `Driver ${driverId}`}
+                                {isStandby ? ' · standby' : assignedElsewhere ? ' · assigned to another booking' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </label>
+                      <label>
+                        Or enter driver name
+                        <input
+                          value={lineup.driverName}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => setLineupDrafts((current) => ({
                             ...current,
-                            [bookingKey]: {
-                              ...lineup,
-                              driverId: isNumericDriverId ? selectedId : '',
-                              driverName: isNumericDriverId ? '' : selectedDriver?.driver_name || selectedDriver?.full_name || '',
-                            },
-                          }));
-                        }}
-                        aria-label={`Assign driver for booking ${bookingId}`}
-                      >
-                        <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
-                        {drivers.map((driver) => {
-                          const driverId = driver.driver_id ?? driver.id;
-                          const assignedElsewhere = dayBookings.some((other) =>
-                            String(other.booking_id || other.id) !== bookingKey
-                            && String(other.driver_id || '') === String(driverId)
-                            && activeStatuses.has(String(other.status || '').toLowerCase()));
-                          const isStandby = String(standbyDriverId || '') === String(driverId);
-                          return (
-                            <option
-                              key={driverId}
-                              value={driverId}
-                              disabled={(assignedElsewhere || isStandby) && String(lineup.driverId) !== String(driverId)}
-                            >
-                              {driver.driver_name || driver.full_name || `Driver ${driverId}`}
-                              {isStandby ? ' · standby' : assignedElsewhere ? ' · assigned to another booking' : ''}
-                            </option>
-                          );
+                            [bookingKey]: { ...lineup, driverId: '', driverName: event.target.value },
+                          }))}
+                          placeholder="Type driver name"
+                          aria-label={`Enter driver name for booking ${bookingId}`}
+                        />
+                      </label>
+                      <label>
+                        Assistant name (optional)
+                        <input
+                          value={lineup.assistantName}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => setLineupDrafts((current) => ({
+                            ...current,
+                            [bookingKey]: { ...lineup, assistantName: event.target.value },
+                          }))}
+                          placeholder="Enter assistant name"
+                          aria-label={`Assistant name for booking ${bookingId}`}
+                        />
+                      </label>
+                      <label>
+                        Assistant phone
+                        <input
+                          value={lineup.assistantPhone}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => setLineupDrafts((current) => ({
+                            ...current,
+                            [bookingKey]: { ...lineup, assistantPhone: event.target.value },
+                          }))}
+                          placeholder="Optional contact"
+                          aria-label={`Assistant phone for booking ${bookingId}`}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={String(savingBookingLineup || '') === bookingKey}
+                        onClick={() => onSaveBookingLineup?.(booking.booking_id || booking.id, {
+                          driver_id: lineup.driverName.trim() ? null : lineup.driverId || null,
+                          driver_name: lineup.driverName.trim(),
+                          assistant_name: lineup.assistantName,
+                          assistant_phone: lineup.assistantPhone,
                         })}
-                      </select>
-                    </label>
-                    <label>
-                      Or enter driver name
-                      <input
-                        value={lineup.driverName}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => setLineupDrafts((current) => ({
-                          ...current,
-                          [bookingKey]: { ...lineup, driverId: '', driverName: event.target.value },
-                        }))}
-                        placeholder="Type driver name"
-                        aria-label={`Enter driver name for booking ${bookingId}`}
-                      />
-                    </label>
-                    <label>
-                      Assistant name (optional)
-                      <input
-                        value={lineup.assistantName}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => setLineupDrafts((current) => ({
-                          ...current,
-                          [bookingKey]: { ...lineup, assistantName: event.target.value },
-                        }))}
-                        placeholder="Enter assistant name"
-                        aria-label={`Assistant name for booking ${bookingId}`}
-                      />
-                    </label>
-                    <label>
-                      Assistant phone
-                      <input
-                        value={lineup.assistantPhone}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => setLineupDrafts((current) => ({
-                          ...current,
-                          [bookingKey]: { ...lineup, assistantPhone: event.target.value },
-                        }))}
-                        placeholder="Optional contact"
-                        aria-label={`Assistant phone for booking ${bookingId}`}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      disabled={String(savingBookingLineup || '') === bookingKey}
-                      onClick={() => onSaveBookingLineup?.(booking.booking_id || booking.id, {
-                        driver_id: lineup.driverName.trim() ? null : lineup.driverId || null,
-                        driver_name: lineup.driverName.trim(),
-                        assistant_name: lineup.assistantName,
-                        assistant_phone: lineup.assistantPhone,
-                      })}
-                    >
-                      {String(savingBookingLineup || '') === bookingKey ? 'Saving…' : 'Save lineup'}
-                    </button>
-                  </BookingLineup>}
-                </React.Fragment>
-              );
-            }) : (
-              <EmptyDay>
-                {dayBookingSearch || dayBookingStatus !== 'all'
-                  ? 'No bookings match these search and status filters.'
-                  : dayViewMode === 'schedule'
-                    ? 'No bookings for this day. Check the fleet panel for available hearses.'
-                    : 'No bookings are available for the driver lineup.'}
-              </EmptyDay>
-            )}
-          </DayPanel>
+                      >
+                        {String(savingBookingLineup || '') === bookingKey ? 'Saving…' : 'Save lineup'}
+                      </button>
+                    </BookingLineup>}
+                  </React.Fragment>
+                );
+              }) : (
+                <EmptyDay>
+                  {dayBookingSearch || dayBookingStatus !== 'all'
+                    ? 'No bookings match these search and status filters.'
+                    : dayViewMode === 'schedule'
+                      ? 'No bookings for this day. Check the fleet panel for available hearses.'
+                      : 'No bookings are available for the driver lineup.'}
+                </EmptyDay>
+              )}
+            </DayPanel>
 
-          <DailyFleetPanel>
-            <DailyFleetHeader>
-              <div>
-                <h2>Fleet status</h2>
-                <p>For {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-              </div>
-              <DailyFleetCounts>
-                <DailyFleetCount><span aria-hidden="true">●</span>{dayFleet.free.length} Free</DailyFleetCount>
-                <DailyFleetCount $tone="booked"><span aria-hidden="true">●</span>{dayFleet.busy.length} Booked</DailyFleetCount>
-                {!!dayFleet.unavailable.length && (
-                  <DailyFleetCount $tone="service"><span aria-hidden="true">●</span>{dayFleet.unavailable.length} Service</DailyFleetCount>
+            <DailyFleetPanel>
+              <DailyFleetHeader>
+                <div>
+                  <h2>Fleet status</h2>
+                  <p>For {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                </div>
+                <DailyFleetCounts>
+                  <DailyFleetCount><span aria-hidden="true">●</span>{dayFleet.free.length} Free</DailyFleetCount>
+                  <DailyFleetCount $tone="booked"><span aria-hidden="true">●</span>{dayFleet.busy.length} Booked</DailyFleetCount>
+                  {!!dayFleet.unavailable.length && (
+                    <DailyFleetCount $tone="service"><span aria-hidden="true">●</span>{dayFleet.unavailable.length} Service</DailyFleetCount>
+                  )}
+                </DailyFleetCounts>
+              </DailyFleetHeader>
+              <DailyFleetList>
+                {dayFleet.free.map((hearse) => (
+                  <DailyFleetItem key={hearse.id || hearse.hearse_id}>
+                    <DailyFleetDot />
+                    <DailyFleetVehicle>
+                      <DailyFleetTopLine>
+                        {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
+                          <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
+                        )}
+                        {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
+                      </DailyFleetTopLine>
+                      <DailyFleetName>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
+                    </DailyFleetVehicle>
+                    <DailyFleetState><strong>Free</strong></DailyFleetState>
+                  </DailyFleetItem>
+                ))}
+                {!dayFleet.free.length && !dayFleet.busy.length && !dayFleet.unavailable.length && (
+                  <EmptyDay>No hearses are registered in the fleet.</EmptyDay>
                 )}
-              </DailyFleetCounts>
-            </DailyFleetHeader>
-            <DailyFleetList>
-              {dayFleet.free.map((hearse) => (
-                <DailyFleetItem key={hearse.id || hearse.hearse_id}>
-                  <DailyFleetDot />
-                  <DailyFleetVehicle>
-                    <DailyFleetTopLine>
-                      {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
-                        <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
-                      )}
-                      {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
-                    </DailyFleetTopLine>
-                    <DailyFleetName>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
-                  </DailyFleetVehicle>
-                  <DailyFleetState><strong>Free</strong></DailyFleetState>
-                </DailyFleetItem>
-              ))}
-              {!dayFleet.free.length && !dayFleet.busy.length && !dayFleet.unavailable.length && (
-                <EmptyDay>No hearses are registered in the fleet.</EmptyDay>
-              )}
-              {dayFleet.busy.length > 0 && (
-                <FleetSectionLabel>Currently booked</FleetSectionLabel>
-              )}
-              {dayFleet.busy.map(({ hearse, booking }) => (
-                <DailyFleetItem key={hearse.id || hearse.hearse_id} $booked>
-                  <DailyFleetDot $tone="booked" />
-                  <DailyFleetVehicle>
-                    <DailyFleetTopLine>
-                      {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
-                        <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
-                      )}
-                      {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
-                    </DailyFleetTopLine>
-                    <DailyFleetName $booked>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
-                    <DailyFleetBooking>Booked: {booking.client_name || booking.client || 'Client not listed'}</DailyFleetBooking>
-                  </DailyFleetVehicle>
-                  <DailyFleetState $tone="booked">
-                    <strong>Booked</strong>
-                    <span>{getTimeInfo(booking).fs}</span>
-                  </DailyFleetState>
-                </DailyFleetItem>
-              ))}
-              {dayFleet.unavailable.length > 0 && (
-                <FleetSectionLabel>Out of service</FleetSectionLabel>
-              )}
-              {dayFleet.unavailable.map((hearse) => (
-                <DailyFleetItem key={hearse.id || hearse.hearse_id} $booked>
-                  <DailyFleetDot $tone="service" />
-                  <DailyFleetVehicle>
-                    <DailyFleetTopLine>
-                      {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
-                        <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
-                      )}
-                      {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
-                    </DailyFleetTopLine>
-                    <DailyFleetName $booked>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
-                  </DailyFleetVehicle>
-                  <DailyFleetState $tone="service"><strong>Service</strong></DailyFleetState>
-                </DailyFleetItem>
-              ))}
-              {!dayFleet.free.length && (dayFleet.busy.length > 0 || dayFleet.unavailable.length > 0) && (
-                <EmptyDay>There are no free hearses on this day.</EmptyDay>
-              )}
-            </DailyFleetList>
-          </DailyFleetPanel>
-        </DaySchedule>
+                {dayFleet.busy.length > 0 && (
+                  <FleetSectionLabel>Currently booked</FleetSectionLabel>
+                )}
+                {dayFleet.busy.map(({ hearse, booking }) => (
+                  <DailyFleetItem key={hearse.id || hearse.hearse_id} $booked>
+                    <DailyFleetDot $tone="booked" />
+                    <DailyFleetVehicle>
+                      <DailyFleetTopLine>
+                        {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
+                          <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
+                        )}
+                        {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
+                      </DailyFleetTopLine>
+                      <DailyFleetName $booked>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
+                      <DailyFleetBooking>Booked: {booking.client_name || booking.client || 'Client not listed'}</DailyFleetBooking>
+                    </DailyFleetVehicle>
+                    <DailyFleetState $tone="booked">
+                      <strong>Booked</strong>
+                      <span>{getTimeInfo(booking).fs}</span>
+                    </DailyFleetState>
+                  </DailyFleetItem>
+                ))}
+                {dayFleet.unavailable.length > 0 && (
+                  <FleetSectionLabel>Out of service</FleetSectionLabel>
+                )}
+                {dayFleet.unavailable.map((hearse) => (
+                  <DailyFleetItem key={hearse.id || hearse.hearse_id} $booked>
+                    <DailyFleetDot $tone="service" />
+                    <DailyFleetVehicle>
+                      <DailyFleetTopLine>
+                        {(hearse.plate_number || hearse.number_plate || hearse.registration_number) && (
+                          <DailyFleetPlate>{hearse.plate_number || hearse.number_plate || hearse.registration_number}</DailyFleetPlate>
+                        )}
+                        {hearse.capacity && <DailyFleetCapacity>{hearse.capacity} Seater</DailyFleetCapacity>}
+                      </DailyFleetTopLine>
+                      <DailyFleetName $booked>{hearse.model || hearse.hearse_name || hearse.name || 'Hearse'}</DailyFleetName>
+                    </DailyFleetVehicle>
+                    <DailyFleetState $tone="service"><strong>Service</strong></DailyFleetState>
+                  </DailyFleetItem>
+                ))}
+                {!dayFleet.free.length && (dayFleet.busy.length > 0 || dayFleet.unavailable.length > 0) && (
+                  <EmptyDay>There are no free hearses on this day.</EmptyDay>
+                )}
+              </DailyFleetList>
+            </DailyFleetPanel>
+          </DaySchedule>
         </DailyView>
       ) : (
         <CalendarWrapper ref={wrapperRef}>
