@@ -64,6 +64,45 @@ CREATE TABLE IF NOT EXISTS holiday_compensations (
   INDEX idx_holiday_date (holiday_date),
   UNIQUE KEY unique_user_holiday (user_id, holiday_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS attendance_devices (
+    device_id VARCHAR(64) PRIMARY KEY,
+    tenant_slug VARCHAR(100) NOT NULL,
+    device_name VARCHAR(120) NOT NULL,
+    credential_hash CHAR(64) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_by VARCHAR(36) NULL,
+    last_seen_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_attendance_device_tenant (tenant_slug, is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS attendance_device_users (
+    device_id VARCHAR(64) NOT NULL,
+    device_user_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    created_by VARCHAR(36) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (device_id, device_user_id),
+    INDEX idx_attendance_device_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS attendance_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    device_id VARCHAR(64) NOT NULL,
+    event_uid VARCHAR(128) NOT NULL,
+    device_user_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(36) NULL,
+    event_type ENUM('check_in', 'check_out') NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    work_date DATE NOT NULL,
+    source ENUM('device', 'manual') NOT NULL DEFAULT 'device',
+    created_by VARCHAR(36) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_attendance_device_event (device_id, event_uid),
+    INDEX idx_attendance_user_date (user_id, work_date),
+    INDEX idx_attendance_tenant_date (work_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 `;
 
 async function migrateTenantTables(dbName) {

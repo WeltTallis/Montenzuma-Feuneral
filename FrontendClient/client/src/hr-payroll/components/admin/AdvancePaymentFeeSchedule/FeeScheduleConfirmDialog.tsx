@@ -15,7 +15,7 @@ import { formatCurrency } from "@hr/utils/formatters";
 import {
   describeRuleFragments,
   formatDaysFromNow,
-  formatVietnameseDate,
+  formatKensynDate,
   type RuleFragment,
 } from "./rule-formatters";
 import { buildComparisonRows } from "./compare-helpers";
@@ -75,11 +75,11 @@ export const FeeScheduleConfirmDialog = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Xác nhận cập nhật cấu hình" : "Xác nhận tạo cấu hình mới"}
+            {isEdit ? "Confirm update configuration" : "Confirm create new configuration"}
           </DialogTitle>
           <DialogDescription>
-            Vui lòng xem lại trước khi lưu. Sau khi lưu, mọi giao dịch ứng
-            lương từ ngày hiệu lực sẽ áp dụng cấu hình này.
+            Please review before saving. After saving, all advance payment
+            transactions from the effective date will use this configuration.
           </DialogDescription>
         </DialogHeader>
 
@@ -87,15 +87,15 @@ export const FeeScheduleConfirmDialog = ({
           {/* Pending summary */}
           <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-              Cấu hình mới
+              Pending configuration
             </p>
             <p className="text-sm leading-relaxed">
               <Fragments items={fragments} />
             </p>
             <p className="text-xs text-muted-foreground">
-              Hiệu lực từ{" "}
+              Effective from{" "}
               <strong className="font-medium text-foreground/90">
-                {formatVietnameseDate(pending.effectiveDate)}
+                {formatKensynDate(pending.effectiveDate)}
               </strong>{" "}
               ({formatDaysFromNow(days)})
             </p>
@@ -173,9 +173,9 @@ export const FeeScheduleConfirmDialog = ({
                             <ArrowRight className="h-3 w-3" />
                           )}
                           {row.direction === "new"
-                            ? "Mới"
+                            ? "New"
                             : row.direction === "same"
-                              ? "Không đổi"
+                              ? "No change"
                               : `${row.delta > 0 ? "+" : ""}${formatCurrency(row.delta)} (${
                                   row.deltaPct > 0 ? "+" : ""
                                 }${row.deltaPct.toFixed(0)}%)`}
@@ -189,11 +189,11 @@ export const FeeScheduleConfirmDialog = ({
             {current && (
               <p className="text-xs text-muted-foreground">
                 <span className="text-emerald-700 dark:text-emerald-400">
-                  Xanh
+                  Green
                 </span>{" "}
-                = phí giảm,{" "}
-                <span className="text-red-700 dark:text-red-400">đỏ</span> =
-                phí tăng so với cấu hình hiện tại.
+                = fee decrease,{" "}
+                <span className="text-red-700 dark:text-red-400">red</span> =
+                fee increase vs current configuration.
               </p>
             )}
           </div>
@@ -206,14 +206,14 @@ export const FeeScheduleConfirmDialog = ({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Quay lại sửa
+            Go back and edit
           </Button>
           <Button
             type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Đang lưu..." : "Xác nhận lưu"}
+            {isSubmitting ? "Saving..." : "Confirm save"}
           </Button>
         </DialogFooter>
       </DialogContent>

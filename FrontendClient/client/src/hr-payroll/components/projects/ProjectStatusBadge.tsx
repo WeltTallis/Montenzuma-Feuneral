@@ -1,7 +1,7 @@
 import { Badge } from '@hr/components/ui/badge';
 import { CheckCircle, Clock, XCircle, AlertCircle, Edit, Pause } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
-import { getVietnameseProjectStatus } from '@hr/utils/vietnamese';
+import { getKensynProjectStatus } from '@hr/utils/kenyan';
 
 export type ProjectStatus = 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
 
@@ -12,27 +12,27 @@ interface ProjectStatusBadgeProps {
 
 const STATUS_CONFIG = {
   draft: {
-    label: () => getVietnameseProjectStatus('draft'),
+    label: () => getKensynProjectStatus('draft'),
     icon: Edit,
     className: 'bg-muted/50 text-foreground border-border hover:bg-muted'
   },
   active: {
-    label: () => getVietnameseProjectStatus('active'),
+    label: () => getKensynProjectStatus('active'),
     icon: CheckCircle,
     className: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
   },
   paused: {
-    label: () => getVietnameseProjectStatus('paused'),
+    label: () => getKensynProjectStatus('paused'),
     icon: Pause,
     className: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
   },
   completed: {
-    label: () => getVietnameseProjectStatus('completed'),
+    label: () => getKensynProjectStatus('completed'),
     icon: CheckCircle,
     className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
   },
   cancelled: {
-    label: () => getVietnameseProjectStatus('cancelled'),
+    label: () => getKensynProjectStatus('cancelled'),
     icon: XCircle,
     className: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
   }
@@ -54,7 +54,7 @@ export function ProjectStatusBadge({ status, className }: ProjectStatusBadgeProp
         )}
       >
         <AlertCircle className="h-3 w-3" />
-        {status || 'Không xác định'}
+        {status || 'Not specified'}
       </Badge>
     );
   }

@@ -1,0 +1,1079 @@
+package persistence
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"api-server/internal/constants"
+	"api-server/internal/domain"
+	"api-server/internal/infra/persistence/common"
+	"api-server/internal/pkg/clock"
+	"api-server/internal/pkg/timeutil"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+type ProjectEmployeeRepository struct {
+	*BaseRepository
+	filterBuilder *common.FilterBuilder
+}
+
+func NewProjectEmployeeRepository(db *Database) domain.ProjectEmployeeRepository {
+	return &ProjectEmployeeRepository{
+		BaseRepository: NewBaseRepository(db),
+		filterBuilder:  common.NewFilterBuilder(db.DB),
+	}
+}
+
+// getDB returns the transaction-aware DB session. If a transaction is active in
+// the context (set via domain.WithTransactionContext), it uses that TX; otherwise
+// it falls back to the repository's own DB connection.
+func (r *ProjectEmployeeRepository) getDB(ctx context.Context) *gorm.DB {
+	if txCtx, ok := domain.GetTransactionFromContext(ctx); ok && txCtx.TX != nil {
+		return txCtx.TX.WithContext(ctx)
+	}
+	return r.DB.WithContext(ctx)
+}
+
+func withAssignmentUpdateLock(ctx context.Context, query *gorm.DB) *gorm.DB {
+	if _, inTransaction := domain.GetTransactionFromContext(ctx); inTransaction {
+		return query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	return query
+}
+
+// applyCommonPreloads centralizes the loading of common related entities
+// Always excludes deleted projects and employees
+func (r *ProjectEmployeeRepository) applyCommonPreloads(query *gorm.DB) *gorm.DB {
+	return query.
+		Preload("Project", "deleted_at IS NULL").
+		Preload("Employee", "deleted_at IS NULL").
+		Preload("Creator")
+}
+
+func (r *ProjectEmployeeRepository) Create(ctx context.Context, assignment *domain.ProjectEmployee) error {
+	return r.SafeCreate(ctx, assignment)
+}
+
+func (r *ProjectEmployeeRepository) GetByID(ctx context.Context, id uint) (*domain.ProjectEmployee, error) {
+	var assignment domain.ProjectEmployee
+	query := r.getDB(ctx)
+	err := r.applyCommonPreloads(query).First(&assignment, id).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, domain.NewNotFoundError(constants.MsgAssignmentNotFoundVN)
+		}
+		return nil, err
+	}
+
+	return &assignment, nil
+}
+
+func (r *ProjectEmployeeRepository) GetByProjectAndEmployee(ctx context.Context, projectID, employeeID uint) (*domain.ProjectEmployee, error) {
+	var assignment domain.ProjectEmployee
+	query := r.DB.WithContext(ctx).Where("project_id = ? AND employee_id = ?", projectID, employeeID)
+	err := r.applyCommonPreloads(query).First(&assignment).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, domain.NewNotFoundError(constants.MsgAssignmentNotFoundVN)
+		}
+		return nil, err
+	}
+
+	return &assignment, nil
+}
+
+func (r *ProjectEmployeeRepository) GetActiveAssignmentByProjectAndEmployee(ctx context.Context, projectID, employeeID uint) (*domain.ProjectEmployee, error) {
+	var assignment domain.ProjectEmployee
+	// Check for active assignment: no end date OR end date is today or in the future
+	today := timeutil.StartOfDay(clock.NowUTC())
+
+	query := r.getDB(ctx).
+		Where("project_id = ? AND employee_id = ? AND (last_date IS NULL OR last_date >= ?)",
+			projectID, employeeID, today).
+		Order("created_at DESC, id DESC")
+	query = withAssignmentUpdateLock(ctx, query)
+	err := query.First(&assignment).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, domain.NewNotFoundError(constants.MsgActiveAssignmentNotFoundVN)
+		}
+		return nil, err
+	}
+
+	return &assignment, nil
+}
+
+func (r *ProjectEmployeeRepository) GetCurrentAssignmentsForProjectForUpdate(
+	ctx context.Context,
+	projectID uint,
+	asOfDate time.Time,
+) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+	err := r.getDB(ctx).
+		Where("project_id = ?", projectID).
+		Where("deleted_at IS NULL").
+		Where("start_date <= ?", asOfDate).
+		Where("last_date IS NULL OR last_date >= ?", asOfDate).
+		Order("id ASC").
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Find(&assignments).Error
+	return assignments, err
+}
+
+func (r *ProjectEmployeeRepository) checkInConfigurationBaseQuery(
+	ctx context.Context,
+	query domain.CheckInConfigurationQuery,
+) *gorm.DB {
+	monthAttendance := r.getDB(ctx).
+		Table("attendances").
+		Select("project_id, employee_id, COUNT(*) AS attendance_count, MAX(check_in_time) AS last_check_in_at").
+		Where("check_in_time >= ? AND check_in_time < ?", query.MonthStart, query.MonthEnd).
+		Group("project_id, employee_id")
+
+	base := r.getDB(ctx).
+		Table("project_employees").
+		Joins("LEFT JOIN (?) AS month_attendance ON month_attendance.project_id = project_employees.project_id AND month_attendance.employee_id = project_employees.employee_id", monthAttendance).
+		// Mobile lives on employees (project_employees keeps only the
+		// denormalized name/CCCD/code). The join is 1:1 on the primary key and
+		// drops soft-deleted employees, so it never changes row counts for the
+		// summary aggregate below.
+		Joins("LEFT JOIN employees ON employees.id = project_employees.employee_id AND employees.deleted_at IS NULL")
+	// ProjectID 0 = "every project": the day-9 roster the admin sends to the
+	// partner spans all self check-in assignments, not one project. Named
+	// callers (the per-project screen) always pass a real id.
+	if query.ProjectID > 0 {
+		base = base.Where("project_employees.project_id = ?", query.ProjectID)
+	}
+	return base.
+		Where("project_employees.deleted_at IS NULL").
+		Where("project_employees.start_date <= ?", query.AsOfDate).
+		Where("project_employees.last_date IS NULL OR project_employees.last_date >= ?", query.AsOfDate).
+		Where(`NOT EXISTS (
+			SELECT 1 FROM project_employees AS newer_assignment
+			WHERE newer_assignment.project_id = project_employees.project_id
+				AND newer_assignment.employee_id = project_employees.employee_id
+				AND newer_assignment.deleted_at IS NULL
+				AND newer_assignment.start_date <= ?
+				AND (newer_assignment.last_date IS NULL OR newer_assignment.last_date >= ?)
+				AND (
+					newer_assignment.created_at > project_employees.created_at
+					OR (newer_assignment.created_at = project_employees.created_at AND newer_assignment.id > project_employees.id)
+				)
+		)`, query.AsOfDate, query.AsOfDate)
+}
+
+func applyCheckInConfigurationStatus(query *gorm.DB, status domain.CheckInConfigurationStatus) *gorm.DB {
+	switch status {
+	case domain.CheckInConfigurationStatusAll:
+		return query
+	case domain.CheckInConfigurationStatusActive:
+		return query.Where("project_employees.check_in_enabled = 1 AND COALESCE(month_attendance.attendance_count, 0) > 0")
+	case domain.CheckInConfigurationStatusInactive:
+		return query.Where("project_employees.check_in_enabled = 1 AND COALESCE(month_attendance.attendance_count, 0) = 0")
+	case domain.CheckInConfigurationStatusPending:
+		return query.Where("project_employees.check_in_enabled = 0 AND project_employees.pending_check_in_enabled = 1")
+	default:
+		return query.Where("project_employees.check_in_enabled = 1")
+	}
+}
+
+func (r *ProjectEmployeeRepository) GetCheckInConfiguration(
+	ctx context.Context,
+	query domain.CheckInConfigurationQuery,
+) (*domain.CheckInConfigurationResult, error) {
+	var summary domain.CheckInConfigurationSummary
+	if err := r.checkInConfigurationBaseQuery(ctx, query).
+		Select(`
+			COALESCE(SUM(CASE WHEN project_employees.check_in_enabled = 1 THEN 1 ELSE 0 END), 0) AS enabled,
+			COALESCE(SUM(CASE WHEN project_employees.check_in_enabled = 1 AND COALESCE(month_attendance.attendance_count, 0) > 0 THEN 1 ELSE 0 END), 0) AS active,
+			COALESCE(SUM(CASE WHEN project_employees.check_in_enabled = 1 AND COALESCE(month_attendance.attendance_count, 0) = 0 THEN 1 ELSE 0 END), 0) AS inactive,
+			COALESCE(SUM(CASE WHEN project_employees.check_in_enabled = 0 AND project_employees.pending_check_in_enabled = 1 THEN 1 ELSE 0 END), 0) AS pending
+		`).
+		Scan(&summary).Error; err != nil {
+		return nil, err
+	}
+
+	filtered := applyCheckInConfigurationStatus(r.checkInConfigurationBaseQuery(ctx, query), query.Status)
+	if search := strings.TrimSpace(query.Search); search != "" {
+		searchFilter := domain.ProjectEmployeeFilters{Search: search}
+		filtered = r.filterBuilder.ApplyVietnameseSearch(filtered, &searchFilter)
+	}
+
+	var total int64
+	if err := filtered.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	var employees []domain.CheckInConfigurationEmployee
+	listQuery := filtered.
+		Select(`
+			project_employees.id AS assignment_id,
+			project_employees.project_id,
+			project_employees.employee_id,
+			project_employees.employee_name,
+			project_employees.check_in_start_date,
+			COALESCE(employees.mobile, '') AS employee_mobile,
+			project_employees.employee_cccd,
+			project_employees.employee_code,
+			project_employees.check_in_enabled,
+			CASE WHEN project_employees.pending_check_in_enabled = 1 THEN 1 ELSE 0 END AS pending_check_in_enable,
+			project_employees.check_in_effective_from,
+			COALESCE(month_attendance.attendance_count, 0) AS attendance_count,
+			month_attendance.last_check_in_at
+		`).
+		Order("COALESCE(month_attendance.attendance_count, 0) DESC").
+		Order("project_employees.employee_name ASC")
+	if query.Limit > 0 {
+		listQuery = listQuery.Limit(query.Limit)
+	}
+	if query.Offset > 0 {
+		listQuery = listQuery.Offset(query.Offset)
+	}
+	if err := listQuery.Scan(&employees).Error; err != nil {
+		return nil, err
+	}
+
+	// A pending enable has no recorded start date yet, so the day the admin
+	// picked is the start day the roster must show. Resolved here rather than
+	// with SQL COALESCE so each column keeps its own DATE type on the scan.
+	// Only pending ENABLES backfill: a pending disable's effective date is the
+	// day the service turns off, never a start day.
+	for i := range employees {
+		if employees[i].CheckInStartDate == nil && employees[i].PendingCheckInEnable {
+			employees[i].CheckInStartDate = employees[i].CheckInEffectiveFrom
+		}
+	}
+
+	return &domain.CheckInConfigurationResult{
+		Employees: employees,
+		Summary:   summary,
+		Total:     total,
+	}, nil
+}
+
+// GetActiveAssignmentsByProjectsAndEmployees batch fetches active assignments for multiple project-employee pairs
+func (r *ProjectEmployeeRepository) GetActiveAssignmentsByProjectsAndEmployees(ctx context.Context, projectIDs []uint, employeeIDs []uint) ([]*domain.ProjectEmployee, error) {
+	if len(projectIDs) == 0 || len(employeeIDs) == 0 {
+		return []*domain.ProjectEmployee{}, nil
+	}
+
+	var assignments []*domain.ProjectEmployee
+	today := timeutil.StartOfDay(clock.NowUTC())
+
+	// Fetch all active assignments for the given projects and employees, excluding deleted projects and employees
+	// This uses the composite index we created: idx_project_employees_project_employee
+	query := r.getDB(ctx).
+		Joins("INNER JOIN projects ON project_employees.project_id = projects.id AND projects.deleted_at IS NULL").
+		Joins("INNER JOIN employees ON project_employees.employee_id = employees.id AND employees.deleted_at IS NULL").
+		Where("project_employees.project_id IN ? AND project_employees.employee_id IN ? AND (project_employees.last_date IS NULL OR project_employees.last_date >= ?)",
+			projectIDs, employeeIDs, today)
+
+	err := query.Find(&assignments).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return assignments, nil
+}
+
+// GetActiveAssignmentsByEmployeeIDs returns every active assignment for the
+// given employees, joined against non-deleted projects and employees. Used by
+// the vendor read API to attach project codes to an employee page in one query
+// instead of one lookup per row.
+func (r *ProjectEmployeeRepository) GetActiveAssignmentsByEmployeeIDs(ctx context.Context, employeeIDs []uint) ([]*domain.ProjectEmployee, error) {
+	if len(employeeIDs) == 0 {
+		return []*domain.ProjectEmployee{}, nil
+	}
+
+	var assignments []*domain.ProjectEmployee
+	today := timeutil.StartOfDay(clock.NowUTC())
+
+	// Same join shape as GetActiveAssignmentsByProjectsAndEmployees, minus the
+	// project predicate, so deleted projects/employees never surface a code.
+	query := r.getDB(ctx).
+		Joins("INNER JOIN projects ON project_employees.project_id = projects.id AND projects.deleted_at IS NULL").
+		Joins("INNER JOIN employees ON project_employees.employee_id = employees.id AND employees.deleted_at IS NULL").
+		Where("project_employees.employee_id IN ? AND (project_employees.last_date IS NULL OR project_employees.last_date >= ?)",
+			employeeIDs, today)
+
+	if err := query.Find(&assignments).Error; err != nil {
+		return nil, err
+	}
+
+	return assignments, nil
+}
+
+func (r *ProjectEmployeeRepository) Update(ctx context.Context, assignment *domain.ProjectEmployee) error {
+	// Omit relationship structs to prevent Save() from overwriting foreign keys
+	// with zero values when the assignment was fetched without preloads
+	// (e.g., via GetActiveAssignmentByProjectAndEmployee used by ToggleCheckInEnabled).
+	db := r.getDB(ctx).Omit("Project", "Employee", "Creator")
+	if err := db.Save(assignment).Error; err != nil {
+		return fmt.Errorf("failed to update project employee: %w", err)
+	}
+	return nil
+}
+
+func (r *ProjectEmployeeRepository) UpdatePosition(ctx context.Context, id uint, position string) error {
+	result := r.getDB(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("id = ?", id).
+		Update("position", position)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update assignment position: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return domain.NewNotFoundError("phân công không tồn tại")
+	}
+	return nil
+}
+
+func (r *ProjectEmployeeRepository) UpdatePositionIfCurrent(
+	ctx context.Context,
+	id uint,
+	currentPosition string,
+	newPosition string,
+) error {
+	result := r.getDB(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("id = ? AND position = ?", id, currentPosition).
+		Update("position", newPosition)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update assignment position: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return domain.NewConflictError("vị trí nhân viên đã thay đổi trong lúc nhập BCC")
+	}
+	return nil
+}
+
+func (r *ProjectEmployeeRepository) BackdateStartDateIfLater(
+	ctx context.Context,
+	id uint,
+	newStart time.Time,
+) (bool, error) {
+	result := r.getDB(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("id = ? AND start_date > ?", id, newStart).
+		Update("start_date", newStart)
+	if result.Error != nil {
+		return false, fmt.Errorf("failed to backdate assignment start: %w", result.Error)
+	}
+	return result.RowsAffected > 0, nil
+}
+
+func (r *ProjectEmployeeRepository) Delete(ctx context.Context, id uint) error {
+	return r.SafeDelete(ctx, &domain.ProjectEmployee{}, id)
+}
+
+func (r *ProjectEmployeeRepository) DeleteByProjectID(ctx context.Context, projectID uint) error {
+	return r.DB.WithContext(ctx).
+		Where("project_id = ?", projectID).
+		Delete(&domain.ProjectEmployee{}).Error
+}
+
+func (r *ProjectEmployeeRepository) BulkUpdateLastDate(ctx context.Context, assignmentIDs []uint, lastDate time.Time) error {
+	if len(assignmentIDs) == 0 {
+		return nil
+	}
+	return r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("id IN ? AND last_date IS NULL", assignmentIDs).
+		Updates(map[string]any{
+			"last_date":  lastDate,
+			"updated_at": clock.Now(),
+		}).Error
+}
+
+func (r *ProjectEmployeeRepository) List(ctx context.Context, filters domain.ProjectEmployeeFilters) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+
+	// Special handling for project employee listing to avoid duplicates
+	if filters.ProjectID != nil {
+		return r.getDistinctProjectEmployees(ctx, filters)
+	}
+
+	query := r.DB.WithContext(ctx)
+	query = r.applyCommonPreloads(query)
+
+	// Apply filters
+	query = r.applyFilters(query, filters)
+
+	// Apply sorting
+	sortBy := "created_at"
+	if filters.SortBy != "" {
+		sortBy = filters.SortBy
+	}
+
+	sortOrder := "DESC"
+	if filters.SortOrder != "" {
+		sortOrder = filters.SortOrder
+	}
+
+	query = query.Order(fmt.Sprintf("%s %s", common.SanitizeSortColumn(sortBy, "created_at"), common.SanitizeSortOrder(sortOrder, "DESC")))
+
+	// Apply pagination
+	if filters.Limit > 0 {
+		query = query.Limit(filters.Limit)
+	}
+	if filters.Offset > 0 {
+		query = query.Offset(filters.Offset)
+	}
+
+	err := query.Find(&assignments).Error
+	return assignments, err
+}
+
+func (r *ProjectEmployeeRepository) Count(ctx context.Context, filters domain.ProjectEmployeeFilters) (int64, error) {
+	var count int64
+
+	// Special handling for project employee counting to avoid duplicates
+	if filters.ProjectID != nil {
+		return r.countDistinctProjectEmployees(ctx, filters)
+	}
+
+	query := r.DB.WithContext(ctx).Model(&domain.ProjectEmployee{})
+
+	// Apply filters
+	query = r.applyFilters(query, filters)
+
+	err := query.Count(&count).Error
+	return count, err
+}
+
+func (r *ProjectEmployeeRepository) GetByProject(ctx context.Context, projectID uint) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+	query := r.DB.WithContext(ctx).Where("project_id = ?", projectID)
+	err := r.applyCommonPreloads(query).Find(&assignments).Error
+
+	return assignments, err
+}
+
+func (r *ProjectEmployeeRepository) GetByEmployee(ctx context.Context, employeeID uint) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+	query := r.DB.WithContext(ctx).Where("employee_id = ?", employeeID)
+	err := r.applyCommonPreloads(query).Find(&assignments).Error
+
+	return assignments, err
+}
+
+func (r *ProjectEmployeeRepository) GetActiveAssignments(ctx context.Context, projectID uint) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+	today := timeutil.StartOfDay(clock.NowUTC())
+
+	query := r.getDB(ctx).Where("project_id = ? AND (last_date IS NULL OR last_date >= ?)", projectID, today)
+	err := r.applyCommonPreloads(query).Find(&assignments).Error
+
+	return assignments, err
+}
+
+func (r *ProjectEmployeeRepository) EndAssignment(ctx context.Context, id uint, endDate time.Time) error {
+	// First check if the assignment exists and get the current record
+	var assignment domain.ProjectEmployee
+	err := r.DB.WithContext(ctx).First(&assignment, id).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return domain.NewNotFoundError(constants.MsgAssignmentNotFoundVN)
+		}
+		return err
+	}
+
+	// Validate the assignment has valid data
+	if assignment.EmployeeID == 0 {
+		return domain.NewValidationError("Dữ liệu phân công không hợp lệ")
+	}
+
+	// Use GORM's Update method which automatically handles updated_at
+	return r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("id = ?", id).
+		Update("last_date", endDate).Error
+}
+
+func (r *ProjectEmployeeRepository) applyFilters(query *gorm.DB, filters domain.ProjectEmployeeFilters) *gorm.DB {
+	// Filter by project
+	if filters.ProjectID != nil {
+		query = query.Where("project_id = ?", *filters.ProjectID)
+
+		today := timeutil.StartOfDay(clock.NowUTC())
+		// Filter by status
+		switch filters.Status {
+		case "current":
+			query = query.Where("start_date <= ? AND (last_date IS NULL OR last_date >= ?)", today, today)
+		case "upcoming":
+			query = query.Where("start_date > ?", today)
+		default:
+			// Default case: return both current and upcoming, so exclude past employees
+			query = query.Where("last_date IS NULL OR last_date >= ?", today)
+		}
+	}
+
+	// Filter by employee
+	if filters.EmployeeID != nil {
+		query = query.Where("employee_id = ?", *filters.EmployeeID)
+	}
+
+	// Filter by creator
+	if filters.CreatedBy != nil {
+		query = query.Where("created_by = ?", *filters.CreatedBy)
+	}
+
+	// Filter by date range
+	if filters.FromDate != nil {
+		query = query.Where("start_date >= ?", *filters.FromDate)
+	}
+	if filters.ToDate != nil {
+		query = query.Where("start_date <= ?", *filters.ToDate)
+	}
+
+	// Filter active only (no end date)
+	if filters.ActiveOnly {
+		query = query.Where("last_date IS NULL")
+	}
+
+	// Free-text search across denormalized employee fields. Routed through the
+	// shared FilterBuilder.ApplyVietnameseSearch chokepoint (same as
+	// project_repository) so case/accent handling is consistent across every
+	// search surface and the OR clause is grouped safely.
+	query = r.filterBuilder.ApplyVietnameseSearch(query, &filters)
+
+	// Filter by payment schedule
+	if filters.PaymentSchedule != nil {
+		query = query.Where("payment_schedule = ?", string(*filters.PaymentSchedule))
+	}
+
+	// Filter by check-in enabled
+	if filters.CheckInEnabled != nil {
+		if *filters.CheckInEnabled {
+			query = query.Where("check_in_enabled = 1")
+		} else {
+			query = query.Where("check_in_enabled = 0")
+		}
+	}
+
+	return query
+}
+
+// Additional helper methods
+
+func (r *ProjectEmployeeRepository) GetActiveEmployeesForProject(ctx context.Context, projectID uint) ([]*domain.Employee, error) {
+	return r.GetActiveEmployeesForProjectWithCreatorFilter(ctx, projectID, nil)
+}
+
+func (r *ProjectEmployeeRepository) GetActiveEmployeesForProjectWithCreatorFilter(ctx context.Context, projectID uint, createdBy *uint) ([]*domain.Employee, error) {
+	var employees []*domain.Employee
+
+	query := r.DB.WithContext(ctx).
+		Model(&domain.Employee{}).
+		Select("employees.*").
+		Joins("INNER JOIN project_employees pe ON employees.id = pe.employee_id AND pe.deleted_at IS NULL").
+		Where("pe.project_id = ? AND pe.last_date IS NULL", projectID)
+
+	// Apply creator filter if provided
+	if createdBy != nil {
+		query = query.Where("employees.created_by = ?", *createdBy)
+	}
+
+	err := query.Find(&employees).Error
+	return employees, err
+}
+
+func (r *ProjectEmployeeRepository) GetActiveProjectsForEmployee(ctx context.Context, employeeID uint) ([]*domain.Project, error) {
+	var projects []*domain.Project
+
+	err := r.DB.WithContext(ctx).
+		Model(&domain.Project{}).
+		Select("projects.*").
+		Joins("INNER JOIN project_employees pe ON projects.id = pe.project_id AND pe.deleted_at IS NULL").
+		Where("pe.employee_id = ? AND pe.last_date IS NULL AND projects.project_status = ?",
+			employeeID, domain.ProjectStatusRunning).
+		Find(&projects).Error
+
+	return projects, err
+}
+
+func (r *ProjectEmployeeRepository) GetAssignmentHistory(ctx context.Context, employeeID uint) ([]*domain.ProjectEmployeeWithDetails, error) {
+	var assignments []*domain.ProjectEmployeeWithDetails
+
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Select(`
+			project_employees.*,
+			p.name as project_name,
+			p.code as project_code,
+			p.status as project_status,
+			p.client_name,
+			e.fullname as employee_fullname,
+			e.cccd as employee_cccd,
+			e.email as employee_email,
+			e.status as employee_status
+		`).
+		Joins("LEFT JOIN projects p ON project_employees.project_id = p.id AND p.deleted_at IS NULL").
+		Joins("LEFT JOIN employees e ON project_employees.employee_id = e.id AND e.deleted_at IS NULL").
+		Where("project_employees.employee_id = ?", employeeID).
+		Order("project_employees.start_date DESC").
+		Scan(&assignments).Error
+
+	return assignments, err
+}
+
+func (r *ProjectEmployeeRepository) GetProjectAssignmentSummary(ctx context.Context, projectID uint) (*domain.ProjectAssignmentSummary, error) {
+	var summary domain.ProjectAssignmentSummary
+
+	// Single query with conditional aggregation to calculate all counts at once
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Select(`
+			COUNT(*) AS total_assignments,
+			COUNT(CASE WHEN last_date IS NULL THEN 1 END) AS active_assignments,
+			COUNT(CASE WHEN last_date IS NOT NULL THEN 1 END) AS ended_assignments
+		`).
+		Where("project_id = ?", projectID).
+		Scan(&summary).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	summary.ProjectID = projectID
+	return &summary, nil
+}
+
+func (r *ProjectEmployeeRepository) BulkEndAssignments(ctx context.Context, projectID uint, endDate time.Time, updatedBy uint) error {
+	return r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("project_id = ? AND last_date IS NULL", projectID).
+		Updates(map[string]any{
+			"last_date":  endDate,
+			"updated_at": clock.Now(),
+		}).Error
+}
+
+func (r *ProjectEmployeeRepository) GetEmployeeCodeForProject(ctx context.Context, employeeID, projectID uint) (string, error) {
+	var employeeCode string
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Select("employee_code").
+		Where("employee_id = ? AND project_id = ? AND last_date IS NULL",
+			employeeID, projectID).
+		Scan(&employeeCode).Error
+
+	return employeeCode, err
+}
+
+// GetOverlappingAssignments returns assignments that overlap with given date range (pure data access)
+func (r *ProjectEmployeeRepository) GetOverlappingAssignments(ctx context.Context, employeeID uint, startDate, endDate *time.Time) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+	query := r.DB.WithContext(ctx).Where("employee_id = ?", employeeID)
+	query = r.applyCommonPreloads(query)
+
+	if endDate != nil {
+		query = query.Where("start_date <= ? AND (last_date IS NULL OR last_date > ?)", *endDate, startDate)
+	} else {
+		query = query.Where("(start_date <= ? AND last_date IS NULL) OR (start_date <= ? AND last_date > ?)", startDate, startDate, startDate)
+	}
+
+	err := query.Find(&assignments).Error
+	return assignments, err
+}
+
+// GetCurrentProjectForEmployee returns the current active project for an employee
+func (r *ProjectEmployeeRepository) GetCurrentProjectForEmployee(ctx context.Context, employeeID uint) (*domain.Project, error) {
+	var project domain.Project
+
+	err := r.DB.WithContext(ctx).
+		Model(&domain.Project{}).
+		Select("projects.*").
+		Joins("INNER JOIN project_employees pe ON projects.id = pe.project_id AND pe.deleted_at IS NULL").
+		Where("pe.employee_id = ? AND pe.last_date IS NULL", employeeID).
+		Preload("Creator").
+		First(&project).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // No current project
+		}
+		return nil, err
+	}
+
+	return &project, nil
+}
+
+// GetCurrentProjectsForEmployees retrieves current projects for multiple employees in batch
+func (r *ProjectEmployeeRepository) GetCurrentProjectsForEmployees(ctx context.Context, employeeIDs []uint) (map[uint]*domain.Project, error) {
+	if len(employeeIDs) == 0 {
+		return make(map[uint]*domain.Project), nil
+	}
+
+	type ProjectEmployeeMapping struct {
+		EmployeeID uint
+		ProjectID  uint
+	}
+
+	var mappings []ProjectEmployeeMapping
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Select("employee_id, project_id").
+		Where("employee_id IN ? AND last_date IS NULL", employeeIDs).
+		Scan(&mappings).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(mappings) == 0 {
+		return make(map[uint]*domain.Project), nil
+	}
+
+	// Extract unique project IDs
+	projectIDs := make([]uint, 0, len(mappings))
+	projectIDSet := make(map[uint]bool)
+	for _, m := range mappings {
+		if !projectIDSet[m.ProjectID] {
+			projectIDs = append(projectIDs, m.ProjectID)
+			projectIDSet[m.ProjectID] = true
+		}
+	}
+
+	// Fetch all projects at once
+	var projects []*domain.Project
+	err = r.DB.WithContext(ctx).
+		Where("id IN ?", projectIDs).
+		Find(&projects).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Create project lookup map
+	projectMap := make(map[uint]*domain.Project)
+	for _, p := range projects {
+		projectMap[p.ID] = p
+	}
+
+	// Map employees to their projects
+	result := make(map[uint]*domain.Project)
+	for _, m := range mappings {
+		if project, exists := projectMap[m.ProjectID]; exists {
+			result[m.EmployeeID] = project
+		}
+	}
+
+	return result, nil
+}
+
+// getDistinctProjectEmployees returns unique employees for a project using window function
+func (r *ProjectEmployeeRepository) getDistinctProjectEmployees(ctx context.Context, filters domain.ProjectEmployeeFilters) ([]*domain.ProjectEmployee, error) {
+	today := timeutil.StartOfDay(clock.NowUTC())
+
+	// Subquery with window function to rank assignments per employee
+	subQuery := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Select(`id, ROW_NUMBER() OVER(
+			PARTITION BY employee_id
+			ORDER BY
+				CASE WHEN start_date <= ? AND (last_date IS NULL OR last_date > ?) THEN 1 ELSE 2 END,
+				start_date DESC
+		) as rn`, today, today).
+		Where("project_id = ?", *filters.ProjectID)
+
+	// Apply status filters to the subquery
+	switch filters.Status {
+	case "current":
+		subQuery = subQuery.Where("start_date <= ? AND (last_date IS NULL OR last_date > ?)", today, today)
+	case "upcoming":
+		subQuery = subQuery.Where("start_date > ?", today)
+	default:
+		// Default: exclude ended assignments
+		subQuery = subQuery.Where("last_date IS NULL OR last_date > ?", today)
+	}
+
+	// Filter by check-in enabled
+	if filters.CheckInEnabled != nil {
+		if *filters.CheckInEnabled {
+			subQuery = subQuery.Where("check_in_enabled = 1")
+		} else {
+			subQuery = subQuery.Where("check_in_enabled = 0")
+		}
+	}
+
+	// Free-text search across denormalized employee fields
+	subQuery = r.filterBuilder.ApplyVietnameseSearch(subQuery, &filters)
+
+	// Main query joins with the subquery to get only the top-ranked assignment per employee
+	var assignments []*domain.ProjectEmployee
+	query := r.DB.WithContext(ctx).
+		Joins("JOIN (?) AS ranked_assignments ON project_employees.id = ranked_assignments.id AND ranked_assignments.rn = 1", subQuery).
+		// Left join to get the most recent timesheet date per employee for this project
+		Joins(`LEFT JOIN (
+			SELECT employee_id, MAX(date) AS last_timesheet_date
+			FROM timesheets
+			WHERE project_id = ? AND deleted_at IS NULL
+			GROUP BY employee_id
+		) AS ts_summary ON ts_summary.employee_id = project_employees.employee_id`, *filters.ProjectID)
+
+	// Apply creator filter if provided
+	if filters.CreatedBy != nil {
+		query = query.Joins("INNER JOIN employees e ON project_employees.employee_id = e.id").
+			Where("e.created_by = ?", *filters.CreatedBy)
+	}
+
+	query = r.applyCommonPreloads(query)
+
+	// Sort by the most recent of: assignment created_at vs last timesheet date.
+	// This puts recently active employees first regardless of when they were assigned.
+	query = query.Order("GREATEST(project_employees.created_at, COALESCE(ts_summary.last_timesheet_date, '0001-01-01')) DESC")
+	if filters.Limit > 0 {
+		query = query.Limit(filters.Limit)
+	}
+	if filters.Offset > 0 {
+		query = query.Offset(filters.Offset)
+	}
+
+	err := query.Find(&assignments).Error
+	return assignments, err
+}
+
+// countDistinctProjectEmployees returns count of unique employees for a project
+func (r *ProjectEmployeeRepository) countDistinctProjectEmployees(ctx context.Context, filters domain.ProjectEmployeeFilters) (int64, error) {
+	today := timeutil.StartOfDay(clock.NowUTC())
+
+	query := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Select("COUNT(DISTINCT project_employees.employee_id)").
+		Where("project_employees.project_id = ?", *filters.ProjectID)
+
+	// Apply creator filter if provided
+	if filters.CreatedBy != nil {
+		query = query.Joins("INNER JOIN employees e ON project_employees.employee_id = e.id").
+			Where("e.created_by = ?", *filters.CreatedBy)
+	}
+
+	// Apply status filters
+	switch filters.Status {
+	case "current":
+		query = query.Where("start_date <= ? AND (last_date IS NULL OR last_date > ?)", today, today)
+	case "upcoming":
+		query = query.Where("start_date > ?", today)
+	default:
+		// Default: exclude ended assignments (last_date <= today)
+		query = query.Where("last_date IS NULL OR last_date > ?", today)
+	}
+
+	// Filter by check-in enabled
+	if filters.CheckInEnabled != nil {
+		if *filters.CheckInEnabled {
+			query = query.Where("check_in_enabled = 1")
+		} else {
+			query = query.Where("check_in_enabled = 0")
+		}
+	}
+
+	// Free-text search across denormalized employee fields
+	query = r.filterBuilder.ApplyVietnameseSearch(query, &filters)
+
+	var count int64
+	err := query.Scan(&count).Error
+	return count, err
+}
+
+// DeleteAssignmentsByEmployeeID soft deletes all project assignments for an employee
+func (r *ProjectEmployeeRepository) DeleteAssignmentsByEmployeeID(ctx context.Context, employeeID uint) error {
+	return r.getDB(ctx).
+		Where("employee_id = ?", employeeID).
+		Delete(&domain.ProjectEmployee{}).Error
+}
+
+func (r *ProjectEmployeeRepository) HardDeleteAssignmentsByEmployeeID(ctx context.Context, employeeID uint) error {
+	return r.dbForContext(ctx).
+		Unscoped().
+		Where("employee_id = ?", employeeID).
+		Delete(&domain.ProjectEmployee{}).Error
+}
+
+// HasActiveFlexiblePaymentScheduleByEmployeeID locks the employee's active
+// assignments in a deletion transaction before checking their payment schedule.
+func (r *ProjectEmployeeRepository) HasActiveFlexiblePaymentScheduleByEmployeeID(ctx context.Context, employeeID uint) (bool, error) {
+	var schedules []string
+	today := timeutil.StartOfDay(clock.NowUTC())
+	err := r.getDB(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("employee_id = ? AND start_date <= ? AND last_date IS NULL", employeeID, today).
+		Pluck("payment_schedule", &schedules).Error
+	if err != nil {
+		return false, err
+	}
+
+	for _, schedule := range schedules {
+		if schedule == string(domain.PaymentScheduleFlexible) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// CountWorkingEmployees returns the count of distinct employees with active assignments
+func (r *ProjectEmployeeRepository) CountWorkingEmployees(ctx context.Context) (int, error) {
+	// Use DB/local timezone and include only assignments that have started
+	now := clock.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	var count int64
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("(last_date IS NULL OR last_date >= ?)", today).
+		Where("start_date <= ?", today).
+		Distinct("employee_id").
+		Count(&count).Error
+
+	return int(count), err
+}
+
+// GetEmployeesByPaymentSchedule retrieves all employees with a specific payment schedule
+func (r *ProjectEmployeeRepository) GetEmployeesByPaymentSchedule(ctx context.Context, schedule domain.PaymentSchedule) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+
+	query := r.DB.WithContext(ctx).
+		Where("payment_schedule = ?", string(schedule))
+
+	err := r.applyCommonPreloads(query).Find(&assignments).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return assignments, nil
+}
+
+// CountActiveEmployeesByPaymentSchedule counts distinct current employees assigned to a schedule
+func (r *ProjectEmployeeRepository) CountActiveEmployeesByPaymentSchedule(ctx context.Context, schedule domain.PaymentSchedule) (int, error) {
+	var count int64
+	now := clock.Now()
+
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("payment_schedule = ?", string(schedule)).
+		Where("start_date <= ?", now).
+		Where("last_date IS NULL OR last_date >= ?", now).
+		Distinct("employee_id").
+		Count(&count).Error
+
+	return int(count), err
+}
+
+// GetEmployeesWithPendingScheduleChanges retrieves employees whose pending schedule changes should be applied
+func (r *ProjectEmployeeRepository) GetEmployeesWithPendingScheduleChanges(ctx context.Context, effectiveDate time.Time) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+
+	query := r.DB.WithContext(ctx).
+		Where("pending_payment_schedule IS NOT NULL").
+		Where("schedule_effective_from IS NOT NULL").
+		Where("schedule_effective_from <= ?", effectiveDate)
+
+	err := r.applyCommonPreloads(query).Find(&assignments).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return assignments, nil
+}
+
+// GetEmployeesWithPendingCheckInChange retrieves employees whose deferred
+// check-in change (enable or disable — both live in the same pending columns)
+// should be applied on or before the given date.
+func (r *ProjectEmployeeRepository) GetEmployeesWithPendingCheckInChange(ctx context.Context, effectiveDate time.Time) ([]*domain.ProjectEmployee, error) {
+	var assignments []*domain.ProjectEmployee
+
+	query := r.DB.WithContext(ctx).
+		Where("pending_check_in_enabled IS NOT NULL").
+		Where("check_in_effective_from IS NOT NULL").
+		Where("check_in_effective_from <= ?", effectiveDate)
+
+	err := r.applyCommonPreloads(query).Find(&assignments).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return assignments, nil
+}
+
+// ApplyScheduleChanges applies pending payment schedule changes for specified employees
+func (r *ProjectEmployeeRepository) ApplyScheduleChanges(ctx context.Context, employeeIDs []uint) error {
+	if len(employeeIDs) == 0 {
+		return nil
+	}
+
+	// Update payment_schedule from pending_payment_schedule and clear pending fields
+	return r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Where("id IN ?", employeeIDs).
+		Where("pending_payment_schedule IS NOT NULL").
+		Updates(map[string]interface{}{
+			"payment_schedule":         gorm.Expr("pending_payment_schedule"),
+			"pending_payment_schedule": nil,
+			"schedule_effective_from":  nil,
+		}).Error
+}
+
+// HasAccessViaProject checks if user can access employee through project assignments.
+//
+// Access via a project is granted if the employee is ACTIVELY assigned to a project
+// the user can access. A user "can access a project" when they are an explicit project
+// member (project_users) OR they CREATED the project. Project creators are intentionally
+// not stored in project_users — see ProjectPermissionService.CanUserAccessProject, which
+// special-cases projects.created_by, and GetProjectUsers, which synthesizes a virtual
+// owner entry. This query must mirror that rule: without the projects.created_by branch,
+// a partner cannot view employees assigned to their OWN project (regression: partner 403
+// "No access to this employee" on GET /employees/:id).
+func (r *ProjectEmployeeRepository) HasAccessViaProject(ctx context.Context, employeeID, userID uint) (bool, error) {
+	var count int64
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Joins("INNER JOIN projects ON projects.id = project_employees.project_id").
+		// LEFT JOIN so a project creator matches even with no project_users row.
+		Joins("LEFT JOIN project_users ON project_users.project_id = project_employees.project_id AND project_users.user_id = ? AND project_users.deleted_at IS NULL", userID).
+		Where("project_employees.employee_id = ?", employeeID).
+		Where("project_employees.deleted_at IS NULL").
+		Where("projects.deleted_at IS NULL").
+		Where("project_employees.start_date <= NOW()").
+		Where("project_employees.last_date IS NULL OR project_employees.last_date > NOW()").
+		// Creator of the project OR explicit project member.
+		Where("projects.created_by = ? OR project_users.user_id IS NOT NULL", userID).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// HasFlexibleAssignment reports whether the employee has at least one live
+// flexible (FlexPay) project assignment — the same population the
+// advance-payments employee list exposes to the adv_partner role. The list
+// has no per-partner scoping (projects are frequently auto-created by admin
+// FlexPay imports, so created_by/project_users membership is almost never
+// the partner), so the edit gate matches that visibility instead of
+// HasAccessViaProject's stricter creator-or-member rule.
+func (r *ProjectEmployeeRepository) HasFlexibleAssignment(ctx context.Context, employeeID uint) (bool, error) {
+	var count int64
+	err := r.DB.WithContext(ctx).
+		Model(&domain.ProjectEmployee{}).
+		Joins("INNER JOIN projects ON projects.id = project_employees.project_id AND projects.deleted_at IS NULL").
+		Where("project_employees.employee_id = ?", employeeID).
+		Where("project_employees.deleted_at IS NULL").
+		Where("project_employees.payment_schedule = ?", string(domain.PaymentScheduleFlexible)).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

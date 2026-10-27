@@ -114,6 +114,7 @@ const PRE_AUTH_PREFIXES = new Set([
   'public',        // public deceased / postmortem lookup by admission number
   'blog',          // newsroom articles
   'blog-engagement',
+  'attendance',    // signed device webhook; HR service validates device credentials
 ]);
 
 const PRE_AUTH_METHODS = new Set(['GET', 'HEAD', 'POST', 'OPTIONS']);

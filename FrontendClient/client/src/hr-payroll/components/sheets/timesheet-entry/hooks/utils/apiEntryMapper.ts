@@ -1,6 +1,6 @@
 import type { Employee } from '@hr/types/api/employee.types';
 import { PREFERRED_DAY_TYPES } from '@hr/constants/timesheetConstants';
-import { normalizeVietnamese } from '@hr/utils/vietnamese';
+import { normalizeKensyn } from '@hr/utils/kenyan';
 import { generateId, getEmployeePosition } from '@hr/utils/timesheetTransformers';
 import type { TimesheetEntry } from '../../types/multi-timesheet.types';
 
@@ -29,7 +29,7 @@ const resolveDayType = (
 
   if (availableDayTypes.length > 0) {
     const match = availableDayTypes.find(dt =>
-      normalizeVietnamese(dt) === normalizeVietnamese(rawDayType)
+      normalizeKensyn(dt) === normalizeKensyn(rawDayType)
     );
     if (match) {
       return match;
@@ -37,7 +37,7 @@ const resolveDayType = (
   }
 
   const fallbackMatch = PREFERRED_DAY_TYPES.find(dt =>
-    normalizeVietnamese(dt) === normalizeVietnamese(rawDayType)
+    normalizeKensyn(dt) === normalizeKensyn(rawDayType)
   );
 
   return fallbackMatch || rawDayType;
@@ -85,7 +85,7 @@ export const mapApiEntriesToTimesheetEntries = ({
             let hourType = rawHourType;
             if (availableHourTypes && availableHourTypes.length > 0) {
               const match = availableHourTypes.find(ht =>
-                normalizeVietnamese(ht) === normalizeVietnamese(rawHourType)
+                normalizeKensyn(ht) === normalizeKensyn(rawHourType)
               );
               if (match) {
                 hourType = match;
@@ -136,7 +136,7 @@ export const mergeEntriesWithGaps = ({
     const exactIndex = mergedEntries.findIndex(e =>
       e.employeeId === newEntry.employeeId &&
       e.date === newEntry.date &&
-      normalizeVietnamese(e.dayType || '') === normalizeVietnamese(newEntry.dayType || '')
+      normalizeKensyn(e.dayType || '') === normalizeKensyn(newEntry.dayType || '')
     );
 
     if (exactIndex >= 0) {

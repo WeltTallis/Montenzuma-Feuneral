@@ -13,7 +13,7 @@ import {
 } from "@hr/components/ui/alert-dialog";
 import { Input } from "@hr/components/ui/input";
 import { Label } from "@hr/components/ui/label";
-import { formatVietnameseDate } from "./rule-formatters";
+import { formatKensynDate } from "./rule-formatters";
 import type { FeeScheduleEntry } from "@hr/types/api/advance-payment-fee-schedule.types";
 
 interface Props {
@@ -32,7 +32,7 @@ export const FeeScheduleDeleteDialog = ({
   onConfirm,
 }: Props) => {
   const [typed, setTyped] = useState("");
-  const expected = entry ? formatVietnameseDate(entry.effectiveDate) : "";
+  const expected = entry ? formatKensynDate(entry.effectiveDate) : "";
   const matches = typed.trim() === expected;
 
   useEffect(() => {
@@ -47,21 +47,21 @@ export const FeeScheduleDeleteDialog = ({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10">
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </div>
-            <AlertDialogTitle>Xóa cấu hình phí?</AlertDialogTitle>
+            <AlertDialogTitle>Delete fee configuration?</AlertDialogTitle>
           </div>
           <AlertDialogDescription className="pt-2">
-            Cấu hình hiệu lực từ ngày{" "}
+            Configuration effective from date{" "}
             <strong className="font-semibold text-foreground">
               {expected}
             </strong>{" "}
-            sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.
+            will be permanently deleted. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-2 px-6 mt-4 pb-2">
           <Label htmlFor="delete-confirm-input" className="text-xs">
-            Nhập <strong className="font-semibold">{expected}</strong> để xác
-            nhận xóa
+            Enter <strong className="font-semibold">{expected}</strong> to confirm
+            deletion
           </Label>
           <Input
             id="delete-confirm-input"
@@ -80,7 +80,7 @@ export const FeeScheduleDeleteDialog = ({
             onClick={onConfirm}
             disabled={!matches || isDeleting}
           >
-            {isDeleting ? "Đang xóa..." : "Xóa cấu hình"}
+            {isDeleting ? "Deleting..." : "Delete configuration"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

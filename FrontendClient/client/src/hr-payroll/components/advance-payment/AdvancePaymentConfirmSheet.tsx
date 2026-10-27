@@ -36,43 +36,43 @@ export function AdvancePaymentConfirmSheet({
       <SheetContent
         side="bottom"
         className="mx-auto flex h-auto max-h-[86dvh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-[var(--employee-border-strong)] bg-[var(--employee-surface)] p-0 shadow-none sm:max-w-lg"
-        title="Xác nhận yêu cầu ứng lương"
-        description="Kiểm tra số tiền thực nhận và tài khoản nhận tiền"
+        title="Confirm advance payment request"
+        description="Review net payable amount and receiving account"
       >
         <div className="flex shrink-0 justify-center pt-3">
           <div className="h-1.5 w-12 rounded-full bg-[var(--employee-border-strong)]" />
         </div>
         <SheetHeader className="shrink-0 border-b border-[var(--employee-border-strong)] px-5 pb-3 pt-3 text-left">
           <SheetTitle className="employee-type-hero-title text-[var(--employee-text)]">
-            Xác nhận yêu cầu ứng lương
+            Confirm advance payment request
           </SheetTitle>
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5">
           <section className="border-b border-[var(--employee-border)] py-4">
             <p className="employee-type-label-caps text-fg-tertiary">
-              Số tiền thực nhận
+              Net amount payable
             </p>
             <p className="employee-type-confirm-amount mt-1 break-words text-[var(--employee-accent)] tabular-nums">
-              {feeDetails ? formatCurrency(feeDetails.netAmount) : "Đang tính..."}
+              {feeDetails ? formatCurrency(feeDetails.netAmount) : "Calculating..."}
             </p>
 
             <div className="employee-type-body mt-4 space-y-2.5">
               <div className="flex justify-between gap-4">
-                <span className="text-fg-tertiary">Số tiền yêu cầu</span>
+                <span className="text-fg-tertiary">Requested amount</span>
                 <span className="font-semibold text-[var(--employee-text)] tabular-nums">
                   {formatCurrency(amount)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-fg-tertiary">Phí giao dịch</span>
+                <span className="text-fg-tertiary">Transaction fee</span>
                 <span className="font-semibold text-fg-error-secondary tabular-nums">
-                  {feeDetails ? `−${formatCurrency(feeDetails.fee)}` : "Đang tính..."}
+                  {feeDetails ? `−${formatCurrency(feeDetails.fee)}` : "Calculating..."}
                 </span>
               </div>
               {payrollPeriodLabel && (
                 <div className="flex justify-between gap-4 border-t border-[var(--employee-border)] pt-3">
-                  <span className="text-fg-tertiary">Trong kỳ lương</span>
+                  <span className="text-fg-tertiary">Payroll period</span>
                   <span className="text-right font-semibold text-[var(--employee-text)]">
                     {payrollPeriodLabel}
                   </span>
@@ -83,22 +83,22 @@ export function AdvancePaymentConfirmSheet({
 
           <section className="py-4">
             <p className="employee-type-label-caps text-fg-tertiary">
-              Chuyển đến chủ tài khoản
+              Transfer to account holder
             </p>
             <p className="employee-type-card-amount mt-1 break-words text-[var(--employee-accent)]">
-              {bankAccountName || "Chưa cập nhật"}
+              {bankAccountName || "Not updated"}
             </p>
             <div className="employee-type-body mt-4 space-y-2.5">
               <div className="flex justify-between gap-4">
-                <span className="text-fg-tertiary">Số tài khoản</span>
+                <span className="text-fg-tertiary">Account number</span>
                 <span className="break-all text-right font-semibold text-[var(--employee-text)] tabular-nums">
-                  {bankAccountNumber || "Chưa cập nhật"}
+                  {bankAccountNumber || "Not updated"}
                 </span>
               </div>
               <div className="flex justify-between gap-4 border-t border-[var(--employee-border)] pt-3">
-                <span className="text-fg-tertiary">Ngân hàng</span>
+                <span className="text-fg-tertiary">Bank</span>
                 <span className="max-w-[58%] text-right font-semibold text-[var(--employee-text)]">
-                  {bankName || "Chưa cập nhật"}
+                  {bankName || "Not updated"}
                 </span>
               </div>
             </div>
@@ -124,10 +124,10 @@ export function AdvancePaymentConfirmSheet({
               {isPending ? (
                 <span className="inline-flex items-center gap-1.5">
                   <span className="animate-spin h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full motion-reduce:animate-none" />
-                  Đang gửi...
+                  Sending...
                 </span>
               ) : (
-                "Xác nhận giao dịch"
+                "Confirm transaction"
               )}
             </button>
           </div>

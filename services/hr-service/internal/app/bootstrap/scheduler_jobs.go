@@ -1,0 +1,592 @@
+package bootstrap
+
+import (
+	"api-server/internal/pkg/clock"
+	"context"
+	"fmt"
+	"log/slog"
+	"strings"
+	"time"
+
+	"api-server/internal/app/dto"
+	"api-server/internal/app/services/advance_payment"
+	"api-server/internal/app/services/asset"
+	"api-server/internal/app/services/cleanup"
+	"api-server/internal/app/services/ledger"
+	"api-server/internal/app/services/notification"
+	"api-server/internal/app/services/project"
+	"api-server/internal/app/services/scheduler"
+	"api-server/internal/app/services/zaloconnect"
+	"api-server/internal/constants"
+	"api-server/internal/domain"
+	domainServices "api-server/internal/domain/services"
+	"api-server/internal/domain/wallet"
+	"api-server/internal/pkg/utils"
+)
+
+// checkInRosterRetentionDays is how long the day-9 check-in roster workbook is
+// kept before the cleanup job deletes it (file + row). Long enough for the
+// partner billing cycle that starts on day 9, short enough that monthly
+// workbooks do not accumulate on disk.
+const checkInRosterRetentionDays = 7
+
+func registerSchedulerJobs(
+	s *scheduler.Scheduler,
+	notificationService *notification.NotificationService,
+	emailService *notification.EmailService,
+	projectEmployeeService *project.ProjectEmployeeService,
+	apiMetricCleanupService *cleanup.APIMetricCleanupService,
+	reconcileService *ledger.ReconcileService,
+	apiMetricRepo domain.APIMetricRepository,
+	advancePaymentReqRepo domain.AdvancePaymentRequestRepository,
+	walletSyncService wallet.WalletService,
+	flexPayReconciliationService *domainServices.FlexPayReconciliationService,
+	loanRepaymentReminderService *notification.LoanRepaymentReminderService,
+	zaloConnectService *zaloconnect.Service,
+	aggregateRecomputeService *project.AggregateRecomputeService,
+	walletBalanceAlertService *notification.WalletBalanceAlertService,
+	assetSvc *asset.AssetService,
+	logger *slog.Logger,
+) {
+	// Helper for template rendering
+	renderTemplate := func(template string) string {
+		now := clock.Now()
+		replacements := map[string]string{
+			"{date}":  now.Format("02/01/2006"),
+			"{day}":   fmt.Sprintf("%d", now.Day()),
+			"{month}": fmt.Sprintf("%d", now.Month()),
+			"{year}":  fmt.Sprintf("%d", now.Year()),
+		}
+		result := template
+		for key, value := range replacements {
+			result = strings.ReplaceAll(result, key, value)
+		}
+		return result
+	}
+
+	// Helper for sending push notification to admin (user ID 1)
+	sendAdminNotification := func(ctx context.Context, title, message string) {
+		if err := notificationService.CreateCustomNotification(ctx, constants.SystemUserID, 1, title, message, domain.NotificationContentTypePlainText); err != nil {
+			logger.Error("Failed to send admin notification", "title", title, "error", err)
+		}
+	}
+
+	// saoKeReminderRecipients are the people responsible for sending the partner sao kê
+	// (bank statement). Hardcoded per ops request (2026-06-21): VFIC + operator.
+	saoKeReminderRecipients := []string{
+		"anhbh@vfic.com.vn",
+		"frankng.sg@gmail.com",
+	}
+
+	// sendSaoKeReminder dispatches a sao kê reminder through every channel:
+	//   - in-app notification + web push to ALL admins (NotifyUsersByRole fires the push),
+	//   - email to the fixed saoKeReminderRecipients list.
+	// Used by the day 1 & 26 (weekly project) and day 9 (flexible / LG Display) reminder jobs.
+	sendSaoKeReminder := func(ctx context.Context, title, message string) {
+		if err := notificationService.NotifyUsersByRole(ctx, domain.RoleAdmin, domain.NotificationTypeCustom, title, message); err != nil {
+			logger.Error("Failed to send sao ke reminder to admins", "title", title, "error", err)
+		} else {
+			logger.Info("Sao ke reminder notification sent to admins", "title", title)
+		}
+
+		if emailService == nil {
+			logger.Warn("Email service not configured, skipping sao ke reminder email", "title", title)
+			return
+		}
+		if _, err := emailService.SendGenericEmail(ctx, &dto.SendEmailRequest{
+			Recipients: saoKeReminderRecipients,
+			Subject:    title,
+			HTMLBody:   "<p>" + message + "</p>",
+			TextBody:   message,
+		}); err != nil {
+			logger.Error("Failed to send sao ke reminder email", "title", title, "error", err)
+		} else {
+			logger.Info("Sao ke reminder email sent", "title", title, "recipients", saoKeReminderRecipients)
+		}
+	}
+
+	// 1. Apply pending payment schedule changes
+	s.AddJob(scheduler.Job{
+		Name:    "apply_payment_schedule_changes",
+		Cron:    "0 1 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			logger.Info("Starting automatic payment schedule change application")
+			if err := projectEmployeeService.ApplyPendingScheduleChanges(ctx); err != nil {
+				logger.Error("Failed to apply pending payment schedule changes", "error", err)
+			} else {
+				logger.Info("Payment schedule changes applied successfully")
+			}
+		},
+	})
+
+	// 1b. Apply pending check-in changes — deferred enables activate, deferred
+	// disables turn the service off (both live in the same pending columns)
+	s.AddJob(scheduler.Job{
+		Name:    "apply_pending_check_in_changes",
+		Cron:    "10 1 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			logger.Info("Starting pending check-in change application")
+			if err := projectEmployeeService.ApplyPendingCheckInChanges(ctx); err != nil {
+				logger.Error("Failed to apply pending check-in changes", "error", err)
+			} else {
+				logger.Info("Pending check-in changes applied successfully")
+			}
+		},
+	})
+
+	// 2. Cleanup old API metrics
+	s.AddJob(scheduler.Job{
+		Name:    "cleanup_old_api_metrics",
+		Cron:    "0 0 15 * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			logger.Info("Starting old API metrics cleanup (30+ days old)")
+			if count, err := apiMetricCleanupService.DeleteOldMetrics(ctx, 30); err != nil {
+				logger.Error("Failed to cleanup old API metrics", "error", err)
+			} else {
+				logger.Info("Old API metrics cleanup completed successfully", "deleted_count", count)
+			}
+		},
+	})
+
+	// 3. Bank statement (sao kê) reminder - Day 1 (weekly project cycle start)
+	// 4. Bank statement (sao kê) reminder - Day 26 (weekly project cycle end)
+	addBankStatementReminder := func(name, cronExpr string) {
+		s.AddJob(scheduler.Job{
+			Name:    name,
+			Cron:    cronExpr,
+			Enabled: true,
+			Handler: func() {
+				ctx := context.Background()
+				title := renderTemplate("Gửi sao kê cho đối tác")
+				message := renderTemplate("Nhắc nhở gửi sao kê ngân hàng cho công ty thanh toán vào ngày {day}/{month}/{year}")
+				sendSaoKeReminder(ctx, title, message)
+			},
+		})
+	}
+	addBankStatementReminder("bank_statement_reminder_day_1", "0 9 1 * *")
+	addBankStatementReminder("bank_statement_reminder_day_26", "0 9 26 * *")
+
+	// 5. Daily receivable reconciliation
+	s.AddJob(scheduler.Job{
+		Name:    "daily_receivable_reconciliation",
+		Cron:    "0 1 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			logger.Info("Starting daily receivable reconciliation")
+
+			// Use admin user ID (1) for system operations
+			adminUserID := uint(constants.AdminUserID)
+
+			result, err := reconcileService.ReconcileReceivableAccount(ctx, &ledger.ReconcileRequest{}, adminUserID)
+			if err != nil {
+				logger.Error("Failed to reconcile receivable account", "error", err)
+			} else {
+				logger.Info("Daily receivable reconciliation completed successfully",
+					"success", result.Success,
+					"message", result.Message,
+					"was_fixed", result.WasFixed,
+					"imbalance_amount", result.ImbalanceAmount,
+					"new_balance", result.NewReceivableBalance,
+					"write_off_created", result.WriteOffCreated,
+					"write_off_amount", result.WriteOffAmount,
+				)
+			}
+		},
+	})
+
+	// 6. Monitor high error rate endpoints
+	s.AddJob(scheduler.Job{
+		Name:    "monitor_high_error_rates",
+		Cron:    "0 5 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			logger.Info("Starting high error rate monitoring")
+
+			// Check for last 24 hours
+			since := clock.Now().Add(-24 * time.Hour)
+			threshold := 0.10 // 10%
+
+			endpoints, err := apiMetricRepo.GetHighErrorRateEndpoints(ctx, since, threshold)
+			if err != nil {
+				logger.Error("Failed to get high error rate endpoints", "error", err)
+				return
+			}
+
+			if len(endpoints) == 0 {
+				logger.Info("No high error rate endpoints found")
+				return
+			}
+
+			// Construct message
+			var sb strings.Builder
+			fmt.Fprintf(&sb, "High Error Rate Alert\n\n")
+			sb.WriteString("The following endpoints have error rate > 10% in the last 24 hours:\n\n")
+
+			for _, ep := range endpoints {
+				fmt.Fprintf(&sb, "- %s %s: %.2f%% (%d/%d errors)\n",
+					ep.Method, ep.Path, ep.ErrorRate*100, ep.ErrorCount, ep.TotalCount)
+			}
+
+			message := sb.String()
+			title := "High Error Rate Alert"
+
+			sendAdminNotification(ctx, title, message)
+			logger.Info("High error rate notification sent to admin")
+		},
+	})
+
+	// 7. Advance payment reminder - daily at 8 PM ICT (9 PM SGT)
+	s.AddJob(scheduler.Job{
+		Name:    "advance_payment_reminder",
+		Cron:    "0 20 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			now := clock.Now()
+			currentMonth := advance_payment.GetCurrentMonthFromTime(now)
+
+			requestCount, employeeCount, totalAmount, err := advancePaymentReqRepo.GetPendingSummary(ctx, currentMonth)
+			if err != nil {
+				logger.Error("Failed to get pending advance payment summary", "error", err)
+				return
+			}
+			if requestCount == 0 {
+				logger.Info("No pending advance payment requests for current month, skipping reminder")
+				return
+			}
+
+			title := "Nhắc nhở ứng lương"
+			message := fmt.Sprintf("Có %d yêu cầu ứng lương đang chờ từ %d nhân viên (tháng %s), tổng số tiền: %s đ",
+				requestCount, employeeCount, currentMonth, utils.FormatNumber(int64(totalAmount)))
+
+			sendAdminNotification(ctx, title, message)
+		},
+	})
+
+	// 8. Sync wallet balance with provider every 5 minutes
+	s.AddJob(scheduler.Job{
+		Name:    "sync_wallet_balance",
+		Cron:    "*/5 * * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			logger.Info("Starting wallet balance sync with provider")
+
+			result, err := walletSyncService.SyncBalance(ctx, uint64(constants.AdminUserID)) // system user ID
+			if err != nil {
+				logger.Error("Wallet balance sync failed", "error", err)
+				return
+			}
+
+			if result.Adjusted {
+				logger.Info("Wallet balance adjusted",
+					"provider_balance", result.ProviderBalance,
+					"local_balance", result.LocalBalance,
+				)
+			} else {
+				logger.Info("Wallet balance in sync",
+					"balance", result.LocalBalance,
+				)
+			}
+		},
+	})
+
+	// 9. Cancel pending flexible advance payment requests - 9th at 23:59 (last day of the tail window)
+	s.AddJob(scheduler.Job{
+		Name:    "cancel_flexible_pending_requests",
+		Cron:    "59 23 9 * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			now := clock.Now()
+			currentMonth := advance_payment.GetCurrentMonthFromTime(now)
+
+			logger.Info("Starting cancellation of pending flexible advance payment requests",
+				"month", currentMonth)
+
+			cancelledCount, requestIDs, err := flexPayReconciliationService.CancelAllPendingRequests(ctx, currentMonth)
+			if err != nil {
+				logger.Error("Failed to cancel pending flexible advance payment requests",
+					"month", currentMonth, "error", err)
+				return
+			}
+
+			logger.Info("Cancelled pending flexible advance payment requests",
+				"month", currentMonth,
+				"cancelled_count", cancelledCount,
+				"request_ids", requestIDs)
+		},
+	})
+
+	// 10. FlexPay sao ke reminder - 9th at 9:00 AM
+	s.AddJob(scheduler.Job{
+		Name:    "send_flexible_sao_ke_reminder",
+		Cron:    "0 9 9 * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			now := clock.Now()
+			prevMonth := now.AddDate(0, -1, 0)
+			forMonth := prevMonth.Format("2006-01")
+
+			projectCount, err := advancePaymentReqRepo.CountCompletedProjectsByMonth(ctx, forMonth)
+			if err != nil {
+				logger.Error("Failed to count completed projects for sao ke", "month", forMonth, "error", err)
+				return
+			}
+			if projectCount == 0 {
+				logger.Info("No completed flexible requests for previous month, skipping sao ke reminder", "month", forMonth)
+				return
+			}
+
+			title := "Nhắc nhở gửi sao kê ứng lương"
+			message := fmt.Sprintf("Hãy gửi sao kê thanh toán ứng lương cho tháng %s (%d dự án) cho đối tác.", forMonth, projectCount)
+
+			sendSaoKeReminder(ctx, title, message)
+		},
+	})
+
+	// 10b. Self check-in roster preparation - 9th at 9:15 AM
+	// Builds the combined (all projects) self check-in roster for the previous
+	// month, stores it as a checkin_roster asset and pushes a checkin_roster
+	// notification to admins. The Tổng quan dashboard card keys off the unread
+	// notification: "Tải file" downloads this asset, "Đã xong" marks it read.
+	// Skips silently when nobody is enrolled (file + notification are created
+	// together, so no notification can dangle without a file).
+	s.AddJob(scheduler.Job{
+		Name:    "prepare_check_in_roster",
+		Cron:    "15 9 9 * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			// The list describes the closed month the partner is billed against,
+			// matching the day-9 sao kê semantics (reporting on the prior period).
+			prevMonth := clock.Now().AddDate(0, -1, 0)
+			forMonth := prevMonth.Format("2006-01")
+
+			file, count, err := projectEmployeeService.ExportAllCheckInRosters(
+				ctx,
+				domain.CheckInConfigurationStatusEnabled,
+				prevMonth,
+			)
+			if err != nil {
+				logger.Error("Failed to export check-in roster", "month", forMonth, "error", err)
+				return
+			}
+			if count == 0 {
+				logger.Info("No self check-in employees enrolled, skipping roster preparation", "month", forMonth)
+				return
+			}
+			defer func() { _ = file.Close() }()
+
+			buffer, err := file.WriteToBuffer()
+			if err != nil {
+				logger.Error("Failed to serialize check-in roster workbook", "month", forMonth, "error", err)
+				return
+			}
+			filename := fmt.Sprintf("danh_sach_tu_cham_cong_%s.xlsx", forMonth)
+			assetRecord, err := assetSvc.UploadAssetFromBytes(
+				ctx,
+				buffer.Bytes(),
+				filename,
+				domain.UploadTypeCheckInRoster,
+				constants.SystemUserID,
+			)
+			if err != nil {
+				logger.Error("Failed to store check-in roster asset", "month", forMonth, "error", err)
+				return
+			}
+
+			title := "Danh sách tự chấm công đã sẵn sàng"
+			message := fmt.Sprintf(
+				"Danh sách nhân viên tự chấm công tháng %s (%d người) đã được tạo. Tải file tại Tổng quan và gửi cho đối tác.",
+				forMonth, count,
+			)
+			if err := notificationService.NotifyUsersByRole(
+				ctx,
+				domain.RoleAdmin,
+				domain.NotificationTypeCheckInRoster,
+				title,
+				message,
+			); err != nil {
+				logger.Error("Check-in roster notification failed", "month", forMonth, "asset_id", assetRecord.ID, "error", err)
+				return
+			}
+			logger.Info("Check-in roster prepared", "month", forMonth, "employees", count, "asset_id", assetRecord.ID)
+		},
+	})
+
+	// 10c. Check-in roster retention cleanup - daily at 09:40
+	// The roster workbook is a month-scoped billing helper, not an archive:
+	// delete checkin_roster assets older than 7 days (physical file + row) and
+	// mark any still-unread roster notifications read, so the Tổng quan banner
+	// can never dangle over a file that no longer exists.
+	s.AddJob(scheduler.Job{
+		Name:    "cleanup_check_in_roster",
+		Cron:    "40 9 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			cutoff := clock.Now().AddDate(0, 0, -checkInRosterRetentionDays)
+
+			deleted, err := assetSvc.CleanupExpiredByUploadType(ctx, domain.UploadTypeCheckInRoster, cutoff)
+			if err != nil {
+				logger.Error("Failed to clean up expired check-in roster assets", "error", err)
+				return
+			}
+			if deleted == 0 {
+				return
+			}
+
+			markedRead, err := notificationService.MarkTypeAsRead(ctx, domain.NotificationTypeCheckInRoster)
+			if err != nil {
+				logger.Error("Check-in roster assets cleaned but notification sweep failed",
+					"deleted", deleted, "error", err)
+				return
+			}
+			logger.Info("Expired check-in roster assets cleaned",
+				"deleted", deleted, "notifications_marked_read", markedRead,
+				"retention_days", checkInRosterRetentionDays)
+		},
+	})
+
+	// 11. Loan repayment reminder - daily at 9:00 AM, on the due date itself
+	// (same-day only; never sent in advance).
+	s.AddJob(scheduler.Job{
+		Name:    "loan_repayment_reminder",
+		Cron:    "0 9 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			count, err := loanRepaymentReminderService.Send(ctx, clock.Now())
+			if err != nil {
+				logger.Error("Failed to send loan repayment reminders", "schedule_count", count, "error", err)
+				return
+			}
+			if count == 0 {
+				logger.Info("No loan repayments due today, skipping reminder")
+				return
+			}
+			logger.Info("Loan repayment reminders sent", "schedule_count", count)
+		},
+	})
+
+	// 12. Zalo OA token renewal - daily. Access tokens live ~24h and the
+	// refresh_token is single-use: each exchange rotates the chain. Sends
+	// refresh reactively, but on a day with zero ZNS traffic the chain would
+	// go stale; this job advances it unconditionally. Skips silently when
+	// Zalo is not connected yet so the status panel stays clean pre-setup.
+	s.AddJob(scheduler.Job{
+		Name:    "zalo_token_renew",
+		Cron:    "0 7 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			creds, err := zaloConnectService.Get(ctx)
+			if err != nil {
+				logger.Error("Failed to read Zalo credentials for token renewal", "error", err)
+				return
+			}
+			if !creds.HasTokens() {
+				logger.Info("Zalo not connected, skipping token renewal")
+				return
+			}
+			if err := zaloConnectService.RefreshNow(ctx); err != nil {
+				logger.Error("Failed to renew Zalo token", "error", err)
+				return
+			}
+			logger.Info("Zalo token renewed")
+		},
+	})
+
+	// 13. Reconcile the denormalised project financial totals - daily.
+	//
+	// The four projects.*_vnd totals have no HTTP writer: the bulk transfer
+	// worker projects settled timesheets onto them, but it runs outside the
+	// payment transaction and only logs its per-project failures, so a lost
+	// write leaves a total stale with nothing to correct it. This job re-derives
+	// every project's totals from its timesheets, which is a pure function of
+	// those rows and therefore idempotent: a daily run turns silent drift into a
+	// bounded, self-healing lag instead of a manual backfill.
+	s.AddJob(scheduler.Job{
+		Name:    "recompute_project_aggregates",
+		Cron:    "0 3 * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			logger.Info("Starting project financial aggregate reconciliation")
+			result, err := aggregateRecomputeService.RecomputeAllProjects(ctx)
+			if err != nil {
+				// A failed run either listed no projects (result is nil) or
+				// recomputed some and accumulated the rest; log both shapes.
+				if result == nil {
+					logger.Error("Failed to reconcile project financial aggregates", "error", err)
+					return
+				}
+				logger.Error("Project financial aggregate reconciliation reported failures",
+					"error", err,
+					"recomputed", result.Recomputed,
+					"failed", result.Failed)
+				return
+			}
+			logger.Info("Project financial aggregates reconciled",
+				"recomputed", result.Recomputed)
+		},
+	})
+
+	// 14. Wallet low-balance alert - every 5 minutes, same cadence as the
+	// provider balance sync. Notifies all admins once per downward crossing
+	// of the configured threshold (wallet_balance_alert_threshold_vnd); the
+	// persisted crossing marker re-arms after recovery so restarts never
+	// resend while the balance stays low.
+	s.AddJob(scheduler.Job{
+		Name:    "wallet_balance_alert",
+		Cron:    "*/5 * * * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			if _, err := walletBalanceAlertService.Check(ctx); err != nil {
+				logger.Error("Wallet balance alert check failed", "error", err)
+			}
+		},
+	})
+
+	// 15. VFIC funding reminder - day 10, day 17, and the last day of the month
+	// at 09:00. Pushes "Nhắc nhở VFIC gửi tiền" to all admins. robfig/cron has
+	// no "last day" token, so the spec fires on 10, 17 and 28–31 (28–31 always
+	// covers any month's last day); the tail is filtered here with
+	// IsLastDayOfMonth so only the true last day sends — exactly 3 reminders/month.
+	s.AddJob(scheduler.Job{
+		Name:    "vfic_funding_reminder",
+		Cron:    "0 9 10,17,28-31 * *",
+		Enabled: true,
+		Handler: func() {
+			ctx := context.Background()
+			now := clock.Now()
+			day := now.Day()
+			if day != 10 && day != 17 && !scheduler.IsLastDayOfMonth(now) {
+				logger.Info("VFIC funding reminder: not a funding day, skipping", "day", day)
+				return
+			}
+			// Title and message share the same minimal text by design.
+			text := "Nhắc nhở VFIC gửi tiền"
+			if err := notificationService.NotifyUsersByRole(
+				ctx,
+				domain.RoleAdmin,
+				domain.NotificationTypeCustom,
+				text,
+				text,
+			); err != nil {
+				logger.Error("Failed to send VFIC funding reminder", "error", err)
+			}
+		},
+	})
+}

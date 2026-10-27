@@ -105,7 +105,7 @@ class ApiClient {
       (config: InternalAxiosRequestConfig) => {
         if (!API_CONFIG.enabled) {
           return Promise.reject(Object.assign(
-            new Error('The HR API is not integrated in RestPoint yet.'),
+            new Error('Payroll data is not available until RestPoint tenant isolation is enabled for HR.'),
             { code: 'HR_API_DISABLED', status: 503 }
           ));
         }

@@ -2,7 +2,7 @@ import { SearchBar } from '@hr/components/shared/SearchBar';
 import { FilterPill } from '@hr/components/shared/FilterPill';
 import { Project } from '@hr/types/api/project.types';
 import { generateMonthOptions } from '@hr/utils/dateHelpers';
-import { getVietnameseProjectStatus } from '@hr/utils/vietnamese';
+import { getKensynProjectStatus } from '@hr/utils/kenyan';
 import { X } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
 
@@ -50,7 +50,7 @@ export const ProjectFilters = ({
       <SearchBar
         searchTerm={searchTerm}
         onSearchChange={onSearchChange}
-        placeholder="Tìm dự án, khách hàng..."
+        placeholder="Search projects, clients..."
         className="w-52"
       />
 
@@ -60,7 +60,7 @@ export const ProjectFilters = ({
         value={currentStatus}
         onChange={(v) => onStatusChange(v === 'all' ? 'all' : [v as Project['status']])}
         placeholder="Status"
-        options={STATUS_OPTIONS.map(s => ({ value: s, label: getVietnameseProjectStatus(s) }))}
+        options={STATUS_OPTIONS.map(s => ({ value: s, label: getKensynProjectStatus(s) }))}
       />
 
       <FilterPill
@@ -76,7 +76,7 @@ export const ProjectFilters = ({
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-1 px-2 py-1 rounded-md hover:bg-muted/50"
         >
           <X className="h-3 w-3" />
-          Xóa lọc
+          Clear filter
         </button>
       )}
     </div>

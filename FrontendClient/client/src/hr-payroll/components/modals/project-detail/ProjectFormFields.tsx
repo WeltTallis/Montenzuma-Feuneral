@@ -3,7 +3,7 @@ import { Label } from '@hr/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hr/components/ui/select';
 import { Textarea } from '@hr/components/ui/textarea';
 import { Project } from '@hr/types/api/project.types';
-import { getVietnameseProjectStatus } from '@hr/utils/vietnamese';
+import { getKensynProjectStatus } from '@hr/utils/kenyan';
 import { SalaryPeriodFields } from '@hr/components/projects/SalaryPeriodFields';
 import {
   Clock,
@@ -22,17 +22,17 @@ interface ProjectFormFieldsProps {
 }
 
 const projectStatuses = [
-  { value: 'draft', label: getVietnameseProjectStatus('draft'), color: 'bg-muted', icon: Clock },
-  { value: 'active', label: getVietnameseProjectStatus('active'), color: 'bg-green-500', icon: TrendingUp },
-  { value: 'paused', label: getVietnameseProjectStatus('paused'), color: 'bg-orange-500', icon: Pause },
-  { value: 'completed', label: getVietnameseProjectStatus('completed'), color: 'bg-blue-600', icon: CheckCircle },
-  { value: 'cancelled', label: getVietnameseProjectStatus('cancelled'), color: 'bg-red-500', icon: XCircle }
+  { value: 'draft', label: getKensynProjectStatus('draft'), color: 'bg-muted', icon: Clock },
+  { value: 'active', label: getKensynProjectStatus('active'), color: 'bg-green-500', icon: TrendingUp },
+  { value: 'paused', label: getKensynProjectStatus('paused'), color: 'bg-orange-500', icon: Pause },
+  { value: 'completed', label: getKensynProjectStatus('completed'), color: 'bg-blue-600', icon: CheckCircle },
+  { value: 'cancelled', label: getKensynProjectStatus('cancelled'), color: 'bg-red-500', icon: XCircle }
 ];
 
 export function ProjectNameField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
   return (
     <div>
-      <Label htmlFor="name">Tên dự án *</Label>
+      <Label htmlFor="name">Project name *</Label>
       <Input
         id="name"
         value={formData.name || ''}
@@ -48,7 +48,7 @@ export function ProjectNameField({ formData, setFormData, errors, isEditing }: P
 export function ProjectClientField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
   return (
     <div>
-      <Label htmlFor="client_name">Khách hàng *</Label>
+      <Label htmlFor="client_name">Client *</Label>
       <Input
         id="client_name"
         value={formData.client_name || ''}
@@ -123,7 +123,7 @@ export function ProjectEmployeeCountField({ formData, setFormData, errors, isEdi
 export function ProjectBudgetField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
   return (
     <div>
-      <Label htmlFor="budget">Ngân sách</Label>
+      <Label htmlFor="budget">Budget</Label>
       <Input
         id="budget"
         type="number"
@@ -142,7 +142,7 @@ export function ProjectDateFields({ formData, setFormData, errors, isEditing }: 
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
-        <Label htmlFor="start_date">Ngày bắt đầu</Label>
+        <Label htmlFor="start_date">Start date</Label>
         <Input
           id="start_date"
           type="date"
@@ -158,7 +158,7 @@ export function ProjectDateFields({ formData, setFormData, errors, isEditing }: 
       </div>
 
       <div>
-        <Label htmlFor="end_date">Ngày kết thúc</Label>
+        <Label htmlFor="end_date">End date</Label>
         <Input
           id="end_date"
           type="date"
@@ -188,7 +188,7 @@ export function ProjectDescriptionTextarea({ formData, setFormData, isEditing }:
         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
         disabled={!isEditing}
         rows={4}
-        placeholder="Mô tả chi tiết về dự án..."
+        placeholder="Describe the project in detail..."
       />
     </div>
   );

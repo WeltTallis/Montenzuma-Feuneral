@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   baseURL: import.meta.env.VITE_HR_API_BASE_URL ?? '',
-  apiV1: '/api/hr/v1',
+  apiV1: '/api/v1/restpoint/hr/api/v1',
   enabled: false,
   timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 };

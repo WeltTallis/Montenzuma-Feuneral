@@ -87,7 +87,7 @@ export function buildComparisonRows(
 export function buildPendingSummary(state: FeeScheduleFormState): string {
   if (!state.tiers.length) return "—";
   if (state.tiers.length === 1) {
-    return `Phí cố định ${formatPct(state.tiers[0].percentage)}`;
+    return `Fixed fee ${formatPct(state.tiers[0].percentage)}`;
   }
   const parts = state.tiers.map((tier, idx) => {
     if (idx === 0) {
@@ -95,7 +95,7 @@ export function buildPendingSummary(state: FeeScheduleFormState): string {
     }
     return `≥ ${formatVndFull(tier.minAmount)}: ${formatPct(tier.percentage)}`;
   });
-  return `Phân tầng — ${parts.join(" · ")}`;
+  return `Tiered — ${parts.join(" · ")}`;
 }
 
 function formatPct(pct: number): string {
@@ -116,7 +116,7 @@ export function detectUnsafePreview(
   // resolveFeeLocal caps at amount, but the configuration is still wrong.
   const overTier = state.tiers.find((t) => t.percentage >= 100);
   if (overTier) {
-    return "Phí vượt quá khoản rút — kiểm tra lại %";
+    return "Fee exceeds withdrawal amount — check %";
   }
 
   // If min fee exceeds the smallest sample, the floor dominates real-world

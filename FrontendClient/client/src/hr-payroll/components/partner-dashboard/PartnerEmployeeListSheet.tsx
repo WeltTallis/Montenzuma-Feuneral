@@ -8,7 +8,7 @@ import { Button } from '@hr/components/ui/button';
 import { Input } from '@hr/components/ui/input';
 import { X, Phone, Hash, Briefcase, Calendar, DollarSign, UserCheck, UserX, Search } from 'lucide-react';
 import { usePartnerEmployeeList } from '@hr/hooks/api/useDashboard';
-import { normalizeVietnamese } from '@hr/utils/vietnamese';
+import { normalizeKensyn } from '@hr/utils/kenyan';
 import { formatDate, formatFullCurrency as formatVND } from '@hr/utils/formatters';
 import type { PartnerEmployeeListType, PartnerEmployeeDetailItem } from '@hr/types/api/dashboard.types';
 
@@ -21,21 +21,21 @@ const TYPE_CONFIG: Record<PartnerEmployeeListType, {
   badgeClass: string;
 }> = {
   active: {
-    title: 'Nhân viên đang làm việc',
-    emptyText: 'Không có nhân viên nào đang làm việc',
-    badgeLabel: 'Đang làm',
+    title: 'Employees currently working',
+    emptyText: 'No employees currently working',
+    badgeLabel: 'Active',
     badgeClass: 'border-emerald-300 text-emerald-700 bg-emerald-50',
   },
   dropped: {
-    title: 'Nhân viên có thể đã nghỉ',
-    emptyText: 'Không có nhân viên nào nghỉ việc',
-    badgeLabel: 'Nghỉ việc',
+    title: 'Employees who may have resigned',
+    emptyText: 'No employees who resigned',
+    badgeLabel: 'Resigned',
     badgeClass: 'border-rose-300 text-rose-700 bg-rose-50',
   },
   paid: {
-    title: 'Nhân viên được trả lương',
-    emptyText: 'Không có nhân viên nào được trả lương trong kỳ này',
-    badgeLabel: 'Đã trả lương',
+    title: 'Employees paid',
+    emptyText: 'No employees paid this period',
+    badgeLabel: 'Paid',
     badgeClass: 'border-blue-300 text-blue-700 bg-blue-50',
   },
 };
@@ -72,8 +72,8 @@ const EmployeeCard = memo(function EmployeeCard({
           className={`text-xs px-1.5 py-0 h-4 shrink-0 ${item.is_active ? TYPE_CONFIG.active.badgeClass : TYPE_CONFIG.dropped.badgeClass}`}
         >
           {item.is_active
-            ? <><UserCheck className="w-2.5 h-2.5 mr-0.5" />Đang làm</>
-            : <><UserX className="w-2.5 h-2.5 mr-0.5" />Nghỉ</>
+            ? <><UserCheck className="w-2.5 h-2.5 mr-0.5" />Active</>
+            : <><UserX className="w-2.5 h-2.5 mr-0.5" />Resigned</>
           }
         </Badge>
       </div>
@@ -116,12 +116,12 @@ export function PartnerEmployeeListSheet({ type, month, onClose }: PartnerEmploy
 
   const filteredEmployees = useMemo(() => {
     if (!search.trim()) return employees;
-    const q = normalizeVietnamese(search.trim());
+    const q = normalizeKensyn(search.trim());
     return employees.filter((e) =>
-      normalizeVietnamese(e.employee_name).includes(q) ||
+      normalizeKensyn(e.employee_name).includes(q) ||
       (e.mobile && e.mobile.includes(q)) ||
       (e.cccd && e.cccd.includes(q)) ||
-      (e.project_name && normalizeVietnamese(e.project_name).includes(q))
+      (e.project_name && normalizeKensyn(e.project_name).includes(q))
     );
   }, [employees, search]);
 
@@ -159,7 +159,7 @@ export function PartnerEmployeeListSheet({ type, month, onClose }: PartnerEmploy
               <div className="flex items-center gap-2 mt-0.5">
                 {!isLoading && (
                   <span className="text-xs text-muted-foreground">
-                    {search.trim() ? `${filteredEmployees.length}/${data?.total ?? 0}` : (data?.total ?? 0)} nhân viên
+                    {search.trim() ? `${filteredEmployees.length}/${data?.total ?? 0}` : (data?.total ?? 0)} employees
                     {periodLabel && ` · ${periodLabel}`}
                   </span>
                 )}
@@ -181,7 +181,7 @@ export function PartnerEmployeeListSheet({ type, month, onClose }: PartnerEmploy
               <Input
                 value={search}
                 onChange={handleSearchChange}
-                placeholder="Tìm tên, SĐT, CCCD, dự án..."
+                placeholder="Search by name, phone, ID, project..."
                 className="h-8 pl-8 text-xs rounded-lg sm:pl-8"
               />
             </div>
@@ -217,7 +217,7 @@ export function PartnerEmployeeListSheet({ type, month, onClose }: PartnerEmploy
                 }
               </div>
               <p className="text-sm text-muted-foreground">
-                {search.trim() ? 'Không tìm thấy nhân viên phù hợp' : cfg?.emptyText}
+                {search.trim() ? 'No matching employees found' : cfg?.emptyText}
               </p>
             </div>
           ) : (

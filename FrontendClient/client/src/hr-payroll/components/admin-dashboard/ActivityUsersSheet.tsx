@@ -6,7 +6,7 @@ import { Button } from '@hr/components/ui/button';
 import { Skeleton } from '@hr/components/ui/skeleton';
 import { X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { enGB } from 'date-fns/locale';
 import { useActiveEmployeesBySchedule } from '@hr/hooks/api/useDashboard';
 import { EmployeeDetailsSheet } from '@hr/components/employees/details/EmployeeDetailsSheet';
 import { useEmployee, useUpdateEmployee, useDeleteEmployee } from '@hr/hooks/api/useEmployees';
@@ -19,20 +19,20 @@ type Schedule = 'weekly' | 'monthly' | 'flexible';
 
 const SCHEDULE_LABELS: Record<Schedule, string> = {
   weekly: 'Weekly payroll',
-  monthly: 'Lương tháng',
-  flexible: 'Linh hoạt',
+  monthly: 'Monthly payroll',
+  flexible: 'Flexible',
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Quản trị',
+  admin: 'Admin',
   partner: 'Management',
   employee: 'Employees',
 };
 
 const SCHEDULE_BADGE_LABELS: Record<string, string> = {
   weekly: 'Weekly payroll',
-  monthly: 'Lương tháng',
-  flexible: 'Linh hoạt',
+  monthly: 'Monthly payroll',
+  flexible: 'Flexible',
 };
 
 interface ActivityUsersSheetProps {
@@ -106,7 +106,7 @@ export function ActivityUsersSheet({ schedule, month, onClose }: ActivityUsersSh
                 ))}
               </div>
             ) : !users || users.length === 0 ? (
-              <EmptyState title="Không có nhân viên nào đăng nhập" size="sm" className="py-4" />
+              <EmptyState title="No employees logged in" size="sm" className="py-4" />
             ) : (
               <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
                 {users.map((user) => (
@@ -133,7 +133,7 @@ export function ActivityUsersSheet({ schedule, month, onClose }: ActivityUsersSh
                     </div>
                     {user.last_login && (
                       <p className="text-xs text-muted-foreground leading-none">
-                        {format(parseISO(user.last_login), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                        {format(parseISO(user.last_login), 'dd/MM/yyyy HH:mm', { locale: enGB })}
                       </p>
                     )}
                   </button>

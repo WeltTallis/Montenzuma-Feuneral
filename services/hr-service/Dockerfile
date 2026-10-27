@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # ===========================================================================
-# RestPoint HR service — multi-stage production image
+# RestPoint HR service (leave and attendance APIs) — production image
 #
 # Why 4 stages: the legacy single-stage image shipped build tools (python3/
 # make/g++), ALL devDependencies (typescript, nodemon, …), a global tsx, and a
@@ -39,11 +39,14 @@ COPY services/configurations/ ./configurations/
 COPY packages/ ./packages/
 COPY shared/ ./shared/
 COPY services/app-global/ ./services/app-global/
+COPY services/hr-service/package.json ./services/hr-service/package.json
 COPY services/hr-service/server.js ./services/hr-service/server.js
-COPY services/hr-service/leaveController.js ./services/hr-service/leaveController.js
+COPY services/hr-service/leave/leaveController.js ./services/hr-service/leave/leaveController.js
 COPY services/hr-service/leaveRoutes.js ./services/hr-service/leaveRoutes.js
 COPY services/hr-service/migrate-tenant-tables.js ./services/hr-service/migrate-tenant-tables.js
 COPY services/hr-service/run-migrations.js ./services/hr-service/run-migrations.js
+COPY services/hr-service/attendanceRoutes.js ./services/hr-service/attendanceRoutes.js
+COPY services/hr-service/attedance/attendanceSecurity.js ./services/hr-service/attedance/attendanceSecurity.js
 
 # Build shared packages in dependency order (shared-config → shared-logger →
 # shared-utils → shared-services → shared-stamps). Only THIS stage needs the
@@ -77,9 +80,8 @@ COPY services/documents-service/package.json ./services/documents-service/
 COPY services/extra-services/package.json ./services/extra-services/
 COPY services/florist-service/package.json ./services/florist-service/
 COPY services/hearse-service/package.json ./services/hearse-service/
-COPY services/hr-service/package.json ./services/hr-service/
 COPY services/invoice-service/package.json ./services/invoice-service/
-COPY services/leave-service/package.json ./services/leave-service/
+COPY services/hr-service/package.json ./services/hr-service/
 COPY services/socketio-service/package.json ./services/socketio-service/
 COPY services/support-service/package.json ./services/support-service/
 COPY services/tenant-service/package.json ./services/tenant-service/
@@ -111,11 +113,14 @@ COPY --chown=nodejs:nodejs tsconfig.base.json ./
 COPY --chown=nodejs:nodejs shared/ ./shared/
 COPY --chown=nodejs:nodejs services/app-global/ ./services/app-global/
 COPY --chown=nodejs:nodejs services/configurations/ ./configurations/
+COPY --chown=nodejs:nodejs services/hr-service/package.json ./services/hr-service/package.json
 COPY --chown=nodejs:nodejs services/hr-service/server.js ./services/hr-service/server.js
-COPY --chown=nodejs:nodejs services/hr-service/leaveController.js ./services/hr-service/leaveController.js
+COPY --chown=nodejs:nodejs services/hr-service/leave/leaveController.js ./services/hr-service/leave/leaveController.js
 COPY --chown=nodejs:nodejs services/hr-service/leaveRoutes.js ./services/hr-service/leaveRoutes.js
 COPY --chown=nodejs:nodejs services/hr-service/migrate-tenant-tables.js ./services/hr-service/migrate-tenant-tables.js
 COPY --chown=nodejs:nodejs services/hr-service/run-migrations.js ./services/hr-service/run-migrations.js
+COPY --chown=nodejs:nodejs services/hr-service/attendanceRoutes.js ./services/hr-service/attendanceRoutes.js
+COPY --chown=nodejs:nodejs services/hr-service/attedance/attendanceSecurity.js ./services/hr-service/attedance/attendanceSecurity.js
 
 # Writable runtime dirs (empty — tiny layer; uploads/data are bind-mounted
 # over these in compose). Ownership via chown on EMPTY dirs: never chown -R

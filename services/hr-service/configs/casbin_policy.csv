@@ -1,0 +1,243 @@
+# Admin has full access to everything
+p, admin, /api/*, *, allow
+p, admin, /metrics, GET, allow
+
+# Partner specific permissions - restricted access
+p, partner, /api/v1/auth/me, GET, allow
+p, partner, /api/v1/auth/change-password, POST, allow
+
+# Projects - full access
+p, partner, /api/v1/projects, *, allow
+p, partner, /api/v1/projects/*, *, allow
+
+# Users - read only access
+p, partner, /api/v1/users, GET, allow
+p, partner, /api/v1/users/*, GET, allow
+
+# Employees - full access
+p, partner, /api/v1/employees, *, allow
+p, partner, /api/v1/employees/*, *, allow
+
+# Project Employees - full access
+p, partner, /api/v1/project-employees, *, allow
+p, partner, /api/v1/project-employees/*, *, allow
+
+# Timesheets - partner CRUD + read access (admin approval endpoints explicitly denied)
+p, partner, /api/v1/timesheets, GET, allow
+p, partner, /api/v1/timesheets, POST, allow
+# Partner may delete a timesheet by id. The DeleteTimesheet handler enforces
+# role-specific rules: partner can only delete pending_approval or rejected
+# entries, and IsPaid() is rejected first — so approved/paid entries stay
+# protected. :id matches a single segment; edit-requests/* remains deny-protected.
+# Regression: TestPartnerRole_DeleteTimesheet.
+p, partner, /api/v1/timesheets/:id, DELETE, allow
+# Partner may read a timesheet by id (edit-modal detail fetch, delete/update pre-fetch).
+# Read-only; partners obtain ids from their project-scoped list. The single-segment
+# :id does not weaken existing denies (bulk-approve/reject/reset/reset-all/approve-all and
+# edit-requests/* are deny-overridden). The list rule above (/timesheets, GET) does
+# not cover :id under keyMatch2 (no prefix match), so this rule is required.
+p, partner, /api/v1/timesheets/:id, GET, allow
+p, partner, /api/v1/timesheets/summary, GET, allow
+p, partner, /api/v1/timesheets/cash-readiness, GET, allow
+p, partner, /api/v1/timesheets/grouped, GET, allow
+p, partner, /api/v1/timesheets/export, GET, allow
+# Payroll report: partner may export their own (handler allows RolePartner and
+# scopes results to the partner's projects via filterProjectsForPartner).
+# send-email + upload-settlement-result remain admin-only (no partner rule).
+p, partner, /api/v1/timesheets/payroll/report, GET, allow
+p, partner, /api/v1/timesheets/preview, POST, allow
+p, partner, /api/v1/timesheets/export-entries-template, POST, allow
+p, partner, /api/v1/timesheets/upload-entries-excel, POST, allow
+p, partner, /api/v1/timesheets/partner-import, GET, allow
+p, partner, /api/v1/timesheets/partner-import, POST, allow
+p, partner, /api/v1/timesheets/partner-import/*, GET, allow
+p, partner, /api/v1/timesheets/import, POST, allow
+p, partner, /api/v1/timesheets/projects/*, GET, allow
+p, partner, /api/v1/timesheets/*/request-edit, POST, allow
+p, partner, /api/v1/timesheets/*/request-edit-cancel, POST, allow
+# Deny admin-only timesheet endpoints (defense in depth)
+p, partner, /api/v1/timesheets/bulk-approve, *, deny
+p, partner, /api/v1/timesheets/bulk-reject, *, deny
+p, partner, /api/v1/timesheets/reject-unpaid, *, deny
+p, partner, /api/v1/timesheets/bulk-reset, *, deny
+p, partner, /api/v1/timesheets/approve-all, *, deny
+p, partner, /api/v1/timesheets/reset-all, *, deny
+# Edit requests: partner may list their own (handler scopes by RequestedBy);
+# detail and approve/reject remain admin-only.
+p, partner, /api/v1/timesheets/edit-requests, GET, allow
+p, partner, /api/v1/timesheets/edit-requests/*, *, deny
+
+# Payrates - CRUD access (approval endpoints omitted)
+p, partner, /api/v1/payrates, GET, allow
+p, partner, /api/v1/payrates, POST, allow
+p, partner, /api/v1/payrates/validate, POST, allow
+p, partner, /api/v1/payrates/*, GET, allow
+p, partner, /api/v1/payrates/*, PUT, allow
+p, partner, /api/v1/payrates/*, POST, allow
+
+# Banks - read access only
+p, partner, /api/v1/banks, GET, allow
+p, partner, /api/v1/banks/*, GET, allow
+
+# Dashboard - read access
+p, partner, /api/v1/dashboard/*, GET, allow
+
+# Payrolls - limited access
+p, partner, /api/v1/payrolls/histories, GET, allow
+p, partner, /api/v1/payrolls/bank-transfer-histories, GET, allow
+p, partner, /api/v1/payrolls/histories/export, POST, allow
+p, partner, /api/v1/payrolls/bulk-transfer-template, GET, allow
+
+# Settings - read access only
+p, partner, /api/v1/settings, GET, allow
+p, partner, /api/v1/settings/*, GET, allow
+
+# adv_partner role - external partner for advance payment pipeline.
+# Can import FlexPay data, view/export sao ke and reconciliation.
+# Financial actions (cancel, settle, upload-result, send-email) remain admin-only.
+p, adv_partner, /api/v1/auth/me, GET, allow
+p, adv_partner, /api/v1/auth/logout, POST, allow
+p, adv_partner, /api/v1/auth/change-password, POST, allow
+
+# Advance payment reads
+p, adv_partner, /api/v1/advance-payments, GET, allow
+p, adv_partner, /api/v1/advance-payments/summary, GET, allow
+p, adv_partner, /api/v1/advance-payments/available-months, GET, allow
+p, adv_partner, /api/v1/advance-payments/employees, GET, allow
+p, adv_partner, /api/v1/advance-payments/employees/export, GET, allow
+p, adv_partner, /api/v1/advance-payments/export, GET, allow
+p, adv_partner, /api/v1/advance-payments/reconciliation/export, GET, allow
+
+# Advance payment imports
+p, adv_partner, /api/v1/advance-payments/import, POST, allow
+p, adv_partner, /api/v1/advance-payments/import/*, GET, allow
+p, adv_partner, /api/v1/advance-payments/import-employee-list, POST, allow
+
+# Employees - read access (needed by advance payment UI)
+p, adv_partner, /api/v1/employees, GET, allow
+p, adv_partner, /api/v1/employees/*, GET, allow
+
+# Check-in configuration workspace. Project-specific middleware still enforces
+# per-project read/modify access for every route carrying a project id.
+p, adv_partner, /api/v1/projects/checkin-configurable, GET, allow
+p, adv_partner, /api/v1/projects/:id/employees/checkin-configuration, GET, allow
+p, adv_partner, /api/v1/projects/:id/employees/checkin-configuration/export, GET, allow
+p, adv_partner, /api/v1/projects/:id/employees/:employeeId/checkin-enabled, PATCH, allow
+p, adv_partner, /api/v1/projects/:id/employees/checkin-enabled/disable-inactive, PATCH, allow
+p, adv_partner, /api/v1/projects/:id/employees/checkin-enabled/disable-pending, PATCH, allow
+
+# Per-employee advance request kill switch ("tạm ngừng ứng lương").
+# Same ownership enforcement as the check-in toggles via CanUserModifyProject.
+p, adv_partner, /api/v1/projects/:id/employees/:employeeId/advance-request-enabled, PATCH, allow
+
+# Users - read only (broad PUT removed: adv_partner edits route through the
+# scoped /adv-partner/users/* handler, which enforces project-scope ownership).
+p, adv_partner, /api/v1/users, GET, allow
+p, adv_partner, /api/v1/users/*, GET, allow
+
+# Bank reference data for the existing scoped user editor. Bank writes remain admin-only.
+p, adv_partner, /api/v1/banks, GET, allow
+
+# Adv partner user management
+p, adv_partner, /api/v1/adv-partner/users/*, *, allow
+
+# Accountant role - internal accounting workspace: duyệt công (approve
+# timesheets) and the weekly bulk-transfer / sao ke pipeline. Read-only
+# reference data for the export dialogs. No settings, users, wallet,
+# bulk-reject, edit-requests, or auto bulk transfer (OTP-gated admin flow).
+p, accountant, /api/v1/auth/me, GET, allow
+p, accountant, /api/v1/auth/logout, POST, allow
+p, accountant, /api/v1/auth/change-password, POST, allow
+# Timesheets - list/detail/summary + approve only (no reject/reset/edit)
+p, accountant, /api/v1/timesheets, GET, allow
+p, accountant, /api/v1/timesheets/:id, GET, allow
+p, accountant, /api/v1/timesheets/summary, GET, allow
+p, accountant, /api/v1/timesheets/grouped, GET, allow
+p, accountant, /api/v1/timesheets/bulk-approve, POST, allow
+# Sao ke export + bulk transfer file pipeline
+p, accountant, /api/v1/timesheets/payroll/report, GET, allow
+p, accountant, /api/v1/payrolls/bulk-transfer-template, GET, allow
+p, accountant, /api/v1/payrolls/export-bulk-transfer, POST, allow
+p, accountant, /api/v1/payrolls/bulk-transfer-result, POST, allow
+p, accountant, /api/v1/payrolls/bulk-transfer-upload-histories, GET, allow
+p, accountant, /api/v1/payrolls/bulk-transfer-upload-histories/*, GET, allow
+# Reference data for export dialogs
+p, accountant, /api/v1/projects, GET, allow
+p, accountant, /api/v1/employees, GET, allow
+p, accountant, /api/v1/employees/*, GET, allow
+# Deny carve-outs: keyMatch2 widens ":id" to any single-segment path and
+# "/*" to any deeper path, so the rows above would otherwise also grant the
+# bulk data exports and edit-request/import reads this role must not have.
+p, accountant, /api/v1/timesheets/edit-requests, GET, deny
+p, accountant, /api/v1/timesheets/export, GET, deny
+p, accountant, /api/v1/timesheets/cash-readiness, GET, deny
+p, accountant, /api/v1/timesheets/partner-import, GET, deny
+p, accountant, /api/v1/employees/export, GET, deny
+p, accountant, /api/v1/employees/*/export, GET, deny
+
+# Employee role - self-service only
+p, employee, /api/v1/me, GET, allow
+p, employee, /api/v1/me, PUT, allow
+p, employee, /api/v1/me/*, PUT, allow
+p, employee, /api/v1/me/*, GET, allow
+p, employee, /api/v1/me/advance-payment, GET, allow
+p, employee, /api/v1/me/advance-payment/request, POST, allow
+p, employee, /api/v1/me/advance-payment/request/*, POST, allow
+p, employee, /api/v1/me/advance-payment/history, GET, allow
+p, employee, /api/v1/me/advance-payment/calculate-fee, POST, allow
+p, employee, /api/v1/me/check-in-advance, GET, allow
+p, employee, /api/v1/me/check-in-advance/request, POST, allow
+p, employee, /api/v1/me/ad-banner/*, POST, allow
+p, employee, /api/v1/auth/me, GET, allow
+p, employee, /api/v1/auth/change-password, POST, allow
+p, employee, /api/v1/auth/logout, POST, allow
+p, employee, /api/v1/settings, GET, allow
+p, employee, /api/v1/settings/*, GET, allow
+
+# Employee role - mobile attendance (self-service check-in/out)
+p, employee, /api/v1/mobile/attendance/today, GET, allow
+p, employee, /api/v1/mobile/attendance/check-in, POST, allow
+p, employee, /api/v1/mobile/attendance/check-out, POST, allow
+p, employee, /api/v1/mobile/attendance/cancel-current, POST, allow
+p, employee, /api/v1/mobile/attendance/attempt-log, POST, allow
+p, employee, /api/v1/mobile/attendance/history, GET, allow
+
+# All authenticated users - common notifications access
+p, *, /api/v1/notifications, GET, allow
+p, *, /api/v1/notifications/unread, GET, allow
+p, *, /api/v1/notifications/unread/count, GET, allow
+p, *, /api/v1/notifications/*/read, PUT, allow
+p, *, /api/v1/notifications/read-all, PUT, allow
+
+# Push notifications - all authenticated users can subscribe/unsubscribe
+p, *, /api/v1/push/subscribe, POST, allow
+p, *, /api/v1/push/unsubscribe, POST, allow
+
+# Wallet Bulk Transfer Pipeline — admin-only.
+# The /wallet/bulk-transfer/* routes move money (OnePay API calls) and
+# must never be reachable by partner or employee roles. The admin role
+# inherits allow via its wildcard policy; this explicit deny is defense-
+# in-depth so a future wildcard grant can't accidentally expose these.
+p, partner, /api/v1/wallet/bulk-transfer/*, *, deny
+p, adv_partner, /api/v1/wallet/bulk-transfer/*, *, deny
+p, employee, /api/v1/wallet/bulk-transfer/*, *, deny
+
+# Approval-request engine. Partner: list-own + file (void_timesheet only —
+# re-enforced in the service per-type allowlist). Decision paths carry an
+# explicit partner deny (keyMatch2 defense in depth, bulk-transfer pattern).
+p, partner, /api/v1/approvals, GET, allow
+p, partner, /api/v1/approvals, POST, allow
+p, partner, /api/v1/approvals/*, *, deny
+p, adv_partner, /api/v1/approvals, *, deny
+p, adv_partner, /api/v1/approvals/*, *, deny
+p, accountant, /api/v1/approvals, *, deny
+p, accountant, /api/v1/approvals/*, *, deny
+p, employee, /api/v1/approvals, *, deny
+p, employee, /api/v1/approvals/*, *, deny
+
+# NOTE — pk_ops_* machine keys (payroll-ops-mcp): there is deliberately NO
+# separate Casbin role. An ops key executes as its creating admin (role
+# resolved at request time, deactivated creator disables the key), so the
+# admin policy above applies verbatim. The read_only/read_write breadth gate
+# lives in the auth middleware (verb gate) — scope is access, never an RBAC
+# bypass; business rules and the approval engine apply unchanged.

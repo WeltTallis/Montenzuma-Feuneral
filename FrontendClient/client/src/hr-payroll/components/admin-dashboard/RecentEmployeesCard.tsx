@@ -4,7 +4,7 @@ import { Button } from '@hr/components/ui/button';
 import { UserAvatar } from '@hr/components/ui/user-avatar';
 import { Loader2 } from 'lucide-react';
 import type { NewEmployee } from '@hr/types/api/dashboard.types';
-import { formatVietnameseRelativeTime } from '@hr/utils/vietnamese';
+import { formatKensynRelativeTime } from '@hr/utils/kenyan';
 
 interface RecentEmployeesCardProps {
   employees: NewEmployee[];
@@ -58,7 +58,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
     [onEmployeeClick]
   );
 
-  const weekLabel = weeks === 1 ? '1 tuần gần đây' : `${weeks} tuần gần đây`;
+  const weekLabel = weeks === 1 ? '1 week recently' : `${weeks} weeks recently`;
 
   return (
     <Card className="shadow-none transition-colors">
@@ -71,7 +71,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
 
         {!isLoading && employeesArray.length === 0 && (
           <p className="text-center text-muted-foreground py-8 text-sm">
-            Không có nhân viên mới trong {weekLabel}
+            No new employees in {weekLabel}
           </p>
         )}
 
@@ -99,7 +99,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
                       {employee.fullname}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {formatVietnameseRelativeTime(employee.created_at)}
+                      {formatKensynRelativeTime(employee.created_at)}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {employee.created_by_name}
@@ -116,7 +116,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
 
             <div className="mt-2 flex flex-wrap items-center justify-between gap-1 border-t pt-2">
               <p className="text-xs text-muted-foreground">
-                {employeesArray.length} nhân viên
+                {employeesArray.length} employees
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {hasMore && (
@@ -125,7 +125,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
                     onClick={() => setShowAll(prev => !prev)}
                     className="min-h-11 rounded-lg text-xs font-semibold text-primary active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    {showAll ? 'Thu gọn' : `Xem tất cả (${employeesArray.length})`}
+                    {showAll ? 'Collapse' : `View all (${employeesArray.length})`}
                   </button>
                 )}
                 {onLoadMore && (
@@ -142,7 +142,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
                         Loading...
                       </>
                     ) : (
-                      `Xem ${weeks + 1} tuần gần đây`
+                      `View ${weeks + 1} weeks recently`
                     )}
                   </Button>
                 )}

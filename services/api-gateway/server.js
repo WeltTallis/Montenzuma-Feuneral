@@ -104,6 +104,7 @@ const DOCKER_SERVICE_DEFAULTS = {
   extra: 'http://restpoint_extra_services:5000',
   hearse: 'http://restpoint_hearse_service:5000',
   leave: 'http://restpoint_hr_service:5000',
+  hrPayroll: 'http://restpoint_hr_payroll_api:8080',
   support: 'http://restpoint_support_service:5000',
   // Florist service IS a container now (services/florist-service/Dockerfile,
   // container restpoint_florist_service on the restpoint_network, internal port
@@ -146,6 +147,7 @@ const HOST_SERVICE_DEFAULTS = {
   scanner: 'http://127.0.0.1:2024',
   hearse: 'http://127.0.0.1:5023',
   leave: 'http://127.0.0.1:5017',
+  hrPayroll: 'http://127.0.0.1:5080',
   support: 'http://127.0.0.1:8111',
   florist: 'http://127.0.0.1:7070',
   store: 'http://127.0.0.1:7071',
@@ -400,6 +402,7 @@ const SERVICE_URLS = {
   extra: resolveServiceUrl('EXTRA_SERVICES_URL', 'extra'),
   hearse: resolveServiceUrl('HEARSE_SERVICE_URL', 'hearse'),
   leave: resolveServiceUrl('LEAVE_SERVICE_URL', 'leave'),
+  hrPayroll: resolveServiceUrl('HR_PAYROLL_SERVICE_URL', 'hrPayroll'),
   support: resolveServiceUrl('SUPPORT_SERVICE_URL', 'support'),
   florist: resolveServiceUrl('FLORIST_SERVICE_URL', 'florist'),
   store: resolveServiceUrl('STORE_SERVICE_URL', 'store'),
@@ -768,6 +771,8 @@ const SERVICE_ROUTES = {
   'notifications': SERVICE_URLS.notification,
   'edocuments': SERVICE_URLS.edocuments,
   'leaves': SERVICE_URLS.leave,
+  'attendance': SERVICE_URLS.leave,
+  'hr': SERVICE_URLS.hrPayroll,
   'analytics': SERVICE_URLS.analytics,
   // Amani Cover policies and claims. The two PUBLIC write endpoints
   // (/insurance/applications, /insurance/claims) are proxied here unauthenticated
@@ -1019,6 +1024,18 @@ app.use('/api/v1/restpoint', checkServiceAvailability, (req, res, next) => {
   }
 
   let rewrittenUrl = req.url;
+  if (firstSegment === 'hr') {
+    const nativePath = req.url.slice('/hr'.length) || '/';
+    if (/^\/api\/v1\/auth(?:\/|$)/.test(nativePath)) {
+      return res.status(403).json({
+        success: false,
+        message: 'HR payroll uses RestPoint authentication; payroll-service login is disabled.',
+      });
+    }
+    rewrittenUrl = nativePath.startsWith('/api/v1/') || nativePath === '/api/v1'
+      ? nativePath
+      : `/api/v1${nativePath === '/' ? '' : nativePath}`;
+  }
   // Insurance payment creation, callbacks, and status checks retain their native /insurance prefix.
   if (firstSegment === 'insurance' && pathParts[1] === 'payments') {
     rewrittenUrl = req.url;

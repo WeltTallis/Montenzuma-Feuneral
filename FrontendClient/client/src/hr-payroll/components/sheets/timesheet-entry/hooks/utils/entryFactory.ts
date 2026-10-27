@@ -1,5 +1,5 @@
 import type { Employee } from '@hr/types/api/employee.types';
-import { findPreferredDayType } from '@hr/utils/vietnamese';
+import { findPreferredDayType } from '@hr/utils/kenyan';
 import { PREFERRED_DAY_TYPES } from '@hr/constants/timesheetConstants';
 import { generateId, getEmployeePosition } from '@hr/utils/timesheetTransformers';
 import { isOffDay } from '@hr/components/projects/OffDaysPicker';

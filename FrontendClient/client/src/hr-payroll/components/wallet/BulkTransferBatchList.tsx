@@ -25,7 +25,7 @@ import {
 } from '@hr/components/ui/sheet';
 import { useWalletBulkTransferBatches } from '@hr/hooks/api/useWalletBulkTransfer';
 import { BulkTransferProgress } from '@hr/components/wallet/BulkTransferProgress';
-import { formatVietnameseDateTime } from '@hr/utils/vietnamese';
+import { formatKensynDateTime } from '@hr/utils/kenyan';
 import { formatCurrency } from '@hr/utils/formatters';
 import {
   batchStatusToVietnamese,
@@ -234,10 +234,10 @@ const BatchCard = memo(function BatchCard({ batch, onClick }: BatchCardProps) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground" title={batch.filename}>
-            {batch.filename || `Lô #${batch.id}`}
+            {batch.filename || `Batch #${batch.id}`}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatVietnameseDateTime(batch.created_at)}
+            {formatKensynDateTime(batch.created_at)}
           </p>
         </div>
         <Badge className={batchStatusBadgeClass(batch.status)}>
@@ -246,7 +246,7 @@ const BatchCard = memo(function BatchCard({ batch, onClick }: BatchCardProps) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-        <Counter label="Tổng" value={batch.total_count} tone="default" />
+        <Counter label="Total" value={batch.total_count} tone="default" />
         <Counter label="Successful" value={batch.success_count} tone="success" />
         <Counter label="Failed" value={batch.failed_count} tone="failed" />
         {processing > 0 && (
@@ -299,8 +299,8 @@ function Counter({ label, value, tone }: CounterProps) {
 function EmptyState() {
   return (
     <SharedEmptyState
-      title="Chưa có lô chuyển tiền nào"
-      description="Tải lên file Yêu cầu chuyển tiền (.xlsx) từ Bảng công để tạo lô đầu tiên."
+      title="No bulk transfer batches yet"
+      description="Upload a payment request file (.xlsx) from the Timesheet to create the first batch."
       size="sm"
       className="rounded-xl border border-dashed border-border/60 bg-muted/20 px-4"
     />

@@ -17,9 +17,9 @@ export function copyRatesFromPosition(
 }
 
 /**
- * Parse Vietnamese number format (remove dots and commas, parse as integer)
+ * Parse Kensyn number format (remove dots and commas, parse as integer)
  */
-export function parseVietnameseCurrency(value: string): number {
+export function parseKensynCurrency(value: string): number {
   const cleanValue = value.replace(/[^\d]/g, '');
   return cleanValue ? parseInt(cleanValue, 10) : 0;
 }

@@ -124,7 +124,7 @@ export function validateFormState(
   state: FeeScheduleFormState,
 ): FormValidationError | null {
   if (!state.effectiveDate) {
-    return "Vui lòng chọn ngày hiệu lực";
+    return "Please select an effective date";
   }
   if (state.effectiveDate < todayISO()) {
     return "Ngày hiệu lực phải là hôm nay hoặc tương lai";
@@ -214,14 +214,14 @@ export function computeFieldWarnings(
 
   state.tiers.forEach((tier, idx) => {
     if (tier.percentage > 0 && tier.percentage < 0.5) {
-      warnings.tierPercentage[idx] = "Tỷ lệ rất thấp — có chắc không?";
+      warnings.tierPercentage[idx] = "Rate very low — are you sure?";
     } else if (tier.percentage > 10) {
-      warnings.tierPercentage[idx] = "Tỷ lệ rất cao — kiểm tra lại";
+      warnings.tierPercentage[idx] = "Rate very high — please review";
     }
   });
 
   if (state.minFeeVnd > 100_000) {
-    warnings.minFee = "Phí tối thiểu khá cao — kiểm tra lại";
+    warnings.minFee = "Minimum fee quite high — please review";
   }
 
   return warnings;
@@ -242,18 +242,18 @@ export function summarizeBlockingIssues(
   const issues: string[] = [];
   const errors = computeFieldErrors(state);
   if (errors.effectiveDate) {
-    issues.push(`Ngày hiệu lực: ${errors.effectiveDate}`);
+    issues.push(`Effective date: ${errors.effectiveDate}`);
   }
   if (errors.minFee) {
-    issues.push(`Phí tối thiểu: ${errors.minFee}`);
+    issues.push(`Minimum fee: ${errors.minFee}`);
   }
   const pctErrIdxs = Object.keys(errors.tierPercentage);
   if (pctErrIdxs.length > 0) {
-    issues.push(`Phần trăm bậc ${pctErrIdxs.map((i) => Number(i) + 1).join(", ")}: sai khoảng`);
+    issues.push(`Tier % ${pctErrIdxs.map((i) => Number(i) + 1).join(", ")}: out of range`);
   }
   const minErrIdxs = Object.keys(errors.tierMinAmount);
   if (minErrIdxs.length > 0) {
-    issues.push(`Mức bậc ${minErrIdxs.map((i) => Number(i) + 1).join(", ")}: phải tăng dần`);
+    issues.push(`Tier amounts ${minErrIdxs.map((i) => Number(i) + 1).join(", ")}: must increase`);
   }
   return issues;
 }

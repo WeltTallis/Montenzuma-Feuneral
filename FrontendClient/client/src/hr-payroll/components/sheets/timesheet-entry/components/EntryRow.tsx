@@ -4,7 +4,7 @@ import { TableCell, TableRow } from '@hr/components/ui/table';
 import { AlertTriangle, Trash2, Undo2 } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
 import type { TimesheetEntry } from '../types/multi-timesheet.types';
-import { findPreferredDayType } from '@hr/utils/vietnamese';
+import { findPreferredDayType } from '@hr/utils/kenyan';
 import { handleNumericInputKeyDown } from '@hr/utils/numericInput';
 import { hasEntryChangedFromOriginal } from '../hooks/utils/entryChange';
 import { formatCurrency as formatVND } from '@hr/utils/formatters';

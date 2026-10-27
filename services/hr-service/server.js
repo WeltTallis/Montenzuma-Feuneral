@@ -198,6 +198,9 @@ app.use(async (req, res, next) => {
 const leaveRoutes = require('./leaveRoutes');
 app.use('/leaves', leaveRoutes);
 
+const attendanceRoutes = require('./attendanceRoutes');
+app.use('/attendance', attendanceRoutes);
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'hr-service', timestamp: new Date().toISOString() });

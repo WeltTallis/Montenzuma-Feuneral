@@ -1,0 +1,600 @@
+package persistence
+
+import (
+	"context"
+	"time"
+
+	"api-server/internal/domain"
+	"api-server/internal/infra/persistence/query_builders"
+)
+
+func (r *EmployeeRepository) List(ctx context.Context, filters domain.EmployeeFilters) ([]*domain.Employee, error) {
+	var employees []*domain.Employee
+	query := r.queryBuilder.BuildListQuery(filters)
+
+	err := query.Find(&employees).Error
+	return employees, err
+}
+
+// ListWithProjects returns employees with their current active project information
+func (r *EmployeeRepository) ListWithProjects(ctx context.Context, filters domain.EmployeeFilters) ([]*domain.EmployeeWithProject, error) {
+	// Get employees using the query builder
+	employeesQuery := r.projectQueryBuilder.BuildListWithProjectsQuery(filters)
+	var employees []*domain.Employee
+	err := employeesQuery.Find(&employees).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if len(employees) == 0 {
+		return []*domain.EmployeeWithProject{}, nil
+	}
+
+	// Extract employee IDs for project lookup
+	employeeIDs := make([]uint, len(employees))
+	for i, emp := range employees {
+		employeeIDs[i] = emp.ID
+	}
+
+	// Get project assignments
+	assignments, err := r.projectQueryBuilder.FetchProjectAssignments(ctx, employeeIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Map to EmployeeWithProject
+	return r.projectQueryBuilder.MapToEmployeeWithProject(employees, assignments), nil
+}
+
+// ListAccessibleIDs returns IDs of all employees accessible to a user via the
+// same access rules as ApplyAccessControl (created by them, shared via
+// employee_users, or assigned to their projects). Used by the global-pool list
+// to annotate rows with is_accessible.
+func (r *EmployeeRepository) ListAccessibleIDs(ctx context.Context, userID uint) ([]uint, error) {
+	accessFilters := domain.EmployeeFilters{
+		AccessibleBy: &userID,
+		Limit:        10000,
+	}
+	// Reuse the exact ApplyAccessControl semantics: same query shape, IDs only.
+	var ids []uint
+	err := r.queryBuilder.BuildListQuery(accessFilters).
+		Select("employees.id").
+		Pluck("employees.id", &ids).Error
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+// ListWithAllProjects returns employees with all their current active projects
+func (r *EmployeeRepository) ListWithAllProjects(ctx context.Context, filters domain.EmployeeFilters) ([]*domain.EmployeeWithProjects, error) {
+	// Get employees using the query builder
+	employeesQuery := r.projectQueryBuilder.BuildListWithAllProjectsQuery(filters)
+	var employees []*domain.Employee
+	err := employeesQuery.Find(&employees).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if len(employees) == 0 {
+		return []*domain.EmployeeWithProjects{}, nil
+	}
+
+	// Extract employee IDs for project lookup
+	employeeIDs := make([]uint, len(employees))
+	for i, emp := range employees {
+		employeeIDs[i] = emp.ID
+	}
+
+	// Get project assignments with payment info
+	assignments, err := r.projectQueryBuilder.FetchProjectAssignmentsWithPayment(ctx, employeeIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Map to EmployeeWithProjects
+	return r.projectQueryBuilder.MapToEmployeeWithProjects(employees, assignments), nil
+}
+
+// GetEmployeesWithMissingBankDetails returns employees with missing banking information
+func (r *EmployeeRepository) GetEmployeesWithMissingBankDetails(ctx context.Context, filters domain.EmployeeFilters) ([]*domain.EmployeeWithProjects, error) {
+	// Get employees with missing bank details
+	employeesQuery := r.projectQueryBuilder.BuildMissingBankDetailsQuery(filters)
+	var employees []*domain.Employee
+	err := employeesQuery.Find(&employees).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if len(employees) == 0 {
+		return []*domain.EmployeeWithProjects{}, nil
+	}
+
+	// Extract employee IDs for project lookup
+	employeeIDs := make([]uint, len(employees))
+	for i, emp := range employees {
+		employeeIDs[i] = emp.ID
+	}
+
+	// Get project assignments
+	assignments, err := r.projectQueryBuilder.FetchProjectAssignments(ctx, employeeIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to EmployeeWithProjects format
+	return r.mapEmployeesWithProjects(employees, assignments), nil
+}
+
+// GetDuplicateIdentities lists phone numbers and CCCDs carried by more than one
+// non-deleted employee record.
+//
+// Only rows whose value actually collides are returned, and empty strings are
+// excluded: many legacy employee rows share a blank mobile, and a blank is never
+// a login identifier (identity.EmployeesByMobile skips empty candidates).
+func (r *EmployeeRepository) GetDuplicateIdentities(ctx context.Context) ([]*domain.DuplicateIdentityGroup, error) {
+	type row struct {
+		Field      string
+		Value      string
+		EmployeeID uint
+		UserID     *uint
+	}
+
+	collect := func(field string) ([]row, error) {
+		var rows []row
+		err := r.DB.WithContext(ctx).
+			Model(&domain.Employee{}).
+			Select(field+" AS value, id AS employee_id, user_id").
+			Where("deleted_at IS NULL").
+			Where(field+" IS NOT NULL AND "+field+" <> ''").
+			Where(field+" IN (?)",
+				r.DB.Model(&domain.Employee{}).
+					Select(field).
+					Where("deleted_at IS NULL").
+					Where(field+" IS NOT NULL AND "+field+" <> ''").
+					Group(field).
+					Having("COUNT(*) > 1"),
+			).
+			Order(field + " ASC, id ASC").
+			Scan(&rows).Error
+		if err != nil {
+			return nil, err
+		}
+		for i := range rows {
+			rows[i].Field = field
+		}
+		return rows, nil
+	}
+
+	mobileRows, err := collect("mobile")
+	if err != nil {
+		return nil, err
+	}
+	cccdRows, err := collect("cccd")
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]*domain.DuplicateIdentityGroup, 0)
+	index := make(map[string]*domain.DuplicateIdentityGroup)
+	for _, rw := range append(mobileRows, cccdRows...) {
+		key := rw.Field + "\x00" + rw.Value
+		g, ok := index[key]
+		if !ok {
+			g = &domain.DuplicateIdentityGroup{
+				Field:       rw.Field,
+				Value:       rw.Value,
+				EmployeeIDs: []uint{},
+				UserIDs:     []uint{},
+			}
+			index[key] = g
+			groups = append(groups, g)
+		}
+		g.EmployeeIDs = append(g.EmployeeIDs, rw.EmployeeID)
+		if rw.UserID != nil {
+			g.UserIDs = append(g.UserIDs, *rw.UserID)
+		} else {
+			g.UserIDs = append(g.UserIDs, 0)
+		}
+		g.Count = len(g.EmployeeIDs)
+	}
+
+	return groups, nil
+}
+
+// CountEmployeesWithMissingBankDetails returns count of employees with missing banking information
+func (r *EmployeeRepository) CountEmployeesWithMissingBankDetails(ctx context.Context, filters domain.EmployeeFilters) (int64, error) {
+	var count int64
+	err := r.projectQueryBuilder.BuildMissingBankDetailsCountQuery(filters).Count(&count).Error
+	return count, err
+}
+
+// mapEmployeesWithProjects attaches each employee's project assignments in the
+// EmployeeWithProjects shape shared by the list and data-quality queries.
+func (r *EmployeeRepository) mapEmployeesWithProjects(employees []*domain.Employee, assignments []query_builders.ProjectAssignment) []*domain.EmployeeWithProjects {
+	projectsByEmployee := r.projectQueryBuilder.GroupAssignmentsByEmployee(assignments)
+
+	empWithProjects := make([]*domain.EmployeeWithProjects, 0, len(employees))
+	for _, emp := range employees {
+		empWithAllProjects := &domain.EmployeeWithProjects{
+			Employee:        *emp,
+			CurrentProjects: []domain.CurrentProject{},
+		}
+
+		// Add all projects for this employee
+		for _, assignment := range projectsByEmployee[emp.ID] {
+			empWithAllProjects.CurrentProjects = append(empWithAllProjects.CurrentProjects, domain.CurrentProject{
+				ProjectID:  assignment.ProjectID,
+				Name:       assignment.ProjectName,
+				Code:       assignment.ProjectCode,
+				ClientName: assignment.ProjectClientName,
+				Position:   assignment.Position,
+				StartDate:  assignment.StartDate,
+				LastDate:   assignment.LastDate,
+			})
+		}
+
+		empWithProjects = append(empWithProjects, empWithAllProjects)
+	}
+
+	return empWithProjects
+}
+
+// GetEmployeesWithMissingMobile returns active employees with no mobile number
+// on file, with their project assignments — the data behind the partner
+// dashboard "thiếu số điện thoại" nudge. Scoping rides on filters.AccessibleBy.
+func (r *EmployeeRepository) GetEmployeesWithMissingMobile(ctx context.Context, filters domain.EmployeeFilters) ([]*domain.EmployeeWithProjects, error) {
+	var employees []*domain.Employee
+	if err := r.projectQueryBuilder.BuildMissingMobileQuery(filters).Find(&employees).Error; err != nil {
+		return nil, err
+	}
+
+	if len(employees) == 0 {
+		return []*domain.EmployeeWithProjects{}, nil
+	}
+
+	employeeIDs := make([]uint, len(employees))
+	for i, emp := range employees {
+		employeeIDs[i] = emp.ID
+	}
+
+	assignments, err := r.projectQueryBuilder.FetchProjectAssignments(ctx, employeeIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.mapEmployeesWithProjects(employees, assignments), nil
+}
+
+// CountEmployeesWithMissingMobile counts employees with no mobile number on file.
+func (r *EmployeeRepository) CountEmployeesWithMissingMobile(ctx context.Context, filters domain.EmployeeFilters) (int64, error) {
+	var count int64
+	err := r.projectQueryBuilder.BuildMissingMobileCountQuery(filters).Count(&count).Error
+	return count, err
+}
+
+// GetPaidWithoutMobile returns one row per employee who received salary (paid
+// timesheets) or a completed FlexPay advance within [from, to] but has no
+// mobile number on file. The UNION of both payment sources drives the query so
+// an employee paid through either channel appears exactly once; per-source
+// aggregates are attached with LEFT JOINs. Payment recency (last_activity_at)
+// is the activity signal for the admin export.
+func (r *EmployeeRepository) GetPaidWithoutMobile(ctx context.Context, from, to time.Time) ([]*domain.EmployeePaidActivity, error) {
+	ps, as := domain.PaymentStatusPaid, domain.AdvancePaymentStatusCompleted
+	args := []any{
+		to, to, // working-status check evaluated at window end
+		ps, from, to, // activity union — salary branch
+		as, from, to, // activity union — advance branch
+		ps, from, to, // salary aggregate
+		as, from, to, // advance aggregate
+		ps, from, to, // projects union — salary branch
+		as, from, to, // projects union — advance branch
+	}
+
+	var rows []*domain.EmployeePaidActivity
+	err := r.DB.WithContext(ctx).Raw(`
+SELECT
+	e.id AS employee_id,
+	e.fullname,
+	e.cccd,
+	CASE WHEN EXISTS (
+		SELECT 1 FROM project_employees pe
+		WHERE pe.employee_id = e.id
+			AND pe.deleted_at IS NULL
+			AND pe.start_date <= ?
+			AND (pe.last_date IS NULL OR pe.last_date > ?)
+	) THEN 1 ELSE 0 END AS is_working,
+	COALESCE(sal.total_amount, 0) AS salary_total,
+	COALESCE(sal.payment_count, 0) AS salary_count,
+	sal.last_paid_at AS last_salary_paid_at,
+	COALESCE(adv.total_amount, 0) AS advance_total,
+	COALESCE(adv.payment_count, 0) AS advance_count,
+	adv.last_paid_at AS last_advance_paid_at,
+	CASE
+		WHEN sal.last_paid_at IS NULL AND adv.last_paid_at IS NULL THEN NULL
+		WHEN sal.last_paid_at IS NULL THEN adv.last_paid_at
+		WHEN adv.last_paid_at IS NULL THEN sal.last_paid_at
+		WHEN sal.last_paid_at >= adv.last_paid_at THEN sal.last_paid_at
+		ELSE adv.last_paid_at
+	END AS last_activity_at,
+	COALESCE(pr.projects, '') AS projects
+FROM (
+	SELECT employee_id FROM timesheets
+	WHERE payment_status = ? AND paid_at >= ? AND paid_at <= ? AND deleted_at IS NULL
+	UNION
+	SELECT employee_id FROM advance_payment_requests
+	WHERE status = ? AND paid_at >= ? AND paid_at <= ?
+) act
+JOIN employees e ON e.id = act.employee_id
+	AND e.deleted_at IS NULL
+	AND (e.mobile IS NULL OR e.mobile = '')
+LEFT JOIN (
+	SELECT employee_id, SUM(paid_amount) AS total_amount, COUNT(*) AS payment_count, MAX(paid_at) AS last_paid_at
+	FROM timesheets
+	WHERE payment_status = ? AND paid_at >= ? AND paid_at <= ? AND deleted_at IS NULL
+	GROUP BY employee_id
+) sal ON sal.employee_id = e.id
+LEFT JOIN (
+	SELECT employee_id, SUM(net_amount) AS total_amount, COUNT(*) AS payment_count, MAX(paid_at) AS last_paid_at
+	FROM advance_payment_requests
+	WHERE status = ? AND paid_at >= ? AND paid_at <= ?
+	GROUP BY employee_id
+) adv ON adv.employee_id = e.id
+LEFT JOIN (
+	SELECT x.employee_id, GROUP_CONCAT(p.name) AS projects
+	FROM (
+		SELECT employee_id, project_id FROM timesheets
+		WHERE payment_status = ? AND paid_at >= ? AND paid_at <= ? AND deleted_at IS NULL
+		UNION
+		SELECT employee_id, project_id FROM advance_payment_requests
+		WHERE status = ? AND paid_at >= ? AND paid_at <= ?
+	) x
+	JOIN projects p ON p.id = x.project_id AND p.deleted_at IS NULL
+	GROUP BY x.employee_id
+) pr ON pr.employee_id = e.id
+ORDER BY last_activity_at DESC
+`, args...).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *EmployeeRepository) Count(ctx context.Context, filters domain.EmployeeFilters) (int64, error) {
+	// If AccessibleBy filter is present, use two separate queries approach for accurate count
+	if filters.AccessibleBy != nil {
+		return r.countWithTwoQueries(ctx, filters)
+	}
+
+	// For other filters, use the statistics builder
+	var count int64
+	query := r.statisticsBuilder.BuildCountQuery(filters)
+	err := query.Count(&count).Error
+	return count, err
+}
+
+// countWithTwoQueries performs separate count queries for better accuracy with AccessibleBy filter
+func (r *EmployeeRepository) countWithTwoQueries(ctx context.Context, filters domain.EmployeeFilters) (int64, error) {
+	userID := *filters.AccessibleBy
+
+	// First, get shared employee IDs from employee_users table
+	var sharedEmployeeIDs []uint
+	err := r.DB.Model(&domain.EmployeeUser{}).
+		Select("employee_id").
+		Where("user_id = ? AND deleted_at IS NULL", userID).
+		Pluck("employee_id", &sharedEmployeeIDs).Error
+
+	if err != nil {
+		sharedEmployeeIDs = []uint{} // Continue with empty shared employees
+	}
+
+	// Get assigned employee IDs from project_employees table
+	var assignedEmployeeIDs []uint
+	err = r.DB.Model(&domain.ProjectEmployee{}).
+		Select("DISTINCT employee_id").
+		Where("created_by = ? AND deleted_at IS NULL", userID).
+		Pluck("employee_id", &assignedEmployeeIDs).Error
+
+	if err != nil {
+		assignedEmployeeIDs = []uint{} // Continue with empty assigned employees
+	}
+
+	// Track unique employee IDs to avoid double counting
+	uniqueEmployeeIDs := make(map[uint]bool)
+
+	// Count 1: Employees created by the user
+	ownedFilters := filters
+	ownedFilters.CreatedBy = &userID
+	ownedFilters.AccessibleBy = nil // Remove AccessibleBy to prevent recursion
+	ownedFilters.SkipAccessibilityFilter = true
+
+	ownedQuery := r.queryBuilder.BuildListQuery(ownedFilters)
+
+	// Get owned employee IDs that match filters
+	var ownedEmployeeIDs []uint
+	err = ownedQuery.Pluck("id", &ownedEmployeeIDs).Error
+	if err != nil {
+		return 0, err
+	}
+
+	// Add owned employees to unique set
+	for _, id := range ownedEmployeeIDs {
+		uniqueEmployeeIDs[id] = true
+	}
+
+	// Count 2: Employees shared with the user (only if there are shared employees)
+	if len(sharedEmployeeIDs) > 0 {
+		sharedFilters := filters
+		sharedFilters.AccessibleBy = nil // Remove AccessibleBy to prevent recursion
+		sharedFilters.CreatedBy = nil    // Remove CreatedBy filter
+		sharedFilters.SkipAccessibilityFilter = true
+
+		sharedQuery := r.DB.WithContext(ctx).Model(&domain.Employee{}).
+			Where("id IN (?)", sharedEmployeeIDs)
+		sharedQuery = r.queryBuilder.ApplyFilters(sharedQuery, sharedFilters)
+
+		// Get shared employee IDs that match filters
+		var filteredSharedEmployeeIDs []uint
+		err = sharedQuery.Pluck("id", &filteredSharedEmployeeIDs).Error
+		if err != nil {
+			return 0, err
+		}
+
+		// Add shared employees to unique set (avoiding duplicates)
+		for _, id := range filteredSharedEmployeeIDs {
+			uniqueEmployeeIDs[id] = true
+		}
+	}
+
+	// Count 3: Employees assigned by the user to projects (only if there are assigned employees)
+	if len(assignedEmployeeIDs) > 0 {
+		assignedFilters := filters
+		assignedFilters.AccessibleBy = nil // Remove AccessibleBy to prevent recursion
+		assignedFilters.CreatedBy = nil    // Remove CreatedBy filter
+		assignedFilters.SkipAccessibilityFilter = true
+
+		assignedQuery := r.DB.WithContext(ctx).Model(&domain.Employee{}).
+			Where("id IN (?)", assignedEmployeeIDs)
+		assignedQuery = r.queryBuilder.ApplyFilters(assignedQuery, assignedFilters)
+
+		// Get assigned employee IDs that match filters
+		var filteredAssignedEmployeeIDs []uint
+		err = assignedQuery.Pluck("id", &filteredAssignedEmployeeIDs).Error
+		if err != nil {
+			return 0, err
+		}
+
+		// Add assigned employees to unique set (avoiding duplicates)
+		for _, id := range filteredAssignedEmployeeIDs {
+			uniqueEmployeeIDs[id] = true
+		}
+	}
+
+	// Count 4: Employees in projects the user has access to via project_users table
+	projectBasedFilters := filters
+	projectBasedFilters.AccessibleBy = nil
+	projectBasedFilters.CreatedBy = nil
+	projectBasedFilters.SkipAccessibilityFilter = true
+
+	// Get employees from projects user has access to
+	projectBasedQuery := r.DB.WithContext(ctx).Model(&domain.Employee{}).
+		Where(`EXISTS (
+			SELECT 1 FROM project_employees pe
+			INNER JOIN project_users pu ON pe.project_id = pu.project_id
+			WHERE pe.employee_id = employees.id
+			AND pu.user_id = ?
+			AND pe.deleted_at IS NULL
+			AND pu.deleted_at IS NULL
+			AND pe.start_date <= NOW()
+			AND (pe.last_date IS NULL OR pe.last_date > NOW())
+		)`, userID)
+
+	projectBasedQuery = r.queryBuilder.ApplyFilters(projectBasedQuery, projectBasedFilters)
+
+	// Get project-based employee IDs that match filters
+	var projectBasedEmployeeIDs []uint
+	err = projectBasedQuery.Pluck("id", &projectBasedEmployeeIDs).Error
+	if err != nil {
+		return 0, err
+	}
+
+	// Add project-based employees to unique set (avoiding duplicates)
+	for _, id := range projectBasedEmployeeIDs {
+		uniqueEmployeeIDs[id] = true
+	}
+
+	totalCount := int64(len(uniqueEmployeeIDs))
+	return totalCount, nil
+}
+
+func (r *EmployeeRepository) GetByProject(ctx context.Context, projectID uint) ([]*domain.Employee, error) {
+	return r.GetByProjectWithCreatorFilter(ctx, projectID, nil)
+}
+
+func (r *EmployeeRepository) GetByProjectWithCreatorFilter(ctx context.Context, projectID uint, createdBy *uint) ([]*domain.Employee, error) {
+	var employees []*domain.Employee
+	query := r.projectQueryBuilder.BuildGetByProjectQuery(projectID, createdBy)
+	err := query.Find(&employees).Error
+	return employees, err
+}
+
+// GetActiveEmployees returns all active employees with their creator preloaded.
+//
+// NOTE (ck:debug 2026-07-04): this method currently has NO callers (verified
+// via grep — the project-employee and dashboard paths use distinct methods:
+// GetActiveEmployeesForProjectWithCreatorFilter, GetActiveEmployeesBySchedule).
+// The original audit flagged it as an unbounded query; since it is dead code,
+// the correct fix is deletion rather than pagination. It is retained here only
+// pending confirmation; remove if no caller surfaces.
+func (r *EmployeeRepository) GetActiveEmployees(ctx context.Context) ([]*domain.Employee, error) {
+	var employees []*domain.Employee
+	err := r.DB.WithContext(ctx).
+		Preload("Creator").
+		Find(&employees).Error
+
+	return employees, err
+}
+
+func (r *EmployeeRepository) GetByCreator(ctx context.Context, creatorID uint) ([]*domain.Employee, error) {
+	var employees []*domain.Employee
+	query := r.queryBuilder.BuildGetByCreatorQuery(creatorID)
+	err := query.Find(&employees).Error
+	return employees, err
+}
+
+func (r *EmployeeRepository) GetUnassignedEmployeesAtDate(ctx context.Context, atDate time.Time, filters domain.EmployeeFilters) ([]*domain.Employee, error) {
+	var employees []*domain.Employee
+	query := r.queryBuilder.BuildUnassignedAtDateQuery(atDate, filters)
+
+	err := query.Find(&employees).Error
+	return employees, err
+}
+
+// SearchEmployees searches for employees by fullname, email, CCCD, or mobile
+func (r *EmployeeRepository) SearchEmployees(ctx context.Context, search string, limit int) ([]*domain.EmployeeWithProject, error) {
+	var empWithProjects []*domain.EmployeeWithProject
+
+	query := r.queryBuilder.BuildSearchQuery(search, limit)
+
+	rows, err := query.Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var emp domain.EmployeeWithProject
+		var bankID, projectID *uint
+		var bankBranchName, projectName, projectCode, projectClientName, position *string
+
+		err := rows.Scan(
+			&emp.ID, &emp.Fullname, &emp.Email, &emp.CCCD, &emp.Address, &emp.Mobile,
+			&emp.BankID, &emp.BankAccountNumber, &emp.BankAccountName, &emp.DateOfBirth,
+			&emp.DeletedAt, &emp.CreatedBy, &emp.CreatedAt, &emp.UpdatedAt,
+			&projectID, &projectName, &projectCode, &projectClientName, &position,
+			&bankID, &bankBranchName,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set bank information
+		if bankID != nil {
+			emp.Bank = &domain.Bank{
+				ID:         *bankID,
+				BranchName: *bankBranchName,
+			}
+		}
+
+		// Set project information
+		emp.ProjectID = projectID
+		emp.ProjectName = projectName
+		emp.ProjectCode = projectCode
+		emp.ProjectClientName = projectClientName
+		emp.Position = position
+
+		empWithProjects = append(empWithProjects, &emp)
+	}
+
+	return empWithProjects, nil
+}

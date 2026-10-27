@@ -190,7 +190,7 @@ const HrPayrollWorkspace = () => {
 
           <div className="mb-5 space-y-3" role="status">
             <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              Payroll data is not connected yet. HR requests are fail-closed; no payroll API calls or payroll sign-in are enabled.
+              Payroll screens are connected to the RestPoint HR workspace. Payroll data remains unavailable until RestPoint identity mapping and tenant-isolated storage are verified; payroll API calls and separate payroll sign-in stay disabled.
             </div>
             <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
               <h2 className="font-semibold text-slate-900">ZKTeco K40 attendance</h2>

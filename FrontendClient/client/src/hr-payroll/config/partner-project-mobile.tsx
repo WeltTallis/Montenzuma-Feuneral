@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { Badge } from '@hr/components/ui/badge';
 import { Calendar, Users, Building2 } from 'lucide-react';
-import { getVietnameseProjectStatus, getProjectStatusVariant } from '@hr/utils/vietnamese';
+import { getKensynProjectStatus, getProjectStatusVariant } from '@hr/utils/kenyan';
 import { getEmployeeCountColor, formatEmployeeCount } from '@hr/utils/projectHelpers';
 import type { MobileField } from '@hr/components/ui/mobile-table';
 import type { Project } from '@hr/types/api/project.types';
@@ -16,7 +16,7 @@ export function createPartnerProjectMobileConfig({
   const mobileFields: MobileField<Project>[] = [
     {
       key: "name",
-      label: "Tên dự án",
+      label: "Project name",
       priority: 1,
       render: (project) => (
         <div className="typography-body-medium font-medium text-foreground line-clamp-1">
@@ -26,7 +26,7 @@ export function createPartnerProjectMobileConfig({
     },
     {
       key: "code",
-      label: "Mã dự án",
+      label: "Project code",
       priority: 2,
       render: (project) => (
         <div className="typography-body-small text-muted-foreground">
@@ -36,20 +36,20 @@ export function createPartnerProjectMobileConfig({
     },
     {
       key: "client",
-      label: "Khách hàng",
+      label: "Client",
       priority: 2,
       render: (project) => (
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <span className="typography-body-small text-muted-foreground line-clamp-1">
-            {project.client_name || "Chưa có thông tin"}
+            {project.client_name || "No information"}
           </span>
         </div>
       ),
     },
     {
       key: "dates",
-      label: "Thời gian",
+      label: "Period",
       priority: 3,
       render: (project) => (
         <div className="space-y-1">
@@ -67,7 +67,7 @@ export function createPartnerProjectMobileConfig({
     },
     {
       key: "team_size",
-      label: "Nhân sự",
+      label: "Team size",
       priority: 3,
       render: (project) => {
         const count = project.employee_count || 0;
@@ -75,7 +75,7 @@ export function createPartnerProjectMobileConfig({
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <span className={`typography-data-small tabular-nums font-semibold ${getEmployeeCountColor(count)}`}>
-              {formatEmployeeCount(count)} {count !== 0 ? 'người' : ''}
+              {formatEmployeeCount(count)} {count !== 0 ? 'people' : ''}
             </span>
           </div>
         );
@@ -86,7 +86,7 @@ export function createPartnerProjectMobileConfig({
       label: "Status",
       priority: 1,
       render: (project) => {
-        const statusText = getVietnameseProjectStatus(project.status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled') || project.status || 'Không xác định';
+        const statusText = getKensynProjectStatus(project.status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled') || project.status || 'Not specified';
         const statusVariant = getProjectStatusVariant(project.status);
 
         return (
@@ -101,19 +101,19 @@ export function createPartnerProjectMobileConfig({
     },
     {
       key: "priority",
-      label: "Ưu tiên",
+      label: "Priority",
       priority: 4,
       render: (project) => {
         const getPriorityVariant = (priority: string) => {
           switch (priority?.toLowerCase()) {
             case 'high':
-            case 'cao':
+            case 'high':
               return 'destructive';
             case 'medium':
-            case 'trung bình':
+            case 'medium':
               return 'default';
             case 'low':
-            case 'thấp':
+            case 'low':
               return 'secondary';
             default:
               return 'outline';
@@ -123,13 +123,13 @@ export function createPartnerProjectMobileConfig({
         const getPriorityText = (priority: string) => {
           switch (priority?.toLowerCase()) {
             case 'high':
-              return 'Cao';
+              return 'High';
             case 'medium':
-              return 'Trung bình';
+              return 'Medium';
             case 'low':
-              return 'Thấp';
+              return 'Low';
             default:
-              return priority || 'Chưa xác định';
+              return priority || 'Not specified';
           }
         };
 

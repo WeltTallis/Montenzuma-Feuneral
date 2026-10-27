@@ -1,0 +1,892 @@
+package services
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"time"
+
+	bootstrapRepos "api-server/internal/app/bootstrap/repositories"
+	"api-server/internal/app/services"
+	"api-server/internal/app/services/ad_banner"
+	"api-server/internal/app/services/advance_payment"
+	"api-server/internal/app/services/apikey"
+	"api-server/internal/app/services/approval"
+	"api-server/internal/app/services/asset"
+	"api-server/internal/app/services/attendance"
+	"api-server/internal/app/services/auth"
+	"api-server/internal/app/services/cleanup"
+	"api-server/internal/app/services/config"
+	"api-server/internal/app/services/dashboard"
+	"api-server/internal/app/services/disbursement"
+	"api-server/internal/app/services/employee"
+	"api-server/internal/app/services/flex_pay"
+	infraServices "api-server/internal/app/services/infrastructure"
+	"api-server/internal/app/services/integration"
+	"api-server/internal/app/services/ledger"
+	"api-server/internal/app/services/loan"
+	"api-server/internal/app/services/mcpapikey"
+	"api-server/internal/app/services/notification"
+	"api-server/internal/app/services/opsapikey"
+	"api-server/internal/app/services/otp"
+	"api-server/internal/app/services/passwordreset"
+	"api-server/internal/app/services/payroll"
+	"api-server/internal/app/services/payroll/bulktransfer"
+	"api-server/internal/app/services/project"
+	pushService "api-server/internal/app/services/push"
+	"api-server/internal/app/services/reporting"
+	"api-server/internal/app/services/settlement"
+	"api-server/internal/app/services/timesheet"
+	"api-server/internal/app/services/user"
+	"api-server/internal/app/services/zaloconnect"
+	"api-server/internal/app/services/zaloreset"
+	"api-server/internal/app/workers"
+	appConfig "api-server/internal/config"
+	"api-server/internal/constants"
+	"api-server/internal/domain"
+	domainServices "api-server/internal/domain/services"
+	"api-server/internal/domain/wallet"
+	"api-server/internal/infra/cache"
+	"api-server/internal/infra/disbursement/ninepay"
+	"api-server/internal/infra/disbursement/onepay"
+	"api-server/internal/infra/email"
+	"api-server/internal/infra/events"
+	"api-server/internal/infra/persistence"
+	"api-server/internal/infra/persistence/repositories"
+	"api-server/internal/infra/storage"
+	"api-server/internal/infra/zalo"
+	"api-server/internal/pkg/clock"
+
+	// Adapter imports
+	cacheAdapter "api-server/internal/adapters/cache"
+	notificationAdapter "api-server/internal/adapters/notification"
+	serviceAdapters "api-server/internal/adapters/services"
+	serviceports "api-server/internal/domain/ports/services"
+	asynqinfra "api-server/internal/infra/asynq"
+)
+
+type Services struct {
+	User                              *user.UserService
+	PasswordResetJobManager           *user.PasswordResetJobManager
+	EmailPasswordReset                *passwordreset.Service          // Red Team M2: distinct name (collides with PasswordResetJobManager otherwise)
+	ZaloPasswordReset                 *zaloreset.Service              // Employee mobile-channel OTP reset (Phase 2)
+	ZaloConnect                       *zaloconnect.Service            // Admin-managed OA connection + runtime toggle (Phase 4)
+	APIKey                            *apikey.Service                 // Machine API keys for the vendor integration API
+	MCPAPIKey                         *mcpapikey.Service              // Machine API keys for the MCP agent surface
+	OpsAPIKey                         *opsapikey.Service              // Machine API keys for the payroll-ops-mcp channel (pk_ops_*)
+	Integration                       *integration.Service            // Vendor password-reset + employee lookup (API-key auth)
+	IntegrationSelfCheckin            *integration.SelfCheckinService // Vendor self check-in enable/disable (API-key auth)
+	ZaloTokenPusher                   *zaloconnect.TokenWebhookPusher // Pushes the OA access token to the vendor webhook (rotation + startup)
+	FlexPayZNS                        *zaloconnect.FlexPayZNSService  // ZNS notifications for FlexPay salary notifications
+	FlexPaySalaryDelivery             *zaloconnect.SalaryNotificationDeliveryService
+	Auth                              *auth.AuthService
+	Authorization                     *auth.AuthorizationService
+	Dashboard                         *dashboard.Service
+	Project                           *project.ProjectService
+	ProjectPermission                 *project.ProjectPermissionService
+	Employee                          *employee.EmployeeService
+	EmployeePermission                *employee.EmployeePermissionService
+	EmployeeUser                      *employee.EmployeeUserService
+	EmployeeProfile                   *employee.EmployeeProfileService
+	ProjectEmployee                   *project.ProjectEmployeeService
+	Bank                              *asset.BankService
+	Payrate                           *payroll.PayrateService
+	Timesheet                         *timesheet.TimesheetService
+	TimesheetEditRequest              *timesheet.TimesheetEditRequestService
+	PayrollReport                     *payroll.PayrollReportService
+	Payroll                           *payroll.PayrollService
+	PayrollReportExporter             *payroll.PayrollReportExporter
+	PayrollReportByProjectService     *payroll.PayrollReportByProjectService
+	PayrollReportByProjectExporter    *payroll.PayrollReportByProjectExporter
+	Ledger                            *settlement.LedgerService
+	Transaction                       *settlement.TransactionService
+	TransactionPort                   serviceports.TransactionPort
+	SettlementUpload                  *settlement.SettlementUploadService
+	Notification                      *notification.NotificationService
+	EmployeeNotifier                  notification.EmployeeNotifier
+	Settings                          *config.SettingsService
+	SettingsConfig                    *config.SettingsConfigService
+	Approval                          *approval.Service
+	ExcelConverter                    *reporting.ExcelConverterService
+	Asset                             *asset.AssetService
+	Cache                             domain.CacheServiceUseCase
+	CacheService                      *infraServices.CacheService
+	Lender                            *loan.LenderService
+	Loan                              *loan.LoanService
+	Email                             *notification.EmailService
+	Metric                            *infraServices.MetricService
+	Audit                             *infraServices.AuditService
+	APIMetricCleanupService           *cleanup.APIMetricCleanupService
+	Idempotency                       *infraServices.IdempotencyService
+	Reconcile                         *ledger.ReconcileService
+	OnePayFeeImport                   *settlement.OnePayFeeImportService
+	AdvancePayment                    *advance_payment.Service
+	AdvancePaymentFeeSchedule         *advance_payment.FeeScheduleService
+	WeeklyPaymentFeeSchedule          *payroll.WeeklyPaymentFeeScheduleService
+	AdBanner                          *ad_banner.Service
+	ImportProgress                    *advance_payment.ImportProgressService
+	EmployeeImport                    *employee.ImportService
+	EmployeeImportProgress            *infraServices.EmployeeImportProgressService
+	FlexPayReconciliationService      *domainServices.FlexPayReconciliationService
+	FlexPayReconciliationExporter     *flex_pay.FlexPayReconciliationExporter
+	FlexPaySettlementService          *flex_pay.FlexPaySettlementService
+	BulkTransferTransactionWorker     *workers.BulkTransferTransactionWorker
+	BulkTransferPaymentWorkerConcrete *workers.BulkTransferPaymentWorker
+	Push                              *pushService.PushService
+	DisbursementRegistry              *disbursement.Registry
+	DisbursementFeeSchedule           *disbursement.FeeScheduleService
+	ProviderTransactions              *disbursement.WalletPaymentService
+	WalletPaymentStats                *disbursement.StatsService
+	Wallet                            wallet.WalletService
+	CashReadiness                     *services.CashReadinessForecastService
+	NinepayCloser                     io.Closer
+	NinePayBulkTransfer               *bulktransfer.NinePayBulkTransferService
+	NinePayBatchCompletion            *bulktransfer.NinePayBatchCompletionChecker
+	OnePayExporter                    *bulktransfer.OnePayExporter
+	AutoBulkTransfer                  bulktransfer.AutoBulkTransferService
+	BulkTransferPayment               workers.TransferTimesheetUpdater
+	BCCImport                         *services.BCCImportService
+	Attendance                        *attendance.AttendanceService
+	TransactionManager                *infraServices.TransactionManager
+}
+
+func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logger *slog.Logger, db *persistence.Database, redis *persistence.RedisClient, eventBus domain.EventBus, asynqClient *asynqinfra.Client, clk clock.Clock) *Services {
+	// Step 1: Initialize concrete infrastructure services first
+	cacheService := infraServices.NewCacheService(redis)
+
+	// Step 2: Create infrastructure adapters (ports)
+	cachePort := cacheAdapter.NewRedisAdapter(cacheService)
+
+	// Step 3: Create base services needed for other services
+	userService := user.NewUserService(repos.User, repos.AuditLog, eventBus, cfg.Security.HashSecret, cfg.Security.HashSalt, clk)
+	passwordResetJobManager := user.NewPasswordResetJobManager(userService, cacheService)
+	pushSvc := pushService.NewPushService(repos.PushSubscription, cfg.Notification, logger)
+	notificationService := notification.NewNotificationService(repos.Notification, repos.User, repos.Project, userService, pushSvc, logger)
+	employeeNotificationService := notification.NewEmployeeNotificationService(notificationService, repos.Employee, logger)
+	transactionManager := infraServices.NewTransactionManager(db.DB)
+	settingsService := config.NewSettingsService(repos.Settings, repos.AdvancePayment, repos.Attendance, transactionManager, cacheService, eventBus, asynqClient)
+	settingsConfigService := config.NewSettingsConfigService(settingsService)
+	// A committed settings change must reach the in-process business-settings
+	// cache immediately: statement emails and Excel exports read the beneficiary
+	// bank details from it, and a stale value would print the previous account.
+	settingsService.SetConfigCacheInvalidator(settingsConfigService)
+
+	excelConverterService := reporting.NewExcelConverterService()
+	pdfService := reporting.NewPDFService("fonts/Roboto-Regular.ttf")
+	fileStorage := storage.NewLocalFileStorage(cfg.Asset.StoragePath, cfg.Asset.BaseURL)
+	assetService := asset.NewAssetService(repos.Asset, fileStorage, cfg.Asset.MaxFileSize, eventBus)
+
+	// Step 4: Create domain services using infrastructure ports
+	ledgerService := settlement.NewLedgerService(repos.Ledger, eventBus, cachePort)
+	timesheetService := timesheet.NewTimesheetService(repos.Timesheet, repos.Employee, repos.Project, repos.ProjectEmployee, repos.Payrate, transactionManager, cachePort, eventBus)
+
+	// Create email service for notification adapter (needed before adapter creation)
+	emailNotificationPublisher := notification.NewEmailNotificationPublisher(repos.Notification, logger)
+	payCycleNotificationPublisher := notification.NewPaymentCycleNotificationPublisher(repos.Notification, logger)
+	payrollReportByProjectService := payroll.NewPayrollReportByProjectService(repos.Timesheet, repos.Project, repos.Employee)
+	payrollReportByProjectExporter := payroll.NewPayrollReportByProjectExporter(settingsConfigService, settingsConfigService)
+	payrollReportAdapter := notification.NewPayrollReportAdapter(payrollReportByProjectService, payrollReportByProjectExporter)
+
+	// Select email provider based on environment
+	var emailProvider domain.EmailDeliveryPort
+	if cfg.App.Env != "production" {
+		emailProvider = email.NewSandboxProvider(logger)
+	} else {
+		emailProvider = email.NewResendProvider(cfg.Notification.ResendAPIKey)
+	}
+	emailService := notification.NewEmailService(cfg.Notification, emailProvider, payrollReportAdapter, repos.Notification, repos.User, emailNotificationPublisher, assetService, settingsConfigService, logger)
+
+	// Create notification adapter port
+	notificationPort := notificationAdapter.NewEmailAdapter(notificationService, emailService)
+
+	// Create timesheet edit request service with ports
+	timesheetEditRequestService := timesheet.NewTimesheetEditRequestService(repos.TimesheetEditRequest, repos.Timesheet, repos.AuditLog, eventBus, transactionManager)
+
+	// Create transaction service with ports
+	transactionService := settlement.NewTransactionService(db.DB, repos.Transaction, repos.Settlement, repos.Ledger, repos.Loan, repos.User, repos.Timesheet, cachePort, eventBus)
+	transactionPort := serviceAdapters.NewTransactionAdapter(transactionService)
+
+	// Create salary calculation service
+	salaryCalculationService := domainServices.NewSalaryCalculationService(repos.BulkTransferFile)
+
+	// Create query repositories
+	timesheetQueryRepo := repositories.NewTimesheetQueryRepository(db.DB)
+	timesheetAnalyticsRepo := repositories.NewTimesheetAnalyticsRepository(db.DB)
+
+	dashboardService := dashboard.NewService(repos.User, repos.Project, repos.Employee, repos.Timesheet, timesheetQueryRepo, timesheetAnalyticsRepo, repos.Ledger, repos.Notification, repos.AuditLog, repos.ProjectEmployee, repos.BulkTransferFile, repos.AdvancePaymentRequest, repos.AdvancePayment, repos.Attendance, repos.AttendanceFailedAttempt, settingsConfigService, cacheService, salaryCalculationService, db.DB, logger)
+	// Create remaining services
+	settlementUploadService := settlement.NewSettlementUploadService(db.DB, repos.Timesheet, repos.Transaction, assetService, repos.Ledger, eventBus, repos.AdvancePaymentRequest, repos.AdvancePayment, repos.Notification)
+	projectPermissionService := project.NewProjectPermissionService(repos.Project, repos.ProjectUser, repos.ProjectEmployee, repos.EmployeeUser, repos.User, eventBus)
+	employeePermissionService := employee.NewEmployeePermissionService(repos.Employee, repos.EmployeeUser, repos.ProjectEmployee, repos.User, eventBus)
+	payrollReportService := payroll.NewPayrollReportService(repos.Timesheet, repos.Employee, repos.ProjectEmployee, repos.Project, repos.BulkTransferFile)
+	payrollReportExporter := payroll.NewPayrollReportExporter(settingsConfigService)
+	authorizationService, err := auth.NewAuthorizationService(
+		auth.GetDefaultModelPath(),
+		auth.GetDefaultPolicyPath(),
+		timesheetService,
+		logger,
+	)
+	if err != nil {
+		logger.Error("Failed to initialize authorization service", "error", err)
+		authorizationService = nil
+	}
+
+	employeeUserService := employee.NewEmployeeUserService(repos.Employee, userService)
+	employeeProfileService := employee.NewEmployeeProfileService(repos.Employee, repos.Timesheet, repos.ProjectEmployee, repos.Payrate, repos.Attendance, userService, eventBus)
+	lenderService := loan.NewLenderService(repos.Lender, cacheService, eventBus)
+	attendanceService := attendance.NewAttendanceService(repos.Attendance, repos.ProjectEmployee, repos.Project, repos.Payrate, repos.AdvancePayment, settingsConfigService, transactionManager, asynqClient, clk)
+
+	// Geofence gates are now DB-backed (project.geofence_gates JSON column).
+	// No in-memory registration needed.
+
+	// Register global event handlers after all core services are constructed.
+	auditEventHandler := events.NewAuditEventHandler(asynqClient)
+	eventBus.SubscribeAll(auditEventHandler)
+
+	// Register cache invalidation handler for async cache updates
+	cacheInvalidationHandler := events.NewCacheInvalidationHandler(cacheService)
+	eventBus.SubscribeAll(cacheInvalidationHandler)
+
+	// Resolve company-wide cash-forecast snapshots from weekly bulk-transfer
+	// exports. The handler is advisory measurement only and cannot mutate wallet
+	// or disbursement state.
+	cashForecastAccuracyHandler := events.NewCashForecastAccuracyHandler(repos.CashForecastSnapshot)
+	eventBus.SubscribeAll(cashForecastAccuracyHandler)
+
+	// Register employee user creation handler to decouple user creation from HTTP request path
+	employeeUserCreatedHandler := events.NewEmployeeUserCreatedHandler(repos.Employee, employeeUserService)
+	eventBus.SubscribeAll(employeeUserCreatedHandler)
+
+	// Register settlement event handler for transaction and timesheet marking operations
+	settlementEventHandler := events.NewSettlementEventHandler(
+		db.DB,
+		repos.Timesheet,
+		repos.Transaction,
+		repos.Settlement,
+		repos.Ledger,
+		transactionPort,
+		eventBus,
+		employeeNotificationService,
+	)
+	eventBus.SubscribeAll(settlementEventHandler)
+
+	// Wire the settlement event handler as the synchronous settlement applier so the
+	// upload flow settles each transaction inline (atomic + self-verifying) instead of
+	// via a fire-and-forget event that can silently drop (txn 99 / timesheet 11579 bug).
+	settlementUploadService.SetSettlementApplier(settlementEventHandler)
+
+	logger.Info("Event bus initialized with handlers",
+		"audit", true,
+		"cache_invalidation", true,
+		"employee_user_created", true,
+		"settlement", true,
+	)
+
+	// Step 6: Create services that depend on other domain services using ports
+	loanService := loan.NewLoanService(repos.Loan, repos.Lender, repos.Ledger, repos.Transaction, transactionPort, transactionManager, cachePort, eventBus, notificationPort, repos.LoanRepaymentSchedule)
+
+	// Initialize FlexPay reconciliation services
+	flexPayReconciliationService := domainServices.NewFlexPayReconciliationService(
+		repos.AdvancePaymentRequest,
+		repos.AdvancePayment,
+		repos.Project,
+		repos.Employee,
+	)
+	apiMetricCleanupService := cleanup.NewAPIMetricCleanupService(repos.APIMetric, logger)
+	reconcileService := ledger.NewReconcileService(db.DB, repos.Ledger, repos.Notification)
+
+	// Initialize import progress service
+	importProgressService := advance_payment.NewImportProgressService(cacheService)
+
+	// Fee schedule service drives all advance-payment fee resolution. Created
+	// before the advance-payment service so we can inject its FeeResolver, and
+	// bound back into settingsConfigService so legacy callers (bulk transfer
+	// worker, payroll exporter, headline-rate UI) read the active schedule
+	// instead of the retired flat-rate settings keys.
+	feeScheduleService := advance_payment.NewFeeScheduleService(db.DB, cacheService, eventBus, logger)
+	settingsConfigService.BindFeeScheduleResolver(feeScheduleService)
+
+	// Weekly-payment fee schedule (phí trả lương tuần): decoupled from the
+	// FlexPay schedule; bound into settingsConfigService so weekly bulk
+	// transfers and statement reports resolve the weekly rate.
+	weeklyPaymentFeeScheduleService := payroll.NewWeeklyPaymentFeeScheduleService(db.DB, eventBus, logger)
+	settingsConfigService.BindWeeklyFeeScheduleResolver(weeklyPaymentFeeScheduleService)
+
+	// Ad banner campaigns (employee portal "Quảng cáo").
+	adBannerService := ad_banner.NewService(repos.AdBanner, repos.ProjectEmployee, repos.Employee, eventBus, cacheService, logger)
+
+	// Pre-declare disbursement registry so the advance payment config closure
+	// can reference it. The actual NewRegistry() + provider registration happens
+	// later in this function — the closure only reads the variable at call-time.
+	var disbursementRegistry *disbursement.Registry
+
+	// Initialize advance payment service
+	advancePaymentConfig := &advance_payment.Config{
+		AdvancePaymentRepo:              repos.AdvancePayment,
+		AdvancePaymentRequestRepo:       repos.AdvancePaymentRequest,
+		TransactionCodeRepo:             repos.TransactionCode,
+		TransactionRepo:                 repos.Transaction,
+		EmployeeRepo:                    repos.Employee,
+		ProjectEmployeeRepo:             repos.ProjectEmployee,
+		ProjectRepo:                     repos.Project,
+		BankRepo:                        repos.Bank,
+		BulkTransferFileRepo:            repos.BulkTransferFile,
+		AssetRepo:                       repos.Asset,
+		CacheService:                    cacheService,
+		EmployeeUserService:             employeeUserService,
+		LedgerRepo:                      repos.Ledger,
+		EmployeeNotifier:                employeeNotificationService,
+		FeeResolver:                     feeScheduleService,
+		GetAdvancePaymentPercentage:     settingsConfigService.GetAdvancePaymentPercentage,
+		GetAdvancePaymentFeeMin:         settingsConfigService.GetAdvancePaymentFeeMin,
+		GetAdvanceCashFeePercentage:     settingsConfigService.GetAdvanceCashFeePercentage,
+		GetPartnerCompany:               settingsConfigService.GetPartnerCompany,
+		GetSelfCheckInAdvancePercentage: settingsConfigService.GetSelfCheckInAdvancePercentage,
+		GetTransferLimits: func(ctx context.Context) advance_payment.ProviderTransferLimits {
+			limits := disbursementRegistry.ActiveTransferLimits(ctx)
+			return advance_payment.ProviderTransferLimits{
+				MinAmount: limits.MinAmount,
+				MaxAmount: limits.MaxAmount,
+			}
+		},
+	}
+	// Create audit service
+	auditService := infraServices.NewAuditService(eventBus)
+	onePayFeeImportService := settlement.NewOnePayFeeImportService(
+		repos.TxWalletPayment,
+		repos.Bank,
+		repos.Transaction,
+		transactionService,
+		auditService,
+		logger,
+	)
+
+	advancePaymentService := advance_payment.NewService(advancePaymentConfig, logger)
+
+	// Initialize FlexPay reconciliation exporter
+	flexPayReconciliationExporter := flex_pay.NewFlexPayReconciliationExporter(settingsConfigService)
+
+	// Initialize FlexPay settlement service
+	flexPaySettlementService := flex_pay.NewFlexPaySettlementService(
+		db.DB,
+		repos.AdvancePaymentRequest,
+		repos.AdvancePayment,
+		repos.Ledger,
+		repos.Transaction,
+		repos.SettlementUpload,
+		settingsConfigService.GetPartnerCompany,
+	)
+
+	// Initialize employee import progress service
+	employeeImportProgressService := infraServices.NewEmployeeImportProgressService(cacheService)
+
+	idempotencyService := infraServices.NewIdempotencyService(redis.Client, logger)
+
+	// Disbursement provider registry. Registration is gated at boot by
+	// the master env flag (ENABLE_NINEPAY) AND the presence of provider
+	// credentials. When the flag is off or creds are blank, the registry
+	// stays empty and Active(ctx) returns ErrNoActiveProvider — use cases
+	// then fail closed without ever touching the provider.
+	disbursementRegistry = disbursement.NewRegistry()
+	var ninepayCloser io.Closer
+	switch {
+	case !cfg.Disbursement.Ninepay.Enabled:
+		logger.Info("disbursement: ENABLE_NINEPAY=false; 9pay provider not registered")
+	case cfg.Disbursement.Ninepay.MerchantKey == "":
+		logger.Info("disbursement: 9pay credentials not configured; provider not registered")
+	default:
+		// Resolve the merchant-portal device_id: env override > Settings
+		// table > auto-generate-and-persist. Done at boot rather than per
+		// request so the value is fixed for the lifetime of the process
+		// and the Settings round-trip happens once.
+		deviceID, devErr := resolveNinepayDeviceID(context.Background(), settingsService, cfg.Disbursement.Ninepay.WebDeviceID, logger)
+		if devErr != nil {
+			logger.Error("disbursement: resolve 9pay device_id failed; provider will not be registered", "error", devErr)
+			break
+		}
+		ninepayClient, err := ninepay.NewClient(ninepay.Config{
+			MerchantKey:       cfg.Disbursement.Ninepay.MerchantKey,
+			SecretKey:         cfg.Disbursement.Ninepay.SecretKey,
+			SecretKeyChecksum: cfg.Disbursement.Ninepay.SecretKeyChecksum,
+			Endpoint:          cfg.Disbursement.Ninepay.Endpoint,
+			WebEndpoint:       cfg.Disbursement.Ninepay.WebEndpoint,
+			Portal: ninepay.PortalAuthConfig{
+				AccountURL:  cfg.Disbursement.Ninepay.WebAccountURL,
+				WebEndpoint: cfg.Disbursement.Ninepay.WebEndpoint,
+				Username:    cfg.Disbursement.Ninepay.WebUsername,
+				Password:    cfg.Disbursement.Ninepay.WebPassword,
+				DeviceID:    deviceID,
+				ClientID:    cfg.Disbursement.Ninepay.WebClientID,
+				RedirectURI: cfg.Disbursement.Ninepay.WebRedirectURI,
+			},
+			WebMerchantID: cfg.Disbursement.Ninepay.WebMerchantID,
+		}, logger)
+		if err != nil {
+			logger.Error("disbursement: 9pay client init failed; provider will not be registered",
+				"error", err)
+		} else {
+			provider := ninepay.NewProvider(ninepayClient, logger)
+			queued := ninepay.NewQueuedProvider(provider, cfg.Disbursement.Ninepay.TPS, cfg.Disbursement.Ninepay.QueueBuffer, logger)
+			disbursementRegistry.Register(queued)
+			ninepayCloser = queued
+			logger.Info("disbursement: 9pay provider registered",
+				"endpoint", cfg.Disbursement.Ninepay.Endpoint,
+				"enabled_for_employee", cfg.Disbursement.Ninepay.EnabledForEmployee,
+				"tps", cfg.Disbursement.Ninepay.TPS)
+		}
+	}
+
+	// ---- OnePay ---------------------------------------------------------
+	switch {
+	case !cfg.Disbursement.Onepay.Enabled:
+		logger.Info("disbursement: ENABLE_ONEPAY=false; onepay provider not registered")
+	case cfg.Disbursement.Onepay.PartnerID == "" || cfg.Disbursement.Onepay.PartnerKey == "" || cfg.Disbursement.Onepay.AccountID == "":
+		logger.Warn("disbursement: onepay disabled (creds missing)",
+			"partner_id_set", cfg.Disbursement.Onepay.PartnerID != "",
+			"partner_key_set", cfg.Disbursement.Onepay.PartnerKey != "",
+			"account_id_set", cfg.Disbursement.Onepay.AccountID != "",
+		)
+	default:
+		opClient, err := onepay.NewClient(onepay.Config{
+			PartnerID:            cfg.Disbursement.Onepay.PartnerID,
+			PartnerKey:           cfg.Disbursement.Onepay.PartnerKey,
+			AccountID:            cfg.Disbursement.Onepay.AccountID,
+			Endpoint:             cfg.Disbursement.Onepay.Endpoint,
+			RequestExpirySeconds: cfg.Disbursement.Onepay.RequestExpirySeconds,
+			HTTPTimeout:          cfg.Disbursement.Onepay.HTTPTimeout,
+			TPS:                  cfg.Disbursement.Onepay.TPS,
+			QueueBuffer:          cfg.Disbursement.Onepay.QueueBuffer,
+		}, logger.With("provider", "1pay"))
+		if err != nil {
+			logger.Error("disbursement: onepay client init failed; provider will not be registered",
+				"error", err)
+		} else {
+			opProvider := onepay.NewProvider(opClient, logger.With("provider", "1pay"))
+			queued := onepay.NewQueuedProvider(opProvider, cfg.Disbursement.Onepay.TPS, cfg.Disbursement.Onepay.QueueBuffer, logger)
+			disbursementRegistry.Register(queued)
+			logger.Info("disbursement: onepay provider registered",
+				"endpoint", cfg.Disbursement.Onepay.Endpoint,
+				"for_employee", cfg.Disbursement.Onepay.EnabledForEmployee,
+				"tps", cfg.Disbursement.Onepay.TPS)
+		}
+	}
+
+	// Attach the selector chain: context hint (admin header) → feature
+	// flags (employee routing) → first-registered fallback.
+	sel := disbursement.ChainSelector{
+		Selectors: []disbursement.Selector{
+			disbursement.ContextSelector{},
+			disbursement.FlagSelector{
+				OnepayForEmployee:      cfg.Disbursement.Onepay.EnabledForEmployee,
+				NinepayForEmployee:     cfg.Disbursement.Ninepay.EnabledForEmployee,
+				OnepayForBulkTransfer:  cfg.Disbursement.Onepay.EnabledForBulkTransfer,
+				NinepayForBulkTransfer: cfg.Disbursement.Ninepay.EnabledForBulkTransfer,
+			},
+		},
+	}
+	disbursementRegistry.WithSelector(&sel)
+
+	// Disbursement fee schedule service: dated fee history mirroring the
+	// advance-payment fee schedule pattern. The provider transaction service
+	// stamps fee at INSERT time by resolving the active entry at clock.Now().
+	disbursementFeeScheduleService := disbursement.NewFeeScheduleService(db.DB, eventBus, logger)
+	disbursementFeeScheduleService.SetRegistry(disbursementRegistry)
+
+	// provider_transactions service stack: persistence + state-machine
+	// driver + read-only stats. Wired even when 9pay is dormant — the
+	// table and stats endpoint exist regardless, and other providers
+	// (future) will reuse the same service.
+	//
+	// Error translation is resolved at call time against the active
+	// provider's ErrorTranslator capability, so the service stays
+	// decoupled from any concrete provider package.
+	disbursementErrorTranslator := disbursementRegistry.ActiveErrorTranslator()
+	walletPaymentService := disbursement.NewWalletPaymentService(
+		repos.TxWalletPayment,
+		repos.AdvancePaymentRequest,
+		repos.Employee,
+		repos.Bank,
+		notificationService,
+		disbursementFeeScheduleService,
+		disbursementErrorTranslator,
+		disbursementRegistry,
+		logger,
+	)
+	walletPaymentStats := disbursement.NewStatsService(repos.TxWalletPayment, disbursementErrorTranslator)
+
+	// Initialize bulk transfer payment worker for per-transfer timesheet updates
+	bulkTransferPaymentWorker := workers.NewBulkTransferPaymentWorker(
+		db.DB,
+		repos.Timesheet,
+		repos.Project,
+		repos.ProjectEmployee,
+		repos.TransactionCode,
+		settingsConfigService,
+		idempotencyService,
+		notificationService,
+		employeeNotificationService,
+		cachePort,
+	)
+
+	// Initialize bulk transfer transaction worker for async transaction creation
+	bulkTransferTransactionWorker := workers.NewBulkTransferTransactionWorker(
+		db.DB,
+		repos.Transaction,
+		repos.Timesheet,
+		repos.Asset,
+		ledgerService,
+		transactionService,
+		settingsConfigService,
+		idempotencyService,
+		eventBus,
+	)
+
+	// Create employee service config (11 params → 1)
+	employeeConfig := &employee.Config{
+		EmployeeRepo:             repos.Employee,
+		TimesheetRepo:            repos.Timesheet,
+		AttendanceRepo:           repos.Attendance,
+		BankRepo:                 repos.Bank,
+		ProjectEmployeeRepo:      repos.ProjectEmployee,
+		EmployeeUserRepo:         repos.EmployeeUser,
+		UserRepo:                 repos.User,
+		EmployeeDomainService:    domainServices.NewEmployeeDomainService(repos.Employee, repos.ProjectEmployee, repos.Timesheet),
+		UserService:              userService,
+		TransactionManager:       transactionManager,
+		Events:                   eventBus,
+		Cache:                    cacheService,
+		Logger:                   logger,
+		BankAccountValidator:     employee.NewBankAccountValidator(disbursementRegistry, repos.Bank, cacheService, logger),
+		IsEmployeeMobileRequired: settingsConfigService.IsEmployeeMobileRequired,
+	}
+
+	walletService := services.NewWalletService(repos.WalletTopup, repos.WalletPayment, disbursementRegistry)
+	cashReadinessService := services.NewCashReadinessForecastService(
+		repos.Timesheet,
+		walletService,
+		nil,
+		clk,
+		cfg.CashForecast,
+		settingsConfigService,
+		repos.CashForecastSnapshot,
+	).WithCacheService(cacheService)
+
+	// Approval engine.
+	approvalService := approval.NewService(approval.Deps{
+		Repo:          repos.ApprovalRequest,
+		Payloads:      approval.NewPayloadBuilderRegistry(payrollReportByProjectService, repos.ProjectUser, repos.User, repos.Timesheet, repos.Employee, repos.Project),
+		Preconditions: approval.NewPreconditionRegistry(payrollReportByProjectService, repos.Timesheet),
+		Users:         repos.User,
+		Notifier:      notificationService,
+		Retry:         approval.NewAsynqRetryScheduler(asynqClient),
+		Audit:         approval.NewAsynqEventWriter(asynqClient),
+		Executers: map[domain.ApprovalRequestType]approval.Executer{
+			domain.ApprovalTypeSendSaoKeEmail:   approval.NewEmailExecuter(asynqClient),
+			domain.ApprovalTypeSendPayrollEmail: approval.NewEmailExecuter(asynqClient),
+		},
+		Clock: clk,
+	})
+
+	// Create payroll service (which contains the bulk transfer module)
+	payrollSvc := payroll.NewPayrollService(db.DB, repos.Timesheet, repos.Employee, repos.EmployeeUser, repos.Project, repos.ProjectEmployee, repos.User, ledgerService, transactionService, assetService, excelConverterService, settingsConfigService, repos.BulkTransferFile, repos.TransactionCode, pdfService, notificationService, eventBus, asynqClient)
+	payrollSvc.SetWalletBulkPaymentReader(repos.TxWalletPayment)
+
+	// Wire the settlement simulation service: it reuses the production
+	// PayrollReportByProjectService (same selection logic as "Xuất sao kê")
+	// and the ledger for reconciliation.
+	payrollSvc.SetSimulationService(payroll.NewSettlementSimulationService(
+		payrollReportByProjectService,
+		repos.Timesheet,
+		ledgerService,
+		clk,
+	))
+
+	// Create auto bulk transfer service (enabled when any disbursement provider is registered)
+	var autoBulkTransferSvc *bulktransfer.NinePayBulkTransferService
+	var ninePayBatchCompletion *bulktransfer.NinePayBatchCompletionChecker
+	var onePayExporter *bulktransfer.OnePayExporter
+	if len(disbursementRegistry.Names()) > 0 {
+		btSvc := payrollSvc.BulkTransferSvc()
+		autoBulkTransferSvc = bulktransfer.NewNinePayBulkTransferService(
+			btSvc.ExportService(),
+			btSvc.FileRepo(),
+			repos.TransactionCode,
+			nil, // asynqClient set later in container.go
+			eventBus,
+			logger,
+		)
+		autoBulkTransferSvc.SetFeeProvider(disbursementFeeScheduleService)
+		autoBulkTransferSvc.SetProviderResolver(disbursementRegistry)
+		autoBulkTransferSvc.SetWalletPaymentRepo(repos.TxWalletPayment)
+		ninePayBatchCompletion = bulktransfer.NewNinePayBatchCompletionChecker(
+			repos.TransactionCode,
+			repos.BulkTransferFile,
+			repos.TxWalletPayment,
+			idempotencyService,
+			eventBus,
+			logger,
+		)
+		// OnePay exporter reuses the same planner + transaction code repo as
+		// the 9Pay export path so selection logic stays identical. The only
+		// addition is bankRepo for SWIFT resolution.
+		onePayExporter = bulktransfer.NewOnePayExporter(
+			btSvc.ExportService().Planner(),
+			repos.Bank,
+			repos.TransactionCode,
+			logger,
+		)
+	}
+
+	employeeService := employee.NewEmployeeService(employeeConfig)
+
+	advancePaymentConfig.EmployeeService = employeeService
+	// Initialize employee import service
+	employeeImportService := employee.NewImportService(
+		employeeService,
+		repos.Employee,
+		repos.Project,
+		repos.ProjectEmployee,
+		employeeImportProgressService,
+	)
+
+	projectEmployeeSvc := project.NewProjectEmployeeService(repos.ProjectEmployee, repos.Employee, repos.EmployeeUser, repos.Project, repos.Timesheet, repos.AuditLog, transactionManager, repos.AdvancePayment, repos.Payrate, notificationPort, eventBus, payCycleNotificationPublisher, timesheetService, cacheService)
+
+	// Email-OTP 2FA: build the pending-session store (Redis) + OTP service.
+	//
+	// OTP delivery ALWAYS uses the real Resend provider when OTP is enabled,
+	// regardless of environment. Login depends on the code reaching the inbox,
+	// and a sandbox/no-op provider would silently swallow the code and lock
+	// every account out once MaxAttempts is hit. The Resend API key is
+	// fail-fast validated at boot when OTP_ENABLE=true, so it is guaranteed
+	// present here. General notifications keep the env-selected provider
+	// (sandbox in dev) so development does not spam real mailboxes. When
+	// OTP_ENABLE=false the service is still constructed (cheap) but
+	// AuthService.requiresOTP() short-circuits and login behaves as before.
+	otpEmailSender := emailProvider
+	if cfg.OTP.Enabled {
+		// Real Resend — login codes must reach inboxes.
+		otpEmailSender = email.NewResendProvider(cfg.Notification.ResendAPIKey)
+	}
+	otpPendingStore := cache.NewOTPPendingStore(redis.Client, cfg.OTP.CodeTTL)
+	otpFromEmail := constants.DefaultEmailSenderName + " <" + constants.DefaultEmailSenderAddress + ">"
+	otpService := otp.NewOTPService(otpPendingStore, repos.User, otpEmailSender, otpFromEmail, cfg.OTP, clk, logger)
+
+	// Self-service email password-reset (Red Team C4: reuse otpEmailSender so
+	// reset emails reach real inboxes under the same env-gating as OTP).
+	pwresetTokenStore := cache.NewPasswordResetTokenStore(redis.Client, cfg.PasswordReset.TokenTTL)
+	emailPasswordResetService := passwordreset.NewService(
+		pwresetTokenStore, repos.User, userService, otpEmailSender, eventBus,
+		constants.DefaultEmailSenderAddress, cfg.PasswordReset.ResetURL, clk, logger,
+	)
+
+	// Zalo-OTP employee password-reset (mobile channel). Two-step wire:
+	// zaloconnect.Service implements zalo.CredentialSource and owns the
+	// admin-managed connection (DB-backed); the zalo.Provider takes it.
+	// The admin pastes all four OA fields directly (no OAuth flow).
+	// SeedFromEnvIfEmpty runs on first boot only — thereafter DB is authoritative.
+	zaloConnectSvc := zaloconnect.NewService(repos.Settings, logger)
+	zaloProvider := zalo.NewProvider(zaloConnectSvc, zalo.DefaultConfig(), logger)
+	zaloProvider.SetRefreshCoordinator(zalo.NewRedisRefreshCoordinator(redis.Client))
+	zaloConnectSvc.SetProvider(zaloProvider)
+	// Push lane to TingHire (payroll is the sole OA token rotator): every
+	// persisted rotation — refresh exchange, validated admin paste, or metadata
+	// save — hands the new access token to the vendor webhook. The pusher skips
+	// itself when CHATBOT_OA_TOKEN_WEBHOOK_URL/KEY are unset, so wiring is
+	// unconditional and unconfigured deploys stay inert.
+	zaloTokenPusher := zaloconnect.NewTokenWebhookPusher(
+		cfg.Zalo.ChatbotTokenWebhookURL, cfg.Zalo.ChatbotTokenWebhookKey, logger)
+	zaloProvider.SetRotationHook(zaloTokenPusher.Push)
+	_ = zaloConnectSvc.SeedFromEnvIfEmpty(context.Background(), zaloconnect.EnvSeed{
+		Enabled:    cfg.Zalo.Enabled,
+		AppID:      cfg.Zalo.AppID,
+		SecretKey:  cfg.Zalo.SecretKey,
+		TemplateID: cfg.Zalo.TemplateID,
+	})
+
+	// Sandbox mode: when ZALO_USE_SANDBOX=true, the reset service uses a mock
+	// sender that logs the OTP to the terminal instead of hitting Zalo. This
+	// lets a developer test the full reset flow locally without a Zalo OA.
+	var zaloSender zalo.Sender = zaloProvider
+	if cfg.Zalo.UseSandbox {
+		zaloSender = zalo.NewSandboxSender(logger)
+		logger.Info("zalo: SANDBOX mode enabled — OTPs will be logged, not sent to Zalo")
+	}
+
+	zaloResetStore := cache.NewZaloResetStore(redis.Client, cfg.Zalo.CodeTTL)
+	zaloResetService := zaloreset.NewService(
+		zaloResetStore, repos.User, repos.Employee, userService, zaloSender,
+		cfg.Zalo.TemplateID, cfg.Zalo.CodeTTL, zaloConnectSvc, eventBus, clk, logger,
+	)
+
+	// Machine API keys for the vendor integration API, the MCP agent surface,
+	// and the payroll-ops-mcp agent channel (pk_ops_*). The MCP and ops
+	// services also own scope-toggle auditing onto the audit:log:write
+	// pipeline.
+	apiKeyService := apikey.NewService(repos.APIKey, clk)
+	mcpAPIKeyService := mcpapikey.NewService(repos.MCPAPIKey, repos.User, asynqClient, clk)
+	opsAPIKeyService := opsapikey.NewService(repos.OpsAPIKey, repos.User, asynqClient, clk)
+
+	// Vendor integration service (TingHire): password-reset OTP + employee
+	// lookup. Reuses the same Zalo store, sender, and enabled-checker as the
+	// self-service reset, but reports outcomes explicitly to the caller.
+	integrationService := integration.NewService(
+		zaloResetStore, repos.User, repos.Employee, userService, zaloSender,
+		cfg.Zalo.TemplateID, zaloConnectSvc, eventBus, clk, logger,
+	)
+
+	// Self check-in shares the OTP machinery but MUST live under its own
+	// Redis key namespace ("zsc"): its sessions and action tokens are then
+	// never consumable at the password-reset endpoints, and a reset token
+	// never unlocks a self check-in update (cross-flow replay defense).
+	selfCheckinStore := cache.NewZaloResetStoreWithPrefix(redis.Client, cfg.Zalo.CodeTTL, "zsc")
+	selfCheckinTemplate := cfg.SelfCheckin.TemplateID
+	if selfCheckinTemplate == "" {
+		selfCheckinTemplate = cfg.Zalo.TemplateID
+	}
+	selfCheckinService := integration.NewSelfCheckinService(
+		selfCheckinStore, repos.User, repos.Employee, repos.Project,
+		repos.ProjectEmployee, repos.Payrate, projectEmployeeSvc, zaloSender,
+		selfCheckinTemplate, zaloConnectSvc, cfg.SelfCheckin.SupportedProjectCodes,
+		clk, logger,
+	)
+
+	// FlexPay ZNS service for employee salary notifications
+	flexPayZNSService := zaloconnect.NewFlexPayZNSService(
+		zaloProvider,
+		logger,
+		zaloConnectSvc.IsFlexPayZNSEnabled,
+	)
+	flexPaySalaryDelivery := zaloconnect.NewSalaryNotificationDeliveryService(
+		repos.FlexPaySalaryNotification,
+		zaloSender,
+		asynqClient,
+		zaloConnectSvc.IsFlexPayZNSEnabled,
+		clk,
+		logger,
+	)
+
+	// Google OIDC nonce store (Redis) — single-use replay defense for id_tokens.
+	nonceStore := cache.NewNonceStore(redis.Client, 10*time.Minute)
+
+	// Self-hosted image CAPTCHA (base64Captcha + Redis). Reuses the shared
+	// Redis client. When CAPTCHA_ENABLE=false the service is still constructed
+	// (cheap) but RequiredForFailures() short-circuits.
+	captchaService := auth.NewCaptchaService(redis.Client, auth.CaptchaConfig{
+		Enabled:    cfg.Captcha.Enabled,
+		Threshold:  cfg.Captcha.Threshold,
+		CodeTTL:    cfg.Captcha.CodeTTL,
+		CodeLength: cfg.Captcha.CodeLength,
+	})
+
+	servicesStruct := &Services{
+		User:                              userService,
+		PasswordResetJobManager:           passwordResetJobManager,
+		EmailPasswordReset:                emailPasswordResetService,
+		ZaloPasswordReset:                 zaloResetService,
+		ZaloConnect:                       zaloConnectSvc,
+		APIKey:                            apiKeyService,
+		MCPAPIKey:                         mcpAPIKeyService,
+		OpsAPIKey:                         opsAPIKeyService,
+		Integration:                       integrationService,
+		IntegrationSelfCheckin:            selfCheckinService,
+		ZaloTokenPusher:                   zaloTokenPusher,
+		FlexPayZNS:                        flexPayZNSService,
+		FlexPaySalaryDelivery:             flexPaySalaryDelivery,
+		Auth:                              auth.NewAuthService(userService, repos.Employee, repos.BlacklistedToken, eventBus, cfg.Auth.JWTSecret, cfg.Auth.AccessTTL, otpService, cfg.OTP, cfg.Google.ClientID, nonceStore, captchaService, logger),
+		Authorization:                     authorizationService,
+		Dashboard:                         dashboardService,
+		Project:                           project.NewProjectService(repos.Project, repos.Employee, repos.ProjectEmployee, repos.Timesheet, eventBus, cacheService, logger),
+		ProjectPermission:                 projectPermissionService,
+		Employee:                          employeeService,
+		EmployeePermission:                employeePermissionService,
+		EmployeeUser:                      employeeUserService,
+		EmployeeProfile:                   employeeProfileService,
+		ProjectEmployee:                   projectEmployeeSvc,
+		Bank:                              asset.NewBankService(repos.Bank, cacheService, eventBus),
+		Payrate:                           payroll.NewPayrateService(repos.Payrate, eventBus, db.DB),
+		Timesheet:                         timesheetService,
+		TimesheetEditRequest:              timesheetEditRequestService,
+		PayrollReport:                     payrollReportService,
+		PayrollReportExporter:             payrollReportExporter,
+		PayrollReportByProjectService:     payrollReportByProjectService,
+		PayrollReportByProjectExporter:    payrollReportByProjectExporter,
+		Transaction:                       transactionService,
+		TransactionPort:                   transactionPort,
+		SettlementUpload:                  settlementUploadService,
+		Payroll:                           payrollSvc,
+		Ledger:                            ledgerService,
+		Notification:                      notificationService,
+		EmployeeNotifier:                  employeeNotificationService,
+		Settings:                          settingsService,
+		SettingsConfig:                    settingsConfigService,
+		Approval:                          approvalService,
+		ExcelConverter:                    excelConverterService,
+		Asset:                             assetService,
+		Cache:                             cacheService,
+		CacheService:                      cacheService,
+		Lender:                            lenderService,
+		Loan:                              loanService,
+		Email:                             emailService,
+		Metric:                            infraServices.NewMetricService(repos.APIMetric, repos.AuditLog),
+		Audit:                             auditService,
+		APIMetricCleanupService:           apiMetricCleanupService,
+		Idempotency:                       idempotencyService,
+		Reconcile:                         reconcileService,
+		OnePayFeeImport:                   onePayFeeImportService,
+		AdvancePayment:                    advancePaymentService,
+		AdvancePaymentFeeSchedule:         feeScheduleService,
+		WeeklyPaymentFeeSchedule:          weeklyPaymentFeeScheduleService,
+		AdBanner:                          adBannerService,
+		ImportProgress:                    importProgressService,
+		EmployeeImport:                    employeeImportService,
+		EmployeeImportProgress:            employeeImportProgressService,
+		FlexPayReconciliationService:      flexPayReconciliationService,
+		FlexPayReconciliationExporter:     flexPayReconciliationExporter,
+		FlexPaySettlementService:          flexPaySettlementService,
+		BulkTransferTransactionWorker:     bulkTransferTransactionWorker,
+		BulkTransferPaymentWorkerConcrete: bulkTransferPaymentWorker,
+		Push:                              pushSvc,
+		DisbursementRegistry:              disbursementRegistry,
+		DisbursementFeeSchedule:           disbursementFeeScheduleService,
+		ProviderTransactions:              walletPaymentService,
+		WalletPaymentStats:                walletPaymentStats,
+		NinepayCloser:                     ninepayCloser,
+		Wallet:                            walletService,
+		CashReadiness:                     cashReadinessService,
+		NinePayBulkTransfer:               autoBulkTransferSvc,
+		AutoBulkTransfer:                  asAutoBulkTransfer(autoBulkTransferSvc),
+		NinePayBatchCompletion:            ninePayBatchCompletion,
+		OnePayExporter:                    onePayExporter,
+		BulkTransferPayment:               bulkTransferPaymentWorker,
+		BCCImport: services.NewBCCImportService(
+			repos.Payrate,
+			repos.Timesheet,
+			timesheetService,
+			repos.Asset,
+			fileStorage,
+			transactionManager,
+			redis.Client,
+			employeeService,
+			employeeUserService,
+			projectEmployeeSvc,
+			repos.TimesheetImportJob,
+			asynqClient,
+		),
+		Attendance:         attendanceService,
+		TransactionManager: transactionManager,
+	}
+
+	return servicesStruct
+}
+
+// asAutoBulkTransfer keeps the interface field truly empty when no disbursement
+// provider is registered. A nil *NinePayBulkTransferService stored in the
+// interface is NOT equal to nil, so it silently passed the handlers' nil guards
+// and the call panicked on the nil receiver — a 500 for what is really "feature
+// unavailable in this deployment".
+func asAutoBulkTransfer(svc *bulktransfer.NinePayBulkTransferService) bulktransfer.AutoBulkTransferService {
+	if svc == nil {
+		return nil
+	}
+	return svc
+}

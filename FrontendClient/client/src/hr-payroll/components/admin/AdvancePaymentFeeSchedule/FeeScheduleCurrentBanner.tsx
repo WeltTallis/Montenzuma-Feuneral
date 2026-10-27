@@ -20,7 +20,7 @@ import {
   describeEntryFragments,
   formatActiveRange,
   formatDaysFromNow,
-  formatVietnameseDate,
+  formatKensynDate,
   isLikelyBootstrap,
   type RuleFragment,
 } from "./rule-formatters";
@@ -101,7 +101,7 @@ const ActiveCard = ({
     return (
       <div className="rounded-xl border border-dashed bg-muted/30 p-5 flex items-center justify-center text-center">
         <p className="text-sm text-muted-foreground">
-          Chưa có cấu hình nào đang hoạt động
+          No configuration is currently active
         </p>
       </div>
     );
@@ -187,7 +187,7 @@ const UpcomingCard = ({
             variant="ghost"
             size="icon"
             className="h-11 w-11"
-            aria-label="Xóa cấu hình sắp có hiệu lực"
+            aria-label="Delete configuration with upcoming effective date"
             disabled={!editable}
             onClick={() => onDelete(entry)}
           >
@@ -199,9 +199,9 @@ const UpcomingCard = ({
       <RuleText fragments={describeEntryFragments(entry)} />
 
       <p className="text-xs text-muted-foreground mt-2">
-        Sẽ thay thế cấu hình hiện tại từ{" "}
+        Will replace current configuration from{" "}
         <strong className="font-medium text-foreground/80">
-          {formatVietnameseDate(entry.effectiveDate)}
+          {formatKensynDate(entry.effectiveDate)}
         </strong>{" "}
         ({formatDaysFromNow(days)})
       </p>
@@ -215,8 +215,8 @@ const UpcomingCard = ({
             className="min-h-11 text-left text-xs text-amber-800 dark:text-amber-400 hover:underline"
           >
             {showAdditional
-              ? "Ẩn các cấu hình khác"
-              : `Xem ${additionalCount} cấu hình khác sắp có hiệu lực`}
+              ? "Hide other configurations"
+              : `View ${additionalCount} other configurations with upcoming effective dates`}
           </button>
           {showAdditional && (
             <ul className="mt-2 space-y-1.5">
@@ -227,7 +227,7 @@ const UpcomingCard = ({
                 >
                   <span className="truncate">{e.summary}</span>
                   <span className="shrink-0">
-                    {formatVietnameseDate(e.effectiveDate)}
+                    {formatKensynDate(e.effectiveDate)}
                   </span>
                 </li>
               ))}
@@ -269,15 +269,15 @@ const HelpPopover = () => (
     </PopoverTrigger>
     <PopoverContent className="w-80 max-w-[calc(100vw-2rem)]" align="end">
       <div className="space-y-2 text-xs leading-relaxed">
-        <p className="font-semibold text-sm">Cấu hình phí ứng lương</p>
+        <p className="font-semibold text-sm">Kensyn advance payment fee configuration</p>
         <p>
-          Mỗi cấu hình áp dụng từ ngày hiệu lực cho đến khi có cấu hình mới
-          thay thế. Cấu hình quá khứ và đang hoạt động không thể sửa hay xóa
-          để giữ tính minh bạch của lịch sử giao dịch.
+          Each configuration applies from the effective date until a new
+          configuration replaces it. Past and active configurations cannot be
+          edited or deleted to keep transaction history transparent.
         </p>
         <p>
-          Để thay đổi phí, hãy thêm cấu hình mới với ngày hiệu lực trong tương
-          lai. Cấu hình đó sẽ tự động áp dụng khi đến ngày.
+          To change fees, add a new configuration with an effective date in the
+          future. It will automatically apply when the date arrives.
         </p>
       </div>
     </PopoverContent>

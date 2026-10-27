@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { Employee } from '@hr/types/api/employee.types';
-import { findPreferredDayType } from '@hr/utils/vietnamese';
+import { findPreferredDayType } from '@hr/utils/kenyan';
 import { PREFERRED_DAY_TYPES } from '@hr/constants/timesheetConstants';
 import type { MultiTimesheetFormData } from '../types/multi-timesheet.types';
 import { useTimesheetProjects } from '@hr/hooks/api/useProjects';

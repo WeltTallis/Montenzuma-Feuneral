@@ -1,0 +1,302 @@
+package middleware
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	authservice "api-server/internal/app/services/auth"
+	"api-server/internal/app/services/employee"
+	"api-server/internal/app/services/project"
+	"api-server/internal/config"
+	"api-server/internal/constants"
+	"api-server/internal/domain"
+	"api-server/internal/infra/observability"
+	"api-server/internal/transport/http/response"
+
+	"github.com/gin-gonic/gin"
+)
+
+type AuthorizationMiddleware struct {
+	authorizationService      *authservice.AuthorizationService
+	projectPermissionService  *project.ProjectPermissionService
+	employeePermissionService *employee.EmployeePermissionService
+	otpConfig                 config.OTPConfig
+}
+
+func NewAuthorizationMiddleware(authorizationService *authservice.AuthorizationService, projectPermissionService *project.ProjectPermissionService, employeePermissionService *employee.EmployeePermissionService, otpCfg config.OTPConfig) *AuthorizationMiddleware {
+	return &AuthorizationMiddleware{
+		authorizationService:      authorizationService,
+		projectPermissionService:  projectPermissionService,
+		employeePermissionService: employeePermissionService,
+		otpConfig:                 otpCfg,
+	}
+}
+
+// isScopedPartnerRole reports whether the role is an external/partner-facing
+// role that must be constrained to project- and employee-level ownership
+// scoping. Both partner and adv_partner are external roles and must pass
+// CanUserAccessProject / CanUserAccessEmployee before reaching per-record
+// endpoints; without this gate, adv_partner bypasses per-record authorization.
+// Admins are omniscient and employees reach only their own data via other
+// checks, so neither is scoped here.
+func isScopedPartnerRole(userRole string) bool {
+	return userRole == string(domain.RolePartner) || userRole == string(domain.RoleAdvPartner)
+}
+
+func (m *AuthorizationMiddleware) Authorize() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get(constants.CtxUserID)
+		if !exists {
+			response.Forbidden(c, constants.MsgUserIDNotFoundInContextVN)
+			c.Abort()
+			return
+		}
+
+		userRole := c.GetString(constants.CtxUserRole)
+		if userRole == "" {
+			response.Forbidden(c, constants.MsgUserRoleNotFoundInContextVN)
+			c.Abort()
+			return
+		}
+
+		// If authorization service is not available, fall back to admin-only access
+		if m.authorizationService == nil {
+			if userRole != string(domain.RoleAdmin) {
+				response.Forbidden(c, "Admin access required")
+				c.Abort()
+				return
+			}
+			c.Next()
+			return
+		}
+
+		resource := c.Request.URL.Path
+		action := c.Request.Method
+
+		// Special handling for timesheet modifications - check if approved
+		if strings.Contains(resource, "/timesheets/") && (action == "PUT" || action == "DELETE") && userRole == "partner" {
+			timesheetID := extractTimesheetID(resource)
+			if !m.authorizationService.CanAccessTimesheet(c.Request.Context(), userRole, resource, action, timesheetID) {
+				m.logAuthorizationDenied(userID, userRole, resource, action, "approved timesheet modification")
+				response.Forbidden(c, "Cannot modify approved timesheet")
+				c.Abort()
+				return
+			}
+		} else {
+			// Standard Casbin authorization check
+			if !m.authorizationService.CanAccess(userRole, resource, action) {
+				m.logAuthorizationDenied(userID, userRole, resource, action, "casbin policy")
+				response.Forbidden(c, "Insufficient permissions")
+				c.Abort()
+				return
+			}
+		}
+
+		// RT-C1: email-OTP enforcement lives INSIDE Authorize() (not as a route-
+		// group middleware) so it covers EVERY route that does RBAC, including
+		// /wallet and /admin/manual-disbursement which are mounted on v1 directly
+		// rather than the shared `protected` group. When the flag is on and the
+		// caller is admin/partner/accountant, the token must carry
+		// otp_verified=true (set only after a successful /auth/login/verify).
+		// Flag off → no-op. Keep this role set in sync with
+		// AuthService.requiresOTP.
+		if m.otpConfig.Enabled && (userRole == string(domain.RoleAdmin) || userRole == string(domain.RolePartner) || userRole == string(domain.RoleAccountant)) {
+			otpVerified, _ := c.Get("otp_verified")
+			verified, _ := otpVerified.(bool)
+			if !verified {
+				response.Forbidden(c, constants.MsgOTPVerificationRequiredVN)
+				c.Abort()
+				return
+			}
+		}
+
+		// Check project-specific access for scoped partner roles (partner + adv_partner)
+		if isScopedPartnerRole(userRole) && m.isProjectSpecificRoute(resource) && m.projectPermissionService != nil {
+			projectID := m.extractProjectID(resource)
+			if projectID != nil {
+				var hasAccess bool
+				var err error
+
+				// For write operations, check modify permission (excludes employee-based access)
+				// For read operations, check access permission (includes employee-based access)
+				if action == "PUT" || action == "PATCH" || action == "DELETE" {
+					hasAccess, err = m.projectPermissionService.CanUserModifyProject(
+						c.Request.Context(),
+						*projectID,
+						userID.(uint),
+					)
+				} else {
+					hasAccess, err = m.projectPermissionService.CanUserAccessProject(
+						c.Request.Context(),
+						*projectID,
+						userID.(uint),
+					)
+				}
+
+				if err != nil || !hasAccess {
+					m.logAuthorizationDenied(userID, userRole, resource, action, fmt.Sprintf("no access to project %d", *projectID))
+					response.Forbidden(c, "No access to this project")
+					c.Abort()
+					return
+				}
+			}
+		}
+
+		// Check employee-specific access for scoped partner roles (partner + adv_partner)
+		if isScopedPartnerRole(userRole) && m.isEmployeeSpecificRoute(resource) && m.employeePermissionService != nil {
+			employeeID := m.extractEmployeeID(resource)
+			if employeeID != nil {
+				// Read-only preview: scoped partners may GET any employee's
+				// profile (global pool — lets them inspect before requesting
+				// management). Writes and the detail export still require
+				// access; the handler masks sensitive fields for unclaimed
+				// employees.
+				isReadOnlyPreview := action == "GET" && !strings.Contains(resource, "/export")
+				if !isReadOnlyPreview {
+					hasAccess, err := m.employeePermissionService.CanUserAccessEmployee(
+						c.Request.Context(),
+						*employeeID,
+						userID.(uint),
+					)
+					if err != nil || !hasAccess {
+						m.logAuthorizationDenied(userID, userRole, resource, action, fmt.Sprintf("no access to employee %d", *employeeID))
+						response.Forbidden(c, "No access to this employee")
+						c.Abort()
+						return
+					}
+				}
+			}
+		}
+
+		// Log successful authorization for debugging
+		m.logAuthorizationSuccess(userID, userRole, resource, action)
+
+		c.Next()
+	}
+}
+
+func (m *AuthorizationMiddleware) logAuthorizationSuccess(userID interface{}, userRole, resource, action string) {
+	// Only log in debug mode to avoid spam
+	// Could be enhanced with proper structured logging
+}
+
+// logAuthorizationDenied records why a request was rejected. Denials were
+// previously silent, which made 403 spikes (e.g. partner payrate fetches for
+// non-owned projects) visible only as counts in api_metrics — the logs held
+// no corresponding entry to diagnose from.
+func (m *AuthorizationMiddleware) logAuthorizationDenied(userID interface{}, userRole, resource, action, reason string) {
+	logger := observability.GetLogger()
+	logger.Warn("Authorization denied",
+		"user_id", userID,
+		"user_role", userRole,
+		"method", action,
+		"path", resource,
+		"reason", reason,
+	)
+}
+
+func extractTimesheetID(path string) *uint {
+	parts := strings.Split(path, "/")
+	for i, part := range parts {
+		if part == "timesheets" && i+1 < len(parts) {
+			if id, err := strconv.ParseUint(parts[i+1], 10, 64); err == nil {
+				timesheetID := uint(id)
+				return &timesheetID
+			}
+		}
+	}
+	return nil
+}
+
+// extractProjectID extracts project ID from URL path
+func (m *AuthorizationMiddleware) extractProjectID(path string) *uint {
+	parts := strings.Split(path, "/")
+	for i, part := range parts {
+		if part == "projects" && i+1 < len(parts) {
+			if id, err := strconv.ParseUint(parts[i+1], 10, 64); err == nil {
+				projectID := uint(id)
+				return &projectID
+			}
+		}
+	}
+	return nil
+}
+
+// isProjectSpecificRoute checks if the route is project-specific
+func (m *AuthorizationMiddleware) isProjectSpecificRoute(path string) bool {
+	return strings.Contains(path, "/projects/") &&
+		!strings.Contains(path, "/projects/summary") &&
+		!strings.Contains(path, "/projects/shared") &&
+		// The advance kill switch is authorized by role (casbin + handler):
+		// adv_partner is the FlexPay pipeline operator with project-agnostic
+		// write access, and advance projects are routinely admin-created with
+		// no project_users rows — the per-project modify gate would 403 them.
+		!strings.Contains(path, "/advance-request-enabled")
+}
+
+// extractEmployeeID extracts employee ID from URL path
+func (m *AuthorizationMiddleware) extractEmployeeID(path string) *uint {
+	parts := strings.Split(path, "/")
+	for i, part := range parts {
+		if part == "employees" && i+1 < len(parts) {
+			if id, err := strconv.ParseUint(parts[i+1], 10, 64); err == nil {
+				employeeID := uint(id)
+				return &employeeID
+			}
+		}
+	}
+	return nil
+}
+
+// isEmployeeSpecificRoute checks if the route is employee-specific
+// Excludes routes that have their own creator-only checks in the handler/service layer
+func (m *AuthorizationMiddleware) isEmployeeSpecificRoute(path string) bool {
+	// Must be an employee route
+	if !strings.Contains(path, "/employees/") {
+		return false
+	}
+
+	// Exclude aggregate/collection routes (no employee ID in path).
+	// Use HasSuffix or exact segment matching to avoid accidentally excluding
+	// per-employee sub-routes like /employees/{id}/summary.
+	aggregateExclusions := []string{
+		"/employees/summary",
+		"/employees/unassigned",
+		"/employees/export",
+		"/employees/init-users",
+		"/employees/missing-bank-details",
+	}
+	for _, suffix := range aggregateExclusions {
+		if strings.HasSuffix(path, suffix) {
+			return false
+		}
+	}
+
+	// Exclude CCCD lookup (value-based, not ID-based)
+	if strings.Contains(path, "/employees/cccd/") {
+		return false
+	}
+
+	// Exclude routes with their own creator-only/access control logic
+	if strings.Contains(path, "/change-password") {
+		return false
+	}
+	// Advance kill switch: role-authorized (casbin + handler) — adv_partner is
+	// the FlexPay pipeline operator; per-employee modify gates don't apply.
+	if strings.Contains(path, "/advance-request-enabled") {
+		return false
+	}
+	if strings.Contains(path, "/users") {
+		return false
+	}
+
+	// Self-service claim: by design it targets employees the partner does NOT
+	// yet have access to — the service layer enforces its own rules (partner
+	// role, idempotency). Blocking it here would make claiming impossible.
+	if strings.Contains(path, "/request-access") {
+		return false
+	}
+
+	return true
+}
