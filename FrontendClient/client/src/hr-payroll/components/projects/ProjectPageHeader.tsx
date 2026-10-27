@@ -11,11 +11,11 @@ export const ProjectPageHeader = ({ onCreateProject }: ProjectPageHeaderProps) =
   return (
     <PageHeader
       title="Projects"
-      description="Theo dõi và quản lý tất cả dự án trong công ty"
+      description="View and manage all company projects"
       icon={Briefcase}
       actions={[
         {
-          label: 'Tạo dự án',
+          label: 'Create project',
           onClick: onCreateProject,
           icon: Plus,
           variant: 'default' as const,

@@ -61,17 +61,17 @@ const validateValue = (
   wholeNumber: boolean,
 ): { isValid: boolean; errorMessage?: string } => {
   if (!value || value.trim() === '') {
-    return { isValid: false, errorMessage: 'Giá trị không được để trống' };
+    return { isValid: false, errorMessage: 'This field is required' };
   }
   if (displayMode === 'account-number') {
     if (!/^\d{6,24}$/.test(value)) {
-      return { isValid: false, errorMessage: 'Số tài khoản chỉ gồm chữ số (6-24 số)' };
+      return { isValid: false, errorMessage: 'Enter a 6–24 digit account number' };
     }
     return { isValid: true };
   }
   if (displayMode === 'currency-vnd' || displayMode === 'currency-slider') {
     if (!/^\d+$/.test(value)) {
-      return { isValid: false, errorMessage: 'Chỉ nhập số nguyên dương, không nhập số lẻ' };
+      return { isValid: false, errorMessage: 'Enter a positive whole number' };
     }
     const integerValue = BigInt(value);
     const minimum = BigInt(min);
@@ -79,21 +79,21 @@ const validateValue = (
     if (integerValue < minimum || integerValue > maximum) {
       return {
         isValid: false,
-        errorMessage: `Giá trị phải từ ${formatVndDigits(String(min))} ₫ đến ${formatVndDigits(String(max))} ₫`,
+        errorMessage: `Value must be between ${formatVndDigits(String(min))} ₫ and ${formatVndDigits(String(max))} ₫`,
       };
     }
     return { isValid: true };
   }
   if (type === 'number') {
     if (wholeNumber && !/^(0|[1-9]\d*)$/.test(value)) {
-      return { isValid: false, errorMessage: 'Giá trị phải là số nguyên' };
+      return { isValid: false, errorMessage: 'Value must be a whole number' };
     }
     const numValue = parseFloat(value);
     const numericMin = Number(min);
     const numericMax = Number(max);
-    if (isNaN(numValue)) return { isValid: false, errorMessage: 'Giá trị phải là số' };
+    if (isNaN(numValue)) return { isValid: false, errorMessage: 'Enter a valid number' };
     if (numValue < numericMin || numValue > numericMax)
-      return { isValid: false, errorMessage: `Giá trị phải từ ${min} đến ${max}` };
+      return { isValid: false, errorMessage: `Value must be between ${min} and ${max}` };
   }
   return { isValid: true };
 };
@@ -177,7 +177,7 @@ export const SettingCard = ({
       return;
     }
 
-    setCurrencyInputError('Chỉ nhập số nguyên dương, không nhập số lẻ');
+    setCurrencyInputError('Enter a positive whole number');
   };
 
   return (
@@ -335,7 +335,7 @@ export const SettingCard = ({
               className="h-11 w-full gap-1.5 text-xs"
             >
               <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />
-              Thử lại
+              Try again
             </Button>
           ) : isDirty ? (
             <div className="flex items-center gap-2">
@@ -351,7 +351,7 @@ export const SettingCard = ({
                 className="h-11 flex-1 gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               >
                 <X aria-hidden="true" className="h-3.5 w-3.5" />
-                Hoàn tác
+                Undo
               </Button>
               <Button
                 type="button"
@@ -362,7 +362,7 @@ export const SettingCard = ({
                 className="h-11 flex-1 gap-1.5 text-sm"
               >
                 <Check aria-hidden="true" className="h-3.5 w-3.5" />
-                <span aria-live="polite">{isSaving ? 'Đang lưu…' : 'Lưu thay đổi'}</span>
+                <span aria-live="polite">{isSaving ? 'Saving…' : 'Save changes'}</span>
               </Button>
             </div>
           ) : null}

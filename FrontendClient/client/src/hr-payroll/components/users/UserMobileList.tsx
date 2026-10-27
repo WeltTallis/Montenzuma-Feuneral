@@ -11,7 +11,7 @@ interface UserMobileListProps {
 
 const ROLE_CONFIG = {
   admin: {
-    label: "Quản trị viên",
+    label: "Administrator",
     dot: "bg-red-500",
     card: "border-red-200 bg-red-50/60",
     name: "text-red-900",
@@ -25,7 +25,7 @@ const ROLE_CONFIG = {
     sub: "text-blue-700",
   },
   adv_partner: {
-    label: "Quản lý ứng lương",
+    label: "Advance payment manager",
     dot: "bg-violet-500",
     card: "border-violet-200 bg-violet-50/60",
     name: "text-violet-900",
@@ -63,7 +63,7 @@ const UserGridCard = React.memo(function UserGridCard({
       type="button"
       onClick={() => onRowClick?.(user)}
       className={`flex w-full flex-col items-center gap-1.5 rounded-xl border p-2.5 text-center transition-all active:scale-[0.98] active:brightness-95 touch-manipulation ${cfg.card}`}
-      aria-label={`Xem chi tiết ${user.fullname}`}
+      aria-label={`View details for ${user.fullname}`}
     >
       <div className="relative">
         <UserAvatar
@@ -87,7 +87,7 @@ const UserGridCard = React.memo(function UserGridCard({
 export function UserMobileList({ users, onRowClick, emptyState }: UserMobileListProps) {
   if (users.length === 0) {
     return (
-      emptyState || <EmptyState title="Không tìm thấy người dùng nào" description="Không có dữ liệu để hiển thị." size="sm" />
+      emptyState || <EmptyState title="No users found" description="There is no data to display." size="sm" />
     );
   }
 

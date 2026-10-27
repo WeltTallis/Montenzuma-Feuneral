@@ -304,7 +304,7 @@ const TimesheetPage = () => {
       {/* ── Header ── */}
       <PageHeader
         title="Timesheets"
-        description="Theo dõi và duyệt bảng công"
+        description="View and approve timesheets"
       >
         <TimesheetMonthSelector
           value={timesheetManagement.selectedMonth}
@@ -316,26 +316,26 @@ const TimesheetPage = () => {
             className="inline-flex items-center gap-1.5 h-9 px-3 bg-card text-foreground text-sm font-medium whitespace-nowrap hover:bg-muted transition-colors border-r border-border"
           >
             <CheckDone01 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Duyệt hết
+            Approve all
           </button>
           <button
             onClick={handleResetAll}
             className="inline-flex items-center gap-1.5 h-9 px-3 bg-card text-foreground text-sm font-medium whitespace-nowrap hover:bg-muted transition-colors border-r border-border"
           >
             <RefreshCw05 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Bỏ duyệt
+            Reset approvals
           </button>
           <button
             onClick={handleChuyenLo}
             className="inline-flex items-center gap-1.5 h-9 px-3 bg-primary text-primary-foreground text-sm font-medium whitespace-nowrap hover:bg-primary/90 transition-colors border-r border-border"
           >
             <Send01 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Chuyển lô
+            Bulk transfer
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                aria-label="Thêm tùy chọn"
+                aria-label="More options"
                 className="inline-flex items-center justify-center h-9 w-9 bg-card text-foreground hover:bg-muted transition-colors"
               >
                 <DotsVertical className="h-4 w-4" aria-hidden="true" />
@@ -345,39 +345,39 @@ const TimesheetPage = () => {
               {/* Group 1: Nhập / Input */}
               <DropdownMenuItem onClick={handleAddTimesheet}>
                 <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
-                Nhập công
+                Add timesheets
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleBulkTransferResultUpload}>
                 <Upload01 className="w-4 h-4 mr-2" aria-hidden="true" />
-                Nhập KQ chuyển lô
+                Upload bulk transfer results
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setBulkTransferKQDialogOpen(true)}>
                 <FileCheck02 className="w-4 h-4 mr-2" aria-hidden="true" />
-                Tạo KQ CK
+                Create bank transfer results
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {/* Group 2: Import / Upload */}
               <DropdownMenuItem onClick={() => setBccUploadOpen(true)}>
                 <UploadCloud01 className="w-4 h-4 mr-2" aria-hidden="true" />
-                Tải lên BCC
+                Upload attendance sheet
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {/* Group 3: Báo cáo / Reports */}
               <DropdownMenuItem onClick={handleChuyenOnePay} disabled={exportOnePayMutation.isPending}>
                 <Wallet01 className="w-4 h-4 mr-2" aria-hidden="true" />
-                {exportOnePayMutation.isPending ? 'Đang xuất...' : 'Chuyển OnePay'}
+                {exportOnePayMutation.isPending ? 'Exporting...' : 'Export to OnePay'}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleApprovedTimesheetsExport} disabled={exportApprovedTimesheetsMutation.isPending}>
                 <FileDownload01 className="w-4 h-4 mr-2" aria-hidden="true" />
-                {exportApprovedTimesheetsMutation.isPending ? 'Đang xuất...' : 'Xuất bảng công'}
+                {exportApprovedTimesheetsMutation.isPending ? 'Exporting...' : 'Export timesheets'}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleBulkTransferHistory}>
                 <ClockStopwatch className="w-4 h-4 mr-2" aria-hidden="true" />
-                Lịch sử chuyển lô
+                Bulk transfer history
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleBccHistory}>
                 <Grid01 className="w-4 h-4 mr-2" aria-hidden="true" />
-                Lịch sử BCC
+                Attendance sheet history
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -385,7 +385,7 @@ const TimesheetPage = () => {
                 className="text-destructive focus:text-destructive"
               >
                 <Trash01 className="w-4 h-4 mr-2" aria-hidden="true" />
-                Loại công
+                Timesheet type
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -446,15 +446,15 @@ const TimesheetPage = () => {
       <ConfirmDialog
         open={bulkApproveDialogOpen}
         onOpenChange={setBulkApproveDialogOpen}
-        title="Duyệt hết bảng công"
+        title="Approve all timesheets"
         description={
           <div className="space-y-0 divide-y divide-border/60">
             <div className="flex items-center justify-between py-2 text-sm">
-              <span className="text-muted-foreground">Bảng công chờ duyệt</span>
+              <span className="text-muted-foreground">Timesheets awaiting approval</span>
               <span className="font-semibold tabular-nums">{globalSummary?.pendingApproval ?? 0}</span>
             </div>
             <div className="flex items-center justify-between py-2 text-sm">
-              <span className="text-muted-foreground">Số NV liên quan</span>
+              <span className="text-muted-foreground">Employees affected</span>
               <span className="font-semibold tabular-nums">{globalSummary?.pendingEmployees ?? '—'}</span>
             </div>
           </div>
@@ -468,23 +468,23 @@ const TimesheetPage = () => {
       <ConfirmDialog
         open={resetAllDialogOpen}
         onOpenChange={setResetAllDialogOpen}
-        title="Bỏ duyệt tất cả bảng công"
+        title="Reset all timesheet approvals"
         description={
           <div className="space-y-0 divide-y divide-border/60">
             <div className="flex items-center justify-between py-2 text-sm">
-              <span className="text-muted-foreground">Bảng công đã duyệt</span>
+              <span className="text-muted-foreground">Approved timesheets</span>
               <span className="font-semibold tabular-nums">{globalSummary?.approvedEntries ?? 0}</span>
             </div>
             <div className="flex items-center justify-between gap-4 py-2 text-sm">
-              <span className="text-muted-foreground">Bảng công đã thanh toán</span>
+              <span className="text-muted-foreground">Paid timesheets</span>
               <span className="font-semibold tabular-nums">{globalSummary?.paidEntries ?? 0}</span>
             </div>
             <p className="py-2 text-xs text-muted-foreground">
-              Toàn bộ bảng công đã duyệt (chưa thanh toán) sẽ trở về trạng thái chờ duyệt. Bảng công đã thanh toán không bị ảnh hưởng.
+              All approved but unpaid timesheets will return to pending approval. Paid timesheets will not be affected.
             </p>
           </div>
         }
-        confirmText="Bỏ duyệt"
+        confirmText="Reset approvals"
         confirmVariant="destructive"
         onConfirm={handleConfirmResetAll}
         loading={resetAllMutation.isPending}
@@ -497,7 +497,7 @@ const TimesheetPage = () => {
         onOpenChange={setBulkTransferResultDialogOpen}
       />
 
-      {/* Tạo KQ CK — convert a chuyển-lô file into a bank result file */}
+      {/* Convert a bulk transfer file into a bank transfer result file */}
       <BulkTransferKQDialog
         open={bulkTransferKQDialogOpen}
         onOpenChange={setBulkTransferKQDialogOpen}

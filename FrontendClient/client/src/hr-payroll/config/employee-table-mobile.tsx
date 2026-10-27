@@ -55,7 +55,7 @@ export const createEmployeeMobileConfig = (
     mobileFields: [
       {
         key: "mobile",
-        label: "Điện thoại",
+        label: "Phone",
         priority: 2,
         render: (row) => (
           <div className="typography-body-medium text-gray-600">
@@ -65,7 +65,7 @@ export const createEmployeeMobileConfig = (
       },
       {
         key: "date_of_birth",
-        label: "Ngày sinh",
+        label: "Date of birth",
         priority: 2,
         render: (row) => (
           <div className="typography-body-medium text-gray-600">
@@ -77,7 +77,7 @@ export const createEmployeeMobileConfig = (
       },
       {
         key: "address",
-        label: "Địa chỉ",
+        label: "Address",
         priority: 2,
         render: (row) => (
           <div className="typography-body-medium text-gray-600 line-clamp-2">
@@ -87,7 +87,7 @@ export const createEmployeeMobileConfig = (
       },
       {
         key: "bank",
-        label: "Ngân hàng",
+        label: "Bank",
         priority: 3,
         render: (row) => (
           <div className="typography-body-medium text-gray-600">
@@ -119,7 +119,7 @@ export const createEmployeeMobileConfig = (
       if (projectCount === 0) {
         return (
           <div className="typography-body-medium text-muted-foreground">
-            Chưa phân công dự án
+            No project assigned
           </div>
         );
       }
@@ -149,7 +149,7 @@ export const createEmployeeMobileConfig = (
       return (
         <div>
           <div className="typography-title-small text-muted-foreground">
-            {projects[0].name} (+{projectCount - 1} dự án khác)
+            {projects[0].name} (+{projectCount - 1} other projects)
           </div>
           {projects[0].payment_schedule && (
             <Badge

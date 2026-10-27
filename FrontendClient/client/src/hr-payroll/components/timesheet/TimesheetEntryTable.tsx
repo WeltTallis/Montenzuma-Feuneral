@@ -359,8 +359,8 @@ export function TimesheetEntryTable({
 
           const getHourStatusMessage = (status: string) => {
             switch (status) {
-              case 'excessive': return 'Nhân viên đã làm việc quá 16 giờ trong ngày';
-              case 'exceeded': return 'Nhân viên đã làm việc quá 12 giờ trong ngày';
+              case 'excessive': return 'Employee has worked more than 16 hours today';
+              case 'exceeded': return 'Employee has worked more than 12 hours today';
               default: return '';
             }
           };
@@ -382,12 +382,12 @@ export function TimesheetEntryTable({
                     "typography-body-small",
                     getHourStatusColor(hourStatus)
                   )}>
-                    Tổng: {totalHours.toFixed(1)}h
+                    Total: {totalHours.toFixed(1)}h
                   </span>
                 )}
                 {!isValidPosition && (
                   <span className="typography-body-small text-orange-700">
-                    Vị trí không hợp lệ
+                    Invalid position
                   </span>
                 )}
               </div>
@@ -423,7 +423,7 @@ export function TimesheetEntryTable({
       },
       {
         id: "position",
-        header: "Vị trí",
+        header: "Position",
         accessorKey: "position",
         meta: { minWidth: "140px" },
         cell: ({ row }) => {
@@ -452,7 +452,7 @@ export function TimesheetEntryTable({
         <div className="text-center">
           {hourType}
           <br />
-          <small className="font-normal text-muted-foreground lowercase">Giờ</small>
+          <small className="font-normal text-muted-foreground lowercase">Hours</small>
         </div>
       ),
       accessorKey: `hour_${hourType}`,
@@ -493,7 +493,7 @@ export function TimesheetEntryTable({
       id: "totalAmount",
       header: () => (
         <div className="text-center">
-          Thành tiền
+          Amount
           <br />
           <small className="font-normal text-muted-foreground">₫</small>
         </div>
@@ -526,7 +526,7 @@ export function TimesheetEntryTable({
       <Card className="p-6">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Đang tải cấu hình lương...</p>
+          <p className="text-muted-foreground">Loading pay rates...</p>
         </div>
       </Card>
     );
@@ -541,10 +541,10 @@ export function TimesheetEntryTable({
           <AlertDescription className="text-amber-800">
             <div className="space-y-3">
               <div>
-                <strong>Dự án chưa có cấu hình lương</strong>
+                <strong>No pay rates are set up for this project</strong>
                 <p className="mt-1">
-                  Để nhập bảng công, bạn cần thiết lập cấu hình lương cho dự án này trước.
-                  Cấu hình lương bao gồm các vị trí công việc và mức lương theo từng loại giờ làm việc.
+                  Set up pay rates for this project before entering timesheets.
+                  Pay rates include job positions and rates for each type of working hour.
                 </p>
               </div>
               <div>
@@ -556,7 +556,7 @@ export function TimesheetEntryTable({
                   }}
                   className="bg-amber-700 hover:bg-amber-800 text-white"
                 >
-                  Thiết lập cấu hình lương
+                  Set up pay rates
                 </Button>
               </div>
             </div>
@@ -576,7 +576,7 @@ export function TimesheetEntryTable({
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-blue-700" />
               <div>
-                <span className="typography-body-medium text-foreground">Loại ngày: </span>
+                <span className="typography-body-medium text-foreground">Day type: </span>
                 <Badge variant="outline" className={cn("ml-1", getDayTypeBadgeClass(dayType))}>
                   {VIETNAMESE_PAYRATE_LABELS.dayTypes[dayType]}
                 </Badge>
@@ -594,10 +594,10 @@ export function TimesheetEntryTable({
           <AlertDescription className="text-orange-800">
             <div className="space-y-3">
               <div>
-                <strong>Cấu hình lương chưa đầy đủ</strong>
+                <strong>Pay rates are incomplete</strong>
                 <p className="mt-1">
-                  Dự án đã có cấu hình lương nhưng chưa có loại giờ làm việc nào được định nghĩa cho ngày {VIETNAMESE_PAYRATE_LABELS.dayTypes[dayType]}.
-                  Vui lòng bổ sung thêm loại giờ làm việc (ví dụ: Giờ thường, Giờ tăng ca) để có thể nhập bảng công.
+                  This project has pay rates, but no working-hour types are defined for {VIETNAMESE_PAYRATE_LABELS.dayTypes[dayType]}.
+                  Add working-hour types (for example, regular hours or overtime) before entering timesheets.
                 </p>
               </div>
               <div>
@@ -609,7 +609,7 @@ export function TimesheetEntryTable({
                   }}
                   className="bg-orange-700 hover:bg-orange-800 text-white"
                 >
-                  Cập nhật cấu hình lương
+                  Update pay rates
                 </Button>
               </div>
             </div>
@@ -627,7 +627,7 @@ export function TimesheetEntryTable({
           <div className="flex items-center gap-2">
             <Info className="h-4 w-4 text-blue-700" />
             <div>
-              <span className="typography-body-medium text-foreground">Loại ngày: </span>
+              <span className="typography-body-medium text-foreground">Day type: </span>
               <Badge variant="outline" className={cn("ml-1", getDayTypeBadgeClass(dayType))}>
                 {VIETNAMESE_PAYRATE_LABELS.dayTypes[dayType]}
               </Badge>
@@ -646,7 +646,7 @@ export function TimesheetEntryTable({
         data={tableData}
         showPagination={false}
         primaryColumns={["fullname", "cccd"]}
-        caption="Bảng chấm công nhân viên"
+        caption="Employee timesheet"
         className="[&_table]:table-auto"
       />
     </div>

@@ -8,8 +8,8 @@ export const getStatusBadge = (status: Timesheet['status']) => {
   const variants = {
     approved: { variant: 'outline' as const, text: 'Approved', className: 'bg-blue-50 text-blue-800 border-blue-200' },
     pending_approval: { variant: 'outline' as const, text: 'Pending approval', className: 'bg-yellow-50 text-amber-800 border-yellow-200' },
-    rejected: { variant: 'outline' as const, text: 'Loại', className: 'bg-red-50 text-red-700 border-red-200' },
-    draft: { variant: 'outline' as const, text: 'Nháp', className: 'bg-muted text-foreground' }
+    rejected: { variant: 'outline' as const, text: 'Rejected', className: 'bg-red-50 text-red-700 border-red-200' },
+    draft: { variant: 'outline' as const, text: 'Draft', className: 'bg-muted text-foreground' }
   };
 
   const config = variants[status] || variants.draft;
@@ -25,7 +25,7 @@ export const getMergedStatusBadge = (approvalStatus: Timesheet['status'], paymen
   if (approvalStatus === 'rejected') {
     return (
       <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-        Loại
+        Rejected
       </Badge>
     );
   }
@@ -41,7 +41,7 @@ export const getMergedStatusBadge = (approvalStatus: Timesheet['status'], paymen
   if (approvalStatus === 'draft') {
     return (
       <Badge variant="outline" className="bg-muted text-foreground">
-        Nháp
+        Draft
       </Badge>
     );
   }
@@ -49,7 +49,7 @@ export const getMergedStatusBadge = (approvalStatus: Timesheet['status'], paymen
   // If approved, show payment status
   if (approvalStatus === 'approved') {
     const paymentVariants = {
-      paid: { variant: 'outline' as const, text: 'Đã thanh toán', className: 'bg-green-50 text-green-800 border-green-200' },
+      paid: { variant: 'outline' as const, text: 'Paid', className: 'bg-green-50 text-green-800 border-green-200' },
       pending: { variant: 'outline' as const, text: 'Approved', className: 'bg-blue-50 text-blue-800 border-blue-200' },
       failed: { variant: 'outline' as const, text: 'Failed', className: 'bg-red-50 text-red-700 border-red-200' },
       cancelled: { variant: 'outline' as const, text: 'Cancelled', className: 'bg-muted/50 text-foreground border-border' }
@@ -99,7 +99,7 @@ export const getVietnameseWeekdayInfo = (dateInput: string | Date | null | undef
   if (Number.isNaN(date.getTime())) return null;
 
   const dayIndex = date.getDay(); // 0 = Sunday, 6 = Saturday
-  const labels = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'] as const;
+  const labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
   return {
     label: labels[dayIndex],

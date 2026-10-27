@@ -3,7 +3,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@hr/components/ui/popov
 import { MonthPicker } from '@hr/components/ui/month-picker';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, parse } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import { cn } from '@hr/lib/utils';
 
 interface TimesheetMonthSelectorProps {
@@ -42,8 +41,7 @@ export const TimesheetMonthSelector: React.FC<TimesheetMonthSelectorProps> = ({
     onChange('all');
   }, [onChange]);
 
-  // "Tháng 5" / "2026"
-  const monthLabel = format(selectedDate, 'MMMM', { locale: vi });   // "tháng 5"
+  const monthLabel = format(selectedDate, 'MMMM');
   const monthShort = format(selectedDate, 'MM/yy');                   // "05/26"
   const yearLabel  = format(selectedDate, 'yyyy');
 
@@ -64,13 +62,13 @@ export const TimesheetMonthSelector: React.FC<TimesheetMonthSelectorProps> = ({
             : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
         )}
       >
-        Tất cả
+        All
       </button>
 
       <button
         type="button"
         onClick={handlePreviousMonth}
-        aria-label="Tháng trước"
+        aria-label="Previous month"
         className="-ml-px flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <ChevronLeft className="h-3.5 w-3.5" />
@@ -81,11 +79,11 @@ export const TimesheetMonthSelector: React.FC<TimesheetMonthSelectorProps> = ({
           <button
             type="button"
             className="-ml-px flex h-9 min-w-0 items-center justify-center gap-1.5 bg-muted/35 px-2.5 transition-colors hover:bg-muted"
-            aria-label="Chọn tháng"
+            aria-label="Select month"
           >
             <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             {value === 'all' ? (
-              <span className="whitespace-nowrap text-sm font-semibold">Chọn tháng</span>
+              <span className="whitespace-nowrap text-sm font-semibold">Select month</span>
             ) : (
               <>
                 <span className="hidden items-baseline gap-1 whitespace-nowrap text-sm sm:flex">
@@ -108,7 +106,7 @@ export const TimesheetMonthSelector: React.FC<TimesheetMonthSelectorProps> = ({
       <button
         type="button"
         onClick={handleNextMonth}
-        aria-label="Tháng sau"
+        aria-label="Next month"
         className="-ml-px flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <ChevronRight className="h-3.5 w-3.5" />

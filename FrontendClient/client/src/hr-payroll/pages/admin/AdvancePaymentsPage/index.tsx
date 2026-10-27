@@ -292,8 +292,8 @@ const AdvancePaymentsPage = () => {
           className="rounded-2xl border border-white/80 bg-white/82 px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_18px_48px_-32px_rgba(8,120,62,0.22)] backdrop-blur sm:px-5"
         >
           <PageHeader
-            title="Quản lý ứng lương"
-            description="Xem và quản lý các yêu cầu ứng lương của nhân viên"
+            title="Advance payments"
+            description="View and manage employee advance payment requests"
             icon={BankNote01}
           >
             <TimesheetMonthSelector
@@ -305,7 +305,7 @@ const AdvancePaymentsPage = () => {
 
         {/* ─── 2. Treasury Hero — Wallet | Flow | Fee ─── */}
         <section
-          aria-label="Tổng quan kỳ ứng lương"
+          aria-label="Advance payment overview"
           className={cn(
             "overflow-hidden rounded-xl border border-utility-gray-300 bg-white",
             "shadow-[0_1px_2px_rgba(16,24,40,0.05),0_22px_60px_-42px_rgba(8,120,62,0.30)]",
@@ -351,7 +351,7 @@ const AdvancePaymentsPage = () => {
         {/* ─── 3. Pipeline + operating health — single command band ─── */}
         <section
           data-mobile-stats
-          aria-label="Trạng thái xử lý ứng lương"
+          aria-label="Advance payment processing status"
           className={cn(
             "overflow-hidden rounded-xl border border-utility-gray-300 bg-white",
             "shadow-[0_1px_2px_rgba(16,24,40,0.04),0_20px_56px_-42px_rgba(8,120,62,0.26)]",
@@ -392,7 +392,7 @@ const AdvancePaymentsPage = () => {
               tabs={[
                 {
                   id: "requests",
-                  label: "Yêu cầu",
+                  label: "Requests",
                   icon: Wallet01,
                   count: page.statusCounts?.all ?? 0,
                 },
@@ -420,33 +420,33 @@ const AdvancePaymentsPage = () => {
                 const overflowItems = [
                   page.handleExportFlexPayEmployees && {
                     key: "export-list",
-                    label: "Xuất danh sách",
+                    label: "Export employee list",
                     icon: Download01,
                     onClick: () => page.handleExportFlexPayEmployees?.(),
                     disabled: page.exportFlexPayMutation.isPending,
                   },
                   !isAdvPartner && {
                     key: "export-batch",
-                    label: "Chuyển lô",
+                    label: "Bulk transfer",
                     icon: FileDownload01,
                     onClick: () => exportBatchMutation.mutate(undefined),
                     disabled: exportBatchMutation.isPending,
                   },
                   !isAdvPartner && {
                     key: "upload-result",
-                    label: "Nhập kết quả",
+                    label: "Upload results",
                     icon: SwitchHorizontal02,
                     onClick: () => setIsUploadResultDialogOpen(true),
                   },
                   {
                     key: "check-in",
-                    label: "Điểm danh",
+                    label: "Attendance",
                     icon: Scan,
                     onClick: () => navigate("/admin/advance-payments/check-in-settings"),
                   },
                   !isAdvPartner && {
                     key: "history",
-                    label: "Lịch sử file",
+                    label: "File history",
                     icon: ClockRewind,
                     onClick: () => setIsHistorySheetOpen(true),
                   },
@@ -458,8 +458,8 @@ const AdvancePaymentsPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        aria-label="Thao tác khác"
-                        title="Thao tác khác"
+                        aria-label="More actions"
+                        title="More actions"
                         className="h-9 w-9 p-0"
                       >
                         <DotsVertical className="h-4 w-4" aria-hidden="true" />
@@ -496,7 +496,7 @@ const AdvancePaymentsPage = () => {
                   <SearchBar
                     searchTerm={page.searchInput}
                     onSearchChange={page.handleSearch}
-                    placeholder="Tên hoặc CCCD..."
+                    placeholder="Name or ID number..."
                     className="h-9 w-full min-w-[220px] sm:w-64"
                   />
                   <StatusFilterBar
@@ -535,7 +535,7 @@ const AdvancePaymentsPage = () => {
                   <SearchBar
                     searchTerm={page.flexPaySearchInput}
                     onSearchChange={page.handleFlexPaySearch}
-                    placeholder="Tên hoặc CCCD..."
+                    placeholder="Name or ID number..."
                     className="h-9 w-full min-w-[220px] sm:w-64"
                   />
                   <Select
@@ -544,12 +544,12 @@ const AdvancePaymentsPage = () => {
                   >
                     <SelectTrigger className="h-9 w-auto min-w-36 shrink-0 text-sm">
                       <Calendar className="mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <SelectValue placeholder="Tháng" />
+                      <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
                       {page.availableMonths.length === 0 ? (
                         <SelectItem value="none" disabled>
-                          Chưa có dữ liệu
+                          No data available
                         </SelectItem>
                       ) : (
                         page.availableMonths.map((m) => (
@@ -599,11 +599,11 @@ const AdvancePaymentsPage = () => {
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                      <SelectItem value="checked_in">Đang làm</SelectItem>
+                      <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="checked_in">Checked in</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="orphaned">Thiếu check-out</SelectItem>
-                      <SelectItem value="rejected">Đã từ chối</SelectItem>
+                      <SelectItem value="orphaned">Missing check-out</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
                   {!isAdvPartner && (
@@ -614,7 +614,7 @@ const AdvancePaymentsPage = () => {
                       onClick={() => setIsCreateCheckInOpen(true)}
                     >
                       <UserCheck01 data-icon="inline-start" />
-                      Tạo check-in
+                      Record check-in
                     </Button>
                   )}
                 </>
@@ -673,18 +673,18 @@ const AdvancePaymentsPage = () => {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Hủy yêu cầu ứng lương?</AlertDialogTitle>
+              <AlertDialogTitle>Cancel this advance payment request?</AlertDialogTitle>
               <AlertDialogDescription>
-                Yêu cầu ứng lương sẽ bị hủy vĩnh viễn.
+                This advance payment request will be cancelled permanently.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Giữ lại</AlertDialogCancel>
+              <AlertDialogCancel>Keep request</AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
                 onClick={page.confirmCancelRequest}
               >
-                {page.cancelMutation.isPending ? "Đang hủy..." : "Hủy yêu cầu"}
+                {page.cancelMutation.isPending ? "Cancelling..." : "Cancel request"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

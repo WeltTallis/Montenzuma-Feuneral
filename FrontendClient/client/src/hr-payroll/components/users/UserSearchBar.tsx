@@ -11,7 +11,7 @@ interface UserSearchBarProps {
 export const UserSearchBar = ({
   searchTerm,
   onSearchChange,
-  placeholder = "Tìm kiếm theo tên, email hoặc vai trò...",
+  placeholder = "Search by name, email or role...",
 }: UserSearchBarProps) => {
   const { localValue, handleChange } = useDebouncedInput(searchTerm, onSearchChange);
 

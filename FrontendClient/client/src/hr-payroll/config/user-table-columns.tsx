@@ -13,7 +13,7 @@ export const createUserColumns = (
 ): ColumnDef<User>[] => [
   {
     id: "stt",
-    header: "STT",
+    header: "No.",
     size: 40,
     cell: ({ row }) => {
       return (
@@ -46,7 +46,7 @@ export const createUserColumns = (
   },
   {
     accessorKey: "mobile",
-    header: "SDT",
+    header: "Phone",
     cell: ({ row }) => {
       return (
         <div className="typography-body-medium">{row.original.mobile || "—"}</div>
@@ -55,14 +55,14 @@ export const createUserColumns = (
   },
   {
     accessorKey: "role",
-    header: "Vai trò",
+    header: "Role",
     cell: ({ row }) => {
       const role = row.getValue("role") as string;
       let roleLabel = "Users";
       let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
 
       if (role === "admin") {
-        roleLabel = "Quản trị viên";
+        roleLabel = "Administrator";
         variant = "destructive";
       } else if (role === "partner") {
         roleLabel = "Management";
@@ -71,7 +71,7 @@ export const createUserColumns = (
         roleLabel = "Employees";
         variant = "outline";
       } else if (role === "adv_partner") {
-        roleLabel = "Quản lý ứng lương";
+        roleLabel = "Advance payment manager";
         variant = "outline";
       } else if (role === "accountant") {
         roleLabel = "Accountant";
@@ -98,14 +98,14 @@ export const createUserColumns = (
   },
   {
     accessorKey: "last_login",
-    header: "Hoạt động cuối",
+    header: "Last active",
     cell: ({ row }) => {
       const lastLogin = row.getValue("last_login") as string | undefined;
       return (
         <div className="typography-body-medium">
           {lastLogin
             ? formatVietnameseDate(lastLogin, "dd/MM/yyyy HH:mm")
-            : "Chưa đăng nhập"}
+            : "Never logged in"}
         </div>
       );
     },

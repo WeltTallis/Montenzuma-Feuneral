@@ -38,16 +38,16 @@ export const UserFiltersBar = ({
       <SearchBar
         searchTerm={search}
         onSearchChange={onSearchChange}
-        placeholder="Tìm theo tên, email..."
+        placeholder="Search by name or email..."
         className={hideRoleFilter ? 'flex-1 min-w-[200px] max-w-md' : 'w-48'}
       />
       {!hideRoleFilter && (
         <FilterPill
           value={role ?? 'all'}
           onChange={(v) => onRoleChange(v === 'all' ? undefined : v as UserRoleFilter)}
-          placeholder="Vai trò"
+          placeholder="Role"
           options={[
-            { value: 'admin', label: 'Quản trị viên' },
+            { value: 'admin', label: 'Administrator' },
             { value: 'partner', label: 'Management' },
             { value: 'employee', label: 'Employees' },
             { value: 'accountant', label: 'Accountant' },

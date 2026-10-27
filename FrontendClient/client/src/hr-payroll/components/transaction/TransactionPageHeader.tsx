@@ -1,5 +1,5 @@
 // UU PRO restyle (W13c): lucide → verified @untitledui/icons; behavior and
-// Vietnamese copy unchanged. Loading01 replaces lucide's Loader2 spinner.
+// Loading01 replaces lucide's Loader2 spinner.
 import {
   BarChart03,
   BookOpen01,
@@ -56,7 +56,7 @@ export function TransactionPageHeader({
   onSimulateSettlement,
 }: TransactionPageHeaderProps) {
   return (
-    <PageHeader title="Sổ Cái" description="Quản lý thu chi và dòng tiền" icon={BookOpen01}>
+    <PageHeader title="Ledger" description="Manage income, expenses and cash flow" icon={BookOpen01}>
       <div className="hidden max-w-full flex-wrap items-center justify-end gap-2 min-[1800px]:flex">
         <div className="flex max-w-full items-center divide-x divide-border overflow-hidden rounded-xl border border-border">
           <DropdownMenu>
@@ -66,7 +66,7 @@ export function TransactionPageHeader({
                 className="rounded-none border-0 gap-1.5"
               >
                 <Download01 className="w-4 h-4" />
-                Xuất sao kê
+                Export statement
                 <ChevronDown className="w-3 h-3" />
               </Button>
             </DropdownMenuTrigger>
@@ -89,7 +89,7 @@ export function TransactionPageHeader({
                 disabled={isSendingSaoKe}
               >
                 <Mail01 className="w-4 h-4" />
-                {isSendingSaoKe ? 'Đang gửi...' : 'Gửi sao kê'}
+                {isSendingSaoKe ? 'Sending...' : 'Send statement'}
                 <ChevronDown className="w-3 h-3" />
               </Button>
             </DropdownMenuTrigger>
@@ -110,17 +110,17 @@ export function TransactionPageHeader({
             onClick={onViewSaoKeHistory}
           >
             <ClockRewind className="w-4 h-4" />
-            Đối soát
+            Reconciliation
           </Button>
         </div>
         <Button variant="outline" onClick={onImportOnePayFeeReport}>
           <Receipt className="w-4 h-4" />
-          Phí OnePay
+          OnePay fees
         </Button>
         {onSimulateSettlement && (
           <Button variant="outline" onClick={onSimulateSettlement}>
             <ClipboardCheck className="w-4 h-4" />
-            Mô phỏng đối soát
+            Simulate reconciliation
           </Button>
         )}
         {onRunWalletSettlement && (
@@ -134,12 +134,12 @@ export function TransactionPageHeader({
             ) : (
               <Zap className="w-4 h-4" />
             )}
-            Chốt lương
+            Run payroll settlement
           </Button>
         )}
         <Button onClick={onAddTransaction}>
           <Plus />
-          Thêm
+          Add transaction
         </Button>
       </div>
 
@@ -150,7 +150,7 @@ export function TransactionPageHeader({
               variant="outline"
               size="icon"
               className="h-9 w-9 shrink-0"
-              aria-label="Tùy chọn khác"
+              aria-label="More options"
             >
               <DotsHorizontal className="h-4 w-4" />
             </Button>
@@ -159,7 +159,7 @@ export function TransactionPageHeader({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Download01 className="mr-2 h-4 w-4" />
-                Xuất sao kê
+                Export statement
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuItem onClick={onExportSaoKePayroll}>
@@ -180,7 +180,7 @@ export function TransactionPageHeader({
                 ) : (
                   <Mail01 className="mr-2 h-4 w-4" />
                 )}
-                {isSendingSaoKe ? 'Đang gửi...' : 'Gửi sao kê'}
+                {isSendingSaoKe ? 'Sending...' : 'Send statement'}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuItem onClick={onSendSaoKePayroll}>
@@ -197,16 +197,16 @@ export function TransactionPageHeader({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onViewSaoKeHistory}>
               <ClockRewind className="mr-2 h-4 w-4" />
-              Đối soát
+              Reconciliation
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onImportOnePayFeeReport}>
               <Receipt className="mr-2 h-4 w-4" />
-              Phí OnePay
+              OnePay fees
             </DropdownMenuItem>
             {onSimulateSettlement && (
               <DropdownMenuItem className="lg:hidden" onClick={onSimulateSettlement}>
                 <ClipboardCheck className="mr-2 h-4 w-4" />
-                Mô phỏng đối soát
+                Simulate reconciliation
               </DropdownMenuItem>
             )}
             {onRunWalletSettlement && (
@@ -219,7 +219,7 @@ export function TransactionPageHeader({
                 ) : (
                   <Zap className="mr-2 h-4 w-4" />
                 )}
-                {isRunningWalletSettlement ? 'Đang chốt lương...' : 'Chốt lương'}
+                {isRunningWalletSettlement ? 'Running settlement...' : 'Run wallet settlement'}
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -233,13 +233,13 @@ export function TransactionPageHeader({
             className="hidden h-9 lg:inline-flex"
           >
             <ClipboardCheck className="h-4 w-4" />
-            Mô phỏng đối soát
+            Simulate reconciliation
           </Button>
         )}
 
         <Button onClick={onAddTransaction} size="sm" className="h-9 px-3 text-sm">
           <Plus className="h-4 w-4" />
-          Thêm
+          Add transaction
         </Button>
       </div>
     </PageHeader>

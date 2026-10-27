@@ -82,8 +82,8 @@ const SettingsPage = () => {
         <AdminPageHeaderCard>
           <PageHeader
             icon={Settings01}
-            title="Cài đặt hệ thống"
-            description="Quản lý các cài đặt nghiệp vụ của hệ thống"
+            title="System settings"
+            description="Manage system settings"
           />
         </AdminPageHeaderCard>
         <div
@@ -96,7 +96,7 @@ const SettingsPage = () => {
           </div>
           <Button type="button" variant="outline" onClick={form.retryLoading} className="h-11 gap-2">
             <RefreshCw05 aria-hidden="true" className="h-4 w-4" />
-            Thử lại
+            Try again
           </Button>
         </div>
       </AdminPageCanvas>
@@ -108,8 +108,8 @@ const SettingsPage = () => {
       <AdminPageHeaderCard>
         <PageHeader
           icon={Settings01}
-          title="Cài đặt hệ thống"
-          description="Quản lý các cài đặt nghiệp vụ của hệ thống"
+          title="System settings"
+          description="Manage system settings"
         />
       </AdminPageHeaderCard>
 

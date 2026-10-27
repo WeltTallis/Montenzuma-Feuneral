@@ -6,7 +6,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { MobileField } from "@hr/components/ui/responsive-table";
 import type { Loan } from "@hr/types/api/loan.types";
 import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 // W13c: lucide → verified @untitledui/icons.
 import { Bank } from "@untitledui/icons";
 import { EmptyState } from "@hr/components/shared/EmptyState";
@@ -19,7 +18,7 @@ import { formatVND, daysUntil, getPaymentUrgencyColor } from "@hr/utils/loanHelp
 export const loanColumns: ColumnDef<Loan>[] = [
   {
     accessorKey: "loan_code",
-    header: "Mã khoản vay",
+    header: "Loan code",
     cell: ({ row }) => (
       <div className="font-mono typography-body-medium font-medium">
         {row.original.loan_code}
@@ -28,14 +27,14 @@ export const loanColumns: ColumnDef<Loan>[] = [
   },
   {
     accessorKey: "lender",
-    header: "Chủ nợ",
+    header: "Lender",
     cell: ({ row }) => (
       <div className="typography-body-medium">{row.original.lender.name}</div>
     ),
   },
   {
     accessorKey: "principal_amount",
-    header: "Tổng vay",
+    header: "Principal",
     cell: ({ row }) => (
       <div className="typography-body-medium">
         {formatVND(row.original.principal_amount)}
@@ -44,7 +43,7 @@ export const loanColumns: ColumnDef<Loan>[] = [
   },
   {
     accessorKey: "interest_rate_bps",
-    header: "Lãi suất (%/năm)",
+    header: "Interest rate (% per year)",
     cell: ({ row }) => (
       <div className="typography-body-medium">
         {row.original.interest_rate_bps !== null &&
@@ -58,7 +57,7 @@ export const loanColumns: ColumnDef<Loan>[] = [
   },
   {
     accessorKey: "next_payment_date",
-    header: "Ngày TT tới",
+    header: "Next payment date",
     cell: ({ row }) => {
       const nextPaymentDate = row.original.next_payment_date;
       if (!nextPaymentDate) {
@@ -74,7 +73,7 @@ export const loanColumns: ColumnDef<Loan>[] = [
   },
   {
     accessorKey: "next_payment_amount",
-    header: "Tiền TT tới",
+    header: "Next payment amount",
     cell: ({ row }) => {
       const nextPaymentAmount = row.original.next_payment_amount;
       if (!nextPaymentAmount) {
@@ -89,7 +88,7 @@ export const loanColumns: ColumnDef<Loan>[] = [
   },
   {
     accessorKey: "disbursement_date",
-    header: "Ngày giải ngân",
+    header: "Disbursement date",
     cell: ({ row }) => {
       const disbursementDate = row.original.disbursement_date;
       return (
@@ -97,7 +96,7 @@ export const loanColumns: ColumnDef<Loan>[] = [
           {disbursementDate ? (
             format(new Date(disbursementDate), 'dd/MM/yyyy')
           ) : (
-            <span className="text-muted-foreground italic">Chưa giải ngân</span>
+            <span className="text-muted-foreground italic">Not disbursed</span>
           )}
         </div>
       );
@@ -112,7 +111,7 @@ export const loanColumns: ColumnDef<Loan>[] = [
 export const loanMobileFields: MobileField<Loan>[] = [
   {
     key: "loan_code",
-    label: "Mã khoản vay",
+    label: "Loan code",
     priority: 1,
     render: (row) => (
       <div className="font-mono typography-body-medium font-medium">
@@ -122,7 +121,7 @@ export const loanMobileFields: MobileField<Loan>[] = [
   },
   {
     key: "lender",
-    label: "Chủ nợ",
+    label: "Lender",
     priority: 1,
     render: (row) => (
       <div className="typography-body-medium">{row.lender.name}</div>
@@ -130,7 +129,7 @@ export const loanMobileFields: MobileField<Loan>[] = [
   },
   {
     key: "principal_amount",
-    label: "Tổng vay",
+    label: "Principal",
     priority: 2,
     render: (row) => (
       <div className="typography-body-medium">{formatVND(row.principal_amount)}</div>
@@ -138,7 +137,7 @@ export const loanMobileFields: MobileField<Loan>[] = [
   },
   {
     key: "interest_rate_bps",
-    label: "Lãi suất",
+    label: "Interest rate",
     priority: 2,
     render: (row) => (
       <div className="typography-body-medium">
@@ -152,7 +151,7 @@ export const loanMobileFields: MobileField<Loan>[] = [
   },
   {
     key: "next_payment_date",
-    label: "Thanh toán tiếp theo",
+    label: "Next payment",
     priority: 2,
     render: (row) => {
       const nextPaymentDate = row.next_payment_date;
@@ -169,7 +168,7 @@ export const loanMobileFields: MobileField<Loan>[] = [
   },
   {
     key: "next_payment_amount",
-    label: "Số tiền tt tiếp theo",
+    label: "Next payment amount",
     priority: 2,
     render: (row) => (
       <div className="typography-body-medium font-semibold">
@@ -183,14 +182,14 @@ export const loanMobileFields: MobileField<Loan>[] = [
   },
   {
     key: "disbursement_date",
-    label: "Ngày giải ngân",
+    label: "Disbursement date",
     priority: 2,
     render: (row) => (
       <div className="typography-body-small">
         {row.disbursement_date ? (
           format(new Date(row.disbursement_date), 'dd/MM/yyyy')
         ) : (
-          <span className="text-muted-foreground italic">Chưa giải ngân</span>
+          <span className="text-muted-foreground italic">Not disbursed</span>
         )}
       </div>
     ),
@@ -206,7 +205,7 @@ import type { Lender } from "@hr/types/api/loan.types";
 export const lenderMobileFields: MobileField<Lender>[] = [
   {
     key: "name",
-    label: "Tên chủ nợ",
+    label: "Lender name",
     priority: 1,
     render: (row) => (
       <div className="typography-body-medium font-medium">{row.name}</div>
@@ -260,8 +259,8 @@ export const lenderMobileFields: MobileField<Lender>[] = [
 
 export const loansEmptyState = (
   <EmptyState
-    title="Chưa có khoản vay nào"
-    description="Tạo khoản vay đầu tiên để bắt đầu quản lý."
+    title="No loans yet"
+    description="Create your first loan to get started."
     size="sm"
   />
 );

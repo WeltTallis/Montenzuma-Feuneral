@@ -52,8 +52,8 @@ export function TimesheetListTable() {
           {[
             { bg: TIMESHEET_STRIP_COLORS.pending_approval.bg, label: "Pending approval" },
             { bg: TIMESHEET_STRIP_COLORS.approved.bg, label: "Approved" },
-            { bg: PAYMENT_STRIP_COLORS.paid.bg, label: "Đã thanh toán" },
-            { bg: TIMESHEET_STRIP_COLORS.rejected.bg, label: "Loại" },
+            { bg: PAYMENT_STRIP_COLORS.paid.bg, label: "Paid" },
+            { bg: TIMESHEET_STRIP_COLORS.rejected.bg, label: "Rejected" },
           ].map(({ bg, label }) => (
             <div key={label} className="flex items-center gap-1">
               <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", bg)} />

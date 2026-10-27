@@ -63,12 +63,12 @@ const UsersPageMobile = () => {
     if (!summaryData) return [];
     return [
       {
-        label: "Tổng",
+        label: "Total",
         value: summaryData.total_users || 0,
         role: null as "admin" | "partner" | "employee" | null,
       },
       {
-        label: "Quản trị",
+        label: "Administrators",
         value: summaryData.total_admins || 0,
         role: "admin" as const,
       },
@@ -125,7 +125,7 @@ const UsersPageMobile = () => {
               onClick={() => openAddUser()}
             >
               <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-              Thêm
+              Add user
             </Button>
           ) : undefined
         }
@@ -168,7 +168,7 @@ const UsersPageMobile = () => {
         <MobileSearchInput
           value={filterState.search}
           onSearch={filterState.setSearch}
-          placeholder="Tìm tên, email..."
+          placeholder="Search name or email..."
           className={isAdvPartner ? 'flex-1' : ''}
         />
         {!isAdvPartner && (
@@ -177,7 +177,7 @@ const UsersPageMobile = () => {
             size="icon"
             className="h-11 w-11 rounded-xl border-border/60 bg-card shrink-0 relative"
             onClick={() => setFilterSheetOpen(true)}
-            aria-label="Bộ lọc"
+            aria-label="Filters"
           >
             <FilterLines className="h-4 w-4" aria-hidden="true" />
             {activeFilterCount > 0 && (
@@ -195,13 +195,13 @@ const UsersPageMobile = () => {
           {filterState.role && (
             <button
               type="button"
-              aria-label="Xóa lọc vai trò"
+              aria-label="Remove role filter"
               className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold text-secondary-foreground"
               onClick={() => filterState.setRole(undefined)}
             >
               {
                 {
-                  admin: "Quản trị viên",
+                  admin: "Administrator",
                   partner: "Management",
                   employee: "Employees",
                   accountant: "Accountant",
@@ -214,7 +214,7 @@ const UsersPageMobile = () => {
             onClick={filterState.clearFilters}
             className="min-h-11 px-1 text-xs text-muted-foreground underline underline-offset-2"
           >
-            Xóa tất cả
+            Clear all
           </button>
         </div>
       )}
@@ -225,8 +225,8 @@ const UsersPageMobile = () => {
           <div role="alert">
             <ErrorState
               message={userData.isFetchNextPageError
-                ? "Không thể tải thêm người dùng. Danh sách đã tải vẫn được giữ lại."
-                : "Không thể tải danh sách người dùng. Vui lòng thử lại."}
+                ? "Could not load more users. The users already loaded are still available."
+                : "Could not load users. Please try again."}
               onRetry={() => void (userData.isFetchNextPageError ? userData.fetchNextPage() : userData.refetch())}
               className="px-4"
             />
@@ -237,10 +237,10 @@ const UsersPageMobile = () => {
           onRowClick={(user) => openUserDetails(user.id.toString())}
           emptyState={
             <EmptyState
-              title="Không tìm thấy người dùng nào"
+              title="No users found"
               description={filterState.hasActiveFilters
-                ? "Không có kết quả phù hợp."
-                : "Hãy tạo người dùng đầu tiên."}
+                ? "No users match your filters."
+                : "Create your first user to get started."}
               size="sm"
             />
           }
@@ -260,7 +260,7 @@ const UsersPageMobile = () => {
                   Loading...
                 </>
               ) : (
-                "Tải thêm"
+                "Load more"
               )}
             </Button>
           </div>
@@ -274,7 +274,7 @@ const UsersPageMobile = () => {
           !userData.isFetchingNextPage &&
           userData.users.filter((u) => u.role !== 'adv_partner').length > 0 && (
             <p className="text-center py-3 text-xs text-muted-foreground">
-              {userData.users.filter((u) => u.role !== 'adv_partner').length} người dùng
+              {userData.users.filter((u) => u.role !== 'adv_partner').length} users
             </p>
           )}
       </div>
@@ -286,11 +286,11 @@ const UsersPageMobile = () => {
           className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-4 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         >
           <SheetHeader className="pb-4">
-            <SheetTitle>Bộ lọc</SheetTitle>
+            <SheetTitle>Filters</SheetTitle>
           </SheetHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Vai trò</label>
+              <label className="text-sm font-medium">Role</label>
               <Select
                 value={filterState.role ?? "all"}
                 onValueChange={(v) =>
@@ -301,12 +301,12 @@ const UsersPageMobile = () => {
                   )
                 }
               >
-                <SelectTrigger aria-label="Lọc vai trò người dùng" className="h-11">
-                  <SelectValue placeholder="Tất cả vai trò" />
+                <SelectTrigger aria-label="Filter users by role" className="h-11">
+                  <SelectValue placeholder="All roles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả vai trò</SelectItem>
-                  <SelectItem value="admin">Quản trị viên</SelectItem>
+                  <SelectItem value="all">All roles</SelectItem>
+                  <SelectItem value="admin">Administrator</SelectItem>
                   <SelectItem value="partner">Management</SelectItem>
                   <SelectItem value="employee">Employees</SelectItem>
                   <SelectItem value="accountant">Accountant</SelectItem>
@@ -314,7 +314,7 @@ const UsersPageMobile = () => {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Sắp xếp</label>
+              <label className="text-sm font-medium">Sort</label>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                 <Select
                   value={filterState.sortBy}
@@ -322,13 +322,13 @@ const UsersPageMobile = () => {
                     filterState.onSortChange(value, filterState.sortOrder)
                   }
                 >
-                  <SelectTrigger aria-label="Sắp xếp người dùng" className="h-11 min-w-0">
-                    <SelectValue placeholder="Sắp xếp theo" />
+                  <SelectTrigger aria-label="Sort users" className="h-11 min-w-0">
+                    <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="username">Users</SelectItem>
-                    <SelectItem value="role">Vai trò</SelectItem>
-                    <SelectItem value="last_login">Hoạt động cuối</SelectItem>
+                    <SelectItem value="role">Role</SelectItem>
+                    <SelectItem value="last_login">Last active</SelectItem>
                     <SelectItem value="created_at">Created on</SelectItem>
                   </SelectContent>
                 </Select>
@@ -343,7 +343,7 @@ const UsersPageMobile = () => {
                     )
                   }
                 >
-                  {filterState.sortOrder === "asc" ? "Tăng" : "Giảm"}
+                  {filterState.sortOrder === "asc" ? "Ascending" : "Descending"}
                 </Button>
               </div>
             </div>
@@ -356,13 +356,13 @@ const UsersPageMobile = () => {
                   setFilterSheetOpen(false);
                 }}
               >
-                Xóa bộ lọc
+                Clear filters
               </Button>
               <Button
                 className="flex-1 h-11 btn-admin-primary"
                 onClick={() => setFilterSheetOpen(false)}
               >
-                Áp dụng
+                Apply
               </Button>
             </div>
           </div>

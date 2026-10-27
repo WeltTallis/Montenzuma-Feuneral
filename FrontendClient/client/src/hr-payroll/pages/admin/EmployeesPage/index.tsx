@@ -211,9 +211,9 @@ const EmployeesPage = () => {
 
         <MissingBankDetailsSection onEmployeeClick={handleOpenEmployeeSheet} />
 
-        <AdminSectionCard aria-label="Danh sách nhân viên">
+        <AdminSectionCard aria-label="Employee list">
           <AdminFilterRow>
-            <p className="text-sm font-semibold text-foreground">Danh sách</p>
+            <p className="text-sm font-semibold text-foreground">Employees</p>
             <div className="flex flex-1 items-center justify-end">
               <EmployeeFiltersBar
                 searchTerm={searchTerm}

@@ -158,16 +158,16 @@ export function getActivePayrate(payrates: PayRate[]): PayRate | null {
 export const VIETNAMESE_PAYRATE_LABELS = {
   statuses: {
     active: 'Active',
-    inactive: 'Không hoạt động'
+    inactive: 'Inactive'
   },
   fields: {
-    effective_from: 'Có hiệu lực từ',
-    rates: 'Cấu hình mức lương'
+    effective_from: 'Effective from',
+    rates: 'Pay rates'
   },
   dayTypes: {
-    'ngày thường': 'Ngày thường',
-    'ngày nghỉ': 'Ngày nghỉ',
-    'ngày lễ': 'Ngày lễ'
+    'ngày thường': 'Weekday',
+    'ngày nghỉ': 'Day off',
+    'ngày lễ': 'Public holiday'
   }
 } as const;
 

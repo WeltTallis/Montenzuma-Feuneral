@@ -55,10 +55,10 @@ export const getStatusIcon = (status: TimesheetStatus) => {
 
 export const getStatusLabel = (status: TimesheetStatus): string => {
   const labels: Record<TimesheetStatus, string> = {
-    draft: 'Nháp',
+    draft: 'Draft',
     pending_approval: 'Pending approval',
     approved: 'Approved',
-    rejected: 'Loại'
+    rejected: 'Rejected'
   };
 
   return labels[status] || status;

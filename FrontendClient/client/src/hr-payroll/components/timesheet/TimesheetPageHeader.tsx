@@ -10,14 +10,14 @@ interface TimesheetPageHeaderProps {
 
 export const TimesheetPageHeader = ({ onEditRequestClick, onAddTimesheet, userRole = 'admin' }: TimesheetPageHeaderProps) => {
   const description = userRole === 'partner'
-    ? 'Theo dõi và quản lý bảng công'
-    : 'Theo dõi và duyệt bảng công';
+    ? 'View and manage timesheets'
+    : 'View and approve timesheets';
 
   return (
     <PageHeader
       title="Timesheets"
       description={description}
-      actions={onAddTimesheet ? [{ label: 'Nhập công', onClick: onAddTimesheet, icon: Plus }] : []}
+      actions={onAddTimesheet ? [{ label: 'Add timesheet', onClick: onAddTimesheet, icon: Plus }] : []}
     >
       {onEditRequestClick && (
         <div className="flex items-center">

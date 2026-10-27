@@ -25,31 +25,31 @@ export const EmployeePageHeader = ({
   return (
     <PageHeader
       title="Employees"
-      description={`Quản lý thông tin ${totalEmployees} nhân viên trong hệ thống`}
+      description={`Manage ${totalEmployees} employees in the system`}
       icon={Users}
       actions={[
         ...(onExportClick && (user?.role === 'admin' || user?.role === 'partner') ? [{
-          label: isExporting ? 'Đang xuất...' : 'Xuất Excel',
+          label: isExporting ? 'Exporting...' : 'Export to Excel',
           onClick: onExportClick,
           icon: Download,
           variant: 'outline' as const,
           className: isExporting ? 'opacity-50 pointer-events-none' : '',
         }] : []),
         ...(onExportNoMobileClick && user?.role === 'admin' ? [{
-          label: isExporting ? 'Đang xuất...' : 'NV chưa có SĐT',
+          label: isExporting ? 'Exporting...' : 'Employees without a phone number',
           onClick: onExportNoMobileClick,
           icon: PhoneOff,
           variant: 'outline' as const,
           className: isExporting ? 'opacity-50 pointer-events-none' : '',
         }] : []),
         ...(onImportMobilesClick && user?.role === 'admin' ? [{
-          label: 'Nhập SĐT',
+          label: 'Import phone numbers',
           onClick: onImportMobilesClick,
           icon: PhoneIncoming,
           variant: 'outline' as const,
         }] : []),
         {
-          label: 'Thêm nhân viên',
+          label: 'Add employee',
           onClick: onAddEmployeeClick,
           icon: Plus,
           variant: 'default' as const,

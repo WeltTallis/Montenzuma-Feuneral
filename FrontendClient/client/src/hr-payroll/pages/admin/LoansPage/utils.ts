@@ -28,9 +28,9 @@ export function computeLoansSummary(loans: Loan[]): LoansSummary {
 
 export function computeLoanStatItems(summary: LoansSummary) {
   return [
-    { label: 'Tổng vay', value: formatVND(summary.total_borrowed) },
-    { label: 'Dư nợ hiện tại', value: formatVND(summary.total_outstanding) },
-    { label: 'Lãi đã trả', value: formatVND(summary.total_interest_paid) },
+    { label: 'Total borrowed', value: formatVND(summary.total_borrowed) },
+    { label: 'Outstanding balance', value: formatVND(summary.total_outstanding) },
+    { label: 'Interest paid', value: formatVND(summary.total_interest_paid) },
     { label: 'Loan', value: summary.active_loans_count },
   ];
 }

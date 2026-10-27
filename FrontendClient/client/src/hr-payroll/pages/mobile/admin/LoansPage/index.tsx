@@ -24,9 +24,9 @@ import { cn } from '@hr/lib/utils';
 import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
 
 const LOAN_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  active: { label: "Đang vay", className: "bg-utility-success-50 text-fg-success-primary border-utility-success-200" },
-  paid: { label: "Đã trả", className: "bg-muted/50 text-muted-foreground border-border" },
-  overdue: { label: "Quá hạn", className: "bg-utility-error-50 text-fg-error-primary border-utility-error-200" },
+  active: { label: "Active", className: "bg-utility-success-50 text-fg-success-primary border-utility-success-200" },
+  paid: { label: "Paid", className: "bg-muted/50 text-muted-foreground border-border" },
+  overdue: { label: "Overdue", className: "bg-utility-error-50 text-fg-error-primary border-utility-error-200" },
 };
 
 const LoanMobileCard = ({ loan, onClick }: { loan: Loan; onClick: (loan: Loan) => void }) => {
@@ -42,7 +42,7 @@ const LoanMobileCard = ({ loan, onClick }: { loan: Loan; onClick: (loan: Loan) =
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(loan); } }}
-      aria-label={`Khoản vay ${loan.loan_code}`}
+      aria-label={`Loan ${loan.loan_code}`}
     >
       {/* Line 1: code + status badge */}
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -144,16 +144,16 @@ const LoansPageMobile = () => {
     <div className="flex min-h-full flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
       {/* Header */}
       <MobilePageHeader
-        title="Loan"
+        title="Loans"
         icon={Bank}
         actions={
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="outline" size="sm" className="min-h-11" onClick={() => navigate('lenders')}>
-              Chủ nợ
+              Lenders
             </Button>
-            <Button className="btn-admin-primary h-11 w-11 p-0 min-[380px]:w-auto min-[380px]:px-3" aria-label="Tạo khoản vay" onClick={() => setIsAddLoanOpen(true)}>
+            <Button className="btn-admin-primary h-11 w-11 p-0 min-[380px]:w-auto min-[380px]:px-3" aria-label="Create loan" onClick={() => setIsAddLoanOpen(true)}>
               <Plus className="h-4 w-4 min-[380px]:mr-1" />
-              <span className="hidden min-[380px]:inline">Tạo vay</span>
+              <span className="hidden min-[380px]:inline">Create loan</span>
             </Button>
           </div>
         }
@@ -165,10 +165,10 @@ const LoansPageMobile = () => {
           <MobileStatStrip
             columns={2}
             items={[
-              { key: "borrowed", label: "Tổng vay", value: formatVND(loansSummary.total_borrowed) },
-              { key: "outstanding", label: "Dư nợ", value: formatVND(loansSummary.total_outstanding) },
-              { key: "interest", label: "Lãi đã trả", value: formatVND(loansSummary.total_interest_paid) },
-              { key: "count", label: "Loan", value: String(loansSummary.active_loans_count) },
+              { key: "borrowed", label: "Total borrowed", value: formatVND(loansSummary.total_borrowed) },
+              { key: "outstanding", label: "Outstanding", value: formatVND(loansSummary.total_outstanding) },
+              { key: "interest", label: "Interest paid", value: formatVND(loansSummary.total_interest_paid) },
+              { key: "count", label: "Active loans", value: String(loansSummary.active_loans_count) },
             ]}
           />
         </div>
@@ -180,28 +180,28 @@ const LoansPageMobile = () => {
           <MobileSearchInput
             value={loanSearch}
             onSearch={setLoanSearch}
-            placeholder="Tìm mã vay, chủ nợ..."
+            placeholder="Search loan or lender..."
           />
         </div>
         <div className="flex gap-2">
           <Select onValueChange={handleStatusChange} defaultValue="all">
-            <SelectTrigger aria-label="Lọc trạng thái khoản vay" className="min-h-11 flex-1"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger aria-label="Filter loans by status" className="min-h-11 flex-1"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="active">Đang vay</SelectItem>
-              <SelectItem value="paid">Đã trả</SelectItem>
-              <SelectItem value="overdue">Quá hạn</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
             </SelectContent>
           </Select>
           <SearchableSelect
             value={loanFilters.lender_id ? String(loanFilters.lender_id) : 'all'}
             onChange={handleLenderChange}
-            placeholder="Chủ nợ"
-            triggerAriaLabel="Lọc chủ nợ"
-            searchPlaceholder="Tìm chủ nợ..."
+            placeholder="Lender"
+            triggerAriaLabel="Filter by lender"
+            searchPlaceholder="Search lenders..."
             triggerClassName="min-h-11 flex-1"
             options={[
-              { value: 'all', label: 'Tất cả' },
+              { value: 'all', label: 'All lenders' },
               ...lenders.map((lender) => ({
                 value: lender.id.toString(),
                 label: lender.name,
@@ -215,17 +215,17 @@ const LoansPageMobile = () => {
             value={loanFilters.sortBy ?? 'created_at'}
             onValueChange={(v) => setLoanFilters((prev) => ({ ...prev, sortBy: v, page: 1 }))}
           >
-            <SelectTrigger aria-label="Sắp xếp khoản vay" className="min-h-11 flex-1 text-sm">
-              <SelectValue placeholder="Sắp xếp" />
+            <SelectTrigger aria-label="Sort loans" className="min-h-11 flex-1 text-sm">
+              <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="created_at">Created on</SelectItem>
-              <SelectItem value="loan_code">Mã vay</SelectItem>
-              <SelectItem value="lender">Chủ nợ</SelectItem>
-              <SelectItem value="principal_amount">Tiền gốc</SelectItem>
-              <SelectItem value="interest_rate_bps">Lãi suất</SelectItem>
-              <SelectItem value="next_payment_date">Ngày đến hạn</SelectItem>
-              <SelectItem value="disbursement_date">Ngày giải ngân</SelectItem>
+              <SelectItem value="loan_code">Loan code</SelectItem>
+              <SelectItem value="lender">Lender</SelectItem>
+              <SelectItem value="principal_amount">Principal</SelectItem>
+              <SelectItem value="interest_rate_bps">Interest rate</SelectItem>
+              <SelectItem value="next_payment_date">Due date</SelectItem>
+              <SelectItem value="disbursement_date">Disbursement date</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -240,8 +240,8 @@ const LoansPageMobile = () => {
             }
             aria-label={
               loanFilters.sortOrder === 'asc'
-                ? 'Sắp xếp tăng dần'
-                : 'Sắp xếp giảm dần'
+                ? 'Sort ascending'
+                : 'Sort descending'
             }
           >
             {loanFilters.sortOrder === 'asc' ? (
@@ -257,12 +257,12 @@ const LoansPageMobile = () => {
       <div className="flex-1 px-4">
         {isError ? (
           <div role="alert">
-            <ErrorState message="Không thể tải danh sách khoản vay. Vui lòng thử lại." onRetry={() => void refetch()} />
+            <ErrorState message="Could not load loans. Please try again." onRetry={() => void refetch()} />
           </div>
         ) : filteredLoans.length === 0 ? (
           <EmptyState
-            title="Chưa có khoản vay nào"
-            description="Tạo khoản vay đầu tiên để bắt đầu quản lý."
+            title="No loans yet"
+            description="Create your first loan to get started."
             size="sm"
           />
         ) : (

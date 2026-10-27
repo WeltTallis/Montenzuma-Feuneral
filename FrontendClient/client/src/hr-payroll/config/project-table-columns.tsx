@@ -35,7 +35,7 @@ export const createProjectColumns = (
   },
   {
     accessorKey: "client_name",
-    header: "Khách hàng",
+    header: "Client",
     size: 160,
     maxSize: 200,
     cell: ({ row }) => (
@@ -49,7 +49,7 @@ export const createProjectColumns = (
   },
   {
     id: "salary_period",
-    header: "Kỳ lương",
+    header: "Payroll period",
     size: 130,
     maxSize: 150,
     cell: ({ row }) => {
@@ -93,7 +93,7 @@ export const createProjectColumns = (
           {monthly > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="typography-body-medium font-semibold text-foreground tabular-nums">{formatEmployeeCount(monthly)}</span>
-              <span className="typography-label-medium text-muted-foreground">Lương tháng</span>
+              <span className="typography-label-medium text-muted-foreground">Monthly payroll</span>
             </div>
           )}
         </div>

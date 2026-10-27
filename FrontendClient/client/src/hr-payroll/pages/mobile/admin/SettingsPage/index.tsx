@@ -54,7 +54,7 @@ const SettingsPageMobile = () => {
         <MobilePageHeader
           title="Settings"
           icon={Settings01}
-          subtitle="Quản lý cấu hình hệ thống"
+          subtitle="Manage system settings"
         />
         <div className="px-4 pt-4 space-y-4">
           <Skeleton className="h-11 w-48" />
@@ -75,7 +75,7 @@ const SettingsPageMobile = () => {
         <MobilePageHeader
           title="Settings"
           icon={Settings01}
-          subtitle="Quản lý cấu hình hệ thống"
+          subtitle="Manage system settings"
         />
         <div className="px-4 pt-4">
           <div
@@ -93,7 +93,7 @@ const SettingsPageMobile = () => {
               className="h-12 w-full gap-2"
             >
               <RefreshCw05 aria-hidden="true" className="h-4 w-4" />
-              Thử lại
+              Try again
             </Button>
           </div>
         </div>
@@ -106,7 +106,7 @@ const SettingsPageMobile = () => {
       <MobilePageHeader
         title="Settings"
         icon={Settings01}
-        subtitle="Quản lý cấu hình hệ thống"
+        subtitle="Manage system settings"
       />
 
       {/* Content area with consistent padding, safe-area, and nav bar clearance */}

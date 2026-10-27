@@ -21,7 +21,7 @@ interface SettingToggleRowProps {
   isDisabled?: boolean;
 }
 
-// Mirrors SettingsGeneralPanel's SettingToggleCard (Switch + Lưu/Hoàn tác
+// Mirrors SettingsGeneralPanel's SettingToggleCard (Switch + Save/Undo
 // shown only while dirty) so boolean settings share one save/reset UX.
 const SettingToggleRow = ({
   title,
@@ -70,7 +70,7 @@ const SettingToggleRow = ({
                 Save
               </Button>
               <Button size="sm" variant="outline" onClick={onReset} disabled={isSaving}>
-                Hoàn tác
+                Undo
               </Button>
             </>
           )}
@@ -166,21 +166,21 @@ export const SettingsEmployeePanel = () => {
       <SettingsSection
         icon={Users}
         title="Employees"
-        description="Quy tắc bắt buộc khi tạo hồ sơ nhân viên mới."
+        description="Requirements for creating new employee profiles."
       >
         {isError ? (
           <div role="alert" className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
             <p className="min-w-0 break-words text-sm leading-relaxed text-destructive">
-              Không thể tải cài đặt nhân viên. Vui lòng thử lại.
+              Could not load employee settings. Please try again.
             </p>
             <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Thử lại
+              Try again
             </Button>
           </div>
         ) : (
           <SettingToggleRow
-            title="Bắt buộc số điện thoại khi thêm nhân viên mới"
-            description="Khi bật, mọi luồng tạo nhân viên mới (thêm tay, import Excel, import bảng công) đều phải có số điện thoại. Lưu ý: số điện thoại trùng luôn bị chặn ở mọi luồng."
+            title="Require a phone number for new employees"
+            description="When enabled, every employee creation flow (manual entry, Excel import or timesheet import) requires a phone number. Duplicate phone numbers are always blocked."
             checked={checked}
             originalChecked={originalChecked}
             onCheckedChange={setChecked}

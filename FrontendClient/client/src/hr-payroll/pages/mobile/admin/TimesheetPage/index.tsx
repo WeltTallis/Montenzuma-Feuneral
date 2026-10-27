@@ -253,7 +253,7 @@ const TimesheetPageMobile = () => {
     if (timesheetManagement.projectPendingTimesheets.length === 0) {
       toast({
         title: "Notifications",
-        description: "Không có bảng công pending nào cho dự án này.",
+        description: "No pending timesheets for this project.",
       });
       return;
     }
@@ -264,11 +264,11 @@ const TimesheetPageMobile = () => {
     try {
       await timesheetManagement.handleProjectBulkApprove();
       setProjectBulkApproveDialogOpen(false);
-      toast({ title: "Duyệt dự án thành công" });
+      toast({ title: "Project timesheets approved" });
     } catch {
       toast({
-        title: "Lỗi",
-        description: "Không thể duyệt bảng công dự án.",
+        title: "Error",
+        description: "Could not approve project timesheets.",
         variant: "destructive",
       });
     }
@@ -498,24 +498,24 @@ const TimesheetPageMobile = () => {
       <ConfirmDialog
         open={bulkApproveDialogOpen}
         onOpenChange={setBulkApproveDialogOpen}
-        title="Duyệt hết bảng công"
+        title="Approve all timesheets"
         description={
           <div className="space-y-0 divide-y divide-border/60">
             <div className="flex flex-col gap-1 py-2 text-sm min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-              <span className="text-muted-foreground">Bảng công chờ duyệt</span>
+              <span className="text-muted-foreground">Timesheets awaiting approval</span>
               <span className="font-semibold tabular-nums min-[380px]:text-right">
                 {globalSummary?.pendingApproval ?? 0}
               </span>
             </div>
             <div className="flex flex-col gap-1 py-2 text-sm min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-              <span className="text-muted-foreground">Số NV liên quan</span>
+              <span className="text-muted-foreground">Employees affected</span>
               <span className="font-semibold tabular-nums min-[380px]:text-right">
                 {globalSummary?.pendingEmployees ?? "—"}
               </span>
             </div>
           </div>
         }
-        confirmText="Duyệt hết"
+        confirmText="Approve all"
         onConfirm={handleConfirmBulkApprove}
         loading={approveAllMutation.isPending}
         disabled={(globalSummary?.pendingApproval ?? 0) === 0}
@@ -523,27 +523,27 @@ const TimesheetPageMobile = () => {
       <ConfirmDialog
         open={resetAllDialogOpen}
         onOpenChange={setResetAllDialogOpen}
-        title="Bỏ duyệt tất cả bảng công"
+        title="Reset all timesheet approvals"
         description={
           <div className="space-y-0 divide-y divide-border/60">
             <div className="flex flex-col gap-1 py-2 text-sm min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-              <span className="text-muted-foreground">Bảng công đã duyệt</span>
+              <span className="text-muted-foreground">Approved timesheets</span>
               <span className="font-semibold tabular-nums min-[380px]:text-right">
                 {globalSummary?.approvedEntries ?? 0}
               </span>
             </div>
             <div className="flex flex-col gap-1 py-2 text-sm min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-              <span className="text-muted-foreground">Bảng công đã thanh toán</span>
+              <span className="text-muted-foreground">Paid timesheets</span>
               <span className="font-semibold tabular-nums min-[380px]:text-right">
                 {globalSummary?.paidEntries ?? 0}
               </span>
             </div>
             <p className="py-2 text-xs text-muted-foreground">
-              Toàn bộ bảng công đã duyệt (chưa thanh toán) sẽ trở về trạng thái chờ duyệt. Bảng công đã thanh toán không bị ảnh hưởng.
+              All approved but unpaid timesheets will return to pending approval. Paid timesheets will not be affected.
             </p>
           </div>
         }
-        confirmText="Bỏ duyệt"
+        confirmText="Reset approvals"
         confirmVariant="destructive"
         onConfirm={handleConfirmResetAll}
         loading={resetAllMutation.isPending}
@@ -552,12 +552,12 @@ const TimesheetPageMobile = () => {
       <ConfirmDialog
         open={projectBulkApproveDialogOpen}
         onOpenChange={setProjectBulkApproveDialogOpen}
-        title="Duyệt bảng công theo dự án"
+        title="Approve project timesheets"
         description={createProjectBulkApprovalContent(
-          timesheetManagement.selectedProjectDetails?.name || "Dự án đã chọn",
+          timesheetManagement.selectedProjectDetails?.name || "Selected project",
           timesheetManagement.projectPendingTimesheets,
         )}
-        confirmText="Duyệt dự án"
+        confirmText="Approve project"
         onConfirm={handleConfirmProjectBulkApprove}
         loading={timesheetManagement.isLoading}
       />

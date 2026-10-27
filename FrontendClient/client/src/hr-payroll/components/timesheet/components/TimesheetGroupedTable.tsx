@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 import { memo, useCallback, useMemo } from "react";
 import {
   Star,
@@ -70,7 +69,7 @@ export const TimesheetGroupedTable = memo(function TimesheetGroupedTable({
   if (grouped.length === 0) {
     return (
       <div className="rounded-2xl border border-border/60 bg-utility-gray-100 p-20 text-center">
-        <EmptyState icon={Clock} title="Không có dữ liệu bảng công" />
+        <EmptyState icon={Clock} title="No timesheet data" />
       </div>
     );
   }
@@ -94,22 +93,22 @@ export const TimesheetGroupedTable = memo(function TimesheetGroupedTable({
             <TableRow className="bg-utility-gray-200 hover:bg-utility-gray-200 border-b border-utility-gray-300">
               <TableHead className="p-0"><span className="sr-only">Status</span></TableHead>
               <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                {userRole === "partner" ? "Nhân viên · Ngày" : "Employees"}
+                {userRole === "partner" ? "Employee · Date" : "Employees"}
               </TableHead>
               <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                {userRole === "partner" ? "Dự án · Loại ngày" : "Loại ngày"}
+                {userRole === "partner" ? "Project · Day type" : "Day type"}
               </TableHead>
               <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                Ca làm · Trạng thái
+                Shift · Status
               </TableHead>
               <TableHead className="border-l border-border/30 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right whitespace-nowrap">
-                Giờ
+                Hours
               </TableHead>
               <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right whitespace-nowrap">
-                {userRole === "admin" ? "Dự án · Đơn giá" : "Đơn giá"}
+                {userRole === "admin" ? "Project · Rate" : "Rate"}
               </TableHead>
               <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right whitespace-nowrap">
-                Thành tiền
+                Amount
               </TableHead>
               <TableHead className="px-2 py-2"><span className="sr-only">Details</span></TableHead>
             </TableRow>
@@ -177,7 +176,7 @@ const GroupRow = memo(function GroupRow({
                 type="button"
                 className="flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-expanded={isExpanded}
-                aria-label={`${isExpanded ? "Thu gọn" : "Xem"} bảng công của ${group.employeeName || group.employeeCode || "nhân viên"}`}
+                aria-label={`${isExpanded ? "Collapse" : "View"} timesheets for ${group.employeeName || group.employeeCode || "employee"}`}
                 onClick={(event) => { event.stopPropagation(); onToggle(); }}
               >
                 <UserAvatar email={group.employeeCode} name={group.employeeName} size="sm" />
@@ -197,7 +196,7 @@ const GroupRow = memo(function GroupRow({
                 <PartnerGroupColumn group={group} />
               ) : (
                 <span className="inline-flex items-center gap-1 px-2.5 h-6 rounded-full bg-utility-gray-100 text-xs font-semibold text-muted-foreground tabular-nums">
-                  {group.entries.length} ca
+                  {group.entries.length} shifts
                 </span>
               )}
             </TableCell>
@@ -292,36 +291,36 @@ const GroupStatusSummary = memo(function GroupStatusSummary({ group }: { group: 
         {group.statusBreakdown.pending_approval > 0 && (
           <span className="inline-flex items-center gap-1 text-xs text-amber-700 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-            {group.statusBreakdown.pending_approval} chờ
+            {group.statusBreakdown.pending_approval} pending
           </span>
         )}
         {group.statusBreakdown.approved > 0 && group.aggregatedStatus !== "paid" && (
           <span className="inline-flex items-center gap-1 text-xs text-blue-700 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-            {group.statusBreakdown.approved} duyệt
+            {group.statusBreakdown.approved} approved
           </span>
         )}
         {group.aggregatedStatus === "paid" && (
           <span className="inline-flex items-center gap-1 text-xs text-green-700 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-            {group.entries.length} đã TT
+            {group.entries.length} paid
           </span>
         )}
         {group.statusBreakdown.rejected > 0 && (
           <span className="inline-flex items-center gap-1 text-xs text-red-700 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-            {group.statusBreakdown.rejected} loại
+            {group.statusBreakdown.rejected} rejected
           </span>
         )}
         {group.statusBreakdown.draft > 0 && (
           <span className="inline-flex items-center gap-1 text-xs text-slate-600 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-            {group.statusBreakdown.draft} nháp
+            {group.statusBreakdown.draft} draft
           </span>
         )}
         {group.entries.some(e => !e.payrate || e.payrate === 0) && (
           <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold whitespace-nowrap">
-            ⚠ đơn giá
+            ⚠ Missing rate
           </span>
         )}
     </div>
@@ -354,7 +353,7 @@ const ProjectSection = memo(function ProjectSection({
               <div className="min-w-0">
                 <p className="truncate text-xs font-bold text-foreground">{project.projectName}</p>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {[project.projectCode, project.positions.join(', '), `${project.entries.length} mục`].filter(Boolean).join(' · ')}
+                  {[project.projectCode, project.positions.join(', '), `${project.entries.length} entries`].filter(Boolean).join(' · ')}
                 </p>
               </div>
             </div>
@@ -398,12 +397,26 @@ const EntryRow = memo(function EntryRow({ entry, entryIdx, showDate, startsAfter
   const navigate = useNavigate();
   const entryDate = new Date(entry.date);
   const hoursWorked = entry.hours_worked || 0;
-  const dayTypeLabel = entry.day_type || "—";
-  const normalizedDayType = dayTypeLabel.toLocaleLowerCase("en-KE");
+  const rawDayType = entry.day_type || "—";
+  const normalizedDayType = rawDayType.toLocaleLowerCase("en-KE");
+  const dayTypeLabel = ({
+    weekday: "Weekday",
+    weekend: "Weekend",
+    holiday: "Public holiday",
+    "ngày thường": "Weekday",
+    "ngày nghỉ": "Day off",
+    "ngày lễ": "Public holiday",
+  } as Record<string, string>)[normalizedDayType] ?? rawDayType;
   const shiftLabel = entry.hour_type || getPaytypeDetail(entry.paytype) || "—";
   const normalizedShift = shiftLabel.toLocaleLowerCase("en-KE");
-  const isOvertime = normalizedShift.includes("tăng ca");
-  const isNightShift = normalizedShift.includes("đêm");
+  const displayShiftLabel = shiftLabel
+    .replace(/tăng ca/gi, "Overtime")
+    .replace(/ca đêm/gi, "Night shift")
+    .replace(/ca ngày/gi, "Day shift");
+  const isOvertime = normalizedShift.includes("tăng ca") || normalizedShift.includes("overtime");
+  const isNightShift = normalizedShift.includes("đêm") || normalizedShift.includes("night");
+  const isHoliday = normalizedDayType.includes("lễ") || normalizedDayType.includes("holiday");
+  const isDayOff = normalizedDayType.includes("nghỉ") || normalizedDayType.includes("weekend") || normalizedDayType.includes("day off");
   const isShortShift = hoursWorked > 0 && hoursWorked < 8;
 
   return (
@@ -423,12 +436,12 @@ const EntryRow = memo(function EntryRow({ entry, entryIdx, showDate, startsAfter
           {showDate ? (
             <div className="flex items-center gap-2">
               <span className="inline-flex h-7 min-w-9 items-center justify-center rounded-md bg-utility-gray-50 px-1.5 text-xs font-bold uppercase text-slate-600 ring-1 ring-inset ring-utility-gray-300">
-                {format(entryDate, "EEE", { locale: vi }).replace("Th ", "T")}
+                {format(entryDate, "EEE")}
               </span>
               <p className="text-xs font-bold tabular-nums text-foreground">{format(entryDate, "dd/MM/yyyy")}</p>
             </div>
           ) : (
-            <span className="ml-4 flex items-center gap-1.5 text-xs font-medium text-muted-foreground" aria-label="Cùng ngày">
+            <span className="ml-4 flex items-center gap-1.5 text-xs font-medium text-muted-foreground" aria-label="Same day">
               <span className="h-4 w-px bg-border" />
               <span className="h-1.5 w-1.5 rounded-full bg-border" />
             </span>
@@ -440,9 +453,9 @@ const EntryRow = memo(function EntryRow({ entry, entryIdx, showDate, startsAfter
         <span
           className={cn(
             "inline-flex h-7 items-center rounded-md px-2.5 text-xs font-semibold capitalize ring-1 ring-inset",
-            normalizedDayType.includes("lễ")
+            isHoliday
               ? "bg-utility-gray-50 text-rose-700 ring-rose-200"
-              : normalizedDayType.includes("nghỉ")
+              : isDayOff
                 ? "bg-utility-gray-50 text-teal-700 ring-teal-200"
                 : "bg-utility-gray-50 text-slate-700 ring-utility-gray-300",
           )}
@@ -468,7 +481,7 @@ const EntryRow = memo(function EntryRow({ entry, entryIdx, showDate, startsAfter
           ) : (
             <SunMedium className="h-3.5 w-3.5" />
           )}
-          {shiftLabel}
+          {displayShiftLabel}
         </span>
       </TableCell>
       <TableCell className="border-l border-border/30 py-2 px-3 text-right">
@@ -494,9 +507,9 @@ const EntryRow = memo(function EntryRow({ entry, entryIdx, showDate, startsAfter
                 navigate(`/partner/projects/${entry.project_id}/payrates/new/edit`);
               }}
             >
-              ⚠ chưa có
+              ⚠ Not set
             </span>
-          ) : `${entry.payrate?.toLocaleString("en-KE")}${entry.projectIsFlexible ? "₫/ca" : "₫/giờ"}`}
+          ) : `${entry.payrate?.toLocaleString("en-KE")}${entry.projectIsFlexible ? "₫/shift" : "₫/hour"}`}
         </p>
       </TableCell>
       <TableCell className="py-2 px-3 text-right">

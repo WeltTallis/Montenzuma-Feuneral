@@ -85,7 +85,7 @@ function ViewTabs({
     <div
       className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-muted/60"
       role="tablist"
-      aria-label="Chuyển tab"
+      aria-label="Switch tabs"
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
@@ -258,7 +258,7 @@ const AdvPartnerAdvancePaymentsPage = () => {
         {/* Title row — on mobile also includes the month navigator */}
         <div className="flex items-center justify-between gap-3 sm:block min-w-0">
           <h1 className="text-[18px] sm:text-[22px] font-semibold text-foreground tracking-tight leading-tight whitespace-nowrap">
-            Quản lý ứng lương
+            Salary advance management
           </h1>
           {/* Month nav visible on mobile only here */}
           <div className="shrink-0 sm:hidden">
@@ -277,7 +277,7 @@ const AdvPartnerAdvancePaymentsPage = () => {
             className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-medium"
           >
             <Scan className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            Cấu hình điểm danh
+            Attendance settings
           </Button>
           <Button
             size="sm"
@@ -290,17 +290,17 @@ const AdvPartnerAdvancePaymentsPage = () => {
             className="h-8 gap-1.5 rounded-lg border border-utility-gray-300 bg-white px-3 text-[13px] font-medium text-fg-secondary shadow-sm transition-all duration-200 hover:bg-utility-gray-50"
           >
             <File05 className="h-3.5 w-3.5 shrink-0" />
-            Xuất sao kê
+            Export payment statement
           </Button>
           <Button
             size="sm"
             onClick={page.handleExportFlexPayEmployees}
             disabled={page.exportFlexPayMutation.isPending}
-            aria-label="Xuất danh sách"
+            aria-label="Export employee list"
             className="h-8 gap-1.5 rounded-lg border border-utility-gray-300 bg-white px-3 text-[13px] font-medium text-fg-secondary shadow-sm transition-all duration-200 hover:bg-utility-gray-50 disabled:opacity-50"
           >
             <Download01 className="h-3.5 w-3.5 shrink-0" />
-            Xuất DS
+            Export employees
           </Button>
           {/* Month nav on desktop only here */}
           <div className="hidden sm:flex items-center gap-2 ml-0">
@@ -333,7 +333,7 @@ const AdvPartnerAdvancePaymentsPage = () => {
               tabs={[
                 {
                   id: "requests",
-                  label: "Yêu cầu",
+                  label: "Requests",
                   icon: Wallet01,
                   count: page.statusCounts?.all ?? 0,
                 },
@@ -348,7 +348,7 @@ const AdvPartnerAdvancePaymentsPage = () => {
               onTabChange={setActiveTab}
             />
             <span className="sm:hidden text-xs font-medium text-muted-foreground tabular-nums whitespace-nowrap">
-              <span className="text-foreground/80 font-semibold">{resultCount}</span> kết quả
+              <span className="text-foreground/80 font-semibold">{resultCount}</span> results
             </span>
           </div>
 
@@ -359,7 +359,7 @@ const AdvPartnerAdvancePaymentsPage = () => {
                 <SearchBar
                   searchTerm={page.searchInput}
                   onSearchChange={page.handleSearch}
-                  placeholder="Tên hoặc CCCD..."
+                  placeholder="Name or ID number..."
                   className="h-8 flex-1 sm:flex-none sm:w-56 text-sm"
                 />
                 <Select
@@ -370,17 +370,17 @@ const AdvPartnerAdvancePaymentsPage = () => {
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent className="min-w-[140px]">
-                    <SelectItem value="all" className="text-[13px] py-1">Tất cả</SelectItem>
+                    <SelectItem value="all" className="text-[13px] py-1">All</SelectItem>
                     <SelectItem value="pending" className="text-[13px] py-1">
                       <span className="flex items-center gap-2">
                         <span className="h-1.5 w-1.5 rounded-full bg-utility-warning-400" />
-                        Chờ xử lý
+                        Pending
                       </span>
                     </SelectItem>
                     <SelectItem value="completed" className="text-[13px] py-1">
                       <span className="flex items-center gap-2">
                         <span className="h-1.5 w-1.5 rounded-full bg-utility-success-500" />
-                        Hoàn tất
+                        Completed
                       </span>
                     </SelectItem>
                     <SelectItem value="failed" className="text-[13px] py-1">
@@ -404,13 +404,13 @@ const AdvPartnerAdvancePaymentsPage = () => {
               <SearchBar
                 searchTerm={page.flexPaySearchInput}
                 onSearchChange={page.handleFlexPaySearch}
-                placeholder="Tên hoặc CCCD..."
+                placeholder="Name or ID number..."
                 className="h-8 flex-1 sm:flex-none sm:w-56 text-sm"
               />
             )}
 
             <span className="hidden sm:inline text-xs font-medium text-muted-foreground tabular-nums tracking-wide whitespace-nowrap">
-              <span className="text-foreground/80 font-semibold">{resultCount}</span> kết quả
+              <span className="text-foreground/80 font-semibold">{resultCount}</span> results
             </span>
           </div>
         </div>
@@ -488,20 +488,20 @@ const AdvPartnerAdvancePaymentsPage = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hủy yêu cầu ứng lương?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel this salary advance request?</AlertDialogTitle>
             <AlertDialogDescription>
-              Yêu cầu ứng lương sẽ bị hủy vĩnh viễn.
+              This salary advance request will be cancelled permanently.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Giữ lại</AlertDialogCancel>
+            <AlertDialogCancel>Keep request</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={page.confirmCancelRequest}
             >
               {page.cancelMutation.isPending
-                ? "Đang hủy..."
-                : "Hủy yêu cầu"}
+                ? "Cancelling..."
+                : "Cancel request"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

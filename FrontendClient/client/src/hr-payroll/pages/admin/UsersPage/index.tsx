@@ -126,9 +126,9 @@ const UsersPage = () => {
         />
       )}
 
-      <AdminSectionCard aria-label="Danh sách người dùng">
+      <AdminSectionCard aria-label="User list">
         <AdminFilterRow>
-          <p className="text-sm font-semibold text-foreground">Danh sách</p>
+          <p className="text-sm font-semibold text-foreground">Users</p>
           <div className="flex flex-1 items-center justify-end">
             <UserFiltersBar
               search={filterState.search}
@@ -148,8 +148,8 @@ const UsersPage = () => {
           <div role="alert">
             <ErrorState
               message={userData.isFetchNextPageError
-                ? "Không thể tải thêm người dùng. Danh sách đã tải vẫn được giữ lại."
-                : "Không thể tải danh sách người dùng. Vui lòng thử lại."}
+                ? "Could not load more users. The users already loaded are still available."
+                : "Could not load users. Please try again."}
               onRetry={() => void (userData.isFetchNextPageError ? userData.fetchNextPage() : userData.refetch())}
               className="px-4"
             />
@@ -167,10 +167,10 @@ const UsersPage = () => {
           onSortingChange={onSortingChange}
           emptyState={
             <EmptyState
-              title="Không tìm thấy người dùng nào"
+              title="No users found"
               description={filterState.hasActiveFilters
-                ? "Không có kết quả phù hợp với bộ lọc của bạn."
-                : "Hãy tạo người dùng đầu tiên để bắt đầu quản lý."}
+                ? "No users match your filters."
+                : "Create your first user to get started."}
               size="sm"
             />
           }
@@ -186,7 +186,7 @@ const UsersPage = () => {
           <div className="flex items-center justify-center border-t border-utility-gray-200 py-4">
             <RefreshCw05 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
             <span className="ml-2 text-sm text-muted-foreground">
-              Đang tải thêm...
+              Loading more...
             </span>
           </div>
         )}
@@ -195,7 +195,7 @@ const UsersPage = () => {
           !userData.isFetchingNextPage &&
           userData.users.length > 0 && (
             <p className="border-t border-utility-gray-200 py-3 text-center text-xs text-muted-foreground">
-              {userData.users.length} người dùng
+              {userData.users.length} users
             </p>
           )}
       </AdminSectionCard>

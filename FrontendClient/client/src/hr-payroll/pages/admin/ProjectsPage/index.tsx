@@ -101,9 +101,9 @@ const ProjectsPage = () => {
         <ProjectPageHeader onCreateProject={() => openCreateProject()} />
       </AdminPageHeaderCard>
 
-      <AdminSectionCard aria-label="Danh sách dự án">
+      <AdminSectionCard aria-label="Project list">
         <AdminFilterRow>
-          <p className="text-sm font-semibold text-foreground">Danh sách</p>
+          <p className="text-sm font-semibold text-foreground">Projects</p>
           <div className="flex flex-1 items-center justify-end">
             <ProjectFilters
               searchTerm={filterControls.searchTerm}
@@ -121,7 +121,7 @@ const ProjectsPage = () => {
 
         {isError ? (
           <div role="alert">
-            <ErrorState message="Không thể tải danh sách dự án. Vui lòng thử lại." onRetry={() => void refetch()} className="px-4" />
+            <ErrorState message="Could not load projects. Please try again." onRetry={() => void refetch()} className="px-4" />
           </div>
         ) : (
         <ResponsiveTable
@@ -139,13 +139,13 @@ const ProjectsPage = () => {
           onSortingChange={onSortingChange}
           emptyState={
             <EmptyState
-              title="Không tìm thấy dự án nào"
+              title="No projects found"
               description={filterControls.hasFilters
-                ? "Không có dự án phù hợp. Thử thay đổi từ khóa hoặc xóa bộ lọc."
-                : "Hãy tạo dự án đầu tiên để bắt đầu quản lý nhân viên và bảng lương."}
+                ? "No projects match your search. Try changing your search or clearing the filters."
+                : "Create your first project to start managing employees and payroll."}
               action={filterControls.hasFilters
-                ? { label: "Xóa bộ lọc", onClick: filterControls.clearFilters }
-                : { label: "Tạo dự án", onClick: () => openCreateProject() }}
+                ? { label: "Clear filters", onClick: filterControls.clearFilters }
+                : { label: "Create project", onClick: () => openCreateProject() }}
               className="py-8"
             />
           }

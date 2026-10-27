@@ -148,13 +148,13 @@ export function getGroupedStatusBadgeVariant(status: GroupedTimesheet['aggregate
     case 'pending_approval':
       return { variant: 'secondary' as const, text: 'Pending approval', color: 'yellow' };
     case 'rejected':
-      return { variant: 'destructive' as const, text: 'Loại', color: 'red' };
+      return { variant: 'destructive' as const, text: 'Rejected', color: 'red' };
     case 'draft':
-      return { variant: 'outline' as const, text: 'Nháp', color: 'gray' };
+      return { variant: 'outline' as const, text: 'Draft', color: 'gray' };
     case 'mixed':
-      return { variant: 'outline' as const, text: 'Hỗn hợp', color: 'orange' };
+      return { variant: 'outline' as const, text: 'Mixed', color: 'orange' };
     default:
-      return { variant: 'outline' as const, text: 'Không xác định', color: 'gray' };
+      return { variant: 'outline' as const, text: 'Unknown', color: 'gray' };
   }
 }
 
@@ -165,16 +165,16 @@ export function formatStatusBreakdown(statusBreakdown: GroupedTimesheet['statusB
   const parts: string[] = [];
 
   if (statusBreakdown.approved > 0) {
-    parts.push(`${statusBreakdown.approved} đã duyệt`);
+    parts.push(`${statusBreakdown.approved} approved`);
   }
   if (statusBreakdown.pending_approval > 0) {
-    parts.push(`${statusBreakdown.pending_approval} chờ duyệt`);
+    parts.push(`${statusBreakdown.pending_approval} pending approval`);
   }
   if (statusBreakdown.rejected > 0) {
-    parts.push(`${statusBreakdown.rejected} loại`);
+    parts.push(`${statusBreakdown.rejected} rejected`);
   }
   if (statusBreakdown.draft > 0) {
-    parts.push(`${statusBreakdown.draft} nháp`);
+    parts.push(`${statusBreakdown.draft} draft`);
   }
 
   return parts.join(', ');

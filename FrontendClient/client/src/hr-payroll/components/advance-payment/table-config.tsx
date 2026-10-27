@@ -12,7 +12,6 @@ import { ArrowDown, ArrowUp, ChevronSelectorVertical, DotsHorizontal, RefreshCw0
 import { EmptyState } from "@hr/components/shared/EmptyState";
 import { formatCurrency } from "@hr/utils/formatters";
 import { format, differenceInMinutes } from "date-fns";
-import { vi } from "date-fns/locale";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +35,7 @@ function latencySeconds(row: AdvancePaymentListItem): number | null {
   );
 }
 
-/** Shared "Độ trễ" cell so the desktop column and mobile card cannot drift. */
+/** Shared payment latency cell so the desktop column and mobile card stay consistent. */
 function LatencyCell({ row, mobile = false }: { row: AdvancePaymentListItem; mobile?: boolean }) {
   const secs = latencySeconds(row);
   if (secs === null) {
@@ -54,7 +53,7 @@ function LatencyCell({ row, mobile = false }: { row: AdvancePaymentListItem; mob
         mobile ? "text-[13px]" : "text-xs",
         getPaymentLatencyColor(secs),
       )}
-      title={`Tạo: ${format(new Date(row.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })} · Thanh toán: ${format(new Date(row.paidAt ?? row.completedAt!), "dd/MM/yyyy HH:mm", { locale: vi })}`}
+      title={`Created: ${format(new Date(row.createdAt), "dd/MM/yyyy HH:mm")} · Paid: ${format(new Date(row.paidAt ?? row.completedAt!), "dd/MM/yyyy HH:mm")}`}
     >
       {text}
     </span>
@@ -87,7 +86,7 @@ export function getAdvancePaymentColumns(
           {row.original.projectName && (
             <div
               className="text-xs text-muted-foreground mt-0.5 truncate max-w-[120px]"
-              title={`Dự án: ${row.original.projectName}`}
+              title={`Project: ${row.original.projectName}`}
             >
               {row.original.projectName}
             </div>
@@ -97,7 +96,7 @@ export function getAdvancePaymentColumns(
     },
     {
       accessorKey: "requestAmount",
-      header: "Yêu cầu",
+      header: "Requested",
       size: 100,
       meta: { align: "right" },
       cell: ({ row }) => (
@@ -108,7 +107,7 @@ export function getAdvancePaymentColumns(
     },
     {
       accessorKey: "fee",
-      header: "Phí",
+      header: "Fee",
       size: 80,
       meta: { align: "right" },
       cell: ({ row }) => (
@@ -119,7 +118,7 @@ export function getAdvancePaymentColumns(
     },
     {
       accessorKey: "netAmount",
-      header: "Thực nhận",
+      header: "Net amount",
       size: 100,
       meta: { align: "right" },
       cell: ({ row }) => (
@@ -155,7 +154,7 @@ export function getAdvancePaymentColumns(
     },
     {
       id: "latency",
-      header: "Độ trễ",
+      header: "Payment time",
       size: 110,
       meta: { align: "right" },
       cell: ({ row }) => <LatencyCell row={row.original} />,
@@ -171,9 +170,9 @@ export function getAdvancePaymentColumns(
           return (
             <span
               className="text-xs text-muted-foreground tabular-nums whitespace-nowrap"
-              title={createdAt ? `Tạo: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}` : undefined}
+              title={createdAt ? `Created: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm")}` : undefined}
             >
-              Chờ thanh toán
+              Awaiting payment
             </span>
           );
         }
@@ -181,7 +180,7 @@ export function getAdvancePaymentColumns(
         return (
           <div
             className="text-xs text-muted-foreground tabular-nums whitespace-nowrap cursor-help"
-            title={`Tạo: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm", { locale: vi })} · Xử lý trong ${latency}`}
+            title={`Created: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm")} · Processed in ${latency}`}
           >
             {format(new Date(paidAt), "dd/MM/yyyy HH:mm", { locale: vi })}
           </div>
@@ -205,7 +204,7 @@ export function getAdvancePaymentColumns(
           <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label={`Thao tác yêu cầu ứng lương của ${row.original.employeeName}`} className="h-9 w-9 shrink-0">
+                <Button variant="ghost" size="icon" aria-label={`Actions for ${row.original.employeeName}'s advance payment request`} className="h-9 w-9 shrink-0">
                   <DotsHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
@@ -217,7 +216,7 @@ export function getAdvancePaymentColumns(
                     className="text-blue-700 focus:text-blue-700"
                   >
                     <RefreshCw05 className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-                    {isRetrying ? "Đang gửi..." : "Thử lại"}
+                    {isRetrying ? "Submitting..." : "Retry"}
                   </DropdownMenuItem>
                 )}
                 {isCancellable && (
@@ -226,7 +225,7 @@ export function getAdvancePaymentColumns(
                     className="text-red-700 focus:text-red-800"
                   >
                     <X className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-                    Hủy yêu cầu
+                    Cancel request
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -291,7 +290,7 @@ export function getFlexPayColumns(sort: SortContext): ColumnDef<FlexPayEmployeeL
   },
   {
     id: "bank",
-    header: "Ngân hàng",
+    header: "Bank",
     size: 140,
     cell: ({ row }) => {
       const bank = row.original.bank;
@@ -310,7 +309,7 @@ export function getFlexPayColumns(sort: SortContext): ColumnDef<FlexPayEmployeeL
   },
   {
     accessorKey: "maxAdvanceAmount",
-    header: () => <SortHeader label="Hạn mức" field="max_advance_amount" ctx={sort} />,
+    header: () => <SortHeader label="Limit" field="max_advance_amount" ctx={sort} />,
     size: 90,
     cell: ({ row }) => (
       <div className="text-xs font-medium tabular-nums">
@@ -320,7 +319,7 @@ export function getFlexPayColumns(sort: SortContext): ColumnDef<FlexPayEmployeeL
   },
   {
     accessorKey: "utilizedAmount",
-    header: () => <SortHeader label="Đã dùng" field="utilized_amount" ctx={sort} />,
+    header: () => <SortHeader label="Used" field="utilized_amount" ctx={sort} />,
     size: 90,
     cell: ({ row }) => (
       <div className="text-xs text-orange-700 tabular-nums">
@@ -330,7 +329,7 @@ export function getFlexPayColumns(sort: SortContext): ColumnDef<FlexPayEmployeeL
   },
   {
     accessorKey: "pendingAmount",
-    header: () => <SortHeader label="Chờ xử lý" field="pending_amount" ctx={sort} />,
+    header: () => <SortHeader label="Pending" field="pending_amount" ctx={sort} />,
     size: 90,
     cell: ({ row }) => (
       <div className="text-xs text-amber-700 tabular-nums">
@@ -340,7 +339,7 @@ export function getFlexPayColumns(sort: SortContext): ColumnDef<FlexPayEmployeeL
   },
   {
     accessorKey: "availableAmount",
-    header: () => <SortHeader label="Còn lại" field="available_amount" ctx={sort} />,
+    header: () => <SortHeader label="Available" field="available_amount" ctx={sort} />,
     size: 90,
     cell: ({ row }) => (
       <div className="text-xs font-semibold text-emerald-700 tabular-nums">
@@ -350,7 +349,7 @@ export function getFlexPayColumns(sort: SortContext): ColumnDef<FlexPayEmployeeL
   },
   {
     accessorKey: "totalFeeGenerated",
-    header: "Phí thu",
+    header: "Fees earned",
     size: 80,
     cell: ({ row }) => (
       <div className="text-xs text-muted-foreground tabular-nums">
@@ -388,7 +387,7 @@ export const requestMobileFields: MobileField<AdvancePaymentListItem>[] = [
   },
   {
     key: "netAmount",
-    label: "Thực nhận",
+    label: "Net amount",
     priority: 2,
     render: (row) => (
       <div className="text-[13px] font-semibold text-emerald-700 tabular-nums">
@@ -398,7 +397,7 @@ export const requestMobileFields: MobileField<AdvancePaymentListItem>[] = [
   },
   {
     key: "fee",
-    label: "Phí",
+    label: "Fee",
     priority: 2,
     render: (row) => (
       <div className="text-[13px] text-muted-foreground tabular-nums">
@@ -412,7 +411,7 @@ export const requestMobileFields: MobileField<AdvancePaymentListItem>[] = [
     priority: 2,
     render: (row) => (
       <div className="text-[13px] text-muted-foreground tabular-nums">
-        {format(new Date(row.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+        {format(new Date(row.createdAt), "dd/MM/yyyy HH:mm")}
       </div>
     ),
   },
@@ -425,14 +424,14 @@ export const requestMobileFields: MobileField<AdvancePaymentListItem>[] = [
       if (!paidAt) return <span className="text-[13px] text-muted-foreground">—</span>;
       return (
         <div className="text-[13px] text-muted-foreground tabular-nums">
-          {format(new Date(paidAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+          {format(new Date(paidAt), "dd/MM/yyyy HH:mm")}
         </div>
       );
     },
   },
   {
     key: "latency",
-    label: "Độ trễ",
+    label: "Payment time",
     priority: 3,
     render: (row) => <LatencyCell row={row} mobile />,
   },
@@ -442,7 +441,7 @@ export const flexPayMobileFields: MobileField<FlexPayEmployeeListItem>[] = [
 
   {
     key: "maxAdvanceAmount",
-    label: "Hạn mức",
+    label: "Limit",
     priority: 1,
     render: (row) => (
       <div className="text-[13px] font-medium text-fg-tertiary">{formatCurrency(row.maxAdvanceAmount)}</div>
@@ -450,7 +449,7 @@ export const flexPayMobileFields: MobileField<FlexPayEmployeeListItem>[] = [
   },
   {
     key: "availableAmount",
-    label: "Còn lại",
+    label: "Available",
     priority: 1,
     render: (row) => (
       <div className="text-[14px] font-bold text-emerald-700">
@@ -460,7 +459,7 @@ export const flexPayMobileFields: MobileField<FlexPayEmployeeListItem>[] = [
   },
   {
     key: "utilizedAmount",
-    label: "Đã dùng",
+    label: "Used",
     priority: 2,
     render: (row) => (
       <div className="text-orange-700">
@@ -470,7 +469,7 @@ export const flexPayMobileFields: MobileField<FlexPayEmployeeListItem>[] = [
   },
   {
     key: "bank",
-    label: "Ngân hàng",
+    label: "Bank",
     priority: 2,
     render: (row) => {
       const bank = row.bank;
@@ -495,16 +494,16 @@ export const flexPayMobileFields: MobileField<FlexPayEmployeeListItem>[] = [
 
 export const requestEmptyState = (
   <EmptyState
-    title="Chưa có yêu cầu nào"
-    description="Yêu cầu ứng lương sẽ hiển thị tại đây sau khi nhân viên gửi."
+    title="No requests yet"
+    description="Employee advance payment requests will appear here once submitted."
     size="sm"
   />
 );
 
 export const flexPayEmptyState = (
   <EmptyState
-    title="Chưa có dữ liệu"
-    description="Vui lòng nhập file bảng lương để xem danh sách nhân viên."
+    title="No data available"
+    description="Import a payroll file to view the employee list."
     size="sm"
   />
 );

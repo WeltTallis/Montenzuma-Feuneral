@@ -64,7 +64,7 @@ export const createEmployeeColumns = (
                         <AlertTriangle className="h-3 w-3 text-amber-700 shrink-0" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="text-xs">
-                        Thiếu thông tin ngân hàng
+                        Missing bank details
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -101,7 +101,7 @@ export const createEmployeeColumns = (
         if (projectCount === 0) {
           return (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded-md bg-muted/30">
-              Chưa phân công
+              Not assigned
             </span>
           );
         }
@@ -150,7 +150,7 @@ export const createEmployeeColumns = (
     {
       id: "bank",
       accessorKey: "bank_name",
-      header: "Ngân hàng",
+      header: "Bank",
       size: 0,
       cell: ({ row }) => {
         const employee = row.original;
@@ -172,7 +172,7 @@ export const createEmployeeColumns = (
     },
     {
       accessorKey: "address",
-      header: "Địa chỉ",
+      header: "Address",
       cell: ({ row }) => {
         const raw = (row.getValue("address") as string) || "";
         const cleaned = raw.replace(/\\'/g, "'");

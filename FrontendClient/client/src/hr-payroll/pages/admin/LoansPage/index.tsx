@@ -119,17 +119,17 @@ const LoansPage = () => {
       <AdminPageHeaderCard>
         <PageHeader
           icon={Bank}
-          title="Quản lý khoản vay"
-          description="Quản lý chủ nợ và các khoản vay của công ty"
+          title="Loans"
+          description="Manage company lenders and loans"
           actions={[
             {
-              label: 'QL Chủ nợ',
+              label: 'Manage lenders',
               onClick: handleOpenLenderSheet,
               icon: Users01,
               variant: 'outline' as const,
             },
             {
-              label: 'Tạo khoản vay',
+              label: 'Create loan',
               onClick: handleOpenAddLoan,
               icon: Plus,
               variant: 'default' as const,
@@ -140,7 +140,7 @@ const LoansPage = () => {
 
       {!isError && <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-4 gap-3">
         <KpiHeroCard
-          label="Tổng vay"
+          label="Total borrowed"
           value={loansSummary.total_borrowed}
           unit="₫"
           icon={Bank}
@@ -148,7 +148,7 @@ const LoansPage = () => {
           variant="stack"
         />
         <KpiHeroCard
-          label="Dư nợ hiện tại"
+          label="Outstanding balance"
           value={loansSummary.total_outstanding}
           unit="₫"
           icon={TrendUp01}
@@ -156,7 +156,7 @@ const LoansPage = () => {
           variant="stack"
         />
         <KpiHeroCard
-          label="Lãi đã trả"
+          label="Interest paid"
           value={loansSummary.total_interest_paid}
           unit="₫"
           icon={CoinsHand}
@@ -164,7 +164,7 @@ const LoansPage = () => {
           variant="stack"
         />
         <KpiHeroCard
-          label="Loan"
+          label="Active loans"
           value={loansSummary.active_loans_count}
           icon={Wallet01}
           color="teal"
@@ -172,14 +172,14 @@ const LoansPage = () => {
         />
       </div>}
 
-      <AdminSectionCard aria-label="Danh sách khoản vay">
+      <AdminSectionCard aria-label="Loan list">
         <AdminFilterRow>
-          <p className="text-sm font-semibold text-fg-primary">Danh sách</p>
+          <p className="text-sm font-semibold text-fg-primary">Loans</p>
           <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
             <SearchBar
               searchTerm={loanSearch}
               onSearchChange={setLoanSearch}
-              placeholder="Tìm mã vay, chủ nợ..."
+              placeholder="Search loan or lender..."
               className="w-52"
             />
             <FilterPill
@@ -187,15 +187,15 @@ const LoansPage = () => {
               onChange={handleStatusChange}
               placeholder="Status"
               options={[
-                { value: 'active', label: 'Đang vay' },
-                { value: 'paid', label: 'Đã trả' },
-                { value: 'overdue', label: 'Quá hạn' },
+                { value: 'active', label: 'Active' },
+                { value: 'paid', label: 'Paid' },
+                { value: 'overdue', label: 'Overdue' },
               ]}
             />
             <FilterPill
               value={loanFilters.lender_id?.toString() ?? 'all'}
               onChange={handleLenderChange}
-              placeholder="Chủ nợ"
+              placeholder="Lender"
               options={lenders.map((l) => ({ value: l.id.toString(), label: l.name }))}
             />
           </div>
@@ -203,7 +203,7 @@ const LoansPage = () => {
 
         {isError ? (
           <div role="alert">
-            <ErrorState message="Không thể tải danh sách khoản vay. Vui lòng thử lại." onRetry={() => void refetch()} className="px-4" />
+            <ErrorState message="Could not load loans. Please try again." onRetry={() => void refetch()} className="px-4" />
           </div>
         ) : (
         <ResponsiveTable

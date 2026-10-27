@@ -17,31 +17,31 @@ export const createTimesheetStatsConfig = (summary: EmployeeTimesheetSummary): T
 
   const mainStats: TimesheetStatsConfig[] = [
     {
-      title: 'Tổng giờ làm',
-      value: `${totalHoursWorked} giờ`,
+      title: 'Total hours worked',
+      value: `${totalHoursWorked} hours`,
       icon: Clock,
-      description: `Trung bình ${summary.averageHoursPerDay} giờ/ngày`,
+      description: `Average ${summary.averageHoursPerDay} hours per day`,
       color: 'blue'
     },
     {
       title: 'Total amount',
       value: formatCurrency(summary.totalAmount),
       icon: DollarSign,
-      description: 'Tổng thu nhập',
+      description: 'Total earnings',
       color: 'green'
     },
     {
-      title: 'Ngày làm việc',
+      title: 'Working days',
       value: summary.workingDays,
       icon: Calendar,
-      description: 'Số ngày có chấm công',
+      description: 'Days with attendance records',
       color: 'teal'
     },
     {
       title: 'Pending approval',
       value: summary.pendingEntries,
       icon: AlertCircle,
-      description: 'Bản ghi chưa được duyệt',
+      description: 'Entries awaiting approval',
       color: summary.pendingEntries > 0 ? 'yellow' : 'gray'
     }
   ];
@@ -89,7 +89,14 @@ export const createHourTypeBreakdownStats = (totalHours: Record<string, number>)
   // Convert to stats format
   Object.entries(hourTypeGroups).forEach(([hourType, data]) => {
     hourTypeStats.push({
-      title: hourType.charAt(0).toUpperCase() + hourType.slice(1),
+      title: hourType
+        .replace(/tăng ca/gi, 'Overtime')
+        .replace(/ca đêm/gi, 'Night shift')
+        .replace(/ca ngày/gi, 'Day shift')
+        .replace(/ngày thường/gi, 'Weekday')
+        .replace(/ngày nghỉ/gi, 'Day off')
+        .replace(/ngày lễ/gi, 'Public holiday')
+        .replace(/^./, (character) => character.toUpperCase()),
       value: `${data.hours}h`,
       icon: Clock3,
       color: data.color
@@ -116,7 +123,7 @@ export const createApprovalStats = (approvalStats?: EmployeeTimesheetSummary['ap
       color: 'yellow'
     },
     {
-      title: 'Loại',
+      title: 'Rejected',
       value: approvalStats.rejected,
       icon: AlertCircle,
       color: 'red'
@@ -126,10 +133,10 @@ export const createApprovalStats = (approvalStats?: EmployeeTimesheetSummary['ap
 
 export const getPaymentStatusConfig = (paymentStatus?: string) => {
   const statusConfig = {
-    pending: { color: 'yellow' as const, icon: Clock, text: 'Chờ thanh toán' },
+    pending: { color: 'yellow' as const, icon: Clock, text: 'Pending payment' },
     processing: { color: 'blue' as const, icon: TrendingUp, text: 'Processing' },
-    paid: { color: 'green' as const, icon: CheckCircle, text: 'Đã thanh toán' },
-    overdue: { color: 'red' as const, icon: AlertCircle, text: 'Quá hạn' }
+    paid: { color: 'green' as const, icon: CheckCircle, text: 'Paid' },
+    overdue: { color: 'red' as const, icon: AlertCircle, text: 'Overdue' }
   };
 
   return statusConfig[paymentStatus as keyof typeof statusConfig] || statusConfig.pending;

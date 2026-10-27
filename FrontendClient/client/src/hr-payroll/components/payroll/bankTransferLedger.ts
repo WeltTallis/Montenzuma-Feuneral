@@ -76,13 +76,13 @@ export interface LedgerColumn {
  * ~762px, leaving the rest for the employee column.
  */
 export const LEDGER_COLUMNS: LedgerColumn[] = [
-  { id: 'stt', label: 'STT', width: '36px' },
+  { id: 'stt', label: 'No.', width: '36px' },
   { id: 'employee', label: 'Employees', width: 'auto' },
-  { id: 'period', label: 'Kỳ thanh toán', width: '112px' },
+  { id: 'period', label: 'Pay period', width: '112px' },
   { id: 'paymentDate', label: 'Payment date', width: '90px' },
-  { id: 'transferCode', label: 'Ghi chú CK', width: '96px' },
-  { id: 'bankReference', label: 'Mã GD ngân hàng', width: '124px' },
-  { id: 'processedAt', label: 'Thời gian xử lý', width: '88px' },
+  { id: 'transferCode', label: 'Transfer note', width: '96px' },
+  { id: 'bankReference', label: 'Bank reference', width: '124px' },
+  { id: 'processedAt', label: 'Processed at', width: '88px' },
   { id: 'amount', label: 'Amount', width: '108px', alignRight: true },
-  { id: 'recordTotal', label: 'Thực nhận (kỳ)', width: '108px', alignRight: true },
+  { id: 'recordTotal', label: 'Period total', width: '108px', alignRight: true },
 ];

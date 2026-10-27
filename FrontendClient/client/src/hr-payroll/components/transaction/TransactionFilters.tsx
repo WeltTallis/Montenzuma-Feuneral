@@ -29,7 +29,7 @@ export function TransactionFilters({
       <SearchBar
         searchTerm={filters.search ?? ''}
         onSearchChange={(value) => set('search', value || undefined)}
-        placeholder="Tìm kiếm diễn giải, đối tượng..."
+        placeholder="Search description or contact..."
       />
 
       <DateRangePicker
@@ -42,7 +42,7 @@ export function TransactionFilters({
       <FilterPill
         value={filters.transaction_type ?? 'all'}
         onChange={(v) => set('transaction_type', v === 'all' ? undefined : v)}
-        placeholder="Tất cả loại"
+        placeholder="All types"
         options={(transactionMetadata?.transaction_types ?? []).map(t => ({ value: t.type, label: t.label }))}
       />
 
@@ -61,7 +61,7 @@ export function TransactionFilters({
           onClick={onClearFilters}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          Xóa lọc
+          Clear filters
         </button>
       )}
     </div>

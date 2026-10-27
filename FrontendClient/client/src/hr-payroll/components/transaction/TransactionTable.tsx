@@ -97,7 +97,7 @@ export function TransactionTable({
     },
     {
       accessorKey: 'description',
-      header: 'Diễn giải',
+      header: 'Description',
       size: 220,
       cell: ({ row }) => (
         <span className="text-sm text-foreground line-clamp-2 leading-snug">
@@ -107,7 +107,7 @@ export function TransactionTable({
     },
     {
       accessorKey: 'transaction_type',
-      header: 'Loại',
+      header: 'Type',
       size: 100,
       maxSize: 120,
       cell: ({ row }) => (
@@ -116,7 +116,7 @@ export function TransactionTable({
     },
     {
       accessorKey: 'party',
-      header: 'Đối tượng',
+      header: 'Contact',
       size: 130,
       maxSize: 180,
       cell: ({ row }) => (
@@ -139,7 +139,7 @@ export function TransactionTable({
             </span>
             {row.original.status === 'partially_settled' && remaining > 0 && (
               <span className={cn('text-xs tabular-nums', remainingColor)}>
-                Còn {formatCurrency(remaining)}
+                Remaining: {formatCurrency(remaining)}
               </span>
             )}
           </div>
@@ -159,7 +159,7 @@ export function TransactionTable({
     },
     {
       key: 'description',
-      label: 'Diễn giải',
+      label: 'Description',
       priority: 1,
       render: (txn) => (
         <span className="text-sm text-foreground line-clamp-2">{txn.description}</span>
@@ -167,7 +167,7 @@ export function TransactionTable({
     },
     {
       key: 'party',
-      label: 'Đối tượng',
+      label: 'Contact',
       priority: 2,
       render: (txn) => (
         <span className="text-sm text-muted-foreground">{txn.party}</span>
@@ -175,7 +175,7 @@ export function TransactionTable({
     },
     {
       key: 'transaction_type',
-      label: 'Loại',
+      label: 'Type',
       priority: 2,
       render: (txn) => (
         <TypeChip type={txn.transaction_type} label={getTypeLabel(txn.transaction_type)} />
@@ -195,7 +195,7 @@ export function TransactionTable({
             </span>
             {txn.status === 'partially_settled' && remaining > 0 && (
               <span className={cn('text-xs tabular-nums', remainingColor)}>
-                Còn {formatCurrency(remaining)}
+                Remaining: {formatCurrency(remaining)}
               </span>
             )}
           </div>
@@ -205,7 +205,7 @@ export function TransactionTable({
   ], [getTypeLabel]);
 
   const mobileRowActions = useMemo<RowAction<Transaction>[]>(() => [
-    { label: 'Xem chi tiết', onClick: (row) => onRowClick?.(row) },
+    { label: 'View details', onClick: (row) => onRowClick?.(row) },
   ], [onRowClick]);
 
   return (
@@ -218,9 +218,9 @@ export function TransactionTable({
         )}
       >
         {[
-          { dot: 'bg-emerald-500', label: 'Đã thanh toán' },
-          { dot: 'bg-amber-400',   label: 'Chờ thanh toán' },
-          { dot: 'bg-teal-500',    label: 'Thanh toán thiếu' },
+          { dot: 'bg-emerald-500', label: 'Paid' },
+          { dot: 'bg-amber-400',   label: 'Awaiting payment' },
+          { dot: 'bg-teal-500',    label: 'Partially paid' },
         ].map(({ dot, label }) => (
           <div key={label} className="flex items-center gap-1">
             <div className={cn('w-1.5 h-1.5 rounded-full shrink-0', dot)} />
@@ -234,7 +234,7 @@ export function TransactionTable({
         mobileFields={mobileFields}
         rowActions={mobileRowActions}
         onRowClick={onRowClick}
-        emptyState="Không có giao dịch nào"
+        emptyState="No transactions found"
         pagination={pagination ?? undefined}
         onPageChange={onPageChange}
         onPageSizeChange={onPageSizeChange}

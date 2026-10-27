@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 // W13c: lucide → verified @untitledui/icons.
 import { Users01, Wallet01 } from "@untitledui/icons";
 import { Badge } from "@hr/components/ui/badge";
@@ -69,11 +68,11 @@ export function EmployeeDetailSheet({
                   {/* Quick info pills */}
                   <div className="flex items-center gap-2 px-4 pt-3">
                     <MobileFilterPill>
-                      {emp.project?.name || "Chưa có dự án"}
+                      {emp.project?.name || "No project"}
                     </MobileFilterPill>
                     {emp.bank?.accountNumber && (
                       <MobileFilterPill>
-                        {emp.bank.bankName || "Ngân hàng"}
+                        {emp.bank.bankName || "Bank"}
                       </MobileFilterPill>
                     )}
                   </div>
@@ -83,14 +82,14 @@ export function EmployeeDetailSheet({
                     <MobileCard padding="lg" className="space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-medium text-muted-foreground">
-                          Hạn mức ứng lương
+                          Salary advance limit
                         </p>
                         <p className="text-lg font-bold tabular-nums">
                           {formatCurrency(emp.availableAmount)}
                         </p>
                       </div>
                       <p className="text-xs text-muted-foreground -mt-2">
-                        Số tiền còn lại
+                        Remaining balance
                       </p>
                       <MobileProgressBar
                         value={usedPct}
@@ -99,15 +98,15 @@ export function EmployeeDetailSheet({
                       />
                       <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-3">
                         <div className="rounded-lg bg-muted/40 px-2.5 py-2">
-                          <p className="text-xs text-muted-foreground">Hạn mức</p>
+                          <p className="text-xs text-muted-foreground">Limit</p>
                           <p className="text-xs font-semibold tabular-nums">{formatCurrency(emp.maxAdvanceAmount)}</p>
                         </div>
                         <div className="rounded-lg bg-utility-warning-50 px-2.5 py-2">
-                          <p className="text-xs text-muted-foreground">Đã dùng</p>
+                          <p className="text-xs text-muted-foreground">Used</p>
                           <p className="text-xs font-semibold text-fg-warning-primary tabular-nums">{formatCurrency(emp.utilizedAmount)}</p>
                         </div>
                         <div className="rounded-lg bg-utility-warning-50/60 px-2.5 py-2">
-                          <p className="text-xs text-muted-foreground">Chờ xử lý</p>
+                          <p className="text-xs text-muted-foreground">Pending</p>
                           <p className="text-xs font-semibold text-utility-warning-700 tabular-nums">{formatCurrency(emp.pendingAmount)}</p>
                         </div>
                       </div>
@@ -119,7 +118,7 @@ export function EmployeeDetailSheet({
                     {emp.bank?.accountNumber && (
                       <MobileCard>
                         <p className="text-xs font-medium text-muted-foreground mb-1">
-                          Ngân hàng
+                          Bank
                         </p>
                         <p className="text-sm">{emp.bank.bankName || "-"}</p>
                         <p className="text-xs text-muted-foreground tabular-nums">
@@ -129,7 +128,7 @@ export function EmployeeDetailSheet({
                     )}
                     <div className="grid grid-cols-1 gap-2">
                       <MobileCard className="text-center">
-                        <p className="text-xs text-muted-foreground">Phí thu</p>
+                        <p className="text-xs text-muted-foreground">Fees charged</p>
                         <p className="text-sm font-semibold tabular-nums mt-0.5">
                           {formatCurrency(emp.totalFeeGenerated)}
                         </p>
@@ -142,10 +141,10 @@ export function EmployeeDetailSheet({
                     <div className="px-4 py-3">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-medium text-muted-foreground">
-                          Yêu cầu ứng lương
+                          Advance requests
                         </p>
                         <span className="text-xs text-muted-foreground tabular-nums">
-                          {requests.length} yêu cầu
+                          {requests.length} requests
                         </span>
                       </div>
                     </div>
@@ -154,7 +153,7 @@ export function EmployeeDetailSheet({
                       <div className="px-4 pb-6 text-center">
                         <Wallet01 className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                         <p className="text-xs text-muted-foreground">
-                          Chưa có yêu cầu nào
+                          No requests yet
                         </p>
                       </div>
                     ) : (
@@ -173,16 +172,15 @@ export function EmployeeDetailSheet({
                               </Badge>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span>Phí: {formatCurrency(req.fee)}</span>
+                              <span>Fee: {formatCurrency(req.fee)}</span>
                               <span>
-                                Thực nhận: {formatCurrency(req.netAmount)}
+                                Net amount: {formatCurrency(req.netAmount)}
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {format(
                                 new Date(req.createdAt),
                                 "dd/MM/yyyy HH:mm",
-                                { locale: vi },
                               )}
                             </p>
                           </MobileCard>

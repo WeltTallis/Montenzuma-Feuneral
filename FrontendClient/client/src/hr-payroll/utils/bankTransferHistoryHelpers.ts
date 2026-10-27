@@ -1,8 +1,8 @@
 export const BANK_TRANSFER_CYCLE_LABELS = {
-  1: 'Kỳ 1 · ngày 1–7',
-  2: 'Kỳ 2 · ngày 8–14',
-  3: 'Kỳ 3 · ngày 15–21',
-  4: 'Kỳ 4 · ngày 22–cuối tháng',
+  1: 'Period 1 · days 1–7',
+  2: 'Period 2 · days 8–14',
+  3: 'Period 3 · days 15–21',
+  4: 'Period 4 · days 22–end of month',
 } as const;
 
 const bankTransferDateFormatter = new Intl.DateTimeFormat('en-KE', {

@@ -61,7 +61,7 @@ export function LedgerTableRow({ row }: { row: LedgerRow }) {
               {record.employee_name}
             </p>
             <p className="mt-0.5 break-words text-[11px] leading-tight text-fg-tertiary">
-              CCCD {record.employee_cccd || '—'}
+              National ID {record.employee_cccd || '—'}
               {record.project_names.length > 0 && (
                 <span title={record.project_names.join(', ')}>
                   {' · '}
@@ -73,12 +73,12 @@ export function LedgerTableRow({ row }: { row: LedgerRow }) {
           <TableCell rowSpan={recordRowCount} className={`px-2 py-1.5 ${IDENTITY_CELL}`}>
             <p
               className={`${NUMERIC_CELL} whitespace-nowrap text-fg-primary`}
-              aria-label={`Từ ${formatBankTransferDate(record.from_date)} đến ${formatBankTransferDate(record.to_date)}`}
+              aria-label={`From ${formatBankTransferDate(record.from_date)} to ${formatBankTransferDate(record.to_date)}`}
             >
               {formatBankTransferPeriod(record.from_date, record.to_date)}
             </p>
             <Badge className="mt-0.5 rounded-full border border-utility-gray-300 bg-utility-gray-50 px-1.5 py-0 font-display text-[10px] font-bold text-fg-secondary hover:bg-utility-gray-50">
-              Kỳ {record.cycle}
+              Period {record.cycle}
             </Badge>
           </TableCell>
           <TableCell rowSpan={recordRowCount} className={`px-2 py-1.5 ${IDENTITY_CELL}`}>
@@ -145,21 +145,21 @@ export function LedgerMobileRecord({ record }: { record: BankTransferHistory }) 
       </div>
 
       <p className="mt-0.5 break-words text-[11px] leading-snug text-fg-tertiary">
-        CCCD {record.employee_cccd || '—'}
+        National ID {record.employee_cccd || '—'}
         {record.project_names.length > 0 && <> · {record.project_names.join(', ')}</>}
         {' · '}
         <span
-          aria-label={`Từ ${formatBankTransferDate(record.from_date)} đến ${formatBankTransferDate(record.to_date)}`}
+          aria-label={`From ${formatBankTransferDate(record.from_date)} to ${formatBankTransferDate(record.to_date)}`}
         >
           {formatBankTransferPeriod(record.from_date, record.to_date)}
         </span>
         {' · '}
-        <span className="font-semibold text-fg-secondary">Kỳ {record.cycle}</span>
-        {' · TT '}
+        <span className="font-semibold text-fg-secondary">Period {record.cycle}</span>
+        {' · Paid '}
         <time dateTime={record.payment_date}>{formatBankTransferDate(record.payment_date)}</time>
       </p>
 
-      <div className="mt-1 space-y-0.5" role="list" aria-label={`${postings.length} bút toán ngân hàng`}>
+      <div className="mt-1 space-y-0.5" role="list" aria-label={`${postings.length} bank transactions`}>
         {postings.map((posting, index) => (
           <div
             key={posting ? `${posting.transfer_code}-${posting.bank_reference}-${index}` : `empty-${index}`}

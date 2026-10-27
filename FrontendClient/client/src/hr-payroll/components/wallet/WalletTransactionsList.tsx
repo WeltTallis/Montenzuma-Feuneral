@@ -62,12 +62,12 @@ type TypeFilter = "all" | "topup" | "payment";
 const PAGE_SIZE = 20;
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Đang chờ",
-  verified: "Đã xác minh",
+  pending: "Pending",
+  verified: "Verified",
   authorised: "Approved",
   completed: "Completed",
   failed: "Failed",
-  reversed: "Đã hoàn tiền",
+  reversed: "Refunded",
 };
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
@@ -124,7 +124,7 @@ function CopyButton({ value }: { value: string }) {
       type="button"
       onClick={handleCopy}
       className="ml-1 inline-flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded text-fg-tertiary hover:text-slate-700 hover:bg-slate-100 transition-colors"
-      title="Sao chép"
+      title="Copy"
     >
       {copied ? <Check className="h-3 w-3 text-fg-success-primary" /> : <Copy01 className="h-3 w-3" />}
     </button>
@@ -161,7 +161,7 @@ function TypeLabel({ type }: { type: UnifiedTransaction["type"] }) {
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-utility-success-50 ring-1 ring-utility-success-100">
           <ArrowDownLeft className="h-3.5 w-3.5 text-fg-success-primary" />
         </span>
-        <span className="text-xs text-fg-success-primary font-medium whitespace-nowrap">Nạp tiền</span>
+        <span className="text-xs text-fg-success-primary font-medium whitespace-nowrap">Top-up</span>
       </span>
     );
   }
@@ -170,7 +170,7 @@ function TypeLabel({ type }: { type: UnifiedTransaction["type"] }) {
       <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 ring-1 ring-slate-200">
         <ArrowUpRight className="h-3.5 w-3.5 text-fg-tertiary" />
       </span>
-      <span className="text-xs text-fg-tertiary whitespace-nowrap">Chi trả</span>
+      <span className="text-xs text-fg-tertiary whitespace-nowrap">Payment</span>
     </span>
   );
 }
@@ -240,8 +240,8 @@ function TransactionDetailSheet({
       <SheetContent
         side="right"
         className="w-full sm:max-w-[440px] p-0 flex flex-col"
-        title="Chi tiết giao dịch"
-        description="Thông tin đầy đủ của giao dịch này"
+        title="Transaction details"
+        description="Full details for this transaction"
       >
         {/* Header */}
         <div className={`px-6 pt-6 pb-5 ${isInflow ? "bg-utility-success-50/60" : "bg-utility-gray-50/60"}`}>
@@ -252,13 +252,13 @@ function TransactionDetailSheet({
                 : <ArrowUpRight className="h-5 w-5 text-fg-secondary" />
               }
             </div>
-            <SheetClose aria-label="Đóng chi tiết giao dịch" className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-tertiary hover:text-slate-700 hover:bg-white/70 transition-colors">
+            <SheetClose aria-label="Close transaction details" className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-tertiary hover:text-slate-700 hover:bg-white/70 transition-colors">
               <XClose className="h-4 w-4" />
             </SheetClose>
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wider text-fg-tertiary mb-1">
-            {tx?.type === "topup" ? "Nạp tiền" : "Chi trả"}
+            {tx?.type === "topup" ? "Top-up" : "Payment"}
           </p>
           <p className={`text-3xl font-bold tabular-nums leading-none mb-3 ${isInflow ? "text-fg-success-primary" : "text-fg-primary"}`}>
             {tx ? formatAmount(tx.amount) : "—"}
@@ -298,9 +298,9 @@ function TransactionDetailSheet({
 function PaymentDetail({ payment, tx }: { payment: WalletPayment; tx: UnifiedTransaction }) {
   return (
     <div className="divide-y divide-slate-200">
-      <DetailRow label="Ngày giao dịch" value={formatDateTime(tx.occurred_at)} />
+      <DetailRow label="Transaction date" value={formatDateTime(tx.occurred_at)} />
       <DetailRow
-        label="Người nhận"
+        label="Recipient"
         value={
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-slate-800">{payment.recipient_name}</span>
@@ -311,21 +311,21 @@ function PaymentDetail({ payment, tx }: { payment: WalletPayment; tx: UnifiedTra
         }
       />
       <DetailRow
-        label="Số tiền yêu cầu"
+        label="Requested amount"
         value={<span className="font-semibold">{formatVND(payment.requested_amount)}</span>}
       />
       {payment.charged_amount != null && payment.charged_amount !== payment.requested_amount && (
         <DetailRow
-          label="Số tiền thực thu"
+          label="Amount charged"
           value={<span className="font-semibold">{formatVND(payment.charged_amount)}</span>}
         />
       )}
       {payment.fee != null && payment.fee > 0 && (
-        <DetailRow label="Phí giao dịch" value={formatVND(payment.fee)} />
+        <DetailRow label="Transaction fee" value={formatVND(payment.fee)} />
       )}
       {payment.txn_id && (
         <DetailRow
-          label="Mã giao dịch (TXN)"
+          label="Transaction ID"
           value={payment.txn_id}
           mono
           copyable={payment.txn_id}
@@ -333,7 +333,7 @@ function PaymentDetail({ payment, tx }: { payment: WalletPayment; tx: UnifiedTra
       )}
       {payment.request_id && (
         <DetailRow
-          label="Mã yêu cầu"
+          label="Request ID"
           value={payment.request_id}
           mono
           copyable={payment.request_id}
@@ -341,7 +341,7 @@ function PaymentDetail({ payment, tx }: { payment: WalletPayment; tx: UnifiedTra
       )}
       {payment.invoice_no && (
         <DetailRow
-          label="Số hóa đơn"
+          label="Invoice number"
           value={payment.invoice_no}
           mono
           copyable={payment.invoice_no}
@@ -349,18 +349,18 @@ function PaymentDetail({ payment, tx }: { payment: WalletPayment; tx: UnifiedTra
       )}
       {payment.error_code && isRealErrorCode(payment.error_code) && (
         <DetailRow
-          label="Lỗi"
+          label="Error"
           value={
             <span className="inline-flex items-center gap-1.5 text-rose-700">
               <SlashCircle01 className="h-3.5 w-3.5 shrink-0" />
-              {payment.error_message || "Giao dịch thất bại"}
+              {payment.error_message || "Transaction failed"}
             </span>
           }
         />
       )}
       {payment.error_code && !isRealErrorCode(payment.error_code) && payment.error_message && (
         <DetailRow
-          label="Mã phản hồi"
+          label="Response code"
           value={
             <span className="inline-flex items-center gap-1.5 text-fg-success-primary">
               <CheckCircle className="h-3.5 w-3.5 shrink-0" />
@@ -369,9 +369,9 @@ function PaymentDetail({ payment, tx }: { payment: WalletPayment; tx: UnifiedTra
           }
         />
       )}
-      <DetailRow label="Tạo lúc" value={formatDateTime(payment.created_at)} />
+      <DetailRow label="Created at" value={formatDateTime(payment.created_at)} />
       {payment.settled_at && (
-        <DetailRow label="Thanh toán lúc" value={formatDateTime(payment.settled_at)} />
+        <DetailRow label="Paid at" value={formatDateTime(payment.settled_at)} />
       )}
     </div>
   );
@@ -380,9 +380,9 @@ function PaymentDetail({ payment, tx }: { payment: WalletPayment; tx: UnifiedTra
 function TopupDetail({ topup, tx }: { topup: WalletTopup; tx: UnifiedTransaction }) {
   return (
     <div className="divide-y divide-slate-200">
-      <DetailRow label="Ngày giao dịch" value={formatDateTime(tx.occurred_at)} />
+      <DetailRow label="Transaction date" value={formatDateTime(tx.occurred_at)} />
       <DetailRow
-        label="Mã tham chiếu ngân hàng"
+        label="Bank reference"
         value={topup.bank_ref}
         mono
         copyable={topup.bank_ref}
@@ -390,8 +390,8 @@ function TopupDetail({ topup, tx }: { topup: WalletTopup; tx: UnifiedTransaction
       {topup.note && (
         <DetailRow label="Notes" value={topup.note} />
       )}
-      <DetailRow label="Tạo lúc" value={formatDateTime(topup.created_at)} />
-      <DetailRow label="Cập nhật lúc" value={formatDateTime(topup.updated_at)} />
+      <DetailRow label="Created at" value={formatDateTime(topup.created_at)} />
+      <DetailRow label="Updated at" value={formatDateTime(topup.updated_at)} />
     </div>
   );
 }
@@ -449,7 +449,7 @@ export default function WalletTransactionsList(
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2 id="wallet-transaction-history-title" className="text-[15px] font-semibold text-slate-800 tracking-tight">
-            Lịch sử giao dịch
+            Transaction history
           </h2>
           {total > 0 && (
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 px-1.5 text-xs font-bold text-fg-secondary tabular-nums tracking-wide">
@@ -481,7 +481,7 @@ export default function WalletTransactionsList(
                   setPage(1);
                 }
               }}
-              placeholder="Tìm người nhận hoặc mã tham chiếu"
+              placeholder="Search recipient or reference"
               className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
             />
           </div>
@@ -499,10 +499,10 @@ export default function WalletTransactionsList(
         <FilterPill
           value={typeFilter}
           onChange={(v) => { setTypeFilter(v as TypeFilter); setPage(1); }}
-          placeholder="Loại"
+          placeholder="Type"
           options={[
-            { value: "topup", label: "Nạp tiền" },
-            { value: "payment", label: "Chi trả" },
+            { value: "topup", label: "Top-up" },
+            { value: "payment", label: "Payment" },
           ]}
         />
         <FilterPill
@@ -510,7 +510,7 @@ export default function WalletTransactionsList(
           onChange={(v) => { setStatusFilter(v as StatusFilter); setPage(1); }}
           placeholder="Status"
           options={[
-            { value: "pending",    label: "Đang chờ" },
+            { value: "pending",    label: "Pending" },
             { value: "authorised", label: "Approved" },
             { value: "completed",  label: "Completed" },
             { value: "failed",     label: "Failed" },
@@ -534,7 +534,7 @@ export default function WalletTransactionsList(
               isMobile && "min-h-11 px-2",
             )}
           >
-            Xoá lọc
+            Clear filters
           </button>
         )}
       </div>
@@ -556,7 +556,7 @@ export default function WalletTransactionsList(
       {transactions.length > 0 && totalPages > 1 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t pt-4">
           <p className="text-sm text-fg-tertiary">
-            {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} / {total} giao dịch
+            {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} / {total} transactions
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -566,7 +566,7 @@ export default function WalletTransactionsList(
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || isFetching}
             >
-              Trước
+              Previous
             </Button>
             <span className="text-sm text-fg-tertiary tabular-nums">
               {page} / {totalPages}
@@ -578,7 +578,7 @@ export default function WalletTransactionsList(
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages || isFetching}
             >
-              Sau
+              Next
             </Button>
           </div>
         </div>
@@ -619,10 +619,10 @@ function DesktopTable({
         <TableHeader>
           <TableRow className="bg-slate-50 hover:bg-slate-50">
             <TableHead className="w-[148px] text-xs font-semibold text-fg-tertiary">Date</TableHead>
-            <TableHead className="w-[100px] text-xs font-semibold text-fg-tertiary">Loại</TableHead>
+            <TableHead className="w-[100px] text-xs font-semibold text-fg-tertiary">Type</TableHead>
             <TableHead className="w-[120px] text-right text-xs font-semibold text-fg-tertiary">Amount</TableHead>
-            <TableHead className="text-xs font-semibold text-fg-tertiary">Người nhận</TableHead>
-            <TableHead className="w-[148px] text-xs font-semibold text-fg-tertiary">Tham chiếu</TableHead>
+            <TableHead className="text-xs font-semibold text-fg-tertiary">Recipient</TableHead>
+            <TableHead className="w-[148px] text-xs font-semibold text-fg-tertiary">Reference</TableHead>
             <TableHead className="w-[110px] text-xs font-semibold text-fg-tertiary">Status</TableHead>
             <TableHead className="w-6" />
           </TableRow>
@@ -660,7 +660,7 @@ function DesktopTable({
                     );
                   })() : (
                     <span className="text-fg-tertiary text-sm">
-                      {tx.type === "topup" ? "Nạp ví nội bộ" : "—"}
+                      {tx.type === "topup" ? "Internal wallet top-up" : "—"}
                     </span>
                   )}
                 </TableCell>
@@ -702,7 +702,7 @@ function MobileTransactionList({
         const isInflow = tx.amount > 0;
         const cpName = tx.counterparty
           ? parseCounterparty(tx.counterparty).name
-          : tx.type === "topup" ? "Nạp ví nội bộ" : "—";
+          : tx.type === "topup" ? "Internal wallet top-up" : "—";
         const cpDetail = tx.counterparty ? parseCounterparty(tx.counterparty).detail : null;
         return (
           <button
@@ -749,7 +749,7 @@ function SkeletonTable() {
   return (
     <div className="rounded-xl border border-slate-300 overflow-x-auto">
       <div className="grid grid-cols-7 gap-4 px-4 py-3 bg-slate-50 border-b border-slate-300 text-xs font-semibold text-fg-tertiary min-w-[820px]">
-        <div>Date</div><div>Loại</div><div className="text-right">Amount</div><div>Người nhận</div><div>Tham chiếu</div><div>Status</div><div />
+        <div>Date</div><div>Type</div><div className="text-right">Amount</div><div>Recipient</div><div>Reference</div><div>Status</div><div />
       </div>
       <div className="divide-y divide-slate-200">
         {Array.from({ length: 6 }).map((_, i) => (
@@ -797,16 +797,16 @@ function EmptyState({
   if (hasFilters) {
     return (
       <SharedEmptyState
-        title="Không tìm thấy giao dịch khớp bộ lọc"
-        action={{ label: 'Xoá bộ lọc', onClick: onResetFilters }}
+        title="No transactions match your filters"
+        action={{ label: 'Clear filters', onClick: onResetFilters }}
         size="sm"
       />
     );
   }
   return (
     <SharedEmptyState
-      title="Chưa có giao dịch nào"
-      description="Số dư được đồng bộ tự động từ nhà cung cấp."
+      title="No transactions yet"
+      description="Your balance syncs automatically from the provider."
       size="sm"
       className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 px-4"
     />
@@ -819,11 +819,11 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 mb-3">
         <AlertCircle className="h-5 w-5 text-rose-700" />
       </div>
-      <p className="text-sm font-medium text-rose-700">Không thể tải lịch sử giao dịch</p>
-      <p className="text-xs text-fg-tertiary mt-1 mb-4">Đã xảy ra lỗi khi gọi API. Vui lòng thử lại.</p>
+      <p className="text-sm font-medium text-rose-700">Unable to load transaction history</p>
+      <p className="text-xs text-fg-tertiary mt-1 mb-4">An error occurred while loading the data. Please try again.</p>
       <Button variant="outline" size="sm" onClick={onRetry}>
         <RefreshCw05 className="h-4 w-4 mr-2" />
-        Thử lại
+        Try again
       </Button>
     </div>
   );

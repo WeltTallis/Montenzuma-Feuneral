@@ -11,18 +11,18 @@ export const UserPageHeader = ({ onAddUser, onExportUsers, isExporting = false }
   return (
     <PageHeader
       title="Users"
-      description="Quản lý tài khoản người dùng và phân quyền truy cập hệ thống"
+      description="Manage user accounts and system access"
       icon={UserCog}
       actions={[
         {
-          label: isExporting ? 'Đang xuất...' : 'Xuất Excel',
+          label: isExporting ? 'Exporting...' : 'Export to Excel',
           onClick: onExportUsers,
           icon: Download,
           variant: 'outline' as const,
           className: isExporting ? 'opacity-50 pointer-events-none' : '',
         },
         {
-          label: 'Thêm người dùng',
+          label: 'Add user',
           onClick: onAddUser,
           icon: Plus,
           variant: 'default' as const,

@@ -42,7 +42,7 @@ export default function WalletPage() {
   const handleDisbursementOpenChange = (nextOpen: boolean) => {
     setDisbursementOpen(nextOpen);
     // Drop the handoff as soon as the transfer dialog closes so a later manual
-    // "Chuyển tiền" open starts from a blank form, not the last lookup.
+    // A manual transfer starts with a blank form rather than the previous lookup.
     if (!nextOpen) setTransferRecipient(null);
   };
 
@@ -57,7 +57,7 @@ export default function WalletPage() {
       {/* Page header — slim bar: title left, actions right */}
       <PageHeader
         icon={Wallet01}
-        title="Quản lý ví"
+        title="Wallet"
       >
         <Button
           variant="outline"
@@ -65,7 +65,7 @@ export default function WalletPage() {
           onClick={() => setEmployeeAccountLookupOpen(true)}
         >
           <SearchMd className="size-3.5" aria-hidden="true" />
-          Tra cứu
+          Search account
         </Button>
         <Button
           variant="outline"
@@ -73,14 +73,14 @@ export default function WalletPage() {
           onClick={() => setBulkTransferDialogOpen(true)}
         >
           <Upload01 className="h-3.5 w-3.5" aria-hidden="true" />
-          Chuyển lô
+          Bulk transfer
         </Button>
         <Button
           size="sm"
           onClick={() => setDisbursementOpen(true)}
         >
           <SwitchHorizontal02 className="h-3.5 w-3.5" aria-hidden="true" />
-          Chuyển tiền
+          Send money
         </Button>
       </PageHeader>
 

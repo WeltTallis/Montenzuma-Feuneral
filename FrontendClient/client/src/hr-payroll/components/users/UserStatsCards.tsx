@@ -26,19 +26,19 @@ export const UserStatsCards = ({
   const handlePartner = useCallback(() => onRoleSelect?.('partner'), [onRoleSelect]);
   const handleEmployee = useCallback(() => onRoleSelect?.('employee'), [onRoleSelect]);
 
-  // Merged stats in 2x2 grid: [Tổng, QTV] [QL, NV]
+  // Combined stats in a 2-by-2 grid: total, administrators, partners and employees.
   const mergedStats = useMemo<StatItemProps[]>(() => {
     if (!stats) return [];
     return [
       {
-        label: 'Tổng',
+        label: 'Total',
         value: stats.total_users || 0,
         icon: Users,
         onClick: onRoleSelect ? handleAll : undefined,
         isActive: !selectedRole && !lastLoginToday,
       },
       {
-        label: 'Quản trị viên',
+        label: 'Administrators',
         value: stats.total_admins || 0,
         icon: ShieldCheck,
         onClick: onRoleSelect ? handleAdmin : undefined,
@@ -78,7 +78,7 @@ export const UserStatsCards = ({
     return (
       <div className="p-4 border border-border rounded-xl bg-card text-center">
         <p className="typography-body-medium text-muted-foreground">
-          Không thể tải thống kê người dùng
+          Could not load user statistics.
         </p>
       </div>
     );

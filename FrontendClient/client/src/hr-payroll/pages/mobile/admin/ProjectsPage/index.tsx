@@ -115,7 +115,7 @@ const ProjectsPageMobile = () => {
             onClick={() => openCreateProject()}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Tạo dự án
+            Create project
           </Button>
         }
       />
@@ -125,9 +125,9 @@ const ProjectsPageMobile = () => {
         <MobileSearchInput
           value={filterControls.searchTerm}
           onSearch={filterControls.setSearchTerm}
-          placeholder="Tìm kiếm dự án..."
+          placeholder="Search projects..."
         />
-        <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl border-border bg-card shrink-0 relative" onClick={() => setFilterSheetOpen(true)} aria-label="Bộ lọc">
+        <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl border-border bg-card shrink-0 relative" onClick={() => setFilterSheetOpen(true)} aria-label="Filters">
           <FilterLines className="h-4 w-4" aria-hidden="true" />
           {activeFilterCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs text-white flex items-center justify-center font-bold">{activeFilterCount}</span>
@@ -139,16 +139,16 @@ const ProjectsPageMobile = () => {
       {activeFilterCount > 0 && (
         <div className="px-4 pb-3 flex gap-2 flex-wrap">
           {currentStatusLabel && (
-            <button type="button" className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold text-secondary-foreground" onClick={() => filterControls.setStatusFilter("all")} aria-label={`Xóa lọc trạng thái ${currentStatusLabel}`}>
+            <button type="button" className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold text-secondary-foreground" onClick={() => filterControls.setStatusFilter("all")} aria-label={`Remove status filter ${currentStatusLabel}`}>
               {currentStatusLabel}<XClose className="h-3 w-3" aria-hidden="true" />
             </button>
           )}
           {currentMonthLabel && (
-            <button type="button" className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold text-secondary-foreground" onClick={() => filterControls.setMonthFilter(undefined)} aria-label={`Xóa lọc tháng ${currentMonthLabel}`}>
+            <button type="button" className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold text-secondary-foreground" onClick={() => filterControls.setMonthFilter(undefined)} aria-label={`Remove month filter ${currentMonthLabel}`}>
               {currentMonthLabel}<XClose className="h-3 w-3" aria-hidden="true" />
             </button>
           )}
-          <button onClick={filterControls.clearFilters} className="min-h-11 px-1 text-xs text-muted-foreground underline underline-offset-2">Xóa tất cả</button>
+          <button onClick={filterControls.clearFilters} className="min-h-11 px-1 text-xs text-muted-foreground underline underline-offset-2">Clear all</button>
         </div>
       )}
 
@@ -156,7 +156,7 @@ const ProjectsPageMobile = () => {
       <div className="flex-1 px-4">
         {isError ? (
           <div role="alert">
-            <ErrorState message="Không thể tải danh sách dự án. Vui lòng thử lại." onRetry={() => void refetch()} />
+            <ErrorState message="Could not load projects. Please try again." onRetry={() => void refetch()} />
           </div>
         ) : (
         <ProjectMobileList
@@ -164,34 +164,34 @@ const ProjectsPageMobile = () => {
           onRowClick={handleProjectClick}
           emptyState={
             <EmptyState
-              title="Không tìm thấy dự án nào"
+              title="No projects found"
               description={filterControls.hasFilters
-                ? "Không có dự án phù hợp. Thử thay đổi từ khóa hoặc xóa bộ lọc."
-                : "Hãy tạo dự án đầu tiên để bắt đầu quản lý."}
+                ? "No projects match your search. Try changing your search or clearing the filters."
+                : "Create your first project to get started."}
               action={filterControls.hasFilters
-                ? { label: "Xóa bộ lọc", onClick: filterControls.clearFilters }
-                : { label: "Tạo dự án", onClick: () => openCreateProject() }}
+                ? { label: "Clear filters", onClick: filterControls.clearFilters }
+                : { label: "Create project", onClick: () => openCreateProject() }}
               size="sm"
             />
           }
         />
         )}
         {!isError && pagination && pagination.totalRecords > pagination.pageSize && (
-          <nav aria-label="Phân trang dự án" className="mt-3 flex items-center justify-between gap-3">
+          <nav aria-label="Project pagination" className="mt-3 flex items-center justify-between gap-3">
             <Button
               variant="outline"
               size="sm"
               className="h-11 min-w-11 rounded-xl px-3"
               onClick={() => filterControls.setPage(Math.max(1, currentPage - 1))}
               disabled={currentPage <= 1 || isFetching}
-              aria-label="Trang dự án trước"
+              aria-label="Previous projects page"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only min-[360px]:not-sr-only">Trước</span>
+              <span className="sr-only min-[360px]:not-sr-only">Previous</span>
             </Button>
             <p className="text-center text-xs text-muted-foreground tabular-nums" aria-live="polite">
               Trang {currentPage} / {totalPages}
-              <span className="block">{pagination.totalRecords} dự án</span>
+              <span className="block">{pagination.totalRecords} projects</span>
             </p>
             <Button
               variant="outline"
@@ -199,15 +199,15 @@ const ProjectsPageMobile = () => {
               className="h-11 min-w-11 rounded-xl px-3"
               onClick={() => filterControls.setPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage >= totalPages || isFetching}
-              aria-label="Trang dự án sau"
+              aria-label="Next projects page"
             >
-              <span className="sr-only min-[360px]:not-sr-only">Sau</span>
+              <span className="sr-only min-[360px]:not-sr-only">Next</span>
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </Button>
           </nav>
         )}
         {!isError && projects.length > 0 && (!pagination || pagination.totalRecords <= pagination.pageSize) && (
-          <p className="text-center py-3 text-xs text-muted-foreground">{pagination?.totalRecords ?? projects.length} dự án</p>
+          <p className="text-center py-3 text-xs text-muted-foreground">{pagination?.totalRecords ?? projects.length} projects</p>
         )}
       </div>
 
@@ -217,7 +217,7 @@ const ProjectsPageMobile = () => {
           side="bottom"
           className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-4 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         >
-          <SheetHeader className="pb-4"><SheetTitle>Bộ lọc</SheetTitle></SheetHeader>
+          <SheetHeader className="pb-4"><SheetTitle>Filters</SheetTitle></SheetHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Status</label>
@@ -252,28 +252,28 @@ const ProjectsPageMobile = () => {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Tháng</label>
+              <label className="text-sm font-medium">Month</label>
               <Select value={filterControls.monthFilter ?? "all"} onValueChange={(v) => filterControls.setMonthFilter(v === "all" ? undefined : v)}>
-                <SelectTrigger className="h-11"><SelectValue placeholder="Tất cả tháng" /></SelectTrigger>
+                <SelectTrigger className="h-11"><SelectValue placeholder="All months" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả tháng</SelectItem>
+                  <SelectItem value="all">All months</SelectItem>
                   {monthOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Sắp xếp</label>
+              <label className="text-sm font-medium">Sort</label>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                 <Select
                   value={filterControls.sortBy}
                   onValueChange={filterControls.setSortBy}
                 >
                   <SelectTrigger className="h-11 min-w-0">
-                    <SelectValue placeholder="Sắp xếp theo" />
+                    <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="name">Tên dự án</SelectItem>
-                    <SelectItem value="client_name">Khách hàng</SelectItem>
+                    <SelectItem value="name">Project name</SelectItem>
+                    <SelectItem value="client_name">Client</SelectItem>
                     <SelectItem value="created_at">Created on</SelectItem>
                   </SelectContent>
                 </Select>
@@ -287,13 +287,13 @@ const ProjectsPageMobile = () => {
                     )
                   }
                 >
-                  {filterControls.sortOrder === "asc" ? "Tăng" : "Giảm"}
+                  {filterControls.sortOrder === "asc" ? "Ascending" : "Descending"}
                 </Button>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 pt-2 min-[380px]:grid-cols-2">
-              <Button variant="outline" className="flex-1 h-11" onClick={() => { filterControls.clearFilters(); setFilterSheetOpen(false); }}>Xóa bộ lọc</Button>
-              <Button className="flex-1 h-11 btn-admin-primary" onClick={() => setFilterSheetOpen(false)}>Áp dụng</Button>
+              <Button variant="outline" className="flex-1 h-11" onClick={() => { filterControls.clearFilters(); setFilterSheetOpen(false); }}>Clear filters</Button>
+              <Button className="flex-1 h-11 btn-admin-primary" onClick={() => setFilterSheetOpen(false)}>Apply</Button>
             </div>
           </div>
         </SheetContent>

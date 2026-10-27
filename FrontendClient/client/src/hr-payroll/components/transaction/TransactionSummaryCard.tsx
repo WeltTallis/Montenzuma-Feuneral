@@ -37,7 +37,7 @@ function KpiTileView({ tile }: { tile: KpiTile }) {
 
 function SummarySkeleton({ showCapital }: { showCapital: boolean }) {
   return (
-    <div className="grid gap-3" aria-busy="true" aria-label="Đang tải tổng quan tài chính">
+    <div className="grid gap-3" aria-busy="true" aria-label="Loading financial overview">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Skeleton className="h-[84px] rounded-xl sm:col-span-2" />
         {Array.from({ length: 3 }).map((_, i) => (
@@ -66,9 +66,9 @@ export function TransactionSummaryCard({ ledgerSummary, isLoading, className, re
     const { by_account } = ledgerSummary;
     const payable = by_account.payable?.net_amount ?? 0;
     return [
-      { label: 'Phải thu', value: formatCurrency(by_account.receivable?.net_amount ?? 0) },
-      { label: 'Phải trả', value: formatCurrency(payable), valueClassName: payable < 0 ? 'text-red-700' : undefined },
-      { label: 'Vay nợ', value: formatCurrency(by_account.loan?.net_amount ?? 0) },
+      { label: 'Receivables', value: formatCurrency(by_account.receivable?.net_amount ?? 0) },
+      { label: 'Payables', value: formatCurrency(payable), valueClassName: payable < 0 ? 'text-red-700' : undefined },
+      { label: 'Loans', value: formatCurrency(by_account.loan?.net_amount ?? 0) },
     ];
   }, [ledgerSummary]);
 
@@ -97,26 +97,26 @@ export function TransactionSummaryCard({ ledgerSummary, isLoading, className, re
 
   if (!ledgerSummary || !perf) return null;
 
-  // KPI strip: cash position leads (2 tiles wide, emphasized); the Công nợ
+  // KPI strip: cash position leads (2 tiles wide, emphasized); liabilities
   // rows become tiles so receivables/payables sit beside cash where they
   // drive action.
   const kpis: KpiTile[] = [
-    { label: 'Thanh khoản hiện tại', value: perf.cash, sub: 'Tiền mặt khả dụng trên sổ cái', emphasis: true, wide: true },
+    { label: 'Current liquidity', value: perf.cash, sub: 'Available cash in the ledger', emphasis: true, wide: true },
     ...liabilityItems,
   ];
 
   const perfStats = [
-    { label: 'Doanh thu', value: perf.revenue },
-    { label: 'Chi phí', value: perf.expense },
-    { label: 'Lợi nhuận', value: perf.profit, highlight: true },
-    { label: 'Biên LN', value: perf.margin },
+    { label: 'Revenue', value: perf.revenue },
+    { label: 'Expenses', value: perf.expense },
+    { label: 'Profit', value: perf.profit, highlight: true },
+    { label: 'Profit margin', value: perf.margin },
   ];
 
   return (
-    <section aria-label="Tổng quan tài chính" className={cn('space-y-3', className)}>
-      <h2 className="sr-only">Tổng quan tài chính</h2>
+    <section aria-label="Financial overview" className={cn('space-y-3', className)}>
+      <h2 className="sr-only">Financial overview</h2>
 
-      {/* KPI strip — cash (2 tiles wide) + Phải thu / Phải trả / Vay nợ */}
+      {/* KPI strip — cash (2 tiles wide) plus receivables, payables and loans */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {kpis.map((tile) => (
           <KpiTileView key={tile.label} tile={tile} />
@@ -128,10 +128,10 @@ export function TransactionSummaryCard({ ledgerSummary, isLoading, className, re
         <article className="overflow-hidden rounded-xl border border-border/70 bg-card lg:col-span-2">
           <div className="border-b border-border/60 px-4 py-2.5">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Hiệu quả kinh doanh
+              Business performance
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Doanh thu − Chi phí trên sổ cái trong kỳ
+              Revenue minus expenses in the ledger for this period
             </p>
           </div>
           <dl className="grid grid-cols-2 sm:grid-cols-4 sm:divide-x sm:divide-border/60">

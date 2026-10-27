@@ -35,8 +35,8 @@ const EmployeeListPage = () => {
   return (
     <div className="flex min-h-full flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
       <MobilePageHeader
-        title="Danh sách nhân viên"
-        subtitle="Hạn mức ứng lương theo tháng"
+        title="Employees"
+        subtitle="Monthly salary advance limits"
         icon={Users01}
         sticky={false}
         bordered={false}
@@ -54,7 +54,7 @@ const EmployeeListPage = () => {
           <MobileSearchInput
             value={page.flexPaySearchInput}
             onSearch={page.handleFlexPaySearch}
-            placeholder="Tìm tên hoặc CCCD..."
+            placeholder="Search by name or ID..."
             className="h-11"
           />
           <Button
@@ -74,19 +74,19 @@ const EmployeeListPage = () => {
           value={page.selectedViewMonth ?? ""}
           onValueChange={(v) => page.setSelectedViewMonth(v || undefined)}
         >
-          <SelectTrigger aria-label="Tháng ứng lương" className="h-11">
+          <SelectTrigger           aria-label="Salary advance month" className="h-11">
             <Calendar className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
-            <SelectValue placeholder="Chọn tháng" />
+            <SelectValue placeholder="Select month" />
           </SelectTrigger>
           <SelectContent>
             {page.availableMonths.length === 0 ? (
               <SelectItem value="none" disabled>
-                Chưa có dữ liệu
+                No data available
               </SelectItem>
             ) : (
               page.availableMonths.map((m) => (
                 <SelectItem key={m.forMonth} value={m.forMonth}>
-                  {formatMonthDisplay(m.forMonth)} ({m.employeeCount} NV)
+                  {formatMonthDisplay(m.forMonth)} ({m.employeeCount} employees)
                 </SelectItem>
               ))
             )}
@@ -98,14 +98,14 @@ const EmployeeListPage = () => {
             value={page.flexPayFilters.sortBy ?? "max_advance_amount"}
             onValueChange={page.handleFlexPaySort}
           >
-            <SelectTrigger aria-label="Sắp xếp nhân viên" className="h-11 min-w-0">
-              <SelectValue placeholder="Sắp xếp theo" />
+            <SelectTrigger aria-label="Sort employees" className="h-11 min-w-0">
+              <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="max_advance_amount">Hạn mức</SelectItem>
-              <SelectItem value="utilized_amount">Đã dùng</SelectItem>
-              <SelectItem value="pending_amount">Chờ xử lý</SelectItem>
-              <SelectItem value="available_amount">Có thể ứng</SelectItem>
+              <SelectItem value="max_advance_amount">Limit</SelectItem>
+              <SelectItem value="utilized_amount">Used</SelectItem>
+              <SelectItem value="pending_amount">Pending</SelectItem>
+              <SelectItem value="available_amount">Available</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -118,7 +118,7 @@ const EmployeeListPage = () => {
               )
             }
           >
-            {page.flexPayFilters.sortOrder === "ASC" ? "Tăng" : "Giảm"}
+            {page.flexPayFilters.sortOrder === "ASC" ? "Ascending" : "Descending"}
           </Button>
         </div>
 

@@ -69,7 +69,7 @@ function PayrollMonthPicker({ value, onValueChange, className }: PayrollMonthPic
         <Button
           type="button"
           variant="outline"
-          aria-label={`Chọn tháng kỳ lương, hiện tại ${displayValue}`}
+          aria-label={`Select payroll month, currently ${displayValue}`}
           className={`mt-0 h-11 w-full justify-between rounded-xl border-utility-gray-300 bg-utility-gray-50/70 px-3 font-sans text-[12px] font-normal tabular-nums text-fg-secondary shadow-none hover:border-utility-gray-300 hover:bg-utility-gray-50 focus-visible:bg-white sm:h-9 ${className ?? ''}`}
         >
           {displayValue}
@@ -81,7 +81,7 @@ function PayrollMonthPicker({ value, onValueChange, className }: PayrollMonthPic
           <button
             type="button"
             onClick={() => setPickerYear((year) => year - 1)}
-            aria-label="Năm trước"
+            aria-label="Previous year"
             className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-tertiary transition-colors hover:bg-utility-gray-100 hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -90,13 +90,13 @@ function PayrollMonthPicker({ value, onValueChange, className }: PayrollMonthPic
           <button
             type="button"
             onClick={() => setPickerYear((year) => year + 1)}
-            aria-label="Năm sau"
+            aria-label="Next year"
             className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-tertiary transition-colors hover:bg-utility-gray-100 hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={`Chọn tháng năm ${pickerYear}`}>
+        <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={`Select a month in ${pickerYear}`}>
           {Array.from({ length: 12 }, (_, index) => {
             const monthNumber = index + 1;
             const monthLabel = String(monthNumber).padStart(2, '0');
@@ -107,7 +107,7 @@ function PayrollMonthPicker({ value, onValueChange, className }: PayrollMonthPic
                 key={monthNumber}
                 type="button"
                 onClick={() => handleMonthSelect(monthNumber)}
-                aria-label={`Chọn tháng ${monthLabel} năm ${pickerYear}`}
+                aria-label={`Select ${monthLabel}/${pickerYear}`}
                 aria-pressed={isSelected}
                 className={`min-h-11 rounded-lg border text-[12px] font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                   isSelected
@@ -148,7 +148,7 @@ function SummaryBand({
       className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-utility-gray-300 bg-utility-gray-50/60 px-3 py-1.5"
     >
       <span className="font-display text-[11px] font-bold uppercase tracking-[0.06em] text-fg-tertiary">
-        Tổng đã chuyển
+        Total transferred
       </span>
       {isLoading ? (
         <Skeleton className="h-4 w-24 rounded-none" />
@@ -163,12 +163,12 @@ function SummaryBand({
       <span className="font-financial text-xs font-semibold tabular-nums text-fg-primary">
         {isLoading || transferCount === undefined ? '—' : transferCount}
       </span>
-      <span className="text-xs text-fg-tertiary">bút toán ngân hàng</span>
+      <span className="text-xs text-fg-tertiary">bank transactions</span>
       <span className="text-fg-tertiary" aria-hidden="true">·</span>
       <span className="font-financial text-xs font-semibold tabular-nums text-fg-primary">
         {isLoading || employeeCount === undefined ? '—' : employeeCount}
       </span>
-      <span className="text-xs text-fg-tertiary">nhân viên</span>
+      <span className="text-xs text-fg-tertiary">employees</span>
       <span className="ml-auto font-financial text-xs font-semibold tabular-nums text-fg-tertiary">
         {monthLabel}
       </span>
@@ -178,7 +178,7 @@ function SummaryBand({
 
 function HistorySkeleton() {
   return (
-    <div className="divide-y divide-utility-gray-300" aria-label="Đang tải lịch sử trả lương" aria-busy="true">
+    <div className="divide-y divide-utility-gray-300" aria-label="Loading payment history" aria-busy="true">
       {Array.from({ length: 8 }).map((_, index) => (
         <Skeleton key={index} className="h-16 w-full rounded-none xl:h-10" />
       ))}
@@ -241,14 +241,14 @@ export function BankTransferHistoryPageContent({ variant = 'partner' }: BankTran
           <FilterPill
             value={cycle}
             onChange={(value) => { setCycle(value); resetPage(); }}
-            placeholder="Tất cả kỳ lương"
+            placeholder="All payroll periods"
             options={CYCLE_OPTIONS}
             className="w-full sm:w-auto"
           />
           <SearchBar
             searchTerm={search}
             onSearchChange={(value) => { setSearch(value); resetPage(); }}
-            placeholder="Tên nhân viên, mã chuyển khoản hoặc mã ngân hàng"
+            placeholder="Employee name, transfer reference or bank reference"
             className="w-full min-w-0 sm:min-w-[220px] sm:flex-1"
           />
         </FilterBar>
@@ -267,17 +267,17 @@ export function BankTransferHistoryPageContent({ variant = 'partner' }: BankTran
       {isError && (
         <div className="bg-rose-50/70">
           <EmptyState
-            title="Không thể tải lịch sử trả lương"
-            description="Vui lòng kiểm tra kết nối và thử lại."
-            action={{ label: 'Thử lại', onClick: () => refetch() }}
+            title="Could not load payment history"
+            description="Check your connection and try again."
+            action={{ label: 'Try again', onClick: () => refetch() }}
           />
         </div>
       )}
 
       {!isLoading && !isError && records.length === 0 && (
         <EmptyState
-          title="Chưa có giao dịch đã hoàn tất"
-          description="Chọn tháng hoặc kỳ lương khác để xem lịch sử."
+          title="No completed transactions"
+          description="Choose another month or payroll period to view its history."
         />
       )}
 
@@ -316,7 +316,7 @@ export function BankTransferHistoryPageContent({ variant = 'partner' }: BankTran
           <div
             data-slot="payment-history-mobile-records"
             className="divide-y divide-utility-gray-300 xl:hidden"
-            aria-label="Giao dịch đã hoàn tất"
+            aria-label="Completed transactions"
           >
             {records.map((item) => (
               <LedgerMobileRecord
@@ -353,8 +353,8 @@ export function BankTransferHistoryPageContent({ variant = 'partner' }: BankTran
         <AdminPageHeaderCard>
           <PageHeader
             icon={Receipt}
-            title="Lịch sử trả lương"
-            description="Lịch sử trả lương theo nhân viên và kỳ lương."
+            title="Payment history"
+            description="Payroll payments by employee and pay period."
           />
         </AdminPageHeaderCard>
         {workspace}
@@ -368,8 +368,8 @@ export function BankTransferHistoryPageContent({ variant = 'partner' }: BankTran
         <PageHeader
           className="[&_h1]:text-lg sm:[&_h1]:text-xl [&_[data-slot=page-header-description]]:text-xs"
           icon={Receipt}
-          title="Bút toán ngân hàng"
-          description="Bút toán ngân hàng theo nhân viên và kỳ lương."
+          title="Bank transactions"
+          description="Bank transactions by employee and pay period."
         />
       </header>
       {workspace}

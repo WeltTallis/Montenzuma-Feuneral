@@ -84,10 +84,10 @@ import { useAuth } from "@hr/contexts";
 type AdminTab = "requests" | "attendances";
 
 const ATTENDANCE_STATUS_LABEL: Record<string, string> = {
-  checked_in: "Đang làm",
+  checked_in: "Checked in",
   completed: "Completed",
-  orphaned: "Thiếu check-out",
-  rejected: "Đã từ chối",
+  orphaned: "Missing check-out",
+  rejected: "Rejected",
 };
 
 /** Mobile card for a single attendance row — mirrors desktop's mobileFields. */
@@ -150,11 +150,11 @@ export function AttendanceMobileCard({
       <div className="mt-2.5 space-y-1.5 border-t border-border/60 pt-2 text-xs">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-muted-foreground shrink-0">Ngày:</span>
+            <span className="text-muted-foreground shrink-0">Date:</span>
             <span className="font-medium text-foreground truncate">{fmtDate(row.date)}</span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-muted-foreground">Thu nhập:</span>
+            <span className="text-muted-foreground">Earnings:</span>
             <span className="font-financial font-semibold text-foreground tabular-nums">
               {row.earning_amount != null ? formatCurrency(row.earning_amount) : "—"}
             </span>
@@ -163,7 +163,7 @@ export function AttendanceMobileCard({
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-muted-foreground shrink-0">Vào:</span>
+            <span className="text-muted-foreground shrink-0">In:</span>
             <span className="font-medium tabular-nums text-foreground">{fmtTime(row.check_in_time)}</span>
             {row.check_in_gate ? (
               <span className="text-[11px] text-muted-foreground truncate max-w-[100px]">({row.check_in_gate})</span>
@@ -180,7 +180,7 @@ export function AttendanceMobileCard({
       </div>
 
       {showCreditQuota && (
-        <p className="mt-2 text-xs font-medium text-fg-warning-primary">Chờ cộng hạn mức</p>
+        <p className="mt-2 text-xs font-medium text-fg-warning-primary">Waiting for quota credit</p>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -191,7 +191,7 @@ export function AttendanceMobileCard({
           onClick={() => onViewMap(row)}
         >
           <MarkerPin01 className="h-4 w-4" />
-          Bản đồ
+          Map
         </Button>
         {showApprove && (
           <Button
@@ -201,7 +201,7 @@ export function AttendanceMobileCard({
             onClick={() => onApprove(row)}
           >
             <Check className="h-4 w-4" />
-            {needsAttendanceApprovalRepair(row) ? "Duyệt lại" : "Approve"}
+            {needsAttendanceApprovalRepair(row) ? "Approve again" : "Approve"}
           </Button>
         )}
         {showCreditQuota && (
@@ -212,7 +212,7 @@ export function AttendanceMobileCard({
             onClick={() => onCreditQuota(row)}
           >
             <Zap className="h-4 w-4" />
-            Cộng ngay
+            Credit now
           </Button>
         )}
         {showReject && (
@@ -387,7 +387,7 @@ const AdvancePaymentsPageMobile = () => {
             <>
               <MobileOverflowAction
                 icon={DownloadCloud01}
-                label="Chuyển lô"
+                label="Bulk transfer"
                 onClick={() => { exportBatchMutation.mutate(undefined); close(); }}
                 disabled={exportBatchMutation.isPending}
                 isLoading={exportBatchMutation.isPending}
@@ -395,13 +395,13 @@ const AdvancePaymentsPageMobile = () => {
               {!isAdvPartner && (
                 <MobileOverflowAction
                   icon={SwitchHorizontal02}
-                  label="Nhập KQ"
+                  label="Upload results"
                   onClick={() => { setIsResultUploadOpen(true); close(); }}
                 />
               )}
               <MobileOverflowAction
                 icon={CalendarCheck01}
-                label="Cấu hình điểm danh"
+                label="Attendance settings"
                 onClick={() => {
                   navigate(
                     isAdvPartner
@@ -413,12 +413,12 @@ const AdvancePaymentsPageMobile = () => {
               />
               <MobileOverflowAction
                 icon={File05}
-                label="Sao kê"
+                label="Statement"
                 onClick={() => { setIsStatementSheetOpen(true); close(); }}
               />
               <MobileOverflowAction
                 icon={Mail01}
-                label="Email sao kê"
+                label="Email statement"
                 onClick={() => { setIsEmailDialogOpen(true); close(); }}
                 disabled={sendEmailMutation.isPending}
                 isLoading={sendEmailMutation.isPending}
@@ -427,7 +427,7 @@ const AdvancePaymentsPageMobile = () => {
               {!isAdvPartner && (
                 <MobileOverflowAction
                   icon={ClockRewind}
-                  label="Lịch sử file"
+                  label="File history"
                   onClick={() => { setIsHistorySheetOpen(true); close(); }}
                 />
               )}
@@ -456,7 +456,7 @@ const AdvancePaymentsPageMobile = () => {
 
         {/* Treasury summary — one card, stacked stat rows (mirrors desktop hero) */}
         <section
-          aria-label="Tổng quan kỳ ứng lương"
+          aria-label="Advance payment overview"
           className="overflow-hidden rounded-2xl border border-utility-gray-300 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.05),0_14px_32px_-28px_rgba(15,49,103,0.55)]"
         >
           <div className="treasury-grid">
@@ -488,7 +488,7 @@ const AdvancePaymentsPageMobile = () => {
             )}
           >
             <Receipt className="h-3.5 w-3.5" />
-            Yêu cầu
+            Requests
           </button>
           <button
             onClick={() => setActiveTab("attendances")}
@@ -511,10 +511,10 @@ const AdvancePaymentsPageMobile = () => {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-fg-secondary">
-              Yêu cầu
+              Requests
             </p>
             <h2 className="text-[15px] font-bold leading-tight text-fg-primary">
-              Danh sách ứng lương
+              Advance payment list
             </h2>
           </div>
           <div className="grid h-8 min-w-8 place-items-center rounded-full bg-utility-gray-100 px-2 text-xs font-semibold tabular-nums text-fg-secondary">
@@ -525,7 +525,7 @@ const AdvancePaymentsPageMobile = () => {
           <MobileSearchInput
             value={page.searchInput}
             onSearch={page.handleSearch}
-            placeholder="Tìm tên hoặc CCCD..."
+            placeholder="Search name or national ID..."
             className="min-w-0 flex-1"
           />
           {/* Horizontally scrollable filter bar with right-edge fade hint */}
@@ -565,7 +565,7 @@ const AdvancePaymentsPageMobile = () => {
                 Attendance
               </p>
               <h2 className="text-[15px] font-bold leading-tight text-fg-primary">
-                Chấm công nhân viên
+                Employee attendance
               </h2>
             </div>
             <div className="grid h-8 min-w-8 place-items-center rounded-full bg-utility-gray-100 px-2 text-xs font-semibold tabular-nums text-fg-secondary">
@@ -582,11 +582,11 @@ const AdvancePaymentsPageMobile = () => {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="checked_in">Đang làm</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="checked_in">Checked in</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="orphaned">Thiếu check-out</SelectItem>
-            <SelectItem value="rejected">Đã từ chối</SelectItem>
+            <SelectItem value="orphaned">Missing check-out</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
 
@@ -596,7 +596,7 @@ const AdvancePaymentsPageMobile = () => {
             onClick={() => setIsCreateCheckInOpen(true)}
           >
             <UserCheck01 className="h-4 w-4" />
-            Tạo check-in
+            Record check-in
           </Button>
 
           {attendance.isLoading ? (
@@ -609,7 +609,7 @@ const AdvancePaymentsPageMobile = () => {
             <div className="py-12 text-center">
               <Users01 className="mx-auto h-10 w-10 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium text-muted-foreground">
-                Không có dữ liệu chấm công
+                No attendance records
               </p>
             </div>
           ) : (
@@ -696,14 +696,14 @@ const AdvancePaymentsPageMobile = () => {
       >
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Hủy yêu cầu ứng lương?</AlertDialogTitle>
+            <AlertDialogTitle className="text-sm">Cancel this advance payment request?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
-              Yêu cầu sẽ được chuyển sang trạng thái đã hủy.
+              The request will be marked as cancelled.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="min-h-11 text-xs" disabled={page.cancelMutation.isPending}>
-              Giữ lại
+              Keep request
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
@@ -711,7 +711,7 @@ const AdvancePaymentsPageMobile = () => {
               disabled={page.cancelMutation.isPending}
               className="min-h-11 gap-1.5 text-xs"
             >
-              {page.cancelMutation.isPending ? "Đang hủy..." : "Hủy yêu cầu"}
+              {page.cancelMutation.isPending ? "Cancelling..." : "Cancel request"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

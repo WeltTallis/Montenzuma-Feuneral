@@ -71,7 +71,7 @@ const SettingToggleCard = ({
                 Save
               </Button>
               <Button size="sm" variant="outline" onClick={onReset} disabled={isSaving}>
-                Hoàn tác
+                Undo
               </Button>
             </>
           )}
@@ -122,12 +122,12 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
   <div className="space-y-0">
     <SettingsSection
       icon={Percent}
-      title="Giới hạn thanh toán"
-      description="Kiểm soát số tiền và tỷ lệ ngân sách được phép giải ngân."
+      title="Payment limits"
+      description="Control the amounts and budget percentages available for disbursement."
     >
       <SettingCard
-        title="Giới hạn tổng tiền mỗi file Chuyển lô"
-        description="Hệ thống tự tách file để tổng tiền mỗi file luôn nhỏ hơn giới hạn này."
+        title="Maximum total per bulk transfer file"
+        description="The system automatically splits files so each file stays below this limit."
         value={form.bulkTransferWorkbookLimitVnd}
         originalValue={form.originalBulkTransferWorkbookLimitVnd}
         onChange={form.setBulkTransferWorkbookLimitVnd}
@@ -154,8 +154,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         onRetry={form.retryLoading}
       />
       <SettingCard
-        title="Tỷ lệ trả lương tuần"
-        description="Phần trăm ngân sách được phép trả theo chu kỳ tuần."
+        title="Weekly payroll percentage"
+        description="Percentage of the budget available for weekly payroll."
         value={form.weeklyPaymentPercentage}
         originalValue={form.originalWeeklyPayment}
         onChange={form.setWeeklyPaymentPercentage}
@@ -167,8 +167,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         suffix="%"
       />
       <SettingCard
-        title="Tỷ lệ trả lương tháng"
-        description="Phần trăm ngân sách được phép trả theo chu kỳ tháng."
+        title="Monthly payroll percentage"
+        description="Percentage of the budget available for monthly payroll."
         value={form.monthlyPaymentPercentage}
         originalValue={form.originalMonthlyPayment}
         onChange={form.setMonthlyPaymentPercentage}
@@ -180,8 +180,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         suffix="%"
       />
       <SettingCard
-        title="Tỷ lệ ứng lương tự chấm công"
-        description="Phần trăm tiền công đã ghi nhận được cộng vào hạn mức ứng lương."
+        title="Self-check-in advance percentage"
+        description="Percentage of recorded earnings added to the advance payment limit."
         value={form.selfCheckInAdvancePercentage}
         originalValue={form.originalSelfCheckInAdvancePercentage}
         onChange={form.setSelfCheckInAdvancePercentage}
@@ -200,8 +200,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         suffix="%"
       />
       <SettingCard
-        title="Thời gian chờ ứng lương tự chấm công sau khi tan ca"
-        description="Số giờ chờ trước khi tiền công của ca hoàn tất được cộng vào hạn mức ứng lương."
+        title="Self-check-in advance hold after a shift"
+        description="Hours to wait before completed shift earnings are added to the advance payment limit."
         value={form.selfCheckInAdvanceHoldHours}
         originalValue={form.originalSelfCheckInAdvanceHoldHours}
         onChange={form.setSelfCheckInAdvanceHoldHours}
@@ -218,18 +218,18 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         max={720}
         step={1}
         wholeNumber
-        suffix="giờ"
+        suffix="hours"
       />
     </SettingsSection>
 
     <SettingsSection
       icon={Wallet}
-      title="Cảnh báo số dư ví tiền"
-      description="Thông báo đẩy đến mọi quản trị viên khi số dư ví tiền chạm ngưỡng, mỗi lần chạm ngưỡng một lần."
+      title="Wallet balance alerts"
+      description="Notify all administrators when the wallet balance reaches the threshold."
     >
       <SettingCard
-        title="Ngưỡng cảnh báo số dư ví tiền"
-        description="Khi số dư ví tiền xuống dưới ngưỡng này, hệ thống gửi thông báo đẩy đến toàn bộ quản trị viên. Mỗi lần giảm chạm ngưỡng chỉ nhận một thông báo."
+        title="Wallet balance alert threshold"
+        description="When the wallet balance falls below this amount, all administrators receive one notification."
         value={form.walletBalanceAlertThresholdVnd}
         originalValue={form.originalWalletBalanceAlertThresholdVnd}
         onChange={form.setWalletBalanceAlertThresholdVnd}
@@ -257,12 +257,12 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
 
     <SettingsSection
       icon={Building2}
-      title="Thông tin đối tác"
-      description="Tên doanh nghiệp hiển thị trong các nghiệp vụ tạm ứng."
+      title="Partner details"
+      description="Business name shown in advance payment operations."
     >
       <SettingCard
-        title="Tên khách hàng"
-        description="Tên công ty đối tác sử dụng dịch vụ tạm ứng."
+        title="Client name"
+        description="Name of the partner company using the advance payment service."
         value={form.partnerCompany}
         originalValue={form.originalPartnerCompany}
         onChange={form.setPartnerCompany}
@@ -275,12 +275,12 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
 
     <SettingsSection
       icon={Landmark}
-      title="Tài khoản nhận chuyển khoản lương tuần"
-      description="Thông tin thụ hưởng in trên email sao kê lương tuần và file Excel đính kèm."
+      title="Weekly payroll bank account"
+      description="Beneficiary details shown in weekly payroll emails and attached Excel files."
     >
       <SettingToggleCard
-        title="Hiện tài khoản nhận chuyển khoản lương tuần"
-        description="Khi tắt, sao kê lương tuần (email và file Excel) chỉ là thông báo đối chiếu, không kèm thông tin chuyển khoản."
+        title="Show weekly payroll bank details"
+        description="When disabled, weekly payroll statements only provide reconciliation details and omit bank transfer information."
         checked={form.transferBankVisible}
         originalChecked={form.originalTransferBankVisible}
         onCheckedChange={form.setTransferBankVisible}
@@ -289,8 +289,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         isSaving={form.isSaving}
       />
       <SettingCard
-        title="Chủ tài khoản lương tuần"
-        description="Tên chủ tài khoản thụ hưởng in trên sao kê lương tuần."
+        title="Weekly payroll account name"
+        description="Beneficiary name shown on weekly payroll statements."
         value={form.transferBankHolder}
         originalValue={form.originalTransferBankHolder}
         onChange={form.setTransferBankHolder}
@@ -300,8 +300,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         isSaving={form.isSaving}
       />
       <SettingCard
-        title="Số tài khoản lương tuần"
-        description="Số tài khoản nhận chuyển khoản in trên sao kê lương tuần."
+        title="Weekly payroll account number"
+        description="Bank account number shown on weekly payroll statements."
         value={form.transferBankNumber}
         originalValue={form.originalTransferBankNumber}
         onChange={form.setTransferBankNumber}
@@ -312,8 +312,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         displayMode="account-number"
       />
       <SettingCard
-        title="Ngân hàng lương tuần"
-        description="Tên ngân hàng nhận chuyển khoản in trên sao kê lương tuần."
+        title="Weekly payroll bank"
+        description="Bank name shown on weekly payroll statements."
         value={form.transferBankName}
         originalValue={form.originalTransferBankName}
         onChange={form.setTransferBankName}
@@ -326,12 +326,12 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
 
     <SettingsSection
       icon={Landmark}
-      title="Tài khoản nhận chuyển khoản FlexPay (OnePay)"
-      description="Thông tin thụ hưởng in trên email sao kê FlexPay và file Excel đối chiếu đính kèm. Để trống sẽ dùng chung tài khoản lương tuần."
+      title="FlexPay (OnePay) bank account"
+      description="Beneficiary details shown in FlexPay emails and attached reconciliation files. Leave blank to use the weekly payroll account."
     >
       <SettingToggleCard
-        title="Hiện tài khoản nhận chuyển khoản FlexPay"
-        description="Khi tắt, sao kê FlexPay (email và file Excel) chỉ là thông báo đối chiếu, không kèm thông tin chuyển khoản."
+        title="Show FlexPay bank details"
+        description="When disabled, FlexPay statements only provide reconciliation details and omit bank transfer information."
         checked={form.flexPayTransferBankVisible}
         originalChecked={form.originalFlexPayTransferBankVisible}
         onCheckedChange={form.setFlexPayTransferBankVisible}
@@ -340,8 +340,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         isSaving={form.isSaving}
       />
       <SettingCard
-        title="Chủ tài khoản FlexPay"
-        description="Tên chủ tài khoản thụ hưởng in trên sao kê FlexPay."
+        title="FlexPay account name"
+        description="Beneficiary name shown on FlexPay statements."
         value={form.flexPayTransferBankHolder}
         originalValue={form.originalFlexPayTransferBankHolder}
         onChange={form.setFlexPayTransferBankHolder}
@@ -353,8 +353,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         isSaving={form.isSaving}
       />
       <SettingCard
-        title="Số tài khoản FlexPay"
-        description="Số tài khoản nhận chuyển khoản in trên sao kê FlexPay."
+        title="FlexPay account number"
+        description="Bank account number shown on FlexPay statements."
         value={form.flexPayTransferBankNumber}
         originalValue={form.originalFlexPayTransferBankNumber}
         onChange={form.setFlexPayTransferBankNumber}
@@ -367,8 +367,8 @@ export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
         displayMode="account-number"
       />
       <SettingCard
-        title="Ngân hàng FlexPay"
-        description="Tên ngân hàng nhận chuyển khoản in trên sao kê FlexPay."
+        title="FlexPay bank"
+        description="Bank name shown on FlexPay statements."
         value={form.flexPayTransferBankName}
         originalValue={form.originalFlexPayTransferBankName}
         onChange={form.setFlexPayTransferBankName}

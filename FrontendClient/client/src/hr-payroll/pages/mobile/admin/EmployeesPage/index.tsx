@@ -47,7 +47,10 @@ const getMonthOptions = () => {
   for (let i = 0; i < 12; i++) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    const label = `T${date.getMonth() + 1}/${date.getFullYear()}`;
+    const label = new Intl.DateTimeFormat("en-KE", {
+      month: "short",
+      year: "numeric",
+    }).format(date);
     options.push({ value, label });
   }
   return options;
@@ -171,24 +174,24 @@ const EmployeesPageMobile = () => {
     if (!employeesSummary) return [];
     return [
       {
-        label: "Tổng",
+        label: "Total",
         value: employeesSummary.total_employees,
         filter: null as "working" | "unassigned" | null,
       },
       {
-        label: "Đang làm",
+        label: "Active",
         value: employeesSummary.total_working_employees,
         filter: "working" as const,
       },
       {
-        label: "Chưa phân",
+        label: "Unassigned",
         value:
           employeesSummary.total_employees -
           employeesSummary.total_working_employees,
         filter: "unassigned" as const,
       },
       {
-        label: "Tháng này",
+        label: "Hired this month",
         value: employeesSummary.employees_hired_this_month,
         filter: null as "working" | "unassigned" | null,
       },
@@ -232,7 +235,7 @@ const EmployeesPageMobile = () => {
               size="sm"
               className="h-11 px-3"
               onClick={() => setExportModalOpen(true)}
-              aria-label="Xuất danh sách nhân viên"
+              aria-label="Export employee list"
               disabled={isExporting}
             >
               <Download01 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -243,7 +246,7 @@ const EmployeesPageMobile = () => {
               onClick={() => openAddEmployee()}
             >
               <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-              Thêm
+              Add
             </Button>
           </>
         }
@@ -281,14 +284,14 @@ const EmployeesPageMobile = () => {
         <MobileSearchInput
           value={employeeSearchTerm}
           onSearch={searchEmployees}
-          placeholder="Tìm kiếm nhân viên..."
+          placeholder="Search employees..."
         />
         <Button
           variant="outline"
           size="icon"
           className="relative h-11 w-11 shrink-0 rounded-lg border-border bg-card"
           onClick={() => setFilterSheetOpen(true)}
-          aria-label="Bộ lọc"
+          aria-label="Filters"
         >
           <FilterLines className="h-4 w-4" aria-hidden="true" />
           {activeFilterCount > 0 && (
@@ -308,7 +311,7 @@ const EmployeesPageMobile = () => {
               className="gap-1 cursor-pointer"
               onClick={() => updateFilters({ status: undefined })}
             >
-              {statusFilter === "working" ? "Đang làm việc" : "Chưa phân công"}
+              {statusFilter === "working" ? "Active" : "Unassigned"}
               <XClose className="h-3 w-3" aria-hidden="true" />
             </Badge>
           )}
@@ -339,7 +342,7 @@ const EmployeesPageMobile = () => {
             }}
             className="min-h-11 px-1 text-xs text-muted-foreground underline underline-offset-2"
           >
-            Xóa tất cả
+            Clear all
           </button>
         </div>
       )}
@@ -382,7 +385,7 @@ const EmployeesPageMobile = () => {
                       Loading...
                     </>
                   ) : (
-                    "Tải thêm"
+                    "Load more"
                   )}
                 </Button>
               </div>
@@ -394,7 +397,7 @@ const EmployeesPageMobile = () => {
             )}
             {!hasMore && !isFetchingNextPage && employees.length > 0 && (
               <p className="text-center py-3 text-xs text-muted-foreground">
-                {pagination?.totalRecords ?? employees.length} nhân viên
+                {pagination?.totalRecords ?? employees.length} employees
               </p>
             )}
           </>
@@ -408,7 +411,7 @@ const EmployeesPageMobile = () => {
           className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-4 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         >
           <SheetHeader className="pb-4">
-            <SheetTitle>Bộ lọc</SheetTitle>
+            <SheetTitle>Filters</SheetTitle>
           </SheetHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
@@ -422,29 +425,29 @@ const EmployeesPageMobile = () => {
                   })
                 }
               >
-                <SelectTrigger aria-label="Lọc trạng thái nhân viên" className="h-11">
-                  <SelectValue placeholder="Tất cả trạng thái" />
+                <SelectTrigger aria-label="Filter employees by status" className="h-11">
+                  <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="working">Đang làm việc</SelectItem>
-                  <SelectItem value="unassigned">Chưa phân công</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="working">Active</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Tháng</label>
+              <label className="text-sm font-medium">Month</label>
               <Select
                 value={month ?? "all"}
                 onValueChange={(v) =>
                   updateFilters({ month: v === "all" ? undefined : v })
                 }
               >
-                <SelectTrigger aria-label="Lọc tháng nhân viên" className="h-11">
-                  <SelectValue placeholder="Tất cả tháng" />
+                <SelectTrigger aria-label="Filter employees by month" className="h-11">
+                  <SelectValue placeholder="All months" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả tháng</SelectItem>
+                  <SelectItem value="all">All months</SelectItem>
                   {monthOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
@@ -463,9 +466,9 @@ const EmployeesPageMobile = () => {
                       projectId: v === "all" ? undefined : parseInt(v),
                     })
                   }
-                  searchPlaceholder="Tìm dự án..."
+                  searchPlaceholder="Search projects..."
                   options={[
-                    { value: "all", label: "Tất cả dự án" },
+                    { value: "all", label: "All projects" },
                     ...projects.map((p) => ({
                       value: p.id.toString(),
                       label: p.name,
@@ -477,24 +480,24 @@ const EmployeesPageMobile = () => {
             {/* Sort lives with the other filters: keeping it off the page body
                 leaves one readable toolbar row instead of two crammed ones. */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Sắp xếp theo</label>
+              <label className="text-sm font-medium">Sort by</label>
               <div className="flex gap-2">
                 <Select
                   value={sortBy ?? "created_at"}
                   onValueChange={(v) => updateFilters({ sortBy: v })}
                 >
                   <SelectTrigger
-                    aria-label="Sắp xếp nhân viên"
+                    aria-label="Sort employees"
                     className="h-11 flex-1"
                   >
-                    <SelectValue placeholder="Sắp xếp" />
+                    <SelectValue placeholder="Sort" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="created_at">Created on</SelectItem>
                     <SelectItem value="fullname">Name</SelectItem>
-                    <SelectItem value="bank_name">Ngân hàng</SelectItem>
+                    <SelectItem value="bank_name">Bank</SelectItem>
                     <SelectItem value="project_name">Projects</SelectItem>
-                    <SelectItem value="date_of_birth">Ngày sinh</SelectItem>
+                    <SelectItem value="date_of_birth">Date of birth</SelectItem>
                     <SelectItem value="mobile">Phone number</SelectItem>
                   </SelectContent>
                 </Select>
@@ -509,8 +512,8 @@ const EmployeesPageMobile = () => {
                   }
                   aria-label={
                     sortOrder === "asc"
-                      ? "Sắp xếp tăng dần"
-                      : "Sắp xếp giảm dần"
+                      ? "Sort ascending"
+                      : "Sort descending"
                   }
                 >
                   {sortOrder === "asc" ? (
@@ -523,7 +526,7 @@ const EmployeesPageMobile = () => {
             </div>
             {/* Date-range filter — restores desktop capability */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Ngày tuyển (từ — đến)</label>
+              <label className="text-sm font-medium">Hire date (from — to)</label>
               <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-[1fr_auto_1fr] min-[380px]:items-center">
                 <Input
                   type="date"
@@ -558,13 +561,13 @@ const EmployeesPageMobile = () => {
                   setFilterSheetOpen(false);
                 }}
               >
-                Xóa bộ lọc
+                Clear filters
               </Button>
               <Button
                 className="flex-1 h-11 btn-admin-primary"
                 onClick={() => setFilterSheetOpen(false)}
               >
-                Áp dụng
+                Apply
               </Button>
             </div>
           </div>
