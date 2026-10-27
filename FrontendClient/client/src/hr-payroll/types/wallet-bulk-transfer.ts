@@ -121,19 +121,19 @@ export interface WalletBulkUploadError {
   existing_batch_id?: number;
 }
 
-/** Vietnamese display label for a batch status (used in Badges + toasts). */
-export function batchStatusToVietnamese(s: BulkTransferBatchStatus): string {
+/** English display label for a batch status (used in badges and toasts). */
+export function batchStatusLabel(s: BulkTransferBatchStatus): string {
   switch (s) {
-    case 'pending': return 'Chờ xử lý';
+    case 'pending': return 'Pending';
     case 'processing': return 'Processing';
-    case 'completing': return 'Đang ghi sổ';
-    case 'completed': return 'Hoàn tất';
+    case 'completing': return 'Completing';
+    case 'completed': return 'Completed';
     case 'failed': return 'Failed';
   }
 }
 
-/** Vietnamese display label for a wallet_payment status. */
-export function paymentStatusToVietnamese(s: WalletPaymentStatus): string {
+/** English display label for a wallet payment status. */
+export function paymentStatusLabel(s: WalletPaymentStatus): string {
   switch (s) {
     case 'pending':
     case 'verified':
@@ -141,7 +141,7 @@ export function paymentStatusToVietnamese(s: WalletPaymentStatus): string {
       return 'Processing';
     case 'completed': return 'Successful';
     case 'failed': return 'Failed';
-    case 'reversed': return 'Đã hoàn';
+    case 'reversed': return 'Reversed';
   }
 }
 

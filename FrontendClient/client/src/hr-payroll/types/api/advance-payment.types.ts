@@ -414,16 +414,16 @@ export const ADVANCE_PAYMENT_CONSTANTS = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Status Labels (Vietnamese)
+// English display labels. Status values remain unchanged for API compatibility.
 // ---------------------------------------------------------------------------
 
 export const ADVANCE_PAYMENT_STATUS_LABELS: Record<
   AdvancePaymentStatus,
   string
 > = {
-  PENDING: "Chờ xử lý",
+  PENDING: "Pending",
   APPROVED: "Approved",
-  COMPLETED: "Hoàn tất",
+  COMPLETED: "Completed",
   FAILED: "Failed",
   CANCELLED: "Cancelled",
 };
@@ -432,16 +432,16 @@ export const ADVANCE_PAYMENT_REQUEST_STATUS_LABELS: Record<
   AdvancePaymentRequestStatus,
   string
 > = {
-  pending: "Chờ xử lý",
+  pending: "Pending",
   approved: "Approved",
-  completed: "Hoàn tất",
+  completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",
 };
 
 export const REQUEST_METHOD_LABELS: Record<RequestMethod, string> = {
-  app: "Ứng dụng",
-  admin_batch: "Nhập từ admin",
+  app: "App",
+  admin_batch: "Admin import",
 };
 
 // ---------------------------------------------------------------------------

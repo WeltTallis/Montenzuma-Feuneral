@@ -42,11 +42,24 @@ interface NetworkError {
 }
 
 const UPSTREAM_GATEWAY_MESSAGE =
-  'Máy chủ tạm thời không phản hồi. Vui lòng thử lại sau ít phút.';
+  'The server is temporarily unavailable. Please try again shortly.';
 
-function sanitizeUserFacingMessage(message: string): string {
-  return /<\s*!doctype\s+html|<\s*html\b/i.test(message)
-    ? UPSTREAM_GATEWAY_MESSAGE
+const VIETNAMESE_TEXT_PATTERN =
+  /[đĐăĂơƠưƯáàạảãâầấậẩẫằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữýỳỵỷỹ]/i;
+
+function sanitizeUserFacingMessage(message: string, statusCode?: number): string {
+  if (/<\s*!doctype\s+html|<\s*html\b/i.test(message)) {
+    return UPSTREAM_GATEWAY_MESSAGE;
+  }
+  if (VIETNAMESE_TEXT_PATTERN.test(message)) {
+    return getErrorMessageByStatusCode(statusCode ?? 0);
+  }
+  return message;
+}
+
+function sanitizeSuccessMessage(message: string): string {
+  return VIETNAMESE_TEXT_PATTERN.test(message)
+    ? 'Completed successfully.'
     : message;
 }
 
@@ -88,24 +101,24 @@ function isNetworkErrorType(error: unknown): error is NetworkError {
  */
 export const ERROR_MESSAGES_BY_CONTEXT = {
   PROJECT_EMPLOYEE: {
-    REMOVE_FAILED: 'Không thể gỡ nhân viên khỏi dự án',
-    ASSIGN_FAILED: 'Không thể giao nhân viên vào dự án',
-    UPDATE_FAILED: 'Không thể cập nhật thông tin phân công',
-    FETCH_FAILED: 'Không thể tải danh sách nhân viên',
-    VALIDATION_FAILED: 'Dữ liệu không hợp lệ',
-    VALIDATION_ERROR: 'Dữ liệu không hợp lệ',
-    NETWORK_ERROR: 'Lỗi kết nối mạng',
-    SERVER_ERROR: 'Lỗi máy chủ',
-    UNKNOWN_ERROR: 'Có lỗi không xác định xảy ra',
-    PERMISSION_DENIED: 'Bạn không có quyền thực hiện thao tác này',
+    REMOVE_FAILED: 'Could not remove the employee from the project.',
+    ASSIGN_FAILED: 'Could not assign the employee to the project.',
+    UPDATE_FAILED: 'Could not update the assignment.',
+    FETCH_FAILED: 'Could not load the employee list.',
+    VALIDATION_FAILED: 'The submitted data is invalid.',
+    VALIDATION_ERROR: 'The submitted data is invalid.',
+    NETWORK_ERROR: 'A network error occurred.',
+    SERVER_ERROR: 'A server error occurred.',
+    UNKNOWN_ERROR: 'An unexpected error occurred.',
+    PERMISSION_DENIED: 'You do not have permission to perform this action.',
   },
   GENERAL: {
-    UNKNOWN_ERROR: 'Có lỗi không xác định xảy ra',
-    NETWORK_ERROR: 'Lỗi kết nối mạng',
-    SERVER_ERROR: 'Lỗi máy chủ',
-    VALIDATION_ERROR: 'Dữ liệu không hợp lệ',
-    VALIDATION_FAILED: 'Dữ liệu không hợp lệ',
-    PERMISSION_DENIED: 'Bạn không có quyền thực hiện thao tác này',
+    UNKNOWN_ERROR: 'An unexpected error occurred.',
+    NETWORK_ERROR: 'A network error occurred.',
+    SERVER_ERROR: 'A server error occurred.',
+    VALIDATION_ERROR: 'The submitted data is invalid.',
+    VALIDATION_FAILED: 'The submitted data is invalid.',
+    PERMISSION_DENIED: 'You do not have permission to perform this action.',
   },
 } as const;
 
@@ -135,7 +148,7 @@ export function createAppError(error: unknown): AppError {
     const errorObj = error as Record<string, unknown>;
     const message = (errorObj.message as string) ||
                    (errorObj.error as string) ||
-                   'Có lỗi xảy ra';
+                   'An error occurred.';
     const statusCode = (errorObj.http_status as number) ||
                       (errorObj.statusCode as number) ||
                       (errorObj.status_code as number);
@@ -149,7 +162,7 @@ export function createAppError(error: unknown): AppError {
   }
 
   return {
-    message: 'Có lỗi không xác định xảy ra',
+    message: 'An unexpected error occurred.',
   };
 }
 
@@ -164,26 +177,26 @@ export function getErrorMessageByStatusCode(statusCode: number, context: ErrorCo
       return messages.VALIDATION_FAILED || messages.VALIDATION_ERROR;
     case 401:
     case 403:
-      return messages.PERMISSION_DENIED || 'Không có quyền truy cập';
+      return messages.PERMISSION_DENIED || 'You do not have permission to access this resource.';
     case 404:
-      return 'Không tìm thấy tài nguyên';
+      return 'The requested resource could not be found.';
     case 409:
-      return 'Xung đột dữ liệu';
+      return 'The request conflicts with the current data.';
     case 422:
       return messages.VALIDATION_FAILED || messages.VALIDATION_ERROR;
     case 429:
-      return 'Quá nhiều yêu cầu, vui lòng thử lại sau';
+      return 'Too many requests. Please try again later.';
     case 500:
     case 502:
     case 503:
     case 504:
-      return messages.SERVER_ERROR || 'Lỗi máy chủ';
+      return messages.SERVER_ERROR || 'A server error occurred.';
     default:
       if (statusCode >= 500) {
-        return messages.SERVER_ERROR || 'Lỗi máy chủ';
+        return messages.SERVER_ERROR || 'A server error occurred.';
       }
       if (statusCode >= 400) {
-        return messages.VALIDATION_ERROR || 'Yêu cầu không hợp lệ';
+        return messages.VALIDATION_ERROR || 'The request is invalid.';
       }
       return messages.UNKNOWN_ERROR;
   }
@@ -199,9 +212,9 @@ export function createErrorMessage(
 ): string {
   const appError = createAppError(error);
 
-  // Always prioritize the backend message if it exists and is meaningful
-  if (appError.message && appError.message !== 'Có lỗi xảy ra' && appError.message.trim().length > 0) {
-    return sanitizeUserFacingMessage(appError.message);
+  // Keep useful English backend details, but do not expose untranslated messages.
+  if (appError.message && appError.message !== 'An error occurred.' && appError.message.trim().length > 0) {
+    return sanitizeUserFacingMessage(appError.message, appError.statusCode);
   }
 
   if (appError.statusCode) {
@@ -243,33 +256,33 @@ export function isPermissionError(error: unknown): boolean {
 }
 
 /**
- * Maps HTTP status codes to Vietnamese error titles
+ * Maps HTTP status codes to English error titles
  */
 export const getErrorTitle = (statusCode?: number): string => {
-  if (!statusCode) return 'Lỗi hệ thống';
+  if (!statusCode) return 'System error';
 
   switch (statusCode) {
     case 400:
-      return 'Dữ liệu không hợp lệ';
+      return 'Invalid data';
     case 401:
-      return 'Không có quyền truy cập';
+      return 'Sign-in required';
     case 403:
-      return 'Truy cập bị từ chối';
+      return 'Access denied';
     case 404:
       return 'No results found';
     case 409:
-      return 'Xung đột dữ liệu';
+      return 'Data conflict';
     case 422:
-      return 'Dữ liệu không đúng định dạng';
+      return 'Invalid data';
     case 429:
-      return 'Quá nhiều yêu cầu';
+      return 'Too many requests';
     case 500:
     case 502:
     case 503:
     case 504:
-      return 'Lỗi máy chủ';
+      return 'Server error';
     default:
-      return statusCode >= 500 ? 'Lỗi máy chủ' : 'Lỗi hệ thống';
+      return statusCode >= 500 ? 'Server error' : 'System error';
   }
 };
 
@@ -279,7 +292,7 @@ export const getErrorTitle = (statusCode?: number): string => {
 export const getErrorMessage = (error: unknown): string => {
   // Handle null/undefined
   if (!error) {
-    return 'Có lỗi không xác định xảy ra';
+    return 'An unexpected error occurred.';
   }
 
   // Handle structured API error response (from client.ts)
@@ -290,29 +303,23 @@ export const getErrorMessage = (error: unknown): string => {
     // seconds (computed from X-RateLimit-Reset, not a hardcoded 60).
     if (apiError.http_status === 429) {
       const retryAfter = apiError.retry_after || 60;
-      const baseMsg = sanitizeUserFacingMessage(apiError.message || 'Quá nhiều yêu cầu. Vui lòng thử lại sau');
-      // The apiClient 429 interceptor already constructs the canonical
-      // "...sau N giây" message, and a server may also send a fully-formed
-      // sentence. If the duration is already present ("giây"), return verbatim
-      // to avoid producing "…sau 60 giây (thử lại sau 60 giây)".
-      if (baseMsg.includes('giây')) {
+      const baseMsg = sanitizeUserFacingMessage(apiError.message || 'Too many requests. Please try again later.', 429);
+      if (baseMsg.includes('second')) {
         return baseMsg;
       }
-      // If the server message ends with "sau", append the seconds; else
-      // build the full sentence in parens.
-      if (baseMsg.endsWith('sau')) {
-        return `${baseMsg} ${retryAfter} giây`;
+      if (baseMsg.endsWith('later.')) {
+        return `Too many requests. Please try again in ${retryAfter} seconds.`;
       }
-      return `${baseMsg} (thử lại sau ${retryAfter} giây)`;
+      return `${baseMsg} (try again in ${retryAfter} seconds)`;
     }
 
     // If no message, return based on HTTP status code
     if (!apiError.message) {
       const statusCode = apiError.http_status;
-      return statusCode >= 200 && statusCode < 300 ? 'Successful' : 'Failed';
+      return statusCode >= 200 && statusCode < 300 ? 'Completed successfully.' : 'The request failed.';
     }
 
-    return sanitizeUserFacingMessage(apiError.message);
+    return sanitizeUserFacingMessage(apiError.message, apiError.http_status);
   }
 
   // Handle axios error response
@@ -324,27 +331,27 @@ export const getErrorMessage = (error: unknown): string => {
     if (responseData) {
       // Handle structured error response: { status: "error", message: "...", http_status: 400 }
       if (responseData.message) {
-        return sanitizeUserFacingMessage(responseData.message);
+        return sanitizeUserFacingMessage(responseData.message, statusCode);
       }
       // Handle alternative error field
       if (responseData.error) {
-        return sanitizeUserFacingMessage(responseData.error);
+        return sanitizeUserFacingMessage(responseData.error, statusCode);
       }
 
       // If no message/error field, return based on HTTP status code
       if (statusCode) {
-        return statusCode >= 200 && statusCode < 300 ? 'Successful' : 'Failed';
+        return statusCode >= 200 && statusCode < 300 ? 'Completed successfully.' : 'The request failed.';
       }
     }
 
     // Fallback to axios error message
     if (axiosError.message) {
-      return sanitizeUserFacingMessage(axiosError.message);
+      return sanitizeUserFacingMessage(axiosError.message, statusCode);
     }
 
     // If no message but we have status code, return based on it
     if (statusCode) {
-      return statusCode >= 200 && statusCode < 300 ? 'Successful' : 'Failed';
+      return statusCode >= 200 && statusCode < 300 ? 'Completed successfully.' : 'The request failed.';
     }
   }
 
@@ -364,7 +371,7 @@ export const getErrorMessage = (error: unknown): string => {
   }
 
   // Fallback
-  return 'Có lỗi không xác định xảy ra';
+  return 'An unexpected error occurred.';
 };
 
 /**
@@ -407,11 +414,10 @@ export const getErrorDetails = (error: unknown): ErrorDetails => {
  */
 export const showErrorNotification = (error: unknown, customTitle?: string): void => {
   const details = getErrorDetails(error);
-  const title = customTitle || details.title || 'Failed';
+  const title = customTitle || details.title || 'Request failed';
   const description = details.message;
   const duration = description.length <= 80 ? 3000 : 6000;
-  // closeButton: a rejected upload (e.g. "Mẫu file chấm công không đúng") must
-  // stay readable until the user dismisses it — the toast is the only surface
+  // Keep rejected-upload details readable until the user dismisses the toast.
   // that carries the server's reason for a refused file.
   toast({ title, description, duration, closeButton: true });
 };
@@ -422,7 +428,7 @@ export const showErrorNotification = (error: unknown, customTitle?: string): voi
 export const getSuccessMessage = (response: unknown): string => {
   // Handle null/undefined
   if (!response) {
-    return 'Successful';
+    return 'Completed successfully.';
   }
 
   // Handle structured API response
@@ -431,17 +437,17 @@ export const getSuccessMessage = (response: unknown): string => {
 
     // Check for message field
     if (typeof apiResponse.message === 'string') {
-      return apiResponse.message;
+      return sanitizeSuccessMessage(apiResponse.message);
     }
 
     // Check for data.message
     if (apiResponse.data && typeof apiResponse.data === 'object' && 'message' in apiResponse.data && typeof apiResponse.data.message === 'string') {
-      return apiResponse.data.message;
+      return sanitizeSuccessMessage(apiResponse.data.message);
     }
   }
 
   // Fallback to default success message
-  return 'Successful';
+  return 'Completed successfully.';
 };
 
 /**
@@ -449,10 +455,10 @@ export const getSuccessMessage = (response: unknown): string => {
  */
 export const showSuccessNotification = (messageOrResponse: string | unknown): void => {
   const message = typeof messageOrResponse === 'string'
-    ? messageOrResponse
+    ? sanitizeSuccessMessage(messageOrResponse)
     : getSuccessMessage(messageOrResponse);
 
-  toast('Successful', { description: message, duration: 3000 });
+  toast('Success', { description: message, duration: 3000 });
 };
 
 /**
@@ -486,13 +492,13 @@ export const showBulkOperationNotification = (result: {
   const hasFailures = total_failed > 0 || failed > 0 || errors.length > 0;
   const hasSkipped = skipped > 0;
   const verbMap: Record<typeof operationType, string> = {
-    create: 'tạo',
-    update: 'cập nhật',
-    delete: 'xóa',
-    approve: 'phê duyệt',
-    reject: 'loại',
-    reset: 'khôi phục trạng thái chờ duyệt',
-    import: 'nhập'
+    create: 'created',
+    update: 'updated',
+    delete: 'deleted',
+    approve: 'approved',
+    reject: 'rejected',
+    reset: 'reset',
+    import: 'imported'
   };
   let affected = 0;
   switch (operationType) {
@@ -505,17 +511,17 @@ export const showBulkOperationNotification = (result: {
     case 'import': affected = total_created + total_updated; break;
   }
 
-  const title = hasFailures ? 'Hoàn tất (một số lỗi)' : 'Successful';
+  const title = hasFailures ? 'Completed with errors' : 'Success';
 
   let description = '';
   if (hasFailures && hasSkipped) {
-    description = `Đã ${verbMap[operationType]} ${affected} bản ghi, bỏ qua ${skipped} bản đã phê duyệt, ${total_failed || failed} thất bại`;
+    description = `${verbMap[operationType]} ${affected} records; skipped ${skipped} approved records; ${total_failed || failed} failed.`;
   } else if (hasFailures) {
-    description = `Đã ${verbMap[operationType]} ${affected} bản ghi, ${total_failed || failed} thất bại`;
+    description = `${verbMap[operationType]} ${affected} records; ${total_failed || failed} failed.`;
   } else if (hasSkipped) {
-    description = `Đã ${verbMap[operationType]} ${affected} bản ghi, bỏ qua ${skipped} bản đã phê duyệt`;
+    description = `${verbMap[operationType]} ${affected} records; skipped ${skipped} approved records.`;
   } else {
-    description = `Đã ${verbMap[operationType]} ${affected} bản ghi`;
+    description = `${verbMap[operationType]} ${affected} records.`;
   }
 
   toast(title, { description, duration: 3000 });
@@ -543,5 +549,5 @@ export const isNetworkError = (error: unknown): boolean => {
  * Handles network errors specifically
  */
 export const handleNetworkError = (): void => {
-  toast('Lỗi kết nối', { description: 'Không thể kết nối tới máy chủ. Vui lòng thử lại.', duration: 3000 });
+  toast('Connection error', { description: 'Could not connect to the server. Please try again.', duration: 3000 });
 };

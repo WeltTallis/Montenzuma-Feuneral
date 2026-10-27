@@ -116,20 +116,20 @@ export function formatDateForDisplay(date: string | Date): string {
 }
 
 /**
- * Get day of week in Vietnamese
+ * Get the day of the week in English
  */
 export function getDayOfWeekVietnamese(date: string | Date): string {
   const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
   const dayOfWeek = dateObj.getDay();
   
   const dayNames = [
-    'Chủ nhật',
-    'Thứ 2',
-    'Thứ 3', 
-    'Thứ 4',
-    'Thứ 5',
-    'Thứ 6',
-    'Thứ 7'
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday'
   ];
   
   return dayNames[dayOfWeek];
@@ -178,13 +178,13 @@ export function formatIsoDateDisplay(value: string): string {
 }
 
 /**
- * Get the day type description in Vietnamese
+ * Get an English description for a day type without changing its API value.
  */
 export function getDayTypeDescription(dayType: DayType): string {
   const descriptions = {
-    'ngày thường': 'Ngày làm việc bình thường (Thứ 2 - Thứ 6)',
-    'ngày nghỉ': 'Ngày nghỉ (Chủ nhật hoặc Thứ 7 nghỉ)',
-    'ngày lễ': 'Ngày lễ quốc gia'
+    'ngày thường': 'Regular working day (Monday to Friday)',
+    'ngày nghỉ': 'Rest day (Sunday or a Saturday off)',
+    'ngày lễ': 'Public holiday'
   };
 
   return descriptions[dayType];
@@ -204,7 +204,7 @@ export function generateMonthOptions(count: number = 12): Array<{ value: string;
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const value = `${year}-${month}`;
-    const label = `Tháng ${month}/${year}`;
+    const label = `Month ${month}/${year}`;
     months.push({ value, label });
   }
 

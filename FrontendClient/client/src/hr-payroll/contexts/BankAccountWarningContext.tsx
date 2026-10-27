@@ -38,7 +38,7 @@ export function BankAccountWarningProvider({ children }: { children: React.React
     : null;
   const warningTitle = warning
     ? getBankAccountWarningTitle(warning.reason)
-    : "Tài khoản ngân hàng cần kiểm tra";
+    : "Bank account needs to be checked";
   const accountNumberComparison =
     !nameMismatch && warning?.attemptedAccountNumber
       ? {
@@ -70,8 +70,8 @@ export function BankAccountWarningProvider({ children }: { children: React.React
               </AlertDialogTitle>
               <AlertDialogDescription className="sr-only">
                 {nameMismatch
-                  ? "So sánh tên đã nhập với tên do ngân hàng cung cấp."
-                  : "Vui lòng kiểm tra và cập nhật thông tin tài khoản."}
+                  ? "Compare the entered name with the name provided by the bank."
+                  : "Check and update the bank account details."}
               </AlertDialogDescription>
             </div>
           </AlertDialogHeader>
@@ -89,12 +89,12 @@ export function BankAccountWarningProvider({ children }: { children: React.React
                   ) : (
                     <Check className="h-4 w-4" aria-hidden="true" />
                   )}
-                  {nameMismatch ? "Tên đã nhập" : "Đang lưu"}
+                  {nameMismatch ? "Entered name" : "Saved value"}
                 </div>
                 <p className="break-words text-base font-semibold text-foreground">
                   {nameMismatch
                     ? nameMismatch.enteredName
-                    : accountNumberComparison?.original || "Chưa có"}
+                    : accountNumberComparison?.original || "Not available"}
                 </p>
               </div>
 
@@ -114,7 +114,7 @@ export function BankAccountWarningProvider({ children }: { children: React.React
                   ) : (
                     <X className="h-4 w-4" aria-hidden="true" />
                   )}
-                  {nameMismatch ? "Ngân hàng ghi" : "Vừa nhập"}
+                  {nameMismatch ? "Bank records show" : "New value"}
                 </div>
                 <p className="break-words text-base font-semibold text-foreground">
                   {nameMismatch

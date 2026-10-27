@@ -9,7 +9,7 @@ type BankInformationWarningInput = Pick<
   | 'bank_account_invalid_reason'
 >;
 
-const GENERIC_INVALID_REASON = 'Tài khoản ngân hàng không hợp lệ';
+const GENERIC_INVALID_REASON = 'The bank account details are invalid';
 const UNSAFE_REASON_PATTERN =
   /\b(?:onepay|9pay|provider|error|invalid|account|timeout|failed|internal)\b|[_{}[\]]/iu;
 
@@ -26,19 +26,24 @@ function getConfirmedInvalidReason(reason?: string | null): string {
     return GENERIC_INVALID_REASON;
   }
 
-  return RECOGNIZED_INVALID_REASONS.some((pattern) =>
-    pattern.test(normalizedReason),
-  )
-    ? normalizedReason
-    : GENERIC_INVALID_REASON;
+  if (!RECOGNIZED_INVALID_REASONS.some((pattern) => pattern.test(normalizedReason))) {
+    return GENERIC_INVALID_REASON;
+  }
+  if (/^Số tài khoản không hợp lệ$/iu.test(normalizedReason)) {
+    return 'Invalid bank account number';
+  }
+  if (/^Tên chủ tài khoản không khớp(?: với ngân hàng)?/iu.test(normalizedReason)) {
+    return 'Bank account name does not match the bank records';
+  }
+  return 'The bank does not provide a SWIFT code, so the account could not be verified';
 }
 
 export function getBankInformationWarningReason(
   employee: BankInformationWarningInput,
 ): string {
-  if (!employee.bank) return 'Thiếu ngân hàng';
-  if (!employee.bank_account_number?.trim()) return 'Thiếu số tài khoản';
-  if (!employee.bank_account_name?.trim()) return 'Thiếu tên chủ tài khoản';
+  if (!employee.bank) return 'Bank name is missing';
+  if (!employee.bank_account_number?.trim()) return 'Bank account number is missing';
+  if (!employee.bank_account_name?.trim()) return 'Bank account holder name is missing';
 
   if (employee.bank_account_status === 'invalid') {
     return getConfirmedInvalidReason(employee.bank_account_invalid_reason);

@@ -18,14 +18,14 @@ import {
 } from '@hr/types/api/advance-payment.types';
 
 /**
- * Convert advance payment status to Vietnamese
+ * Convert advance payment status to its English display label
  */
 export function getVietnameseAdvancePaymentStatus(status: AdvancePaymentStatus): string {
   return ADVANCE_PAYMENT_STATUS_LABELS[status] || status;
 }
 
 /**
- * Convert advance payment request status to Vietnamese
+ * Convert advance payment request status to its English display label
  */
 export function getVietnameseAdvancePaymentRequestStatus(status: AdvancePaymentRequestStatus): string {
   return ADVANCE_PAYMENT_REQUEST_STATUS_LABELS[status] || status;
@@ -47,7 +47,7 @@ export function getAdvancePaymentStatusColor(status: AdvancePaymentStatus | Adva
 }
 
 /**
- * Convert request method to Vietnamese
+ * Convert request method to its English display label
  */
 export function getVietnameseRequestMethod(method: RequestMethod): string {
   return REQUEST_METHOD_LABELS[method] || method;
@@ -81,8 +81,8 @@ export function calculateAdvancePaymentDetails(amount: number): { fee: number; n
 }
 
 /**
- * Format month string (YYYY-MM) to Vietnamese display format
- * Example: "2026-03" → "Tháng 3/2026"
+ * Format month string (YYYY-MM) for display
+ * Example: "2026-03" → "Month 3/2026"
  *
  * Use this for option labels in month-picker dropdowns where the value is
  * just an identifier. Use `formatPayrollMonthRange` for labels that describe
@@ -98,7 +98,7 @@ export function formatMonthDisplay(monthString: string): string {
     return monthString;
   }
 
-  return `Tháng ${monthNum}/${year}`;
+  return `Month ${monthNum}/${year}`;
 }
 
 /**
@@ -130,7 +130,7 @@ export const ADVANCE_PERIOD_CYCLE_START_DAY = 20;
 
 /**
  * Render an advance-payment period anchor (YYYY-MM) as the explicit cycle
- * range — i.e. "20/04 – 19/05/2026" instead of the bare anchor "Tháng
+ * range — i.e. "20/04 – 19/05/2026" instead of the bare anchor "Month
  * 4/2026". The backend's `forMonth` is the period START month, so on, e.g.,
  * May 9 it returns "2026-04" even though today is in May. Showing the
  * range removes that "but it's already May!" confusion.
@@ -294,10 +294,10 @@ export function getAdvanceQuotaSummaryForMonth(
 
 /**
  * Payment latency text: elapsed time from request creation to payment
- * completion, seconds-precise, in Vietnamese. Returns null when the request
+ * completion, seconds-precise, in English. Returns null when the request
  * has not been paid yet.
  *
- * Example: "42 giây", "5 phút 40 giây", "1 giờ 05 phút"
+ * Example: "42 seconds", "5 minutes 40 seconds", "1 hour 05 minutes"
  */
 export function formatPaymentLatency(
   createdAt: string,
@@ -314,13 +314,13 @@ export function formatPaymentLatency(
   const mins = Math.floor(totalSecs / 60);
   const secs = totalSecs % 60;
 
-  if (mins < 1) return `${totalSecs} giây`;
-  if (mins < 60) return secs > 0 ? `${mins} phút ${secs} giây` : `${mins} phút`;
+  if (mins < 1) return `${totalSecs} seconds`;
+  if (mins < 60) return secs > 0 ? `${mins} minutes ${secs} seconds` : `${mins} minutes`;
   const hours = Math.floor(mins / 60);
   const remainMins = mins % 60;
   return remainMins > 0
-    ? `${hours} giờ ${String(remainMins).padStart(2, '0')} phút`
-    : `${hours} giờ`;
+    ? `${hours} hours ${String(remainMins).padStart(2, '0')} minutes`
+    : `${hours} hours`;
 }
 
 /**
@@ -457,13 +457,13 @@ export function validateAdvancePaymentAmount(
   minAmount: number = ADVANCE_PAYMENT_CONSTANTS.MIN_AMOUNT
 ): string | null {
   if (amount < minAmount) {
-    return `Số tiền tối thiểu là ${minAmount.toLocaleString('en-KE')} ₫`;
+    return `The minimum amount is ${minAmount.toLocaleString('en-KE')} ₫`;
   }
   if (amount % 5000 !== 0) {
-    return `Số tiền phải là bội số của 5.000 ₫`;
+    return `The amount must be in increments of 5,000 ₫`;
   }
   if (amount > remainingAmount) {
-    return `Số tiền không được vượt quá ${remainingAmount.toLocaleString('en-KE')} ₫`;
+    return `The amount cannot exceed ${remainingAmount.toLocaleString('en-KE')} ₫`;
   }
   return null;
 }

@@ -37,13 +37,13 @@ export interface CheckInStatusFilter {
 }
 
 export function formatCheckInMonth(month?: string): string {
-  if (!month) return "tháng hiện tại";
+  if (!month) return "Current month";
   const [year, monthNumber] = month.split("-");
-  return `tháng ${monthNumber}/${year}`;
+  return `Month ${monthNumber}/${year}`;
 }
 
 export function formatLastCheckIn(value?: string | null): string {
-  if (!value) return "Chưa có";
+  if (!value) return "Not available";
   const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}+07:00`;
   const parsed = new Date(normalized);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -66,10 +66,10 @@ export function buildCheckInStatusFilters(summary?: {
   pending: number;
 }): CheckInStatusFilter[] {
   return [
-    { value: "all", label: "Tất cả" },
-    { value: "enabled", label: "Đang bật", count: summary?.enabled },
-    { value: "active", label: "Đã điểm danh", count: summary?.active },
-    { value: "inactive", label: "Chưa điểm danh", count: summary?.inactive },
-    { value: "pending", label: "Chờ kích hoạt", count: summary?.pending },
+    { value: "all", label: "All" },
+    { value: "enabled", label: "Enabled", count: summary?.enabled },
+    { value: "active", label: "Checked in", count: summary?.active },
+    { value: "inactive", label: "Not checked in", count: summary?.inactive },
+    { value: "pending", label: "Pending activation", count: summary?.pending },
   ];
 }

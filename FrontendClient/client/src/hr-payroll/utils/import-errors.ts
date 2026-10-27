@@ -12,7 +12,7 @@ export function getSafeImportErrorReason(reason: string): string {
     normalized.includes('đã duyệt') ||
     normalized.includes('approved')
   ) {
-    return 'Bảng chấm công đã được phê duyệt';
+    return 'This timesheet has already been approved.';
   }
   if (
     normalized.includes('trùng') ||
@@ -20,16 +20,16 @@ export function getSafeImportErrorReason(reason: string): string {
     normalized.includes('tồn tại') ||
     normalized.includes('duplicate')
   ) {
-    return 'Dữ liệu đã tồn tại';
+    return 'This data already exists.';
   }
   if (normalized.includes('không tìm thấy') && normalized.includes('nhân viên')) {
-    return 'Không tìm thấy nhân viên';
+    return 'Employee not found.';
   }
   if (normalized.includes('không thể tạo nhân viên')) {
-    return 'Không thể tạo hồ sơ nhân viên';
+    return 'Could not create the employee record.';
   }
   if (normalized.includes('không tìm thấy mức lương')) {
-    return 'Chưa cấu hình mức lương phù hợp cho ca làm việc';
+    return 'No matching pay rate is configured for this shift.';
   }
   // "ca làm \"OT400\" không có trong cấu hình lương…" / "vị trí … không có
   // trong cấu hình lương…": name the offending shift or position so the
@@ -42,40 +42,41 @@ export function getSafeImportErrorReason(reason: string): string {
     if (named && !TECHNICAL_VALUE_PATTERN.test(named[2].trim())) {
       const noun = named[1];
       const label = named[2].trim();
-      return `${noun.charAt(0).toUpperCase()}${noun.slice(1)} "${label}" chưa có trong bảng lương của dự án`;
+      const englishNoun = noun === 'ca làm' ? 'Shift' : 'Position';
+      return `${englishNoun} "${label}" is not included in this project's pay rates.`;
     }
-    return 'Chưa cấu hình bảng lương cho dự án';
+    return 'No pay rates are configured for this project.';
   }
   if (normalized.includes('bảng lương') || normalized.includes('payrate')) {
-    return 'Chưa cấu hình bảng lương cho dự án';
+    return 'No pay rates are configured for this project.';
   }
   if (
     normalized.includes('ngày trong tương lai') ||
     normalized.includes('ngày chấm công chưa đến')
   ) {
-    return 'Ngày chấm công chưa đến';
+    return 'The attendance date is in the future.';
   }
   if (normalized.includes('thanh toán') || normalized.includes('paid')) {
-    return 'Bảng chấm công đã thanh toán';
+    return 'This timesheet has already been paid.';
   }
   if (normalized.includes('không thể tạo bảng chấm công')) {
-    return 'Không thể tạo bảng chấm công';
+    return 'Could not create the timesheet.';
   }
   if (normalized.includes('thiếu')) {
-    return 'Thiếu dữ liệu bắt buộc';
+    return 'Required data is missing.';
   }
   if (normalized.includes('không hợp lệ')) {
-    return 'Dữ liệu không hợp lệ';
+    return 'The data is invalid.';
   }
   // Operator-facing file-level guidance from the backend (e.g. every hour in
   // the file falls outside the chosen month): already clean Vietnamese that
   // names the data range and the fix — pass it through instead of masking it
   // behind a generic category label.
   if (normalized.includes('ngoài tháng')) {
-    return reason.trim();
+    return 'The attendance dates fall outside the selected month.';
   }
 
-  return 'Không thể xử lý dòng dữ liệu này';
+  return 'Could not process this row.';
 }
 
 function getSafeEmployeeLabel(employee: unknown): string {
@@ -146,7 +147,7 @@ export interface GroupedImportError {
 
 /**
  * Collapse parsed errors into one group per (employee, reason) pair so the UI
- * renders "reason (các ngày …)" once instead of one identical line per row.
+ * renders the reason once instead of one identical line per row.
  */
 export function groupImportErrors(errors: ImportError[]): GroupedImportError[] {
   const groups = new Map<string, GroupedImportError>();
@@ -174,7 +175,7 @@ export function groupImportErrors(errors: ImportError[]): GroupedImportError[] {
 const DETAIL_LIST_CAP = 5;
 
 /**
- * Build the context suffix for a grouped error, e.g. " (các ngày 25/06/2026, 26/06/2026)".
+ * Build the context suffix for a grouped error, e.g. " (dates 25/06/2026, 26/06/2026)".
  * Lists are capped; the row count carries the scale once the list is truncated.
  */
 export function describeGroupedError(group: GroupedImportError): string {
@@ -183,13 +184,13 @@ export function describeGroupedError(group: GroupedImportError): string {
     const truncated = group.dates.length > DETAIL_LIST_CAP;
     const shown = group.dates.slice(0, DETAIL_LIST_CAP).join(', ');
     parts.push(
-      `${group.dates.length === 1 ? 'ngày' : 'các ngày'} ${shown}${truncated ? '…' : ''}`,
+      `${group.dates.length === 1 ? 'date' : 'dates'} ${shown}${truncated ? '…' : ''}`,
     );
   } else if (group.rows.length > 0) {
     const truncated = group.rows.length > DETAIL_LIST_CAP;
     const shown = group.rows.slice(0, DETAIL_LIST_CAP).join(', ');
     parts.push(
-      `${group.rows.length === 1 ? 'dòng' : 'các dòng'} ${shown}${truncated ? '…' : ''}`,
+      `${group.rows.length === 1 ? 'row' : 'rows'} ${shown}${truncated ? '…' : ''}`,
     );
   }
   if (
@@ -197,7 +198,7 @@ export function describeGroupedError(group: GroupedImportError): string {
     (group.dates.length > DETAIL_LIST_CAP ||
       (group.dates.length === 0 && group.rows.length === 0))
   ) {
-    parts.push(`${group.count} dòng`);
+    parts.push(`${group.count} rows`);
   }
   return parts.length > 0 ? ` (${parts.join(', ')})` : '';
 }

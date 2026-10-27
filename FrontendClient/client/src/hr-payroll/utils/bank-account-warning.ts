@@ -60,18 +60,18 @@ export function getBankAccountWarningTitle(reason: string): string {
   const normalizedReason = reason.trim().toLocaleLowerCase("en-KE");
 
   if (normalizedReason.startsWith(BANK_NAME_MISMATCH_PREFIX)) {
-    return "Tên chủ tài khoản không khớp";
+    return "Bank account name does not match";
   }
 
   if (normalizedReason.startsWith(INVALID_ACCOUNT_NUMBER_PREFIX)) {
-    return "Số tài khoản không hợp lệ";
+    return "Invalid bank account number";
   }
 
   if (normalizedReason.startsWith(MISSING_SWIFT_CODE_PREFIX)) {
-    return "Không thể kiểm tra tài khoản";
+    return "Could not verify the bank account";
   }
 
-  return "Tài khoản ngân hàng cần kiểm tra";
+  return "Bank account needs to be checked";
 }
 
 export function getBankAccountNameMismatch(

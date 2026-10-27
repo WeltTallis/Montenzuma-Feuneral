@@ -28,7 +28,7 @@ import { BulkTransferProgress } from '@hr/components/wallet/BulkTransferProgress
 import { formatKensynDateTime } from '@hr/utils/kenyan';
 import { formatCurrency } from '@hr/utils/formatters';
 import {
-  batchStatusToVietnamese,
+  batchStatusLabel,
   type BulkTransferBatchStatus,
 } from '@hr/types/wallet-bulk-transfer';
 import { cn } from '@hr/lib/utils';
@@ -91,19 +91,19 @@ export const BulkTransferBatchList = memo(function BulkTransferBatchList({
   const canNext = page < totalPages && !listQuery.isFetching;
 
   return (
-    <section aria-label="Lịch sử chuyển tiền hàng loạt" className="space-y-3">
+    <section aria-label="Bulk transfer history" className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-foreground">
-            Lịch sử chuyển tiền hàng loạt
+            Bulk transfer history
           </h2>
           <p className="text-xs text-muted-foreground">
-            Theo dõi các lô đã tải lên và trạng thái xử lý.
+            Review uploaded batches and their processing status.
           </p>
         </div>
         {total > 0 && (
           <span className="text-xs text-muted-foreground">
-            {total.toLocaleString('en-KE')} lô
+            {total.toLocaleString('en-KE')} batches
           </span>
         )}
       </div>
@@ -116,7 +116,7 @@ export const BulkTransferBatchList = memo(function BulkTransferBatchList({
         </div>
       ) : listQuery.isError ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          Không thể tải lịch sử chuyển tiền. Vui lòng thử lại sau.
+          Could not load transfer history. Please try again later.
         </div>
       ) : !listQuery.data || listQuery.data.batches.length === 0 ? (
         <EmptyState />
@@ -141,7 +141,7 @@ export const BulkTransferBatchList = memo(function BulkTransferBatchList({
                 className="h-11 w-11"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={!canPrev}
-                aria-label="Trang trước"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -172,9 +172,9 @@ export const BulkTransferBatchList = memo(function BulkTransferBatchList({
           className="flex w-full flex-col gap-0 sm:max-w-3xl"
         >
           <SheetHeader className="border-b">
-            <SheetTitle>Chi tiết lô chuyển tiền</SheetTitle>
+            <SheetTitle>Bulk transfer details</SheetTitle>
             <SheetDescription>
-              {selectedId !== null ? `Lô #${selectedId}` : ''}
+              {selectedId !== null ? `Batch #${selectedId}` : ''}
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -241,7 +241,7 @@ const BatchCard = memo(function BatchCard({ batch, onClick }: BatchCardProps) {
           </p>
         </div>
         <Badge className={batchStatusBadgeClass(batch.status)}>
-          {batchStatusToVietnamese(batch.status)}
+          {batchStatusLabel(batch.status)}
         </Badge>
       </div>
 
@@ -256,13 +256,13 @@ const BatchCard = memo(function BatchCard({ batch, onClick }: BatchCardProps) {
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border/60 pt-2 text-xs text-muted-foreground">
         <span>
-          Tổng tiền:{' '}
+          Total amount:{' '}
           <span className="font-financial font-semibold tabular-nums text-foreground">
             {formatCurrency(batch.transfer_amount)}
           </span>
         </span>
         <span>
-          Phí:{' '}
+          Fee:{' '}
           <span className="font-financial font-semibold tabular-nums text-foreground">
             {formatCurrency(batch.total_fee)}
           </span>

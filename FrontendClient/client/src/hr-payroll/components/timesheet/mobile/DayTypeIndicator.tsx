@@ -38,11 +38,11 @@ export function DayTypeIndicator({
   const getDayTypeDescription = (type: DayType) => {
     switch (type) {
       case 'ngày thường':
-        return 'Ngày làm việc bình thường (Thứ 2-6)';
+        return 'Regular working day (Monday to Friday)';
       case 'ngày nghỉ':
-        return 'Ngày nghỉ trong tuần (Chủ nhật, Thứ 7 nghỉ)';
+        return 'Rest day (Sunday or a Saturday off)';
       case 'ngày lễ':
-        return 'Ngày lễ quốc gia';
+        return 'Public holiday';
       default:
         return '';
     }
@@ -53,14 +53,14 @@ export function DayTypeIndicator({
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Label className="typography-body-medium">Loại ngày</Label>
+          <Label className="typography-body-medium">Day type</Label>
           <div className={`flex items-center gap-1 typography-body-medium font-medium ${
             autoDayType === 'ngày lễ' ? 'text-red-700' :
             autoDayType === 'ngày nghỉ' ? 'text-muted-foreground' : 'text-blue-700'
           }`}>
             {getDayTypeIcon(autoDayType)}
-            {autoDayType === 'ngày thường' ? 'ngày thường' :
-             autoDayType === 'ngày nghỉ' ? 'ngày nghỉ' : 'ngày lễ'}
+            {autoDayType === 'ngày thường' ? 'Regular day' :
+             autoDayType === 'ngày nghỉ' ? 'Rest day' : 'Public holiday'}
           </div>
         </div>
 
@@ -78,16 +78,16 @@ export function DayTypeIndicator({
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Label className="typography-body-medium">Loại ngày</Label>
+          <Label className="typography-body-medium">Day type</Label>
           <div className="flex items-center gap-1 typography-body-medium font-medium text-amber-700">
             <AlertTriangle className="h-3 w-3" />
-            cần xác định
+            Needs selection
           </div>
         </div>
 
         <div className="bg-warning/10 border border-warning/20 rounded-xl p-3">
           <p className="typography-body-small text-warning-foreground mb-3">
-            <strong>Thứ 7:</strong> Vui lòng chọn loại ngày
+            <strong>Saturday:</strong> Select a day type
           </p>
 
           <RadioGroup
@@ -98,13 +98,13 @@ export function DayTypeIndicator({
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="ngày thường" id="weekday" />
               <Label htmlFor="weekday" className="typography-body-medium">
-                Ngày thường (làm việc bình thường)
+                Regular working day
               </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="ngày nghỉ" id="weekend" />
               <Label htmlFor="weekend" className="typography-body-medium">
-                Ngày nghỉ (nghỉ cuối tuần)
+                Rest day
               </Label>
             </div>
           </RadioGroup>
@@ -125,9 +125,9 @@ export function DayTypeIndicator({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Label className="typography-body-medium">Loại ngày</Label>
+        <Label className="typography-body-medium">Day type</Label>
         <span className="typography-body-medium font-medium text-muted-foreground">
-          không xác định
+          Unknown
         </span>
       </div>
     </div>

@@ -1,12 +1,12 @@
 import type { LoanStatus, LoanType, ScheduleStatus, Loan, CustomScheduleItem } from '@hr/types/api/loan.types';
 
 /**
- * Convert loan status to Vietnamese
+ * Convert loan status to its English display label
  */
 export function getVietnameseLoanStatus(status: LoanStatus): string {
   const statusMap: Record<LoanStatus, string> = {
     active: 'Active',
-    closed: 'Đã đóng',
+    closed: 'Closed',
   };
   return statusMap[status] || status;
 }
@@ -23,12 +23,12 @@ export function getLoanStatusColor(status: LoanStatus): string {
 }
 
 /**
- * Get Vietnamese label for loan type
+ * Get the English label for a loan type
  */
 export function getLoanTypeLabel(type: LoanType): string {
   const typeMap: Record<LoanType, string> = {
-    bullet_loan: 'Theo lãi suất',
-    custom_schedule: 'Theo lịch trả',
+    bullet_loan: 'Fixed-term loan',
+    custom_schedule: 'Custom repayment schedule',
   };
   return typeMap[type] || type;
 }
@@ -77,7 +77,7 @@ const VND_NUMBER_FORMATTER = new Intl.NumberFormat('en-KE', {
 });
 
 /**
- * Format currency in Vietnamese Dong using locale-aware grouping and a suffix.
+ * Format a currency amount using locale-aware grouping and a VND suffix.
  */
 export function formatVND(amount: number): string {
   return `${VND_NUMBER_FORMATTER.format(amount)} ₫`;
@@ -115,10 +115,10 @@ export function getPaymentUrgencyColor(daysUntil: number): string {
 }
 
 /**
- * Format payment day of month with Vietnamese suffix
+ * Format the monthly payment day
  */
 export function formatPaymentDay(day: number): string {
-  return `Ngày ${day} hàng tháng`;
+  return `Day ${day} of each month`;
 }
 
 /**
@@ -145,24 +145,24 @@ export function calculateMonthlyInterest(
 }
 
 /**
- * Get Vietnamese label for schedule item type
+ * Get the English label for a schedule item type
  */
 export function getScheduleItemTypeLabel(type: 'interest' | 'principal'): string {
   const labels = {
-    interest: 'Lãi suất',
-    principal: 'Nợ gốc',
+    interest: 'Interest',
+    principal: 'Principal',
   };
   return labels[type];
 }
 
 /**
- * Get Vietnamese label for schedule item status
+ * Get the English label for a schedule item status
  */
 export function getScheduleItemStatusLabel(status: ScheduleStatus): string {
   const labels: Record<ScheduleStatus, string> = {
-    paid: 'Đã thanh toán',
-    pending: 'Chưa thanh toán',
-    overdue: 'Quá hạn',
+    paid: 'Paid',
+    pending: 'Pending',
+    overdue: 'Overdue',
   };
   return labels[status];
 }

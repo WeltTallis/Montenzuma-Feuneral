@@ -4,7 +4,7 @@
  * Polls GET /wallet/bulk-transfer/batches/:id every 5s while the batch is
  * non-terminal (the hook handles refetchInterval gating). Renders a
  * summary header + a Table of rows with status Badges and an FT-pending
- * tooltip. The "Tải KQ Excel" button uses useDownloadWalletBulkTransferKQ.
+ * tooltip. The Excel export button uses useDownloadWalletBulkTransferKQ.
  *
  * Mobile-friendly: cards fall back to a stacked layout via useIsMobile.
  */
@@ -33,9 +33,9 @@ import { useWalletBulkTransferBatch, useDownloadWalletBulkTransferKQ } from '@hr
 import { useIsMobile } from '@hr/hooks/useBreakpoint';
 import { formatCurrency } from '@hr/utils/formatters';
 import {
-  batchStatusToVietnamese,
+  batchStatusLabel,
   isFTPending,
-  paymentStatusToVietnamese,
+  paymentStatusLabel,
   type WalletBulkPaymentRow,
   type WalletPaymentStatus,
   type BulkTransferBatchStatus,
@@ -90,9 +90,9 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
     setIsGeneratingPdf(true);
     try {
       await generateWalletBulkTransferPdf(batchQuery.data);
-      showSuccessNotification('Đã tải PDF giao dịch thành công');
+      showSuccessNotification('Transaction PDF downloaded successfully.');
     } catch (error) {
-      showErrorNotification(error, 'Xuất PDF thất bại');
+      showErrorNotification(error, 'PDF export failed');
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -131,7 +131,7 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
   if (batchQuery.isError || !batchQuery.data) {
     return (
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-        Không thể tải thông tin lô chuyển tiền. Vui lòng thử lại sau.
+        Could not load the transfer batch. Please try again later.
       </div>
     );
   }
@@ -158,10 +158,10 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Badge className={statusBadgeClass(batch.status)}>
-                {batchStatusToVietnamese(batch.status)}
+                {batchStatusLabel(batch.status)}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                Lô #{batch.id} · {batch.filename}
+                Batch #{batch.id} · {batch.filename}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -177,7 +177,7 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
                 ) : (
                   <Download className="h-3.5 w-3.5" />
                 )}
-                {batch.status === 'completed' ? 'Excel thành công' : 'Tải KQ Excel'}
+                {batch.status === 'completed' ? 'Export successful transfers' : 'Export batch to Excel'}
               </Button>
               {batch.status === 'completed' && (
                 <Button
@@ -188,7 +188,7 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
                   className="h-8 gap-1.5"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  Excel toàn bộ
+                  Export all to Excel
                 </Button>
               )}
               {batch.status === 'completed' && (
@@ -200,7 +200,7 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
                   className="h-8 gap-1.5"
                 >
                   {isGeneratingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-                  PDF thành công
+                  Export successful transfers to PDF
                 </Button>
               )}
             </div>
@@ -209,7 +209,7 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
           <Progress value={pct} className="h-2" />
 
           <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-            <Stat label="Tổng" value={total} tone="default" />
+            <Stat label="Total" value={total} tone="default" />
             <Stat label="Successful" value={success} tone="success" />
             <Stat label="Failed" value={failed} tone="failed" />
             <Stat label="Processing" value={processing} tone="processing" />
@@ -218,7 +218,7 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
           {isRunning && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Đang xử lý — cập nhật mỗi 5 giây.
+              Processing — refreshes every 5 seconds.
             </p>
           )}
         </div>
@@ -226,8 +226,8 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">
             {batch.status === 'completed'
-              ? `Giao dịch thành công (${successfulRows.length})`
-              : `Chi tiết giao dịch (${batch.rows.length})`}
+              ? `Successful transfers (${successfulRows.length})`
+              : `Transfer details (${batch.rows.length})`}
           </h3>
         </div>
 
@@ -236,19 +236,19 @@ export const BulkTransferProgress = memo(function BulkTransferProgress({
           rows={displayedRows}
           isMobile={isMobile}
           emptyMessage={batch.status === 'completed'
-            ? 'Không có giao dịch thành công trong lô này.'
-            : 'Chưa có dòng nào trong lô này.'}
+            ? 'There are no successful transfers in this batch.'
+            : 'This batch has no rows yet.'}
         />
 
         {batch.status === 'completed' && failedRows.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-rose-700">
-              Giao dịch thất bại ({failedRows.length})
+              Failed transfers ({failedRows.length})
             </h3>
             <p className="text-xs text-muted-foreground">
-              Các giao dịch này không được tính vào khoản phải thu và không liên kết bảng công.
+              These transfers are excluded from receivables and are not linked to timesheets.
             </p>
-            <RowsView rows={failedRows} isMobile={isMobile} emptyMessage="Không có giao dịch thất bại." />
+            <RowsView rows={failedRows} isMobile={isMobile} emptyMessage="There are no failed transfers." />
           </div>
         )}
       </div>
@@ -279,9 +279,9 @@ function RowsView({
         <TableHeader>
           <TableRow>
             <TableHead className="w-12 text-right">STT</TableHead>
-            <TableHead>Số TK</TableHead>
+            <TableHead>Account number</TableHead>
             <TableHead>Name</TableHead>
-            <TableHead>Ngân hàng</TableHead>
+            <TableHead>Bank</TableHead>
             <TableHead className="text-right">Amount</TableHead>
             <TableHead className="text-center">Status</TableHead>
             <TableHead className="text-center">FT</TableHead>
@@ -306,7 +306,7 @@ const ProgressRow = memo(function ProgressRow({ row }: ProgressRowProps) {
     row.invoice_no && !ftPending
       ? row.invoice_no
       : ftPending
-        ? 'Đang chờ FT'
+        ? 'Waiting for FT'
         : '—';
 
   return (
@@ -326,7 +326,7 @@ const ProgressRow = memo(function ProgressRow({ row }: ProgressRowProps) {
       </TableCell>
       <TableCell className="text-center">
         <Badge className={statusBadgeClass(row.status)}>
-          {paymentStatusToVietnamese(row.status)}
+          {paymentStatusLabel(row.status)}
         </Badge>
       </TableCell>
       <TableCell className="text-center">
@@ -342,7 +342,7 @@ const ProgressRow = memo(function ProgressRow({ row }: ProgressRowProps) {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              FT chưa về — đang chờ OnePay trả về số FT qua IPN.
+              FT number not received — waiting for OnePay to return it via IPN.
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -361,7 +361,7 @@ const MobileRowList = memo(function MobileRowList({ rows }: MobileRowListProps) 
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-border/60 bg-muted/30 px-4">
-        <EmptyState title="Chưa có dòng nào trong lô này." size="sm" className="py-4" />
+        <EmptyState title="This batch has no rows yet." size="sm" className="py-4" />
       </div>
     );
   }
@@ -384,9 +384,9 @@ const MobileRow = memo(function MobileRow({ row }: MobileRowProps) {
   return (
     <div className="rounded-xl border border-border/60 bg-card p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Dòng {order}</span>
+        <span className="text-xs font-medium text-muted-foreground">Row {order}</span>
         <Badge className={statusBadgeClass(row.status)}>
-          {paymentStatusToVietnamese(row.status)}
+          {paymentStatusLabel(row.status)}
         </Badge>
       </div>
       <div className="mt-1 truncate text-sm font-medium text-foreground" title={row.recipient_name}>
@@ -404,10 +404,10 @@ const MobileRow = memo(function MobileRow({ row }: MobileRowProps) {
             <TooltipTrigger asChild>
               <span className="inline-flex items-center gap-1 text-xs text-amber-700">
                 <Clock3 className="h-3 w-3" />
-                Đang chờ FT
+                Waiting for FT
               </span>
             </TooltipTrigger>
-            <TooltipContent>FT chưa về — đang chờ OnePay trả về số FT qua IPN.</TooltipContent>
+            <TooltipContent>FT number not received — waiting for OnePay to return it via IPN.</TooltipContent>
           </Tooltip>
         ) : (
           row.invoice_no && (
