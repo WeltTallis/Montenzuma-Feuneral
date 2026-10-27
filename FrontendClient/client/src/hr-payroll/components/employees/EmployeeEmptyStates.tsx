@@ -29,13 +29,13 @@ export const EmployeeEmptyStates = ({
 export const EmployeeTableEmptyState = ({ onAddEmployee }: { onAddEmployee: () => void }) => {
   return (
     <EmptyState
-      title="Không có nhân viên nào"
-      description="Hãy thêm nhân viên đầu tiên để bắt đầu quản lý."
+      title="No employees yet"
+      description="Add your first employee to get started."
       className="py-8"
     >
       <Button onClick={onAddEmployee} variant="default">
         <Plus className="mr-2 h-4 w-4" />
-        Thêm nhân viên
+        Add employee
       </Button>
     </EmptyState>
   );

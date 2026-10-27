@@ -185,8 +185,8 @@ export function TimesheetGroupedTable({
   if (groupedTimesheets.length === 0) {
     return (
       <EmptyState
-        title="Không tìm thấy dữ liệu bảng công"
-        description="Hãy kiểm tra lại bộ lọc hoặc thử tìm kiếm khác."
+        title="No timesheet data found"
+        description="Check your filters or try another search."
         size="sm"
       />
     );
@@ -263,7 +263,7 @@ export function TimesheetGroupedTable({
                       {group.hasMultipleProjects && (
                         <Users className="w-3 h-3 inline mr-1" />
                       )}
-                      Ca làm việc
+                      Shifts
                     </p>
                   </div>
 
@@ -273,7 +273,7 @@ export function TimesheetGroupedTable({
                       <Banknote className="w-4 h-4 text-muted-foreground" />
                       <span className="typography-currency font-bold tabular-nums">{formatCurrency(group.totalAmount)}</span>
                     </div>
-                    <p className="typography-body-small text-muted-foreground mt-1">Thành tiền</p>
+                    <p className="typography-body-small text-muted-foreground mt-1">Total amount</p>
                   </div>
 
                   {/* Status + Hide */}
@@ -286,8 +286,8 @@ export function TimesheetGroupedTable({
                         e.stopPropagation();
                         handleHideGroup(group);
                       }}
-                      title="Ẩn dòng này khỏi danh sách"
-                      aria-label="Ẩn dòng bảng công này"
+                      title="Hide this row from the list"
+                      aria-label="Hide this timesheet row"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -356,12 +356,12 @@ export function TimesheetGroupedTable({
                         <Calendar className="w-3.5 h-3.5" />
                         <span>{formatDateWithWeekday(group.date)}</span>
                         <span>•</span>
-                        <span>{group.entries.length} bản ghi</span>
+                        <span>{group.entries.length} entries</span>
                         {group.hasMultipleProjects && (
                           <>
                             <span>•</span>
                             <Users className="w-3 h-3 inline" />
-                            <span>Nhiều dự án</span>
+                            <span>Multiple projects</span>
                           </>
                         )}
                       </div>
@@ -383,7 +383,7 @@ export function TimesheetGroupedTable({
                         <div className="flex-1 bg-primary/5 border border-primary/20 rounded-xl p-2.5">
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <Banknote className="w-3.5 h-3.5 text-primary" />
-                            <span className="typography-label-small text-primary">Thành tiền</span>
+                            <span className="typography-label-small text-primary">Total amount</span>
                           </div>
                           <p className="typography-title-medium font-bold text-primary tabular-nums">
                             {formatCurrency(group.totalAmount)}
@@ -401,8 +401,8 @@ export function TimesheetGroupedTable({
                   {/* Group Actions Header */}
                   <div className="px-4 py-2 border-b bg-muted/10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <p className="typography-body-medium typography-label-medium text-muted-foreground">
-                      <span className="hidden sm:inline">Chi tiết các mục - {group.employeeName} ({formatDate(group.date)})</span>
-                      <span className="sm:hidden">Chi tiết các mục</span>
+                      <span className="hidden sm:inline">Entries for {group.employeeName} ({formatDate(group.date)})</span>
+                      <span className="sm:hidden">Entry details</span>
                     </p>
                     <div className="flex gap-2">
                       {canBulkApprove(group) && (

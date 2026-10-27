@@ -14,9 +14,9 @@ import { useTimesheetContext } from '@hr/components/timesheet/TimesheetContext';
 
 const STATUS_OPTIONS = [
   { value: 'pending_approval', label: 'Pending approval' },
-  { value: 'pending_payment', label: 'Chờ TT' },
-  { value: 'paid', label: 'Đã thanh toán' },
-  { value: 'rejected', label: 'Bị loại' },
+  { value: 'pending_payment', label: 'Awaiting payment' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'rejected', label: 'Rejected' },
 ];
 
 export const TimesheetFilters = () => {
@@ -45,7 +45,7 @@ export const TimesheetFilters = () => {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       return {
         value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-        label: `T${d.getMonth() + 1}/${d.getFullYear()}`,
+        label: `${d.getMonth() + 1}/${d.getFullYear()}`,
       };
     });
   }, []);
@@ -73,17 +73,17 @@ export const TimesheetFilters = () => {
           <SearchBar
             searchTerm={searchTerm}
             onSearchChange={onSearchChange}
-            placeholder="Tìm kiếm..."
+            placeholder="Search..."
             className="w-full"
           />
         )}
         <div className="flex items-center gap-1.5">
         <Select value={selectedMonth} onValueChange={onMonthChange}>
-          <SelectTrigger aria-label="Lọc tháng bảng công" className="h-11 w-[112px] shrink-0 text-xs border-border/60">
-            <SelectValue placeholder="Tháng" />
+          <SelectTrigger aria-label="Filter timesheet month" className="h-11 w-[112px] shrink-0 text-xs border-border/60">
+            <SelectValue placeholder="Month" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
+            <SelectItem value="all">All months</SelectItem>
             {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -91,7 +91,7 @@ export const TimesheetFilters = () => {
           <SheetTrigger asChild>
             <button
               className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:border-border hover:text-foreground"
-              aria-label="Bộ lọc"
+              aria-label="Filters"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
               {activeFilterCount > 1 && (
@@ -103,15 +103,15 @@ export const TimesheetFilters = () => {
           </SheetTrigger>
           <SheetContent side="bottom" className="h-auto max-h-[85dvh] overflow-y-auto px-4 pt-4">
             <SheetHeader className="mb-4">
-              <SheetTitle className="text-base">Bộ lọc</SheetTitle>
+              <SheetTitle className="text-base">Filters</SheetTitle>
             </SheetHeader>
             <div className="space-y-3 pb-4" style={{ paddingBottom: "max(16px, calc(16px + env(safe-area-inset-bottom)))" }}>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Status</Label>
                 <Select value={statusFilter} onValueChange={onStatusChange}>
-                  <SelectTrigger aria-label="Lọc trạng thái bảng công" className="h-11"><SelectValue placeholder="Tất cả trạng thái" /></SelectTrigger>
+                  <SelectTrigger aria-label="Filter timesheet status" className="h-11"><SelectValue placeholder="All statuses" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                    <SelectItem value="all">All statuses</SelectItem>
                     {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -121,17 +121,17 @@ export const TimesheetFilters = () => {
                 <SearchableDropdown
                   value={selectedProject} onValueChange={onProjectChange}
                   options={projectOptions}
-                  placeholder="Tất cả dự án" searchPlaceholder="Tìm dự án..."
-                  emptyMessage="Không tìm thấy dự án nào." className="w-full"
-                  allOption={{ value: 'all', label: 'Tất cả dự án' }}
-                  mobileTitle="Chọn dự án"
+                  placeholder="All projects" searchPlaceholder="Search projects..."
+                  emptyMessage="No projects found." className="w-full"
+                  allOption={{ value: 'all', label: 'All projects' }}
+                  mobileTitle="Select a project"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Employees</Label>
                 <EmployeeDropdownAdapter
                   value={selectedEmployee} onChange={onEmployeeChange}
-                  selectedProject={selectedProject} placeholder="Tất cả nhân viên"
+                  selectedProject={selectedProject} placeholder="All employees"
                   className="w-full"
                   availableEmployees={(shouldUseProjectEmployees ? projectEmployees : []) as unknown as Employee[]}
                   includeAvailableOnly={shouldUseProjectEmployees}
@@ -152,7 +152,7 @@ export const TimesheetFilters = () => {
         <SearchBar
           searchTerm={searchTerm}
           onSearchChange={onSearchChange}
-          placeholder="Tìm nhân viên, dự án..."
+          placeholder="Search employees or projects..."
           className="w-64"
         />
       )}
@@ -163,7 +163,7 @@ export const TimesheetFilters = () => {
         <FilterPill
           value={selectedMonth}
           onChange={onMonthChange}
-          placeholder="Tháng"
+          placeholder="Month"
           options={monthOptions}
           className="bg-card"
         />
@@ -182,10 +182,10 @@ export const TimesheetFilters = () => {
         onValueChange={onProjectChange}
         options={projectOptions}
         placeholder="Projects"
-        searchPlaceholder="Tìm dự án..."
-        emptyMessage="Không tìm thấy dự án nào."
+        searchPlaceholder="Search projects..."
+        emptyMessage="No projects found."
         className="h-11 min-h-11 rounded-xl bg-card px-3 text-sm sm:h-9 sm:min-h-9 sm:px-2.5"
-        allOption={{ value: 'all', label: 'Projects' }}
+        allOption={{ value: 'all', label: 'All projects' }}
         pillStyle
       />
 
@@ -193,7 +193,7 @@ export const TimesheetFilters = () => {
         value={selectedEmployee}
         onChange={onEmployeeChange}
         selectedProject={selectedProject}
-        placeholder="Employees"
+        placeholder="All employees"
         className="inline-flex h-11 min-h-11 items-center gap-1 rounded-xl border border-border/60 bg-card px-3 py-0 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors duration-100 hover:border-border hover:bg-accent/40 hover:text-foreground sm:h-9 sm:min-h-9 sm:px-2.5 [&>svg]:h-3.5 [&>svg]:w-3.5"
         availableEmployees={(shouldUseProjectEmployees ? projectEmployees : []) as unknown as Employee[]}
         includeAvailableOnly={shouldUseProjectEmployees}

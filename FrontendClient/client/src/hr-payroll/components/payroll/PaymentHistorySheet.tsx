@@ -207,8 +207,8 @@ export function PaymentHistorySheet({ isOpen, onClose }: PaymentHistorySheetProp
     <SlideSheetTemplate
       isOpen={isOpen}
       onClose={onClose}
-      title="Lịch sử trả lương"
-      description="Danh sách các lần thanh toán lương cho nhân viên"
+      title="Payroll payment history"
+      description="A list of salary payments made to employees"
       size="full"
       className="w-full max-w-[2000px]"
       headerActions={
@@ -219,7 +219,7 @@ export function PaymentHistorySheet({ isOpen, onClose }: PaymentHistorySheetProp
           className="min-h-11 px-3 bg-green-700 hover:bg-green-800 text-white text-xs"
         >
           <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-          Xuất Excel
+          Export Excel
         </Button>
       }
     >

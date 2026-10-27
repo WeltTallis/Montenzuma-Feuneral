@@ -267,12 +267,12 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
                   <div className="min-w-0 leading-tight">
                     {walletBalance?.as_of && (
                       <p className="text-xs tabular-nums tracking-wide text-white/55">
-                        Cập nhật {formatVietnameseDateTime(walletBalance.as_of)}
+                        Updated {formatVietnameseDateTime(walletBalance.as_of)}
                       </p>
                     )}
                     <p className={cn("flex items-baseline gap-2", walletBalance?.as_of && "mt-1")}>
                       <span className="text-xs font-semibold uppercase tracking-[0.1em] text-white/60">
-                        Chờ chi trả
+                        Pending disbursements
                       </span>
                       <span className="font-financial text-[15px] font-medium leading-snug tabular-nums text-white">
                         {walletBalance ? formatCurrency(walletBalance.pending_out) : "—"}
@@ -282,8 +282,8 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
                   <button
                     onClick={handleSync}
                     disabled={isSyncing}
-                    title="Đồng bộ số dư với nhà cung cấp"
-                    aria-label="Đồng bộ số dư"
+                    title="Sync balance with provider"
+                    aria-label="Sync balance"
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50 touch-manipulation"
                   >
                     <RefreshCw05 className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
@@ -294,7 +294,7 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
           )
         ) : (
           <div className="flex h-24 items-center justify-center">
-            <p className="text-sm text-white/50">Không thể tải số dư</p>
+            <p className="text-sm text-white/50">Unable to load balance</p>
           </div>
         )}
       </div>

@@ -114,7 +114,7 @@ const RequestCard = memo(function RequestCard({
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Thực nhận:</span>
+            <span className="text-muted-foreground">Net amount:</span>
             <span className="font-semibold text-emerald-700 tabular-nums">
               {formatCurrency(item.netAmount)}
             </span>
@@ -123,7 +123,7 @@ const RequestCard = memo(function RequestCard({
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
               <span className={cn("tabular-nums", getPaymentLatencyColor(latencySecs))}>
-                Độ trễ: {latency}
+                Processing time: {latency}
               </span>
             </div>
           )}
@@ -142,7 +142,7 @@ const RequestCard = memo(function RequestCard({
                   onClick={handleDismiss}
                   className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-1"
                 >
-                  Không
+                  No
                 </button>
                 <Button
                   variant="destructive"
@@ -151,7 +151,7 @@ const RequestCard = memo(function RequestCard({
                   onClick={handleCancelClick}
                   disabled={isCancelling}
                 >
-                  {isCancelling ? "Đang hủy..." : "Xác nhận hủy"}
+                  {isCancelling ? "Cancelling..." : "Confirm cancellation"}
                 </Button>
               </div>
             ) : (
@@ -173,7 +173,7 @@ const RequestCard = memo(function RequestCard({
                     onClick={() => onRetry(item.id)}
                     disabled={isRetrying}
                   >
-                    {isRetrying ? "Đang gửi..." : "Thử lại"}
+                    {isRetrying ? "Submitting..." : "Retry"}
                   </Button>
                 )}
               </div>
@@ -187,7 +187,7 @@ const RequestCard = memo(function RequestCard({
               onClick={() => onRetry(item.id)}
               disabled={isRetrying}
             >
-              {isRetrying ? "Đang gửi..." : "Thử lại"}
+              {isRetrying ? "Submitting..." : "Retry"}
             </Button>
           )}
         </div>
@@ -227,8 +227,8 @@ export function AdvancePaymentMobileList({
     return (
       <EmptyState
         icon={Wallet}
-        title="Chưa có yêu cầu nào"
-        description="Yêu cầu ứng lương sẽ hiển thị tại đây"
+        title="No requests yet"
+        description="Salary advance requests will appear here"
         size="sm"
         className="min-h-[168px] rounded-xl border border-dashed border-slate-300 bg-slate-50/55 py-7"
       />

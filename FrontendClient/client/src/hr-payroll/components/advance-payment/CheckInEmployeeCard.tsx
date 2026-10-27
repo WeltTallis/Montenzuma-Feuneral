@@ -7,10 +7,10 @@ import type { CheckInConfigurationEmployee } from "@hr/types/api/project-employe
 import { formatLastCheckIn, getCheckInEmployeeState } from "@hr/utils/checkInSettingsHelpers";
 
 const employeeStatePresentation = {
-  pending: { label: "Chờ kích hoạt", icon: Clock3, badge: "warning" as const },
-  disabled: { label: "Đang tắt", icon: PowerOff, badge: "secondary" as const },
-  used: { label: "Đã điểm danh", icon: CheckCircle2, badge: "success" as const },
-  unused: { label: "Chưa điểm danh", icon: Power, badge: "outline" as const },
+  pending: { label: "Pending activation", icon: Clock3, badge: "warning" as const },
+  disabled: { label: "Disabled", icon: PowerOff, badge: "secondary" as const },
+  used: { label: "Checked in", icon: CheckCircle2, badge: "success" as const },
+  unused: { label: "Not checked in", icon: Power, badge: "outline" as const },
 };
 
 interface CheckInEmployeeCardProps {
@@ -35,10 +35,10 @@ export function CheckInEmployeeCard({
   const StatusIcon = presentation.icon;
   const isEnabledOrPending = employee.check_in_enabled || employee.pending_check_in_enable;
   const actionLabel = employee.pending_check_in_enable
-    ? "Hủy chờ"
+    ? "Cancel pending"
     : employee.check_in_enabled
-      ? "Tắt"
-      : "Bật";
+      ? "Disable"
+      : "Enable";
 
   return (
     <Card
@@ -68,10 +68,10 @@ export function CheckInEmployeeCard({
                 size="sm"
                 className="h-11 min-h-11 shrink-0 px-3 sm:h-8 sm:min-h-0 sm:px-2.5"
                 onClick={() => onMark(employee)}
-                aria-label={`Điểm danh hộ ${employee.employee_name}`}
+                aria-label={`Mark attendance for ${employee.employee_name}`}
               >
                 <LogIn className="h-4 w-4" aria-hidden />
-                Điểm danh
+                Mark attendance
               </Button>
             ) : null}
             <Button
@@ -81,7 +81,7 @@ export function CheckInEmployeeCard({
               className="h-11 min-h-11 min-w-11 shrink-0 px-3 sm:h-8 sm:min-h-0 sm:px-2.5"
               disabled={disabled}
               onClick={() => onToggle(employee)}
-              aria-label={`${actionLabel} điểm danh cho ${employee.employee_name}`}
+              aria-label={`${actionLabel} check-in for ${employee.employee_name}`}
             >
               {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               {actionLabel}
@@ -92,13 +92,13 @@ export function CheckInEmployeeCard({
 
       <div className="grid flex-1 grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] gap-3 p-3 py-2.5">
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Lượt điểm danh</p>
+          <p className="text-xs font-medium text-muted-foreground">Check-ins</p>
           <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
             {employee.attendance_count}
           </p>
         </div>
         <div className="min-w-0 border-l border-border/70 pl-3">
-          <p className="text-xs font-medium text-muted-foreground">Lần gần nhất</p>
+          <p className="text-xs font-medium text-muted-foreground">Last check-in</p>
           <p className="mt-1 truncate text-xs tabular-nums text-foreground" title={formatLastCheckIn(employee.last_check_in_at)}>
             {formatLastCheckIn(employee.last_check_in_at)}
           </p>

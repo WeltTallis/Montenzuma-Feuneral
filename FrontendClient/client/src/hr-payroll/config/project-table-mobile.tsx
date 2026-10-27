@@ -17,7 +17,7 @@ export const createProjectMobileConfig = (
     },
     {
       key: 'client_name',
-      label: 'Khách hàng',
+      label: 'Client',
       priority: 1,
       render: (row) => (
         <span className="typography-body-medium text-foreground/80">
@@ -47,7 +47,7 @@ export const createProjectMobileConfig = (
             {monthly > 0 && (
               <div className="flex items-center gap-1.5">
                 <span className="typography-body-medium font-semibold text-foreground tabular-nums">{formatEmployeeCount(monthly)}</span>
-                <span className="typography-label-medium text-muted-foreground">Lương tháng</span>
+                <span className="typography-label-medium text-muted-foreground">Monthly payroll</span>
               </div>
             )}
           </div>

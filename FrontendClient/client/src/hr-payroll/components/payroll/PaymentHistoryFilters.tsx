@@ -74,7 +74,7 @@ export const PaymentHistoryFilters = memo(function PaymentHistoryFilters({
       <SearchBar
         searchTerm={filters.search || ''}
         onSearchChange={(v) => set('search', v || undefined)}
-        placeholder="Tìm tên, CCCD..."
+        placeholder="Search name or national ID..."
         className="w-44"
       />
 
@@ -83,7 +83,7 @@ export const PaymentHistoryFilters = memo(function PaymentHistoryFilters({
         value={filters.fromDate || ''}
         onChange={(e) => set('fromDate', e.target.value)}
         className="h-8 w-[130px] text-xs"
-        aria-label="Từ ngày"
+        aria-label="From date"
       />
       <span className="text-muted-foreground text-xs">–</span>
       <Input
@@ -91,18 +91,18 @@ export const PaymentHistoryFilters = memo(function PaymentHistoryFilters({
         value={filters.toDate || ''}
         onChange={(e) => set('toDate', e.target.value)}
         className="h-8 w-[130px] text-xs"
-        aria-label="Đến ngày"
+        aria-label="To date"
       />
 
       <SearchableSelect
         value={selectedProjectId?.toString() || 'all'}
         onChange={handleProjectChange}
         options={[
-          { value: 'all', label: 'Tất cả dự án' },
+          { value: 'all', label: 'All projects' },
           ...(projectsData?.data?.map((p) => ({ value: p.id.toString(), label: p.name })) ?? []),
         ]}
-        placeholder="Tất cả dự án"
-        searchPlaceholder="Tìm dự án..."
+        placeholder="All projects"
+        searchPlaceholder="Search projects..."
         triggerClassName="h-8 min-h-0 w-[148px] text-xs"
       />
 
@@ -111,12 +111,12 @@ export const PaymentHistoryFilters = memo(function PaymentHistoryFilters({
         value={selectedEmployeeId?.toString() || 'all'}
         onChange={handleEmployeeChange}
         options={[
-          { value: 'all', label: 'Tất cả nhân viên' },
+          { value: 'all', label: 'All employees' },
           ...(employeesData?.data?.map((e) => ({ value: e.id.toString(), label: e.name })) ?? []),
         ]}
-        placeholder={isLoadingEmployees ? 'Loading...' : 'Tất cả nhân viên'}
+        placeholder={isLoadingEmployees ? 'Loading...' : 'All employees'}
         disabled={isLoadingEmployees}
-        searchPlaceholder="Tìm nhân viên..."
+        searchPlaceholder="Search employees..."
         triggerClassName="h-8 min-h-0 w-[148px] text-xs"
       />
 
@@ -126,7 +126,7 @@ export const PaymentHistoryFilters = memo(function PaymentHistoryFilters({
           className="flex items-center gap-1 h-8 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="h-3 w-3" />
-          Xóa lọc
+          Clear filters
         </button>
       )}
     </div>

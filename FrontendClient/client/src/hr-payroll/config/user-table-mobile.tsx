@@ -12,14 +12,14 @@ export const createUserMobileConfig = (
   const mobileFields: MobileField<User>[] = [
     {
       key: "role",
-      label: "Vai trò",
+      label: "Role",
       priority: 1,
       render: (user) => {
         let roleLabel = "Users";
         let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
 
         if (user.role === "admin") {
-          roleLabel = "Quản trị viên";
+          roleLabel = "Administrator";
           variant = "destructive";
         } else if (user.role === "partner") {
           roleLabel = "Management";
@@ -34,14 +34,14 @@ export const createUserMobileConfig = (
     },
     {
       key: "last_login",
-      label: "Hoạt động cuối",
+      label: "Last active",
       priority: 2,
       render: (user) => (
         <div className="typography-body-medium text-muted-foreground">
           {" "}
           {user.last_login
             ? format(new Date(user.last_login), 'dd/MM/yyyy')
-            : "Chưa đăng nhập"}{" "}
+            : "Never logged in"}{" "}
         </div>
       ),
     },

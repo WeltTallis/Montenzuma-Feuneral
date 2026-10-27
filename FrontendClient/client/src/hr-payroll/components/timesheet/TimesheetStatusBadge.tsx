@@ -16,59 +16,59 @@ interface TimesheetStatusBadgeProps {
 
 const STATUS_CONFIG = {
   draft: {
-    label: 'Bản nháp',
+    label: 'Draft',
     icon: AlertCircle,
     variant: 'secondary' as const,
     className: 'bg-muted text-foreground hover:bg-gray-200',
-    tooltip: 'Bảng chấm công chưa được gửi phê duyệt'
+    tooltip: 'Timesheet has not been submitted for approval'
   },
   pending_approval: {
-    label: 'Chờ phê duyệt',
+    label: 'Pending approval',
     icon: Clock,
     variant: 'outline' as const,
     className: 'bg-yellow-50 text-amber-800 border-yellow-200 hover:bg-yellow-100',
-    tooltip: 'Đang chờ người phê duyệt xem xét'
+    tooltip: 'Waiting for an approver to review'
   },
   approved: {
-    label: 'Đã phê duyệt',
+    label: 'Approved',
     icon: CheckCircle,
     variant: 'default' as const,
     className: 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100',
-    tooltip: 'Bảng chấm công đã được phê duyệt'
+    tooltip: 'Timesheet has been approved'
   },
   rejected: {
-    label: 'Đã loại',
+    label: 'Rejected',
     icon: XCircle,
     variant: 'destructive' as const,
     className: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',
-    tooltip: 'Bảng chấm công đã bị loại'
+    tooltip: 'Timesheet has been rejected'
   }
 };
 
 const PAYMENT_STATUS_CONFIG = {
   pending: {
-    label: 'Chờ thanh toán',
+    label: 'Awaiting payment',
     icon: Clock,
     className: 'bg-orange-50 text-orange-700 border-orange-200',
-    tooltip: 'Đã phê duyệt, chờ thanh toán'
+    tooltip: 'Approved and awaiting payment'
   },
   paid: {
-    label: 'Đã thanh toán',
+    label: 'Paid',
     icon: DollarSign,
     className: 'bg-green-50 text-green-800 border-green-200',
-    tooltip: 'Đã thanh toán hoàn tất'
+    tooltip: 'Payment completed'
   },
   failed: {
     label: 'Failed',
     icon: XCircle,
     className: 'bg-red-50 text-red-700 border-red-200',
-    tooltip: 'Thanh toán không thành công'
+    tooltip: 'Payment failed'
   },
   cancelled: {
     label: 'Cancelled',
     icon: XCircle,
     className: 'bg-muted/50 text-foreground border-border',
-    tooltip: 'Thanh toán đã bị hủy'
+    tooltip: 'Payment was cancelled'
   }
 };
 

@@ -38,9 +38,9 @@ export const AdvPartnerMetricsStrip = memo(function AdvPartnerMetricsStrip({
   // <30s / <5m / >5m — the last two cells each sum two backend buckets.
   // Tone encodes the speed: fast = emerald, mid = amber, slow = red.
   const processingCells = [
-    { label: '<30 giây', count: completedUnder30s, tone: 'text-emerald-700' },
-    { label: '<5 phút', count: completed30sTo2m + completed2mTo5m, tone: 'text-amber-700' },
-    { label: '>5 phút', count: completed5mTo15m + completedOver15m, tone: 'text-red-700' },
+    { label: '<30 sec', count: completedUnder30s, tone: 'text-emerald-700' },
+    { label: '<5 min', count: completed30sTo2m + completed2mTo5m, tone: 'text-amber-700' },
+    { label: '>5 min', count: completed5mTo15m + completedOver15m, tone: 'text-red-700' },
   ];
 
   const chrome = bare
@@ -49,7 +49,7 @@ export const AdvPartnerMetricsStrip = memo(function AdvPartnerMetricsStrip({
 
   return (
     <section
-      aria-label="Hiệu suất xử lý"
+      aria-label="Processing performance"
       className={cn('overflow-hidden', chrome, className)}
     >
       {isLoading ? (
@@ -60,13 +60,13 @@ export const AdvPartnerMetricsStrip = memo(function AdvPartnerMetricsStrip({
       ) : (
         <div className="px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Thời gian xử lý
+            Processing time
           </div>
           <div className="mt-1.5 grid grid-cols-3 divide-x divide-border/70 rounded-lg border border-border/70 bg-muted/30">
             {processingCells.map((cell) => (
               <div
                 key={cell.label}
-                title={`${cell.label}: ${cell.count} yêu cầu`}
+                title={`${cell.label}: ${cell.count} requests`}
                 className="px-2 py-2 text-center"
               >
                 <div

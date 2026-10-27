@@ -88,11 +88,11 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
   }, []);
 
   const filterChips = useMemo(() => [
-    { value: 'all', label: 'Tất cả', count: typeCounts.all },
-    { value: 'advance_payment_result', label: 'Kết quả ứng lương', count: typeCounts.advance_payment_result, dotClass: 'bg-emerald-500' },
-    { value: 'advance_payment_export', label: 'Xuất chuyển lô', count: typeCounts.advance_payment_export, dotClass: 'bg-amber-500' },
-    { value: 'flex_pay_import', label: 'Nhập bảng lương', count: typeCounts.flex_pay_import, dotClass: 'bg-blue-500' },
-    { value: 'advance_payment_sao_ke_export', label: 'Xuất sao kê', count: typeCounts.advance_payment_sao_ke_export, dotClass: 'bg-teal-500' },
+    { value: 'all', label: 'All', count: typeCounts.all },
+    { value: 'advance_payment_result', label: 'Advance payment results', count: typeCounts.advance_payment_result, dotClass: 'bg-emerald-500' },
+    { value: 'advance_payment_export', label: 'Bulk transfer exports', count: typeCounts.advance_payment_export, dotClass: 'bg-amber-500' },
+    { value: 'flex_pay_import', label: 'Payroll imports', count: typeCounts.flex_pay_import, dotClass: 'bg-blue-500' },
+    { value: 'advance_payment_sao_ke_export', label: 'Statement exports', count: typeCounts.advance_payment_sao_ke_export, dotClass: 'bg-teal-500' },
   ], [typeCounts]);
 
   const renderContent = () => {
@@ -114,15 +114,15 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
 
     if (allFiles.length === 0) {
       return (
-        <EmptyState title="Chưa có tệp nào được tải lên" size="sm" />
+        <EmptyState title="No files uploaded yet" size="sm" />
       );
     }
 
     if (filteredFiles.length === 0) {
       return (
         <EmptyState
-          title="Không tìm thấy tệp nào"
-          action={{ label: 'Xóa bộ lọc', onClick: handleClearFilters }}
+          title="No files found"
+          action={{ label: 'Clear filters', onClick: handleClearFilters }}
           size="sm"
         />
       );
@@ -169,7 +169,7 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold tracking-tight">Lịch sử File</h2>
+                <h2 className="text-lg font-bold tracking-tight">File history</h2>
                 {allFiles.length > 0 && (
                   <Badge variant="secondary" className="rounded-full px-2 py-0 text-xs font-mono">
                     {allFiles.length} file
@@ -177,7 +177,7 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed sm:truncate">
-                Tất cả file đã tải lên — bảng lương và kết quả chuyển khoản
+                Uploaded files — payroll and transfer results
               </p>
             </div>
           </div>
@@ -187,7 +187,7 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
         filteredFiles.length > 0 ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-xs text-muted-foreground">
-              Đang hiển thị <strong className="font-mono text-foreground">{Math.min(visibleCount, filteredFiles.length)}</strong>
+              Showing <strong className="font-mono text-foreground">{Math.min(visibleCount, filteredFiles.length)}</strong>
               {' / '}
               <strong className="font-mono text-foreground">{filteredFiles.length}</strong> file
             </span>
@@ -198,7 +198,7 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
                 onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
                 className="min-h-11 w-full text-xs font-semibold sm:w-auto"
               >
-                Tải thêm
+                Load more
                 <ChevronDown className="w-3 h-3 ml-1" />
               </Button>
             )}
@@ -213,8 +213,8 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo tên file hoặc người tải lên…"
-            aria-label="Tìm theo tên file hoặc người tải lên"
+            placeholder="Search by file name or uploader…"
+            aria-label="Search by file name or uploader"
             className="min-h-11 pl-9 pr-11 text-sm sm:pl-9 sm:pr-11"
           />
           {searchQuery && (
@@ -222,7 +222,7 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
               type="button"
               onClick={() => setSearchQuery('')}
               className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Xóa tìm kiếm"
+              aria-label="Clear search"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -233,7 +233,7 @@ export const FileHistorySheet = ({ open, onOpenChange }: FileHistorySheetProps) 
           size="sm"
           onClick={() => setSortNewest(prev => !prev)}
           className="min-h-11 shrink-0 px-3"
-          title={sortNewest ? 'Mới nhất trước' : 'Cũ nhất trước'}
+          title={sortNewest ? 'Newest first' : 'Oldest first'}
         >
           <ArrowUpDown className="w-4 h-4" />
         </Button>

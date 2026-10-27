@@ -64,13 +64,13 @@ export const PayrollControlCenter = memo(function PayrollControlCenter({
     },
     {
       key: 'pending_payment_count',
-      label: 'Nhân viên chờ thanh toán',
+      label: 'Employees awaiting payment',
       value: fmtInt(summary?.pendingEmployees),
       filter: 'pending_payment',
     },
     {
       key: 'pending_amount',
-      label: 'Chờ thanh toán',
+      label: 'Awaiting payment',
       value: formatCurrency(summary?.pendingPaymentAmount ?? 0),
       primary: true,
       mobileSpan: true,
@@ -84,7 +84,7 @@ export const PayrollControlCenter = memo(function PayrollControlCenter({
     },
     {
       key: 'paid',
-      label: 'Đã thanh toán',
+      label: 'Paid',
       value: formatCurrency(summary?.paidAmount ?? 0),
       className: 'lg:col-span-3',
       filter: 'paid',
@@ -97,7 +97,7 @@ export const PayrollControlCenter = memo(function PayrollControlCenter({
 
   return (
     <section
-      aria-label="Trung tâm điều khiển bảng công"
+      aria-label="Timesheet control centre"
       className={cn(
         'rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-soft)] sm:p-4',
         className,
@@ -121,10 +121,10 @@ export const PayrollControlCenter = memo(function PayrollControlCenter({
         <div className="lg:col-span-7 lg:pl-5">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="font-display text-[13px] font-bold tracking-tight text-foreground">
-              Chỉ số vận hành
+              Operational metrics
             </h2>
             <span className="hidden text-xs text-muted-foreground sm:inline">
-              Chọn một chỉ số để lọc danh sách
+              Select a metric to filter the list
             </span>
           </div>
 

@@ -37,8 +37,8 @@ export const TreasuryFeePanel = memo(function TreasuryFeePanel({
   // Footer companions: the two fee averages. Request/employee counts stay in
   // the pipeline band — repeating them here would duplicate adjacent metrics.
   const footerCols = [
-    { label: "Phí /yc", value: avgFeePerRequest },
-    { label: "Phí /nv", value: avgFeePerEmployee },
+    { label: "Fee per request", value: avgFeePerRequest },
+    { label: "Fee per employee", value: avgFeePerEmployee },
   ];
 
   return (
@@ -69,7 +69,7 @@ export const TreasuryFeePanel = memo(function TreasuryFeePanel({
           <div className="relative z-[1] flex items-center gap-1.5">
             <span className="treasury-signal bg-emerald-500" />
             <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
-              Phí thu kỳ này
+              Fees earned this period
             </span>
           </div>
 
@@ -81,7 +81,7 @@ export const TreasuryFeePanel = memo(function TreasuryFeePanel({
             <span className="rounded bg-emerald-50 px-1.5 py-px font-financial text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60 shadow-[0_0_14px_rgba(16,185,129,0.18)]">
               {feePercentage.toFixed(1)}%
             </span>
-            <span className="text-xs text-muted-foreground">trên giải ngân</span>
+            <span className="text-xs text-muted-foreground">of disbursements</span>
           </div>
 
           {/* Footer rail — pinned via mt-auto to the shared band baseline. */}

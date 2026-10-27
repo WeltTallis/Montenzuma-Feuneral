@@ -121,8 +121,8 @@ export function TableLoadingSkeleton({ rows = 5, columns = 4 }: { rows?: number;
 export function NoEmployeesFound({ onAddEmployee }: { onAddEmployee?: () => void }) {
   return (
     <EmptyState
-      title="Chưa có nhân viên"
-      description="Hệ thống chưa có nhân viên nào. Hãy thêm nhân viên đầu tiên."
+      title="No employees yet"
+      description="There are no employees in the system. Add your first employee to get started."
     />
   );
 }
@@ -130,8 +130,8 @@ export function NoEmployeesFound({ onAddEmployee }: { onAddEmployee?: () => void
 export function NoSearchResults({ query, onClearSearch }: { query?: string; onClearSearch?: () => void }) {
   return (
     <EmptyState
-      title="Không tìm thấy kết quả"
-      description="Không có nhân viên nào phù hợp với từ khóa tìm kiếm."
+      title="No results found"
+      description="No employees match your search."
     />
   );
 }

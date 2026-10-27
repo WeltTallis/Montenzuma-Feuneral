@@ -6,7 +6,6 @@ import {
   Receipt, MoreHorizontal, Eye, Loader2,
 } from 'lucide-react';
 import { format, parseISO, subHours } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import { showErrorNotification } from '@hr/utils/error-handler';
 import { advancePaymentService } from '@hr/services/api/advance-payment.service';
 import { cn } from '@hr/lib/utils';
@@ -28,35 +27,35 @@ export interface UnifiedFileItem {
 
 const TYPE_CONFIG = {
   flex_pay_import: {
-    label: 'Nhập bảng lương',
+    label: 'Import payroll',
     iconboxClass: 'bg-blue-100 text-blue-700',
     textClass: 'text-blue-700',
     dotClass: 'bg-blue-500',
     Icon: Upload,
   },
   advance_payment_result: {
-    label: 'Kết quả ứng lương',
+    label: 'Advance payment results',
     iconboxClass: 'bg-emerald-100 text-emerald-700',
     textClass: 'text-emerald-700',
     dotClass: 'bg-emerald-500',
     Icon: CheckCircle2,
   },
   advance_payment_export: {
-    label: 'Xuất chuyển lô',
+    label: 'Bulk transfer export',
     iconboxClass: 'bg-amber-100 text-amber-700',
     textClass: 'text-amber-700',
     dotClass: 'bg-amber-500',
     Icon: Download,
   },
   advance_payment_sao_ke_export: {
-    label: 'Xuất sao kê',
+    label: 'Statement export',
     iconboxClass: 'bg-teal-100 text-teal-700',
     textClass: 'text-teal-700',
     dotClass: 'bg-teal-500',
     Icon: FileSpreadsheet,
   },
   advance_payment_sao_ke_result: {
-    label: 'Kết quả thanh toán sao kê',
+    label: 'Statement payment results',
     iconboxClass: 'bg-rose-100 text-rose-700',
     textClass: 'text-rose-700',
     dotClass: 'bg-rose-500',
@@ -119,7 +118,7 @@ export function UnifiedFileCard({ file, isNew, alwaysShowActions }: UnifiedFileC
           <p className="min-w-0 break-words text-sm font-semibold leading-snug sm:truncate" title={file.filename}>{file.filename}</p>
           {showNewBadge && (
             <Badge className="bg-emerald-100 text-emerald-700 text-xs px-1.5 py-0 rounded-sm font-bold shrink-0 border-0 leading-4">
-              MỚI
+              NEW
             </Badge>
           )}
         </div>
@@ -129,7 +128,7 @@ export function UnifiedFileCard({ file, isNew, alwaysShowActions }: UnifiedFileC
           <span className="min-w-0 break-words sm:truncate">{file.uploadedBy}</span>
           <span className="text-border">·</span>
           <span className="font-mono text-xs shrink-0">
-            {file.date ? format(parseISO(file.date), 'dd/MM · HH:mm', { locale: vi }) : ''}
+            {file.date ? format(parseISO(file.date), 'dd/MM · HH:mm') : ''}
           </span>
         </div>
       </div>
@@ -145,7 +144,7 @@ export function UnifiedFileCard({ file, isNew, alwaysShowActions }: UnifiedFileC
           variant="ghost"
           size="icon"
           className="h-11 w-11 text-muted-foreground hover:text-foreground"
-          aria-label="Xem"
+          aria-label="View"
         >
           <Eye className="w-4 h-4" />
         </Button>
@@ -166,7 +165,7 @@ export function UnifiedFileCard({ file, isNew, alwaysShowActions }: UnifiedFileC
           variant="ghost"
           size="icon"
           className="h-11 w-11 text-muted-foreground hover:text-foreground"
-          aria-label="Thêm"
+          aria-label="More actions"
         >
           <MoreHorizontal className="w-4 h-4" />
         </Button>

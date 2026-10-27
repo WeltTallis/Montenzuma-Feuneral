@@ -29,7 +29,7 @@ export const AdvPartnerHeroStrip = memo(function AdvPartnerHeroStrip({
   const avgPerRequest = totalPaid > 0 ? totalAmount / totalPaid : 0;
   return (
     <section
-      aria-label="Giải ngân"
+      aria-label="Disbursement"
       className={cn(
         "treasury-panel flex flex-col",
         compact ? "p-3.5" : "p-[22px] px-7",
@@ -52,7 +52,7 @@ export const AdvPartnerHeroStrip = memo(function AdvPartnerHeroStrip({
         <>
           <div className="relative z-[1] flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
             <span className="treasury-signal bg-emerald-500" />
-            Giải ngân kỳ này
+            Disbursed this period
           </div>
           <div className={cn("treasury-value relative z-[1] mt-1.5 max-w-full break-words font-financial font-semibold leading-[1.08] tracking-normal text-foreground [text-shadow:0_0_36px_rgba(16,185,129,0.22)]", compact ? "text-[clamp(1.5rem,7.5vw,1.75rem)]" : "text-[clamp(1.875rem,7vw,2.25rem)]")}>
             <AnimatedCurrency target={totalAmount} />
@@ -63,7 +63,7 @@ export const AdvPartnerHeroStrip = memo(function AdvPartnerHeroStrip({
           <div className="mt-auto pt-3">
             <div className="treasury-rail pt-2.5">
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Trung bình /yc
+                Average per request
               </div>
               <div className="mt-0.5 truncate font-financial text-[15px] font-semibold leading-snug text-foreground tabular-nums">
                 {avgPerRequest > 0 ? `~${formatCurrency(avgPerRequest)}` : "—"}

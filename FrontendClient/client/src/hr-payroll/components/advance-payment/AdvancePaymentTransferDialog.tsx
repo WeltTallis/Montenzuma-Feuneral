@@ -27,8 +27,8 @@ export const AdvancePaymentTransferDialog = memo(
         <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-md gap-0 overflow-hidden" contentPadding="none" hideCloseButton>
             <DialogNavyHeader
-              title="Chuyển lô ứng lương"
-              description="Quản lý và theo dõi các lượt chuyển tiền ứng lương"
+              title="Bulk salary advance transfers"
+              description="Manage and track salary advance transfers"
             />
 
             {/* Actions */}
@@ -43,7 +43,7 @@ export const AdvancePaymentTransferDialog = memo(
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <Download className="w-4 h-4" />
                 }
-                Xuất chuyển lô
+                Export bulk transfer
               </Button>
               <Button
                 variant="outline"
@@ -51,7 +51,7 @@ export const AdvancePaymentTransferDialog = memo(
                 onClick={() => setIsUploadDialogOpen(true)}
               >
                 <ArrowUpFromLine className="w-4 h-4" />
-                Nhập KQ chuyển
+                Import transfer results
               </Button>
             </div>
           </DialogContent>

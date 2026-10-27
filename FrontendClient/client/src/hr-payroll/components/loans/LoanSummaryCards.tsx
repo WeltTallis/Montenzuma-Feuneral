@@ -39,9 +39,9 @@ export function LoanSummaryCards({ summary, isLoading }: LoanSummaryCardsProps) 
     icon: LucideIcon;
     color: 'blue' | 'rose' | 'amber' | 'teal';
   }> = [
-    { title: 'Tổng vay', value: formatVND(summary.total_borrowed), icon: DollarSign, color: 'blue' },
-    { title: 'Dư nợ hiện tại', value: formatVND(summary.total_outstanding), icon: TrendingDown, color: 'rose' },
-    { title: 'Lãi đã trả', value: formatVND(summary.total_interest_paid), icon: Percent, color: 'amber' },
+    { title: 'Total borrowed', value: formatVND(summary.total_borrowed), icon: DollarSign, color: 'blue' },
+    { title: 'Outstanding balance', value: formatVND(summary.total_outstanding), icon: TrendingDown, color: 'rose' },
+    { title: 'Interest paid', value: formatVND(summary.total_interest_paid), icon: Percent, color: 'amber' },
     { title: 'Loan', value: summary.active_loans_count, icon: CreditCard, color: 'teal' },
   ];
 

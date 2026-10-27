@@ -19,14 +19,14 @@ export const TimesheetEmptyState = memo(function TimesheetEmptyState({
   if (variant === 'no-data') {
     return (
       <EmptyState
-        title="Chưa có dữ liệu chấm công cho kỳ này"
-        description="Bắt đầu bằng cách nhập công cho nhân viên trong kỳ."
+        title="No timesheet entries for this period"
+        description="Start by adding employee timesheets for this period."
         className="rounded-xl border border-dashed border-border bg-muted/20 px-4"
       >
         {onAddTimesheet && (
           <Button size="sm" onClick={onAddTimesheet}>
             <Plus className="h-4 w-4 mr-1.5" />
-            Nhập công
+            Add timesheets
           </Button>
         )}
       </EmptyState>
@@ -36,14 +36,14 @@ export const TimesheetEmptyState = memo(function TimesheetEmptyState({
   if (variant === 'no-filter-results') {
     return (
       <EmptyState
-        title="Không tìm thấy kết quả"
-        description="Thử điều chỉnh hoặc xoá bộ lọc để xem thêm kết quả."
+        title="No results found"
+        description="Adjust or clear the filters to see more results."
         className="rounded-xl border border-dashed border-border bg-muted/20 px-4"
       >
         {onClearFilters && (
           <Button size="sm" variant="outline" onClick={onClearFilters}>
             <RotateCcw className="h-4 w-4 mr-1.5" />
-            Xoá bộ lọc
+            Clear filters
           </Button>
         )}
       </EmptyState>

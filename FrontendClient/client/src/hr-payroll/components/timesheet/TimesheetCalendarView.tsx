@@ -302,9 +302,9 @@ export function TimesheetCalendarView({
     return (
       <div className="text-center py-12">
         <Calendar className="mx-auto h-12 w-12 text-destructive" />
-        <h3 className="mt-4 typography-title-large text-destructive">Lỗi tải dữ liệu</h3>
+        <h3 className="mt-4 typography-title-large text-destructive">Unable to load data</h3>
         <p className="mt-2 typography-body-medium text-muted-foreground">
-          Không thể tải dữ liệu bảng công. Vui lòng thử lại sau.
+          Timesheet data could not be loaded. Please try again.
         </p>
       </div>
     );
@@ -314,9 +314,9 @@ export function TimesheetCalendarView({
     return (
       <div className="text-center py-12">
         <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 typography-title-large">Chưa chọn nhân viên</h3>
+        <h3 className="mt-4 typography-title-large">No employee selected</h3>
         <p className="mt-2 typography-body-medium text-muted-foreground">
-          Vui lòng chọn nhân viên để xem bảng công.
+          Select an employee to view their timesheet.
         </p>
       </div>
     );
@@ -332,16 +332,16 @@ export function TimesheetCalendarView({
               {calendarData.employeeName}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {calendarData.employeeCode} · {calendarData.projects.length} dự án
+              {calendarData.employeeCode} · {calendarData.projects.length} projects
             </p>
           </div>
 
           {/* Status Legend — compact horizontal */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1"><div className="w-3 h-3 bg-amber-100 border border-amber-300 rounded" /><span>Đã TT</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 bg-amber-100 border border-amber-300 rounded" /><span>Paid</span></div>
             <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded" /><span>Approved</span></div>
             <div className="flex items-center gap-1"><div className="w-3 h-3 bg-muted border border-border rounded" /><span>Pending approval</span></div>
-            <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded" /><span>Bị loại</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded" /><span>Rejected</span></div>
           </div>
         </div>
 
@@ -454,7 +454,7 @@ function ProjectCalendar({ project, year, month, onDayClick, onEntryClick, bulkT
             </Badge>
             <Badge variant="secondary" className="text-xs">
               <Calendar className="w-3 h-3 mr-1" />
-              {project.monthlyStats.workingDays} ngày
+              {project.monthlyStats.workingDays} days
             </Badge>
           </div>
         </div>

@@ -59,7 +59,7 @@ export function PaymentHistoryTable({ data, isLoading, pagination, sorting, onSo
     },
     {
       accessorKey: 'position',
-      header: 'Vị trí',
+      header: 'Position',
       enableSorting: true,
       size: 130,
       cell: ({ row }) => row.original.position,
@@ -101,8 +101,8 @@ export function PaymentHistoryTable({ data, isLoading, pagination, sorting, onSo
   if (data.length === 0) {
     return (
       <EmptyState
-        title="Không tìm thấy lịch sử thanh toán"
-        description="Chưa có lịch sử thanh toán nào trong khoảng thời gian này."
+        title="No payment history found"
+        description="There are no payments in this date range."
         size="sm"
       />
     );
@@ -115,7 +115,7 @@ export function PaymentHistoryTable({ data, isLoading, pagination, sorting, onSo
       sorting={sorting}
       onSortingChange={onSortingChange}
       showPagination={false}
-      caption="Bảng lịch sử thanh toán"
+      caption="Payment history"
     />
   );
 }

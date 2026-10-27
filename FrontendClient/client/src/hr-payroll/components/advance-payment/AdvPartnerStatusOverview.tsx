@@ -38,7 +38,7 @@ interface StatusCellDef {
 const CELLS: StatusCellDef[] = [
   {
     key: "completed",
-    label: "Hoàn tất",
+    label: "Completed",
     barClass: "bg-gradient-to-r from-emerald-500 to-emerald-400",
     dotClass: "bg-emerald-500",
     getValue: (p) => p.totalPaid,
@@ -46,7 +46,7 @@ const CELLS: StatusCellDef[] = [
   },
   {
     key: "pending",
-    label: "Chờ xử lý",
+    label: "Pending",
     barClass: "bg-amber-400",
     dotClass: "bg-amber-400",
     getValue: (p) => p.totalPending,
@@ -104,14 +104,14 @@ export const AdvPartnerStatusOverview = memo(function AdvPartnerStatusOverview({
 
   return (
     <section
-      aria-label="Tiến độ yêu cầu"
+      aria-label="Request progress"
       className={cn("flex h-full flex-col justify-center", chrome, className)}
     >
       {/* Header — title + total + success rate badges */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2 className="text-[13px] font-bold tracking-tight text-foreground">
-            Tiến độ yêu cầu
+            Request progress
           </h2>
           <span className="rounded bg-muted px-1.5 py-px font-financial text-xs font-medium tabular-nums text-muted-foreground">
             {totalRequests}
@@ -137,7 +137,7 @@ export const AdvPartnerStatusOverview = memo(function AdvPartnerStatusOverview({
         </div>
       ) : totalRequests === 0 ? (
         <div className="mt-3 flex min-h-10 items-center rounded-lg border border-dashed border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          Chưa có yêu cầu trong kỳ đã chọn
+          No requests for the selected period
         </div>
       ) : (
         <>

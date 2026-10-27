@@ -33,7 +33,7 @@ const fmtDate = (rfc3339: string): string => {
 export function CashReadinessCard({ data, isLoading, isError }: CashReadinessCardProps) {
   if (isLoading) {
     return (
-      <div className="treasury-panel flex h-full flex-col gap-3" aria-busy="true" aria-label="Đang tải dự báo tiền trả">
+      <div className="treasury-panel flex h-full flex-col gap-3" aria-busy="true" aria-label="Loading payout forecast">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-9 w-52" />
         <Skeleton className="h-14 w-full" />
@@ -47,10 +47,10 @@ export function CashReadinessCard({ data, isLoading, isError }: CashReadinessCar
       <div className="treasury-panel flex h-full flex-col justify-center" role="status">
         <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" aria-hidden="true" />
-          Dự báo tiền trả
+          Payout forecast
         </span>
         <p className="mt-2 text-[12px] text-muted-foreground">
-          Tạm thời không có dữ liệu dự báo thanh toán.
+          Payout forecast data is temporarily unavailable.
         </p>
       </div>
     );
@@ -59,7 +59,7 @@ export function CashReadinessCard({ data, isLoading, isError }: CashReadinessCar
   const display = getCashReadinessDisplay(data);
 
   return (
-    <section className="treasury-panel flex h-full flex-col" aria-label={`Dự báo tiền trả kỳ ${data.ky}`}>
+    <section className="treasury-panel flex h-full flex-col" aria-label={`Payout forecast for period ${data.ky}`}>
       {/* Measurement mesh — faint dot grid under the panel label. */}
       <div className="treasury-mesh" aria-hidden />
 
@@ -69,19 +69,19 @@ export function CashReadinessCard({ data, isLoading, isError }: CashReadinessCar
           aria-hidden="true"
           title={display.reliabilityLabel}
         />
-        Dự báo tiền trả
+        Payout forecast
       </span>
 
       <div className="relative z-[1] mt-2 min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-          Nên chuẩn bị
+          Recommended reserve
         </p>
         <p className="treasury-value mt-1 break-words font-financial text-[clamp(1.375rem,3.5vw,1.75rem)] font-bold leading-none tabular-nums tracking-tight text-primary">
           {formatCurrency(display.recommendedReserve)}
         </p>
         {display.showExpectedPayout && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Dự kiến chi trả{' '}
+            Expected payout{' '}
             <span className="font-financial font-semibold tabular-nums text-foreground">
               {formatCurrency(display.expectedPayout)}
             </span>
@@ -90,7 +90,7 @@ export function CashReadinessCard({ data, isLoading, isError }: CashReadinessCar
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
-        Kỳ {data.ky} · Thanh toán ngày {fmtDate(data.next_pay_date)}
+        Period {data.ky} · Payment date {fmtDate(data.next_pay_date)}
       </p>
 
       {display.dataWarning && (
@@ -100,19 +100,19 @@ export function CashReadinessCard({ data, isLoading, isError }: CashReadinessCar
       )}
 
       <div className="treasury-rail relative z-[1] mt-2.5 pt-2.5 lg:mt-auto">
-        <p className="text-xs font-medium text-muted-foreground">Khoảng dự báo trung tâm</p>
+        <p className="text-xs font-medium text-muted-foreground">Forecast range</p>
         <dl
           className="mt-1.5 grid grid-cols-2 gap-2"
-          aria-label={`Từ ${formatCurrency(display.intervalLower)} đến ${formatCurrency(display.intervalUpper)}`}
+          aria-label={`From ${formatCurrency(display.intervalLower)} to ${formatCurrency(display.intervalUpper)}`}
         >
           <div className="min-w-0 rounded-md bg-muted/45 px-2.5 py-1.5">
-            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Từ</dt>
+            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">From</dt>
             <dd className="mt-0.5 whitespace-nowrap font-financial text-[clamp(0.7rem,2vw,0.8rem)] font-semibold tabular-nums text-foreground">
               {formatCurrency(display.intervalLower)}
             </dd>
           </div>
           <div className="min-w-0 rounded-md bg-primary/5 px-2.5 py-1.5 text-right">
-            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Đến</dt>
+            <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">To</dt>
             <dd className="mt-0.5 whitespace-nowrap font-financial text-[clamp(0.7rem,2vw,0.8rem)] font-semibold tabular-nums text-primary">
               {formatCurrency(display.intervalUpper)}
             </dd>
