@@ -41,7 +41,6 @@ func registerSchedulerJobs(
 	advancePaymentReqRepo domain.AdvancePaymentRequestRepository,
 	walletSyncService wallet.WalletService,
 	flexPayReconciliationService *domainServices.FlexPayReconciliationService,
-	loanRepaymentReminderService *notification.LoanRepaymentReminderService,
 	zaloConnectService *zaloconnect.Service,
 	aggregateRecomputeService *project.AggregateRecomputeService,
 	walletBalanceAlertService *notification.WalletBalanceAlertService,
@@ -458,28 +457,7 @@ func registerSchedulerJobs(
 		},
 	})
 
-	// 11. Loan repayment reminder - daily at 9:00 AM, on the due date itself
-	// (same-day only; never sent in advance).
-	s.AddJob(scheduler.Job{
-		Name:    "loan_repayment_reminder",
-		Cron:    "0 9 * * *",
-		Enabled: true,
-		Handler: func() {
-			ctx := context.Background()
-			count, err := loanRepaymentReminderService.Send(ctx, clock.Now())
-			if err != nil {
-				logger.Error("Failed to send loan repayment reminders", "schedule_count", count, "error", err)
-				return
-			}
-			if count == 0 {
-				logger.Info("No loan repayments due today, skipping reminder")
-				return
-			}
-			logger.Info("Loan repayment reminders sent", "schedule_count", count)
-		},
-	})
-
-	// 12. Zalo OA token renewal - daily. Access tokens live ~24h and the
+	// 11. Zalo OA token renewal - daily. Access tokens live ~24h and the
 	// refresh_token is single-use: each exchange rotates the chain. Sends
 	// refresh reactively, but on a day with zero ZNS traffic the chain would
 	// go stale; this job advances it unconditionally. Skips silently when

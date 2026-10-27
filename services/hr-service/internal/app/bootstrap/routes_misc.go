@@ -134,32 +134,6 @@ func setupAssetRoutes(protected *gin.RouterGroup, container *Container) {
 	}
 }
 
-func setupLoanRoutes(protected *gin.RouterGroup, container *Container) {
-	// Lenders
-	lenders := protected.Group("/lenders")
-	{
-		lenders.POST("", container.Handlers.Lender.CreateLender)
-		lenders.GET("", container.Handlers.Lender.ListLenders)
-		lenders.GET("/:id", container.Handlers.Lender.GetLender)
-		lenders.PUT("/:id", container.Handlers.Lender.UpdateLender)
-		lenders.DELETE("/:id", container.Handlers.Lender.DeleteLender)
-	}
-
-	// Loans
-	loans := protected.Group("/loans")
-	{
-		loans.POST("", container.Handlers.Loan.CreateLoan)
-		loans.GET("", container.Handlers.Loan.ListLoans)
-		loans.GET("/:id", container.Handlers.Loan.GetLoan)
-		loans.POST("/:id/disburse", container.Handlers.Loan.DisburseLoan)
-		loans.POST("/:id/repay", container.Handlers.Loan.RepayPrincipal)
-		loans.GET("/:id/schedule", container.Handlers.Loan.GetSchedule)
-		loans.POST("/:id/repay-schedule", container.Handlers.Loan.ProcessScheduledPayment) // New endpoint for scheduled payments
-		loans.PATCH("/:id", container.Handlers.Loan.UpdateLoan)
-		loans.DELETE("/:id", container.Handlers.Loan.DeleteLoan)
-	}
-}
-
 func setupEmailRoutes(protected *gin.RouterGroup, container *Container) {
 	emails := protected.Group("/email")
 	{

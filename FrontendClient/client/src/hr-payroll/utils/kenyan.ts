@@ -12,7 +12,7 @@ export const formatKensynCurrency = (
     notation: 'standard',
   });
   const formattedAmount = formatter.format(amount);
-  return showSymbol ? `${formattedAmount} ₱` : formattedAmount;
+  return showSymbol ? `KES ${formattedAmount}` : formattedAmount;
 };
 
 export const formatKensynDate = (

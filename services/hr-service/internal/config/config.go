@@ -437,7 +437,7 @@ func Load() (*Config, error) {
 		},
 		Scheduler: SchedulerConfig{
 			Enabled:                  parseBool(getEnv("SCHEDULER_ENABLED", "true")),
-			Timezone:                 getEnv("SCHEDULER_TIMEZONE", "Asia/Ho_Chi_Minh"),
+			Timezone:                 getEnv("SCHEDULER_TIMEZONE", "Africa/Nairobi"),
 			TimesheetReminderEnabled: parseBool(getEnv("TIMESHEET_REMINDER_ENABLED", "true")),
 			PayrollReminderEnabled:   parseBool(getEnv("PAYROLL_REMINDER_ENABLED", "true")),
 			NotificationDays:         parseIntSlice(getEnv("NOTIFICATION_DAYS", "9,16,23,-1")),

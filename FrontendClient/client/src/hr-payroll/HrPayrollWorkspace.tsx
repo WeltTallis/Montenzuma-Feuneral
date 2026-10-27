@@ -21,8 +21,6 @@ const AdminLedger = lazy(() => import('@hr/pages/admin/TransactionsPage'));
 const AdminLedgerMobile = lazy(() => import('@hr/pages/mobile/admin/LedgerEntriesPage'));
 const AdminAdvancePayments = lazy(() => import('@hr/pages/admin/AdvancePaymentsPage'));
 const AdminAdvancePaymentsMobile = lazy(() => import('@hr/pages/mobile/admin/AdvancePaymentsPage'));
-const AdminLoans = lazy(() => import('@hr/pages/admin/LoansPage'));
-const AdminLoansMobile = lazy(() => import('@hr/pages/mobile/admin/LoansPage'));
 const AdminUsers = lazy(() => import('@hr/pages/admin/UsersPage'));
 const AdminUsersMobile = lazy(() => import('@hr/pages/mobile/admin/UsersPage'));
 const AdminWallet = lazy(() => import('@hr/pages/admin/WalletPage'));
@@ -57,7 +55,6 @@ const ROLE_NAV: Record<AppRole, Array<{ label: string; path: string }>> = {
     { label: 'Timesheets', path: 'timesheets' },
     { label: 'Ledger', path: 'ledger' },
     { label: 'Advance payments', path: 'advance-payments' },
-    { label: 'Loans', path: 'loans' },
     { label: 'Wallet', path: 'wallet' },
     { label: 'Payment history', path: 'payment-history' },
     { label: 'Users', path: 'users' },
@@ -77,7 +74,7 @@ const ROLE_NAV: Record<AppRole, Array<{ label: string; path: string }>> = {
 
 const PageLoading = () => (
   <div className="flex min-h-40 items-center justify-center text-sm text-slate-500" role="status">
-    Loading   Attedance…
+    Loading attendance…
   </div>
 );
 
@@ -98,7 +95,6 @@ const AdminRoutes = () => (
     <Route path="timesheets" element={<Responsive desktop={AdminTimesheets} mobile={AdminTimesheetsMobile} />} />
     <Route path="ledger" element={<Responsive desktop={AdminLedger} mobile={AdminLedgerMobile} />} />
     <Route path="advance-payments" element={<Responsive desktop={AdminAdvancePayments} mobile={AdminAdvancePaymentsMobile} />} />
-    <Route path="loans" element={<Responsive desktop={AdminLoans} mobile={AdminLoansMobile} />} />
     <Route path="wallet" element={<Responsive desktop={AdminWallet} mobile={AdminWalletMobile} />} />
     <Route path="payment-history" element={<AdminPaymentHistory />} />
     <Route path="users" element={<Responsive desktop={AdminUsers} mobile={AdminUsersMobile} />} />

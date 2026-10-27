@@ -247,7 +247,7 @@ export function TimesheetGroupedTable({
                       {formatDateWithWeekday(group.date)}
                     </p>
                     <p className="typography-body-small text-muted-foreground">
-                      {group.entries.length} mục
+                      {group.entries.length} entries
                     </p>
                   </div>
 
@@ -416,7 +416,7 @@ export function TimesheetGroupedTable({
                           }}
                         >
                           <CheckSquare className="w-3 h-3 mr-1" />
-                          <span className="hidden sm:inline">Duyệt tất cả</span>
+                          <span className="hidden sm:inline">Approve all</span>
                           <span className="sm:hidden">Approve</span>
                         </Button>
                       )}
@@ -431,8 +431,8 @@ export function TimesheetGroupedTable({
                           }}
                         >
                           <XCircle className="w-3 h-3 mr-1" />
-                          <span className="hidden sm:inline">Loại tất cả</span>
-                          <span className="sm:hidden">Loại</span>
+                          <span className="hidden sm:inline">Reject all</span>
+                          <span className="sm:hidden">Reject</span>
                         </Button>
                       )}
                     </div>
@@ -489,14 +489,14 @@ export function TimesheetGroupedTable({
         <ConfirmDialog
           open={isBulkApproveDialogOpen}
           onOpenChange={handleBulkApproveDialogClose}
-          title="Duyệt nhóm bảng công"
+          title="Approve timesheet group"
           description={createGroupBulkApprovalContent(
             bulkApproveGroup.employeeName,
             bulkApproveGroup.employeeCode,
             bulkApproveGroup.date,
             bulkApproveGroup.entries
           )}
-          confirmText="Duyệt nhóm"
+          confirmText="Approve group"
           onConfirm={() => handleBulkGroupApprove(bulkApproveGroup)}
         />
       )}

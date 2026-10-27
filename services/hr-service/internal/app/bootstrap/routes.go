@@ -71,7 +71,6 @@ func setupProtectedRoutes(v1 *gin.RouterGroup, container *Container) {
 	setupNotificationRoutes(protected, container)
 	setupPushRoutes(v1, protected, container)
 	setupAssetRoutes(protected, container)
-	setupLoanRoutes(protected, container)
 	setupEmailRoutes(protected, container)
 	setupDBRoutes(protected, container)
 	setupMetricsRoutes(protected, container)

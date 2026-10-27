@@ -4,14 +4,13 @@ import (
 	"regexp"
 	"strings"
 
-	"api-server/internal/constants"
 )
 
-// ErrorTranslator handles the translation of technical errors to user-friendly messages
+// ErrorTranslator handles the translation of technical errors to user-friendly messages.
 type ErrorTranslator struct {
-	// Map of technical error patterns to user-friendly Vietnamese messages
+	// Map of technical error patterns to user-friendly English messages.
 	technicalErrorMappings map[string]string
-	// Map of status replacements for Vietnamese
+	// Map of internal status values to user-friendly labels.
 	statusReplacements map[string]string
 }
 
@@ -19,33 +18,33 @@ type ErrorTranslator struct {
 func NewErrorTranslator() *ErrorTranslator {
 	return &ErrorTranslator{
 		technicalErrorMappings: map[string]string{
-			"Field 'paytype' doesn't have a default value":                                        "Lỗi máy chủ nội bộ: Thiếu cấu hình loại lương",
-			"Field 'pay_type' doesn't have a default value":                                       "Lỗi máy chủ nội bộ: Thiếu cấu hình loại lương",
-			"Field 'payrate' doesn't have a default value":                                        "Lỗi máy chủ nội bộ: Thiếu cấu hình mức lương",
-			"Field 'pay_rate' doesn't have a default value":                                       "Lỗi máy chủ nội bộ: Thiếu cấu hình mức lương",
-			"Employee is not assigned to this project":                                            "Nhân viên chưa được phân công vào dự án này",
-			"No active payrate configuration found":                                               "Không tìm thấy cấu hình mức lương hiện hành cho dự án này",
-			"Saturday requires day_type":                                                          "Thứ 7 yêu cầu chỉ định loại ngày: 'ngày thường' hoặc 'ngày nghỉ'",
-			"Timesheet entry already exists":                                                      "Đã có bảng chấm công cho nhân viên, dự án, ngày và loại lương này",
-			"failed to set payrate for path":                                                      "Cấu hình mức lương không hợp lệ cho loại công việc đã chỉ định",
-			"Total hours worked per day cannot exceed 24 hours":                                   "Tổng số giờ làm việc trong ngày không thể vượt quá 24 giờ",
-			"current status is 'pending_approval', which cannot transition to 'pending_approval'": constants.MsgTimesheetAlreadyExistsPendingVN,
-			"current status is 'approved', which cannot transition to 'pending_approval'":         constants.MsgTimesheetAlreadyExistsApprovedVN,
+			"Field 'paytype' doesn't have a default value":                                        "Internal server error: missing pay type configuration",
+			"Field 'pay_type' doesn't have a default value":                                       "Internal server error: missing pay type configuration",
+			"Field 'payrate' doesn't have a default value":                                        "Internal server error: missing pay rate configuration",
+			"Field 'pay_rate' doesn't have a default value":                                       "Internal server error: missing pay rate configuration",
+			"Employee is not assigned to this project":                                            "The employee is not assigned to this project",
+			"No active payrate configuration found":                                               "No active pay rate configuration was found for this project",
+			"Saturday requires day_type":                                                          "Select a day type for Saturday: regular day or rest day",
+			"Timesheet entry already exists":                                                      "A timesheet entry already exists for this employee, project, date and pay type",
+			"failed to set payrate for path":                                                      "The pay rate configuration is invalid for the selected work type",
+			"Total hours worked per day cannot exceed 24 hours":                                   "Total working hours per day cannot exceed 24",
+			"current status is 'pending_approval', which cannot transition to 'pending_approval'": "A timesheet entry for this employee, project and date is already pending approval",
+			"current status is 'approved', which cannot transition to 'pending_approval'":         "A timesheet entry for this employee, project and date has already been approved",
 		},
 		statusReplacements: map[string]string{
-			"'pending_approval'": "'chờ phê duyệt'",
-			"'approved'":         "'đã phê duyệt'",
-			"'rejected'":         "'đã từ chối'",
-			"'draft'":            "'nháp'",
-			"pending_approval":   "chờ phê duyệt",
-			"approved":           "đã phê duyệt",
-			"rejected":           "đã từ chối",
-			"draft":              "nháp",
+			"'pending_approval'": "'pending approval'",
+			"'approved'":         "'approved'",
+			"'rejected'":         "'rejected'",
+			"'draft'":            "'draft'",
+			"pending_approval":   "pending approval",
+			"approved":           "approved",
+			"rejected":           "rejected",
+			"draft":              "draft",
 		},
 	}
 }
 
-// TranslateError converts technical errors to user-friendly Vietnamese messages
+// TranslateError converts technical errors to user-friendly English messages.
 func (t *ErrorTranslator) TranslateError(err error) string {
 	errMsg := err.Error()
 
@@ -90,15 +89,14 @@ func (t *ErrorTranslator) CleanMessage(message string) string {
 	re2 := regexp.MustCompile(`:\s*\w+\[\d+\]:\s*`)
 	message = re2.ReplaceAllString(message, ": ")
 
-	// Replace internal status values with user-friendly Vietnamese
+	// Replace internal status values with user-friendly labels.
 	for internal, userFriendly := range t.statusReplacements {
 		message = strings.ReplaceAll(message, internal, userFriendly)
 	}
 
-	// Replace technical terms with user-friendly Vietnamese
-	message = strings.ReplaceAll(message, "cannot transition to", "không thể chuyển sang")
-	message = strings.ReplaceAll(message, "current status is", "trạng thái hiện tại là")
-	message = strings.ReplaceAll(message, "which cannot transition to", "không thể chuyển sang")
+	// Replace technical terms with clearer wording.
+	message = strings.ReplaceAll(message, "cannot transition to", "cannot be changed to")
+	message = strings.ReplaceAll(message, "current status is", "the current status is")
 
 	return strings.TrimSpace(message)
 }

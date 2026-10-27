@@ -36,42 +36,42 @@ func TestErrorTranslator_TranslateError(t *testing.T) {
 		{
 			name:        "Paytype default value error",
 			err:         errors.New("Field 'paytype' doesn't have a default value"),
-			expectedMsg: "Lỗi máy chủ nội bộ: Thiếu cấu hình loại lương",
+			expectedMsg: "Internal server error: missing pay type configuration",
 		},
 		{
 			name:        "Pay_type default value error",
 			err:         errors.New("Field 'pay_type' doesn't have a default value"),
-			expectedMsg: "Lỗi máy chủ nội bộ: Thiếu cấu hình loại lương",
+			expectedMsg: "Internal server error: missing pay type configuration",
 		},
 		{
 			name:        "Payrate default value error",
 			err:         errors.New("Field 'payrate' doesn't have a default value"),
-			expectedMsg: "Lỗi máy chủ nội bộ: Thiếu cấu hình mức lương",
+			expectedMsg: "Internal server error: missing pay rate configuration",
 		},
 		{
 			name:        "Employee not assigned error",
 			err:         errors.New("Employee is not assigned to this project"),
-			expectedMsg: "Nhân viên chưa được phân công vào dự án này",
+			expectedMsg: "The employee is not assigned to this project",
 		},
 		{
 			name:        "No active payrate error",
 			err:         errors.New("No active payrate configuration found"),
-			expectedMsg: "Không tìm thấy cấu hình mức lương hiện hành cho dự án này",
+			expectedMsg: "No active pay rate configuration was found for this project",
 		},
 		{
 			name:        "Saturday day_type error",
 			err:         errors.New("Saturday requires day_type"),
-			expectedMsg: "Thứ 7 yêu cầu chỉ định loại ngày: 'ngày thường' hoặc 'ngày nghỉ'",
+			expectedMsg: "Select a day type for Saturday: regular day or rest day",
 		},
 		{
 			name:        "Timesheet already exists",
 			err:         errors.New("Timesheet entry already exists"),
-			expectedMsg: "Đã có bảng chấm công cho nhân viên, dự án, ngày và loại lương này",
+			expectedMsg: "A timesheet entry already exists for this employee, project, date and pay type",
 		},
 		{
 			name:        "Total hours exceeded",
 			err:         errors.New("Total hours worked per day cannot exceed 24 hours"),
-			expectedMsg: "Tổng số giờ làm việc trong ngày không thể vượt quá 24 giờ",
+			expectedMsg: "Total working hours per day cannot exceed 24",
 		},
 		{
 			name:          "Array indexing cleanup",
@@ -81,7 +81,7 @@ func TestErrorTranslator_TranslateError(t *testing.T) {
 		{
 			name:          "Generic error with status replacement",
 			err:           errors.New("current status is 'pending_approval' which cannot transition to 'approved'"),
-			shouldContain: "chờ phê duyệt",
+			shouldContain: "pending approval",
 		},
 	}
 
@@ -157,32 +157,32 @@ func TestErrorTranslator_CleanMessage(t *testing.T) {
 		{
 			name:     "Replace status - pending_approval",
 			input:    "Status is 'pending_approval'",
-			expected: "Status is 'chờ phê duyệt'",
+			expected: "Status is 'pending approval'",
 		},
 		{
 			name:     "Replace status - approved",
 			input:    "Status changed to 'approved'",
-			expected: "Status changed to 'đã phê duyệt'",
+			expected: "Status changed to 'approved'",
 		},
 		{
 			name:     "Replace status - rejected",
 			input:    "Status is 'rejected'",
-			expected: "Status is 'đã từ chối'",
+			expected: "Status is 'rejected'",
 		},
 		{
 			name:     "Replace status - draft",
 			input:    "Status is 'draft'",
-			expected: "Status is 'nháp'",
+			expected: "Status is 'draft'",
 		},
 		{
 			name:     "Replace technical terms",
 			input:    "current status is pending_approval which cannot transition to approved",
-			expected: "trạng thái hiện tại là chờ phê duyệt which không thể chuyển sang đã phê duyệt",
+			expected: "the current status is pending approval which cannot be changed to approved",
 		},
 		{
 			name:     "Complex message with multiple replacements",
 			input:    "timesheet[2]: current status is 'pending_approval', which cannot transition to 'approved'",
-			expected: "trạng thái hiện tại là 'chờ phê duyệt', which không thể chuyển sang 'đã phê duyệt'",
+			expected: "the current status is 'pending approval', which cannot be changed to 'approved'",
 		},
 	}
 
@@ -220,27 +220,27 @@ func TestErrorTranslator_StatusReplacements(t *testing.T) {
 		{
 			name:     "pending_approval with quotes",
 			input:    "'pending_approval'",
-			contains: "'chờ phê duyệt'",
+			contains: "'pending approval'",
 		},
 		{
 			name:     "approved with quotes",
 			input:    "'approved'",
-			contains: "'đã phê duyệt'",
+			contains: "'approved'",
 		},
 		{
 			name:     "rejected with quotes",
 			input:    "'rejected'",
-			contains: "'đã từ chối'",
+			contains: "'rejected'",
 		},
 		{
 			name:     "draft with quotes",
 			input:    "'draft'",
-			contains: "'nháp'",
+			contains: "'draft'",
 		},
 		{
 			name:     "pending_approval without quotes",
 			input:    "pending_approval",
-			contains: "chờ phê duyệt",
+			contains: "pending approval",
 		},
 	}
 
