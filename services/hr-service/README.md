@@ -27,6 +27,12 @@ device only when it can authenticate to the provisioned endpoint. Device
 fingerprint matching should remain on the device, with attendance events—not
 biometric templates—sent to RestPoint.
 
+A vendor-neutral, encrypted biometric-template API contract is available at
+[docs/biometric-template-openapi.yaml](docs/biometric-template-openapi.yaml).
+It is contract-only: no template endpoint is implemented or enabled. The
+contract requires tenant KMS envelope encryption, authenticated device push,
+verified RestPoint tenant identity, and a documented lawful processing basis.
+
 ## Legacy payroll backend documentation
 
 A modular monolith backend for payroll management built with Go, following Domain-Driven Design (DDD) principles.

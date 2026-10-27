@@ -284,7 +284,7 @@ const PORT = process.env.PORT || 5017;
 server.on('error', (err) => {
   console.error(`[LEAVE] Server error (${err.code || 'unknown'}):`, err.message);
   if (err.code === 'EADDRINUSE') {
-    console.error(`[LEAVE] FATAL: Port ${PORT} is already in use — is another leave-service instance running?`);
+    console.error(`[LEAVE] FATAL: Port ${PORT} is already in use — another process may be using this port.`);
   }
   process.exit(1);
 });
