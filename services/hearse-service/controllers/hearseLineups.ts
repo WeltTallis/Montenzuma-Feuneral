@@ -140,10 +140,15 @@ export const getDailyLineup = asyncHandler(async (req: Request, res: Response) =
     try {
         const pool = await getHearsePool();
         const [rows]: any = await pool.query(
-            'SELECT standby_driver_id FROM hearse_daily_lineups WHERE tenant_key = ? AND lineup_date = ?',
+            'SELECT standby_driver_id, standby_driver_name FROM hearse_daily_lineups WHERE tenant_key = ? AND lineup_date = ?',
             [tenantScope.key, date]
         );
-        res.json({ success: true, date, standby_driver_id: rows[0]?.standby_driver_id ?? null });
+        res.json({
+            success: true,
+            date,
+            standby_driver_id: rows[0]?.standby_driver_id ?? null,
+            standby_driver_name: rows[0]?.standby_driver_name ?? null,
+        });
     } catch (error) {
         sendError(res, error, 'Unable to load the daily driver lineup.');
     }
@@ -154,7 +159,15 @@ export const saveStandbyDriver = asyncHandler(async (req: Request, res: Response
     if (!tenantScope) return;
     const date = dateParam(req.body.date);
     const driverId = req.body.driver_id == null || req.body.driver_id === '' ? null : Number(req.body.driver_id);
-    if (!date || (driverId !== null && (!Number.isInteger(driverId) || driverId < 1))) {
+    const rawDriverName = req.body.driver_name;
+    if (rawDriverName != null && typeof rawDriverName !== 'string') {
+        res.status(400).json({ success: false, message: 'Standby driver name must be text.' });
+        return;
+    }
+    const driverName = typeof rawDriverName === 'string' ? rawDriverName.trim() : '';
+    if (!date
+        || (driverId !== null && (!Number.isInteger(driverId) || driverId < 1))
+        || driverName.length > 200) {
         res.status(400).json({ success: false, message: 'Provide a valid date and standby driver.' });
         return;
     }
@@ -164,11 +177,15 @@ export const saveStandbyDriver = asyncHandler(async (req: Request, res: Response
         if (driverId !== null) {
             await lockDriver(connection, driverId);
             await assertDriverAvailable(connection, tenantScope, driverId, [date], undefined, date);
+        }
+        if (driverId !== null || driverName) {
             await connection.query(
-                `INSERT INTO hearse_daily_lineups (tenant_key, lineup_date, standby_driver_id)
-                 VALUES (?, ?, ?)
-                 ON DUPLICATE KEY UPDATE standby_driver_id = VALUES(standby_driver_id)`,
-                [tenantScope.key, date, driverId]
+                `INSERT INTO hearse_daily_lineups (tenant_key, lineup_date, standby_driver_id, standby_driver_name)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                   standby_driver_id = VALUES(standby_driver_id),
+                   standby_driver_name = VALUES(standby_driver_name)`,
+                [tenantScope.key, date, driverId, driverName || null]
             );
         } else {
             await connection.query(
@@ -178,8 +195,8 @@ export const saveStandbyDriver = asyncHandler(async (req: Request, res: Response
         }
         await connection.commit();
         await invalidateHearseCache(req);
-        await emitHearseDataChanged(req, 'standby_driver_updated', { date, driverId });
-        res.json({ success: true, date, standby_driver_id: driverId });
+        await emitHearseDataChanged(req, 'standby_driver_updated', { date, driverId, driverName: driverName || null });
+        res.json({ success: true, date, standby_driver_id: driverId, standby_driver_name: driverName || null });
     } catch (error) {
         await connection.rollback();
         sendError(res, error, 'Unable to save the standby driver.');

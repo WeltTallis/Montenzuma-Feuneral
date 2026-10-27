@@ -338,12 +338,16 @@ const api = {
     if (!r.ok) throw new Error('Failed to load the daily driver lineup');
     return r.json();
   },
-  saveStandbyDriver: async (date, driverId) => {
+  saveStandbyDriver: async (date, assignment) => {
     const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
     const r = await fetch(`${API_BASE_URL}/hearse-lineups/standby`, {
       method: 'PUT',
       headers,
-      body: JSON.stringify({ date, driver_id: driverId || null }),
+      body: JSON.stringify({
+        date,
+        driver_id: assignment.driver_id || null,
+        driver_name: assignment.driver_name || null,
+      }),
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.message || 'Failed to save the standby driver');
@@ -814,6 +818,7 @@ const HearseBookings = () => {
   const [allHearses, setAllHearses] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [standbyDriverId, setStandbyDriverId] = useState('');
+  const [standbyDriverName, setStandbyDriverName] = useState('');
   const [lineupLoading, setLineupLoading] = useState(false);
   const [savingStandby, setSavingStandby] = useState(false);
   const [savingBookingLineup, setSavingBookingLineup] = useState(null);
@@ -964,7 +969,10 @@ const HearseBookings = () => {
     setLineupLoading(true);
     api.getDailyLineup(selectedDate)
       .then((lineup) => {
-        if (current) setStandbyDriverId(lineup.standby_driver_id == null ? '' : String(lineup.standby_driver_id));
+        if (current) {
+          setStandbyDriverId(lineup.standby_driver_id == null ? '' : String(lineup.standby_driver_id));
+          setStandbyDriverName(lineup.standby_driver_name || '');
+        }
       })
       .catch((error) => {
         if (current) notify.error(error.message || 'Failed to load the standby driver.');
@@ -975,12 +983,13 @@ const HearseBookings = () => {
     return () => { current = false; };
   }, [selectedDate]);
 
-  const saveStandby = useCallback(async (driverId) => {
+  const saveStandby = useCallback(async (assignment) => {
     setSavingStandby(true);
     try {
-      const lineup = await api.saveStandbyDriver(selectedDate, driverId);
+      const lineup = await api.saveStandbyDriver(selectedDate, assignment);
       setStandbyDriverId(lineup.standby_driver_id == null ? '' : String(lineup.standby_driver_id));
-      notify.success(driverId ? 'Standby driver assigned for this day.' : 'Standby driver removed.');
+      setStandbyDriverName(lineup.standby_driver_name || '');
+      notify.success(assignment.driver_id || assignment.driver_name ? 'Standby driver assigned for this day.' : 'Standby driver removed.');
     } catch (error) {
       notify.error(error.message || 'Failed to save the standby driver.');
     } finally {
@@ -1492,6 +1501,7 @@ const HearseBookings = () => {
               branches={branches}
               drivers={drivers}
               standbyDriverId={standbyDriverId}
+              standbyDriverName={standbyDriverName}
               lineupLoading={lineupLoading}
               savingStandby={savingStandby}
               savingBookingLineup={savingBookingLineup}

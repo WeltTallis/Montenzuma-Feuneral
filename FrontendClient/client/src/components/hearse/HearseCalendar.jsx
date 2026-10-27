@@ -40,13 +40,6 @@ export const pad = n => String(n).padStart(2, '0');
 export const fmtDS = toDateKey;
 export const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
 
-const getIsoWeekNumber = (date) => {
-  const value = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  value.setUTCDate(value.getUTCDate() + 4 - (value.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
-  return Math.ceil((((value - yearStart) / 86400000) + 1) / 7);
-};
-
 export const getInitials = n => { if (!n) return '?'; const p = n.split(' '); return p.length === 1 ? p[0].charAt(0).toUpperCase() : (p[0].charAt(0) + p[p.length - 1].charAt(0)).toUpperCase(); };
 export const fmtHour = h => h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM';
 
@@ -168,6 +161,15 @@ const Shell = styled.div`
     text-align: center !important;
   }
   .fc .fc-daygrid-day.fc-day-today { background: #E8F5E9 !important; }
+  .fc .fc-daygrid-day.fc-day-fully-booked { background: #FEF2F2 !important; }
+  .fc .fc-daygrid-day.fc-day-fully-booked .fc-daygrid-day-number {
+    background: #FEE2E2 !important;
+    color: #B91C1C !important;
+  }
+  .fc .fc-daygrid-day.fc-day-fully-booked.fc-day-today .fc-daygrid-day-number {
+    background: #DC2626 !important;
+    color: #FFFFFF !important;
+  }
   .fc .fc-daygrid-day-other .fc-daygrid-day-number { opacity: 0.35 !important; }
 
   .fc .fc-daygrid-day-events {
@@ -546,84 +548,59 @@ const DailyView = styled.div`
 `;
 
 const DailyHeading = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 20px;
-  margin: 0 0 20px;
-  flex-wrap: wrap;
-  h1 { margin: 2px 0 0; color: #111827; font-size: clamp(22px, 3vw, 28px); font-weight: 800; letter-spacing: -.035em; }
-  @media (max-width: 640px) { align-items: flex-start; gap: 12px; margin-bottom: 14px; }
-`;
-
-const DailyHeadingMeta = styled.div`
-  margin-bottom: 5px;
-  color: #9ca3af;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .11em;
-  text-transform: uppercase;
+  margin: 0 0 14px;
 `;
 
 const DailyHeadingActions = styled.div`
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 9px;
   min-width: 0;
-  @media (max-width: 640px) { justify-content: flex-start; width: 100%; }
   @media (max-width: 420px) { gap: 7px; }
 `;
 
-const BookingCount = styled.span`
-  color: #8a8f98;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-`;
-
-const StandbyDriverBadge = styled.div`
+const StandbyEditor = styled.div`
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  align-self: center;
-  padding: 9px 12px;
-  border: 1px solid #d1fae5;
-  border-radius: 10px;
-  background: #ecfdf5;
-  color: #166534;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  span { color: #15803d; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-  @media (max-width: 520px) { align-self: flex-start; }
-`;
-
-const ViewSwitch = styled.div`
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid #e5e7eb;
-  border-radius: 999px;
-  background: #fff;
+  gap: 6px;
+  margin-left: auto;
+  label { color: #475569; font-size: 10px; font-weight: 800; white-space: nowrap; }
+  input {
+    width: 150px;
+    min-width: 0;
+    min-height: 30px;
+    padding: 0 9px;
+    border: 1px solid #d0d5dd;
+    border-radius: 5px;
+    background: #fff;
+    color: #101828;
+    font: inherit;
+    font-size: 10px;
+  }
+  input:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
+  @media (max-width: 640px) { margin-left: 0; }
+  @media (max-width: 420px) { width: 100%; input { flex: 1; } }
 `;
 
 const ViewSwitchButton = styled.button`
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  min-height: 34px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: ${p => p.$active ? '#0f172a' : 'transparent'};
-  color: ${p => p.$active ? '#fff' : '#6b7280'};
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid ${p => p.$active ? '#101828' : '#d0d5dd'};
+  border-radius: 5px;
+  background: ${p => p.$active ? '#101828' : '#fff'};
+  color: ${p => p.$active ? '#fff' : '#344054'};
   font: inherit;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 700;
   cursor: pointer;
-  &:hover { background: ${p => p.$active ? '#1e293b' : '#f3f4f6'}; }
+  white-space: nowrap;
+  &:hover { background: ${p => p.$active ? '#1e293b' : '#f9fafb'}; }
 `;
 
 const DateStrip = styled.div`
@@ -632,50 +609,6 @@ const DateStrip = styled.div`
   border: 1px solid #e4e7ec;
   background: #fff;
   box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .04);
-`;
-
-const DateStripHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 58px;
-  padding: 10px 16px;
-  border-bottom: 1px solid #e4e7ec;
-  @media (max-width: 560px) { gap: 8px; padding: 9px 10px; }
-`;
-
-const DateMonthNav = styled.div`
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 8px;
-`;
-
-const DateMonthLabel = styled.strong`
-  min-width: 110px;
-  color: #101828;
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-  white-space: nowrap;
-  @media (max-width: 560px) { min-width: 86px; font-size: 11px; }
-`;
-
-const DateNavButton = styled.button`
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid #e4e7ec;
-  border-radius: 5px;
-  background: #fff;
-  color: #667085;
-  font-size: 19px;
-  line-height: 1;
-  cursor: pointer;
-  &:hover { border-color: #d0d5dd; background: #f9fafb; color: #101828; }
-  @media (max-width: 560px) { width: 27px; height: 27px; }
 `;
 
 const SelectedDateBadge = styled.div`
@@ -713,6 +646,7 @@ const TodayButton = styled.button`
   text-transform: uppercase;
   cursor: pointer;
   &:hover { border-color: #1d2939; background: #1d2939; }
+  &:disabled { cursor: not-allowed; opacity: .55; }
   @media (max-width: 560px) { min-height: 27px; padding: 0 8px; }
 `;
 
@@ -720,37 +654,6 @@ const DateStripDays = styled.div`
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   width: 100%;
-`;
-
-const DateStripFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 31px;
-  padding: 5px 16px;
-  border-top: 1px solid #e4e7ec;
-  background: #fafbfc;
-  color: #667085;
-  font-size: 9px;
-  @media (max-width: 560px) { padding: 5px 10px; }
-`;
-
-const DateLegend = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const DateLegendItem = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  .dot { width: 6px; height: 6px; border-radius: ${p => p.$round ? '50%' : '1px'}; background: ${p => p.$green ? '#12b76a' : '#475467'}; }
-`;
-
-const DateStripWeek = styled.span`
-  white-space: nowrap;
 `;
 
 const DateStripButton = styled.button`
@@ -764,15 +667,15 @@ const DateStripButton = styled.button`
   padding: 9px 3px;
   border: 0;
   border-right: 1px solid #f0f2f5;
-  background: ${p => p.$today ? '#12b76a' : p.$active ? '#eef2f6' : p.$weekend ? '#fcfcfd' : '#fff'};
-  color: ${p => p.$today ? '#fff' : '#344054'};
+  background: ${p => p.$fullyBooked ? '#fef2f2' : p.$today ? '#12b76a' : p.$active ? '#eef2f6' : p.$weekend ? '#fcfcfd' : '#fff'};
+  color: ${p => p.$fullyBooked ? '#b91c1c' : p.$today ? '#fff' : '#344054'};
   cursor: pointer;
   font: inherit;
   transition: background .15s ease;
   &:last-child { border-right: 0; }
-  .dow { color: ${p => p.$today ? '#d1fadf' : '#98a2b3'}; font-size: 9px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; }
-  .day { color: ${p => p.$today ? '#fff' : '#344054'}; font-size: 16px; font-weight: ${p => p.$active || p.$today ? 750 : 550}; line-height: 1.2; }
-  .event-dot { width: 4px; height: 4px; border-radius: 1px; background: ${p => p.$today ? '#fff' : '#475467'}; }
+  .dow { color: ${p => p.$fullyBooked ? '#b91c1c' : p.$today ? '#d1fadf' : '#98a2b3'}; font-size: 9px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; }
+  .day { color: ${p => p.$fullyBooked ? '#b91c1c' : p.$today ? '#fff' : '#344054'}; font-size: 16px; font-weight: ${p => p.$active || p.$today ? 750 : 550}; line-height: 1.2; }
+  .event-dot { width: 4px; height: 4px; border-radius: 1px; background: ${p => p.$fullyBooked ? '#dc2626' : p.$today ? '#fff' : '#475467'}; }
   .event-dot.empty { visibility: hidden; }
   .availability {
     color: ${p => p.$today ? '#e6fff0' : p.$free === 0 ? '#b91c1c' : p.$free < 3 ? '#b45309' : '#667085'};
@@ -780,7 +683,7 @@ const DateStripButton = styled.button`
     font-weight: 700;
     white-space: nowrap;
   }
-  &:hover { background: ${p => p.$today ? '#0e9f5a' : p.$active ? '#e4e7ec' : '#f9fafb'}; }
+  &:hover { background: ${p => p.$fullyBooked ? '#fee2e2' : p.$today ? '#0e9f5a' : p.$active ? '#e4e7ec' : '#f9fafb'}; }
   @media (max-width: 560px) { min-height: 66px; gap: 4px; padding: 7px 1px; .dow { font-size: 8px; } .day { font-size: 14px; } .availability { font-size: 7px; } }
 `;
 
@@ -803,28 +706,6 @@ const BookingToolbar = styled.div`
   background: #fff;
   h3 { margin: 0; color: #111827; font-size: 14px; font-weight: 800; }
   span { color: #9ca3af; font-size: 11px; font-weight: 600; }
-`;
-
-const BookingTools = styled.div`
-  display: flex;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid #f1f2f4;
-  background: #fff;
-  input, select {
-    min-width: 0;
-    min-height: 34px;
-    padding: 0 10px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: #fff;
-    color: #374151;
-    font: inherit;
-    font-size: 11px;
-  }
-  input { flex: 1; }
-  select { flex: 0 0 auto; }
-  @media (max-width: 520px) { flex-wrap: wrap; input, select { flex: 1 1 100%; } }
 `;
 
 const FleetAction = styled.button`
@@ -854,58 +735,6 @@ const DayPanelHeader = styled.div`
   h2 { margin: 2px 0 0; color: #111827; font-size: 15px; font-weight: 800; }
   p { margin: 0; color: #9ca3af; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
   span { color: #8a8f98; font-size: 11px; font-weight: 700; white-space: nowrap; }
-`;
-
-const LineupControls = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid #f1f2f4;
-  background: #f8fafc;
-  label {
-    display: grid;
-    min-width: 0;
-    gap: 6px;
-    color: #475569;
-    font-size: 10px;
-    font-weight: 800;
-  }
-  input, select {
-    width: 100%;
-    min-width: 0;
-    min-height: 38px;
-    padding: 0 10px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    background: #fff;
-    color: #1e293b;
-    font: inherit;
-    font-size: 11px;
-    &:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
-  }
-  button {
-    min-height: 38px;
-    padding: 0 14px;
-    border: 1px solid #0f172a;
-    border-radius: 8px;
-    background: #0f172a;
-    color: #fff;
-    font: inherit;
-    font-size: 11px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: background .15s ease;
-    &:hover:not(:disabled) { background: #1e293b; }
-    &:disabled { opacity: .55; cursor: wait; }
-  }
-  @media (max-width: 520px) {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 9px;
-    padding: 12px;
-    button { width: 100%; }
-  }
 `;
 
 const BookingLineup = styled.div`
@@ -965,19 +794,21 @@ const BookingLineup = styled.div`
 `;
 
 const BackToCalendar = styled.button`
-  min-height: 34px;
-  padding: 0 11px;
-  border: 1px solid #fecaca;
-  border-radius: 9px;
-  background: #fef2f2;
-  color: #b91c1c;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid #101828;
+  border-radius: 5px;
+  background: #101828;
+  color: #fff;
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
   white-space: nowrap;
   transition: background .15s ease, border-color .15s ease;
-  &:hover { background: #fee2e2; border-color: #fca5a5; }
+  &:hover { background: #1d2939; border-color: #1d2939; }
 `;
 
 const DayBookingRow = styled.button`
@@ -1434,6 +1265,7 @@ const HearseCalendar = ({
   branches = [],
   drivers = [],
   standbyDriverId = '',
+  standbyDriverName = '',
   lineupLoading = false,
   savingStandby = false,
   savingBookingLineup = null,
@@ -1450,14 +1282,20 @@ const HearseCalendar = ({
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [dayViewDate, setDayViewDate] = useState(null);
   const [dayViewMode, setDayViewMode] = useState('schedule');
-  const [dayBookingSearch, setDayBookingSearch] = useState('');
-  const [dayBookingStatus, setDayBookingStatus] = useState('all');
   const [standbyDraft, setStandbyDraft] = useState('');
   const [lineupDrafts, setLineupDrafts] = useState({});
 
   useEffect(() => {
-    setStandbyDraft(standbyDriverId == null ? '' : String(standbyDriverId));
-  }, [dayViewDate, standbyDriverId]);
+    const assigned = drivers.find((driver) =>
+      String(driver.driver_id ?? driver.id) === String(standbyDriverId ?? '')
+    );
+    setStandbyDraft(
+      standbyDriverName
+      || assigned?.driver_name
+      || assigned?.full_name
+      || (standbyDriverId ? `Driver ${standbyDriverId}` : '')
+    );
+  }, [dayViewDate, drivers, standbyDriverId, standbyDriverName]);
   const calendarRef = useRef(null);
   const wrapperRef = useRef(null);
   const lastReportedMonth = useRef(null);
@@ -1631,9 +1469,9 @@ const HearseCalendar = ({
   const registeredDrivers = drivers.filter((driver) =>
     /^[1-9]\d*$/.test(String(driver.driver_id ?? driver.id ?? ''))
   );
-  const standbyDriverName = standbyDriver
+  const resolvedStandbyDriverName = standbyDriverName || (standbyDriver
     ? standbyDriver.driver_name || standbyDriver.full_name || `Driver ${standbyDriverId}`
-    : standbyDriverId ? `Driver ${standbyDriverId}` : 'Not assigned';
+    : standbyDriverId ? `Driver ${standbyDriverId}` : '');
   const dayBookings = useMemo(() => {
     if (!dayViewDate) return [];
     return bookings
@@ -1697,37 +1535,13 @@ const HearseCalendar = ({
       return availability;
     }, {});
   }, [allBookings, hearses, weekDates]);
-  const visibleDayBookings = useMemo(() => {
-    const query = dayBookingSearch.trim().toLowerCase();
-    return dayBookings.filter((booking) => {
-      const status = String(booking.status || '').toLowerCase();
-      if (dayBookingStatus === 'active' && ['completed', 'cancelled', 'postponed'].includes(status)) return false;
-      if (dayBookingStatus !== 'all' && dayBookingStatus !== 'active' && status !== dayBookingStatus) return false;
-      if (!query) return true;
-      return [
-        booking.client_name, booking.client, booking.phone, booking.client_phone,
-        booking.hearse_name, booking.plate_number, booking.hearse_plate,
-        booking.from_location, booking.from, booking.destination, booking.to_location,
-        booking.branch_name, booking.booking_code, booking.booking_id,
-      ].some((value) => String(value || '').toLowerCase().includes(query));
-    });
-  }, [dayBookings, dayBookingSearch, dayBookingStatus]);
+  const visibleDayBookings = dayBookings;
 
   const selectDay = useCallback((dateKey) => {
     setDayViewDate(dateKey);
     onDateSelect?.(dateKey);
     onDateClick?.(dateKey);
   }, [onDateClick, onDateSelect]);
-
-  const shiftCalendarMonth = useCallback((amount) => {
-    const current = new Date(`${dayViewDate}T00:00:00`);
-    const day = current.getDate();
-    current.setDate(1);
-    current.setMonth(current.getMonth() + amount);
-    const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-    current.setDate(Math.min(day, lastDay));
-    selectDay(toDateKey(current));
-  }, [dayViewDate, selectDay]);
 
   const handleDateClick = useCallback((info) => {
     const dateStr = info.dateStr.split('T')[0];
@@ -1959,11 +1773,28 @@ const HearseCalendar = ({
       const dates = getBookingDates(b);
       return dates.some(d => d && String(d).split('T')[0] === dateStr);
     });
+    const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
+    const unavailableStatuses = new Set(['maintenance', 'out_of_service', 'disabled', 'inactive']);
+    const serviceableHearses = hearses.filter((hearse) =>
+      !unavailableStatuses.has(String(hearse.status || '').toLowerCase())
+    );
+    const bookedHearses = new Set((allBookings || [])
+      .filter((booking) => activeStatuses.has(String(booking.status || '').toLowerCase()))
+      .filter((booking) => getBookingDates(booking).some((date) => String(date).slice(0, 10) === dateStr))
+      .map((booking) => booking.hearse_id ?? booking.hearseId ?? booking.hearse?.id)
+      .filter((id) => id != null)
+      .map(String));
+    const fullyBooked = serviceableHearses.length > 0
+      && serviceableHearses.every((hearse) => bookedHearses.has(String(hearse.id ?? hearse.hearse_id ?? '')));
     if (hasEvents) {
       info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.02)', 'important');
       info.el.style.setProperty('border-radius', '6px', 'important');
     }
-  }, [bookings, calendarView]);
+    if (fullyBooked) {
+      info.el.classList.add('fc-day-fully-booked');
+      info.el.style.setProperty('background-color', '#FEF2F2', 'important');
+    }
+  }, [allBookings, bookings, calendarView, hearses]);
 
   return (
     <Shell>
@@ -2003,11 +1834,9 @@ const HearseCalendar = ({
       {dayViewDate ? (
         <DailyView>
           <DailyHeading>
-            <div>
-              <DailyHeadingMeta>{dayViewMode === 'schedule' ? 'Daily schedule' : 'Driver assignments'}</DailyHeadingMeta>
-              <h1>{dayViewMode === 'schedule' ? 'Bookings' : 'Driver lineup'}</h1>
-            </div>
             <DailyHeadingActions>
+              <TodayButton type="button" onClick={() => selectDay(toDateKey(new Date()))}>Today</TodayButton>
+              <BackToCalendar type="button" onClick={() => setDayViewDate(null)}>Back to calendar</BackToCalendar>
               <SelectedDateBadge>
                 <span className="dot" />
                 <span className="label">{dayViewDate === toDateKey(new Date()) ? 'Today' : 'Selected'}</span>
@@ -2015,22 +1844,60 @@ const HearseCalendar = ({
                   {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
               </SelectedDateBadge>
-              <TodayButton type="button" onClick={() => selectDay(toDateKey(new Date()))}>Today</TodayButton>
-              <StandbyDriverBadge>
-                <Users size={14} />
-                <span>Standby</span>
-                {standbyDriverName}
-              </StandbyDriverBadge>
-              <BookingCount>{visibleDayBookings.length} booking{visibleDayBookings.length === 1 ? '' : 's'}</BookingCount>
-              <BackToCalendar type="button" onClick={() => setDayViewDate(null)}>Back to calendar</BackToCalendar>
-              <ViewSwitch aria-label="Daily schedule view">
-                <ViewSwitchButton type="button" $active={dayViewMode === 'schedule'} onClick={() => setDayViewMode('schedule')}>
-                  <span aria-hidden="true">☷</span> Schedule
-                </ViewSwitchButton>
-                <ViewSwitchButton type="button" $active={dayViewMode === 'lineup'} onClick={() => setDayViewMode('lineup')}>
-                  <Users size={14} /> Driver lineup
-                </ViewSwitchButton>
-              </ViewSwitch>
+              <ViewSwitchButton
+                type="button"
+                $active={dayViewMode === 'schedule'}
+                aria-pressed={dayViewMode === 'schedule'}
+                onClick={() => setDayViewMode('schedule')}
+              >
+                Schedule
+              </ViewSwitchButton>
+              <ViewSwitchButton
+                type="button"
+                $active={dayViewMode === 'lineup'}
+                aria-pressed={dayViewMode === 'lineup'}
+                onClick={() => setDayViewMode('lineup')}
+              >
+                <Users size={14} aria-hidden="true" /> Driver lineup
+              </ViewSwitchButton>
+              <StandbyEditor>
+                <label htmlFor="daily-standby-driver">Standby</label>
+                <input
+                  id="daily-standby-driver"
+                  type="text"
+                  list="daily-standby-driver-options"
+                  value={standbyDraft}
+                  onChange={(event) => setStandbyDraft(event.target.value)}
+                  disabled={lineupLoading || savingStandby}
+                  placeholder="Enter driver name"
+                  aria-label="Standby driver for this day"
+                  maxLength={200}
+                />
+                <datalist id="daily-standby-driver-options">
+                  {registeredDrivers.map((driver) => (
+                    <option
+                      key={driver.driver_id ?? driver.id}
+                      value={driver.driver_name || driver.full_name || `Driver ${driver.driver_id ?? driver.id}`}
+                    />
+                  ))}
+                </datalist>
+                <TodayButton
+                  type="button"
+                  disabled={lineupLoading || savingStandby || standbyDraft.trim() === resolvedStandbyDriverName.trim()}
+                  onClick={() => {
+                    const enteredName = standbyDraft.trim();
+                    const selectedDriver = registeredDrivers.find((driver) =>
+                      String(driver.driver_name || driver.full_name || '').trim().toLowerCase() === enteredName.toLowerCase()
+                    );
+                    onSaveStandby?.({
+                      driver_id: enteredName && selectedDriver ? selectedDriver.driver_id ?? selectedDriver.id : null,
+                      driver_name: enteredName || null,
+                    });
+                  }}
+                >
+                  {savingStandby ? 'Saving…' : standbyDraft.trim() ? 'Save standby' : 'Clear standby'}
+                </TodayButton>
+              </StandbyEditor>
             </DailyHeadingActions>
           </DailyHeading>
 
@@ -2048,6 +1915,9 @@ const HearseCalendar = ({
                     type="button"
                     $active={key === dayViewDate}
                     $today={isToday}
+                    $fullyBooked={hearses.some((hearse) =>
+                      !['maintenance', 'out_of_service', 'disabled', 'inactive'].includes(String(hearse.status || '').toLowerCase())
+                    ) && (weeklyAvailability[key] ?? 0) === 0}
                     $weekend={date.getDay() === 0 || date.getDay() === 6}
                     $free={weeklyAvailability[key] ?? 0}
                     aria-pressed={key === dayViewDate}
@@ -2067,64 +1937,6 @@ const HearseCalendar = ({
 
           <DaySchedule>
             <DayPanel>
-              {dayViewMode === 'schedule' ? (
-                <BookingTools>
-                  <input
-                    type="search"
-                    value={dayBookingSearch}
-                    onChange={(event) => setDayBookingSearch(event.target.value)}
-                    placeholder="Search booking, hearse, route..."
-                    aria-label="Search daily bookings"
-                  />
-                  <select value={dayBookingStatus} onChange={(event) => setDayBookingStatus(event.target.value)} aria-label="Filter daily bookings">
-                    <option value="all">All statuses</option>
-                    <option value="active">Active</option>
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="in_transit">In transit</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </BookingTools>
-              ) : (
-                <>
-                  <LineupControls>
-                    <label>
-                      Standby driver for the day
-                      <select
-                        value={standbyDraft}
-                        onChange={(event) => setStandbyDraft(event.target.value)}
-                        disabled={lineupLoading || savingStandby}
-                        aria-label="Standby driver for this day"
-                      >
-                        <option value="">{registeredDrivers.length ? 'No standby driver selected' : 'No hearse-service drivers available'}</option>
-                        {registeredDrivers.map((driver) => {
-                          const driverId = driver.driver_id ?? driver.id;
-                          const alreadyAssigned = dayBookings.some((booking) =>
-                            String(booking.driver_id || '') === String(driverId)
-                            && !['completed', 'cancelled', 'postponed'].includes(String(booking.status || '').toLowerCase()));
-                          return (
-                            <option
-                              key={driverId}
-                              value={driverId}
-                              disabled={alreadyAssigned && String(driverId) !== String(standbyDriverId)}
-                            >
-                              {driver.driver_name || driver.full_name || `Driver ${driverId}`}
-                              {alreadyAssigned && String(driverId) !== String(standbyDriverId) ? ' · assigned to booking' : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      disabled={lineupLoading || savingStandby || standbyDraft === String(standbyDriverId || '')}
-                      onClick={() => onSaveStandby?.(standbyDraft)}
-                    >
-                      {savingStandby ? 'Saving standby…' : standbyDraft ? 'Save standby driver' : 'Clear standby'}
-                    </button>
-                  </LineupControls>
-                </>
-              )}
               {visibleDayBookings.length ? visibleDayBookings.map((booking, lineupIndex) => {
                 const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
                 const schedule = getTimeInfo(booking);
@@ -2347,11 +2159,9 @@ const HearseCalendar = ({
                 );
               }) : (
                 <EmptyDay>
-                  {dayBookingSearch || dayBookingStatus !== 'all'
-                    ? 'No bookings match these search and status filters.'
-                    : dayViewMode === 'schedule'
-                      ? 'No bookings for this day. Check the fleet panel for available hearses.'
-                      : 'No bookings are available for the driver lineup.'}
+                  {dayViewMode === 'schedule'
+                    ? 'No bookings for this day. Check the fleet panel for available hearses.'
+                    : 'No bookings are available for the driver lineup.'}
                 </EmptyDay>
               )}
             </DayPanel>
