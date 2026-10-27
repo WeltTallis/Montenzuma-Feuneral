@@ -70,6 +70,11 @@ const ProfileHeader = styled.div`
     align-items: stretch;
     align-content: flex-start;
   }
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 // ─── Button group ───
@@ -80,6 +85,13 @@ const HeaderActions = styled.div`
 
   @media (max-width: 640px) {
     flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     width: 100%;
   }
@@ -154,6 +166,14 @@ const Btn = styled.button`
       animation-play-state: running;
     }
   `}
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
 `;
 
 // ─── Refresh button ───
@@ -176,6 +196,14 @@ const RefreshBtn = styled.button`
   &:hover { background: #b45309; border-color: #b45309; }
   &:disabled { cursor: progress; opacity: 0.75; }
   &[data-refreshing='true'] svg { animation: ${spin} 0.8s linear infinite; }
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
 `;
 
 // ─── Barcode ───
@@ -348,7 +376,6 @@ const DeceasedProfileHeader = ({ deceased, nextOfKin, onBack, onTabSwitch, onCha
           <Btn $primary onClick={() => setShowScheduleDispatchModal(true)}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 6h8M9 18h6" />
-              Schedule Dispatch
             </svg>
             Schedule Dispatch
           </Btn>

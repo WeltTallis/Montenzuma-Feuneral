@@ -12,29 +12,34 @@ import { BR, BRANCH_SLUG_TO_NAME, getBookingRoute } from './viewerShared';
 export { STATUS_CONFIG };
 
 export const COLORS = {
-  textSecondary: '#6b7280', successLight: '#d1fae5', primaryLight: '#2c8ac9',
-  primaryDark: '#134b5f', borderLight: '#e5e7eb',
+
   white: '#FFFFFF', surface: '#ffffff', primary: '#1a5f7a', border: '#d1d5db',
-  text: '#111827', bg: '#f5f7fa',
-  textMuted: '#9ca3af', success: '#10b981', successDark: '#059669',
+  textSecondary: '#6b7280', successLight: '#d1fae5', primaryLight: '#2c8ac9',
   warningLight: '#fef3c7', warningDark: '#d97706', warning: '#f59e0b',
+  textMuted: '#9ca3af', success: '#10b981', successDark: '#059669',
   danger: '#ef4444', dangerLight: '#fee2e2', dangerDark: '#dc2626',
   info: '#3b82f6', infoLight: '#dbeafe', infoDark: '#2563eb',
+  primaryDark: '#134b5f', borderLight: '#e5e7eb',
+  text: '#111827', bg: '#f5f7fa',
+
 };
 
 const DRIVER_LINEUP_THEMES = [
+
   { primary: '#d97706', light: '#fef3c7' },
   { primary: '#be185d', light: '#fce7f3' },
   { primary: '#1d4ed8', light: '#dbeafe' },
   { primary: '#15803d', light: '#dcfce7' },
+
 ];
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-export const START_HOUR = 6, END_HOUR = 22;
 export const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+export const START_HOUR = 6, END_HOUR = 22;
 export const HOUR_H = 60, TIME_W = 65;
+
 
 export const pad = n => String(n).padStart(2, '0');
 export const fmtDS = toDateKey;
@@ -43,7 +48,9 @@ export const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.
 export const getInitials = n => { if (!n) return '?'; const p = n.split(' '); return p.length === 1 ? p[0].charAt(0).toUpperCase() : (p[0].charAt(0) + p[p.length - 1].charAt(0)).toUpperCase(); };
 export const fmtHour = h => h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM';
 
+
 export const getTimeInfo = b => {
+  
   let s = '', e = '';
   if (b.booking_dates) { try { const d = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : b.booking_dates; if (Array.isArray(d) && d.length) { s = d[0]; if (d.length > 1) e = d[1]; } } catch (x) { } }
   if (b.from_timestamp) s = b.from_timestamp;
@@ -56,18 +63,25 @@ export const getTimeInfo = b => {
   let dur = 60; if (sd && ed) dur = Math.max(15, (ed - sd) / 60000);
   let sm = 0; if (sd && !allDay) sm = sd.getHours() * 60 + sd.getMinutes();
   const fs = formatTimeAmPm(s), fe = formatTimeAmPm(e);
-  return { sd, ed, allDay, sm, dur, fs, fe, range: allDay ? 'All Day' : (fe ? fs + ' – ' + fe : fs) };
+  return { sd , ed , allDay , sm , dur , fs, fe , range: allDay ? 'All Day' : (fe ? fs + ' – ' + fe : fs) };
+                                                
+
 };
 
+
+
 const getBookingDates = (b) => {
+
   if (b.booking_dates) {
     try {
       const dates = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : b.booking_dates;
       if (Array.isArray(dates) && dates.length) return dates;
     } catch (x) { }
   }
+
   const date = b.booking_date || b.estimated_departure_time || b.date || b.start_date;
   return date ? [date] : [];
+
 };
 
 const Shell = styled.div`
