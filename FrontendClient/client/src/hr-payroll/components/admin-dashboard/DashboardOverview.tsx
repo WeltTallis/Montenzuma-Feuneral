@@ -123,7 +123,7 @@ export function DashboardMetricStrip({ items }: DashboardMetricStripProps) {
 
   return (
     <section
-      aria-label="Tóm tắt kỳ lương"
+      aria-label="Payroll period summary"
       className={cn(
         'treasury-grid grid grid-cols-1 overflow-hidden rounded-xl border border-border/80 bg-card sm:grid-cols-2',
         xlCols,
@@ -168,11 +168,11 @@ export function DashboardPriorityList({
       <div className="flex flex-col gap-2.5 border-b border-border/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Hàng đợi vận hành
+            Operations queue
           </p>
-          <h2 className="mt-1 text-base font-semibold text-foreground">Việc cần xử lý</h2>
+          <h2 className="mt-1 text-base font-semibold text-foreground">Items requiring attention</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Ưu tiên các bước có thể làm chậm chốt công và giải ngân kỳ lương.
+            Prioritise tasks that could delay timesheet approval or payroll processing.
           </p>
         </div>
         <button
@@ -190,7 +190,7 @@ export function DashboardPriorityList({
           ) : (
             <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
           )}
-          {isRefreshing ? 'Đang cập nhật' : 'Làm mới số liệu'}
+          {isRefreshing ? 'Refreshing' : 'Refresh data'}
         </button>
       </div>
 
@@ -264,13 +264,13 @@ export function DashboardActivityPanel({
     <section className="overflow-hidden rounded-xl border border-border/80 bg-card">
       <div className="border-b border-border/70 px-3 py-3 sm:px-4">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Tín hiệu sử dụng · {monthLabel}
+          Usage · {monthLabel}
         </p>
         <div className="mt-2 flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Tài khoản hoạt động</h2>
+            <h2 className="text-base font-semibold text-foreground">Active accounts</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Nhân viên đã đăng nhập theo hình thức trả lương.
+              Staff who have logged in using their payroll account.
             </p>
           </div>
           <div className="text-right">
@@ -279,7 +279,7 @@ export function DashboardActivityPanel({
                 ? '--'
                 : totalActive.toLocaleString('en-KE')}
             </p>
-            <p className="text-xs text-muted-foreground">tổng hoạt động</p>
+            <p className="text-xs text-muted-foreground">total active</p>
           </div>
         </div>
       </div>
@@ -291,7 +291,7 @@ export function DashboardActivityPanel({
       >
         {hasError ? (
           <p className="px-4 py-5 text-sm text-destructive sm:px-5">
-            Không thể tải dữ liệu hoạt động. Vui lòng làm mới để thử lại.
+            Could not load activity data. Refresh to try again.
           </p>
         ) : isLoading ? (
           Array.from({ length: 3 }).map((_, index) => (
@@ -328,10 +328,10 @@ export function DashboardActivityPanel({
               className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-4 sm:py-2"
             >
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Theo dự án
+                By project
               </span>
               <span className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
-                {projectItems.length} dự án
+                {projectItems.length} projects
                 <ChevronDown
                   className={cn('h-4 w-4 transition-transform', projectsExpanded && 'rotate-180')}
                   aria-hidden="true"

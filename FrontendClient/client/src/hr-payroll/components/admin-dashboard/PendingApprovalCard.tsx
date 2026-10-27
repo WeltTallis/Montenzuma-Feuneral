@@ -36,11 +36,11 @@ export const PendingApprovalCard = ({ onClick, className }: PendingApprovalCardP
 
   return (
     <KpiHeroCard
-      label="Công chờ duyệt"
+      label="Timesheets awaiting approval"
       value={totalRecords}
       icon={Clock}
       color={isEmpty ? 'emerald' : 'amber'}
-      sublabel={isEmpty ? 'Tất cả đã được xử lý' : undefined}
+      sublabel={isEmpty ? 'All caught up' : undefined}
       onClick={onClick}
       className={cn('h-full', className)}
     />

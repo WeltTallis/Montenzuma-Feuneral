@@ -52,7 +52,7 @@ const EmployeeRow = memo(function EmployeeRow({
                 className="text-xs px-1 py-0 h-3.5 border-emerald-300 text-emerald-700 bg-emerald-50 shrink-0"
               >
                 <UserCheck className="w-2.5 h-2.5 mr-0.5" />
-                Đang làm
+                Active
               </Badge>
             ) : (
               <Badge
@@ -60,7 +60,7 @@ const EmployeeRow = memo(function EmployeeRow({
                 className="text-xs px-1 py-0 h-3.5 border-rose-300 text-rose-700 bg-rose-50 shrink-0"
               >
                 <UserX className="w-2.5 h-2.5 mr-0.5" />
-                Nghỉ
+                Inactive
               </Badge>
             )}
           </div>
@@ -110,7 +110,7 @@ export const TopPaidEmployeesCard = memo(function TopPaidEmployeesCard({
             ))}
           </div>
         ) : employees.length === 0 ? (
-          <EmptyState title="Chưa có dữ liệu thanh toán" size="sm" className="py-4" />
+          <EmptyState title="No payment data yet" size="sm" className="py-4" />
         ) : (
           <div>
             {employees.map((item) => (

@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@hr/components/ui/popov
 import { MonthPicker } from '@hr/components/ui/month-picker';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RefreshCcw } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, parse } from 'date-fns';
-import { vi } from 'date-fns/locale';
 
 interface DashboardHeaderProps {
   value: string; // 'all' | 'yyyy-MM'
@@ -40,8 +39,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ value, onChang
 
   return (
     <PageHeader
-      title="Tổng quan"
-      description="Theo dõi số liệu vận hành, nhân sự và tài chính theo kỳ"
+      title="Overview"
+      description="Monitor operations, staff and finances for the selected period"
     >
       <div className="admin-dashboard-header flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-1 sm:rounded-xl sm:border sm:border-border/70 sm:bg-card sm:p-1">
         <Button
@@ -55,7 +54,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ value, onChang
           }`}
         >
           <RefreshCcw className="mr-2 h-3.5 w-3.5" />
-          Tất cả kỳ
+          All periods
         </Button>
 
         <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-1.5 sm:flex sm:items-center sm:gap-1">
@@ -64,7 +63,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ value, onChang
             size="sm"
             onClick={handlePreviousMonth}
             className="h-11 w-11 rounded-xl border-transparent bg-transparent p-0 hover:bg-muted/60 sm:h-9 sm:w-9"
-            aria-label="Tháng trước"
+            aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -73,14 +72,14 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ value, onChang
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                aria-label="Chọn tháng"
+                aria-label="Select month"
                 className={`h-11 min-w-0 rounded-xl border-transparent bg-muted/55 px-3 text-sm font-semibold sm:h-9 sm:min-w-[136px] ${
                   value === 'all' ? 'opacity-70' : ''
                 }`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                 <span className="truncate">
-                  {value === 'all' ? 'Tất cả' : format(selectedDate, 'MM/yyyy', { locale: vi })}
+                  {value === 'all' ? 'All periods' : format(selectedDate, 'MM/yyyy')}
                 </span>
               </Button>
             </PopoverTrigger>
@@ -94,7 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ value, onChang
             size="sm"
             onClick={handleNextMonth}
             className="h-11 w-11 rounded-xl border-transparent bg-transparent p-0 hover:bg-muted/60 sm:h-9 sm:w-9"
-            aria-label="Tháng sau"
+            aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

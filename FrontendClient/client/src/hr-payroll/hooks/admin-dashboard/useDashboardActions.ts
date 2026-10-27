@@ -7,43 +7,43 @@ export const useDashboardActions = () => {
 
   const handleExport = () => {
     toast({
-      title: "Xuất báo cáo thành công",
-      description: "File Excel đã được tải về.",
+      title: "Report exported",
+      description: "The Excel file has been downloaded.",
     });
   };
 
   const handleAddEmployee = () => {
     toast({
-      title: "Thêm nhân viên",
-      description: "Chức năng thêm nhân viên sẽ được triển khai.",
+      title: "Add staff",
+      description: "This feature will be available soon.",
     });
   };
 
   const handleCreateProject = () => {
     toast({
-      title: "Tạo dự án",
-      description: "Chức năng tạo dự án sẽ được triển khai.",
+      title: "Create project",
+      description: "This feature will be available soon.",
     });
   };
 
   const handleViewAllActivities = () => {
     toast({
-      title: "Xem tất cả hoạt động",
-      description: "Chuyển đến trang hoạt động chi tiết.",
+      title: "View all activity",
+      description: "Opening the detailed activity page.",
     });
   };
 
   const handleNotificationSettings = () => {
     toast({
-      title: "Cài đặt thông báo",
-      description: "Mở cài đặt thông báo hệ thống.",
+      title: "Notification settings",
+      description: "Opening system notification settings.",
     });
   };
 
   const handleTaskAction = (taskId: number, taskAction: string) => {
     toast({
-      title: `${taskAction} thành công`,
-      description: `Đã thực hiện hành động cho tác vụ ID: ${taskId}.`,
+      title: `${taskAction} completed`,
+      description: `The action was completed for task ID ${taskId}.`,
     });
   };
 
@@ -53,22 +53,22 @@ export const useDashboardActions = () => {
 
   const handleProjectClick = (projectId: number) => {
     toast({
-      title: "Xem chi tiết dự án",
-      description: `Chuyển đến trang dự án ID: ${projectId}`,
+      title: "View project details",
+      description: `Opening project ID ${projectId}.`,
     });
   };
 
   const handleNavigateToActivities = () => {
     toast({
-      title: "Xem tất cả hoạt động",
-      description: "Chuyển đến trang hoạt động chi tiết.",
+      title: "View all activity",
+      description: "Opening the detailed activity page.",
     });
   };
 
   const handleRefresh = () => {
     toast({
-      title: "Làm mới dữ liệu",
-      description: "Dữ liệu dashboard đã được cập nhật.",
+      title: "Data refreshed",
+      description: "The dashboard data has been updated.",
     });
   };
 

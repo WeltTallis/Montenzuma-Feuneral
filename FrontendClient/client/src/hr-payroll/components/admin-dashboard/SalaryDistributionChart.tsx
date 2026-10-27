@@ -37,7 +37,7 @@ export function SalaryDistributionChart() {
       <Card ref={cardRef} className="shadow-none">
         <CardContent className="p-3 sm:p-4">
           <div className="h-[280px] flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
+            <p className="text-sm text-muted-foreground">Loading data...</p>
           </div>
         </CardContent>
       </Card>
@@ -50,7 +50,7 @@ export function SalaryDistributionChart() {
       <Card ref={cardRef} className="shadow-none">
         <CardContent className="p-3 sm:p-4">
           <div className="h-[280px] flex items-center justify-center">
-            <p className="text-sm text-financial-negative">Không thể tải dữ liệu</p>
+            <p className="text-sm text-financial-negative">Could not load data</p>
           </div>
         </CardContent>
       </Card>
@@ -68,7 +68,7 @@ export function SalaryDistributionChart() {
           </div>
         ) : (
           <div className="h-[280px] flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">Không có dữ liệu cho khoảng thời gian này</p>
+            <p className="text-sm text-muted-foreground">No data for this period</p>
           </div>
         )}
       </CardContent>
@@ -103,9 +103,9 @@ function HorizontalCycleSection({ label, values, summary }: CycleSectionProps) {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 mb-3">
         {[
-          { title: 'TB', value: formatCurrency(summary.mean), icon: TrendingUp },
-          { title: 'Thấp nhất', value: formatCurrency(summary.min), icon: ArrowDown },
-          { title: 'Cao nhất', value: formatCurrency(summary.max), icon: ArrowUp },
+          { title: 'Average', value: formatCurrency(summary.mean), icon: TrendingUp },
+          { title: 'Lowest', value: formatCurrency(summary.min), icon: ArrowDown },
+          { title: 'Highest', value: formatCurrency(summary.max), icon: ArrowUp },
         ].map(({ title, value, icon: Icon }) => (
           <div key={title} className="p-2 rounded-xl border border-border/40 bg-muted/30">
             <div className="flex items-center gap-1.5 mb-0.5">
@@ -122,7 +122,7 @@ function HorizontalCycleSection({ label, values, summary }: CycleSectionProps) {
         <div
           className="w-full"
           role="img"
-          aria-label={`${label}: phân bổ ${values.length} nhân viên theo khung lương. Trung bình ${formatCurrency(summary.mean)}, thấp nhất ${formatCurrency(summary.min)}, cao nhất ${formatCurrency(summary.max)}. ${chartData.map((item) => `${item.label}: ${item.count} nhân viên`).join('; ')}.`}
+          aria-label={`${label}: distribution of ${values.length} staff by salary range. Average ${formatCurrency(summary.mean)}, lowest ${formatCurrency(summary.min)}, highest ${formatCurrency(summary.max)}. ${chartData.map((item) => `${item.label}: ${item.count} staff`).join('; ')}.`}
           style={{ height: chartData.length * 32 + 16, minWidth: 1 }}
         >
           <ResponsiveContainer width="100%" height={chartData.length * 32 + 16} minWidth={0}>
@@ -157,8 +157,8 @@ function HorizontalCycleSection({ label, values, summary }: CycleSectionProps) {
                   fontSize: '12px',
                   boxShadow: 'none',
                 }}
-                formatter={(value: number) => [`${value} nhân viên`, 'Số lượng']}
-                labelFormatter={(label) => `Khung lương: ${label}`}
+                formatter={(value: number) => [`${value} staff`, 'Count']}
+                labelFormatter={(label) => `Salary range: ${label}`}
               />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                 {chartData.map((_, i) => (

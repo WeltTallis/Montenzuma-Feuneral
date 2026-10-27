@@ -25,11 +25,11 @@ export function useSalaryDistribution(enabled = true) {
   };
 }
 
-/** Cycle labels in Vietnamese */
+/** Labels for supported payroll cycles. */
 export const CYCLE_LABELS: Record<string, string> = {
-  weekly: 'Theo Tuần',
-  monthly: 'Theo Tháng',
-  flexible: 'Linh Hoạt',
+  weekly: 'Weekly payroll',
+  monthly: 'Monthly payroll',
+  flexible: 'Flexible payroll',
 };
 
 /** Fixed salary bin definitions */

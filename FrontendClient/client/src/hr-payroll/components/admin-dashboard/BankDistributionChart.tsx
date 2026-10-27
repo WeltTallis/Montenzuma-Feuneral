@@ -35,7 +35,7 @@ const BankDistributionRow = memo(function BankDistributionRow({
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs tabular-nums text-muted-foreground">
               <span>{item.employeeCount.toLocaleString('en-KE')} NV</span>
               {item.transferCount > 0 ? (
-                <span>{item.transferCount.toLocaleString('en-KE')} lần</span>
+                <span>{item.transferCount.toLocaleString('en-KE')} transfers</span>
               ) : null}
               {item.totalPaidVnd > 0 ? (
                 <span>{formatFullCurrency(item.totalPaidVnd)}</span>
@@ -71,11 +71,11 @@ export const BankDistributionChart = memo(function BankDistributionChart({
     <div>
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Tổng nhân sự</p>
+          <p className="text-xs font-medium text-muted-foreground">Total staff</p>
           <p className="mt-1 flex items-baseline gap-1.5 text-2xl font-semibold tracking-tight text-foreground">
             <span className="tabular-nums">{totalEmployees.toLocaleString('en-KE')}</span>
             <span className="text-sm font-medium tracking-normal text-muted-foreground">
-              nhân viên
+              staff
             </span>
           </p>
         </div>
@@ -84,7 +84,7 @@ export const BankDistributionChart = memo(function BankDistributionChart({
           <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-card px-2.5 py-1.5 sm:min-w-44">
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Ngân hàng phổ biến nhất
+                Most-used bank
               </p>
               <p className="truncate text-sm font-medium text-foreground">{leadingBank.shortName}</p>
             </div>
@@ -98,7 +98,7 @@ export const BankDistributionChart = memo(function BankDistributionChart({
       <div
         className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-muted ring-1 ring-inset ring-border/40"
         role="img"
-        aria-label={`Phân bổ ngân hàng nhận lương: ${distributionSummary}`}
+        aria-label={`Payroll bank distribution: ${distributionSummary}`}
       >
         {items.map((item) => (
           <span

@@ -219,8 +219,8 @@ export const ProjectProfitabilityMobile = memo(() => {
       <div className="bg-card border border-border/60 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/40 border-b border-border/40">
           <TrendingUp className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-foreground">Xếp Hạng Lợi Nhuận</span>
-          <span className="text-muted-foreground ml-auto" style={{ fontSize: 11 }}>12 tháng gần nhất</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-foreground">Profit ranking</span>
+          <span className="text-muted-foreground ml-auto" style={{ fontSize: 11 }}>Past 12 months</span>
         </div>
 
         {tableLoading ? (
@@ -228,7 +228,7 @@ export const ProjectProfitabilityMobile = memo(() => {
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-9 w-full rounded" />)}
           </div>
         ) : !rankedProjects.length ? (
-          <p className="py-6 text-center text-muted-foreground text-xs">Chưa có dữ liệu</p>
+          <p className="py-6 text-center text-muted-foreground text-xs">No data yet</p>
         ) : (
           <>
             {/* Phones: stacked cards. 760px of money columns cannot be read at
@@ -258,8 +258,8 @@ export const ProjectProfitabilityMobile = memo(() => {
                     {item.client_name}
                   </p>
                   <div className="mt-1 flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
-                    <span>Đã trả NV {fmtVND(item.total_payout_vnd)}</span>
-                    <span>Doanh thu {fmtVND(item.total_received_vnd)}</span>
+                    <span>Staff paid {fmtVND(item.total_payout_vnd)}</span>
+                    <span>Revenue {fmtVND(item.total_received_vnd)}</span>
                   </div>
                 </li>
               ))}
@@ -269,7 +269,7 @@ export const ProjectProfitabilityMobile = memo(() => {
                 onClick={() => setShowAll((prev) => !prev)}
                 className="w-full py-2 text-xs font-semibold text-primary active:opacity-70 lg:hidden"
               >
-                {showAll ? "Thu gọn" : `Xem tất cả (${rankedProjects.length})`}
+                {showAll ? "Show less" : `View all (${rankedProjects.length})`}
               </button>
             )}
 
@@ -279,9 +279,9 @@ export const ProjectProfitabilityMobile = memo(() => {
                 <tr className="border-b border-border/40">
                   <th className="py-1.5 pl-4 pr-2 text-left text-muted-foreground font-medium" style={{ fontSize: 11 }}>#</th>
                   <th className="py-1.5 px-2 text-left text-muted-foreground font-medium" style={{ fontSize: 11 }}>Projects</th>
-                  <th className="py-1.5 px-2 text-right text-muted-foreground font-medium" style={{ fontSize: 11 }}>Đã trả NV</th>
-                  <th className="py-1.5 px-2 text-right text-muted-foreground font-medium" style={{ fontSize: 11 }}>Doanh thu</th>
-                  <th className="py-1.5 pl-2 pr-4 text-right text-muted-foreground font-medium" style={{ fontSize: 11 }}>Lợi nhuận</th>
+                  <th className="py-1.5 px-2 text-right text-muted-foreground font-medium" style={{ fontSize: 11 }}>Staff paid</th>
+                  <th className="py-1.5 px-2 text-right text-muted-foreground font-medium" style={{ fontSize: 11 }}>Revenue</th>
+                  <th className="py-1.5 pl-2 pr-4 text-right text-muted-foreground font-medium" style={{ fontSize: 11 }}>Profit</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,7 +297,7 @@ export const ProjectProfitabilityMobile = memo(() => {
                         onClick={() => setShowAll(prev => !prev)}
                         className="text-primary text-xs font-semibold active:opacity-70"
                       >
-                        {showAll ? 'Thu gọn' : `Xem tất cả (${rankedProjects.length})`}
+                        {showAll ? 'Show less' : `View all (${rankedProjects.length})`}
                       </button>
                     </td>
                   </tr>

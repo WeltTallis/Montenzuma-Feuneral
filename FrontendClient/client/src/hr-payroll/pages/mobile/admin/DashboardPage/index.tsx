@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addMonths, format, parse, startOfMonth, subMonths } from 'date-fns';
-import { vi } from 'date-fns/locale';
 // UU PRO restyle (W13a): lucide → verified @untitledui/icons; daisyUI ct-btn
 // chrome → bridge tokens. The shared icon slots are widened to
 // ComponentType<SVGProps> (W13a follow-up), so UU icons fit everywhere.
@@ -120,7 +119,7 @@ const AdminDashboardMobile = () => {
   const monthParam = selectedMonth === 'all' ? undefined : selectedMonth;
   const monthLabel =
     selectedMonth === 'all'
-      ? 'Tất cả'
+      ? 'All periods'
       : (() => {
           const [year, month] = selectedMonth.split('-');
           return `${month}/${year}`;
@@ -207,18 +206,18 @@ const AdminDashboardMobile = () => {
         onClick: () => openTimesheetEntry(),
       },
       {
-        label: 'Duyệt công',
+        label: 'Review timesheets',
         icon: Clock,
         onClick: dashboardNav.navigateToPendingApprovals,
         badge: pendingApprovals !== null && pendingApprovals > 0 ? pendingApprovals : undefined,
       },
       {
-        label: 'Ví tiền',
+        label: 'Wallet',
         icon: SwitchHorizontal01,
         onClick: () => navigate('/admin/wallet'),
       },
       {
-        label: 'Thêm NV',
+        label: 'Add staff',
         icon: UserPlus01,
         onClick: () => openAddEmployee(),
       },
@@ -231,15 +230,15 @@ const AdminDashboardMobile = () => {
 
     return [
       {
-        label: 'Nhân viên đang làm',
+        label: 'Active staff',
         value: data.dashboardSummary.total_working_employees.toLocaleString('en-KE'),
-        helper: `Tổng ${data.dashboardSummary.total_employees.toLocaleString('en-KE')} nhân viên`,
+        helper: `${data.dashboardSummary.total_employees.toLocaleString('en-KE')} staff in total`,
         icon: Users01,
         tone: 'primary',
         onClick: dashboardNav.navigateToActiveEmployees,
       },
       {
-        label: 'Đã trả kỳ này',
+        label: 'Paid this period',
         value: formatVND(data.dashboardSummary.paid_salary_this_month),
         helper: monthLabel,
         icon: SwitchHorizontal01,
@@ -247,9 +246,9 @@ const AdminDashboardMobile = () => {
         onClick: dashboardNav.navigateToSalaryLedger,
       },
       {
-        label: 'Nhân viên mới',
+        label: 'New staff',
         value: data.dashboardSummary.employees_hired_this_month.toLocaleString('en-KE'),
-        helper: 'Trong kỳ đang xem',
+        helper: 'In the selected period',
         icon: UserPlus01,
         tone: 'neutral',
         onClick: dashboardNav.navigateToNewEmployees,
@@ -266,14 +265,14 @@ const AdminDashboardMobile = () => {
   const priorityRows = useMemo<MobileTaskRow[]>(() => {
     return [
       {
-        title: 'Duyệt bảng công',
+        title: 'Review timesheets',
         description: hasPendingError
-          ? 'Không thể tải hàng đợi toàn hệ thống. Làm mới để thử lại.'
+          ? 'Could not load the organisation-wide queue. Refresh to try again.'
           : pendingApprovals === null
-            ? 'Đang tải hàng đợi bảng công trên toàn hệ thống'
+            ? 'Loading the organisation-wide timesheet queue'
             : pendingApprovals > 0
-              ? 'Xem hàng đợi bảng công trên toàn hệ thống'
-              : 'Không có bảng công đang chờ xử lý',
+              ? 'View the organisation-wide timesheet queue'
+              : 'There are no timesheets awaiting approval',
         value: pendingApprovals === null ? '--' : pendingApprovals.toLocaleString('en-KE'),
         icon: AlertCircle,
         tone:
@@ -290,11 +289,11 @@ const AdminDashboardMobile = () => {
       ...(approvalsCount > 0
         ? [
             {
-              title: 'Yêu cầu phê duyệt',
+              title: 'Approval requests',
               description:
                 (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0
-                  ? 'Có yêu cầu đã leo thang — cần quyết định'
-                  : 'Yêu cầu đang chờ duyệt',
+                  ? 'Escalated requests need a decision'
+                  : 'Requests awaiting approval',
               value: approvalsCount.toLocaleString('en-KE'),
               icon: AlertCircle,
               tone: (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0 ? 'warning' : 'primary',
@@ -303,16 +302,16 @@ const AdminDashboardMobile = () => {
           ]
         : []),
       {
-        title: 'Đối soát ví trả lương',
-        description: 'Kiểm tra số dư và lịch chuyển tiền',
+        title: 'Reconcile payroll wallet',
+        description: 'Check the balance and transfer schedule',
         value: 'Wallet',
         icon: SwitchHorizontal01,
         tone: 'primary',
         onClick: () => navigate('/admin/wallet'),
       },
       {
-        title: 'Dự án & tài khoản ngân hàng',
-        description: 'Kiểm tra dữ liệu nhận tiền theo dự án',
+        title: 'Projects and bank accounts',
+        description: 'Review payment details by project',
         value: bankData ? bankData.projects.length.toLocaleString('en-KE') : '--',
         icon: Building02,
         tone: 'neutral',
@@ -334,8 +333,8 @@ const AdminDashboardMobile = () => {
   return (
     <MobilePageShell className="admin-dashboard-page-mobile space-y-2 overflow-x-hidden">
       <MobilePageHeader
-        title="Tổng quan"
-        subtitle={format(new Date(), 'EEEE, dd/MM', { locale: vi })}
+        title="Overview"
+        subtitle={format(new Date(), 'EEEE, dd/MM')}
         icon={BarChart03}
         sticky={false}
         bordered={false}
@@ -357,20 +356,20 @@ const AdminDashboardMobile = () => {
                 : 'bg-utility-gray-100 text-fg-secondary hover:bg-utility-gray-200',
             )}
           >
-            Tất cả
+            All periods
           </button>
           <button
             onClick={() => setSelectedMonth(format(subMonths(selectedDate, 1), 'yyyy-MM'))}
             className="flex h-11 w-11 items-center justify-center rounded-full text-fg-tertiary transition-colors duration-100 ease-linear hover:bg-utility-gray-100 hover:text-fg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
-            aria-label="Tháng trước"
+            aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
           <Popover open={monthPickerOpen} onOpenChange={setMonthPickerOpen}>
             <PopoverTrigger asChild>
-              <button type="button" aria-label="Chọn tháng" className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-full bg-utility-gray-100 px-2 text-xs font-semibold text-fg-primary transition-colors duration-100 ease-linear hover:bg-utility-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
+              <button type="button" aria-label="Select month" className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-full bg-utility-gray-100 px-2 text-xs font-semibold text-fg-primary transition-colors duration-100 ease-linear hover:bg-utility-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
                 <CalendarCheck01 className="h-3 w-3 shrink-0 text-fg-tertiary" aria-hidden="true" />
-                {selectedMonth === 'all' ? 'Chọn tháng' : format(selectedDate, 'MM/yyyy', { locale: vi })}
+                {selectedMonth === 'all' ? 'Select month' : format(selectedDate, 'MM/yyyy')}
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="center">
@@ -380,7 +379,7 @@ const AdminDashboardMobile = () => {
           <button
             onClick={() => setSelectedMonth(format(addMonths(selectedDate, 1), 'yyyy-MM'))}
             className="flex h-11 w-11 items-center justify-center rounded-full text-fg-tertiary transition-colors duration-100 ease-linear hover:bg-utility-gray-100 hover:text-fg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
-            aria-label="Tháng sau"
+            aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -390,7 +389,7 @@ const AdminDashboardMobile = () => {
             disabled={isDashboardRefreshing}
             aria-busy={isDashboardRefreshing}
             className="flex h-11 w-11 items-center justify-center rounded-full text-fg-tertiary transition-colors duration-100 ease-linear hover:bg-utility-gray-100 hover:text-fg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand disabled:pointer-events-none disabled:opacity-50"
-            aria-label="Làm mới số liệu"
+            aria-label="Refresh data"
           >
             <RefreshCcw01 className={cn('h-4 w-4', isDashboardRefreshing && 'animate-spin motion-reduce:animate-none')} aria-hidden="true" />
           </button>
@@ -399,18 +398,18 @@ const AdminDashboardMobile = () => {
 
       {dashboardSummary && (
         <MobileOperationsPanel
-          eyebrow={`Kỳ ${monthLabel}`}
-          title="Điều hành lương"
-          primaryLabel="Chờ trả"
+          eyebrow={`Period ${monthLabel}`}
+          title="Payroll overview"
+          primaryLabel="Awaiting payment"
           primaryValue={formatVND(dashboardSummary.pending_salary_this_month)}
-          primaryHint={`Đã trả ${formatVND(dashboardSummary.paid_salary_this_month)}`}
+          primaryHint={`Paid ${formatVND(dashboardSummary.paid_salary_this_month)}`}
           metrics={operationMetrics}
           actions={quickActions}
         />
       )}
 
       <MobileTaskList
-        title="Cần xử lý"
+        title="Items requiring attention"
         items={priorityRows}
       />
 
@@ -420,10 +419,10 @@ const AdminDashboardMobile = () => {
       >
         <DashboardDisclosureSection
           value="salary-workforce"
-          eyebrow="Sổ vận hành"
-          title="Lương và nhân sự"
-          summary="Theo dõi bảng công, nhân viên đang làm và hồ sơ mới."
-          meta={`${dashboardSummary?.total_working_employees.toLocaleString('en-KE') ?? '--'} đang làm`}
+          eyebrow="Operations"
+          title="Payroll and staff"
+          summary="Review timesheets, active staff and recently added records."
+          meta={`${dashboardSummary?.total_working_employees.toLocaleString('en-KE') ?? '--'} active`}
           icon={Users01}
         >
           <div className="space-y-3">
@@ -433,18 +432,18 @@ const AdminDashboardMobile = () => {
             {employeeStats.length > 0 && <GroupedStatCard title="Employees" icon={Users01} stats={employeeStats} />}
             {isActivityLoading && !activityData ? (
               <p className="rounded-xl border border-input bg-muted px-3 py-3 text-xs text-fg-tertiary">
-                Đang tải hoạt động nhân sự…
+                Loading staff activity…
               </p>
             ) : hasActivityError ? (
               <p className="rounded-xl border border-input bg-muted px-3 py-3 text-xs text-fg-tertiary">
-                Không thể tải hoạt động nhân sự. Hãy làm mới để thử lại.
+                Could not load staff activity. Refresh to try again.
               </p>
             ) : activityData && activityStats.length > 0 ? (
               <>
-                <GroupedStatCard title={`Hoạt động (${monthLabel})`} icon={Activity} stats={activityStats} />
+                <GroupedStatCard title={`Activity (${monthLabel})`} icon={Activity} stats={activityStats} />
                 {activityProjectStats.length > 0 && (
                   <GroupedStatCard
-                    title="Hoạt động theo dự án"
+                    title="Activity by project"
                     icon={Activity}
                     stats={activityProjectStats}
                     defaultCollapsed
@@ -455,7 +454,7 @@ const AdminDashboardMobile = () => {
           </div>
 
           <div className="space-y-2">
-            <SectionHeader icon={Users01} title="Nhân viên mới nhất" />
+            <SectionHeader icon={Users01} title="Recently added staff" />
             <RecentEmployeesCard
               employees={employees.employees}
               isLoading={employees.isLoading}
@@ -470,10 +469,10 @@ const AdminDashboardMobile = () => {
 
         <DashboardDisclosureSection
           value="payout-analytics"
-          eyebrow="Phân tích"
-          title="Chi trả và biến động"
-          summary="Đối chiếu phân bổ lương, lợi nhuận và người nhận lương cao nhất."
-          meta={`${formatVND(dashboardSummary?.total_profit_this_month ?? 0)} lợi nhuận`}
+          eyebrow="Analysis"
+          title="Payroll and staff changes"
+          summary="Review salary distribution, profit and top-paid staff."
+          meta={`${formatVND(dashboardSummary?.total_profit_this_month ?? 0)} profit`}
           icon={ArrowUpRight}
         >
           <div className="space-y-3">
@@ -481,36 +480,36 @@ const AdminDashboardMobile = () => {
           </div>
 
           <div className="space-y-2">
-            <SectionHeader icon={BarChart03} title="Phân bổ lương" />
+            <SectionHeader icon={BarChart03} title="Salary distribution" />
             <SalaryDistributionChartMobile />
           </div>
 
           <div className="space-y-2">
-            <SectionHeader icon={Users01} title={`Chi trả theo nhân viên — ${monthLabel}`} />
+            <SectionHeader icon={Users01} title={`Payments by staff member — ${monthLabel}`} />
             <TopPaidEmployeesCard month={monthParam} />
           </div>
 
           <div className="space-y-2">
-            <SectionHeader icon={ArrowUpRight} title="Lịch sử tài chính" />
+            <SectionHeader icon={ArrowUpRight} title="Financial history" />
             <MonthlyFinancialTable />
           </div>
         </DashboardDisclosureSection>
 
         <DashboardDisclosureSection
           value="projects-health"
-          eyebrow="Kiểm soát"
-          title="Dự án, ngân hàng và sức khỏe hệ thống"
-          summary="Rà soát tài khoản nhận lương, chấm công và hạn mức ứng."
-          meta={`${bankData?.projects.length.toLocaleString('en-KE') ?? '--'} dự án`}
+          eyebrow="Controls"
+          title="Projects, banks and system health"
+          summary="Review payroll bank accounts, attendance and pay advance limits."
+          meta={`${bankData?.projects.length.toLocaleString('en-KE') ?? '--'} projects`}
           icon={Building02}
         >
           <div className="space-y-2">
-            <SectionHeader icon={FolderCheck} title="Lợi nhuận dự án" />
+            <SectionHeader icon={FolderCheck} title="Project profit" />
             <ProjectProfitabilityMobile />
           </div>
 
           <div className="space-y-2">
-            <SectionHeader icon={Building02} title="Ngân hàng">
+            <SectionHeader icon={Building02} title="Banks">
               {bankData && bankData.projects.length > 0 ? (
                 <div className="ml-auto">
                   <ProjectSelector
@@ -525,7 +524,7 @@ const AdminDashboardMobile = () => {
           </div>
 
           <div className="space-y-2">
-            <SectionHeader icon={Activity} title="Sức khỏe vận hành" />
+            <SectionHeader icon={Activity} title="Operational health" />
             <CheckInHealthStrip month={monthParam} />
           </div>
         </DashboardDisclosureSection>

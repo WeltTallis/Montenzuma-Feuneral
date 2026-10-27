@@ -58,7 +58,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
     [onEmployeeClick]
   );
 
-  const weekLabel = weeks === 1 ? '1 week recently' : `${weeks} weeks recently`;
+  const weekLabel = weeks === 1 ? 'in the past week' : `in the past ${weeks} weeks`;
 
   return (
     <Card className="shadow-none transition-colors">
@@ -71,7 +71,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
 
         {!isLoading && employeesArray.length === 0 && (
           <p className="text-center text-muted-foreground py-8 text-sm">
-            No new employees in {weekLabel}
+            No new staff {weekLabel}
           </p>
         )}
 
@@ -116,7 +116,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
 
             <div className="mt-2 flex flex-wrap items-center justify-between gap-1 border-t pt-2">
               <p className="text-xs text-muted-foreground">
-                {employeesArray.length} employees
+                {employeesArray.length} staff
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {hasMore && (
@@ -125,7 +125,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
                     onClick={() => setShowAll(prev => !prev)}
                     className="min-h-11 rounded-lg text-xs font-semibold text-primary active:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    {showAll ? 'Collapse' : `View all (${employeesArray.length})`}
+                    {showAll ? 'Show less' : `View all (${employeesArray.length})`}
                   </button>
                 )}
                 {onLoadMore && (
@@ -142,7 +142,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
                         Loading...
                       </>
                     ) : (
-                      `View ${weeks + 1} weeks recently`
+                      `View the past ${weeks + 1} weeks`
                     )}
                   </Button>
                 )}

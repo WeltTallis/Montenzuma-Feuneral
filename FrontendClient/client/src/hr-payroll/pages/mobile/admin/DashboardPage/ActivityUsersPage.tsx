@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 // icon slots are widened to ComponentType<SVGProps> (W13a follow-up).
 import { Activity, ArrowLeft, User01 } from "@untitledui/icons";
 import { format, parseISO } from "date-fns";
-import { vi } from "date-fns/locale";
 import { Skeleton } from "@hr/components/ui/skeleton";
 import { Button } from "@hr/components/ui/button";
 import { UserAvatar } from "@hr/components/ui/user-avatar";
@@ -20,20 +19,20 @@ type Schedule = "weekly" | "monthly" | "flexible";
 
 const SCHEDULE_LABELS: Record<Schedule, string> = {
   weekly: "Weekly payroll",
-  monthly: "Lương tháng",
-  flexible: "Linh hoạt",
+  monthly: "Monthly payroll",
+  flexible: "Flexible",
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "Quản trị",
+  admin: "Administrator",
   partner: "Management",
-  employee: "Employees",
+  employee: "Staff",
 };
 
 const SCHEDULE_BADGE_LABELS: Record<string, string> = {
   weekly: "Weekly payroll",
-  monthly: "Lương tháng",
-  flexible: "Linh hoạt",
+  monthly: "Monthly payroll",
+  flexible: "Flexible",
 };
 
 const ActivityUsersPage = () => {
@@ -70,10 +69,10 @@ const ActivityUsersPage = () => {
     });
   };
 
-  const title = schedule ? SCHEDULE_LABELS[schedule] : "Nhân viên đăng nhập";
+  const title = schedule ? SCHEDULE_LABELS[schedule] : "Staff who have logged in";
   const subtitle = month
-    ? `Tháng ${month.split("-").reverse().join("/")}`
-    : "Tất cả thời gian";
+    ? `Month ${month.split("-").reverse().join("/")}`
+    : "All time";
 
   return (
     <div className="admin-dashboard-activity-page flex min-h-full flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
@@ -84,7 +83,7 @@ const ActivityUsersPage = () => {
         sticky={false}
         bordered={false}
         actions={
-          <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => navigate(-1)} aria-label="Quay lại tổng quan">
+          <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => navigate(-1)} aria-label="Back to Overview">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
         }
@@ -110,7 +109,7 @@ const ActivityUsersPage = () => {
         ) : !users || users.length === 0 ? (
           <EmptyState
             icon={User01}
-            title="Không có nhân viên nào đăng nhập"
+            title="No staff have logged in"
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
@@ -146,7 +145,6 @@ const ActivityUsersPage = () => {
                 {user.last_login && (
                   <p className="text-xs text-fg-tertiary leading-none">
                     {format(parseISO(user.last_login), "dd/MM/yyyy HH:mm", {
-                      locale: vi,
                     })}
                   </p>
                 )}

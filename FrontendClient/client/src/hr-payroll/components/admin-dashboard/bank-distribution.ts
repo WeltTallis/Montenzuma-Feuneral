@@ -58,8 +58,8 @@ export function buildBankDistribution(
     );
 
     distribution.push({
-      name: 'Ngân hàng khác',
-      shortName: 'Khác',
+      name: 'Other banks',
+      shortName: 'Other',
       employeeCount,
       percentage: calculatePercentage(employeeCount, totalEmployees),
       color: OTHER_COLOR,

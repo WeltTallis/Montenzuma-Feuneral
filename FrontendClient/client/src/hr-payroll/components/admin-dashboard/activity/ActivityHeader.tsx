@@ -19,14 +19,14 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" />
           <h3 className="typography-title-medium text-foreground">
-            Hoạt động gần đây
+            Recent activity
           </h3>
           <span className="typography-body-small text-muted-foreground">
             ({activitiesCount})
           </span>
         </div>
         <p className="typography-body-small text-muted-foreground">
-          Tổng hợp các hoạt động mới nhất trong hệ thống
+          The latest activity across the system
         </p>
       </div>
 
@@ -37,7 +37,7 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
           onClick={onRefresh}
           disabled={isLoading}
           className="h-8 w-8 p-0"
-          aria-label="Làm mới hoạt động gần đây"
+          aria-label="Refresh recent activity"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>

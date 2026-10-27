@@ -61,17 +61,17 @@ export const useDashboardStats = ({
     if (!dashboardSummary) return [];
     return [
       {
-        label: 'Tổng',
+        label: 'Total staff',
         value: dashboardSummary.total_employees,
         onClick: dashboardNav.navigateToActiveEmployees,
       },
       {
-        label: 'Đang làm việc',
+        label: 'Active',
         value: dashboardSummary.total_working_employees,
         onClick: dashboardNav.navigateToActiveEmployees,
       },
       {
-        label: 'Mới',
+        label: 'New this period',
         value: dashboardSummary.employees_hired_this_month,
         onClick: dashboardNav.navigateToNewEmployees,
       },
@@ -85,19 +85,19 @@ export const useDashboardStats = ({
     if (dashboardSummary) {
       stats.push(
         {
-          label: 'Chờ trả',
+          label: 'Awaiting payment',
           value: dashboardSummary.pending_salary_this_month,
           unit: ' ₫',
           onClick: dashboardNav.navigateToSalaryLedger,
         },
         {
-          label: 'Đã trả',
+          label: 'Paid this period',
           value: dashboardSummary.paid_salary_this_month,
           unit: ' ₫',
           onClick: dashboardNav.navigateToSalaryLedger,
         },
         {
-          label: 'Tổng đã trả',
+          label: 'Total paid',
           value: dashboardSummary.total_paid_salary,
           unit: ' ₫',
           onClick: dashboardNav.navigateToSalaryLedger,
@@ -119,22 +119,22 @@ export const useDashboardStats = ({
     if (!dashboardSummary) return [];
     return [
       {
-        label: 'Tiền ứng',
+        label: 'Revenue this month',
         value: dashboardSummary.total_revenue_this_month,
         unit: ' ₫',
       },
       {
-        label: 'Lợi nhuận',
+        label: 'Profit this month',
         value: dashboardSummary.total_profit_this_month,
         unit: ' ₫',
       },
       {
-        label: 'Tổng ứng',
+        label: 'Total revenue',
         value: dashboardSummary.total_revenue,
         unit: ' ₫',
       },
       {
-        label: 'Tổng lãi',
+        label: 'Total profit',
         value: dashboardSummary.total_profit,
         unit: ' ₫',
       },
@@ -151,12 +151,12 @@ export const useDashboardStats = ({
         onClick: onActivityClick ? () => onActivityClick('weekly') : undefined,
       },
       {
-        label: 'Lương tháng',
+        label: 'Monthly payroll',
         value: activityStats.active_monthly,
         onClick: onActivityClick ? () => onActivityClick('monthly') : undefined,
       },
       {
-        label: 'Linh hoạt',
+        label: 'Flexible payroll',
         value: activityStats.active_flexible,
         onClick: onActivityClick ? () => onActivityClick('flexible') : undefined,
       },

@@ -268,8 +268,8 @@ export function FinancialChart({ className }: FinancialChartProps) {
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="text-base">Biểu Đồ Tài Chính</CardTitle>
-          <CardDescription>Không thể tải dữ liệu</CardDescription>
+          <CardTitle className="text-base">Financial chart</CardTitle>
+          <CardDescription>Could not load data</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-80 flex items-center justify-center text-muted-foreground">

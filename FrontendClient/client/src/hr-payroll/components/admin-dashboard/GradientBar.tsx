@@ -19,7 +19,7 @@ export function GradientBar({ label, count, maxCount, binRange }: GradientBarPro
   const isEmpty = count === 0;
 
   return (
-    <div className="group relative" aria-label={`${binRange}: ${count} nhân viên`}>
+    <div className="group relative" aria-label={`${binRange}: ${count} staff`}>
       {/* Tooltip */}
       <div
         id={tooltipId}
@@ -27,7 +27,7 @@ export function GradientBar({ label, count, maxCount, binRange }: GradientBarPro
         className="pointer-events-none absolute -top-8 left-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
       >
         <div className="bg-foreground/90 text-background text-xs font-medium rounded-md px-2.5 py-1 whitespace-nowrap">
-          {binRange}: <span className="font-bold">{count}</span> nhân viên
+          {binRange}: <span className="font-bold">{count}</span> staff
         </div>
         {/* Arrow */}
         <div className="w-2 h-2 bg-foreground/90 rotate-45 mx-3 -mt-1" />

@@ -1,6 +1,5 @@
 import { memo, useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import { Card, CardContent } from '@hr/components/ui/card';
 import { Skeleton } from "@hr/components/ui/skeleton";
 import { cn } from "@hr/lib/utils";
@@ -9,7 +8,7 @@ import { formatFullCurrency as formatVND } from '@hr/utils/formatters';
 
 function formatMonthLabel(month: string): string {
   try {
-    return format(parseISO(`${month}-01`), 'MMM yyyy', { locale: vi });
+    return format(parseISO(`${month}-01`), 'MMM yyyy');
   } catch {
     return month;
   }
@@ -42,17 +41,17 @@ export const MonthlyFinancialTable = memo(() => {
           </div>
         ) : error || !data ? (
           <div className="px-3 py-6 text-center text-xs text-foreground">
-            Không thể tải dữ liệu
+            Could not load data
           </div>
         ) : data.months.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-foreground">
-            Không có dữ liệu trong 12 tháng gần đây
+            No data for the past 12 months
           </div>
         ) : (
-          <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" tabIndex={0} role="region" aria-label="Tài chính theo tháng">
+          <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" tabIndex={0} role="region" aria-label="Monthly finances">
             {/* Total profit summary banner */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
-              <span className="text-xs font-medium text-foreground">Lợi nhuận tích lũy</span>
+              <span className="text-xs font-medium text-foreground">Accumulated profit</span>
               <span className="text-sm font-bold tabular-nums text-foreground">
                 {formatVND(data.total.fee_earned)}
               </span>
@@ -67,9 +66,9 @@ export const MonthlyFinancialTable = memo(() => {
                   </p>
                   <dl className="mt-1 space-y-0.5">
                     {[
-                      { label: "Chi phí", value: row.paid_out },
-                      { label: "Doanh thu", value: row.billed },
-                      { label: "Lợi nhuận", value: row.fee_earned },
+                      { label: "Costs", value: row.paid_out },
+                      { label: "Revenue", value: row.billed },
+                      { label: "Profit", value: row.fee_earned },
                     ].map((cell, index, all) => (
                       <div
                         key={cell.label}
@@ -97,17 +96,17 @@ export const MonthlyFinancialTable = memo(() => {
                 onClick={() => setShowAll(prev => !prev)}
                 className="w-full py-2 text-xs font-semibold text-foreground active:opacity-70 lg:hidden"
               >
-                {showAll ? 'Thu gọn' : `Xem tất cả (${sortedMonths.length})`}
+                {showAll ? 'Show less' : `View all (${sortedMonths.length})`}
               </button>
             )}
 
             <table className="hidden w-full min-w-[640px] text-xs lg:table">
               <thead>
                 <tr className="border-b border-border/40">
-                  <th className="text-left px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Tháng</th>
-                  <th className="text-right px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Chi phí</th>
-                  <th className="text-right px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Doanh thu</th>
-                  <th className="text-right px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Lợi nhuận</th>
+                  <th className="text-left px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Month</th>
+                  <th className="text-right px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Costs</th>
+                  <th className="text-right px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Revenue</th>
+                  <th className="text-right px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">Profit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
@@ -130,7 +129,7 @@ export const MonthlyFinancialTable = memo(() => {
                         onClick={() => setShowAll(prev => !prev)}
                         className="text-xs font-semibold active:opacity-70 text-foreground"
                       >
-                        {showAll ? 'Thu gọn' : `Xem tất cả (${sortedMonths.length})`}
+                        {showAll ? 'Show less' : `View all (${sortedMonths.length})`}
                       </button>
                     </td>
                   </tr>

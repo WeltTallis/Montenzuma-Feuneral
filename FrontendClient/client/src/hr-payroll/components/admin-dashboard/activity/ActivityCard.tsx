@@ -72,7 +72,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       <div
         className="mt-2 space-y-0"
         role="list"
-        aria-label="Hoạt động gần đây"
+        aria-label="Recent activity"
       >
         {displayedActivities.map((activity, index) => (
           <ActivityItem
@@ -86,7 +86,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           <div className="pt-4 mt-4 border-t border-border/50">
             <div className="flex items-center justify-between gap-3">
               <p className="typography-body-small text-muted-foreground">
-                Hiển thị {activitiesArray.length} / {totalActivities} hoạt động
+                Showing {activitiesArray.length} of {totalActivities} activities
               </p>
               <Button
                 onClick={onLoadMore}
@@ -100,7 +100,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                     Loading...
                   </>
                 ) : (
-                  'Tải thêm'
+                  'Load more'
                 )}
               </Button>
             </div>

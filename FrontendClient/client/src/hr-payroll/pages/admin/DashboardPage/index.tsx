@@ -60,7 +60,7 @@ const AdminDashboard = () => {
   const monthParam = selectedMonth === 'all' ? undefined : selectedMonth;
   const monthLabel =
     selectedMonth === 'all'
-      ? 'Tất cả'
+      ? 'All periods'
       : (() => {
           const [year, month] = selectedMonth.split('-');
           return `${month}/${year}`;
@@ -118,7 +118,7 @@ const AdminDashboard = () => {
   const activityItems = useMemo(
     () =>
       activityStats.map((item) => ({
-        label: typeof item.label === 'string' ? item.label : 'Hoạt động',
+        label: typeof item.label === 'string' ? item.label : 'Activity',
         value: item.value,
         onClick: item.onClick,
       })),
@@ -144,22 +144,22 @@ const AdminDashboard = () => {
     // repeat a metric between the two adjacent zones.
     return [
       {
-        label: 'Đã trả kỳ này',
+        label: 'Paid this period',
         value: formatVND(data.dashboardSummary.paid_salary_this_month),
-        context: `Tổng đã trả ${formatVND(data.dashboardSummary.total_paid_salary)}`,
+        context: `Total paid ${formatVND(data.dashboardSummary.total_paid_salary)}`,
         tone: 'primary',
         onClick: dashboardNav.navigateToSalaryLedger,
       },
       {
-        label: 'Lợi nhuận kỳ này',
+        label: 'Profit this period',
         value: formatVND(data.dashboardSummary.total_profit_this_month),
-        context: `Lũy kế ${formatVND(data.dashboardSummary.total_profit)}`,
+        context: `Total to date ${formatVND(data.dashboardSummary.total_profit)}`,
         tone: 'success',
       },
       {
-        label: 'Nhân sự đang làm',
+        label: 'Active staff',
         value: data.dashboardSummary.total_working_employees.toLocaleString('en-KE'),
-        context: `${data.dashboardSummary.total_employees.toLocaleString('en-KE')} nhân viên · ${data.dashboardSummary.employees_hired_this_month.toLocaleString('en-KE')} mới`,
+        context: `${data.dashboardSummary.total_employees.toLocaleString('en-KE')} staff · ${data.dashboardSummary.employees_hired_this_month.toLocaleString('en-KE')} new`,
         tone: 'neutral',
         onClick: dashboardNav.navigateToActiveEmployees,
       },
@@ -173,23 +173,23 @@ const AdminDashboard = () => {
 
     return [
       {
-        title: 'Bảng công chờ duyệt',
+        title: 'Timesheets awaiting approval',
         detail:
           hasPendingError
-            ? 'Không thể tải hàng đợi toàn hệ thống. Làm mới số liệu để thử lại.'
+            ? 'Could not load the organisation-wide queue. Refresh to try again.'
             : pendingApprovals === null
-              ? 'Đang tải hàng đợi bảng công trên toàn hệ thống.'
+              ? 'Loading the organisation-wide timesheet queue.'
               : pendingApprovals > 0
-                ? 'Xử lý các bảng công này trước khi khóa sổ lương.'
-                : 'Không có bảng công đang chờ xử lý trên toàn hệ thống.',
+                ? 'Review these timesheets before closing the payroll period.'
+                : 'There are no timesheets awaiting approval across the organisation.',
         value: pendingApprovals === null ? '--' : pendingApprovals.toLocaleString('en-KE'),
         statusLabel: hasPendingError
-          ? 'Không thể tải'
+          ? 'Unavailable'
           : pendingApprovals === null
             ? 'Loading'
             : pendingApprovals > 0
-              ? 'Cần duyệt'
-              : 'Đã xử lý',
+              ? 'Needs review'
+              : 'Up to date',
         icon: AlertTriangle,
         tone:
           hasPendingError || pendingApprovals === null
@@ -203,12 +203,12 @@ const AdminDashboard = () => {
             : undefined,
       },
       {
-        title: 'Lương chờ giải ngân',
+        title: 'Payroll awaiting payment',
         // No paid-salary figure here — that metric belongs to the strip above.
-        detail: `Số tiền sẽ giải ngân sau khi chốt công kỳ ${monthLabel}.`,
+        detail: `This amount will be paid after timesheets are approved for ${monthLabel}.`,
         value: formatVND(data.dashboardSummary.pending_salary_this_month),
         statusLabel:
-          data.dashboardSummary.pending_salary_this_month > 0 ? 'Cần theo dõi' : 'Đã giải ngân',
+          data.dashboardSummary.pending_salary_this_month > 0 ? 'Needs attention' : 'Paid',
         icon: SwitchHorizontal01,
         tone: data.dashboardSummary.pending_salary_this_month > 0 ? 'primary' : 'success',
         onClick: dashboardNav.navigateToSalaryLedger,
@@ -216,14 +216,14 @@ const AdminDashboard = () => {
       ...(approvalsQueue.data && (approvalsQueue.data.pagination?.totalRecords ?? 0) + (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0
         ? [
             {
-              title: 'Yêu cầu phê duyệt',
-              detail: 'Yêu cầu đang chờ duyệt hoặc đã leo thang.',
+              title: 'Approval requests',
+              detail: 'Requests awaiting approval or escalated for review.',
               value: (
                 (approvalsQueue.data.pagination?.totalRecords ?? 0) +
                 (approvalsEscalated.data?.pagination?.totalRecords ?? 0)
               ).toLocaleString('en-KE'),
               statusLabel:
-                (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0 ? 'Có leo thang' : 'Cần duyệt',
+                (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0 ? 'Escalated' : 'Needs review',
               icon: FolderCheck,
               tone: (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0 ? 'warning' : 'primary',
               onClick: () => navigate('/admin/approvals'),
@@ -286,8 +286,8 @@ const AdminDashboard = () => {
 
           <DashboardAreaHeader
             eyebrow="Finance"
-            title="Dòng tiền và hiệu quả"
-            description="Rà soát lịch sử tài chính, cơ cấu ngân hàng và lợi nhuận theo từng dự án."
+            title="Cash flow and performance"
+            description="Review financial history, payroll bank distribution and profit by project."
             className="mt-2 xl:col-span-12"
           />
 
@@ -298,9 +298,9 @@ const AdminDashboard = () => {
             <div className="min-w-0 space-y-4 xl:col-span-7">
               <section data-slot="dashboard-financial-history" className="admin-dashboard-finance-group min-w-0 space-y-3">
                 <DashboardSectionHeader
-                  eyebrow="Sổ dòng tiền"
-                  title="Lịch sử tài chính"
-                  subtitle="Sổ chi phí, doanh thu và lợi nhuận tích lũy 12 tháng gần nhất."
+                  eyebrow="Cash flow"
+                  title="Financial history"
+                  subtitle="Costs, revenue and accumulated profit over the past 12 months."
                   icon={ArrowUpRight}
                 />
                 <MonthlyFinancialTable />
@@ -308,9 +308,9 @@ const AdminDashboard = () => {
 
               <section data-slot="dashboard-bank-distribution" className="admin-dashboard-finance-group min-w-0 space-y-3">
                 <DashboardSectionHeader
-                  eyebrow="Chi trả"
-                  title="Ngân hàng nhận lương"
-                  subtitle="Phân bổ nhân sự theo ngân hàng để rà soát dữ liệu nhận tiền."
+                  eyebrow="Payments"
+                  title="Payroll banks"
+                  subtitle="Staff distribution by bank for reviewing payment details."
                   icon={Building02}
                   actions={
                     bankData && bankData.projects.length > 0 ? (
@@ -332,8 +332,8 @@ const AdminDashboard = () => {
             >
               <DashboardSectionHeader
                 eyebrow="Projects"
-                title="Lợi nhuận dự án"
-                subtitle="Theo dõi đà lợi nhuận và dự án đang kéo kết quả kỳ lương."
+                title="Project profit"
+                subtitle="Track profit trends and projects affecting payroll-period results."
                 icon={FolderCheck}
               />
               <ProjectProfitabilityCard />
@@ -341,9 +341,9 @@ const AdminDashboard = () => {
           </div>
 
           <DashboardAreaHeader
-            eyebrow="Nhân sự"
-            title="Chi trả và biến động nhân sự"
-            description="Phát hiện phân bổ lương bất thường, đối chiếu nhóm nhận cao và hồ sơ vừa được thêm."
+            eyebrow="Staff"
+            title="Payroll and staff changes"
+            description="Spot unusual salary distributions, review top earners and check recently added staff."
             className="mt-2 xl:col-span-12"
           />
 
@@ -356,9 +356,9 @@ const AdminDashboard = () => {
               className="admin-dashboard-workforce-group min-w-0 space-y-3 xl:col-span-7 xl:col-start-1 xl:row-start-1"
             >
               <DashboardSectionHeader
-                eyebrow="Phân tích chi trả"
-                title="Phân bổ lương"
-                subtitle="Các khoảng lương điển hình để kiểm tra độ lệch trước khi giải ngân."
+                eyebrow="Payroll analysis"
+                title="Salary distribution"
+                subtitle="Typical salary ranges to review before payments are made."
                 icon={BarChart03}
               />
               <SalaryDistributionChart />
@@ -369,9 +369,9 @@ const AdminDashboard = () => {
               className="admin-dashboard-workforce-group min-w-0 space-y-3 xl:col-span-5 xl:col-start-8 xl:row-span-2 xl:row-start-1"
             >
               <DashboardSectionHeader
-                eyebrow="Nhân sự"
-                title={`Chi trả theo nhân viên — ${monthLabel}`}
-                subtitle="Nhân viên nhận lương cao nhất trong kỳ đang xem."
+                eyebrow="Staff"
+                title={`Payments by staff member — ${monthLabel}`}
+                subtitle="Staff members paid the most in the selected period."
                 icon={Trophy01}
               />
               <TopPaidEmployeesCard month={monthParam} />
@@ -382,9 +382,9 @@ const AdminDashboard = () => {
               className="admin-dashboard-workforce-group min-w-0 space-y-3 xl:col-span-7 xl:col-start-1 xl:row-start-2"
             >
               <DashboardSectionHeader
-                eyebrow="Nhân sự"
-                title="Nhân viên mới nhất"
-                subtitle="Các hồ sơ vừa được thêm để đối chiếu biên chế dự án."
+                eyebrow="Staff"
+                title="Recently added staff"
+                subtitle="Recently added records for reviewing project staffing."
                 icon={Users01}
               />
               <RecentEmployeesCard
@@ -404,9 +404,9 @@ const AdminDashboard = () => {
             className="admin-dashboard-health-group min-w-0 space-y-3 xl:col-span-12"
           >
             <DashboardSectionHeader
-              eyebrow="Sức khỏe vận hành"
-              title="Tự chấm công và hạn mức ứng lương"
-              subtitle="Rà soát lỗi chấm công và hạn mức ứng lương trước khi chốt kỳ."
+              eyebrow="Operational health"
+              title="Self check-in and pay advance limits"
+              subtitle="Review attendance issues and pay advance limits before closing the period."
               icon={ShieldTick}
             />
             <CheckInHealthStrip month={monthParam} />

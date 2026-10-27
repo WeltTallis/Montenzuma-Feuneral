@@ -392,7 +392,7 @@ export const ProjectProfitabilityCard = memo(() => {
       </Card>
 
       {/* ── Ranking table ── */}
-      <DashboardSectionHeader title="Xếp Hạng Lợi Nhuận" subtitle="12 tháng gần nhất" icon={TrendingUp} />
+      <DashboardSectionHeader title="Profit ranking" subtitle="Past 12 months" icon={TrendingUp} />
       <Card className="shadow-none">
         <CardContent className="p-0">
           {tableLoading ? (
@@ -400,7 +400,7 @@ export const ProjectProfitabilityCard = memo(() => {
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded" />)}
             </div>
           ) : !profitData?.projects?.length ? (
-            <div className="py-8 text-center text-muted-foreground text-xs">Chưa có dữ liệu dự án</div>
+            <div className="py-8 text-center text-muted-foreground text-xs">No project data yet</div>
           ) : (
             <>
               <table className="w-full">
@@ -408,8 +408,8 @@ export const ProjectProfitabilityCard = memo(() => {
                   <tr className="border-b border-border/40">
                     <th className="py-2 pl-3 pr-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-8">#</th>
                     <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</th>
-                    <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">NV</th>
-                    <th className="py-2 pl-2 pr-3 text-right text-xs font-semibold text-foreground uppercase tracking-wider">Lợi nhuận</th>
+                    <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Staff</th>
+                    <th className="py-2 pl-2 pr-3 text-right text-xs font-semibold text-foreground uppercase tracking-wider">Profit</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -438,7 +438,7 @@ export const ProjectProfitabilityCard = memo(() => {
                     size="sm"
                     className="w-full text-xs text-muted-foreground hover:text-foreground"
                   >
-                    Xem thêm {profitData.projects.length - INITIAL_VISIBLE_ROWS} dự án
+                    View {profitData.projects.length - INITIAL_VISIBLE_ROWS} more projects
                   </Button>
                 </div>
               )}

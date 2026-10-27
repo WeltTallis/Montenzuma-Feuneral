@@ -43,10 +43,10 @@ export const ActivityEmptyState: React.FC<ActivityEmptyStateProps> = ({
         </div>
         <div className="text-center space-y-2">
           <h4 className="text-sm font-medium text-foreground">
-            Không thể tải dữ liệu
+            Could not load data
           </h4>
           <p className="text-xs text-muted-foreground max-w-xs">
-            {error || 'Đã xảy ra lỗi khi tải danh sách hoạt động'}
+            {error || 'An error occurred while loading the activity list'}
           </p>
           {onRefresh && (
             <Button
@@ -56,7 +56,7 @@ export const ActivityEmptyState: React.FC<ActivityEmptyStateProps> = ({
               className="mt-3"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
-              Thử lại
+              Try again
             </Button>
           )}
         </div>
@@ -67,9 +67,9 @@ export const ActivityEmptyState: React.FC<ActivityEmptyStateProps> = ({
   // Empty state
   return (
     <EmptyState
-      title="Chưa có hoạt động nào"
-      description="Chưa có hoạt động nào được ghi nhận gần đây"
-      action={onRefresh ? { label: 'Làm mới', onClick: onRefresh } : undefined}
+      title="No activity yet"
+      description="No recent activity has been recorded"
+      action={onRefresh ? { label: 'Refresh', onClick: onRefresh } : undefined}
       size="sm"
     />
   );

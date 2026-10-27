@@ -6,14 +6,14 @@ import type { Notification } from "@hr/types/api/notification.types";
 import { downloadAssetFile } from "@hr/utils/file-download";
 
 /**
- * Day-9 check-in roster reminder on Tổng quan (desktop + mobile dashboards).
+ * Day-9 check-in roster reminder on the Overview (desktop + mobile dashboards).
  *
  * The backend job `prepare_check_in_roster` stores the combined roster workbook
  * as a `checkin_roster` asset, then pushes a `checkin_roster` notification to
  * every admin. Unread notification = pending work:
  *
- * - "Tải file" downloads the newest prepared workbook.
- * - "Đã xong" (and the X) marks EVERY checkin_roster notice read — a stale
+ * - "Download file" downloads the newest prepared workbook.
+ * - "Done" (and the X) marks EVERY checkin_roster notice read — a stale
  *   notice from a previous month must not resurrect the banner.
  *
  * Renders nothing when there is no unread roster notice.
@@ -79,18 +79,18 @@ function RosterReminderActions({ notices }: { notices: Notification[] }) {
       title={latest.title}
       description={latest.message}
       primaryAction={{
-        label: asset ? "Tải file" : "Đang tải file…",
+        label: asset ? "Download file" : "Loading file…",
         onClick: handleDownload,
         loading: downloading,
         disabled: !asset || assetsLoading,
       }}
       secondaryAction={{
-        label: "Đã xong",
+        label: "Done",
         onClick: handleDone,
         loading: markAsRead.isPending,
       }}
       onDismiss={handleDone}
-      dismissLabel="Đánh dấu đã xong"
+      dismissLabel="Mark as done"
     />
   );
 }

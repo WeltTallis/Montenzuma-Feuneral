@@ -27,17 +27,17 @@ export const ProjectSelector = memo(function ProjectSelector({
     <SearchableSelect
       value={selectedId === null ? 'all' : String(selectedId)}
       onChange={(value) => onSelect(value === 'all' ? null : Number(value))}
-      placeholder="Tất cả dự án"
-      searchPlaceholder="Tìm dự án..."
-      triggerAriaLabel="Lọc phân bổ ngân hàng theo dự án"
+      placeholder="All projects"
+      searchPlaceholder="Search projects..."
+      triggerAriaLabel="Filter bank distribution by project"
       contentAlign="end"
       triggerClassName="w-[min(58vw,14rem)]"
       options={[
-        { value: 'all', label: 'Tất cả dự án' },
+        { value: 'all', label: 'All projects' },
         ...projects.map((project) => ({
           value: String(project.project_id),
           label: project.project_name,
-          searchText: `${project.total_employees.toLocaleString('en-KE')} nhân viên`,
+          searchText: `${project.total_employees.toLocaleString('en-KE')} staff`,
         })),
       ]}
     />
@@ -83,7 +83,7 @@ export const BankTransferBreakdownCard = memo(function BankTransferBreakdownCard
     <Card className="overflow-hidden shadow-none">
       <CardContent className="p-3 sm:p-4">
         {isLoading ? (
-          <div aria-label="Đang tải phân bổ ngân hàng">
+          <div aria-label="Loading bank distribution">
             <div className="flex items-end justify-between gap-4">
               <div className="space-y-2">
                 <Skeleton className="h-3 w-20" />
@@ -107,10 +107,10 @@ export const BankTransferBreakdownCard = memo(function BankTransferBreakdownCard
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Không thể tải phân bổ ngân hàng
+                  Could not load bank distribution
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Kiểm tra kết nối rồi thử tải lại dữ liệu.
+                  Check your connection and try loading the data again.
                 </p>
               </div>
             </div>
@@ -124,7 +124,7 @@ export const BankTransferBreakdownCard = memo(function BankTransferBreakdownCard
               <RefreshCw
                 className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin motion-reduce:animate-none' : ''}`}
               />
-              Thử lại
+              Try again
             </Button>
           </div>
         ) : displayData && displayData.items.length > 0 ? (
@@ -134,8 +134,8 @@ export const BankTransferBreakdownCard = memo(function BankTransferBreakdownCard
           />
         ) : (
           <EmptyState
-            title="Chưa có dữ liệu ngân hàng"
-            description="Dữ liệu sẽ xuất hiện khi nhân viên có thông tin nhận lương."
+            title="No bank data yet"
+            description="Data will appear when staff have added their payment details."
             size="sm"
             className="py-4"
           />

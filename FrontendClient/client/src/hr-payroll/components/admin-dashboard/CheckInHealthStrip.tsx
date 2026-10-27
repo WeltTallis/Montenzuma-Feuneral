@@ -69,9 +69,9 @@ function CheckInHealthStripImpl({ month, className }: CheckInHealthStripProps) {
   const openSuccessfulCheckouts = useCallback(() => {
     openAttendanceList({
       type: 'attendance-list',
-      label: 'Chấm công ra thành công',
+      label: 'Successful check-outs',
       successfulCheckout: true,
-      emptyLabel: 'Không có ai chấm công ra thành công trong tháng này',
+      emptyLabel: 'No successful check-outs this month',
     });
   }, [openAttendanceList]);
 
@@ -91,21 +91,21 @@ function CheckInHealthStripImpl({ month, className }: CheckInHealthStripProps) {
     });
 
     const items: InlineStatItem[] = [
-      anomaly(data.failed_check_in_today ?? 0, 'Lỗi vào làm', () => openFailedAttempts(undefined, 'check_in')),
-      anomaly(data.failed_check_out_today ?? 0, 'Lỗi tan ca', () => openFailedAttempts(undefined, 'check_out')),
-      anomaly(data.open_checked_in ?? 0, 'Đang chấm công', () => openAttendanceList({ type: 'attendance-list', label: 'Đang chấm công', status: 'checked_in', emptyLabel: 'Không có ca đang chấm công trong tháng này' })),
-      anomaly(data.orphaned ?? 0, 'Thiếu dữ liệu ghép cặp', () => openAttendanceList({ type: 'attendance-list', label: 'Thiếu dữ liệu ghép cặp', status: 'orphaned', emptyLabel: 'Không có ca thiếu dữ liệu ghép cặp trong tháng này' })),
-      anomaly(data.auto_rejected_today ?? 0, 'Tự động huỷ', () => openAttendanceList({ type: 'attendance-list', label: 'Tự động huỷ', status: 'rejected', emptyLabel: 'Không có ca tự động huỷ trong tháng này' })),
-      anomaly(data.completed_zero_earning_today ?? 0, 'Ca không có lương', () => openAttendanceList({ type: 'attendance-list', label: 'Ca không có lương', zeroEarning: true, emptyLabel: 'Không có ca không có lương trong tháng này' })),
-      anomaly(data.quota_invariant_drift ?? 0, 'Sai lệch hạn mức', () => openQuotaAnomaly('drift')),
-      anomaly(data.missing_quota_rows ?? 0, 'Thiếu dòng hạn mức', () => openQuotaAnomaly('missing')),
-      anomaly(data.stale_quota_after_disable ?? 0, 'Hạn mức cũ còn tồn tại', () => openQuotaAnomaly('stale')),
-      anomaly(data.requests_stuck_pending ?? 0, 'Đang chờ quá lâu', () => openFailedAttempts('stuck_pending')),
-      anomaly(data.requests_failed_today ?? 0, 'Lỗi yêu cầu hôm nay', () => openFailedAttempts('request_failed')),
+      anomaly(data.failed_check_in_today ?? 0, 'Check-in failures', () => openFailedAttempts(undefined, 'check_in')),
+      anomaly(data.failed_check_out_today ?? 0, 'Check-out failures', () => openFailedAttempts(undefined, 'check_out')),
+      anomaly(data.open_checked_in ?? 0, 'Currently checked in', () => openAttendanceList({ type: 'attendance-list', label: 'Currently checked in', status: 'checked_in', emptyLabel: 'No one is currently checked in this month' })),
+      anomaly(data.orphaned ?? 0, 'Unmatched attendance records', () => openAttendanceList({ type: 'attendance-list', label: 'Unmatched attendance records', status: 'orphaned', emptyLabel: 'No unmatched attendance records this month' })),
+      anomaly(data.auto_rejected_today ?? 0, 'Automatically rejected', () => openAttendanceList({ type: 'attendance-list', label: 'Automatically rejected', status: 'rejected', emptyLabel: 'No automatically rejected shifts this month' })),
+      anomaly(data.completed_zero_earning_today ?? 0, 'Shifts with no pay', () => openAttendanceList({ type: 'attendance-list', label: 'Shifts with no pay', zeroEarning: true, emptyLabel: 'No shifts with no pay this month' })),
+      anomaly(data.quota_invariant_drift ?? 0, 'Limit discrepancies', () => openQuotaAnomaly('drift')),
+      anomaly(data.missing_quota_rows ?? 0, 'Missing limit records', () => openQuotaAnomaly('missing')),
+      anomaly(data.stale_quota_after_disable ?? 0, 'Outdated limits', () => openQuotaAnomaly('stale')),
+      anomaly(data.requests_stuck_pending ?? 0, 'Requests pending too long', () => openFailedAttempts('stuck_pending')),
+      anomaly(data.requests_failed_today ?? 0, 'Failed requests today', () => openFailedAttempts('request_failed')),
     ].filter((item) => (item.value as number) > 0);
 
     if (items.length === 0) {
-      items.push({ label: 'Không có lỗi', value: 0, valueClassName: 'text-financial-positive' });
+      items.push({ label: 'No issues', value: 0, valueClassName: 'text-financial-positive' });
     }
     return items;
   }, [data, openAttendanceList, openFailedAttempts, openQuotaAnomaly]);
@@ -117,18 +117,18 @@ function CheckInHealthStripImpl({ month, className }: CheckInHealthStripProps) {
     const total = data.requests_total_today ?? 0;
 
     const items: InlineStatItem[] = [
-      { label: 'Chấm công ra thành công', value: data.successful_checkouts_today ?? 0, onClick: openSuccessfulCheckouts },
+      { label: 'Successful check-outs', value: data.successful_checkouts_today ?? 0, onClick: openSuccessfulCheckouts },
     ];
 
     // Same number ⇒ one row says it all; differ ⇒ show both.
     if (completed === total) {
-      items.push({ label: 'Yêu cầu ứng hoàn tất/tổng', value: `${completed}/${total}` });
+      items.push({ label: 'Pay advance requests completed/total', value: `${completed}/${total}` });
     } else {
-      items.push({ label: 'Yêu cầu ứng hoàn tất', value: completed });
-      items.push({ label: 'Yêu cầu ứng tổng cộng', value: total });
+      items.push({ label: 'Pay advance requests completed', value: completed });
+      items.push({ label: 'Pay advance requests total', value: total });
     }
-    items.push({ label: 'Lương tháng này', value: data.quota_salary_this_month ?? 0 });
-    items.push({ label: 'Số tiền ứng tối đa', value: data.quota_max_adv_this_month ?? 0 });
+    items.push({ label: 'Salary this month', value: data.quota_salary_this_month ?? 0 });
+    items.push({ label: 'Maximum pay advance', value: data.quota_max_adv_this_month ?? 0 });
     return items;
   }, [data, openSuccessfulCheckouts]);
 
@@ -136,13 +136,13 @@ function CheckInHealthStripImpl({ month, className }: CheckInHealthStripProps) {
     <div className={cn('space-y-3', className)}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <SectionCard
-          title="Lỗi cần xử lý"
+          title="Issues to resolve"
           icon={AlertTriangle}
           items={issues}
           isLoading={isLoading}
         />
         <SectionCard
-          title="Hoạt động"
+          title="Activity"
           icon={Activity}
           items={activity}
           isLoading={isLoading}
