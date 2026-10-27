@@ -22,7 +22,7 @@ export function MobileValidationAlert({ validationErrors }: MobileValidationAler
             Có {validationErrors.length} nhân viên vượt quá giới hạn 24 giờ/ngày
           </div>
           <div className="typography-body-small sm:typography-body-medium text-red-700">
-            Vui lòng điều chỉnh số giờ làm việc trước khi lưu bảng công.
+            Please điều chỉnh số giờ làm việc trước khi lưu bảng công.
           </div>
         </div>
       </div>

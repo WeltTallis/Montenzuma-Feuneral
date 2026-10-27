@@ -15,8 +15,8 @@ export function AddEmployeeModal() {
     onError: (error) => {
       console.error('AddEmployeeModal error:', error);
       toast({
-        title: "Lỗi",
-        description: "Có lỗi xảy ra khi tải modal.",
+        title: "Error",
+        description: "An error occurred khi tải modal.",
         variant: "destructive"
       });
     }

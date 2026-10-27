@@ -228,7 +228,7 @@ class AssetService {
     } catch {
       return {
         isValid: false,
-        error: 'URL không hợp lệ. Vui lòng nhập URL đầy đủ (bao gồm http:// hoặc https://)',
+        error: 'URL không hợp lệ. Please nhập URL đầy đủ (bao gồm http:// hoặc https://)',
       };
     }
   }

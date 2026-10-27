@@ -26,7 +26,7 @@ export const PartnerProjectHeader = ({
           {project.name}
         </h1>
         <p className="typography-body-small sm:typography-body-medium text-muted-foreground">
-          Chi tiết dự án và Bảng công
+          Details dự án và Timesheet
         </p>
       </div>
     </div>

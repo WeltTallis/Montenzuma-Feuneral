@@ -319,7 +319,7 @@ export const EmailHistorySheet = memo(function EmailHistorySheet({
 
   const errorMessage = useMemo(() => {
     if (!error) {
-      return 'Đã xảy ra lỗi khi tải lịch sử email. Vui lòng thử lại.';
+      return 'Đã xảy ra lỗi khi tải lịch sử email. Please try again.';
     }
     if (error instanceof Error) {
       return error.message || 'Đã xảy ra lỗi khi tải lịch sử email.';
@@ -333,7 +333,7 @@ export const EmailHistorySheet = memo(function EmailHistorySheet({
     if (typeof error === 'string') {
       return error;
     }
-    return 'Đã xảy ra lỗi khi tải lịch sử email. Vui lòng thử lại.';
+    return 'Đã xảy ra lỗi khi tải lịch sử email. Please try again.';
   }, [error]);
 
   return (
@@ -388,7 +388,7 @@ export const EmailHistorySheet = memo(function EmailHistorySheet({
                 variant="outline"
                 className="mt-4 min-h-[44px]"
               >
-                Thử lại
+                Try again
               </Button>
             </Alert>
           )}

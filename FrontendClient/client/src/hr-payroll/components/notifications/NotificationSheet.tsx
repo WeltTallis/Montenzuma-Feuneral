@@ -86,7 +86,7 @@ export const NotificationSheet = ({ isOpen, onClose, variant = 'employee' }: Not
   const renderContent = () => {
     if (activeView === 'unread') {
       if (isLoadingUnread) return renderLoading();
-      if (unreadError) return renderEmpty('Không thể tải thông báo');
+      if (unreadError) return renderEmpty('Failed to load thông báo');
       if (unreadNotifications.length === 0) return renderEmpty('Không có thông báo chưa đọc');
       return (
         <div className="divide-y divide-gray-200">
@@ -98,7 +98,7 @@ export const NotificationSheet = ({ isOpen, onClose, variant = 'employee' }: Not
     }
 
     if (isLoadingAll && allNotifications.length === 0) return renderLoading();
-    if (allError && allNotifications.length === 0) return renderEmpty('Không thể tải thông báo');
+    if (allError && allNotifications.length === 0) return renderEmpty('Failed to load thông báo');
     if (allNotifications.length === 0) return renderEmpty('Chưa có thông báo nào');
 
     return (
@@ -125,7 +125,7 @@ export const NotificationSheet = ({ isOpen, onClose, variant = 'employee' }: Not
         <SheetContent
           side={isMobile ? "bottom" : "right"}
           title="Notifications"
-          description="Danh sách thông báo của bạn"
+          description="List thông báo của bạn"
           data-theme={variant === 'employee' ? 'employee' : 'congtruong'}
           className={cn(
             "w-full lg:w-[420px] flex flex-col overflow-hidden bg-card p-0 text-card-foreground shadow-none",
@@ -166,10 +166,10 @@ export const NotificationSheet = ({ isOpen, onClose, variant = 'employee' }: Not
             </div>
 
             {/* Tab switcher */}
-            <div role="tablist" aria-label="Lọc thông báo" className="grid grid-cols-2 gap-1 rounded-xl bg-white/10 p-1">
+            <div role="tablist" aria-label="Filter thông báo" className="grid grid-cols-2 gap-1 rounded-xl bg-white/10 p-1">
               {([
                 { value: 'unread' as const, label: 'Chưa đọc', count: unreadCount },
-                { value: 'all'    as const, label: 'Tất cả',   count: null },
+                { value: 'all'    as const, label: 'All',   count: null },
               ]).map((tab) => (
                 <button
                   key={tab.value}

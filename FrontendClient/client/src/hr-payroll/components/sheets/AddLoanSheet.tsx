@@ -207,24 +207,24 @@ export function AddLoanSheet({ isOpen, onClose }: AddLoanSheetProps) {
     if (form.loan_type === 'bullet_loan' && form.schedules.length === 0) {
       const result = generateAutoInterestSchedules(form);
       if (!result.success) {
-        setSubmitError((result as { error?: string }).error || 'Vui lòng tạo lịch trả trước khi tạo khoản vay');
+        setSubmitError((result as { error?: string }).error || 'Please tạo lịch trả trước khi tạo khoản vay');
         return;
       }
     } else if (form.loan_type === 'amortization' && form.schedules.length === 0) {
       const result = generateAmortizationSchedules(form);
       if (!result.success) {
-        setSubmitError((result as { error?: string }).error || 'Vui lòng tạo lịch trả trước khi tạo khoản vay');
+        setSubmitError((result as { error?: string }).error || 'Please tạo lịch trả trước khi tạo khoản vay');
         return;
       }
     } else if (form.loan_type === 'custom_schedule' && form.schedules.length === 0) {
-      setSubmitError('Vui lòng tạo lịch trả trước khi tạo khoản vay');
+      setSubmitError('Please tạo lịch trả trước khi tạo khoản vay');
       return;
     }
 
     const nextErrors = validate(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      setSubmitError('Vui lòng kiểm tra và điền đầy đủ thông tin bắt buộc');
+      setSubmitError('Please check và điền đầy đủ thông tin bắt buộc');
       return;
     }
 
@@ -249,7 +249,7 @@ export function AddLoanSheet({ isOpen, onClose }: AddLoanSheetProps) {
       await createLoan.mutateAsync(payload);
       onClose();
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Có lỗi xảy ra khi tạo khoản vay';
+      const errorMessage = e instanceof Error ? e.message : 'An error occurred khi tạo khoản vay';
       setSubmitError(errorMessage);
       console.error('Error creating loan:', e);
       // Error handled by hook notifications
@@ -293,7 +293,7 @@ export function AddLoanSheet({ isOpen, onClose }: AddLoanSheetProps) {
       isOpen={isOpen}
       onClose={onClose}
       title="Tạo khoản vay"
-      description="Nhập thông tin khoản vay mới"
+      description="Import thông tin khoản vay mới"
       size={isCompactViewport ? 'full' : 'large'}
       compact
       footer={

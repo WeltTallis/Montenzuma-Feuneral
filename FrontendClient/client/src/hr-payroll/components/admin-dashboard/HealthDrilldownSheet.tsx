@@ -95,9 +95,9 @@ const REASON_META: Record<string, ReasonMeta> = {
   multiple_flexible:       { label: 'Thuộc nhiều dự án',            severity: 'info',    icon: Layers },
   no_attendance:           { label: 'Không có ca hôm nay',          severity: 'neutral', icon: CalendarX2 },
   check_in_disabled:       { label: 'Chấm công bị khoá',            severity: 'info',    icon: Lock },
-  other:                   { label: 'Lỗi khác',                     severity: 'neutral', icon: AlertCircle },
+  other:                   { label: 'Error khác',                     severity: 'neutral', icon: AlertCircle },
   // Attendance-based drilldown categories (not from attempt_classifier)
-  open:                    { label: 'Đang chờ checkout',            severity: 'info',    icon: Clock },
+  open:                    { label: 'Waiting checkout',            severity: 'info',    icon: Clock },
   zero_earning:            { label: 'Ca 0 ₫',                       severity: 'warning', icon: Banknote },
   stuck_pending:           { label: 'Yêu cầu kẹt pending',          severity: 'warning', icon: Hourglass },
   request_failed:          { label: 'Yêu cầu lỗi',                  severity: 'danger',  icon: AlertTriangle },
@@ -291,7 +291,7 @@ function FailedAttemptsTable({
           <FailedAttemptHeader>Lý do</FailedAttemptHeader>
           <FailedAttemptHeader>Khoảng cách</FailedAttemptHeader>
           <FailedAttemptHeader>Địa điểm</FailedAttemptHeader>
-          <FailedAttemptHeader>Thời gian</FailedAttemptHeader>
+          <FailedAttemptHeader>Time</FailedAttemptHeader>
         </div>
         <div className="divide-y divide-border/60">
           {rows.map((row) => (
@@ -381,7 +381,7 @@ function QuotaAnomalyTable({ anomalyType, month }: { anomalyType: string; month?
             <TableRow className="hover:bg-transparent border-border/50">
               <Th>Employees</Th>
               <Th>Projects</Th>
-              <Th>Lương</Th>
+              <Th>Payroll</Th>
               <Th>Max adv</Th>
               <Th>Mong đợi</Th>
               <Th>Lý do</Th>
@@ -514,7 +514,7 @@ function AttendanceRowsTable({
                 <>
                   <Th>Tan ca</Th>
                   <Th>Cổng ra</Th>
-                  <Th>Lương ca</Th>
+                  <Th>Payroll ca</Th>
                 </>
               )}
             </TableRow>
@@ -1110,7 +1110,7 @@ function QuotaAnomalyCard({ row }: { row: QuotaAnomalyRow }) {
         </div>
       </div>
       <div className="grid grid-cols-1 gap-2 border-y border-border/50 py-2 text-xs min-[380px]:grid-cols-3">
-        <Metric label="Lương" value={formatFullCurrency(row.salary)} />
+        <Metric label="Payroll" value={formatFullCurrency(row.salary)} />
         <Metric label="Max adv" value={formatFullCurrency(row.max_adv_amount)} />
         <Metric label="Mong đợi" value={formatFullCurrency(row.expected_max)} />
       </div>

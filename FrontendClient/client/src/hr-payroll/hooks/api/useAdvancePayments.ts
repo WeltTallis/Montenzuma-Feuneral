@@ -359,7 +359,7 @@ export function useImportFlexTemplate(options?: ImportPollingOptions) {
       const result = response.result;
       if (result) {
         showSuccessNotification(
-          `Nhập file thành công: ${result.totalRows} dòng, ${result.employeesCreated} nhân viên mới, ${result.assignmentsCreated} phân công mới`,
+          `Import file thành công: ${result.totalRows} dòng, ${result.employeesCreated} nhân viên mới, ${result.assignmentsCreated} phân công mới`,
         );
       }
     },
@@ -531,7 +531,7 @@ export function useImportFlexibleEmployeeList(options?: ImportPollingOptions) {
       });
 
       showSuccessNotification(
-        `Nhập file thành công: ${response.total_rows} dòng, ${response.created_count} nhân viên mới, ${response.updated_count} đã cập nhật`,
+        `Import file thành công: ${response.total_rows} dòng, ${response.created_count} nhân viên mới, ${response.updated_count} đã cập nhật`,
       );
     },
   });

@@ -296,7 +296,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                       <div className="flex flex-col leading-tight">
                         <span className="text-xs text-muted-foreground font-semibold">Ca làm việc →</span>
                         <span className="text-sm font-bold text-foreground">Vị trí ↓</span>
-                        <span className="mt-1 text-xs font-semibold text-emerald-700">Lương trọn ca (₫)</span>
+                        <span className="mt-1 text-xs font-semibold text-emerald-700">Payroll trọn ca (₫)</span>
                       </div>
                     </th>
                     {/* shift columns */}
@@ -358,7 +358,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                             setTimeout(() => setShiftHighlight(false), 1200);
                           }}
                           className="flex min-h-11 items-center gap-1 rounded-lg border border-dashed border-border px-3 text-xs font-bold text-emerald-700 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50">
-                          + Thêm ca
+                          + Add ca
                         </button>
                       </th>
                     )}
@@ -412,7 +412,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                                 className="fpe-mono h-11 w-full rounded-lg pl-2 pr-12 text-right text-sm transition-all"
                                 inputMode="numeric"
                                 placeholder="0"
-                                aria-label={`Lương trọn ca cho ${pos}, ca ${s.start}-${s.end}`}
+                                aria-label={`Payroll trọn ca cho ${pos}, ca ${s.start}-${s.end}`}
                                 readOnly={readOnly}
                                 value={focused ? (val||'') : (has ? fmtVND(val) : '')}
                                 onFocus={() => setFocusKey(key)}
@@ -442,7 +442,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                         <span className="text-xs text-muted-foreground">↓ chọn ở dưới</span>
                       </th>
                       <td colSpan={shifts.length+1} style={{ padding:'8px 12px', background:'#fff' }}>
-                        <span className="text-xs text-muted-foreground">Thêm vị trí từ danh sách bên dưới</span>
+                        <span className="text-xs text-muted-foreground">Add vị trí từ danh sách bên dưới</span>
                       </td>
                     </tr>
                   )}
@@ -457,9 +457,9 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
               </div>
               <p className="text-sm font-bold text-foreground">Ma trận đang trống</p>
               <p className="text-xs text-muted-foreground text-center max-w-xs">
-                {positions.length===0&&shifts.length===0 ? 'Thêm ít nhất một vị trí và một ca làm việc'
-                  : positions.length===0 ? 'Thêm ít nhất một vị trí'
-                  : 'Thêm ít nhất một ca làm việc'} ở danh sách bên dưới để bắt đầu nhập mức lương.
+                {positions.length===0&&shifts.length===0 ? 'Add ít nhất một vị trí và một ca làm việc'
+                  : positions.length===0 ? 'Add ít nhất một vị trí'
+                  : 'Add ít nhất một ca làm việc'} ở danh sách bên dưới để bắt đầu nhập mức lương.
               </p>
             </div>
           )}
@@ -554,7 +554,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                       onClick={addCustomShift}
                       className="fpe-sans h-11 rounded-lg px-4 text-sm font-bold text-white transition-colors"
                       style={{ background:'#08783e' }}>
-                      Thêm ca
+                      Add ca
                     </button>
                   </div>
                   {shiftErr && (

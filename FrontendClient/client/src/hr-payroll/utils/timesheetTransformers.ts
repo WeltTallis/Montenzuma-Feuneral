@@ -66,7 +66,7 @@ export const transformEntriesToAPI = (entries: TimesheetEntry[]): NewTimesheetEn
               date: entry.date,
               hoursWorked: 0, // Delete old entry
               hourType,
-              dayType: originalDayType as 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ'
+              dayType: originalDayType as 'Date thường' | 'Date nghỉ' | 'Date lễ'
             });
           }
         });
@@ -80,7 +80,7 @@ export const transformEntriesToAPI = (entries: TimesheetEntry[]): NewTimesheetEn
               date: entry.date,
               hoursWorked,
               hourType,
-              dayType: currentDayType as 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ'
+              dayType: currentDayType as 'Date thường' | 'Date nghỉ' | 'Date lễ'
             });
           }
         });
@@ -103,7 +103,7 @@ export const transformEntriesToAPI = (entries: TimesheetEntry[]): NewTimesheetEn
               date: entry.date,
               hoursWorked: currentValue, // Can be 0 to delete
               hourType,
-              dayType: currentDayType as 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ'
+              dayType: currentDayType as 'Date thường' | 'Date nghỉ' | 'Date lễ'
             });
           }
         });
@@ -122,7 +122,7 @@ export const transformEntriesToAPI = (entries: TimesheetEntry[]): NewTimesheetEn
           date: entry.date,
           hoursWorked,
           hourType,
-          dayType: entry.dayType as 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ' | undefined
+          dayType: entry.dayType as 'Date thường' | 'Date nghỉ' | 'Date lễ' | undefined
         });
       });
     }
@@ -177,7 +177,7 @@ export const mergeAPIEntriesToUI = (
         date: apiEntry.date,
         hours: {},
         position: getEmployeePosition(employee),
-        dayType: apiEntry.dayType as 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ' | undefined
+        dayType: apiEntry.dayType as 'Date thường' | 'Date nghỉ' | 'Date lễ' | undefined
       });
     }
 

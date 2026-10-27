@@ -77,7 +77,7 @@ const TimesheetPage = () => {
   // Calculate bulk transfer percentage from setting
   const bulkTransferPercentage = bulkTransferSetting?.value ? parseFloat(bulkTransferSetting.value) : 0;
 
-  // Global summary (no filters) for "Duyệt hết" confirm dialog — backend
+  // Global summary (no filters) for "Approve hết" confirm dialog — backend
   // approveAll() ignores filters and approves system-wide, so we show the
   // honest, unfiltered scope here.
   const { data: globalSummary, refetch: refetchGlobalSummary } = useTimesheetSummary({});
@@ -175,7 +175,7 @@ const TimesheetPage = () => {
   };
 
   // "Bỏ duyệt hết" — resets all approved (unpaid) timesheets back to pending.
-  // Mirrors the "Duyệt hết" flow: refresh the global summary first so the
+  // Mirrors the "Approve hết" flow: refresh the global summary first so the
   // confirm dialog shows accurate, unfiltered counts.
   const handleResetAll = () => {
     refetchGlobalSummary();
@@ -342,7 +342,7 @@ const TimesheetPage = () => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              {/* Group 1: Nhập / Input */}
+              {/* Group 1: Import / Input */}
               <DropdownMenuItem onClick={handleAddTimesheet}>
                 <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
                 Add timesheets

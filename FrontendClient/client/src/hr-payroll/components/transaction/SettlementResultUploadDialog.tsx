@@ -111,7 +111,7 @@ export const SettlementResultUploadDialog = memo(function SettlementResultUpload
     <Dialog open={open} onOpenChange={onDialogOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nhập kết quả sao kê</DialogTitle>
+          <DialogTitle>Import kết quả sao kê</DialogTitle>
         </DialogHeader>
 
 
@@ -128,7 +128,7 @@ export const SettlementResultUploadDialog = memo(function SettlementResultUpload
             >
               <div className="flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground">Kéo thả hoặc nhấn để chọn file</span>
-                <span>Chấp nhận định dạng .xls, .xlsx (tối đa {FILE_LIMITS.excel.maxSize / 1024 / 1024}MB)</span>
+                <span>Accept định dạng .xls, .xlsx (tối đa {FILE_LIMITS.excel.maxSize / 1024 / 1024}MB)</span>
               </div>
             </FileUpload>
           )}
@@ -146,7 +146,7 @@ export const SettlementResultUploadDialog = memo(function SettlementResultUpload
                   className="h-11 w-11 shrink-0 p-0 text-muted-foreground hover:bg-slate-100:bg-slate-900"
                 >
                   <X className="h-4 w-4" />
-                  <span className="sr-only">Xóa file</span>
+                  <span className="sr-only">Delete file</span>
                 </Button>
               </div>
               <div className="text-xs text-muted-foreground">{formatBytes(selectedFile.size)}</div>
@@ -171,7 +171,7 @@ export const SettlementResultUploadDialog = memo(function SettlementResultUpload
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            {uploadMutation.isPending ? 'Đang xử lý...' : 'Tải lên sao kê'}
+            {uploadMutation.isPending ? 'Processing...' : 'Tải lên sao kê'}
           </Button>
         </DialogFooter>
       </DialogContent>

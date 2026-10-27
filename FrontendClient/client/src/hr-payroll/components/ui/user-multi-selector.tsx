@@ -242,7 +242,7 @@ export function UserMultiSelector({
                       data-user-id={user.id}
                       onClick={handleRemoveSelectedUserClick}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:bg-muted/80"
-                      aria-label="Xóa người nhận"
+                      aria-label="Delete người nhận"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -254,10 +254,10 @@ export function UserMultiSelector({
 
           <Command shouldFilter={false}>
             <CommandInput
-              aria-label="Tìm kiếm người nhận"
+              aria-label="Search người nhận"
               value={searchValue}
               onValueChange={handleSearchValueChange}
-              placeholder="Tìm kiếm người dùng..."
+              placeholder="Search người dùng..."
             />
             <CommandList className="space-y-2 px-2" onScroll={handleScroll}>
               {isSearching && (

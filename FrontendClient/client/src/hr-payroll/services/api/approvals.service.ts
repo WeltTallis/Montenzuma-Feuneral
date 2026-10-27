@@ -75,7 +75,7 @@ class ApprovalsService {
     return raw;
   }
 
-  /** Reject = "Thử lại ngày mai": the note becomes the next run's guidance. */
+  /** Reject = "Try again ngày mai": the note becomes the next run's guidance. */
   async reject(id: number, note: string): Promise<ApprovalRequest> {
     const response = await apiClient.post<ApprovalEnvelope>(API_ENDPOINTS.approvals.reject(id), { note });
     const raw = unwrap<ApprovalRequest>(response.data);

@@ -127,7 +127,7 @@ export function validateFormState(
     return "Please select an effective date";
   }
   if (state.effectiveDate < todayISO()) {
-    return "Ngày hiệu lực phải là hôm nay hoặc tương lai";
+    return "Date hiệu lực phải là hôm nay hoặc tương lai";
   }
   if (state.tiers.length === 0) {
     return "Cần ít nhất một bậc phí";
@@ -150,7 +150,7 @@ export function validateFormState(
   // typed minus sign passes <input type="number" min={0}>, and the backend's
   // uint64 field would fail with an opaque binding error.
   if (state.minFeeVnd < 0) {
-    return "Phí tối thiểu không được âm";
+    return "Fee tối thiểu không được âm";
   }
   return null;
 }
@@ -180,7 +180,7 @@ export function computeFieldErrors(
   };
 
   if (!state.effectiveDate) {
-    errors.effectiveDate = "Vui lòng chọn ngày";
+    errors.effectiveDate = "Please chọn ngày";
   } else if (state.effectiveDate < todayISO()) {
     errors.effectiveDate = "Phải là hôm nay hoặc tương lai";
   }

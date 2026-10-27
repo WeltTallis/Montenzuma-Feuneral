@@ -42,7 +42,7 @@ export function MobileDateTimeSelector({
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2 sm:mb-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <label className="typography-body-medium font-medium">Ngày làm việc</label>
+              <label className="typography-body-medium font-medium">Date làm việc</label>
             </div>
             
             

@@ -272,12 +272,12 @@ export function DoubleEntryModal({ isOpen, onClose, projects }: DoubleEntryModal
             {/* Date */}
             <div className="space-y-2">
               <Label htmlFor="date" className="typography-body-medium font-medium">
-                Ngày Ghi Sổ *
+                Date Ghi Sổ *
               </Label>
               <Input
                 id="date"
                 type="date"
-                {...register('date', { required: 'Ngày là bắt buộc' })}
+                {...register('date', { required: 'Date là bắt buộc' })}
                 className="max-w-xs typography-body-medium"
               />
               {errors.date && (
@@ -297,14 +297,14 @@ export function DoubleEntryModal({ isOpen, onClose, projects }: DoubleEntryModal
                   className="flex items-center gap-1 typography-body-small"
                 >
                   <Plus className="h-4 w-4" />
-                  Thêm bút toán
+                  Add bút toán
                 </Button>
               </div>
 
               <div className="border rounded-xl overflow-hidden">
                 <div className="bg-muted/50 p-3 border-b">
                   <div className="grid grid-cols-12 gap-3 typography-body-small font-medium text-muted-foreground">
-                    <div className="col-span-2">Tài khoản</div>
+                    <div className="col-span-2">Account</div>
                     <div className="col-span-2">Đối tượng</div>
                     <div className="col-span-3">Diễn giải</div>
                     <div className="col-span-2">Nợ (₫)</div>

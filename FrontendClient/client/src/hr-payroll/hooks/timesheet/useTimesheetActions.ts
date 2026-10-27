@@ -24,19 +24,19 @@ export function useTimesheetActions() {
     try {
       await approveTimesheetMutation.mutateAsync(timesheet.id);
       toast({
-        title: 'Duyệt thành công',
+        title: 'Approve thành công',
         description: `Đã duyệt bảng công cho ${timesheet.employeeName}.`,
       });
     } catch (error) {
       toast({
-        title: 'Lỗi',
-        description: 'Không thể duyệt bảng công. Vui lòng thử lại.',
+        title: 'Error',
+        description: 'Không thể duyệt bảng công. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
-  const handleReject = async (timesheet: Timesheet, reason: string = 'Từ chối bởi partner') => {
+  const handleReject = async (timesheet: Timesheet, reason: string = 'Rejected bởi partner') => {
     try {
       await rejectTimesheetMutation.mutateAsync({ id: timesheet.id, data: { rejection_reason: reason } });
       toast({
@@ -45,8 +45,8 @@ export function useTimesheetActions() {
       });
     } catch (error) {
       toast({
-        title: 'Lỗi',
-        description: 'Không thể loại bảng công. Vui lòng thử lại.',
+        title: 'Error',
+        description: 'Không thể loại bảng công. Please try again.',
         variant: 'destructive',
       });
     }
@@ -56,13 +56,13 @@ export function useTimesheetActions() {
     try {
       await bulkApproveMutation.mutateAsync({ timesheet_ids: timesheetIds });
       toast({
-        title: 'Duyệt hàng loạt thành công',
+        title: 'Approve hàng loạt thành công',
         description: `Đã duyệt ${timesheetIds.length} bảng công.`,
       });
     } catch (error) {
       toast({
-        title: 'Lỗi',
-        description: 'Không thể duyệt hàng loạt. Vui lòng thử lại.',
+        title: 'Error',
+        description: 'Không thể duyệt hàng loạt. Please try again.',
         variant: 'destructive',
       });
     }

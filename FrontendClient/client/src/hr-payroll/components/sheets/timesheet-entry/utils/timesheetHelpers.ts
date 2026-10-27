@@ -80,7 +80,7 @@ export const calculateFormOptions = (
 
 export const createTimesheetEntry = (
   formData: TimesheetFormData,
-  saturdayDayType: "Ngày thường" | "Ngày nghỉ",
+  saturdayDayType: "Date thường" | "Date nghỉ",
 ) => {
   const entry: Record<string, unknown> = {
     projectId: formData.project_id,

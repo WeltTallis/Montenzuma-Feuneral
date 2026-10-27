@@ -59,7 +59,7 @@ function ActionMultiSelect({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-52 max-h-72 overflow-y-auto">
-        <DropdownMenuLabel className="text-xs">Lọc theo hành động</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs">Filter theo hành động</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {ALL_ACTIONS.map((action) => (
           <DropdownMenuCheckboxItem
@@ -105,7 +105,7 @@ function EntityTypeMultiSelect({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-52 max-h-72 overflow-y-auto">
-        <DropdownMenuLabel className="text-xs">Lọc theo đối tượng</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs">Filter theo đối tượng</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {ALL_ENTITY_TYPES.map((et) => (
           <DropdownMenuCheckboxItem
@@ -167,7 +167,7 @@ function FilterBody({ filters, onChange }: AuditLogFiltersProps) {
           className="min-h-11 gap-1 text-xs text-muted-foreground"
         >
           <XClose className="h-3 w-3" />
-          Xóa bộ lọc
+          Delete bộ lọc
           <Badge variant="secondary" className="h-4 min-w-4 px-1 text-xs">
             {activeCount}
           </Badge>
@@ -253,7 +253,7 @@ export function AuditLogFilters({ filters, onChange }: AuditLogFiltersProps) {
                   className="min-h-11 gap-1 self-start text-xs text-muted-foreground"
                 >
                   <XClose className="h-3 w-3" />
-                  Xóa tất cả bộ lọc
+                  Delete tất cả bộ lọc
                 </Button>
               )}
             </div>

@@ -62,8 +62,8 @@ export async function generateBulkTransferResultPdf(
       {
         columns: [
           { width: 'auto', text: `Tổng số bản ghi: ${data.total_txn}`, style: 'summary' },
-          { width: 'auto', text: `Thành công: ${data.completed_txn}`, style: 'summarySuccess' },
-          { width: 'auto', text: `Thất bại: ${data.failed_txn}`, style: 'summaryFail' },
+          { width: 'auto', text: `Success: ${data.completed_txn}`, style: 'summarySuccess' },
+          { width: 'auto', text: `Failed: ${data.failed_txn}`, style: 'summaryFail' },
         ],
         columnGap: 24,
         margin: [0, 0, 0, 10],

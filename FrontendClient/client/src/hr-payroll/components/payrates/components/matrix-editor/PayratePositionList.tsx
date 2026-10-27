@@ -6,12 +6,12 @@ import { PositionCell } from './PositionCell';
 import { RateCell } from './RateCell';
 
 const DAY_LABELS: Record<DayType, string> = {
-  'ngày thường': 'Ngày thường',
-  'ngày nghỉ': 'Ngày nghỉ',
-  'ngày lễ': 'Ngày lễ',
-  weekday: 'Ngày thường',
-  weekend: 'Ngày nghỉ',
-  holiday: 'Ngày lễ',
+  'ngày thường': 'Date thường',
+  'ngày nghỉ': 'Date nghỉ',
+  'ngày lễ': 'Date lễ',
+  weekday: 'Date thường',
+  weekend: 'Date nghỉ',
+  holiday: 'Date lễ',
 };
 
 interface PayratePositionListProps {
@@ -113,7 +113,7 @@ export function PayratePositionList({
                   type="button"
                   onClick={() => onRemoveHourType(hourType)}
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-r-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label={`Xóa khung giờ ${hourType}`}
+                  aria-label={`Delete khung giờ ${hourType}`}
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>

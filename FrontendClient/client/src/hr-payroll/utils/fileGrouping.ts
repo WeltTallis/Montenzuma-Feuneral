@@ -18,8 +18,8 @@ function getGroupKey(date: Date): string {
 }
 
 function getGroupLabel(key: string): string {
-  if (key === 'today') return 'Hôm nay';
-  if (key === 'yesterday') return 'Hôm qua';
+  if (key === 'today') return 'Today';
+  if (key === 'yesterday') return 'Yesterday';
   const date = new Date(key + '-01');
   if (isThisMonth(date)) return format(date, "'Tháng' M", { locale: vi });
   return format(date, "'Tháng' M/yyyy", { locale: vi });

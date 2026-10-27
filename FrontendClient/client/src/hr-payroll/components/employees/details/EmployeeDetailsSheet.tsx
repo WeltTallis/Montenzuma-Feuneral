@@ -214,9 +214,9 @@ export function EmployeeDetailsSheet({
     setIsExporting(true);
     try {
       await employeeService.exportEmployeeDetail(employee.id, employee.fullname);
-      showSuccessNotification("Xuất Excel thành công");
+      showSuccessNotification("Export Excel thành công");
     } catch {
-      showErrorNotification("Lỗi xuất Excel", "Không thể xuất hồ sơ nhân viên. Vui lòng thử lại.");
+      showErrorNotification("Error xuất Excel", "Không thể xuất hồ sơ nhân viên. Please try again.");
     } finally {
       setIsExporting(false);
     }
@@ -230,11 +230,11 @@ export function EmployeeDetailsSheet({
         size="sm"
         onClick={handleExport}
         disabled={isExporting}
-        aria-label={isExporting ? "Đang xuất hồ sơ nhân viên" : "Xuất Excel hồ sơ nhân viên"}
+        aria-label={isExporting ? "Đang xuất hồ sơ nhân viên" : "Export Excel hồ sơ nhân viên"}
         className={isNarrowViewport ? "min-h-11 min-w-11 px-3 gap-1 text-xs" : "min-h-11 px-3 gap-1.5"}
       >
         <FileDown className="h-3.5 w-3.5" />
-        {!isNarrowViewport && "Xuất Excel"}
+        {!isNarrowViewport && "Export Excel"}
       </Button>
     );
   }, [employee, isEditing, isPreviewOnly, handleExport, isExporting, isNarrowViewport]);
@@ -288,7 +288,7 @@ export function EmployeeDetailsSheet({
           <div className="p-6 flex flex-col items-center justify-center text-center gap-3">
             <AlertCircle className="h-10 w-10 text-destructive" />
             <div className="space-y-1">
-              <p className="font-medium">Không thể tải thông tin nhân viên</p>
+              <p className="font-medium">Failed to load thông tin nhân viên</p>
               <p className="text-sm text-muted-foreground">
                 Bạn không có quyền xem nhân viên này hoặc dữ liệu không tồn tại.
               </p>
@@ -480,11 +480,11 @@ const EmployeePersonalInfo = React.memo(function EmployeePersonalInfo({ employee
         {/* Row 2: phone + DOB */}
         <div className="grid grid-cols-1 gap-x-4 border-b border-border/50 min-[420px]:grid-cols-2">
           <div className="flex flex-col gap-1 py-2 min-[360px]:flex-row min-[360px]:items-baseline min-[360px]:justify-between">
-            <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1"><Phone className="w-3 h-3" />Điện thoại</span>
+            <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1"><Phone className="w-3 h-3" />Phone</span>
             <span className="text-xs font-medium break-all min-[360px]:text-right">{employee.mobile || '-'}</span>
           </div>
           <div className="flex flex-col gap-1 py-2 min-[360px]:flex-row min-[360px]:items-baseline min-[360px]:justify-between">
-            <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1"><Calendar className="w-3 h-3" />Ngày sinh</span>
+            <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1"><Calendar className="w-3 h-3" />Date of birth</span>
             <span className="text-xs font-medium min-[360px]:text-right">
               {employee.date_of_birth ? format(new Date(employee.date_of_birth), 'dd/MM/yyyy') : '-'}
             </span>
@@ -496,7 +496,7 @@ const EmployeePersonalInfo = React.memo(function EmployeePersonalInfo({ employee
           <span className="text-xs font-medium break-all min-[360px]:text-right">{employee.email || '-'}</span>
         </div>
         <div className="flex flex-col gap-1 border-b border-border/50 py-2 min-[360px]:flex-row min-[360px]:items-baseline min-[360px]:justify-between">
-          <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1"><MapPin className="w-3 h-3" />Địa chỉ</span>
+          <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1"><MapPin className="w-3 h-3" />Address</span>
           <span className="text-xs font-medium leading-relaxed break-words min-[360px]:text-right">{employee.address || '-'}</span>
         </div>
         {/* Row 4: join date */}

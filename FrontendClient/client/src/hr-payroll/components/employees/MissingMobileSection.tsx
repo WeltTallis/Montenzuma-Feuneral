@@ -219,7 +219,7 @@ export const MissingMobileSection = ({
               {isMobile ? (
                 <ul
                   className="divide-y divide-amber-100"
-                  aria-label="Danh sách nhân viên thiếu số điện thoại"
+                  aria-label="List nhân viên thiếu số điện thoại"
                 >
                   {missingEmployees.map((employee, index) => {
                     const content = (
@@ -258,19 +258,19 @@ export const MissingMobileSection = ({
                 <div
                   className="max-h-80 overflow-auto overscroll-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   role="region"
-                  aria-label="Danh sách nhân viên thiếu số điện thoại"
+                  aria-label="List nhân viên thiếu số điện thoại"
                   tabIndex={0}
                 >
                   <table className="w-full min-w-[560px] text-sm">
                     <caption className="sr-only">
-                      Danh sách nhân viên thiếu số điện thoại
+                      List nhân viên thiếu số điện thoại
                     </caption>
                     <thead className="sticky top-0 z-10 bg-amber-100/80 backdrop-blur-sm">
                       <tr>
                         <th className="w-12 px-4 py-2.5 text-left text-xs font-semibold text-amber-900">STT</th>
                         <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Họ và tên</th>
                         <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">CCCD</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Dự án hiện tại</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Project hiện tại</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-amber-100 bg-card">
@@ -302,7 +302,7 @@ export const MissingMobileSection = ({
               <h3 className="px-3 pt-2.5 text-xs font-semibold uppercase tracking-wide text-rose-900 sm:px-4">
                 Số điện thoại trùng
               </h3>
-              <div role="region" aria-label="Danh sách số điện thoại trùng">
+              <div role="region" aria-label="List số điện thoại trùng">
                 {/* One block per collision group: the shared number leads, its
                     members sit beneath — the partner must see WHICH number to
                     change before they see who carries it. */}
@@ -356,7 +356,7 @@ export const MissingMobileSection = ({
                     ) : (
                       <table className="w-full min-w-[560px] text-sm">
                         <caption className="sr-only">
-                          Nhân viên dùng chung số {group.mobile}
+                          Employee dùng chung số {group.mobile}
                         </caption>
                         <thead className="bg-amber-100/60">
                           <tr>

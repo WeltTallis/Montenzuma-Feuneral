@@ -59,7 +59,7 @@ export function AdvanceRequestToggle({
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Tạm ngừng ứng lương?"
-        description="Nhân viên sẽ không thể tạo yêu cầu ứng lương mới. Các yêu cầu đang chờ hoặc đã duyệt vẫn được giữ nguyên."
+        description="Employee sẽ không thể tạo yêu cầu ứng lương mới. Các yêu cầu đang chờ hoặc đã duyệt vẫn được giữ nguyên."
         confirmText="Tạm ngừng"
         cancelText="Giữ lại"
         confirmVariant="destructive"

@@ -30,8 +30,8 @@ const MODE_COPY: Record<
   { title: string; description: string; confirm: string; confirmClass: string; noteRequired: boolean; noteLabel: string; noteHint: string }
 > = {
   approve: {
-    title: 'Duyệt yêu cầu',
-    description: 'Duyệt sẽ thực thi hành động (ví dụ đưa email vào hàng đợi gửi) và ghi lại kết quả.',
+    title: 'Approve yêu cầu',
+    description: 'Approve sẽ thực thi hành động (ví dụ đưa email vào hàng đợi gửi) và ghi lại kết quả.',
     confirm: 'Approve',
     confirmClass: 'bg-emerald-600 text-white hover:bg-emerald-700',
     noteRequired: false,
@@ -39,7 +39,7 @@ const MODE_COPY: Record<
     noteHint: 'Ghi chú nội bộ kèm quyết định.',
   },
   reject: {
-    title: 'Từ chối — thử lại ngày mai',
+    title: 'Rejected — thử lại ngày mai',
     description:
       'Yêu cầu sẽ được chuẩn bị lại lúc 08:00 ngày mai và quay lại hàng chờ duyệt. Sau 3 lần từ chối, yêu cầu sẽ được leo thang.',
     confirm: 'Reject',
@@ -95,7 +95,7 @@ export const ApprovalDecisionModal = ({
               {request.summary || request.type_label}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Người gửi: {request.requester_name || '—'} · Trạng thái: {request.status_label}
+              Người gửi: {request.requester_name || '—'} · Status: {request.status_label}
               {request.retry_count > 0 ? ` · đã thử lại ${request.retry_count} lần` : ''}
             </p>
             {request.approve_effect ? (

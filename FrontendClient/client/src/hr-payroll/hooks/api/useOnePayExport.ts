@@ -36,7 +36,7 @@ export function useExportOnePayBulk() {
       }
     },
     onError: (error) => {
-      showErrorNotification(error, 'Xuất file OnePay thất bại');
+      showErrorNotification(error, 'Export file OnePay thất bại');
     },
   });
 }

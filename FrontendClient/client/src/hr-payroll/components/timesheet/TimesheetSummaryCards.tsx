@@ -54,7 +54,7 @@ export function TimesheetSummaryCards({ summary }: TimesheetSummaryCardsProps) {
       color: 'blue',
     },
     {
-      label: 'Giờ trung bình',
+      label: 'Hour trung bình',
       value: summary.averageHours.toFixed(1),
       unit: 'giờ/người',
       icon: Clock,

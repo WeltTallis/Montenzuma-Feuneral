@@ -209,7 +209,7 @@ function ProjectEditSheet({
           )}
           <div className="ml-auto flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={handleClose} className="h-11 px-4 text-sm">
-              Hủy bỏ
+              Cancel bỏ
             </Button>
             <Button
               onClick={handleSave}
@@ -217,7 +217,7 @@ function ProjectEditSheet({
               className="h-11 px-4 text-sm"
               variant="default"
             >
-              {updateProjectMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
+              {updateProjectMutation.isPending ? "Đang lưu..." : "Save thay đổi"}
             </Button>
           </div>
         </div>
@@ -239,9 +239,9 @@ function ProjectEditSheet({
             {errors.name && <p className="text-xs text-red-700 flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{errors.name}</p>}
           </div>
 
-          {/* Khách hàng */}
+          {/* Otherh hàng */}
           <div className="space-y-1">
-            <Label htmlFor="client_name" className="text-xs text-muted-foreground">Khách hàng *</Label>
+            <Label htmlFor="client_name" className="text-xs text-muted-foreground">Otherh hàng *</Label>
             <Input
               id="client_name"
               value={formData.client_name}
@@ -265,9 +265,9 @@ function ProjectEditSheet({
             {errors.code && <p className="text-xs text-red-700 flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{errors.code}</p>}
           </div>
 
-          {/* Trạng thái */}
+          {/* Status */}
           <div className="space-y-1">
-            <Label htmlFor="status" className="text-xs text-muted-foreground">Trạng thái *</Label>
+            <Label htmlFor="status" className="text-xs text-muted-foreground">Status *</Label>
             <Select
               value={formData.status || 'draft'}
               onValueChange={(value: ProjectStatus) => handleInputChange('status', value)}
@@ -300,7 +300,7 @@ function ProjectEditSheet({
 
             {/* Off days */}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Ngày nghỉ trong tuần</Label>
+              <Label className="text-xs text-muted-foreground">Date nghỉ trong tuần</Label>
               <OffDaysPicker
                 value={formData.off_days}
                 onChange={(v) => handleInputChange('off_days', v)}
@@ -317,7 +317,7 @@ function ProjectEditSheet({
               onChange={(e) => handleInputChange('description', e.target.value)}
               rows={10}
               className={`resize-none text-sm ${errors.description ? "border-red-500" : ""}`}
-              placeholder="Nhập mô tả chi tiết về dự án..."
+              placeholder="Import mô tả chi tiết về dự án..."
             />
             {errors.description && <p className="text-xs text-red-700">{errors.description}</p>}
             <p className="text-xs text-muted-foreground text-right">{formData.description.length}/1000</p>

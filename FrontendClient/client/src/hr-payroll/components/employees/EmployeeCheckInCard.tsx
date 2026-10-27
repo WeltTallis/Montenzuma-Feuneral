@@ -100,7 +100,7 @@ function canConfirmNoSalaryCheckout(message: string): boolean {
   );
 }
 
-const CONFIRMED_NO_SALARY_MARKER = "Nhân viên đã xác nhận tan ca không ghi nhận tiền lương";
+const CONFIRMED_NO_SALARY_MARKER = "Employee đã xác nhận tan ca không ghi nhận tiền lương";
 
 function isConfirmedNoSalaryAttendance(attendance: { salary_reject_reason?: string | null } | null | undefined): boolean {
   return Boolean(attendance?.salary_reject_reason?.includes(CONFIRMED_NO_SALARY_MARKER));

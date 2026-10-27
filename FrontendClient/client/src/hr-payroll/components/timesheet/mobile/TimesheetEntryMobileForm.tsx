@@ -111,8 +111,8 @@ export function TimesheetEntryMobileForm({ onClose }: TimesheetEntryMobileFormPr
   const handleSubmit = async () => {
     if (!isFormValid) {
       toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin",
+        title: "Error",
+        description: "Please điền đầy đủ thông tin",
         variant: "destructive"
       });
       return;
@@ -130,8 +130,8 @@ export function TimesheetEntryMobileForm({ onClose }: TimesheetEntryMobileFormPr
 
       // Add dayType for Saturdays
       if (isSaturdayRequiringDayType(formattedDate)) {
-        entry.dayType = dayType === 'ngày lễ' ? 'Ngày lễ'
-          : dayType === 'ngày thường' ? 'Ngày thường' : 'Ngày nghỉ';
+        entry.dayType = dayType === 'ngày lễ' ? 'Date lễ'
+          : dayType === 'ngày thường' ? 'Date thường' : 'Date nghỉ';
       }
 
       await timesheetService.createTimesheets([entry]);
@@ -151,8 +151,8 @@ export function TimesheetEntryMobileForm({ onClose }: TimesheetEntryMobileFormPr
       
     } catch (error) {
       toast({
-        title: "Lỗi",
-        description: "Không thể lưu bảng công. Vui lòng thử lại.",
+        title: "Error",
+        description: "Không thể lưu bảng công. Please try again.",
         variant: "destructive"
       });
     } finally {

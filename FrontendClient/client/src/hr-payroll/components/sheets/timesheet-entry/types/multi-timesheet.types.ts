@@ -8,7 +8,7 @@ export interface TimesheetEntry {
   date: string;
   hours: Record<string, number>; // { "ca ngày": 8, "ca đêm": 4, "tăng ca": 2 }
   position: string;
-  dayType?: 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ' | string;
+  dayType?: 'Date thường' | 'Date nghỉ' | 'Date lễ' | string;
 
   originalValues?: {
     hours: Record<string, number>;

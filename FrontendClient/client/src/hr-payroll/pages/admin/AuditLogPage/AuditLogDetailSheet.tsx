@@ -81,7 +81,7 @@ export function AuditLogDetailSheet({ logId, onClose }: AuditLogDetailSheetProps
         <SheetHeader className="pb-4 border-b border-border">
           <div className="flex items-center justify-between gap-3">
             <SheetTitle className="text-left text-base font-semibold">
-              Chi tiết nhật ký
+              Details nhật ký
             </SheetTitle>
             <SheetClose asChild>
               <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label="Đóng chi tiết nhật ký">
@@ -140,14 +140,14 @@ export function AuditLogDetailSheet({ logId, onClose }: AuditLogDetailSheetProps
                 }
               />
 
-              <DetailRow icon={Clock} label="Thời gian" value={formatDateTime(log.created_at)} />
+              <DetailRow icon={Clock} label="Time" value={formatDateTime(log.created_at)} />
               <DetailRow icon={File05} label="Nội dung" value={log.message} />
 
               {/* Login identifier — what the user actually typed */}
               {loginIdentifier && loginIdentifier !== log.user_username && (
                 <DetailRow
                   icon={LogIn01}
-                  label="Đăng nhập bằng"
+                  label="Sign in bằng"
                   value={
                     <span className="font-medium text-fg-warning-primary">{loginIdentifier}</span>
                   }

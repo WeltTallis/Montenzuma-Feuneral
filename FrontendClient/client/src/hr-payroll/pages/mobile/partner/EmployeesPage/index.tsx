@@ -127,7 +127,7 @@ const EmployeesPageMobile = () => {
           filter: "unassigned" as const,
         },
         {
-          label: "Tháng này",
+          label: "This month",
           value: employeesSummary.employees_hired_this_month,
           filter: null as "working" | "unassigned" | null,
         },
@@ -179,7 +179,7 @@ const EmployeesPageMobile = () => {
               variant="outline"
               size="sm"
               className="h-11 w-11 p-0 shrink-0 rounded-xl border-border bg-card"
-              aria-label="Xuất danh sách nhân viên"
+              aria-label="Export danh sách nhân viên"
               onClick={() => setExportModalOpen(true)}
               disabled={isExporting}
             >
@@ -192,7 +192,7 @@ const EmployeesPageMobile = () => {
               onClick={() => openAddEmployee()}
             >
               <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-              Thêm
+              Add
             </Button>
           </div>
         }
@@ -232,7 +232,7 @@ const EmployeesPageMobile = () => {
         <MobileSearchInput
           value={searchTerm}
           onSearch={searchEmployees}
-          placeholder="Tìm kiếm nhân viên..."
+          placeholder="Search nhân viên..."
           className="w-full"
         />
         <Button
@@ -292,7 +292,7 @@ const EmployeesPageMobile = () => {
             onClick={clearAllFilters}
             className="min-h-11 px-1 text-xs text-muted-foreground underline underline-offset-2"
           >
-            Xóa tất cả
+            Delete tất cả
           </button>
         </div>
       )}
@@ -354,10 +354,10 @@ const EmployeesPageMobile = () => {
                 }
               >
                 <SelectTrigger className="h-11 rounded-xl">
-                  <SelectValue placeholder="Tất cả trạng thái" />
+                  <SelectValue placeholder="All trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="all">All trạng thái</SelectItem>
                   <SelectItem value="working">Đang làm việc</SelectItem>
                   <SelectItem value="unassigned">Chưa phân công</SelectItem>
                 </SelectContent>
@@ -376,10 +376,10 @@ const EmployeesPageMobile = () => {
                 }
               >
                 <SelectTrigger className="h-11 rounded-xl">
-                  <SelectValue placeholder="Tất cả tháng" />
+                  <SelectValue placeholder="All tháng" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả tháng</SelectItem>
+                  <SelectItem value="all">All tháng</SelectItem>
                   {monthOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
@@ -402,7 +402,7 @@ const EmployeesPageMobile = () => {
                   }
                   searchPlaceholder="Tìm dự án..."
                   options={[
-                    { value: "all", label: "Tất cả dự án" },
+                    { value: "all", label: "All dự án" },
                     ...projects.map((p) => ({
                       value: p.id.toString(),
                       label: p.name,
@@ -414,7 +414,7 @@ const EmployeesPageMobile = () => {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Sắp xếp
+                Sort
               </label>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                 <Select
@@ -422,7 +422,7 @@ const EmployeesPageMobile = () => {
                   onValueChange={(value) => handleSortChange(value, sortOrder)}
                 >
                   <SelectTrigger className="h-11 min-w-0 rounded-xl">
-                    <SelectValue placeholder="Sắp xếp theo" />
+                    <SelectValue placeholder="Sort theo" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fullname">Tên nhân viên</SelectItem>
@@ -455,7 +455,7 @@ const EmployeesPageMobile = () => {
                   setFilterSheetOpen(false);
                 }}
               >
-                Xóa bộ lọc
+                Delete bộ lọc
               </Button>
               <Button
                 className="flex-1 h-11 rounded-xl"

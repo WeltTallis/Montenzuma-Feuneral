@@ -40,7 +40,7 @@ export function ProjectTeamTab({
 
           {!isEditing && employees.length > 0 && (
             <div className="mt-6">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Danh sách nhân viên</h4>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">List nhân viên</h4>
               <div className="space-y-3">
                 {employees.slice(0, 10).map((projectEmployee) => (
                   <div key={projectEmployee.id} className="flex items-center gap-3 p-3 border rounded-xl">

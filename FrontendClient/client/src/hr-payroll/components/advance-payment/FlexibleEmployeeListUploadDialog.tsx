@@ -92,7 +92,7 @@ export const FlexibleEmployeeListUploadDialog = memo(function FlexibleEmployeeLi
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {[
                 { label: "Tổng dòng", value: importResult.total_rows, color: "text-foreground" },
-                { label: "Nhân viên mới", value: importResult.created_count, color: "text-emerald-700" },
+                { label: "Employee mới", value: importResult.created_count, color: "text-emerald-700" },
                 { label: "Đã cập nhật", value: importResult.updated_count, color: "text-primary" },
               ].map(({ label, value, color }) => (
                 <div key={label} className="rounded-xl border bg-muted/30 px-3 py-2.5 text-center">
@@ -131,7 +131,7 @@ export const FlexibleEmployeeListUploadDialog = memo(function FlexibleEmployeeLi
 
           <DialogFooter className="grid shrink-0 grid-cols-1 gap-2 border-t px-4 py-4 sm:grid-cols-2 sm:px-5">
             <Button variant="outline" onClick={handleReset} className="h-11 w-full">
-              Nhập file khác
+              Import file khác
             </Button>
             <Button onClick={handleClose} className="h-11 w-full">
               Close
@@ -147,7 +147,7 @@ export const FlexibleEmployeeListUploadDialog = memo(function FlexibleEmployeeLi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92dvh] max-w-md flex-col gap-0 overflow-hidden" contentPadding="none" hideCloseButton>
         <DialogNavyHeader
-          title="Nhập danh sách nhân viên"
+          title="Import danh sách nhân viên"
           description="File Excel danh sách nhân viên lịch trả lương linh hoạt"
         />
 
@@ -182,7 +182,7 @@ export const FlexibleEmployeeListUploadDialog = memo(function FlexibleEmployeeLi
             <p className="text-xs font-medium text-muted-foreground mb-1.5">Định dạng cột:</p>
             <div className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-muted-foreground min-[380px]:grid-cols-2">
               {[
-                ["B", "CCCD"], ["C", "Dự án / Khách hàng"],
+                ["B", "CCCD"], ["C", "Project / Otherh hàng"],
                 ["D", "Vị trí"], ["E", "Phone number"],
                 ["F", "Họ và tên"], ["G", "Tên tài khoản NH"],
                 ["H", "Số tài khoản NH"], ["I", "Tên ngân hàng"],
@@ -204,12 +204,12 @@ export const FlexibleEmployeeListUploadDialog = memo(function FlexibleEmployeeLi
             {importMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Đang xử lý...
+                Processing...
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4" />
-                Nhập file
+                Import file
               </>
             )}
           </Button>

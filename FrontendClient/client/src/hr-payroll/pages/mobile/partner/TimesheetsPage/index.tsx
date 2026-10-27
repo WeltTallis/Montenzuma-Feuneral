@@ -242,7 +242,7 @@ export default function TimesheetsPageMobile() {
       {timesheetStats.summary && (
         <div className="space-y-3">
           <GroupedStatCard
-            title="Tổng quan"
+            title="Overview"
             icon={Calendar}
             stats={[
               { label: "Employees", value: timesheetStats.summary.totalEmployees ?? 0 },

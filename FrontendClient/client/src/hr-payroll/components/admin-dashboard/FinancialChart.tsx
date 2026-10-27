@@ -19,7 +19,7 @@ type LineName =
   | 'Doanh thu'
   | 'Chi phí'
   | 'Lợi nhuận'
-  | 'Tiền mặt'
+  | 'Money mặt'
   | 'Công nợ phải thu'
   | 'Công nợ phải trả'
   | 'NV làm việc';
@@ -41,8 +41,8 @@ const CHART_GROUPS: ReadonlyArray<{
   {
     value: 'cashflow',
     label: 'Dòng tiền',
-    description: 'Tiền mặt, Công nợ',
-    lines: ['Tiền mặt', 'Công nợ phải thu', 'Công nợ phải trả'],
+    description: 'Money mặt, Công nợ',
+    lines: ['Money mặt', 'Công nợ phải thu', 'Công nợ phải trả'],
     color: 'hsl(217 91% 60%)'
   },
   {
@@ -62,7 +62,7 @@ export function FinancialChart({ className }: FinancialChartProps) {
   const [period, setPeriod] = useState<FinancialChartParams['period']>('day');
   const [isVisible, setIsVisible] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set(['Tiền mặt', 'Công nợ phải thu', 'Công nợ phải trả', 'NV làm việc']));
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set(['Money mặt', 'Công nợ phải thu', 'Công nợ phải trả', 'NV làm việc']));
   const [activeGroup, setActiveGroup] = useState<string>('revenue');
 
   // Intersection Observer for lazy loading
@@ -94,7 +94,7 @@ export function FinancialChart({ className }: FinancialChartProps) {
       'Doanh thu': item.revenue_vnd,
       'Chi phí': item.expenses_vnd,
       'Lợi nhuận': item.profit_vnd,
-      'Tiền mặt': item.cash_vnd,
+      'Money mặt': item.cash_vnd,
       'Công nợ phải thu': item.receivable_vnd,
       'Công nợ phải trả': item.payable_vnd,
       'NV làm việc': item.active_employees,
@@ -130,7 +130,7 @@ export function FinancialChart({ className }: FinancialChartProps) {
           value = latestPeriod.profit_vnd;
           color = value >= 0 ? 'text-green-700' : 'text-red-700';
           break;
-        case 'Tiền mặt':
+        case 'Money mặt':
           value = latestPeriod.cash_vnd;
           color = 'text-blue-700';
           break;
@@ -186,7 +186,7 @@ export function FinancialChart({ className }: FinancialChartProps) {
         recentValue = recent.profit_vnd;
         previousValue = previous.profit_vnd;
         break;
-      case 'Tiền mặt':
+      case 'Money mặt':
         recentValue = recent.cash_vnd;
         previousValue = previous.cash_vnd;
         break;
@@ -448,12 +448,12 @@ export function FinancialChart({ className }: FinancialChartProps) {
               <Line
                 yAxisId="left"
                 type="monotone"
-                dataKey="Tiền mặt"
+                dataKey="Money mặt"
                 stroke="hsl(217 91% 60%)"
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 4 }}
-                hide={hiddenSeries.has('Tiền mặt')}
+                hide={hiddenSeries.has('Money mặt')}
               />
               <Line
                 yAxisId="left"

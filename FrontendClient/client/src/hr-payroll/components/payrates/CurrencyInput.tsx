@@ -27,7 +27,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     label,
     value,
     onChange,
-    placeholder = "Nhập số tiền...",
+    placeholder = "Import số tiền...",
     className = "",
     disabled = false,
     required = false,
@@ -153,7 +153,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
 
         {/* Screen reader helper */}
         <div className="sr-only">
-          Nhập số tiền bằng ₫. Ví dụ: 30000 cho 30.000 ₫
+          Import số tiền bằng ₫. Ví dụ: 30000 cho 30.000 ₫
         </div>
       </div>
     );

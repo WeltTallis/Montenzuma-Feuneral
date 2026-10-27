@@ -194,7 +194,7 @@ export function AdvancePaymentRequestForm({
         amount: null,
         amountClassName: "text-fg-tertiary",
         amountLabel: "Chưa có tài khoản nhận tiền",
-        helperLine: "Liên hệ quản lý cập nhật thông tin ngân hàng để ứng lương.",
+        helperLine: "Contact quản lý cập nhật thông tin ngân hàng để ứng lương.",
         actionEnabled: false,
         actionLabel: "Salary advance",
       };
@@ -236,7 +236,7 @@ export function AdvancePaymentRequestForm({
         amount: null,
         amountClassName: "text-fg-tertiary",
         amountLabel: info.canRequestTitle || "Chưa thể ứng lương",
-        helperLine: info.canRequestReason || "Vui lòng quay lại trong kỳ ứng lương tiếp theo.",
+        helperLine: info.canRequestReason || "Please quay lại trong kỳ ứng lương tiếp theo.",
         actionEnabled: false,
         actionLabel: "Salary advance",
       };
@@ -541,7 +541,7 @@ export function AdvancePaymentRequestForm({
           {/* Fee preview */}
           {canShowFeePreview && feeError ? (
             <div role="alert" className="mt-4 rounded-xl border border-utility-error-200 bg-[var(--employee-error-soft)] px-3.5 py-2.5 text-sm text-[var(--employee-error)]">
-              <p>Không thể tính phí chuyển tiền. Vui lòng thử lại.</p>
+              <p>Không thể tính phí chuyển tiền. Please try again.</p>
               {onRetryFee && (
                 <button type="button" onClick={onRetryFee} className="mt-2 min-h-11 rounded-lg border border-utility-error-300 bg-[var(--employee-surface)] px-3 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--employee-focus-ring)]">
                   Tính lại phí
@@ -551,7 +551,7 @@ export function AdvancePaymentRequestForm({
           ) : canShowFeePreview && (
             <div className="mt-4 grid grid-cols-2 divide-x divide-[var(--employee-border-strong)] rounded-xl border border-[var(--employee-border-strong)] bg-[var(--employee-surface-muted)]">
               <div className="px-4 py-3">
-                <p className="text-[0.75rem] font-medium text-fg-secondary">Phí chuyển tiền</p>
+                <p className="text-[0.75rem] font-medium text-fg-secondary">Fee chuyển tiền</p>
                 <p className="mt-1 text-[1rem] font-semibold tabular-nums text-fg-secondary">
                   {feeDetails ? formatCurrency(feeDetails.fee) : "Đang tính..."}
                 </p>

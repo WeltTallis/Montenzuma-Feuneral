@@ -38,15 +38,15 @@ export const validateTimesheetEntries = ({
     }
 
     if (!entry.employeeId && availableEmployees.length > 0) {
-      entryErrors.push('Vui lòng chọn nhân viên');
+      entryErrors.push('Please chọn nhân viên');
     }
 
     if (!entry.projectId) {
-      entryErrors.push('Vui lòng chọn dự án');
+      entryErrors.push('Please chọn dự án');
     }
 
     if (!entry.date) {
-      entryErrors.push('Vui lòng chọn ngày');
+      entryErrors.push('Please chọn ngày');
     }
 
     if (!entry.position) {
@@ -58,7 +58,7 @@ export const validateTimesheetEntries = ({
       const existing = employeeDateProjectMap.get(key);
 
       if (existing && existing.projectId !== entry.projectId) {
-        entryErrors.push('Nhân viên chỉ có thể làm việc cho một dự án trong một ngày');
+        entryErrors.push('Employee chỉ có thể làm việc cho một dự án trong một ngày');
       } else if (!existing) {
         employeeDateProjectMap.set(key, { projectId: entry.projectId, entryId: entry.id });
       }
@@ -76,7 +76,7 @@ export const validateTimesheetEntries = ({
         if (entryDate < startDate) {
           const formattedStartDate = format(startDate, 'dd/MM/yyyy', { locale: vi });
           entryErrors.push(
-            `Ngày chấm công không thể trước ngày bắt đầu làm việc (${formattedStartDate})`
+            `Date chấm công không thể trước ngày bắt đầu làm việc (${formattedStartDate})`
           );
         }
       }

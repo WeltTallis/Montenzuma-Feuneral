@@ -82,7 +82,7 @@ export function PositionCell({
                       onSelect={() => onRemovePosition(position)}
                       className="text-destructive focus:text-destructive"
                     >
-                      Xóa vị trí
+                      Delete vị trí
                     </DropdownMenuItem>
                   </>
                 )}

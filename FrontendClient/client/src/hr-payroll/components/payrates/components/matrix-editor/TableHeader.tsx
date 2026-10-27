@@ -81,7 +81,7 @@ export function TableHeader({
               <button
                 onClick={e => { e.preventDefault(); e.stopPropagation(); onRemoveHourType(hourType); }}
                 className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded text-muted-foreground opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
-                title={`Xóa cột ${hourType}`}
+                title={`Delete cột ${hourType}`}
               >
                 <X className="h-3.5 w-3.5" />
               </button>

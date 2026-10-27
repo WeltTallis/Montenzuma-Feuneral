@@ -325,7 +325,7 @@ export const EditRequestTable = ({ userRole = 'admin', onRowClick }: EditRequest
     },
     {
       accessorKey: 'hours',
-      header: 'Giờ công',
+      header: 'Hour công',
       cell: ({ row }) => {
         const request = row.original;
         const timesheet = request.timesheet;
@@ -484,7 +484,7 @@ export const EditRequestTable = ({ userRole = 'admin', onRowClick }: EditRequest
               <SelectContent>
                 <SelectItem value="pending">Pending approval</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">All</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -504,7 +504,7 @@ export const EditRequestTable = ({ userRole = 'admin', onRowClick }: EditRequest
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Duyệt tất cả
+                Approve tất cả
               </>
             )}
           </Button>

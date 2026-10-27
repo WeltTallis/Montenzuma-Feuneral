@@ -77,12 +77,12 @@ export function UserDetailsSheetContainer({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div className="bg-card rounded-xl p-6 shadow-sm max-w-md">
           <h3 className="text-lg font-semibold text-destructive mb-2">
-            Lỗi tải dữ liệu
+            Error tải dữ liệu
           </h3>
           <p className="text-muted-foreground mb-4">
             {!userId 
               ? 'Không tìm thấy ID người dùng trong URL'
-              : 'Không thể tải thông tin người dùng'
+              : 'Failed to load thông tin người dùng'
             }
           </p>
           <button

@@ -163,7 +163,7 @@ export const CommandPalette = () => {
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Tìm kiếm lệnh hoặc điều hướng..."
+              placeholder="Search lệnh hoặc điều hướng..."
               className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>

@@ -47,7 +47,7 @@ export function PositionSelector({
       {!payrateConfig && (
         <div className="bg-muted/50 rounded-xl p-3">
           <p className="typography-body-small text-muted-foreground">
-            <strong>Lưu ý:</strong> Hiển thị vị trí mặc định. Chọn dự án để xem vị trí cụ thể.
+            <strong>Save ý:</strong> Hiển thị vị trí mặc định. Chọn dự án để xem vị trí cụ thể.
           </p>
         </div>
       )}

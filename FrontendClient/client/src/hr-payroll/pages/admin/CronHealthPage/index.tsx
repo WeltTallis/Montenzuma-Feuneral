@@ -39,7 +39,7 @@ export default function CronHealthPage() {
     return (
       <AdminPageCanvas>
         <div role="alert" className="p-4">
-          <ErrorState message="Không thể tải danh sách tác vụ. Vui lòng thử lại." onRetry={() => void refetch()} />
+          <ErrorState message="Failed to load danh sách tác vụ. Please try again." onRetry={() => void refetch()} />
         </div>
       </AdminPageCanvas>
     );

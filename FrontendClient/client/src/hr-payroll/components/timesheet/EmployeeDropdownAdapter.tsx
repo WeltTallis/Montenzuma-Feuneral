@@ -83,7 +83,7 @@ export function EmployeeDropdownAdapter({
     <EmployeeSelector
       value={displayValue}
       onSelect={handleEmployeeSelect}
-      placeholder={value === 'all' ? "Tất cả nhân viên" : placeholder}
+      placeholder={value === 'all' ? "All nhân viên" : placeholder}
       disabled={disabled}
       className={className}
       availableEmployees={availableEmployees}

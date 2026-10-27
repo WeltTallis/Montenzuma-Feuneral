@@ -34,7 +34,7 @@ export const SummaryStatsCards = ({
   isLoading = false,
   error = false,
   columns = 4,
-  errorMessage = 'Không thể tải dữ liệu',
+  errorMessage = 'Failed to load dữ liệu',
   className = '',
 }: SummaryStatsCardsProps) => {
   const allStats = groups ? groups.flatMap(g => g.stats) : stats || [];

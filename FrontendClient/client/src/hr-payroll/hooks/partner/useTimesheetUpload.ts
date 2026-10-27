@@ -24,7 +24,7 @@ export const useTimesheetUpload = () => {
 
   const handleUpload = async (): Promise<{ success: boolean; error?: string }> => {
     if (!selectedFile) {
-      return { success: false, error: "Chưa chọn file. Vui lòng chọn file Excel để tải lên" };
+      return { success: false, error: "Chưa chọn file. Please chọn file Excel để tải lên" };
     }
 
     setIsUploading(true);
@@ -39,7 +39,7 @@ export const useTimesheetUpload = () => {
       setSelectedFile(null);
       return { success: true };
     } catch (error) {
-      return { success: false, error: "Lỗi khi tải lên file. Vui lòng thử lại" };
+      return { success: false, error: "Error khi tải lên file. Please try again" };
     } finally {
       setIsUploading(false);
     }

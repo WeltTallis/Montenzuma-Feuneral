@@ -89,7 +89,7 @@ function ProjectAssignmentSheetContainer({
       // Additional validation to prevent conflicts
       if (!data.employee_id || !projectId) {
         toast({
-          title: "Lỗi dữ liệu",
+          title: "Error dữ liệu",
           description: "Thiếu thông tin nhân viên hoặc dự án.",
           variant: "destructive"
         });
@@ -114,25 +114,25 @@ function ProjectAssignmentSheetContainer({
       if (apiError?.response?.status === 409) {
         toast({
           title: "Xung đột",
-          description: "Nhân viên đã được phân công vào dự án này hoặc có xung đột thời gian.",
+          description: "Employee đã được phân công vào dự án này hoặc có xung đột thời gian.",
           variant: "destructive"
         });
       } else if (apiError?.response?.status === 422) {
         toast({
-          title: "Lỗi dữ liệu",
+          title: "Error dữ liệu",
           description: apiError?.response?.data?.message || "Dữ liệu không hợp lệ.",
           variant: "destructive"
         });
       } else if (apiError?.response?.status === 400) {
         toast({
           title: "Dữ liệu không hợp lệ",
-          description: apiError?.response?.data?.message || "Vui lòng kiểm tra lại thông tin.",
+          description: apiError?.response?.data?.message || "Please check lại thông tin.",
           variant: "destructive"
         });
       } else {
         toast({
-          title: "Lỗi",
-          description: "Không thể phân công nhân viên. Vui lòng thử lại.",
+          title: "Error",
+          description: "Không thể phân công nhân viên. Please try again.",
           variant: "destructive"
         });
       }

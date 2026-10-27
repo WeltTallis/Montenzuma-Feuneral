@@ -39,8 +39,8 @@ export const useEmployeeSelection = ({
   const handleBulkStatusUpdate = async (status: Employee['status']) => {
     if (selectedEmployeeIds.length === 0) {
       toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn ít nhất một nhân viên.",
+        title: "Error",
+        description: "Please chọn ít nhất một nhân viên.",
         variant: "destructive"
       });
       return;
@@ -55,8 +55,8 @@ export const useEmployeeSelection = ({
       });
     } catch {
       toast({
-        title: "Lỗi",
-        description: "Cập nhật trạng thái thất bại. Vui lòng thử lại.",
+        title: "Error",
+        description: "Cập nhật trạng thái thất bại. Please try again.",
         variant: "destructive"
       });
     }

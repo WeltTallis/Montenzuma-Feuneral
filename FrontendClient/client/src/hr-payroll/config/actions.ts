@@ -60,7 +60,7 @@ export const allActions: Action[] = [
   {
     id: 'nav-projects',
     label: 'Projects',
-    description: 'Xem và Dự án',
+    description: 'Xem và Project',
     icon: FolderOpen,
     href: '/admin/projects',
     category: 'navigation',
@@ -78,7 +78,7 @@ export const allActions: Action[] = [
   {
     id: 'nav-partner-employees',
     label: 'Employees',
-    description: 'Nhân viên dự án',
+    description: 'Employee dự án',
     icon: UserCheck,
     href: '/partner/employees',
     category: 'navigation',
@@ -96,7 +96,7 @@ export const allActions: Action[] = [
   {
     id: 'nav-partner-timesheet',
     label: 'Attendance',
-    description: 'Bảng công cá nhân',
+    description: 'Timesheet cá nhân',
     icon: Clock,
     href: '/partner/timesheet',
     category: 'navigation',
@@ -116,7 +116,7 @@ export const allActions: Action[] = [
   {
     id: 'create-user',
     label: 'Tạo người dùng',
-    description: 'Thêm người dùng mới',
+    description: 'Add người dùng mới',
     icon: UserPlus,
     href: '/admin/users?modal=add_user',
     category: 'creation',
@@ -125,7 +125,7 @@ export const allActions: Action[] = [
   {
     id: 'create-project',
     label: 'Tạo dự án',
-    description: 'Thêm dự án mới',
+    description: 'Add dự án mới',
     icon: FolderPlus,
     href: '/admin/projects?modal=project_create',
     category: 'creation',
@@ -133,8 +133,8 @@ export const allActions: Action[] = [
   },
   {
     id: 'create-employee',
-    label: 'Thêm nhân viên',
-    description: 'Thêm nhân viên mới',
+    label: 'Add nhân viên',
+    description: 'Add nhân viên mới',
     icon: Users,
     href: '/admin/employees?modal=add_employee',
     category: 'creation',
@@ -153,24 +153,24 @@ export const allActions: Action[] = [
   // Data Actions
   {
     id: 'export-employees',
-    label: 'Xuất danh sách nhân viên',
-    description: 'Tải xuống danh sách nhân viên',
+    label: 'Export danh sách nhân viên',
+    description: 'Download danh sách nhân viên',
     icon: Download,
     category: 'data',
     permissions: ['admin', 'partner']
   },
   {
     id: 'import-employees',
-    label: 'Nhập nhân viên',
-    description: 'Nhập danh sách nhân viên từ file',
+    label: 'Import nhân viên',
+    description: 'Import danh sách nhân viên từ file',
     icon: Upload,
     category: 'data',
     permissions: ['admin', 'partner']
   },
   {
     id: 'export-timesheet',
-    label: 'Xuất chấm công',
-    description: 'Tải xuống dữ liệu chấm công',
+    label: 'Export chấm công',
+    description: 'Download dữ liệu chấm công',
     icon: Download,
     category: 'data',
     permissions: ['admin', 'partner']
@@ -196,7 +196,7 @@ export const allActions: Action[] = [
   {
     id: 'search',
     label: 'Search',
-    description: 'Tìm kiếm trong hệ thống',
+    description: 'Search trong hệ thống',
     icon: Search,
     category: 'management',
     permissions: ['admin', 'partner'],

@@ -21,7 +21,7 @@ export function MobileSubmitButton({
         size="lg"
       >
         <Save className="w-5 h-5 mr-2" />
-        {isSubmitting ? 'Đang lưu...' : 'Lưu Bảng Công'}
+        {isSubmitting ? 'Đang lưu...' : 'Save Bảng Công'}
       </Button>
     </div>
   );

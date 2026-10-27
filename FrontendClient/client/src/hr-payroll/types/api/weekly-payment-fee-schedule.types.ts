@@ -1,4 +1,4 @@
-// Types for the admin "Phí trả lương tuần" (weekly-payment fee schedule) API.
+// Types for the admin "Fee trả lương tuần" (weekly-payment fee schedule) API.
 // Mirrors internal/app/dto/weekly_payment_fee_schedule.go on the backend.
 
 export interface WeeklyPaymentFeeScheduleEntry {

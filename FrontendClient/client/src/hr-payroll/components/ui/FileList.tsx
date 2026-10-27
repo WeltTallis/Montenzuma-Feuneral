@@ -216,7 +216,7 @@ export function FileList({
                     onClick={() => handleDelete(asset)}
                     disabled={deleteAsset.isPending}
                     className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-700"
-                    title="Xóa file"
+                    title="Delete file"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

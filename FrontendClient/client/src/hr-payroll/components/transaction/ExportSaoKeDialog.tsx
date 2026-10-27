@@ -140,7 +140,7 @@ export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Xuất sao kê
+            Export sao kê
           </DialogTitle>
           <DialogDescription>Chọn dự án và khoảng thời gian để xuất sao kê</DialogDescription>
         </DialogHeader>
@@ -160,7 +160,7 @@ export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps
                   className="min-h-11 w-full justify-start"
                 >
                   <Calendar className="h-3.5 w-3.5 mr-2" />
-                  {p === 'this-month' && 'Tháng này'}
+                  {p === 'this-month' && 'This month'}
                   {p === 'last-month' && 'Tháng trước'}
                   {p === 'this-quarter' && 'Quý này'}
                   {p === 'last-3-months' && '3 tháng gần đây'}
@@ -190,7 +190,7 @@ export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps
                 onClick={handleSelectAll}
                 className="h-11 text-xs"
               >
-                Tất cả
+                All
               </Button>
             </div>
 
@@ -232,7 +232,7 @@ export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps
                       onClick={() => refetch()}
                     >
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      Thử lại
+                      Try again
                     </Button>
                   </div>
                 ) : filteredProjects.length === 0 ? (
@@ -275,7 +275,7 @@ export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps
                   ? 'Đang tải dự án…'
                   : isError && projects.length === 0
                     ? 'Chưa tải được dự án'
-                    : `Tất cả dự án (${projects.length})`}
+                    : `All dự án (${projects.length})`}
               </div>
             )}
           </div>
@@ -290,7 +290,7 @@ export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps
           </Button>
           <Button type="button" onClick={handleExport} disabled={!canExport} className="h-11 w-full">
             {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-            {isExporting ? 'Đang xuất...' : 'Xuất file'}
+            {isExporting ? 'Đang xuất...' : 'Export file'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -26,7 +26,7 @@ export function LenderBankInfo({ lender }: LenderBankInfoProps) {
             Chủ nợ chưa có thông tin ngân hàng
           </p>
           <p className="typography-body-small text-amber-700 mt-0.5">
-            Vui lòng cập nhật thông tin ngân hàng để có thể thực hiện thanh toán
+            Please cập nhật thông tin ngân hàng để có thể thực hiện thanh toán
           </p>
         </div>
       </div>

@@ -117,7 +117,7 @@ function ReverseTransactionModalComponent({
             </div>
             <div>
               <AlertDialogTitle className="text-lg font-semibold">
-                {step === 'form' ? 'Đảo ngược giao dịch' : 'Xác nhận đảo ngược'}
+                {step === 'form' ? 'Đảo ngược giao dịch' : 'Confirm đảo ngược'}
               </AlertDialogTitle>
               <AlertDialogDescription className="text-sm text-muted-foreground">
                 {step === 'form' ? 'Tạo bút toán đảo ngược để hủy giao dịch này' : 'Kiểm tra lại thông tin trước khi xác nhận'}
@@ -162,7 +162,7 @@ function ReverseTransactionModalComponent({
               <AlertTriangle className="h-5 w-5 text-amber-700 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="typography-body-small font-medium text-amber-900">
-                  Lưu ý quan trọng
+                  Save ý quan trọng
                 </p>
                 <p className="typography-body-small text-amber-800">
                   Hành động này sẽ tạo một giao dịch đảo ngược để hủy giao dịch gốc. Hai giao dịch sẽ triệt tiêu lẫn nhau trong sổ cái.
@@ -212,7 +212,7 @@ function ReverseTransactionModalComponent({
           <div className="space-y-4 mt-4">
             <div className="bg-muted/50 rounded-xl p-3 space-y-3">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Xác nhận đảo ngược
+                Confirm đảo ngược
               </div>
 
               <div className="space-y-2 typography-body-small">
@@ -257,12 +257,12 @@ function ReverseTransactionModalComponent({
                 {isLoading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Đang xử lý...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <RotateCcw className="w-4 h-4" />
-                    Xác nhận đảo ngược
+                    Confirm đảo ngược
                   </>
                 )}
               </button>

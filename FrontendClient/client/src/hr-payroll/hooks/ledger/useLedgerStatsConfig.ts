@@ -40,7 +40,7 @@ export const useLedgerStatsConfig = ({ summary, isLoading }: UseLedgerStatsConfi
         icon: Building,
       },
       {
-        title: 'Dòng Tiền Ròng',
+        title: 'Dòng Money Ròng',
         value: ledgerService.formatCurrencyShort(summary.totals.net_cashflow),
         icon: summary.totals.net_cashflow >= 0 ? TrendingUp : TrendingDown,
       },

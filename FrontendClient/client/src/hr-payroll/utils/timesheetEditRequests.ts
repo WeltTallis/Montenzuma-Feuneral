@@ -3,7 +3,7 @@ import type { TimesheetEditRequest } from '@hr/types/api/timesheet.types';
 type EditRequestStatus = TimesheetEditRequest['status'];
 
 const STATUS_LABEL_MAP: Record<EditRequestStatus, string> = {
-  pending: 'Đang chờ xử lý',
+  pending: 'Waiting xử lý',
   approved: 'Đã phê duyệt',
   rejected: 'Đã từ chối',
 };
@@ -15,7 +15,7 @@ const STATUS_BADGE_MAP: Record<EditRequestStatus, 'info' | 'success' | 'destruct
 };
 
 export const EDIT_REQUEST_STATUS_OPTIONS: Array<{ value: EditRequestStatus | 'all'; label: string; }> = [
-  { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'all', label: 'All trạng thái' },
   { value: 'pending', label: STATUS_LABEL_MAP.pending },
   { value: 'approved', label: STATUS_LABEL_MAP.approved },
   { value: 'rejected', label: STATUS_LABEL_MAP.rejected },

@@ -20,17 +20,17 @@ export async function generateWalletBulkTransferPdf(batch: WalletBulkBatchDetail
     throw new Error('Không có giao dịch thành công để xuất PDF');
   }
   const pdfMake = await loadPdfMake();
-  if (!pdfMake) throw new Error('Không thể tải thư viện PDF');
+  if (!pdfMake) throw new Error('Failed to load thư viện PDF');
 
   const total = rows.reduce((sum, row) => sum + row.requested_amount, 0);
   const body = [
-    ['STT', 'Mã VFIC', 'Người nhận', 'Số tài khoản', 'Ngân hàng', 'Amount', 'Mã FT', 'Hoàn tất']
+    ['STT', 'Mã VFIC', 'Người nhận', 'Số tài khoản', 'Ngân hàng', 'Amount', 'Mã FT', 'Completed']
       .map((text) => ({ text, style: 'th' })),
     ...rows.map((row, index) => [
       String(index + 1), row.request_id, row.recipient_name,
       row.recipient_account_no, row.recipient_bank,
       { text: formatVND(row.requested_amount), alignment: 'right' },
-      isFTPending(row) ? 'Đang chờ FT' : (row.invoice_no || 'Đang chờ FT'), formatDate(row.settled_at),
+      isFTPending(row) ? 'Waiting FT' : (row.invoice_no || 'Waiting FT'), formatDate(row.settled_at),
     ]),
   ];
 
@@ -40,9 +40,9 @@ export async function generateWalletBulkTransferPdf(batch: WalletBulkBatchDetail
     pageMargins: [20, 20, 20, 20],
     defaultStyle: { fontSize: 9 },
     content: [
-      { text: 'Danh sách giao dịch chuyển tiền thành công', style: 'title' },
+      { text: 'List giao dịch chuyển tiền thành công', style: 'title' },
       { text: `Lô #${batch.id} · ${batch.filename}`, style: 'muted', margin: [0, 2, 0, 2] },
-      { text: `${rows.length} giao dịch · Tổng tiền: ${formatVND(total)}`, style: 'summary', margin: [0, 0, 0, 10] },
+      { text: `${rows.length} giao dịch · Total amount: ${formatVND(total)}`, style: 'summary', margin: [0, 0, 0, 10] },
       { table: { headerRows: 1, widths: [28, 80, '*', 90, 75, 80, 80, 90], body } },
     ],
     styles: {

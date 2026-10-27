@@ -27,7 +27,7 @@ export function UrlInput({
   disabled = false,
   required = false,
   error: externalError,
-  helperText = 'Nhập link đầy đủ tới file chứng từ (ví dụ: Google Drive, Dropbox, hoặc website khác)',
+  helperText = 'Import link đầy đủ tới file chứng từ (ví dụ: Google Drive, Dropbox, hoặc website khác)',
 }: UrlInputProps) {
   const [inputValue, setInputValue] = useState(value);
   const [validationError, setValidationError] = useState<string>('');
@@ -159,8 +159,8 @@ export function UrlInput({
               onClick={clearUrl}
               disabled={disabled}
               className="h-11 w-11 p-0 hover:bg-gray-100 hover:text-gray-600"
-              title="Xóa URL"
-              aria-label="Xóa đường dẫn chứng từ"
+              title="Delete URL"
+              aria-label="Delete đường dẫn chứng từ"
             >
               <X className="w-3 h-3" />
             </Button>

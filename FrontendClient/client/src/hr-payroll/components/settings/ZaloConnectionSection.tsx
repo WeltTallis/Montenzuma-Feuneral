@@ -252,7 +252,7 @@ export const ZaloConnectionSection = () => {
   const handleTestSend = async (kind: TestMessageKind) => {
     setTestResult(null);
     if (!testPhone.trim()) {
-      toast.error("Nhập SĐT nhận thử");
+      toast.error("Import SĐT nhận thử");
       return;
     }
     setTestSendingKind(kind);
@@ -281,7 +281,7 @@ export const ZaloConnectionSection = () => {
           `${kind === "otp" ? "Đã gửi OTP mẫu" : "Đã gửi mẫu thông báo lương"} (msg_id: ${result.msg_id || "—"})`,
         );
       } else {
-        toast.error(`Lỗi ZNS: ${result.error_msg}`);
+        toast.error(`Error ZNS: ${result.error_msg}`);
       }
     } catch (error) {
       const message = getErrorMessage(error);
@@ -315,7 +315,7 @@ export const ZaloConnectionSection = () => {
           className="mx-auto mb-3 size-6 text-destructive"
         />
         <p className="text-sm font-medium text-destructive">
-          Không thể tải trạng thái kết nối Zalo.
+          Failed to load trạng thái kết nối Zalo.
         </p>
         <Button
           type="button"
@@ -473,7 +473,7 @@ export const ZaloConnectionSection = () => {
               className="mt-0.5 size-4 shrink-0"
             />
             <p className="min-w-0 break-words">
-              <span className="font-semibold">Lỗi gần nhất:</span>{" "}
+              <span className="font-semibold">Error gần nhất:</span>{" "}
               {status.last_error}
             </p>
           </div>
@@ -484,7 +484,7 @@ export const ZaloConnectionSection = () => {
       <SettingsSection
         id="zalo-credentials"
         title="Cấu hình kết nối"
-        description="Nhập thông tin ứng dụng và mã truy cập từ Zalo OA Console. Khóa bảo mật không hiển thị lại sau khi lưu."
+        description="Import thông tin ứng dụng và mã truy cập từ Zalo OA Console. Khóa bảo mật không hiển thị lại sau khi lưu."
       >
         <form onSubmit={handleCredentialsSubmit} className="space-y-5">
           <div className="grid gap-5 md:grid-cols-2">
@@ -564,7 +564,7 @@ export const ZaloConnectionSection = () => {
               {saveCreds.isPending ? (
                 <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               ) : null}
-              Lưu cấu hình
+              Save cấu hình
             </Button>
             <Button
               type="button"
@@ -586,7 +586,7 @@ export const ZaloConnectionSection = () => {
             </Button>
             <p className="text-xs leading-5 text-muted-foreground sm:ml-2">
               {hasUnsavedCredentials
-                ? "Lưu thay đổi trước khi kiểm tra."
+                ? "Save thay đổi trước khi kiểm tra."
                 : "Kiểm tra khóa đã lưu với Zalo mà không gửi tin nhắn."}
             </p>
           </div>
@@ -616,7 +616,7 @@ export const ZaloConnectionSection = () => {
                   ? status.enabled
                     ? "Đang gửi OTP qua Zalo cho nhân viên."
                     : "Cho phép nhân viên nhận OTP đặt lại mật khẩu qua Zalo."
-                  : "Hoàn tất kết nối trước khi bật dịch vụ."}
+                  : "Completed kết nối trước khi bật dịch vụ."}
               </span>
             </span>
             <Switch
@@ -637,12 +637,12 @@ export const ZaloConnectionSection = () => {
           >
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-foreground">
-                Thông báo lương linh hoạt
+                Notifications lương linh hoạt
               </span>
               <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
                 {status?.connected
                   ? "Gửi hạn mức và hạn yêu cầu sau khi nhập bảng lương linh hoạt · 400 ₫/tin."
-                  : "Hoàn tất kết nối trước khi bật dịch vụ."}
+                  : "Completed kết nối trước khi bật dịch vụ."}
               </span>
             </span>
             <Switch
@@ -664,7 +664,7 @@ export const ZaloConnectionSection = () => {
           >
             <p className="font-semibold">Tắt đặt lại mật khẩu qua Zalo?</p>
             <p className="mt-1 leading-5 text-amber-800">
-              Nhân viên sẽ không thể nhận OTP qua Zalo cho đến khi tính năng
+              Employee sẽ không thể nhận OTP qua Zalo cho đến khi tính năng
               được bật lại.
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -674,7 +674,7 @@ export const ZaloConnectionSection = () => {
                 variant="destructive"
                 onClick={() => void handleToggle(false)}
               >
-                Xác nhận tắt
+                Confirm tắt
               </Button>
               <Button
                 type="button"
@@ -715,7 +715,7 @@ export const ZaloConnectionSection = () => {
                 id="zalo-test-phone-hint"
                 className="mt-2 text-xs leading-5 text-muted-foreground"
               >
-                Nhập số điện thoại dạng 0xxxxxxxxx hoặc 84xxxxxxxxx, không có
+                Import số điện thoại dạng 0xxxxxxxxx hoặc 84xxxxxxxxx, không có
                 dấu cách.
               </p>
             </div>

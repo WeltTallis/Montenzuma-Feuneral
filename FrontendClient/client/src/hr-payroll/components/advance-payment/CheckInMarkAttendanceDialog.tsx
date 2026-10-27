@@ -184,7 +184,7 @@ export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, proj
                     setShiftIndex("");
                   }}
                 >
-                  Hôm nay ({formatVnDayMonth(new Date().toISOString())})
+                  Today ({formatVnDayMonth(new Date().toISOString())})
                 </Button>
                 <Button
                   type="button"
@@ -196,7 +196,7 @@ export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, proj
                     setShiftIndex("");
                   }}
                 >
-                  Hôm qua ({formatVnDayMonth(new Date(Date.now() - 86400000).toISOString())})
+                  Yesterday ({formatVnDayMonth(new Date(Date.now() - 86400000).toISOString())})
                 </Button>
               </div>
             </div>
@@ -237,7 +237,7 @@ export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, proj
                 />
                 <div className="min-w-0 space-y-0.5">
                   <Label htmlFor="mark-attendance-checkout" className="text-sm font-medium leading-5">
-                    Nhân viên đã tan ca
+                    Employee đã tan ca
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     Tạo bản ghi hoàn chỉnh: vào {selectedShift ? formatShiftTime(selectedShift.start) : ""} — tan {selectedShift ? formatShiftTime(selectedShift.end) : ""}, thu nhập tính theo cấu hình ca.
@@ -279,7 +279,7 @@ export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, proj
               onClick={() => approve.mutate({ id: record.id }, { onSuccess: () => onOpenChange(false) })}
             >
               {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              Xác nhận đã tan ca
+              Confirm đã tan ca
             </Button>
           ) : !record && !recordQuery.isLoading ? (
             <Button type="button" className="min-h-11" disabled={!canCreate} onClick={handleCreate}>

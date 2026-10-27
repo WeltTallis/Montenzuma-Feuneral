@@ -67,7 +67,7 @@ export function MarkSchedulePaidDialog({ isOpen, onClose, loan, schedule }: Mark
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md gap-0 overflow-hidden" contentPadding="none" hideCloseButton>
         <DialogNavyHeader
-          title="Xác nhận thanh toán"
+          title="Confirm thanh toán"
           description={`Kỳ ${schedule.period} — không thể hoàn tác sau khi xác nhận`}
         />
 
@@ -76,7 +76,7 @@ export function MarkSchedulePaidDialog({ isOpen, onClose, loan, schedule }: Mark
           <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5">
             <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">
-              Vui lòng kiểm tra kỹ thông tin trước khi xác nhận. Hành động này không thể hoàn tác.
+              Please check kỹ thông tin trước khi xác nhận. Hành động này không thể hoàn tác.
             </p>
           </div>
 
@@ -87,7 +87,7 @@ export function MarkSchedulePaidDialog({ isOpen, onClose, loan, schedule }: Mark
               <span className="text-sm font-medium">Kỳ {schedule.period}</span>
             </div>
             <div className="flex items-center justify-between px-3 py-2.5">
-              <span className="text-xs text-muted-foreground">Ngày đáo hạn</span>
+              <span className="text-xs text-muted-foreground">Date đáo hạn</span>
               <span className="text-sm font-medium">{format(new Date(schedule.due_date), 'dd/MM/yyyy')}</span>
             </div>
             <div className="flex items-center justify-between px-3 py-2.5">
@@ -142,12 +142,12 @@ export function MarkSchedulePaidDialog({ isOpen, onClose, loan, schedule }: Mark
             {repaySchedule.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Đang xử lý...
+                Processing...
               </>
             ) : (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                Xác nhận thanh toán
+                Confirm thanh toán
               </>
             )}
           </Button>

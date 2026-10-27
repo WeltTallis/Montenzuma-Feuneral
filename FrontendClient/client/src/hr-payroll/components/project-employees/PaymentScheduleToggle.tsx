@@ -105,7 +105,7 @@ export function PaymentScheduleToggle({ assignment, disabled }: PaymentScheduleT
             disabled={cancelScheduleMutation.isPending}
           >
             <X className="h-3 w-3" />
-            <span className="sr-only">Hủy thay đổi</span>
+            <span className="sr-only">Cancel thay đổi</span>
           </Button>
         </div>
       )}
@@ -165,7 +165,7 @@ export function PaymentScheduleToggle({ assignment, disabled }: PaymentScheduleT
             </div>
 
             <div className="rounded-xl bg-muted p-3 typography-body-small">
-              <p className="font-medium mb-1">Lưu ý:</p>
+              <p className="font-medium mb-1">Save ý:</p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>Nếu tháng hiện tại chưa có bảng công đã trả, thay đổi có hiệu lực ngay</li>
                 <li>Nếu đã có bảng công đã trả, thay đổi có hiệu lực từ đầu tháng sau</li>

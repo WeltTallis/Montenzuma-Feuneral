@@ -39,14 +39,14 @@ export function MobileSummaryPills({ days = 1 }: MobileSummaryPillsProps) {
     <div className="grid grid-cols-2 gap-2">
       <StatusPill
         icon={AlertTriangle}
-        label="Tỷ Lệ Lỗi"
+        label="Tỷ Lệ Error"
         value={`${stats.errorRate.toFixed(2)}%`}
         sub={`${stats.total.toLocaleString()} req`}
         status={stats.errorRate > 5 ? "danger" : stats.errorRate > 1 ? "warn" : "ok"}
       />
       <StatusPill
         icon={AlertCircle}
-        label={days === 1 ? "Lỗi 24h" : "Lỗi 7 ngày"}
+        label={days === 1 ? "Error 24h" : "Error 7 ngày"}
         value={String(rc)}
         sub="lượt lỗi"
         status={rc > 20 ? "danger" : rc > 0 ? "warn" : "ok"}

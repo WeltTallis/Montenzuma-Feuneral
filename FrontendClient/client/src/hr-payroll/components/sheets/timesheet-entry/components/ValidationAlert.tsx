@@ -14,7 +14,7 @@ export const ValidationAlert = memo(({ isValid, errors }: ValidationAlertProps) 
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
       <AlertDescription>
-        {typeof errors[0] === 'string' ? errors[0] : 'Có lỗi xảy ra'}
+        {typeof errors[0] === 'string' ? errors[0] : 'An error occurred'}
       </AlertDescription>
     </Alert>
   );

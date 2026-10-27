@@ -94,12 +94,12 @@ export const useDownloadAsset = () => {
         // Validate blob
         if (!blob || !(blob instanceof Blob)) {
           console.error('Download failed: Invalid blob response', blob);
-          throw new Error('Không thể tải file: Phản hồi không hợp lệ từ server');
+          throw new Error('Failed to load file: Phản hồi không hợp lệ từ server');
         }
 
         if (blob.size === 0) {
           console.error('Download failed: Empty blob');
-          throw new Error('Không thể tải file: File rỗng hoặc không tồn tại');
+          throw new Error('Failed to load file: File rỗng hoặc không tồn tại');
         }
 
         // Create download link
@@ -122,7 +122,7 @@ export const useDownloadAsset = () => {
         if (error instanceof Error) {
           throw error;
         }
-        throw new Error('Không thể tải file. Vui lòng thử lại.');
+        throw new Error('Failed to load file. Please try again.');
       }
     },
     onSuccess: (response) => {

@@ -163,7 +163,7 @@ export function ShiftNamesSection({
         <div className="overflow-hidden rounded-lg border">
           <div className="hidden min-[640px]:grid min-[640px]:grid-cols-[180px_200px_minmax(0,1fr)] gap-3 bg-muted/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             <span>Khung giờ</span>
-            <span>Lương trọn ca</span>
+            <span>Payroll trọn ca</span>
             <span>Tên hiển thị</span>
           </div>
           {shiftPaySummaries.map(({ range, positionPays }) => {
@@ -188,7 +188,7 @@ export function ShiftNamesSection({
                 </div>
                 <div className="min-w-0">
                   <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground min-[640px]:hidden">
-                    Lương trọn ca
+                    Payroll trọn ca
                   </span>
                   <div className="space-y-1">
                     {positionPays.map(({ position, amount }) => (

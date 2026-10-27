@@ -202,7 +202,7 @@ export const BulkTransferHistoryDialog = memo(function BulkTransferHistoryDialog
             <SheetHeader className="text-left space-y-0">
               <SheetTitle className="text-sm font-semibold">Lịch sử chuyển lô</SheetTitle>
               <SheetDescription className="text-xs text-slate-600">
-                Danh sách file kết quả đã tải lên
+                List file kết quả đã tải lên
               </SheetDescription>
             </SheetHeader>
             <SheetClose asChild>

@@ -38,7 +38,7 @@ export function useCreateEditRequest() {
       toast('Successful', { description: 'Yêu cầu chỉnh sửa đã được gửi thành công' });
     },
     onError: (error: unknown) => {
-      toast('Lỗi', { description: `Không thể tạo yêu cầu: ${getErrorMessage(error)}`, variant: 'destructive' });
+      toast('Error', { description: `Không thể tạo yêu cầu: ${getErrorMessage(error)}`, variant: 'destructive' });
     },
   });
 }
@@ -86,7 +86,7 @@ export function useApproveEditRequest() {
       toast('Successful', { description: 'Yêu cầu đã được phê duyệt' });
     },
     onError: (error: unknown) => {
-      toast('Lỗi', { description: `Không thể phê duyệt: ${getErrorMessage(error)}`, variant: 'destructive' });
+      toast('Error', { description: `Không thể phê duyệt: ${getErrorMessage(error)}`, variant: 'destructive' });
     },
   });
 }
@@ -102,7 +102,7 @@ export function useRejectEditRequest() {
       toast('Successful', { description: 'Yêu cầu đã bị từ chối' });
     },
     onError: (error: unknown) => {
-      toast('Lỗi', { description: `Không thể từ chối: ${getErrorMessage(error)}`, variant: 'destructive' });
+      toast('Error', { description: `Không thể từ chối: ${getErrorMessage(error)}`, variant: 'destructive' });
     },
   });
 }

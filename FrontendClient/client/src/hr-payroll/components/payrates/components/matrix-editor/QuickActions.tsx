@@ -60,7 +60,7 @@ export function QuickActions({
               className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Plus className="h-3 w-3" />
-              Thêm
+              Add
             </button>
           )}
         </div>
@@ -81,7 +81,7 @@ export function QuickActions({
               disabled={!newPosition.trim()}
               className="h-11 rounded-xl bg-primary px-3 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
             >
-              Thêm
+              Add
             </button>
             <button
               onClick={() => { setShowAddPosition(false); setNewPosition(''); }}
@@ -125,7 +125,7 @@ export function QuickActions({
                 className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <Plus className="h-3 w-3" />
-                Thêm
+                Add
               </button>
             )}
           </div>
@@ -146,7 +146,7 @@ export function QuickActions({
                 disabled={!newHourType.trim()}
                 className="h-11 rounded-xl bg-primary px-3 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
               >
-                Thêm
+                Add
               </button>
               <button
                 onClick={() => { setShowAddHourType(false); setNewHourType(''); }}

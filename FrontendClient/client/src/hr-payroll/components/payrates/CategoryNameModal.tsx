@@ -27,8 +27,8 @@ export function CategoryNameModal({
   open,
   onOpenChange,
   onConfirm,
-  title = "Thêm danh mục mới",
-  description = "Nhập tên cho danh mục mới",
+  title = "Add danh mục mới",
+  description = "Import tên cho danh mục mới",
   placeholder = "Tên danh mục",
   initialValue = ""
 }: CategoryNameModalProps) {
@@ -104,7 +104,7 @@ export function CategoryNameModal({
             variant="default"
           >
             <Plus className="w-4 h-4" />
-            Thêm
+            Add
           </Button>
         </DialogFooter>
       </DialogContent>

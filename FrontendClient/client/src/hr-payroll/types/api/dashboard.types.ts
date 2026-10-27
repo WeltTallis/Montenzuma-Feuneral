@@ -67,7 +67,7 @@ export interface RecentActivity {
    */
   message: string;
   /**
-   * Thời gian tạo hoạt động (ISO string)
+   * Time tạo hoạt động (ISO string)
    */
   created_at: string;
 }

@@ -23,7 +23,7 @@ export const ProjectInfo = ({ project }: ProjectInfoProps) => {
             <p className="text-foreground font-medium mt-1">{project.name}</p>
           </div>
           <div>
-            <Label className="typography-body-medium typography-label-medium text-muted-foreground">Ngày bắt đầu</Label>
+            <Label className="typography-body-medium typography-label-medium text-muted-foreground">Date bắt đầu</Label>
             <div className="flex items-center gap-2 mt-1">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span className="text-foreground font-medium">{project.startDate}</span>

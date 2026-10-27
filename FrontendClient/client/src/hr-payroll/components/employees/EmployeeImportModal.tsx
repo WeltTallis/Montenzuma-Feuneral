@@ -103,7 +103,7 @@ export function EmployeeImportModal({
         } else {
           toast({
             title: "Import thất bại",
-            description: "Có lỗi xảy ra trong quá trình import.",
+            description: "An error occurred trong quá trình import.",
             variant: "destructive"
           });
         }
@@ -132,7 +132,7 @@ export function EmployeeImportModal({
     if (!ext.endsWith('.xlsx')) {
       toast({
         title: "Sai định dạng file",
-        description: "Vui lòng tải lên file Excel (.xlsx).",
+        description: "Please tải lên file Excel (.xlsx).",
         variant: "destructive"
       });
       return;
@@ -162,8 +162,8 @@ export function EmployeeImportModal({
     } catch (error) {
       console.error('Import error:', error);
       toast({
-        title: "Lỗi import",
-        description: error instanceof Error ? error.message : "Không thể import file. Vui lòng thử lại.",
+        title: "Error import",
+        description: error instanceof Error ? error.message : "Không thể import file. Please try again.",
         variant: "destructive"
       });
       setUploading(false);
@@ -241,8 +241,8 @@ export function EmployeeImportModal({
     } catch (error) {
       console.error('Template generation error:', error);
       toast({
-        title: "Lỗi tạo template",
-        description: "Không thể tạo file template. Vui lòng thử lại.",
+        title: "Error tạo template",
+        description: "Không thể tạo file template. Please try again.",
         variant: "destructive"
       });
     }
@@ -380,7 +380,7 @@ export function EmployeeImportModal({
                     {importStatus.status === 'completed' && <CheckCircle className="h-5 w-5 text-green-700" />}
                     {importStatus.status === 'failed' && <XCircle className="h-5 w-5 text-red-700" />}
                     {importStatus.status === 'pending' && <AlertCircle className="h-5 w-5 text-yellow-800" />}
-                    Trạng thái import
+                    Status import
                   </CardTitle>
                   {getStatusBadge()}
                 </div>
@@ -393,7 +393,7 @@ export function EmployeeImportModal({
                 {importStatus.status === 'pending' || importStatus.status === 'processing' ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span>Đang xử lý...</span>
+                      <span>Processing...</span>
                       <span>{importStatus.processed_rows} / {importStatus.total_rows} dòng</span>
                     </div>
                     <Progress value={getProgressPercentage()} className="w-full" />
@@ -410,7 +410,7 @@ export function EmployeeImportModal({
                   </div>
                   <div className="p-3 bg-green-50 rounded-xl">
                     <div className="text-2xl font-bold text-green-700">{importStatus.created_count}</div>
-                    <div className="text-sm text-green-700">Mới</div>
+                    <div className="text-sm text-green-700">New</div>
                   </div>
                   <div className="p-3 bg-yellow-50 rounded-xl">
                     <div className="text-2xl font-bold text-yellow-800">{importStatus.updated_count}</div>
@@ -418,7 +418,7 @@ export function EmployeeImportModal({
                   </div>
                   <div className="p-3 bg-red-50 rounded-xl">
                     <div className="text-2xl font-bold text-red-700">{importStatus.error_count}</div>
-                    <div className="text-sm text-red-700">Lỗi</div>
+                    <div className="text-sm text-red-700">Error</div>
                   </div>
                 </div>
 

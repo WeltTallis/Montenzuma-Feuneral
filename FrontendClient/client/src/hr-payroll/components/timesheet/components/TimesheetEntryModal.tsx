@@ -48,7 +48,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-lg font-semibold tracking-tight text-white leading-tight">
-                {f.isReadOnly ? "Chi tiết bảng công" : f.isEditing ? "Chỉnh sửa bảng công" : "Nhập bảng công"}
+                {f.isReadOnly ? "Details bảng công" : f.isEditing ? "Chỉnh sửa bảng công" : "Import bảng công"}
               </p>
               <div className="flex items-center gap-1.5 mt-1">
                 <Calendar className="h-3 w-3 text-emerald-200/75" />
@@ -94,15 +94,15 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
               message={
                 f.payrateForbidden
                   ? "Bạn không có quyền truy cập bảng lương của dự án này."
-                  : "Không thể tải cấu hình bảng lương. Vui lòng thử lại."
+                  : "Failed to load cấu hình bảng lương. Please try again."
               }
             />
           )}
           {f.isPayUnitError && (
-            <InlineAlert severity="error" icon={AlertTriangle} message="Không thể xác định cách tính lương của dự án. Vui lòng thử lại." />
+            <InlineAlert severity="error" icon={AlertTriangle} message="Không thể xác định cách tính lương của dự án. Please try again." />
           )}
           {!f.isPayrateLoading && !f.isPayrateError && f.availableHourTypes.length === 0 && (
-            <InlineAlert severity="warning" icon={AlertTriangle} message="Dự án chưa có cấu hình loại giờ." />
+            <InlineAlert severity="warning" icon={AlertTriangle} message="Project chưa có cấu hình loại giờ." />
           )}
           {existingEntry?.request_edit_id != null && (
             <InlineAlert severity="info" icon={Info} message="Yêu cầu chỉnh sửa đang chờ duyệt."
@@ -119,7 +119,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-blue-700" />Thời gian làm việc
+                  <Clock className="h-3.5 w-3.5 text-blue-700" />Time làm việc
                 </span>
                 {existingEntry && existingEntry.status === "pending_approval" && (
                   <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -152,7 +152,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
                       </div>
                       {f.displayPayrate != null && (
                         <div className="text-xs text-slate-600 mt-0.5">
-                          {f.isFlexibleProject ? "Lương trọn ca" : "Đơn giá"}:{" "}
+                          {f.isFlexibleProject ? "Payroll trọn ca" : "Đơn giá"}:{" "}
                           {f.displayPayrate.toLocaleString("en-KE")}
                           {getPayrateUnit(f.isFlexibleProject)}
                         </div>
@@ -175,7 +175,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
                         <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />Loading...
                       </span>
                     ) : f.isPayrateError ? (
-                      <span className="text-destructive text-sm">Lỗi</span>
+                      <span className="text-destructive text-sm">Error</span>
                     ) : <SelectValue placeholder="Chọn loại ca" />}
                   </SelectTrigger>
                   <SelectContent>
@@ -185,7 +185,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider px-0.5">Loại ngày</Label>
-                <Select value={f.formData.dayType} onValueChange={(v) => f.handleFormChange("dayType", v as "Ngày thường" | "Ngày nghỉ" | "Ngày lễ")}
+                <Select value={f.formData.dayType} onValueChange={(v) => f.handleFormChange("dayType", v as "Date thường" | "Date nghỉ" | "Date lễ")}
                   disabled={f.isReadOnly}>
                   <SelectTrigger className="h-10 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500/20">
                     <SelectValue placeholder="Chọn loại ngày" />
@@ -209,7 +209,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
                       <button type="button" onClick={f.handleCancelEditRequest} disabled={f.isLoading}
                         className="flex items-center gap-1.5 text-red-700 text-sm font-semibold hover:bg-red-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-40">
                         {f.cancelEditRequestMutation.isPending ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
-                        Hủy yêu cầu
+                        Cancel yêu cầu
                       </button>
                     )}
                   </div>
@@ -229,7 +229,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
                   {existingEntry && props.onDelete && canDelete && canDelete(existingEntry) && (
                     <button type="button" onClick={f.handleDelete} disabled={f.isLoading}
                       className="flex items-center gap-1.5 text-red-700 text-sm font-semibold hover:bg-red-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-40">
-                      <Trash2 className="w-3.5 h-3.5" />Xóa công
+                      <Trash2 className="w-3.5 h-3.5" />Delete công
                     </button>
                   )}
                 </div>
@@ -254,7 +254,7 @@ export function TimesheetEntryModal(props: TimesheetEntryModalProps) {
                     onClick={f.canSaveAndApprove ? f.handleSaveAndApprove : f.handleSave}
                     disabled={f.isLoading || f.isPayrateLoading || f.formData.hoursWorked <= 0 || !f.formData.hourType || !f.isHourTypeValid || f.availableHourTypes.length === 0 || !f.dateValidation.isValid}>
                     {f.isLoading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    {f.isLoading ? (f.canSaveAndApprove ? "Đang xử lý..." : f.isEditing ? "Đang lưu..." : "Đang tạo...") : (f.canSaveAndApprove ? "Duyệt & Lưu" : f.isEditing ? "Lưu thay đổi" : "Tạo bảng công")}
+                    {f.isLoading ? (f.canSaveAndApprove ? "Processing..." : f.isEditing ? "Đang lưu..." : "Đang tạo...") : (f.canSaveAndApprove ? "Approve & Save" : f.isEditing ? "Save thay đổi" : "Tạo bảng công")}
                   </Button>
                 </div>
               </div>

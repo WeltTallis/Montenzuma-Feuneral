@@ -110,8 +110,8 @@ export const FeeScheduleConfirmDialog = ({
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">
               {current
-                ? "So sánh phí trên một số khoản mẫu (Hiện tại → Mới):"
-                : "Phí dự kiến trên một số khoản mẫu:"}
+                ? "So sánh phí trên một số khoản mẫu (Hiện tại → New):"
+                : "Fee dự kiến trên một số khoản mẫu:"}
             </p>
             <div tabIndex={0} role="region" aria-label="So sánh cấu hình phí ứng lương" className="rounded-lg border overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               <table className="w-full text-xs">
@@ -123,7 +123,7 @@ export const FeeScheduleConfirmDialog = ({
                         Hiện tại
                       </th>
                     )}
-                    <th className="text-right font-medium px-3 py-2">Mới</th>
+                    <th className="text-right font-medium px-3 py-2">New</th>
                     <th className="text-right font-medium px-3 py-2">
                       Thay đổi
                     </th>

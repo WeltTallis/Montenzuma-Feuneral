@@ -33,7 +33,7 @@ export default function SendNotificationPageMobile() {
     setMessageError('');
     let hasError = false;
     if (recipientIds.length === 0 && !toAllPartners && !toAllAdmins && !toAllEmployees) {
-      setRecipientError('Vui lòng chọn ít nhất một người nhận hoặc chọn gửi đến tất cả');
+      setRecipientError('Please chọn ít nhất một người nhận hoặc chọn gửi đến tất cả');
       hasError = true;
     }
     if (!title.trim()) { setTitleError('Tiêu đề không được để trống'); hasError = true; }
@@ -102,7 +102,7 @@ export default function SendNotificationPageMobile() {
             <Label htmlFor="notif-message" className="sr-only">Nội dung thông báo</Label>
             <Textarea
               id="notif-message"
-              placeholder="Nhập nội dung thông báo..."
+              placeholder="Import nội dung thông báo..."
               rows={5}
               value={message}
               onChange={handleMessageChange}

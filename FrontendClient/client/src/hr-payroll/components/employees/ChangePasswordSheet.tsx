@@ -33,13 +33,13 @@ const PASSWORD_FIELDS = [
   {
     id: "cp",
     label: "Mật khẩu hiện tại",
-    placeholder: "Nhập mật khẩu hiện tại",
+    placeholder: "Import mật khẩu hiện tại",
   },
   { id: "np", label: "Mật khẩu mới", placeholder: "Tối thiểu 8 ký tự" },
   {
     id: "cfp",
-    label: "Xác nhận mật khẩu mới",
-    placeholder: "Nhập lại mật khẩu mới",
+    label: "Confirm mật khẩu mới",
+    placeholder: "Import lại mật khẩu mới",
   },
 ] as const;
 
@@ -263,12 +263,12 @@ export function ChangePasswordSheet({
           )}
           {field.id === "cp" && attemptedSubmit && !currentPassword && (
             <p id="current-password-error" role="alert" className="employee-type-body-sm mt-1.5 text-[var(--employee-error)]">
-              Nhập mật khẩu hiện tại.
+              Import mật khẩu hiện tại.
             </p>
           )}
           {field.id === "cfp" && confirmMismatch && (
             <p id="confirm-password-error" role="alert" className="employee-type-body-sm mt-1.5 text-[var(--employee-error)]">
-              Xác nhận mật khẩu chưa khớp.
+              Confirm mật khẩu chưa khớp.
             </p>
           )}
         </div>

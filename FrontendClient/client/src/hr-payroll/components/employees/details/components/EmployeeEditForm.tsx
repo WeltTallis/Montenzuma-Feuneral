@@ -104,7 +104,7 @@ export function EmployeeEditForm({
               onChange={(e) => onInputChange("mobile", e.target.value)}
             />
           </Field>
-          <Field id="date_of_birth" label="Ngày sinh">
+          <Field id="date_of_birth" label="Date of birth">
             <Input
               id="date_of_birth"
               type="date"
@@ -126,7 +126,7 @@ export function EmployeeEditForm({
           />
         </Field>
 
-        <Field id="address" label="Địa chỉ">
+        <Field id="address" label="Address">
           <Input
             id="address"
             className="h-11 text-sm sm:h-9"

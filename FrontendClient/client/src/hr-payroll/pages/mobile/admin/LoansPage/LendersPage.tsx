@@ -59,7 +59,7 @@ const LendersPage = () => {
       <MobilePageHeader
         icon={CoinsHand}
         title="Chủ nợ"
-        subtitle="Danh sách chủ nợ và thông tin liên quan"
+        subtitle="List chủ nợ và thông tin liên quan"
         sticky={false}
         bordered={false}
         actions={
@@ -67,11 +67,11 @@ const LendersPage = () => {
             <Button
               size="sm"
               className="btn-admin-primary h-11 w-11 shrink-0 p-0 min-[380px]:w-auto min-[380px]:px-3"
-              aria-label="Thêm chủ nợ"
+              aria-label="Add chủ nợ"
               onClick={() => setShowAddSheet(true)}
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden min-[380px]:inline">Thêm</span>
+              <span className="hidden min-[380px]:inline">Add</span>
             </Button>
             <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => navigate(-1)} aria-label="Quay lại khoản vay">
               <ArrowLeft className="h-4 w-4" />
@@ -85,7 +85,7 @@ const LendersPage = () => {
         <MobileSearchInput
           value={filters.search ?? ""}
           onSearch={handleSearch}
-          placeholder="Tìm kiếm chủ nợ..."
+          placeholder="Search chủ nợ..."
           className="h-11"
         />
       </div>
@@ -100,8 +100,8 @@ const LendersPage = () => {
           <EmptyState
             icon={Users01}
             title="Chưa có chủ nợ nào"
-            description="Thêm chủ nợ đầu tiên để bắt đầu quản lý khoản vay."
-            action={{ label: "Thêm chủ nợ", onClick: () => setShowAddSheet(true) }}
+            description="Add chủ nợ đầu tiên để bắt đầu quản lý khoản vay."
+            action={{ label: "Add chủ nợ", onClick: () => setShowAddSheet(true) }}
           />
         ) : (
           <>

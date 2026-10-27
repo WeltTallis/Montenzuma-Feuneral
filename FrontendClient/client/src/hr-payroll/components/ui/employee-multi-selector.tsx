@@ -24,7 +24,7 @@ interface EmployeeMultiSelectorProps {
 export function EmployeeMultiSelector({
   value,
   onChange,
-  placeholder = 'Tất cả nhân viên',
+  placeholder = 'All nhân viên',
   disabled = false,
 }: EmployeeMultiSelectorProps) {
   const [open, setOpen] = useState(false);
@@ -88,7 +88,7 @@ export function EmployeeMultiSelector({
             <CommandInput
               value={searchValue}
               onValueChange={setSearchValue}
-              placeholder="Tìm kiếm tên hoặc CCCD..."
+              placeholder="Search tên hoặc CCCD..."
             />
             {isSearching && (
               <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />

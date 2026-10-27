@@ -152,7 +152,7 @@ export const BulkTransferHistoryDetailDialog = memo(function BulkTransferHistory
 
             {/* Title */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white leading-tight">Chi tiết kết quả chuyển tiền</p>
+              <p className="text-sm font-semibold text-white leading-tight">Details kết quả chuyển tiền</p>
               <p className="mt-0.5 break-all text-xs text-emerald-200/75" title={filename}>{filename}</p>
             </div>
 
@@ -199,12 +199,12 @@ export const BulkTransferHistoryDetailDialog = memo(function BulkTransferHistory
                 <span className="text-slate-600">|</span>
                 <span className="text-muted-foreground flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                  Thành công: <span className="font-semibold text-emerald-700 ml-0.5">{historyDetail.completed_txn}</span>
+                  Success: <span className="font-semibold text-emerald-700 ml-0.5">{historyDetail.completed_txn}</span>
                 </span>
                 <span className="text-slate-600">|</span>
                 <span className="text-muted-foreground flex items-center gap-1">
                   <XCircle className="w-3 h-3 text-red-700" />
-                  Thất bại: <span className={cn('font-semibold ml-0.5', historyDetail.failed_txn > 0 ? 'text-red-700' : 'text-muted-foreground')}>
+                  Failed: <span className={cn('font-semibold ml-0.5', historyDetail.failed_txn > 0 ? 'text-red-700' : 'text-muted-foreground')}>
                     {historyDetail.failed_txn}
                   </span>
                 </span>
@@ -217,7 +217,7 @@ export const BulkTransferHistoryDetailDialog = memo(function BulkTransferHistory
                   {detailItems[0]?.paid_at && (
                     <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/50 border-b text-xs text-slate-600">
                       <Clock className="w-3 h-3 shrink-0" />
-                      Thời gian xử lý: <span className="font-medium text-muted-foreground ml-0.5">{formatDate(detailItems[0].paid_at)}</span>
+                      Time xử lý: <span className="font-medium text-muted-foreground ml-0.5">{formatDate(detailItems[0].paid_at)}</span>
                     </div>
                   )}
                   {/* Column headers */}

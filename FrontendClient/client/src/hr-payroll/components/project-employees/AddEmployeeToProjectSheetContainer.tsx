@@ -18,13 +18,13 @@ export function AddEmployeeToProjectSheetContainer({ isOpen, onClose, projectId 
 
   if (!project || isError) {
     return (
-      <SlideSheetTemplate isOpen={isOpen} onClose={onClose} title="Thêm nhân viên vào dự án">
+      <SlideSheetTemplate isOpen={isOpen} onClose={onClose} title="Add nhân viên vào dự án">
         {validId && isLoading ? (
           <p role="status" className="py-8 text-center text-sm text-muted-foreground">Đang tải thông tin dự án...</p>
         ) : (
           <div role="alert">
             <ErrorState
-              message={validId ? 'Không thể tải thông tin dự án. Vui lòng thử lại.' : 'Liên kết thiếu mã dự án hợp lệ.'}
+              message={validId ? 'Failed to load thông tin dự án. Please try again.' : 'Liên kết thiếu mã dự án hợp lệ.'}
               onRetry={validId ? () => void refetch() : undefined}
             />
           </div>

@@ -85,7 +85,7 @@ export const validateEmail = (email: string): { valid: boolean; error?: string }
 // Date validation (DD/MM/YYYY format)
 export const validateDate = (dateStr: string): { valid: boolean; error?: string } => {
   if (!dateStr) {
-    return { valid: false, error: 'Ngày là bắt buộc' };
+    return { valid: false, error: 'Date là bắt buộc' };
   }
 
   const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
@@ -103,7 +103,7 @@ export const validateDate = (dateStr: string): { valid: boolean; error?: string 
     date.getMonth() !== parseInt(month) - 1 ||
     date.getFullYear() !== parseInt(year)
   ) {
-    return { valid: false, error: 'Ngày không hợp lệ' };
+    return { valid: false, error: 'Date không hợp lệ' };
   }
 
   return { valid: true };
@@ -116,12 +116,12 @@ export const validateDateRange = (
 ): { valid: boolean; error?: string } => {
   const startValidation = validateDate(startDate);
   if (!startValidation.valid) {
-    return { valid: false, error: `Ngày bắt đầu: ${startValidation.error}` };
+    return { valid: false, error: `Date bắt đầu: ${startValidation.error}` };
   }
 
   const endValidation = validateDate(endDate);
   if (!endValidation.valid) {
-    return { valid: false, error: `Ngày kết thúc: ${endValidation.error}` };
+    return { valid: false, error: `Date kết thúc: ${endValidation.error}` };
   }
 
   const [startDay, startMonth, startYear] = startDate.split('/');
@@ -131,7 +131,7 @@ export const validateDateRange = (
   const end = new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay));
 
   if (end <= start) {
-    return { valid: false, error: 'Ngày kết thúc phải sau ngày bắt đầu' };
+    return { valid: false, error: 'Date kết thúc phải sau ngày bắt đầu' };
   }
 
   return { valid: true };

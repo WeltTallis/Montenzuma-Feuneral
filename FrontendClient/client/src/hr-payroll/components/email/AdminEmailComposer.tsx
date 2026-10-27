@@ -29,9 +29,9 @@ export function AdminEmailComposer({ embedded = false }: AdminEmailComposerProps
           <h2 id="email-composer-title" className="text-base font-semibold">Thông tin email</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="email-from">Địa chỉ gửi</Label>
+              <Label htmlFor="email-from">Address gửi</Label>
               <Select value={composer.from} onValueChange={composer.setFrom} disabled={composer.isLoadingSenders || composer.sendEmail.isPending}>
-                <SelectTrigger id="email-from" aria-label="Địa chỉ gửi"><SelectValue placeholder="Chọn địa chỉ gửi" /></SelectTrigger>
+                <SelectTrigger id="email-from" aria-label="Address gửi"><SelectValue placeholder="Chọn địa chỉ gửi" /></SelectTrigger>
                 <SelectContent>{composer.senders.map((sender) => <SelectItem key={sender.address} value={sender.address}>{recipientLabel(sender.name, sender.address)}</SelectItem>)}</SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">Chỉ hiện các địa chỉ đã được cấu hình và xác minh.</p>
@@ -49,7 +49,7 @@ export function AdminEmailComposer({ embedded = false }: AdminEmailComposerProps
             <div className="space-y-1.5"><Label htmlFor="email-cc">CC (tuỳ chọn)</Label><Input id="email-cc" value={composer.cc} onChange={(event) => composer.setCc(event.target.value)} placeholder="email@congty.vn" disabled={composer.sendEmail.isPending} /></div>
             <div className="space-y-1.5"><Label htmlFor="email-bcc">BCC (tuỳ chọn)</Label><Input id="email-bcc" value={composer.bcc} onChange={(event) => composer.setBcc(event.target.value)} placeholder="email@congty.vn" disabled={composer.sendEmail.isPending} /></div>
           </div>
-          <div className="space-y-1.5"><Label htmlFor="email-subject">Tiêu đề</Label><Input id="email-subject" value={composer.subject} onChange={(event) => { composer.setSubject(event.target.value); composer.setError(''); }} placeholder="Nhập tiêu đề email" disabled={composer.sendEmail.isPending} /></div>
+          <div className="space-y-1.5"><Label htmlFor="email-subject">Tiêu đề</Label><Input id="email-subject" value={composer.subject} onChange={(event) => { composer.setSubject(event.target.value); composer.setError(''); }} placeholder="Import tiêu đề email" disabled={composer.sendEmail.isPending} /></div>
 
           <Tabs value={composer.mode} onValueChange={composer.setMode} className="space-y-3">
             <TabsList className="grid h-auto w-full grid-cols-2" aria-label="Chế độ soạn email"><TabsTrigger className="min-w-0 whitespace-normal text-center" value="rich">Soạn / dán định dạng</TabsTrigger><TabsTrigger className="min-w-0 whitespace-normal text-center" value="html">Dán mã HTML</TabsTrigger></TabsList>

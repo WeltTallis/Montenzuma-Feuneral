@@ -10,8 +10,8 @@ export function ExportBatchAction({ onClick, isLoading = false }: ExportBatchAct
     <button
       onClick={onClick}
       disabled={isLoading}
-      aria-label="Xuất lô chuyển tiền (Chuyển lô)"
-      title="Xuất lô chuyển tiền"
+      aria-label="Export lô chuyển tiền (Chuyển lô)"
+      title="Export lô chuyển tiền"
       className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-all whitespace-nowrap hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
     >
       {isLoading ? (

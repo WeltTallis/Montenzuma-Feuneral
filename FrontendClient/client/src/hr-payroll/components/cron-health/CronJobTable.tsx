@@ -38,7 +38,7 @@ export function CronJobTable({ jobs, onToggle, isPending }: CronJobTableProps) {
               <TableHead>Status</TableHead>
               <TableHead>Lần chạy cuối</TableHead>
               <TableHead>Thời lượng</TableHead>
-              <TableHead className="max-w-[200px]">Lỗi</TableHead>
+              <TableHead className="max-w-[200px]">Error</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

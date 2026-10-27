@@ -47,7 +47,7 @@ export function AutoInterestFields({
           {errors.term_months && <p className="typography-body-small text-financial-negative mt-1">{errors.term_months}</p>}
         </div>
         <div className="space-y-2">
-          <Label className="typography-label-medium">Ngày trả (1-28) *</Label>
+          <Label className="typography-label-medium">Date trả (1-28) *</Label>
           <Input
             inputMode="numeric"
             value={form.payment_day_of_month}

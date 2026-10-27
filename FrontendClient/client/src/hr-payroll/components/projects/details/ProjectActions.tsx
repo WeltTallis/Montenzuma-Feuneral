@@ -33,7 +33,7 @@ export const ProjectActions = memo(({
           className="flex-1"
         >
           <Save className="w-4 h-4 mr-2" />
-          Lưu thay đổi
+          Save thay đổi
         </Button>
       </div>
     );
@@ -58,7 +58,7 @@ export const ProjectActions = memo(({
         className="flex-1"
       >
         <Trash2 className="w-4 h-4 mr-2" />
-        Xóa dự án
+        Delete dự án
       </Button>
     </div>
   );

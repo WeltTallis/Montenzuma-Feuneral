@@ -64,7 +64,7 @@ export function DeleteEmployeeModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <XCircle className="h-5 w-5 text-red-700" />
-            Xác nhận xóa nhân viên
+            Confirm xóa nhân viên
           </DialogTitle>
           <DialogDescription>
             Bạn có chắc chắn muốn xóa nhân viên <strong>"{employee.fullname}"</strong>?
@@ -94,7 +94,7 @@ export function DeleteEmployeeModal({
                     Không thể xóa nhân viên này
                   </p>
                   <p className="text-sm text-red-700">
-                    Nhân viên này có:
+                    Employee này có:
                   </p>
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function DeleteEmployeeModal({
                     )}
                   </div>
                   <p className="text-xs text-red-700 mt-2">
-                    Vui lòng gỡ bỏ tất cả dữ liệu chấm công trước khi xóa nhân viên.
+                    Please gỡ bỏ tất cả dữ liệu chấm công trước khi xóa nhân viên.
                   </p>
                 </div>
               </div>
@@ -122,7 +122,7 @@ export function DeleteEmployeeModal({
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-800">
-                  Nhân viên này đang được gán vào {currentProjects.length} dự án.
+                  Employee này đang được gán vào {currentProjects.length} dự án.
                   Hành động này sẽ gỡ bỏ nhân viên khỏi tất cả dự án và không thể hoàn thành.
                 </p>
               </div>
@@ -132,14 +132,14 @@ export function DeleteEmployeeModal({
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Hủy bỏ
+            Cancel bỏ
           </Button>
           <Button
             variant="destructive"
             onClick={onConfirm}
             disabled={!canDelete || isLoading || timesheetLoading}
           >
-            {isLoading ? "Đang xóa..." : "Xóa nhân viên"}
+            {isLoading ? "Đang xóa..." : "Delete nhân viên"}
           </Button>
         </div>
       </DialogContent>

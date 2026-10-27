@@ -64,7 +64,7 @@ export function ProjectCreateModal({ onProjectCreate, isOpen = false, onClose }:
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
       if (endDate <= startDate) {
-        newErrors.end_date = "Ngày kết thúc phải sau ngày bắt đầu";
+        newErrors.end_date = "Date kết thúc phải sau ngày bắt đầu";
       }
     }
 
@@ -160,7 +160,7 @@ export function ProjectCreateModal({ onProjectCreate, isOpen = false, onClose }:
         <DialogHeader>
           <DialogTitle>Tạo dự án mới</DialogTitle>
           <DialogDescription>
-            Nhập thông tin chi tiết cho dự án mới
+            Import thông tin chi tiết cho dự án mới
           </DialogDescription>
         </DialogHeader>
 
@@ -177,7 +177,7 @@ export function ProjectCreateModal({ onProjectCreate, isOpen = false, onClose }:
             {errors.name && <p className="typography-body-medium text-red-700">{errors.name}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="client">Khách hàng *</Label>
+            <Label htmlFor="client">Otherh hàng *</Label>
             <Input
               id="client"
               placeholder=""
@@ -198,7 +198,7 @@ export function ProjectCreateModal({ onProjectCreate, isOpen = false, onClose }:
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="startDate">Ngày bắt đầu</Label>
+            <Label htmlFor="startDate">Date bắt đầu</Label>
             <Input
               id="startDate"
               type="date"
@@ -207,7 +207,7 @@ export function ProjectCreateModal({ onProjectCreate, isOpen = false, onClose }:
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="endDate">Ngày kết thúc</Label>
+            <Label htmlFor="endDate">Date kết thúc</Label>
             <Input
               id="endDate"
               type="date"

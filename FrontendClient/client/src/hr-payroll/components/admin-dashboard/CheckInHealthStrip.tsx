@@ -41,7 +41,7 @@ interface CheckInHealthStripProps {
 /**
  * Two-section health strip for the admin dashboard.
  *
- *   A. "Lỗi cần xử lý" — every anomaly across attendance, quota, and advance
+ *   A. "Error cần xử lý" — every anomaly across attendance, quota, and advance
  *      requests, rendered only when non-zero (each row keeps its drill-down).
  *      A single green all-clear row stands in when nothing is wrong.
  *   B. "Hoạt động" — the period's throughput figures: successful checkouts,

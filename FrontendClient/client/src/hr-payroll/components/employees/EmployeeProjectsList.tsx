@@ -53,10 +53,10 @@ export function EmployeeProjectsList({ employee, className }: EmployeeProjectsLi
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            Dự án đã tham gia
+            Project đã tham gia
           </CardTitle>
           <CardDescription>
-            Danh sách các dự án mà nhân viên đã và đang tham gia
+            List các dự án mà nhân viên đã và đang tham gia
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -80,16 +80,16 @@ export function EmployeeProjectsList({ employee, className }: EmployeeProjectsLi
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            Dự án đã tham gia
+            Project đã tham gia
           </CardTitle>
           <CardDescription>
-            Danh sách các dự án mà nhân viên đã và đang tham gia
+            List các dự án mà nhân viên đã và đang tham gia
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
             <p className="text-muted-foreground">
-              Không thể tải danh sách dự án
+              Failed to load danh sách dự án
             </p>
           </div>
         </CardContent>
@@ -102,13 +102,13 @@ export function EmployeeProjectsList({ employee, className }: EmployeeProjectsLi
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Briefcase className="h-5 w-5" />
-          Dự án đã tham gia
+          Project đã tham gia
           <Badge variant="outline" className="ml-auto">
             {pagination.totalRecords}
           </Badge>
         </CardTitle>
         <CardDescription>
-          Danh sách các dự án mà {employee.fullname} đã và đang tham gia
+          List các dự án mà {employee.fullname} đã và đang tham gia
         </CardDescription>
 
         {/* Filter */}
@@ -118,10 +118,10 @@ export function EmployeeProjectsList({ employee, className }: EmployeeProjectsLi
             setPage(1); // Reset to first page when filter changes
           }}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Lọc theo trạng thái" />
+              <SelectValue placeholder="Filter theo trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+              <SelectItem value="all">All trạng thái</SelectItem>
               <SelectItem value="active">Đang làm</SelectItem>
               <SelectItem value="ended">Kết thúc</SelectItem>
               <SelectItem value="inactive">Không hoạt động</SelectItem>
@@ -133,7 +133,7 @@ export function EmployeeProjectsList({ employee, className }: EmployeeProjectsLi
       <CardContent>
         {projects.length === 0 ? (
           <EmptyState
-            title={status ? 'Không tìm thấy dự án nào' : 'Nhân viên chưa tham gia dự án nào'}
+            title={status ? 'Không tìm thấy dự án nào' : 'Employee chưa tham gia dự án nào'}
             description={status ? 'Thử điều chỉnh trạng thái để xem kết quả khác.' : undefined}
             size="sm"
             className="py-4"
@@ -147,7 +147,7 @@ export function EmployeeProjectsList({ employee, className }: EmployeeProjectsLi
                   <TableRow>
                     <TableHead>Projects</TableHead>
                     <TableHead>Mã nhân viên</TableHead>
-                    <TableHead>Thời gian</TableHead>
+                    <TableHead>Time</TableHead>
                     <TableHead>Shift</TableHead>
                     <TableHead>Thu nhập</TableHead>
                     <TableHead>Status</TableHead>

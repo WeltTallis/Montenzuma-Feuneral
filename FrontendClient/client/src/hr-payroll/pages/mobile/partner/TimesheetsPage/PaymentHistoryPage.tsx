@@ -109,7 +109,7 @@ const PaymentHistoryPage = () => {
     <MobilePageShell className="space-y-3">
       <MobilePageHeader
         title="Bút toán ngân hàng"
-        subtitle="Danh sách các lần thanh toán lương"
+        subtitle="List các lần thanh toán lương"
         icon={Receipt}
         sticky={false}
         bordered={false}

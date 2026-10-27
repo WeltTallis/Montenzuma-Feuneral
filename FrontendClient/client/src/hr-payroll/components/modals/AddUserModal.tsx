@@ -107,7 +107,7 @@ export function AddUserModal({ isOpen, onClose, onAddUser, existingUsers }: AddU
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Thêm người dùng mới</DialogTitle>
+          <DialogTitle>Add người dùng mới</DialogTitle>
           <DialogDescription>
             Tạo tài khoản mới cho hệ thống
           </DialogDescription>

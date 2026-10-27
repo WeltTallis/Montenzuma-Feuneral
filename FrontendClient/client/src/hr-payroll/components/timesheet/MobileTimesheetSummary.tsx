@@ -124,7 +124,7 @@ export function MobileTimesheetSummary({
             ? 'Đang lưu...'
             : hasValidationErrors
               ? 'Có lỗi cần sửa'
-              : 'Lưu Bảng Công'
+              : 'Save Bảng Công'
           }
         </Button>
       </div>

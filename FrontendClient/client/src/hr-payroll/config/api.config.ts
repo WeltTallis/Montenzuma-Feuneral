@@ -504,7 +504,7 @@ export const API_ENDPOINTS = {
     byId: (id: string) => `/admin/advance-payment-fees/${id}`,
   },
 
-  // Admin: Weekly Payment Fee Schedule (Phí trả lương tuần)
+  // Admin: Weekly Payment Fee Schedule (Fee trả lương tuần)
   weeklyPaymentFees: {
     base: '/admin/weekly-payment-fees',
     byId: (id: string) => `/admin/weekly-payment-fees/${id}`,

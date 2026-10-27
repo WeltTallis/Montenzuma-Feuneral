@@ -73,7 +73,7 @@ export const PayrollReportExportDialog = memo(function PayrollReportExportDialog
         description="Chọn ngày để tải báo cáo sao kê"
       >
         <DialogHeader className="mx-0 mt-0 px-6 pr-16 pt-5 pb-4 sm:mx-0 sm:mt-0 sm:pr-20">
-          <DialogTitle>Xuất sao kê thanh toán</DialogTitle>
+          <DialogTitle>Export sao kê thanh toán</DialogTitle>
         </DialogHeader>
 
         <div className="flex justify-center px-1 py-4 sm:px-6">
@@ -110,7 +110,7 @@ export const PayrollReportExportDialog = memo(function PayrollReportExportDialog
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Xuất sao kê
+                Export sao kê
               </>
             )}
           </Button>

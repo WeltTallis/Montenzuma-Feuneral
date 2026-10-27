@@ -23,7 +23,7 @@ export function useUploadBCCTimesheet() {
     onError: (error: unknown) => {
       const e = error as { response?: { data?: { message?: string } }; message?: string };
       showErrorNotification(
-        e?.response?.data?.message || e?.message || 'Có lỗi xảy ra khi tải lên file BCC'
+        e?.response?.data?.message || e?.message || 'An error occurred khi tải lên file BCC'
       );
     },
   });

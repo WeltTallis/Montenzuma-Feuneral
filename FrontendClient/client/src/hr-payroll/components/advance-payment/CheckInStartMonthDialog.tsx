@@ -23,7 +23,7 @@ export function getCheckInStartDate(startMonth: CheckInStartMonth, now = new Dat
 const choices: { value: CheckInStartMonth; label: string; description: string }[] = [
   {
     value: "this_month",
-    label: "Tháng này",
+    label: "This month",
     description: "Dịch vụ tự chấm công dùng được ngay, tính từ ngày 1 tháng này.",
   },
   {
@@ -68,7 +68,7 @@ export function CheckInStartMonthDialog({
           </DialogTitle>
           <DialogDescription>
             Chọn tháng bắt đầu cho <span className="font-medium text-foreground">{employeeName}</span>.
-            Ngày bắt đầu luôn là ngày 1 của tháng đã chọn.
+            Date bắt đầu luôn là ngày 1 của tháng đã chọn.
           </DialogDescription>
         </DialogHeader>
 
@@ -117,7 +117,7 @@ export function CheckInStartMonthDialog({
             onClick={() => onConfirm(startMonth)}
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-            {isReschedule ? "Xác nhận đổi tháng" : `Xác nhận từ ${effectiveDate}`}
+            {isReschedule ? "Confirm đổi tháng" : `Confirm từ ${effectiveDate}`}
           </Button>
         </DialogFooter>
       </DialogContent>

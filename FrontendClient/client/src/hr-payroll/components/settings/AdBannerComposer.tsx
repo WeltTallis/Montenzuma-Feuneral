@@ -155,9 +155,9 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
       return 'Giá trị nút hành động không hợp lệ: số điện thoại là chữ số (6–15), đường dẫn bắt đầu bằng https://';
     }
     if (!endsAtDate) return 'Chọn thời gian kết thúc hợp lệ';
-    if (lifetimeDays !== null && lifetimeDays <= 0) return 'Ngày kết thúc phải sau ngày bắt đầu';
+    if (lifetimeDays !== null && lifetimeDays <= 0) return 'Date kết thúc phải sau ngày bắt đầu';
     if (lifetimeDays !== null && lifetimeDays > MAX_LIFETIME_DAYS) {
-      return `Thời gian hiển thị tối đa ${MAX_LIFETIME_DAYS} ngày`;
+      return `Time hiển thị tối đa ${MAX_LIFETIME_DAYS} ngày`;
     }
     return null;
   }, [title, bullets, ctas, endsAtDate, lifetimeDays]);
@@ -257,7 +257,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`Xóa gạch đầu dòng ${index + 1}`}
+                aria-label={`Delete gạch đầu dòng ${index + 1}`}
                 disabled={bullets.length === 1}
                 onClick={() => setBullets(bullets.filter((_, i) => i !== index))}
               >
@@ -273,7 +273,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
               className="gap-1.5"
               onClick={() => setBullets([...bullets, ''])}
             >
-              <Plus className="h-3.5 w-3.5" /> Thêm gạch đầu dòng
+              <Plus className="h-3.5 w-3.5" /> Add gạch đầu dòng
             </Button>
           )}
         </div>
@@ -292,7 +292,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
 
         <FieldGroup title="Nút hành động" description="Nút đầu tiên là hành động chính, hiển thị nổi bật nhất.">
         <div className="space-y-2">
-          <Label>Danh sách nút (1–{MAX_CTAS})</Label>
+          <Label>List nút (1–{MAX_CTAS})</Label>
           {/* One bordered list with hairline rows instead of a bordered box per
               CTA — same structure, a quarter of the visual noise. */}
           <div className="divide-y overflow-hidden rounded-lg border bg-muted/30">
@@ -343,7 +343,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`Xóa nút ${index + 1}`}
+                aria-label={`Delete nút ${index + 1}`}
                 disabled={ctas.length === 1}
                 onClick={() => setCtas(ctas.filter((_, i) => i !== index))}
               >
@@ -360,7 +360,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
               className="gap-1.5"
               onClick={() => setCtas([...ctas, emptyCTA()])}
             >
-              <Plus className="h-3.5 w-3.5" /> Thêm nút
+              <Plus className="h-3.5 w-3.5" /> Add nút
             </Button>
           )}
         </div>
@@ -378,7 +378,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
               }
               className="h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
             >
-              <option value="">Tất cả dự án</option>
+              <option value="">All dự án</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>{project.name}</option>
               ))}
@@ -395,14 +395,14 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Một chiến dịch chọn được một dự án duy nhất — "Tất cả dự án" hiển thị với mọi nhân viên. Ưu tiên cao hơn hiển thị trước.
+          Một chiến dịch chọn được một dự án duy nhất — "All dự án" hiển thị với mọi nhân viên. Ưu tiên cao hơn hiển thị trước.
         </p>
 
         <div className="space-y-2">
-          <Label>Thời gian hiển thị</Label>
+          <Label>Time hiển thị</Label>
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              aria-label="Ngày bắt đầu"
+              aria-label="Date bắt đầu"
               type="date"
               value={startsAt}
               onChange={(e) => setStartsAt(e.target.value)}
@@ -431,7 +431,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
             </div>
             {preset === 'custom' && (
               <Input
-                aria-label="Ngày kết thúc"
+                aria-label="Date kết thúc"
                 type="date"
                 value={customEndsAt}
                 onChange={(e) => setCustomEndsAt(e.target.value)}
@@ -481,7 +481,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
     <div className="flex flex-wrap items-center gap-3 border-t pt-4">
       <Button type="button" onClick={handleSubmit} disabled={isSubmitting || !!validationError} className="gap-2">
         {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {initial && !forceFreshWindow ? 'Lưu thay đổi' : 'Đăng chiến dịch'}
+        {initial && !forceFreshWindow ? 'Save thay đổi' : 'Đăng chiến dịch'}
       </Button>
       <Button type="button" variant="ghost" onClick={onDone}>
         Cancel

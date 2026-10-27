@@ -22,7 +22,7 @@ export function TimesheetWorkDetails({
     <div className="bg-blue-50 rounded-xl p-4">
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <Label className="text-blue-700">Ngày làm việc</Label>
+          <Label className="text-blue-700">Date làm việc</Label>
           {isEditMode ? (
             <Input
               type="date"
@@ -73,7 +73,7 @@ export function TimesheetWorkDetails({
         <div className="mt-4">
           <Label className="text-blue-700">Notes</Label>
           <Textarea
-            placeholder="Nhập ghi chú..."
+            placeholder="Import ghi chú..."
             value={editedData.notes || ''}
             onChange={(e) => onFieldChange('notes', e.target.value)}
             rows={2}

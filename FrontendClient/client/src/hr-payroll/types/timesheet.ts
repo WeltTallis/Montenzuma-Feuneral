@@ -100,9 +100,9 @@ export function getDisplayHourType(item: TimesheetItem): string {
 
 export function getDisplayDayType(item: TimesheetItem): string {
   const dayTypeLabels = {
-    'ngày thường': 'Ngày thường',
-    'ngày nghỉ': 'Ngày nghỉ',
-    'ngày lễ': 'Ngày lễ'
+    'ngày thường': 'Date thường',
+    'ngày nghỉ': 'Date nghỉ',
+    'ngày lễ': 'Date lễ'
   };
   return dayTypeLabels[item.day_type] || item.day_type;
 }
@@ -113,15 +113,15 @@ export function validateTimesheetFormData(data: TimesheetFormData): { valid: boo
   const errors: string[] = [];
 
   if (!data.employee_id) {
-    errors.push('Nhân viên là bắt buộc');
+    errors.push('Employee là bắt buộc');
   }
 
   if (!data.project_id) {
-    errors.push('Dự án là bắt buộc');
+    errors.push('Project là bắt buộc');
   }
 
   if (!data.date) {
-    errors.push('Ngày làm việc là bắt buộc');
+    errors.push('Date làm việc là bắt buộc');
   }
 
   if (data.hours_worked < 0) {

@@ -117,7 +117,7 @@ export function ModalSystemProvider({
       React.createElement('div', {
         key: 'title',
         className: "text-red-700 text-xl font-semibold"
-      }, 'Lỗi khởi tạo hệ thống modal'),
+      }, 'Error khởi tạo hệ thống modal'),
       React.createElement('div', {
         key: 'message',
         className: "text-muted-foreground max-w-md"
@@ -126,7 +126,7 @@ export function ModalSystemProvider({
         key: 'button',
         onClick: () => window.location.reload(),
         className: "px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-      }, 'Tải lại trang')
+      }, 'Reload trang')
     ]));
   }
 

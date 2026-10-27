@@ -20,8 +20,8 @@ export function AddProjectModal() {
     onError: (error) => {
       console.error('AddProjectModal error:', error);
       toast({
-        title: "Lỗi",
-        description: "Có lỗi xảy ra khi tải modal.",
+        title: "Error",
+        description: "An error occurred khi tải modal.",
         variant: "destructive"
       });
     }

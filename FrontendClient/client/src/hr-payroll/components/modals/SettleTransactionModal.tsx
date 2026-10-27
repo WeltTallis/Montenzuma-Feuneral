@@ -159,7 +159,7 @@ function SettleTransactionModalComponent({
           proofAssetId = uploadResult.data.id;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          setFileUploadError(`Không thể tải lên file: ${errorMessage}`);
+          setFileUploadError(`Failed to load lên file: ${errorMessage}`);
           setStep('form');
           return;
         }
@@ -211,10 +211,10 @@ function SettleTransactionModalComponent({
             </div>
             <div className="min-w-0">
               <AlertDialogTitle className="text-lg font-semibold text-white">
-                {step === 'form' ? 'Thanh toán giao dịch' : 'Xác nhận thanh toán'}
+                {step === 'form' ? 'Thanh toán giao dịch' : 'Confirm thanh toán'}
               </AlertDialogTitle>
               <AlertDialogDescription className="text-sm text-emerald-100/70">
-                {step === 'form' ? 'Nhập thông tin thanh toán' : 'Kiểm tra lại thông tin trước khi xác nhận'}
+                {step === 'form' ? 'Import thông tin thanh toán' : 'Kiểm tra lại thông tin trước khi xác nhận'}
               </AlertDialogDescription>
             </div>
           </div>
@@ -281,12 +281,12 @@ function SettleTransactionModalComponent({
                 <div className="space-y-2">
                   <Label htmlFor="settlement_date" className="text-sm font-medium flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Ngày thanh toán *
+                    Date thanh toán *
                   </Label>
                   <Input
                     id="settlement_date"
                     type="date"
-                    {...register('settlement_date', { required: 'Ngày thanh toán là bắt buộc' })}
+                    {...register('settlement_date', { required: 'Date thanh toán là bắt buộc' })}
                     className={errors.settlement_date ? 'border-red-500' : ''}
                   />
                   {errors.settlement_date && (
@@ -353,7 +353,7 @@ function SettleTransactionModalComponent({
                             size="sm"
                             onClick={handleRemoveFile}
                             className="h-11 w-11 p-0 text-muted-foreground hover:text-red-700"
-                            aria-label="Xóa file chứng từ"
+                            aria-label="Delete file chứng từ"
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -421,7 +421,7 @@ function SettleTransactionModalComponent({
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Ngày thanh toán:</span>
+                    <span className="text-muted-foreground">Date thanh toán:</span>
                     <span className="font-medium">{formatDate(formData.settlement_date)}</span>
                   </div>
 
@@ -483,12 +483,12 @@ function SettleTransactionModalComponent({
                 {isLoading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Đang xử lý...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4" />
-                    Xác nhận thanh toán
+                    Confirm thanh toán
                   </>
                 )}
               </button>

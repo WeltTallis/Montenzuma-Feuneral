@@ -19,7 +19,7 @@ interface MobileSearchInputProps {
 export const MobileSearchInput = React.memo(function MobileSearchInput({
   value,
   onSearch,
-  placeholder = 'Tìm kiếm...',
+  placeholder = 'Search...',
   className,
   debounceMs = 300,
 }: MobileSearchInputProps) {
@@ -40,7 +40,7 @@ export const MobileSearchInput = React.memo(function MobileSearchInput({
           type="button"
           onClick={handleClear}
           className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Xóa tìm kiếm"
+          aria-label="Delete tìm kiếm"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

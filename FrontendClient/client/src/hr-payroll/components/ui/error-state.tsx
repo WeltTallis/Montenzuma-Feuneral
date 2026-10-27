@@ -9,7 +9,7 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({
-  message = 'Không thể tải dữ liệu. Vui lòng thử lại.',
+  message = 'Failed to load dữ liệu. Please try again.',
   onRetry,
   className,
 }: ErrorStateProps) {
@@ -20,7 +20,7 @@ export function ErrorState({
           <AlertCircle className="w-8 h-8 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h3 className="typography-title-large text-foreground">Có lỗi xảy ra</h3>
+          <h3 className="typography-title-large text-foreground">An error occurred</h3>
           <p className="typography-body-medium text-muted-foreground max-w-md mx-auto">
             {message}
           </p>
@@ -32,7 +32,7 @@ export function ErrorState({
             className="min-h-[44px] min-w-[44px]"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
-            Thử lại
+            Try again
           </Button>
         )}
       </div>

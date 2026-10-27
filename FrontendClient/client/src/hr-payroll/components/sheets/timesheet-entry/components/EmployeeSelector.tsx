@@ -33,7 +33,7 @@ export const EmployeeSelector = memo(
 
     return (
       <div>
-        <Label htmlFor="timesheet-entry-employee">Nhân viên *</Label>
+        <Label htmlFor="timesheet-entry-employee">Employee *</Label>
         {projectId ? (
           <div className="space-y-2">
             {isLoadingProjectEmployees ? (
@@ -64,7 +64,7 @@ export const EmployeeSelector = memo(
           </div>
         ) : (
           <div className="p-4 border bg-muted/30 rounded-xl text-muted-foreground">
-            Vui lòng chọn dự án trước
+            Please chọn dự án trước
           </div>
         )}
       </div>

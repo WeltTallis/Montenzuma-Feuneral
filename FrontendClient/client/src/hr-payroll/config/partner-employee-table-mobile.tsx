@@ -80,7 +80,7 @@ export const createPartnerEmployeeMobileConfig = (
     },
     {
       key: "mobile",
-      label: "Điện thoại",
+      label: "Phone",
       render: (value) => (
         <span className="typography-body-medium">{value ? String(value) : "-"}</span>
       ),

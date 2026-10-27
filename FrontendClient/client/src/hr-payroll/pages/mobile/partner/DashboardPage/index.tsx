@@ -125,7 +125,7 @@ const PartnerDashboardMobile = () => {
   const { data, isLoading } = usePartnerDashboard({ month: apiMonth });
 
   const periodLabel = useMemo(() => {
-    if (selectedMonth === ALL_VALUE) return 'Tất cả';
+    if (selectedMonth === ALL_VALUE) return 'All';
     const [y, m] = selectedMonth.split('-');
     return `T${m}/${y}`;
   }, [selectedMonth]);
@@ -205,7 +205,7 @@ const PartnerDashboardMobile = () => {
 
   const taskRows = useMemo<MobileTaskRow[]>(() => [
     {
-      title: 'Nhân viên cần kiểm tra',
+      title: 'Employee cần kiểm tra',
       description: 'Không có bảng công trong 14 ngày gần nhất',
       value: (data?.dropped_employees ?? 0).toLocaleString('en-KE'),
       icon: UserX,
@@ -213,7 +213,7 @@ const PartnerDashboardMobile = () => {
       onClick: (data?.dropped_employees ?? 0) > 0 ? () => openSheet('dropped') : undefined,
     },
     {
-      title: 'Bảng công tháng này',
+      title: 'Timesheet tháng này',
       description: 'Mở danh sách bảng công để rà soát theo dự án',
       value: periodLabel,
       icon: ClipboardList,
@@ -232,7 +232,7 @@ const PartnerDashboardMobile = () => {
 
   return (
     <MobilePageShell className="space-y-2">
-      <h1 className="py-1 font-display text-lg font-extrabold tracking-tight text-foreground">Tổng quan</h1>
+      <h1 className="py-1 font-display text-lg font-extrabold tracking-tight text-foreground">Overview</h1>
       <TimesheetMonthSelector value={selectedMonth} onChange={handleMonthChange} />
 
       {isLoading ? (

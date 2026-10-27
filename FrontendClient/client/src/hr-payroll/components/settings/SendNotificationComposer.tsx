@@ -47,7 +47,7 @@ export const SendNotificationComposer = memo(function SendNotificationComposer()
 
     let hasError = false;
     if (recipientIds.length === 0 && !toAllPartners && !toAllAdmins && !toAllEmployees) {
-      setRecipientError('Vui lòng chọn ít nhất một người nhận hoặc chọn gửi đến tất cả');
+      setRecipientError('Please chọn ít nhất một người nhận hoặc chọn gửi đến tất cả');
       hasError = true;
     }
     if (!title.trim()) {
@@ -183,7 +183,7 @@ export const SendNotificationComposer = memo(function SendNotificationComposer()
             <textarea
               value={message}
               onChange={handleMessageChange}
-              placeholder="Nhập nội dung thông báo..."
+              placeholder="Import nội dung thông báo..."
               aria-labelledby="notification-message-label"
               className={cn(
                 'min-h-56 flex-1 resize-none rounded-lg border bg-card p-3 text-sm leading-relaxed text-foreground',

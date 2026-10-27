@@ -217,15 +217,15 @@ export function useTimesheetEntry() {
 
   const handleSave = async () => {
     if (!selectedProject) {
-      throw new Error('Vui lòng chọn dự án');
+      throw new Error('Please chọn dự án');
     }
 
     if (!dayType) {
-      throw new Error('Vui lòng xác định loại ngày cho Thứ 7');
+      throw new Error('Please xác định loại ngày cho Thứ 7');
     }
 
     if (validationErrors.length > 0) {
-      throw new Error(`Không thể lưu: Có ${validationErrors.length} nhân viên vượt quá giới hạn 24 giờ/ngày. Vui lòng điều chỉnh trước khi lưu.`);
+      throw new Error(`Không thể lưu: Có ${validationErrors.length} nhân viên vượt quá giới hạn 24 giờ/ngày. Please điều chỉnh trước khi lưu.`);
     }
 
     setIsSaving(true);
@@ -249,8 +249,8 @@ export function useTimesheetEntry() {
 
             // Add dayType only for Saturdays
             if (isSaturdayRequiringDayType(dateStr)) {
-              newEntry.dayType = dayType === 'ngày lễ' ? 'Ngày lễ'
-                : dayType === 'ngày thường' ? 'Ngày thường' : 'Ngày nghỉ';
+              newEntry.dayType = dayType === 'ngày lễ' ? 'Date lễ'
+                : dayType === 'ngày thường' ? 'Date thường' : 'Date nghỉ';
             }
 
             newTimesheetEntries.push(newEntry);
@@ -259,7 +259,7 @@ export function useTimesheetEntry() {
       });
 
       if (newTimesheetEntries.length === 0) {
-        throw new Error('Vui lòng nhập ít nhất một giờ làm việc');
+        throw new Error('Please nhập ít nhất một giờ làm việc');
       }
 
       // Make API call with new format

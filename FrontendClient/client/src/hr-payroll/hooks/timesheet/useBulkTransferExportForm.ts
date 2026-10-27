@@ -160,14 +160,14 @@ export function useBulkTransferExportForm({
   // Display text for selectors
   const projectDisplayText = useMemo(() => {
     if (selectedProjects.length === 0 || selectedProjects.length === projects.length) {
-      return 'Tất cả dự án';
+      return 'All dự án';
     }
     return `Đã chọn ${selectedProjects.length} dự án`;
   }, [selectedProjects.length, projects.length]);
 
   const employeeDisplayText = useMemo(() => {
     if (selectedEmployees.length === 0) {
-      return 'Tất cả nhân viên';
+      return 'All nhân viên';
     }
     return `Đã chọn ${selectedEmployees.length} nhân viên`;
   }, [selectedEmployees.length]);

@@ -39,7 +39,7 @@ export function PrincipalDateFields({
         {errors.principal_amount && <p className="typography-body-small text-financial-negative mt-1">{errors.principal_amount}</p>}
       </div>
       <div className="w-full space-y-2">
-        <Label htmlFor="loan-start-date" className="typography-label-medium">Ngày giải ngân *</Label>
+        <Label htmlFor="loan-start-date" className="typography-label-medium">Date giải ngân *</Label>
         <Input
           id="loan-start-date"
           type="date"

@@ -90,7 +90,7 @@ const EmployeeCard = memo(function EmployeeCard({
         )}
         {item.cccd && <InfoRow icon={Hash} label="CCCD">{item.cccd}</InfoRow>}
         {item.last_paid_date && <InfoRow icon={Calendar} label="Trả gần nhất">{formatDate(item.last_paid_date)}</InfoRow>}
-        {item.last_paid_vnd > 0 && <InfoRow icon={DollarSign} label="Tiền gần nhất">{formatVND(item.last_paid_vnd)}</InfoRow>}
+        {item.last_paid_vnd > 0 && <InfoRow icon={DollarSign} label="Money gần nhất">{formatVND(item.last_paid_vnd)}</InfoRow>}
         {item.total_paid_vnd > 0 && <InfoRow icon={DollarSign} label="Tổng đã trả">{formatVND(item.total_paid_vnd)}</InfoRow>}
       </div>
     </div>

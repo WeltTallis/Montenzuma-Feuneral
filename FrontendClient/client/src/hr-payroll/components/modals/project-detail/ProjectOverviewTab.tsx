@@ -70,7 +70,7 @@ export function ProjectOverviewTab({
           <CardContent className="pt-4 space-y-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Target className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium">Trạng thái & Cấu hình</span>
+              <span className="text-sm font-medium">Status & Cấu hình</span>
             </div>
             <ProjectStatusField
               formData={formData}
@@ -132,7 +132,7 @@ export function ProjectOverviewTab({
                 return '-';
               }
             })()}
-            label="Ngày còn lại"
+            label="Date còn lại"
             color="text-orange-700"
           />
         </div>

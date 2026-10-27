@@ -372,8 +372,8 @@ export const VIETNAMESE_ASSIGNMENT_LABELS = {
   },
   fields: {
     employee_code: "Mã nhân viên",
-    start_date: "Ngày bắt đầu",
-    end_date: "Ngày kết thúc",
+    start_date: "Date bắt đầu",
+    end_date: "Date kết thúc",
     assigned_by: "Được giao bởi",
     reason: "Lý do",
   },

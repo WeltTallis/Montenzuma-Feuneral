@@ -167,7 +167,7 @@ const UpcomingCard = ({
             <CalendarClock className="h-4 w-4 text-amber-800" />
           </div>
           <span className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-            Đang chờ
+            Waiting
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -176,7 +176,7 @@ const UpcomingCard = ({
             variant="ghost"
             size="icon"
             className="h-11 w-11"
-            aria-label="Sửa cấu hình sắp có hiệu lực"
+            aria-label="Edit cấu hình sắp có hiệu lực"
             disabled={!editable}
             onClick={() => onEdit(entry)}
           >
@@ -248,7 +248,7 @@ const NoUpcomingCard = () => (
   >
     <Sparkles className="h-5 w-5 text-muted-foreground mx-auto" />
     <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-      Không có cấu hình sắp có hiệu lực. Thêm cấu hình mới để thay đổi phí từ
+      Không có cấu hình sắp có hiệu lực. Add cấu hình mới để thay đổi phí từ
       một ngày trong tương lai.
     </p>
   </div>

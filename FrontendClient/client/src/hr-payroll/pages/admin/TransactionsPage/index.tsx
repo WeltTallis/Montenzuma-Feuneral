@@ -194,7 +194,7 @@ const TransactionsPage = () => {
         )}
       />
 
-      <AdminSectionCard aria-label="Danh sách bút toán">
+      <AdminSectionCard aria-label="List bút toán">
         <AdminFilterRow>
           <p className="text-sm font-semibold text-fg-primary">Bút toán</p>
           <div className="flex flex-1 items-center justify-end">

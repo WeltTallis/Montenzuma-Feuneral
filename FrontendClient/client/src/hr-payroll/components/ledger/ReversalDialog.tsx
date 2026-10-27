@@ -30,7 +30,7 @@ export function ReversalDialog({
     e.preventDefault();
 
     if (!reason.trim()) {
-      setError('Vui lòng nhập lý do đảo ngược');
+      setError('Please nhập lý do đảo ngược');
       return;
     }
 
@@ -42,7 +42,7 @@ export function ReversalDialog({
       setReason('');
       onClose();
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Có lỗi xảy ra');
+      setError(error instanceof Error ? error.message : 'An error occurred');
     }
   };
 
@@ -67,7 +67,7 @@ export function ReversalDialog({
             <div className="typography-body-small text-muted-foreground mb-2">Thông tin bút toán:</div>
             <div className="space-y-1">
               <div className="flex justify-between">
-                <span className="typography-body-medium">Ngày:</span>
+                <span className="typography-body-medium">Date:</span>
                 <span className="typography-body-medium font-medium">
                   {format(new Date(entry.date), 'dd/MM/yyyy')}
                 </span>
@@ -77,7 +77,7 @@ export function ReversalDialog({
                 <span className="typography-body-medium font-medium">{entry.party}</span>
               </div>
               <div className="flex justify-between">
-                <span className="typography-body-medium">Tài khoản:</span>
+                <span className="typography-body-medium">Account:</span>
                 <span className="typography-body-medium font-medium">
                   {ledgerService.getAccountDisplayName(entry.account)}
                 </span>
@@ -103,7 +103,7 @@ export function ReversalDialog({
           {/* Warning */}
           <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl">
             <div className="typography-body-small text-amber-800">
-              <strong>Lưu ý:</strong> Thao tác này sẽ tạo một bút toán đảo ngược với số tiền và tài khoản ngược lại
+              <strong>Save ý:</strong> Thao tác này sẽ tạo một bút toán đảo ngược với số tiền và tài khoản ngược lại
               để hủy bỏ tác động của bút toán gốc. Bút toán gốc sẽ được giữ lại để đảm bảo tính minh bạch.
             </div>
           </div>
@@ -116,7 +116,7 @@ export function ReversalDialog({
                 id="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Nhập lý do tại sao cần đảo ngược bút toán này..."
+                placeholder="Import lý do tại sao cần đảo ngược bút toán này..."
                 rows={3}
                 className={error ? 'border-red-300 focus-visible:ring-red-500' : ''}
               />
@@ -140,7 +140,7 @@ export function ReversalDialog({
                 variant="destructive"
                 disabled={isLoading}
               >
-                {isLoading ? 'Đang xử lý...' : 'Đảo Ngược'}
+                {isLoading ? 'Processing...' : 'Đảo Ngược'}
               </Button>
             </div>
           </form>

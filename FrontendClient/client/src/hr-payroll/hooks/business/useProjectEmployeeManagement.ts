@@ -111,7 +111,7 @@ export function useProjectEmployeeManagement({
         const employeeName =
           assignment.employee_name || assignment.employee_code || "nhân viên";
         toast({
-          title: "Nhân viên đã được gỡ khỏi dự án",
+          title: "Employee đã được gỡ khỏi dự án",
           description: `${employeeName} đã được gỡ khỏi dự án ${project.name}`,
         });
 
@@ -121,10 +121,10 @@ export function useProjectEmployeeManagement({
         const errorMessage = createErrorMessage(
           error,
           "PROJECT_EMPLOYEE",
-          "Có lỗi xảy ra khi gỡ nhân viên khỏi dự án",
+          "An error occurred khi gỡ nhân viên khỏi dự án",
         );
         toast({
-          title: "Lỗi khi gỡ nhân viên",
+          title: "Error khi gỡ nhân viên",
           description: errorMessage,
           variant: "destructive",
         });

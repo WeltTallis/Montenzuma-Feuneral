@@ -62,7 +62,7 @@ export function LenderManagementSheet({ isOpen, onClose }: LenderManagementSheet
         isOpen={isOpen}
         onClose={onClose}
         title="Quản lý chủ nợ"
-        description="Danh sách chủ nợ và thông tin liên quan"
+        description="List chủ nợ và thông tin liên quan"
         size="large"
         compact
         className={cn(
@@ -81,13 +81,13 @@ export function LenderManagementSheet({ isOpen, onClose }: LenderManagementSheet
               <SearchBar
                 searchTerm={filters.search || ''}
                 onSearchChange={handleSearch}
-                placeholder="Tìm kiếm chủ nợ..."
+                placeholder="Search chủ nợ..."
                 className="w-full h-9"
               />
             </div>
             <Button onClick={() => setShowAddSheet(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Thêm chủ nợ
+              Add chủ nợ
             </Button>
           </div>
 
@@ -101,11 +101,11 @@ export function LenderManagementSheet({ isOpen, onClose }: LenderManagementSheet
               <Users2 className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 typography-title-large">Chưa có chủ nợ nào</h3>
               <p className="mt-2 typography-body-medium text-muted-foreground">
-                Thêm chủ nợ đầu tiên để bắt đầu quản lý khoản vay.
+                Add chủ nợ đầu tiên để bắt đầu quản lý khoản vay.
               </p>
               <Button onClick={() => setShowAddSheet(true)} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
-                Thêm chủ nợ
+                Add chủ nợ
               </Button>
             </div>
           ) : (

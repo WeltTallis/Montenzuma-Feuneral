@@ -144,7 +144,7 @@ export function ProjectEmployeesList({
     return (
       <div className="flex items-center justify-center h-64">
         <div className="typography-body-medium text-destructive">
-          Lỗi khi tải danh sách nhân viên: {errorMessage}
+          Error khi tải danh sách nhân viên: {errorMessage}
         </div>
       </div>
     );
@@ -193,7 +193,7 @@ export function ProjectEmployeesList({
                 {hasSearch
                   ? `Không có kết quả nào cho "${searchTerm.trim()}"`
                   : project.status === "active"
-                    ? 'Nhấn nút "Thêm nhân viên" ở cuối trang để giao nhân viên vào dự án này'
+                    ? 'Nhấn nút "Add nhân viên" ở cuối trang để giao nhân viên vào dự án này'
                     : "Chỉ có thể thêm nhân viên vào dự án đang hoạt động"}
               </p>
             </div>
@@ -294,7 +294,7 @@ export function ProjectEmployeesList({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Unlink className="h-5 w-5 text-destructive" />
-              Xác nhận gỡ nhân viên
+              Confirm gỡ nhân viên
             </DialogTitle>
             <DialogDescription>
               Gỡ{" "}
@@ -314,7 +314,7 @@ export function ProjectEmployeesList({
                 className="text-sm font-medium flex items-center gap-2"
               >
                 <Calendar className="h-4 w-4" />
-                Ngày kết thúc
+                Date kết thúc
               </Label>
               <Input
                 id="last-date"

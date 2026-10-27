@@ -41,7 +41,7 @@ export function ProjectDetailsTab({
         <CardContent className="pt-4 space-y-4">
           <div className="flex items-center gap-1.5 mb-2">
             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-sm font-medium">Thời gian thực hiện</span>
+            <span className="text-sm font-medium">Time thực hiện</span>
           </div>
           <ProjectDateFields 
             formData={formData} 
@@ -52,7 +52,7 @@ export function ProjectDetailsTab({
 
           {!isEditing && formData.start_date && formData.end_date && (
             <div className="pt-4 border-t">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Thống kê thời gian</h4>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Statistics thời gian</h4>
               <div className="grid grid-cols-1 gap-3 typography-body-medium sm:grid-cols-3 sm:gap-4">
                 <div>
                   <span className="text-muted-foreground">Tổng thời gian:</span>

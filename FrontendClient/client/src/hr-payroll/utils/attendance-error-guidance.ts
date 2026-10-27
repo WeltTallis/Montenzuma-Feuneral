@@ -37,7 +37,7 @@ export function getTimingErrorGuidance(
   const details = (appError.details ?? {}) as TimingGuidanceDetails;
   const message = appError.message;
   const isStructuredTiming = details.guidance_type === "timing" && details.action === action;
-  const isCheckInTiming = action === "check_in" && message.includes("Giờ vào làm không hợp lệ");
+  const isCheckInTiming = action === "check_in" && message.includes("Hour vào làm không hợp lệ");
   const isTerminalCheckOutTiming =
     action === "check_out" &&
     (message.includes("Đã quá giờ tan ca") || message.includes("quá hạn tan ca") || message.includes("tự động từ chối"));

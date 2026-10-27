@@ -103,10 +103,10 @@ export const DisbursementFeeScheduleSection = () => {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-semibold tracking-tight">
-            Phí giao dịch chi hộ
+            Fee giao dịch chi hộ
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Phí cố định cho mỗi giao dịch chi tạm ứng qua nhà cung cấp dịch vụ
+            Fee cố định cho mỗi giao dịch chi tạm ứng qua nhà cung cấp dịch vụ
             chi hộ. Mỗi cấu hình áp dụng từ ngày hiệu lực cho đến khi có
             cấu hình mới thay thế.
           </p>
@@ -118,7 +118,7 @@ export const DisbursementFeeScheduleSection = () => {
           className="shrink-0"
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Thêm cấu hình mới
+          Add cấu hình mới
         </Button>
       </div>
 
@@ -147,7 +147,7 @@ export const DisbursementFeeScheduleSection = () => {
           <EmptyState
             icon={CalendarClock}
             title="Chưa có cấu hình phí"
-            description="Thêm cấu hình đầu tiên để bắt đầu áp dụng cho các giao dịch chi hộ"
+            description="Add cấu hình đầu tiên để bắt đầu áp dụng cho các giao dịch chi hộ"
           />
         ) : (
           <div tabIndex={0} role="region" aria-label="Lịch sử cấu hình phí chi hộ" className="rounded-lg border overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -155,7 +155,7 @@ export const DisbursementFeeScheduleSection = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nhà cung cấp</TableHead>
-                  <TableHead>Ngày hiệu lực</TableHead>
+                  <TableHead>Date hiệu lực</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Mức phí</TableHead>
                   <TableHead>Notes</TableHead>
@@ -178,7 +178,7 @@ export const DisbursementFeeScheduleSection = () => {
                       <TableCell>
                         {entry.isCurrentlyActive && <Badge>Active</Badge>}
                         {entry.isPending && (
-                          <Badge variant="secondary">Đang chờ</Badge>
+                          <Badge variant="secondary">Waiting</Badge>
                         )}
                         {!entry.isCurrentlyActive && !entry.isPending && (
                           <Badge variant="outline">Đã hết hạn</Badge>
@@ -197,7 +197,7 @@ export const DisbursementFeeScheduleSection = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                aria-label="Sửa"
+                                aria-label="Edit"
                                 onClick={() => handleEdit(entry)}
                               >
                                 <Pencil className="size-4" />
@@ -305,7 +305,7 @@ const UpcomingCard = ({
             <CalendarClock className="h-4 w-4 text-amber-800" />
           </div>
           <span className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-            Đang chờ
+            Waiting
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -314,7 +314,7 @@ const UpcomingCard = ({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            aria-label="Sửa cấu hình sắp có hiệu lực"
+            aria-label="Edit cấu hình sắp có hiệu lực"
             disabled={!editable}
             onClick={() => onEdit(entry)}
           >
@@ -325,7 +325,7 @@ const UpcomingCard = ({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            aria-label="Xóa cấu hình sắp có hiệu lực"
+            aria-label="Delete cấu hình sắp có hiệu lực"
             disabled={!editable}
             onClick={() => onDelete(entry)}
           >
@@ -354,7 +354,7 @@ const NoUpcomingCard = () => (
   <div className="rounded-xl border border-dashed bg-muted/20 p-4 sm:p-5 flex flex-col justify-center text-center gap-2">
     <Sparkles className="h-5 w-5 text-muted-foreground mx-auto" />
     <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-      Không có cấu hình sắp có hiệu lực. Thêm cấu hình mới để thay đổi phí từ
+      Không có cấu hình sắp có hiệu lực. Add cấu hình mới để thay đổi phí từ
       một ngày trong tương lai.
     </p>
   </div>

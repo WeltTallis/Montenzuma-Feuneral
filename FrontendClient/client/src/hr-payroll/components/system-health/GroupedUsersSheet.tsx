@@ -95,7 +95,7 @@ export function OSUsersSheet({ osFamily, days, onClose }: OSUsersSheetProps) {
                 <Users01 className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
                 <span className="min-w-0 break-words">Người dùng · {osFamily}</span>
               </SheetTitle>
-              <p className="mt-1 break-words text-sm text-muted-foreground">Tất cả phiên bản {osFamily}</p>
+              <p className="mt-1 break-words text-sm text-muted-foreground">All phiên bản {osFamily}</p>
             </div>
             <SheetClose asChild>
               <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground" aria-label="Close">
@@ -150,7 +150,7 @@ export function BrowserUsersSheet({ browserFamily, days, onClose }: BrowserUsers
                 <Users01 className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
                 <span className="min-w-0 break-words">Người dùng · {browserFamily}</span>
               </SheetTitle>
-              <p className="mt-1 break-words text-sm text-muted-foreground">Tất cả phiên bản {browserFamily}</p>
+              <p className="mt-1 break-words text-sm text-muted-foreground">All phiên bản {browserFamily}</p>
             </div>
             <SheetClose asChild>
               <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground" aria-label="Close">

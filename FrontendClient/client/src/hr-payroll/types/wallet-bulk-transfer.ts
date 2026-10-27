@@ -148,7 +148,7 @@ export function paymentStatusLabel(s: WalletPaymentStatus): string {
 /**
  * Returns true when a completed row's invoice_no is still the VFIC code,
  * meaning the FT number hasn't yet arrived via IPN. The KQ Excel + UI
- * both surface "Đang chờ FT" in this case.
+ * both surface "Waiting FT" in this case.
  */
 export function isFTPending(row: WalletBulkPaymentRow): boolean {
   if (row.status !== 'completed') return false;

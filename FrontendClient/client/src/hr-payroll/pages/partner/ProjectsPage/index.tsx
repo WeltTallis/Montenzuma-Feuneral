@@ -138,7 +138,7 @@ function SalaryPeriodChip({ project }: { project: Project }) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/30">
         <Calendar className="h-3 w-3" aria-hidden="true" />
-        Lương tháng {period}
+        Payroll tháng {period}
       </span>
     );
   }
@@ -230,7 +230,7 @@ function ProjectCard({
 
 // ─── Status filter tab ─────────────────────────────────────────────────────
 const STATUS_FILTERS: Array<{ value: ProjectStatus | 'all'; label: string }> = [
-  { value: 'all', label: 'Tất cả' },
+  { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
   { value: 'paused', label: 'Tạm dừng' },
   { value: 'completed', label: 'Completed' },
@@ -281,7 +281,7 @@ const ProjectsPage = () => {
             description="Quản lý và theo dõi các dự án được phân quyền"
             actions={[
               {
-                label: 'Thêm dự án',
+                label: 'Add dự án',
                 onClick: () => openCreateProject(),
                 icon: Plus,
                 variant: 'default' as const,
@@ -312,7 +312,7 @@ const ProjectsPage = () => {
         <div className="flex items-center gap-2.5 flex-wrap">
           <div className="hidden items-center gap-2 border-r border-border pr-3 lg:flex">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><FilterFunnel02 className="h-4 w-4" aria-hidden="true" /></div>
-            <span className="text-xs font-semibold text-muted-foreground">Lọc danh sách</span>
+            <span className="text-xs font-semibold text-muted-foreground">Filter danh sách</span>
           </div>
 
           {/* Status filter (single-select, matches D3's FilterPill pattern) */}
@@ -344,7 +344,7 @@ const ProjectsPage = () => {
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-muted-foreground outline-brand transition-colors hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2"
             >
               <XClose className="h-3.5 w-3.5" aria-hidden="true" />
-              Xóa lọc
+              Delete lọc
             </button>
           )}
         </div>
@@ -359,7 +359,7 @@ const ProjectsPage = () => {
         </div>
       ) : isError ? (
         <div role="alert">
-          <ErrorState message="Không thể tải danh sách dự án. Vui lòng thử lại." onRetry={() => void refetch()} />
+          <ErrorState message="Failed to load danh sách dự án. Please try again." onRetry={() => void refetch()} />
         </div>
       ) : projects.length === 0 ? (
         <EmptyState
@@ -368,7 +368,7 @@ const ProjectsPage = () => {
             ? 'Thử bỏ bộ lọc hoặc đổi từ khoá tìm kiếm.'
             : 'Bạn chưa được phân quyền truy cập vào dự án nào.'}
           action={filterControls.hasFilters
-            ? { label: 'Xóa bộ lọc', onClick: filterControls.clearFilters }
+            ? { label: 'Delete bộ lọc', onClick: filterControls.clearFilters }
             : undefined}
           className="rounded-xl border border-dashed border-border/80 bg-card/78 px-6"
         />

@@ -49,10 +49,10 @@ export function ExportPaidNoMobileModal({
       <DialogContent className="sm:max-w-md gap-0">
         <DialogHeader className="pb-1">
           <DialogTitle className="text-sm font-semibold">
-            Xuất nhân viên chưa có số điện thoại
+            Export nhân viên chưa có số điện thoại
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Nhân viên đã nhận lương hoặc tạm ứng trong khoảng đã chọn nhưng chưa
+            Employee đã nhận lương hoặc tạm ứng trong khoảng đã chọn nhưng chưa
             có số điện thoại trong hệ thống.
           </DialogDescription>
         </DialogHeader>
@@ -79,7 +79,7 @@ export function ExportPaidNoMobileModal({
           </Button>
           <Button size="sm" onClick={handleExport} disabled={isExporting}>
             <Download className="mr-1.5 h-3.5 w-3.5" />
-            {isExporting ? "Đang xuất..." : "Xuất Excel"}
+            {isExporting ? "Đang xuất..." : "Export Excel"}
           </Button>
         </div>
       </DialogContent>

@@ -143,7 +143,7 @@ export function LoanDetailsSheet({
           </div>
           <div className="space-y-1 flex-1 min-w-0">
             <h1 className="typography-headline-medium text-base sm:text-lg font-medium">
-              Chi tiết khoản vay
+              Details khoản vay
             </h1>
           </div>
         </div>
@@ -313,7 +313,7 @@ export function LoanDetailsSheet({
                 <Banknote className="h-4 w-4 text-orange-700 flex-shrink-0 mt-0.5" />
                 <p className="typography-body-small text-orange-800">
                   <span className="font-semibold">Chưa giải ngân:</span> Khoản
-                  vay này chưa được giải ngân. Vui lòng nhấn nút "Giải ngân" bên
+                  vay này chưa được giải ngân. Please nhấn nút "Giải ngân" bên
                   dưới để hoàn tất.
                 </p>
               </div>
@@ -332,7 +332,7 @@ export function LoanDetailsSheet({
             {/* Amounts & dates */}
             <div className="space-y-3">
               <div className="typography-label-medium text-muted-foreground uppercase font-semibold">
-                Tổng quan
+                Overview
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 <div className="rounded-xl border bg-card p-4 shadow-sm space-y-2">
@@ -356,7 +356,7 @@ export function LoanDetailsSheet({
                 <div className="rounded-xl border bg-card p-4 shadow-sm space-y-2">
                   <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase">
                     <Calendar className="h-4 w-4" aria-hidden="true" />
-                    <span>Ngày giải ngân</span>
+                    <span>Date giải ngân</span>
                   </div>
                   <div className="typography-body-medium font-semibold text-foreground">
                     {loan.disbursement_date
@@ -438,7 +438,7 @@ export function LoanDetailsSheet({
             open={isDeleteModalOpen}
             onOpenChange={handleDeleteModalClose}
             onConfirm={handleDeleteConfirm}
-            title="Xóa khoản vay"
+            title="Delete khoản vay"
             description={
               <>
                 Bạn có chắc chắn muốn xóa khoản vay{" "}
@@ -449,7 +449,7 @@ export function LoanDetailsSheet({
               </>
             }
             confirmText="Delete"
-            cancelText="Hủy bỏ"
+            cancelText="Cancel bỏ"
             confirmVariant="destructive"
             loading={deleteLoan.isPending}
           />

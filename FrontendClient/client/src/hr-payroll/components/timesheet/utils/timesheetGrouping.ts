@@ -226,7 +226,7 @@ function getEffectiveStatus(timesheet: Timesheet): 'paid' | 'approved' | 'pendin
  * Groups timesheets by employee × effective-status.
  *
  * Each group is guaranteed to have a single uniform status:
- *   - "pending_approval" → Chờ duyệt
+ *   - "pending_approval" → Pending approval
  *   - "approved"         → Đã duyệt  (approved but not yet paid)
  *   - "paid"             → Đã thanh toán
  *   - "rejected"         → Loại
@@ -307,7 +307,7 @@ export function groupEmployeeEntriesByProject(entries: Timesheet[]): ProjectTime
 
     projects.set(entry.project_id, {
       projectId: entry.project_id,
-      projectName: entry.projectName || 'Dự án chưa xác định',
+      projectName: entry.projectName || 'Project chưa xác định',
       projectCode: entry.projectCode,
       positions: position ? [position] : [],
       entries: [entry],

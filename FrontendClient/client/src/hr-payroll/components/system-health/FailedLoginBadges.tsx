@@ -94,7 +94,7 @@ export function FailedLoginBadges({ days }: FailedLoginBadgesProps) {
   if (isLoading) {
     return (
       <section>
-        <SectionLabel icon={ShieldTick}>Đăng Nhập Thất Bại</SectionLabel>
+        <SectionLabel icon={ShieldTick}>Đăng Import Thất Bại</SectionLabel>
         <div className="animate-pulse flex gap-2 flex-wrap">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-9 w-40 rounded-lg bg-muted" />
@@ -107,7 +107,7 @@ export function FailedLoginBadges({ days }: FailedLoginBadgesProps) {
   if (!data?.summary?.length) {
     return (
       <section>
-        <SectionLabel icon={ShieldTick}>Đăng Nhập Thất Bại</SectionLabel>
+        <SectionLabel icon={ShieldTick}>Đăng Import Thất Bại</SectionLabel>
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
           <Clock className="h-4 w-4" />
           <span>Không có lần đăng nhập thất bại nào trong {days} ngày qua</span>
@@ -118,7 +118,7 @@ export function FailedLoginBadges({ days }: FailedLoginBadgesProps) {
 
   return (
     <section>
-      <SectionLabel icon={ShieldTick}>Đăng Nhập Thất Bại</SectionLabel>
+      <SectionLabel icon={ShieldTick}>Đăng Import Thất Bại</SectionLabel>
 
       {summaryStats && (
         <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground">

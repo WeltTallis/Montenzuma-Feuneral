@@ -65,7 +65,7 @@ export default function SystemHealthPage() {
       </section>
 
       <section>
-        <SectionLabel icon={AlertTriangle}>Lỗi Theo Endpoint</SectionLabel>
+        <SectionLabel icon={AlertTriangle}>Error Theo Endpoint</SectionLabel>
         <ErrorByEndpointCards days={errorDays} />
       </section>
 

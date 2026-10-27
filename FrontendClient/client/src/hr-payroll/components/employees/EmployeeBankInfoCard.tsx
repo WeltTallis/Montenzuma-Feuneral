@@ -38,7 +38,7 @@ export function EmployeeBankInfoCard({
 
       <div className="flex min-h-[188px] flex-col sm:min-h-[202px]">
         <h2 id="employee-bank-title" className="employee-type-card-title text-[var(--employee-text)]">
-          Tài khoản nhận tiền
+          Account nhận tiền
         </h2>
 
         {hasBankInfo ? (
@@ -71,7 +71,7 @@ export function EmployeeBankInfoCard({
               Chưa có thông tin ngân hàng
             </p>
             <p className="employee-type-body-sm mt-1 max-w-xs text-[var(--employee-text-secondary)]">
-              Liên hệ quản lý để cập nhật
+              Contact quản lý để cập nhật
             </p>
           </div>
         )}

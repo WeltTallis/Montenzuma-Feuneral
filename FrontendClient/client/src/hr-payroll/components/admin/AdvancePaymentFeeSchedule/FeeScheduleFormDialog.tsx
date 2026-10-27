@@ -174,7 +174,7 @@ export const FeeScheduleFormDialog = ({
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isEdit ? "Sửa cấu hình phí" : "Thêm cấu hình phí"}
+              {isEdit ? "Edit cấu hình phí" : "Add cấu hình phí"}
             </DialogTitle>
             <DialogDescription>
               Cấu hình sẽ áp dụng cho các giao dịch ứng lương từ ngày hiệu
@@ -215,7 +215,7 @@ export const FeeScheduleFormDialog = ({
 
               {/* Effective date */}
               <div className="space-y-1.5">
-                <Label htmlFor="effectiveDate">Ngày hiệu lực</Label>
+                <Label htmlFor="effectiveDate">Date hiệu lực</Label>
                 <Input
                   id="effectiveDate"
                   type="date"
@@ -253,13 +253,13 @@ export const FeeScheduleFormDialog = ({
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="flat" id="structure-flat" />
                     <Label htmlFor="structure-flat" className="flex min-h-11 items-center font-normal">
-                      Phí cố định
+                      Fee cố định
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="tiered" id="structure-tiered" />
                     <Label htmlFor="structure-tiered" className="flex min-h-11 items-center font-normal">
-                      Phí phân tầng
+                      Fee phân tầng
                     </Label>
                   </div>
                 </RadioGroup>
@@ -278,12 +278,12 @@ export const FeeScheduleFormDialog = ({
                       size="sm"
                       onClick={handleAddTier}
                     >
-                      <Plus className="mr-1.5 size-4" /> Thêm bậc
+                      <Plus className="mr-1.5 size-4" /> Add bậc
                     </Button>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground -mt-1">
-                  Bậc 1 áp dụng cho mọi khoản từ 0 ₫ trở lên (mặc định). Thêm
+                  Bậc 1 áp dụng cho mọi khoản từ 0 ₫ trở lên (mặc định). Add
                   bậc nếu muốn % phí khác cho khoản lớn hơn.
                 </p>
                 <div className="space-y-2">
@@ -367,7 +367,7 @@ export const FeeScheduleFormDialog = ({
                           disabled={
                             idx === 0 || formState.structure !== "tiered"
                           }
-                          aria-label={`Xóa bậc ${idx + 1}`}
+                          aria-label={`Delete bậc ${idx + 1}`}
                           onClick={() => handleRemoveTier(idx)}
                         >
                           <Trash2 className="size-4" />
@@ -382,7 +382,7 @@ export const FeeScheduleFormDialog = ({
 
               {/* Min fee */}
               <div className="space-y-1.5">
-                <Label htmlFor="minFee">Phí tối thiểu (₫)</Label>
+                <Label htmlFor="minFee">Fee tối thiểu (₫)</Label>
                 <Input
                   id="minFee"
                   type="number"
@@ -474,7 +474,7 @@ export const FeeScheduleFormDialog = ({
               </TooltipTrigger>
               {isInvalid && (
                 <TooltipContent side="top" align="end" className="max-w-xs">
-                  <p className="font-medium mb-1">Vui lòng sửa các lỗi sau:</p>
+                  <p className="font-medium mb-1">Please sửa các lỗi sau:</p>
                   <ul className="list-disc list-inside space-y-0.5 text-xs">
                     {(unsafe ? [unsafe] : blockingIssues).map((issue, i) => (
                       <li key={i}>{issue}</li>

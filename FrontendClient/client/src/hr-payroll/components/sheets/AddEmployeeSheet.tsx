@@ -54,7 +54,7 @@ function DuplicateMatchCard({
             {[
               match.created_by_name && `Quản lý: ${match.created_by_name}`,
               match.current_project_names?.length
-                ? `Dự án: ${match.current_project_names.join(', ')}`
+                ? `Project: ${match.current_project_names.join(', ')}`
                 : null,
               match.created_at
                 ? `Tạo: ${new Date(match.created_at).toLocaleDateString('en-KE')}`
@@ -267,14 +267,14 @@ function AddEmployeeSheetComponent({
     }
 
     if (formData.date_of_birth && !/^\d{4}-\d{2}-\d{2}$/.test(formData.date_of_birth)) {
-      newErrors.date_of_birth = 'Ngày sinh phải có định dạng YYYY-MM-DD';
+      newErrors.date_of_birth = 'Date of birth phải có định dạng YYYY-MM-DD';
     }
 
     // Bank validation - if any bank field is provided, all are required
     const hasBankInfo = selectedBank || formData.bank_account_number?.trim() || formData.bank_account_name?.trim();
     if (hasBankInfo) {
       if (!selectedBank) {
-        newErrors.bank_id = 'Vui lòng chọn ngân hàng';
+        newErrors.bank_id = 'Please chọn ngân hàng';
       }
       if (!formData.bank_account_number?.trim()) {
         newErrors.bank_account_number = 'Số tài khoản là bắt buộc khi có thông tin ngân hàng';
@@ -350,7 +350,7 @@ function AddEmployeeSheetComponent({
       isOpen={isOpen}
       onClose={handleClose}
       avatar={{ icon: UserPlus }}
-      title="Thêm nhân viên mới"
+      title="Add nhân viên mới"
       description="Điền thông tin để tạo hồ sơ nhân viên"
       footer={
         <div className="grid w-full grid-cols-1 gap-2 min-[380px]:grid-cols-2">
@@ -374,7 +374,7 @@ function AddEmployeeSheetComponent({
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}
-            {createEmployee.isPending ? 'Đang thêm...' : 'Thêm nhân viên'}
+            {createEmployee.isPending ? 'Đang thêm...' : 'Add nhân viên'}
           </Button>
         </div>
       }
@@ -402,7 +402,7 @@ function AddEmployeeSheetComponent({
               {errors.fullname && <p role="alert" className="typography-body-small text-financial-negative">{errors.fullname}</p>}
             </Field>
 
-            <Field id="date_of_birth" label="Ngày sinh">
+            <Field id="date_of_birth" label="Date of birth">
               <Input
                 id="date_of_birth"
                 type="date"
@@ -438,7 +438,7 @@ function AddEmployeeSheetComponent({
             </Field>
           </div>
 
-          <Field id="address" label="Địa chỉ">
+          <Field id="address" label="Address">
             <Input
               id="address"
               placeholder="Số nhà, đường, quận/huyện, tỉnh/thành phố"
@@ -456,7 +456,7 @@ function AddEmployeeSheetComponent({
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="typography-body-medium font-semibold">
-                  Nhân viên với CCCD này đã tồn tại trong hệ thống
+                  Employee với CCCD này đã tồn tại trong hệ thống
                 </p>
                 <AlertDescription>
                   Không thể tạo mới trùng CCCD. Nếu đây là người bạn cần quản lý, hãy yêu cầu quản lý nhân viên hiện có.
@@ -486,7 +486,7 @@ function AddEmployeeSheetComponent({
                   Số điện thoại này đã thuộc về nhân viên khác
                 </p>
                 <AlertDescription>
-                  Không thể tạo mới khi trùng số điện thoại. Vui lòng thay đổi số điện thoại.
+                  Không thể tạo mới khi trùng số điện thoại. Please thay đổi số điện thoại.
                 </AlertDescription>
               </div>
             </div>

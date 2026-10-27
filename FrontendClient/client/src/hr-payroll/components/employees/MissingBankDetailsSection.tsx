@@ -174,7 +174,7 @@ export const MissingBankDetailsSection = ({
           {isMobile ? (
             <ul
               className="divide-y divide-amber-100"
-              aria-label="Danh sách cảnh báo thông tin ngân hàng"
+              aria-label="List cảnh báo thông tin ngân hàng"
             >
             {rows.map((employee, index) => {
               const hasPending =
@@ -225,12 +225,12 @@ export const MissingBankDetailsSection = ({
               <div
                 className="max-h-80 overflow-auto overscroll-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 role="region"
-              aria-label="Danh sách cảnh báo thông tin ngân hàng"
+              aria-label="List cảnh báo thông tin ngân hàng"
               tabIndex={0}
             >
               <table className="w-full min-w-[760px] text-sm">
                 <caption className="sr-only">
-                  Danh sách nhân viên có thông tin ngân hàng không hợp lệ
+                  List nhân viên có thông tin ngân hàng không hợp lệ
                 </caption>
                 <thead className="sticky top-0 z-10 bg-amber-100/80 backdrop-blur-sm">
                   <tr>
@@ -239,7 +239,7 @@ export const MissingBankDetailsSection = ({
                     <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">CCCD</th>
                     {/* Reason column: why is this employee in the list? */}
                     <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Lý do</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Dự án hiện tại</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Project hiện tại</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-amber-100 bg-card">

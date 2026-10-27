@@ -343,7 +343,7 @@ function ProjectDetailsSheet({
                 className="min-h-11 sm:min-h-9 flex-1 gap-1.5 rounded-lg px-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
-                <span className="text-xs font-semibold">Tổng quan</span>
+                <span className="text-xs font-semibold">Overview</span>
               </TabsTrigger>
               <TabsTrigger
                 value="employees"
@@ -360,7 +360,7 @@ function ProjectDetailsSheet({
                 className="min-h-11 sm:min-h-9 flex-1 gap-1.5 rounded-lg px-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <DollarSign className="h-3.5 w-3.5" />
-                <span className="text-xs font-semibold">Lương</span>
+                <span className="text-xs font-semibold">Payroll</span>
               </TabsTrigger>
               {canManageProjectAccess && (
                 <TabsTrigger
@@ -414,10 +414,10 @@ function ProjectDetailsSheet({
                 </div>
                 <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-destructive">Xóa dự án</p>
+                    <p className="text-sm font-medium text-destructive">Delete dự án</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {hasAssignedEmployees
-                        ? "Dự án đang có nhân viên được giao — kết thúc phân công của tất cả nhân viên trước khi xóa"
+                        ? "Project đang có nhân viên được giao — kết thúc phân công của tất cả nhân viên trước khi xóa"
                         : "Hành động này không thể hoàn tác"}
                     </p>
                   </div>
@@ -440,7 +440,7 @@ function ProjectDetailsSheet({
           <TabsContent value="employees" className="mt-0 focus-visible:outline-none">
             <div className="flex items-center justify-between gap-3 mb-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                Nhân viên ({activeEmployeesCount})
+                Employee ({activeEmployeesCount})
               </p>
               {canManageEmployees && (
                 <Button
@@ -450,7 +450,7 @@ function ProjectDetailsSheet({
                   onClick={() => setIsAddEmployeeOpen(true)}
                 >
                   <Plus className="h-3 w-3" />
-                  Thêm
+                  Add
                 </Button>
               )}
             </div>
@@ -514,10 +514,10 @@ function ProjectDetailsSheet({
             open={isCompleteModalOpen}
             onOpenChange={handleCompleteCancel}
             onConfirm={handleCompleteProject}
-            title="Xác nhận hoàn thành dự án"
+            title="Confirm hoàn thành dự án"
             description={`Bạn có chắc chắn muốn đánh dấu dự án "${project?.name}" là hoàn thành? Sau khi hoàn thành, bạn sẽ không thể thêm/xóa nhân viên hoặc tạo timesheet mới.`}
             confirmText="Completed"
-            cancelText="Hủy bỏ"
+            cancelText="Cancel bỏ"
             confirmVariant="default"
             loading={completeProjectMutation.isPending}
           />
@@ -527,10 +527,10 @@ function ProjectDetailsSheet({
             open={isCancelModalOpen}
             onOpenChange={handleCancelCancel}
             onConfirm={handleCancelProject}
-            title="Xác nhận hủy dự án"
-            description={`Bạn có chắc chắn muốn hủy dự án "${project?.name}"? Dự án sẽ được đánh dấu là đã hủy và không thể khôi phục.`}
-            confirmText="Hủy dự án"
-            cancelText="Hủy bỏ"
+            title="Confirm hủy dự án"
+            description={`Bạn có chắc chắn muốn hủy dự án "${project?.name}"? Project sẽ được đánh dấu là đã hủy và không thể khôi phục.`}
+            confirmText="Cancel dự án"
+            cancelText="Cancel bỏ"
             confirmVariant="destructive"
             loading={cancelProjectMutation.isPending}
           />
@@ -543,7 +543,7 @@ function ProjectDetailsSheet({
         open={isDeleteModalOpen}
         onOpenChange={handleDeleteCancel}
         onConfirm={canDeleteProject ? handleDeleteProject : undefined}
-        title="Xác nhận xóa dự án"
+        title="Confirm xóa dự án"
         description={
           <div className="space-y-4">
             <p>Bạn có chắc chắn muốn xóa dự án <strong>"{project?.name}"</strong>?</p>
@@ -554,8 +554,8 @@ function ProjectDetailsSheet({
                   <span className="text-red-700 font-medium">🚫 Không thể xóa:</span>
                 </div>
                 <ul className="text-sm text-red-800 space-y-1">
-                  <li>• Dự án đã hoàn thành không thể xóa</li>
-                  <li>• Vui lòng liên hệ quản trị viên nếu cần hỗ trợ</li>
+                  <li>• Project đã hoàn thành không thể xóa</li>
+                  <li>• Please liên hệ quản trị viên nếu cần hỗ trợ</li>
                 </ul>
               </div>
             ) : hasApprovedTimesheets ? (
@@ -564,8 +564,8 @@ function ProjectDetailsSheet({
                   <span className="text-red-700 font-medium">🚫 Không thể xóa:</span>
                 </div>
                 <ul className="text-sm text-red-800 space-y-1">
-                  <li>• Dự án có bảng công đã duyệt</li>
-                  <li>• Vui lòng liên hệ quản trị viên nếu cần hỗ trợ</li>
+                  <li>• Project có bảng công đã duyệt</li>
+                  <li>• Please liên hệ quản trị viên nếu cần hỗ trợ</li>
                 </ul>
               </div>
             ) : (
@@ -574,8 +574,8 @@ function ProjectDetailsSheet({
                   <span className="text-yellow-800 font-medium">⚠️ Cảnh báo:</span>
                 </div>
                 <ul className="text-sm text-yellow-800 space-y-1">
-                  <li>• Nhân viên được giao: <strong>{activeEmployeesCount} người</strong></li>
-                  <li>• Tất cả dữ liệu chấm công của dự án sẽ bị xóa</li>
+                  <li>• Employee được giao: <strong>{activeEmployeesCount} người</strong></li>
+                  <li>• All dữ liệu chấm công của dự án sẽ bị xóa</li>
                   <li>• Hành động này <strong>không thể hoàn thành</strong></li>
                 </ul>
               </div>
@@ -588,8 +588,8 @@ function ProjectDetailsSheet({
             )}
           </div>
         }
-        confirmText={canDeleteProject ? "Xóa dự án" : undefined}
-        cancelText={canDeleteProject ? "Hủy bỏ" : "Close"}
+        confirmText={canDeleteProject ? "Delete dự án" : undefined}
+        cancelText={canDeleteProject ? "Cancel bỏ" : "Close"}
         confirmVariant="destructive"
         loading={deleteProjectMutation.isPending || isLoadingApprovedTimesheets}
       />
@@ -599,7 +599,7 @@ function ProjectDetailsSheet({
 
 export const modalConfig: ModalConfig = {
   id: 'project_details_sheet',
-  name: 'Chi tiết dự án',
+  name: 'Details dự án',
   description: 'Xem chi tiết dự án, nhân viên và cấu hình lương.',
   category: 'project',
   permissions: {

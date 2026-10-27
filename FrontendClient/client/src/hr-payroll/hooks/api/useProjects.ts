@@ -100,7 +100,7 @@ export const useAllProjects = (options?: { enabled?: boolean }) => {
         }
 
         if (allProjects.length === previousCount) {
-          throw new Error('Không thể tải đầy đủ danh sách dự án');
+          throw new Error('Failed to load đầy đủ danh sách dự án');
         }
         page += 1;
       }

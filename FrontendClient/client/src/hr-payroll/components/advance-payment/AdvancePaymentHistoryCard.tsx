@@ -153,7 +153,7 @@ function CancelPendingAction({
       aria-busy={isCancelling}
       className="flex h-12 w-full items-center justify-center rounded-xl border border-utility-error-200 bg-[var(--employee-surface)] text-[0.875rem] font-semibold text-[var(--employee-error)] transition-all duration-150 hover:border-utility-error-300 hover:bg-[var(--employee-error-soft)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--employee-focus-ring)] disabled:opacity-60"
     >
-      {isCancelling ? "Đang hủy…" : "Hủy yêu cầu"}
+      {isCancelling ? "Đang hủy…" : "Cancel yêu cầu"}
     </button>
   );
 }
@@ -243,7 +243,7 @@ function HistoryItem({
               </span>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="employee-type-pill text-[var(--employee-text-secondary)]">Phí giao dịch</span>
+              <span className="employee-type-pill text-[var(--employee-text-secondary)]">Fee giao dịch</span>
               <span className="employee-type-body font-semibold tabular-nums text-[var(--employee-text)]">
                 {safeFormat(item.fee)}
               </span>
@@ -341,7 +341,7 @@ export function AdvancePaymentHistoryCard({
             Chưa tải được lịch sử
           </p>
           <p className="mt-1 text-[0.8125rem] text-fg-tertiary">
-            Kiểm tra kết nối rồi thử lại.
+            Check connection rồi thử lại.
           </p>
           {onRetry && (
             <button

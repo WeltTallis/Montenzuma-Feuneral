@@ -22,7 +22,7 @@ export const useMissingMobile = (options: UseMissingMobileOptions = {}) => {
     employees: data?.data || [],
     totalCount: data?.pagination?.totalRecords || 0,
     isLoading,
-    error: error ? 'Không thể tải danh sách nhân viên thiếu số điện thoại' : null,
+    error: error ? 'Failed to load danh sách nhân viên thiếu số điện thoại' : null,
     refetch,
   };
 };
@@ -39,7 +39,7 @@ export const useDuplicateMobiles = () => {
     groups: data?.groups || [],
     totalEmployees: data?.total_employees || 0,
     isLoading,
-    error: error ? 'Không thể tải danh sách số điện thoại trùng' : null,
+    error: error ? 'Failed to load danh sách số điện thoại trùng' : null,
     refetch,
   };
 };

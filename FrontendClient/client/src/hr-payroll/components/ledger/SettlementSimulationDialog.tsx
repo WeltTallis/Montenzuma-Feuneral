@@ -59,7 +59,7 @@ const VERDICT_META: Record<
     label: 'An toàn để xuất',
     tone: 'green',
     icon: CheckCircle2,
-    description: 'Tất cả giao dịch chưa đối soát sẽ được bao phủ bởi các lần xuất đã mô phỏng.',
+    description: 'All giao dịch chưa đối soát sẽ được bao phủ bởi các lần xuất đã mô phỏng.',
   },
   CAN_KIEM_TRA: {
     label: 'Cần kiểm tra',
@@ -149,7 +149,7 @@ export function SettlementSimulationDialog({ open, onOpenChange }: SettlementSim
             {/* Controls */}
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Ngày xuất đầu tiên</Label>
+                <Label className="text-sm font-medium">Date xuất đầu tiên</Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -187,7 +187,7 @@ export function SettlementSimulationDialog({ open, onOpenChange }: SettlementSim
             {simulation.isError && (
               <Alert variant="destructive">
                 <AlertCircle className="w-4 h-4" />
-                <AlertTitle>Lỗi mô phỏng</AlertTitle>
+                <AlertTitle>Error mô phỏng</AlertTitle>
                 <AlertDescription>{(simulation.error as Error).message}</AlertDescription>
               </Alert>
             )}
@@ -255,7 +255,7 @@ function ResultView({ result }: { result: SettlementSimulationResult }) {
 
       {/* Per-export table */}
       <div>
-        <h3 className="text-sm font-semibold mb-2">Chi tiết từng lần xuất</h3>
+        <h3 className="text-sm font-semibold mb-2">Details từng lần xuất</h3>
         <ExportTable exports={exports} />
       </div>
 
@@ -320,7 +320,7 @@ function ExportTable({ exports }: { exports: ExportProjection[] }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-20">#</TableHead>
-            <TableHead>Ngày xuất</TableHead>
+            <TableHead>Date xuất</TableHead>
             <TableHead className="text-right">Bao gồm</TableHead>
             <TableHead className="text-right">Amount</TableHead>
             <TableHead className="text-right">Còn lại</TableHead>
@@ -351,7 +351,7 @@ function RemaindersTable({ remainders }: { remainders: SettlementSimulationResul
             <TableHead>Employees</TableHead>
             <TableHead>Projects</TableHead>
             <TableHead className="text-right">Amount</TableHead>
-            <TableHead>Ngày công</TableHead>
+            <TableHead>Date công</TableHead>
             <TableHead className="text-right">SL</TableHead>
           </TableRow>
         </TableHeader>

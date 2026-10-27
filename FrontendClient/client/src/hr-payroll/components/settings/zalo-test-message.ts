@@ -13,7 +13,7 @@ export const buildSalaryZnsTestPayload = (now = new Date()) => {
   return {
     template_id: SALARY_SAMPLE_TEMPLATE_ID,
     template_data: {
-      customer_name: "Nhân viên kiểm thử",
+      customer_name: "Employee kiểm thử",
       max_amount: "1000000",
       expiry_date: formatVietnameseDate(expiryDate),
     },

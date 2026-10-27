@@ -103,7 +103,7 @@ export const FeeScheduleCalculator = ({ entries }: Props) => {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="calc-date" className="text-xs text-muted-foreground">
-            Ngày giao dịch
+            Date giao dịch
           </Label>
           <Input
             id="calc-date"
@@ -123,7 +123,7 @@ export const FeeScheduleCalculator = ({ entries }: Props) => {
         {activeEntry && result && (
           <>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-muted-foreground text-xs">Phí áp dụng</span>
+              <span className="text-muted-foreground text-xs">Fee áp dụng</span>
               <span className="font-semibold">{formatCurrency(result.fee)}</span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
@@ -150,7 +150,7 @@ export const FeeScheduleCalculator = ({ entries }: Props) => {
             Sau {formatDate(nextEntry.effectiveDate)}:
           </p>
           <p>
-            Phí sẽ là {formatCurrency(futureResult.fee)} (
+            Fee sẽ là {formatCurrency(futureResult.fee)} (
             {futureResult.appliedTier?.percentage}%)
           </p>
         </div>

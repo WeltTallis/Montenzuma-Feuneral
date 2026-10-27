@@ -37,7 +37,7 @@ export function useEmailComposer() {
 
   const handleSend = useCallback(async () => {
     if (!canSend) {
-      setError('Vui lòng chọn địa chỉ gửi, nhập người nhận, tiêu đề và nội dung email.');
+      setError('Please chọn địa chỉ gửi, nhập người nhận, tiêu đề và nội dung email.');
       return;
     }
     try {

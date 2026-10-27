@@ -27,8 +27,8 @@ export const useApprovalData = () => {
     } catch (error) {
       console.error('Failed to fetch approvals:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể tải danh sách phê duyệt.',
+        title: 'Error',
+        description: 'Failed to load danh sách phê duyệt.',
         variant: 'destructive'
       });
       setApprovalItems([]);
@@ -103,14 +103,14 @@ export const useApprovalData = () => {
         });
       } else {
         toast({
-          title: 'Lỗi',
+          title: 'Error',
           description: 'Không thể phê duyệt yêu cầu nào',
           variant: 'destructive'
         });
       }
     } catch (error) {
       toast({
-        title: 'Lỗi',
+        title: 'Error',
         description: 'Không thể phê duyệt yêu cầu',
         variant: 'destructive'
       });
@@ -157,14 +157,14 @@ export const useApprovalData = () => {
         });
       } else {
         toast({
-          title: 'Lỗi',
+          title: 'Error',
           description: 'Không thể loại yêu cầu nào',
           variant: 'destructive'
         });
       }
     } catch (error) {
       toast({
-        title: 'Lỗi',
+        title: 'Error',
         description: 'Không thể loại yêu cầu',
         variant: 'destructive'
       });

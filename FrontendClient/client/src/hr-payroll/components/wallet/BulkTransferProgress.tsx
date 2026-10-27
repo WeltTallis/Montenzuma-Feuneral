@@ -272,7 +272,7 @@ function RowsView({
   return (
     // overflow-x-auto (not hidden): the repo's Table is a bare <table> with
     // no scroll wrapper, so without this the 7-column table clips at the
-    // sheet edge — Trạng thái/FT become unreachable. min-w keeps columns
+    // sheet edge — Status/FT become unreachable. min-w keeps columns
     // readable and engages the scrollbar instead of crushing cells.
     <div className="overflow-x-auto rounded-xl border border-border/60">
       <Table className="min-w-[720px]">

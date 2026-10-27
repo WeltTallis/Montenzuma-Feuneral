@@ -38,7 +38,7 @@ function statusBadge(item: PartnerImportFile) {
   if (item.status === 'completed' && item.error_count > 0) {
     return (
       <Badge className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50">
-        Hoàn tất một phần
+        Completed một phần
       </Badge>
     );
   }
@@ -50,7 +50,7 @@ function statusBadge(item: PartnerImportFile) {
     ),
     pending: (
       <Badge className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50">
-        Đang chờ
+        Waiting
       </Badge>
     ),
     processing: (
@@ -88,7 +88,7 @@ function ImportCard({ item, projectMap, onDownload }: {
               <>
                 <span>·</span>
                 <span className="text-primary font-medium">
-                  {projectMap.get(item.project_id) ?? `Dự án #${item.project_id}`}
+                  {projectMap.get(item.project_id) ?? `Project #${item.project_id}`}
                 </span>
               </>
             )}
@@ -291,7 +291,7 @@ export const UploadHistorySheet = memo(function UploadHistorySheet({
               <button
                 type="button"
                 onClick={() => setSearchInput('')}
-                aria-label="Xóa từ khóa"
+                aria-label="Delete từ khóa"
                 className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="h-4 w-4" />
@@ -302,11 +302,11 @@ export const UploadHistorySheet = memo(function UploadHistorySheet({
             <SearchableSelect
               value={projectFilter}
               onChange={setProjectFilter}
-              placeholder="Tất cả dự án"
+              placeholder="All dự án"
               searchPlaceholder="Tìm dự án..."
               triggerClassName="w-full sm:w-[200px]"
               options={[
-                { value: 'all', label: 'Tất cả dự án' },
+                { value: 'all', label: 'All dự án' },
                 ...(projects?.map((p) => ({ value: String(p.id), label: p.name })) ?? []),
               ]}
             />
@@ -338,7 +338,7 @@ export const UploadHistorySheet = memo(function UploadHistorySheet({
         {!isLoading && isGrouped && groups.map(([groupId, groupItems]) => (
           <section key={groupId} className="space-y-3">
             <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {projectMap.get(groupId) ?? `Dự án #${groupId}`}
+              {projectMap.get(groupId) ?? `Project #${groupId}`}
             </h3>
             {groupItems.map((item) => (
               <ImportCard

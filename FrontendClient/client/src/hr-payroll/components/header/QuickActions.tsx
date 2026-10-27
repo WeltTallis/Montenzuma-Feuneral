@@ -81,7 +81,7 @@ export const QuickActions = ({ className }: QuickActionsProps) => {
     },
     {
       id: 'create-employee',
-      label: 'Thêm nhân viên',
+      label: 'Add nhân viên',
       icon: () => <IconImage src="/icons/add-worker.png" alt="Add employee" />,
       href: '/admin/employees?modal=add_employee',
       permissions: ['admin', 'partner'],
@@ -156,7 +156,7 @@ export const QuickActions = ({ className }: QuickActionsProps) => {
           );
         })}
 
-        {/* Xuất sao kê — dropdown for Bảng công and Ứng lương */}
+        {/* Export sao kê — dropdown for Timesheet and Ứng lương */}
         {user && (user.role === 'admin' || user.role === 'partner') && (
           <DropdownMenu>
             <Tooltip>
@@ -166,7 +166,7 @@ export const QuickActions = ({ className }: QuickActionsProps) => {
                     variant="ghost"
                     size="sm"
                     className="relative h-9 w-9 p-0 hover:bg-accent hover:text-accent-foreground touch-manipulation"
-                    aria-label="Xuất sao kê"
+                    aria-label="Export sao kê"
                     disabled={exportPayrollReportMutation.isPending}
                   >
                     <IconImage src="/icons/export-doc.png" alt="Export statement" />
@@ -174,7 +174,7 @@ export const QuickActions = ({ className }: QuickActionsProps) => {
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="font-medium">Xuất sao kê</p>
+                <p className="font-medium">Export sao kê</p>
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end">

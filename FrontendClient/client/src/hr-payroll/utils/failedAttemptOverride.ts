@@ -21,7 +21,7 @@ export function getFailedAttemptOverrideViewState(
     canOverride,
     isResolved,
     actionLabel: "Cần duyệt GPS",
-    dialogTitle: "Duyệt ghi nhận chấm công",
+    dialogTitle: "Approve ghi nhận chấm công",
     resolvedLabel: "Đã ghi nhận",
   };
 }

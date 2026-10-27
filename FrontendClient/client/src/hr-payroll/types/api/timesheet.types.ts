@@ -71,7 +71,7 @@ export interface CreateTimesheetData {
   date: string;
   hoursWorked: number;
   hourType: string;
-  dayType?: 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ'; // Default: Ngày thường
+  dayType?: 'Date thường' | 'Date nghỉ' | 'Date lễ'; // Default: Date thường
 }
 
 export interface UpdateTimesheetData {
@@ -224,7 +224,7 @@ export interface NewTimesheetEntry {
   date: string; // YYYY-MM-DD format
   hoursWorked: number;
   hourType: string; // e.g., "ca ngày", "ca đêm", "tăng ca"
-  dayType?: 'Ngày thường' | 'Ngày nghỉ' | 'Ngày lễ'; // Default: Ngày thường
+  dayType?: 'Date thường' | 'Date nghỉ' | 'Date lễ'; // Default: Date thường
 }
 
 export interface BulkCreateTimesheetResult {

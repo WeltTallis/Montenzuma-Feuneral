@@ -55,7 +55,7 @@ export function PayratePreview({
 
             {/* Total amount */}
             <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">Tổng tiền:</span>
+              <span className="font-medium text-foreground">Total amount:</span>
               <Badge
                 variant={isHighAmount ? "default" : "secondary"}
                 className="typography-body-large px-3 py-1"

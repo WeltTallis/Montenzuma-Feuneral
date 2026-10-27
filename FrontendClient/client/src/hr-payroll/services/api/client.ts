@@ -161,7 +161,7 @@ class ApiClient {
           const retryAfter = error.response.data?.retry_after || 60;
           const rateLimitError: ApiError = {
             status: 'error',
-            message: `Quá nhiều yêu cầu. Vui lòng thử lại sau ${retryAfter} giây`,
+            message: `Quá nhiều yêu cầu. Please try again sau ${retryAfter} giây`,
             http_status: 429,
             retry_after: retryAfter,
             details: { retryAfter },
@@ -200,7 +200,7 @@ class ApiClient {
             toast({
               variant: "destructive",
               title: "Phiên làm việc hết hạn",
-              description: "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.",
+              description: "Phiên đăng nhập của bạn đã hết hạn. Please đăng nhập lại.",
               duration: 5000,
             });
 

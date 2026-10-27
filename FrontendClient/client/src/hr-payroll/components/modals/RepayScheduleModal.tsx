@@ -74,10 +74,10 @@ export function RepayScheduleModal({ isOpen, onClose, loan }: RepayScheduleModal
     const nextErrors: Record<string, string> = {};
 
     if (!form.schedule_id) {
-      nextErrors.schedule_id = 'Vui lòng chọn kỳ thanh toán';
+      nextErrors.schedule_id = 'Please chọn kỳ thanh toán';
     }
     if (!form.payment_date) {
-      nextErrors.payment_date = 'Vui lòng chọn ngày thanh toán';
+      nextErrors.payment_date = 'Please chọn ngày thanh toán';
     }
 
     setErrors(nextErrors);
@@ -122,7 +122,7 @@ export function RepayScheduleModal({ isOpen, onClose, loan }: RepayScheduleModal
         <DialogHeader>
           <DialogTitle>Thanh toán theo lịch</DialogTitle>
           <DialogDescription>
-            {step === 1 ? 'Nhập thông tin thanh toán' : 'Xác nhận thông tin thanh toán'}
+            {step === 1 ? 'Import thông tin thanh toán' : 'Confirm thông tin thanh toán'}
           </DialogDescription>
         </DialogHeader>
 
@@ -167,7 +167,7 @@ export function RepayScheduleModal({ isOpen, onClose, loan }: RepayScheduleModal
 
             {/* Payment Date */}
             <div className="space-y-2">
-              <Label className="typography-label-medium">Ngày thanh toán *</Label>
+              <Label className="typography-label-medium">Date thanh toán *</Label>
               <Input
                 type="date"
                 value={form.payment_date}
@@ -209,10 +209,10 @@ export function RepayScheduleModal({ isOpen, onClose, loan }: RepayScheduleModal
               <AlertCircle className="h-5 w-5 text-amber-700 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="typography-body-medium font-semibold text-amber-800">
-                  Xác nhận thanh toán
+                  Confirm thanh toán
                 </p>
                 <p className="typography-body-small text-amber-700">
-                  Sau khi thanh toán, bạn không thể hoàn thành. Vui lòng kiểm tra kỹ thông tin trước khi xác nhận.
+                  Sau khi thanh toán, bạn không thể hoàn thành. Please check kỹ thông tin trước khi xác nhận.
                 </p>
               </div>
             </div>
@@ -229,7 +229,7 @@ export function RepayScheduleModal({ isOpen, onClose, loan }: RepayScheduleModal
                 </div>
 
                 <div className="flex flex-col gap-1 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-                  <span className="typography-body-small text-muted-foreground">Ngày đáo hạn:</span>
+                  <span className="typography-body-small text-muted-foreground">Date đáo hạn:</span>
                   <span className="typography-body-medium min-[380px]:text-right">{format(new Date(selectedSchedule.due_date), 'dd/MM/yyyy')}</span>
                 </div>
 
@@ -241,7 +241,7 @@ export function RepayScheduleModal({ isOpen, onClose, loan }: RepayScheduleModal
                 </div>
 
                 <div className="flex flex-col gap-1 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-                  <span className="typography-body-small text-muted-foreground">Ngày thanh toán:</span>
+                  <span className="typography-body-small text-muted-foreground">Date thanh toán:</span>
                   <span className="typography-body-medium min-[380px]:text-right">{form.payment_date}</span>
                 </div>
 
@@ -305,11 +305,11 @@ export function RepayScheduleModal({ isOpen, onClose, loan }: RepayScheduleModal
                 className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
               >
                 {repaySchedule.isPending ? (
-                  'Đang xử lý...'
+                  'Processing...'
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    Xác nhận thanh toán
+                    Confirm thanh toán
                   </>
                 )}
               </button>

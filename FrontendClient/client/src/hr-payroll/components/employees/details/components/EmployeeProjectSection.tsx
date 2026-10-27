@@ -172,7 +172,7 @@ function ProjectPaymentScheduleControl({
             disabled={cancelScheduleMutation.isPending}
           >
             <X className="h-3 w-3" />
-            <span className="sr-only">Hủy thay đổi chu kỳ</span>
+            <span className="sr-only">Cancel thay đổi chu kỳ</span>
           </Button>
         )}
       </div>
@@ -332,10 +332,10 @@ function ProjectCard({
                   className="h-11 w-11 shrink-0 sm:h-7 sm:w-7"
                   onClick={handleCancelEditing}
                   disabled={isSubmitting}
-                  title="Hủy chỉnh sửa"
+                  title="Cancel chỉnh sửa"
                 >
                   <X className="h-3.5 w-3.5" />
-                  <span className="sr-only">Hủy chỉnh sửa</span>
+                  <span className="sr-only">Cancel chỉnh sửa</span>
                 </Button>
                 <Button
                   size="icon"
@@ -405,7 +405,7 @@ function ProjectCard({
               <Input
                 value={(changes?.position ?? project.position) || ""}
                 onChange={(e) => handlePositionChange(e.target.value)}
-                placeholder="Nhập vị trí công việc"
+                placeholder="Import vị trí công việc"
                 aria-label="Vị trí công việc"
                 disabled={!canEditFields || isSubmitting}
                 className={cn(
@@ -442,20 +442,20 @@ function ProjectCard({
             )}
             {canEditFields && availablePositions.length === 0 && (
               <p className="typography-body-small text-financial-pending mt-1">
-                Dự án chưa có bảng lương. Vui lòng nhập vị trí thủ công.
+                Project chưa có bảng lương. Please nhập vị trí thủ công.
               </p>
             )}
           </div>
 
           {/* Start Date Picker with Unlink Button */}
           <div>
-            <label className="block typography-label-medium font-medium mb-1 text-foreground">Ngày bắt đầu:</label>
+            <label className="block typography-label-medium font-medium mb-1 text-foreground">Date bắt đầu:</label>
             <div className="flex items-center gap-2">
               <Input
                 type="date"
                 value={(changes?.start_date ?? project.start_date) || ''}
                 onChange={handleDateChange}
-                aria-label="Ngày bắt đầu phân công"
+                aria-label="Date bắt đầu phân công"
                 disabled={!canEditFields || isSubmitting}
                 className={cn(
                   "h-11 min-w-0 typography-body-small flex-1 sm:h-7",
@@ -482,14 +482,14 @@ function ProjectCard({
 
         {/* End Date */}
         <div>
-          <label className="block typography-label-medium font-medium mb-1 text-foreground">Ngày kết thúc:</label>
+          <label className="block typography-label-medium font-medium mb-1 text-foreground">Date kết thúc:</label>
           {canEditFields ? (
             <div className="space-y-1">
               <Input
                 type="date"
                 value={changes?.end_date !== undefined ? changes.end_date : (project.last_date ?? '')}
                 onChange={handleEndDateChange}
-                aria-label="Ngày kết thúc phân công"
+                aria-label="Date kết thúc phân công"
                 disabled={isSubmitting}
                 className="h-11 typography-body-small sm:h-7"
               />
@@ -566,7 +566,7 @@ export function EmployeeProjectSection({
       <div className="flex items-center gap-3">
         <Building className="w-4 h-4 text-muted-foreground" />
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Dự án hiện tại
+          Project hiện tại
         </h3>
         {projectCount > 0 && (
           <Badge variant="secondary">
@@ -581,7 +581,7 @@ export function EmployeeProjectSection({
           <div className="flex flex-col items-center gap-2">
             <Building className="w-8 h-8 text-muted-foreground" />
             <p className="typography-body-medium text-muted-foreground">
-              Nhân viên chưa được gán dự án nào
+              Employee chưa được gán dự án nào
             </p>
             {canAssignProjects && (
               <Button

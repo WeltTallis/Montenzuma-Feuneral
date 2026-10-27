@@ -280,17 +280,17 @@ export function useSettingsForm(): SettingsFormState {
     (setting) => setting?.key === SETTINGS_KEYS.WALLET_BALANCE_ALERT_THRESHOLD_VND,
   );
   const loadError = isSettingsError
-    ? 'Không thể tải cài đặt. Vui lòng thử lại.'
+    ? 'Failed to load cài đặt. Please try again.'
     : null;
   const bulkTransferWorkbookLimitUnavailableMessage =
     loadError ??
     (!isLoading && !bulkTransferWorkbookLimitSetting
-      ? 'Không tìm thấy cài đặt giới hạn file Chuyển lô. Vui lòng thử tải lại.'
+      ? 'Không tìm thấy cài đặt giới hạn file Chuyển lô. Please thử tải lại.'
       : null);
   const walletBalanceAlertThresholdUnavailableMessage =
     loadError ??
     (!isLoading && !walletBalanceAlertThresholdSetting
-      ? 'Không tìm thấy cài đặt ngưỡng cảnh báo số dư ví tiền. Vui lòng thử tải lại.'
+      ? 'Không tìm thấy cài đặt ngưỡng cảnh báo số dư ví tiền. Please thử tải lại.'
       : null);
 
   const setBulkTransferWorkbookLimitVnd = (value: string) => {

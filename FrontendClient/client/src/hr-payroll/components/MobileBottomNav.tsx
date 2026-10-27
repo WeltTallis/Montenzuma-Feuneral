@@ -227,7 +227,7 @@ export const MobileBottomNav = ({ groups, moreItems }: MobileBottomNavProps) => 
           <button
             className={navSlotClass}
             onClick={() => setOpenGroup(ACCOUNT_GROUP)}
-            aria-label="Tài khoản"
+            aria-label="Account"
             aria-haspopup="true"
             aria-expanded={openGroup === ACCOUNT_GROUP}
           >
@@ -251,14 +251,14 @@ export const MobileBottomNav = ({ groups, moreItems }: MobileBottomNavProps) => 
                 <UserCircle className="h-5 w-5" />
               </div>
             )}
-            <span className={navLabelClass(openGroup === ACCOUNT_GROUP)}>Tài khoản</span>
+            <span className={navLabelClass(openGroup === ACCOUNT_GROUP)}>Account</span>
           </button>
 
           {moreItems && moreItems.length > 0 && (
             <button
               className={navSlotClass}
               onClick={() => setIsMoreOpen(true)}
-              aria-label="Thêm"
+              aria-label="Add"
               aria-haspopup="true"
               aria-expanded={isMoreOpen}
             >
@@ -268,7 +268,7 @@ export const MobileBottomNav = ({ groups, moreItems }: MobileBottomNavProps) => 
                   className={cn("h-5 w-5", (isMoreActive || isMoreOpen) && "stroke-[2.4px]")}
                 />
               </div>
-              <span className={navLabelClass(isMoreActive || isMoreOpen)}>Thêm</span>
+              <span className={navLabelClass(isMoreActive || isMoreOpen)}>Add</span>
             </button>
           )}
         </div>
@@ -310,7 +310,7 @@ export const MobileBottomNav = ({ groups, moreItems }: MobileBottomNavProps) => 
                   setOpenGroup(null);
                   setIsNotificationSheetOpen(true);
                 })}
-                {renderNavTile({ title: "Hồ sơ", icon: UserCircle }, false, () => {
+                {renderNavTile({ title: "Profile", icon: UserCircle }, false, () => {
                   setOpenGroup(null);
                   setIsProfileOpen(true);
                 })}

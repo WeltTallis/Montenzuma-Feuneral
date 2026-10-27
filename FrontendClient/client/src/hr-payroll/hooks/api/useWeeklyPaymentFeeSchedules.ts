@@ -1,4 +1,4 @@
-// React Query hooks for the admin "Phí trả lương tuần" feature.
+// React Query hooks for the admin "Fee trả lương tuần" feature.
 // Centralizes loading state, cache invalidation, and toast handling so
 // page/dialog components stay UI-only.
 

@@ -134,7 +134,7 @@ export function TimesheetEntryMobile({
         <div className="flex items-center gap-2">
           <div className="h-4 w-4 text-red-700 flex-shrink-0">⚠️</div>
           <div className="typography-body-medium text-red-700">
-            Dự án chưa có cấu hình lương. Vui lòng thiết lập cấu hình lương trước khi nhập bảng công.
+            Project chưa có cấu hình lương. Please thiết lập cấu hình lương trước khi nhập bảng công.
           </div>
         </div>
       </div>

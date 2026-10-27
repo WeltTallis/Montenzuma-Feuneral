@@ -117,8 +117,8 @@ export function AddProjectSheet({
   const handleSubmit = async () => {
     if (!validateForm()) {
       toast({
-        title: "Lỗi xác thực",
-        description: "Vui lòng kiểm tra và điền đầy đủ thông tin.",
+        title: "Error xác thực",
+        description: "Please check và điền đầy đủ thông tin.",
         variant: "destructive"
       });
       return;
@@ -240,7 +240,7 @@ export function AddProjectSheet({
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     className={`transition-colors ${errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                    placeholder="Nhập tên dự án"
+                    placeholder="Import tên dự án"
                     disabled={isSaving}
                   />
                   {errors.name && (
@@ -260,7 +260,7 @@ export function AddProjectSheet({
                     value={formData.client_name}
                     onChange={(e) => handleInputChange('client_name', e.target.value)}
                     className={`transition-colors ${errors.client_name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                    placeholder="Nhập tên khách hàng"
+                    placeholder="Import tên khách hàng"
                     disabled={isSaving}
                   />
                   {errors.client_name && (
@@ -307,7 +307,7 @@ export function AddProjectSheet({
             </div>
 
             <div className="pt-2 space-y-2">
-              <Label className="text-sm font-medium">Ngày nghỉ trong tuần</Label>
+              <Label className="text-sm font-medium">Date nghỉ trong tuần</Label>
               <OffDaysPicker
                 value={formData.off_days ?? 0}
                 onChange={(v) => handleInputChange('off_days', v)}
@@ -335,7 +335,7 @@ export function AddProjectSheet({
                   className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Xóa tất cả
+                  Delete tất cả
                 </Button>
               )}
             </div>

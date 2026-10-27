@@ -106,7 +106,7 @@ export const TimesheetImportDialog = memo(function TimesheetImportDialog({
   const getStatusBadge = useCallback((hasError: boolean) => {
     return hasError ? (
       <Badge variant="destructive">
-        Lỗi
+        Error
       </Badge>
     ) : (
       <Badge variant="secondary" className="bg-green-100 text-green-800">
@@ -123,7 +123,7 @@ export const TimesheetImportDialog = memo(function TimesheetImportDialog({
           <DialogHeader>
             <DialogTitle>Kết quả nhập công</DialogTitle>
             <DialogDescription>
-              Chi tiết kết quả xử lý file Excel nhập công.
+              Details kết quả xử lý file Excel nhập công.
             </DialogDescription>
           </DialogHeader>
 
@@ -144,7 +144,7 @@ export const TimesheetImportDialog = memo(function TimesheetImportDialog({
               <div className="w-px h-6 bg-slate-200"></div>
               <div className="typography-body-medium text-muted-foreground">
                 <span className="typography-data-large font-semibold text-red-700">{uploadResult.error_count}</span>
-                <span className="ml-2">Lỗi</span>
+                <span className="ml-2">Error</span>
               </div>
             </div>
 
@@ -170,9 +170,9 @@ export const TimesheetImportDialog = memo(function TimesheetImportDialog({
                             {entry.Error}
                           </p>
                           <div className="typography-body-small text-muted-foreground space-y-1 pt-2 border-t border-red-200">
-                            <div><strong>Dự án ID:</strong> {entry.Request.project_id}</div>
-                            <div><strong>Nhân viên ID:</strong> {entry.Request.employee_id}</div>
-                            <div><strong>Ngày:</strong> {entry.Request.date}</div>
+                            <div><strong>Project ID:</strong> {entry.Request.project_id}</div>
+                            <div><strong>Employee ID:</strong> {entry.Request.employee_id}</div>
+                            <div><strong>Date:</strong> {entry.Request.date}</div>
                             <div><strong>Số giờ:</strong> {entry.Request.hours_worked}</div>
                             <div><strong>Loại ca:</strong> {entry.Request.hour_type}</div>
                             <div><strong>Loại ngày:</strong> {entry.Request.day_type}</div>
@@ -202,7 +202,7 @@ export const TimesheetImportDialog = memo(function TimesheetImportDialog({
               onClick={handleBackToUpload}
               className="w-full"
             >
-              Nhập file khác
+              Import file khác
             </Button>
             <Button
               onClick={handleClose}
@@ -221,7 +221,7 @@ export const TimesheetImportDialog = memo(function TimesheetImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl shadow-none">
         <DialogHeader>
-          <DialogTitle>Nhập công Excel</DialogTitle>
+          <DialogTitle>Import công Excel</DialogTitle>
           <DialogDescription>
             Tải lên file Excel chứa dữ liệu công để nhập vào hệ thống.
           </DialogDescription>
@@ -318,12 +318,12 @@ export const TimesheetImportDialog = memo(function TimesheetImportDialog({
             {uploadMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang xử lý...
+                Processing...
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Nhập file
+                Import file
               </>
             )}
           </Button>

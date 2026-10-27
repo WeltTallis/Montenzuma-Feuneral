@@ -63,7 +63,7 @@ const EmployeeListPage = () => {
             className="h-11 min-w-11 px-3 shrink-0"
             onClick={page.handleExportFlexPayEmployees}
             disabled={page.exportFlexPayMutation.isPending}
-            aria-label="Xuất danh sách"
+            aria-label="Export danh sách"
           >
             <Download01 className="h-4 w-4" />
           </Button>

@@ -53,7 +53,7 @@ export const DatePicker = memo(function DatePicker({
       </div>
 
       <div id="effective-from-help" className="sr-only">
-        Ngày bắt đầu áp dụng mức lương này. Định dạng: DD/MM/YYYY
+        Date bắt đầu áp dụng mức lương này. Định dạng: DD/MM/YYYY
       </div>
 
       {hasFromErrors && (

@@ -28,7 +28,7 @@ export const PushNotificationToggle = ({ className }: PushNotificationToggleProp
           <Smartphone className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-muted-foreground">Thông báo đẩy</p>
+          <p className="text-sm font-medium text-muted-foreground">Notifications đẩy</p>
           <p className="text-xs text-muted-foreground">Trình duyệt không hỗ trợ</p>
         </div>
       </div>
@@ -42,8 +42,8 @@ export const PushNotificationToggle = ({ className }: PushNotificationToggleProp
           <BellOff className="h-4 w-4 text-red-700" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-red-700">Thông báo đã bị chặn</p>
-          <p className="text-xs text-red-700">Vui lòng bật lại trong cài đặt trình duyệt</p>
+          <p className="text-sm font-medium text-red-700">Notifications đã bị chặn</p>
+          <p className="text-xs text-red-700">Please bật lại trong cài đặt trình duyệt</p>
         </div>
       </div>
     );
@@ -82,7 +82,7 @@ export const PushNotificationToggle = ({ className }: PushNotificationToggleProp
       </div>
       <div className="flex-1 min-w-0">
         <p className={cn('text-sm font-semibold', isSubscribed ? 'text-success' : 'text-foreground')}>
-          Thông báo đẩy
+          Notifications đẩy
         </p>
         <p className="text-xs text-foreground">
           {isSubscribed ? 'Đã bật — nhận thông báo ngay trên thiết bị' : 'Bật thông báo đẩy trên thiết bị'}

@@ -54,7 +54,7 @@ type ScheduleGenerationResult =
 
 type UpdateField = <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 
-const REQUIRED_FIELD_ERROR = (label: string) => `Vui lòng nhập ${label}`;
+const REQUIRED_FIELD_ERROR = (label: string) => `Please nhập ${label}`;
 
 function generateFlatLoanSchedule(
   principal: number,
@@ -132,7 +132,7 @@ function generateAmortizedSchedule(
 export function useLoanCalculations(updateField: UpdateField) {
   const handleGenerateSchedules = useCallback((form: FormState): ScheduleGenerationResult => {
     const missingFields: Array<{ key: keyof FormState; label: string }> = [];
-    if (!form.start_date) missingFields.push({ key: 'start_date', label: 'Ngày giải ngân' });
+    if (!form.start_date) missingFields.push({ key: 'start_date', label: 'Date giải ngân' });
     if (!form.custom_term_months) missingFields.push({ key: 'custom_term_months', label: 'Số tháng' });
     if (!form.custom_payment_day_of_month) missingFields.push({ key: 'custom_payment_day_of_month', label: 'Payment date' });
     if (!form.custom_monthly_amount) missingFields.push({ key: 'custom_monthly_amount', label: 'Trả hàng tháng' });
@@ -144,7 +144,7 @@ export function useLoanCalculations(updateField: UpdateField) {
       }, {});
       return {
         success: false,
-        error: `Vui lòng nhập: ${missingFields.map(field => field.label).join(', ')}`,
+        error: `Please nhập: ${missingFields.map(field => field.label).join(', ')}`,
         fieldErrors,
       };
     }
@@ -168,9 +168,9 @@ export function useLoanCalculations(updateField: UpdateField) {
     if (paymentDay < 1 || paymentDay > 28) {
       return {
         success: false,
-        error: 'Ngày thanh toán phải từ 1 đến 28',
+        error: 'Date thanh toán phải từ 1 đến 28',
         fieldErrors: {
-          custom_payment_day_of_month: 'Ngày thanh toán phải từ 1 đến 28',
+          custom_payment_day_of_month: 'Date thanh toán phải từ 1 đến 28',
         },
       };
     }
@@ -194,10 +194,10 @@ export function useLoanCalculations(updateField: UpdateField) {
 
   const handleGenerateSchedulesFromAutoInterest = useCallback((formState: FormState): ScheduleGenerationResult => {
     const missingFields: Array<{ key: keyof FormState; label: string }> = [];
-    if (!formState.start_date) missingFields.push({ key: 'start_date', label: 'Ngày giải ngân' });
+    if (!formState.start_date) missingFields.push({ key: 'start_date', label: 'Date giải ngân' });
     if (!formState.interest_rate_percent) missingFields.push({ key: 'interest_rate_percent', label: 'Lãi suất' });
     if (!formState.term_months) missingFields.push({ key: 'term_months', label: 'Kỳ hạn (tháng)' });
-    if (!formState.payment_day_of_month) missingFields.push({ key: 'payment_day_of_month', label: 'Ngày trả' });
+    if (!formState.payment_day_of_month) missingFields.push({ key: 'payment_day_of_month', label: 'Date trả' });
     if (!formState.principal_amount) missingFields.push({ key: 'principal_amount', label: 'Số tiền vay' });
 
     if (missingFields.length > 0) {
@@ -207,7 +207,7 @@ export function useLoanCalculations(updateField: UpdateField) {
       }, {});
       return {
         success: false,
-        error: `Vui lòng nhập: ${missingFields.map(field => field.label).join(', ')}`,
+        error: `Please nhập: ${missingFields.map(field => field.label).join(', ')}`,
         fieldErrors,
       };
     }
@@ -240,9 +240,9 @@ export function useLoanCalculations(updateField: UpdateField) {
     if (paymentDay < 1 || paymentDay > 28) {
       return {
         success: false,
-        error: 'Ngày thanh toán phải từ 1 đến 28',
+        error: 'Date thanh toán phải từ 1 đến 28',
         fieldErrors: {
-          payment_day_of_month: 'Ngày thanh toán phải từ 1 đến 28',
+          payment_day_of_month: 'Date thanh toán phải từ 1 đến 28',
         },
       };
     }
@@ -270,17 +270,17 @@ export function useLoanCalculations(updateField: UpdateField) {
     } catch {
       return {
         success: false,
-        error: 'Lỗi khi tạo lịch trả nợ (flat rate)',
+        error: 'Error khi tạo lịch trả nợ (flat rate)',
       };
     }
   }, [updateField]);
 
   const handleGenerateSchedulesFromAmortization = useCallback((formState: FormState): ScheduleGenerationResult => {
     const missingFields: Array<{ key: keyof FormState; label: string }> = [];
-    if (!formState.start_date) missingFields.push({ key: 'start_date', label: 'Ngày giải ngân' });
+    if (!formState.start_date) missingFields.push({ key: 'start_date', label: 'Date giải ngân' });
     if (!formState.interest_rate_percent) missingFields.push({ key: 'interest_rate_percent', label: 'Lãi suất' });
     if (!formState.term_months) missingFields.push({ key: 'term_months', label: 'Kỳ hạn (tháng)' });
-    if (!formState.payment_day_of_month) missingFields.push({ key: 'payment_day_of_month', label: 'Ngày trả' });
+    if (!formState.payment_day_of_month) missingFields.push({ key: 'payment_day_of_month', label: 'Date trả' });
     if (!formState.principal_amount) missingFields.push({ key: 'principal_amount', label: 'Số tiền vay' });
 
     if (missingFields.length > 0) {
@@ -290,7 +290,7 @@ export function useLoanCalculations(updateField: UpdateField) {
       }, {});
       return {
         success: false,
-        error: `Vui lòng nhập: ${missingFields.map(field => field.label).join(', ')}`,
+        error: `Please nhập: ${missingFields.map(field => field.label).join(', ')}`,
         fieldErrors,
       };
     }
@@ -323,9 +323,9 @@ export function useLoanCalculations(updateField: UpdateField) {
     if (paymentDay < 1 || paymentDay > 28) {
       return {
         success: false,
-        error: 'Ngày thanh toán phải từ 1 đến 28',
+        error: 'Date thanh toán phải từ 1 đến 28',
         fieldErrors: {
-          payment_day_of_month: 'Ngày thanh toán phải từ 1 đến 28',
+          payment_day_of_month: 'Date thanh toán phải từ 1 đến 28',
         },
       };
     }
@@ -353,7 +353,7 @@ export function useLoanCalculations(updateField: UpdateField) {
     } catch {
       return {
         success: false,
-        error: 'Lỗi khi tính toán lịch trả (amortization)',
+        error: 'Error khi tính toán lịch trả (amortization)',
       };
     }
   }, [updateField]);

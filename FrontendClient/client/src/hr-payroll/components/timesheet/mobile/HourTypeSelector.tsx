@@ -29,7 +29,7 @@ export function HourTypeSelector({
     const defaultHourTypes = [
       { key: 'ca ngày', label: 'Ca ngày', description: 'Ca làm việc ban ngày', icon: Sun },
       { key: 'ca đêm', label: 'Ca đêm', description: 'Ca làm việc ban đêm', icon: Moon },
-      { key: 'tăng ca', label: 'Làm thêm', description: 'Giờ tăng ca ngoài ca', icon: Zap }
+      { key: 'tăng ca', label: 'Làm thêm', description: 'Hour tăng ca ngoài ca', icon: Zap }
     ];
 
     if (payrateConfig && payrateConfig[position] && payrateConfig[position][dayType]) {

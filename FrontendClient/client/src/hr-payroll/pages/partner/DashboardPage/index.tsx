@@ -225,7 +225,7 @@ function BannerHeader({
             Kỳ báo cáo
           </div>
           <h1 className="font-display text-display-lg font-semibold tracking-tight text-fg-primary">
-            Tổng quan
+            Overview
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Hoạt động nhân viên và tình hình thanh toán · <span className="font-semibold text-foreground">{periodLabel}</span>

@@ -331,14 +331,14 @@ class LedgerService {
     // Validate date format and not in future
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(entry.date)) {
-      errors.push('Ngày phải có định dạng YYYY-MM-DD');
+      errors.push('Date phải có định dạng YYYY-MM-DD');
     } else {
       const entryDate = new Date(entry.date);
       const today = new Date();
       today.setHours(23, 59, 59, 999); // End of today
 
       if (entryDate > today) {
-        errors.push('Ngày không thể trong tương lai');
+        errors.push('Date không thể trong tương lai');
       }
     }
 
@@ -372,7 +372,7 @@ class LedgerService {
    */
   getAccountDisplayName(account: string): string {
     const accountNames = {
-      cash: 'Tiền mặt',
+      cash: 'Money mặt',
       receivable: 'Phải thu',
       payable: 'Phải trả',
       revenue: 'Doanh thu',
@@ -394,7 +394,7 @@ class LedgerService {
    */
   getAccountOptions() {
     return [
-      { value: 'cash', label: 'Tiền mặt' },
+      { value: 'cash', label: 'Money mặt' },
       { value: 'receivable', label: 'Phải thu' },
       { value: 'payable', label: 'Phải trả' },
     ];
@@ -468,7 +468,7 @@ class LedgerService {
     } catch {
       return {
         isValid: false,
-        error: 'URL không hợp lệ. Vui lòng nhập URL đầy đủ (bao gồm http:// hoặc https://)',
+        error: 'URL không hợp lệ. Please nhập URL đầy đủ (bao gồm http:// hoặc https://)',
       };
     }
   }

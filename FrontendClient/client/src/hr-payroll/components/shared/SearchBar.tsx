@@ -16,7 +16,7 @@ export const SearchBar = React.memo(function SearchBar({
   searchTerm,
   onSearchChange,
   inputId,
-  placeholder = 'Tìm kiếm...',
+  placeholder = 'Search...',
   showClearButton = true,
   className,
   debounceMs = 300,
@@ -85,7 +85,7 @@ export const SearchBar = React.memo(function SearchBar({
           type="button"
           onClick={handleClear}
           className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg opacity-50 transition-all hover:bg-muted hover:opacity-100 sm:-mr-1.5 sm:h-8 sm:w-8"
-          aria-label="Xóa tìm kiếm"
+          aria-label="Delete tìm kiếm"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

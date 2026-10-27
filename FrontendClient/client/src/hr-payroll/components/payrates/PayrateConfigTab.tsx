@@ -137,7 +137,7 @@ export function PayrateConfigTab({ project }: PayrateConfigTabProps) {
                 onClick={handleStartEditCurrent}
               >
                 <Edit3 className="h-3 w-3" />
-                Sửa
+                Edit
               </Button>
             )}
             <Button
@@ -201,7 +201,7 @@ export function PayrateConfigTab({ project }: PayrateConfigTabProps) {
                 onClick={handleStartEditUpcoming}
               >
                 <Edit3 className="h-2.5 w-2.5" />
-                Sửa
+                Edit
               </Button>
             )}
           </div>
@@ -277,7 +277,7 @@ function OtherConfigsSection({ payrates, expanded, onToggle, canModify, confirmD
                   onClick={() => onDelete(p)}
                 >
                   <Trash2 className="h-3 w-3" />
-                  {confirmDeleteId === p.id ? 'Xác nhận xóa?' : 'Delete'}
+                  {confirmDeleteId === p.id ? 'Confirm xóa?' : 'Delete'}
                 </Button>
               )}
             </div>

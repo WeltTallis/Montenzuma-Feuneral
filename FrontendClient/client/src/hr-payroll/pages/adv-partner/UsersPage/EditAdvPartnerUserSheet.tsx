@@ -261,7 +261,7 @@ export default function EditAdvPartnerUserSheet({
       queryClient.invalidateQueries({ queryKey: ['admin', 'advance-payments', 'flex-pay-employees'] });
     } catch {
       toast({
-        title: "Lỗi",
+        title: "Error",
         description: "Không thể lưu thông tin",
         variant: "destructive",
       });
@@ -275,7 +275,7 @@ export default function EditAdvPartnerUserSheet({
     if (!password) {
       setErrors((prev) => ({
         ...prev,
-        password: "Vui lòng nhập mật khẩu mới",
+        password: "Please nhập mật khẩu mới",
       }));
       return;
     }
@@ -297,7 +297,7 @@ export default function EditAdvPartnerUserSheet({
       toast({ title: "Đã đổi mật khẩu thành công" });
     } catch {
       toast({
-        title: "Lỗi",
+        title: "Error",
         description: "Không thể đổi mật khẩu",
         variant: "destructive",
       });
@@ -348,7 +348,7 @@ export default function EditAdvPartnerUserSheet({
               </div>
             ) : loadError ? (
               <div role="alert">
-                <ErrorState message="Không thể tải thông tin nhân viên. Vui lòng thử lại trước khi chỉnh sửa." onRetry={() => setLoadAttempt((attempt) => attempt + 1)} />
+                <ErrorState message="Failed to load thông tin nhân viên. Please try again trước khi chỉnh sửa." onRetry={() => setLoadAttempt((attempt) => attempt + 1)} />
               </div>
             ) : (
               <>
@@ -455,7 +455,7 @@ export default function EditAdvPartnerUserSheet({
 
                 {/* ── Projects — read-only ───────────────────────────────── */}
                 {projects.length > 0 && (
-                  <Section icon={Building02} title="Dự án hiện tại">
+                  <Section icon={Building02} title="Project hiện tại">
                     <div className="flex flex-wrap gap-2">
                       {projects.map((p) => (
                         <ProjectPill key={p.project_id} project={p} />
@@ -480,7 +480,7 @@ export default function EditAdvPartnerUserSheet({
                       Đang lưu...
                     </span>
                   ) : (
-                    "Lưu thông tin"
+                    "Save thông tin"
                   )}
                 </Button>
 

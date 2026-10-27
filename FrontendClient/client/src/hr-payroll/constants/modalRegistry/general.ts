@@ -77,7 +77,7 @@ export const generalModals: Record<GeneralModalId, GeneralModalMetadata> = {
   },
   [GENERAL_MODAL_IDS.LEDGER_ENTRY_DETAILS]: {
     id: GENERAL_MODAL_IDS.LEDGER_ENTRY_DETAILS,
-    name: 'Chi tiết bút toán',
+    name: 'Details bút toán',
     description: 'Xem chi tiết bút toán',
     category: 'report',
     requiresAuth: true,
@@ -92,7 +92,7 @@ export const generalModals: Record<GeneralModalId, GeneralModalMetadata> = {
   },
   [GENERAL_MODAL_IDS.APPROVAL_DETAILS]: {
     id: GENERAL_MODAL_IDS.APPROVAL_DETAILS,
-    name: 'Chi tiết phê duyệt',
+    name: 'Details phê duyệt',
     description: 'Xem chi tiết phê duyệt',
     category: 'report',
     requiresAuth: true,

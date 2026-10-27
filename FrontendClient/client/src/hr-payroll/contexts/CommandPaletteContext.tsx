@@ -63,7 +63,7 @@ export const CommandPaletteProvider = ({ children }: CommandPaletteProviderProps
       // Navigation commands
       {
         id: 'nav-dashboard',
-        label: 'Đi đến Tổng quan',
+        label: 'Đi đến Overview',
         description: 'Xem trang tổng quan chính',
         icon: 'Home',
         category: 'navigation',
@@ -138,7 +138,7 @@ export const CommandPaletteProvider = ({ children }: CommandPaletteProviderProps
       // Admin actions
       {
         id: 'action-add-employee',
-        label: 'Thêm nhân viên mới',
+        label: 'Add nhân viên mới',
         description: 'Tạo hồ sơ nhân viên mới',
         icon: 'UserPlus',
         category: 'action',
@@ -172,7 +172,7 @@ export const CommandPaletteProvider = ({ children }: CommandPaletteProviderProps
       },
       {
         id: 'nav-partner-employees',
-        label: 'Nhân viên dự án',
+        label: 'Employee dự án',
         description: 'Xem nhân viên trong dự án',
         icon: 'Users',
         category: 'navigation',
@@ -183,7 +183,7 @@ export const CommandPaletteProvider = ({ children }: CommandPaletteProviderProps
       {
         id: 'nav-partner-timesheet',
         label: 'Timesheets',
-        description: 'Bảng công cá nhân',
+        description: 'Timesheet cá nhân',
         icon: 'Clock',
         category: 'navigation',
         keywords: ['timesheet', 'bảng công', 'chấm công'],

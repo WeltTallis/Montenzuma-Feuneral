@@ -148,7 +148,7 @@ export default function AuditLogPageMobile() {
             onClick={() => setIsFilterOpen(true)}
           >
             <FilterLines className="h-3.5 w-3.5" />
-            Lọc
+            Filter
             {activeCount > 0 && (
               <Badge className="h-5 min-w-5 border-0 bg-primary px-1 text-xs text-primary-foreground">
                 {activeCount}
@@ -188,7 +188,7 @@ export default function AuditLogPageMobile() {
             className="inline-flex min-h-11 items-center gap-1 px-1 text-xs font-semibold text-fg-error-primary active:opacity-70"
           >
             <XClose className="h-3 w-3" />
-            Xóa lọc
+            Delete lọc
           </button>
         </div>
       )}
@@ -197,8 +197,8 @@ export default function AuditLogPageMobile() {
         <div role="alert">
           <ErrorState
             message={isFetchNextPageError
-              ? "Không thể tải thêm nhật ký. Các bản ghi đã tải vẫn được giữ lại."
-              : "Không thể tải nhật ký hoạt động. Vui lòng thử lại."}
+              ? "Failed to load thêm nhật ký. Các bản ghi đã tải vẫn được giữ lại."
+              : "Failed to load nhật ký hoạt động. Please try again."}
             onRetry={() => void (isFetchNextPageError ? fetchNextPage() : refetch())}
             className="px-4"
           />
@@ -334,7 +334,7 @@ export default function AuditLogPageMobile() {
                 onClick={reset}
                 disabled={activeCount === 0}
               >
-                Xóa bộ lọc
+                Delete bộ lọc
               </Button>
               <Button
                 className="btn-admin-primary h-11 w-full"

@@ -44,8 +44,8 @@ interface EmployeeModalMetadata {
 export const employeeModals: Record<EmployeeModalId, EmployeeModalMetadata> = {
   [EMPLOYEE_MODAL_IDS.ADD_EMPLOYEE]: {
     id: EMPLOYEE_MODAL_IDS.ADD_EMPLOYEE,
-    name: 'Thêm nhân viên',
-    description: 'Thêm nhân viên mới vào hệ thống',
+    name: 'Add nhân viên',
+    description: 'Add nhân viên mới vào hệ thống',
     category: 'employee',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -59,7 +59,7 @@ export const employeeModals: Record<EmployeeModalId, EmployeeModalMetadata> = {
   },
   [EMPLOYEE_MODAL_IDS.EMPLOYEE_DETAILS]: {
     id: EMPLOYEE_MODAL_IDS.EMPLOYEE_DETAILS,
-    name: 'Chi tiết nhân viên',
+    name: 'Details nhân viên',
     description: 'Xem thông tin chi tiết nhân viên',
     category: 'employee',
     requiresAuth: true,

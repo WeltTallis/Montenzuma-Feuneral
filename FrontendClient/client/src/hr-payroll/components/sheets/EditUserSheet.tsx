@@ -64,7 +64,7 @@ function EditUserSheet({
           setErrors({});
         })
         .catch(() => {
-          toast({ title: "Lỗi", description: "Không thể tải thông tin người dùng", variant: "destructive" });
+          toast({ title: "Error", description: "Failed to load thông tin người dùng", variant: "destructive" });
         })
         .finally(() => setIsLoadingUser(false));
     }
@@ -115,7 +115,7 @@ function EditUserSheet({
       toast({ title: "Successful", description: "Đã cập nhật thông tin người dùng" });
       onClose();
     } catch {
-      toast({ title: "Lỗi", description: "Không thể cập nhật người dùng", variant: "destructive" });
+      toast({ title: "Error", description: "Không thể cập nhật người dùng", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }

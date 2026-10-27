@@ -116,9 +116,9 @@ export function CalendarDayCell({
               </span>
             </div>
 
-            {/* Lương (Salary) */}
+            {/* Payroll (Salary) */}
             <div className="text-muted-foreground">
-              Lương: <span className="text-foreground font-medium tabular-nums">
+              Payroll: <span className="text-foreground font-medium tabular-nums">
                 {formatCurrency(day.totalAmount || 0)}
               </span>
             </div>
@@ -252,7 +252,7 @@ export function CalendarDayCellMobile({
             <div className="text-muted-foreground">
               GL: <span className="text-foreground font-medium">{day.totalHours} giờ</span>
             </div>
-            {/* Lương */}
+            {/* Payroll */}
             <div className="text-muted-foreground">
               L: <span className="text-foreground font-medium tabular-nums">{formatCurrency(day.totalAmount || 0)}</span>
             </div>

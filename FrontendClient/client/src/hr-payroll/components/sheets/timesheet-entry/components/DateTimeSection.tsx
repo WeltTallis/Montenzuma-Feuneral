@@ -18,7 +18,7 @@ import { requiresDayType } from "@hr/utils/timesheetHelpers";
 interface DateTimeSectionProps {
   formData: TimesheetFormData;
   formOptions: TimesheetFormOptions;
-  saturdayDayType: "Ngày thường" | "Ngày nghỉ" | "Ngày lễ";
+  saturdayDayType: "Date thường" | "Date nghỉ" | "Date lễ";
   isLoadingPayRate: boolean;
   payRateData?: PayRate;
   onInputChange: (
@@ -26,7 +26,7 @@ interface DateTimeSectionProps {
     value: string | number,
   ) => void;
   onSaturdayDayTypeChange: (
-    value: "Ngày thường" | "Ngày nghỉ" | "Ngày lễ",
+    value: "Date thường" | "Date nghỉ" | "Date lễ",
   ) => void;
 }
 
@@ -64,7 +64,7 @@ export const DateTimeSection = memo(
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <Label htmlFor="date">Ngày làm việc *</Label>
+          <Label htmlFor="date">Date làm việc *</Label>
           <Input
             id="date"
             type="date"
@@ -85,9 +85,9 @@ export const DateTimeSection = memo(
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Ngày thường">Ngày thường</SelectItem>
-                  <SelectItem value="Ngày nghỉ">Ngày nghỉ</SelectItem>
-                  <SelectItem value="Ngày lễ">Ngày lễ</SelectItem>
+                  <SelectItem value="Date thường">Date thường</SelectItem>
+                  <SelectItem value="Date nghỉ">Date nghỉ</SelectItem>
+                  <SelectItem value="Date lễ">Date lễ</SelectItem>
                 </SelectContent>
               </Select>
               <div className="mt-1 typography-body-small text-muted-foreground">

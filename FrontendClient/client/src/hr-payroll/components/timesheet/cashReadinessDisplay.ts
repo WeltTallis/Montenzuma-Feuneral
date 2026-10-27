@@ -105,7 +105,7 @@ export const getCashReadinessDisplay = (data: CashReadinessResponse): CashReadin
 
   if (data.pending_target_amount !== undefined) {
     drivers.push({
-      label: 'Đang chờ duyệt',
+      label: 'Waiting duyệt',
       amount: nonNegative(data.pending_target_amount),
       description:
         data.expected_pending_amount === undefined

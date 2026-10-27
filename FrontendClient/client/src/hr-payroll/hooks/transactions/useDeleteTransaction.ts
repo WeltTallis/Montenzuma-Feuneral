@@ -19,7 +19,7 @@ export function useDeleteTransaction() {
       queryClient.invalidateQueries({ queryKey: ['ledger'] });
       queryClient.invalidateQueries({ queryKey: ['ledger-summary'] });
 
-      showSuccessNotification('Hủy giao dịch thành công');
+      showSuccessNotification('Cancel giao dịch thành công');
     },
     onError: (error: unknown) => {
       showErrorNotification(error, 'Không thể hủy giao dịch');

@@ -26,13 +26,13 @@ interface LedgerFiltersMobileProps {
 }
 
 const DATE_PRESETS = [
-  { label: 'Hôm nay', value: 'today' },
-  { label: 'Tuần này', value: 'this-week' },
-  { label: 'Tháng này', value: 'this-month' },
+  { label: 'Today', value: 'today' },
+  { label: 'This week', value: 'this-week' },
+  { label: 'This month', value: 'this-month' },
   { label: 'Tháng trước', value: 'last-month' },
   { label: 'Quý này', value: 'this-quarter' },
   { label: '6 tháng', value: 'last-6-months' },
-  { label: 'Năm này', value: 'this-year' },
+  { label: 'This year', value: 'this-year' },
 ];
 
 function getDatePreset(preset: string) {
@@ -176,7 +176,7 @@ export function LedgerFiltersMobile({
           <SheetTrigger asChild>
             <Button variant="outline" className="h-11 px-3 gap-1.5 text-sm shrink-0 relative">
               <Filter className="h-4 w-4" />
-              Lọc
+              Filter
               {activeFilterCount > 0 && (
                 <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 text-xs flex items-center justify-center rounded-full">
                   {activeFilterCount}
@@ -196,7 +196,7 @@ export function LedgerFiltersMobile({
                 <SearchableSelect
                   value={filters.account || 'all'}
                   onChange={(v) => set('account', v === 'all' ? undefined : v)}
-                  options={[{ value: 'all', label: 'Tất cả' }, ...accountOptions]}
+                  options={[{ value: 'all', label: 'All' }, ...accountOptions]}
                   disabled={isLoadingAccountMetadata}
                   searchPlaceholder="Tìm loại tài khoản..."
                 />
@@ -209,7 +209,7 @@ export function LedgerFiltersMobile({
                   value={filters.project_id?.toString() || 'all'}
                   onChange={(v) => set('project_id', v === 'all' ? undefined : parseInt(v))}
                   options={[
-                    { value: 'all', label: 'Tất cả' },
+                    { value: 'all', label: 'All' },
                     ...projects.map((p) => ({ value: p.id.toString(), label: p.name })),
                   ]}
                   searchPlaceholder="Tìm dự án..."
@@ -224,10 +224,10 @@ export function LedgerFiltersMobile({
                   onValueChange={(v) => set('has_evidence', v === 'all' ? undefined : v === 'true')}
                 >
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Tất cả" />
+                    <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="true">Có chứng từ</SelectItem>
                     <SelectItem value="false">Không có chứng từ</SelectItem>
                   </SelectContent>
@@ -241,7 +241,7 @@ export function LedgerFiltersMobile({
                   onClick={() => { onClearFilters(); setShowFiltersSheet(false); }}
                 >
                   <X className="h-4 w-4" />
-                  Xóa tất cả bộ lọc
+                  Delete tất cả bộ lọc
                 </Button>
               )}
             </div>
@@ -249,7 +249,7 @@ export function LedgerFiltersMobile({
         </Sheet>
 
         {hasFilters && (
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={onClearFilters} aria-label="Xóa bộ lọc">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={onClearFilters} aria-label="Delete bộ lọc">
             <X className="h-4 w-4" />
           </Button>
         )}

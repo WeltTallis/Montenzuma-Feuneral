@@ -48,7 +48,7 @@ export function ProjectDetailsModal() {
     // If project not found, show error
     if (!project && projectData.projects.length > 0 && !projectLoading) {
       toast({
-        title: "Lỗi",
+        title: "Error",
         description: "Không tìm thấy dự án.",
         variant: "destructive"
       });

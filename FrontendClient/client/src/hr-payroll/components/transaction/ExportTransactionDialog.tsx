@@ -103,7 +103,7 @@ export function ExportTransactionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Xuất danh sách giao dịch
+            Export danh sách giao dịch
           </DialogTitle>
           <DialogDescription>
             Chọn khoảng thời gian và loại giao dịch để xuất
@@ -123,7 +123,7 @@ export function ExportTransactionDialog({
                 className="justify-start w-full"
               >
                 <Calendar className="h-4 w-4 mr-2" />
-                Tháng này
+                This month
               </Button>
               <Button
                 type="button"
@@ -163,7 +163,7 @@ export function ExportTransactionDialog({
                 className="justify-start w-full"
               >
                 <Calendar className="h-4 w-4 mr-2" />
-                Năm này
+                This year
               </Button>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function ExportTransactionDialog({
                     onChange={setTransactionType}
                     searchPlaceholder="Tìm loại giao dịch..."
                     options={[
-                      { value: 'all', label: 'Tất cả' },
+                      { value: 'all', label: 'All' },
                       ...(transactionMetadata?.transaction_types.map((type) => ({
                         value: type.type,
                         label: type.label,
@@ -240,7 +240,7 @@ export function ExportTransactionDialog({
             className="min-h-11 w-full"
           >
             <Download className="h-4 w-4 mr-2" />
-            {isExporting ? 'Đang xuất...' : 'Xuất file'}
+            {isExporting ? 'Đang xuất...' : 'Export file'}
           </Button>
         </DialogFooter>
       </DialogContent>

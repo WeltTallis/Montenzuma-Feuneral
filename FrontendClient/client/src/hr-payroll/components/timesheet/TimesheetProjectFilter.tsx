@@ -39,7 +39,7 @@ export function TimesheetProjectFilter({
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted-foreground whitespace-nowrap">Dự án:</span>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">Project:</span>
       <SearchableSelect
         value={selectedProject?.id.toString() || 'none'}
         onChange={handleProjectChange}

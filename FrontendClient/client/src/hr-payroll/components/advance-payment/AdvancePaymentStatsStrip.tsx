@@ -117,7 +117,7 @@ export const AdvancePaymentStatsStrip = memo(function AdvancePaymentStatsStrip({
     )}>
       <LightStatCard
         icon={<Wallet className="h-3.5 w-3.5 text-primary" />}
-        title="Tổng quan"
+        title="Overview"
         items={overviewItems}
         isLoading={isLoading}
         skeletonCount={4}

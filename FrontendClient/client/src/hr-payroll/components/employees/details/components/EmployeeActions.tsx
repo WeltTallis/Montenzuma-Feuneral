@@ -18,7 +18,7 @@ import type { EmployeeActionsProps } from "../types";
  *   - View: destructive "Delete" (admin-only) + neutral "Đổi mật khẩu"
  *     (admin/partner) on the left, primary "Close" on the right.
  *   - Edit: full-width row with ghost "Cancel" (left) and primary
- *     "Lưu thay đổi" (right).
+ *     "Save thay đổi" (right).
  */
 export const EmployeeActions = memo(({
   onSave,
@@ -53,7 +53,7 @@ export const EmployeeActions = memo(({
           className="min-h-11 w-full"
         >
           <Save className="h-4 w-4" />
-          Lưu thay đổi
+          Save thay đổi
         </Button>
       </div>
     );

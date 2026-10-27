@@ -170,7 +170,7 @@ export const EmployeeTimesheetHistory = memo(({
             <SelectValue placeholder="Chọn tháng" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             {monthOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

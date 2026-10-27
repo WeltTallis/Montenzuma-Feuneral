@@ -14,7 +14,7 @@ export function ProjectMultiSelector({
   value,
   onChange,
   projects,
-  placeholder = 'Tất cả dự án',
+  placeholder = 'All dự án',
   disabled = false,
 }: ProjectMultiSelectorProps) {
   const options = useMemo<MultiSearchableDropdownOption[]>(
@@ -28,7 +28,7 @@ export function ProjectMultiSelector({
       onChange={(ids) => onChange(ids.map(Number))}
       options={options}
       placeholder={placeholder}
-      searchPlaceholder="Tìm kiếm dự án..."
+      searchPlaceholder="Search dự án..."
       emptyMessage="Không tìm thấy dự án nào."
       allOption={{ value: 'all', label: placeholder }}
       disabled={disabled}

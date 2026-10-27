@@ -34,8 +34,8 @@ export function ApprovalDetailsModal() {
     onError: (error) => {
       console.error('ApprovalDetailsModal error:', error);
       toast({
-        title: "Lỗi",
-        description: "Có lỗi xảy ra khi tải thông tin phê duyệt.",
+        title: "Error",
+        description: "An error occurred khi tải thông tin phê duyệt.",
         variant: "destructive"
       });
     }
@@ -63,8 +63,8 @@ export function ApprovalDetailsModal() {
       } catch (error) {
         console.error('Failed to fetch approval details:', error);
         toast({
-          title: "Lỗi",
-          description: "Không thể tải thông tin phê duyệt.",
+          title: "Error",
+          description: "Failed to load thông tin phê duyệt.",
           variant: "destructive"
         });
       } finally {
@@ -92,7 +92,7 @@ export function ApprovalDetailsModal() {
     } catch (error) {
       console.error('Approval error:', error);
       toast({
-        title: "Lỗi",
+        title: "Error",
         description: "Không thể phê duyệt timesheet.",
         variant: "destructive"
       });
@@ -122,7 +122,7 @@ export function ApprovalDetailsModal() {
     } catch (error) {
       console.error('Rejection error:', error);
       toast({
-        title: "Lỗi",
+        title: "Error",
         description: "Không thể loại timesheet.",
         variant: "destructive"
       });
@@ -154,7 +154,7 @@ export function ApprovalDetailsModal() {
     <Sheet open={modal.isOpen} onOpenChange={handleClose}>
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader className="flex flex-row items-center justify-between space-y-0 pb-6" style={{ paddingTop: "max(0px, env(safe-area-inset-top))" }}>
-          <SheetTitle>Chi tiết phê duyệt #{id}</SheetTitle>
+          <SheetTitle>Details phê duyệt #{id}</SheetTitle>
           <Button variant="ghost" size="icon" onClick={handleClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -184,12 +184,12 @@ export function ApprovalDetailsModal() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Nhân viên:</span>
+                      <span className="font-medium">Employee:</span>
                       <span>{approvalData.employeeName || '-'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Ngày:</span>
+                      <span className="font-medium">Date:</span>
                       <span>{format(new Date(approvalData.date), 'dd/MM/yyyy')}</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ export function ApprovalDetailsModal() {
                           id="rejection-reason"
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}
-                          placeholder="Nhập lý do loại..."
+                          placeholder="Import lý do loại..."
                           className="min-h-20"
                         />
                         <div className="flex gap-2">
@@ -278,7 +278,7 @@ export function ApprovalDetailsModal() {
                                 Đang loại...
                               </>
                             ) : (
-                              'Xác nhận loại'
+                              'Confirm loại'
                             )}
                           </Button>
                           <Button

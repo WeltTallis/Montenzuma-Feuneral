@@ -125,7 +125,7 @@ const ProjectsPageMobile = () => {
             onClick={() => openCreateProject()}
           >
             <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-            Thêm
+            Add
           </Button>
         }
       />
@@ -156,7 +156,7 @@ const ProjectsPageMobile = () => {
         <MobileSearchInput
           value={filterControls.searchTerm}
           onSearch={filterControls.setSearchTerm}
-          placeholder="Tìm kiếm dự án..."
+          placeholder="Search dự án..."
           className="w-full"
         />
         <Button
@@ -183,7 +183,7 @@ const ProjectsPageMobile = () => {
               type="button"
               className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold text-secondary-foreground touch-manipulation"
               onClick={() => filterControls.setStatusFilter("all")}
-              aria-label={`Xóa lọc trạng thái ${currentStatusLabel}`}
+              aria-label={`Delete lọc trạng thái ${currentStatusLabel}`}
             >
               {currentStatusLabel}
               <XClose className="h-3 w-3" aria-hidden="true" />
@@ -194,7 +194,7 @@ const ProjectsPageMobile = () => {
               type="button"
               className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold text-secondary-foreground touch-manipulation"
               onClick={() => filterControls.setMonthFilter(undefined)}
-              aria-label={`Xóa lọc tháng ${currentMonthLabel}`}
+              aria-label={`Delete lọc tháng ${currentMonthLabel}`}
             >
               {currentMonthLabel}
               <XClose className="h-3 w-3" aria-hidden="true" />
@@ -204,7 +204,7 @@ const ProjectsPageMobile = () => {
             onClick={filterControls.clearFilters}
             className="min-h-11 px-1 text-xs text-muted-foreground underline underline-offset-2"
           >
-            Xóa tất cả
+            Delete tất cả
           </button>
         </div>
       )}
@@ -213,7 +213,7 @@ const ProjectsPageMobile = () => {
       <div className="flex-1">
         {isError ? (
           <div role="alert">
-            <ErrorState message="Không thể tải danh sách dự án. Vui lòng thử lại." onRetry={() => void refetch()} />
+            <ErrorState message="Failed to load danh sách dự án. Please try again." onRetry={() => void refetch()} />
           </div>
         ) : (
         <ProjectMobileList
@@ -229,7 +229,7 @@ const ProjectsPageMobile = () => {
                 ? "Không có dự án phù hợp. Thử thay đổi từ khóa hoặc xóa bộ lọc."
                 : "Bạn chưa được phân quyền truy cập vào dự án nào."}
               action={filterControls.hasFilters
-                ? { label: "Xóa bộ lọc", onClick: filterControls.clearFilters }
+                ? { label: "Delete bộ lọc", onClick: filterControls.clearFilters }
                 : undefined}
               size="sm"
             />
@@ -300,10 +300,10 @@ const ProjectsPageMobile = () => {
                 }
               >
                 <SelectTrigger className="h-11 rounded-xl">
-                  <SelectValue placeholder="Tất cả trạng thái" />
+                  <SelectValue placeholder="All trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="all">All trạng thái</SelectItem>
                   {STATUS_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
@@ -323,10 +323,10 @@ const ProjectsPageMobile = () => {
                 }
               >
                 <SelectTrigger className="h-11 rounded-xl">
-                  <SelectValue placeholder="Tất cả tháng" />
+                  <SelectValue placeholder="All tháng" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả tháng</SelectItem>
+                  <SelectItem value="all">All tháng</SelectItem>
                   {monthOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
@@ -346,7 +346,7 @@ const ProjectsPageMobile = () => {
                   setFilterSheetOpen(false);
                 }}
               >
-                Xóa bộ lọc
+                Delete bộ lọc
               </Button>
               <Button
                 className="flex-1 h-11 rounded-xl"

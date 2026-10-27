@@ -118,14 +118,14 @@ export class ErrorBoundary extends Component<Props, State> {
                   <CardTitle>Đang cập nhật ứng dụng</CardTitle>
                 </div>
                 <CardDescription>
-                  Chúng tôi vừa triển khai phiên bản mới. Vui lòng tải lại trang
+                  Chúng tôi vừa triển khai phiên bản mới. Please tải lại trang
                   để tiếp tục.
                 </CardDescription>
               </CardHeader>
               <CardFooter>
                 <Button onClick={this.handleHardReload} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Tải lại trang
+                  Reload trang
                 </Button>
               </CardFooter>
             </Card>
@@ -143,7 +143,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <CardTitle>Đã xảy ra lỗi không mong muốn</CardTitle>
               </div>
               <CardDescription>
-                Chúng tôi xin lỗi vì sự bất tiện này. Vui lòng thử lại hoặc liên hệ với bộ phận hỗ trợ nếu lỗi vẫn tiếp tục.
+                Chúng tôi xin lỗi vì sự bất tiện này. Please try again hoặc liên hệ với bộ phận hỗ trợ nếu lỗi vẫn tiếp tục.
               </CardDescription>
             </CardHeader>
 
@@ -151,10 +151,10 @@ export class ErrorBoundary extends Component<Props, State> {
               {/* Error message */}
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Chi tiết lỗi</AlertTitle>
+                <AlertTitle>Details lỗi</AlertTitle>
                 <AlertDescription className="mt-2">
                   <p className="font-mono typography-body-medium">
-                    {this.state.error?.message || 'Lỗi không xác định'}
+                    {this.state.error?.message || 'Error không xác định'}
                   </p>
                 </AlertDescription>
               </Alert>
@@ -176,8 +176,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Lỗi này đã xảy ra {this.state.errorCount} lần.
-                    Vui lòng làm mới trang hoặc xóa bộ nhớ cache của trình duyệt.
+                    Error này đã xảy ra {this.state.errorCount} lần.
+                    Please làm mới trang hoặc xóa bộ nhớ cache của trình duyệt.
                   </AlertDescription>
                 </Alert>
               )}
@@ -186,7 +186,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <CardFooter className="flex gap-3">
               <Button onClick={this.handleReset} variant="ghost" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Thử lại
+                Try again
               </Button>
               <Button onClick={this.handleGoHome} variant="outline" className="flex-1">
                 <Home className="mr-2 h-4 w-4" />
@@ -231,11 +231,11 @@ export const ComponentErrorBoundary: React.FC<{
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
             <p className="font-medium">
-              Lỗi khi tải {componentName || 'component'}
+              Error khi tải {componentName || 'component'}
             </p>
           </div>
           <p className="typography-body-medium text-muted-foreground mt-2">
-            Vui lòng làm mới trang để thử lại
+            Please làm mới trang để thử lại
           </p>
         </div>
       }
@@ -262,13 +262,13 @@ export const ApiErrorBoundary: React.FC<{
       fallback={
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Lỗi kết nối</AlertTitle>
+          <AlertTitle>Connection error</AlertTitle>
           <AlertDescription className="mt-2">
-            <p>Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.</p>
+            <p>Unable to connect đến máy chủ. Please check kết nối mạng và thử lại.</p>
             {onRetry && (
               <Button onClick={onRetry} variant="outline" size="sm" className="mt-3">
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Thử lại
+                Try again
               </Button>
             )}
           </AlertDescription>
@@ -314,7 +314,7 @@ export class SectionErrorBoundary extends Component<
           </div>
           <div>
             <p className="font-medium">
-              Lỗi khi tải{this.props.sectionName ? ` ${this.props.sectionName}` : ' nội dung'}
+              Error khi tải{this.props.sectionName ? ` ${this.props.sectionName}` : ' nội dung'}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               {this.state.error?.message || 'Đã xảy ra lỗi không xác định'}

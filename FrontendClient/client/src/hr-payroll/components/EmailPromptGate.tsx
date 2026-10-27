@@ -109,7 +109,7 @@ export const EmailPromptGate = () => {
         <DialogHeader>
           <DialogTitle>Cập nhật địa chỉ email</DialogTitle>
           <DialogDescription>
-            Tài khoản của bạn chưa có email. Email cần thiết để bật xác thực hai bước (OTP) và nhận các thông báo quan trọng. Vui lòng cung cấp email để tiếp tục.
+            Account của bạn chưa có email. Email cần thiết để bật xác thực hai bước (OTP) và nhận các thông báo quan trọng. Please cung cấp email để tiếp tục.
           </DialogDescription>
         </DialogHeader>
 

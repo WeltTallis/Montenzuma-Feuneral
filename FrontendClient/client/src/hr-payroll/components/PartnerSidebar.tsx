@@ -48,7 +48,7 @@ import { useUnreadNotifications } from "@hr/hooks/api/useNotifications";
 
 
 const menuItems = [
-  { title: "Tổng quan", icon: Grid01, path: "/partner/dashboard", end: true },
+  { title: "Overview", icon: Grid01, path: "/partner/dashboard", end: true },
   { title: "Projects", icon: Briefcase01, path: "/partner/projects", end: false },
   { title: "Employees", icon: Users01, path: "/partner/employees" },
   { title: "Timesheets", icon: Calendar, path: "/partner/timesheet", end: true },

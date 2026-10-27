@@ -64,7 +64,7 @@ export function ExportEmployeesModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md gap-0">
         <DialogHeader className="pb-1">
-          <DialogTitle className="text-sm font-semibold">Xuất Excel nhân viên</DialogTitle>
+          <DialogTitle className="text-sm font-semibold">Export Excel nhân viên</DialogTitle>
           <DialogDescription className="text-xs">
             Chọn một hoặc nhiều dự án để xuất
           </DialogDescription>
@@ -141,7 +141,7 @@ export function ExportEmployeesModal({
             )}
           >
             <Download className="h-3.5 w-3.5" />
-            {isExporting ? "Đang xuất..." : "Xuất Excel"}
+            {isExporting ? "Đang xuất..." : "Export Excel"}
           </button>
         </div>
       </DialogContent>

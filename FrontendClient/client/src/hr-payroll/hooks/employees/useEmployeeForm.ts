@@ -203,7 +203,7 @@ export const useEmployeeForm = ({ employee, onUpdate }: UseEmployeeFormProps) =>
           const fullnameValidation = validateFullname(formData.fullname);
           if (!fullnameValidation.valid) {
             toast({
-              title: "Lỗi xác thực",
+              title: "Error xác thực",
               description: fullnameValidation.error || "Họ tên không hợp lệ",
               variant: "destructive"
             });
@@ -217,7 +217,7 @@ export const useEmployeeForm = ({ employee, onUpdate }: UseEmployeeFormProps) =>
           const mobileGuard = validateMobileNotCCCD(formData.mobile);
           if (!mobileGuard.valid) {
             toast({
-              title: "Lỗi xác thực",
+              title: "Error xác thực",
               description: mobileGuard.error || "Số điện thoại không hợp lệ",
               variant: "destructive"
             });

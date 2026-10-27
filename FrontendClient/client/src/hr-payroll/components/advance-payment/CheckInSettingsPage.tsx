@@ -163,7 +163,7 @@ export default function CheckInSettingsPage() {
           setActionError(
             apiError.response?.data?.message ||
               apiError.message ||
-              "Không thể cập nhật điểm danh. Vui lòng thử lại.",
+              "Không thể cập nhật điểm danh. Please try again.",
           );
         },
         onSettled: () => setPendingEmployeeId(null),
@@ -187,7 +187,7 @@ export default function CheckInSettingsPage() {
       setActionError(
         apiError.response?.data?.message ||
           apiError.message ||
-          "Không thể xuất danh sách. Vui lòng thử lại.",
+          "Không thể xuất danh sách. Please try again.",
       );
     });
   };
@@ -229,7 +229,7 @@ export default function CheckInSettingsPage() {
             setActionError(
               apiError.response?.data?.message ||
                 apiError.message ||
-                "Không thể cập nhật điểm danh. Vui lòng thử lại.",
+                "Không thể cập nhật điểm danh. Please try again.",
             );
           },
           onSettled: () => setPendingEmployeeId(null),
@@ -267,7 +267,7 @@ export default function CheckInSettingsPage() {
           setActionError(
             apiError.response?.data?.message ||
               apiError.message ||
-              "Không thể cập nhật nhóm nhân viên. Vui lòng thử lại.",
+              "Không thể cập nhật nhóm nhân viên. Please try again.",
           );
         },
       },
@@ -337,9 +337,9 @@ export default function CheckInSettingsPage() {
         </div>
       ) : projectsQuery.isError ? (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-12 text-center">
-          <h2 className="font-semibold text-foreground">Không thể tải danh sách dự án</h2>
+          <h2 className="font-semibold text-foreground">Failed to load danh sách dự án</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Kiểm tra kết nối hoặc quyền truy cập rồi thử lại.
+            Check connection hoặc quyền truy cập rồi thử lại.
           </p>
           <Button
             type="button"
@@ -347,7 +347,7 @@ export default function CheckInSettingsPage() {
             className="mt-4 h-11 min-h-11 sm:h-9 sm:min-h-0"
             onClick={() => projectsQuery.refetch()}
           >
-            Thử lại
+            Try again
           </Button>
         </div>
       ) : flexibleProjects.length === 0 ? (
@@ -362,7 +362,7 @@ export default function CheckInSettingsPage() {
         <>
           <div
             role="tablist"
-            aria-label="Lọc trạng thái điểm danh"
+            aria-label="Filter trạng thái điểm danh"
             className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1"
           >
             {statusFilters.map((filter) => (
@@ -394,11 +394,11 @@ export default function CheckInSettingsPage() {
             ))}
           </div>
 
-          <section className="space-y-3" aria-label="Danh sách cấu hình điểm danh">
+          <section className="space-y-3" aria-label="List cấu hình điểm danh">
             <div className="flex flex-col gap-3 rounded-xl border bg-background p-3 shadow-xs lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0 flex-1 space-y-1 lg:max-w-md">
                 <label htmlFor="check-in-employee-search" className="text-xs font-medium text-muted-foreground">
-                  Tìm kiếm nhân viên
+                  Search nhân viên
                 </label>
                 <SearchBar
                   inputId="check-in-employee-search"
@@ -433,14 +433,14 @@ export default function CheckInSettingsPage() {
                   className="h-11 min-h-11 gap-1.5 px-3 text-sm sm:h-9 sm:min-h-0"
                   disabled={isExporting || (configuration?.pagination.totalRecords ?? 0) === 0}
                   onClick={handleExport}
-                  aria-label="Xuất danh sách tự chấm công ra Excel"
+                  aria-label="Export danh sách tự chấm công ra Excel"
                 >
                   {isExporting ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   ) : (
                     <Download className="h-4 w-4" aria-hidden />
                   )}
-                  Xuất Excel
+                  Export Excel
                 </Button>
                 {isCurrentMonth && status === "inactive" && (summary?.inactive ?? 0) > 0 ? (
                   <Button
@@ -464,10 +464,10 @@ export default function CheckInSettingsPage() {
                     className="h-11 min-h-11 gap-1.5 px-3 text-sm sm:h-9 sm:min-h-0"
                     disabled={isMutating}
                     onClick={() => setBulkAction("pending")}
-                    aria-label={`Hủy chờ tất cả ${summary?.pending ?? 0} nhân viên`}
+                    aria-label={`Cancel chờ tất cả ${summary?.pending ?? 0} nhân viên`}
                   >
                     <PowerOff className="h-4 w-4" aria-hidden />
-                    Hủy chờ tất cả ({summary?.pending ?? 0})
+                    Cancel chờ tất cả ({summary?.pending ?? 0})
                   </Button>
                 ) : null}
               </div>
@@ -481,9 +481,9 @@ export default function CheckInSettingsPage() {
 
             {configurationQuery.isError && !configuration ? (
               <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-10 text-center">
-                <h2 className="font-semibold text-foreground">Không thể tải danh sách</h2>
+                <h2 className="font-semibold text-foreground">Failed to load danh sách</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Kiểm tra kết nối và thử tải lại dữ liệu.
+                  Check connection và thử tải lại dữ liệu.
                 </p>
                 <Button
                   type="button"
@@ -491,7 +491,7 @@ export default function CheckInSettingsPage() {
                   className="mt-4 h-11 min-h-11 sm:h-9 sm:min-h-0"
                   onClick={() => configurationQuery.refetch()}
                 >
-                  Thử lại
+                  Try again
                 </Button>
               </div>
             ) : configurationQuery.isLoading ? (
@@ -511,7 +511,7 @@ export default function CheckInSettingsPage() {
             ) : (
               <div
                 role="list"
-                aria-label="Nhân viên cấu hình điểm danh"
+                aria-label="Employee cấu hình điểm danh"
                 className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
               >
                 {employees.map((employee) => (
@@ -568,7 +568,7 @@ export default function CheckInSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {bulkAction === "pending"
-                ? `Hủy kích hoạt đang chờ của ${bulkCount} nhân viên?`
+                ? `Cancel kích hoạt đang chờ của ${bulkCount} nhân viên?`
                 : `Tắt điểm danh cho ${bulkCount} nhân viên?`}
             </AlertDialogTitle>
             <AlertDialogDescription className="leading-6">
@@ -582,7 +582,7 @@ export default function CheckInSettingsPage() {
                 <>
                   Hệ thống sẽ kiểm tra lại và tắt toàn bộ nhân viên chưa điểm danh của dự án{" "}
                   <span className="font-medium text-foreground">{selectedProject?.name}</span> trong{" "}
-                  {monthLabel}. Nhân viên đã phát sinh điểm danh sẽ không bị ảnh hưởng.
+                  {monthLabel}. Employee đã phát sinh điểm danh sẽ không bị ảnh hưởng.
                 </>
               )}
             </AlertDialogDescription>
@@ -596,7 +596,7 @@ export default function CheckInSettingsPage() {
               onClick={handleBulkAction}
             >
               {bulkPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              {bulkAction === "pending" ? "Xác nhận hủy chờ" : "Xác nhận tắt"}
+              {bulkAction === "pending" ? "Confirm hủy chờ" : "Confirm tắt"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

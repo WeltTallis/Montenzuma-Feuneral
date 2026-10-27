@@ -54,7 +54,7 @@ export function AsyncSearchableDropdown<T>({
   placeholder,
   searchValue,
   onSearchValueChange,
-  searchPlaceholder = 'Tìm kiếm...',
+  searchPlaceholder = 'Search...',
   minSearchLength = 3,
   isLoading = false,
   isSearching = false,

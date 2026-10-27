@@ -279,7 +279,7 @@ export default function PayrateEditPageMobile() {
       // Never swallow failed saves: a silent reset invites retries that
       // duplicate rows.
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setValidateError(apiErr?.response?.data?.message || apiErr?.message || 'Lưu thất bại. Vui lòng thử lại.');
+      setValidateError(apiErr?.response?.data?.message || apiErr?.message || 'Save thất bại. Please try again.');
       setServerResult(null);
       setSaveStep('idle');
     }
@@ -317,7 +317,7 @@ export default function PayrateEditPageMobile() {
       }
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      setValidateError(apiErr?.message || 'Không thể kiểm tra. Vui lòng thử lại.');
+      setValidateError(apiErr?.message || 'Không thể kiểm tra. Please try again.');
       setServerResult(null);
       setSaveStep('idle');
     }
@@ -337,7 +337,7 @@ export default function PayrateEditPageMobile() {
   return (
     <MobilePageShell>
       <MobileSubPageHeader
-        title={isNew ? 'Tạo cấu hình lương' : 'Sửa cấu hình lương'}
+        title={isNew ? 'Tạo cấu hình lương' : 'Edit cấu hình lương'}
         subtitle={isLoadingProject ? undefined : project?.name}
         icon={Zap}
         onBack={goBack}
@@ -448,12 +448,12 @@ export default function PayrateEditPageMobile() {
             {saveStep === 'confirm' && (
               <section className="rounded-xl border border-border bg-card px-4 py-3 text-sm space-y-2">
                 <p className="font-semibold">
-                  {isNew ? 'Xác nhận tạo cấu hình mới' : 'Xác nhận cập nhật cấu hình'}
+                  {isNew ? 'Confirm tạo cấu hình mới' : 'Confirm cập nhật cấu hình'}
                 </p>
                 <ul className="space-y-0.5 text-xs text-muted-foreground">
                   <li>Hiệu lực từ {config.fromDate}.</li>
                   {diffSummary.changedCells > 0 && <li>{diffSummary.changedCells} ô mức lương thay đổi.</li>}
-                  {diffSummary.addedPositions.length > 0 && <li>Thêm vị trí: {diffSummary.addedPositions.join(', ')}.</li>}
+                  {diffSummary.addedPositions.length > 0 && <li>Add vị trí: {diffSummary.addedPositions.join(', ')}.</li>}
                   {diffSummary.removedPositions.length > 0 && (
                     <li className="text-fg-warning-primary">
                       Bỏ vị trí (sẽ không tạo được bảng công mới cho vị trí này): {diffSummary.removedPositions.join(', ')}.
@@ -535,7 +535,7 @@ export default function PayrateEditPageMobile() {
           ) : (
             <span className="flex items-center gap-1.5">
               <Save01 className="h-3.5 w-3.5" />
-              {editorMode === 'create' ? 'Tạo cấu hình' : 'Lưu thay đổi'}
+              {editorMode === 'create' ? 'Tạo cấu hình' : 'Save thay đổi'}
             </span>
           )}
         </Button>

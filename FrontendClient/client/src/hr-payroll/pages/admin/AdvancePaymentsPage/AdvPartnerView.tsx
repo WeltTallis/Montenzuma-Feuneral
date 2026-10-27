@@ -366,7 +366,7 @@ const AdvPartnerAdvancePaymentsPage = () => {
                   value={(page.filters.status as AdvancePaymentRequestStatus) || "all"}
                   onValueChange={page.handleStatusChange}
                 >
-                  <SelectTrigger aria-label="Lọc trạng thái yêu cầu ứng lương" className="h-8 min-h-0 shrink-0 w-auto min-w-[90px] sm:min-w-[120px] text-[13px] font-medium gap-1">
+                  <SelectTrigger aria-label="Filter trạng thái yêu cầu ứng lương" className="h-8 min-h-0 shrink-0 w-auto min-w-[90px] sm:min-w-[120px] text-[13px] font-medium gap-1">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent className="min-w-[140px]">

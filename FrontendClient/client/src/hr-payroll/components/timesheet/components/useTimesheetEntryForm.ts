@@ -28,7 +28,7 @@ import {
 interface FormData {
   hoursWorked: number;
   hourType: string;
-  dayType: "Ngày thường" | "Ngày nghỉ" | "Ngày lễ";
+  dayType: "Date thường" | "Date nghỉ" | "Date lễ";
 }
 
 interface UseTimesheetEntryFormProps {
@@ -61,7 +61,7 @@ export function useTimesheetEntryForm({
   const [formData, setFormData] = useState<FormData>({
     hoursWorked: 8,
     hourType: "",
-    dayType: "Ngày thường",
+    dayType: "Date thường",
   });
 
   const createTimesheetsMutation = useCreateTimesheets();
@@ -156,7 +156,7 @@ export function useTimesheetEntryForm({
     if (entryDate < startDate) {
       return {
         isValid: false,
-        errorMessage: `Ngày chấm công không thể trước ngày bắt đầu làm việc (${format(startDate, "dd/MM/yyyy", { locale: vi })})`,
+        errorMessage: `Date chấm công không thể trước ngày bắt đầu làm việc (${format(startDate, "dd/MM/yyyy", { locale: vi })})`,
       };
     }
     return { isValid: true, errorMessage: "" };

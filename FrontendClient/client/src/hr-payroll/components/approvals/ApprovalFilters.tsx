@@ -24,7 +24,7 @@ export const ApprovalFilters = ({
       <SearchBar
         searchTerm={searchTerm}
         onSearchChange={onSearchChange}
-        placeholder="Tìm kiếm yêu cầu..."
+        placeholder="Search yêu cầu..."
         className="w-56"
       />
       <Select value={priorityFilter} onValueChange={onPriorityChange}>
@@ -32,7 +32,7 @@ export const ApprovalFilters = ({
           <SelectValue placeholder="Độ ưu tiên" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tất cả độ ưu tiên</SelectItem>
+          <SelectItem value="all">All độ ưu tiên</SelectItem>
           <SelectItem value="urgent">Khẩn cấp</SelectItem>
           <SelectItem value="high">Cao</SelectItem>
           <SelectItem value="medium">Trung bình</SelectItem>
@@ -44,7 +44,7 @@ export const ApprovalFilters = ({
           <SelectValue placeholder="Loại yêu cầu" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tất cả loại</SelectItem>
+          <SelectItem value="all">All loại</SelectItem>
           <SelectItem value="timesheet">Timesheets</SelectItem>
           <SelectItem value="payrate">Mức lương</SelectItem>
           <SelectItem value="payroll">Bảng lương</SelectItem>

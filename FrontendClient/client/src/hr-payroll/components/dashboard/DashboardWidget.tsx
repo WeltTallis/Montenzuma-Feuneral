@@ -148,7 +148,7 @@ export const DashboardWidget: React.FC<DashboardWidgetProps> = ({
                       "mr-2 h-4 w-4",
                       refreshing && "animate-spin"
                     )} />
-                    Làm mới
+                    Refresh
                   </DropdownMenuItem>
                 )}
                 
@@ -169,7 +169,7 @@ export const DashboardWidget: React.FC<DashboardWidgetProps> = ({
                 {onExport && (
                   <DropdownMenuItem onClick={onExport}>
                     <Download className="mr-2 h-4 w-4" />
-                    Xuất dữ liệu
+                    Export dữ liệu
                   </DropdownMenuItem>
                 )}
                 
@@ -193,7 +193,7 @@ export const DashboardWidget: React.FC<DashboardWidgetProps> = ({
                       className="text-destructive"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Xóa widget
+                      Delete widget
                     </DropdownMenuItem>
                   </>
                 )}

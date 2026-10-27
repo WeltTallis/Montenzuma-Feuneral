@@ -209,7 +209,7 @@ function TransactionFormComponent({
         if (!data.user_id) {
           setError('user_id', {
             type: 'manual',
-            message: 'Vui lòng chọn người góp vốn'
+            message: 'Please chọn người góp vốn'
           });
           return;
         }
@@ -237,7 +237,7 @@ function TransactionFormComponent({
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          setFileUploadError(`Không thể tải lên file: ${errorMessage}`);
+          setFileUploadError(`Failed to load lên file: ${errorMessage}`);
           return;
         }
       } else if (evidenceType === 'url' && data.evidenceUrl?.trim()) {
@@ -262,7 +262,7 @@ function TransactionFormComponent({
     } catch (error: unknown) {
       console.error('Form submission error:', error);
       if (error instanceof Error && error.message.includes('asset')) {
-        setFileUploadError(`Lỗi tải file: ${error.message}`);
+        setFileUploadError(`Error tải file: ${error.message}`);
       }
     }
   };
@@ -303,7 +303,7 @@ function TransactionFormComponent({
             </div>
             <div className="space-y-1 flex-1 min-w-0">
               <h1 className="typography-headline-medium text-base sm:text-lg font-medium">
-                Thêm Giao Dịch Mới
+                Add Giao Dịch New
               </h1>
               <p className="typography-body-small text-muted-foreground">
                 Ghi lại chi phí hoặc doanh thu
@@ -331,7 +331,7 @@ function TransactionFormComponent({
             variant="default"
             className="min-h-11 w-full"
           >
-            {isLoading ? 'Đang xử lý...' : 'Save'}
+            {isLoading ? 'Processing...' : 'Save'}
           </Button>
         </div>
       }
@@ -365,7 +365,7 @@ function TransactionFormComponent({
           {/* Amount and Settlement Status */}
           <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="amount" className="text-xs font-medium text-muted-foreground">Số Tiền *</Label>
+              <Label htmlFor="amount" className="text-xs font-medium text-muted-foreground">Số Money *</Label>
               <div className="relative">
                 <Input
                   id="amount"
@@ -428,7 +428,7 @@ function TransactionFormComponent({
           ) : (
             <div className="space-y-1.5">
               <Label htmlFor="party" className="text-xs font-medium text-muted-foreground">
-                {transactionType === 'expense' ? 'Nhà cung cấp / Người nhận' : 'Khách hàng / Người trả'} *
+                {transactionType === 'expense' ? 'Nhà cung cấp / Người nhận' : 'Otherh hàng / Người trả'} *
               </Label>
               <Input
                 id="party"
@@ -519,7 +519,7 @@ function TransactionFormComponent({
                     variant="ghost"
                     size="sm"
                     onClick={handleRemoveFile}
-                    aria-label="Xóa chứng từ đã chọn"
+                    aria-label="Delete chứng từ đã chọn"
                     className="h-11 w-11 shrink-0 p-0 text-muted-foreground hover:text-red-700"
                   >
                     <X className="h-4 w-4" />

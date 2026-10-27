@@ -237,12 +237,12 @@ export const ChuyenLoDialog = memo(function ChuyenLoDialog({
                 <span className="text-slate-600">|</span>
                 <span className="text-muted-foreground flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                  Thành công: <span className="font-semibold text-emerald-700 ml-0.5">{ninePayStatus?.completed ?? historyDetail.completed_txn}</span>
+                  Success: <span className="font-semibold text-emerald-700 ml-0.5">{ninePayStatus?.completed ?? historyDetail.completed_txn}</span>
                 </span>
                 <span className="text-slate-600">|</span>
                 <span className="text-muted-foreground flex items-center gap-1">
                   <XCircle className="w-3 h-3 text-red-700" />
-                  Thất bại: <span className={cn('font-semibold ml-0.5', (ninePayStatus?.failed ?? historyDetail.failed_txn) > 0 ? 'text-red-700' : 'text-muted-foreground')}>
+                  Failed: <span className={cn('font-semibold ml-0.5', (ninePayStatus?.failed ?? historyDetail.failed_txn) > 0 ? 'text-red-700' : 'text-muted-foreground')}>
                     {ninePayStatus?.failed ?? historyDetail.failed_txn}
                   </span>
                 </span>
@@ -361,7 +361,7 @@ export const ChuyenLoDialog = memo(function ChuyenLoDialog({
               </div>
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-2xl font-bold text-green-700">{ninePayStatus?.completed ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Hoàn tất</p>
+                <p className="text-xs text-muted-foreground">Completed</p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-2xl font-bold text-red-700">{ninePayStatus?.failed ?? 0}</p>
@@ -371,7 +371,7 @@ export const ChuyenLoDialog = memo(function ChuyenLoDialog({
             {ninePayStatus && ninePayStatus.processing > 0 && (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Đang xử lý {ninePayStatus.processing} giao dịch...
+                Processing {ninePayStatus.processing} giao dịch...
               </div>
             )}
             {completed && !historyDetail && (
@@ -420,8 +420,8 @@ export const ChuyenLoDialog = memo(function ChuyenLoDialog({
           {/* Manual tab */}
           <TabsContent value="manual" className="space-y-3 mt-3">
             <p className="text-xs text-muted-foreground">
-              Xuất Excel → CK qua app ngân hàng → upload kết quả tại{' '}
-              <span className="font-medium text-foreground">Nhập KQ chuyển lô</span>.
+              Export Excel → CK qua app ngân hàng → upload kết quả tại{' '}
+              <span className="font-medium text-foreground">Import KQ chuyển lô</span>.
             </p>
             <SharedExportForm form={form} projects={projects} isMobile={isMobile} />
           </TabsContent>
@@ -482,7 +482,7 @@ export const ChuyenLoDialog = memo(function ChuyenLoDialog({
               ) : (
                 <>
                   <Download className="w-3.5 h-3.5 mr-1.5" />
-                  Xuất Excel
+                  Export Excel
                 </>
               )}
             </Button>
@@ -525,7 +525,7 @@ function SharedExportForm({ form, projects, isMobile }: SharedExportFormProps) {
         <ButtonGroup
           options={[
             { value: 'weekly', label: 'Weekly payroll' },
-            { value: 'monthly', label: 'Lương tháng' },
+            { value: 'monthly', label: 'Payroll tháng' },
           ]}
           value={form.paymentSchedule}
           onChange={form.setPaymentSchedule}

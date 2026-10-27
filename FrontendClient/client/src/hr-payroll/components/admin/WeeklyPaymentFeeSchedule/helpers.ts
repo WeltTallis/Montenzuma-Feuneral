@@ -59,10 +59,10 @@ export function validateFormState(
   state: WeeklyPaymentFeeFormState,
 ): string | null {
   if (!state.effectiveDate) {
-    return "Vui lòng chọn ngày hiệu lực";
+    return "Please chọn ngày hiệu lực";
   }
   if (state.effectiveDate < todayISO()) {
-    return "Ngày hiệu lực phải là hôm nay hoặc tương lai";
+    return "Date hiệu lực phải là hôm nay hoặc tương lai";
   }
   if (!Number.isFinite(state.percentage) || state.percentage < 0 || state.percentage > 100) {
     return "Tỷ lệ phí phải từ 0 đến 100";

@@ -25,8 +25,8 @@ const flat = (percentage: number, label: string, description: string): FeeSchedu
 });
 
 export const FEE_SCHEDULE_PRESETS: FeeSchedulePreset[] = [
-  flat(2, "Phí cố định 2%", "Mọi khoản ứng đều tính 2%"),
-  flat(1.5, "Phí cố định 1,5%", "Mọi khoản ứng đều tính 1,5%"),
+  flat(2, "Fee cố định 2%", "Mọi khoản ứng đều tính 2%"),
+  flat(1.5, "Fee cố định 1,5%", "Mọi khoản ứng đều tính 1,5%"),
   {
     key: "tiered-2-1.3",
     label: "Phân tầng 2% / 1,3%",

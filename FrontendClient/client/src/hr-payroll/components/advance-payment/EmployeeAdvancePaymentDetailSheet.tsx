@@ -102,7 +102,7 @@ function EmployeeDetailContent({ employee: emp, requests }: EmployeeDetailConten
 
         {/* ── Info row ── */}
         <div className="px-4 pt-2 pb-2">
-          <InfoCard label="Phí thu" value={formatCurrency(emp.totalFeeGenerated)} />
+          <InfoCard label="Fee thu" value={formatCurrency(emp.totalFeeGenerated)} />
         </div>
 
         {/* ── Bank info ── */}
@@ -340,7 +340,7 @@ function RequestCard({ request: req }: { request: AdvancePaymentListItem }) {
           </span>
           <span className="text-slate-200" aria-hidden="true">·</span>
           <span>
-            Phí <span className="tabular-nums">{formatCurrency(req.fee)}</span>
+            Fee <span className="tabular-nums">{formatCurrency(req.fee)}</span>
           </span>
         </div>
       </div>

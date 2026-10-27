@@ -115,7 +115,7 @@ export function ExistingEntriesDisplay({
       <CardHeader className="pb-3">
         <CardTitle className="typography-title-large flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
-          Bảng công hiện tại
+          Timesheet hiện tại
           <Badge variant="outline" className="typography-body-small">
             {existingTimesheets.length} bản ghi
           </Badge>
@@ -185,7 +185,7 @@ export function ExistingEntriesDisplay({
                     <div className="flex gap-2 mt-3">
                       <Button variant="outline" size="sm" className="h-11 flex-1 typography-body-small">
                         <Edit className="h-3 w-3 mr-1" />
-                        Sửa
+                        Edit
                       </Button>
                       <Button variant="outline" size="sm" className="h-11 w-11 px-2">
                         <Trash2 className="h-3 w-3 text-destructive" />

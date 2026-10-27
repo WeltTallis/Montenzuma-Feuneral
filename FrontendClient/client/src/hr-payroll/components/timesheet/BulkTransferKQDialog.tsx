@@ -15,7 +15,7 @@ interface BulkTransferKQDialogProps {
 /**
  * "Tạo KQ CK" — turns an outbound chuyển-lô workbook (the file handed to the
  * bank) into the bank result workbook the system accepts back through the
- * "Nhập KQ chuyển lô" dialog.
+ * "Import KQ chuyển lô" dialog.
  *
  * Every line is written as "Successful" with an empty FT column, so the admin
  * is expected to edit the downloaded workbook (mark real failures, paste the
@@ -99,7 +99,7 @@ export const BulkTransferKQDialog = memo(function BulkTransferKQDialog({
               </p>
               <p className="typography-body-small text-blue-800">
                 Tải lên file chuyển lô → file KQ CK tải xuống → sửa lại trạng
-                thái/FT nếu cần → nhập lại qua “Nhập KQ chuyển lô”.
+                thái/FT nếu cần → nhập lại qua “Import KQ chuyển lô”.
               </p>
             </div>
           </div>

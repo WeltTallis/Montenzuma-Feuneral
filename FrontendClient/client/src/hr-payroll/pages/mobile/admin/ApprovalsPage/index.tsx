@@ -22,7 +22,7 @@ const FILTERS: { key: string; label: string; statuses: ApprovalStatus[] }[] = [
   { key: 'done', label: 'Approved', statuses: ['approved', 'executed'] },
   { key: 'rejected', label: 'Reject', statuses: ['rejected'] },
   { key: 'escalated', label: 'Leo thang', statuses: ['escalated'] },
-  { key: 'all', label: 'Tất cả', statuses: [] },
+  { key: 'all', label: 'All', statuses: [] },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -116,7 +116,7 @@ const ApprovalsPageMobile = () => {
             variant="outline"
             size="icon"
             className="size-11 shrink-0"
-            aria-label="Làm mới"
+            aria-label="Refresh"
             onClick={() => {
               void listQuery.refetch();
               void waitingQuery.refetch();
@@ -126,7 +126,7 @@ const ApprovalsPageMobile = () => {
             <RefreshCw aria-hidden="true" className="size-4" />
           </Button>
         </div>
-        <div className="mt-3 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="tablist" aria-label="Lọc theo trạng thái">
+        <div className="mt-3 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="tablist" aria-label="Filter theo trạng thái">
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -160,7 +160,7 @@ const ApprovalsPageMobile = () => {
               onChange={(event) => setPrepareDate(event.target.value)}
               disabled={fileApproval.isPending}
               className="mt-1.5 h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-              aria-label="Ngày sao kê"
+              aria-label="Date sao kê"
             />
           </div>
           <Button
@@ -189,7 +189,7 @@ const ApprovalsPageMobile = () => {
           </div>
         ) : listQuery.isError ? (
           <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-10 text-center">
-            <p className="text-sm font-medium text-destructive">Không thể tải danh sách.</p>
+            <p className="text-sm font-medium text-destructive">Failed to load danh sách.</p>
             <Button type="button" variant="outline" className="mt-3 h-11" onClick={() => void listQuery.refetch()}>
               Refresh
             </Button>

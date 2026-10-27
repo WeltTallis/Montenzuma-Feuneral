@@ -66,7 +66,7 @@ export function createPartnerTimesheetColumns(): ColumnDef<Timesheet>[] {
     {
       id: "date",
       accessorKey: "date",
-      header: "Ngày làm",
+      header: "Date làm",
       cell: ({ row }) => {
         const timesheet = row.original;
         return (
@@ -131,7 +131,7 @@ export function createPartnerTimesheetColumns(): ColumnDef<Timesheet>[] {
     {
       id: "paid_amount",
       accessorKey: "paid_amount",
-      header: "Tiền đã trả",
+      header: "Money đã trả",
       cell: ({ row }) => {
         const timesheet = row.original;
         const paidAmount = timesheet.paid_amount;

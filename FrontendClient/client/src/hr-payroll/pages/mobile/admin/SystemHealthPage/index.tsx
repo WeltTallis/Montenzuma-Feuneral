@@ -104,7 +104,7 @@ export default function SystemHealthPage() {
 
       {/* Errors */}
       <div className="px-4 space-y-3">
-        <SectionLabel>Lỗi</SectionLabel>
+        <SectionLabel>Error</SectionLabel>
         <MobileErrorByEndpointCards days={errorDays} />
       </div>
 

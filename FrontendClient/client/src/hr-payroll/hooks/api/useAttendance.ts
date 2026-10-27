@@ -56,7 +56,7 @@ export function useCheckOut() {
       toast[salaryRecorded ? "success" : "warning"](
         salaryRecorded ? "Đã ghi nhận lương" : "Tan ca thành công",
         {
-          description: salaryMessage || "Vui lòng kiểm tra thông tin lương ca làm.",
+          description: salaryMessage || "Please check thông tin lương ca làm.",
           duration: 6000,
         }
       );

@@ -1,7 +1,7 @@
 // Settlement Simulation types — mirrors backend dto.SimulateSettlementRequest
 // and dto.SimulationResult (see backend/internal/app/dto/payroll.go).
 //
-// The simulation projects N future "Xuất sao kê" exports starting from an
+// The simulation projects N future "Export sao kê" exports starting from an
 // admin-chosen date, reusing the EXACT same PayrollReportByProjectService
 // selection logic as production. Returns a coverage verdict: "will these N
 // exports reconcile every paid-but-unsettled timesheet?"

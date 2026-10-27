@@ -61,7 +61,7 @@ export const createPartnerEmployeeColumns = (
     },
     {
       accessorKey: "mobile",
-      header: "Điện thoại",
+      header: "Phone",
       size: 140,
       cell: ({ row }) => (
         <div className="flex items-center gap-2 min-w-[120px]">
@@ -72,7 +72,7 @@ export const createPartnerEmployeeColumns = (
     },
     {
       id: "current_projects",
-      header: "Dự án hiện tại",
+      header: "Project hiện tại",
       size: 200,
       cell: ({ row }) => {
         const employee = row.original;

@@ -106,8 +106,8 @@ export function MobileEmployeeCard({
                   <TooltipContent>
                     <p>
                       {hourStatus === 'excessive'
-                        ? 'Nhân viên đã làm việc quá 16 giờ trong ngày'
-                        : 'Nhân viên đã làm việc quá 12 giờ trong ngày'
+                        ? 'Employee đã làm việc quá 16 giờ trong ngày'
+                        : 'Employee đã làm việc quá 12 giờ trong ngày'
                       }
                     </p>
                   </TooltipContent>

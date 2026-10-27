@@ -60,13 +60,13 @@ const OUTCOME_COPY: Record<
   }
 > = {
   valid: {
-    title: "Tài khoản hợp lệ",
+    title: "Account hợp lệ",
     description: "Nhà cung cấp đã xác nhận tài khoản có thể đối chiếu.",
     className: "border-success/30 bg-success/10 text-success",
     icon: BadgeCheck,
   },
   invalid: {
-    title: "Tài khoản không hợp lệ",
+    title: "Account không hợp lệ",
     description:
       "Nhà cung cấp xác nhận tài khoản không hợp lệ hoặc không tồn tại.",
     className: "border-error/30 bg-error/10 text-error",
@@ -81,7 +81,7 @@ const OUTCOME_COPY: Record<
   unverified: {
     title: "Chưa thể xác minh",
     description:
-      "Nhà cung cấp chưa thể đưa ra kết quả xác nhận. Vui lòng thử lại sau.",
+      "Nhà cung cấp chưa thể đưa ra kết quả xác nhận. Please try again sau.",
     className: "border-info/30 bg-info/10 text-utility-blue-700",
     icon: HelpCircle,
   },
@@ -134,15 +134,15 @@ function lookupErrorMessage(error: unknown): string {
   const { code, message } = createAppError(error);
   switch (code) {
     case "employee_bank_data_incomplete":
-      return "Nhân viên chưa có đủ thông tin ngân hàng đã lưu để tra cứu.";
+      return "Employee chưa có đủ thông tin ngân hàng đã lưu để tra cứu.";
     case "employee_not_found":
-      return "Không tìm thấy nhân viên. Vui lòng chọn lại từ danh sách.";
+      return "Không tìm thấy nhân viên. Please chọn lại từ danh sách.";
     case "account_verifier_unavailable":
-      return "Dịch vụ xác minh tài khoản hiện chưa sẵn sàng. Vui lòng thử lại sau.";
+      return "Dịch vụ xác minh tài khoản hiện chưa sẵn sàng. Please try again sau.";
     case "account_verification_provider_error":
-      return "Nhà cung cấp không thể xác minh tài khoản lúc này. Vui lòng thử lại sau.";
+      return "Nhà cung cấp không thể xác minh tài khoản lúc này. Please try again sau.";
     default:
-      return message || "Không thể tra cứu tài khoản. Vui lòng thử lại sau.";
+      return message || "Không thể tra cứu tài khoản. Please try again sau.";
   }
 }
 
@@ -472,7 +472,7 @@ export function EmployeeAccountLookupDialog({
                   : "text-muted-foreground",
               )}
             >
-              Nhập thủ công
+              Import thủ công
             </button>
           </div>
 

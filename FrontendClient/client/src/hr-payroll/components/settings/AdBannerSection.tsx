@@ -114,8 +114,8 @@ export const AdBannerSection = () => {
 
   const targetingLabel = (banner: AdBanner) =>
     banner.targetProjectIds.length === 0
-      ? 'Tất cả dự án'
-      : banner.targetProjectIds.map((id) => projectNameById.get(id) ?? `Dự án #${id}`).join(', ');
+      ? 'All dự án'
+      : banner.targetProjectIds.map((id) => projectNameById.get(id) ?? `Project #${id}`).join(', ');
 
   const toggleActive = (banner: AdBanner) => {
     updateMutation.mutate(
@@ -142,7 +142,7 @@ export const AdBannerSection = () => {
   };
 
   const remove = (banner: AdBanner) => {
-    if (!window.confirm(`Xóa chiến dịch "${banner.title}"? Số liệu lượt bấm sẽ không còn hiển thị.`)) return;
+    if (!window.confirm(`Delete chiến dịch "${banner.title}"? Số liệu lượt bấm sẽ không còn hiển thị.`)) return;
     deleteMutation.mutate(banner.id, {
       onSuccess: () => toast.success('Đã xóa chiến dịch'),
       onError: (err: unknown) => toast.error(getErrorMessage(err)),
@@ -208,7 +208,7 @@ export const AdBannerSection = () => {
             type="button"
             variant="outline"
             size="icon"
-            aria-label="Tải lại danh sách"
+            aria-label="Reload danh sách"
             onClick={() => { void refetch(); }}
             disabled={isFetching}
           >
@@ -315,7 +315,7 @@ export const AdBannerSection = () => {
                   ) : (
                     <>
                       <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setEditing({ banner, clone: false })}>
-                        Sửa
+                        Edit
                       </Button>
                       <Button
                         type="button"
@@ -334,7 +334,7 @@ export const AdBannerSection = () => {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label={`Xóa chiến dịch ${banner.title}`}
+                    aria-label={`Delete chiến dịch ${banner.title}`}
                     className="min-h-11 min-w-11 text-muted-foreground hover:text-destructive sm:min-h-0 sm:min-w-0"
                     onClick={() => remove(banner)}
                     disabled={deleteMutation.isPending}

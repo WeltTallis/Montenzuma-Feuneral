@@ -48,7 +48,7 @@ export function GroupBulkRejectDialog({
           <div className="p-3 bg-muted rounded-xl">
             <p className="font-medium">{group.employeeName}</p>
             <p className="typography-body-medium text-muted-foreground">
-              Ngày {formatDate(group.date)} • {group.statusBreakdown.pending_approval} mục chờ duyệt
+              Date {formatDate(group.date)} • {group.statusBreakdown.pending_approval} mục chờ duyệt
             </p>
           </div>
 
@@ -61,7 +61,7 @@ export function GroupBulkRejectDialog({
             <Label htmlFor="group-rejection-reason">Lý do loại *</Label>
             <Textarea
               id="group-rejection-reason"
-              placeholder="Nhập lý do loại chung cho tất cả mục trong nhóm..."
+              placeholder="Import lý do loại chung cho tất cả mục trong nhóm..."
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               rows={3}

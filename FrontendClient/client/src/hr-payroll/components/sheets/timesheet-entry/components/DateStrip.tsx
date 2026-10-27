@@ -45,7 +45,7 @@ export const DateStrip = memo(
             key={date}
             type="button"
             aria-pressed={isActive}
-            aria-label={`Ngày ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`}
+            aria-label={`Date ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`}
             onClick={() => onDateSelect(date)}
             className={cn(
               "flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl shrink-0 min-h-11 min-w-11 transition-all active:scale-95",

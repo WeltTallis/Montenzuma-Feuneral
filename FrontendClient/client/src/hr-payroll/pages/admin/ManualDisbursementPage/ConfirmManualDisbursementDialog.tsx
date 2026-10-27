@@ -47,9 +47,9 @@ export function ConfirmManualDisbursementDialog(props: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Xác nhận chuyển tiền</DialogTitle>
+          <DialogTitle>Confirm chuyển tiền</DialogTitle>
           <DialogDescription>
-            Vui lòng kiểm tra kỹ thông tin bên dưới. Giao dịch sẽ chuyển tiền
+            Please check kỹ thông tin bên dưới. Giao dịch sẽ chuyển tiền
             thật và không thể hoàn lại trực tiếp từ hệ thống này.
           </DialogDescription>
         </DialogHeader>
@@ -82,7 +82,7 @@ export function ConfirmManualDisbursementDialog(props: Props) {
             </p>
             {fee !== null && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Phí: {formatAmount(fee)} ₫
+                Fee: {formatAmount(fee)} ₫
                 {total !== null && <> · Tổng: {formatAmount(total)} ₫</>}
               </p>
             )}
@@ -127,7 +127,7 @@ export function ConfirmManualDisbursementDialog(props: Props) {
             className="min-h-11 w-full sm:w-auto"
           >
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Xác nhận chuyển
+            Confirm chuyển
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -47,7 +47,7 @@ export const BulkActionBar = ({
               variant="outline"
               onClick={onClearSelection}
             >
-              Hủy chọn
+              Cancel chọn
             </Button>
           </div>
         </div>

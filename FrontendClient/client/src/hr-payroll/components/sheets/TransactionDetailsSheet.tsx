@@ -249,7 +249,7 @@ function TransactionDetailsSheetComponent({
     const trimmedUrl = evidenceUrl.trim();
 
     if (!trimmedUrl && !selectedEvidenceFile) {
-      setEvidenceError('Vui lòng nhập link hoặc tải lên file chứng từ');
+      setEvidenceError('Please nhập link hoặc tải lên file chứng từ');
       return;
     }
 
@@ -289,7 +289,7 @@ function TransactionDetailsSheetComponent({
       console.error('Cập nhật chứng từ thất bại:', error);
 
       if (!uploadedAssetId && selectedEvidenceFile) {
-        const message = error instanceof Error ? error.message : 'Không thể tải lên file chứng từ';
+        const message = error instanceof Error ? error.message : 'Failed to load lên file chứng từ';
         setEvidenceError(message);
       }
     }
@@ -338,7 +338,7 @@ function TransactionDetailsSheetComponent({
               </div>
               <div className="space-y-1 flex-1 min-w-0">
                 <h1 className="typography-headline-medium text-base sm:text-lg font-medium">
-                  Chi tiết giao dịch
+                  Details giao dịch
                 </h1>
               </div>
             </div>
@@ -371,7 +371,7 @@ function TransactionDetailsSheetComponent({
             <div className="space-y-1 flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="typography-headline-medium text-base sm:text-lg font-medium">
-                  Chi tiết giao dịch
+                  Details giao dịch
                 </h1>
                 {getTransactionTypeBadge(transaction.transaction_type)}
                 {getStatusBadge(transaction.status)}
@@ -409,7 +409,7 @@ function TransactionDetailsSheetComponent({
               className="min-h-11 flex-1 basis-0 px-3"
             >
               <Trash2 className="h-4 w-4" />
-              Hủy giao dịch
+              Cancel giao dịch
             </Button>
           )}
           {transaction.status === 'pending' && (
@@ -525,7 +525,7 @@ function TransactionDetailsSheetComponent({
                   disabled={downloadAsset.isPending}
                   size="icon"
                   className="h-11 w-11"
-                  title="Tải xuống chứng từ"
+                  title="Download chứng từ"
                 >
                   <Download className="w-4 h-4" />
                 </Button>
@@ -548,7 +548,7 @@ function TransactionDetailsSheetComponent({
                 onClick={isEditingEvidence ? handleCancelEvidenceEditing : handleStartEvidenceEditing}
                 disabled={isMutatingEvidence}
                 className="h-11 w-11"
-                title={isEditingEvidence ? 'Hủy cập nhật' : 'Cập nhật chứng từ'}
+                title={isEditingEvidence ? 'Cancel cập nhật' : 'Cập nhật chứng từ'}
               >
                 {isEditingEvidence ? (
                   <X className="h-4 w-4" />
@@ -650,7 +650,7 @@ function TransactionDetailsSheetComponent({
                   disabled={isMutatingEvidence}
                   className="min-h-11"
                 >
-                  Lưu chứng từ
+                  Save chứng từ
                 </Button>
               </div>
             </div>
@@ -665,7 +665,7 @@ function TransactionDetailsSheetComponent({
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận hủy giao dịch</AlertDialogTitle>
+            <AlertDialogTitle>Confirm hủy giao dịch</AlertDialogTitle>
             <AlertDialogDescription>
               Giao dịch và các bút toán sổ cái liên quan sẽ bị xóa vĩnh viễn.
             </AlertDialogDescription>
@@ -683,7 +683,7 @@ function TransactionDetailsSheetComponent({
                   Đang hủy...
                 </>
               ) : (
-                'Hủy giao dịch'
+                'Cancel giao dịch'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

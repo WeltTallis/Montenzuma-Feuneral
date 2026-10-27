@@ -52,7 +52,7 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
     ? 'Chuyển lô qua nhà cung cấp'
     : isOnePay
       ? 'Chuyển OnePay'
-      : 'Xuất file chuyển lô';
+      : 'Export file chuyển lô';
   const dialogDescription = isProvider
     ? 'Chọn khoảng thời gian để chuyển tiền tự động qua nhà cung cấp'
     : isOnePay
@@ -100,7 +100,7 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
               </div>
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-2xl font-bold text-green-700">{status?.completed ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Hoàn tất</p>
+                <p className="text-xs text-muted-foreground">Completed</p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-2xl font-bold text-red-700">{status?.failed ?? 0}</p>
@@ -111,7 +111,7 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
             {status && status.processing > 0 && (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Đang xử lý {status.processing} giao dịch...
+                Processing {status.processing} giao dịch...
               </div>
             )}
 
@@ -120,13 +120,13 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
                 {status && status.failed === 0 ? (
                   <>
                     <CheckCircle2 className="w-5 h-5 text-green-700" />
-                    <span className="text-green-700">Tất cả giao dịch đã hoàn tất</span>
+                    <span className="text-green-700">All giao dịch đã hoàn tất</span>
                   </>
                 ) : (
                   <>
                     <XCircle className="w-5 h-5 text-orange-700" />
                     <span className="text-orange-700">
-                      Hoàn tất ({status.completed} thành công, {status.failed} thất bại)
+                      Completed ({status.completed} thành công, {status.failed} thất bại)
                     </span>
                   </>
                 )}
@@ -151,7 +151,7 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
         <DialogContent
           className="sm:max-w-lg shadow-none"
           title="Đang khởi tạo"
-          description="Vui lòng đợi..."
+          description="Please đợi..."
         >
           <DialogHeader className="pb-2">
             <DialogTitle className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
               <ButtonGroup
                 options={[
                   { value: 'weekly', label: 'Weekly payroll' },
-                  { value: 'monthly', label: 'Lương tháng' }
+                  { value: 'monthly', label: 'Payroll tháng' }
                 ]}
                 value={form.paymentSchedule}
                 onChange={form.setPaymentSchedule}
@@ -257,7 +257,7 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isProvider ? 'Đang xử lý...' : isOnePay ? 'Đang tạo file...' : 'Đang xuất...'}
+                {isProvider ? 'Processing...' : isOnePay ? 'Đang tạo file...' : 'Đang xuất...'}
               </>
             ) : isProvider ? (
               <>
@@ -272,7 +272,7 @@ export const BulkTransferExportDialog = memo(function BulkTransferExportDialog({
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Xuất Excel
+                Export Excel
               </>
             )}
           </Button>

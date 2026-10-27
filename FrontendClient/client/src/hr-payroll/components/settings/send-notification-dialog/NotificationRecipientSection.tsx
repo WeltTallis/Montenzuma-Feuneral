@@ -51,7 +51,7 @@ export const NotificationRecipientSection = memo(function NotificationRecipientS
           aria-label="Gửi đến tất cả Admin"
         >
           <Shield className="h-3.5 w-3.5" />
-          <span>Tất cả Admin</span>
+          <span>All Admin</span>
         </ToggleGroupItem>
 
         <ToggleGroupItem
@@ -66,7 +66,7 @@ export const NotificationRecipientSection = memo(function NotificationRecipientS
           aria-label="Gửi đến tất cả Quản lý"
         >
           <UserCog className="h-3.5 w-3.5" />
-          <span>Tất cả Quản lý</span>
+          <span>All Quản lý</span>
         </ToggleGroupItem>
 
         <ToggleGroupItem
@@ -78,10 +78,10 @@ export const NotificationRecipientSection = memo(function NotificationRecipientS
             'data-[state=on]:bg-green-100 data-[state=on]:border-green-300 data-[state=on]:text-green-700',
             'dark:data-[state=on]:bg-green-950/50 dark:data-[state=on]:border-green-700 dark:data-[state=on]:text-green-300'
           )}
-          aria-label="Gửi đến tất cả Nhân viên"
+          aria-label="Gửi đến tất cả Employee"
         >
           <User className="h-3.5 w-3.5" />
-          <span>Tất cả Nhân viên</span>
+          <span>All Employee</span>
         </ToggleGroupItem>
       </ToggleGroup>
 

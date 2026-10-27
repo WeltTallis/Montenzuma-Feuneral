@@ -198,7 +198,7 @@ export function InfiniteList<T>({
             className="gap-2"
           >
             <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            Làm mới
+            Refresh
           </Button>
         </div>
       )}

@@ -43,7 +43,7 @@ export function TransactionSummaryCardMobile({ ledgerSummary, isLoading }: Trans
     { label: 'Doanh thu', value: fmt(revenue), positive: true },
     { label: 'Chi phí', value: fmt(expense), positive: false },
     { label: 'Lợi nhuận', value: fmt(profit), positive: profit >= 0 },
-    { label: 'Tiền mặt', value: fmt(by_account.cash?.net_amount ?? 0), neutral: true },
+    { label: 'Money mặt', value: fmt(by_account.cash?.net_amount ?? 0), neutral: true },
   ];
 
   const secondaryStats = [

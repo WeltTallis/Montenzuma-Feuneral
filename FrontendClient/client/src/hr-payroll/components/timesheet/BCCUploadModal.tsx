@@ -228,7 +228,7 @@ const ResultCounts = memo(function ResultCounts({
         <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-700/50 dark:bg-rose-900/20">
           <dt className="flex items-center gap-1.5 text-xs font-medium text-rose-700 dark:text-rose-300">
             <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-            Lỗi
+            Error
           </dt>
           <dd className="mt-0.5 text-base font-bold tabular-nums text-rose-900 dark:text-rose-100">
             {result.error_count}
@@ -323,10 +323,10 @@ const ResultSuccess = memo(function ResultSuccess({ result }: ResultSuccessProps
         </div>
         <div className="min-w-0 flex-1">
           <h4 className="text-base font-semibold text-emerald-900 dark:text-emerald-200">
-            Nhập dữ liệu thành công
+            Import dữ liệu thành công
           </h4>
           <p className="mt-0.5 text-sm text-emerald-700 dark:text-emerald-300/80">
-            Tháng {formatMonthLabel(result.for_month)} · Tất cả dữ liệu hợp lệ đã được nhập.
+            Tháng {formatMonthLabel(result.for_month)} · All dữ liệu hợp lệ đã được nhập.
           </p>
         </div>
         <PartyPopper className="h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />
@@ -349,7 +349,7 @@ const ResultPartial = memo(function ResultPartial({ result }: ResultFailureProps
         </div>
         <div className="min-w-0 flex-1">
           <h4 className="text-base font-semibold text-amber-950 dark:text-amber-100">
-            Nhập dữ liệu hoàn tất một phần
+            Import dữ liệu hoàn tất một phần
           </h4>
           <p className="mt-1 text-sm leading-relaxed text-amber-800 dark:text-amber-200/90">
             Dữ liệu hợp lệ đã được nhập. Kiểm tra các dòng lỗi để hoàn tất phần còn lại.
@@ -378,7 +378,7 @@ const ResultFailure = memo(function ResultFailure({ result }: ResultFailureProps
           </div>
           <div className="min-w-0 flex-1">
             <h4 className="text-base font-semibold text-rose-900 dark:text-rose-200">
-              Nhập dữ liệu thất bại
+              Import dữ liệu thất bại
             </h4>
             <p className="mt-1 text-sm leading-relaxed text-rose-700 dark:text-rose-300/80">{summaryText}</p>
           </div>
@@ -407,7 +407,7 @@ function ImportProcessingState({ status }: { status: 'pending' | 'processing' })
       />
       <div>
         <p className="font-semibold text-slate-900 dark:text-slate-100">
-          {isQueued ? 'Đã nhận tệp. Đang chờ xử lý…' : 'Đang xử lý bảng chấm công…'}
+          {isQueued ? 'Đã nhận tệp. Waiting xử lý…' : 'Processing bảng chấm công…'}
         </p>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
           Bạn có thể đóng cửa sổ này. Hệ thống vẫn tiếp tục xử lý.
@@ -417,7 +417,7 @@ function ImportProcessingState({ status }: { status: 'pending' | 'processing' })
         className="h-1.5 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900"
         role="progressbar"
         aria-label={isQueued ? 'Tệp đang chờ xử lý' : 'Bảng chấm công đang được xử lý'}
-        aria-valuetext={isQueued ? 'Đang chờ' : 'Processing'}
+        aria-valuetext={isQueued ? 'Waiting' : 'Processing'}
       >
         <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-600 motion-reduce:animate-none" />
       </div>
@@ -479,7 +479,7 @@ export const BCCUploadModal = memo(function BCCUploadModal({
               <span className="flex flex-col leading-tight">
                 <span className="text-[15px] font-semibold">Tải lên Bảng Chấm Công</span>
                 <span className="text-[12px] font-normal text-slate-600 dark:text-slate-400">
-                  Nhập dữ liệu chấm công từ tệp Excel
+                  Import dữ liệu chấm công từ tệp Excel
                 </span>
               </span>
             </h3>
@@ -502,7 +502,7 @@ export const BCCUploadModal = memo(function BCCUploadModal({
               {needsProjectSelect && (
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Dự án áp dụng
+                    Project áp dụng
                     <span className="text-emerald-700">*</span>
                     {hasProject && (
                       <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
@@ -640,8 +640,8 @@ export const BCCUploadModal = memo(function BCCUploadModal({
                     </div>
                     <button
                       onClick={handleRemoveFile}
-                      title="Xóa tệp"
-                      aria-label="Xóa tệp"
+                      title="Delete tệp"
+                      aria-label="Delete tệp"
                       className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
                     >
                       <X className="h-4 w-4" />

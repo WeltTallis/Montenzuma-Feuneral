@@ -78,7 +78,7 @@ export default function ReconcileUploadDialog({
   }, [open]);
 
   const dateError = useMemo<string | null>(() => {
-    if (!startDate || !endDate) return "Vui lòng chọn khoảng ngày";
+    if (!startDate || !endDate) return "Please chọn khoảng ngày";
     if (startDate > endDate) return "Từ ngày phải nhỏ hơn hoặc bằng đến ngày";
     const fromMs = new Date(startDate + "T00:00:00").getTime();
     const toMs = new Date(endDate + "T00:00:00").getTime();
@@ -106,7 +106,7 @@ export default function ReconcileUploadDialog({
         }
       } catch (err) {
         setPolling(false);
-        showErrorNotification(err, "Lỗi truy vấn trạng thái đối soát");
+        showErrorNotification(err, "Error truy vấn trạng thái đối soát");
       }
     };
     poll();
@@ -123,7 +123,7 @@ export default function ReconcileUploadDialog({
       );
       setAutoRunning(false);
       if (!job_id) {
-        showSuccessNotification("Đối soát hoàn tất. Vui lòng làm mới để xem kết quả.");
+        showSuccessNotification("Đối soát hoàn tất. Please làm mới để xem kết quả.");
         onCompleted?.();
         return;
       }
@@ -285,7 +285,7 @@ export default function ReconcileUploadDialog({
               {polling && !isTerminal ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-600" />
-                  <span className="text-xs text-slate-700">Đang xử lý...</span>
+                  <span className="text-xs text-slate-700">Processing...</span>
                 </>
               ) : job?.status === "completed" ? (
                 <>

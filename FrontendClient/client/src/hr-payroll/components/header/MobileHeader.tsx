@@ -39,7 +39,7 @@ export const MobileHeader = ({ className }: MobileHeaderProps) => {
             size="icon"
             onClick={() => setIsNotificationSheetOpen(true)}
             className="relative h-10 w-10 touch-manipulation"
-            aria-label={`Thông báo${unreadCount > 0 ? ` (${unreadCount} chưa đọc)` : ""}`}
+            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} chưa đọc)` : ""}`}
           >
             <img
               src={bellIcon}

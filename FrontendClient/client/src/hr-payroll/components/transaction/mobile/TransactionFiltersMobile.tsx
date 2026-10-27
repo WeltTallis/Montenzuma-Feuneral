@@ -21,13 +21,13 @@ interface TransactionFiltersMobileProps {
 }
 
 const DATE_PRESETS = [
-  { label: 'Hôm nay', value: 'today' },
-  { label: 'Tuần này', value: 'this-week' },
-  { label: 'Tháng này', value: 'this-month' },
+  { label: 'Today', value: 'today' },
+  { label: 'This week', value: 'this-week' },
+  { label: 'This month', value: 'this-month' },
   { label: 'Tháng trước', value: 'last-month' },
   { label: 'Quý này', value: 'this-quarter' },
   { label: '6 tháng', value: 'last-6-months' },
-  { label: 'Năm này', value: 'this-year' },
+  { label: 'This year', value: 'this-year' },
 ];
 
 function getDatePreset(preset: string) {
@@ -89,7 +89,7 @@ export function TransactionFiltersMobile({
       <MobileSearchInput
         value={filters.search ?? ''}
         onSearch={(value) => set('search', value || undefined)}
-        placeholder="Tìm kiếm diễn giải, đối tượng..."
+        placeholder="Search diễn giải, đối tượng..."
       />
 
       {/* Row 1: date picker + clear */}
@@ -137,7 +137,7 @@ export function TransactionFiltersMobile({
         </Sheet>
 
         {hasFilters && (
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={onClearFilters} aria-label="Xóa bộ lọc">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={onClearFilters} aria-label="Delete bộ lọc">
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -159,7 +159,7 @@ export function TransactionFiltersMobile({
               searchPlaceholder="Tìm loại giao dịch..."
               triggerClassName="text-sm"
               options={[
-                { value: 'all', label: 'Tất cả loại' },
+                { value: 'all', label: 'All loại' },
                 ...(transactionMetadata?.transaction_types.map((t) => ({
                   value: t.type,
                   label: t.label,
@@ -175,7 +175,7 @@ export function TransactionFiltersMobile({
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 {transactionMetadata?.statuses.map((s) => (
                   <SelectItem key={s.type} value={s.type}>
                     {transactionService.getStatusDisplay(s.type, transactionMetadata)}

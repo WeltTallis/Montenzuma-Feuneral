@@ -80,7 +80,7 @@ export function UploadAndSettleDialog({
             disabled={!selectedFile || uploadAndSettleMutation.isPending}
           >
             {uploadAndSettleMutation.isPending
-              ? "Đang xử lý..."
+              ? "Processing..."
               : "Tải lên & Đối soát"}
           </Button>
         </DialogFooter>

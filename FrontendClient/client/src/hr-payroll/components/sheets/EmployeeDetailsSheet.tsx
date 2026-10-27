@@ -9,7 +9,7 @@ import type { ModalConfig } from "@hr/types/modal-config.types";
 
 export const modalConfig: ModalConfig = {
   id: 'employee_details_sheet',
-  name: 'Chi tiết nhân viên',
+  name: 'Details nhân viên',
   description: 'Xem và chỉnh sửa thông tin chi tiết của nhân viên, bao gồm phân quyền truy cập.',
   category: 'employee',
   permissions: {

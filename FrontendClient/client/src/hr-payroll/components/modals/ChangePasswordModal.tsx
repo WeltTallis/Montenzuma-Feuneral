@@ -31,7 +31,7 @@ import { useProfile } from '@hr/hooks/api/useProfile';
 const SPECIAL_CHAR_REGEX = /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/;
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại'),
+  currentPassword: z.string().min(1, 'Please nhập mật khẩu hiện tại'),
   newPassword: z
     .string()
     .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
@@ -116,7 +116,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProp
                         autoCapitalize="none"
                         autoCorrect="off"
                         spellCheck={false}
-                        placeholder="Nhập mật khẩu hiện tại"
+                        placeholder="Import mật khẩu hiện tại"
                         className="min-h-11 pr-12 sm:pr-12"
                         disabled={isPending}
                       />
@@ -189,7 +189,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProp
             Close
           </Button>
           <Button type="submit" form="change-password-form" className="min-h-11" disabled={isPending}>
-            {isPending ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+            {isPending ? 'Processing...' : 'Đổi mật khẩu'}
           </Button>
         </DialogFooter>
       </DialogContent>

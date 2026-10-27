@@ -48,7 +48,7 @@ export function PayrateMatrixEditor({
             Chưa có dữ liệu cấu hình mức lương
           </p>
           <p className="typography-body-medium text-muted-foreground">
-            Vui lòng tạo cấu hình mức lương để hiển thị thông tin tại đây
+            Please tạo cấu hình mức lương để hiển thị thông tin tại đây
           </p>
         </div>
       );
@@ -98,7 +98,7 @@ export function PayrateMatrixEditor({
           <div className="rounded-xl border border-dashed border-border bg-muted/10 px-6">
             <EmptyState
               title="Chưa có ca làm việc"
-              description="Thêm ca từ bảng bên dưới để bắt đầu nhập mức lương"
+              description="Add ca từ bảng bên dưới để bắt đầu nhập mức lương"
             />
           </div>
         ) : (

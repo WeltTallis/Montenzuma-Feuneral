@@ -13,7 +13,7 @@ export function EmployeeDataError({ title, onRetry, isRetrying = false, classNam
     <div className={cn("rounded-xl border border-[var(--employee-border)] bg-[var(--employee-surface)] px-4 py-5 text-center", className)} role="alert">
       <AlertCircle className="mx-auto h-6 w-6 text-[var(--employee-text-secondary)]" aria-hidden="true" />
       <p className="employee-type-strong mt-2 text-[var(--employee-text)]">{title}</p>
-      <p className="employee-type-body-sm mt-1 text-[var(--employee-text-secondary)]">Kiểm tra kết nối rồi thử lại.</p>
+      <p className="employee-type-body-sm mt-1 text-[var(--employee-text-secondary)]">Check connection rồi thử lại.</p>
       <button
         type="button"
         onClick={onRetry}

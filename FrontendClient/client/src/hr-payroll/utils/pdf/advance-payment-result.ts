@@ -73,12 +73,12 @@ export async function generateAdvancePaymentResultPdf(
           },
           {
             width: 'auto',
-            text: `Thành công: ${data.completed_txn}`,
+            text: `Success: ${data.completed_txn}`,
             style: 'summarySuccess',
           },
           {
             width: 'auto',
-            text: `Thất bại: ${data.failed_txn}`,
+            text: `Failed: ${data.failed_txn}`,
             style: 'summaryFail',
           },
         ],

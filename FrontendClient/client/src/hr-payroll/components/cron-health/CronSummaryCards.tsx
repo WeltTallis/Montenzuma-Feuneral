@@ -26,7 +26,7 @@ export function CronSummaryCards({ total, enabled, failed }: CronSummaryCardsPro
         <div className="bg-utility-error-50 rounded-xl border border-utility-error-100 px-3 py-2.5 flex items-center gap-2 shadow-sm">
           <AlertCircle className="h-4 w-4 text-utility-error-700 shrink-0" />
           <span className="text-base font-bold text-utility-error-700">{failed}</span>
-          <span className="text-xs text-fg-error-primary">Lỗi</span>
+          <span className="text-xs text-fg-error-primary">Error</span>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-utility-gray-200 px-3 py-2.5 flex items-center gap-2 shadow-sm">

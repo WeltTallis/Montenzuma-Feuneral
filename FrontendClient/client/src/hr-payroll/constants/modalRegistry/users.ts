@@ -50,7 +50,7 @@ interface UserModalMetadata {
 export const userModals: Record<UserModalId, UserModalMetadata> = {
   [USER_MODAL_IDS.ADD_USER]: {
     id: USER_MODAL_IDS.ADD_USER,
-    name: 'Thêm người dùng',
+    name: 'Add người dùng',
     description: 'Tạo tài khoản người dùng mới',
     category: 'user',
     requiresAuth: true,
@@ -64,7 +64,7 @@ export const userModals: Record<UserModalId, UserModalMetadata> = {
   },
   [USER_MODAL_IDS.USER_DETAILS]: {
     id: USER_MODAL_IDS.USER_DETAILS,
-    name: 'Chi tiết người dùng',
+    name: 'Details người dùng',
     description: 'Xem và chỉnh sửa thông tin người dùng',
     category: 'user',
     requiresAuth: true,
@@ -94,7 +94,7 @@ export const userModals: Record<UserModalId, UserModalMetadata> = {
   },
   [USER_MODAL_IDS.USER_PROFILE]: {
     id: USER_MODAL_IDS.USER_PROFILE,
-    name: 'Hồ sơ người dùng',
+    name: 'Profile người dùng',
     description: 'Xem và chỉnh sửa hồ sơ cá nhân',
     category: 'user',
     requiresAuth: true,

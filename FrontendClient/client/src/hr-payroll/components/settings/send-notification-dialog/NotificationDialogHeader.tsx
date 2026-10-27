@@ -61,7 +61,7 @@ export const NotificationDialogHeader = memo(function NotificationDialogHeader({
           <Input
             id="notif-title"
             type="text"
-            placeholder="Nhập tiêu đề thông báo..."
+            placeholder="Import tiêu đề thông báo..."
             aria-label="Tiêu đề thông báo"
             value={title}
             onChange={onTitleChange}

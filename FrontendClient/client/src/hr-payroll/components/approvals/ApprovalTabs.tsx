@@ -16,7 +16,7 @@ interface ApprovalTabsProps {
 
 export const ApprovalTabs = ({ selectedTab, onTabChange, stats }: ApprovalTabsProps) => {
   const tabs = [
-    { value: 'all' as const, label: 'Tất cả', count: stats.total },
+    { value: 'all' as const, label: 'All', count: stats.total },
     { value: 'pending' as const, label: 'Chờ phê duyệt', count: stats.pending },
     { value: 'reviewing' as const, label: 'Đang xem xét', count: stats.reviewing },
     { value: 'approved' as const, label: 'Đã phê duyệt', count: stats.approved },

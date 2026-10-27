@@ -39,7 +39,7 @@ export function MultiSearchableDropdown({
   onChange,
   options,
   placeholder = 'Chọn...',
-  searchPlaceholder = 'Tìm kiếm...',
+  searchPlaceholder = 'Search...',
   emptyMessage = 'Không tìm thấy.',
   allOption,
   disabled = false,

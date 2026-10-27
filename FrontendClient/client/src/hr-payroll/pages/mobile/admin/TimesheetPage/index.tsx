@@ -183,7 +183,7 @@ const TimesheetPageMobile = () => {
   const approveAllMutation = useApproveAllTimesheets();
   const resetAllMutation = useResetAllTimesheets();
 
-  // Global (unfiltered) summary for the "Duyệt hết" confirm — backend
+  // Global (unfiltered) summary for the "Approve hết" confirm — backend
   // approveAll() ignores filters and approves system-wide, so we show the
   // honest, unfiltered scope here. Mirrors the desktop TimesheetPage.
   const { data: globalSummary, refetch: refetchGlobalSummary } =
@@ -226,7 +226,7 @@ const TimesheetPageMobile = () => {
     }
   };
 
-  // Open the safe "Duyệt hết" flow — refresh the global summary first so the
+  // Open the safe "Approve hết" flow — refresh the global summary first so the
   // confirm dialog shows accurate, unfiltered counts (matches desktop).
   const handleBulkApprove = useCallback(() => {
     refetchGlobalSummary();

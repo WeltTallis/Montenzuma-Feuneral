@@ -170,7 +170,7 @@ export function createPartnerEmployeeColumns({
     {
       id: "contact",
       accessorKey: "email",
-      header: "Liên hệ",
+      header: "Contact",
       cell: ({ row }) => {
         const employee = row.original;
         return (
@@ -190,7 +190,7 @@ export function createPartnerEmployeeColumns({
     {
       id: "location",
       accessorKey: "address",
-      header: "Địa chỉ",
+      header: "Address",
       cell: ({ row }) => {
         const address = row.getValue("location") as string;
         if (!address)
@@ -213,7 +213,7 @@ export function createPartnerEmployeeColumns({
     {
       id: "salary",
       accessorKey: "base_salary",
-      header: "Lương cơ bản",
+      header: "Payroll cơ bản",
       cell: ({ row }) => {
         const salary = row.getValue("salary") as number | undefined;
         if (salary == null)

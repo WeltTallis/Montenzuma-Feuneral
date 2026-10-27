@@ -12,7 +12,7 @@ export function AuthLoadingScreen() {
             Đang xác thực...
           </h3>
           <p className="typography-body-medium text-muted-foreground">
-            Vui lòng chờ trong giây lát
+            Please chờ trong giây lát
           </p>
         </div>
       </div>

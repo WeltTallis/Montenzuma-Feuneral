@@ -52,7 +52,7 @@ export const useGenerateBulkTransferKQ = () => {
       bulkTransferService.generateBulkTransferKQ(file),
     onSuccess: (result) => {
       showSuccessNotification(
-        `Đã tạo ${result.filename} với ${result.totalCount} giao dịch. Tải file về và nhập lại qua "Nhập KQ chuyển lô".`
+        `Đã tạo ${result.filename} với ${result.totalCount} giao dịch. Tải file về và nhập lại qua "Import KQ chuyển lô".`
       );
     },
     // Error handling is now done globally in React Query - will display response.message from backend
@@ -67,7 +67,7 @@ export const useUploadSettlementResult = () => {
     mutationFn: (file: File) =>
       timesheetService.uploadSettlementResult(file),
     onSuccess: (response) => {
-      const message = response.message ?? 'Nhập kết quả sao kê thành công';
+      const message = response.message ?? 'Import kết quả sao kê thành công';
       showSuccessNotification(message);
     },
   });
@@ -81,7 +81,7 @@ export const useExportPayrollReport = () => {
     mutationFn: (params: { atDate: string }) =>
       timesheetService.exportPayrollReport(params),
     onSuccess: () => {
-      showSuccessNotification('Xuất sao kê thành công');
+      showSuccessNotification('Export sao kê thành công');
     },
     // Error handling is now done globally in React Query - will display response.message from backend
   });
@@ -120,7 +120,7 @@ export const useExportApprovedTimesheets = () => {
     }) =>
       timesheetService.exportTimesheetsExcel(params),
     onSuccess: () => {
-      showSuccessNotification('Xuất bảng công thành công');
+      showSuccessNotification('Export bảng công thành công');
     },
     // Error handling is now done globally in React Query - will display response.message from backend
   });
@@ -224,7 +224,7 @@ export const useExportPaymentHistories = () => {
     mutationFn: (params: PaymentHistoryExportParams) =>
       payrollService.exportPaymentHistories(params),
     onSuccess: () => {
-      showSuccessNotification('Xuất lịch sử thanh toán thành công');
+      showSuccessNotification('Export lịch sử thanh toán thành công');
     },
     // Error handling is done globally in React Query - will display response.message from backend
   });

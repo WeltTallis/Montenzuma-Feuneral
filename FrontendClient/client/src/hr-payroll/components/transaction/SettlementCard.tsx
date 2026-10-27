@@ -64,7 +64,7 @@ export function SettlementCard({ settlement, userMap }: SettlementCardProps) {
                 ? 'text-emerald-700 hover:text-emerald-700 hover:bg-emerald-50 hover:shadow-sm cursor-pointer'
                 : 'text-slate-300 cursor-not-allowed'
             }`}
-            title={hasProof ? 'Tải xuống chứng từ' : 'Không có chứng từ'}
+            title={hasProof ? 'Download chứng từ' : 'Không có chứng từ'}
           >
             <FileText className="h-12 w-12" />
           </button>

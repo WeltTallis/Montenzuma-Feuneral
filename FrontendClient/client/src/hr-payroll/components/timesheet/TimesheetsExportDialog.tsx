@@ -154,7 +154,7 @@ export const TimesheetsExportDialog = memo(function TimesheetsExportDialog({
     <Dialog open={open} onOpenChange={handleDialogOpen}>
       <DialogContent className="max-h-[92dvh] max-w-[95vw] overflow-y-auto p-4 shadow-none sm:max-w-3xl sm:p-5">
         <DialogHeader className="space-y-1 pb-3">
-          <DialogTitle className="text-lg">Xuất bảng công</DialogTitle>
+          <DialogTitle className="text-lg">Export bảng công</DialogTitle>
           <DialogDescription className="text-sm">
             Chọn khoảng thời gian và trạng thái để xuất bảng công.
           </DialogDescription>
@@ -238,7 +238,7 @@ export const TimesheetsExportDialog = memo(function TimesheetsExportDialog({
           {hasDateError && (
             <div className="flex items-center gap-1.5 text-xs text-red-700">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Ngày kết thúc phải sau ngày bắt đầu</span>
+              <span>Date kết thúc phải sau ngày bắt đầu</span>
             </div>
           )}
 
@@ -252,7 +252,7 @@ export const TimesheetsExportDialog = memo(function TimesheetsExportDialog({
                   <SelectValue placeholder="Chọn trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="all">All trạng thái</SelectItem>
                   <SelectItem value="pending_approval">Pending approval</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Bị loại</SelectItem>
@@ -270,7 +270,7 @@ export const TimesheetsExportDialog = memo(function TimesheetsExportDialog({
                     className="w-full justify-start text-left font-normal h-10 px-3 text-sm min-h-[44px]"
                   >
                     {isAllProjectsSelected
-                      ? 'Tất cả dự án'
+                      ? 'All dự án'
                       : selectedProjectIds.length > 0
                         ? `${selectedProjectIds.length} dự án`
                         : 'Chọn dự án'}
@@ -304,7 +304,7 @@ export const TimesheetsExportDialog = memo(function TimesheetsExportDialog({
                             isAllProjectsSelected && "bg-primary/10 hover:bg-primary/15"
                           )}
                         >
-                          <div className="font-medium text-xs">Tất cả dự án</div>
+                          <div className="font-medium text-xs">All dự án</div>
                         </button>
 
                         {/* Individual Projects */}
@@ -381,7 +381,7 @@ export const TimesheetsExportDialog = memo(function TimesheetsExportDialog({
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Xuất bảng công
+                Export bảng công
               </>
             )}
           </Button>

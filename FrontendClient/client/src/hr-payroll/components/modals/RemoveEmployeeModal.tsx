@@ -85,7 +85,7 @@ export function RemoveEmployeeSheet({
         <SheetHeader className="flex-shrink-0" style={{ paddingTop: "max(0px, env(safe-area-inset-top))" }}>
           <SheetTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-700" />
-            Xóa nhân viên khỏi dự án
+            Delete nhân viên khỏi dự án
           </SheetTitle>
           <SheetDescription>
             Bạn có chắc chắn muốn xóa{" "}
@@ -108,9 +108,9 @@ export function RemoveEmployeeSheet({
                     <Label htmlFor="immediate" className="flex items-center gap-2 cursor-pointer">
                       <Clock className="w-4 h-4 text-red-700" />
                       <div>
-                        <div className="font-medium">Xóa ngay lập tức</div>
+                        <div className="font-medium">Delete ngay lập tức</div>
                         <div className="typography-body-medium text-muted-foreground">
-                          Nhân viên sẽ được xóa khỏi dự án ngay lập tức
+                          Employee sẽ được xóa khỏi dự án ngay lập tức
                         </div>
                       </div>
                     </Label>
@@ -123,7 +123,7 @@ export function RemoveEmployeeSheet({
                     <Label htmlFor="scheduled" className="flex items-center gap-2 cursor-pointer">
                       <Calendar className="w-4 h-4 text-blue-700" />
                       <div>
-                        <div className="font-medium">Xóa vào ngày cụ thể</div>
+                        <div className="font-medium">Delete vào ngày cụ thể</div>
                         <div className="typography-body-medium text-muted-foreground">
                           Đặt ngày cuối cùng làm việc trong dự án
                         </div>
@@ -133,7 +133,7 @@ export function RemoveEmployeeSheet({
                     {removalType === "scheduled" && (
                       <div className="space-y-2 pl-6">
                         <Label htmlFor="lastDate" className="typography-body-medium">
-                          Ngày cuối cùng
+                          Date cuối cùng
                         </Label>
                         <Input
                           id="lastDate"
@@ -144,7 +144,7 @@ export function RemoveEmployeeSheet({
                           className="w-full"
                         />
                         <p className="typography-body-small text-muted-foreground">
-                          Nhân viên sẽ tiếp tục làm việc cho đến ngày này
+                          Employee sẽ tiếp tục làm việc cho đến ngày này
                         </p>
                       </div>
                     )}
@@ -169,11 +169,11 @@ export function RemoveEmployeeSheet({
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
                 <div className="typography-body-medium text-amber-800">
-                  <div className="font-medium mb-1">Lưu ý:</div>
+                  <div className="font-medium mb-1">Save ý:</div>
                   <ul className="space-y-1 typography-body-small">
                     <li>• Hành động này không thể hoàn thành</li>
                     <li>• Dữ liệu chấm công hiện tại sẽ được giữ lại</li>
-                    <li>• Nhân viên có thể được phân công lại sau này</li>
+                    <li>• Employee có thể được phân công lại sau này</li>
                   </ul>
                 </div>
               </div>
@@ -194,7 +194,7 @@ export function RemoveEmployeeSheet({
             disabled={isLoading || (removalType === "scheduled" && !lastDate)}
             className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 px-3 sm:h-8 rounded bg-destructive text-destructive-foreground text-sm font-medium whitespace-nowrap hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
           >
-            {isLoading ? "Đang xử lý..." : "Xác nhận xóa"}
+            {isLoading ? "Processing..." : "Confirm xóa"}
           </button>
         </SheetFooter>
       </SheetContent>

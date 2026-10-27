@@ -68,7 +68,7 @@ export function LedgerPageHeader({
   const secondaryActions = [
     onAddDoubleEntry && {
       key: 'double-entry',
-      label: 'Nhập bút toán kép',
+      label: 'Import bút toán kép',
       icon: GitMerge,
       onClick: onAddDoubleEntry,
     },
@@ -114,7 +114,7 @@ export function LedgerPageHeader({
     },
     onImportOnePayFeeReport && {
       key: 'onepay-fee',
-      label: 'Nhập phí OnePay',
+      label: 'Import phí OnePay',
       icon: ReceiptText,
       onClick: onImportOnePayFeeReport,
     },
@@ -126,7 +126,7 @@ export function LedgerPageHeader({
         title="Sổ Cái"
         actions={[
           {
-            label: 'Thêm Giao Dịch',
+            label: 'Add Giao Dịch',
             onClick: onAddEntry,
             icon: Plus,
             variant: 'default' as const,
@@ -135,7 +135,7 @@ export function LedgerPageHeader({
       >
         {/* Secondary action cluster:
             - Desktop (sm+): all actions inline in a divided button group, with
-              "Gửi sao kê" as a DropdownMenu (Bảng công / Ứng lương)
+              "Gửi sao kê" as a DropdownMenu (Timesheet / Ứng lương)
             - Mobile (<sm): hidden — surfaced through the `...` Sheet below */}
         <div className="hidden sm:flex items-center rounded-xl border border-border divide-x divide-border overflow-hidden">
           <DropdownMenu>
@@ -176,7 +176,7 @@ export function LedgerPageHeader({
               onClick={onImportOnePayFeeReport}
             >
               <ReceiptText className="w-4 h-4" />
-              Phí OnePay
+              Fee OnePay
             </Button>
           )}
           {onRunWalletSettlement && (

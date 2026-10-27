@@ -217,7 +217,7 @@ function ProjectAssignmentSheet({
     >
       <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="project">Dự án *</Label>
+              <Label htmlFor="project">Project *</Label>
               <ProjectSelector
                 value={selectedProject}
                 onSelect={setSelectedProject}
@@ -227,7 +227,7 @@ function ProjectAssignmentSheet({
               />
               {excludeProjectIds.length > 0 && (
                 <p className="typography-body-small text-muted-foreground">
-                  Nhân viên hiện đang được phân công vào {excludeProjectIds.length} dự án. Các dự án này đã được loại bỏ khỏi danh sách.
+                  Employee hiện đang được phân công vào {excludeProjectIds.length} dự án. Các dự án này đã được loại bỏ khỏi danh sách.
                 </p>
               )}
             </div>
@@ -243,7 +243,7 @@ function ProjectAssignmentSheet({
                   </p>
                 </div>
                 <p className="typography-body-small text-amber-700 mt-1 ml-7">
-                  Dự án này đã {selectedProject.status === 'completed' ? 'hoàn thành' : 'bị hủy'}.
+                  Project này đã {selectedProject.status === 'completed' ? 'hoàn thành' : 'bị hủy'}.
                   Chỉ có thể phân công nhân viên vào dự án đang ở trạng thái nháp hoặc đang hoạt động.
                 </p>
               </div>
@@ -267,7 +267,7 @@ function ProjectAssignmentSheet({
                                 ? "Bạn không có quyền xem bảng lương của dự án này"
                                 : hasPayrates
                                   ? "Chọn vị trí"
-                                  : "Dự án chưa có bảng lương"
+                                  : "Project chưa có bảng lương"
                             }
                           />
                         </SelectTrigger>
@@ -292,13 +292,13 @@ function ProjectAssignmentSheet({
                           className="min-h-11 shrink-0"
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Thêm bảng lương
+                          Add bảng lương
                         </Button>
                       )}
                     </div>
                     {!hasPayrates && (
                       <p className="typography-body-small text-muted-foreground">
-                        Dự án này chưa có bảng lương. Vui lòng tạo bảng lương trước khi phân công.
+                        Project này chưa có bảng lương. Please tạo bảng lương trước khi phân công.
                       </p>
                     )}
                   </div>
@@ -374,7 +374,7 @@ function ProjectAssignmentSheet({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="start_date">Ngày bắt đầu</Label>
+                <Label htmlFor="start_date">Date bắt đầu</Label>
                 <Input
                   id="start_date"
                   type="date"
@@ -386,7 +386,7 @@ function ProjectAssignmentSheet({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="end_date">Ngày kết thúc</Label>
+                <Label htmlFor="end_date">Date kết thúc</Label>
                 <Input
                   id="end_date"
                   type="date"

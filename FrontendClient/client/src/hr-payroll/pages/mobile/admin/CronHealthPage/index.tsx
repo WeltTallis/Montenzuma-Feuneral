@@ -33,7 +33,7 @@ export default function CronHealthPageMobile() {
           icon={Clock}
         />
         <div role="alert" className="px-4 pt-4">
-          <ErrorState message="Không thể tải danh sách tác vụ. Vui lòng thử lại." onRetry={() => void refetch()} />
+          <ErrorState message="Failed to load danh sách tác vụ. Please try again." onRetry={() => void refetch()} />
         </div>
       </div>
     );

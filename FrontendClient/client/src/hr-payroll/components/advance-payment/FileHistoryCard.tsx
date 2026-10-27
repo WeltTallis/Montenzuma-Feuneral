@@ -10,7 +10,7 @@ import type { AdvancePaymentFileHistoryItem } from "@hr/types/api/advance-paymen
 
 const TYPE_CONFIG = {
   flex_pay_import: {
-    label: "Nhập bảng lương",
+    label: "Import bảng lương",
     badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
     Icon: FileSpreadsheet,
   },
@@ -20,12 +20,12 @@ const TYPE_CONFIG = {
     Icon: FileText,
   },
   advance_payment_export: {
-    label: "Xuất chuyển lô",
+    label: "Export chuyển lô",
     badgeClass: "bg-amber-100 text-amber-800 border-amber-200",
     Icon: Download,
   },
   advance_payment_sao_ke_export: {
-    label: "Xuất sao kê",
+    label: "Export sao kê",
     badgeClass: "bg-teal-100 text-teal-800 border-teal-200",
     Icon: FileSpreadsheet,
   },

@@ -71,7 +71,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
   // User Management Modals
   [MODAL_IDS.USER_DETAILS]: {
     id: MODAL_IDS.USER_DETAILS,
-    name: 'Chi tiết người dùng',
+    name: 'Details người dùng',
     description: 'Xem và chỉnh sửa thông tin người dùng',
     category: 'user',
     requiresAuth: true,
@@ -83,7 +83,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.ADD_USER]: {
     id: MODAL_IDS.ADD_USER,
-    name: 'Thêm người dùng',
+    name: 'Add người dùng',
     description: 'Tạo tài khoản người dùng mới',
     category: 'user',
     requiresAuth: true,
@@ -119,7 +119,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
   // Employee Management Modals
   [MODAL_IDS.EMPLOYEE_DETAILS]: {
     id: MODAL_IDS.EMPLOYEE_DETAILS,
-    name: 'Chi tiết nhân viên',
+    name: 'Details nhân viên',
     description: 'Xem thông tin chi tiết nhân viên',
     category: 'employee',
     requiresAuth: true,
@@ -132,8 +132,8 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.ADD_EMPLOYEE]: {
     id: MODAL_IDS.ADD_EMPLOYEE,
-    name: 'Thêm nhân viên',
-    description: 'Thêm nhân viên mới vào hệ thống',
+    name: 'Add nhân viên',
+    description: 'Add nhân viên mới vào hệ thống',
     category: 'employee',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -166,7 +166,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
   // Project Management Modals
   [MODAL_IDS.PROJECT_DETAILS]: {
     id: MODAL_IDS.PROJECT_DETAILS,
-    name: 'Chi tiết dự án',
+    name: 'Details dự án',
     description: 'Xem thông tin chi tiết dự án',
     category: 'project',
     requiresAuth: true,
@@ -190,8 +190,8 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.ADD_PROJECT]: {
     id: MODAL_IDS.ADD_PROJECT,
-    name: 'Thêm dự án',
-    description: 'Thêm dự án mới',
+    name: 'Add dự án',
+    description: 'Add dự án mới',
     category: 'project',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -227,8 +227,8 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.ADD_EMPLOYEE_TO_PROJECT]: {
     id: MODAL_IDS.ADD_EMPLOYEE_TO_PROJECT,
-    name: 'Thêm nhân viên vào dự án',
-    description: 'Thêm nhân viên vào dự án',
+    name: 'Add nhân viên vào dự án',
+    description: 'Add nhân viên vào dự án',
     category: 'project',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -239,8 +239,8 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.REMOVE_EMPLOYEE]: {
     id: MODAL_IDS.REMOVE_EMPLOYEE,
-    name: 'Xóa nhân viên khỏi dự án',
-    description: 'Xóa nhân viên khỏi dự án',
+    name: 'Delete nhân viên khỏi dự án',
+    description: 'Delete nhân viên khỏi dự án',
     category: 'project',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -252,7 +252,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
   // Timesheet Management Modals
   [MODAL_IDS.TIMESHEET_DETAILS]: {
     id: MODAL_IDS.TIMESHEET_DETAILS,
-    name: 'Chi tiết bảng chấm công',
+    name: 'Details bảng chấm công',
     description: 'Xem chi tiết bảng chấm công',
     category: 'timesheet',
     requiresAuth: true,
@@ -264,7 +264,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.TIMESHEET_ENTRY]: {
     id: MODAL_IDS.TIMESHEET_ENTRY,
-    name: 'Nhập bảng chấm công',
+    name: 'Import bảng chấm công',
     description: 'Tạo hoặc chỉnh sửa bảng chấm công',
     category: 'timesheet',
     requiresAuth: true,
@@ -288,7 +288,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
   // Report & Ledger Modals
   [MODAL_IDS.LEDGER_ENTRY_DETAILS]: {
     id: MODAL_IDS.LEDGER_ENTRY_DETAILS,
-    name: 'Chi tiết bút toán',
+    name: 'Details bút toán',
     description: 'Xem chi tiết bút toán',
     category: 'report',
     requiresAuth: true,
@@ -300,8 +300,8 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.ADD_LEDGER_ENTRY]: {
     id: MODAL_IDS.ADD_LEDGER_ENTRY,
-    name: 'Thêm giao dịch',
-    description: 'Thêm giao dịch mới',
+    name: 'Add giao dịch',
+    description: 'Add giao dịch mới',
     category: 'report',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -311,7 +311,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.APPROVAL_DETAILS]: {
     id: MODAL_IDS.APPROVAL_DETAILS,
-    name: 'Chi tiết phê duyệt',
+    name: 'Details phê duyệt',
     description: 'Xem chi tiết phê duyệt',
     category: 'report',
     requiresAuth: true,
@@ -324,7 +324,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
   // Transaction Modals
   [MODAL_IDS.TRANSACTION_DETAILS]: {
     id: MODAL_IDS.TRANSACTION_DETAILS,
-    name: 'Chi tiết giao dịch',
+    name: 'Details giao dịch',
     description: 'Xem chi tiết giao dịch',
     category: 'report',
     requiresAuth: true,
@@ -383,7 +383,7 @@ export const MODAL_REGISTRY: Record<ModalId, ModalMetadata> = {
 
   [MODAL_IDS.USER_PROFILE]: {
     id: MODAL_IDS.USER_PROFILE,
-    name: 'Hồ sơ người dùng',
+    name: 'Profile người dùng',
     description: 'Xem và chỉnh sửa hồ sơ cá nhân',
     category: 'user',
     requiresAuth: true,

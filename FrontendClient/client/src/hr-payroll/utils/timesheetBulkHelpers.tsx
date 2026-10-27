@@ -60,11 +60,11 @@ export function createGlobalBulkApprovalContent(
           </div>
           <div className="flex items-center gap-2">
             <span>👥</span>
-            <span>Nhân viên: <strong>{stats.uniqueEmployeeCount}</strong></span>
+            <span>Employee: <strong>{stats.uniqueEmployeeCount}</strong></span>
           </div>
           <div className="flex items-center gap-2">
             <span>🏢</span>
-            <span>Dự án: <strong>{stats.uniqueProjectCount}</strong></span>
+            <span>Project: <strong>{stats.uniqueProjectCount}</strong></span>
           </div>
           <div className="flex items-center gap-2">
             <span>⏱️</span>
@@ -72,7 +72,7 @@ export function createGlobalBulkApprovalContent(
           </div>
           <div className="flex items-center gap-2">
             <span>💰</span>
-            <span>Tổng tiền: <strong>{formatCurrency(stats.totalAmount)}</strong></span>
+            <span>Total amount: <strong>{formatCurrency(stats.totalAmount)}</strong></span>
           </div>
         </div>
       </div>
@@ -80,7 +80,7 @@ export function createGlobalBulkApprovalContent(
       <div className="bg-amber-50 p-3 rounded border border-amber-200">
         <div className="flex items-start gap-2 typography-body-medium text-amber-700">
           <span className="typography-body-large">⚠️</span>
-          <span>Tất cả bảng công sẽ chuyển sang trạng thái "Approved". Hành động này không thể hoàn thành.</span>
+          <span>All bảng công sẽ chuyển sang trạng thái "Approved". Hành động này không thể hoàn thành.</span>
         </div>
       </div>
     </div>
@@ -101,7 +101,7 @@ export function createProjectBulkApprovalContent(
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="typography-title-large">🏢</span>
-            <span className="font-medium">Dự án: {projectName}</span>
+            <span className="font-medium">Project: {projectName}</span>
           </div>
           <div className="typography-body-medium text-muted-foreground space-y-1">
             <div>📊 {stats.totalCount} bảng công sẽ được duyệt</div>
@@ -114,7 +114,7 @@ export function createProjectBulkApprovalContent(
 
       {stats.employeeNames.length <= 5 && (
         <div className="bg-blue-50 p-2 rounded typography-body-small">
-          <div className="font-medium mb-1">Nhân viên:</div>
+          <div className="font-medium mb-1">Employee:</div>
           <div className="text-blue-700">{stats.employeeNames.join(', ')}</div>
         </div>
       )}
@@ -139,7 +139,7 @@ export function createGroupBulkApprovalContent(
 
   return (
     <div className="space-y-3">
-      <p>Duyệt tất cả bảng công cho:</p>
+      <p>Approve tất cả bảng công cho:</p>
 
       <div className="bg-muted p-3 rounded border">
         <div className="space-y-2 typography-body-medium">
@@ -224,7 +224,7 @@ export function createBulkRejectContent(
       <div className="bg-amber-50 p-3 rounded border border-amber-200">
         <div className="flex items-start gap-2 typography-body-medium text-amber-700">
           <span>⚠️</span>
-          <span>Nhân viên sẽ được thông báo về việc loại. Hành động này không thể hoàn thành.</span>
+          <span>Employee sẽ được thông báo về việc loại. Hành động này không thể hoàn thành.</span>
         </div>
       </div>
     </div>

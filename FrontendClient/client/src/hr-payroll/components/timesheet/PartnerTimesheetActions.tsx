@@ -26,13 +26,13 @@ const supportingActions = [
     handler: "onOpenPaymentHistory",
   },
   {
-    label: "Xuất bảng công",
+    label: "Export bảng công",
     description: "Tải dữ liệu đã duyệt",
     icon: FileDown,
     handler: "onExportTimesheets",
   },
   {
-    label: "Xuất sao kê",
+    label: "Export sao kê",
     description: "Lập sao kê thanh toán",
     icon: ReceiptText,
     handler: "onExportStatement",
@@ -45,7 +45,7 @@ const supportingActions = [
   },
   {
     label: "Tải lên BCC",
-    description: "Nhập dữ liệu từ Excel",
+    description: "Import dữ liệu từ Excel",
     icon: FileUp,
     handler: "onUploadBcc",
   },
@@ -96,7 +96,7 @@ export function PartnerTimesheetActions({
           className="w-full gap-2 sm:w-auto sm:min-w-[132px]"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
-          Nhập công
+          Import công
         </Button>
       </div>
 

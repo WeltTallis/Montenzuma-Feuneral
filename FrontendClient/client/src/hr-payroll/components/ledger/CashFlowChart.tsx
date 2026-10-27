@@ -88,8 +88,8 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="text-base">Biểu Đồ Dòng Tiền</CardTitle>
-          <CardDescription>Không thể tải dữ liệu</CardDescription>
+          <CardTitle className="text-base">Biểu Đồ Dòng Money</CardTitle>
+          <CardDescription>Failed to load dữ liệu</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center justify-center text-muted-foreground">
@@ -106,7 +106,7 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              Dòng Tiền 6 Tháng Gần Đây
+              Dòng Money 6 Tháng Gần Đây
               {trend === 'up' && <TrendingUp className="h-4 w-4 text-green-700" />}
               {trend === 'down' && <TrendingDown className="h-4 w-4 text-red-700" />}
             </CardTitle>
@@ -128,7 +128,7 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Net Cash Flow Line Chart */}
           <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Dòng Tiền Ròng</h4>
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Dòng Money Ròng</h4>
             <ResponsiveContainer width="100%" height={200} minWidth={0}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />

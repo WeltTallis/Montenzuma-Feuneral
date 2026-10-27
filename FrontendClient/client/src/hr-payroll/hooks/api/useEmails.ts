@@ -70,7 +70,7 @@ export const useSettleFromEmailHistory = () => {
       queryClient.invalidateQueries({ queryKey: ['ledger-summary'] });
     },
     onError: (error) => {
-      showErrorNotification(error, 'Xác nhận đối soát thất bại');
+      showErrorNotification(error, 'Confirm đối soát thất bại');
     },
   });
 };
@@ -85,7 +85,7 @@ export const useUploadSettlement = () => {
       if (processedTimesheets > 0 && skippedTimesheets > 0) {
         showSuccessNotification(`Đã xử lý ${processedTimesheets} timesheets mới, bỏ qua ${skippedTimesheets} đã thanh toán`);
       } else if (skippedTimesheets > 0) {
-        showSuccessNotification(`Tất cả ${skippedTimesheets} timesheets đã được thanh toán trước đó`);
+        showSuccessNotification(`All ${skippedTimesheets} timesheets đã được thanh toán trước đó`);
       } else {
         showSuccessNotification(`Đã xử lý file đối soát thành công`);
       }

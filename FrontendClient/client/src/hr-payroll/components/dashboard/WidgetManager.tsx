@@ -178,7 +178,7 @@ export const WidgetManager: React.FC<WidgetManagerProps> = ({
             onClick={() => setShowAddDialog(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Thêm widget
+            Add widget
           </Button>
           <Button
             variant="outline"
@@ -226,8 +226,8 @@ export const WidgetManager: React.FC<WidgetManagerProps> = ({
           <div className="border-2 border-dashed rounded-xl px-4">
             <EmptyState
               title="Không có widget nào"
-              description="Thêm widget để tùy chỉnh dashboard của bạn"
-              action={{ label: 'Thêm widget đầu tiên', onClick: () => setShowAddDialog(true) }}
+              description="Add widget để tùy chỉnh dashboard của bạn"
+              action={{ label: 'Add widget đầu tiên', onClick: () => setShowAddDialog(true) }}
               size="sm"
             />
           </div>
@@ -290,7 +290,7 @@ export const WidgetManager: React.FC<WidgetManagerProps> = ({
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Thêm Widget Mới</DialogTitle>
+            <DialogTitle>Add Widget New</DialogTitle>
             <DialogDescription>
               Chọn widget để thêm vào dashboard
             </DialogDescription>
@@ -315,7 +315,7 @@ export const WidgetManager: React.FC<WidgetManagerProps> = ({
 
           {availableWidgetTypes.filter(type => !localWidgets.some(w => w.type === type.type)).length === 0 && (
             <p className="text-center py-4 text-muted-foreground">
-              Tất cả widget đã được thêm vào dashboard
+              All widget đã được thêm vào dashboard
             </p>
           )}
         </DialogContent>

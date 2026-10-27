@@ -401,7 +401,7 @@ export function useCancelScheduleChange() {
       projectEmployeeService.cancelScheduleChange(assignmentId),
 
     onSuccess: (response) => {
-      showSuccessNotification('Đã hủy thay đổi chu kỳ thanh toán');
+      showSuccessNotification('Cancelled thay đổi chu kỳ thanh toán');
 
       // Invalidate all queries that might be affected by this change
       queryClient.invalidateQueries({
@@ -569,7 +569,7 @@ export function useCancelPendingCheckInEnable() {
       queryClient.invalidateQueries({
         queryKey: projectAssignmentStatsKey(variables.projectId),
       });
-      showSuccessNotification("Đã hủy yêu cầu bật điểm danh đang chờ kích hoạt");
+      showSuccessNotification("Cancelled yêu cầu bật điểm danh đang chờ kích hoạt");
     },
   });
 }
@@ -655,7 +655,7 @@ export function useDisablePendingCheckInEmployees() {
       });
       showSuccessNotification(
         result.disabled_count > 0
-          ? `Đã hủy chờ kích hoạt cho ${result.disabled_count} nhân viên`
+          ? `Cancelled chờ kích hoạt cho ${result.disabled_count} nhân viên`
           : "Không còn nhân viên chờ kích hoạt",
       );
     },

@@ -176,7 +176,7 @@ const OpsKeyRow = ({ apiKey, onToggleScope, onRevoke, toggling, revoking }: OpsK
 
 /**
  * Admin console for pk_ops_* keys (payroll-ops-mcp channel) plus the
- * "Cài đặt MCP vào agent của bạn" install guide: create a key, store it in a
+ * "Settings MCP vào agent của bạn" install guide: create a key, store it in a
  * mode-600 secrets file, wire the MCP client config, mind the scope, know
  * the kill switch.
  */
@@ -201,7 +201,7 @@ export const OpsApiKeysSection = () => {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error('Nhập tên khoá ops (tên agent)');
+      toast.error('Import tên khoá ops (tên agent)');
       return;
     }
     if (!scope) {
@@ -472,7 +472,7 @@ export const OpsApiKeysSection = () => {
                       Khoá chỉ hiển thị một lần — sao chép ngay
                     </p>
                     <p className="text-xs text-amber-900 dark:text-amber-300/80">
-                      Khoá ops được cấp cho <span className="font-medium underline">{revealed.name}</span>. Lưu vào file
+                      Khoá ops được cấp cho <span className="font-medium underline">{revealed.name}</span>. Save vào file
                       bí mật theo hướng dẫn bên dưới — không bao giờ dán khoá vào file config.
                     </p>
                   </div>
@@ -515,7 +515,7 @@ export const OpsApiKeysSection = () => {
         </Card>
       </section>
 
-      {/* 2. Danh sách khoá ops */}
+      {/* 2. List khoá ops */}
       <section id="ops-keys-list" aria-labelledby="ops-keys-list-title">
         <Card className="overflow-hidden border-border shadow-sm">
           <CardHeader className="border-b bg-muted/20 p-4 sm:p-5">
@@ -526,7 +526,7 @@ export const OpsApiKeysSection = () => {
                 </div>
                 <div>
                   <CardTitle id="ops-keys-list-title" className="text-sm sm:text-base font-semibold text-foreground">
-                    Danh sách khoá ops
+                    List khoá ops
                   </CardTitle>
                   <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                     Theo dõi phạm vi (hiệu dụng) và lần dùng gần nhất. Cấp ghi tự hồi sau cửa sổ; thu hồi để chặn ngay.
@@ -540,7 +540,7 @@ export const OpsApiKeysSection = () => {
                 onClick={() => void refetch()}
                 disabled={isLoading || isFetching}
                 className="min-h-11 sm:min-h-9 gap-1.5 self-start text-xs text-muted-foreground hover:text-foreground sm:self-auto"
-                aria-label="Tải lại danh sách khoá ops"
+                aria-label="Reload danh sách khoá ops"
               >
                 <RefreshCw
                   className={cn('size-3.5', (isLoading || isFetching) && 'animate-spin')}
@@ -560,7 +560,7 @@ export const OpsApiKeysSection = () => {
             ) : isError ? (
               <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
                 <ShieldAlert className="size-8 text-destructive" aria-hidden="true" />
-                <p className="font-medium text-foreground">Không thể tải danh sách khoá ops</p>
+                <p className="font-medium text-foreground">Failed to load danh sách khoá ops</p>
                 <Button
                   type="button"
                   variant="outline"
@@ -568,7 +568,7 @@ export const OpsApiKeysSection = () => {
                   onClick={() => void refetch()}
                 >
                   <RefreshCw className="size-3.5" aria-hidden="true" />
-                  <span>Thử lại</span>
+                  <span>Try again</span>
                 </Button>
               </div>
             ) : keys.length === 0 ? (
@@ -609,7 +609,7 @@ export const OpsApiKeysSection = () => {
               </div>
               <div>
                 <CardTitle id="ops-mcp-install-title" className="text-sm sm:text-base font-semibold text-foreground">
-                  Cài đặt MCP vào agent của bạn
+                  Settings MCP vào agent của bạn
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                   Kết nối payroll-ops-mcp (stdio) vào Hermes, Paseo, Claude Desktop hoặc Claude Code — agent sẽ gọi
@@ -637,7 +637,7 @@ export const OpsApiKeysSection = () => {
               <li className="space-y-2">
                 <p className="font-medium text-foreground">
                   <span className="mr-1.5 inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">2</span>
-                  Lưu khoá vào file bí mật (chế độ 600)
+                  Save khoá vào file bí mật (chế độ 600)
                 </p>
                 <p className="text-muted-foreground">
                   Trên máy chạy agent, lưu khoá vào file riêng và khoá quyền truy cập. Server MCP từ chối file đọc
@@ -689,7 +689,7 @@ export const OpsApiKeysSection = () => {
             </ol>
 
             <div className="rounded-lg border border-border/80 bg-muted/30 p-3 text-[11px] text-muted-foreground">
-              Chi tiết đầy đủ: <span className="font-mono">payroll-ops-mcp/README.md</span> và{' '}
+              Details đầy đủ: <span className="font-mono">payroll-ops-mcp/README.md</span> và{' '}
               <span className="font-mono">docs/runbooks/payroll-ops-mcp.md</span>. Kênh này tách biệt hoàn toàn với
               khoá MCP chatbot phía trên — khác namespace, khác phạm vi, không dùng chung khoá.
             </div>

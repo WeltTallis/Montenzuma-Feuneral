@@ -18,12 +18,12 @@ const TARGET_CONFIG = {
   user: {
     loadingMessage: 'Đang tải thông tin người dùng...',
     missingIdMessage: 'Không tìm thấy ID người dùng trong URL',
-    errorMessage: 'Không thể tải thông tin người dùng',
+    errorMessage: 'Failed to load thông tin người dùng',
   },
   employee: {
     loadingMessage: 'Đang tải thông tin nhân viên...',
     missingIdMessage: 'Không tìm thấy ID nhân viên trong URL',
-    errorMessage: 'Không thể tải thông tin nhân viên',
+    errorMessage: 'Failed to load thông tin nhân viên',
   },
 } as const;
 
@@ -111,7 +111,7 @@ export function ResetPasswordModalContainer({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-card/80 backdrop-blur-sm">
         <div className="bg-card rounded-xl p-6 shadow-sm max-w-md">
           <h3 className="text-lg font-semibold text-destructive mb-2">
-            Lỗi tải dữ liệu
+            Error tải dữ liệu
           </h3>
           <p className="text-muted-foreground mb-4">
             {!idParam ? config.missingIdMessage : config.errorMessage}

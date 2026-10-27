@@ -53,7 +53,7 @@ export function SalaryPeriodFields({
       </div>
 
       <p className="typography-body-medium text-muted-foreground">
-      Nhập 0 = cuối tháng. Để trống = từ ngày 01 đến cuối tháng.
+      Import 0 = cuối tháng. Để trống = từ ngày 01 đến cuối tháng.
       </p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -75,12 +75,12 @@ export function SalaryPeriodFields({
           {salaryPeriodFrom !== null && salaryPeriodFrom >= 0 && salaryPeriodFrom <= 31 ? (
             <p className="text-xs text-muted-foreground">
               {salaryPeriodFrom === 0
-                ? `Ngày đầu tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'dd/MM/yyyy')}`
-                : `Ngày tháng trước, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth() - 1, salaryPeriodFrom), 'dd/MM/yyyy')}`
+                ? `Date đầu tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'dd/MM/yyyy')}`
+                : `Date tháng trước, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth() - 1, salaryPeriodFrom), 'dd/MM/yyyy')}`
               }
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">Ngày đầu tháng này, ví dụ: 01/{String(new Date().getMonth() + 1).padStart(2, '0')}/{new Date().getFullYear()}</p>
+            <p className="text-xs text-muted-foreground">Date đầu tháng này, ví dụ: 01/{String(new Date().getMonth() + 1).padStart(2, '0')}/{new Date().getFullYear()}</p>
           )}
         </div>
 
@@ -102,12 +102,12 @@ export function SalaryPeriodFields({
           {salaryPeriodTo !== null && salaryPeriodTo >= 0 && salaryPeriodTo <= 31 ? (
             <p className="text-xs text-muted-foreground">
               {salaryPeriodTo === 0
-                ? `Ngày cuối tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'dd/MM/yyyy')}`
-                : `Ngày tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth(), Math.min(salaryPeriodTo, daysInThisMonth)), 'dd/MM/yyyy')}`
+                ? `Date cuối tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'dd/MM/yyyy')}`
+                : `Date tháng này, ví dụ: ${format(new Date(new Date().getFullYear(), new Date().getMonth(), Math.min(salaryPeriodTo, daysInThisMonth)), 'dd/MM/yyyy')}`
               }
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">Ngày cuối tháng này, ví dụ: {format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'dd/MM/yyyy')}</p>
+            <p className="text-xs text-muted-foreground">Date cuối tháng này, ví dụ: {format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'dd/MM/yyyy')}</p>
           )}
         </div>
       </div>

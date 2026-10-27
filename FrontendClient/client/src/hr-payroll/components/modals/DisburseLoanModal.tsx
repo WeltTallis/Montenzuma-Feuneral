@@ -116,10 +116,10 @@ export function DisburseLoanModal({
             </div>
             <div>
               <AlertDialogTitle className="text-lg font-semibold">
-                {step === 'form' ? 'Giải ngân khoản vay' : 'Xác nhận giải ngân'}
+                {step === 'form' ? 'Giải ngân khoản vay' : 'Confirm giải ngân'}
               </AlertDialogTitle>
               <AlertDialogDescription className="text-sm text-muted-foreground">
-                {step === 'form' ? 'Nhập thông tin giải ngân' : 'Kiểm tra lại thông tin trước khi xác nhận'}
+                {step === 'form' ? 'Import thông tin giải ngân' : 'Kiểm tra lại thông tin trước khi xác nhận'}
               </AlertDialogDescription>
             </div>
           </div>
@@ -159,13 +159,13 @@ export function DisburseLoanModal({
               <div className="space-y-2">
                 <Label htmlFor="disbursement_date" className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Ngày giải ngân *
+                  Date giải ngân *
                 </Label>
                 <Input
                   id="disbursement_date"
                   type="date"
                   {...register('disbursement_date', {
-                    required: 'Ngày giải ngân là bắt buộc'
+                    required: 'Date giải ngân là bắt buộc'
                   })}
                   className={errors.disbursement_date ? 'border-red-500' : ''}
                 />
@@ -255,7 +255,7 @@ export function DisburseLoanModal({
 
               <div className="space-y-2 typography-body-small">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Ngày giải ngân:</span>
+                  <span className="text-muted-foreground">Date giải ngân:</span>
                   <span className="font-semibold">
                     {formatDate(formData.disbursement_date)}
                   </span>
@@ -303,12 +303,12 @@ export function DisburseLoanModal({
                 {isLoading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Đang xử lý...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4" />
-                    Xác nhận giải ngân
+                    Confirm giải ngân
                   </>
                 )}
               </button>

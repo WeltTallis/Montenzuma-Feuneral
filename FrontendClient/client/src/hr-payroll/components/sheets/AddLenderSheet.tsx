@@ -75,7 +75,7 @@ export function AddLenderSheet({ isOpen, onClose }: AddLenderSheetProps) {
     const hasBankInfo = selectedBank || formData.bank_account_number?.trim() || formData.bank_account_name?.trim();
     if (hasBankInfo) {
       if (!selectedBank) {
-        newErrors.bank_id = 'Vui lòng chọn ngân hàng';
+        newErrors.bank_id = 'Please chọn ngân hàng';
       }
       if (!formData.bank_account_number?.trim()) {
         newErrors.bank_account_number = 'Số tài khoản là bắt buộc khi có thông tin ngân hàng';
@@ -143,7 +143,7 @@ export function AddLenderSheet({ isOpen, onClose }: AddLenderSheetProps) {
     <SlideSheetTemplate
       isOpen={isOpen}
       onClose={onClose}
-      title="Thêm chủ nợ"
+      title="Add chủ nợ"
       description="Tạo mới thông tin chủ nợ"
       compact
       footer={
@@ -153,7 +153,7 @@ export function AddLenderSheet({ isOpen, onClose }: AddLenderSheetProps) {
             Cancel
           </Button>
           <Button variant="default" onClick={handleSave} disabled={createLender.isPending} className="min-h-11 w-full">
-            {createLender.isPending ? 'Đang thêm...' : 'Thêm'}
+            {createLender.isPending ? 'Đang thêm...' : 'Add'}
           </Button>
         </div>
       }
@@ -173,7 +173,7 @@ export function AddLenderSheet({ isOpen, onClose }: AddLenderSheetProps) {
                 }
               }}
               className={`h-11 ${errors.name ? 'border-red-500' : ''}`}
-              placeholder="Nhập tên chủ nợ"
+              placeholder="Import tên chủ nợ"
             />
             {errors.name && <p className="typography-body-small text-financial-negative mt-1">{errors.name}</p>}
           </div>
@@ -185,7 +185,7 @@ export function AddLenderSheet({ isOpen, onClose }: AddLenderSheetProps) {
               value={formData.cccd || ''}
               onChange={(e) => handleInputChange('cccd', e.target.value)}
               className="h-11"
-              placeholder="Nhập số CCCD"
+              placeholder="Import số CCCD"
             />
           </div>
 
@@ -223,7 +223,7 @@ export function AddLenderSheet({ isOpen, onClose }: AddLenderSheetProps) {
               value={formData.notes || ''}
               onChange={(e) => handleInputChange('notes', e.target.value)}
               className="min-h-24"
-              placeholder="Nhập ghi chú (nếu có)"
+              placeholder="Import ghi chú (nếu có)"
             />
           </div>
         </div>

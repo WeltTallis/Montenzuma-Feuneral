@@ -33,10 +33,10 @@ const DefaultLoadingComponent = () => (
 const DefaultErrorComponent = ({ onRetry }: { onRetry?: () => void }) => (
   <div className="flex flex-col items-center justify-center py-8 px-4">
     <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-    <p className="typography-body-medium text-muted-foreground mb-4">Không thể tải thêm dữ liệu</p>
+    <p className="typography-body-medium text-muted-foreground mb-4">Failed to load thêm dữ liệu</p>
     {onRetry && (
       <Button onClick={onRetry} variant="outline" size="sm">
-        Thử lại
+        Try again
       </Button>
     )}
   </div>

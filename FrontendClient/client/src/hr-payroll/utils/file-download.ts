@@ -34,7 +34,7 @@ export const downloadAssetFile = async (
     triggerBlobDownload(blob, filename);
   } catch (error) {
     console.error('Error downloading file:', error);
-    showErrorNotification('Lỗi tải file', 'Không thể tải file xuống. Vui lòng thử lại.');
+    showErrorNotification('Error tải file', 'Failed to load file xuống. Please try again.');
   }
 };
 

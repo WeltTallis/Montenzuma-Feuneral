@@ -134,8 +134,8 @@ export function UserSelector({
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              aria-label="Tìm kiếm người dùng"
-              placeholder="Tìm kiếm người dùng..."
+              aria-label="Search người dùng"
+              placeholder="Search người dùng..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {

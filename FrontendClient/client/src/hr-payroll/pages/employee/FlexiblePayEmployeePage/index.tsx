@@ -255,7 +255,7 @@ const FlexiblePayEmployeePage = () => {
   const handleLogout = () => {
     logout();
     localStorage.removeItem("userRole");
-    toast({ title: "Đăng xuất thành công" });
+    toast({ title: "Sign out thành công" });
     navigate("/login");
   };
 
@@ -323,7 +323,7 @@ const FlexiblePayEmployeePage = () => {
               <AlertCircle className="h-6 w-6" aria-hidden="true" />
             </div>
             <h2 className="mt-3 text-[1rem] font-semibold text-fg-secondary">Chưa tải được hạn mức ứng lương</h2>
-            <p className="mt-1 text-[0.8125rem] text-fg-tertiary">Kiểm tra kết nối rồi thử lại.</p>
+            <p className="mt-1 text-[0.8125rem] text-fg-tertiary">Check connection rồi thử lại.</p>
             <button
               type="button"
               onClick={() => { void refetchInfo(); }}

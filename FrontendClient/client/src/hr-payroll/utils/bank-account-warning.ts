@@ -52,7 +52,7 @@ export function getRejectedBankAccountWarning(
     reason:
       typeof apiError.message === "string" && apiError.message.trim()
         ? apiError.message
-        : "Tài khoản ngân hàng cần kiểm tra",
+        : "Account ngân hàng cần kiểm tra",
   };
 }
 

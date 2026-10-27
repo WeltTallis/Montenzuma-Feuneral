@@ -78,7 +78,7 @@ export const FeeScheduleSection = () => {
           className="shrink-0"
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Thêm cấu hình mới
+          Add cấu hình mới
         </Button>
       </div>
 

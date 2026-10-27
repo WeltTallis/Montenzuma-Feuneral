@@ -89,7 +89,7 @@ export const useTimesheetStatsConfig = (params?: UseTimesheetStatsConfigParams) 
 
     return [
       {
-        title: 'Tổng quan',
+        title: 'Overview',
         stats: [
           {
             title: 'Đã thanh toán',
@@ -129,7 +129,7 @@ export const useTimesheetStatsConfig = (params?: UseTimesheetStatsConfigParams) 
         ],
       },
       {
-        title: 'Hoàn tất',
+        title: 'Completed',
         stats: [
           {
             title: 'Approved',

@@ -38,7 +38,7 @@ const SendNotificationPage = () => {
     setMessageError('');
     let hasError = false;
     if (recipientIds.length === 0 && !toAllPartners && !toAllAdmins && !toAllEmployees) {
-      setRecipientError('Vui lòng chọn ít nhất một người nhận hoặc chọn gửi đến tất cả');
+      setRecipientError('Please chọn ít nhất một người nhận hoặc chọn gửi đến tất cả');
       hasError = true;
     }
     if (!title.trim()) { setTitleError('Tiêu đề không được để trống'); hasError = true; }
@@ -218,7 +218,7 @@ const SendNotificationPage = () => {
             <textarea
               value={message}
               onChange={handleMessageChange}
-              placeholder="Nhập nội dung thông báo..."
+              placeholder="Import nội dung thông báo..."
               className="flex-1 w-full resize-none rounded-lg border border-border/60 bg-card text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 p-3"
             />
             {messageError && (
@@ -256,7 +256,7 @@ const SendNotificationPage = () => {
               <textarea
                 value={message}
                 onChange={handleMessageChange}
-                placeholder="Nhập nội dung thông báo..."
+                placeholder="Import nội dung thông báo..."
                 className="flex-1 w-full resize-none rounded-lg border border-border/60 bg-card text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 p-3"
               />
               {messageError && (
@@ -275,7 +275,7 @@ const SendNotificationPage = () => {
                   ? 'bg-gradient-navy bell-seal-ready'
                   : 'border-2 border-border/40'
               )}
-              title={canSend ? 'Sẵn sàng gửi' : 'Nhập đủ thông tin để gửi'}
+              title={canSend ? 'Sẵn sàng gửi' : 'Import đủ thông tin để gửi'}
             >
               <Bell className={cn(
                 'h-4 w-4 transition-colors duration-500',

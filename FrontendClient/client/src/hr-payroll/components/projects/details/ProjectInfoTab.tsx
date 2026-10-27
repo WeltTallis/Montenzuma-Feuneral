@@ -52,7 +52,7 @@ export function ProjectInfoTab({ project }: ProjectInfoTabProps) {
         <div className="bg-muted/30 rounded-xl px-3 py-1">
           <Field label="Tên dự án" value={project.name || '-'} />
           <Field label="Mã dự án" value={project.code || '-'} mono />
-          <Field label="Khách hàng" value={project.client_name || '-'} />
+          <Field label="Otherh hàng" value={project.client_name || '-'} />
           <Field
             label="Người tạo"
             value={isLoadingCreator ? <span className="text-muted-foreground">...</span> : creatorName}
@@ -77,17 +77,17 @@ export function ProjectInfoTab({ project }: ProjectInfoTabProps) {
           <div className="bg-muted/30 rounded-xl px-3 py-1">
             <Field
               label="Bắt đầu"
-              value={project.salary_period_from ? `Ngày ${project.salary_period_from}` : 'Ngày 01'}
+              value={project.salary_period_from ? `Date ${project.salary_period_from}` : 'Date 01'}
             />
             <Field
               label="Kết thúc"
-              value={project.salary_period_to ? `Ngày ${project.salary_period_to}` : 'Cuối tháng'}
+              value={project.salary_period_to ? `Date ${project.salary_period_to}` : 'Cuối tháng'}
             />
           </div>
         </div>
 
         <div>
-          <SectionLabel icon={CalendarOff}>Ngày nghỉ tuần</SectionLabel>
+          <SectionLabel icon={CalendarOff}>Date nghỉ tuần</SectionLabel>
           <div className="bg-muted/30 rounded-xl px-3 py-2">
             {offDays === 0 ? (
               <p className="text-xs text-muted-foreground">Không có</p>
@@ -110,11 +110,11 @@ export function ProjectInfoTab({ project }: ProjectInfoTabProps) {
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-100 border border-emerald-300" />
-                    Ngày thường
+                    Date thường
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-400" />
-                    Ngày nghỉ
+                    Date nghỉ
                   </span>
                 </div>
               </div>

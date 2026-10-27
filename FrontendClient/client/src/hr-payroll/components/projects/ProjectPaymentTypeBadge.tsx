@@ -10,7 +10,7 @@ interface ProjectPaymentTypeBadgeProps {
 export function ProjectPaymentTypeBadge({ isMonthly, className }: ProjectPaymentTypeBadgeProps) {
   const config = isMonthly
     ? {
-        label: 'Lương tháng',
+        label: 'Payroll tháng',
         icon: Calendar,
         className: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
       }

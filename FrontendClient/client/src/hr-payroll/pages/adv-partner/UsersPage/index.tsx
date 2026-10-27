@@ -304,8 +304,8 @@ const AdvPartnerUsersPage = () => {
           <div role="alert" className="motion-safe:animate-fade-in-up">
             <ErrorState
               message={isFetchNextPageError
-                ? "Không thể tải thêm nhân viên. Danh sách đã tải vẫn được giữ lại."
-                : "Không thể tải danh sách nhân viên. Vui lòng thử lại."}
+                ? "Failed to load thêm nhân viên. List đã tải vẫn được giữ lại."
+                : "Failed to load danh sách nhân viên. Please try again."}
               onRetry={() => void (isFetchNextPageError ? fetchNextPage() : refetch())}
             />
           </div>
@@ -358,7 +358,7 @@ const AdvPartnerUsersPage = () => {
           <div className="px-4 pt-3 pb-1">
             <p className="text-xs text-fg-tertiary">Nhấn vào hàng để xem chi tiết</p>
           </div>
-          <div role="region" aria-label="Danh sách nhân viên" tabIndex={0} className="overflow-x-auto outline-brand focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2">
+          <div role="region" aria-label="List nhân viên" tabIndex={0} className="overflow-x-auto outline-brand focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2">
             <table className="w-full min-w-[1040px] border-collapse text-[13px]">
               <thead>
                 <tr>

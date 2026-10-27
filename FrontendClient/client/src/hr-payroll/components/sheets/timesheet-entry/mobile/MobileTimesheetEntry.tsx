@@ -428,7 +428,7 @@ export function MobileTimesheetEntry({
             placeholder="Chọn dự án"
             searchPlaceholder="Tìm dự án..."
             options={[
-              { value: "all", label: "Tất cả dự án" },
+              { value: "all", label: "All dự án" },
               ...projects.map((p) => ({
                 value: String(p.id),
                 label: `${p.name}${p.code ? ` · ${p.code}` : ""}`,
@@ -447,10 +447,10 @@ export function MobileTimesheetEntry({
               onChange={(v) =>
                 setFilterEmployeeId(v === "all" ? null : Number(v))
               }
-              placeholder="Tất cả nhân viên"
+              placeholder="All nhân viên"
               searchPlaceholder="Tìm nhân viên..."
               options={[
-                { value: "all", label: "Tất cả nhân viên" },
+                { value: "all", label: "All nhân viên" },
                 ...availableEmployees.map((e) => ({
                   value: String(e.id),
                   label: e.fullname,
@@ -481,7 +481,7 @@ export function MobileTimesheetEntry({
               ? "Đang tải cấu hình lương..."
               : payRateForbidden
                 ? "Bạn không có quyền truy cập bảng lương của dự án này."
-                : "Dự án chưa có cấu hình lương."}
+                : "Project chưa có cấu hình lương."}
           </p>
         )}
 
@@ -521,7 +521,7 @@ export function MobileTimesheetEntry({
   ) : !isPayRateReady ? (
     <div className="flex-1 flex items-center justify-center">
       <p className="text-sm text-muted-foreground">
-        {isLoadingPayRate ? "Loading..." : payRateForbidden ? "Bạn không có quyền truy cập bảng lương của dự án này." : "Dự án chưa có cấu hình lương."}
+        {isLoadingPayRate ? "Loading..." : payRateForbidden ? "Bạn không có quyền truy cập bảng lương của dự án này." : "Project chưa có cấu hình lương."}
       </p>
     </div>
   ) : visibleEmployees.length === 0 ? (
@@ -705,7 +705,7 @@ export function MobileTimesheetEntry({
                                 <div className="px-2 py-1.5 mb-1 border-b border-amber-100 bg-amber-50 flex items-start gap-1.5">
                                   <AlertTriangle className="h-3 w-3 text-amber-700 shrink-0 mt-0.5" />
                                   <p className="text-xs text-amber-700 leading-tight">
-                                    Xóa giờ công trước khi đổi loại ngày
+                                    Delete giờ công trước khi đổi loại ngày
                                   </p>
                                 </div>
                               )}
@@ -727,7 +727,7 @@ export function MobileTimesheetEntry({
                       <button
                         onClick={() => handleDeleteEntry(globalIdx)}
                         className="flex min-h-11 items-center gap-1 rounded-xl px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-destructive hover:bg-destructive/10"
-                        aria-label="Xóa chấm công ngày này"
+                        aria-label="Delete chấm công ngày này"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         Delete
@@ -829,7 +829,7 @@ export function MobileTimesheetEntry({
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h1 className="font-semibold text-base flex-1">Thêm chấm công</h1>
+        <h1 className="font-semibold text-base flex-1">Add chấm công</h1>
         <button
           onClick={() => setFilterOpen((o) => !o)}
           className={cn(

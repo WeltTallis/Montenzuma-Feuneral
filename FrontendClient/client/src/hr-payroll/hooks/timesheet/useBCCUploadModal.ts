@@ -34,7 +34,7 @@ export function buildFailureSummary(
   errors: ImportError[],
   forMonth?: string,
 ): string {
-  if (errors.length === 0) return 'Không thể xử lý tệp. Vui lòng kiểm tra lại định dạng.';
+  if (errors.length === 0) return 'Không thể xử lý tệp. Please check lại định dạng.';
 
   const approvedErrors = errors.filter(
     (e) =>
@@ -45,7 +45,7 @@ export function buildFailureSummary(
 
   if (approvedErrors.length > 0 && forMonth) {
     const monthLabel = formatMonthLabel(forMonth);
-    return `Phát hiện ${approvedErrors.length} bản chấm công đã phê duyệt trong tháng ${monthLabel}. Vui lòng chọn tháng chưa phê duyệt hoặc liên hệ quản trị viên.`;
+    return `Phát hiện ${approvedErrors.length} bản chấm công đã phê duyệt trong tháng ${monthLabel}. Please chọn tháng chưa phê duyệt hoặc liên hệ quản trị viên.`;
   }
 
   const duplicateErrors = errors.filter(
@@ -56,10 +56,10 @@ export function buildFailureSummary(
   );
 
   if (duplicateErrors.length > 0) {
-    return `Phát hiện ${duplicateErrors.length} bản chấm công trùng lặp. Vui lòng kiểm tra lại dữ liệu trong tệp.`;
+    return `Phát hiện ${duplicateErrors.length} bản chấm công trùng lặp. Please check lại dữ liệu trong tệp.`;
   }
 
-  return `Phát hiện ${errors.length} lỗi khi xử lý tệp. Vui lòng kiểm tra chi tiết bên dưới.`;
+  return `Phát hiện ${errors.length} lỗi khi xử lý tệp. Please check chi tiết bên dưới.`;
 }
 
 /** Group errors by employee name for display. */

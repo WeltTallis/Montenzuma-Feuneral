@@ -471,19 +471,19 @@ const EmployeesPage = () => {
 
         <div className="rounded-xl border border-input bg-card p-5 shadow-xs motion-safe:animate-fade-in-up [animation-delay:50ms] [animation-fill-mode:both] md:p-6">
           <PageHeader
-            title="Nhân viên dự án"
-            description="Danh sách nhân viên trong các dự án được phân quyền"
+            title="Employee dự án"
+            description="List nhân viên trong các dự án được phân quyền"
             icon={Users}
             actions={[
               {
-                label: isExporting ? 'Đang xuất...' : 'Xuất Excel',
+                label: isExporting ? 'Đang xuất...' : 'Export Excel',
                 onClick: () => setExportModalOpen(true),
                 icon: Download,
                 variant: 'outline' as const,
                 className: isExporting ? 'opacity-50 pointer-events-none' : '',
               },
               {
-                label: 'Thêm',
+                label: 'Add',
                 onClick: () => openAddEmployee(),
                 icon: Plus,
                 variant: 'default' as const,
@@ -518,7 +518,7 @@ const EmployeesPage = () => {
                       onClick: () => { updateStatusFilter(statusFilter === "working" ? undefined : "working"); updateMonth(undefined); },
                     },
                     {
-                      label: "Thêm tháng này",
+                      label: "Add tháng này",
                       value: employeesSummary.employees_hired_this_month,
                       onClick: () => { updateStatusFilter(undefined); updateMonth(month ? undefined : new Date().toISOString().slice(0, 7)); },
                     },
@@ -537,7 +537,7 @@ const EmployeesPage = () => {
                       onClick: () => { updateStatusFilter(statusFilter === "working" ? undefined : "working"); updateMonth(undefined); },
                     },
                     {
-                      label: "Thêm tháng này",
+                      label: "Add tháng này",
                       value: 0,
                       onClick: () => { updateStatusFilter(undefined); updateMonth(month ? undefined : new Date().toISOString().slice(0, 7)); },
                     },
@@ -559,7 +559,7 @@ const EmployeesPage = () => {
                 )}
               >
                 <UserCheck01 className="h-3.5 w-3.5" aria-hidden="true" />
-                Nhân viên của tôi
+                Employee của tôi
               </button>
               <button
                 onClick={() => setPoolView("global")}
@@ -571,7 +571,7 @@ const EmployeesPage = () => {
                 )}
               >
                 <Globe01 className="h-3.5 w-3.5" aria-hidden="true" />
-                Tất cả NV
+                All NV
               </button>
             </div>
 
@@ -616,7 +616,7 @@ const EmployeesPage = () => {
                 className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-muted-foreground outline-brand transition-colors hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2"
               >
                 <XClose className="h-3 w-3" aria-hidden="true" />
-                Xóa lọc
+                Delete lọc
               </button>
             )}
           </div>
@@ -638,7 +638,7 @@ const EmployeesPage = () => {
             <div className="flex items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/10 text-success"><UserCheck01 className="h-3.5 w-3.5" aria-hidden="true" /></span>
               <div>
-                <p className="text-[12px] font-bold text-foreground">Danh sách nhân sự</p>
+                <p className="text-[12px] font-bold text-foreground">List nhân sự</p>
                 <p className="text-xs text-muted-foreground">Chọn một nhân viên để xem hồ sơ chi tiết</p>
               </div>
             </div>

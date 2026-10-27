@@ -39,7 +39,7 @@ const Tag = memo(function Tag({ email, onRemove, primary }: { email: string; onR
       primary ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border',
     )}>
       <span className="max-w-[180px] break-all leading-snug sm:truncate">{email}</span>
-      <button type="button" onClick={onRemove} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-card/70 hover:opacity-80" aria-label={`Xóa ${email}`}>
+      <button type="button" onClick={onRemove} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-card/70 hover:opacity-80" aria-label={`Delete ${email}`}>
         <X className="h-3 w-3" />
       </button>
     </span>
@@ -78,7 +78,7 @@ const EmailCol = memo(function EmailCol({ label, sublabel, placeholder, value, e
           onKeyDown={onKeyDown}
           className={cn('min-h-11 text-sm', error && 'border-destructive')}
         />
-        <Button type="button" onClick={onAdd} size="icon" variant="outline" className="h-11 w-11 shrink-0 border-dashed" aria-label={`Thêm ${label}`}>
+        <Button type="button" onClick={onAdd} size="icon" variant="outline" className="h-11 w-11 shrink-0 border-dashed" aria-label={`Add ${label}`}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -206,7 +206,7 @@ export const PayrollReportEmailDialog = memo(function PayrollReportEmailDialog({
           {/* date */}
           <div className="flex flex-col gap-2 px-4 py-3 sm:w-48 sm:shrink-0 border-b sm:border-b-0">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <CalendarIcon className="h-3 w-3" />Ngày báo cáo
+              <CalendarIcon className="h-3 w-3" />Date báo cáo
             </p>
             <Popover open={calOpen} onOpenChange={setCalOpen}>
               <PopoverTrigger asChild>

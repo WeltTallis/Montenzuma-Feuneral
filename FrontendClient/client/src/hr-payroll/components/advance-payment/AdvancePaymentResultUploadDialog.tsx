@@ -99,7 +99,7 @@ export const AdvancePaymentResultUploadDialog = memo(
           <DialogContent className="flex max-h-[92dvh] max-w-3xl flex-col gap-0 overflow-hidden" contentPadding="none" hideCloseButton>
             <DialogNavyHeader
               title="Kết quả chuyển tiền"
-              description="Chi tiết xử lý file Excel chuyển tiền ứng lương"
+              description="Details xử lý file Excel chuyển tiền ứng lương"
             />
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
@@ -120,7 +120,7 @@ export const AdvancePaymentResultUploadDialog = memo(
               {/* Detail grid */}
               <div>
                 <p className="text-sm font-semibold mb-2">
-                  Chi tiết ({uploadResult.items?.length ?? 0})
+                  Details ({uploadResult.items?.length ?? 0})
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {uploadResult.items?.map((detail, index) => {
@@ -164,7 +164,7 @@ export const AdvancePaymentResultUploadDialog = memo(
 
             <DialogFooter className="grid shrink-0 grid-cols-1 gap-2 border-t px-4 py-4 sm:grid-cols-3 sm:px-5">
               <Button variant="outline" onClick={handleBackToUpload} className="h-11 w-full">
-                Nhập file khác
+                Import file khác
               </Button>
               <Button variant="outline" onClick={handleDownloadPdf} className="h-11 w-full gap-1.5">
                 <FileDown className="w-4 h-4" />
@@ -203,12 +203,12 @@ export const AdvancePaymentResultUploadDialog = memo(
               {uploadMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Đang xử lý...
+                  Processing...
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  Nhập file
+                  Import file
                 </>
               )}
             </Button>

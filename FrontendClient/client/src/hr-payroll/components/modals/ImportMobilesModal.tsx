@@ -64,7 +64,7 @@ export function ImportMobilesModal({
     if (!candidate.name.toLowerCase().endsWith(".xlsx")) {
       toast({
         title: "Sai định dạng tệp",
-        description: "Vui lòng tải lên tệp Excel (.xlsx).",
+        description: "Please tải lên tệp Excel (.xlsx).",
         variant: "destructive",
       });
       return;
@@ -126,7 +126,7 @@ export function ImportMobilesModal({
       <DialogContent className="sm:max-w-md gap-0">
         <DialogHeader className="pb-1">
           <DialogTitle className="text-sm font-semibold">
-            Nhập số điện thoại
+            Import số điện thoại
           </DialogTitle>
           <DialogDescription className="text-xs">
             Tải lên tệp &ldquo;NV chưa có SĐT&rdquo; đã điền cột Mobile. Hệ
@@ -196,8 +196,8 @@ export function ImportMobilesModal({
                 {!isPending && (
                   <button
                     onClick={() => setFile(null)}
-                    title="Xóa tệp"
-                    aria-label="Xóa tệp"
+                    title="Delete tệp"
+                    aria-label="Delete tệp"
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <X className="h-4 w-4" />
@@ -275,7 +275,7 @@ export function ImportMobilesModal({
                 </p>
               </div>
               <div className="rounded-lg border border-error/20 bg-error/10 px-2.5 py-2">
-                <p className="text-xs font-medium text-error">Lỗi</p>
+                <p className="text-xs font-medium text-error">Error</p>
                 <p className="mt-0.5 text-base font-bold tabular-nums text-foreground">
                   {result.error_count}
                 </p>
@@ -314,7 +314,7 @@ export function ImportMobilesModal({
                 onClick={handleComplete}
                 className="h-8 px-3 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                Hoàn tất
+                Completed
               </button>
             </div>
           </>

@@ -221,7 +221,7 @@ export const ApiKeysSection = () => {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error('Nhập tên khoá API');
+      toast.error('Import tên khoá API');
       return;
     }
     try {
@@ -317,7 +317,7 @@ export const ApiKeysSection = () => {
               onClick={() => void refetch()}
               disabled={isLoading || isFetching}
               className="min-h-11 sm:min-h-9 gap-1.5 self-start text-xs text-muted-foreground hover:text-foreground sm:self-auto"
-              aria-label="Tải lại danh sách khoá API"
+              aria-label="Reload danh sách khoá API"
             >
               <RefreshCw
                 className={cn('size-3.5', (isLoading || isFetching) && 'animate-spin')}
@@ -530,7 +530,7 @@ export const ApiKeysSection = () => {
                     Khoá đang có
                   </CardTitle>
                   <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                    Danh sách khoá API đã cấp. Thu hồi để chặn một khoá ngay lập tức.
+                    List khoá API đã cấp. Thu hồi để chặn một khoá ngay lập tức.
                   </CardDescription>
                 </div>
               </div>
@@ -561,9 +561,9 @@ export const ApiKeysSection = () => {
             ) : isError ? (
               <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
                 <ShieldAlert className="size-8 text-destructive" aria-hidden="true" />
-                <p className="font-medium text-foreground">Không thể tải danh sách khoá API</p>
+                <p className="font-medium text-foreground">Failed to load danh sách khoá API</p>
                 <p className="text-xs text-muted-foreground max-w-sm">
-                  Đã xảy ra lỗi khi truy vấn danh sách khoá từ máy chủ. Vui lòng thử lại.
+                  Đã xảy ra lỗi khi truy vấn danh sách khoá từ máy chủ. Please try again.
                 </p>
                 <Button
                   type="button"
@@ -572,7 +572,7 @@ export const ApiKeysSection = () => {
                   onClick={() => void refetch()}
                 >
                   <RefreshCw className="size-3.5" aria-hidden="true" />
-                  <span>Thử lại</span>
+                  <span>Try again</span>
                 </Button>
               </div>
             ) : keys.length === 0 ? (

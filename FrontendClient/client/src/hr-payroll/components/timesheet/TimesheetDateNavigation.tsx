@@ -80,7 +80,7 @@ export function TimesheetDateNavigation({
           onClick={goToToday}
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1 h-6 typography-body-small"
         >
-          Hôm nay
+          Today
         </Button>
       )}
     </div>

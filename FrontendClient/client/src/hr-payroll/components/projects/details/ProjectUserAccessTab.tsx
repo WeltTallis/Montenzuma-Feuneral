@@ -170,7 +170,7 @@ export function ProjectUserAccessTab({ project }: ProjectUserAccessTabProps) {
       <div className="space-y-2">
         <div className="flex items-center gap-1.5 px-0.5">
           <Users className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm font-medium">Danh sách người dùng</span>
+          <span className="text-sm font-medium">List người dùng</span>
           <span className="text-xs text-muted-foreground">· có thể quản lý dự án này</span>
         </div>
         {isLoadingUsers || isLoadingCreator ? (
@@ -255,7 +255,7 @@ export function ProjectUserAccessTab({ project }: ProjectUserAccessTabProps) {
           </div>
         }
         confirmText="Thu hồi quyền"
-        cancelText="Hủy bỏ"
+        cancelText="Cancel bỏ"
         confirmVariant="destructive"
         loading={revokeAccessMutation.isPending}
       />

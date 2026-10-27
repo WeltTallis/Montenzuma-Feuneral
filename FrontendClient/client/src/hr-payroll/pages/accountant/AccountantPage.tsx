@@ -62,19 +62,19 @@ export default function AccountantPage() {
           <TabsList className="mb-4 grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
             <TabsTrigger value="duyet-cong" className="gap-1.5 whitespace-normal text-center leading-snug">
               <CalendarCheck01 className="size-4" aria-hidden="true" />
-              Duyệt công
+              Approve công
             </TabsTrigger>
             <TabsTrigger value="xuat-chuyen-lo" className="gap-1.5 whitespace-normal text-center leading-snug">
               <FileDownload02 className="size-4" aria-hidden="true" />
-              Xuất file chuyển lô
+              Export file chuyển lô
             </TabsTrigger>
             <TabsTrigger value="nhap-kq" className="gap-1.5 whitespace-normal text-center leading-snug">
               <Upload01 className="size-4" aria-hidden="true" />
-              Nhập KQ chuyển lô
+              Import KQ chuyển lô
             </TabsTrigger>
             <TabsTrigger value="xuat-sao-ke" className="gap-1.5 whitespace-normal text-center leading-snug">
               <FileDownload01 className="size-4" aria-hidden="true" />
-              Xuất sao kê
+              Export sao kê
             </TabsTrigger>
           </TabsList>
 
@@ -201,7 +201,7 @@ function ApproveTimesheetsTab() {
               <TableHead>Employees</TableHead>
               <TableHead>Projects</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead className="text-right">Giờ</TableHead>
+              <TableHead className="text-right">Hour</TableHead>
               <TableHead className="text-right">Thành tiền</TableHead>
             </TableRow>
           </TableHeader>
@@ -215,7 +215,7 @@ function ApproveTimesheetsTab() {
             ) : isError ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-sm text-fg-error-primary">
-                  Không tải được danh sách chấm công. Vui lòng thử lại.
+                  Không tải được danh sách chấm công. Please try again.
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
@@ -264,7 +264,7 @@ function ApproveTimesheetsTab() {
           )}
         </div>
         <Button onClick={handleApprove} disabled={selected.size === 0 || bulkApprove.isPending}>
-          {bulkApprove.isPending ? 'Đang duyệt…' : `Duyệt (${selected.size})`}
+          {bulkApprove.isPending ? 'Đang duyệt…' : `Approve (${selected.size})`}
         </Button>
       </div>
     </Card>
@@ -279,7 +279,7 @@ function ExportBulkTransferTab() {
   return (
     <Card>
       <CardHeader className="border-b py-4">
-        <CardTitle className="text-base">Xuất file chuyển lô</CardTitle>
+        <CardTitle className="text-base">Export file chuyển lô</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-3 py-6">
         <p className="text-sm text-fg-tertiary">
@@ -307,7 +307,7 @@ function ImportResultTab() {
   return (
     <Card>
       <CardHeader className="border-b py-4">
-        <CardTitle className="text-base">Nhập KQ chuyển lô</CardTitle>
+        <CardTitle className="text-base">Import KQ chuyển lô</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-3 py-6">
         <p className="text-sm text-fg-tertiary">
@@ -331,11 +331,11 @@ function ExportSaoKeTab() {
   return (
     <Card>
       <CardHeader className="border-b py-4">
-        <CardTitle className="text-base">Xuất sao kê thanh toán</CardTitle>
+        <CardTitle className="text-base">Export sao kê thanh toán</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-3 py-6">
         <p className="text-sm text-fg-tertiary">
-          Xuất sao kê thanh toán lương (file Excel) theo ngày đối chiếu.
+          Export sao kê thanh toán lương (file Excel) theo ngày đối chiếu.
         </p>
         <Button onClick={() => setOpen(true)}>
           <FileDownload01 className="mr-1.5 h-4 w-4" aria-hidden="true" />

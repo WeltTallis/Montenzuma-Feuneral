@@ -136,7 +136,7 @@ export function useAdvancePaymentsPage(options?: { employeesTabActive?: boolean 
     return [
       { label: "Tổng yêu cầu", value: formatCurrency(d.totalAmount) },
       { label: "Đã trả", value: formatCurrency(d.totalPaidAmount) },
-      { label: "Phí thu được", value: formatCurrency(d.totalFeeEarned) },
+      { label: "Fee thu được", value: formatCurrency(d.totalFeeEarned) },
       { label: "Tổng phí thu", value: formatCurrency(d.totalFeeEarnedAllTime) },
     ];
   }, [summary]);

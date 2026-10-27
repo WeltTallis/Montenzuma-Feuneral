@@ -139,7 +139,7 @@ export const BulkTransferUploadDialog = memo(function BulkTransferUploadDialog({
               Tải File
             </span>
           }
-          description="Tải lên file Yêu cầu chuyển tiền (.xlsx) đã xuất từ Bảng công để xử lý."
+          description="Tải lên file Yêu cầu chuyển tiền (.xlsx) đã xuất từ Timesheet để xử lý."
         />
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
@@ -214,7 +214,7 @@ export const BulkTransferUploadDialog = memo(function BulkTransferUploadDialog({
                   value={formatCurrency(result.transfer_amount)}
                 />
                 <SummaryStat
-                  label="Phí ước tính"
+                  label="Fee ước tính"
                   value={formatCurrency(result.estimated_fee_total)}
                 />
               </div>
@@ -236,7 +236,7 @@ export const BulkTransferUploadDialog = memo(function BulkTransferUploadDialog({
                 {uploadMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Đang xử lý...
+                    Processing...
                   </>
                 ) : (
                   <>

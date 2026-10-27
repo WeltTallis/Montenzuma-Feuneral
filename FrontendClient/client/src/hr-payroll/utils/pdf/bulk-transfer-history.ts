@@ -14,7 +14,7 @@ export async function generateBulkTransferHistoryPdf(
   const pdfMake = await loadPdfMake();
 
   if (!pdfMake) {
-    throw new Error('Không thể tải thư viện PDF');
+    throw new Error('Failed to load thư viện PDF');
   }
 
   const formatDate = (dateString?: string): string => {
@@ -70,8 +70,8 @@ export async function generateBulkTransferHistoryPdf(
       {
         columns: [
           { width: 'auto', text: `Tổng số bản ghi: ${data.total_txn}`, style: 'summary' },
-          { width: 'auto', text: `Thành công: ${data.completed_txn}`, style: 'summarySuccess' },
-          { width: 'auto', text: `Thất bại: ${data.failed_txn}`, style: 'summaryFail' },
+          { width: 'auto', text: `Success: ${data.completed_txn}`, style: 'summarySuccess' },
+          { width: 'auto', text: `Failed: ${data.failed_txn}`, style: 'summaryFail' },
         ],
         columnGap: 24,
         margin: [0, 0, 0, 10],

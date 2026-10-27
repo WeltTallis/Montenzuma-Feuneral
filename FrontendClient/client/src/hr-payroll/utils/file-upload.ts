@@ -151,7 +151,7 @@ export const downloadTemplate = async (
       downloadFile(response.data.downloadUrl, response.data.filename);
     }
   } catch (error) {
-    throw new Error('Không thể tải xuống mẫu file');
+    throw new Error('Failed to load xuống mẫu file');
   }
 };
 

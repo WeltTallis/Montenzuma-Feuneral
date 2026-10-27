@@ -62,8 +62,8 @@ interface ProjectModalMetadata {
 export const projectModals: Record<ProjectModalId, ProjectModalMetadata> = {
   [PROJECT_MODAL_IDS.ADD_PROJECT]: {
     id: PROJECT_MODAL_IDS.ADD_PROJECT,
-    name: 'Thêm dự án',
-    description: 'Thêm dự án mới',
+    name: 'Add dự án',
+    description: 'Add dự án mới',
     category: 'project',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -76,7 +76,7 @@ export const projectModals: Record<ProjectModalId, ProjectModalMetadata> = {
   },
   [PROJECT_MODAL_IDS.PROJECT_DETAILS]: {
     id: PROJECT_MODAL_IDS.PROJECT_DETAILS,
-    name: 'Chi tiết dự án',
+    name: 'Details dự án',
     description: 'Xem thông tin chi tiết dự án',
     category: 'project',
     requiresAuth: true,
@@ -135,8 +135,8 @@ export const projectModals: Record<ProjectModalId, ProjectModalMetadata> = {
   },
   [PROJECT_MODAL_IDS.ADD_EMPLOYEE_TO_PROJECT]: {
     id: PROJECT_MODAL_IDS.ADD_EMPLOYEE_TO_PROJECT,
-    name: 'Thêm nhân viên vào dự án',
-    description: 'Thêm nhân viên vào dự án',
+    name: 'Add nhân viên vào dự án',
+    description: 'Add nhân viên vào dự án',
     category: 'project',
     requiresAuth: true,
     roles: ['admin', 'partner'],
@@ -150,8 +150,8 @@ export const projectModals: Record<ProjectModalId, ProjectModalMetadata> = {
   },
   [PROJECT_MODAL_IDS.REMOVE_EMPLOYEE]: {
     id: PROJECT_MODAL_IDS.REMOVE_EMPLOYEE,
-    name: 'Xóa nhân viên khỏi dự án',
-    description: 'Xóa nhân viên khỏi dự án',
+    name: 'Delete nhân viên khỏi dự án',
+    description: 'Delete nhân viên khỏi dự án',
     category: 'project',
     requiresAuth: true,
     roles: ['admin', 'partner'],

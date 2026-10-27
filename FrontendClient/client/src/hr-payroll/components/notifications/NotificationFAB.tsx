@@ -47,7 +47,7 @@ export const NotificationFAB = () => {
             'animate-in slide-in-from-bottom-4 fade-in duration-300',
             'bottom-6 h-12 w-12'
           )}
-          aria-label={`Thông báo (${unreadCount} chưa đọc)`}
+          aria-label={`Notifications (${unreadCount} chưa đọc)`}
         >
           <img
             src={bellIcon}

@@ -70,11 +70,11 @@ export const AdvancePaymentExportDialog = memo(function AdvancePaymentExportDial
       <DialogContent
         className="max-w-[95vw] sm:max-w-sm"
         contentPadding="none"
-        title="Xuất sao kê ứng lương"
+        title="Export sao kê ứng lương"
         description="Chọn tháng để tải xuống sao kê ứng lương"
       >
         <DialogHeader className="mx-0 mt-0 px-6 pt-5 pb-4">
-          <DialogTitle>Xuất sao kê ứng lương</DialogTitle>
+          <DialogTitle>Export sao kê ứng lương</DialogTitle>
         </DialogHeader>
 
         <div className="px-6 pb-4 space-y-3">
@@ -120,7 +120,7 @@ export const AdvancePaymentExportDialog = memo(function AdvancePaymentExportDial
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Xuất sao kê
+                Export sao kê
               </>
             )}
           </Button>

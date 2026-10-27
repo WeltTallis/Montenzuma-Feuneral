@@ -52,7 +52,7 @@ export const EmployeeStatistics = memo(({
       icon: Calendar,
     },
     {
-      title: "Lương TB/tuần",
+      title: "Payroll TB/tuần",
       value: formatCurrency(summaryData.avg_weekly_earnings_vnd),
       icon: Clock,
     }
@@ -66,10 +66,10 @@ export const EmployeeStatistics = memo(({
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Attendance</h3>
           <div className="space-y-1.5">
             <GroupedStatCard
-              title="Tổng quan"
+              title="Overview"
               stats={[
                 { label: 'Tổng giờ làm', value: (employee.timesheet_summary as TimesheetSummary).total_hours_worked },
-                { label: 'Tuần này', value: (employee.timesheet_summary as TimesheetSummary).current_week_hours },
+                { label: 'This week', value: (employee.timesheet_summary as TimesheetSummary).current_week_hours },
                 { label: 'Tổng bảng chấm', value: (employee.timesheet_summary as TimesheetSummary).total_timesheets },
               ]}
             />
@@ -93,13 +93,13 @@ export const EmployeeStatistics = memo(({
       {/* Payroll Summary from API */}
       {employee.payroll_summary && (
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Lương</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Payroll</h3>
           <GroupedStatCard
-            title="Lương"
+            title="Payroll"
             stats={[
               { label: 'Tổng thanh toán', value: (employee.payroll_summary as PayrollSummary).total_payroll_payments },
               { label: 'Tổng thu nhập', value: formatCurrency((employee.payroll_summary as PayrollSummary).total_earnings_vnd) },
-              { label: 'Lương TB/tuần', value: formatCurrency((employee.payroll_summary as PayrollSummary).avg_weekly_earnings_vnd) },
+              { label: 'Payroll TB/tuần', value: formatCurrency((employee.payroll_summary as PayrollSummary).avg_weekly_earnings_vnd) },
               { label: 'Trả gần nhất', value: (() => { const d = (employee.payroll_summary as PayrollSummary).last_payment_date; return d && d.trim() !== '' ? format(new Date(d), 'dd/MM/yyyy') : 'Chưa có'; })() },
             ]}
           />

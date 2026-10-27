@@ -54,7 +54,7 @@ interface Props {
 }
 
 const ACCOUNT_TYPE_LABELS: Record<"0" | "1", string> = {
-  "0": "Tài khoản ngân hàng",
+  "0": "Account ngân hàng",
   "1": "Thẻ ATM / Ví điện tử",
 };
 
@@ -445,7 +445,7 @@ export function ManualDisbursementForm(props: Props) {
         )}
         {activeFee !== null && state.amount && !errors.amount && (
           <p className="text-xs text-muted-foreground">
-            Phí:{" "}
+            Fee:{" "}
             <span className="font-semibold text-foreground">{formatAmount(activeFee)} ₫</span>
             {totalWithFee !== null && (
               <>
@@ -481,7 +481,7 @@ export function ManualDisbursementForm(props: Props) {
             <div className="flex items-center gap-2 text-sm text-success">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span className="break-words">
-                Tài khoản hợp lệ —{" "}
+                Account hợp lệ —{" "}
                 <span className="font-medium">{verified?.verifiedName}</span>
               </span>
             </div>

@@ -119,7 +119,7 @@ export async function downloadDataAsXLS<T extends Record<string, unknown>>(
       await exportToXLS(data, { fileName });
     }
   } catch (error) {
-    console.error('Lỗi xuất file XLS:', error);
-    throw new Error('Không thể xuất file XLS. Vui lòng thử lại.');
+    console.error('Error xuất file XLS:', error);
+    throw new Error('Không thể xuất file XLS. Please try again.');
   }
 }

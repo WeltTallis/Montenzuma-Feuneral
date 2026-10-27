@@ -55,8 +55,8 @@ export const usePartnerTimesheetData = () => {
       } catch (error) {
         console.error('Failed to fetch timesheet data:', error);
         toast({
-          title: "Lỗi tải dữ liệu",
-          description: "Không thể tải dữ liệu bảng công. Vui lòng thử lại.",
+          title: "Error tải dữ liệu",
+          description: "Failed to load dữ liệu bảng công. Please try again.",
           variant: "destructive"
         });
         setTimesheetData([]);
@@ -73,7 +73,7 @@ export const usePartnerTimesheetData = () => {
     try {
       await timesheetService.importTimesheets(file, projectId);
       toast({
-        title: "Nhập bảng công thành công",
+        title: "Import bảng công thành công",
         description: "Dữ liệu bảng công đã được cập nhật.",
       });
 
@@ -109,8 +109,8 @@ export const usePartnerTimesheetData = () => {
       }
     } catch (error) {
       toast({
-        title: "Lỗi nhập bảng công",
-        description: "Không thể nhập dữ liệu bảng công. Vui lòng thử lại.",
+        title: "Error nhập bảng công",
+        description: "Không thể nhập dữ liệu bảng công. Please try again.",
         variant: "destructive"
       });
     }

@@ -78,7 +78,7 @@ export default function CreateTopupDialog({
             Nạp tiền vào ví
           </DialogTitle>
           <DialogDescription>
-            Nhập thông tin giao dịch nạp tiền từ ngân hàng
+            Import thông tin giao dịch nạp tiền từ ngân hàng
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +107,7 @@ export default function CreateTopupDialog({
             </div>
             <div className="space-y-2">
               <Label>
-                Ngày nạp <span className="text-red-700">*</span>
+                Date nạp <span className="text-red-700">*</span>
               </Label>
               <Popover>
                 <PopoverTrigger asChild>

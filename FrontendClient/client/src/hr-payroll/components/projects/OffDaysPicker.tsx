@@ -54,11 +54,11 @@ export function OffDaysPicker({ value, onChange, disabled }: OffDaysPickerProps)
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-100 border border-emerald-300" />
-          Ngày thường
+          Date thường
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-400" />
-          Ngày nghỉ
+          Date nghỉ
         </span>
       </div>
     </div>

@@ -279,7 +279,7 @@ export const ProjectProfitabilityCard = memo(() => {
                           ? 'border-border/20 bg-card text-muted-foreground opacity-50'
                           : 'border-border bg-card text-foreground hover:border-primary/30'
                       }`}
-                    title={hidden ? 'Hiện dòng này' : hasFocus && focusedId === s.project_id ? 'Bỏ lọc' : 'Lọc dự án này'}
+                    title={hidden ? 'Hiện dòng này' : hasFocus && focusedId === s.project_id ? 'Bỏ lọc' : 'Filter dự án này'}
                   >
                     <span
                       className="w-2 h-2 rounded-sm flex-shrink-0 transition-colors duration-200"

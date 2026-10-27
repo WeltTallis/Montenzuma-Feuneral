@@ -42,7 +42,7 @@ export function CustomScheduleFields({
           </div>
 
           <div className="space-y-2">
-            <Label className="typography-label-small text-foreground">Ngày thanh toán (1-28) *</Label>
+            <Label className="typography-label-small text-foreground">Date thanh toán (1-28) *</Label>
             <Input
               inputMode="numeric"
               value={form.custom_payment_day_of_month}

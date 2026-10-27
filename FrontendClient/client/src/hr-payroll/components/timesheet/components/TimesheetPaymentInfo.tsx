@@ -15,7 +15,7 @@ export function TimesheetPaymentInfo({ timesheet }: TimesheetPaymentInfoProps) {
         </p>
         <p className="typography-body-small text-green-700 mt-2">
           {timesheet.projectIsFlexible
-            ? `Lương trọn ca: ${formatCurrency(timesheet.payrate)}`
+            ? `Payroll trọn ca: ${formatCurrency(timesheet.payrate)}`
             : `${timesheet.hours_worked} giờ × ${formatCurrency(timesheet.payrate)}`}
         </p>
       </div>

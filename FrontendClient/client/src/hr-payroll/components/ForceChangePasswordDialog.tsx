@@ -43,7 +43,7 @@ import { showSuccessNotification } from '@hr/utils/error-handler';
 const SPECIAL_CHAR_REGEX = /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/;
 
 const forceChangePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại'),
+  currentPassword: z.string().min(1, 'Please nhập mật khẩu hiện tại'),
   newPassword: z
     .string()
     .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
@@ -167,7 +167,7 @@ export const ForceChangePasswordDialog = () => {
           </span>
           <DialogTitle className="employee-type-strong text-white">Đổi mật khẩu bắt buộc</DialogTitle>
           <p className="employee-type-body-sm mt-1.5 text-white/70">
-            Tài khoản đang dùng mật khẩu mặc định. Đặt mật khẩu mới để tiếp tục.
+            Account đang dùng mật khẩu mặc định. Đặt mật khẩu mới để tiếp tục.
           </p>
         </header>
 
@@ -189,7 +189,7 @@ export const ForceChangePasswordDialog = () => {
                           autoCapitalize="none"
                           autoCorrect="off"
                           spellCheck={false}
-                          placeholder="Nhập mật khẩu hiện tại"
+                          placeholder="Import mật khẩu hiện tại"
                           className={passwordFieldClass}
                           disabled={isPending}
                         />
@@ -224,7 +224,7 @@ export const ForceChangePasswordDialog = () => {
                           autoCapitalize="none"
                           autoCorrect="off"
                           spellCheck={false}
-                          placeholder="Nhập mật khẩu mới"
+                          placeholder="Import mật khẩu mới"
                           className={passwordFieldClass}
                           disabled={isPending}
                         />
@@ -274,7 +274,7 @@ export const ForceChangePasswordDialog = () => {
                 disabled={isPending}
                 className="employee-type-action inline-flex h-12 w-full items-center justify-center rounded-xl bg-[var(--employee-accent)] px-4 text-white shadow-[var(--employee-cta-shadow)] transition-colors hover:bg-[var(--employee-accent-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--employee-focus-ring)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
               >
-                {isPending ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                {isPending ? 'Processing...' : 'Đổi mật khẩu'}
               </button>
             </div>
           </form>

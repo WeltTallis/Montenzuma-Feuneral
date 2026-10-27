@@ -215,7 +215,7 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="employee-type-label-caps text-white/90">Tài khoản của bạn</p>
+                <p className="employee-type-label-caps text-white/90">Account của bạn</p>
                 <h2 className="employee-type-section-title mt-0.5 break-words text-white">{displayUser.name}</h2>
                 <span className="mt-2 inline-flex h-4 items-center justify-center rounded-full border border-white/20 bg-white/15 px-2.5 text-xs leading-4 text-white">
                   {getRoleText(displayUser.role)}
@@ -253,7 +253,7 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="Nhập họ và tên"
+                          placeholder="Import họ và tên"
                           disabled={form.formState.isSubmitting || updateProfileMutation.isPending}
                           className="h-11"
                         />
@@ -272,7 +272,7 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
                         <Input
                           {...field}
                           type="email"
-                          placeholder="Nhập email"
+                          placeholder="Import email"
                           disabled={form.formState.isSubmitting || updateProfileMutation.isPending}
                           className="h-11"
                         />
@@ -290,7 +290,7 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="Nhập số CCCD"
+                          placeholder="Import số CCCD"
                           disabled={form.formState.isSubmitting || updateProfileMutation.isPending}
                           className="h-11"
                         />
@@ -311,7 +311,7 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
                           type="tel"
                           inputMode="tel"
                           autoComplete="tel"
-                          placeholder="Nhập số điện thoại"
+                          placeholder="Import số điện thoại"
                           disabled={form.formState.isSubmitting || updateProfileMutation.isPending}
                           className="h-11"
                         />
@@ -328,7 +328,7 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
                 <div className="gap-3 p-4">
                   <div>
                     <div>
-                      <p className="employee-type-label-caps font-semibold text-[var(--employee-accent)]">Liên hệ</p>
+                      <p className="employee-type-label-caps font-semibold text-[var(--employee-accent)]">Contact</p>
                       <p className="employee-type-body-sm mt-0.5 text-[var(--employee-text-secondary)]">Thông tin dùng để liên lạc với bạn</p>
                     </div>
                   </div>
@@ -349,12 +349,12 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
               <section className="rounded-xl border border-[var(--employee-border)] bg-white shadow-[var(--employee-shadow)]">
                 <div className="gap-3 p-4">
                   <div>
-                    <p className="employee-type-label-caps font-semibold text-[var(--employee-accent)]">Tài khoản</p>
-                    <p className="employee-type-body-sm mt-0.5 text-[var(--employee-text-secondary)]">Trạng thái và hoạt động gần đây</p>
+                    <p className="employee-type-label-caps font-semibold text-[var(--employee-accent)]">Account</p>
+                    <p className="employee-type-body-sm mt-0.5 text-[var(--employee-text-secondary)]">Status và hoạt động gần đây</p>
                   </div>
                   <ul className="p-0">
                   <InfoRow icon={<Calendar className="h-4 w-4" />} label="Created on" value={formatCreatedAt(displayUser.created_at)} />
-                  <InfoRow icon={<Clock className="h-4 w-4" />} label="Đăng nhập cuối" value={formatLastLogin(displayUser.last_login)} />
+                  <InfoRow icon={<Clock className="h-4 w-4" />} label="Sign in cuối" value={formatLastLogin(displayUser.last_login)} />
                   </ul>
                 </div>
               </section>
@@ -381,7 +381,7 @@ export const UserProfileSheet = ({ isOpen, onClose }: UserProfileSheetProps) => 
                 disabled={form.formState.isSubmitting || updateProfileMutation.isPending}
               >
                 <Save className="h-4 w-4 mr-1.5" />
-                {(form.formState.isSubmitting || updateProfileMutation.isPending) ? 'Đang lưu...' : 'Lưu thay đổi'}
+                {(form.formState.isSubmitting || updateProfileMutation.isPending) ? 'Đang lưu...' : 'Save thay đổi'}
               </button>
             </div>
           ) : (

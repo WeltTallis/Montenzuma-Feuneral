@@ -257,7 +257,7 @@ function TimesheetEntrySheetComponent({
 
   const employeeDisplayValue = useMemo(() => {
     if (!selectedEmployeeFilter || !selectedEmployee) {
-      return 'Tất cả nhân viên';
+      return 'All nhân viên';
     }
 
     return `${selectedEmployee.fullname} • ${selectedEmployee.cccd}`;
@@ -419,7 +419,7 @@ function TimesheetEntrySheetComponent({
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) handleCloseClick(); }}>
       <SheetContent
         side="right"
-        title="Thêm chấm công"
+        title="Add chấm công"
         className="p-0 flex flex-col h-full !w-screen max-w-[1200px] mx-auto bg-slate-50"
       >
         {/* Header — title, filters, close */}
@@ -429,7 +429,7 @@ function TimesheetEntrySheetComponent({
               <ClipboardPenLine className="h-4.5 w-4.5" />
             </span>
             <div>
-              <h1 className="text-sm font-bold text-foreground">Nhập chấm công</h1>
+              <h1 className="text-sm font-bold text-foreground">Import chấm công</h1>
               <p className="text-xs text-muted-foreground">Thiết lập dự án, nhân viên và khoảng ngày</p>
             </div>
           </div>
@@ -441,7 +441,7 @@ function TimesheetEntrySheetComponent({
                 variant="ghost"
                 role="combobox"
                 aria-expanded={isProjectDropdownOpen}
-                aria-label={selectedProject ? `Dự án: ${selectedProject.name}` : "Chọn dự án"}
+                aria-label={selectedProject ? `Project: ${selectedProject.name}` : "Chọn dự án"}
                 className="min-h-11 max-w-full justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 text-xs font-normal hover:bg-card hover:border-primary/25"
               >
                 <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -490,7 +490,7 @@ function TimesheetEntrySheetComponent({
                 variant="ghost"
                 role="combobox"
                 aria-expanded={isEmployeeDropdownOpen}
-                aria-label={selectedEmployee ? `Nhân viên: ${selectedEmployee.fullname}` : "Lọc nhân viên"}
+                aria-label={selectedEmployee ? `Employee: ${selectedEmployee.fullname}` : "Filter nhân viên"}
                 className="min-h-11 max-w-full justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 text-xs font-normal hover:bg-card hover:border-primary/25"
                 disabled={availableEmployees.length === 0 || !isPayRateReady}
               >
@@ -498,7 +498,7 @@ function TimesheetEntrySheetComponent({
                 <span className="min-w-0 truncate">
                   {selectedEmployeeFilter && selectedEmployee
                     ? <span className="font-medium">{selectedEmployee.fullname}</span>
-                    : <span className="text-muted-foreground">Tất cả nhân viên</span>
+                    : <span className="text-muted-foreground">All nhân viên</span>
                   }
                 </span>
                 <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-40" />
@@ -517,11 +517,11 @@ function TimesheetEntrySheetComponent({
                   <CommandEmpty>Không tìm thấy nhân viên nào</CommandEmpty>
                   <CommandGroup>
                     <CommandItem
-                      value="Tất cả nhân viên"
+                      value="All nhân viên"
                       onSelect={() => { handleEmployeeFilterChange('all'); setIsEmployeeDropdownOpen(false); }}
                     >
                       <Check className={cn('mr-2 h-4 w-4', selectedEmployeeFilter === null ? 'opacity-100' : 'opacity-0')} />
-                      <span className="font-medium">Tất cả nhân viên</span>
+                      <span className="font-medium">All nhân viên</span>
                     </CommandItem>
                     {availableEmployees.map((employee) => (
                       <CommandItem
@@ -585,7 +585,7 @@ function TimesheetEntrySheetComponent({
             <div className="border border-amber-200 rounded-2xl p-4 bg-amber-50/80 text-sm text-amber-800 shadow-[0_10px_24px_-22px_rgba(180,83,9,0.45)]">
               {isInitialDataLoading
                 ? 'Đang tải cấu hình mức lương cho dự án này...'
-                : 'Dự án này chưa có cấu hình mức lương. Vui lòng cấu hình mức lương trước khi tạo chấm công.'}
+                : 'Project này chưa có cấu hình mức lương. Please cấu hình mức lương trước khi tạo chấm công.'}
             </div>
           ) : (
             <MultiEntryTable
@@ -649,7 +649,7 @@ function TimesheetEntrySheetComponent({
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <span className="inline-block w-4 h-3.5 rounded border border-emerald-300 bg-emerald-50/70 shrink-0" />
-                  Mới tạo
+                  New tạo
                 </span>
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <span className="inline-block w-4 h-3.5 rounded border border-amber-300 bg-amber-50/70 shrink-0" />
@@ -681,7 +681,7 @@ function TimesheetEntrySheetComponent({
                         disabled={!canSave}
                         className="min-h-11 px-5"
                       >
-                        {isLoading ? 'Đang lưu...' : 'Lưu chấm công'}
+                        {isLoading ? 'Đang lưu...' : 'Save chấm công'}
                       </Button>
                     </span>
                   </TooltipTrigger>

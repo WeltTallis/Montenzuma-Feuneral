@@ -105,7 +105,7 @@ export function ProjectSelector({
 
   const filterValue = useCallback((project: Project) => `${project.name} ${project.client_name} ${project.code || ''}`, []);
 
-  const errorMessage = error ? 'Có lỗi xảy ra khi tìm kiếm dự án' : undefined;
+  const errorMessage = error ? 'An error occurred khi tìm kiếm dự án' : undefined;
 
   return (
     <AsyncSearchableDropdown
@@ -125,7 +125,7 @@ export function ProjectSelector({
       loadingMessage="Đang tìm kiếm..."
       loadingMoreMessage="Đang tải thêm..."
       emptyMessages={{
-        searchTooShort: "Nhập tối thiểu 3 ký tự để tìm kiếm",
+        searchTooShort: "Import tối thiểu 3 ký tự để tìm kiếm",
         noResults: "Không tìm thấy dự án nào",
         empty: "Không có dự án khả dụng"
       }}

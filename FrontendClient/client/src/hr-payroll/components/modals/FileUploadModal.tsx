@@ -89,7 +89,7 @@ const payrollExportFormats = [
     description: 'Phiếu lương PDF cho từng nhân viên',
     icon: FileText,
     format: 'pdf',
-    fields: ['Thông tin cá nhân', 'Chi tiết lương', 'Khấu trừ', 'Lương thực nhận']
+    fields: ['Thông tin cá nhân', 'Details lương', 'Deduction', 'Payroll thực nhận']
   },
   {
     id: 'tax-report',
@@ -97,7 +97,7 @@ const payrollExportFormats = [
     description: 'Báo cáo thuế thu nhập cá nhân',
     icon: FileSpreadsheet,
     format: 'excel',
-    fields: ['Mã số thuế', 'Lương brutto', 'Thuế TNCN', 'Bảo hiểm']
+    fields: ['Mã số thuế', 'Payroll brutto', 'Tax TNCN', 'Bảo hiểm']
   },
   {
     id: 'detailed-payroll',
@@ -105,7 +105,7 @@ const payrollExportFormats = [
     description: 'Bảng lương chi tiết đầy đủ thông tin',
     icon: FileSpreadsheet,
     format: 'excel',
-    fields: ['Thông tin NV', 'Lương CB', 'Phụ cấp', 'Thưởng', 'Khấu trừ', 'Thực lãnh']
+    fields: ['Thông tin NV', 'Payroll CB', 'Phụ cấp', 'Thưởng', 'Deduction', 'Thực lãnh']
   }
 ];
 
@@ -160,7 +160,7 @@ export function FileUploadModal({
         newResults.push({
           fileName: file.name,
           success: false,
-          errors: [`Định dạng file không được hỗ trợ. Chấp nhận: ${acceptedFiles.join(', ')}`]
+          errors: [`Định dạng file không được hỗ trợ. Accept: ${acceptedFiles.join(', ')}`]
         });
         continue;
       }
@@ -183,7 +183,7 @@ export function FileUploadModal({
         newResults.push({
           fileName: file.name,
           success: false,
-          errors: ['Lỗi xử lý file']
+          errors: ['Error xử lý file']
         });
       }
 
@@ -232,7 +232,7 @@ export function FileUploadModal({
       
       if (result.success) {
         toast({
-          title: "Xuất file thành công",
+          title: "Export file thành công",
           description: `Đã tạo file ${selectedExportFormat.name}`,
         });
 
@@ -255,8 +255,8 @@ export function FileUploadModal({
       }
     } catch (error) {
       toast({
-        title: "Lỗi xuất file",
-        description: "Không thể tạo file xuất. Vui lòng thử lại.",
+        title: "Error xuất file",
+        description: "Không thể tạo file xuất. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -331,7 +331,7 @@ export function FileUploadModal({
                     <div className="space-y-4">
                       <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
                       <div>
-                        <p className="typography-title-large">Đang xử lý file...</p>
+                        <p className="typography-title-large">Processing file...</p>
                         <Progress value={progress} className="w-full mt-2" />
                         <p className="typography-body-medium text-muted-foreground mt-1">{Math.round(progress)}% hoàn thành</p>
                       </div>
@@ -439,7 +439,7 @@ export function FileUploadModal({
                     ) : (
                       <>
                         <Download className="h-4 w-4 mr-2" />
-                        Xuất file
+                        Export file
                       </>
                     )}
                   </Button>
@@ -528,7 +528,7 @@ export function FileUploadModal({
               <CardContent className="space-y-3 text-foreground">
                 <div className="flex items-start gap-2">
                   <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center typography-body-medium">1</div>
-                  <p>Tải xuống file Excel chứa thông tin chuyển khoản</p>
+                  <p>Download file Excel chứa thông tin chuyển khoản</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center typography-body-medium">2</div>
@@ -544,11 +544,11 @@ export function FileUploadModal({
                 </div>
                 
                 <div className="mt-4 p-3 bg-card rounded-xl border border-border">
-                  <p className="typography-body-medium">Lưu ý quan trọng:</p>
+                  <p className="typography-body-medium">Save ý quan trọng:</p>
                   <ul className="typography-body-medium mt-1 space-y-1">
                     <li>• Kiểm tra kỹ thông tin tài khoản trước khi chuyển khoản</li>
                     <li>• Đảm bảo số dư tài khoản đủ để thực hiện giao dịch</li>
-                    <li>• Lưu lại biên lai chuyển khoản để đối chiếu</li>
+                    <li>• Save lại biên lai chuyển khoản để đối chiếu</li>
                   </ul>
                 </div>
               </CardContent>
@@ -563,7 +563,7 @@ export function FileUploadModal({
             </Button>
             {results.length > 0 && (
               <Button variant="outline" onClick={() => setResults([])}>
-                Làm mới
+                Refresh
               </Button>
             )}
           </div>

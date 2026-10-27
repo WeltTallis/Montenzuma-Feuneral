@@ -50,11 +50,11 @@ export function OnePayFeeReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl" title="Nhập phí OnePay" description="Tải file đối soát phí tháng của OnePay">
+      <DialogContent className="sm:max-w-xl" title="Import phí OnePay" description="Tải file đối soát phí tháng của OnePay">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ReceiptText className="h-5 w-5" />
-            Nhập phí OnePay
+            Import phí OnePay
           </DialogTitle>
         </DialogHeader>
 

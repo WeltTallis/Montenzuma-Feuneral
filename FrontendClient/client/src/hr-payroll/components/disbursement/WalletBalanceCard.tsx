@@ -204,7 +204,7 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-semibold uppercase tracking-[0.1em] text-white/60">
-                        Phí tháng này
+                        Fee tháng này
                       </div>
                       <div className="mt-1 break-words font-financial text-[13px] font-medium leading-snug text-white tabular-nums">
                         {formatCurrency(monthlyProviderFee ?? 0)}

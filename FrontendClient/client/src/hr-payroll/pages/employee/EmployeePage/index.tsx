@@ -131,7 +131,7 @@ const EmployeePage = () => {
   const handleLogout = () => {
     logout();
     localStorage.removeItem("userRole");
-    toast({ title: "Đăng xuất thành công" });
+    toast({ title: "Sign out thành công" });
     navigate("/login");
   };
 

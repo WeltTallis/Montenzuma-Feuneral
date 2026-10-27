@@ -152,8 +152,8 @@ function SearchBar({ value, onChange, inputRef }: SearchBarProps) {
       <input
         ref={inputRef}
         className="h-11 w-full min-w-0 rounded-md border bg-muted/50 pl-8 pr-12 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground sm:h-9"
-        placeholder="Tìm kiếm ngân hàng..."
-        aria-label="Tìm kiếm ngân hàng"
+        placeholder="Search ngân hàng..."
+        aria-label="Search ngân hàng"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete="off"
@@ -162,7 +162,7 @@ function SearchBar({ value, onChange, inputRef }: SearchBarProps) {
         <button
           type="button"
           onClick={() => onChange('')}
-          aria-label="Xóa tìm kiếm ngân hàng"
+          aria-label="Delete tìm kiếm ngân hàng"
           className="absolute right-0 flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-9 sm:w-9"
         >
           <X className="h-3.5 w-3.5" />
@@ -199,7 +199,7 @@ const SelectorTrigger = forwardRef<HTMLButtonElement, TriggerProps>(
       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
     </Button>
     {value && (
-      <Button type="button" variant="ghost" size="icon" disabled={disabled} onClick={onClear} aria-label="Xóa ngân hàng đã chọn" className="shrink-0">
+      <Button type="button" variant="ghost" size="icon" disabled={disabled} onClick={onClear} aria-label="Delete ngân hàng đã chọn" className="shrink-0">
         <X className="h-4 w-4" />
       </Button>
     )}

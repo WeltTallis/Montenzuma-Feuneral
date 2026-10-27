@@ -140,7 +140,7 @@ export const QuickActionBar = ({
             ) : (
               <>
                 <ChevronUp className="w-3 h-3 mr-1" aria-hidden="true" />
-                Thêm ({filteredActions.length - maxVisibleActions})
+                Add ({filteredActions.length - maxVisibleActions})
               </>
             )}
           </Button>
@@ -169,14 +169,14 @@ export function useQuickActions(pageType: 'employees' | 'projects' | 'timesheet'
       return [
         {
           id: 'add-employee',
-          label: 'Thêm NV',
+          label: 'Add NV',
           icon: UserPlus01,
           action: () => () => {},
           roles: ['admin', 'partner'] as const
         },
         {
           id: 'export-employees',
-          label: 'Xuất Excel',
+          label: 'Export Excel',
           icon: Download01,
           action: () => () => {},
           variant: 'secondary' as const,
@@ -209,7 +209,7 @@ export function useQuickActions(pageType: 'employees' | 'projects' | 'timesheet'
       return [
         {
           id: 'quick-entry',
-          label: 'Nhập nhanh',
+          label: 'Import nhanh',
           icon: Zap,
           action: () => () => {}
         },

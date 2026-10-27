@@ -54,7 +54,7 @@ export const DesktopHeader = ({
           size="icon"
           onClick={() => setIsNotificationSheetOpen(true)}
           className="relative h-8 w-8 hover:bg-accent/50"
-          aria-label={`Thông báo${unreadCount > 0 ? ` (${unreadCount} chưa đọc)` : ""}`}
+          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} chưa đọc)` : ""}`}
         >
           <img
             src={bellIcon}

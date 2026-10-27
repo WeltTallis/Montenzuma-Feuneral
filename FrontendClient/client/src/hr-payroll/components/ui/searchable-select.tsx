@@ -54,7 +54,7 @@ export function SearchableSelect({
   onChange,
   options,
   placeholder = 'Chọn...',
-  searchPlaceholder = 'Tìm kiếm...',
+  searchPlaceholder = 'Search...',
   emptyMessage = 'Không tìm thấy.',
   disabled = false,
   triggerId,

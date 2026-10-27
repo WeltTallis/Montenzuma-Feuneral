@@ -8,8 +8,8 @@ export function CheckInAction({ onClick }: CheckInActionProps) {
   return (
     <button
       onClick={onClick}
-      aria-label="Cài đặt điểm danh"
-      title="Cài đặt điểm danh"
+      aria-label="Settings điểm danh"
+      title="Settings điểm danh"
       className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-all whitespace-nowrap hover:bg-accent"
     >
       <ScanFace className="h-4 w-4 shrink-0" />

@@ -117,7 +117,7 @@ export async function loadPdfMake(): Promise<PdfMake> {
       return await loadPdfMakeFromCDN();
     } catch (cdnError) {
       console.error('[pdfMake] CDN fallback also failed:', cdnError);
-      throw new Error('Không thể tải thư viện tạo PDF. Vui lòng thử lại.');
+      throw new Error('Failed to load thư viện tạo PDF. Please try again.');
     }
   }
 }

@@ -241,7 +241,7 @@ export const EntryRow = memo(({
               {entryValidation && !entryValidation.valid && entryValidation.errors.map((err, i) => (
                 <p key={`ev-${i}`} className="text-xs font-medium text-red-700 flex items-center gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                  {typeof err === 'string' ? err : 'Có lỗi xảy ra'}
+                  {typeof err === 'string' ? err : 'An error occurred'}
                 </p>
               ))}
               {rowErrors && rowErrors.map((err, i) => (
@@ -293,7 +293,7 @@ export const EntryRow = memo(({
                   <div className="px-2 py-1.5 mb-1 border-b border-amber-100 bg-amber-50 flex items-start gap-1.5">
                     <AlertTriangle className="h-3 w-3 text-amber-700 shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-700 leading-tight">
-                      Xóa giờ công trước khi đổi loại ngày
+                      Delete giờ công trước khi đổi loại ngày
                     </p>
                   </div>
                 )}
@@ -413,8 +413,8 @@ export const EntryRow = memo(({
                     onClick={handleRemove}
                     disabled={isLoading}
                     className="h-5 w-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 text-muted-foreground group-hover:text-destructive/60 group-hover:bg-destructive/10 transition-all disabled:pointer-events-none"
-                    title="Xóa dòng"
-                    aria-label="Xóa dòng chấm công"
+                    title="Delete dòng"
+                    aria-label="Delete dòng chấm công"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>

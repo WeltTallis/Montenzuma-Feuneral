@@ -49,7 +49,7 @@ export function ScheduleDisplay({
 
             <div className="space-y-4">
               <label className="flex flex-col gap-2">
-                <span className="typography-label-small text-muted-foreground">Ngày đến hạn</span>
+                <span className="typography-label-small text-muted-foreground">Date đến hạn</span>
                 <Input
                   type="date"
                   value={schedule.due_date}
@@ -97,19 +97,19 @@ export function ScheduleDisplay({
           <div className="typography-label-medium text-foreground font-semibold uppercase tracking-wide">XÁC NHẬN THÔNG TIN VAY NỢ</div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="flex flex-col gap-2 bg-card p-4 rounded-xl border border-border">              <span className="typography-label-small text-muted-foreground uppercase tracking-wide">Tổng tiền vay</span>
+            <div className="flex flex-col gap-2 bg-card p-4 rounded-xl border border-border">              <span className="typography-label-small text-muted-foreground uppercase tracking-wide">Total amount vay</span>
               <span className="typography-h2 font-bold text-foreground">
                 {formatVND(summary.principal)}
               </span>
             </div>
 
-            <div className="flex flex-col gap-2 bg-card p-4 rounded-xl border border-border">              <span className="typography-label-small text-muted-foreground uppercase tracking-wide">Tổng tiền trả</span>
+            <div className="flex flex-col gap-2 bg-card p-4 rounded-xl border border-border">              <span className="typography-label-small text-muted-foreground uppercase tracking-wide">Total amount trả</span>
               <span className="typography-h2 font-bold text-foreground">
                 {formatVND(summary.totalRepayment)}
               </span>
             </div>
 
-            <div className="flex flex-col gap-2 bg-card p-4 rounded-xl border border-border">              <span className="typography-label-small text-muted-foreground uppercase tracking-wide">Tổng tiền lãi</span>
+            <div className="flex flex-col gap-2 bg-card p-4 rounded-xl border border-border">              <span className="typography-label-small text-muted-foreground uppercase tracking-wide">Total amount lãi</span>
               <span className="typography-h2 font-bold text-foreground">
                 {formatVND(summary.totalInterest)}
               </span>

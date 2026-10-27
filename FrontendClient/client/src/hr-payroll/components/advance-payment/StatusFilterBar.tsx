@@ -16,9 +16,9 @@ interface StatusOption {
 }
 
 const STATUS_OPTIONS: StatusOption[] = [
-  { value: "all",       label: "Tất cả",    dotClass: "" },
+  { value: "all",       label: "All",    dotClass: "" },
   { value: "pending",   label: "Chờ xử lý", dotClass: "bg-amber-400" },
-  { value: "completed", label: "Hoàn tất",  dotClass: "bg-emerald-500" },
+  { value: "completed", label: "Completed",  dotClass: "bg-emerald-500" },
   { value: "failed",    label: "Failed",  dotClass: "bg-red-400" },
   { value: "cancelled", label: "Cancelled",    dotClass: "bg-gray-400" },
 ];
@@ -48,7 +48,7 @@ export const StatusFilterBar = memo(function StatusFilterBar({
 
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={`Trạng thái ứng lương: ${selected.label}`} className={cn("h-9 w-auto min-w-32 shrink-0 gap-1.5 text-sm", triggerClassName)}>
+      <SelectTrigger aria-label={`Status ứng lương: ${selected.label}`} className={cn("h-9 w-auto min-w-32 shrink-0 gap-1.5 text-sm", triggerClassName)}>
         {selected.dotClass && (
           <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", selected.dotClass)} />
         )}

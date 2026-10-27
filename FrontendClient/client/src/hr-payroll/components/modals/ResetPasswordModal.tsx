@@ -30,7 +30,7 @@ interface ResetPasswordModalProps {
 
 const TARGET_LABELS: Record<TargetType, { noun: string; footer: string }> = {
   user: { noun: 'người dùng', footer: 'Người dùng sẽ phải sử dụng mật khẩu mới này để đăng nhập.' },
-  employee: { noun: 'nhân viên', footer: 'Nhân viên sẽ phải sử dụng mật khẩu mới này để đăng nhập.' },
+  employee: { noun: 'nhân viên', footer: 'Employee sẽ phải sử dụng mật khẩu mới này để đăng nhập.' },
 };
 
 export function ResetPasswordModal({
@@ -113,7 +113,7 @@ export function ResetPasswordModal({
               <Input
                 id="new-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Nhập mật khẩu mới"
+                placeholder="Import mật khẩu mới"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={errors.password ? "border-destructive pr-10" : "pr-10"}

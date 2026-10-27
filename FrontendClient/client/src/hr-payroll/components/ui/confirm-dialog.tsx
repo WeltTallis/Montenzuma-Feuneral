@@ -101,7 +101,7 @@ export function ConfirmDialog({
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  Đang xử lý...
+                  Processing...
                 </>
               ) : (
                 confirmText

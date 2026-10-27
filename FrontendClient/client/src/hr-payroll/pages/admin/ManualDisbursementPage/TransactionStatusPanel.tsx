@@ -74,7 +74,7 @@ export function TransactionStatusPanel({ row, onReset, hideResetButton = false }
           <p className="font-semibold">{formatAmount(row.requested_amount)} ₫</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Phí giao dịch</p>
+          <p className="text-xs text-muted-foreground">Fee giao dịch</p>
           <p>{formatAmount(row.fee)} ₫</p>
         </div>
         <div>
@@ -83,7 +83,7 @@ export function TransactionStatusPanel({ row, onReset, hideResetButton = false }
         </div>
         {row.settled_at && (
           <div className="min-[420px]:col-span-2">
-            <p className="text-xs text-muted-foreground">Hoàn tất lúc</p>
+            <p className="text-xs text-muted-foreground">Completed lúc</p>
             <p>{formatTimestamp(row.settled_at)}</p>
           </div>
         )}
@@ -97,7 +97,7 @@ export function TransactionStatusPanel({ row, onReset, hideResetButton = false }
 
       {!terminal && !providerOk && (
         <p className="text-xs text-muted-foreground">
-          Hệ thống đang theo dõi giao dịch. Trạng thái sẽ tự cập nhật khi
+          Hệ thống đang theo dõi giao dịch. Status sẽ tự cập nhật khi
           ngân hàng phản hồi. Bạn cũng sẽ nhận được thông báo đẩy.
         </p>
       )}

@@ -29,7 +29,7 @@ export function TimesheetMonthlySummary({ summaryData }: TimesheetMonthlySummary
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp className="w-4 h-4 text-emerald-700" />
         <h4 className="typography-body-medium text-emerald-700">
-          Tổng quan tháng
+          Overview tháng
         </h4>
       </div>
       <div className="grid grid-cols-2 gap-3 typography-body-medium">
@@ -45,7 +45,7 @@ export function TimesheetMonthlySummary({ summaryData }: TimesheetMonthlySummary
           </p>
         </div>
         <div>
-          <span className="typography-body-small text-emerald-700">Ngày làm</span>
+          <span className="typography-body-small text-emerald-700">Date làm</span>
           <p className="font-medium">{summaryData.workingDays} ngày</p>
         </div>
         <div>

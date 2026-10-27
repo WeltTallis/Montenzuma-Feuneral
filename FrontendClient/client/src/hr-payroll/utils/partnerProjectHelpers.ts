@@ -59,7 +59,7 @@ export const validateExcelFile = (file: File): { isValid: boolean; error?: strin
   if (!allowedTypes.includes(file.type)) {
     return {
       isValid: false,
-      error: "Định dạng file không hợp lệ. Vui lòng chọn file Excel (.xls hoặc .xlsx)"
+      error: "Định dạng file không hợp lệ. Please chọn file Excel (.xls hoặc .xlsx)"
     };
   }
   

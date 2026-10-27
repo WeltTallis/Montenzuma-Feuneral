@@ -71,10 +71,10 @@ const HistoryItemCard = ({ item, onCancel }: { item: AdvancePaymentHistoryItem; 
             <span className="text-slate-600">·</span>
             <span className="shrink-0">Nhận <span className="font-semibold text-foreground">{safeFormat(item.netAmount)}</span></span>
             <span className="text-slate-600">·</span>
-            <span className="shrink-0">Phí {safeFormat(item.fee)}</span>
+            <span className="shrink-0">Fee {safeFormat(item.fee)}</span>
           </div>
           {showConfirmCancel && item.status === "PENDING" && (
-            <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">              <span className="text-xs text-muted-foreground flex-1">Xác nhận hủy?</span>
+            <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">              <span className="text-xs text-muted-foreground flex-1">Confirm hủy?</span>
               <button onClick={() => setShowConfirmCancel(false)} className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Không</button>
               <button onClick={handleCancelClick} className="text-xs font-semibold text-red-700 hover:text-red-700 transition-colors">Confirm</button>
             </div>
@@ -214,7 +214,7 @@ export const AdvancePaymentSheet = ({ isOpen, onClose }: AdvancePaymentSheetProp
                         <p className="text-xs font-bold text-emerald-700">{formatCurrency(info.completedAmount)}</p>
                       </div>
                       <div className="bg-amber-50/80 rounded-xl px-3 py-2 border border-amber-100">
-                        <p className="text-xs text-slate-600 mb-0.5">Đang chờ</p>
+                        <p className="text-xs text-slate-600 mb-0.5">Waiting</p>
                         <p className="text-xs font-bold text-amber-700">{formatCurrency(info.pendingAmount)}</p>
                       </div>
                     </div>
@@ -232,7 +232,7 @@ export const AdvancePaymentSheet = ({ isOpen, onClose }: AdvancePaymentSheetProp
                   <div className="space-y-3">
                     <div className="relative">
                       <input
-                        type="text" inputMode="numeric" placeholder="Nhập số tiền..."
+                        type="text" inputMode="numeric" placeholder="Import số tiền..."
                         value={formatAmountInput(amount)} onChange={handleAmountChange}
                         className={`w-full h-11 px-4 pr-14 text-sm font-medium rounded-xl border bg-card/80 focus:bg-card focus:outline-none focus:ring-2 transition-all ${
                           error ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-sky-200 focus:border-border"                        }`}
@@ -255,7 +255,7 @@ export const AdvancePaymentSheet = ({ isOpen, onClose }: AdvancePaymentSheetProp
                           <span className="font-medium text-foreground">{formatCurrency(numericAmount)}</span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
-                          <span>Phí giao dịch</span>
+                          <span>Fee giao dịch</span>
                           <span className="font-medium text-red-700">-{formatCurrency(feeDetails.fee)}</span>
                         </div>
                         <div className="flex justify-between pt-1.5 border-t border-border">                          <span className="font-semibold text-foreground">Thực nhận</span>

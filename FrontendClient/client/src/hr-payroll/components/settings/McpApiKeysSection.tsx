@@ -52,7 +52,7 @@ const SCOPE_OPTIONS: ReadonlyArray<{
   {
     value: 'full',
     label: 'Toàn quyền (ALL)',
-    description: 'Tất cả endpoint, kể cả tạo/sửa/xoá',
+    description: 'All endpoint, kể cả tạo/sửa/xoá',
   },
 ];
 
@@ -180,7 +180,7 @@ export const McpApiKeysSection = () => {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error('Nhập tên khoá MCP');
+      toast.error('Import tên khoá MCP');
       return;
     }
     if (!scope) {
@@ -422,7 +422,7 @@ export const McpApiKeysSection = () => {
         </Card>
       </section>
 
-      {/* 2. Danh sách khoá MCP */}
+      {/* 2. List khoá MCP */}
       <section id="mcp-keys-list" aria-labelledby="mcp-keys-list-title">
         <Card className="overflow-hidden border-border shadow-sm">
           <CardHeader className="border-b bg-muted/20 p-4 sm:p-5">
@@ -433,7 +433,7 @@ export const McpApiKeysSection = () => {
                 </div>
                 <div>
                   <CardTitle id="mcp-keys-list-title" className="text-sm sm:text-base font-semibold text-foreground">
-                    Danh sách khoá MCP
+                    List khoá MCP
                   </CardTitle>
                   <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                     Theo dõi khoá, phạm vi và lần dùng gần nhất. Thu hồi để chặn một khoá ngay lập tức.
@@ -447,7 +447,7 @@ export const McpApiKeysSection = () => {
                 onClick={() => void refetch()}
                 disabled={isLoading || isFetching}
                 className="min-h-11 sm:min-h-9 gap-1.5 self-start text-xs text-muted-foreground hover:text-foreground sm:self-auto"
-                aria-label="Tải lại danh sách khoá MCP"
+                aria-label="Reload danh sách khoá MCP"
               >
                 <RefreshCw
                   className={cn('size-3.5', (isLoading || isFetching) && 'animate-spin')}
@@ -467,7 +467,7 @@ export const McpApiKeysSection = () => {
             ) : isError ? (
               <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
                 <ShieldAlert className="size-8 text-destructive" aria-hidden="true" />
-                <p className="font-medium text-foreground">Không thể tải danh sách khoá MCP</p>
+                <p className="font-medium text-foreground">Failed to load danh sách khoá MCP</p>
                 <Button
                   type="button"
                   variant="outline"
@@ -475,7 +475,7 @@ export const McpApiKeysSection = () => {
                   onClick={() => void refetch()}
                 >
                   <RefreshCw className="size-3.5" aria-hidden="true" />
-                  <span>Thử lại</span>
+                  <span>Try again</span>
                 </Button>
               </div>
             ) : keys.length === 0 ? (
@@ -571,13 +571,13 @@ export const McpApiKeysSection = () => {
                     </tr>
                     <tr>
                       <td className="px-3 py-2 font-medium text-foreground">ALL</td>
-                      <td className="px-3 py-2 text-muted-foreground">Tất cả endpoint, kể cả tạo/sửa/xoá</td>
+                      <td className="px-3 py-2 text-muted-foreground">All endpoint, kể cả tạo/sửa/xoá</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Lưu ý: khoá hoạt động với quyền quản trị của người tạo khoá.
+                Save ý: khoá hoạt động với quyền quản trị của người tạo khoá.
               </p>
             </div>
 
@@ -685,7 +685,7 @@ export const McpApiKeysSection = () => {
 
             {/* Security notes */}
             <div className="space-y-2">
-              <p className="font-medium text-foreground">Lưu ý bảo mật</p>
+              <p className="font-medium text-foreground">Save ý bảo mật</p>
               <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
                 <li>Khoá chỉ hiển thị một lần khi tạo — lưu ở nơi an toàn.</li>
                 <li>Ưu tiên dùng READ ONLY; chỉ dùng ALL khi agent thực sự cần ghi dữ liệu.</li>

@@ -88,8 +88,8 @@ export default function AuditLogPage() {
         <div role="alert">
           <ErrorState
             message={isFetchNextPageError
-              ? "Không thể tải thêm nhật ký. Các bản ghi đã tải vẫn được giữ lại."
-              : "Không thể tải nhật ký hoạt động. Vui lòng thử lại."}
+              ? "Failed to load thêm nhật ký. Các bản ghi đã tải vẫn được giữ lại."
+              : "Failed to load nhật ký hoạt động. Please try again."}
             onRetry={() => void (isFetchNextPageError ? fetchNextPage() : refetch())}
             className="px-4"
           />

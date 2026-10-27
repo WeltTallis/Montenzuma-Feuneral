@@ -116,7 +116,7 @@ export function EmployeeSingleSelector({
             )}
             {isError && (
               <div className="px-3 py-3 text-sm text-destructive">
-                Không thể tìm kiếm nhân viên. Vui lòng thử lại.
+                Không thể tìm kiếm nhân viên. Please try again.
               </div>
             )}
             {!isLoading && !isError && employees.length === 0 && (

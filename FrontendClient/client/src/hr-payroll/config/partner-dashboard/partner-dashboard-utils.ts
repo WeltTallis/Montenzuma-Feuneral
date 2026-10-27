@@ -27,7 +27,7 @@ export const formatProjectForDisplay = (project: Project) => {
   return {
     ...project,
     statusColor: getStatusColor(project.status),
-    displayDate: `Ngày tạo: ${project.startDate}`,
+    displayDate: `Date tạo: ${project.startDate}`,
     displayEmployees: `${project.employeeCount} nhân viên`,
   };
 };

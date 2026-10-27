@@ -15,7 +15,7 @@ const EnvironmentBannerComponent = ({ headline, detail }: EnvironmentBannerProps
     style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     role="status"
     aria-live="polite"
-    aria-label="Thông báo môi trường phát triển"
+    aria-label="Notifications môi trường phát triển"
   >
     <div className="mx-auto flex max-w-6xl items-center justify-center gap-3 px-4 py-[4px] text-sm font-semibold text-foreground">
       <span className="tracking-wide">{headline}</span>

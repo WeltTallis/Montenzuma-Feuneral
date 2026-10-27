@@ -181,7 +181,7 @@ export const usePreviewValidation = (formData: MultiTimesheetFormData) => {
             setAllEntriesValid(!hasInvalidAfterErrors);
           }
         } else {
-          setEmployeeErrors(new Map([[0, ['Lỗi không xác định khi kiểm tra dữ liệu']]]));
+          setEmployeeErrors(new Map([[0, ['Error không xác định khi kiểm tra dữ liệu']]]));
           setRowErrors(new Map());
           entriesToValidate.forEach(entry => {
             const key = generateEntryKey(entry);

@@ -35,13 +35,13 @@ export function validateRejectUnpaidTimesheetsForm(
   rejectionReason: string,
 ): FormErrors {
   const errors: FormErrors = {};
-  if (!projectId) errors.project = 'Vui lòng chọn một dự án.';
+  if (!projectId) errors.project = 'Please chọn một dự án.';
   if (!fromDate || !toDate) {
-    errors.dateRange = 'Vui lòng chọn đầy đủ khoảng ngày.';
+    errors.dateRange = 'Please chọn đầy đủ khoảng ngày.';
   } else if (fromDate > toDate) {
-    errors.dateRange = 'Ngày bắt đầu không được sau ngày kết thúc.';
+    errors.dateRange = 'Date bắt đầu không được sau ngày kết thúc.';
   }
-  if (!rejectionReason.trim()) errors.reason = 'Vui lòng nhập lý do loại.';
+  if (!rejectionReason.trim()) errors.reason = 'Please nhập lý do loại.';
   return errors;
 }
 

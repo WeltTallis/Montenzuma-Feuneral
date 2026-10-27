@@ -47,7 +47,7 @@ interface TimesheetModalMetadata {
 export const timesheetModals: Record<TimesheetModalId, TimesheetModalMetadata> = {
   [TIMESHEET_MODAL_IDS.TIMESHEET_DETAILS]: {
     id: TIMESHEET_MODAL_IDS.TIMESHEET_DETAILS,
-    name: 'Chi tiết bảng chấm công',
+    name: 'Details bảng chấm công',
     description: 'Xem chi tiết bảng chấm công',
     category: 'timesheet',
     requiresAuth: true,
@@ -62,7 +62,7 @@ export const timesheetModals: Record<TimesheetModalId, TimesheetModalMetadata> =
   },
   [TIMESHEET_MODAL_IDS.TIMESHEET_ENTRY]: {
     id: TIMESHEET_MODAL_IDS.TIMESHEET_ENTRY,
-    name: 'Nhập bảng chấm công',
+    name: 'Import bảng chấm công',
     description: 'Tạo hoặc chỉnh sửa bảng chấm công',
     category: 'timesheet',
     requiresAuth: true,

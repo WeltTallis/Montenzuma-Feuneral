@@ -77,8 +77,8 @@ export const WeeklyPaymentFeeFormDialog = ({
         <DialogHeader>
           <DialogTitle>
             {isEdit
-              ? "Sửa cấu hình phí trả lương tuần"
-              : "Thêm cấu hình phí trả lương tuần"}
+              ? "Edit cấu hình phí trả lương tuần"
+              : "Add cấu hình phí trả lương tuần"}
           </DialogTitle>
           <DialogDescription>
             Cấu hình áp dụng từ ngày hiệu lực cho đến khi có cấu hình mới thay
@@ -154,7 +154,7 @@ export const WeeklyPaymentFeeFormDialog = ({
               Cancel
             </Button>
             <Button type="submit" disabled={!!validationError || isSaving}>
-              {isSaving ? "Đang lưu..." : isEdit ? "Cập nhật" : "Thêm cấu hình"}
+              {isSaving ? "Đang lưu..." : isEdit ? "Cập nhật" : "Add cấu hình"}
             </Button>
           </DialogFooter>
         </form>

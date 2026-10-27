@@ -32,7 +32,7 @@ export function cronToVietnamese(expr: string): string {
 
   // Specific day of month
   if (dom !== '*' && month === '*' && dow === '*') {
-    return `Ngày ${dom} hàng tháng lúc ${fmtTime(hour, min)}`;
+    return `Date ${dom} hàng tháng lúc ${fmtTime(hour, min)}`;
   }
 
   // Fallback

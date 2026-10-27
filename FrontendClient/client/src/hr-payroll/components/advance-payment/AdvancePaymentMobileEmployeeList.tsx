@@ -111,7 +111,7 @@ export function AdvancePaymentMobileEmployeeList({
       <EmptyState
         icon={Users}
         title="Chưa có dữ liệu"
-        description="Vui lòng nhập danh sách nhân viên"
+        description="Please nhập danh sách nhân viên"
       />
     );
   }

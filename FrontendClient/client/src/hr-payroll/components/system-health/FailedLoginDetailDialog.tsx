@@ -130,7 +130,7 @@ export function FailedLoginDetailDialog({ identifier, days, onClose }: FailedLog
             <div className="min-w-0">
               <SheetTitle className="flex items-center gap-2">
                 <Shield03 className="h-4 w-4 text-destructive shrink-0" aria-hidden="true" />
-                Chi tiết đăng nhập thất bại
+                Details đăng nhập thất bại
               </SheetTitle>
               {identifier && (
                 <p className="text-sm text-muted-foreground font-mono mt-1 break-all">

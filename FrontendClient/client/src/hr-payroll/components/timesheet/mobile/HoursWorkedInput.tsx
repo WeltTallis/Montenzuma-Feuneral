@@ -122,7 +122,7 @@ export function HoursWorkedInput({
         <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
           <div className="typography-body-small text-destructive">
-            <strong>Lỗi:</strong> Số giờ phải từ 0 đến 24
+            <strong>Error:</strong> Số giờ phải từ 0 đến 24
           </div>
         </div>
       )}
@@ -131,7 +131,7 @@ export function HoursWorkedInput({
         <div className="bg-muted/50 rounded-xl p-3">
           <div className="flex items-center justify-between typography-body-small">
             <span className="text-muted-foreground">
-              {hours <= 8 ? 'Giờ hành chính' : `Giờ hành chính: 8h, Làm thêm: ${hours - 8}h`}
+              {hours <= 8 ? 'Hour hành chính' : `Hour hành chính: 8h, Làm thêm: ${hours - 8}h`}
             </span>
             <Badge variant={isOvertime ? "warning" : "secondary"} className="typography-body-small">
               {hours}h
@@ -143,7 +143,7 @@ export function HoursWorkedInput({
       {hours === 0 && (
         <div className="text-center py-4 text-muted-foreground">
           <Timer className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p className="typography-body-small">Nhập số giờ làm việc</p>
+          <p className="typography-body-small">Import số giờ làm việc</p>
         </div>
       )}
     </div>

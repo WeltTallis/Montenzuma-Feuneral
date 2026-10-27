@@ -123,7 +123,7 @@ export function TimesheetStatusBadge({
           <div className="typography-body-medium">{config.tooltip}</div>
           {status === 'approved' && paymentStatus && (
             <div className="typography-body-small text-muted-foreground mt-1">
-              Trạng thái: {STATUS_CONFIG[status].label} → {config.label}
+              Status: {STATUS_CONFIG[status].label} → {config.label}
             </div>
           )}
         </TooltipContent>

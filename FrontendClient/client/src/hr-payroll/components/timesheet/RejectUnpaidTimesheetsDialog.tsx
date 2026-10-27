@@ -122,7 +122,7 @@ export function RejectUnpaidTimesheetsDialog({
                   id="reject-unpaid-reason"
                   value={form.rejectionReason}
                   onChange={(event) => form.setRejectionReason(event.target.value)}
-                  placeholder="Nhập lý do áp dụng cho tất cả bảng công..."
+                  placeholder="Import lý do áp dụng cho tất cả bảng công..."
                   className="min-h-24 resize-y"
                   maxLength={500}
                   disabled={form.isPending}
@@ -139,13 +139,13 @@ export function RejectUnpaidTimesheetsDialog({
                 tabIndex={-1}
                 className="text-base font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                Xác nhận phạm vi loại
+                Confirm phạm vi loại
               </h3>
               <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
                 <p className="min-w-0 text-foreground">
-                  Tất cả bảng công chưa được thanh toán trong phạm vi này sẽ chuyển sang trạng thái bị loại.
-                  Bảng công đã thanh toán luôn được giữ nguyên.
+                  All bảng công chưa được thanh toán trong phạm vi này sẽ chuyển sang trạng thái bị loại.
+                  Timesheet đã thanh toán luôn được giữ nguyên.
                 </p>
               </div>
               <dl className="min-w-0 divide-y divide-border rounded-xl border bg-muted/30 px-3">
@@ -204,7 +204,7 @@ export function RejectUnpaidTimesheetsDialog({
                   ) : (
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   )}
-                  {form.isPending ? 'Đang loại...' : 'Xác nhận loại'}
+                  {form.isPending ? 'Đang loại...' : 'Confirm loại'}
                 </Button>
               </>
             )}

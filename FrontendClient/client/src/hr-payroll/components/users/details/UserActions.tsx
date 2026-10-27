@@ -44,7 +44,7 @@ export const UserActions = memo(({
           className="min-h-11 flex-1"
         >
           <Check className="w-3.5 h-3.5 mr-1.5" />
-          Lưu thay đổi
+          Save thay đổi
         </Button>
       </>
     );
@@ -78,12 +78,12 @@ export const UserActions = memo(({
               onClick={onDelete}
               disabled={loading}
               className="h-11 w-11 text-muted-foreground hover:text-destructive hover:bg-destructive/8"
-              aria-label="Xóa người dùng"
+              aria-label="Delete người dùng"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">Xóa người dùng</TooltipContent>
+          <TooltipContent side="top">Delete người dùng</TooltipContent>
         </Tooltip>
       </div>
 

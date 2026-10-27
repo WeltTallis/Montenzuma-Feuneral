@@ -48,21 +48,21 @@ export function validateForm(
     errors.amount = `Số tiền tối đa ${MAX_AMOUNT.toLocaleString("en-KE")} ₫`;
   }
   if (!state.description.trim()) {
-    errors.description = "Vui lòng nhập nội dung chuyển khoản";
+    errors.description = "Please nhập nội dung chuyển khoản";
   } else if (!/^[A-Za-z0-9 ]+$/.test(state.description)) {
     errors.description =
       "Nội dung chỉ chứa chữ, số và khoảng trắng (không dấu, không ký tự đặc biệt)";
   }
   if (!state.bankCode.trim()) {
-    errors.bankCode = "Vui lòng chọn hoặc nhập mã ngân hàng";
+    errors.bankCode = "Please chọn hoặc nhập mã ngân hàng";
   }
   if (!state.accountNo.trim()) {
-    errors.accountNo = "Vui lòng nhập số tài khoản";
+    errors.accountNo = "Please nhập số tài khoản";
   } else if (!/^\d{6,20}$/.test(state.accountNo)) {
     errors.accountNo = "Số tài khoản phải có 6–20 chữ số";
   }
   if (!state.accountName.trim()) {
-    errors.accountName = "Vui lòng nhập tên chủ tài khoản";
+    errors.accountName = "Please nhập tên chủ tài khoản";
   } else if (state.accountName.trim().length < 3) {
     errors.accountName = "Tên chủ tài khoản phải có ít nhất 3 ký tự";
   } else if (state.accountName.trim().length > 100) {
@@ -119,7 +119,7 @@ export function isVerificationValid(
 }
 
 const STATUS_LABEL: Record<ManualDisbursementStatus, string> = {
-  pending: "Đang chờ",
+  pending: "Waiting",
   authorised: "Approved",
   completed: "Successful",
   failed: "Failed",

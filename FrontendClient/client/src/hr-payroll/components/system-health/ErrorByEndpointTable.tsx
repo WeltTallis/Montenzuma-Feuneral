@@ -68,12 +68,12 @@ export function ErrorByEndpointTable() {
               Endpoint <SortIcon col="endpoint" sortKey={sortKey} sortDir={sortDir} />
             </button>
             <button onClick={() => handleSort("errorTotal")} className="text-right w-full hover:text-foreground transition-colors">
-              Lỗi <SortIcon col="errorTotal" sortKey={sortKey} sortDir={sortDir} />
+              Error <SortIcon col="errorTotal" sortKey={sortKey} sortDir={sortDir} />
             </button>
             <button onClick={() => handleSort("errorRate")} className="text-right w-full hover:text-foreground transition-colors">
               Tỷ Lệ <SortIcon col="errorRate" sortKey={sortKey} sortDir={sortDir} />
             </button>
-            <span className="text-right">Mã Lỗi</span>
+            <span className="text-right">Mã Error</span>
           </div>
           <div className="divide-y max-h-96 overflow-y-auto">
             {rows.map((row) => (

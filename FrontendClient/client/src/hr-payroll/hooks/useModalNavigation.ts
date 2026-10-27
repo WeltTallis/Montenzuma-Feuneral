@@ -40,7 +40,7 @@ export function useModalNavigation() {
     if (!metadata) {
       console.error(`Modal metadata not found: ${modalId}`);
       toast({
-        title: "Lỗi hệ thống",
+        title: "Error hệ thống",
         description: "Không tìm thấy thông tin modal.",
         variant: "destructive"
       });
@@ -54,7 +54,7 @@ export function useModalNavigation() {
       if (!userRole) {
         toast({
           title: "Cần đăng nhập",
-          description: "Vui lòng đăng nhập để truy cập chức năng này.",
+          description: "Please đăng nhập để truy cập chức năng này.",
           variant: "destructive"
         });
         return;

@@ -288,7 +288,7 @@ export function TimesheetEntryCard({
         {/* Date */}
         <div className="flex items-center gap-2 text-muted-foreground typography-body-small">
           <CalendarIcon className="w-4 h-4" />
-          <span>Ngày làm:</span>
+          <span>Date làm:</span>
           <span className="font-medium text-foreground">
             {formatDateWithWeekday(entry.date)}
           </span>

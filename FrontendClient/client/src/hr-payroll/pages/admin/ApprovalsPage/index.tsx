@@ -23,7 +23,7 @@ const FILTERS: { key: string; label: string; statuses: ApprovalStatus[] }[] = [
   { key: 'done', label: 'Approved', statuses: ['approved', 'executed'] },
   { key: 'rejected', label: 'Reject', statuses: ['rejected'] },
   { key: 'escalated', label: 'Leo thang', statuses: ['escalated'] },
-  { key: 'all', label: 'Tất cả', statuses: [] },
+  { key: 'all', label: 'All', statuses: [] },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -130,7 +130,7 @@ const ApprovalsPage = () => {
           }}
         >
           <RefreshCw aria-hidden="true" className="size-4" />
-          Làm mới
+          Refresh
         </Button>
       </header>
 
@@ -153,7 +153,7 @@ const ApprovalsPage = () => {
           onChange={(event) => setPrepareDate(event.target.value)}
           disabled={fileApproval.isPending}
           className="h-11 rounded-md border border-input bg-background px-3 text-sm"
-          aria-label="Ngày sao kê"
+          aria-label="Date sao kê"
         />
         <Button
           type="button"
@@ -199,7 +199,7 @@ const ApprovalsPage = () => {
         </div>
       ) : listQuery.isError ? (
         <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-10 text-center">
-          <p className="text-sm font-medium text-destructive">Không thể tải danh sách yêu cầu.</p>
+          <p className="text-sm font-medium text-destructive">Failed to load danh sách yêu cầu.</p>
           <Button type="button" variant="outline" className="mt-4 h-11" onClick={() => void listQuery.refetch()}>
             <RefreshCw aria-hidden="true" className="size-4" />
             Refresh

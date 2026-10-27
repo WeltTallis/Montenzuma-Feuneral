@@ -46,7 +46,7 @@ const EmployeeRouter = () => {
               Chưa tải được hồ sơ
             </h1>
             <p className="mt-2 text-sm leading-6 text-fg-tertiary">
-              Kiểm tra kết nối rồi thử lại.
+              Check connection rồi thử lại.
             </p>
             <Button
               type="button"

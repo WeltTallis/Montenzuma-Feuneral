@@ -36,7 +36,7 @@ export function RecentErrorsTable({ days = 1, defaultVisible = 10 }: Props) {
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-red-700 shrink-0" aria-hidden="true" />
               <CardTitle className="text-sm font-semibold">
-                Lỗi Gần Đây ({days === 1 ? "24h" : `${days}d`})
+                Error Gần Đây ({days === 1 ? "24h" : `${days}d`})
               </CardTitle>
             </div>
             <div className="flex items-center gap-2">

@@ -110,7 +110,7 @@ export function SendMoneyToLenderModal({ isOpen, onClose, lender }: SendMoneyToL
     const nextErrors: Record<string, string> = {};
 
     if (!form.loan_id) {
-      nextErrors.loan_id = 'Vui lòng chọn khoản vay';
+      nextErrors.loan_id = 'Please chọn khoản vay';
     }
     const amount = parseAmount(form.amount);
     if (!form.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
@@ -119,7 +119,7 @@ export function SendMoneyToLenderModal({ isOpen, onClose, lender }: SendMoneyToL
       nextErrors.amount = `Số tiền vượt quá nợ gốc còn lại (${formatVND(selectedLoan.outstanding_principal)})`;
     }
     if (!form.payment_date) {
-      nextErrors.payment_date = 'Vui lòng chọn ngày thanh toán';
+      nextErrors.payment_date = 'Please chọn ngày thanh toán';
     }
 
     setErrors(nextErrors);
@@ -160,7 +160,7 @@ export function SendMoneyToLenderModal({ isOpen, onClose, lender }: SendMoneyToL
         <DialogHeader>
           <DialogTitle>Gửi tiền cho chủ nợ</DialogTitle>
           <DialogDescription>
-            {lender.name} — {step === 1 ? 'Nhập thông tin chuyển tiền' : 'Xác nhận thông tin chuyển tiền'}
+            {lender.name} — {step === 1 ? 'Import thông tin chuyển tiền' : 'Confirm thông tin chuyển tiền'}
           </DialogDescription>
         </DialogHeader>
 
@@ -168,7 +168,7 @@ export function SendMoneyToLenderModal({ isOpen, onClose, lender }: SendMoneyToL
         <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
           <p className="typography-label-medium flex items-center gap-1.5">
             <Landmark className="w-4 h-4" />
-            Tài khoản nhận
+            Account nhận
           </p>
           {hasBankInfo ? (
             <div className="typography-body-medium space-y-0.5">
@@ -230,7 +230,7 @@ export function SendMoneyToLenderModal({ isOpen, onClose, lender }: SendMoneyToL
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="send-date" className="typography-label-medium">Ngày thanh toán *</Label>
+              <Label htmlFor="send-date" className="typography-label-medium">Date thanh toán *</Label>
               <Input
                 id="send-date"
                 type="date"
@@ -325,7 +325,7 @@ export function SendMoneyToLenderModal({ isOpen, onClose, lender }: SendMoneyToL
                 ) : (
                   <Banknote className="w-4 h-4 mr-2" />
                 )}
-                {repayLoan.isPending ? 'Đang xử lý...' : 'Xác nhận gửi tiền'}
+                {repayLoan.isPending ? 'Processing...' : 'Confirm gửi tiền'}
               </Button>
             </DialogFooter>
           </div>

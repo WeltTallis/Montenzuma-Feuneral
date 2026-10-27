@@ -88,7 +88,7 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
     const hasBankInfo = selectedBank || formData.bank_account_number?.trim() || formData.bank_account_name?.trim();
     if (hasBankInfo) {
       if (!selectedBank) {
-        newErrors.bank_id = 'Vui lòng chọn ngân hàng';
+        newErrors.bank_id = 'Please chọn ngân hàng';
       }
       if (!formData.bank_account_number?.trim()) {
         newErrors.bank_account_number = 'Số tài khoản là bắt buộc khi có thông tin ngân hàng';
@@ -197,7 +197,7 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
                   onClick={handleDeleteOpen}
                   disabled={deleteDisabled}
                   className="min-h-11 w-full"
-                  aria-label="Xóa người cho vay"
+                  aria-label="Delete người cho vay"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
@@ -207,7 +207,7 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
                 <div className="typography-body-medium">
                   {hasLinkedLoans
                     ? `Không thể xóa: chủ nợ còn ${linkedLoanCount} khoản vay liên kết trong hệ thống.`
-                    : 'Xóa người cho vay khỏi danh sách.'}
+                    : 'Delete người cho vay khỏi danh sách.'}
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -258,7 +258,7 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
                   }
                 }}
                 className={`h-11 ${errors.name ? 'border-red-500' : ''}`}
-                placeholder="Nhập tên chủ nợ"
+                placeholder="Import tên chủ nợ"
               />
               {errors.name && <p className="typography-body-small text-financial-negative mt-1">{errors.name}</p>}
             </div>
@@ -270,7 +270,7 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
                 value={formData.cccd || ''}
                 onChange={(e) => handleInputChange('cccd', e.target.value)}
                 className="h-11"
-                placeholder="Nhập số CCCD"
+                placeholder="Import số CCCD"
               />
             </div>
 
@@ -308,7 +308,7 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
                 value={formData.notes || ''}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 className="min-h-24"
-                placeholder="Nhập ghi chú (nếu có)"
+                placeholder="Import ghi chú (nếu có)"
               />
             </div>
           </div>
@@ -401,12 +401,12 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
       )}
     </SlideSheetTemplate>
 
-      {/* Xác nhận xóa người cho vay */}
+      {/* Confirm xóa người cho vay */}
       <ConfirmDialog
         open={isDeleteModalOpen}
         onOpenChange={handleDeleteModalClose}
         onConfirm={handleDeleteConfirm}
-        title="Xóa người cho vay"
+        title="Delete người cho vay"
         description={
           <>
             Bạn có chắc chắn muốn xóa người cho vay <strong>{lenderData?.name}</strong>?
@@ -416,7 +416,7 @@ export function EditLenderSheet({ isOpen, onClose, lenderId }: EditLenderSheetPr
           </>
         }
         confirmText="Delete"
-        cancelText="Hủy bỏ"
+        cancelText="Cancel bỏ"
         confirmVariant="destructive"
         loading={deleteLender.isPending}
       />

@@ -67,10 +67,10 @@ export function validateFormState(
   state: DisbursementFeeFormState,
 ): string | null {
   if (!state.effectiveDate) {
-    return "Vui lòng chọn ngày hiệu lực";
+    return "Please chọn ngày hiệu lực";
   }
   if (state.effectiveDate < todayISO()) {
-    return "Ngày hiệu lực phải là hôm nay hoặc tương lai";
+    return "Date hiệu lực phải là hôm nay hoặc tương lai";
   }
   if (state.feeVnd < 0) {
     return "Mức phí không được âm";

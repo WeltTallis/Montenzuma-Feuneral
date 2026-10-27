@@ -38,7 +38,7 @@ export const useTimesheetFormState = ({
   );
 
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [saturdayDayType, setSaturdayDayType] = useState<'Ngày thường' | 'Ngày nghỉ'>('Ngày thường');
+  const [saturdayDayType, setSaturdayDayType] = useState<'Date thường' | 'Date nghỉ'>('Date thường');
 
   // API hooks
   const { data: payRateData, isLoading: isLoadingPayRate } = useCurrentPayRate(formData.project_id || 0);
@@ -100,7 +100,7 @@ export const useTimesheetFormState = ({
     const newFormData = resetFormForNewEntry(formData);
     setFormData(newFormData);
     setSelectedEmployee(null);
-    setSaturdayDayType('Ngày thường');
+    setSaturdayDayType('Date thường');
   }, [formData]);
 
   // Effects for form initialization and auto-population

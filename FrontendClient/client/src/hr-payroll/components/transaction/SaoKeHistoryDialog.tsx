@@ -144,12 +144,12 @@ const SaoKeRow = memo(function SaoKeRow({ record, onSettle, isSettling, localSet
           {!isAdvancePayment ? (
             meta.feePercentage > 0 && (
               <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                Phí {(meta.feePercentage * 100).toFixed(0)}% <span className="text-sm font-semibold normal-case tracking-normal text-foreground tabular-nums">{fmt(meta.feeAmount)}</span>
+                Fee {(meta.feePercentage * 100).toFixed(0)}% <span className="text-sm font-semibold normal-case tracking-normal text-foreground tabular-nums">{fmt(meta.feeAmount)}</span>
               </span>
             )
           ) : meta.feeAmount > 0 ? (
             <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Phí dịch vụ <span className="text-sm font-semibold normal-case tracking-normal text-foreground tabular-nums">{fmt(meta.feeAmount)}</span>
+              Fee dịch vụ <span className="text-sm font-semibold normal-case tracking-normal text-foreground tabular-nums">{fmt(meta.feeAmount)}</span>
             </span>
           ) : null}
           <span className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -259,7 +259,7 @@ export const SaoKeHistoryDialog = memo(function SaoKeHistoryDialog({
 
           <DialogNavyHeader
             title="Lịch sử sao kê"
-            description="Xác nhận nhận tiền · tải file · đối soát"
+            description="Confirm nhận tiền · tải file · đối soát"
             action={
               <>
                 <Button
@@ -272,7 +272,7 @@ export const SaoKeHistoryDialog = memo(function SaoKeHistoryDialog({
                   {standaloneUploadMutation.isPending
                     ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     : <Upload className="h-3.5 w-3.5" />}
-                  Nhập đối soát
+                  Import đối soát
                 </Button>
                 <input
                   ref={standaloneUploadRef}
@@ -293,9 +293,9 @@ export const SaoKeHistoryDialog = memo(function SaoKeHistoryDialog({
               {!isLoading && isError && (
                 <div className="flex flex-col items-center gap-2 py-10 text-center">
                   <AlertCircle className="h-7 w-7 text-destructive" />
-                  <p className="text-sm text-muted-foreground">Không thể tải dữ liệu</p>
+                  <p className="text-sm text-muted-foreground">Failed to load dữ liệu</p>
                   <Button variant="outline" size="sm" className="min-h-11 gap-1.5" onClick={() => refetch()}>
-                    <RefreshCw className="h-3.5 w-3.5" /> Thử lại
+                    <RefreshCw className="h-3.5 w-3.5" /> Try again
                   </Button>
                 </div>
               )}
@@ -339,7 +339,7 @@ export const SaoKeHistoryDialog = memo(function SaoKeHistoryDialog({
       <AlertDialog open={confirmId != null} onOpenChange={(v) => !v && setConfirmId(null)}>
         <AlertDialogContent className="max-w-xs rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận đã nhận tiền?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm đã nhận tiền?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
               Hệ thống sẽ xử lý đối soát cho tất cả timesheets trong sao kê này. Không thể hoàn tác.
             </AlertDialogDescription>
@@ -352,7 +352,7 @@ export const SaoKeHistoryDialog = memo(function SaoKeHistoryDialog({
               className="min-h-11 bg-emerald-600 hover:bg-emerald-700"
             >
               {settleMutation.isPending
-                ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Đang xử lý...</>
+                ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing...</>
                 : 'Confirm'}
             </AlertDialogAction>
           </AlertDialogFooter>

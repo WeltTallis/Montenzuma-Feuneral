@@ -24,7 +24,7 @@ import type { ModalConfig } from '@hr/types/modal-config.types';
 
 export const modalConfig: ModalConfig = {
   id: 'ledger_entry_details',
-  name: 'Chi tiết bút toán',
+  name: 'Details bút toán',
   description: 'Xem chi tiết thông tin bút toán',
   category: 'report',
   permissions: {
@@ -159,7 +159,7 @@ function LedgerEntryDetailsSheetComponent({
       onClose();
     } catch (error: unknown) {
       toast({
-        title: 'Lỗi',
+        title: 'Error',
         description: error instanceof Error ? error.message : 'Không thể đảo ngược bút toán',
         variant: 'destructive',
       });
@@ -193,7 +193,7 @@ function LedgerEntryDetailsSheetComponent({
               </div>
               <div className="mt-3 flex min-w-0 items-center gap-2 text-sm">
                 <span className="truncate font-semibold text-foreground">
-                  {entry?.party || 'Chi tiết bút toán'}
+                  {entry?.party || 'Details bút toán'}
                 </span>
                 {entry && (
                   <>
@@ -250,7 +250,7 @@ function LedgerEntryDetailsSheetComponent({
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-40" />
             </div>
             <h3 className="typography-title-large text-destructive mb-2">
-              Không thể tải dữ liệu
+              Failed to load dữ liệu
             </h3>
             <p className="text-muted-foreground mb-4">
               {error.message || 'Đã xảy ra lỗi khi tải thông tin bút toán.'}
@@ -261,7 +261,7 @@ function LedgerEntryDetailsSheetComponent({
               className="flex items-center gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              Thử lại
+              Try again
             </Button>
           </div>
         ) : isLoading || !entry ? (
@@ -452,7 +452,7 @@ function LedgerEntryDetailsSheetComponent({
               <Textarea
                 value={reverseReason}
                 onChange={(e) => setReverseReason(e.target.value)}
-                placeholder="Nhập lý do đảo ngược bút toán..."
+                placeholder="Import lý do đảo ngược bút toán..."
                 className="min-h-[80px]"
               />
             </div>

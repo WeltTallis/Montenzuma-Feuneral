@@ -18,7 +18,7 @@ export const useProjectStatsConfig = () => {
 
     return [
       {
-        title: 'Dự án đang hoạt động',
+        title: 'Project đang hoạt động',
         value: summary.total_active_projects,
         icon: FolderOpen
       },

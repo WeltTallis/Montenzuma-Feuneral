@@ -26,8 +26,8 @@ export const useDeletePartnerProject = () => {
       console.error('Failed to delete project:', error);
 
       toast({
-        title: "Lỗi xóa dự án",
-        description: "Không thể xóa dự án. Vui lòng thử lại.",
+        title: "Error xóa dự án",
+        description: "Không thể xóa dự án. Please try again.",
         variant: "destructive",
       });
       setIsDeleting(false);
@@ -41,8 +41,8 @@ export const useDeletePartnerProject = () => {
       queryClient.invalidateQueries({ queryKey: ['projects', 'partner-summary'] });
 
       toast({
-        title: "Xóa thành công",
-        description: "Dự án đã được xóa khỏi hệ thống.",
+        title: "Delete thành công",
+        description: "Project đã được xóa khỏi hệ thống.",
         variant: "default",
       });
       setIsDeleting(false);

@@ -100,7 +100,7 @@ export const WeeklyPaymentFeeScheduleSection = () => {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-semibold tracking-tight">
-            Phí trả lương tuần
+            Fee trả lương tuần
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Tỷ lệ dịch vụ cộng vào tổng lương tuần khi chuyển lương tuần và đối
@@ -115,7 +115,7 @@ export const WeeklyPaymentFeeScheduleSection = () => {
           className="shrink-0"
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Thêm cấu hình mới
+          Add cấu hình mới
         </Button>
       </div>
 
@@ -144,14 +144,14 @@ export const WeeklyPaymentFeeScheduleSection = () => {
           <EmptyState
             icon={CalendarClock}
             title="Chưa có cấu hình phí"
-            description="Thêm cấu hình đầu tiên để bắt đầu áp dụng cho các kỳ trả lương tuần"
+            description="Add cấu hình đầu tiên để bắt đầu áp dụng cho các kỳ trả lương tuần"
           />
         ) : (
           <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ngày hiệu lực</TableHead>
+                  <TableHead>Date hiệu lực</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Tỷ lệ phí</TableHead>
                   <TableHead>Notes</TableHead>
@@ -171,7 +171,7 @@ export const WeeklyPaymentFeeScheduleSection = () => {
                     <TableCell>
                       {entry.isCurrentlyActive && <Badge>Active</Badge>}
                       {entry.isPending && (
-                        <Badge variant="secondary">Đang chờ</Badge>
+                        <Badge variant="secondary">Waiting</Badge>
                       )}
                       {!entry.isCurrentlyActive && !entry.isPending && (
                         <Badge variant="outline">Đã hết hạn</Badge>
@@ -190,7 +190,7 @@ export const WeeklyPaymentFeeScheduleSection = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label="Sửa"
+                              aria-label="Edit"
                               onClick={() => handleEdit(entry)}
                             >
                               <Pencil className="size-4" />
@@ -299,7 +299,7 @@ const UpcomingCard = ({
             <CalendarClock className="h-4 w-4 text-amber-800" />
           </div>
           <span className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-            Đang chờ
+            Waiting
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -308,7 +308,7 @@ const UpcomingCard = ({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            aria-label="Sửa cấu hình sắp có hiệu lực"
+            aria-label="Edit cấu hình sắp có hiệu lực"
             disabled={!editable}
             onClick={() => onEdit(entry)}
           >
@@ -319,7 +319,7 @@ const UpcomingCard = ({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            aria-label="Xóa cấu hình sắp có hiệu lực"
+            aria-label="Delete cấu hình sắp có hiệu lực"
             disabled={!editable}
             onClick={() => onDelete(entry)}
           >
@@ -349,7 +349,7 @@ const NoUpcomingCard = () => (
   <div className="rounded-xl border border-dashed bg-muted/20 p-4 sm:p-5 flex flex-col justify-center text-center gap-2">
     <Sparkles className="h-5 w-5 text-muted-foreground mx-auto" />
     <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-      Không có cấu hình sắp có hiệu lực. Thêm cấu hình mới để thay đổi phí từ
+      Không có cấu hình sắp có hiệu lực. Add cấu hình mới để thay đổi phí từ
       một ngày trong tương lai.
     </p>
   </div>

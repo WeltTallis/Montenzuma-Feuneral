@@ -144,8 +144,8 @@ function AddUserSheet({
   const handleSubmit = async () => {
     if (!validateForm()) {
       toast({
-        title: "Lỗi xác thực",
-        description: "Vui lòng kiểm tra và điền đầy đủ thông tin.",
+        title: "Error xác thực",
+        description: "Please check và điền đầy đủ thông tin.",
         variant: "destructive"
       });
       return;
@@ -207,7 +207,7 @@ function AddUserSheet({
             )}
             <div className="space-y-0.5 flex-1 min-w-0">
               <h2 className="typography-headline-medium text-sm sm:text-base font-semibold">
-               Thêm người dùng mới
+               Add người dùng mới
               </h2>
               <p className="typography-body-medium text-muted-foreground text-xs sm:text-sm">
                 Điền thông tin để tạo tài khoản mới
@@ -223,7 +223,7 @@ function AddUserSheet({
             Close
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving || loading} className="w-full" variant="default">
-            {isSaving ? 'Đang thêm...' : 'Thêm'}
+            {isSaving ? 'Đang thêm...' : 'Add'}
           </Button>
         </div>
       }
@@ -321,7 +321,7 @@ function AddUserSheet({
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
-                      placeholder="Nhập mật khẩu"
+                      placeholder="Import mật khẩu"
                       className={errors.password ? 'border-red-500 h-11 pr-12' : 'h-11 pr-12'}
                     />
                     <Button
@@ -376,7 +376,7 @@ function AddUserSheet({
 
 export const modalConfig: ModalConfig = {
   id: 'add_user_sheet',
-  name: 'Thêm người dùng mới',
+  name: 'Add người dùng mới',
   description: 'Điền thông tin để tạo tài khoản người dùng mới trong hệ thống.',
   category: 'user',
   permissions: {

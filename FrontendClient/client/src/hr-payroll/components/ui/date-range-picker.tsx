@@ -364,7 +364,7 @@ export function DateRangePicker({
         maxDate={maxDate}
         placeholderText="Từ ngày"
         inputClassName={inputClasses}
-        ariaLabel="Ngày bắt đầu"
+        ariaLabel="Date bắt đầu"
         disabled={disabled}
         portalMode={portalMode}
         popperClassName={popperClassName}
@@ -380,7 +380,7 @@ export function DateRangePicker({
         maxDate={maxDate}
         placeholderText="Đến ngày"
         inputClassName={inputClasses}
-        ariaLabel="Ngày kết thúc"
+        ariaLabel="Date kết thúc"
         disabled={disabled}
         portalMode={portalMode}
         popperClassName={popperClassName}

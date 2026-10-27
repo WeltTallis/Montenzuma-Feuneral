@@ -160,7 +160,7 @@ export const BulkTransferResultUploadDialog = memo(function BulkTransferResultUp
         <DialogContent className="flex max-h-[92dvh] max-w-7xl flex-col gap-0 overflow-hidden" contentPadding="none" hideCloseButton>
           <DialogNavyHeader
             title="Kết quả chuyển tiền"
-            description="Chi tiết kết quả xử lý file Excel chuyển tiền hàng loạt."
+            description="Details kết quả xử lý file Excel chuyển tiền hàng loạt."
           />
 
           <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
@@ -182,7 +182,7 @@ export const BulkTransferResultUploadDialog = memo(function BulkTransferResultUp
 
             {/* Details */}
             <div className="space-y-2">
-              <Label className="typography-label-large font-medium">Chi tiết xử lý ({uploadResult.items.length})</Label>
+              <Label className="typography-label-large font-medium">Details xử lý ({uploadResult.items.length})</Label>
               <div className="grid max-h-[60dvh] grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {uploadResult.items.map((detail, index) => (
                   <div key={index} className="border rounded-xl p-3 bg-card hover:shadow-sm transition-shadow">
@@ -222,7 +222,7 @@ export const BulkTransferResultUploadDialog = memo(function BulkTransferResultUp
               onClick={handleBackToUpload}
               className="h-11 w-full"
             >
-              Nhập file khác
+              Import file khác
             </Button>
             <Button
               variant="secondary"
@@ -382,12 +382,12 @@ export const BulkTransferResultUploadDialog = memo(function BulkTransferResultUp
             {importMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang xử lý...
+                Processing...
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Nhập file
+                Import file
               </>
             )}
           </Button>

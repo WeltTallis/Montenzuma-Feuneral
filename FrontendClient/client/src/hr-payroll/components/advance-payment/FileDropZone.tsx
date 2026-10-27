@@ -72,7 +72,7 @@ export const FileDropZone = ({
           size="icon"
           className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-destructive"
           onClick={() => onFileChange(null)}
-          aria-label="Xóa file"
+          aria-label="Delete file"
         >
           <X className="w-3.5 h-3.5" />
         </Button>

@@ -1,6 +1,6 @@
 // Local fee-preview calculator. Mirrors the backend resolver in
 // internal/domain/advance_payment_fee_schedule.go (ResolveFee + tierFor) so
-// the form's "Phí cho khoản 5,000,000 VND" preview can update without a
+// the form's "Fee cho khoản 5,000,000 VND" preview can update without a
 // round-trip while the user is still editing.
 
 import { useMemo } from "react";

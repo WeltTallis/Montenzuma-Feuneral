@@ -31,8 +31,8 @@ export const useCreatePartnerProject = () => {
       console.error('Failed to create project:', error);
 
       toast({
-        title: "Lỗi tạo dự án",
-        description: "Không thể tạo dự án mới. Vui lòng thử lại.",
+        title: "Error tạo dự án",
+        description: "Không thể tạo dự án mới. Please try again.",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -77,7 +77,7 @@ export const useCreatePartnerProject = () => {
 
       toast({
         title: message,
-        description: `Dự án "${newProject.name}" đã được tạo thành công.`,
+        description: `Project "${newProject.name}" đã được tạo thành công.`,
         variant: "default",
       });
       setIsSubmitting(false);

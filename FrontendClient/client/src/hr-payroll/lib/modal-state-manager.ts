@@ -201,7 +201,7 @@ export const useModalStore = create<ModalStore>()(
           if (!userRole) {
             toast({
               title: "Cần đăng nhập",
-              description: "Vui lòng đăng nhập để truy cập chức năng này.",
+              description: "Please đăng nhập để truy cập chức năng này.",
               variant: "destructive"
             });
             set({ isLoading: false });
@@ -265,7 +265,7 @@ export const useModalStore = create<ModalStore>()(
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         set({ error: errorMessage, isLoading: false });
         toast({
-          title: "Lỗi hệ thống",
+          title: "Error hệ thống",
           description: errorMessage,
           variant: "destructive"
         });

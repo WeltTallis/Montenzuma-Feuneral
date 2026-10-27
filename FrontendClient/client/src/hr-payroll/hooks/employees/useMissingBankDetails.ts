@@ -22,7 +22,7 @@ export const useMissingBankDetails = (options: UseMissingBankDetailsOptions = {}
     employees: data?.data || [],
     totalCount: data?.pagination?.totalRecords || 0,
     isLoading,
-    error: error ? 'Không thể tải danh sách nhân viên thiếu thông tin ngân hàng' : null,
+    error: error ? 'Failed to load danh sách nhân viên thiếu thông tin ngân hàng' : null,
     refetch,
   };
 };

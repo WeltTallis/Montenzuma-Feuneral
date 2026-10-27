@@ -149,7 +149,7 @@ export function createFlexibleEmployeeHomeModel({
     },
     {
       id: "account",
-      label: "Tài khoản",
+      label: "Account",
       icon: "account",
       targetId: "employee-bank",
     },
@@ -194,7 +194,7 @@ export function createFlexibleEmployeeHomeModel({
         sensitive: true,
       },
       {
-        label: "Đang chờ",
+        label: "Waiting",
         value: formatCurrency(quota.pendingAmount),
         tone: "amber",
         sensitive: true,
@@ -264,7 +264,7 @@ export function createRegularEmployeeHomeModel({
   if (unreadCount && unreadCount > 0) {
     nudges.unshift({
       id: "unread-notifications",
-      title: "Thông báo mới",
+      title: "Notifications mới",
       description: `${unreadCount > 9 ? "9+" : unreadCount} thông báo cần xem.`,
       icon: "notification",
       tone: "amber",
@@ -273,12 +273,12 @@ export function createRegularEmployeeHomeModel({
   }
 
   return {
-    eyebrow: "Tổng quan lương",
+    eyebrow: "Overview lương",
     title: "Kỳ lương của bạn",
     amountLabel: "Tổng lương trong kỳ",
     amount: formatCurrency(monthlyTotalSalary),
     amountDescription: `${workDayCount} ngày`,
-    amountDescriptionLabel: "Ngày làm việc",
+    amountDescriptionLabel: "Date làm việc",
     periodLabel: monthLabel,
     metrics,
     quickActions: [
@@ -290,7 +290,7 @@ export function createRegularEmployeeHomeModel({
       },
       {
         id: "account",
-        label: "Tài khoản",
+        label: "Account",
         icon: "account",
         targetId: "employee-bank",
       },

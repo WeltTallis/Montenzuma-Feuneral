@@ -48,7 +48,7 @@ export const DisbursementFeeDeleteDialog = ({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10">
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </div>
-            <AlertDialogTitle>Xóa cấu hình phí?</AlertDialogTitle>
+            <AlertDialogTitle>Delete cấu hình phí?</AlertDialogTitle>
           </div>
           <AlertDialogDescription className="pt-2">
             Cấu hình phí giao dịch chi hộ hiệu lực từ ngày{" "}
@@ -61,7 +61,7 @@ export const DisbursementFeeDeleteDialog = ({
 
         <div className="space-y-2 px-6 mt-4 pb-2">
           <Label htmlFor="dfs-delete-confirm" className="text-xs">
-            Nhập <strong className="font-semibold">{expected}</strong> để xác
+            Import <strong className="font-semibold">{expected}</strong> để xác
             nhận xóa
           </Label>
           <Input
@@ -81,7 +81,7 @@ export const DisbursementFeeDeleteDialog = ({
             onClick={onConfirm}
             disabled={!matches || isDeleting}
           >
-            {isDeleting ? "Đang xóa..." : "Xóa cấu hình"}
+            {isDeleting ? "Đang xóa..." : "Delete cấu hình"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

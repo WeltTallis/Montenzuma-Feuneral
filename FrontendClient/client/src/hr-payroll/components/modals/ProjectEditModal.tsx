@@ -96,13 +96,13 @@ export function ProjectEditModal({
             <Label htmlFor="editProjectName">Tên dự án</Label>
             <Input
               id="editProjectName"
-              placeholder="Dự án ABC - Mô tả ngắn"
+              placeholder="Project ABC - Mô tả ngắn"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editClient">Khách hàng</Label>
+            <Label htmlFor="editClient">Otherh hàng</Label>
             <Input
               id="editClient"
               placeholder="Tên công ty khách hàng"
@@ -114,13 +114,13 @@ export function ProjectEditModal({
             <Label htmlFor="editManager">Projects</Label>
             <Input
               id="editManager"
-              placeholder="Tên Dự án"
+              placeholder="Tên Project"
               value={formData.manager}
               onChange={(e) => handleInputChange("manager", e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editStartDate">Ngày bắt đầu</Label>
+            <Label htmlFor="editStartDate">Date bắt đầu</Label>
             <Input
               id="editStartDate"
               type="date"
@@ -129,7 +129,7 @@ export function ProjectEditModal({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editEndDate">Ngày kết thúc</Label>
+            <Label htmlFor="editEndDate">Date kết thúc</Label>
             <Input
               id="editEndDate"
               type="date"

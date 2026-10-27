@@ -46,7 +46,7 @@ export const FeeScheduleList = ({
     return (
       <EmptyState
         title="Chưa có cấu hình phí"
-        description="Thêm cấu hình đầu tiên để bắt đầu áp dụng cho các giao dịch ứng lương"
+        description="Add cấu hình đầu tiên để bắt đầu áp dụng cho các giao dịch ứng lương"
       />
     );
   }
@@ -56,10 +56,10 @@ export const FeeScheduleList = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Ngày hiệu lực</TableHead>
+            <TableHead>Date hiệu lực</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Cấu trúc phí</TableHead>
-            <TableHead>Phí tối thiểu</TableHead>
+            <TableHead>Fee tối thiểu</TableHead>
             <TableHead>Notes</TableHead>
           </TableRow>
         </TableHeader>
@@ -74,7 +74,7 @@ export const FeeScheduleList = ({
                     <Badge>Active</Badge>
                   )}
                   {entry.isPending && (
-                    <Badge variant="secondary">Đang chờ</Badge>
+                    <Badge variant="secondary">Waiting</Badge>
                   )}
                   {!entry.isCurrentlyActive && !entry.isPending && (
                     <Badge variant="outline">Đã hết hạn</Badge>

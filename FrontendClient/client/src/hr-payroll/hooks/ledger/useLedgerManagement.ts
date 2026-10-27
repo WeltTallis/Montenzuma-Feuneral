@@ -22,8 +22,8 @@ export const useLedgerManagement = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
-        description: error.message || 'Không thể tạo bút toán. Vui lòng thử lại.',
+        title: 'Error',
+        description: error.message || 'Không thể tạo bút toán. Please try again.',
         variant: 'destructive',
       });
     },
@@ -48,8 +48,8 @@ export const useLedgerManagement = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
-        description: error.message || 'Không thể tạo bút toán đảo ngược. Vui lòng thử lại.',
+        title: 'Error',
+        description: error.message || 'Không thể tạo bút toán đảo ngược. Please try again.',
         variant: 'destructive',
       });
     },
@@ -71,8 +71,8 @@ export const useLedgerManagement = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
-        description: error.message || 'Không thể tính lại số dư. Vui lòng thử lại.',
+        title: 'Error',
+        description: error.message || 'Không thể tính lại số dư. Please try again.',
         variant: 'destructive',
       });
     },
@@ -127,8 +127,8 @@ export const useLedgerManagement = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
-        description: error.message || 'Không thể kích chạy chốt lương. Vui lòng thử lại.',
+        title: 'Error',
+        description: error.message || 'Không thể kích chạy chốt lương. Please try again.',
         variant: 'destructive',
       });
     },
@@ -150,8 +150,8 @@ export const useLedgerManagement = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
-        description: error.message || 'Không thể tạo giao dịch. Vui lòng thử lại.',
+        title: 'Error',
+        description: error.message || 'Không thể tạo giao dịch. Please try again.',
         variant: 'destructive',
       });
     },

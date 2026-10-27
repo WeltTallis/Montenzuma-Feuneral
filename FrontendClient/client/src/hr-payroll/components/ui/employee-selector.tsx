@@ -84,7 +84,7 @@ export function EmployeeSelector({
     if (showAllOption && !isSearching && debouncedSearchValue.length < 3) {
       const allEmployeesOption: Employee = {
         id: -1, // Special ID for "All Employees"
-        fullname: 'Tất cả nhân viên',
+        fullname: 'All nhân viên',
         cccd: '',
         email: '',
         username: '',
@@ -147,7 +147,7 @@ export function EmployeeSelector({
 
   const filterValue = useCallback((employee: Employee) => `${employee.fullname} ${employee.cccd}`, []);
 
-  const errorMessage = error ? 'Có lỗi xảy ra khi tìm kiếm nhân viên' : undefined;
+  const errorMessage = error ? 'An error occurred khi tìm kiếm nhân viên' : undefined;
 
   return (
     <AsyncSearchableDropdown
@@ -167,7 +167,7 @@ export function EmployeeSelector({
       loadingMessage="Đang tìm kiếm..."
       loadingMoreMessage="Đang tải thêm..."
       emptyMessages={{
-        searchTooShort: "Nhập tối thiểu 3 ký tự để tìm kiếm",
+        searchTooShort: "Import tối thiểu 3 ký tự để tìm kiếm",
         noResults: "Không tìm thấy nhân viên nào",
         empty: "Không có nhân viên khả dụng"
       }}

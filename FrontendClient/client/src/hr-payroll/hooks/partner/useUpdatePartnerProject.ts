@@ -33,8 +33,8 @@ export const useUpdatePartnerProject = () => {
       console.error('Failed to update project:', error);
 
       toast({
-        title: "Lỗi cập nhật dự án",
-        description: "Không thể cập nhật thông tin dự án. Vui lòng thử lại.",
+        title: "Error cập nhật dự án",
+        description: "Không thể cập nhật thông tin dự án. Please try again.",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -82,8 +82,8 @@ export const useUpdatePartnerProject = () => {
       console.error('Failed to update project status:', error);
 
       toast({
-        title: "Lỗi cập nhật trạng thái",
-        description: "Không thể cập nhật trạng thái dự án. Vui lòng thử lại.",
+        title: "Error cập nhật trạng thái",
+        description: "Không thể cập nhật trạng thái dự án. Please try again.",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -100,7 +100,7 @@ export const useUpdatePartnerProject = () => {
 
       toast({
         title: "Cập nhật thành công",
-        description: "Trạng thái dự án đã được cập nhật.",
+        description: "Status dự án đã được cập nhật.",
         variant: "default",
       });
       setIsSubmitting(false);

@@ -90,8 +90,8 @@ export const DisbursementFeeFormDialog = ({
         <DialogHeader>
           <DialogTitle>
             {isEdit
-              ? "Sửa cấu hình phí giao dịch chi hộ"
-              : "Thêm cấu hình phí giao dịch chi hộ"}
+              ? "Edit cấu hình phí giao dịch chi hộ"
+              : "Add cấu hình phí giao dịch chi hộ"}
           </DialogTitle>
           <DialogDescription>
             Mỗi cấu hình áp dụng từ ngày hiệu lực cho đến khi có cấu hình mới
@@ -194,7 +194,7 @@ export const DisbursementFeeFormDialog = ({
               Cancel
             </Button>
             <Button type="submit" disabled={!!validationError || isSaving}>
-              {isSaving ? "Đang lưu..." : isEdit ? "Cập nhật" : "Thêm cấu hình"}
+              {isSaving ? "Đang lưu..." : isEdit ? "Cập nhật" : "Add cấu hình"}
             </Button>
           </DialogFooter>
         </form>

@@ -88,7 +88,7 @@ export function FlexibleShiftManager({
             className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Plus className="h-3 w-3" />
-            Thêm ca
+            Add ca
           </button>
         )}
       </div>
@@ -109,7 +109,7 @@ export function FlexibleShiftManager({
                 <button
                   onClick={() => handleRemove(key)}
                   className="ml-0.5 flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-all hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
-                  title={`Xóa ca ${key}`}
+                  title={`Delete ca ${key}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -157,7 +157,7 @@ export function FlexibleShiftManager({
               disabled={alreadyExists || !startTime || !endTime}
               className="h-11 shrink-0 rounded-lg bg-primary px-3 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
             >
-              Thêm
+              Add
             </button>
             <button
               onClick={() => setShowAdd(false)}

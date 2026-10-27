@@ -126,19 +126,19 @@ export const ERROR_MESSAGES = {
 
 // Success Messages (Vietnamese)
 export const SUCCESS_MESSAGES = {
-  LOGIN: 'Đăng nhập thành công',
-  LOGOUT: 'Đăng xuất thành công',
+  LOGIN: 'Sign in thành công',
+  LOGOUT: 'Sign out thành công',
   CREATED: 'Tạo mới thành công',
   UPDATED: 'Cập nhật thành công',
-  DELETED: 'Xóa thành công',
+  DELETED: 'Delete thành công',
   APPROVED: 'Phê duyệt thành công',
   REJECTED: 'Loại thành công',
-  IMPORTED: 'Nhập dữ liệu thành công',
-  EXPORTED: 'Xuất dữ liệu thành công',
+  IMPORTED: 'Import dữ liệu thành công',
+  EXPORTED: 'Export dữ liệu thành công',
   PASSWORD_CHANGED: 'Đổi mật khẩu thành công',
   BULK_CREATED: 'Tạo hàng loạt thành công',
   BULK_UPDATED: 'Cập nhật hàng loạt thành công',
-  BULK_DELETED: 'Xóa hàng loạt thành công',
+  BULK_DELETED: 'Delete hàng loạt thành công',
   BULK_APPROVED: 'Phê duyệt hàng loạt thành công',
   BULK_REJECTED: 'Loại hàng loạt thành công',
 } as const;

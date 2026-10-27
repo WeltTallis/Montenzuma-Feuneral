@@ -111,7 +111,7 @@ export function GeofenceSection({ project }: GeofenceSectionProps) {
             onClick={() => setAdding(true)}
           >
             <Plus className="h-3 w-3" />
-            Thêm cổng
+            Add cổng
           </Button>
         )}
       </div>
@@ -175,7 +175,7 @@ export function GeofenceSection({ project }: GeofenceSectionProps) {
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <MapPin className="h-8 w-8 text-muted-foreground mb-2" />
             <p className="text-xs text-muted-foreground">
-              Chưa có cổng check-in. Thêm cổng mới để bắt đầu.
+              Chưa có cổng check-in. Add cổng mới để bắt đầu.
             </p>
           </div>
         ) : (

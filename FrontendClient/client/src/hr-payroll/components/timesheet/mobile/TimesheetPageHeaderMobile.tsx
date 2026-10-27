@@ -81,7 +81,7 @@ export function TimesheetPageHeaderMobile({
               className="h-11 min-w-0 flex-1 rounded-xl px-4 shadow-sm touch-manipulation sm:flex-none"
             >
               <Plus className="mr-1 h-4 w-4" />
-              Nhập
+              Import
             </Button>
 
             {onChuyenLo && userRole === 'admin' && (
@@ -97,7 +97,7 @@ export function TimesheetPageHeaderMobile({
 
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-border bg-card shadow-none touch-manipulation" aria-label="Thêm tùy chọn">
+                <Button variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-border bg-card shadow-none touch-manipulation" aria-label="Add tùy chọn">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
@@ -114,7 +114,7 @@ export function TimesheetPageHeaderMobile({
                   disabled={isApprovedExportPending}
                 >
                   <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-medium">{isApprovedExportPending ? 'Đang xuất...' : 'Xuất bảng công đã duyệt'}</span>
+                  <span className="text-sm font-medium">{isApprovedExportPending ? 'Đang xuất...' : 'Export bảng công đã duyệt'}</span>
                 </Button>
 
                 {onPayrollReportExport && (
@@ -129,8 +129,8 @@ export function TimesheetPageHeaderMobile({
                       {isPayrollReportPending
                         ? 'Đang xuất...'
                         : userRole === 'partner'
-                          ? 'Xuất sao kê'
-                          : 'Xuất sao kê lương'}
+                          ? 'Export sao kê'
+                          : 'Export sao kê lương'}
                     </span>
                   </Button>
                 )}
@@ -142,7 +142,7 @@ export function TimesheetPageHeaderMobile({
                     onClick={() => { onBulkTransferExport(); close(); }}
                   >
                     <ArrowRightLeft className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium">Xuất file chuyển lô</span>
+                    <span className="text-sm font-medium">Export file chuyển lô</span>
                   </Button>
                 )}
 
@@ -170,7 +170,7 @@ export function TimesheetPageHeaderMobile({
                       onClick={() => { onBulkTransferResultUpload(); close(); }}
                     >
                       <Upload className="h-5 w-5 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium">Nhập KQ chuyển lô</span>
+                      <span className="text-sm font-medium">Import KQ chuyển lô</span>
                     </Button>
                   </>
                 )}
@@ -199,7 +199,7 @@ export function TimesheetPageHeaderMobile({
                     onClick={() => { onBulkApprove(); close(); }}
                   >
                     <CheckSquare className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium">Duyệt hết</span>
+                    <span className="text-sm font-medium">Approve hết</span>
                   </Button>
                 )}
 

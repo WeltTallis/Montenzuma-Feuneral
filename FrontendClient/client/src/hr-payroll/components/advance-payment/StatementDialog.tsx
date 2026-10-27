@@ -83,7 +83,7 @@ export function StatementDialog({ open, onOpenChange, forMonth: forMonthProp, do
       <DialogContent className="max-w-md gap-0 overflow-hidden" contentPadding="none" hideCloseButton>
         <DialogNavyHeader
           title="Đối soát & Sao kê"
-          description="Tải xuống hoặc tải lên file sao kê thanh toán"
+          description="Download hoặc tải lên file sao kê thanh toán"
         />
 
         {/* Body */}
@@ -118,8 +118,8 @@ export function StatementDialog({ open, onOpenChange, forMonth: forMonthProp, do
           {/* Download action */}
           <div className="flex items-center justify-between gap-3 py-0.5">
             <div>
-              <p className="text-sm font-medium">Tải xuống sao kê</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Xuất file Excel cho tháng đã chọn</p>
+              <p className="text-sm font-medium">Download sao kê</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Export file Excel cho tháng đã chọn</p>
             </div>
             <Button
               variant="outline"
@@ -167,7 +167,7 @@ export function StatementDialog({ open, onOpenChange, forMonth: forMonthProp, do
               {uploadAndSettleMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Đang xử lý...
+                  Processing...
                 </>
               ) : (
                 <>

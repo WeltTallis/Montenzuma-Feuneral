@@ -111,8 +111,8 @@ export function AddEmployeesToProject({
       } catch (error) {
         console.error('Failed to fetch project assignments:', error);
         toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách phân công của dự án.",
+          title: "Error",
+          description: "Failed to load danh sách phân công của dự án.",
           variant: "destructive"
         });
       } finally {
@@ -177,7 +177,7 @@ export function AddEmployeesToProject({
       setEmployeePositions(prev => new Map(prev).set(employee.id, position));
 
       toast({
-        title: "Thêm nhân viên thành công",
+        title: "Add nhân viên thành công",
         description: `Đã thêm ${employee.fullname} vào dự án ${project.name}`,
       });
 
@@ -212,7 +212,7 @@ export function AddEmployeesToProject({
       setEmployeePositions(prev => new Map(prev).set(selectedEmployee.id, selectedPosition));
 
       toast({
-        title: "Thêm nhân viên thành công",
+        title: "Add nhân viên thành công",
         description: `Đã thêm ${selectedEmployee.fullname} vào dự án ${project.name}`,
       });
 
@@ -335,7 +335,7 @@ export function AddEmployeesToProject({
             <div className="text-center space-y-2">
               <h3 className="typography-title-large">Không có nhân viên khả dụng</h3>
               <p className="typography-body-medium text-muted-foreground max-w-sm">
-                Tất cả nhân viên đã được giao vào dự án này.
+                All nhân viên đã được giao vào dự án này.
               </p>
             </div>
           </div>
@@ -348,7 +348,7 @@ export function AddEmployeesToProject({
               onSortingChange={setSorting}
               showPagination={availableEmployees.length > 15}
               primaryColumns={["fullname", "cccd"]}
-              caption="Danh sách nhân viên khả dụng để thêm vào dự án"
+              caption="List nhân viên khả dụng để thêm vào dự án"
               className="h-full"
               onRowClick={handleRowClick}
               getRowClassName={getRowClassName}
@@ -378,10 +378,10 @@ export function AddEmployeesToProject({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Xác nhận thêm nhân viên
+              Confirm thêm nhân viên
             </DialogTitle>
             <DialogDescription>
-              Thêm <strong>{selectedEmployee?.fullname}</strong> vào dự án <strong>{project?.name}</strong>
+              Add <strong>{selectedEmployee?.fullname}</strong> vào dự án <strong>{project?.name}</strong>
             </DialogDescription>
           </DialogHeader>
 
@@ -399,7 +399,7 @@ export function AddEmployeesToProject({
                   >
                     <SelectTrigger className="h-11 w-full">
                       <SelectValue
-                        placeholder={hasPayrates ? "Chọn vị trí" : "Dự án chưa có bảng lương"}
+                        placeholder={hasPayrates ? "Chọn vị trí" : "Project chưa có bảng lương"}
                       />
                     </SelectTrigger>
                     <SelectContent>
@@ -422,13 +422,13 @@ export function AddEmployeesToProject({
                       className="min-h-11 shrink-0"
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Thêm bảng lương
+                      Add bảng lương
                     </Button>
                   )}
                 </div>
                 {!hasPayrates && (
                   <p className="text-xs text-muted-foreground">
-                    Dự án này chưa có bảng lương. Vui lòng tạo bảng lương trước khi thêm nhân viên.
+                    Project này chưa có bảng lương. Please tạo bảng lương trước khi thêm nhân viên.
                   </p>
                 )}
               </div>
@@ -437,7 +437,7 @@ export function AddEmployeesToProject({
             <div className="space-y-2">
               <Label htmlFor="start-date" className="text-sm font-medium flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Ngày bắt đầu
+                Date bắt đầu
               </Label>
               <Input
                 id="start-date"
@@ -506,7 +506,7 @@ export function AddEmployeesToProject({
               disabled={assigningId === selectedEmployee?.id || !selectedPosition?.trim()}
               className="min-h-11"
             >
-              {assigningId === selectedEmployee?.id ? "Đang thêm..." : "Thêm nhân viên"}
+              {assigningId === selectedEmployee?.id ? "Đang thêm..." : "Add nhân viên"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -529,7 +529,7 @@ export function AddEmployeesToProject({
               </div>
               <div className="min-w-0 flex-1">
                 <SheetTitle className="typography-headline-medium leading-tight tracking-tight">
-                  Thêm nhân viên vào dự án
+                  Add nhân viên vào dự án
                 </SheetTitle>
                 <p className="typography-body-medium mt-1 break-words font-medium text-muted-foreground">
                   {project?.name}
