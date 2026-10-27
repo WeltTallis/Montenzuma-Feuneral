@@ -545,7 +545,7 @@ const DeceasedListPage = () => {
       }
       setRecords(collected); return true;
     } catch (err) {
-      console.error("Error fetching deceased:", err); setRecords([]);
+
       if (err.friendlyMessage) { setServiceUnavailable(true); setUnavailableMessage(err.friendlyMessage); }
       return false;
     } finally { setLoading(false); }
@@ -658,7 +658,7 @@ const DeceasedListPage = () => {
       if (data?.success && data?.jobId) { pollExportStatus(data.jobId, pin.length > 0); }
       else { throw new Error(data?.message || 'No export file URL returned'); }
     } catch (err) {
-      console.error('Export error:', err);
+
       let message = 'Failed to start export. Please try again.';
       if (err?.response?.data && typeof err.response.data.text === 'function') { try { message = (await parseBlobJson(err.response.data))?.message || message; } catch (e) { /* ignore */ } }
       showExportFailed(message);

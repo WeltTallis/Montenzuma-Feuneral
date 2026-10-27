@@ -30,8 +30,6 @@ export const authApi = {
       sessionStorage.setItem('authToken', data.accessToken);
       localStorage.setItem('authToken', data.accessToken);
       sessionStorage.setItem('user', JSON.stringify(data.user || {}));
-      // Many pages (SettingsPage, DashboardRedirect, ...) read the user from
-      // localStorage — persisting both keeps them in sync after every login.
       localStorage.setItem('user', JSON.stringify(data.user || {}));
 
       // Store refresh token in BOTH storages for consistency

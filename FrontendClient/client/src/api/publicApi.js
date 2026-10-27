@@ -16,7 +16,7 @@ export const publicApi = {
       const response = await api.get(ENDPOINTS.PUBLIC.TENANT_BRANDING(slug));
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch tenant branding:', error);
+
       throw error;
     }
   },
@@ -30,7 +30,7 @@ export const publicApi = {
       const response = await api.get(ENDPOINTS.PUBLIC.DECEASED_RECORD(slug, publicId));
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch deceased record:', error);
+
       throw error;
     }
   },
@@ -46,7 +46,7 @@ export const publicApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to search deceased records:', error);
+
       throw error;
     }
   },
@@ -60,7 +60,7 @@ export const publicApi = {
       const response = await api.get(ENDPOINTS.PUBLIC.QR_CODE(qrCode));
       return response.data;
     } catch (error) {
-      console.error('Failed to scan QR code:', error);
+
       throw error;
     }
   },
@@ -75,7 +75,7 @@ export const publicApi = {
       const response = await api.post(ENDPOINTS.PUBLIC.REQUEST_ACCESS(slug), accessRequest);
       return response.data;
     } catch (error) {
-      console.error('Failed to request access:', error);
+
       throw error;
     }
   },
@@ -90,7 +90,7 @@ export const publicApi = {
       const response = await api.post(ENDPOINTS.PUBLIC.HEARSE_BOOK(slug), booking);
       return response.data;
     } catch (error) {
-      console.error('Failed to book hearse:', error);
+
       throw error;
     }
   },
@@ -104,7 +104,7 @@ export const publicApi = {
       const response = await api.get(ENDPOINTS.PUBLIC.TENANT_STATUS(slug));
       return response.data;
     } catch (error) {
-      console.error('Tenant not found or not public:', error);
+
       throw error;
     }
   },
@@ -120,7 +120,7 @@ export const publicApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch deceased records:', error);
+
       throw error;
     }
   },

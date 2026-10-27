@@ -1131,7 +1131,7 @@ const DeceasedReleaseForm = () => {
           }));
         }
       } catch (error) {
-        console.error('Error fetching deceased data:', error);
+
       } finally {
         setIsLoadingDeceased(false);
       }
@@ -1312,10 +1312,6 @@ const DeceasedReleaseForm = () => {
     const newErrors = {};
     if (!formData.admission_number) newErrors.admission_number = 'Admission number is required';
     if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
-    // Gender and date of death are read-only — they arrive with the searched
-    // record rather than being chosen or typed on this form.
-    // Date admitted is no longer captured on the release form — it arrives with
-    // the searched record and is only used for the "days in our care" badge.
     if (!formData.release_date) newErrors.release_date = 'Release date is required';
     if (!formData.release_time) newErrors.release_time = 'Release time is required';
     if (!formData.released_by.trim()) newErrors.released_by = 'Released by is required';

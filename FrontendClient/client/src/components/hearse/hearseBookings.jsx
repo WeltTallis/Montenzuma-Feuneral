@@ -291,7 +291,7 @@ const api = {
       } catch (error) {
         if (error?.response?.status === 404) continue;
         lastLookupError = error;
-        console.warn(`[HearseBookings] Tenant user lookup failed for "${slug}".`, error?.response?.data || error?.message);
+
         continue;
       }
 
@@ -301,7 +301,7 @@ const api = {
         : payload?.data?.users || payload?.data || payload?.users;
       if (!Array.isArray(users)) {
         lastLookupError = new Error(`Tenant user service returned an invalid list for "${slug}".`);
-        console.warn(`[HearseBookings] Tenant user service returned an invalid list for "${slug}".`, payload);
+
         continue;
       }
 
@@ -326,11 +326,7 @@ const api = {
       throw new Error(lastLookupError?.response?.data?.message || lastLookupError.message || 'Unable to load tenant users for driver lineup.');
     }
     const roles = [...new Set(lastUserList.map((user) => String(user?.role || '')).filter(Boolean))];
-    console.warn('[HearseBookings] No tenant users matched a driver role.', {
-      triedSlugs: candidates,
-      userCount: lastUserList.length,
-      roles,
-    });
+
     return [];
   },
   getDailyLineup: async (date) => {
@@ -834,7 +830,7 @@ const HearseBookings = () => {
     urlStatus && urlStatus !== 'all' ? urlStatus : ''
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState('calendar');
+  const [viewMode] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState(formatDateStr(new Date()));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -1389,7 +1385,7 @@ const HearseBookings = () => {
                 );
                 setHearseForm((form) => ({
                   ...form,
-                   branch_id: currentBranch?.id || '',
+                  branch_id: currentBranch?.id || '',
                   branch_slug: currentBranch?.slug || '',
                   branch_name: currentBranch?.name || '',
                   branch_code: currentBranch?.code || '',

@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { getStatusStyle, getPaymentStatus, money, fmtMD, fmtTime12 } from '../tokens';
 
 /* ============================================================================
-   ReservationList — month table + clicked-day filter banner.
+   ReservationList  month table + clicked-day filter banner.
    ============================================================================ */
 function PhoneIcon() {
   return (
@@ -58,7 +58,7 @@ export function ReservationList({ visible, clickedDay, panelBk, onPick, onClearD
     <div className="cb-df">
       <span>
         <CalIcon /> Showing: {fmtMD(clickedDay)}
-        {` — ${visible.length} booking${visible.length !== 1 ? 's' : ''}`}
+        {` ï¿½ ${visible.length} booking${visible.length !== 1 ? 's' : ''}`}
       </span>
       <button onClick={onClearDay}>
         Clear <CloseIcon />
@@ -102,14 +102,14 @@ export function ReservationList({ visible, clickedDay, panelBk, onPick, onClearD
           <div className="cb-cn">{b.coffinType}</div>
           <div className="cb-sub">
             <span><PhoneIcon /></span>
-            {b.phone || '—'}
+            {b.phone || 'ï¿½'}
           </div>
         </div>
         <div className="cb-cell">
           <div className="cb-mt">{fmtMD(b.date)}</div>
           <div className="cb-sub">
             <span><ClockIcon /></span>
-            {b.time ? fmtTime12(b.time) : '—'}
+            {b.time ? fmtTime12(b.time) : 'ï¿½'}
           </div>
         </div>
         <div className="cb-cell">

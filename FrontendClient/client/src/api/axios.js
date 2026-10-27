@@ -78,7 +78,7 @@ export const startTokenRefresh = () => {
   refreshIntervalId = setInterval(async () => {
     // Guard: prevent concurrent refresh calls
     if (isRefreshing) {
-      console.log('[Auth] Refresh already in progress, skipping');
+
       return;
     }
 
@@ -86,7 +86,7 @@ export const startTokenRefresh = () => {
     try {
       const refreshToken = getRefreshToken();
       if (!refreshToken) {
-        console.warn('[Auth] No refresh token available');
+
         return;
       }
 
@@ -102,7 +102,7 @@ export const startTokenRefresh = () => {
         if (newRefreshToken) {
           setRefreshToken(newRefreshToken);
         }
-        console.log('[Auth] Token refreshed successfully');
+
       }
     } catch (error) {
       console.error('[Auth] Token refresh failed:', error.message);
@@ -190,7 +190,7 @@ api.interceptors.request.use((config) => {
   const slug = getSlug();
   const tenantId = localStorage.getItem('tenantId');
   const userId = getUserId();
-    // Prefer the global auth helpers (getBranchSlug / getBranchId) so the branch is
+  // Prefer the global auth helpers (getBranchSlug / getBranchId) so the branch is
   // resolved even when it lives only on the logged-in `user` object and not as a bare
   // localStorage key. Reading localStorage directly left x-branch-id unset, which made
   // createCoffin/createOrder store branch_id = NULL -> the coffin leaked into every branch.
@@ -203,12 +203,6 @@ api.interceptors.request.use((config) => {
   if (tenantId) config.headers['x-tenant-id'] = tenantId;
   if (userId) config.headers['x-user-id'] = userId.toString();
 
-  /* A caller that deliberately addresses ANOTHER branch (the dashboard fans out
-     once per branch to build "Load by Branch") passes the branch headers
-     explicitly. Those must win over the signed-in user's branch, otherwise every
-     per-branch request is silently rewritten to the session branch and all the
-     branches report identical totals. Only fill in what the caller left unset —
-     the normal case, where the session branch is correct, is unchanged. */
   const wantedBranchSlug = config.headers['x-branch-slug'] || branchSlug;
   const wantedBranchDb = config.headers['x-branch-db'] || branchDb;
   if (wantedBranchSlug) config.headers['x-branch-slug'] = wantedBranchSlug;
@@ -218,12 +212,6 @@ api.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
-// ─── Connection-status bridge ───────────────────────────────────────────────
-// Connectivity state + the /health probe live in ./connectionStatus. Only
-// genuine transport failures are reported there, and nothing is announced to
-// the UI until a cheap gateway probe confirms the outage — a 503 from a single
-// microservice or a slow (timed-out) endpoint must never read as "you are
-// offline".
 api.interceptors.response.use(
   (response) => {
     // A successful round-trip means the backend is reachable again.
@@ -266,7 +254,7 @@ api.interceptors.response.use(
           : `${friendlyName} service is temporarily unavailable. Please try again later.`;
       return Promise.reject(error);
     }
-    
+
     // Handle 401 Unauthorized - try token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -292,7 +280,7 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    
+
     // Handle 401 without retry (already retried or not eligible) - show friendly message
     if (error.response?.status === 401) {
       error.friendlyMessage = error.response?.data?.message || 'Your session has expired. Please log in again.';

@@ -417,19 +417,7 @@ const DeceasedDetailPage = () => {
       }
 
       // 6) Charge settings
-      //
-      // GET /deceased/:id already returns a fully resolved `charges` block
-      // (per-day AND per-hour rates plus `source`/`is_default` telling us
-      // whether the record owns its rates or inherits the home default). This
-      // second fetch exists only to pick up edits made from the Charge Settings
-      // panel. It therefore has to MERGE, not rebuild.
-      //
-      // It used to rebuild the object from scratch and, in doing so, dropped
-      // `source`/`is_default` and invented 500/125 fallbacks for every missing
-      // value. The sidebar labels a record "Deceased-specific" purely from
-      // those two flags, so every inherited (home default) rate got mislabelled
-      // as deceased-specific — and a per-hour configuration still displayed the
-      // daily figure because `storage_rate` was always taken from dailyRate.
+   
       if (csRes.status === 'fulfilled' && csRes.value?.data?.data) {
         const cs = csRes.value.data.data;
         // `exists === false` means there is no row for this deceased AND no home
@@ -618,8 +606,6 @@ const DeceasedDetailPage = () => {
   const totalCharges = useMemo(() => charges.reduce((s, c) => s + (parseFloat(c.amount || c.charge_amount || 0)), 0), [charges]);
   const totalPaid = useMemo(() => payments.reduce((s, p) => s + (parseFloat(p.amount || 0)), 0), [payments]);
   const balance = totalCharges - totalPaid;
-  // Uploads and document records use the canonical public deceased_id. The
-  // route may contain a numeric database id or another legacy identifier.
   const documentDeceasedId = deceased?.deceased_id || deceased?.deceasedId || deceasedId;
 
   // ── Show content immediately — no blocking loader ──

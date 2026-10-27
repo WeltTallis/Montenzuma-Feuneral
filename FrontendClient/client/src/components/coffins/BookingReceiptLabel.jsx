@@ -4,25 +4,8 @@ import { format } from 'date-fns';
 import { useTenantStore } from '../../modules/seo/useTenantStore';
 import { resolveTenantBranding } from '../../utils/tenantResolver/tenantBranding';
 
-/* Booking receipt label — opened from the reservation detail side panel
- * ("Print Label") for every booking.
- *
- * The layout mirrors the MNOTENZUMA coffin reservation receipt: brand header,
- * coffin summary card with a payment status badge, dotted dividers, info rows,
- * amount rows, status block and a barcode section.
- *
- * The barcode is a REAL Code 128 rendered with bwip-js (the same library the
- * deceased headers use) — no decorative bars.
- *
- * One source of truth: `receiptHtml()` builds the markup, the modal previews it
- * (barcode canvas injected into `.mz-rct-bc`), and Print writes the SAME markup
- * into a hidden iframe with the canvas swapped for a PNG data URL, so what you
- * see is exactly what lands on the paper. The iframe approach is used elsewhere
- * in this app (documentspage.jsx) and avoids printing the whole dashboard.
- */
+//Booking receipt label — opened from the reservation detail side panel
 
-/* ── Payment state → receipt badge ────────────────────────────────────────
-   Keys match ReservationDashboard's ST / mapped[].status (paid/deposited/unpaid). */
 const PAY = {
   paid: { badge: 'mz-rct-badge-paid', label: 'Paid' },
   deposited: { badge: 'mz-rct-badge-deposited', label: 'Deposited' },

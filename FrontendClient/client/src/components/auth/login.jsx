@@ -154,7 +154,7 @@ export default function LoginPage() {
         throw new Error(response?.message || 'Login failed. Please check your credentials.');
       }
     } catch (err) {
-      console.error('Login error:', err);
+    
       toast.error(err.message || 'Connection error. Please try again.', {
         position: "top-right",
         autoClose: 5000,

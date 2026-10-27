@@ -9,7 +9,7 @@ export const tenantApi = {
       const response = await api.get(ENDPOINTS.AUTH.USERS);
       return response.data;
     } catch (err) {
-      console.warn('⚠️ Fetch users API failed:', err.message);
+
       return { success: false, users: [] };
     }
   },
@@ -19,7 +19,7 @@ export const tenantApi = {
       const response = await api.post(ENDPOINTS.AUTH.CREATE_USER, userData);
       return response.data;
     } catch (err) {
-      console.warn('⚠️ Create user API failed:', err.message);
+
       throw err;
     }
   },
@@ -39,7 +39,7 @@ export const tenantApi = {
         primaryColor: settings.primaryColor || '#2b5a82',
       };
     } catch (err) {
-      console.warn('⚠️ Branding API failed; using the tenant name fallback:', err.message);
+
       return {
         name: slug || 'RESTPOINT Default Tenant',
         logo: '',
@@ -59,7 +59,7 @@ export const tenantApi = {
       const slug = tenantSlug || localStorage.getItem('tenantSlug');
 
       if (!slug) {
-        console.warn('⚠️ No tenantSlug provided or found in localStorage');
+
         return {
           deploymentType: 'single',
           branchCount: 0,
@@ -82,7 +82,7 @@ export const tenantApi = {
         throw err;
       }
     } catch (err) {
-      console.warn('⚠️ Tenant settings API failed:', err.message);
+
       // Return default multi-tenant settings for development
       return {
         deploymentType: 'single',
@@ -99,7 +99,7 @@ export const tenantApi = {
       const slug = tenantSlug || localStorage.getItem('tenantSlug');
 
       if (!slug) {
-        console.warn('⚠️ No tenantSlug provided or found in localStorage');
+
         return null;
       }
 
@@ -117,7 +117,7 @@ export const tenantApi = {
         throw err;
       }
     } catch (err) {
-      console.warn('⚠️ Branches API failed:', err.message);
+
       return null;
     }
   },
@@ -129,7 +129,7 @@ export const tenantApi = {
       const response = await api.get(url);
       return response.data;
     } catch (err) {
-      console.warn('⚠️ Branch users API failed:', err.message);
+
       return null;
     }
   },
@@ -140,7 +140,7 @@ export const tenantApi = {
       const response = await api.get(url);
       return response.data;
     } catch (err) {
-      console.warn('⚠️ Branch branches API failed:', err.message);
+
       return null;
     }
   },
@@ -156,7 +156,7 @@ export const tenantApi = {
       const response = await api.put(url, settings);
       return response.data;
     } catch (err) {
-      console.warn('⚠️ Update tenant settings API failed:', err.message);
+
       throw err;
     }
   }

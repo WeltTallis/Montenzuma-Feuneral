@@ -66,7 +66,7 @@ const DeceasedStkPushModal = ({ deceased, nextOfKin, onClose }) => {
           return;
         }
       } catch (statusError) {
-        console.warn('[Deceased STK] Status check failed; will retry:', statusError?.response?.data || statusError.message);
+
       }
 
       if (active && attempts >= MAX_STATUS_POLLS) {

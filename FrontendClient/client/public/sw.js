@@ -3,7 +3,7 @@
 // Bump this on EVERY deploy that changes code — without a bump the
 // stale-while-revalidate fetch handler keeps serving the previous
 // content-hashed JS chunks out of cache and the deploy looks like a no-op.
-const CACHE_VERSION = 'v1'; // Increment this to force cache refresh
+const CACHE_VERSION = 'v2'; // Increment this to force cache refresh
 const STATIC_CACHE = `restpoint-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `restpoint-dynamic-${CACHE_VERSION}`;
 const CACHE_NAME = `restpoint-${CACHE_VERSION}`;
@@ -29,23 +29,23 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(STATIC_CACHE)
             .then((cache) => {
-                console.log('[SW] Caching static assets');
+
                 // Cache each asset on its own: one missing file (or a flaky
                 // network) must never abort the whole install event.
                 return Promise.all(
                     STATIC_ASSETS.map((url) =>
                         cache.add(url).catch((error) => {
-                            console.warn('[SW] Skipped asset (not cached):', url, error?.message);
+
                         })
                     )
                 );
             })
             .then(() => {
-                console.log('[SW] Static assets cached successfully');
+
                 return self.skipWaiting();
             })
             .catch((error) => {
-                console.error('[SW] Failed to cache static assets:', error);
+
                 // Still take over: a working fetch handler matters more than
                 // the pre-cache, and Chrome needs the SW to be active.
                 return self.skipWaiting();
@@ -66,13 +66,13 @@ self.addEventListener('activate', (event) => {
                             return !name.includes(CACHE_VERSION);
                         })
                         .map((name) => {
-                            console.log('[SW] Deleting old cache:', name);
+
                             return caches.delete(name);
                         })
                 );
             })
             .then(() => {
-                console.log('[SW] Service worker activated');
+
                 return self.clients.claim();
             })
     );
@@ -237,7 +237,7 @@ self.addEventListener('sync', (event) => {
     if (event.tag === 'background-sync') {
         event.waitUntil(
             // Process any pending offline actions
-            console.log('[SW] Background sync triggered')
+
         );
     }
 });
@@ -285,4 +285,3 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-console.log('[SW] Service worker script loaded');

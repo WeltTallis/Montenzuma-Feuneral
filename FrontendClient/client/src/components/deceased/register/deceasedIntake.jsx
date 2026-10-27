@@ -1546,7 +1546,7 @@ const DeceasedRegistrationForm = () => {
           }
         }
       } catch (e) {
-        console.error("Failed to load signature", e);
+
       }
     }, 100);
 
