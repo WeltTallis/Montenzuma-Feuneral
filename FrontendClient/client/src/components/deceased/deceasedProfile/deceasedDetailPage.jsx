@@ -583,6 +583,35 @@ const DeceasedDetailPage = () => {
     }
   }, [deceasedId, fetchData, refreshing]);
 
+  const scheduleDispatch = useCallback(async (dispatchDate, notes) => {
+    if (!deceasedId) {
+      showToast.error('No deceased ID found');
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `${env.FULL_API_URL}/deceased/${deceasedId}/schedule-dispatch`,
+        { dispatchDate, notes },
+        {
+          headers: {
+            'Authorization': `Bearer ${getAuthToken()}`,
+            'x-tenant-slug': localStorage.getItem('tenantSlug') || sessionStorage.getItem('tenantSlug'),
+            'x-branch-slug': localStorage.getItem('branchSlug') || sessionStorage.getItem('branchSlug'),
+          },
+        }
+      );
+      if (response.data?.success) {
+        showToast.success('Dispatch scheduled successfully');
+        await fetchData(true);
+      } else {
+        showToast.error(response.data?.message || 'Failed to schedule dispatch');
+      }
+    } catch (err) {
+      console.error('Error scheduling dispatch:', err);
+      showToast.error('Failed to schedule dispatch');
+    }
+  }, [deceasedId, fetchData]);
+
   const switchTab = (key) => setActiveTab(key);
 
   // ── Memoized derived values (avoid recalculation on every render) ──
@@ -612,6 +641,7 @@ const DeceasedDetailPage = () => {
           }}
           onTabSwitch={switchTab}
           onChargeSettingsClick={() => setShowChargeModal(true)}
+          scheduleDispatch={scheduleDispatch}
           onRefresh={handleRefresh}
           refreshing={refreshing}
           onScanClick={() => setShowScanModal(true)}
