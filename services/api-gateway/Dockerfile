@@ -76,7 +76,6 @@ COPY services/extra-services/package.json ./services/extra-services/
 COPY services/florist-service/package.json ./services/florist-service/
 COPY services/hearse-service/package.json ./services/hearse-service/
 COPY services/invoice-service/package.json ./services/invoice-service/
-COPY services/leave-service/package.json ./services/leave-service/
 COPY services/socketio-service/package.json ./services/socketio-service/
 COPY services/support-service/package.json ./services/support-service/
 COPY services/tenant-service/package.json ./services/tenant-service/

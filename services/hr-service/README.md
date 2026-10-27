@@ -16,7 +16,16 @@ isolation, data migration, and authorization tests are complete.
 
 The opt-in API container expects `HR_PAYROLL_DB_DSN` to point to a tenant-safe
 payroll database. Payment-provider integrations are disabled in Compose.
-Leave and attendance continue to run in the Node HR service on port 5000.
+Leave management and attendance-event ingestion are consolidated in the Node
+HR service on port 5000; the separate legacy leave service has been removed.
+
+The HR attendance device API accepts signed, timestamped event batches from
+provisioned devices and stores attendance events in the tenant database. It
+does not upload fingerprint images or templates. ZKTeco push compatibility
+depends on the exact device firmware and supported push protocol; configure a
+device only when it can authenticate to the provisioned endpoint. Device
+fingerprint matching should remain on the device, with attendance events—not
+biometric templates—sent to RestPoint.
 
 ## Legacy payroll backend documentation
 
