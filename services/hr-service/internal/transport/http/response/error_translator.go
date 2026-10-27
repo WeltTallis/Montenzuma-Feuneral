@@ -3,7 +3,6 @@ package response
 import (
 	"regexp"
 	"strings"
-
 )
 
 // ErrorTranslator handles the translation of technical errors to user-friendly messages.
