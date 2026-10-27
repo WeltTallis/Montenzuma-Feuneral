@@ -961,11 +961,15 @@ const HearseBookings = () => {
       ]);
       setBookings(bks); setBranches(brs); setAllHearses(hrs); setDrivers(drs);
     } catch (e) { notify.error(e.message || 'Failed to refresh data'); }
-    finally { setRefreshing(false); }
+    finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
   }, [monthRange.from, monthRange.to]);
 
-  // Refetch whenever the month on screen changes.
-  useEffect(() => { loadData(); }, [loadData]);
+  // Keep the calendar mounted while changing months so its selected daily
+  // view survives week strips that cross a month boundary.
+  useEffect(() => { refreshData(); }, [refreshData]);
 
   useEffect(() => {
     let current = true;
@@ -1026,7 +1030,7 @@ const HearseBookings = () => {
     const handleStatusUpdate = (d) => {
       setBookings(p => p.map(b => b.booking_id === d.booking_id ? { ...b, status: d.status, ...d.booking } : b));
     };
-    const handleBookingPostponed = () => loadData();
+    const handleBookingPostponed = () => refreshData();
     const handleHearseChange = () => refreshData();
     socket.on('new_booking', handleNewBooking);
     socket.on('booking_status_updated', handleStatusUpdate);
@@ -1038,7 +1042,7 @@ const HearseBookings = () => {
       socket.off('booking_postponed', handleBookingPostponed);
       socket.off('hearse_data_changed', handleHearseChange);
     };
-  }, [socket, connected, loadData, refreshData]);
+  }, [socket, connected, refreshData]);
 
   const filtered = useMemo(() => {
     let result = [...bookings];

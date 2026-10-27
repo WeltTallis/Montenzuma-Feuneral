@@ -585,6 +585,44 @@ const StandbyEditor = styled.div`
   @media (max-width: 420px) { width: 100%; input { flex: 1; } }
 `;
 
+const StandbyBadge = styled.div`
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 5px 3px 4px;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #166534;
+  .icon {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border-radius: 50%;
+    background: #16a34a;
+    color: #fff;
+  }
+  .label { color: #15803d; font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .name { max-width: 150px; overflow: hidden; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  button {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    padding: 0 7px;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    background: #fff;
+    color: #166534;
+    font: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button:hover { background: #dcfce7; }
+`;
+
 const ViewSwitchButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -668,14 +706,14 @@ const DateStripButton = styled.button`
   padding: 9px 3px;
   border: 0;
   border-right: 1px solid #f0f2f5;
-  background: ${p => p.$fullyBooked ? '#fef2f2' : p.$today ? '#12b76a' : p.$active ? '#eef2f6' : p.$weekend ? '#fcfcfd' : '#fff'};
-  color: ${p => p.$fullyBooked ? '#b91c1c' : p.$today ? '#fff' : '#344054'};
+  background: ${p => p.$fullyBooked ? '#fecaca' : p.$today ? '#12b76a' : p.$active ? '#eef2f6' : p.$weekend ? '#fcfcfd' : '#fff'};
+  color: ${p => p.$fullyBooked ? '#991b1b' : p.$today ? '#fff' : '#344054'};
   cursor: pointer;
   font: inherit;
   transition: background .15s ease;
   &:last-child { border-right: 0; }
-  .dow { color: ${p => p.$fullyBooked ? '#b91c1c' : p.$today ? '#d1fadf' : '#98a2b3'}; font-size: 9px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; }
-  .day { color: ${p => p.$fullyBooked ? '#b91c1c' : p.$today ? '#fff' : '#344054'}; font-size: 16px; font-weight: ${p => p.$active || p.$today ? 750 : 550}; line-height: 1.2; }
+  .dow { color: ${p => p.$fullyBooked ? '#991b1b' : p.$today ? '#d1fadf' : '#98a2b3'}; font-size: 9px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; }
+  .day { color: ${p => p.$fullyBooked ? '#991b1b' : p.$today ? '#fff' : '#344054'}; font-size: 16px; font-weight: ${p => p.$active || p.$today ? 750 : 550}; line-height: 1.2; }
   .event-dot { width: 4px; height: 4px; border-radius: 1px; background: ${p => p.$fullyBooked ? '#dc2626' : p.$today ? '#fff' : '#475467'}; }
   .event-dot.empty { visibility: hidden; }
   .availability {
@@ -684,7 +722,7 @@ const DateStripButton = styled.button`
     font-weight: 700;
     white-space: nowrap;
   }
-  &:hover { background: ${p => p.$fullyBooked ? '#fee2e2' : p.$today ? '#0e9f5a' : p.$active ? '#e4e7ec' : '#f9fafb'}; }
+  &:hover { background: ${p => p.$fullyBooked ? '#fca5a5' : p.$today ? '#0e9f5a' : p.$active ? '#e4e7ec' : '#f9fafb'}; }
   @media (max-width: 560px) { min-height: 66px; gap: 4px; padding: 7px 1px; .dow { font-size: 8px; } .day { font-size: 14px; } .availability { font-size: 7px; } }
 `;
 
@@ -1283,10 +1321,12 @@ const HearseCalendar = ({
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [dayViewDate, setDayViewDate] = useState(null);
   const [dayViewMode, setDayViewMode] = useState('schedule');
+  const [editingStandby, setEditingStandby] = useState(false);
   const [standbyDraft, setStandbyDraft] = useState('');
   const [lineupDrafts, setLineupDrafts] = useState({});
 
   useEffect(() => {
+    setEditingStandby(false);
     const assigned = drivers.find((driver) =>
       String(driver.driver_id ?? driver.id) === String(standbyDriverId ?? '')
     );
@@ -1857,44 +1897,67 @@ const HearseCalendar = ({
               >
                 <Users size={14} aria-hidden="true" /> Driver lineup
               </ViewSwitchButton>
-              <StandbyEditor>
-                <label htmlFor="daily-standby-driver">Standby</label>
-                <input
-                  id="daily-standby-driver"
-                  type="text"
-                  list="daily-standby-driver-options"
-                  value={standbyDraft}
-                  onChange={(event) => setStandbyDraft(event.target.value)}
-                  disabled={lineupLoading || savingStandby}
-                  placeholder="Enter driver name"
-                  aria-label="Standby driver for this day"
-                  maxLength={200}
-                />
-                <datalist id="daily-standby-driver-options">
-                  {registeredDrivers.map((driver) => (
-                    <option
-                      key={driver.driver_id ?? driver.id}
-                      value={driver.driver_name || driver.full_name || `Driver ${driver.driver_id ?? driver.id}`}
-                    />
-                  ))}
-                </datalist>
-                <TodayButton
-                  type="button"
-                  disabled={lineupLoading || savingStandby || standbyDraft.trim() === resolvedStandbyDriverName.trim()}
-                  onClick={() => {
-                    const enteredName = standbyDraft.trim();
-                    const selectedDriver = registeredDrivers.find((driver) =>
-                      String(driver.driver_name || driver.full_name || '').trim().toLowerCase() === enteredName.toLowerCase()
-                    );
-                    onSaveStandby?.({
-                      driver_id: enteredName && selectedDriver ? selectedDriver.driver_id ?? selectedDriver.id : null,
-                      driver_name: enteredName || null,
-                    });
-                  }}
-                >
-                  {savingStandby ? 'Saving…' : standbyDraft.trim() ? 'Save standby' : 'Clear standby'}
-                </TodayButton>
-              </StandbyEditor>
+              {lineupLoading ? (
+                <StandbyEditor><label>Standby</label><span>Loading…</span></StandbyEditor>
+              ) : resolvedStandbyDriverName && !editingStandby ? (
+                <StandbyBadge aria-label={`Standby driver for this day: ${resolvedStandbyDriverName}`}>
+                  <span className="icon"><Users size={13} aria-hidden="true" /></span>
+                  <span className="label">Standby</span>
+                  <span className="name">{resolvedStandbyDriverName}</span>
+                  <button type="button" onClick={() => setEditingStandby(true)}>Edit</button>
+                </StandbyBadge>
+              ) : (
+                <StandbyEditor>
+                  <label htmlFor="daily-standby-driver">Standby</label>
+                  <input
+                    id="daily-standby-driver"
+                    type="text"
+                    list="daily-standby-driver-options"
+                    value={standbyDraft}
+                    onChange={(event) => setStandbyDraft(event.target.value)}
+                    disabled={savingStandby}
+                    placeholder="Enter driver name"
+                    aria-label="Standby driver for this day"
+                    maxLength={200}
+                  />
+                  <datalist id="daily-standby-driver-options">
+                    {registeredDrivers.map((driver) => (
+                      <option
+                        key={driver.driver_id ?? driver.id}
+                        value={driver.driver_name || driver.full_name || `Driver ${driver.driver_id ?? driver.id}`}
+                      />
+                    ))}
+                  </datalist>
+                  <TodayButton
+                    type="button"
+                    disabled={savingStandby || standbyDraft.trim() === resolvedStandbyDriverName.trim()}
+                    onClick={() => {
+                      const enteredName = standbyDraft.trim();
+                      const selectedDriver = registeredDrivers.find((driver) =>
+                        String(driver.driver_name || driver.full_name || '').trim().toLowerCase() === enteredName.toLowerCase()
+                      );
+                      onSaveStandby?.({
+                        driver_id: enteredName && selectedDriver ? selectedDriver.driver_id ?? selectedDriver.id : null,
+                        driver_name: enteredName || null,
+                      });
+                    }}
+                  >
+                    {savingStandby ? 'Saving…' : standbyDraft.trim() ? 'Save standby' : 'Clear standby'}
+                  </TodayButton>
+                  {resolvedStandbyDriverName && (
+                    <ViewSwitchButton
+                      type="button"
+                      disabled={savingStandby}
+                      onClick={() => {
+                        setStandbyDraft(resolvedStandbyDriverName);
+                        setEditingStandby(false);
+                      }}
+                    >
+                      Cancel
+                    </ViewSwitchButton>
+                  )}
+                </StandbyEditor>
+              )}
             </DailyHeadingActions>
           </DailyHeading>
 
@@ -1906,26 +1969,29 @@ const HearseCalendar = ({
                 const hasBookings = (allBookings || []).some((booking) =>
                   getBookingDates(booking).some((bookingDate) => String(bookingDate).slice(0, 10) === key)
                 );
+                const freeHearses = weeklyAvailability[key] ?? 0;
+                const isFullyBooked = hearses.some((hearse) =>
+                  !['maintenance', 'out_of_service', 'disabled', 'inactive'].includes(String(hearse.status || '').toLowerCase())
+                ) && freeHearses === 0;
+                const availabilityLabel = isFullyBooked ? 'Fully booked' : `${freeHearses} free hearses`;
                 return (
                   <DateStripButton
                     key={key}
                     type="button"
                     $active={key === dayViewDate}
                     $today={isToday}
-                    $fullyBooked={hearses.some((hearse) =>
-                      !['maintenance', 'out_of_service', 'disabled', 'inactive'].includes(String(hearse.status || '').toLowerCase())
-                    ) && (weeklyAvailability[key] ?? 0) === 0}
+                    $fullyBooked={isFullyBooked}
                     $weekend={date.getDay() === 0 || date.getDay() === 6}
-                    $free={weeklyAvailability[key] ?? 0}
+                    $free={freeHearses}
                     aria-pressed={key === dayViewDate}
-                    aria-label={`${date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}, ${weeklyAvailability[key] ?? 0} free hearses${hasBookings ? ', bookings scheduled' : ''}`}
-                    title={`${weeklyAvailability[key] ?? 0} free hearses${hasBookings ? ' · bookings scheduled' : ''}`}
+                    aria-label={`${date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}, ${availabilityLabel}${hasBookings ? ', bookings scheduled' : ''}`}
+                    title={`${availabilityLabel}${hasBookings ? ' · bookings scheduled' : ''}`}
                     onClick={() => selectDay(key)}
                   >
                     <span className="dow">{date.toLocaleDateString(undefined, { weekday: 'short' })}</span>
                     <span className="day">{date.getDate()}</span>
                     <span className={`event-dot${hasBookings ? '' : ' empty'}`} aria-hidden="true" />
-                    <span className="availability">{weeklyAvailability[key] ?? 0} free</span>
+                    <span className="availability">{isFullyBooked ? 'Fully booked' : `${freeHearses} free`}</span>
                   </DateStripButton>
                 );
               })}
