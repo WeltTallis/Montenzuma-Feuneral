@@ -161,10 +161,11 @@ const Shell = styled.div`
     text-align: center !important;
   }
   .fc .fc-daygrid-day.fc-day-today { background: #E8F5E9 !important; }
-  .fc .fc-daygrid-day.fc-day-fully-booked { background: #FEF2F2 !important; }
+  .fc .fc-daygrid-day.fc-day-has-bookings { background: rgba(17, 24, 39, 0.02) !important; }
+  .fc .fc-daygrid-day.fc-day-fully-booked { background: #FECACA !important; }
   .fc .fc-daygrid-day.fc-day-fully-booked .fc-daygrid-day-number {
-    background: #FEE2E2 !important;
-    color: #B91C1C !important;
+    background: #DC2626 !important;
+    color: #FFFFFF !important;
   }
   .fc .fc-daygrid-day.fc-day-fully-booked.fc-day-today .fc-daygrid-day-number {
     background: #DC2626 !important;
@@ -1766,8 +1767,8 @@ const HearseCalendar = ({
     );
   }, [calendarView]);
 
-  const renderDayCell = useCallback((info) => {
-    if (calendarView !== 'dayGridMonth') return;
+  const getDayCellClasses = useCallback((info) => {
+    if (calendarView !== 'dayGridMonth') return [];
     const dateStr = fmtDS(info.date);
     const hasEvents = bookings.some((b) => {
       const dates = getBookingDates(b);
@@ -1786,14 +1787,10 @@ const HearseCalendar = ({
       .map(String));
     const fullyBooked = serviceableHearses.length > 0
       && serviceableHearses.every((hearse) => bookedHearses.has(String(hearse.id ?? hearse.hearse_id ?? '')));
-    if (hasEvents) {
-      info.el.style.setProperty('background-color', 'rgba(17, 24, 39, 0.02)', 'important');
-      info.el.style.setProperty('border-radius', '6px', 'important');
-    }
-    if (fullyBooked) {
-      info.el.classList.add('fc-day-fully-booked');
-      info.el.style.setProperty('background-color', '#FEF2F2', 'important');
-    }
+    return [
+      ...(hasEvents ? ['fc-day-has-bookings'] : []),
+      ...(fullyBooked ? ['fc-day-fully-booked'] : []),
+    ];
   }, [allBookings, bookings, calendarView, hearses]);
 
   return (
@@ -2300,7 +2297,7 @@ const HearseCalendar = ({
             eventClick={handleEventClick}
             viewDidMount={handleViewChange}
             eventContent={renderEventContent}
-            dayCellDidMount={renderDayCell}
+            dayCellClassNames={getDayCellClasses}
             height={calendarView === 'dayGridMonth' ? 'auto' : 750}
             contentHeight={calendarView === 'dayGridMonth' ? 'auto' : 700}
             fixedWeekCount={true}

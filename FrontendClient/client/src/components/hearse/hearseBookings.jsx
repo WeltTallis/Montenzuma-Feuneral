@@ -824,6 +824,7 @@ const HearseBookings = () => {
   const [savingBookingLineup, setSavingBookingLineup] = useState(null);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
   // Seeded from the URL (?status=...) so a shared link opens with the same
@@ -950,6 +951,7 @@ const HearseBookings = () => {
   // of swapping the entire view for a full-screen spinner, which currently
   // feels like the whole page reloading.
   const refreshData = useCallback(async () => {
+    setRefreshing(true);
     try {
       const [bks, brs, hrs, drs] = await Promise.all([
         api.getBookings({ from: monthRange.from, to: monthRange.to }),
@@ -959,6 +961,7 @@ const HearseBookings = () => {
       ]);
       setBookings(bks); setBranches(brs); setAllHearses(hrs); setDrivers(drs);
     } catch (e) { notify.error(e.message || 'Failed to refresh data'); }
+    finally { setRefreshing(false); }
   }, [monthRange.from, monthRange.to]);
 
   // Refetch whenever the month on screen changes.
@@ -1368,7 +1371,9 @@ const HearseBookings = () => {
               >{Icons.grid}</ActionButton>
             </div>
 
-            <SecondaryButton onClick={loadData} style={{ marginLeft: 'auto' }}>{Icons.refresh} Refresh</SecondaryButton>
+            <SecondaryButton onClick={refreshData} disabled={refreshing} style={{ marginLeft: 'auto' }}>
+              {Icons.refresh} {refreshing ? 'Refreshing...' : 'Refresh'}
+            </SecondaryButton>
             <PrimaryButton onClick={() => openNewBooking('')}>{Icons.plus} Book Hearse</PrimaryButton>
             <PrimaryButton
               onClick={() => {

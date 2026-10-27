@@ -748,6 +748,7 @@ const SERVICE_ROUTES = {
 
   'hearses': SERVICE_URLS.hearse,
   'hearse-bookings': SERVICE_URLS.hearse,
+  'hearse-lineups': SERVICE_URLS.hearse,
   'hearse-fuel': SERVICE_URLS.hearse,
   'all-drivers': SERVICE_URLS.hearse,
   'drivers': SERVICE_URLS.hearse,
