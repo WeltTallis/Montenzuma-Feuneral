@@ -322,7 +322,7 @@ export class SectionErrorBoundary extends Component<
           </div>
           <Button onClick={this.handleRetry} variant="outline" size="sm">
             <RefreshCw className="mr-2 h-4 w-4" />
-            Thử lại
+            Try again
           </Button>
         </div>
       );

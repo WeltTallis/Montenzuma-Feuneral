@@ -34,7 +34,7 @@ interface MobileBottomNavProps {
 }
 
 const ACCOUNT_GROUP: NavGroup = {
-  title: "Tài khoản",
+  title: "Account",
   icon: UserCircle,
 };
 
