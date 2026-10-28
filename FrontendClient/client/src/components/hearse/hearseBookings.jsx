@@ -514,12 +514,12 @@ const StatusBadge = styled.span`
   font-size: 0.75rem;
   font-weight: 500;
   background: ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};
-  color: ${props => STATUS_CONFIG[props.$status]?.color || COLORS.textSecondary};
+  color: #ffffff;
   &::before {
     content: '';
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: ${props => STATUS_CONFIG[props.$status]?.dotColor || COLORS.textMuted};
+    background: ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};
   }
 `;
 
@@ -660,11 +660,11 @@ const StatusStrip = styled.div`
   display:flex;align-items:center;gap:0.5rem;
   padding:0.7rem 0.95rem;border-radius:${COLORS.radiusSm};
   background:${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};
-  border:1px solid ${props => (STATUS_CONFIG[props.$status]?.dotColor || COLORS.borderLight) + '55'};
+  border:1px solid ${props => (STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight) + '55'};
   margin-bottom:0.35rem;
-  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${props => STATUS_CONFIG[props.$status]?.dotColor || COLORS.textMuted};}
-  .lbl{font-size:0.875rem;font-weight:700;color:${props => STATUS_CONFIG[props.$status]?.color || COLORS.text};}
-  .cap{margin-left:auto;font-size:0.625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${props => STATUS_CONFIG[props.$status]?.color || COLORS.textSecondary};opacity:0.7;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};}
+  .lbl{font-size:0.875rem;font-weight:700;color:#ffffff;opacity:0.9;align-self:center;}
+  .cap{margin-left:auto;font-size:0.625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#ffffff;opacity:0.7;}
 `;
 
 /* Booking details — clean text rows (no boxes) */
