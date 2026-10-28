@@ -486,13 +486,21 @@ const TableRow = styled.tr`
   border-bottom: 1px solid ${COLORS.border};
   cursor: pointer;
   transition: ${COLORS.transition};
-  background: ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.surface};
-  color: ${props => (STATUS_CONFIG[props.$status]?.bg && STATUS_CONFIG[props.$status]?.bg !== COLORS.surface) ? '#ffffff' : COLORS.text};
+  background: ${({ $status }) => {
+    const normalized = String($status || '').toLowerCase().replace(/\s+/g, '_');
+    const config = STATUS_CONFIG[normalized] || STATUS_CONFIG['booked'];
+    return config?.bg || COLORS.surface;
+  }};
+  color: ${({ $status }) => {
+    const normalized = String($status || '').toLowerCase().replace(/\s+/g, '_');
+    const config = STATUS_CONFIG[normalized] || STATUS_CONFIG['booked'];
+    return config?.bg && config.bg !== COLORS.surface ? '#ffffff' : COLORS.text;
+  }};
   &:hover { background: ${COLORS.bg}; color: ${COLORS.text}; }
   &:last-child { border-bottom: none; }
 `;
 
-const TableCell = styled.td`padding:0.875rem 1rem;color:${props => STATUS_CONFIG[props.$status]?.bg === 'transparent' ? COLORS.text : '#ffffff'};vertical-align:middle;`;
+const TableCell = styled.td`padding:0.875rem 1rem;vertical-align:middle;`;
 
 const TableHeader = styled.th`
   padding: 0.75rem 1rem;
