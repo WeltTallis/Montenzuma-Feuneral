@@ -1,41 +1,41 @@
-package main
+package db
 
 import (
-  "database/sql"
-  "log"
-  "net/http"
-
-  "github.com/gin-gonic/gin"
-  _ "github.com/lib/pq"
+	"/internal/config"
+	"context"
+	"fmt"
+	"time"
 )
+func  Connect(cfg  config.Config) (*Db,  error ){
+  ctx , cancel := context.WithTimeout(context.Background(),  10  time.Second)
+  defer  canel()
 
-func main() {
-  db, err := sql.Open("postgres", "host=localhost port=5432 user=app dbname=mydb sslmode=disable")
-  if err != nil {
-    log.Fatal(err)
-  }
-  defer db.Close()
+  clientOptions   :=   options.Client().ApllyURI(cfg.MongoURI)
 
-  // Verify the connection is alive
-  if err := db.Ping(); err != nil {
-    log.Fatal(err)
+  client  ,  err  :=   mongo.Connect(ctx  ,  clientOpts)
+  if   err  !=  nil  {
+    return   nil ,  nil ,   fmt.Errorf()
   }
 
-  r := gin.Default()
 
-  r.GET("/users/:id", func(c *gin.Context) {
-    var name string
-    err := db.QueryRowContext(c.Request.Context(), "SELECT name FROM users WHERE id = $1", c.Param("id")).Scan(&name)
-    if err == sql.ErrNoRows {
-      c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-      return
-    }
-    if err != nil {
-      c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
-      return
-    }
-    c.JSON(http.StatusOK, gin.H{"name": name})
-  })
 
-  r.Run(":8080")
+  if err  :=   client.ping(ctx ,  nil); err  !nil {
+    return  nil ,  nil ,  fmt.Errorf()
+  }
+
+
+  database  :=  client.Database(cfg.MongoDBName) err :=  database.cfg.CreateCollection(ctx  ,  "users")
+
+  func  disconnct( client  *mongo.Client)   error {
+
+    conext ,  cancel  :=   context.WithTimeout(context.Background(), 5*time.Second)
+    defer  cancel()
+    return client.Disconnect(ctx)
+
+  }
+
+
+
+
+
 }
