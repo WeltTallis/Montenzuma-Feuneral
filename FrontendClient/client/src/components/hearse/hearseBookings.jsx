@@ -48,17 +48,17 @@ const GENERIC_BRANCH_NAMES = new Set([
 
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pending', progress: 10, color: '#d97706', bg: '#FFFBEB', dotColor: '#d97706' },
-  booked: { label: 'Booked', progress: 25, color: '#00296B', bg: '#EFF6FF', dotColor: '#00296B' },
-  confirmed: { label: 'Confirmed', progress: 25, color: '#00296B', bg: '#EFF6FF', dotColor: '#00296B' },
-  scheduled: { label: 'Scheduled', progress: 25, color: '#E36414', bg: '#FFEDD5', dotColor: '#E36414' },
-  in_transit: { label: 'In Transit', progress: 60, color: '#E36414', bg: '#FFEDD5', dotColor: '#E36414' },
-  in_progress: { label: 'In Progress', progress: 60, color: '#0c0b0f', bg: '#F3F4F6', dotColor: '#0c0b0f' },
-  postponed: { label: 'Postponed', progress: 15, color: '#d97706', bg: '#FFFBEB', dotColor: '#d97706' },
-  completed: { label: 'Completed', progress: 100, color: '#5F0F40', bg: '#FCE7F3', dotColor: '#5F0F40' },
-  delivered: { label: 'Delivered', progress: 100, color: '#132A13', bg: '#E8F5E9', dotColor: '#132A13' },
-  cancelled: { label: 'Cancelled', progress: 0, color: '#DD2D4A', bg: '#FEE2E2', dotColor: '#DD2D4A' },
-  maintenance: { label: 'Maintenance', progress: 0, color: '#03071E', bg: '#E0E7FF', dotColor: '#03071E' },
+  pending: { label: 'Pending', progress: 10, color: '#FFD700', bg: '#FFD700', dotColor: '#FFD700' },
+  booked: { label: 'Booked', progress: 25, color: '#00296B', bg: '#00296B', dotColor: '#00296B' },
+  confirmed: { label: 'Confirmed', progress: 25, color: '#00296B', bg: '#00296B', dotColor: '#00296B' },
+  scheduled: { label: 'Scheduled', progress: 25, color: '#E36414', bg: '#E36414', dotColor: '#E36414' },
+  in_transit: { label: 'In Transit', progress: 60, color: '#E36414', bg: '#E36414', dotColor: '#E36414' },
+  in_progress: { label: 'In Progress', progress: 60, color: '#0c0b0f', bg: '#0c0b0f', dotColor: '#0c0b0f' },
+  postponed: { label: 'Postponed', progress: 15, color: '#FFD700', bg: '#FFD700', dotColor: '#FFD700' },
+  completed: { label: 'Completed', progress: 100, color: '#5F0F40', bg: '#5F0F40', dotColor: '#5F0F40' },
+  delivered: { label: 'Delivered', progress: 100, color: '#132A13', bg: '#132A13', dotColor: '#132A13' },
+  cancelled: { label: 'Cancelled', progress: 0, color: '#DD2D4A', bg: '#DD2D4A', dotColor: '#DD2D4A' },
+  maintenance: { label: 'Maintenance', progress: 0, color: '#03071E', bg: '#03071E', dotColor: '#03071E' },
 };
 
 const STATUS_LIST = Object.keys(STATUS_CONFIG);
@@ -486,11 +486,13 @@ const TableRow = styled.tr`
   border-bottom: 1px solid ${COLORS.border};
   cursor: pointer;
   transition: ${COLORS.transition};
-  &:hover { background: ${COLORS.bg}; }
+  background: ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.surface};
+  color: ${props => (STATUS_CONFIG[props.$status]?.bg && STATUS_CONFIG[props.$status]?.bg !== COLORS.surface) ? '#ffffff' : COLORS.text};
+  &:hover { background: ${COLORS.bg}; color: ${COLORS.text}; }
   &:last-child { border-bottom: none; }
 `;
 
-const TableCell = styled.td`padding:0.875rem 1rem;color:${COLORS.text};vertical-align:middle;`;
+const TableCell = styled.td`padding:0.875rem 1rem;color:${props => STATUS_CONFIG[props.$status]?.bg === 'transparent' ? COLORS.text : '#ffffff'};vertical-align:middle;`;
 
 const TableHeader = styled.th`
   padding: 0.75rem 1rem;
@@ -1431,7 +1433,7 @@ const HearseBookings = () => {
                         const bid = b.booking_id || b.id;
                         const code = b.booking_code || genId(bid, b.plate_number);
                         return (
-                          <TableRow key={bid} onClick={() => openDrawer(b)}>
+                          <TableRow key={bid} $status={b.status} onClick={() => openDrawer(b)}>
                             <TableCell>
                               <span style={{ fontWeight: 600, color: COLORS.primary, fontSize: '0.78rem' }}>{code}</span>
                             </TableCell>
