@@ -913,17 +913,6 @@ const HearseBookings = () => {
   }, []);
 
   const handleDateFilter = useCallback((f) => { setDateFilter(f); setCurrentPage(1); }, []);
-
-  // Inclusive YYYY-MM-DD bounds for the month currently on screen. The month can
-  // be 12/13 in some time zones, so the range is built from a local Date and
-  // the last day is taken from the next month's day-0 rather than assumed to
-  // be 30.
-  // Inclusive YYYY-MM-DD bounds for the month currently on screen.
-  //   month=9&year=2026  ->  from 2026-09-01, to 2026-09-30
-  // The last day is taken from "day 0 of the next month" so February and the
-  // 31-day months are always correct — never a hard-coded 30.
-  // A local Date is used (not UTC) so the bounds always match the local
-  // calendar the user is looking at.
   const monthRange = useMemo(() => {
     const y = Number.isInteger(viewYear) ? viewYear : now.getFullYear();
     const m = Number.isInteger(viewMonth) && viewMonth >= 0 && viewMonth <= 11
@@ -1542,7 +1531,7 @@ const HearseBookings = () => {
 
       {/* ─── Detail Drawer ─── */}
       {drawerOpen && <DrawerOverlay onClick={closeDrawer} />}
-      <Drawer $open={drawerOpen} $w="520px">
+      <Drawer $open={drawerOpen} $w="720px">
         <DrawerHeader>
           <div>
             <DrawerTitle>Booking Details</DrawerTitle>
