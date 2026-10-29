@@ -245,6 +245,7 @@ function FleetDashboard({ embedded = false }) {
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [allocateDraft, setAllocateDraft] = useState({ amount: '', reference: '', transactionDate: todayDate() });
+  const [showActivityPanel, setShowActivityPanel] = useState(false);
 
   // ── ALL useCallback (block 2) ───────────────────────────────────────────────
   const loadFleet = useCallback(async (quiet = false) => {
@@ -576,70 +577,86 @@ function FleetDashboard({ embedded = false }) {
           </InlineAlert>
         )}
 
-        {/* ── ACTIVITY PANEL — ALWAYS visible (calendar + filters + list) ── */}
-        <ActivityPanel>
-          <ActivityPanelHeader>
-            <h2>Fuel account activity</h2>
-            <ActivityFilters>
-              <ActivityFilterBtn $active={activityFilter === 'all'} $color={BTN_PRIMARY} $bg="#eef2f8" onClick={() => setActivityFilter('all')}><span className="dot" /> All <span style={{ opacity: .6 }}>({activityCounts.all})</span></ActivityFilterBtn>
-              {Object.entries(ACTIVITY_META).map(([key, meta]) => (
-                <ActivityFilterBtn key={key} $active={activityFilter === key} $color={meta.color} $bg={meta.bg} onClick={() => setActivityFilter(key)}><span className="dot" /> {meta.label} <span style={{ opacity: .6 }}>({activityCounts[key]})</span></ActivityFilterBtn>
-              ))}
-            </ActivityFilters>
-          </ActivityPanelHeader>
-          <ActivityLayout>
-            <CalendarWrap>
-              <CalendarHeader>
-                <CalendarMonthNav>
-                  <CalNavBtn type="button" onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}><ChevronLeft size={14} /></CalNavBtn>
-                  <strong>{calendarMonthLabel}</strong>
-                  <CalNavBtn type="button" onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}><ChevronRight size={14} /></CalNavBtn>
-                </CalendarMonthNav>
-                <CalNavBtn type="button" onClick={() => { const n = new Date(); setCalendarMonth(new Date(n.getFullYear(), n.getMonth(), 1)); }}>Today</CalNavBtn>
-              </CalendarHeader>
-              <CalendarTable>
-                <thead><tr>{WEEKDAYS.map((d) => <CalHead key={d}>{d}</CalHead>)}</tr></thead>
-                <tbody>
-                  {Array.from({ length: 6 }).map((_, weekIdx) => (
-                    <tr key={weekIdx}>
-                      {calendarDays.slice(weekIdx * 7, weekIdx * 7 + 7).map((cell, ci) => {
-                        const dateKey = cell.date ? `${cell.date.getFullYear()}-${String(cell.date.getMonth() + 1).padStart(2, '0')}-${String(cell.date.getDate()).padStart(2, '0')}` : '';
-                        const acts = calendarActivities.get(dateKey) || [];
-                        const visibleActs = activityFilter === 'all' ? acts : acts.filter((a) => a.transaction_type === activityFilter);
-                        return (
-                          <CalCell key={ci} className={[cell.otherMonth ? 'other-month' : '', dateKey === todayKey ? 'today' : ''].join(' ')}>
-                            <span className="cal-day">{cell.day}</span>
-                            {visibleActs.length > 0 && <div className="cal-dots">{visibleActs.slice(0, 4).map((a, i) => <span key={i} className="cal-dot" style={{ background: activityMeta(a.transaction_type).color }} />)}</div>}
-                          </CalCell>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </CalendarTable>
-              <CalendarLegend>
-                {Object.entries(ACTIVITY_META).map(([key, meta]) => (<span key={key}><span className="dot" style={{ background: meta.color }} /> {meta.label}</span>))}
-              </CalendarLegend>
-            </CalendarWrap>
-            <ActivityList>
-              {filteredTransactions.length === 0 ? (
-                <Empty><Zap size={24} /><strong>No activity yet</strong><span>Fuel transactions will appear here once recorded.</span></Empty>
-              ) : filteredTransactions.map((t) => {
-                const meta = activityMeta(t.transaction_type);
-                const label = t.transaction_type === 'deposit' ? 'Cheque / account deposit' : t.transaction_type === 'allocation' ? `Allocated to ${t.hearse_plate || 'fuel card'}` : `Fuel purchase · ${t.station || 'station not entered'}`;
-                const Icon = t.transaction_type === 'deposit' ? Wallet : t.transaction_type === 'allocation' ? CreditCard : Zap;
-                return (
-                  <ActivityRow key={t.id} $color={meta.color} $bg={meta.bg}>
-                    <ActivityIcon $bg={meta.bg} $color={meta.color}><Icon size={16} /></ActivityIcon>
-                    <ActivityBody><strong>{label}</strong><span>{t.reference || t.fuel_card_number || 'No reference'} · {String(t.transaction_date).slice(0, 10)}</span></ActivityBody>
-                    <ActivityAmount className={t.transaction_type === 'deposit' ? 'pos' : 'neg'}><strong>{t.transaction_type === 'deposit' ? `+${formatKES(t.amount)}` : `−${formatKES(t.amount)}`}</strong><span>{meta.label}</span></ActivityAmount>
-                  </ActivityRow>
-                );
-              })}
-              {allTransactions.length > 3 && (<ViewMoreBtn type="button" onClick={() => setShowAllActivity((v) => !v)}>{showAllActivity ? 'Show less' : `View more (${allTransactions.length - 3} more)`}</ViewMoreBtn>)}
-            </ActivityList>
-          </ActivityLayout>
-        </ActivityPanel>
+        {/* ── ACTIVITY PANEL — hidden by default, shown after clicking "View" ── */}
+        {!showActivityPanel ? (
+          <ActivityPanel style={{ padding: '14px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 36, height: 36, borderRadius: 8, background: BTN_BLUE, color: '#fff', display: 'grid', placeItems: 'center' }}><Zap size={18} /></span>
+                <div>
+                  <strong style={{ fontSize: 14, fontWeight: 800 }}>Fuel account activity</strong>
+                  <div style={{ fontSize: 11, color: '#6b7180', marginTop: 2 }}>{allTransactions.length} transaction{allTransactions.length === 1 ? '' : 's'} recorded</div>
+                </div>
+              </div>
+              <SmButton type="button" onClick={() => setShowActivityPanel(true)}><ChevronRight size={13} /> View activity</SmButton>
+            </div>
+          </ActivityPanel>
+        ) : (
+          <ActivityPanel>
+            <ActivityPanelHeader>
+              <h2>Fuel account activity</h2>
+              <ActivityFilters>
+                <ActivityFilterBtn $active={activityFilter === 'all'} $color={BTN_PRIMARY} $bg="#eef2f8" onClick={() => setActivityFilter('all')}><span className="dot" /> All <span style={{ opacity: .6 }}>({activityCounts.all})</span></ActivityFilterBtn>
+                {Object.entries(ACTIVITY_META).map(([key, meta]) => (
+                  <ActivityFilterBtn key={key} $active={activityFilter === key} $color={meta.color} $bg={meta.bg} onClick={() => setActivityFilter(key)}><span className="dot" /> {meta.label} <span style={{ opacity: .6 }}>({activityCounts[key]})</span></ActivityFilterBtn>
+                ))}
+              </ActivityFilters>
+            </ActivityPanelHeader>
+            <ActivityLayout>
+              <CalendarWrap>
+                <CalendarHeader>
+                  <CalendarMonthNav>
+                    <CalNavBtn type="button" onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}><ChevronLeft size={14} /></CalNavBtn>
+                    <strong>{calendarMonthLabel}</strong>
+                    <CalNavBtn type="button" onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}><ChevronRight size={14} /></CalNavBtn>
+                  </CalendarMonthNav>
+                  <CalNavBtn type="button" onClick={() => { const n = new Date(); setCalendarMonth(new Date(n.getFullYear(), n.getMonth(), 1)); }}>Today</CalNavBtn>
+                </CalendarHeader>
+                <CalendarTable>
+                  <thead><tr>{WEEKDAYS.map((d) => <CalHead key={d}>{d}</CalHead>)}</tr></thead>
+                  <tbody>
+                    {Array.from({ length: 6 }).map((_, weekIdx) => (
+                      <tr key={weekIdx}>
+                        {calendarDays.slice(weekIdx * 7, weekIdx * 7 + 7).map((cell, ci) => {
+                          const dateKey = cell.date ? `${cell.date.getFullYear()}-${String(cell.date.getMonth() + 1).padStart(2, '0')}-${String(cell.date.getDate()).padStart(2, '0')}` : '';
+                          const acts = calendarActivities.get(dateKey) || [];
+                          const visibleActs = activityFilter === 'all' ? acts : acts.filter((a) => a.transaction_type === activityFilter);
+                          return (
+                            <CalCell key={ci} className={[cell.otherMonth ? 'other-month' : '', dateKey === todayKey ? 'today' : ''].join(' ')}>
+                              <span className="cal-day">{cell.day}</span>
+                              {visibleActs.length > 0 && <div className="cal-dots">{visibleActs.slice(0, 4).map((a, i) => <span key={i} className="cal-dot" style={{ background: activityMeta(a.transaction_type).color }} />)}</div>}
+                            </CalCell>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </CalendarTable>
+                <CalendarLegend>
+                  {Object.entries(ACTIVITY_META).map(([key, meta]) => (<span key={key}><span className="dot" style={{ background: meta.color }} /> {meta.label}</span>))}
+                </CalendarLegend>
+              </CalendarWrap>
+              <ActivityList>
+                {filteredTransactions.length === 0 ? (
+                  <Empty><Zap size={24} /><strong>No activity yet</strong><span>Fuel transactions will appear here once recorded.</span></Empty>
+                ) : filteredTransactions.map((t) => {
+                  const meta = activityMeta(t.transaction_type);
+                  const label = t.transaction_type === 'deposit' ? 'Cheque / account deposit' : t.transaction_type === 'allocation' ? `Allocated to ${t.hearse_plate || 'fuel card'}` : `Fuel purchase · ${t.station || 'station not entered'}`;
+                  const Icon = t.transaction_type === 'deposit' ? Wallet : t.transaction_type === 'allocation' ? CreditCard : Zap;
+                  return (
+                    <ActivityRow key={t.id} $color={meta.color} $bg={meta.bg}>
+                      <ActivityIcon $bg={meta.bg} $color={meta.color}><Icon size={16} /></ActivityIcon>
+                      <ActivityBody><strong>{label}</strong><span>{t.reference || t.fuel_card_number || 'No reference'} · {String(t.transaction_date).slice(0, 10)}</span></ActivityBody>
+                      <ActivityAmount className={t.transaction_type === 'deposit' ? 'pos' : 'neg'}><strong>{t.transaction_type === 'deposit' ? `+${formatKES(t.amount)}` : `−${formatKES(t.amount)}`}</strong><span>{meta.label}</span></ActivityAmount>
+                    </ActivityRow>
+                  );
+                })}
+                {allTransactions.length > 3 && (<ViewMoreBtn type="button" onClick={() => setShowAllActivity((v) => !v)}>{showAllActivity ? 'Show less' : `View more (${allTransactions.length - 3} more)`}</ViewMoreBtn>)}
+              </ActivityList>
+            </ActivityLayout>
+            <ViewMoreBtn type="button" onClick={() => setShowActivityPanel(false)} style={{ marginTop: 14 }}>▲ Hide activity panel</ViewMoreBtn>
+          </ActivityPanel>
+        )}
 
         <SummaryGrid>
           <SummaryCard><SummaryIcon><Truck size={19} /></SummaryIcon><div><SummaryValue>{counts.total}</SummaryValue><SummaryLabel>Total hearses</SummaryLabel></div></SummaryCard>
