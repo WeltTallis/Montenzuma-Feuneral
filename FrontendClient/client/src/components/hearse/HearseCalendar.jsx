@@ -205,14 +205,17 @@ const Shell = styled.div`
 
   /* MONTH VIEW: Let the inline background color (status color) show through.
      Previous "transparent !important" was hiding the status colour and letting
-     FullCalendar's own dot rendering show instead. */
+     FullCalendar's own dot rendering show instead. We now explicitly override
+     ALL background properties to ensure the rich status colour fills the card. */
   .fc .fc-daygrid-event .fc-event-main,
   .fc .fc-daygrid-event .fc-event-main-frame {
-    background: inherit !important;  /* inherit from the rendered card div */
+    background-color: inherit !important;
+    background: inherit !important;
     color: #FFFFFF !important;
   }
   .fc .fc-daygrid-event {
-    background: inherit !important;  /* inherit from the rendered card div */
+    background-color: inherit !important;
+    background: inherit !important;
     border: none !important;
     box-shadow: none !important;
   }
