@@ -209,6 +209,11 @@ const Shell = styled.div`
     background: transparent !important;
     color: #FFFFFF !important;
   }
+  .fc .fc-daygrid-event {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
 
   .fc .fc-daygrid-more-link {
     font-size: 11px !important;
@@ -296,7 +301,7 @@ const Shell = styled.div`
     white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
   }
   .fc .fc-timegrid-event .fc-event-title {
-    font-weight: 700 !important; font-size: 12px !important;
+    font-weight: 700 !important; font-size: 13px !important;
     line-height: 1.25 !important;
     white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
   }
@@ -309,6 +314,10 @@ const Shell = styled.div`
   .fc .fc-timegrid-event .fc-event-plate {
     font-size: 9px !important; opacity: .7 !important;
     white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
+  }
+  .fc .fc-timegrid-event .fc-event-multi-line {
+    line-height: 1.3 !important;
+    overflow: visible !important;
   }
   .fc .fc-timegrid-event .fc-event-status {
     font-size: 9px !important; font-weight: 700 !important;
@@ -1443,7 +1452,19 @@ const HearseCalendar = ({
         if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       } catch (e) { }
 
-      const hearseName = b.hearse_name || 'Hearse';
+      // Format time as "9 AM" (12-hour format without minutes when it's exactly on the hour)
+      const formatTimeToDisplay = (timeStr) => {
+        if (!timeStr) return '';
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        if (minutes === 0) {
+          return `${displayHours} ${period}`;
+        }
+        return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+      };
+
+      const hearseName = b.hearse_name || b.hearse?.name || b.hearse_name || b.vehicle_name || 'Hearse';
       const clientName = (b.client_name || b.client || 'client').toString();
       const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
       const stableId = b.booking_code || b.booking_id || b.id || `${clientName}-${datePart}-${index}`;
@@ -1453,6 +1474,8 @@ const HearseCalendar = ({
         b.booking_branch_slug || b.branch_slug || b.branchSlug || b.branch,
         b.branch_name || b.branchName || b.hearse_branch_name || b.branch
       );
+
+      const formattedStartTime = formatTimeToDisplay(startTime);
 
       const isMultiDay = bookingDates.length > 1 || (() => {
         if (bookingDates.length === 1) {
@@ -1478,7 +1501,6 @@ const HearseCalendar = ({
         borderColor: status.color,
         textColor: '#FFFFFF',
         extendedProps: {
-          ...b,
           status: b.status,
           statusLabel: status.label,
           statusColor: status.color,
@@ -1496,6 +1518,7 @@ const HearseCalendar = ({
           endTime,
           bookingCode: readableId,
           hearseName,
+          formattedStartTime,
         }
       };
     }).filter(e => e !== null && e.start);
@@ -1722,16 +1745,27 @@ const HearseCalendar = ({
             </span>
           )}
 
-          {/* Destination route line */}
+          {/* From — top line */}
+          {props.from && props.from !== '—' && (
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ color: 'rgba(255,255,255,0.95)' }}>From:</span>
+              <span style={{ color: 'rgba(255,255,255,0.7)', marginLeft: '4px' }}>{props.from}</span>
+            </div>
+          )}
+
+          {/* To — below from */}
           {dest !== '—' && (
-            <span style={{
-              fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.95)',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              display: 'flex', alignItems: 'center', gap: '3px',
-            }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#FFFFFF', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <span style={{ color: 'rgba(255,255,255,0.8)' }}>To:</span>
-              <span>{dest}</span>
-            </span>
+              <span style={{ color: 'rgba(255,255,255,0.7)', marginLeft: '4px' }}>{dest}</span>
+            </div>
+          )}
+
+          {/* Pickup time — bottom line */}
+          {formattedStartTime && (
+            <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+              {formattedStartTime}
+            </div>
           )}
         </div>
       );
