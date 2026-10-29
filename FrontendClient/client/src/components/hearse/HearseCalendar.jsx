@@ -203,14 +203,16 @@ const Shell = styled.div`
     color: #FFFFFF !important;
   }
 
-  /* Only customize paint; leave FullCalendar's event wrapper layout untouched. */
+  /* MONTH VIEW: Let the inline background color (status color) show through.
+     Previous "transparent !important" was hiding the status colour and letting
+     FullCalendar's own dot rendering show instead. */
   .fc .fc-daygrid-event .fc-event-main,
   .fc .fc-daygrid-event .fc-event-main-frame {
-    background: transparent !important;
+    background: inherit !important;  /* inherit from the rendered card div */
     color: #FFFFFF !important;
   }
   .fc .fc-daygrid-event {
-    background: transparent !important;
+    background: inherit !important;  /* inherit from the rendered card div */
     border: none !important;
     box-shadow: none !important;
   }
@@ -1762,9 +1764,9 @@ const HearseCalendar = ({
           )}
 
           {/* Pickup time — bottom line */}
-          {formattedStartTime && (
+          {props.formattedStartTime && (
             <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
-              {formattedStartTime}
+              {props.formattedStartTime}
             </div>
           )}
         </div>
