@@ -1446,17 +1446,16 @@ const HearseBookings = () => {
                               <span style={{ fontWeight: 600, color: COLORS.primary, fontSize: '0.78rem' }}>{code}</span>
                             </TableCell>
                             <TableCell>
-                              <div style={{ fontWeight: 500 }}>{b.client_name || 'N/A'}</div>
-                              {b.client_phone && (
-                                <div style={{ fontSize: '0.72rem', color: COLORS.textMuted }}>{b.client_phone}</div>
-                              )}
+                              <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{b.hearse_name || 'N/A'}</div>
+                              {b.plate_number && <div style={{ fontSize: '0.7rem', color: COLORS.textMuted }}>{b.plate_number}</div>}
                             </TableCell>
                             <TableCell>
-                              <div style={{ fontSize: '0.78rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtRoute(b)}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div style={{ fontSize: '0.78rem' }}>{b.hearse_name || 'N/A'}</div>
-                              {b.plate_number && <div style={{ fontSize: '0.68rem', color: COLORS.textMuted }}>{b.plate_number}</div>}
+                              <div style={{ fontSize: '0.78rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ color: COLORS.primary }}>From: {b.from_location || 'N/A'}</span>
+                              </div>
+                              <div style={{ fontSize: '0.78rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ color: COLORS.primary }}>To: {b.to_location || b.destination || 'N/A'}</span>
+                              </div>
                             </TableCell>
                             <TableCell><div style={{ fontSize: '0.78rem' }}>{branchLabel(b)}</div></TableCell>
                             <TableCell>

@@ -1678,7 +1678,6 @@ const HearseCalendar = ({
     const itemColor = props.statusColor || '#00296B';   // rich saturated hex
 
     if (isMonthView) {
-      const from = props.from || '—';
       const dest = props.dest || '—';
       return (
         <div
@@ -1723,16 +1722,15 @@ const HearseCalendar = ({
             </span>
           )}
 
-          {/* From → Destination route line */}
-          {(from !== '—' || dest !== '—') && (
+          {/* Destination route line */}
+          {dest !== '—' && (
             <span style={{
               fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.95)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               display: 'flex', alignItems: 'center', gap: '3px',
             }}>
-              {from !== '—' && <span>{from}</span>}
-              {from !== '—' && dest !== '—' && <span style={{ color: 'rgba(255,255,255,0.6)' }}>→</span>}
-              {dest !== '—' && <span>{dest}</span>}
+              <span style={{ color: 'rgba(255,255,255,0.8)' }}>To:</span>
+              <span>{dest}</span>
             </span>
           )}
         </div>

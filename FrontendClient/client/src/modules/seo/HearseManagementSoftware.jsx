@@ -129,10 +129,13 @@ const AdvancedCalendarMockup = () => {
                                             <MapPin size={10} color={C.textTer} />
                                         </div>
                                         <div style={{ fontSize: '0.7rem', fontWeight: 600, color: C.text, marginBottom: 2, lineHeight: 1.2 }}>
-                                            {dayBooking.location}
+                                            {dayBooking.hearse_name || 'Unknown Hearse'}
                                         </div>
                                         <div style={{ fontSize: '0.6rem', color: C.textTer, marginBottom: 8 }}>
-                                            {dayBooking.client}
+                                            <span style={{ color: C.primary }}>To:</span> {dayBooking.to_location || dayBooking.destination || 'N/A'}
+                                        </div>
+                                        <div style={{ fontSize: '0.55rem', color: C.textTer }}>
+                                            {dayBooking.plate_number || ''}
                                         </div>
 
                                         {assignments[dayBooking.id] ? (
