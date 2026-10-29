@@ -1457,18 +1457,6 @@ const HearseCalendar = ({
         if (!isNaN(ed.getTime()) && fcEnd) endTime = ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       } catch (e) { }
 
-      // Format time as "9 AM" (12-hour format without minutes when it's exactly on the hour)
-      const formatTimeToDisplay = (timeStr) => {
-        if (!timeStr) return '';
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const displayHours = hours % 12 || 12;
-        if (minutes === 0) {
-          return `${displayHours} ${period}`;
-        }
-        return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
-      };
-
       const hearseName = b.hearse_name || b.hearse?.name || b.hearse_name || b.vehicle_name || 'Hearse';
       const clientName = (b.client_name || b.client || 'client').toString();
       const datePart = startDate ? String(startDate).split('T')[0]?.replace(/[-]/g, '') : 'nodate';
@@ -1480,7 +1468,18 @@ const HearseCalendar = ({
         b.branch_name || b.branchName || b.hearse_branch_name || b.branch
       );
 
-      const formattedStartTime = formatTimeToDisplay(startTime);
+      // Format time as "9 AM" (12-hour format without minutes when it's exactly on the hour)
+      const formattedStartTime = (() => {
+        if (!startTime) return '';
+        const [hours, minutes] = startTime.split(':').map(Number);
+        if (isNaN(hours)) return startTime;
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        if (minutes === 0) {
+          return `${displayHours} ${period}`;
+        }
+        return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+      })();
 
       const isMultiDay = bookingDates.length > 1 || (() => {
         if (bookingDates.length === 1) {
