@@ -363,7 +363,7 @@ const api = {
   //updates    hearses
   updateStatus: async (id, status, reason) => {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
-    const body = { status };
+    const body = { status, booking_id: id };
     if (String(status) === 'cancelled') body.cancel_reason = reason || null;
     const r = await fetch(`${API_BASE_URL}/hearse-bookings/${id}/status`, { method: 'PUT', headers: h, body: JSON.stringify(body) });
     if (!r.ok) throw new Error('Failed');
