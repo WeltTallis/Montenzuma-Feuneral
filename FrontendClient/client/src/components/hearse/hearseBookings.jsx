@@ -7,21 +7,18 @@ import useAuthStore from '../../utils/store/useAuthStore';
 import apiClient from '../../api/axios';
 import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import BookNewHearseModal from './BookNewHearseModal';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, createGlobalStyle } from 'styled-components';
+
+const SwalZIndex = createGlobalStyle`
+  .swal2-container { z-index: 10100 !important; }
+`;
 import HearseCalendar from './HearseCalendar';
 import env from '../../utils/config/env';
 import notify from '../../utils/notify';
 import Swal from 'sweetalert2';
 
-// SweetAlert must render above the drawer/modal overlays (z-index 9998–9999).
-// Without this, the confirmation dialogs appear behind the open side panel
-// and the user has to close the panel to see/interact with them.
-Swal.setDefaults({
-  willOpen: () => {
-    const container = document.querySelector('.swal2-container');
-    if (container) container.style.zIndex = '10100';
-  },
-});
+// SweetAlert2 v11 does not have Swal.setDefaults(). Use CSS z-index instead
+// so confirmation dialogs render above drawer/modal overlays (z-index 9998–9999).
 import {
   Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical,
   ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, List, Grid, X,
@@ -1404,6 +1401,7 @@ const HearseBookings = () => {
 
   return (
     <Container>
+      <SwalZIndex />
       <MainContent>
         {/* Stats Cards */}
         <StatsGrid>
