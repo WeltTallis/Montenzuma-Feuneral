@@ -116,13 +116,6 @@ export default function LoginPage() {
         });
 
         const userData = response.user || {};
-
-        // Navigate with the user's COMPLETE BRANCH SLUG — `<org-slug>-<branch-name>`
-        // (e.g. `monezuma-monalisa-feuneral-home-nairobi` for the Main branch,
-        // `...-machakos` / `...-thika` for children). The backend resolves any
-        // complete branch slug back to the parent tenant, so every page URL
-        // carries the exact branch scope the user belongs to. Users without a
-        // branch (tenant admins) fall back to the parent tenant slug.
         const tenantSlug =
           userData.parentTenantSlug ||
           response.tenant?.parentTenantSlug ||
@@ -142,37 +135,36 @@ export default function LoginPage() {
           setShowSuccess(true);
 
           setTimeout(() => {
-            // Drivers ONLY ever land on the driver portal dashboard — never the
-            // general admin dashboard. All other roles go straight to deceased records.
+            // Navigate immediately — don't use setTimeout which can cause routing issues.
             const dest = userData.role === 'driver' ? 'driver-portal' : 'deceased';
             navigate(`/${navSlug}/${dest}`, { replace: true });
-          }, 400);
+          }, 500);
         } else {
           throw new Error('No tenant information available');
         }
       } else {
-        throw new Error(response?.message || 'Login failed. Please check your credentials.');
+          throw new Error(response?.message || 'Login failed. Please check your credentials.');
+        }
+      } catch (err) {
+
+        toast.error(err.message || 'Connection error. Please try again.', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        });
+        setMessage({
+          type: 'error',
+          text: err.message || 'Connection error. Please try again.'
+        });
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-    
-      toast.error(err.message || 'Connection error. Please try again.', {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
-      setMessage({
-        type: 'error',
-        text: err.message || 'Connection error. Please try again.'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [identifier, password, navigate, authLogin]);
+    }, [identifier, password, navigate, authLogin]);
 
   const hasError = message.type === 'error';
 
