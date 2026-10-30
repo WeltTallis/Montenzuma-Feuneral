@@ -5,7 +5,6 @@ import { Badge } from '@hr/components/ui/badge';
 import { useMissingBankDetails } from "@hr/hooks/employees/useMissingBankDetails";
 import { useIsMobile } from "@hr/hooks/useBreakpoint";
 import { cn } from "@hr/lib/utils";
-import { VIETNAMESE_EMPLOYEE_LABELS } from '@hr/types/api/employee.types';
 import type { Employee, CurrentProject } from '@hr/types/api/employee.types';
 import {
   getBankInformationWarningKind,
@@ -16,11 +15,15 @@ interface MissingBankDetailsSectionProps {
   onEmployeeClick?: (employee: Employee) => void;
 }
 
-const SCHEDULE_LABEL: Record<string, string> = VIETNAMESE_EMPLOYEE_LABELS.schedule;
+const SCHEDULE_LABEL: Record<string, string> = {
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  flexible: 'Flexible',
+};
 
 function ProjectCell({ projects }: { projects: CurrentProject[] }) {
   if (!projects?.length) {
-    return <span className="text-xs text-muted-foreground italic">Chưa có dự án</span>;
+    return <span className="text-xs italic text-muted-foreground">No current projects</span>;
   }
   return (
     <div className="flex flex-col gap-1">
@@ -69,7 +72,7 @@ function WarningReasons({
         )}
       >
         <AlertTriangle className="h-2.5 w-2.5" aria-hidden="true" />
-        {isInvalid ? 'Sai thông tin' : 'Thiếu thông tin'}
+        {isInvalid ? 'Invalid details' : 'Missing details'}
       </span>
       <span
         className={cn(
@@ -93,8 +96,7 @@ export const MissingBankDetailsSection = ({
 
   const toggle = useCallback(() => setIsExpanded(v => !v), []);
 
-  // Group rows by warning kind, invalid first: OnePay-confirmed wrong data
-  // outranks incomplete data. Server order is preserved within each group.
+  // Show invalid details before incomplete records, preserving server order.
   const { rows, invalidCount, missingCount } = useMemo(() => {
     const invalid = employees.filter(
       employee => getBankInformationWarningKind(employee) === 'invalid',
@@ -123,19 +125,19 @@ export const MissingBankDetailsSection = ({
 
         <div className="min-w-0 flex-1">
           <p className="text-pretty text-sm font-semibold leading-tight text-foreground">
-            Thông tin ngân hàng không hợp lệ
+            Bank details need attention
           </p>
           {(invalidCount > 0 || missingCount > 0) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {invalidCount > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">
-                  Sai thông tin
+                  Invalid
                   <span className="tabular-nums">{invalidCount}</span>
                 </span>
               )}
               {missingCount > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">
-                  Thiếu thông tin
+                  Missing
                   <span className="tabular-nums">{missingCount}</span>
                 </span>
               )}
@@ -157,7 +159,7 @@ export const MissingBankDetailsSection = ({
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
           )}
           <span className="sr-only">
-            {isExpanded ? "Ẩn danh sách" : "Xem danh sách"}
+            {isExpanded ? "Hide list" : "Show list"}
           </span>
         </Button>
       </div>
@@ -174,7 +176,7 @@ export const MissingBankDetailsSection = ({
           {isMobile ? (
             <ul
               className="divide-y divide-amber-100"
-              aria-label="List cảnh báo thông tin ngân hàng"
+              aria-label="Employees with bank detail issues"
             >
             {rows.map((employee, index) => {
               const hasPending =
@@ -188,7 +190,7 @@ export const MissingBankDetailsSection = ({
                     {hasPending && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded border border-orange-200 bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-700">
                         <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-                        {employee.timesheet_summary!.pending_timesheets} chờ duyệt
+                        {employee.timesheet_summary!.pending_timesheets} pending approval
                       </span>
                     )}
                   </div>
@@ -206,7 +208,7 @@ export const MissingBankDetailsSection = ({
                     <button
                       type="button"
                       onClick={() => onEmployeeClick(employee)}
-                      aria-label={`Mở thông tin nhân viên ${employee.fullname}`}
+                      aria-label={`Open employee profile for ${employee.fullname}`}
                       className="flex w-full flex-col items-start gap-1.5 px-3 py-3 text-left transition-colors active:bg-amber-50"
                     >
                       {content}
@@ -225,21 +227,21 @@ export const MissingBankDetailsSection = ({
               <div
                 className="max-h-80 overflow-auto overscroll-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 role="region"
-              aria-label="List cảnh báo thông tin ngân hàng"
+              aria-label="Employees with bank detail issues"
               tabIndex={0}
             >
               <table className="w-full min-w-[760px] text-sm">
                 <caption className="sr-only">
-                  List nhân viên có thông tin ngân hàng không hợp lệ
+                  Employees with bank detail issues
                 </caption>
                 <thead className="sticky top-0 z-10 bg-amber-100/80 backdrop-blur-sm">
                   <tr>
-                    <th className="w-12 px-4 py-2.5 text-left text-xs font-semibold text-amber-900">STT</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Họ và tên</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">CCCD</th>
+                    <th className="w-12 px-4 py-2.5 text-left text-xs font-semibold text-amber-900">No.</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Employee</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">ID / passport</th>
                     {/* Reason column: why is this employee in the list? */}
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Lý do</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Project hiện tại</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Issue</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Current projects</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-amber-100 bg-card">
@@ -259,7 +261,7 @@ export const MissingBankDetailsSection = ({
                         tabIndex={onEmployeeClick ? 0 : undefined}
                         aria-label={
                           onEmployeeClick
-                            ? `Mở thông tin nhân viên ${employee.fullname}`
+                            ? `Open employee profile for ${employee.fullname}`
                             : undefined
                         }
                         className={
@@ -274,11 +276,11 @@ export const MissingBankDetailsSection = ({
                             <span className="text-sm font-medium text-foreground">{employee.fullname}</span>
                             {hasPending && (
                               <span
-                                title={`${employee.timesheet_summary!.pending_timesheets} bảng công chờ duyệt`}
+                                title={`${employee.timesheet_summary!.pending_timesheets} timesheets pending approval`}
                                 className="inline-flex items-center gap-1 rounded border border-orange-200 bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-700"
                               >
                                 <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-                                {employee.timesheet_summary!.pending_timesheets} chờ duyệt
+                                {employee.timesheet_summary!.pending_timesheets} pending approval
                               </span>
                             )}
                           </div>

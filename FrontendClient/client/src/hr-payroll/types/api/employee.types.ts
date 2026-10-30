@@ -546,8 +546,7 @@ export interface MobileBackfillResult {
   errors: MobileBackfillRowError[];
 }
 
-// Kenyan translations
-export const VIETNAMESE_EMPLOYEE_LABELS = {
+export const EMPLOYEE_LABELS = {
   statuses: {
     active: "Active",
     inactive: "Inactive",

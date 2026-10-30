@@ -68,22 +68,6 @@ func setupAdminAttendanceRoutes(v1 *gin.RouterGroup, container *Container) {
 	admin.POST("/:id/credit-quota", container.Handlers.AdminAttendance.CreditQuota)
 }
 
-// setupProviderTransactionsAdminRoutes mounts the read-only stats endpoint
-// for provider_transactions. Casbin-protects to admin via the standard
-// Authorize() middleware. Always mounted — even when 9pay is dormant,
-// the table exists and reports an empty (or historical) result set.
-func setupProviderTransactionsAdminRoutes(v1 *gin.RouterGroup, container *Container) {
-	if container == nil || container.Handlers == nil || container.Handlers.ProviderTransactions == nil {
-		return
-	}
-	stats := v1.Group("/admin/provider-transactions")
-	stats.Use(container.Middleware.Auth.Authenticate())
-	if container.Middleware.Authorization != nil {
-		stats.Use(container.Middleware.Authorization.Authorize())
-	}
-	stats.GET("/stats", container.Handlers.ProviderTransactions.Stats)
-}
-
 func setupSettingsRoutes(v1 *gin.RouterGroup, container *Container) {
 	settings := v1.Group("/settings")
 	settings.Use(container.Middleware.Auth.Authenticate())

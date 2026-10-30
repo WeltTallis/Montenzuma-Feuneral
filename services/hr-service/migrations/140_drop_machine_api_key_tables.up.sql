@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS ops_api_keys;
+DROP TABLE IF EXISTS mcp_api_keys;
+DROP TABLE IF EXISTS api_keys;

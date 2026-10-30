@@ -19,11 +19,11 @@ import {
 } from '@hr/components/ui/dropdown-menu';
 // W13c: lucide → verified @untitledui/icons.
 import { ChevronDown, FilterLines, XClose } from '@untitledui/icons';
-import { VIETNAMESE_AUDIT_LABELS } from '@hr/types/api/audit.types';
+import { AUDIT_LABELS } from '@hr/types/api/audit.types';
 import type { AuditLogsQueryParams } from '@hr/types/api/audit.types';
 
-const ALL_ACTIONS = Object.keys(VIETNAMESE_AUDIT_LABELS.actions) as string[];
-const ALL_ENTITY_TYPES = Object.keys(VIETNAMESE_AUDIT_LABELS.entities) as string[];
+const ALL_ACTIONS = Object.keys(AUDIT_LABELS.actions) as string[];
+const ALL_ENTITY_TYPES = Object.keys(AUDIT_LABELS.entities) as string[];
 
 interface AuditLogFiltersProps {
   filters: AuditLogsQueryParams;
@@ -68,7 +68,7 @@ function ActionMultiSelect({
             onCheckedChange={() => toggle(action)}
             className="min-h-10 text-xs"
           >
-            {(VIETNAMESE_AUDIT_LABELS.actions as Record<string, string>)[action] ?? action}
+            {(AUDIT_LABELS.actions as Record<string, string>)[action] ?? action}
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>
@@ -114,7 +114,7 @@ function EntityTypeMultiSelect({
             onCheckedChange={() => toggle(et)}
             className="min-h-10 text-xs"
           >
-            {(VIETNAMESE_AUDIT_LABELS.entities as Record<string, string>)[et] ?? et}
+            {(AUDIT_LABELS.entities as Record<string, string>)[et] ?? et}
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>

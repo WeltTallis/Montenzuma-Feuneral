@@ -8,7 +8,7 @@ import {
   getEmployeeProjects,
   getEmployeeProjectCount,
   hasCompleteBankDetails,
-  VIETNAMESE_EMPLOYEE_LABELS,
+  EMPLOYEE_LABELS,
 } from "@hr/types/api/employee.types";
 import {
   Building,
@@ -136,7 +136,7 @@ export const createEmployeeMobileConfig = (
                 className={`text-xs px-1.5 py-0 h-4 shrink-0 mt-1 rounded-[4px] ${getPaymentScheduleBadgeClasses(projects[0].payment_schedule)}`}
               >
                 {
-                  VIETNAMESE_EMPLOYEE_LABELS.schedule[
+                  EMPLOYEE_LABELS.schedule[
                     projects[0].payment_schedule
                   ]
                 }
@@ -157,7 +157,7 @@ export const createEmployeeMobileConfig = (
               className={`text-xs px-1.5 py-0 h-4 shrink-0 mt-1 rounded-[2px] ${getPaymentScheduleBadgeClasses(projects[0].payment_schedule)}`}
             >
               {
-                VIETNAMESE_EMPLOYEE_LABELS.schedule[
+                EMPLOYEE_LABELS.schedule[
                   projects[0].payment_schedule
                 ]
               }

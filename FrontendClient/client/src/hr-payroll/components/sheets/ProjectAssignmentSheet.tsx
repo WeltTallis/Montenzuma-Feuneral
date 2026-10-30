@@ -14,7 +14,7 @@ import { useCurrentPayRate, isForbiddenError } from "@hr/hooks/api/usePayRates";
 import { extractPositionsFromPayrates } from "@hr/types/api/payrate.types";
 import { useProjectModals } from "@hr/hooks/useModalNavigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { VIETNAMESE_ASSIGNMENT_LABELS } from "@hr/types/api/project-employee.types";
+import { ASSIGNMENT_LABELS } from "@hr/types/api/project-employee.types";
 import { cn } from "@hr/lib/utils";
 import type { ModalConfig } from "@hr/types/modal-config.types";
 
@@ -334,7 +334,7 @@ function ProjectAssignmentSheet({
                 >
                   <ToggleGroupItem
                     value="weekly"
-                    aria-label={VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.weekly}
+                    aria-label={ASSIGNMENT_LABELS.payment_schedule.weekly}
                     className={cn(
                       "min-h-11 justify-start gap-2 typography-body-small",
                       "data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:border-primary data-[state=on]:border-2 data-[state=on]:font-medium",
@@ -342,11 +342,11 @@ function ProjectAssignmentSheet({
                     )}
                   >
                     <Clock className="h-4 w-4" />
-                    {VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.weekly}
+                    {ASSIGNMENT_LABELS.payment_schedule.weekly}
                   </ToggleGroupItem>
                   <ToggleGroupItem
                     value="monthly"
-                    aria-label={VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.monthly}
+                    aria-label={ASSIGNMENT_LABELS.payment_schedule.monthly}
                     className={cn(
                       "min-h-11 justify-start gap-2 typography-body-small",
                       "data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:border-primary data-[state=on]:border-2 data-[state=on]:font-medium",
@@ -354,11 +354,11 @@ function ProjectAssignmentSheet({
                     )}
                   >
                     <Calendar className="h-4 w-4" />
-                    {VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.monthly}
+                    {ASSIGNMENT_LABELS.payment_schedule.monthly}
                   </ToggleGroupItem>
                   <ToggleGroupItem
                     value="flexible"
-                    aria-label={VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.flexible}
+                    aria-label={ASSIGNMENT_LABELS.payment_schedule.flexible}
                     className={cn(
                       "min-h-11 justify-start gap-2 typography-body-small",
                       "data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:border-primary data-[state=on]:border-2 data-[state=on]:font-medium",
@@ -366,7 +366,7 @@ function ProjectAssignmentSheet({
                     )}
                   >
                     <Repeat className="h-4 w-4" />
-                    {VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.flexible}
+                    {ASSIGNMENT_LABELS.payment_schedule.flexible}
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>

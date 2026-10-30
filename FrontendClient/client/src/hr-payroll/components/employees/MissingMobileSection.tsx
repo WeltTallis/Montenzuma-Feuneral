@@ -5,7 +5,7 @@ import { Button } from '@hr/components/ui/button';
 import { Badge } from '@hr/components/ui/badge';
 import { useMissingMobile, useDuplicateMobiles } from '@hr/hooks/employees/useMissingMobile';
 import { useIsMobile } from '@hr/hooks/useBreakpoint';
-import { VIETNAMESE_EMPLOYEE_LABELS } from '@hr/types/api/employee.types';
+import { EMPLOYEE_LABELS } from '@hr/types/api/employee.types';
 import type {
   Employee,
   CurrentProject,
@@ -17,11 +17,11 @@ interface MissingMobileSectionProps {
   onEmployeeClick?: (employee: Employee) => void;
 }
 
-const SCHEDULE_LABEL: Record<string, string> = VIETNAMESE_EMPLOYEE_LABELS.schedule;
+const SCHEDULE_LABEL: Record<string, string> = EMPLOYEE_LABELS.schedule;
 
 function ProjectCell({ projects }: { projects: CurrentProject[] }) {
   if (!projects?.length) {
-    return <span className="text-xs text-muted-foreground italic">Chưa có dự án</span>;
+    return <span className="text-xs italic text-muted-foreground">No current projects</span>;
   }
   return (
     <div className="flex flex-col gap-1">
@@ -62,7 +62,7 @@ function makeRowProps(
       }
     },
     tabIndex: 0,
-    'aria-label': `Mở thông tin nhân viên ${employee.fullname}`,
+    'aria-label': `Open employee profile for ${employee.fullname}`,
   };
 }
 
@@ -87,12 +87,12 @@ function CoHolders({
     <div className="flex flex-wrap items-start gap-1">
       {others.length > 0 && (
         <span className="text-xs text-muted-foreground">
-          Dùng chung với: {others.map(e => e.fullname).join(', ')}
+          Shared with: {others.map(e => e.fullname).join(', ')}
         </span>
       )}
       {group.hidden_count > 0 && (
         <span className="inline-flex shrink-0 items-center rounded border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-xs font-medium leading-4 text-amber-900">
-          {group.hidden_count} nhân viên ngoài phạm vi
+          {group.hidden_count} employees outside your access
         </span>
       )}
     </div>
@@ -102,7 +102,7 @@ function CoHolders({
 /**
  * Collision-group header: the shared number is the thing the partner must
  * change, so it leads in mono/tabular digits and the group is counted above
- * its members ("dùng chung" counts in-scope + hidden — every holder matters).
+ * its members (the count includes visible and hidden holders).
  */
 function DuplicateGroupHeader({ group }: { group: DuplicateMobileGroup }) {
   const holders = group.employees.length + group.hidden_count;
@@ -113,11 +113,11 @@ function DuplicateGroupHeader({ group }: { group: DuplicateMobileGroup }) {
         {group.mobile}
       </span>
       <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800">
-        {holders} nhân viên dùng chung
+        {holders} employees share this number
       </span>
       {group.hidden_count > 0 && (
         <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">
-          {group.hidden_count} nhân viên ngoài phạm vi
+          {group.hidden_count} employees outside your access
         </span>
       )}
     </div>
@@ -196,7 +196,7 @@ export const MissingMobileSection = ({
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
           )}
           <span className="sr-only">
-            {isExpanded ? "Ẩn danh sách" : "Xem danh sách"}
+            {isExpanded ? "Hide list" : "Show list"}
           </span>
         </Button>
       </div>
@@ -208,7 +208,7 @@ export const MissingMobileSection = ({
           {missingEmployees.length > 0 && (
             <div>
               <h3 className="px-3 pt-2.5 text-xs font-semibold uppercase tracking-wide text-amber-900 sm:px-4">
-                Thiếu số điện thoại
+                Missing phone numbers
               </h3>
               {/* Phones get a card list; the table is a desktop-density view.
                   Chosen in JS rather than by CSS so only one variant exists in
@@ -216,7 +216,7 @@ export const MissingMobileSection = ({
               {isMobile ? (
                 <ul
                   className="divide-y divide-amber-100"
-                  aria-label="List nhân viên thiếu số điện thoại"
+                  aria-label="Employees missing phone numbers"
                 >
                   {missingEmployees.map((employee, index) => {
                     const content = (
@@ -237,7 +237,7 @@ export const MissingMobileSection = ({
                           <button
                             type="button"
                             onClick={() => onEmployeeClick(employee)}
-                            aria-label={`Mở thông tin nhân viên ${employee.fullname}`}
+                            aria-label={`Open employee profile for ${employee.fullname}`}
                             className="flex w-full flex-col items-start gap-1.5 px-3 py-3 text-left transition-colors active:bg-amber-50"
                           >
                             {content}
@@ -255,19 +255,19 @@ export const MissingMobileSection = ({
                 <div
                   className="max-h-80 overflow-auto overscroll-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   role="region"
-                  aria-label="List nhân viên thiếu số điện thoại"
+                  aria-label="Employees missing phone numbers"
                   tabIndex={0}
                 >
                   <table className="w-full min-w-[560px] text-sm">
                     <caption className="sr-only">
-                      List nhân viên thiếu số điện thoại
+                      Employees missing phone numbers
                     </caption>
                     <thead className="sticky top-0 z-10 bg-amber-100/80 backdrop-blur-sm">
                       <tr>
-                        <th className="w-12 px-4 py-2.5 text-left text-xs font-semibold text-amber-900">STT</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Họ và tên</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">CCCD</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Project hiện tại</th>
+                        <th className="w-12 px-4 py-2.5 text-left text-xs font-semibold text-amber-900">No.</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Employee</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">ID / passport</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Current projects</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-amber-100 bg-card">
@@ -297,9 +297,9 @@ export const MissingMobileSection = ({
           {groups.length > 0 && (
             <div>
               <h3 className="px-3 pt-2.5 text-xs font-semibold uppercase tracking-wide text-rose-900 sm:px-4">
-                Số điện thoại trùng
+                Duplicate phone numbers
               </h3>
-              <div role="region" aria-label="List số điện thoại trùng">
+              <div role="region" aria-label="Employees with duplicate phone numbers">
                 {/* One block per collision group: the shared number leads, its
                     members sit beneath — the partner must see WHICH number to
                     change before they see who carries it. */}
@@ -336,7 +336,7 @@ export const MissingMobileSection = ({
                                 <button
                                   type="button"
                                   onClick={() => onEmployeeClick(employee)}
-                                  aria-label={`Mở thông tin nhân viên ${member.fullname}`}
+                                  aria-label={`Open employee profile for ${member.fullname}`}
                                   className="flex w-full flex-col items-start gap-1.5 px-3 py-3 text-left transition-colors active:bg-amber-50"
                                 >
                                   {content}
@@ -353,14 +353,14 @@ export const MissingMobileSection = ({
                     ) : (
                       <table className="w-full min-w-[560px] text-sm">
                         <caption className="sr-only">
-                          Employee dùng chung số {group.mobile}
+                          Employees sharing phone number {group.mobile}
                         </caption>
                         <thead className="bg-amber-100/60">
                           <tr>
-                            <th className="w-12 px-4 py-2.5 text-left text-xs font-semibold text-amber-900">STT</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Họ và tên</th>
+                            <th className="w-12 px-4 py-2.5 text-left text-xs font-semibold text-amber-900">No.</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Employee</th>
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Phone number</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Dùng chung với</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-amber-900">Other employees using it</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-amber-100 bg-card">

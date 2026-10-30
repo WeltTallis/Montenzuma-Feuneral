@@ -20,12 +20,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@hr/components/ui/sheet';
-import { VIETNAMESE_AUDIT_LABELS } from '@hr/types/api/audit.types';
+import { AUDIT_LABELS } from '@hr/types/api/audit.types';
 import type { AuditLogsQueryParams } from '@hr/types/api/audit.types';
 import { cn } from '@hr/lib/utils';
 
-const ALL_ACTIONS = Object.keys(VIETNAMESE_AUDIT_LABELS.actions) as string[];
-const ALL_ENTITY_TYPES = Object.keys(VIETNAMESE_AUDIT_LABELS.entities) as string[];
+const ALL_ACTIONS = Object.keys(AUDIT_LABELS.actions) as string[];
+const ALL_ENTITY_TYPES = Object.keys(AUDIT_LABELS.entities) as string[];
 
 const EMPTY_FILTERS: AuditLogsQueryParams = { page: 1, pageSize: 30 };
 
@@ -173,13 +173,13 @@ export default function AuditLogPageMobile() {
           )}
           {(filters.action ?? []).map((a) => (
             <Badge key={a} variant="secondary" className="text-xs">
-              {(VIETNAMESE_AUDIT_LABELS.actions as Record<string, string>)[a] ??
+              {(AUDIT_LABELS.actions as Record<string, string>)[a] ??
                 a}
             </Badge>
           ))}
           {(filters.entityType ?? []).map((et) => (
             <Badge key={et} variant="secondary" className="text-xs">
-              {(VIETNAMESE_AUDIT_LABELS.entities as Record<string, string>)[et] ??
+              {(AUDIT_LABELS.entities as Record<string, string>)[et] ??
                 et}
             </Badge>
           ))}
@@ -309,7 +309,7 @@ export default function AuditLogPageMobile() {
               <FilterChipGroup
                 options={ALL_ACTIONS}
                 selected={filters.action ?? []}
-                labels={VIETNAMESE_AUDIT_LABELS.actions as Record<string, string>}
+                labels={AUDIT_LABELS.actions as Record<string, string>}
                 onToggle={toggleAction}
               />
             </div>
@@ -321,7 +321,7 @@ export default function AuditLogPageMobile() {
                 options={ALL_ENTITY_TYPES}
                 selected={filters.entityType ?? []}
                 labels={
-                  VIETNAMESE_AUDIT_LABELS.entities as Record<string, string>
+                  AUDIT_LABELS.entities as Record<string, string>
                 }
                 onToggle={toggleEntity}
               />

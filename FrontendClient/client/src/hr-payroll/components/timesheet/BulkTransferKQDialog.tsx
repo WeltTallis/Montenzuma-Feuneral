@@ -13,9 +13,8 @@ interface BulkTransferKQDialogProps {
 }
 
 /**
- * "Tạo KQ CK" — turns an outbound chuyển-lô workbook (the file handed to the
- * bank) into the bank result workbook the system accepts back through the
- * "Import KQ chuyển lô" dialog.
+ * Turns a bank transfer batch workbook into a result workbook that can be
+ * updated with the bank's actual outcomes and imported for reconciliation.
  *
  * Every line is written as "Successful" with an empty FT column, so the admin
  * is expected to edit the downloaded workbook (mark real failures, paste the
@@ -35,13 +34,13 @@ export const BulkTransferKQDialog = memo(function BulkTransferKQDialog({
     );
 
     if (!hasValidExtension) {
-      return { isValid: false, error: 'Chỉ chấp nhận file Excel (.xls, .xlsx)' };
+      return { isValid: false, error: 'Choose an Excel file (.xls or .xlsx).' };
     }
 
     if (file.size > FILE_LIMITS.excel.maxSize) {
       return {
         isValid: false,
-        error: `File quá lớn. Kích thước tối đa: ${FILE_LIMITS.excel.maxSize / 1024 / 1024}MB`,
+        error: `The file is too large. Maximum size: ${FILE_LIMITS.excel.maxSize / 1024 / 1024} MB.`,
       };
     }
 
@@ -84,8 +83,8 @@ export const BulkTransferKQDialog = memo(function BulkTransferKQDialog({
         hideCloseButton
       >
         <DialogNavyHeader
-          title="Tạo KQ CK"
-          description="Tạo file kết quả chuyển khoản từ file chuyển lô đã gửi ngân hàng."
+          title="Prepare bank transfer results"
+          description="Create a results workbook from the transfer file sent to your bank."
         />
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
@@ -95,18 +94,18 @@ export const BulkTransferKQDialog = memo(function BulkTransferKQDialog({
             </div>
             <div className="min-w-0 space-y-0.5">
               <p className="typography-body-medium text-blue-900">
-                Cách dùng
+                How to use
               </p>
               <p className="typography-body-small text-blue-800">
-                Tải lên file chuyển lô → file KQ CK tải xuống → sửa lại trạng
-                thái/FT nếu cần → nhập lại qua “Import KQ chuyển lô”.
+                Upload the transfer file, download the results workbook, update
+                the actual status and bank reference, then import the completed file.
               </p>
             </div>
           </div>
 
           <div className="space-y-4">
             <Label className="typography-body-medium">
-              FILE CHUYỂN LÔ <span className="text-red-700">*</span>
+              BANK TRANSFER FILE <span className="text-red-700">*</span>
             </Label>
 
             {!selectedFile ? (
@@ -125,16 +124,16 @@ export const BulkTransferKQDialog = memo(function BulkTransferKQDialog({
 
                   <div className="space-y-1">
                     <p className="typography-body-medium text-foreground">
-                      Tải lên file chuyển lô
+                      Upload a bank transfer file
                     </p>
                     <p className="typography-body-small text-muted-foreground">
-                      Kéo thả hoặc{' '}
+                      Drag and drop, or{' '}
                       <span className="text-blue-700 hover:text-blue-700 font-medium">
-                        chọn file
+                        browse for a file
                       </span>
                     </p>
                     <p className="typography-body-small text-gray-600">
-                      File xuất từ “Chuyển lô” hoặc “Chuyển OnePay”
+                      Select the bank-file export generated from payroll.
                     </p>
                   </div>
                 </div>
@@ -188,12 +187,12 @@ export const BulkTransferKQDialog = memo(function BulkTransferKQDialog({
             {generateMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang tạo...
+                Preparing...
               </>
             ) : (
               <>
                 <FileDown className="w-4 h-4 mr-2" />
-                Tạo &amp; tải file
+                Prepare and download
               </>
             )}
           </Button>

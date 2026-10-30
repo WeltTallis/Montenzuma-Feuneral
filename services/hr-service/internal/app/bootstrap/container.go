@@ -7,16 +7,13 @@ import (
 	bootstrapInfra "api-server/internal/app/bootstrap/infrastructure"
 	bootstrapRepos "api-server/internal/app/bootstrap/repositories"
 	bootstrapServices "api-server/internal/app/bootstrap/services"
-	"api-server/internal/app/services/apikey"
 	"api-server/internal/app/services/asset"
 	"api-server/internal/app/services/auth"
 	"api-server/internal/app/services/cleanup"
 	dbExportSvc "api-server/internal/app/services/db_export"
 	"api-server/internal/app/services/employee"
 	"api-server/internal/app/services/ledger"
-	"api-server/internal/app/services/mcpapikey"
 	"api-server/internal/app/services/notification"
-	"api-server/internal/app/services/opsapikey"
 	"api-server/internal/app/services/project"
 	"api-server/internal/app/services/scheduler"
 	"api-server/internal/app/services/wallet_bulk"
@@ -76,9 +73,6 @@ type Handlers struct {
 	ProjectEmployee        *handlers.ProjectEmployeeHandler
 	AdminClock             *adminHandlers.ClockHandler
 	AdminZalo              *adminHandlers.ZaloHandler
-	APIKey                 *adminHandlers.APIKeyHandler
-	MCPAPIKey              *adminHandlers.MCPAPIKeyHandler
-	OpsAPIKey              *adminHandlers.OpsAPIKeyHandler
 	IntegrationReset       *integrationHandlers.PasswordResetHandler
 	IntegrationLookup      *integrationHandlers.EmployeeLookupHandler
 	IntegrationSelfCheckin *integrationHandlers.SelfCheckinHandler
@@ -112,12 +106,10 @@ type Handlers struct {
 	Approval               *approvalHandlers.Handler
 	Cron                   *handlers.CronHandler
 	DisbursementWebhook    *disbursementHandlers.WebhookHandler
-	DisbursementFee        *disbursementHandlers.FeeScheduleHandler
 	DisbursementSettings   *disbursementHandlers.SettingsHandler
 	ManualDisbursement     *disbursementHandlers.ManualDisbursementHandler
 	WeeklyPaymentFee       *handlers.WeeklyPaymentFeeHandler
 	ReconciliationExport   *disbursementHandlers.ReconciliationExportHandler
-	ProviderTransactions   *adminHandlers.WalletPaymentStatsHandler
 	Wallet                 *handlers.WalletHandler
 	WalletBulkTransfer     *handlers.WalletBulkTransferHandler
 	AdvPartnerUser         *advPartnerHandlers.UserHandler
@@ -134,8 +126,6 @@ type Middleware struct {
 	StrictRateLimit           gin.HandlerFunc
 	AdBannerClickRateLimit    gin.HandlerFunc
 	IntegrationRateLimit      gin.HandlerFunc // per-api-key cap for the /integration and /vendor machine routes
-	APIKeyAuth                *middleware.APIKeyAuthMiddleware
-	MCPKeyAuth                *middleware.MCPKeyAuthMiddleware
 	TenantSemaphore           *middleware.TenantSemaphoreMiddleware
 	APIMetrics                gin.HandlerFunc
 }
@@ -208,7 +198,7 @@ func NewContainer(cfg *config.Config, version string) (*Container, error) {
 	}
 
 	h := initHandlers(services, repos, infra.DB, infra.Redis, infra.Logger, version, eventBus, cfg, asynqClient, clk, walletBulkSvc)
-	middlewares := initMiddleware(services.Auth, services.Authorization, services.ProjectPermission, services.EmployeePermission, services.APIKey, services.MCPAPIKey, services.OpsAPIKey, repos.APIMetric, cfg, infra.Logger)
+	middlewares := initMiddleware(services.Auth, services.Authorization, services.ProjectPermission, services.EmployeePermission, repos.APIMetric, cfg, infra.Logger)
 	// The denormalised projects.*_vnd totals are written by this service alone
 	// (the bulk transfer worker builds its own instance from the same
 	// repository), so the scheduler reconciliation and the CLI backfill stay the
@@ -497,9 +487,6 @@ func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Re
 			cfg.Disbursement.Onepay.EnabledForBulkTransfer,
 			cfg.Disbursement.Ninepay.EnabledForBulkTransfer,
 		),
-		DisbursementFee: disbursementHandlers.NewFeeScheduleHandler(services.DisbursementFeeSchedule, clk, func(ctx context.Context) []string {
-			return services.DisbursementRegistry.Names()
-		}),
 		WeeklyPaymentFee: handlers.NewWeeklyPaymentFeeHandler(services.WeeklyPaymentFeeSchedule, clk),
 		ManualDisbursement: disbursementHandlers.NewManualDisbursementHandler(services.DisbursementRegistry, services.ProviderTransactions, repos.Employee, repos.Bank, repos.TransactionCode, services.Wallet, logger, func() *slog.Logger {
 			if cfg.Disbursement.Onepay.Enabled {
@@ -509,12 +496,8 @@ func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Re
 			return nil
 		}()),
 		ReconciliationExport:   disbursementHandlers.NewReconciliationExportHandler(services.DisbursementRegistry, logger),
-		ProviderTransactions:   adminHandlers.NewWalletPaymentStatsHandler(services.WalletPaymentStats, logger),
 		AdminClock:             adminHandlers.NewClockHandler(clk, cfg.App.Env),
 		AdminZalo:              adminHandlers.NewZaloHandler(services.ZaloConnect),
-		APIKey:                 adminHandlers.NewAPIKeyHandler(services.APIKey),
-		MCPAPIKey:              adminHandlers.NewMCPAPIKeyHandler(services.MCPAPIKey),
-		OpsAPIKey:              adminHandlers.NewOpsAPIKeyHandler(services.OpsAPIKey),
 		IntegrationReset:       integrationHandlers.NewPasswordResetHandler(services.Integration),
 		IntegrationLookup:      integrationHandlers.NewEmployeeLookupHandler(services.Integration),
 		IntegrationSelfCheckin: integrationHandlers.NewSelfCheckinHandler(services.IntegrationSelfCheckin),
@@ -529,7 +512,7 @@ func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Re
 	}
 }
 
-func initMiddleware(authService *auth.AuthService, authorizationService *auth.AuthorizationService, projectPermissionService *project.ProjectPermissionService, employeePermissionService *employee.EmployeePermissionService, apiKeyService *apikey.Service, mcpKeyService *mcpapikey.Service, opsKeyService *opsapikey.Service, apiMetricRepo domain.APIMetricRepository, cfg *config.Config, logger *slog.Logger) *Middleware {
+func initMiddleware(authService *auth.AuthService, authorizationService *auth.AuthorizationService, projectPermissionService *project.ProjectPermissionService, employeePermissionService *employee.EmployeePermissionService, apiMetricRepo domain.APIMetricRepository, cfg *config.Config, logger *slog.Logger) *Middleware {
 	tenantLimit := 10
 	if cfg.TenantConcurrencyLimit > 0 {
 		tenantLimit = cfg.TenantConcurrencyLimit
@@ -543,7 +526,7 @@ func initMiddleware(authService *auth.AuthService, authorizationService *auth.Au
 	}
 
 	return &Middleware{
-		Auth:                      middleware.NewAuthMiddleware(authService, mcpKeyService, opsKeyService, cfg.OpsMCP),
+		Auth:                      middleware.NewAuthMiddleware(authService, nil, nil, cfg.OpsMCP),
 		Authorization:             authorizationMiddleware,
 		LoginRateLimit:            middleware.CreateLoginRateLimit(cfg.Redis.Addr),
 		PasswordResetRateLimit:    middleware.CreatePasswordResetRateLimit(cfg.Redis.Addr, cfg.PasswordReset.RateLimitPerHour),
@@ -551,8 +534,6 @@ func initMiddleware(authService *auth.AuthService, authorizationService *auth.Au
 		StrictRateLimit:           middleware.CreateStrictRateLimit(cfg.Redis.Addr),
 		AdBannerClickRateLimit:    middleware.CreateAdBannerClickRateLimit(cfg.Redis.Addr),
 		IntegrationRateLimit:      middleware.CreateIntegrationAPIRateLimit(cfg.Redis.Addr),
-		APIKeyAuth:                middleware.NewAPIKeyAuthMiddleware(apiKeyService, logger),
-		MCPKeyAuth:                middleware.NewMCPKeyAuthMiddleware(mcpKeyService, opsKeyService),
 		TenantSemaphore:           middleware.NewTenantSemaphoreMiddleware(tenantLimit),
 		APIMetrics:                middleware.APIMetrics(apiMetricRepo),
 	}

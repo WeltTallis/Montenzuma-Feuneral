@@ -18,14 +18,14 @@
 │ │ - Location: /src/components/timesheet/TimesheetCreateModal.tsx                    │ │
 │ │ - Full-screen modal with Excel-like grid interface                                │ │
 │ │ - Project selection header                                                        │ │
-│ │ - Employee rows with info columns (name, CCCD, position)                          │ │
+│ │ - Employee rows with information columns (name, national ID/passport, position)    │ │
 │ │ - Dynamic date columns with work type sub-columns                                 │ │
 │ │                                                                                   │ │
 │ │ 3. Implement Dynamic Payrate Integration                                          │ │
 │ │                                                                                   │ │
 │ │ - Parse user-defined payrate JSON structure dynamically                           │ │
 │ │ - Flatten nested rate categories into column headers                              │ │
-│ │ - Support any custom field names (CB, OT, Ngày Lễ, etc.)                          │ │
+│ │ - Support custom field names (regular hours, overtime, public holiday, etc.)       │ │
 │ │ - Calculate rates based on position/skill level                                   │ │
 │ │                                                                                   │ │
 │ │ 4. Create Supporting Components                                                   │ │
@@ -44,7 +44,7 @@
 │ │                                                                                   │ │
 │ │ 6. Integrate with Existing System                                                 │ │
 │ │                                                                                   │ │
-│ │ - Add "Thêm Bảng Công" button to TimesheetPage                                    │ │
+│ │ - Add an "Add timesheets" button to TimesheetPage                                 │ │
 │ │ - Connect to existing project/employee APIs                                       │ │
 │ │ - Use existing timesheet types and services                                       │ │
 │ │ - Follow existing UI patterns with shadcn components                              │ │
@@ -55,7 +55,7 @@
 │ │ - Dynamic columns based on payrate configuration                                  │ │
 │ │ - Inline editing with validation                                                  │ │
 │ │ - Responsive design with horizontal scrolling                                     │ │
-│ │ - Vietnamese UI labels throughout                                                 │ │
+│ │ - English UI labels throughout                                                    │ │
 │ ╰───────────────────────────────────────────────────────────────────────────────────╯ │
 │                                                                                       │
 │ Would you like to proceed?                                                            │

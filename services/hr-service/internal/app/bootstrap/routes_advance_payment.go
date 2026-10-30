@@ -32,8 +32,6 @@ func setupAdvancePaymentRoutes(protected *gin.RouterGroup, container *Container)
 		advancePayments.GET("/summary", container.Handlers.AdvancePayment.GetAdvancePaymentSummary)
 		advancePayments.GET("/export", container.Handlers.AdvancePayment.ExportAdvancePayments)
 		advancePayments.POST("/:id/cancel", container.Handlers.AdvancePayment.CancelAdvancePaymentRequest)
-		advancePayments.POST("/:id/retry-disbursement", container.Handlers.AdvancePayment.RetryDisbursement)
-		advancePayments.GET("/:id/disbursement-status", container.Handlers.AdvancePayment.GetDisbursementStatus)
 		advancePayments.POST("/upload-result", container.Handlers.AdvancePayment.UploadAdvancePaymentResult)
 		advancePayments.GET("/transfer-histories/:id/download", container.Handlers.AdvancePayment.DownloadTransferHistoryFile)
 		advancePayments.POST("/import", container.Handlers.AdvancePayment.ImportFlexPayFile)
@@ -56,17 +54,6 @@ func setupAdvancePaymentRoutes(protected *gin.RouterGroup, container *Container)
 		feeSchedule.POST("", container.Handlers.AdvancePaymentFee.Create)
 		feeSchedule.PATCH("/:id", container.Handlers.AdvancePaymentFee.Update)
 		feeSchedule.DELETE("/:id", container.Handlers.AdvancePaymentFee.Delete)
-	}
-
-	// Admin disbursement-fee schedule CRUD. Same admin gating as the
-	// advance-payment fee endpoints above.
-	disbursementFee := protected.Group("/admin/disbursement-fees")
-	disbursementFee.Use(container.Middleware.Authorization.Authorize())
-	{
-		disbursementFee.GET("", container.Handlers.DisbursementFee.List)
-		disbursementFee.POST("", container.Handlers.DisbursementFee.Create)
-		disbursementFee.PATCH("/:id", container.Handlers.DisbursementFee.Update)
-		disbursementFee.DELETE("/:id", container.Handlers.DisbursementFee.Delete)
 	}
 
 	// Manual wallet-settlement trigger. Runs the same EOD consolidation task as

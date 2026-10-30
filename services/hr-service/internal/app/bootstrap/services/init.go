@@ -10,7 +10,6 @@ import (
 	"api-server/internal/app/services"
 	"api-server/internal/app/services/ad_banner"
 	"api-server/internal/app/services/advance_payment"
-	"api-server/internal/app/services/apikey"
 	"api-server/internal/app/services/approval"
 	"api-server/internal/app/services/asset"
 	"api-server/internal/app/services/attendance"
@@ -25,9 +24,7 @@ import (
 	"api-server/internal/app/services/integration"
 	"api-server/internal/app/services/ledger"
 	"api-server/internal/app/services/loan"
-	"api-server/internal/app/services/mcpapikey"
 	"api-server/internal/app/services/notification"
-	"api-server/internal/app/services/opsapikey"
 	"api-server/internal/app/services/otp"
 	"api-server/internal/app/services/passwordreset"
 	"api-server/internal/app/services/payroll"
@@ -69,9 +66,6 @@ type Services struct {
 	PasswordResetJobManager           *user.PasswordResetJobManager
 	EmailPasswordReset                *passwordreset.Service          // Red Team M2: distinct name (collides with PasswordResetJobManager otherwise)
 	ZaloConnect                       *zaloconnect.Service            // Admin-managed OA connection + runtime toggle (Phase 4)
-	APIKey                            *apikey.Service                 // Machine API keys for the vendor integration API
-	MCPAPIKey                         *mcpapikey.Service              // Machine API keys for the MCP agent surface
-	OpsAPIKey                         *opsapikey.Service              // Machine API keys for the payroll-ops-mcp channel (pk_ops_*)
 	Integration                       *integration.Service            // Vendor password-reset + employee lookup (API-key auth)
 	IntegrationSelfCheckin            *integration.SelfCheckinService // Vendor self check-in enable/disable (API-key auth)
 	ZaloTokenPusher                   *zaloconnect.TokenWebhookPusher // Pushes the OA access token to the vendor webhook (rotation + startup)
@@ -711,14 +705,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 	}
 
 	zaloResetStore := cache.NewZaloResetStore(redis.Client, cfg.Zalo.CodeTTL)
-	// Machine API keys for the vendor integration API, the MCP agent surface,
-	// and the payroll-ops-mcp agent channel (pk_ops_*). The MCP and ops
-	// services also own scope-toggle auditing onto the audit:log:write
-	// pipeline.
-	apiKeyService := apikey.NewService(repos.APIKey, clk)
-	mcpAPIKeyService := mcpapikey.NewService(repos.MCPAPIKey, repos.User, asynqClient, clk)
-	opsAPIKeyService := opsapikey.NewService(repos.OpsAPIKey, repos.User, asynqClient, clk)
-
 	// Vendor integration service (TingHire): password-reset OTP + employee
 	// lookup. Reuses the same Zalo store, sender, and enabled-checker as the
 	// self-service reset, but reports outcomes explicitly to the caller.
@@ -776,9 +762,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		PasswordResetJobManager:           passwordResetJobManager,
 		EmailPasswordReset:                emailPasswordResetService,
 		ZaloConnect:                       zaloConnectSvc,
-		APIKey:                            apiKeyService,
-		MCPAPIKey:                         mcpAPIKeyService,
-		OpsAPIKey:                         opsAPIKeyService,
 		Integration:                       integrationService,
 		IntegrationSelfCheckin:            selfCheckinService,
 		ZaloTokenPusher:                   zaloTokenPusher,

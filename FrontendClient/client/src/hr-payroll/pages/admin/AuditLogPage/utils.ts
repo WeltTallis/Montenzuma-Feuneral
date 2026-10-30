@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { formatDateTimeFull } from '@hr/utils/formatters';
-import { VIETNAMESE_AUDIT_LABELS } from '@hr/types/api/audit.types';
+import { AUDIT_LABELS } from '@hr/types/api/audit.types';
 
 // ─── Action badge colours ────────────────────────────────────────────────────
 
@@ -49,11 +49,11 @@ export function getActionVariant(action: string): ActionVariant {
 }
 
 export function getActionLabel(action: string): string {
-  return (VIETNAMESE_AUDIT_LABELS.actions as Record<string, string>)[action] ?? action;
+  return (AUDIT_LABELS.actions as Record<string, string>)[action] ?? action;
 }
 
 export function getEntityLabel(entityType: string): string {
-  return (VIETNAMESE_AUDIT_LABELS.entities as Record<string, string>)[entityType] ?? entityType;
+  return (AUDIT_LABELS.entities as Record<string, string>)[entityType] ?? entityType;
 }
 
 // ─── Metadata parsing ────────────────────────────────────────────────────────

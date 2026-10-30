@@ -44,21 +44,21 @@ interface NetworkError {
 const UPSTREAM_GATEWAY_MESSAGE =
   'The server is temporarily unavailable. Please try again shortly.';
 
-const VIETNAMESE_TEXT_PATTERN =
+const LEGACY_LOCALIZED_TEXT_PATTERN =
   /[đĐăĂơƠưƯáàạảãâầấậẩẫằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữýỳỵỷỹ]/i;
 
 function sanitizeUserFacingMessage(message: string, statusCode?: number): string {
   if (/<\s*!doctype\s+html|<\s*html\b/i.test(message)) {
     return UPSTREAM_GATEWAY_MESSAGE;
   }
-  if (VIETNAMESE_TEXT_PATTERN.test(message)) {
+  if (LEGACY_LOCALIZED_TEXT_PATTERN.test(message)) {
     return getErrorMessageByStatusCode(statusCode ?? 0);
   }
   return message;
 }
 
 function sanitizeSuccessMessage(message: string): string {
-  return VIETNAMESE_TEXT_PATTERN.test(message)
+  return LEGACY_LOCALIZED_TEXT_PATTERN.test(message)
     ? 'Completed successfully.'
     : message;
 }

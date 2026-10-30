@@ -21,7 +21,7 @@ import { Label } from '@hr/components/ui/label';
 import { Calendar, Clock, Repeat, AlertCircle, X } from 'lucide-react';
 import { ProjectEmployeeAssignment } from '@hr/types/api/project-employee.types';
 import { useChangePaymentSchedule, useCancelScheduleChange } from '@hr/hooks/api/useProjectEmployees';
-import { VIETNAMESE_ASSIGNMENT_LABELS } from '@hr/types/api/project-employee.types';
+import { ASSIGNMENT_LABELS } from '@hr/types/api/project-employee.types';
 
 interface PaymentScheduleToggleProps {
   assignment: ProjectEmployeeAssignment;
@@ -64,7 +64,7 @@ export function PaymentScheduleToggle({ assignment, disabled }: PaymentScheduleT
   };
 
   const getScheduleLabel = (schedule: 'weekly' | 'monthly' | 'flexible') => {
-    return schedule === 'flexible' ? 'Linh hoạt' : VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule[schedule];
+    return ASSIGNMENT_LABELS.payment_schedule[schedule];
   };
 
   const getScheduleBadgeVariant = (schedule: 'weekly' | 'monthly' | 'flexible') => {

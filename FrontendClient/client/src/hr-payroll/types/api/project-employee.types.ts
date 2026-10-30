@@ -357,29 +357,28 @@ export interface PendingScheduleChangesResponse {
   message: string;
 }
 
-// Kenyan translations
-export const VIETNAMESE_ASSIGNMENT_LABELS = {
+export const ASSIGNMENT_LABELS = {
   statuses: {
     active: "Active",
-    ended: "Đã kết thúc",
-    inactive: "Không hoạt động",
+    ended: "Ended",
+    inactive: "Inactive",
   },
   actions: {
-    assign: "Giao nhiệm vụ",
-    update: "Cập nhật",
-    end: "Kết thúc",
-    remove: "Gỡ bỏ",
+    assign: "Assign",
+    update: "Update",
+    end: "End",
+    remove: "Remove",
   },
   fields: {
-    employee_code: "Mã nhân viên",
-    start_date: "Date bắt đầu",
-    end_date: "Date kết thúc",
-    assigned_by: "Được giao bởi",
-    reason: "Lý do",
+    employee_code: "Employee code",
+    start_date: "Start date",
+    end_date: "End date",
+    assigned_by: "Assigned by",
+    reason: "Reason",
   },
   payment_schedule: {
-    weekly: "lương tuần",
-    monthly: "lương tháng",
-    flexible: "linh động",
+    weekly: "Weekly pay",
+    monthly: "Monthly pay",
+    flexible: "Flexible",
   },
 } as const;

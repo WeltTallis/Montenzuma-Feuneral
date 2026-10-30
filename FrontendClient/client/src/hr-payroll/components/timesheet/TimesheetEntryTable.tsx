@@ -12,7 +12,7 @@ import { cn } from '@hr/lib/utils';
 import { PayrateStructure, DayType, DEFAULT_POSITIONS, COMMON_DAY_TYPES } from '@hr/types/api/payrate.types';
 import { getAllHourTypes } from '@hr/components/payrates/types';
 import { formatCurrency } from '@hr/utils/formatters';
-import { VIETNAMESE_PAYRATE_LABELS } from '@hr/types/api/payrate.types';
+import { PAYRATE_LABELS } from '@hr/types/api/payrate.types';
 import { getPositionBadgeStyle, getDayTypeBadgeStyle, getItemIndex } from '@hr/utils/badge-styles';
 import { TimesheetDateNavigation } from './TimesheetDateNavigation';
 import { useProjectModals } from '@hr/hooks/useModalNavigation';
@@ -578,7 +578,7 @@ export function TimesheetEntryTable({
               <div>
                 <span className="typography-body-medium text-foreground">Day type: </span>
                 <Badge variant="outline" className={cn("ml-1", getDayTypeBadgeClass(dayType))}>
-                  {VIETNAMESE_PAYRATE_LABELS.dayTypes[dayType]}
+                  {PAYRATE_LABELS.dayTypes[dayType]}
                 </Badge>
               </div>
             </div>
@@ -596,7 +596,7 @@ export function TimesheetEntryTable({
               <div>
                 <strong>Pay rates are incomplete</strong>
                 <p className="mt-1">
-                  This project has pay rates, but no working-hour types are defined for {VIETNAMESE_PAYRATE_LABELS.dayTypes[dayType]}.
+                  This project has pay rates, but no working-hour types are defined for {PAYRATE_LABELS.dayTypes[dayType]}.
                   Add working-hour types (for example, regular hours or overtime) before entering timesheets.
                 </p>
               </div>
@@ -629,7 +629,7 @@ export function TimesheetEntryTable({
             <div>
               <span className="typography-body-medium text-foreground">Day type: </span>
               <Badge variant="outline" className={cn("ml-1", getDayTypeBadgeClass(dayType))}>
-                {VIETNAMESE_PAYRATE_LABELS.dayTypes[dayType]}
+                {PAYRATE_LABELS.dayTypes[dayType]}
               </Badge>
             </div>
           </div>

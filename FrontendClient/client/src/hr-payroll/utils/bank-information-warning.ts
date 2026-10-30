@@ -54,8 +54,8 @@ export function getBankInformationWarningReason(
 
 /**
  * Classifies why an employee appears in the missing-bank-details warning
- * list: OnePay confirmed the stored info is wrong ('invalid') vs the info
- * is simply incomplete ('missing'). Mirrors the backend SQL predicate in
+ * list: a bank check confirmed the stored info is wrong ('invalid') vs the
+ * info is simply incomplete ('missing'). Mirrors the backend SQL predicate in
  * buildMissingBankDetailsBaseQuery, where an 'invalid' status is listed
  * unconditionally while missing fields also require pending work.
  */

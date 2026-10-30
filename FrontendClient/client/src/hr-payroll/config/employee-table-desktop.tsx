@@ -5,7 +5,7 @@ import {
   getEmployeeProjects,
   getEmployeeProjectCount,
   hasCompleteBankDetails,
-  VIETNAMESE_EMPLOYEE_LABELS,
+  EMPLOYEE_LABELS,
 } from "@hr/types/api/employee.types";
 import { UserAvatar } from "@hr/components/ui/user-avatar";
 import { Badge } from "@hr/components/ui/badge";
@@ -120,7 +120,7 @@ export const createEmployeeColumns = (
                   "inline-flex items-center px-1.5 py-px rounded text-xs font-semibold border shrink-0",
                   SCHEDULE_STYLES[first.payment_schedule],
                 )}>
-                  {VIETNAMESE_EMPLOYEE_LABELS.schedule[first.payment_schedule]}
+                  {EMPLOYEE_LABELS.schedule[first.payment_schedule]}
                 </span>
               )}
             </div>

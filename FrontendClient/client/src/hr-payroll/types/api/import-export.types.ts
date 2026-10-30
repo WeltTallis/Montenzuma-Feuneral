@@ -329,15 +329,14 @@ export interface ImportExportError {
   };
 }
 
-// Kenyan translations
-export const VIETNAMESE_IMPORT_EXPORT_LABELS = {
+export const IMPORT_EXPORT_LABELS = {
   importTypes: {
     employees: 'Employees',
-    timesheets: 'Bảng chấm công',
+    timesheets: 'Timesheets',
   },
   exportTypes: {
     employees: 'Employees',
-    timesheets: 'Bảng chấm công',
+    timesheets: 'Timesheets',
     projects: 'Projects',
     financial: 'Finance'
   },
@@ -346,7 +345,7 @@ export const VIETNAMESE_IMPORT_EXPORT_LABELS = {
     completed: 'Completed',
     failed: 'Failed',
     cancelled: 'Cancelled',
-    expired: 'Hết hạn'
+    expired: 'Expired'
   },
   formats: {
     excel: 'Excel',

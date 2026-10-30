@@ -176,12 +176,7 @@ export const API_ENDPOINTS = {
     bulkTransferUploadHistoryById: (id: number) => `/payrolls/bulk-transfer-upload-histories/${id}`,
     bulkTransferUploadHistoryExportPdf: (id: number) => `/payrolls/bulk-transfer-upload-histories/${id}/export-pdf`,
     bulkTransferUploadHistoryDownload: (id: number) => `/payrolls/bulk-transfer-upload-histories/${id}/download`,
-    /**
-     * Mark a list of timesheets as paid externally (e.g. after a 9Pay batch
-     * partially fails and admin pays those rows out-of-band).
-     * **Backend TODO** — endpoint not implemented yet; calls will return 404
-     * until the server side is built. See docs/timesheet-redesign-2026-05-09.md.
-     */
+    /** Mark timesheets as paid after an external bank transfer is reconciled. */
     markBulkTransferExternallyPaid: '/payrolls/bulk-transfer-external-mark',
   },
 

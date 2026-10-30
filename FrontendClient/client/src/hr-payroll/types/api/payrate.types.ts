@@ -154,8 +154,7 @@ export function getActivePayrate(payrates: PayRate[]): PayRate | null {
   return active;
 }
 
-// Kenyan translations for API status values
-export const VIETNAMESE_PAYRATE_LABELS = {
+export const PAYRATE_LABELS = {
   statuses: {
     active: 'Active',
     inactive: 'Inactive'

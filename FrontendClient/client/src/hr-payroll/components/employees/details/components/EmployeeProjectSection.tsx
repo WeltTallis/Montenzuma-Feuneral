@@ -12,7 +12,7 @@ import type { ProjectEmployeeAssignment } from "@hr/types/api/project-employee.t
 import { useCurrentPayRate } from "@hr/hooks/api/usePayRates";
 import { extractPositionsFromPayrates } from "@hr/types/api/payrate.types";
 import { useCancelScheduleChange } from "@hr/hooks/api/useProjectEmployees";
-import { VIETNAMESE_ASSIGNMENT_LABELS } from "@hr/types/api/project-employee.types";
+import { ASSIGNMENT_LABELS } from "@hr/types/api/project-employee.types";
 import { CheckInToggle } from "@hr/components/project-employees/CheckInToggle";
 import { cn } from "@hr/lib/utils";
 import { dateToString } from "@hr/utils/dateHelpers";
@@ -77,17 +77,17 @@ function ProjectPaymentScheduleControl({
     () => [
       {
         value: 'weekly' as const,
-        label: VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.weekly,
+        label: ASSIGNMENT_LABELS.payment_schedule.weekly,
         icon: Clock
       },
       {
         value: 'monthly' as const,
-        label: VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.monthly,
+        label: ASSIGNMENT_LABELS.payment_schedule.monthly,
         icon: Calendar
       },
       {
         value: 'flexible' as const,
-        label: VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule.flexible,
+        label: ASSIGNMENT_LABELS.payment_schedule.flexible,
         icon: Repeat
       }
     ],
@@ -153,7 +153,7 @@ function ProjectPaymentScheduleControl({
         {hasPendingChange && (
           <Badge variant="outline" className="text-financial-pending border-amber-400 flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
-            Chờ: {pendingSchedule ? VIETNAMESE_ASSIGNMENT_LABELS.payment_schedule[pendingSchedule] : ''}
+            Pending: {pendingSchedule ? ASSIGNMENT_LABELS.payment_schedule[pendingSchedule] : ''}
           </Badge>
         )}
 

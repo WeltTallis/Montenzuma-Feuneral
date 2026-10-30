@@ -100,7 +100,7 @@ function formatAmount(amount: number): string {
   return `−${formatted}`;
 }
 
-// Provider success codes — "00" (OnePay), "000"/"0" (9Pay) — must not be shown as errors.
+// Historical provider success codes must not be shown as transaction errors.
 const PROVIDER_SUCCESS_CODES = new Set(["00", "0", "000", ""]);
 
 function isRealErrorCode(code: string | null | undefined): boolean {
