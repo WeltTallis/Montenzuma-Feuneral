@@ -27,10 +27,10 @@ const resolveStoredUser = () => {
 
 // Roles allowed to manage users & edit organization. Includes standard, executive, and domain roles.
 const USER_ADMIN_ROLES = [
-    'admin', 'manager', 'systemadmin', 'system_administrator', 'tenant_admin',
+    'admin', 'manager', 'systemadmin', 'system_administrator', 'systemadministrator', 'tenant_admin',
     'owner', 'superadmin', 'super_admin', 'administrator', 'director',
     'funeral_director', 'managing_director', 'branch_manager', 'general_manager',
-    'tenant_owner'
+    'tenant_owner', 'operations_manager', 'operationsmanager'
 ];
 
 const RESTRICTED_STAFF_ROLES = ['driver', 'hearse_driver', 'cleaner', 'security'];
@@ -70,6 +70,9 @@ const USER_ROLE_OPTIONS = [
     { value: 'florist', label: 'Florist' },
     { value: 'insurance_manager', label: 'Insurance Manager' },
     { value: 'hr', label: 'HR' },
+    { value: 'director', label: 'Director' },
+    { value: 'operations_manager', label: 'Operations Manager' },
+    { value: 'system_administrator', label: 'System Administrator' },
 ];
 const formatRoleLabel = (role) =>
     USER_ROLE_OPTIONS.find((option) => option.value === String(role || '').toLowerCase())?.label
@@ -95,6 +98,9 @@ const IconSearch = () => (
 );
 const IconPencil = () => (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+);
+const IconLock = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
 );
 const IconClose = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -127,6 +133,7 @@ export default function SettingsPage() {
     const [showAddUserModal, setShowAddUserModal] = useState(false);
     const [currentUser, setCurrentUser] = useState(resolveStoredUser());
     const [formError, setFormError] = useState('');
+    const [editError, setEditError] = useState('');
     const [error, setError] = useState(null);
     const [assigningBranch, setAssigningBranch] = useState(null);
     const [homeCharges, setHomeCharges] = useState({ chargeType: 'daily', currency: 'KES', dailyRate: '', hourlyRate: '', usdRate: '130' });
@@ -170,6 +177,21 @@ export default function SettingsPage() {
         role: 'staff',
         branch_id: '',
     });
+
+    // Edit-user modal state
+    const [showEditUserModal, setShowEditUserModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [editForm, setEditForm] = useState({
+        user_id: '',
+        email: '',
+        username: '',
+        full_name: '',
+        phone: '',
+        role: 'staff',
+        branch_id: '',
+        password: '',
+    });
+    const [editSaving, setEditSaving] = useState(false);
 
     // The tenant-level data (settings, users, branches) all live in the PARENT
     // tenant's database. For multi-tenant / multi-branch organizations the
@@ -375,6 +397,76 @@ export default function SettingsPage() {
         });
         setFormError('');
         setShowAddUserModal(true);
+    };
+
+    const closeEditUserModal = () => {
+        setShowEditUserModal(false);
+        setEditingUser(null);
+        setEditForm({
+            user_id: '',
+            email: '',
+            username: '',
+            full_name: '',
+            phone: '',
+            role: 'staff',
+            branch_id: '',
+            password: '',
+        });
+    };
+
+    const openEditUserModal = (user) => {
+        setEditingUser(user);
+        setEditForm({
+            user_id: user.user_id || user.id || '',
+            email: user.email || '',
+            username: user.username || '',
+            full_name: user.full_name || '',
+            phone: user.phone || '',
+            role: user.role || 'staff',
+            branch_id: String(user.branch_id || ''),
+            password: '',
+        });
+        setShowEditUserModal(true);
+    };
+
+    const saveEditUser = async (e) => {
+        e.preventDefault();
+        if (!editingUser) return;
+
+        setEditError('');
+        if (!editForm.full_name || !editForm.full_name.trim()) {
+            setEditError('Full name is required.');
+            return;
+        }
+        if (!editForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email.trim())) {
+            setEditError('Enter a valid email address.');
+            return;
+        }
+
+        setEditSaving(true);
+        try {
+            const payload = {
+                full_name: editForm.full_name.trim(),
+                email: editForm.email.trim(),
+                username: (editForm.username || editForm.email || '').trim().toLowerCase(),
+                phone: editForm.phone.trim(),
+                role: editForm.role,
+                branch_id: editForm.branch_id || null,
+            };
+            if (editForm.password && editForm.password.trim()) {
+                payload.password = editForm.password.trim();
+            }
+
+            await api.put(ENDPOINTS.TENANT.UPDATE_USER(tenantSlug, editingUser.user_id || editingUser.id), payload);
+            closeEditUserModal();
+            showToast('User updated');
+            loadData();
+        } catch (err) {
+            console.error('Failed to edit user:', err);
+            setEditError(err.response?.data?.message || 'Failed to update user. Please try again.');
+        } finally {
+            setEditSaving(false);
+        }
     };
 
     // Reassign an existing user to a branch. Users ALWAYS carry tenant_id +
@@ -615,8 +707,13 @@ export default function SettingsPage() {
 
     // Side panel: ESC to close, focus the first field, lock body scroll.
     useEffect(() => {
-        if (!showAddUserModal) return;
-        const onKey = (e) => { if (e.key === 'Escape') setShowAddUserModal(false); };
+        if (!showAddUserModal && !showEditUserModal) return;
+        const onKey = (e) => {
+            if (e.key === 'Escape') {
+                if (showAddUserModal) setShowAddUserModal(false);
+                if (showEditUserModal) closeEditUserModal();
+            }
+        };
         document.addEventListener('keydown', onKey);
         const focusTimer = setTimeout(() => sideNameRef.current?.focus(), 120);
         const prevOverflow = document.body.style.overflow;
@@ -626,7 +723,7 @@ export default function SettingsPage() {
             document.removeEventListener('keydown', onKey);
             document.body.style.overflow = prevOverflow;
         };
-    }, [showAddUserModal]);
+    }, [showAddUserModal, showEditUserModal]);
 
     const generatePassword = () => {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -1161,7 +1258,7 @@ export default function SettingsPage() {
                                                                 type="button"
                                                                 className="rps-icon-btn"
                                                                 title="Edit user"
-                                                                onClick={() => showToast('User editing is coming soon')}
+                                                                onClick={() => openEditUserModal(u)}
                                                             >
                                                                 <IconPencil />
                                                             </button>
@@ -1471,13 +1568,88 @@ export default function SettingsPage() {
                 </React.Fragment>
             )}
 
-            {/* ── Toast ───────────────────────────────────────────────── */}
-            {toast && (
+            {/* ── Edit User Modal ───────────────────────────────────────── */}
+            {showEditUserModal && (
+                <React.Fragment>
+                    <div className="rps-scrim" onClick={closeEditUserModal} />
+                    <aside className="rps-side" role="dialog" aria-modal="true" aria-labelledby="rps-edit-user-title">
+                        <div className="rps-side-head">
+                            <h2 id="rps-edit-user-title">Edit User</h2>
+                            <button type="button" className="rps-icon-btn" aria-label="Close" onClick={closeEditUserModal}>
+                                <IconClose />
+                            </button>
+                        </div>
+                        <p className="rps-hint" style={{ marginBottom: 18 }}>Update profile details and role.</p>
+                        <form className="rps-side-form" onSubmit={saveEditUser} noValidate>
+                            {editError && (
+                                <div className="rps-inline-status error" role="alert" style={{ marginBottom: 0 }}>
+                                    {editError}
+                                </div>
+                            )}
+                                <div className="rps-form-grid">
+                                    <div className="rps-field">
+                                        <label>Full name *</label>
+                                        <input className="rps-input" type="text" value={editForm.full_name} onChange={(e) => setEditForm((prev) => ({ ...prev, full_name: e.target.value }))} required />
+                                    </div>
+                                    <div className="rps-field">
+                                        <label>Email *</label>
+                                        <input className="rps-input" type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required />
+                                    </div>
+                                    <div className="rps-field">
+                                        <label>Username</label>
+                                        <input className="rps-input" type="text" value={editForm.username} onChange={(e) => setEditForm((prev) => ({ ...prev, username: e.target.value }))} />
+                                    </div>
+                                    <div className="rps-field">
+                                        <label>Phone</label>
+                                        <input className="rps-input" type="tel" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} />
+                                    </div>
+                                    <div className="rps-field">
+                                        <label>Role *</label>
+                                        <select className="rps-input" value={editForm.role} onChange={(e) => setEditForm((prev) => ({ ...prev, role: e.target.value }))}>
+                                            {USER_ROLE_OPTIONS.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="rps-field">
+                                        <label>Branch</label>
+                                        <select className="rps-input" value={editForm.branch_id} onChange={(e) => setEditForm((prev) => ({ ...prev, branch_id: e.target.value }))}>
+                                            <option value="">Unassigned</option>
+                                            {branches?.map((b) => (
+                                                <option key={b.branch_id || b.id} value={String(b.branch_id || b.id)}>
+                                                    {b.branch_name || b.name || 'Branch'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="rps-field">
+                                        <label>New Password (optional)</label>
+                                        <div style={{ position: 'relative', display: 'flex', gap: 8 }}>
+                                            <input className="rps-input" type="password" value={editForm.password} onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))} placeholder="Leave blank to keep current" />
+                                            <button type="button" className="rps-btn rps-btn-ghost" onClick={() => setEditForm((prev) => ({ ...prev, password: Math.random().toString(36).slice(-8) }))} style={{ padding: '0 10px' }}>
+                                                Generate
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="rps-side-foot">
+                                    <button type="button" className="rps-btn rps-btn-ghost" onClick={closeEditUserModal} disabled={editSaving}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="rps-btn rps-btn-primary" disabled={editSaving}>
+                                        {editSaving ? 'Saving...' : 'Save changes'}
+                                    </button>
+                                </div>
+                            </form>
+                        </aside>
+                    </React.Fragment>
+                )}
                 <div className="rps-toast" role="status" aria-live="polite">
                     <span className="rps-tick"><IconCheck /></span>
                     <span>{toast}</span>
                 </div>
-            )}
         </div>
     );
 }

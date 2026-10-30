@@ -73,6 +73,7 @@ export const ENDPOINTS = {
     BRANCHES: (slug) => `/tenant/${slug}/branches`,
     CREATE_USER: (slug) => `/tenant/${slug}/users/register`,
     UPDATE_USER_BRANCH: (slug, userId) => `/tenant/${slug}/users/${userId}/branch`,
+    UPDATE_USER: (slug, userId) => `/tenant/${slug}/users/${userId}`,
     MORTUARY_CHARGES: (slug) => `/tenant/${slug}/mortuary-charges`,
     MORTUARY_CHARGES_PREVIEW: (slug) => `/tenant/${slug}/mortuary-charges/deceased-preview`,
   },
