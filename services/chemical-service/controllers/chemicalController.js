@@ -1,4 +1,22 @@
-const { safeTenantQuery, safeTenantExecute } = require('../../../shared/dbConfig');
+const { getTenantDB, safeTenantQuery, safeTenantExecute } = require('../../../shared/dbConfig');
+
+const isMainWarehouse = (req) => !req.mainBranchSlug || req.branchSlug === req.mainBranchSlug;
+
+const withTenantTransaction = async (tenantDb, callback) => {
+  const pool = await getTenantDB(tenantDb);
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
 
 // ============================================
 // GET ALL CHEMICALS (with analytics per item)
@@ -13,12 +31,17 @@ exports.getAll = async (req, res) => {
        return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
     }
 
-    let sql = `SELECT c.*, 
+    const branchSlug = req.branchSlug || req.mainBranchSlug || tenantSlug;
+    const isMain = branchSlug === (req.mainBranchSlug || tenantSlug);
+    let sql = `SELECT c.*,
+               ${isMain ? 'c.current_stock' : 'COALESCE(cbs.current_stock, 0)'} as branch_current_stock,
                (SELECT COALESCE(SUM(quantity_used), 0) FROM chemical_usage WHERE chemical_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as total_used_30d,
                (SELECT COALESCE(SUM(quantity_used), 0) FROM chemical_usage WHERE chemical_id = c.id AND DATE(created_at) = CURDATE()) as used_today,
-               CASE WHEN c.current_stock <= c.min_stock_level THEN 1 ELSE 0 END as is_low_stock
-               FROM chemicals c WHERE c.is_active = 1 AND c.tenant_slug = ?`;
-    const params = [tenantSlug];
+               CASE WHEN ${isMain ? 'c.current_stock' : 'COALESCE(cbs.current_stock, 0)'} <= c.min_stock_level THEN 1 ELSE 0 END as is_low_stock
+               FROM chemicals c
+               ${isMain ? '' : 'LEFT JOIN chemical_branch_stock cbs ON cbs.tenant_slug = c.tenant_slug AND cbs.chemical_id = c.id AND cbs.branch_slug = ?'}
+               WHERE c.is_active = 1 AND c.tenant_slug = ?`;
+    const params = isMain ? [tenantSlug] : [branchSlug, tenantSlug];
 
     if (category) { sql += ' AND c.category = ?'; params.push(category); }
     if (active !== 'false') { sql += ' AND c.is_active = 1'; }
@@ -35,8 +58,10 @@ exports.getAll = async (req, res) => {
       chemical_name: r.name,
       category: r.category,
       unit: r.unit,
-      quantity_available: r.current_stock,
-      current_stock: r.current_stock,
+      quantity_available: r.branch_current_stock,
+      current_stock: r.branch_current_stock,
+      branch_slug: branchSlug,
+      is_main_warehouse: isMain,
       min_stock_level: r.min_stock_level,
       reorder_level: r.reorder_level,
       unit_cost: r.unit_cost,
@@ -89,6 +114,9 @@ exports.create = async (req, res) => {
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { name, category, unit, current_stock, min_stock_level, reorder_level, unit_cost, hazard_level, supplier, batch_number, notes } = req.body;
+    if (!isMainWarehouse(req)) {
+      return res.status(403).json({ success: false, message: 'New chemicals and incoming stock must be registered at the main warehouse.' });
+    }
     if (!name) return res.status(400).json({ success: false, message: 'Chemical name is required' });
 
     const effectiveCategory = category ? category.toLowerCase() : 'embalming';
@@ -105,9 +133,9 @@ exports.create = async (req, res) => {
     // Log initial stock as received transaction if quantity > 0
     if (initialQty > 0) {
       await safeTenantExecute(tenantDb,
-        `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, notes) 
-         VALUES (?, ?, 'received', ?, ?, 0, ?, 'Initial stock on creation')`,
-        [tenantSlug, result.insertId, initialQty, effectiveUnit, initialQty]
+        `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, branch_slug, transaction_type, quantity, unit, previous_stock, new_stock, notes)
+         VALUES (?, ?, ?, ?, 'received', ?, ?, 0, ?, 'Initial stock on creation')`,
+        [tenantSlug, result.insertId, req.numericBranchId || 1, req.mainBranchSlug || tenantSlug, initialQty, effectiveUnit, initialQty]
       );
     }
     res.status(201).json({ success: true, message: 'Chemical created successfully', id: result.insertId });
@@ -174,6 +202,9 @@ exports.receiveStock = async (req, res) => {
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { quantity, notes, received_by } = req.body;
+    if (!isMainWarehouse(req)) {
+      return res.status(403).json({ success: false, message: 'New stock must be received at the main warehouse before it is distributed.' });
+    }
     if (!quantity || parseFloat(quantity) <= 0) return res.status(400).json({ success: false, message: 'Valid quantity required' });
 
     const chem = await safeTenantQuery(tenantDb, 'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?', [req.params.id, tenantSlug]);
@@ -190,9 +221,9 @@ exports.receiveStock = async (req, res) => {
 
     await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, req.params.id, tenantSlug]);
     await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
-       VALUES (?, ?, 'received', ?, ?, ?, ?, ?, ?, NOW())`,
-      [tenantSlug, req.params.id, qty, chem[0].unit, previousStock, newStock, performedByName, notes || 'Stock received']
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, branch_slug, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
+       VALUES (?, ?, ?, ?, 'received', ?, ?, ?, ?, ?, ?, NOW())`,
+      [tenantSlug, req.params.id, req.numericBranchId || 1, req.mainBranchSlug || tenantSlug, qty, chem[0].unit, previousStock, newStock, performedByName, notes || 'Stock received']
     );
 
     res.json({ success: true, message: 'Stock received successfully', previous_stock: previousStock, new_stock: newStock });
@@ -218,6 +249,9 @@ exports.restockChemical = async (req, res) => {
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
     const { chemical_id, quantity, received_by, notes } = req.body;
+    if (!isMainWarehouse(req)) {
+      return res.status(403).json({ success: false, message: 'New stock must be received at the main warehouse before it is distributed.' });
+    }
     if (!chemical_id) return res.status(400).json({ success: false, message: 'chemical_id is required' });
     if (!quantity || parseFloat(quantity) <= 0) return res.status(400).json({ success: false, message: 'Valid quantity required' });
 
@@ -235,9 +269,9 @@ exports.restockChemical = async (req, res) => {
 
     await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, chem[0].id, tenantSlug]);
     await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
-       VALUES (?, ?, 'received', ?, ?, ?, ?, ?, ?, NOW())`,
-      [tenantSlug, chem[0].id, qty, chem[0].unit, previousStock, newStock, performedByName, notes || 'Stock restocked']
+      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, branch_slug, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
+       VALUES (?, ?, ?, ?, 'received', ?, ?, ?, ?, ?, ?, NOW())`,
+      [tenantSlug, chem[0].id, req.numericBranchId || 1, req.mainBranchSlug || tenantSlug, qty, chem[0].unit, previousStock, newStock, performedByName, notes || 'Stock restocked']
     );
 
     res.json({ success: true, message: 'Restock recorded successfully', chemical_id: chem[0].id, previous_stock: previousStock, new_stock: newStock });
@@ -258,6 +292,9 @@ exports.adjustStock = async (req, res) => {
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
 
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
+    if (!isMainWarehouse(req)) {
+      return res.status(403).json({ success: false, message: 'Manual stock adjustments are restricted to the main warehouse.' });
+    }
     const { new_quantity, reason, performed_by } = req.body;
 
     if (new_quantity === undefined || parseFloat(new_quantity) < 0) return res.status(400).json({ success: false, message: 'Valid new_quantity required' });
@@ -317,13 +354,23 @@ exports.getDashboardSummary = async (req, res) => {
     const tenantDb = req.tenant?.db_name;
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
+    const branchSlug = req.branchSlug || req.mainBranchSlug || tenantSlug;
+    const isMain = branchSlug === (req.mainBranchSlug || tenantSlug);
 
     const [totalChemicals] = await safeTenantQuery(tenantDb, 'SELECT COUNT(*) as total FROM chemicals WHERE is_active=1 AND tenant_slug=?', [tenantSlug]);
-    const [lowStock] = await safeTenantQuery(tenantDb, 'SELECT COUNT(*) as total FROM chemicals WHERE is_active=1 AND current_stock <= min_stock_level AND tenant_slug=?', [tenantSlug]);
+    const [lowStock] = isMain
+      ? await safeTenantQuery(tenantDb, 'SELECT COUNT(*) as total FROM chemicals WHERE is_active=1 AND current_stock <= min_stock_level AND tenant_slug=?', [tenantSlug])
+      : await safeTenantQuery(tenantDb,
+        `SELECT COUNT(*) as total FROM chemicals c
+         LEFT JOIN chemical_branch_stock cbs ON cbs.tenant_slug=c.tenant_slug AND cbs.chemical_id=c.id AND cbs.branch_slug=?
+         WHERE c.is_active=1 AND COALESCE(cbs.current_stock,0) <= c.min_stock_level AND c.tenant_slug=?`,
+        [branchSlug, tenantSlug]
+      );
     const [recentUsage] = await safeTenantQuery(tenantDb,
       `SELECT COALESCE(SUM(quantity_used), 0) as total FROM chemical_usage 
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND tenant_slug = ?`,
-      [tenantSlug]
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND tenant_slug = ? AND
+       (branch_slug = ? ${isMain ? 'OR branch_slug IS NULL' : ''})`,
+      [tenantSlug, branchSlug]
     );
     // `performed_by` is the DISPLAY NAME (aliased over the raw column), so the
     // stable employee ID was being shadowed and never reached the client. Every
@@ -336,13 +383,12 @@ exports.getDashboardSummary = async (req, res) => {
               COALESCE(cu.used_by_name, ct.performed_by_name) AS performed_by,
               COALESCE(cu.used_by, ct.performed_by)        AS performed_by_id,
               COALESCE(ct.performed_by_name, '')           AS performed_by_name,
-              COALESCE(b.branch_name, CONCAT('Branch ', ct.branch_id)) AS branch_name
+              COALESCE(ct.branch_slug, CONCAT('Branch ', ct.branch_id)) AS branch_name
        FROM chemical_transactions ct 
        JOIN chemicals c ON c.id = ct.chemical_id
        LEFT JOIN chemical_usage cu ON cu.transaction_id = ct.id AND cu.tenant_slug = ct.tenant_slug
-       LEFT JOIN branches b ON b.branch_id = CAST(ct.branch_id AS CHAR)
-                           OR b.branch_code = CAST(ct.branch_id AS CHAR)
-       WHERE ct.tenant_slug = ?
+       WHERE ct.tenant_slug = ? AND
+         (ct.branch_slug = ? ${isMain ? 'OR ct.branch_slug IS NULL' : ''})
        -- 500, not 30: the per-person interval trends are derived from the gap
        -- between CONSECUTIVE pickups, so a person needs their whole recent
        -- history here. At 30 rows a busy branch showed only a handful of events
@@ -350,7 +396,7 @@ exports.getDashboardSummary = async (req, res) => {
        -- averages and "more/less frequent" badges were being calculated from
        -- whatever happened to fit in the most recent page.
        ORDER BY ct.created_at DESC LIMIT 500`,
-      [tenantSlug]
+      [tenantSlug, branchSlug]
     );
     const topUsed = await safeTenantQuery(tenantDb,
       `SELECT c.id, c.name, c.unit, COALESCE(SUM(cu.quantity_used),0) as total_used
@@ -587,38 +633,85 @@ exports.createTransfer = async (req, res) => {
     const tenantDb = req.tenant?.db_name;
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
-
-    const { chemical_id, to_branch_id, quantity, notes } = req.body;
-
-    if (!chemical_id || !to_branch_id || !quantity) {
-      return res.status(400).json({ success: false, message: 'chemical_id, to_branch_id, and quantity are required' });
+    if (!isMainWarehouse(req)) {
+      return res.status(403).json({ success: false, message: 'Only the main warehouse can distribute stock to branches.' });
     }
 
-    // Check stock availability
-    const chem = await safeTenantQuery(tenantDb,
-      'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=?',
-      [chemical_id, tenantSlug]
-    );
-    if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
-
-    const qty = parseFloat(quantity);
-    if (parseFloat(chem[0].current_stock) < qty) {
-      return res.status(400).json({
-        success: false,
-        message: `Insufficient stock. Available: ${chem[0].current_stock} ${chem[0].unit}`
-      });
+    const { chemical_id, to_branch_slug, quantity, notes } = req.body;
+    const destinationSlug = String(to_branch_slug || '').trim();
+    const qty = Number(quantity);
+    if (!chemical_id || !destinationSlug || !Number.isFinite(qty) || qty <= 0) {
+      return res.status(400).json({ success: false, message: 'chemical_id, to_branch_slug, and a positive quantity are required' });
+    }
+    if (destinationSlug === req.mainBranchSlug) {
+      return res.status(400).json({ success: false, message: 'Choose a destination branch other than the main warehouse.' });
     }
 
-                const result = await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transfers (tenant_slug, chemical_id, to_branch_id, quantity, unit, notes)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [tenantSlug, chemical_id, to_branch_id, qty, chem[0].unit, notes || null]
-    );
+    const branchRows = req.tenant?.main_db_name
+      ? await safeTenantQuery(req.tenant.main_db_name, 'SELECT branch_slug FROM branches WHERE branch_slug=? AND is_active=TRUE LIMIT 1', [destinationSlug])
+      : [];
+    if (req.mainBranchSlug !== 'system_shared' && !branchRows.length) {
+      return res.status(400).json({ success: false, message: 'Destination branch is not registered for this tenant.' });
+    }
 
-    res.status(201).json({ success: true, message: 'Transfer request created', id: result.insertId });
+    const result = await withTenantTransaction(tenantDb, async (connection) => {
+      const [chemicals] = await connection.query(
+        'SELECT id, current_stock, unit FROM chemicals WHERE id=? AND is_active=1 AND tenant_slug=? FOR UPDATE',
+        [chemical_id, tenantSlug]
+      );
+      if (!chemicals.length) {
+        const notFound = new Error('Chemical not found');
+        notFound.statusCode = 404;
+        throw notFound;
+      }
+      const chemical = chemicals[0];
+      const before = Number(chemical.current_stock);
+      if (before < qty) {
+        const insufficient = new Error(`Insufficient main-warehouse stock. Available: ${before} ${chemical.unit}`);
+        insufficient.statusCode = 400;
+        throw insufficient;
+      }
+      const after = before - qty;
+      await connection.query('UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [after, chemical_id, tenantSlug]);
+      const [destinationStockRows] = await connection.query(
+        'SELECT current_stock FROM chemical_branch_stock WHERE tenant_slug=? AND chemical_id=? AND branch_slug=? FOR UPDATE',
+        [tenantSlug, chemical_id, destinationSlug]
+      );
+      const destinationBefore = Number(destinationStockRows[0]?.current_stock || 0);
+      const destinationAfter = destinationBefore + qty;
+      if (destinationStockRows.length) {
+        await connection.query(
+          'UPDATE chemical_branch_stock SET current_stock=? WHERE tenant_slug=? AND chemical_id=? AND branch_slug=?',
+          [destinationAfter, tenantSlug, chemical_id, destinationSlug]
+        );
+      } else {
+        await connection.query(
+          'INSERT INTO chemical_branch_stock (tenant_slug, chemical_id, branch_slug, current_stock) VALUES (?, ?, ?, ?)',
+          [tenantSlug, chemical_id, destinationSlug, qty]
+        );
+      }
+      const [transfer] = await connection.query(
+        `INSERT INTO chemical_stock_transfers
+          (tenant_slug, chemical_id, from_branch_slug, to_branch_slug, quantity, unit, notes, requested_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [tenantSlug, chemical_id, req.mainBranchSlug, destinationSlug, qty, chemical.unit, notes || null, req.user?.email || req.user?.name || null]
+      );
+      await connection.query(
+        `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, branch_slug, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
+         VALUES (?, ?, ?, ?, 'transferred', ?, ?, ?, ?, ?, ?, NOW())`,
+        [tenantSlug, chemical_id, req.numericBranchId || 1, req.mainBranchSlug, qty, chemical.unit, before, after, req.user?.name || req.user?.email || null, `Distributed to ${destinationSlug}`]
+      );
+      await connection.query(
+        `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, branch_slug, transaction_type, quantity, unit, previous_stock, new_stock, performed_by_name, notes, created_at)
+         VALUES (?, ?, ?, ?, 'received', ?, ?, ?, ?, ?, ?, NOW())`,
+        [tenantSlug, chemical_id, req.numericBranchId || 1, destinationSlug, qty, chemical.unit, destinationBefore, destinationAfter, req.user?.name || req.user?.email || null, `Received from ${req.mainBranchSlug}`]
+      );
+      return { id: transfer.insertId, previous_stock: before, new_stock: after };
+    });
+    res.status(201).json({ success: true, message: 'Stock distributed to branch successfully', ...result });
   } catch (error) {
     console.error('[chemicalController.createTransfer]', error.message);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
   }
 };
 
@@ -628,13 +721,14 @@ exports.getTransfers = async (req, res) => {
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const sql = `SELECT ct.*, c.name as chemical_name, c.unit
-               FROM chemical_transfers ct
-               JOIN chemicals c ON c.id = ct.chemical_id
-               WHERE ct.tenant_slug = ?
-               ORDER BY ct.created_at DESC LIMIT 50`;
-
-    const rows = await safeTenantQuery(tenantDb, sql, [tenantSlug]);
+    const rows = await safeTenantQuery(tenantDb,
+      `SELECT ct.*, c.name AS chemical_name
+       FROM chemical_stock_transfers ct
+       JOIN chemicals c ON c.id = ct.chemical_id
+       WHERE ct.tenant_slug = ?
+       ORDER BY ct.created_at DESC LIMIT 50`,
+      [tenantSlug]
+    );
     
     res.json({ success: true, data: rows });
 

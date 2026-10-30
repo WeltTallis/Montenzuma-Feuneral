@@ -10,19 +10,89 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
-const { safeTenantQuery, safeTenantExecute } = require('../../shared/dbConfig');
+const { getTenantDB, safeTenantQuery, safeTenantExecute } = require('../../shared/dbConfig');
 const { validateTenantActive } = require('../../shared/tenancy');
 const chemicalRoutes = require('./routes/chemicalRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5019;
 
+async function migrateLegacyBranchInventory(operationsDb, mainBranchSlug, branches) {
+  const pool = await getTenantDB(operationsDb);
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(
+      'INSERT IGNORE INTO chemical_inventory_migrations (tenant_slug) VALUES (?)',
+      [mainBranchSlug]
+    );
+    const [migrationRows] = await connection.query(
+      'SELECT migrated_at FROM chemical_inventory_migrations WHERE tenant_slug=? FOR UPDATE',
+      [mainBranchSlug]
+    );
+    if (migrationRows[0]?.migrated_at) {
+      await connection.commit();
+      return;
+    }
+
+    for (const branch of branches) {
+      if (!branch.branch_slug || branch.branch_slug === mainBranchSlug) continue;
+      const [legacyChemicals] = await connection.query(
+        'SELECT id, current_stock FROM chemicals WHERE tenant_slug=? AND is_active=1',
+        [branch.branch_slug]
+      );
+      for (const chemical of legacyChemicals) {
+        const stock = Number(chemical.current_stock || 0);
+        if (stock > 0) {
+          await connection.query(
+            `INSERT INTO chemical_branch_stock (tenant_slug, chemical_id, branch_slug, current_stock)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`,
+            [mainBranchSlug, chemical.id, branch.branch_slug, stock]
+          );
+        }
+      }
+      await connection.query(
+        'UPDATE chemicals SET current_stock=0, tenant_slug=? WHERE tenant_slug=? AND is_active=1',
+        [mainBranchSlug, branch.branch_slug]
+      );
+      await connection.query(
+        'UPDATE chemicals SET tenant_slug=? WHERE tenant_slug=?',
+        [mainBranchSlug, branch.branch_slug]
+      );
+      for (const table of ['chemical_transactions', 'chemical_usage']) {
+        await connection.query(
+          `UPDATE \`${table}\` SET tenant_slug=?, branch_slug=COALESCE(branch_slug, ?) WHERE tenant_slug=?`,
+          [mainBranchSlug, branch.branch_slug, branch.branch_slug]
+        );
+      }
+      for (const table of ['chemical_alerts', 'ppe_requests', 'chemical_transfers']) {
+        await connection.query(
+          `UPDATE \`${table}\` SET tenant_slug=? WHERE tenant_slug=?`,
+          [mainBranchSlug, branch.branch_slug]
+        );
+      }
+    }
+
+    await connection.query(
+      'UPDATE chemical_inventory_migrations SET migrated_at=NOW() WHERE tenant_slug=?',
+      [mainBranchSlug]
+    );
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 // Enable CORS for gateway
 app.use(cors({
   origin: true, // In production, restrict this
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-slug', 'x-tenant-slug', 'x-tenant-id', 'x-user-id', 'Origin', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-slug', 'x-tenant-slug', 'x-branch-slug', 'x-branch-id', 'x-tenant-id', 'x-user-id', 'Origin', 'X-Requested-With', 'Accept'],
 }));
 
 app.use(helmet({
@@ -38,9 +108,11 @@ app.use(async (req, res, next) => {
   // Get tenant from headers or use default
   const tenantSlug = req.headers['x-tenant-slug'] || req.headers['x-slug'] || 'system_shared';
   const branchId = req.headers['x-branch-id'] || null;
+  const requestedBranchSlug = req.headers['x-branch-slug'] || null;
 
   req.tenantSlug = tenantSlug;
   req.branchId = branchId;
+  req.branchSlug = requestedBranchSlug;
 
   console.log(`[CHEMICAL] Request: ${req.method} ${req.path}`);
   console.log(`[CHEMICAL] Tenant: ${tenantSlug}, Branch: ${branchId}`);
@@ -52,8 +124,11 @@ app.use(async (req, res, next) => {
       db_name: process.env.OPERATIONS_DATABASE || 'restpoint_operations',
       main_db_name: process.env.DB_NAME || 'restpoint_main',
       tenant_id: 1,
-      name: 'System Shared'
+      name: 'System Shared',
+      tenant_slug: tenantSlug
     };
+    req.mainBranchSlug = 'system_shared';
+    req.branchSlug = requestedBranchSlug || 'system_shared';
     return next();
   }
 
@@ -78,6 +153,25 @@ app.use(async (req, res, next) => {
       name: tenantSlug
     };
     console.log(`[CHEMICAL] Tenant resolved — operations DB: ${req.tenant.db_name}, main DB: ${mainDbName}`);
+
+    const branchRows = await safeTenantQuery(
+      mainDbName,
+      'SELECT branch_id, branch_slug, branch_name, parent_branch_id FROM branches WHERE is_active = TRUE ORDER BY branch_name'
+    );
+    const mainBranch = branchRows.find((branch) => !branch.parent_branch_id) || branchRows[0];
+    req.mainBranchSlug = mainBranch?.branch_slug || tenantSlug;
+    if (mainBranch?.branch_slug) {
+      await migrateLegacyBranchInventory(req.tenant.db_name, mainBranch.branch_slug, branchRows);
+    }
+    const effectiveBranchSlug = requestedBranchSlug || tenantSlug;
+    const resolvedBranch = branchRows.find((branch) =>
+      branch.branch_slug === effectiveBranchSlug || branch.branch_id === effectiveBranchSlug
+    );
+    if (effectiveBranchSlug !== tenantSlug && !resolvedBranch) {
+      return res.status(400).json({ success: false, message: 'Branch is not registered for this tenant' });
+    }
+    req.branchSlug = resolvedBranch?.branch_slug || effectiveBranchSlug;
+    req.branchUuid = resolvedBranch?.branch_id || null;
 
         // Resolve branch if not provided.
     // NOTE: The tenant branches table stores branch_id as VARCHAR(36) (UUID),
@@ -244,6 +338,7 @@ CREATE TABLE IF NOT EXISTS chemical_transactions (
   tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   chemical_id INT NOT NULL,
   branch_id INT NOT NULL DEFAULT 1,
+  branch_slug VARCHAR(255) DEFAULT NULL,
   transaction_type ENUM('received', 'consumed', 'adjusted', 'wasted', 'transferred') NOT NULL,
   quantity DECIMAL(10,2) NOT NULL,
   unit VARCHAR(50) NOT NULL DEFAULT 'liters',
@@ -267,6 +362,7 @@ CREATE TABLE IF NOT EXISTS chemical_usage (
   id INT AUTO_INCREMENT PRIMARY KEY,
   tenant_slug VARCHAR(100) NOT NULL DEFAULT 'system_shared',
   branch_id INT NOT NULL DEFAULT 1,
+  branch_slug VARCHAR(255) DEFAULT NULL,
   reference_type VARCHAR(50) DEFAULT NULL,
   reference_id INT DEFAULT NULL,
   chemical_id INT NOT NULL,
@@ -338,6 +434,39 @@ CREATE TABLE IF NOT EXISTS chemical_transfers (
   INDEX idx_transfer_from (from_branch_id),
   INDEX idx_transfer_to (to_branch_id),
   INDEX idx_transfer_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS chemical_branch_stock (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL,
+  chemical_id INT NOT NULL,
+  branch_slug VARCHAR(255) NOT NULL,
+  current_stock DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_chemical_branch_stock (tenant_slug, chemical_id, branch_slug),
+  INDEX idx_branch_stock_branch (tenant_slug, branch_slug),
+  CONSTRAINT fk_branch_stock_chemical FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS chemical_stock_transfers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_slug VARCHAR(100) NOT NULL,
+  chemical_id INT NOT NULL,
+  from_branch_slug VARCHAR(255) NOT NULL,
+  to_branch_slug VARCHAR(255) NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL,
+  unit VARCHAR(50) NOT NULL,
+  notes TEXT DEFAULT NULL,
+  requested_by VARCHAR(255) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_stock_transfers_tenant (tenant_slug, created_at),
+  CONSTRAINT fk_stock_transfer_chemical FOREIGN KEY (chemical_id) REFERENCES chemicals(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS chemical_inventory_migrations (
+  tenant_slug VARCHAR(100) PRIMARY KEY,
+  migrated_at DATETIME DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -462,6 +591,12 @@ async function ensureChemicalTables(dbName) {
     }
 
     await normalizePPERequestsSchema(connection, dbName);
+    for (const tableName of ['chemical_transactions', 'chemical_usage']) {
+      const [columns] = await connection.query(`SHOW COLUMNS FROM \`${tableName}\` LIKE 'branch_slug'`);
+      if (!columns.length) {
+        await connection.query(`ALTER TABLE \`${tableName}\` ADD COLUMN branch_slug VARCHAR(255) DEFAULT NULL AFTER branch_id`);
+      }
+    }
     await ensureEmployeeIdColumns(connection, dbName);
     await ensurePickupNameColumns(connection, dbName);
     await backfillTransactionDates(connection, dbName);

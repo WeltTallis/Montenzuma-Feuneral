@@ -11,7 +11,7 @@ const stockPercent = (chemical) => {
 
 const InventoryTable = ({
   chemicals, loading, branchName, search, onSearch, categories, category, onCategory,
-  stockFilter, onStockFilter, onAdd, onReceive, onUse, onEdit,
+  stockFilter, onStockFilter, onAdd, onReceive, onUse, onEdit, onTransfer, mainBranchSlug,
 }) => (
   <section className="panel inventory-panel">
     <div className="panel-heading inventory-heading">
@@ -51,7 +51,7 @@ const InventoryTable = ({
             const low = quantity <= minimum;
             const health = stockPercent(chemical);
             return (
-              <tr key={chemical.chemical_id}>
+              <tr key={`${chemical.branch_slug || 'main'}-${chemical.chemical_id}`}>
                 <td>
                   <div className="item-name"><span className={`item-icon ${low ? 'low' : ''}`}><Beaker size={16} /></span><span><strong>{chemical.chemical_name}</strong><small>{chemical.chemical_uid || `ID ${chemical.chemical_id}`}{chemical.batch_number ? ` · Batch ${chemical.batch_number}` : ''}</small></span></div>
                 </td>
@@ -63,9 +63,10 @@ const InventoryTable = ({
                 </td>
                 <td><span className={`hazard-tag hazard-${String(chemical.hazard_level || 'low').toLowerCase()}`}>{chemical.hazard_level || 'Low'}</span></td>
                 <td><div className="row-actions">
-                  <button type="button" title={`Receive stock for ${chemical.chemical_name}`} aria-label={`Receive stock for ${chemical.chemical_name}`} onClick={() => onReceive(chemical)}><Truck size={15} /></button>
+                  {chemical.branch_slug === mainBranchSlug && <button type="button" title={`Receive stock for ${chemical.chemical_name}`} aria-label={`Receive stock for ${chemical.chemical_name}`} onClick={() => onReceive(chemical)}><Truck size={15} /></button>}
                   <button type="button" title={`Record usage for ${chemical.chemical_name}`} aria-label={`Record usage for ${chemical.chemical_name}`} onClick={() => onUse(chemical)}><FlaskConical size={15} /></button>
                   <button type="button" title={`Edit ${chemical.chemical_name}`} aria-label={`Edit ${chemical.chemical_name}`} onClick={() => onEdit(chemical)}><Edit3 size={15} /></button>
+                  {chemical.branch_slug === mainBranchSlug && <button type="button" title={`Distribute ${chemical.chemical_name}`} aria-label={`Distribute ${chemical.chemical_name}`} onClick={() => onTransfer(chemical)}><Truck size={15} /></button>}
                 </div></td>
               </tr>
             );

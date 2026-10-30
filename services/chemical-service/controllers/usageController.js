@@ -1,4 +1,4 @@
-const { safeTenantQuery, safeTenantExecute } = require('../../../shared/dbConfig');
+const { getTenantDB, safeTenantQuery } = require('../../../shared/dbConfig');
 
 // RECORD CHEMICAL USAGE
 
@@ -10,20 +10,15 @@ exports.recordUsage = async (req, res) => {
     const tenantSlug = req.tenant?.tenant_slug || req.tenantSlug || 'system_shared';
     if (!tenantDb) return res.status(400).json({ success: false, message: 'Tenant database not resolved' });
 
-    const { chemical_id, quantity_used, usage_notes, branch_id, reference_type, reference_id, used_by } = req.body;
+    const { chemical_id, quantity_used, usage_notes, reference_type, reference_id, used_by } = req.body;
 
     if (!chemical_id || !quantity_used || parseFloat(quantity_used) <= 0) {
       return res.status(400).json({ success: false, message: 'chemical_id and quantity_used (>0) are required' });
     }
 
-    const rawBranchId = branch_id || req.branchId || 1;
-    // Chemical branch_id columns are INT, but branch system uses UUID strings.
-
-    let effectiveBranchId = rawBranchId;
-
-    if (isNaN(parseInt(rawBranchId)) || String(rawBranchId).length > 11) {
-      effectiveBranchId = req.numericBranchId || 1;
-    }
+    const effectiveBranchId = req.numericBranchId || 1;
+    const branchSlug = req.branchSlug || req.mainBranchSlug || tenantSlug;
+    const isMainWarehouse = !req.mainBranchSlug || branchSlug === req.mainBranchSlug;
 
     // Check chemical exists and has stock (scoped by tenant_slug)
     const chem = await safeTenantQuery(tenantDb,
@@ -32,18 +27,25 @@ exports.recordUsage = async (req, res) => {
     );
     if (!chem.length) return res.status(404).json({ success: false, message: 'Chemical not found' });
 
-    if (parseFloat(chem[0].current_stock) < parseFloat(quantity_used)) {
+    const branchStock = isMainWarehouse
+      ? [{ current_stock: chem[0].current_stock }]
+      : await safeTenantQuery(tenantDb,
+        'SELECT current_stock FROM chemical_branch_stock WHERE tenant_slug=? AND chemical_id=? AND branch_slug=?',
+        [tenantSlug, chemical_id, branchSlug]
+      );
+    const availableStock = Number(branchStock[0]?.current_stock || 0);
+    if (availableStock < parseFloat(quantity_used)) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient stock. Available: ${chem[0].current_stock} ${chem[0].unit}, Required: ${quantity_used} ${chem[0].unit}`,
-        available_stock: chem[0].current_stock,
+        message: `Insufficient stock at this branch. Available: ${availableStock} ${chem[0].unit}, Required: ${quantity_used} ${chem[0].unit}`,
+        available_stock: availableStock,
         required: quantity_used
       });
     }
 
-    const previousStock = parseFloat(chem[0].current_stock);
+    let previousStock = availableStock;
     const qty = parseFloat(quantity_used);
-    const newStock = previousStock - qty;
+    let newStock = previousStock - qty;
 
     // ── WHO PICKED IT ────────────────────────────────────────────────────
     // The JWT carries `userId` and `email` — there is NO `id` and NO
@@ -79,22 +81,53 @@ exports.recordUsage = async (req, res) => {
     const rawUsedBy = typeof used_by === 'string' ? used_by.trim() : '';
     const usedByName = employeeName || rawUsedBy || req.user?.email || null;
 
-    // Deduct from stock
-    await safeTenantExecute(tenantDb, 'UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, chemical_id, tenantSlug]);
+    // Deduct atomically from the selected branch balance.
+    const pool = await getTenantDB(tenantDb);
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [lockedStockRows] = isMainWarehouse
+        ? await connection.query(
+          'SELECT current_stock FROM chemicals WHERE id=? AND tenant_slug=? FOR UPDATE',
+          [chemical_id, tenantSlug]
+        )
+        : await connection.query(
+          'SELECT current_stock FROM chemical_branch_stock WHERE tenant_slug=? AND chemical_id=? AND branch_slug=? FOR UPDATE',
+          [tenantSlug, chemical_id, branchSlug]
+        );
+      previousStock = Number(lockedStockRows[0]?.current_stock || 0);
+      if (!lockedStockRows.length || previousStock < qty) {
+        await connection.rollback();
+        return res.status(400).json({ success: false, message: 'Stock changed before this usage could be recorded. Refresh and try again.' });
+      }
+      newStock = previousStock - qty;
+      if (isMainWarehouse) {
+        await connection.query('UPDATE chemicals SET current_stock=? WHERE id=? AND tenant_slug=?', [newStock, chemical_id, tenantSlug]);
+      } else {
+        await connection.query(
+          'UPDATE chemical_branch_stock SET current_stock=? WHERE tenant_slug=? AND chemical_id=? AND branch_slug=?',
+          [newStock, tenantSlug, chemical_id, branchSlug]
+        );
+      }
 
-    // Record stock transaction
-    const txnResult = await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, transaction_type, quantity, unit, previous_stock, new_stock, reference_type, reference_id, performed_by, performed_by_name, notes, created_at)
-       VALUES (?, ?, ?, 'consumed', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [tenantSlug, chemical_id, effectiveBranchId, qty, chem[0].unit, previousStock, newStock, reference_type || null, reference_id || null, employeeId, usedByName, usage_notes || 'General usage']
-    );
+      const [txnResult] = await connection.query(
+        `INSERT INTO chemical_transactions (tenant_slug, chemical_id, branch_id, branch_slug, transaction_type, quantity, unit, previous_stock, new_stock, reference_type, reference_id, performed_by, performed_by_name, notes, created_at)
+         VALUES (?, ?, ?, ?, 'consumed', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [tenantSlug, chemical_id, effectiveBranchId, branchSlug, qty, chem[0].unit, previousStock, newStock, reference_type || null, reference_id || null, employeeId, usedByName, usage_notes || 'General usage']
+      );
 
-    // Record the usage (generic consumption record - not deceased-specific)
-    await safeTenantExecute(tenantDb,
-      `INSERT INTO chemical_usage (tenant_slug, branch_id, reference_type, reference_id, chemical_id, quantity_used, unit, transaction_id, used_by, used_by_name, usage_notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [tenantSlug, effectiveBranchId, reference_type || null, reference_id || null, chemical_id, qty, chem[0].unit, txnResult.insertId, employeeId, usedByName, usage_notes || null]
-    );
+      await connection.query(
+        `INSERT INTO chemical_usage (tenant_slug, branch_id, branch_slug, reference_type, reference_id, chemical_id, quantity_used, unit, transaction_id, used_by, used_by_name, usage_notes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [tenantSlug, effectiveBranchId, branchSlug, reference_type || null, reference_id || null, chemical_id, qty, chem[0].unit, txnResult.insertId, employeeId, usedByName, usage_notes || null]
+      );
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
 
     res.status(201).json({
       success: true,
@@ -282,13 +315,10 @@ exports.getUsageTrends = async (req, res) => {
         const byBranch = await safeTenantQuery(
             tenantDb,
             `SELECT cu.branch_id,
-                    COALESCE(b.branch_name, CONCAT(''Branch '', cu.branch_id)) AS branch_name,
+                    CONCAT('Branch ', cu.branch_id) AS branch_name,
                     ROUND(SUM(cu.quantity_used), 2) AS total_quantity,
                     COUNT(*) AS pickup_count
              FROM chemical_usage cu
-             LEFT JOIN branches b
-                    ON b.branch_id = CAST(cu.branch_id AS CHAR)
-                    OR b.branch_code = CAST(cu.branch_id AS CHAR)
              WHERE ${whereSql}
              GROUP BY cu.branch_id, branch_name
              ORDER BY total_quantity DESC`,

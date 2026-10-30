@@ -12,6 +12,7 @@ const dateLabel = (date) => {
 const activityType = (type) => {
   if (type === 'received') return { label: 'Stock received', Icon: ArrowDownLeft, tone: 'received' };
   if (type === 'consumed') return { label: 'Usage recorded', Icon: ArrowUpRight, tone: 'consumed' };
+  if (type === 'transferred') return { label: 'Stock distributed', Icon: ArrowUpRight, tone: 'consumed' };
   if (type === 'adjusted') return { label: 'Stock adjusted', Icon: PackageCheck, tone: 'adjusted' };
   return { label: type || 'Inventory updated', Icon: PackageCheck, tone: 'adjusted' };
 };

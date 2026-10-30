@@ -25,8 +25,8 @@ workshopApi.interceptors.request.use((config) => {
   const branchSlug = getBranchSlug();
   const branchId = getBranchId();
   const branchDbName = localStorage.getItem('branchDbName');
-  if (branchSlug) config.headers['x-branch-slug'] = branchSlug;
-  if (branchId) config.headers['x-branch-id'] = branchId;
+  if (branchSlug && !config.headers['x-branch-slug']) config.headers['x-branch-slug'] = branchSlug;
+  if (branchId && !config.headers['x-branch-id']) config.headers['x-branch-id'] = branchId;
   if (branchDbName && branchDbName !== 'undefined' && branchDbName !== 'null') config.headers['x-branch-db'] = branchDbName;
 
   return config;
@@ -207,7 +207,7 @@ api.interceptors.request.use((config) => {
   const wantedBranchDb = config.headers['x-branch-db'] || branchDb;
   if (wantedBranchSlug) config.headers['x-branch-slug'] = wantedBranchSlug;
   if (wantedBranchDb) config.headers['x-branch-db'] = wantedBranchDb;
-  if (branchId) config.headers['x-branch-id'] = branchId;
+  if (branchId && !config.headers['x-branch-id']) config.headers['x-branch-id'] = branchId;
 
   return config;
 }, (error) => Promise.reject(error));

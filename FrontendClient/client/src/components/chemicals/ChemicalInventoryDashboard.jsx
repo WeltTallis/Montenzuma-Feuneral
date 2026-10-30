@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Beaker, Plus, RefreshCw, Shield } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../api/axios';
-import { getBranchId, getBranchSlug, getTenantSlug } from '../../utils/globalAuth';
+import { getBranchId, getBranchSlug, getParentTenantSlug, getTenantSlug } from '../../utils/globalAuth';
 import ActivityFeed from './components/ActivityFeed';
 import BranchList from './components/BranchList';
 import ChemicalDialog from './components/ChemicalDialog';
@@ -32,7 +32,7 @@ const ChemicalInventoryDashboard = () => {
     else setLoading(true);
     setError('');
     try {
-      const tenantSlug = getTenantSlug();
+      const tenantSlug = getParentTenantSlug() || getTenantSlug();
       const branchResponse = tenantSlug ? await api.get(`/tenant/${tenantSlug}/branches`) : null;
       const branchPayload = branchResponse ? responseData(branchResponse) : [];
       const branchData = Array.isArray(branchPayload) ? branchPayload : branchPayload?.branches || [];
@@ -40,13 +40,15 @@ const ChemicalInventoryDashboard = () => {
         .map((branch) => ({
           id: branch.branch_slug ?? branch.branch_id ?? branch.id,
           slug: branch.branch_slug ?? branch.branch_id ?? branch.id,
+          isMain: !branch.parent_branch_id,
           name: branch.branch_name ?? branch.name,
           location: branch.branch_location ?? branch.location ?? '',
         }))
         .filter((branch) => branch.id != null && branch.name);
-      const activeBranchSlug = getBranchSlug() || tenantSlug;
+      const activeBranchSlug = getBranchSlug() || normalizedBranches.find((branch) => branch.isMain)?.slug || tenantSlug;
+      const mainBranch = normalizedBranches.find((branch) => branch.isMain) || { slug: activeBranchSlug };
       if (!normalizedBranches.length && activeBranchSlug) {
-        normalizedBranches.push({ id: activeBranchSlug, slug: activeBranchSlug, name: 'Current branch', location: '' });
+        normalizedBranches.push({ id: activeBranchSlug, slug: activeBranchSlug, isMain: true, name: 'Current branch', location: '' });
       }
       setBranches(normalizedBranches);
 
@@ -55,13 +57,13 @@ const ChemicalInventoryDashboard = () => {
         : normalizedBranches.find((branch) => String(branch.id) === String(selectedBranchId));
       const targetBranches = selectedBranchId === 'all'
         ? normalizedBranches
-        : [selectedBranch || { id: selectedBranchId, slug: selectedBranchId, name: 'Selected branch' }];
+        : [selectedBranch || { id: selectedBranchId, slug: selectedBranchId, isMain: false, name: 'Selected branch' }];
       const scopes = targetBranches.length
         ? targetBranches
-        : [{ id: activeBranchSlug || 'all', slug: activeBranchSlug, name: 'Current branch' }];
+        : [{ id: activeBranchSlug || 'all', slug: activeBranchSlug, isMain: true, name: 'Current branch' }];
 
       const branchDataSets = await Promise.all(scopes.map(async (branch) => {
-        const config = branch.slug ? { headers: { 'x-tenant-slug': branch.slug } } : undefined;
+        const config = branch.slug ? { headers: { 'x-tenant-slug': mainBranch.slug, 'x-branch-slug': branch.slug } } : undefined;
         const [chemicalResponse, summaryResponse, ppeResponse] = await Promise.all([
           api.get('/chemicals', config),
           api.get('/chemicals/dashboard/summary', config),
@@ -73,8 +75,10 @@ const ChemicalInventoryDashboard = () => {
         return {
           branchId: branch.id,
           branchName: branch.name,
+          branchSlug: branch.slug,
+          isMain: branch.isMain,
           chemicals: (Array.isArray(branchChemicals) ? branchChemicals : [])
-            .map((chemical) => ({ ...chemical, branch_id: branch.id, branch_name: branch.name })),
+            .map((chemical) => ({ ...chemical, branch_id: branch.id, branch_slug: branch.slug, branch_name: branch.name, is_main_warehouse: branch.isMain })),
           summary: branchSummary && !Array.isArray(branchSummary) ? branchSummary : {},
           ppeRequests: (Array.isArray(branchPpeRequests) ? branchPpeRequests : [])
             .map((request) => ({ ...request, branch_id: branch.id })),
@@ -91,6 +95,7 @@ const ChemicalInventoryDashboard = () => {
             .map((transaction) => ({
               ...transaction,
               branch_id: data.branchId,
+              branch_slug: data.branchSlug,
               branch_name: data.branchName,
             }))
         ),
@@ -127,16 +132,24 @@ const ChemicalInventoryDashboard = () => {
 
   const submitDialog = async (mode, values, chemical) => {
     try {
-      const writeBranch = selectedBranchId === 'all'
-        ? getBranchSlug() || getTenantSlug()
-        : branches.find((branch) => String(branch.id) === String(selectedBranchId))?.slug || selectedBranchId;
-      const config = writeBranch ? { headers: { 'x-tenant-slug': writeBranch } } : undefined;
+      const tenantSlug = getParentTenantSlug() || getTenantSlug();
+      const mainBranch = branches.find((branch) => branch.isMain) || { slug: getBranchSlug() || tenantSlug };
+      const currentBranch = selectedBranchId === 'all'
+        ? branches.find((branch) => branch.slug === (getBranchSlug() || tenantSlug)) || mainBranch
+        : branches.find((branch) => String(branch.id) === String(selectedBranchId)) || mainBranch;
+      const writeBranch = mode === 'add' || mode === 'receive' || mode === 'transfer'
+        ? mainBranch.slug
+        : mode === 'usage'
+          ? chemical?.branch_slug || currentBranch.slug
+          : currentBranch.slug;
+      const config = writeBranch ? { headers: { 'x-tenant-slug': mainBranch.slug, 'x-branch-slug': writeBranch } } : undefined;
       if (mode === 'add') await api.post('/chemicals', values, config);
       if (mode === 'edit') await api.put(`/chemicals/${chemical.chemical_id}`, values, config);
       if (mode === 'receive') await api.post(`/chemicals/${chemical.chemical_id}/receive`, values, config);
       if (mode === 'usage') await api.post('/chemicals/usage', values, config);
       if (mode === 'ppe') await api.post('/chemicals/ppe-requests', values, config);
-      toast.success(mode === 'usage' ? 'Chemical usage recorded.' : mode === 'ppe' ? 'PPE request submitted.' : 'Inventory updated.');
+      if (mode === 'transfer') await api.post('/chemicals/transfers', values, config);
+      toast.success(mode === 'usage' ? 'Chemical usage recorded.' : mode === 'ppe' ? 'PPE request submitted.' : mode === 'transfer' ? 'Stock distributed to branch.' : 'Inventory updated.');
       setDialog(null);
       await loadDashboard(true);
       return true;
@@ -192,13 +205,16 @@ const ChemicalInventoryDashboard = () => {
             onReceive={(chemical) => setDialog({ mode: 'receive', chemical })}
             onUse={(chemical) => setDialog({ mode: 'usage', chemical })}
             onEdit={(chemical) => setDialog({ mode: 'edit', chemical })}
+            onTransfer={(chemical) => setDialog({ mode: 'transfer', chemical })}
+            mainBranchSlug={branches.find((branch) => branch.isMain)?.slug}
           />
           <ActivityFeed transactions={branchTransactions} loading={loading} />
         </main>
       </div>
       {dialog && (
         <ChemicalDialog
-          mode={dialog.mode} chemical={dialog.chemical} chemicals={chemicals}
+          mode={dialog.mode} chemical={dialog.chemical} chemicals={chemicals} branches={branches}
+          mainBranchSlug={branches.find((branch) => branch.isMain)?.slug}
           branchId={selectedBranchId === 'all' ? getBranchId() : selectedBranchId}
           onClose={() => setDialog(null)}
           onSubmit={(values) => submitDialog(dialog.mode, values, dialog.chemical)}
