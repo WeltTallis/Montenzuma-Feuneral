@@ -612,6 +612,22 @@ app.get('/tenant/:tenantSlug/users', asyncHandler(async (req: Request, res: Resp
   (req as any).dbName = originalDbName;
 }));
 
+// Update a tenant user's profile (and optional password).
+app.put('/tenant/:tenantSlug/users/:userId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = tenant.db_name;
+  await userController.updateUser(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
 // Simplified branches route (tenantSlug only)
 app.get('/tenant/:tenantSlug/branches', asyncHandler(async (req: Request, res: Response) => {
   const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;

@@ -207,6 +207,150 @@ export class UserController {
     }
 
     /**
+     * PUT /tenant/users/:userId - Update a user's profile and optional password.
+     */
+    async updateUser(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = String(req.params.userId || '').trim();
+            const { email, username, full_name, phone, role, branch_id, password } = req.body || {};
+            const tenantSlug = String(
+                (req.params.tenantSlug as string)
+                || (req.headers['x-tenant-slug'] as string)
+                || ''
+            ).trim();
+            if (!userId || !tenantSlug) {
+                res.status(400).json({ success: false, message: 'Tenant and user are required' });
+                return;
+            }
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+                res.status(400).json({ success: false, message: 'A valid email address is required' });
+                return;
+            }
+            if (!full_name || !String(full_name).trim()) {
+                res.status(400).json({ success: false, message: 'Full name is required' });
+                return;
+            }
+            if (password !== undefined && password !== null && String(password).trim() && String(password).length < 6) {
+                res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+                return;
+            }
+
+            const validRoles = [
+                'system_administrator', 'admin', 'manager', 'receptionist', 'accountant',
+                'mortician', 'driver', 'hearse_driver', 'workshop_manager',
+                'workshop_technician', 'inventory_manager', 'procurement_officer',
+                'funeral_director', 'florist', 'insurance_manager', 'hr', 'payroll',
+                'security', 'cleaner', 'staff', 'user'
+            ];
+            if (role && !validRoles.includes(role)) {
+                res.status(400).json({ success: false, message: 'Invalid user role' });
+                return;
+            }
+
+            const tenant = await TenantModel.findBySubdomain(tenantSlug);
+            if (!tenant) {
+                res.status(404).json({ success: false, message: 'Tenant not found' });
+                return;
+            }
+
+            const conn = await mysql.createConnection({
+                host: process.env.DB_HOST || 'localhost',
+                port: parseInt(process.env.DB_PORT || '3306'),
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: tenant.db_name
+            });
+
+            try {
+                const normalizedEmail = String(email).trim();
+                const normalizedUsername = String(username || normalizedEmail).trim().toLowerCase();
+                const [existing] = await conn.query(
+                    'SELECT user_id FROM users WHERE (email = ? OR username = ?) AND user_id <> ? AND is_active = TRUE LIMIT 1',
+                    [normalizedEmail, normalizedUsername, userId]
+                );
+                if ((existing as any[]).length) {
+                    res.status(409).json({ success: false, message: 'Another user already uses this email or username' });
+                    return;
+                }
+
+                if (branch_id) {
+                    const [branches] = await conn.query(
+                        'SELECT branch_id FROM branches WHERE branch_id = ? AND is_active = TRUE LIMIT 1',
+                        [String(branch_id)]
+                    );
+                    if (!(branches as any[]).length) {
+                        res.status(400).json({ success: false, message: 'Invalid branch_id' });
+                        return;
+                    }
+                }
+
+                const assignments = [
+                    'email = ?',
+                    'username = ?',
+                    'full_name = ?',
+                    'phone = ?',
+                    'role = ?',
+                    'branch_id = ?',
+                ];
+                const params: any[] = [
+                    normalizedEmail,
+                    normalizedUsername,
+                    String(full_name).trim(),
+                    phone ? String(phone).trim() : null,
+                    role || 'staff',
+                    branch_id ? String(branch_id) : null,
+                ];
+                if (password && String(password).trim()) {
+                    assignments.push('password_hash = ?');
+                    params.push(await bcrypt.hash(String(password).trim(), 10));
+                }
+                params.push(userId);
+
+                const [result]: any = await conn.query(
+                    `UPDATE users SET ${assignments.join(', ')} WHERE user_id = ? AND is_active = TRUE`,
+                    params
+                );
+                if (!result || result.affectedRows === 0) {
+                    const [userRows] = await conn.query(
+                        'SELECT user_id FROM users WHERE user_id = ? AND is_active = TRUE LIMIT 1',
+                        [userId]
+                    );
+                    if (!(userRows as any[]).length) {
+                        res.status(404).json({ success: false, message: 'User not found' });
+                        return;
+                    }
+                }
+
+                const [updatedRows] = await conn.query(
+                    `SELECT u.user_id, u.email, u.full_name, u.username, u.phone, u.role,
+                            u.branch_id, u.tenant_id, u.is_active, b.branch_name, b.branch_slug
+                     FROM users u
+                     LEFT JOIN branches b ON u.branch_id = b.branch_id
+                     WHERE u.user_id = ? LIMIT 1`,
+                    [userId]
+                );
+                res.json({
+                    success: true,
+                    message: 'User updated successfully',
+                    data: (updatedRows as any[])[0] || null
+                });
+            } finally {
+                await conn.end();
+            }
+        } catch (error: any) {
+            logger.error({
+                service: 'tenant-service',
+                controller: 'UserController',
+                function: 'updateUser',
+                message: 'Failed to update user',
+                error: error.message,
+                stack: error.stack,
+            });
+            res.status(500).json({ success: false, message: 'Failed to update user', error: error.message });
+        }
+    }
+
+    /**
      * PUT /tenant/users/:userId/branch - Assign/reassign a user to a branch.
      * Users ALWAYS carry a tenant_id + branch_id so they log in to the correct
      * tenant and branch. Passing no branch_id assigns the MAIN/PARENT branch.
