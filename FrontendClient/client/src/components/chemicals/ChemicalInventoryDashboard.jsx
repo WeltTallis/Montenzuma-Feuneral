@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Beaker, Plus, RefreshCw, Shield } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../api/axios';
-import { getBranchId, getTenantSlug } from '../../utils/globalAuth';
+import { getBranchId, getBranchSlug, getTenantSlug } from '../../utils/globalAuth';
 import ActivityFeed from './components/ActivityFeed';
 import BranchList from './components/BranchList';
 import ChemicalDialog from './components/ChemicalDialog';
@@ -33,35 +33,72 @@ const ChemicalInventoryDashboard = () => {
     setError('');
     try {
       const tenantSlug = getTenantSlug();
-      const requests = [
-        api.get('/chemicals'),
-        api.get('/chemicals/dashboard/summary'),
-        api.get('/chemicals/ppe-requests'),
-      ];
-      if (tenantSlug) requests.push(api.get(`/tenant/${tenantSlug}/branches`));
-      const [chemicalResponse, summaryResponse, ppeResponse, branchResponse] = await Promise.all(requests);
-      const chemicalData = responseData(chemicalResponse);
-      const summaryData = responseData(summaryResponse);
-      const ppeData = responseData(ppeResponse);
+      const branchResponse = tenantSlug ? await api.get(`/tenant/${tenantSlug}/branches`) : null;
       const branchPayload = branchResponse ? responseData(branchResponse) : [];
       const branchData = Array.isArray(branchPayload) ? branchPayload : branchPayload?.branches || [];
-      setChemicals(Array.isArray(chemicalData) ? chemicalData : []);
-      setSummary(summaryData && !Array.isArray(summaryData) ? summaryData : {});
-      setTransactions(Array.isArray(summaryData?.recent_transactions) ? summaryData.recent_transactions : []);
-      setPpeRequests(Array.isArray(ppeData) ? ppeData : []);
-
-      const normalizedBranches = (Array.isArray(branchData) ? branchData : [])
+      const normalizedBranches = branchData
         .map((branch) => ({
-          id: branch.branch_id ?? branch.id,
+          id: branch.branch_slug ?? branch.branch_id ?? branch.id,
+          slug: branch.branch_slug ?? branch.branch_id ?? branch.id,
           name: branch.branch_name ?? branch.name,
           location: branch.branch_location ?? branch.location ?? '',
         }))
         .filter((branch) => branch.id != null && branch.name);
-      const activeBranchId = getBranchId();
-      if (!normalizedBranches.length && activeBranchId) {
-        normalizedBranches.push({ id: activeBranchId, name: 'Current branch', location: '' });
+      const activeBranchSlug = getBranchSlug() || tenantSlug;
+      if (!normalizedBranches.length && activeBranchSlug) {
+        normalizedBranches.push({ id: activeBranchSlug, slug: activeBranchSlug, name: 'Current branch', location: '' });
       }
       setBranches(normalizedBranches);
+
+      const selectedBranch = selectedBranchId === 'all'
+        ? null
+        : normalizedBranches.find((branch) => String(branch.id) === String(selectedBranchId));
+      const targetBranches = selectedBranchId === 'all'
+        ? normalizedBranches
+        : [selectedBranch || { id: selectedBranchId, slug: selectedBranchId, name: 'Selected branch' }];
+      const scopes = targetBranches.length
+        ? targetBranches
+        : [{ id: activeBranchSlug || 'all', slug: activeBranchSlug, name: 'Current branch' }];
+
+      const branchDataSets = await Promise.all(scopes.map(async (branch) => {
+        const config = branch.slug ? { headers: { 'x-tenant-slug': branch.slug } } : undefined;
+        const [chemicalResponse, summaryResponse, ppeResponse] = await Promise.all([
+          api.get('/chemicals', config),
+          api.get('/chemicals/dashboard/summary', config),
+          api.get('/chemicals/ppe-requests', config),
+        ]);
+        const branchChemicals = responseData(chemicalResponse);
+        const branchSummary = responseData(summaryResponse);
+        const branchPpeRequests = responseData(ppeResponse);
+        return {
+          branchId: branch.id,
+          branchName: branch.name,
+          chemicals: (Array.isArray(branchChemicals) ? branchChemicals : [])
+            .map((chemical) => ({ ...chemical, branch_id: branch.id, branch_name: branch.name })),
+          summary: branchSummary && !Array.isArray(branchSummary) ? branchSummary : {},
+          ppeRequests: (Array.isArray(branchPpeRequests) ? branchPpeRequests : [])
+            .map((request) => ({ ...request, branch_id: branch.id })),
+        };
+      }));
+
+      const chemicalData = branchDataSets.flatMap((data) => data.chemicals);
+      const summaryData = branchDataSets.reduce((totals, data) => ({
+        total_chemicals: totals.total_chemicals + Number(data.summary.total_chemicals || data.chemicals.length),
+        low_stock_count: totals.low_stock_count + Number(data.summary.low_stock_count || 0),
+        total_usage_30d: totals.total_usage_30d + Number(data.summary.total_usage_30d || 0),
+        recent_transactions: totals.recent_transactions.concat(
+          (Array.isArray(data.summary.recent_transactions) ? data.summary.recent_transactions : [])
+            .map((transaction) => ({
+              ...transaction,
+              branch_id: data.branchId,
+              branch_name: data.branchName,
+            }))
+        ),
+      }), { total_chemicals: 0, low_stock_count: 0, total_usage_30d: 0, recent_transactions: [] });
+      setChemicals(chemicalData);
+      setSummary(summaryData);
+      setTransactions(summaryData.recent_transactions);
+      setPpeRequests(branchDataSets.flatMap((data) => data.ppeRequests));
     } catch (loadError) {
       const message = loadError?.response?.data?.message || loadError?.message || 'Could not load chemical inventory.';
       setError(message);
@@ -70,7 +107,7 @@ const ChemicalInventoryDashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedBranchId]);
 
   useEffect(() => {
     loadDashboard();
@@ -90,11 +127,15 @@ const ChemicalInventoryDashboard = () => {
 
   const submitDialog = async (mode, values, chemical) => {
     try {
-      if (mode === 'add') await api.post('/chemicals', values);
-      if (mode === 'edit') await api.put(`/chemicals/${chemical.chemical_id}`, values);
-      if (mode === 'receive') await api.post(`/chemicals/${chemical.chemical_id}/receive`, values);
-      if (mode === 'usage') await api.post('/chemicals/usage', values);
-      if (mode === 'ppe') await api.post('/chemicals/ppe-requests', values);
+      const writeBranch = selectedBranchId === 'all'
+        ? getBranchSlug() || getTenantSlug()
+        : branches.find((branch) => String(branch.id) === String(selectedBranchId))?.slug || selectedBranchId;
+      const config = writeBranch ? { headers: { 'x-tenant-slug': writeBranch } } : undefined;
+      if (mode === 'add') await api.post('/chemicals', values, config);
+      if (mode === 'edit') await api.put(`/chemicals/${chemical.chemical_id}`, values, config);
+      if (mode === 'receive') await api.post(`/chemicals/${chemical.chemical_id}/receive`, values, config);
+      if (mode === 'usage') await api.post('/chemicals/usage', values, config);
+      if (mode === 'ppe') await api.post('/chemicals/ppe-requests', values, config);
       toast.success(mode === 'usage' ? 'Chemical usage recorded.' : mode === 'ppe' ? 'PPE request submitted.' : 'Inventory updated.');
       setDialog(null);
       await loadDashboard(true);
