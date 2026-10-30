@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle, AlertCircle } from '../../utils/icons/icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import { getTenantSlug } from '../../utils/globalAuth';
-import Swal from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
-import LoginColors from '../../utils/colors/index'
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import LoginColors from '../../utils/colors/index';
+
 const C = LoginColors;
 
 const Spinner = () => (
@@ -41,6 +42,9 @@ export default function LoginPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successName, setSuccessName] = useState('');
 
+  // Guards against double-navigation (StrictMode double-invoke, fast double-clicks, etc.)
+  const navigatingRef = useRef(false);
+
   useEffect(() => {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     const hasValidToken = !!token && token !== 'undefined' && token !== 'null';
@@ -54,12 +58,19 @@ export default function LoginPage() {
     try {
       storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
       slug = storedUser.branchSlug || null;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     slug = slug || localStorage.getItem('tenantSlug');
     if (!slug || slug === 'default' || slug === 'dashboard' || slug === 'undefined' || slug === 'null') {
       slug = getTenantSlug();
     }
-    const slugOk = !!slug && slug !== 'default' && slug !== 'dashboard' && slug !== 'undefined' && slug !== 'null';
+    const slugOk =
+      !!slug &&
+      slug !== 'default' &&
+      slug !== 'dashboard' &&
+      slug !== 'undefined' &&
+      slug !== 'null';
 
     if (hasValidToken) {
       // Someone who logged in before must land back INSIDE the app — they used
@@ -67,11 +78,11 @@ export default function LoginPage() {
       // Drivers ONLY ever land on the driver portal dashboard.
       const dest = storedUser.role === 'driver' ? 'driver-portal' : 'deceased';
       if (slugOk) {
-        navigate(`/${slug}/${dest}`);
+        navigate(`/${slug}/${dest}`, { replace: true });
       } else {
         // The token is fine but nothing says which tenant it belongs to:
         // /dashboard runs its recovery path (and clears a truly dead session).
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
     } else {
       // Clear any stale user object so a previous tenant's identity
@@ -85,35 +96,53 @@ export default function LoginPage() {
 
   const isFormValid = identifier.trim().length > 0 && password.length >= 6;
 
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
+  /**
+   * Single source of truth for "where do I go after a successful login".
+   * Centralising it means the mount-time effect and the post-submit flow
+   * can never disagree about the destination — which was another contributor
+   * to the "stuck until refresh" symptom.
+   */
+  const buildDestPath = (userData, response) => {
+    const tenantSlug =
+      userData.parentTenantSlug ||
+      response?.tenant?.parentTenantSlug ||
+      response?.tenant?.slug ||
+      userData.tenantSlug;
+    const navSlug = userData.branchSlug || tenantSlug;
+    const dest = userData.role === 'driver' ? 'driver-portal' : 'deceased';
 
-    if (!identifier.trim() || !password.trim()) {
-      setMessage({ type: 'error', text: 'Please enter your username/email and password.' });
-      return;
+    if (navSlug) {
+      return `/${navSlug}/${dest}`;
     }
+    // No tenant scope — let /dashboard run its recovery path.
+    return '/dashboard';
+  };
 
-    setLoading(true);
-    setMessage({ type: '', text: '' });
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
 
-    try {
-      // Send credentials as JSON object
-      const response = await authLogin({
-        email: identifier.trim(),
-        password: password.trim()
-      });
+      if (!identifier.trim() || !password.trim()) {
+        setMessage({ type: 'error', text: 'Please enter your username/email and password.' });
+        return;
+      }
 
-      if (response && response.success) {
-        toast.success('Login successful! Welcome back.', {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "light",
+      if (navigatingRef.current) return; // ignore double-submit
+      navigatingRef.current = true;
+
+      setLoading(true);
+      setMessage({ type: '', text: '' });
+
+      try {
+        // Send credentials as JSON object
+        const response = await authLogin({
+          email: identifier.trim(),
+          password: password.trim(),
         });
+
+        if (!response || !response.success) {
+          throw new Error(response?.message || 'Login failed. Please check your credentials.');
+        }
 
         const userData = response.user || {};
         const tenantSlug =
@@ -121,64 +150,91 @@ export default function LoginPage() {
           response.tenant?.parentTenantSlug ||
           response.tenant?.slug ||
           userData.tenantSlug;
-        const navSlug = userData.branchSlug || tenantSlug;
 
-        if (tenantSlug) {
-          localStorage.setItem('tenantSlug', tenantSlug);
-          if (userData.branchSlug) {
-            localStorage.setItem('branchSlug', userData.branchSlug);
-          }
-          if (userData.parentTenantSlug) {
-            localStorage.setItem('parentTenantSlug', userData.parentTenantSlug);
-          }
-          setSuccessName(userData.fullName || userData.username || 'User');
-          setShowSuccess(true);
-
-          setTimeout(() => {
-            // Navigate immediately — don't use setTimeout which can cause routing issues.
-            const dest = userData.role === 'driver' ? 'driver-portal' : 'deceased';
-            navigate(`/${navSlug}/${dest}`, { replace: true });
-          }, 100);
-        } else {
+        if (!tenantSlug && !userData.branchSlug) {
           throw new Error('No tenant information available');
         }
-      } else {
-          throw new Error(response?.message || 'Login failed. Please check your credentials.');
-        }
-      } catch (err) {
 
-        toast.error(err.message || 'Connection error. Please try again.', {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "light",
-        });
+        // Persist tenant scoping so a future hard refresh still lands the
+        // user in the right place.
+        if (tenantSlug) localStorage.setItem('tenantSlug', tenantSlug);
+        if (userData.branchSlug) localStorage.setItem('branchSlug', userData.branchSlug);
+        if (userData.parentTenantSlug) localStorage.setItem('parentTenantSlug', userData.parentTenantSlug);
+
+        // Toast FIRST. If this throws (it won't now that toast is imported),
+        // we still want the rest of the flow to continue, so wrap it.
+        try {
+          toast.success('Login successful! Welcome back.', {
+            position: 'top-right',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: 'light',
+          });
+        } catch {
+          /* toast failure must never block navigation */
+        }
+
+        setSuccessName(userData.fullName || userData.username || 'User');
+        setShowSuccess(true);
+
+        const destPath = buildDestPath(userData, response);
+
+        // Give the success modal a brief beat to render, then navigate.
+        // IMPORTANT: navigate with replace:true so the login page is removed
+        // from history — going "back" should never strand the user on /login
+        // with a stale form. We also clear local UI state right before
+        // navigating so a fast re-mount (e.g. StrictMode) doesn't replay the
+        // success modal.
+        setTimeout(() => {
+          setShowSuccess(false);
+          setIdentifier('');
+          setPassword('');
+          navigate(destPath, { replace: true });
+        }, 700);
+      } catch (err) {
+        navigatingRef.current = false;
+        console.error('[LoginPage] login failed:', err);
+
+        try {
+          toast.error(err.message || 'Connection error. Please try again.', {
+            position: 'top-right',
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: 'light',
+          });
+        } catch {
+          /* ignore */
+        }
+
         setMessage({
           type: 'error',
-          text: err.message || 'Connection error. Please try again.'
+          text: err.message || 'Connection error. Please try again.',
         });
       } finally {
         setLoading(false);
       }
-    }, [identifier, password, navigate, authLogin]);
+    },
+    [identifier, password, navigate, authLogin]
+  );
 
   const hasError = message.type === 'error';
 
   return (
     <div className="page-wrapper">
       <style>{`
-        
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth}
         body{font-family:'Inter',sans-serif;color:${C.gray};-webkit-font-smoothing:antialiased}
         h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;color:${C.ink}}
-        
+
         .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: ${C.white}; }
-        
+
         /* Toast Container - Minimal padding */
         .Toastify__toast-container {
           width: 380px !important;
@@ -215,10 +271,10 @@ export default function LoginPage() {
           width: 14px !important;
           height: 14px !important;
         }
-        
+
         /* Layout */
         .login-container { width: 100%; max-width: 920px; display: flex; background: ${C.white}; border-radius: 24px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(21,23,26,0.12), 0 10px 20px rgba(21,23,26,0.04); min-height: 520px; }
-        
+
         /* Sidebar */
         .login-sidebar { width: 380px; background: #000000; padding: 3rem 2.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; flex-shrink: 0; }
         .sidebar-grid-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; }
@@ -228,16 +284,16 @@ export default function LoginPage() {
         .sidebar-headline { font-family: 'Fraunces', serif; font-size: 1.8rem; line-height: 1.3; margin-bottom: 1rem; color: ${C.bone}; }
         .sidebar-text { font-size: 0.9rem; color: rgba(255,255,255,0.6); line-height: 1.6; }
         .sidebar-footer { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: rgba(255,255,255,0.3); letter-spacing: 0.05em; margin-top: auto; }
-        
+
         /* Form */
         .login-form { flex: 1; padding: 3rem 3.5rem; display: flex; flex-direction: column; justify-content: center; }
         .form-header { margin-bottom: 2rem; }
         .form-header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
         .form-header p { font-size: 0.95rem; color: ${C.gray}; }
-        
+
         .form-group { margin-bottom: 1.2rem; }
         .form-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.brass}; margin-bottom: 0.5rem; font-weight: 500; }
-        
+
         .input-wrapper { position: relative; border: 1px solid ${C.line}; border-radius: 8px; background: ${C.bone2}; transition: all 0.2s; }
         .input-wrapper.error { border-color: ${C.red}; }
         .input-wrapper:focus-within { border-color: ${C.brass}; background: ${C.white}; box-shadow: 0 0 0 3px rgba(139,115,85,0.12); }
@@ -247,31 +303,31 @@ export default function LoginPage() {
         .input-icon-btn { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: ${C.gray}; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
         .input-icon-btn:hover { color: ${C.ink}; }
         .form-error { display: block; color: ${C.red}; font-size: 0.75rem; margin-top: 0.3rem; }
-        
+
         .alert-message { display: flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid; font-size: 0.85rem; font-weight: 500; margin-bottom: 1.2rem; }
-        
+
         /* Buttons */
         .btn-submit { width: 100%; padding: 0.9rem 1.2rem; font-size: 0.9rem; font-weight: 600; font-family: 'Inter', sans-serif; border: none; border-radius: 8px; background: ${C.ink}; color: ${C.bone}; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .btn-submit:hover { background: ${C.verdigris}; transform: translateY(-1px); box-shadow: 0 10px 20px rgba(21,23,26,0.15); }
         .btn-submit:disabled { background: ${C.gray}; cursor: not-allowed; opacity: 0.6; transform: none; box-shadow: none; }
-        
+
         .form-links { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; }
         .text-link { background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; padding: 0.2rem; transition: color 0.2s; }
         .text-link.brass { color: ${C.brass}; }
         .text-link.brass:hover { color: ${C.brassLight}; }
         .text-link.verdigris { color: ${C.verdigris}; }
         .text-link.verdigris:hover { color: ${C.verdigrisDark}; }
-        
+
         .form-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid ${C.line}; text-align: center; font-size: 0.8rem; color: ${C.gray}; }
         .encrypted-badge { display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1rem; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: ${C.gray}; opacity: 0.6; }
-        
+
         /* Spinner & Animations */
         .spinner { width: 16px; height: 16px; border: 2px solid rgba(250,248,244,0.3); border-top-color: ${C.bone}; border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        
+
         /* Success Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(21,23,26,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeIn 0.3s ease both; }
         .modal-card { background: ${C.white}; border-radius: 16px; padding: 2.5rem 2rem; text-align: center; max-width: 360px; width: 90%; animation: popIn 0.4s cubic-bezier(0.16,1,0.3,1) both; box-shadow: 0 40px 80px rgba(21,23,26,0.3); }
@@ -280,7 +336,7 @@ export default function LoginPage() {
         .modal-text { font-size: 0.9rem; color: ${C.gray}; margin-bottom: 1.5rem; }
         .modal-progress { width: 60%; height: 4px; background: ${C.line}; border-radius: 2px; margin: 0 auto; overflow: hidden; }
         .modal-progress-bar { width: 100%; height: 100%; background: ${C.verdigris}; border-radius: 2px; animation: shimmer 1.2s ease infinite; background-size: 200% 100%; }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
           .login-container { flex-direction: column; max-width: 820px; }
@@ -436,6 +492,21 @@ export default function LoginPage() {
           </div>
         </div>
       )}
+
+      {/* Local toast container as a safety net — if App.jsx already mounts one
+          globally, this one will simply stack without conflict. Without ANY
+          container, toast.success/error are no-ops and you'd never see them. */}
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="light"
+        limit={3}
+      />
     </div>
   );
 }
