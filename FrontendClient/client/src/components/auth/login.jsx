@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle, AlertCircle } from '../../utils/icons/icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import { getTenantSlug } from '../../utils/globalAuth';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 import LoginColors from '../../utils/colors/index'
 const C = LoginColors;
 
