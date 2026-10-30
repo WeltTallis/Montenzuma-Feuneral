@@ -147,7 +147,6 @@ const StoreDashboard = lazy(() => import('../modules/store'));
 
 // Landing-page live previews — real modules rendered inside sandboxed iframes
 // by the bento grid on the marketing site (modules/landing/imageCard.jsx)
-const ChemicalInventoryAnalytics = lazy(() => import('../components/chemicals/chemicalAnalytics'));
 const ReleaseFormPreview = lazy(() => import('../components/deceased/register/deceasedRelease'));
 const WorkshopDashboard = lazy(() => import('../components/workshop/pages/WorkshopWorkspace'));
 const BodyIntakePreview = lazy(() => import('../components/deceased/register/deceasedIntake'));
@@ -642,11 +641,11 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
 
         {/* Chemicals - All authenticated users */}
         <Route path="chemicals" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
+          <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalManagementDashboard /></Layout>
         } />
 
         <Route path="chemicals/analytics" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalInventoryAnalytics /></Layout>
+          <Layout tenantData={tenantData} tenantSlug={slug}><ChemicalManagementDashboard /></Layout>
         } />
 
         {/* Workshop renders its own WorkshopSidebar independently — no global
