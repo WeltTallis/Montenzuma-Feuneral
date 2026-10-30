@@ -12,6 +12,16 @@ import HearseCalendar from './HearseCalendar';
 import env from '../../utils/config/env';
 import notify from '../../utils/notify';
 import Swal from 'sweetalert2';
+
+// SweetAlert must render above the drawer/modal overlays (z-index 9998–9999).
+// Without this, the confirmation dialogs appear behind the open side panel
+// and the user has to close the panel to see/interact with them.
+Swal.setDefaults({
+  willOpen: () => {
+    const container = document.querySelector('.swal2-container');
+    if (container) container.style.zIndex = '10100';
+  },
+});
 import {
   Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical,
   ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, List, Grid, X,
@@ -1563,7 +1573,7 @@ const HearseBookings = () => {
                                     {b.status === 'in_transit' && (
                                       <ActionMenuItem onClick={() => changeStatus(b, 'completed')}>{Icons.check} Mark Completed</ActionMenuItem>
                                     )}
-                                    {(b.status === 'booked' || b.status === 'pending') && (
+                                    {!['completed', 'cancelled'].includes(b.status) && (
                                       <ActionMenuItem onClick={() => changeStatus(b, 'postponed')}>{Icons.clock} Postpone</ActionMenuItem>
                                     )}
                                     {!['completed', 'cancelled'].includes(b.status) && (

@@ -214,7 +214,7 @@ export default function SettingsPage() {
         if (!parentSlug) push(localStorage.getItem('tenantSlug'));
         return [...seen];
     })();
-    let tenantSlug = slugCandidates[0] || '';
+    const [tenantSlug, setTenantSlug] = useState(slugCandidates[0] || '');
 
     const loadData = async () => {
         setLoading(true);
@@ -239,7 +239,7 @@ export default function SettingsPage() {
                 if (!slug) continue;
                 try {
                     data = await fetchAll(slug);
-                    tenantSlug = slug;
+                    setTenantSlug(slug);
                     break;
                 } catch (err) {
                     lastErr = err;
