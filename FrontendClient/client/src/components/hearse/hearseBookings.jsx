@@ -11,6 +11,7 @@ import styled, { keyframes } from 'styled-components';
 import HearseCalendar from './HearseCalendar';
 import env from '../../utils/config/env';
 import notify from '../../utils/notify';
+import Swal from 'sweetalert2';
 import {
   Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical,
   ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, List, Grid, X,
@@ -144,6 +145,56 @@ const fmtRoute = (b) => {
     return `${b.from_location} → ${b.to_location || b.destination}`;
   }
   return b?.to_location || b?.destination || 'N/A';
+};
+
+// ── Date gating helpers ─────────────────────────────────────────────────────
+// Only today's bookings may have their status changed (in_transit, completed,
+// postponed, etc.). Future bookings (tomorrow or within 3 days) may ONLY be
+// cancelled. This prevents staff from accidentally advancing a hearse's status
+// before the service date.
+
+const isSameDay = (d1, d2) => {
+  const a = new Date(d1);
+  const b = new Date(d2);
+  return a.toDateString() === b.toDateString();
+};
+
+const getBookingDate = (b) => {
+  if (!b) return null;
+  try {
+    const dates =
+      typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : (b.booking_dates || []);
+    if (Array.isArray(dates) && dates.length > 0) return dates[0];
+  } catch { /* fall through to fallback fields */ }
+  return b.booking_date || b.estimated_departure_time || b.from_timestamp || b.start_time || null;
+};
+
+const isBookingToday = (b) => {
+  const d = getBookingDate(b);
+  if (!d) return false;
+  return isSameDay(d, new Date());
+};
+
+const isBookingInFuture = (b) => {
+  const d = getBookingDate(b);
+  if (!d) return false;
+  const bookingDay = new Date(d);
+  bookingDay.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((bookingDay - today) / (1000 * 60 * 60 * 24));
+  return diffDays > 0; // any future day (tomorrow or beyond)
+};
+
+const isBookingWithin3Days = (b) => {
+  const d = getBookingDate(b);
+  if (!d) return false;
+  const bookingDay = new Date(d);
+  bookingDay.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((bookingDay - today) / (1000 * 60 * 60 * 24));
+  return diffDays > 0 && diffDays <= 3;
 };
 
 const genId = (id, plateNumber) => {
@@ -1095,7 +1146,50 @@ const HearseBookings = () => {
   const openDrawer = useCallback((b) => { setSelectedBooking(b); setDrawerOpen(true); setActionMenuId(null); }, []);
   const closeDrawer = useCallback(() => { setDrawerOpen(false); setSelectedBooking(null); }, []);
 
-  const changeStatus = useCallback(async (id, status, reason) => {
+  const changeStatus = useCallback(async (booking, status, reason) => {
+    const id = booking.booking_id || booking.id;
+
+    // ── Date gating ─────────────────────────────────────────────────────────
+    // Only today's bookings may have their status advanced (in_transit,
+    // completed, postponed, etc.). Future bookings (tomorrow or within 3
+    // days) may ONLY be cancelled.
+    const today = isBookingToday(booking);
+    const future = isBookingInFuture(booking);
+
+    if (!today && status !== 'cancelled') {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Cannot update status',
+        html: `This booking is for a future date. You can only update the status of <b>today's</b> bookings. Future bookings can only be <b>cancelled</b>.`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#1a5f7a',
+      });
+      setActionMenuId(null);
+      return;
+    }
+
+    // ── SweetAlert confirmation ────────────────────────────────────────────
+    const isCompleted = status === 'completed';
+    const confirmHtml = isCompleted
+      ? `<div style="text-align:left;"><p style="margin:0 0 0.5rem 0;"><b>Are you sure you want to mark this hearse as <span style="color:#5F0F40">Completed</span>?</b></p><p style="margin:0;color:#ef4444;font-size:0.85rem;"><b>Warning:</b> Once completed, this hearse will become <b>available and ready for booking</b> again.</p></div>`
+      : `<div style="text-align:left;"><p style="margin:0;"><b>Are you sure you want to update this hearse status to <span style="color:#1a5f7a">${STATUS_CONFIG[status]?.label || status}</span>?</b></p></div>`;
+
+    const result = await Swal.fire({
+      icon: isCompleted ? 'warning' : 'question',
+      title: isCompleted ? 'Confirm Completion' : 'Confirm Status Update',
+      html: confirmHtml,
+      showCancelButton: true,
+      confirmButtonText: 'Yes, update',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: isCompleted ? '#5F0F40' : '#1a5f7a',
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) {
+      setActionMenuId(null);
+      return;
+    }
+
     try {
       await api.updateStatus(id, status, reason);
       setBookings(p => p.map(b => String(b.booking_id ?? b.id) === String(id)
@@ -1106,6 +1200,7 @@ const HearseBookings = () => {
       }
       notify.success(`Status → ${STATUS_CONFIG[status]?.label || status}`);
       setActionMenuId(null);
+      closeDrawer();
     } catch { notify.error('Failed to update'); }
   }, [selectedBooking]);
 
@@ -1125,7 +1220,7 @@ const HearseBookings = () => {
     if (!cancelBooking) return;
     if (!cancelReason.trim()) { notify.error('Please enter a cancel reason'); return; }
     setCancelLoading(true);
-    await changeStatus(cancelBooking.booking_id || cancelBooking.id, 'cancelled', cancelReason.trim());
+    await changeStatus(cancelBooking, 'cancelled', cancelReason.trim());
     setCancelLoading(false);
     closeCancelModal();
   }, [cancelBooking, cancelReason, changeStatus, closeCancelModal]);
@@ -1463,13 +1558,13 @@ const HearseBookings = () => {
                                 {actionMenuId === bid && (
                                   <ActionMenu onClick={(e) => e.stopPropagation()}>
                                     {b.status === 'booked' && (
-                                      <ActionMenuItem onClick={() => changeStatus(bid, 'in_transit')}>{Icons.truck} Mark In Transit</ActionMenuItem>
+                                      <ActionMenuItem onClick={() => changeStatus(b, 'in_transit')}>{Icons.truck} Mark In Transit</ActionMenuItem>
                                     )}
                                     {b.status === 'in_transit' && (
-                                      <ActionMenuItem onClick={() => changeStatus(bid, 'completed')}>{Icons.check} Mark Completed</ActionMenuItem>
+                                      <ActionMenuItem onClick={() => changeStatus(b, 'completed')}>{Icons.check} Mark Completed</ActionMenuItem>
                                     )}
                                     {(b.status === 'booked' || b.status === 'pending') && (
-                                      <ActionMenuItem onClick={() => changeStatus(bid, 'postponed')}>{Icons.clock} Postpone</ActionMenuItem>
+                                      <ActionMenuItem onClick={() => changeStatus(b, 'postponed')}>{Icons.clock} Postpone</ActionMenuItem>
                                     )}
                                     {!['completed', 'cancelled'].includes(b.status) && (
                                       <ActionMenuItem onClick={() => openCancelModal(b)} style={{ color: COLORS.danger }}>
@@ -1669,12 +1764,12 @@ const HearseBookings = () => {
               {!['completed', 'cancelled'].includes(selectedBooking.status) && (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {selectedBooking.status === 'booked' && (
-                    <PrimaryButton onClick={() => { changeStatus(selectedBooking.booking_id || selectedBooking.id, 'in_transit'); closeDrawer(); }}>
+                    <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'in_transit'); }}>
                       {Icons.truck} Mark In Transit
                     </PrimaryButton>
                   )}
                   {selectedBooking.status === 'in_transit' && (
-                    <PrimaryButton onClick={() => { changeStatus(selectedBooking.booking_id || selectedBooking.id, 'completed'); closeDrawer(); }}>
+                    <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'completed'); }}>
                       {Icons.check} Mark Completed
                     </PrimaryButton>
                   )}
