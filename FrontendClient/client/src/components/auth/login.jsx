@@ -138,7 +138,6 @@ export default function LoginPage() {
             // Navigate immediately — don't use setTimeout which can cause routing issues.
             const dest = userData.role === 'driver' ? 'driver-portal' : 'deceased';
             navigate(`/${navSlug}/${dest}`, { replace: true });
-          }, 500);
         } else {
           throw new Error('No tenant information available');
         }
