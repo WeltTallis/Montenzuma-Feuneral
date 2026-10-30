@@ -61,7 +61,7 @@ export const EmployeeActions = memo(({
 
   // ─── View mode — delete/reset/close ──────────────────────────────────────
   // All actions share one row of equal cells. Icon sits above the label (the
-  // same pattern the mobile wallet action row uses) so a long Vietnamese label
+  // same pattern the mobile wallet action row uses) so a long Kenyan label
   // like "Đổi mật khẩu" still fits a third of a 320px sheet without truncation.
   const actions = [
     canDelete && onDelete

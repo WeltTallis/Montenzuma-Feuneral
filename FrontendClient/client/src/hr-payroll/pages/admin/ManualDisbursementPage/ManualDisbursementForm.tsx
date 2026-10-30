@@ -29,8 +29,8 @@ import {
 import { cn } from "@hr/lib/utils";
 import { useDisbursementFeeSchedules } from "@hr/hooks/api/useDisbursementFeeSchedules";
 import { useVerifyManualDisbursementAccount } from "@hr/hooks/api/useManualDisbursement";
-import { vietnameseIncludes } from "@hr/utils/vietnameseNormalization";
-import { stripVietnameseDiacritics } from "@hr/utils/vietnameseNormalization";
+import { textIncludes } from "@hr/utils/kenyan";
+import { stripDiacritics } from "@hr/utils/kenyan";
 
 import {
   type BankOption,
@@ -124,7 +124,7 @@ function BankCombobox({ banks, loading, value, isManualEntry, onDropdownSelect, 
         <Command
           filter={(value, search) => {
             if (!search) return 1;
-            return vietnameseIncludes(value, search) ? 1 : 0;
+            return textIncludes(value, search) ? 1 : 0;
           }}
         >
           <CommandInput aria-label="Tìm ngân hàng nhận tiền" placeholder="Tìm ngân hàng..." />
@@ -465,7 +465,7 @@ export function ManualDisbursementForm(props: Props) {
           value={state.description}
           rows={2}
           maxLength={100}
-          onChange={(e) => setField("description", stripVietnameseDiacritics(e.target.value).replace(/[^A-Za-z0-9 ]/g, ""))}
+          onChange={(e) => setField("description", stripDiacritics(e.target.value).replace(/[^A-Za-z0-9 ]/g, ""))}
           disabled={disabled}
           className="min-h-24 resize-none"
         />

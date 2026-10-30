@@ -4,7 +4,7 @@ import { Button } from '@hr/components/ui/button';
 import { UserAvatar } from '@hr/components/ui/user-avatar';
 import { Loader2 } from 'lucide-react';
 import type { NewEmployee } from '@hr/types/api/dashboard.types';
-import { formatKensynRelativeTime } from '@hr/utils/kenyan';
+import { formatKenyanRelativeTime } from '@hr/utils/kenyan';
 
 interface RecentEmployeesCardProps {
   employees: NewEmployee[];
@@ -99,7 +99,7 @@ export const RecentEmployeesCard: React.FC<RecentEmployeesCardProps> = ({
                       {employee.fullname}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {formatKensynRelativeTime(employee.created_at)}
+                      {formatKenyanRelativeTime(employee.created_at)}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {employee.created_by_name}

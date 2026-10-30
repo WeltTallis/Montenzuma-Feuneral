@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { bulkTransferService, type BulkTransferExportParams, type BulkTransferResultResponse, type BulkTransferUploadHistoriesParams, type BulkTransferUploadHistoriesResult, type AutoBulkTransferResponse, type AutoBulkTransferStatusResponse } from '@hr/services/api/bulk-transfer.service';
+import { bulkTransferService, type BulkTransferExportParams, type BulkTransferResultResponse, type BulkTransferUploadHistoriesParams, type BulkTransferUploadHistoriesResult } from '@hr/services/api/bulk-transfer.service';
 import { timesheetService } from '@hr/services/api/timesheet.service';
 import { payrollService, type PaymentHistoryExportParams } from '@hr/services/api/payroll.service';
 import { showSuccessNotification } from '@hr/utils/error-handler';
@@ -227,42 +227,6 @@ export const useExportPaymentHistories = () => {
       showSuccessNotification('Export lịch sử thanh toán thành công');
     },
     // Error handling is done globally in React Query - will display response.message from backend
-  });
-};
-
-/**
- * Hook to check if auto bulk transfer is enabled
- */
-export const useAutoBulkTransferConfig = () => {
-  return useQuery({
-    queryKey: ['auto-bulk-transfer-config'],
-    queryFn: () => bulkTransferService.getAutoBulkTransferConfig(),
-  });
-};
-
-/**
- * Hook to initiate an auto bulk transfer
- */
-export const useInitiateAutoBulkTransfer = () => {
-  return useMutation({
-    mutationFn: (params: BulkTransferExportParams) =>
-      bulkTransferService.initiateAutoBulkTransfer(params),
-  });
-};
-
-/**
- * Hook to poll auto bulk transfer status
- */
-export const useAutoBulkTransferStatus = (batchId: string | null) => {
-  return useQuery<AutoBulkTransferStatusResponse>({
-    queryKey: ['auto-bulk-transfer-status', batchId],
-    queryFn: () => bulkTransferService.getAutoBulkTransferStatus(batchId!),
-    enabled: batchId !== null,
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (data?.status === 'completed') return false;
-      return 3000;
-    },
   });
 };
 

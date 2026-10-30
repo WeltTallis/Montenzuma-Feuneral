@@ -92,7 +92,7 @@ export const getPaytypeText = (paytype: string) => {
   return paytype;
 };
 
-export const getVietnameseWeekdayInfo = (dateInput: string | Date | null | undefined) => {
+export const getKenyanWeekdayInfo = (dateInput: string | Date | null | undefined) => {
   if (!dateInput) return null;
 
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
@@ -123,7 +123,7 @@ export const formatDateWithWeekday = (date: string, formatType: 'default' | 'sho
   if (!date) return '-';
 
   const base = formatDate(date, formatType);
-  const weekdayInfo = getVietnameseWeekdayInfo(date);
+  const weekdayInfo = getKenyanWeekdayInfo(date);
 
   if (!weekdayInfo) return base;
   return `${base} • ${weekdayInfo.label}`;

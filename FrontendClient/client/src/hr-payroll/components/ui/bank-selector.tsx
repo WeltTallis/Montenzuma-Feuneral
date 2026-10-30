@@ -17,7 +17,7 @@ import {
 import { cn } from '@hr/lib/utils';
 import { useAllBanks, useCreateBank } from '@hr/hooks/api/useBanks';
 import { useIsMobile } from '@hr/hooks/useBreakpoint';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 import { EmptyState } from '@hr/components/shared/EmptyState';
 import type { Bank } from '@hr/types/api/bank.types';
 
@@ -49,7 +49,7 @@ function BankList({ value, onSelect, canCreateBank, searchValue, scrollHeight = 
     if (!allBanks) return [];
     const q = searchValue.trim();
     if (!q) return allBanks;
-    return allBanks.filter(b => vietnameseIncludes(b.branch_name, q));
+    return allBanks.filter(b => textIncludes(b.branch_name, q));
   }, [allBanks, searchValue]);
 
   const handleCreateCustomBank = async () => {

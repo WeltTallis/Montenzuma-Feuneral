@@ -2,7 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@hr/components/ui/badge";
 import { UserAvatar } from "@hr/components/ui/user-avatar";
 import { User } from "@hr/types/user";
-import { formatVietnameseDate } from "@hr/utils/vietnamese";
+import { formatKenyanDate } from "@hr/utils/kenyan";
 
 interface CreateUserColumnsProps {
   // No action handlers needed since we'll use row clicks
@@ -104,7 +104,7 @@ export const createUserColumns = (
       return (
         <div className="typography-body-medium">
           {lastLogin
-            ? formatVietnameseDate(lastLogin, "dd/MM/yyyy HH:mm")
+            ? formatKenyanDate(lastLogin, "dd/MM/yyyy HH:mm")
             : "Never logged in"}
         </div>
       );
@@ -117,7 +117,7 @@ export const createUserColumns = (
       const createdAt = row.getValue("created_at") as string;
       return (
         <div className="typography-body-medium">
-          {formatVietnameseDate(createdAt)}
+          {formatKenyanDate(createdAt)}
         </div>
       );
     },

@@ -1,6 +1,6 @@
 import { Badge } from "@hr/components/ui/badge";
 import { getStatusColor } from "@hr/utils/projectHelpers";
-import { getVietnameseProjectStatus } from "@hr/utils/vietnamese";
+import { getProjectStatus } from "@hr/utils/kenyan";
 import type { Project } from "@hr/types/api/project.types";
 import { Building2 } from "lucide-react";
 
@@ -10,7 +10,7 @@ interface ProjectHeaderProps {
 }
 
 export function ProjectHeader({ project, showName = true }: ProjectHeaderProps) {
-  const statusLabel = getVietnameseProjectStatus(project.status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled');
+  const statusLabel = getProjectStatus(project.status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled');
   const statusColor = getStatusColor(project.status);
 
   return (

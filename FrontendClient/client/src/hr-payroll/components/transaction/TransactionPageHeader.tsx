@@ -11,7 +11,6 @@ import {
   Loading01,
   Mail01,
   Plus,
-  Receipt,
   Wallet01,
   Zap,
 } from '@untitledui/icons';
@@ -35,7 +34,6 @@ interface TransactionPageHeaderProps {
   onViewSaoKeHistory: () => void;
   onExportSaoKePayroll: () => void;
   onExportSaoKeAdvance: () => void;
-  onImportOnePayFeeReport: () => void;
   isSendingSaoKe?: boolean;
   onRunWalletSettlement?: () => void;
   isRunningWalletSettlement?: boolean;
@@ -49,7 +47,6 @@ export function TransactionPageHeader({
   onViewSaoKeHistory,
   onExportSaoKePayroll,
   onExportSaoKeAdvance,
-  onImportOnePayFeeReport,
   isSendingSaoKe = false,
   onRunWalletSettlement,
   isRunningWalletSettlement = false,
@@ -113,10 +110,6 @@ export function TransactionPageHeader({
             Reconciliation
           </Button>
         </div>
-        <Button variant="outline" onClick={onImportOnePayFeeReport}>
-          <Receipt className="w-4 h-4" />
-          OnePay fees
-        </Button>
         {onSimulateSettlement && (
           <Button variant="outline" onClick={onSimulateSettlement}>
             <ClipboardCheck className="w-4 h-4" />
@@ -198,10 +191,6 @@ export function TransactionPageHeader({
             <DropdownMenuItem onClick={onViewSaoKeHistory}>
               <ClockRewind className="mr-2 h-4 w-4" />
               Reconciliation
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onImportOnePayFeeReport}>
-              <Receipt className="mr-2 h-4 w-4" />
-              OnePay fees
             </DropdownMenuItem>
             {onSimulateSettlement && (
               <DropdownMenuItem className="lg:hidden" onClick={onSimulateSettlement}>

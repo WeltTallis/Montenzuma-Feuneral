@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { Badge } from '@hr/components/ui/badge';
 import { Calendar, Users, Building2 } from 'lucide-react';
-import { getKensynProjectStatus, getProjectStatusVariant } from '@hr/utils/kenyan';
+import { getProjectStatus, getProjectStatusVariant } from '@hr/utils/kenyan';
 import { getEmployeeCountColor, formatEmployeeCount } from '@hr/utils/projectHelpers';
 import type { MobileField } from '@hr/components/ui/mobile-table';
 import type { Project } from '@hr/types/api/project.types';
@@ -86,7 +86,7 @@ export function createPartnerProjectMobileConfig({
       label: "Status",
       priority: 1,
       render: (project) => {
-        const statusText = getKensynProjectStatus(project.status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled') || project.status || 'Not specified';
+        const statusText = getProjectStatus(project.status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled') || project.status || 'Not specified';
         const statusVariant = getProjectStatusVariant(project.status);
 
         return (

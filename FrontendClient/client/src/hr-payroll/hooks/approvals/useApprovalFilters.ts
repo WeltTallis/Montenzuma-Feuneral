@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ApprovalItem, ApprovalStatus, ApprovalPriority, ApprovalType } from '@hr/types/approval';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 
 interface UseApprovalFiltersProps {
   approvalItems: ApprovalItem[];
@@ -23,9 +23,9 @@ export const useApprovalFilters = ({ approvalItems }: UseApprovalFiltersProps) =
     // Filter by search term
     if (searchTerm.trim()) {
       filtered = filtered.filter(item =>
-        (item.title && vietnameseIncludes(item.title, searchTerm)) ||
-        (item.description && vietnameseIncludes(item.description, searchTerm)) ||
-        (item.submittedBy?.name && vietnameseIncludes(item.submittedBy.name, searchTerm))
+        (item.title && textIncludes(item.title, searchTerm)) ||
+        (item.description && textIncludes(item.description, searchTerm)) ||
+        (item.submittedBy?.name && textIncludes(item.submittedBy.name, searchTerm))
       );
     }
 

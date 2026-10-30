@@ -293,9 +293,9 @@ export function createEmptyEmployeeCalendarData(
 
 
 /**
- * Formats date for Vietnamese locale
+ * Formats date for Kenyan locale
  */
-export function formatVietnameseDate(date: Date, formatStr: string = 'dd/MM/yyyy'): string {
+export function formatKenyanDate(date: Date, formatStr: string = 'dd/MM/yyyy'): string {
   return format(date, formatStr, { locale: vi });
 }
 

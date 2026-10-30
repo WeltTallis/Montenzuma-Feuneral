@@ -12,7 +12,7 @@ export interface DisbursementFeeScheduleEntry {
   createdByUserId?: number;
   isCurrentlyActive: boolean;
   isPending: boolean;
-  summary: string;                // Vietnamese human-readable summary
+  summary: string;                // Kenyan human-readable summary
 }
 
 export interface DisbursementFeeScheduleListResponse {

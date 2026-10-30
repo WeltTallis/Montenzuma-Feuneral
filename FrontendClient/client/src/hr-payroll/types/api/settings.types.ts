@@ -6,7 +6,7 @@ export interface Setting {
   updated_at: string;
   /**
    * Masked is true when the backend withheld the value because the key holds a
-   * sealed secret (e.g. `zalo.credentials`); Configured then reports whether a
+   * sealed secret; Configured then reports whether a
    * value is stored at all — enough to render connection status without ever
    * shipping the credential to the browser.
    */

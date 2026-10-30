@@ -11,7 +11,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@hr/components/ui/popover';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 
 export interface MultiSearchableDropdownOption {
   value: string;
@@ -97,7 +97,7 @@ export function MultiSearchableDropdown({
           shouldFilter
           filter={(itemValue, search) => {
             if (!search) return 1;
-            return vietnameseIncludes(itemValue, search) ? 1 : 0;
+            return textIncludes(itemValue, search) ? 1 : 0;
           }}
         >
           <CommandInput placeholder={searchPlaceholder} />

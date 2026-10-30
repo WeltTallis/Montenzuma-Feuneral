@@ -1,5 +1,5 @@
 // Payrate key discipline, mirroring the backend (domain/payrate.go
-// NormalizedKeys + pkg/utils/text_normalizer.NormalizeVietnamese):
+// NormalizedKeys + pkg/utils/text_normalizer.NormalizeKenyan):
 // - Storage/display keys are trimmed and NFC-composed, diacritics preserved —
 //   they double as position display names and lookup paths.
 // - Duplicate detection folds case, diacritics and Đ/đ away exactly like the

@@ -1,82 +1,60 @@
-import { stripVietnameseDiacritics } from '@hr/utils/vietnameseNormalization';
+import { stripDiacritics } from '@hr/utils/kenyan';
 
-// Validation utilities for Vietnamese business requirements
+// Validation helpers for Kenyan HR forms.
 
-// CCCD (Citizen ID) validation - 12 digits
-export const validateCCCD = (cccd: string): { valid: boolean; error?: string } => {
-  const cleanCCCD = cccd.replace(/\s/g, '');
+export const validateKenyanNationalId = (idNumber: string): { valid: boolean; error?: string } => {
+  const cleanID = idNumber.replace(/\s/g, '');
 
-  if (!cleanCCCD) {
-    return { valid: false, error: 'CCCD là bắt buộc' };
+  if (!cleanID) {
+    return { valid: false, error: 'National ID is required.' };
   }
 
-  if (!/^\d{12}$/.test(cleanCCCD)) {
-    return { valid: false, error: 'CCCD phải có đúng 12 chữ số' };
-  }
-
-  // Validate province code (first 3 digits)
-  const provinceCode = parseInt(cleanCCCD.substring(0, 3));
-  const validProvinceCodes = [
-    1, 2, 4, 6, 8, 10, 11, 12, 14, 15, 17, 19, 20, 22, 24, 25, 26, 27,
-    30, 31, 33, 34, 35, 36, 37, 38, 40, 42, 44, 45, 46, 48, 49, 51, 52,
-    54, 56, 58, 60, 62, 64, 66, 67, 68, 70, 72, 74, 75, 77, 79, 80, 82,
-    83, 84, 86, 87, 89, 91, 92, 93, 94, 95, 96
-  ];
-
-  if (!validProvinceCodes.includes(provinceCode)) {
-    return { valid: false, error: 'Mã tỉnh/thành phố không hợp lệ' };
+  if (!/^\d{7,8}$/.test(cleanID)) {
+    return { valid: false, error: 'Enter a 7- or 8-digit Kenyan National ID.' };
   }
 
   return { valid: true };
 };
 
-// Vietnamese phone number validation
 export const validatePhoneNumber = (phone: string): { valid: boolean; error?: string } => {
   const cleanPhone = phone.replace(/[\s.-]/g, '');
 
   if (!cleanPhone) {
-    return { valid: false, error: 'Số điện thoại là bắt buộc' };
+    return { valid: false, error: 'Mobile number is required.' };
   }
 
-  // Vietnamese phone patterns
-  const patterns = [
-    /^(84|\+84|0)(3[2-9]|5[689]|7[06-9]|8[1-689]|9[0-46-9])\d{7}$/, // Mobile
-    /^(84|\+84|0)(2[0-9]{1,2})\d{7,8}$/ // Landline
-  ];
-
-  const isValid = patterns.some(pattern => pattern.test(cleanPhone));
+  const isValid = /^(?:\+?254|0)(?:7|1)\d{8}$/.test(cleanPhone);
 
   if (!isValid) {
-    return { valid: false, error: 'Số điện thoại không hợp lệ' };
+    return { valid: false, error: 'Enter a valid Kenyan mobile number, such as 0712345678 or +254712345678.' };
   }
 
   return { valid: true };
 };
 
 /**
- * A 12-digit value in a phone field is a CCCD (citizen ID), never a mobile
- * number: 12 digits is longer than any Vietnamese mobile, even in 84 form.
- * The phone column is often swapped with the CCCD column in partner sheets.
+ * Kenyan National ID numbers are 7-8 digits; mobile numbers use 10 local digits
+ * or the +254 country code.
  */
-export const isCCCDValue = (value: string): boolean =>
-  /^\d{12}$/.test(value.replace(/[\s.-]/g, ''));
+export const isKenyanNationalIDValue = (value: string): boolean =>
+  /^\d{7,8}$/.test(value.replace(/[\s.-]/g, ''));
 
-/** Guards the phone field against a CCCD typed/imported into it. */
-export const validateMobileNotCCCD = (mobile: string): { valid: boolean; error?: string } => {
-  if (mobile && isCCCDValue(mobile)) {
-    return { valid: false, error: 'Số điện thoại không được là số CCCD (12 chữ số)' };
+/** Guards the mobile field against a National ID typed into it. */
+export const validateMobileNotNationalID = (mobile: string): { valid: boolean; error?: string } => {
+  if (mobile && isKenyanNationalIDValue(mobile)) {
+    return { valid: false, error: 'Enter a mobile number, not a National ID.' };
   }
   return { valid: true };
 };
 export const validateEmail = (email: string): { valid: boolean; error?: string } => {
   if (!email) {
-    return { valid: false, error: 'Email là bắt buộc' };
+    return { valid: false, error: 'Email is required.' };
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!emailRegex.test(email)) {
-    return { valid: false, error: 'Email không hợp lệ' };
+    return { valid: false, error: 'Enter a valid email address.' };
   }
 
   return { valid: true };
@@ -85,14 +63,14 @@ export const validateEmail = (email: string): { valid: boolean; error?: string }
 // Date validation (DD/MM/YYYY format)
 export const validateDate = (dateStr: string): { valid: boolean; error?: string } => {
   if (!dateStr) {
-    return { valid: false, error: 'Date là bắt buộc' };
+    return { valid: false, error: 'Date is required.' };
   }
 
   const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
   const match = dateStr.match(dateRegex);
 
   if (!match) {
-    return { valid: false, error: 'Định dạng ngày phải là DD/MM/YYYY' };
+    return { valid: false, error: 'Date must use the DD/MM/YYYY format.' };
   }
 
   const [, day, month, year] = match;
@@ -103,7 +81,7 @@ export const validateDate = (dateStr: string): { valid: boolean; error?: string 
     date.getMonth() !== parseInt(month) - 1 ||
     date.getFullYear() !== parseInt(year)
   ) {
-    return { valid: false, error: 'Date không hợp lệ' };
+    return { valid: false, error: 'Enter a valid date.' };
   }
 
   return { valid: true };
@@ -116,12 +94,12 @@ export const validateDateRange = (
 ): { valid: boolean; error?: string } => {
   const startValidation = validateDate(startDate);
   if (!startValidation.valid) {
-    return { valid: false, error: `Date bắt đầu: ${startValidation.error}` };
+    return { valid: false, error: `Start date: ${startValidation.error}` };
   }
 
   const endValidation = validateDate(endDate);
   if (!endValidation.valid) {
-    return { valid: false, error: `Date kết thúc: ${endValidation.error}` };
+    return { valid: false, error: `End date: ${endValidation.error}` };
   }
 
   const [startDay, startMonth, startYear] = startDate.split('/');
@@ -131,7 +109,7 @@ export const validateDateRange = (
   const end = new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay));
 
   if (end <= start) {
-    return { valid: false, error: 'Date kết thúc phải sau ngày bắt đầu' };
+    return { valid: false, error: 'End date must be after the start date.' };
   }
 
   return { valid: true };
@@ -140,15 +118,15 @@ export const validateDateRange = (
 // Working hours validation (0-24)
 export const validateWorkingHours = (hours: number): { valid: boolean; error?: string } => {
   if (hours === undefined || hours === null) {
-    return { valid: false, error: 'Số giờ là bắt buộc' };
+    return { valid: false, error: 'Hours are required.' };
   }
 
   if (isNaN(hours)) {
-    return { valid: false, error: 'Số giờ phải là số' };
+    return { valid: false, error: 'Hours must be a number.' };
   }
 
   if (hours < 0 || hours > 24) {
-    return { valid: false, error: 'Số giờ phải từ 0 đến 24' };
+    return { valid: false, error: 'Hours must be between 0 and 24.' };
   }
 
   return { valid: true };
@@ -159,15 +137,15 @@ export const validateCurrency = (amount: number | string): { valid: boolean; err
   const numAmount = typeof amount === 'string' ? parseInt(amount.replace(/[.,]/g, '')) : amount;
 
   if (isNaN(numAmount)) {
-    return { valid: false, error: 'Số tiền không hợp lệ' };
+    return { valid: false, error: 'Enter a valid amount.' };
   }
 
   if (numAmount < 0) {
-    return { valid: false, error: 'Số tiền không thể âm' };
+    return { valid: false, error: 'Amount cannot be negative.' };
   }
 
   if (!Number.isInteger(numAmount)) {
-    return { valid: false, error: 'Số tiền phải là số nguyên (₫)' };
+    return { valid: false, error: 'Amount must be a whole number (VND).' };
   }
 
   return { valid: true };
@@ -177,7 +155,7 @@ export const validateCurrency = (amount: number | string): { valid: boolean; err
 import { formatCurrency as _formatCurrency } from '@hr/utils/formatters';
 export { _formatCurrency as formatCurrency };
 
-// Format currency in full form with the ₫ symbol
+// Format legacy payroll amounts in VND.
 export const formatCurrencyShort = (amount: number): string => {
   return _formatCurrency(amount);
 };
@@ -185,13 +163,13 @@ export const formatCurrencyShort = (amount: number): string => {
 // Project code validation (PRJ-YYYY-XXX format)
 export const validateProjectCode = (code: string): { valid: boolean; error?: string } => {
   if (!code) {
-    return { valid: false, error: 'Mã dự án là bắt buộc' };
+    return { valid: false, error: 'Project code is required.' };
   }
 
   const codeRegex = /^PRJ-\d{4}-\d{3}$/;
 
   if (!codeRegex.test(code)) {
-    return { valid: false, error: 'Mã dự án phải theo định dạng PRJ-YYYY-XXX' };
+    return { valid: false, error: 'Project code must use the PRJ-YYYY-XXX format.' };
   }
 
   return { valid: true };
@@ -207,27 +185,27 @@ export const validatePassword = (password: string): {
   let strength: 'weak' | 'medium' | 'strong' = 'weak';
 
   if (!password) {
-    return { valid: false, strength, errors: ['Mật khẩu là bắt buộc'] };
+    return { valid: false, strength, errors: ['Password is required.'] };
   }
 
   if (password.length < 8) {
-    errors.push('Mật khẩu phải có ít nhất 8 ký tự');
+    errors.push('Password must contain at least 8 characters.');
   }
 
   if (!/[A-Z]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 chữ hoa');
+    errors.push('Password must contain at least one uppercase letter.');
   }
 
   if (!/[a-z]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 chữ thường');
+    errors.push('Password must contain at least one lowercase letter.');
   }
 
   if (!/[0-9]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 số');
+    errors.push('Password must contain at least one number.');
   }
 
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 ký tự đặc biệt');
+    errors.push('Password must contain at least one special character.');
   }
 
   // Calculate strength
@@ -258,20 +236,20 @@ export const validatePassword = (password: string): {
   };
 };
 
-// Format Vietnamese name to title case
+// Format a name to title case.
 // Removes numbers, special characters, normalizes whitespace, and capitalizes first letter of each word
-export const formatVietnameseName = (name: string): string => {
+export const formatKenyanName = (name: string): string => {
   if (!name) {
     return '';
   }
 
-  // Helper function to check if a character is a letter (including Vietnamese characters)
+  // Keep Unicode letters used in Kenyan names.
   const isLetter = (char: string): boolean => {
     const code = char.charCodeAt(0);
     return (
       (code >= 65 && code <= 90) ||   // A-Z
       (code >= 97 && code <= 122) ||  // a-z
-      code > 127                       // Vietnamese and other Unicode letters
+      code > 127                       // Unicode letters
     );
   };
 
@@ -301,38 +279,37 @@ export const formatVietnameseName = (name: string): string => {
   return titleCased.join(' ');
 };
 
-// Full name validation (letters and spaces only, including Vietnamese characters)
+// Full name validation (letters and spaces).
 export const validateFullname = (fullname: string): { valid: boolean; error?: string } => {
   const trimmedName = fullname?.trim();
 
   if (!trimmedName) {
-    return { valid: false, error: 'Họ tên là bắt buộc' };
+    return { valid: false, error: 'Full name is required.' };
   }
 
-  // Normalize Vietnamese characters (NFD) and remove diacritics to get base characters
-  // Then check if base characters are only letters and spaces
-  const normalized = stripVietnameseDiacritics(trimmedName);
+  // Normalize accented characters before checking the name.
+  const normalized = stripDiacritics(trimmedName);
 
   const nameRegex = /^[a-zA-Z\s]+$/;
 
   if (!nameRegex.test(normalized)) {
-    return { valid: false, error: 'Họ tên chỉ được chứa chữ cái và khoảng trắng' };
+    return { valid: false, error: 'Full name can contain letters and spaces only.' };
   }
 
   return { valid: true };
 };
 
-// Bank account validation (Vietnamese bank account)
+// Bank account validation.
 export const validateBankAccount = (accountNumber: string): { valid: boolean; error?: string } => {
   const cleanAccount = accountNumber.replace(/\s/g, '');
 
   if (!cleanAccount) {
-    return { valid: false, error: 'Số tài khoản là bắt buộc' };
+    return { valid: false, error: 'Bank account number is required.' };
   }
 
-  // Vietnamese bank accounts typically have 9-14 digits
+  // Kenyan bank account numbers commonly contain 9-14 digits.
   if (!/^\d{9,14}$/.test(cleanAccount)) {
-    return { valid: false, error: 'Số tài khoản phải có từ 9 đến 14 chữ số' };
+    return { valid: false, error: 'Bank account number must contain 9-14 digits.' };
   }
 
   return { valid: true };

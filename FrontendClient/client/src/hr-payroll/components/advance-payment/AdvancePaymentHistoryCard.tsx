@@ -12,7 +12,7 @@ import {
 } from "@untitledui/icons";
 import { Skeleton } from "@hr/components/ui/skeleton";
 import type { AdvancePaymentHistoryItem } from "@hr/types/api/advance-payment.types";
-import { getVietnameseAdvancePaymentStatus } from "@hr/utils/advancePaymentHelpers";
+import { getKenyanAdvancePaymentStatus } from "@hr/utils/advancePaymentHelpers";
 import { formatCurrency } from "@hr/utils/formatters";
 import { cn } from "@hr/lib/utils";
 
@@ -200,7 +200,7 @@ function HistoryItem({
                 aria-hidden="true"
               />
               <span className="employee-type-body truncate text-[var(--employee-text)]">
-                {getVietnameseAdvancePaymentStatus(item.status)}
+                {getKenyanAdvancePaymentStatus(item.status)}
               </span>
             </span>
             <span className="employee-type-pill mt-0.5 block tabular-nums text-[var(--employee-text-secondary)]">

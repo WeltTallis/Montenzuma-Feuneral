@@ -50,7 +50,7 @@ import {
   getCheckInGeofenceInstruction,
   type CheckInGeofenceGuidance,
 } from "@hr/utils/checkInGeofenceGuidance";
-import { formatVnDayMonth, formatVnTime, parseEpochMs } from "@hr/utils/vn-time";
+import { formatKenyaDayMonth, formatKenyaTime, parseEpochMs } from "@hr/utils/ke-time";
 import type { AttendanceScheduleWindow, CheckInTarget } from "@hr/types/api/auth.types";
 import {
   EmployeeAttendanceActionDock,
@@ -62,9 +62,9 @@ const EmployeeLocationMap = lazy(() =>
 );
 
 // Server instants are RFC 3339 with a +07:00 offset; render them in the
-// business timezone via vn-time so the display does not follow the device.
+// business timezone via ke-time so the display does not follow the device.
 function safeFormatTime(time: string | undefined | null, fallback = "--:--"): string {
-  return formatVnTime(time) || fallback;
+  return formatKenyaTime(time) || fallback;
 }
 
 interface EmployeeCheckInCardProps {
@@ -532,7 +532,7 @@ export function EmployeeCheckInCard({
   };
 
   const showAttendanceConfirmation = (action: "check_in" | "check_out") => {
-    setAttendanceConfirmation({ action, time: formatVnTime(new Date().toISOString()) });
+    setAttendanceConfirmation({ action, time: formatKenyaTime(new Date().toISOString()) });
     if (attendanceConfirmationTimer.current) clearTimeout(attendanceConfirmationTimer.current);
     attendanceConfirmationTimer.current = setTimeout(() => setAttendanceConfirmation(null), 3500);
   };
@@ -735,10 +735,10 @@ export function EmployeeCheckInCard({
     }, 60_000);
     return () => clearInterval(id);
   }, []);
-  // Window gate. The server sends absolute instants (RFC 3339 with a +07:00
+  // Window gate. The server sends absolute instants (RFC 3339
   // offset), so we compare epoch milliseconds directly — this is independent of
   // the device timezone. A worker whose phone is set to UTC must still be able
-  // to check in to a 20:00 Vietnam shift at 20:17 Vietnam time. The previous
+  // to check in to a scheduled shift at the configured time. The previous
   // implementation parsed HH:mm strings and compared getHours() (device-local),
   // which mis-gated anyone whose device timezone was not Africa/Nairobi.
   //
@@ -819,7 +819,7 @@ export function EmployeeCheckInCard({
   // card — no check-in/out actions, no geofence reference.
   if (isPendingActivation) {
     const effectiveLabel = pendingEffectiveFrom
-      ? formatVnDayMonth(pendingEffectiveFrom)
+      ? formatKenyaDayMonth(pendingEffectiveFrom)
       : "the 1st of next month";
     return (
       <>

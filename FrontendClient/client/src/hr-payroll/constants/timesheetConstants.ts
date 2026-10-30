@@ -9,8 +9,7 @@
 export const PREVIEW_DEBOUNCE_MS = 500;
 
 /**
- * Preferred day type variants (Vietnamese)
- * Used when auto-selecting default day types
+ * Legacy day-type values returned by the existing API.
  */
 export const PREFERRED_DAY_TYPES = ['ngay thuong', 'ngày thường'] as const;
 

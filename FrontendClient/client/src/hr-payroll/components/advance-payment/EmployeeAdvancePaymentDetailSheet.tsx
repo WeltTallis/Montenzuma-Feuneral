@@ -9,7 +9,7 @@ import {
 import { Badge } from "@hr/components/ui/badge";
 import { Wallet, X } from "lucide-react";
 import {
-  getVietnameseAdvancePaymentStatus,
+  getKenyanAdvancePaymentStatus,
   getAdvancePaymentStatusColor,
 } from "@hr/utils/advancePaymentHelpers";
 import { formatCurrency } from "@hr/utils/formatters";
@@ -324,7 +324,7 @@ function RequestCard({ request: req }: { request: AdvancePaymentListItem }) {
             {formatCurrency(req.requestAmount)}
           </span>
           <Badge variant="outline" className={`${statusColor} text-xs px-1.5 py-0 h-4 shrink-0`}>
-            {getVietnameseAdvancePaymentStatus(req.status)}
+            {getKenyanAdvancePaymentStatus(req.status)}
           </Badge>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">

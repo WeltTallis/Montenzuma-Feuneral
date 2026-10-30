@@ -19,7 +19,7 @@ import {
   type AttendanceIssueDetail,
 } from "@hr/utils/attendanceHelpers";
 import { formatDate } from "@hr/utils/formatters";
-import { formatVnTime } from "@hr/utils/vn-time";
+import { formatKenyaTime } from "@hr/utils/ke-time";
 import { cn } from "@hr/lib/utils";
 import { Skeleton } from "@hr/components/ui/skeleton";
 import { EmployeeDataError } from "./EmployeeDataError";
@@ -27,9 +27,9 @@ import { EmployeeDataError } from "./EmployeeDataError";
 const ATTENDANCE_PREVIEW_LIMIT = 3;
 
 // Server instants are RFC 3339 with a +07:00 offset; render them in the
-// business timezone via vn-time so the display does not follow the device.
+// business timezone via ke-time so the display does not follow the device.
 function formatTime(time: string | undefined | null, fallback = "--:--"): string {
-  return formatVnTime(time) || fallback;
+  return formatKenyaTime(time) || fallback;
 }
 
 interface EmployeeAttendanceHistoryCardProps {

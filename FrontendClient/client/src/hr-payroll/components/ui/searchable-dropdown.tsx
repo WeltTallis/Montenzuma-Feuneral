@@ -5,7 +5,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
 import { useIsMobile } from '@hr/hooks/useBreakpoint';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 
 interface SearchableDropdownOption {
   value: string;
@@ -142,7 +142,7 @@ export const SearchableDropdown = ({
       className={cn(mobile && 'min-h-0 flex-1 rounded-none')}
       filter={(optionValue, search) => {
         if (!search) return 1;
-        return vietnameseIncludes(optionValue, search) ? 1 : 0;
+        return textIncludes(optionValue, search) ? 1 : 0;
       }}
     >
       <CommandInput placeholder={searchPlaceholder} />

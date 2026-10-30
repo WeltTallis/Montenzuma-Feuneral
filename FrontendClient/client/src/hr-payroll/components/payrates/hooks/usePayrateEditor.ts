@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { PayrateStructure, DayType, ValidationResult } from '../types';
 import { createDefaultPayrateStructure, updateRateValue } from '../types';
-import { parseKensynCurrency } from '../utils/rateOperations';
+import { parseKenyanCurrency } from '../utils/rateOperations';
 
 export function usePayrateEditor(
   rates: PayrateStructure,
@@ -27,7 +27,7 @@ export function usePayrateEditor(
   const handleRateChange = (position: string, dayType: DayType, hourType: string, value: string) => {
     if (readOnly) return;
     
-    const numValue = parseKensynCurrency(value);
+    const numValue = parseKenyanCurrency(value);
     const newRates = updateRateValue(displayRates, position, dayType, hourType, numValue);
     onChange(newRates);
   };

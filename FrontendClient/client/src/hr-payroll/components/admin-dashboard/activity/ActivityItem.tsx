@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RecentActivity } from '@hr/types/api/dashboard.types';
-import { formatKensynRelativeTime } from '@hr/utils/kenyan';
+import { formatKenyanRelativeTime } from '@hr/utils/kenyan';
 import { Activity } from 'lucide-react';
 
 interface ActivityItemProps {
@@ -25,7 +25,7 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isLast = f
           {activity.message}
         </p>
         <span className="text-xs text-muted-foreground mt-0.5 block">
-          {formatKensynRelativeTime(activity.created_at)}
+          {formatKenyanRelativeTime(activity.created_at)}
         </span>
       </div>
     </div>

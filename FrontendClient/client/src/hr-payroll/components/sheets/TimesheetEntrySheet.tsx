@@ -16,7 +16,7 @@ import type { ModalConfig } from '@hr/types/modal-config.types';
 import { useMultiTimesheetFormState } from './timesheet-entry/hooks/useMultiTimesheetFormState';
 import { MultiEntryTable } from './timesheet-entry/components/MultiEntryTable';
 import { getDefaultDateRange } from '@hr/utils/date-range.utils';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 import { DateRangePicker } from '@hr/components/ui/date-range-picker';
 import { SheetFooter } from '@hr/components/shared/SheetFooter';
 import { ConfirmDialog } from '@hr/components/ui/confirm-dialog';
@@ -459,7 +459,7 @@ function TimesheetEntrySheetComponent({
                 shouldFilter={true}
                 filter={(value, search) => {
                   if (!search) return 1;
-                  return vietnameseIncludes(value, search) ? 1 : 0;
+                  return textIncludes(value, search) ? 1 : 0;
                 }}
               >
                 <CommandInput placeholder="Tên hoặc mã dự án" className="border-0 focus:ring-0" />
@@ -509,7 +509,7 @@ function TimesheetEntrySheetComponent({
                 shouldFilter={true}
                 filter={(value, search) => {
                   if (!search) return 1;
-                  return vietnameseIncludes(value, search) ? 1 : 0;
+                  return textIncludes(value, search) ? 1 : 0;
                 }}
               >
                 <CommandInput placeholder="Tên hoặc CCCD" className="border-0 focus:ring-0" />

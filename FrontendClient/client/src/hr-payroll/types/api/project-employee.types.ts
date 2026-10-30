@@ -357,7 +357,7 @@ export interface PendingScheduleChangesResponse {
   message: string;
 }
 
-// Vietnamese translations
+// Kenyan translations
 export const VIETNAMESE_ASSIGNMENT_LABELS = {
   statuses: {
     active: "Active",

@@ -16,7 +16,7 @@ import { useDisbursementSettings } from "@hr/hooks/useDisbursementSettings";
 import {
   WALLET_BALANCE_REFETCH_INTERVAL_MS,
 } from "@hr/lib/cache/queryCacheTimes";
-import { formatVietnameseDateTime } from "@hr/utils/vietnamese";
+import { formatKenyanDateTime } from "@hr/utils/kenyan";
 import type { WalletBalance } from "@hr/types/api/wallet.types";
 
 interface WalletBalanceCardProps {
@@ -267,7 +267,7 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
                   <div className="min-w-0 leading-tight">
                     {walletBalance?.as_of && (
                       <p className="text-xs tabular-nums tracking-wide text-white/55">
-                        Updated {formatVietnameseDateTime(walletBalance.as_of)}
+                        Updated {formatKenyanDateTime(walletBalance.as_of)}
                       </p>
                     )}
                     <p className={cn("flex items-baseline gap-2", walletBalance?.as_of && "mt-1")}>

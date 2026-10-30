@@ -18,7 +18,7 @@ import { useActiveProjectEmployees } from "@hr/hooks/api/useProjectEmployees";
 import { useProject } from "@hr/hooks/api/useProjects";
 import { useAuth } from "@hr/contexts/AuthContext";
 import { canEditTimesheet } from "@hr/lib/permissions";
-import { vietnameseEquals } from "@hr/utils/vietnameseNormalization";
+import { textEquals } from "@hr/utils/kenyan";
 import { getErrorMessage } from "@hr/utils/error-handler";
 import {
   calculateTimesheetPreviewAmount,
@@ -130,7 +130,7 @@ export function useTimesheetEntryForm({
 
     if (existingEntry?.hour_type) {
       const existsInConfig = Array.from(hourTypesSet).some((ht) =>
-        vietnameseEquals(ht, existingEntry.hour_type!),
+        textEquals(ht, existingEntry.hour_type!),
       );
       if (!existsInConfig) hourTypesSet.add(existingEntry.hour_type);
     }
@@ -141,7 +141,7 @@ export function useTimesheetEntryForm({
   const isHourTypeValid = useMemo(() => {
     if (!formData.hourType) return false;
     if (availableHourTypes.length === 0) return false;
-    return availableHourTypes.some((ht) => vietnameseEquals(ht, formData.hourType));
+    return availableHourTypes.some((ht) => textEquals(ht, formData.hourType));
   }, [formData.hourType, availableHourTypes]);
 
   const dateValidation = useMemo(() => {
@@ -167,7 +167,7 @@ export function useTimesheetEntryForm({
     if (isOpen) {
       if (existingEntry) {
         const matchedHourType = availableHourTypes.find((ht) =>
-          vietnameseEquals(ht, existingEntry.hour_type),
+          textEquals(ht, existingEntry.hour_type),
         );
         setFormData({
           hoursWorked: existingEntry.hours_worked,

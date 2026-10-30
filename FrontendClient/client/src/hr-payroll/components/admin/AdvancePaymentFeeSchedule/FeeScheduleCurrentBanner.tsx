@@ -20,7 +20,7 @@ import {
   describeEntryFragments,
   formatActiveRange,
   formatDaysFromNow,
-  formatKensynDate,
+  formatKenyanDate,
   isLikelyBootstrap,
   type RuleFragment,
 } from "./rule-formatters";
@@ -201,7 +201,7 @@ const UpcomingCard = ({
       <p className="text-xs text-muted-foreground mt-2">
         Will replace current configuration from{" "}
         <strong className="font-medium text-foreground/80">
-          {formatKensynDate(entry.effectiveDate)}
+          {formatKenyanDate(entry.effectiveDate)}
         </strong>{" "}
         ({formatDaysFromNow(days)})
       </p>
@@ -227,7 +227,7 @@ const UpcomingCard = ({
                 >
                   <span className="truncate">{e.summary}</span>
                   <span className="shrink-0">
-                    {formatKensynDate(e.effectiveDate)}
+                    {formatKenyanDate(e.effectiveDate)}
                   </span>
                 </li>
               ))}
@@ -269,7 +269,7 @@ const HelpPopover = () => (
     </PopoverTrigger>
     <PopoverContent className="w-80 max-w-[calc(100vw-2rem)]" align="end">
       <div className="space-y-2 text-xs leading-relaxed">
-        <p className="font-semibold text-sm">Kensyn advance payment fee configuration</p>
+        <p className="font-semibold text-sm">Kenyan advance payment fee configuration</p>
         <p>
           Each configuration applies from the effective date until a new
           configuration replaces it. Past and active configurations cannot be

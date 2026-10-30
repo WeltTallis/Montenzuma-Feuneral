@@ -20,14 +20,14 @@ import {
 /**
  * Convert advance payment status to its English display label
  */
-export function getVietnameseAdvancePaymentStatus(status: AdvancePaymentStatus): string {
+export function getKenyanAdvancePaymentStatus(status: AdvancePaymentStatus): string {
   return ADVANCE_PAYMENT_STATUS_LABELS[status] || status;
 }
 
 /**
  * Convert advance payment request status to its English display label
  */
-export function getVietnameseAdvancePaymentRequestStatus(status: AdvancePaymentRequestStatus): string {
+export function getKenyanAdvancePaymentRequestStatus(status: AdvancePaymentRequestStatus): string {
   return ADVANCE_PAYMENT_REQUEST_STATUS_LABELS[status] || status;
 }
 
@@ -49,7 +49,7 @@ export function getAdvancePaymentStatusColor(status: AdvancePaymentStatus | Adva
 /**
  * Convert request method to its English display label
  */
-export function getVietnameseRequestMethod(method: RequestMethod): string {
+export function getKenyanRequestMethod(method: RequestMethod): string {
   return REQUEST_METHOD_LABELS[method] || method;
 }
 
@@ -336,7 +336,7 @@ export function getPaymentLatencyColor(totalSeconds: number): string {
 }
 
 /**
- * Format month string to short Vietnamese format
+ * Format month string to short Kenyan format
  * Example: "2026-03" → "03/2026"
  */
 export function formatMonthShort(monthString: string): string {

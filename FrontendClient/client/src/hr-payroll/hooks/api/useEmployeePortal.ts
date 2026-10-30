@@ -41,7 +41,7 @@ export function useUpdateEmployeeProfile() {
       employeePortalService.updateMyProfile(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EMPLOYEE_QUERY_KEYS.profile });
-      showSuccessNotification('Cập nhật thông tin thành công');
+      showSuccessNotification('Profile updated successfully');
     },
   });
 }
@@ -54,7 +54,7 @@ export function useUpdateEmployeePassword() {
     mutationFn: (data: ChangePasswordData) =>
       employeePortalService.updateMyPassword(data),
     onSuccess: () => {
-      showSuccessNotification('Đổi mật khẩu thành công');
+      showSuccessNotification('Password updated successfully');
     },
   });
 }

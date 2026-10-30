@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 // authoritative); only glyph + token vocabulary changes here.
 import {
   Activity,
-  Bank,
   Bell01,
   BookOpen01,
   Briefcase01,
@@ -80,7 +79,6 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
   { title: "Salary advances", icon: CoinsHand, path: "/admin/advance-payments", group: "management" },
   { title: "Payment history", icon: Receipt, path: "/admin/payment-history", group: "finance" },
   { title: "Ledger", icon: BookOpen01, path: "/admin/ledger", group: "finance" },
-  { title: "Loans", icon: Bank, path: "/admin/loans", group: "finance" },
   { title: "API health", icon: Activity, path: "/admin/system-health", group: "system" },
   { title: "Scheduled jobs", icon: Clock, path: "/admin/cron-health", group: "system" },
   { title: "Audit log", icon: Clipboard, path: "/admin/audit-log", group: "system" },

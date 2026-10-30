@@ -2,7 +2,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { Check, DotsHorizontal, MarkerPin01, X, Zap } from "@untitledui/icons";
 import { formatCurrency } from "@hr/utils/formatters";
-import { formatVnTime } from "@hr/utils/vn-time";
+import { formatKenyaTime } from "@hr/utils/ke-time";
 import type { AdminAttendanceResponse } from "@hr/types/api/attendance.types";
 import {
   DropdownMenu,
@@ -140,7 +140,7 @@ export function getAdminAttendanceColumns(actions?: AttendanceRowActions): Colum
         try {
           return (
             <div>
-              <div className="text-xs font-medium text-fg-secondary">{formatVnTime(row.original.check_in_time) || "-"}</div>
+              <div className="text-xs font-medium text-fg-secondary">{formatKenyaTime(row.original.check_in_time) || "-"}</div>
               <div className="text-xs text-muted-foreground truncate max-w-[120px]">{row.original.check_in_gate || "Not specified"}</div>
             </div>
           );
@@ -158,7 +158,7 @@ export function getAdminAttendanceColumns(actions?: AttendanceRowActions): Colum
         try {
           return (
             <div>
-              <div className="text-xs font-medium text-fg-secondary">{formatVnTime(row.original.check_out_time) || "-"}</div>
+              <div className="text-xs font-medium text-fg-secondary">{formatKenyaTime(row.original.check_out_time) || "-"}</div>
               <div className="text-xs text-muted-foreground truncate max-w-[120px]">{row.original.check_out_gate || "Not specified"}</div>
             </div>
           );
@@ -277,12 +277,12 @@ export const attendanceMobileFields = [
   {
     key: "check_in_time",
     label: "Check-in",
-    render: (row: AdminAttendanceResponse) => row.check_in_time ? formatVnTime(row.check_in_time) || "-" : "-"
+    render: (row: AdminAttendanceResponse) => row.check_in_time ? formatKenyaTime(row.check_in_time) || "-" : "-"
   },
   {
     key: "check_out_time",
     label: "Check-out",
-    render: (row: AdminAttendanceResponse) => row.check_out_time ? formatVnTime(row.check_out_time) || "-" : "-"
+    render: (row: AdminAttendanceResponse) => row.check_out_time ? formatKenyaTime(row.check_out_time) || "-" : "-"
   },
   {
     key: "earning_amount",

@@ -65,7 +65,7 @@ export interface Employee {
    * - `unverified`: OnePay unreachable / timed out (not shown in warning list)
    */
   bank_account_status?: "valid" | "invalid" | "unverified";
-  /** Vietnamese human-readable reason, set only when status === "invalid". */
+  /** Kenyan human-readable reason, set only when status === "invalid". */
   bank_account_invalid_reason?: string | null;
   /** RFC3339 timestamp of the last OnePay validation. */
   bank_account_validated_at?: string | null;
@@ -546,7 +546,7 @@ export interface MobileBackfillResult {
   errors: MobileBackfillRowError[];
 }
 
-// Vietnamese translations
+// Kenyan translations
 export const VIETNAMESE_EMPLOYEE_LABELS = {
   statuses: {
     active: "Active",

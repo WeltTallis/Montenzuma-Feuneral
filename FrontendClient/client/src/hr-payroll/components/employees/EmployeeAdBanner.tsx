@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Announcement01, ChevronRight, XClose } from '@untitledui/icons';
 
 import { useEmployeeAdBanner, useRecordAdBannerClick } from '@hr/hooks/api/useEmployeeAdBanner';
-import { useIsMobile } from '@hr/hooks/useBreakpoint';
 import { cn } from '@hr/lib/utils';
 import type { AdBanner, AdBannerCTA } from '@hr/types/api/ad-banner.types';
 
@@ -50,7 +49,6 @@ const writeStoredState = (state: StoredAdState) => {
 export const EmployeeAdBanner = () => {
   const { data: banner, isLoading } = useEmployeeAdBanner();
   const recordClick = useRecordAdBannerClick();
-  const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [stage, setStage] = useState<Stage | null>(null);
 
@@ -93,13 +91,6 @@ export const EmployeeAdBanner = () => {
     const value = cta.value.trim();
     if (cta.type === 'phone') {
       window.location.href = `tel:${value}`;
-      return;
-    }
-    if (cta.type === 'zalo' && isMobile) {
-      // zalo.me links are universal links: same-tab navigation is what lets
-      // the OS hand the tap to the Zalo app — a new tab would keep it in the
-      // browser instead of switching. Desktop keeps the tab-based open.
-      window.location.href = value;
       return;
     }
     window.open(value, '_blank', 'noopener,noreferrer');

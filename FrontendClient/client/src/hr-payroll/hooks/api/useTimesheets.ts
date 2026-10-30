@@ -309,7 +309,7 @@ export const useAddTimesheetToPayroll = () => {
       // Invalidate timesheet queries so any payment-related states refresh
       queryClient.invalidateQueries({ queryKey: QueryKeys.timesheets.all });
 
-      // Show backend-provided success message (Vietnamese)
+      // Show backend-provided success message (Kenyan)
       if (result?.message) {
         showSuccessNotification(result.message);
       }

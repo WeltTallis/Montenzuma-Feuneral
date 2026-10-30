@@ -159,18 +159,15 @@ export const MissingMobileSection = ({
 
         <div className="min-w-0 flex-1">
           <p className="text-pretty text-sm font-semibold leading-tight text-foreground">
-            Cảnh báo số điện thoại
+            Missing or duplicate phone numbers
           </p>
-          {/* Why it matters, stated once: without a unique mobile an employee
-              cannot log in by phone number nor receive the Zalo OTP. */}
           <p className="mt-1 text-pretty text-xs leading-4 text-muted-foreground">
-            Thiếu hoặc trùng số điện thoại khiến nhân viên không thể đăng nhập
-            bằng SĐT và không nhận được OTP Zalo.
+            Employees need a unique mobile number for account sign-in and contact.
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {missingEmployees.length > 0 && (
               <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">
-                Thiếu số điện thoại
+                Missing number
                 <span className="tabular-nums">{missingEmployees.length}</span>
               </span>
             )}
@@ -178,7 +175,7 @@ export const MissingMobileSection = ({
               /* Conflicts outrank gaps: a duplicate number breaks accounts
                   that already work, so its chip carries the rose tone. */
               <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">
-                Số điện thoại trùng
+                Duplicate number
                 <span className="tabular-nums">{duplicateTotal}</span>
               </span>
             )}

@@ -10,7 +10,6 @@ import { useAuth } from "@hr/contexts";
 import { useIsMobile, useIsTablet } from "@hr/hooks/useBreakpoint";
 import {
   Activity,
-  Bank,
   BookOpen01,
   Briefcase01,
   CalendarDate,
@@ -45,7 +44,6 @@ export const ADMIN_MORE_ITEMS: NavLeaf[] = [
   { title: "Employees", icon: Users01, path: "/admin/employees" },
   { title: "Payment history", icon: ClockRewind, path: "/admin/payment-history" },
   { title: "Ledger", icon: BookOpen01, path: "/admin/ledger" },
-  { title: "Loans", icon: Bank, path: "/admin/loans" },
   { title: "Wallet", icon: Wallet01, path: "/admin/wallet" },
   { title: "Scheduled jobs", icon: CalendarDate, path: "/admin/cron-health" },
   { title: "Settings", icon: Settings01, path: "/admin/settings" },

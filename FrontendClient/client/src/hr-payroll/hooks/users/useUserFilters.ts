@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { User } from '@hr/types/user';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 
 export const useUserFilters = (users: User[]) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -9,10 +9,10 @@ export const useUserFilters = (users: User[]) => {
     if (!searchTerm.trim()) return users;
 
     return users.filter(user =>
-      (user.username && vietnameseIncludes(user.username, searchTerm)) ||
-      (user.email && vietnameseIncludes(user.email, searchTerm)) ||
-      (user.fullname && vietnameseIncludes(user.fullname, searchTerm)) ||
-      (user.role && vietnameseIncludes(user.role, searchTerm))
+      (user.username && textIncludes(user.username, searchTerm)) ||
+      (user.email && textIncludes(user.email, searchTerm)) ||
+      (user.fullname && textIncludes(user.fullname, searchTerm)) ||
+      (user.role && textIncludes(user.role, searchTerm))
     );
   }, [users, searchTerm]);
 

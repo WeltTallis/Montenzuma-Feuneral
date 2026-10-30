@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 
 	"api-server/internal/app/services/employee"
 )
+
+var kraPINPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]{9}[A-Za-z]$`)
 
 type EmployeeProfileHandler struct {
 	EmployeeProfileService *employee.EmployeeProfileService
@@ -84,6 +87,10 @@ func (h *EmployeeProfileHandler) UpdateMyProfile(c *gin.Context) {
 	if !helpers.BindJSON(c, &req) {
 		return
 	}
+	if req.KRAPIN != nil && *req.KRAPIN != "" && !kraPINPattern.MatchString(*req.KRAPIN) {
+		response.BadRequest(c, "KRA PIN must be 11 alphanumeric characters, starting and ending with a letter.")
+		return
+	}
 
 	employee, err := h.EmployeeProfileService.UpdateMyProfile(
 		c.Request.Context(),
@@ -91,6 +98,9 @@ func (h *EmployeeProfileHandler) UpdateMyProfile(c *gin.Context) {
 		req.Fullname,
 		req.Email,
 		req.Username,
+		req.KRAPIN,
+		req.NSSFNumber,
+		req.SHANumber,
 	)
 	if err != nil {
 		response.HandleDomainError(c, err)
@@ -113,6 +123,9 @@ func (h *EmployeeProfileHandler) mapEmployeeProfileResponse(c *gin.Context, empl
 		DateOfBirth:                 employee.DateOfBirth,
 		BankAccountNumber:           employee.BankAccountNumber,
 		BankAccountName:             employee.BankAccountName,
+		KRAPIN:                      employee.KRAPIN,
+		NSSFNumber:                  employee.NSSFNumber,
+		SHANumber:                   employee.SHANumber,
 		PaymentSchedule:             scheduleInfo.PaymentSchedule,
 		CheckInEnabled:              scheduleInfo.CheckInEnabled,
 		PendingCheckInEnabled:       scheduleInfo.PendingCheckInEnabled,

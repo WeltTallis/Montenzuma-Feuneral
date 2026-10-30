@@ -5,7 +5,6 @@ import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, RefreshCw05, Settings01 } from '@untitledui/icons';
 import { Skeleton } from '@hr/components/ui/skeleton';
 import { Button } from '@hr/components/ui/button';
-import { Separator } from '@hr/components/ui/separator';
 import { Tabs, TabsContent } from '@hr/components/ui/tabs';
 import { useSettingsForm } from '@hr/hooks/settings/useSettingsForm';
 import { SettingsGeneralPanel } from '@hr/components/settings/SettingsGeneralPanel';
@@ -16,15 +15,10 @@ import {
   VALID_SETTINGS_TABS,
 } from '@hr/components/settings/SettingsTabList';
 import { FeeScheduleSection } from '@hr/components/admin/AdvancePaymentFeeSchedule/FeeScheduleSection';
-import { DisbursementFeeScheduleSection } from '@hr/components/admin/DisbursementFeeSchedule/DisbursementFeeScheduleSection';
 import { MobilePageHeader } from '@hr/components/shared/MobilePageHeader';
 import { AdminEmailComposer } from '@hr/components/email/AdminEmailComposer';
 import { SendNotificationComposer } from '@hr/components/settings/SendNotificationComposer';
-import { ZaloConnectionSection } from '@hr/components/settings/ZaloConnectionSection';
 import { AdBannerSection } from '@hr/components/settings/AdBannerSection';
-import { ApiKeysSection } from '@hr/components/settings/ApiKeysSection';
-import { McpApiKeysSection } from '@hr/components/settings/McpApiKeysSection';
-import { OpsApiKeysSection } from '@hr/components/settings/OpsApiKeysSection';
 
 const SettingsPageMobile = () => {
   const form = useSettingsForm();
@@ -126,8 +120,6 @@ const SettingsPageMobile = () => {
 
           <TabsContent value={SETTINGS_TABS.feeConfig} className="mt-0 space-y-4">
             <FeeScheduleSection />
-            <Separator />
-            <DisbursementFeeScheduleSection />
           </TabsContent>
 
           <TabsContent value={SETTINGS_TABS.email} className="mt-0">
@@ -138,18 +130,8 @@ const SettingsPageMobile = () => {
             <SendNotificationComposer />
           </TabsContent>
 
-          <TabsContent value={SETTINGS_TABS.zalo} className="mt-0">
-            <ZaloConnectionSection />
-          </TabsContent>
-
           <TabsContent value={SETTINGS_TABS.ads} className="mt-0">
             <AdBannerSection />
-          </TabsContent>
-
-          <TabsContent value={SETTINGS_TABS.apiKeys} className="mt-0 space-y-6">
-            <ApiKeysSection />
-            <McpApiKeysSection />
-            <OpsApiKeysSection />
           </TabsContent>
         </Tabs>
       </div>

@@ -130,8 +130,6 @@ type Middleware struct {
 	Authorization             *middleware.AuthorizationMiddleware
 	LoginRateLimit            gin.HandlerFunc
 	PasswordResetRateLimit    gin.HandlerFunc // Red Team H1: per-normalized-email cap
-	ZaloResetRateLimit        gin.HandlerFunc // per-normalized-mobile cap for /zalo-reset/request
-	ZaloResetConfirmRateLimit gin.HandlerFunc // per-otp_session_id cap for /zalo-reset/confirm
 	APIRateLimit              gin.HandlerFunc
 	StrictRateLimit           gin.HandlerFunc
 	AdBannerClickRateLimit    gin.HandlerFunc
@@ -451,7 +449,7 @@ func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Re
 
 	return &Handlers{
 		User:                 handlers.NewUserHandler(services.User, services.PasswordResetJobManager, services.Audit),
-		Auth:                 handlers.NewAuthHandler(services.Auth, services.User, services.EmailPasswordReset, services.ZaloPasswordReset),
+		Auth:                 handlers.NewAuthHandler(services.Auth, services.User, services.EmailPasswordReset),
 		Dashboard:            handlers.NewDashboardHandler(services.Dashboard),
 		Project:              handlers.NewProjectHandlerWithServices(services.Project, services.Payrate, services.Timesheet, services.ProjectEmployee, services.ProjectPermission, clk),
 		Employee:             handlers.NewEmployeeHandlerWithServices(services.Employee, services.Timesheet, services.ProjectEmployee, services.EmployeePermission, services.Audit, clk),
@@ -549,8 +547,6 @@ func initMiddleware(authService *auth.AuthService, authorizationService *auth.Au
 		Authorization:             authorizationMiddleware,
 		LoginRateLimit:            middleware.CreateLoginRateLimit(cfg.Redis.Addr),
 		PasswordResetRateLimit:    middleware.CreatePasswordResetRateLimit(cfg.Redis.Addr, cfg.PasswordReset.RateLimitPerHour),
-		ZaloResetRateLimit:        middleware.CreateZaloResetRateLimit(cfg.Redis.Addr, 3),
-		ZaloResetConfirmRateLimit: middleware.CreateZaloResetConfirmRateLimit(cfg.Redis.Addr),
 		APIRateLimit:              middleware.CreateAPIRateLimit(cfg.Redis.Addr),
 		StrictRateLimit:           middleware.CreateStrictRateLimit(cfg.Redis.Addr),
 		AdBannerClickRateLimit:    middleware.CreateAdBannerClickRateLimit(cfg.Redis.Addr),

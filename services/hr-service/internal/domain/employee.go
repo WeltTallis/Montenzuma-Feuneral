@@ -122,6 +122,9 @@ type Employee struct {
 	BankID            *uint   `json:"bank_id" gorm:"type:bigint unsigned"`
 	BankAccountNumber string  `json:"bank_account_number" gorm:"type:varchar(30)"`
 	BankAccountName   string  `json:"bank_account_name" gorm:"type:varchar(255)"`
+	KRAPIN            string  `json:"-" gorm:"column:kra_pin;type:varchar(11)"`
+	NSSFNumber        string  `json:"-" gorm:"column:nssf_number;type:varchar(32)"`
+	SHANumber         string  `json:"-" gorm:"column:sha_number;type:varchar(32)"`
 
 	// BankAccountStatus reflects the outcome of the last OnePay account
 	// verification (see BankAccountStatus* constants). Defaults to "valid"

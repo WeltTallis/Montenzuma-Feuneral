@@ -200,7 +200,6 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
   const ctaTypeOptions: Array<{ value: AdBannerCTA['type']; label: string }> = [
     { value: 'phone', label: 'Gọi điện (tel:)' },
     { value: 'url', label: 'Đường dẫn (https://)' },
-    { value: 'zalo', label: 'Zalo' },
   ];
 
   return (
@@ -334,9 +333,7 @@ export const AdBannerComposer = ({ initial, forceFreshWindow = false, onDone }: 
                 placeholder={
                   cta.type === 'phone'
                     ? '0914827988'
-                    : cta.type === 'zalo'
-                      ? 'https://zalo.me/g/...'
-                      : 'https://...'
+                    : 'https://...'
                 }
               />
               <Button

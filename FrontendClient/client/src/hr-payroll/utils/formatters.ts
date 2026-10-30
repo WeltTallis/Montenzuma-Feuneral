@@ -35,7 +35,7 @@ export const splitCurrencyDisplay = (value: string, explicitUnit?: string): Curr
 /**
  * Normalize currency codes so that UI helpers never pass invalid codes
  * to Intl.NumberFormat. Currently we only support VND, but we gracefully
- * map common Vietnamese currency symbols to the ISO code.
+ * map common Kenyan currency symbols to the ISO code.
  */
 export const normalizeCurrencyCode = (currency?: string | null | number): string => {
   if (!currency || typeof currency !== 'string') return DEFAULT_CURRENCY_CODE;

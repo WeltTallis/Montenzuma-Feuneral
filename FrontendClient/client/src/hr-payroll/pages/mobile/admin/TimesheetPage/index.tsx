@@ -31,7 +31,6 @@ import {
   useExportPayrollReport,
   useExportApprovedTimesheets,
 } from "@hr/hooks/api/usePayrolls";
-import { useExportOnePayBulk } from "@hr/hooks/api/useOnePayExport";
 import {
   useApproveAllTimesheets,
   useResetAllTimesheets,
@@ -52,7 +51,6 @@ import type { Timesheet } from "@hr/types/api/timesheet.types";
 const TimesheetPageMobile = () => {
   const [chuyenLoDialogOpen, setChuyenLoDialogOpen] = useState(false);
   const [bulkTransferDialogOpen, setBulkTransferDialogOpen] = useState(false);
-  const [onePayDialogOpen, setOnePayDialogOpen] = useState(false);
   const [payrollReportDialogOpen, setPayrollReportDialogOpen] = useState(false);
   const [approvedTimesheetsDialogOpen, setApprovedTimesheetsDialogOpen] =
     useState(false);
@@ -177,7 +175,6 @@ const TimesheetPageMobile = () => {
   // Pending edit-request count feeds the "Có vấn đề" KPI in the control center.
 
   const exportBulkTransferMutation = useExportBulkTransfer();
-  const exportOnePayMutation = useExportOnePayBulk();
   const exportPayrollReportMutation = useExportPayrollReport();
   const exportApprovedTimesheetsMutation = useExportApprovedTimesheets();
   const approveAllMutation = useApproveAllTimesheets();
@@ -285,23 +282,6 @@ const TimesheetPageMobile = () => {
     }
   };
 
-  const handleOnePayExportSubmit = async (
-    params: BulkTransferExportParams,
-  ) => {
-    try {
-      await exportOnePayMutation.mutateAsync(params);
-      setOnePayDialogOpen(false);
-    } catch {
-      /* handled by mutation; keep the chosen period available for retry */
-    }
-  };
-
-  const onePayProjectIds = useMemo(() => {
-    if (timesheetManagement.selectedProject === "all") return [];
-    const projectId = parseInt(timesheetManagement.selectedProject, 10);
-    return Number.isNaN(projectId) ? [] : [projectId];
-  }, [timesheetManagement.selectedProject]);
-
   const handlePayrollReportExportSubmit = async (
     params: PayrollReportExportParams,
   ) => {
@@ -393,7 +373,6 @@ const TimesheetPageMobile = () => {
         onApprovedTimesheetsExport={() => setApprovedTimesheetsDialogOpen(true)}
         onPayrollReportExport={() => setPayrollReportDialogOpen(true)}
         onBulkTransferExport={() => setBulkTransferDialogOpen(true)}
-        onOnePayExport={() => setOnePayDialogOpen(true)}
         onBulkTransferResultUpload={() => setBulkTransferResultDialogOpen(true)}
         onBulkTransferKQ={() => setBulkTransferKQDialogOpen(true)}
         onBulkTransferHistory={handleBulkTransferHistory}
@@ -405,7 +384,6 @@ const TimesheetPageMobile = () => {
         onRejectUnpaid={() => setRejectUnpaidDialogOpen(true)}
         isApprovedExportPending={exportApprovedTimesheetsMutation.isPending}
         isPayrollReportPending={exportPayrollReportMutation.isPending}
-        isOnePayExportPending={exportOnePayMutation.isPending}
         monthValue={timesheetManagement.selectedMonth}
         onMonthChange={timesheetManagement.setSelectedMonth}
       />
@@ -445,14 +423,6 @@ const TimesheetPageMobile = () => {
         onOpenChange={setBulkTransferDialogOpen}
         onExport={handleBulkTransferExportSubmit}
         isLoading={exportBulkTransferMutation.isPending}
-      />
-      <BulkTransferExportDialog
-        open={onePayDialogOpen}
-        onOpenChange={setOnePayDialogOpen}
-        onExport={handleOnePayExportSubmit}
-        isLoading={exportOnePayMutation.isPending}
-        mode="onepay"
-        preselectedProjectIds={onePayProjectIds}
       />
       <PayrollReportExportDialog
         open={payrollReportDialogOpen}

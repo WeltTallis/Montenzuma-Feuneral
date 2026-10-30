@@ -170,16 +170,16 @@ function TransactionFormComponent({
 
   const onSubmit = async (data: FormData) => {
     try {
-      // Convert Vietnamese formatted amount to number
+      // Convert Kenyan formatted amount to number
       let cleanAmount = data.amount.trim();
 
-      // Parse Vietnamese number format
-      const vietnameseFormatRegex = /^\d{1,3}(\.\d{3})*,\d+$/;
-      const vietnameseWholeNumberRegex = /^\d{1,3}(\.\d{3})+$/;
+      // Parse Kenyan number format
+      const kenyanFormatRegex = /^\d{1,3}(\.\d{3})*,\d+$/;
+      const kenyanWholeNumberRegex = /^\d{1,3}(\.\d{3})+$/;
 
-      if (vietnameseFormatRegex.test(cleanAmount)) {
+      if (kenyanFormatRegex.test(cleanAmount)) {
         cleanAmount = cleanAmount.replace(/\./g, '').replace(',', '.');
-      } else if (vietnameseWholeNumberRegex.test(cleanAmount)) {
+      } else if (kenyanWholeNumberRegex.test(cleanAmount)) {
         cleanAmount = cleanAmount.replace(/\./g, '');
       } else if (cleanAmount.includes(',') && !cleanAmount.includes('.')) {
         cleanAmount = cleanAmount.replace(',', '.');

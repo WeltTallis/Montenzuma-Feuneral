@@ -1,9 +1,8 @@
 // Service Worker for Rest Point PWA
-// CACHE_VERSION forces every client to drop its old caches on activation.
-// Bump this on EVERY deploy that changes code — without a bump the
-// stale-while-revalidate fetch handler keeps serving the previous
-// content-hashed JS chunks out of cache and the deploy looks like a no-op.
-const CACHE_VERSION = 'v2'; // Increment this to force cache refresh
+// CACHE_VERSION lets cache-policy changes invalidate old cached responses.
+// Hashed assets use network-first so deployments do not depend on bumping this
+// version to stop serving an older application bundle.
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `restpoint-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `restpoint-dynamic-${CACHE_VERSION}`;
 const CACHE_NAME = `restpoint-${CACHE_VERSION}`;
@@ -111,10 +110,8 @@ self.addEventListener('fetch', (event) => {
         }
     }
 
-    // For static assets (JS, CSS, images, fonts), use stale-while-revalidate:
-    // serve cached instantly but ALWAYS refresh the copy in the background, so
-    // a new deploy is picked up on the next navigation instead of being served
-    // stale for weeks (this is what kept the old release-form branding alive).
+    // Prefer the deployed version of static assets. A stale cached app entry
+    // can reference hashed chunks that were removed by a newer deployment.
     if (request.destination === 'script' ||
         request.destination === 'style' ||
         request.destination === 'image' ||
@@ -128,41 +125,22 @@ self.addEventListener('fetch', (event) => {
         url.pathname.endsWith('.woff2')) {
 
         event.respondWith(
-            caches.match(cacheRequest)
-                .then((cachedResponse) => {
-                    if (cachedResponse) {
-                        // Return cached version, but update cache in background
+            fetch(cacheRequest)
+                .then((response) => {
+                    if (response.ok) {
+                        const responseClone = response.clone();
                         event.waitUntil(
-                            fetch(cacheRequest)
-                                .then((response) => {
-                                    // Only cache successful responses
-                                    if (response.ok) {
-                                        caches.open(STATIC_CACHE)
-                                            .then((cache) => cache.put(cacheRequest, response));
-                                    }
-                                    return response;
-                                })
-                                .catch(() => { })
+                            caches.open(STATIC_CACHE)
+                                .then((cache) => cache.put(cacheRequest, responseClone))
                         );
-                        return cachedResponse;
+                        return response;
                     }
 
-                    // Not in cache, fetch from network
-                    return fetch(cacheRequest)
-                        .then((response) => {
-                            // Only cache successful responses
-                            if (response.ok) {
-                                const responseClone = response.clone();
-                                caches.open(STATIC_CACHE)
-                                    .then((cache) => cache.put(cacheRequest, responseClone));
-                            }
-                            return response;
-                        })
-                        .catch(() => {
-                            // Return offline fallback
-                            return new Response('Offline - Resource not cached', { status: 503 });
-                        });
+                    return caches.match(cacheRequest).then((cachedResponse) => cachedResponse || response);
                 })
+                .catch(() => caches.match(cacheRequest)
+                    .then((cachedResponse) => cachedResponse
+                        || new Response('Offline - Resource not cached', { status: 503 })))
         );
         return;
     }
@@ -284,4 +262,3 @@ self.addEventListener('notificationclick', (event) => {
             })
     );
 });
-

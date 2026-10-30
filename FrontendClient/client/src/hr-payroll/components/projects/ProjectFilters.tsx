@@ -2,7 +2,7 @@ import { SearchBar } from '@hr/components/shared/SearchBar';
 import { FilterPill } from '@hr/components/shared/FilterPill';
 import { Project } from '@hr/types/api/project.types';
 import { generateMonthOptions } from '@hr/utils/dateHelpers';
-import { getKensynProjectStatus } from '@hr/utils/kenyan';
+import { getProjectStatus } from '@hr/utils/kenyan';
 import { X } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
 
@@ -60,7 +60,7 @@ export const ProjectFilters = ({
         value={currentStatus}
         onChange={(v) => onStatusChange(v === 'all' ? 'all' : [v as Project['status']])}
         placeholder="Status"
-        options={STATUS_OPTIONS.map(s => ({ value: s, label: getKensynProjectStatus(s) }))}
+        options={STATUS_OPTIONS.map(s => ({ value: s, label: getProjectStatus(s) }))}
       />
 
       <FilterPill

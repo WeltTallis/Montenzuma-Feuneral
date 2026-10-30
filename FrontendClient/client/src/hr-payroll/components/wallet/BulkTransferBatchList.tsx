@@ -25,7 +25,7 @@ import {
 } from '@hr/components/ui/sheet';
 import { useWalletBulkTransferBatches } from '@hr/hooks/api/useWalletBulkTransfer';
 import { BulkTransferProgress } from '@hr/components/wallet/BulkTransferProgress';
-import { formatKensynDateTime } from '@hr/utils/kenyan';
+import { formatKenyanDateTime } from '@hr/utils/kenyan';
 import { formatCurrency } from '@hr/utils/formatters';
 import {
   batchStatusLabel,
@@ -237,7 +237,7 @@ const BatchCard = memo(function BatchCard({ batch, onClick }: BatchCardProps) {
             {batch.filename || `Batch #${batch.id}`}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatKensynDateTime(batch.created_at)}
+            {formatKenyanDateTime(batch.created_at)}
           </p>
         </div>
         <Badge className={batchStatusBadgeClass(batch.status)}>

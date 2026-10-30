@@ -33,7 +33,7 @@ import {
   daysFromTodayISO,
   formatDaysFromNow,
   formatPercentageVi,
-  formatVietnameseDate,
+  formatKenyanDate,
   isEntryEditable,
   type WeeklyPaymentFeeFormMode,
 } from "./helpers";
@@ -166,7 +166,7 @@ export const WeeklyPaymentFeeScheduleSection = () => {
                 {sorted.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium whitespace-nowrap">
-                      {formatVietnameseDate(entry.effectiveDate)}
+                      {formatKenyanDate(entry.effectiveDate)}
                     </TableCell>
                     <TableCell>
                       {entry.isCurrentlyActive && <Badge>Active</Badge>}
@@ -271,7 +271,7 @@ const ActiveCard = ({
       <p className="text-xs text-muted-foreground mt-2">
         Có hiệu lực từ{" "}
         <strong className="font-medium text-foreground/80">
-          {formatVietnameseDate(active.effectiveDate)}
+          {formatKenyanDate(active.effectiveDate)}
         </strong>
       </p>
     </div>
@@ -337,7 +337,7 @@ const UpcomingCard = ({
       <p className="text-xs text-muted-foreground mt-2">
         Sẽ thay thế cấu hình hiện tại từ{" "}
         <strong className="font-medium text-foreground/80">
-          {formatVietnameseDate(entry.effectiveDate)}
+          {formatKenyanDate(entry.effectiveDate)}
         </strong>{" "}
         ({formatDaysFromNow(days)})
       </p>

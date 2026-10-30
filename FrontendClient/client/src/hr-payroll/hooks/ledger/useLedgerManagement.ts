@@ -78,30 +78,6 @@ export const useLedgerManagement = () => {
     },
   });
 
-  const importOnePayFeeReportMutation = useMutation({
-    mutationFn: (file: File) => ledgerService.importOnePayFeeReport(file),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['ledger-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['ledger-overall-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['ledger-account-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['ledger-project-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['ledger-cash-flow'] });
-      queryClient.invalidateQueries({ queryKey: ['ledger-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      toast({
-        title: 'Successful',
-        description: `Đã tạo chi phí OnePay ${data.summary.total_fee.toLocaleString('en-KE')} ₫.`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Không thể nhập phí OnePay',
-        description: error.message || 'File chưa khớp dữ liệu đối soát.',
-        variant: 'destructive',
-      });
-    },
-  });
-
   const runWalletSettlementMutation = useMutation({
     mutationFn: () => ledgerService.runWalletSettlement(),
     onSuccess: () => {
@@ -161,13 +137,11 @@ export const useLedgerManagement = () => {
     createEntry: createEntryMutation.mutateAsync,
     reverseEntry: reverseEntryMutation.mutateAsync,
     recalculateBalances: recalculateBalancesMutation.mutateAsync,
-    importOnePayFeeReport: importOnePayFeeReportMutation.mutateAsync,
     createTransaction: createTransactionMutation.mutateAsync,
     runWalletSettlement: runWalletSettlementMutation.mutateAsync,
     isCreating: createEntryMutation.isPending,
     isReversing: reverseEntryMutation.isPending,
     isRecalculating: recalculateBalancesMutation.isPending,
-    isImportingOnePayFeeReport: importOnePayFeeReportMutation.isPending,
     isCreatingTransaction: createTransactionMutation.isPending,
     isRunningWalletSettlement: runWalletSettlementMutation.isPending,
   };

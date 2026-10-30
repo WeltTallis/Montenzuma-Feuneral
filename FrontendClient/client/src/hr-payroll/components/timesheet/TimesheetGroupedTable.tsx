@@ -38,7 +38,7 @@ import {
   getPaytypeText,
   formatDate,
   formatDateWithWeekday,
-  getVietnameseWeekdayInfo
+  getKenyanWeekdayInfo
 } from './utils/timesheetHelpers';
 import { formatCurrency } from '@hr/utils/formatters';
 import { createGroupBulkApprovalContent } from '@hr/utils/timesheetBulkHelpers';
@@ -201,7 +201,7 @@ export function TimesheetGroupedTable({
           const groupKey = getGroupKey(group);
           const isExpanded = expandedGroups.has(groupKey);
           const statusConfig = getGroupedStatusBadgeVariant(group.aggregatedStatus);
-          const weekdayInfo = getVietnameseWeekdayInfo(group.date);
+          const weekdayInfo = getKenyanWeekdayInfo(group.date);
 
           return (
             <Card key={groupKey} className="overflow-hidden">

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { useAuth } from './AuthContext';
 import { useUserPreferences } from './UserPreferencesContext';
 import { useNavigate } from 'react-router-dom';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 
 interface Command {
   id: string;
@@ -229,9 +229,9 @@ export const CommandPaletteProvider = ({ children }: CommandPaletteProviderProps
       // Search through available commands
       const commandResults = availableCommands
         .filter(cmd =>
-          vietnameseIncludes(cmd.label, searchTerm) ||
-          (cmd.description && vietnameseIncludes(cmd.description, searchTerm)) ||
-          cmd.keywords.some(keyword => vietnameseIncludes(keyword, searchTerm))
+          textIncludes(cmd.label, searchTerm) ||
+          (cmd.description && textIncludes(cmd.description, searchTerm)) ||
+          cmd.keywords.some(keyword => textIncludes(keyword, searchTerm))
         )
         .slice(0, 5)
         .map(cmd => ({

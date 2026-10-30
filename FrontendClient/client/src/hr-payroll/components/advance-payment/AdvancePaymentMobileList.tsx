@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { formatCurrency } from "@hr/utils/formatters";
 import {
-  getVietnameseAdvancePaymentStatus,
+  getKenyanAdvancePaymentStatus,
   getAdvancePaymentStatusColor,
   formatPaymentLatency,
   getPaymentLatencyColor,
@@ -102,7 +102,7 @@ const RequestCard = memo(function RequestCard({
                 "shrink-0 text-xs",
               )}
             >
-              {getVietnameseAdvancePaymentStatus(item.status)}
+              {getKenyanAdvancePaymentStatus(item.status)}
             </Badge>
           </div>
         </div>

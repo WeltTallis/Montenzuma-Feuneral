@@ -360,8 +360,17 @@ func formatScheduleWindow(window attendance.ShiftWindow) ScheduleWindowInfo {
 	}
 }
 
-// UpdateMyProfile updates the employee's own profile (name, email, username)
-func (s *EmployeeProfileService) UpdateMyProfile(ctx context.Context, userID uint, fullname *string, email *string, username *string) (*domain.Employee, error) {
+// UpdateMyProfile updates the employee's own profile and Kenyan tax identifiers.
+func (s *EmployeeProfileService) UpdateMyProfile(
+	ctx context.Context,
+	userID uint,
+	fullname *string,
+	email *string,
+	username *string,
+	kraPIN *string,
+	nssfNumber *string,
+	shaNumber *string,
+) (*domain.Employee, error) {
 	// Get employee and user
 	employee, err := s.EmployeeRepo.GetByUserID(ctx, userID)
 	if err != nil {
@@ -408,6 +417,16 @@ func (s *EmployeeProfileService) UpdateMyProfile(ctx context.Context, userID uin
 		}
 
 		user.Username = *username
+	}
+
+	if kraPIN != nil {
+		employee.KRAPIN = strings.ToUpper(strings.TrimSpace(*kraPIN))
+	}
+	if nssfNumber != nil {
+		employee.NSSFNumber = strings.TrimSpace(*nssfNumber)
+	}
+	if shaNumber != nil {
+		employee.SHANumber = strings.TrimSpace(*shaNumber)
 	}
 
 	// Update employee

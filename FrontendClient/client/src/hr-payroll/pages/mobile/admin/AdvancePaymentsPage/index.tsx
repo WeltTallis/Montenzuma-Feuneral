@@ -24,7 +24,7 @@ import {
   useCreditAttendanceQuota,
 } from "@hr/hooks/api/useAdminAttendance";
 import { useSendPayrollReportEmail } from "@hr/hooks/transactions/useSendPayrollReportEmail";
-import { formatVnTime } from "@hr/utils/vn-time";
+import { formatKenyaTime } from "@hr/utils/ke-time";
 // UU PRO restyle (W13c): lucide → verified @untitledui/icons; blue-gray hex
 // chrome moved onto the utility-gray bridge. Flexible-pay quota logic and all
 // flows byte-preserved.
@@ -106,7 +106,7 @@ export function AttendanceMobileCard({
    * immediately, skipping the post-checkout hold. */
   onCreditQuota?: (row: AdminAttendanceResponse) => void;
 }) {
-  const fmtTime = (t?: string) => (t ? formatVnTime(t) || "-" : "-");
+  const fmtTime = (t?: string) => (t ? formatKenyaTime(t) || "-" : "-");
   const fmtDate = (d: string) => {
     try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
   };

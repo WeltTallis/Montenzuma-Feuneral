@@ -6,7 +6,7 @@ import { toast } from "@hr/components/ui/sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { User } from "@hr/types/user";
 import { SlideSheetTemplate } from "./templates/SlideSheetTemplate";
-import { validateFullname, formatVietnameseName } from "@hr/lib/validation";
+import { validateFullname, formatKenyanName } from "@hr/lib/validation";
 import { userService } from "@hr/services/api/user.service";
 import { cn } from "@hr/lib/utils";
 import type { ModalConfig } from "@hr/types/modal-config.types";
@@ -161,7 +161,7 @@ function EditUserSheet({
               value={formData.fullname}
               onChange={(e) => handleInputChange("fullname", e.target.value)}
               onBlur={(e) => {
-                const formatted = formatVietnameseName(e.target.value);
+                const formatted = formatKenyanName(e.target.value);
                 if (formatted !== e.target.value) {
                   setFormData((prev) => ({ ...prev, fullname: formatted }));
                 }
@@ -208,7 +208,7 @@ function EditUserSheet({
                 value={formData.mobile}
                 onChange={(e) => handleInputChange("mobile", e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Dùng để đặt lại mật khẩu qua Zalo OTP.</p>
+              <p className="text-xs text-muted-foreground">Used for account sign-in and contact.</p>
             </div>
           )}
 

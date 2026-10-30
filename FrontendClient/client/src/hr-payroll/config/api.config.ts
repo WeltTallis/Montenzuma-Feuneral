@@ -19,8 +19,6 @@ export const API_ENDPOINTS = {
     google: '/auth/google',
     passwordResetRequest: '/auth/password-reset/request',
     passwordResetConfirm: '/auth/password-reset/confirm',
-    zaloResetRequest: '/auth/zalo-reset/request',
-    zaloResetConfirm: '/auth/zalo-reset/confirm',
   },
 
   // Users
@@ -167,13 +165,6 @@ export const API_ENDPOINTS = {
     exportHistories: '/payrolls/histories/export',
     bulkTransferTemplate: '/payrolls/bulk-transfer-template',
     exportBulkTransfer: '/payrolls/export-bulk-transfer',
-    /**
-     * Stage 1 of the Wallet Bulk Transfer Pipeline — exports a OnePay-API-
-     * compatible "Yêu cầu chuyển tiền" .xlsx with a SWIFT code column resolved
-     * from each employee's bank record. Output is the canonical input for
-     * /wallet/bulk-transfer/upload (Stage 2).
-     */
-    exportOnePayBulk: '/payrolls/export-onepay-bulk',
     simulateSettlement: '/payrolls/simulate-settlement',
     importBulkTransferResult: '/payrolls/bulk-transfer-result',
     /**
@@ -185,9 +176,6 @@ export const API_ENDPOINTS = {
     bulkTransferUploadHistoryById: (id: number) => `/payrolls/bulk-transfer-upload-histories/${id}`,
     bulkTransferUploadHistoryExportPdf: (id: number) => `/payrolls/bulk-transfer-upload-histories/${id}/export-pdf`,
     bulkTransferUploadHistoryDownload: (id: number) => `/payrolls/bulk-transfer-upload-histories/${id}/download`,
-    autoBulkTransferConfig: '/payrolls/auto-bulk-transfer/config',
-    initiateAutoBulkTransfer: '/payrolls/auto-bulk-transfer',
-    autoBulkTransferStatus: (batchId: string) => `/payrolls/auto-bulk-transfer/${batchId}/status`,
     /**
      * Mark a list of timesheets as paid externally (e.g. after a 9Pay batch
      * partially fails and admin pays those rows out-of-band).
@@ -242,24 +230,12 @@ export const API_ENDPOINTS = {
     summary: '/ledger/summary',
     accountsMetadata: '/ledger/accounts/metadata',
     export: '/ledger/export',
-    onePayFeeReports: '/ledger/onepay-fee-reports',
   },
 
   // Wallet disbursement settlement — admin on-demand trigger for the EOD
   // consolidation that groups completed wallet payments into ledger records.
   walletSettlement: {
     run: '/admin/wallet-settlement/run',
-  },
-
-  // Wallet Bulk Transfer Pipeline (Stage 2: upload + process).
-  // POST /wallet/bulk-transfer/upload parses the .xlsx and enqueues per-row
-  // OnePay transfer tasks. GET endpoints return batch state for the
-  // progress UI; /kq returns the result .xlsx.
-  walletBulkTransfer: {
-    upload: '/wallet/bulk-transfer/upload',
-    batches: '/wallet/bulk-transfer/batches',
-    batchById: (id: number) => `/wallet/bulk-transfer/batches/${id}`,
-    batchKQ: (id: number) => `/wallet/bulk-transfer/batches/${id}/kq`,
   },
 
   // Transactions (Revenue/Expense management)
@@ -289,15 +265,6 @@ export const API_ENDPOINTS = {
   },
 
   // Loans
-  loans: {
-    base: '/loans',
-    byId: (id: number) => `/loans/${id}`,
-    disburse: (id: number) => `/loans/${id}/disburse`,
-    repay: (id: number) => `/loans/${id}/repay`,
-    repaySchedule: (id: number) => `/loans/${id}/repay-schedule`,
-    schedule: (id: number) => `/loans/${id}/schedule`,
-  },
-
   // Notifications
   notifications: {
     base: '/notifications',
@@ -342,34 +309,6 @@ export const API_ENDPOINTS = {
     byId: (id: number) => `/ad-banners/${id}`,
     myBanner: '/me/ad-banner',
     click: (id: number) => `/me/ad-banner/${id}/click`,
-  },
-
-  // Zalo ZNS connection management (Admin only). The admin pastes all OA
-  // fields directly — there is no OAuth authorization-code flow.
-  zalo: {
-    status: '/admin/zalo',
-    credentials: '/admin/zalo/credentials',
-    enabled: '/admin/zalo/enabled',
-    flexpayEnabled: '/admin/zalo/flexpay-enabled',
-    refresh: '/admin/zalo/refresh',
-    test: '/admin/zalo/test',
-  },
-
-  apiKeys: {
-    base: '/admin/api-keys',
-    byId: (id: number) => `/admin/api-keys/${id}`,
-  },
-
-  mcpApiKeys: {
-    base: '/admin/mcp-api-keys',
-    byId: (id: number) => `/admin/mcp-api-keys/${id}`,
-    scope: (id: number) => `/admin/mcp-api-keys/${id}/scope`,
-  },
-
-  opsApiKeys: {
-    base: '/admin/ops-api-keys',
-    byId: (id: number) => `/admin/ops-api-keys/${id}`,
-    scope: (id: number) => `/admin/ops-api-keys/${id}/scope`,
   },
 
   // Health Check

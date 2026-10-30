@@ -2,7 +2,7 @@
  * Utility functions for handling payrate calculations in timesheet management
  */
 
-import { isVietnamesePublicHoliday } from '@hr/utils/dateHelpers';
+import { isKenyanPublicHoliday } from '@hr/utils/dateHelpers';
 
 interface Employee {
   id: number;
@@ -33,7 +33,7 @@ export function getPayrateForEmployeeAndWorkType(
   if (date) {
     const dayOfWeek = date.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const isHoliday = isVietnamesePublicHoliday(date);
+    const isHoliday = isKenyanPublicHoliday(date);
 
     if (isHoliday) {
       dayType = 'ngày lễ';
@@ -99,4 +99,3 @@ export function generateWorkTypeLabels(
 
   return labels;
 }
-

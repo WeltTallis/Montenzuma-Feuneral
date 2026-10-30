@@ -23,7 +23,7 @@ import { ErrorState } from "@hr/components/ui/error-state";
 import { useProjects } from "@hr/hooks/api/useProjects";
 import { useProjectFilters } from "@hr/hooks/projects/useProjectFilters";
 import { useProjectModals } from "@hr/hooks/useModalNavigation";
-import { getVietnameseProjectStatus } from "@hr/utils/vietnamese";
+import { getProjectStatus } from "@hr/utils/kenyan";
 import { generateMonthOptions } from "@hr/utils/dateHelpers";
 import { Briefcase01, ChevronLeft, ChevronRight, FilterLines, Plus, XClose } from "@untitledui/icons";
 import type { Project } from "@hr/types/api/project.types";
@@ -31,11 +31,11 @@ import type { Project } from "@hr/types/api/project.types";
 const ITEMS_PER_PAGE = 20;
 
 const STATUS_OPTIONS: { value: Project["status"]; label: string }[] = [
-  { value: "active", label: getVietnameseProjectStatus("active") },
-  { value: "paused", label: getVietnameseProjectStatus("paused") },
-  { value: "completed", label: getVietnameseProjectStatus("completed") },
-  { value: "draft", label: getVietnameseProjectStatus("draft") },
-  { value: "cancelled", label: getVietnameseProjectStatus("cancelled") },
+  { value: "active", label: getProjectStatus("active") },
+  { value: "paused", label: getProjectStatus("paused") },
+  { value: "completed", label: getProjectStatus("completed") },
+  { value: "draft", label: getProjectStatus("draft") },
+  { value: "cancelled", label: getProjectStatus("cancelled") },
 ];
 
 const ProjectsPageMobile = () => {
@@ -75,7 +75,7 @@ const ProjectsPageMobile = () => {
 
   const currentStatusLabel = useMemo(() => {
     if (filterControls.statusFilter === "all" || !Array.isArray(filterControls.statusFilter)) return null;
-    return filterControls.statusFilter.map((s) => getVietnameseProjectStatus(s)).join(", ");
+    return filterControls.statusFilter.map((s) => getProjectStatus(s)).join(", ");
   }, [filterControls.statusFilter]);
 
   const currentMonthLabel = useMemo(

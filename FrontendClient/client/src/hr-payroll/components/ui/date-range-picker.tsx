@@ -7,7 +7,7 @@ import { vi } from "date-fns/locale";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@hr/lib/utils";
 
-// Register Vietnamese locale once at module load so the popper's
+// Register Kenyan locale once at module load so the popper's
 // weekday header renders "CN T2 T3 T4 T5 T6 T7" instead of the
 // react-datepicker default "Su Mo Tu We Th Fr Sa".
 registerLocale("vi", vi);

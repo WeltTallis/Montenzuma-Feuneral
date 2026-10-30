@@ -28,7 +28,7 @@ export function logNotFoundPath(pathname: string): void {
 
   // Defer to escape React commit stack so DevTools doesn't append component stack
   setTimeout(() => {
-    // Vietnamese message to align with UI copy
+    // Kenyan message to align with UI copy
     // Use info to avoid implying an actual error
     console.info('404: Người dùng truy cập đường dẫn không tồn tại:', pathname);
   }, 0);

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input } from "@hr/components/ui/input";
 import { Label } from "@hr/components/ui/label";
 import { BankSelector } from "@hr/components/ui/bank-selector";
-import { formatVietnameseName } from "@hr/lib/validation";
+import { formatKenyanName } from "@hr/lib/validation";
 import { User, CreditCard, AlertCircle } from "lucide-react";
 import type { EmployeeFormProps } from "../types";
 
@@ -40,10 +40,10 @@ function Field({ id, label, children, warning }: { id?: string; label: string; c
   );
 }
 
-/** Returns true if the value contains characters that formatVietnameseName would strip */
+/** Returns true if the value contains characters that formatKenyanName would strip */
 function hasInvalidNameChars(value: string): boolean {
   if (!value) return false;
-  return formatVietnameseName(value) !== value.trim().replace(/\s+/g, ' ');
+  return formatKenyanName(value) !== value.trim().replace(/\s+/g, ' ');
 }
 
 export function EmployeeEditForm({
@@ -77,7 +77,7 @@ export function EmployeeEditForm({
                 setNameWarning(hasInvalidNameChars(e.target.value));
               }}
               onBlur={(e) => {
-                const formatted = formatVietnameseName(e.target.value);
+                const formatted = formatKenyanName(e.target.value);
                 if (formatted !== e.target.value) {
                   onInputChange("fullname", formatted);
                 }
@@ -171,7 +171,7 @@ export function EmployeeEditForm({
                 setBankAccountNameWarning(hasInvalidNameChars(e.target.value));
               }}
               onBlur={(e) => {
-                const formatted = formatVietnameseName(e.target.value);
+                const formatted = formatKenyanName(e.target.value);
                 if (formatted !== e.target.value) {
                   onInputChange("bank_account_name", formatted);
                 }

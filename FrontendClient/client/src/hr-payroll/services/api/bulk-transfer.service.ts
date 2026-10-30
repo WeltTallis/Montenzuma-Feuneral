@@ -86,40 +86,6 @@ export interface BulkTransferHistoryDetailResponse {
   uploaded_at?: string;
 }
 
-export interface AutoBulkTransferConfig {
-  enabled: boolean;
-}
-
-export interface AutoBulkTransferResponse {
-  batch_id: string;
-  file_id: number;
-  total_count: number;
-  status: string;
-}
-
-export interface AutoBulkTransferStatusResponse {
-  batch_id: string;
-  total_count: number;
-  completed: number;
-  failed: number;
-  processing: number;
-  status: string;
-  /**
-   * Optional list of failed timesheet/payment items (only present if backend
-   * exposes them — currently a TODO; consumer code must handle undefined).
-   */
-  failed_items?: BulkTransferFailedItem[];
-}
-
-export interface BulkTransferFailedItem {
-  timesheet_id: number;
-  employee_id?: number;
-  employee_name?: string;
-  amount: number;
-  reason?: string;
-  error_code?: string;
-}
-
 export interface MarkExternallyPaidRequest {
   timesheet_ids: number[];
   reference: string;
@@ -427,33 +393,6 @@ class BulkTransferService {
       totalCount: readNumericHeader(response.headers, 'x-total-count'),
       totalAmount: readNumericHeader(response.headers, 'x-transfer-amount'),
     };
-  }
-
-  async getAutoBulkTransferConfig(): Promise<AutoBulkTransferConfig> {
-    const response = await apiClient.get<AutoBulkTransferConfig>(
-      API_ENDPOINTS.payrolls.autoBulkTransferConfig
-    );
-    return response.data ?? { enabled: false };
-  }
-
-  async initiateAutoBulkTransfer(params: BulkTransferExportParams): Promise<AutoBulkTransferResponse> {
-    const requestParams = {
-      ...params,
-      ...(params.fromDate && { fromDate: formatDateForAPI(params.fromDate) }),
-      ...(params.toDate && { toDate: formatDateForAPI(params.toDate) }),
-    };
-    const response = await apiClient.post<AutoBulkTransferResponse>(
-      API_ENDPOINTS.payrolls.initiateAutoBulkTransfer,
-      requestParams
-    );
-    return response.data!;
-  }
-
-  async getAutoBulkTransferStatus(batchId: string): Promise<AutoBulkTransferStatusResponse> {
-    const response = await apiClient.get<AutoBulkTransferStatusResponse>(
-      API_ENDPOINTS.payrolls.autoBulkTransferStatus(batchId)
-    );
-    return response.data!;
   }
 
   /**

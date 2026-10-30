@@ -1,8 +1,8 @@
 /**
- * Convert a 5-field cron expression to a human-readable Vietnamese string.
+ * Convert a 5-field cron expression to a human-readable English string.
  * Covers the common patterns used in payroll cron jobs.
  */
-export function cronToVietnamese(expr: string): string {
+export function cronToEnglish(expr: string): string {
   if (!expr) return expr;
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) return expr;
@@ -11,28 +11,28 @@ export function cronToVietnamese(expr: string): string {
 
   // Every minute
   if (min === '*' && hour === '*' && dom === '*' && month === '*' && dow === '*') {
-    return 'Mỗi phút';
+    return 'Every minute';
   }
 
   // Every hour at :MM
   if (hour === '*' && dom === '*' && month === '*' && dow === '*') {
-    return `Mỗi giờ lúc :${min}`;
+    return `Every hour at :${min}`;
   }
 
   // Specific time, every day
   if (dom === '*' && month === '*' && dow === '*') {
-    return `Hàng ngày lúc ${fmtTime(hour, min)}`;
+    return `Daily at ${fmtTime(hour, min)}`;
   }
 
   // Specific day of week
   if (dow !== '*' && dom === '*' && month === '*') {
     const dayName = dayOfWeekName(dow);
-    return `${dayName} hàng tuần lúc ${fmtTime(hour, min)}`;
+    return `Every ${dayName} at ${fmtTime(hour, min)}`;
   }
 
   // Specific day of month
   if (dom !== '*' && month === '*' && dow === '*') {
-    return `Date ${dom} hàng tháng lúc ${fmtTime(hour, min)}`;
+    return `Monthly on day ${dom} at ${fmtTime(hour, min)}`;
   }
 
   // Fallback
@@ -40,15 +40,15 @@ export function cronToVietnamese(expr: string): string {
 }
 
 function fmtTime(hour: string, min: string): string {
-  const h = hour === '*' ? 'mỗi giờ' : `${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
+  const h = hour === '*' ? 'every hour' : `${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
   return h;
 }
 
 function dayOfWeekName(dow: string): string {
   const names: Record<string, string> = {
-    '0': 'Chủ nhật', '7': 'Chủ nhật',
-    '1': 'Thứ Hai', '2': 'Thứ Ba', '3': 'Thứ Tư',
-    '4': 'Thứ Năm', '5': 'Thứ Sáu', '6': 'Thứ Bảy',
+    '0': 'Sunday', '7': 'Sunday',
+    '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday',
+    '4': 'Thursday', '5': 'Friday', '6': 'Saturday',
   };
   if (names[dow]) return names[dow];
   // Handle comma-separated: "1,3,5"

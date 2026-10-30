@@ -5,20 +5,12 @@ import { useIsMobile } from '@hr/hooks/useBreakpoint';
 import { cn } from '@hr/lib/utils';
 import type { AdBanner, AdBannerCTA, AdBannerCTAType } from '@hr/types/api/ad-banner.types';
 
-/** Brand mark for Zalo CTAs — public asset, served same-origin. */
-const ZALO_ICON_SRC = '/employee/zalo-icon.webp';
-
 /**
- * Icon per CTA type — shared by the compact card and the sheet so both
- * surfaces render the same marks. Zalo uses its logo image; everything else
- * stays on @untitledui/icons line icons.
+ * Icon per CTA type, shared by the compact card and the sheet.
  */
 export const AdCTAIcon = ({ type, className }: { type: AdBannerCTAType; className: string }) => {
   if (type === 'phone') {
     return <PhoneCall01 className={className} aria-hidden="true" />;
-  }
-  if (type === 'zalo') {
-    return <img src={ZALO_ICON_SRC} alt="" aria-hidden="true" className={className} />;
   }
   return <LinkExternal01 className={className} aria-hidden="true" />;
 };

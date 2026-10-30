@@ -86,14 +86,14 @@ export function isEntryEditable(entry: WeeklyPaymentFeeScheduleEntry): boolean {
   return entry.isPending;
 }
 
-// formatVietnameseDate: YYYY-MM-DD → DD/MM/YYYY for human-readable display.
-export function formatVietnameseDate(iso: string): string {
+// formatKenyanDate: YYYY-MM-DD → DD/MM/YYYY for human-readable display.
+export function formatKenyanDate(iso: string): string {
   if (!iso || iso.length < 10) return iso;
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
 
-// formatPercentageVi: 1.8 → "1,8%" (Vietnamese decimal comma).
+// formatPercentageVi: 1.8 → "1,8%" (Kenyan decimal comma).
 export function formatPercentageVi(pct: number): string {
   return `${String(pct).replace(".", ",")}%`;
 }

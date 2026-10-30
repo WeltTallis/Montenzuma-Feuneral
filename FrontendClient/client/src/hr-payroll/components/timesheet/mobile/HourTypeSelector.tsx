@@ -27,9 +27,9 @@ export function HourTypeSelector({
   // Get available hour types from payrate config
   const getAvailableHourTypes = () => {
     const defaultHourTypes = [
-      { key: 'ca ngày', label: 'Ca ngày', description: 'Ca làm việc ban ngày', icon: Sun },
-      { key: 'ca đêm', label: 'Ca đêm', description: 'Ca làm việc ban đêm', icon: Moon },
-      { key: 'tăng ca', label: 'Làm thêm', description: 'Hour tăng ca ngoài ca', icon: Zap }
+      { key: 'ca ngày', label: 'Day shift', description: 'Daytime working hours', icon: Sun },
+      { key: 'ca đêm', label: 'Night shift', description: 'Night-time working hours', icon: Moon },
+      { key: 'tăng ca', label: 'Overtime', description: 'Hours worked beyond the scheduled shift', icon: Zap }
     ];
 
     if (payrateConfig && payrateConfig[position] && payrateConfig[position][dayType]) {
@@ -40,7 +40,7 @@ export function HourTypeSelector({
         return {
           key,
           label: defaultType?.label || key,
-          description: defaultType?.description || 'Loại giờ từ cấu hình',
+          description: defaultType?.description || 'Configured hour type',
           icon: defaultType?.icon || Clock,
           rate: dayTypeRates[key]
         };
@@ -70,12 +70,12 @@ export function HourTypeSelector({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Clock className="h-4 w-4 text-muted-foreground" />
-        <Label className="typography-body-medium">Khung giờ</Label>
+        <Label className="typography-body-medium">Hour type</Label>
       </div>
 
       <Select value={hourType} onValueChange={onHourTypeChange}>
         <SelectTrigger className="h-11 border-2 border-border/50 hover:border-border transition-colors">
-          <SelectValue placeholder="Chọn khung giờ làm việc">
+          <SelectValue placeholder="Select a work hour type">
             {hourType && (
               <div className="flex items-center gap-2">
                 {getHourTypeIcon(availableHourTypes.find(t => t.key === hourType)?.icon || Clock)}
@@ -111,7 +111,7 @@ export function HourTypeSelector({
       {availableHourTypes.length === 0 && (
         <div className="bg-muted/50 rounded-xl p-3">
           <p className="typography-body-small text-muted-foreground">
-            Không có khung giờ nào được cấu hình cho vị trí <strong>{position}</strong> vào <strong>{dayType}</strong>
+            No hour types are configured for <strong>{position}</strong> on <strong>{dayType}</strong>.
           </p>
         </div>
       )}
@@ -119,7 +119,7 @@ export function HourTypeSelector({
       {payrateConfig && availableHourTypes.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
           <p className="typography-body-small text-blue-700">
-            <strong>Mức lương:</strong> Được tính theo cấu hình cho {position} - {dayType}
+            <strong>Pay rate:</strong> Based on the configured rate for {position} - {dayType}
           </p>
         </div>
       )}

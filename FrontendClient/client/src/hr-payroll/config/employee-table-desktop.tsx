@@ -11,7 +11,7 @@ import { UserAvatar } from "@hr/components/ui/user-avatar";
 import { Badge } from "@hr/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hr/components/ui/tooltip";
 import { MapPin, Phone, Landmark, AlertTriangle, CreditCard } from "lucide-react";
-import { formatVietnameseDate } from "@hr/utils/vietnamese";
+import { formatKenyanDate } from "@hr/utils/kenyan";
 import { cn } from "@hr/lib/utils";
 
 const SCHEDULE_STYLES: Record<string, string> = {
@@ -195,7 +195,7 @@ export const createEmployeeColumns = (
         const date = row.getValue("created_at") as string;
         return (
           <span className="typography-body-medium text-muted-foreground tabular-nums">
-            {date ? formatVietnameseDate(date) : "—"}
+            {date ? formatKenyanDate(date) : "—"}
           </span>
         );
       },

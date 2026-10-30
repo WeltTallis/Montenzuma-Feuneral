@@ -14,7 +14,7 @@ import {
   Search
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 
 export interface Action {
   id: string;
@@ -259,8 +259,8 @@ export const searchActions = (query: string, role?: 'admin' | 'partner' | 'emplo
   const actions = role ? getActionsByRole(role) : allActions;
 
   return actions.filter(action =>
-    vietnameseIncludes(action.label, normalizedQuery) ||
-    (action.description && vietnameseIncludes(action.description, normalizedQuery)) ||
-    vietnameseIncludes(action.id, normalizedQuery)
+    textIncludes(action.label, normalizedQuery) ||
+    (action.description && textIncludes(action.description, normalizedQuery)) ||
+    textIncludes(action.id, normalizedQuery)
   );
 };

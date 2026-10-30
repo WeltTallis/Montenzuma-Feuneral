@@ -1,5 +1,5 @@
 import type { TimesheetEntry } from '../../types/multi-timesheet.types';
-import { normalizeKensyn } from '@hr/utils/kenyan';
+import { normalizeText } from '@hr/utils/kenyan';
 
 /**
  * Determine whether a timesheet entry differs from its original values.
@@ -9,8 +9,8 @@ export const hasEntryChangedFromOriginal = (entry: TimesheetEntry): boolean => {
     return true;
   }
 
-  const dayTypeChanged = normalizeKensyn(entry.dayType || '') !==
-    normalizeKensyn(entry.originalValues.dayType || '');
+  const dayTypeChanged = normalizeText(entry.dayType || '') !==
+    normalizeText(entry.originalValues.dayType || '');
 
   // Compare hours as integers, not as JSON strings
   const currentHours = entry.hours || {};

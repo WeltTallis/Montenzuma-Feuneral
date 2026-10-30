@@ -13,7 +13,7 @@ import { formatCurrency } from "@hr/utils/formatters";
 import {
   validateAdvancePaymentAmount,
   formatPayrollMonthRange,
-  getVietnameseAdvancePaymentStatus,
+  getKenyanAdvancePaymentStatus,
 } from "@hr/utils/advancePaymentHelpers";
 import {
   Wallet, AlertCircle, Clock, TrendingUp,
@@ -58,7 +58,7 @@ const HistoryItemCard = ({ item, onCancel }: { item: AdvancePaymentHistoryItem; 
             <span className="text-sm font-bold text-slate-800 tabular-nums mr-auto">{safeFormat(item.requestAmount)}</span>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${cfg.badge}`}>
               <StatusIcon className="h-3 w-3" />
-              {getVietnameseAdvancePaymentStatus(item.status)}
+              {getKenyanAdvancePaymentStatus(item.status)}
             </span>
             {item.status === "PENDING" && !showConfirmCancel && (
               <button onClick={handleCancelClick} className="text-xs font-medium text-red-700 border border-red-200 rounded px-1.5 py-0.5 hover:bg-red-50 transition-colors shrink-0">

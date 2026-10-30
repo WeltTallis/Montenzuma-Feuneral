@@ -558,7 +558,7 @@ export interface IntegrityCheckResponse {
   data: IntegrityCheck;
 }
 
-// Vietnamese translations
+// Kenyan translations
 export const VIETNAMESE_AUDIT_LABELS = {
   actions: {
     CREATE: 'Create',

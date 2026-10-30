@@ -8,7 +8,7 @@ import { Button } from '@hr/components/ui/button';
 import { Input } from '@hr/components/ui/input';
 import { X, Phone, Hash, Briefcase, Calendar, DollarSign, UserCheck, UserX, Search } from 'lucide-react';
 import { usePartnerEmployeeList } from '@hr/hooks/api/useDashboard';
-import { normalizeKensyn } from '@hr/utils/kenyan';
+import { normalizeText } from '@hr/utils/kenyan';
 import { formatDate, formatFullCurrency as formatVND } from '@hr/utils/formatters';
 import type { PartnerEmployeeListType, PartnerEmployeeDetailItem } from '@hr/types/api/dashboard.types';
 
@@ -116,12 +116,12 @@ export function PartnerEmployeeListSheet({ type, month, onClose }: PartnerEmploy
 
   const filteredEmployees = useMemo(() => {
     if (!search.trim()) return employees;
-    const q = normalizeKensyn(search.trim());
+    const q = normalizeText(search.trim());
     return employees.filter((e) =>
-      normalizeKensyn(e.employee_name).includes(q) ||
+      normalizeText(e.employee_name).includes(q) ||
       (e.mobile && e.mobile.includes(q)) ||
       (e.cccd && e.cccd.includes(q)) ||
-      (e.project_name && normalizeKensyn(e.project_name).includes(q))
+      (e.project_name && normalizeText(e.project_name).includes(q))
     );
   }, [employees, search]);
 

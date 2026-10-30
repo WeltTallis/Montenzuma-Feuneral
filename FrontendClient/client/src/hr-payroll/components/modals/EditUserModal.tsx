@@ -4,7 +4,7 @@ import { Input } from "@hr/components/ui/input";
 import { Label } from "@hr/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hr/components/ui/select";
 import { User, UserFormData, UpdateUserData } from "@hr/types/user";
-import { validateFullname, formatVietnameseName } from "@hr/lib/validation";
+import { validateFullname, formatKenyanName } from "@hr/lib/validation";
 
 interface EditUserModalProps {
   open: boolean;
@@ -111,7 +111,7 @@ export function EditUserModal({ open, onClose, onSubmit, user, loading = false }
               value={formData.fullname}
               onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
               onBlur={(e) => {
-                const formatted = formatVietnameseName(e.target.value);
+                const formatted = formatKenyanName(e.target.value);
                 if (formatted !== e.target.value) {
                   setFormData({ ...formData, fullname: formatted });
                 }
@@ -156,7 +156,7 @@ export function EditUserModal({ open, onClose, onSubmit, user, loading = false }
               value={formData.mobile}
               onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
             />
-            <p className="text-xs text-muted-foreground">Dùng để đặt lại mật khẩu qua Zalo OTP.</p>
+            <p className="text-xs text-muted-foreground">Used for account sign-in and contact.</p>
           </div>
 
           <div className="space-y-2">

@@ -1,4 +1,4 @@
-import { vietnameseEquals } from "@hr/utils/vietnameseNormalization";
+import { textEquals } from "@hr/utils/kenyan";
 
 export function calculateTimesheetPreviewAmount(
   rate: number,
@@ -21,7 +21,7 @@ export function findTimesheetRate(
   if (!rates || typeof rates !== "object" || !position) return null;
 
   const positionEntry = Object.entries(rates as Record<string, unknown>).find(
-    ([key]) => vietnameseEquals(key, position),
+    ([key]) => textEquals(key, position),
   );
   if (!positionEntry || !positionEntry[1] || typeof positionEntry[1] !== "object") {
     return null;

@@ -28,6 +28,7 @@ const AdminWalletMobile = lazy(() => import('@hr/pages/mobile/admin/WalletPage')
 const AdminSettings = lazy(() => import('@hr/pages/admin/SettingsPage'));
 const AdminSettingsMobile = lazy(() => import('@hr/pages/mobile/admin/SettingsPage'));
 const AdminPaymentHistory = lazy(() => import('@hr/pages/admin/PaymentHistoryPage'));
+const AdminTaxCalculator = lazy(() => import('@hr/pages/admin/TaxCalculatorPage'));
 const PartnerDashboard = lazy(() => import('@hr/pages/partner/DashboardPage'));
 const PartnerDashboardMobile = lazy(() => import('@hr/pages/mobile/partner/DashboardPage'));
 const PartnerProjects = lazy(() => import('@hr/pages/partner/ProjectsPage'));
@@ -57,6 +58,7 @@ const ROLE_NAV: Record<AppRole, Array<{ label: string; path: string }>> = {
     { label: 'Advance payments', path: 'advance-payments' },
     { label: 'Wallet', path: 'wallet' },
     { label: 'Payment history', path: 'payment-history' },
+    { label: 'Tax calculator', path: 'tax-calculator' },
     { label: 'Users', path: 'users' },
     { label: 'Settings', path: 'settings' },
   ],
@@ -97,6 +99,7 @@ const AdminRoutes = () => (
     <Route path="advance-payments" element={<Responsive desktop={AdminAdvancePayments} mobile={AdminAdvancePaymentsMobile} />} />
     <Route path="wallet" element={<Responsive desktop={AdminWallet} mobile={AdminWalletMobile} />} />
     <Route path="payment-history" element={<AdminPaymentHistory />} />
+    <Route path="tax-calculator" element={<AdminTaxCalculator />} />
     <Route path="users" element={<Responsive desktop={AdminUsers} mobile={AdminUsersMobile} />} />
     <Route path="settings" element={<Responsive desktop={AdminSettings} mobile={AdminSettingsMobile} />} />
     <Route path="*" element={<Navigate to="dashboard" replace />} />

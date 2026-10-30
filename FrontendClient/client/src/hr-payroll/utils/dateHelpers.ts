@@ -1,55 +1,52 @@
 import { formatDate as formatDateUtil } from '@hr/utils/formatters';
 import { DayType } from '@hr/types/api/payrate.types';
 
-/**
- * Vietnam public holidays for the current year
- * Note: This is a simplified version. In production, you might want to:
- * - Fetch from an API
- * - Store in database with admin management
- * - Handle lunar calendar holidays properly
- */
-const VIETNAM_PUBLIC_HOLIDAYS_2024 = [
-  '2024-01-01', // New Year's Day
-  '2024-02-08', // Vietnamese New Year (Tet) - Day 1
-  '2024-02-09', // Vietnamese New Year (Tet) - Day 2  
-  '2024-02-10', // Vietnamese New Year (Tet) - Day 3
-  '2024-02-11', // Vietnamese New Year (Tet) - Day 4
-  '2024-02-12', // Vietnamese New Year (Tet) - Day 5
-  '2024-02-13', // Vietnamese New Year (Tet) - Day 6
-  '2024-02-14', // Vietnamese New Year (Tet) - Day 7
-  '2024-04-18', // Hung Kings' Commemoration Day
-  '2024-04-30', // Liberation Day
-  '2024-05-01', // International Workers' Day
-  '2024-09-02', // Independence Day
-];
+function easterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
 
-// For future years, you would need to update or fetch these dates
-const VIETNAM_PUBLIC_HOLIDAYS_2025 = [
-  '2025-01-01', // New Year's Day
-  '2025-01-29', // Vietnamese New Year (Tet) - Day 1 (approximate)
-  '2025-01-30', // Vietnamese New Year (Tet) - Day 2
-  '2025-01-31', // Vietnamese New Year (Tet) - Day 3
-  '2025-02-01', // Vietnamese New Year (Tet) - Day 4
-  '2025-02-02', // Vietnamese New Year (Tet) - Day 5
-  '2025-02-03', // Vietnamese New Year (Tet) - Day 6
-  '2025-02-04', // Vietnamese New Year (Tet) - Day 7
-  '2025-04-07', // Hung Kings' Commemoration Day (approximate)
-  '2025-04-30', // Liberation Day
-  '2025-05-01', // International Workers' Day
-  '2025-09-02', // Independence Day
-];
+function kenyaPublicHolidays(year: number): Set<string> {
+  const easter = easterSunday(year);
+  const goodFriday = new Date(year, easter.getMonth(), easter.getDate() - 2);
+  const easterMonday = new Date(year, easter.getMonth(), easter.getDate() + 1);
+  const formatDate = (date: Date) => dateToString(date);
 
-const ALL_VIETNAM_PUBLIC_HOLIDAYS = [
-  ...VIETNAM_PUBLIC_HOLIDAYS_2024,
-  ...VIETNAM_PUBLIC_HOLIDAYS_2025,
-];
+  return new Set([
+    `${year}-01-01`,
+    `${year}-05-01`,
+    `${year}-06-01`,
+    `${year}-10-10`,
+    `${year}-10-20`,
+    `${year}-12-12`,
+    `${year}-12-25`,
+    `${year}-12-26`,
+    formatDate(goodFriday),
+    formatDate(easterMonday),
+  ]);
+}
 
 /**
- * Check if a given date is a Vietnam public holiday
+ * Fixed-date and Easter-based Kenyan public holidays.
+ * Eid holidays are gazetted annually and should be configured for each year.
  */
-export function isVietnamesePublicHoliday(date: string | Date): boolean {
-  const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
-  return ALL_VIETNAM_PUBLIC_HOLIDAYS.includes(dateStr);
+export function isKenyanPublicHoliday(date: string | Date): boolean {
+  const dateObj = typeof date === 'string' ? new Date(`${date.slice(0, 10)}T00:00:00`) : date;
+  if (Number.isNaN(dateObj.getTime())) return false;
+  return kenyaPublicHolidays(dateObj.getFullYear()).has(dateToString(dateObj));
 }
 
 /**
@@ -62,7 +59,7 @@ export function getDayType(date: string | Date): DayType {
   const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   
   // Check if it's a public holiday first
-  if (isVietnamesePublicHoliday(date)) {
+  if (isKenyanPublicHoliday(date)) {
     return 'ngày lễ';
   }
   
@@ -89,7 +86,7 @@ export function isSaturdayRequiringDayType(date: string | Date): boolean {
   const dayOfWeek = dateObj.getDay();
   
   // If it's Saturday and not a public holiday, it requires user input
-  return dayOfWeek === 6 && !isVietnamesePublicHoliday(date);
+  return dayOfWeek === 6 && !isKenyanPublicHoliday(date);
 }
 
 /**
@@ -118,7 +115,7 @@ export function formatDateForDisplay(date: string | Date): string {
 /**
  * Get the day of the week in English
  */
-export function getDayOfWeekVietnamese(date: string | Date): string {
+export function getDayOfWeek(date: string | Date): string {
   const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
   const dayOfWeek = dateObj.getDay();
   

@@ -21,7 +21,7 @@ import {
   useApproveAttendance,
 } from "@hr/hooks/api/useAdminAttendance";
 import type { AdminAttendanceResponse, AdminCheckInShift } from "@hr/types/api/attendance.types";
-import { formatVnDayMonth, formatVnTime } from "@hr/utils/vn-time";
+import { formatKenyaDayMonth, formatKenyaTime } from "@hr/utils/ke-time";
 
 interface CheckInMarkAttendanceDialogProps {
   open: boolean;
@@ -138,18 +138,18 @@ export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, proj
           <div className="flex flex-1 flex-col justify-center gap-2 px-4 py-10 text-center sm:px-6">
             <p className="text-sm font-medium text-foreground">The employee has completed today's attendance.</p>
             <p className="text-sm text-muted-foreground">
-              Clocked in at {formatVnTime(record.check_in_time)}
-              {record.check_out_time ? ` · Clocked out at ${formatVnTime(record.check_out_time)}` : ""}
+              Clocked in at {formatKenyaTime(record.check_in_time)}
+              {record.check_out_time ? ` · Clocked out at ${formatKenyaTime(record.check_out_time)}` : ""}
             </p>
           </div>
         ) : record ? (
           <div className="flex flex-1 flex-col gap-3 px-4 py-5 sm:px-6">
             <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
               <p className="text-sm font-medium text-foreground">
-                {attendanceStatusLabel[record.status] ?? "Clocked in at"} {formatVnTime(record.check_in_time)}
+                {attendanceStatusLabel[record.status] ?? "Clocked in at"} {formatKenyaTime(record.check_in_time)}
                 {record.date !== today ? (
                   <span className="ml-1 text-xs text-muted-foreground font-normal">
-                    (on {formatVnDayMonth(record.check_in_time)})
+                    (on {formatKenyaDayMonth(record.check_in_time)})
                   </span>
                 ) : null}
               </p>
@@ -184,7 +184,7 @@ export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, proj
                     setShiftIndex("");
                   }}
                 >
-                  Today ({formatVnDayMonth(new Date().toISOString())})
+                  Today ({formatKenyaDayMonth(new Date().toISOString())})
                 </Button>
                 <Button
                   type="button"
@@ -196,7 +196,7 @@ export function CheckInMarkAttendanceDialog({ open, onOpenChange, employee, proj
                     setShiftIndex("");
                   }}
                 >
-                  Yesterday ({formatVnDayMonth(new Date(Date.now() - 86400000).toISOString())})
+                  Yesterday ({formatKenyaDayMonth(new Date(Date.now() - 86400000).toISOString())})
                 </Button>
               </div>
             </div>

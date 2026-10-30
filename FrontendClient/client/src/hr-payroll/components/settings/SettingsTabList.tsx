@@ -1,4 +1,4 @@
-import { Bell, KeyRound, Mail, Megaphone, MessageCircle, Receipt, Settings, Users } from 'lucide-react';
+import { Bell, Mail, Megaphone, Receipt, Settings, Users } from 'lucide-react';
 
 import { TabsList, TabsTrigger } from '@hr/components/ui/tabs';
 
@@ -8,9 +8,7 @@ export const SETTINGS_TABS = {
   employees: 'employees',
   email: 'email',
   notifications: 'notifications',
-  zalo: 'zalo',
   ads: 'ads',
-  apiKeys: 'api',
 } as const;
 
 export const VALID_SETTINGS_TABS = new Set<string>(Object.values(SETTINGS_TABS));
@@ -21,9 +19,7 @@ const tabs = [
   { value: SETTINGS_TABS.employees, label: 'Employees', icon: Users },
   { value: SETTINGS_TABS.email, label: 'Email', icon: Mail },
   { value: SETTINGS_TABS.notifications, label: 'Notifications', icon: Bell },
-  { value: SETTINGS_TABS.zalo, label: 'Zalo ZNS', icon: MessageCircle },
   { value: SETTINGS_TABS.ads, label: 'Advertising', icon: Megaphone },
-  { value: SETTINGS_TABS.apiKeys, label: 'API', icon: KeyRound },
 ] as const;
 
 /**

@@ -95,8 +95,8 @@ export function isEntryEditable(entry: DisbursementFeeScheduleEntry): boolean {
   return entry.isPending;
 }
 
-// formatVietnameseDate: YYYY-MM-DD → DD/MM/YYYY for human-readable display.
-export function formatVietnameseDate(iso: string): string {
+// formatKenyanDate: YYYY-MM-DD → DD/MM/YYYY for human-readable display.
+export function formatKenyanDate(iso: string): string {
   if (!iso || iso.length < 10) return iso;
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;

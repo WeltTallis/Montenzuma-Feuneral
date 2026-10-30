@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@hr/lib/utils';
 import { formatDateForAPI } from '@hr/utils/formatters';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 import { useProjects } from '@hr/hooks/api/useProjects';
 
 export interface TimesheetsExportParams {
@@ -60,8 +60,8 @@ export const TimesheetsExportDialog = memo(function TimesheetsExportDialog({
     if (!projectSearch.trim()) return projects;
     return projects.filter(
       (p) =>
-        vietnameseIncludes(p.name, projectSearch) ||
-        vietnameseIncludes(p.code, projectSearch)
+        textIncludes(p.name, projectSearch) ||
+        textIncludes(p.code, projectSearch)
     );
   }, [projects, projectSearch]);
 

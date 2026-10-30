@@ -1,4 +1,4 @@
-import { cronToVietnamese } from "@hr/utils/cron-human";
+import { cronToEnglish } from "@hr/utils/cron-human";
 // W13c: lucide → verified @untitledui/icons; CalendarClock/Timer →
 // CalendarDate/ClockStopwatch (verified names).
 import {
@@ -56,7 +56,7 @@ export function CronJobCard({ job, onToggle, isPending }: CronJobCardProps) {
         {/* Schedule */}
         <div className="flex items-center gap-1.5 mt-1.5 pl-14">
           <CalendarDate className="h-3 w-3 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground">{cronToVietnamese(job.cron)}</span>
+          <span className="text-xs text-muted-foreground">{cronToEnglish(job.cron)}</span>
         </div>
       </div>
 

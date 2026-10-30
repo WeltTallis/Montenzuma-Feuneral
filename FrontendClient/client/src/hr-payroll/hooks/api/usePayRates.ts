@@ -290,7 +290,7 @@ export function useCopyPayRate() {
 }
 
 /**
- * Create standard Vietnamese pay rate structure
+ * Create standard Kenyan pay rate structure
  */
 
 // ========== CONVENIENCE HOOKS ==========

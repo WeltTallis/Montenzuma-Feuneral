@@ -1,7 +1,7 @@
 import { Badge } from '@hr/components/ui/badge';
 import { CheckCircle, Clock, XCircle, AlertCircle, Edit, Pause } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
-import { getKensynProjectStatus } from '@hr/utils/kenyan';
+import { getProjectStatus } from '@hr/utils/kenyan';
 
 export type ProjectStatus = 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
 
@@ -12,27 +12,27 @@ interface ProjectStatusBadgeProps {
 
 const STATUS_CONFIG = {
   draft: {
-    label: () => getKensynProjectStatus('draft'),
+    label: () => getProjectStatus('draft'),
     icon: Edit,
     className: 'bg-muted/50 text-foreground border-border hover:bg-muted'
   },
   active: {
-    label: () => getKensynProjectStatus('active'),
+    label: () => getProjectStatus('active'),
     icon: CheckCircle,
     className: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
   },
   paused: {
-    label: () => getKensynProjectStatus('paused'),
+    label: () => getProjectStatus('paused'),
     icon: Pause,
     className: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
   },
   completed: {
-    label: () => getKensynProjectStatus('completed'),
+    label: () => getProjectStatus('completed'),
     icon: CheckCircle,
     className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
   },
   cancelled: {
-    label: () => getKensynProjectStatus('cancelled'),
+    label: () => getProjectStatus('cancelled'),
     icon: XCircle,
     className: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
   }

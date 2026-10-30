@@ -124,23 +124,23 @@ export const ERROR_MESSAGES = {
   SERVER_ERROR: 'Something went wrong. Please try again later',
 } as const;
 
-// Success Messages (Vietnamese)
+// Success messages
 export const SUCCESS_MESSAGES = {
-  LOGIN: 'Sign in thành công',
-  LOGOUT: 'Sign out thành công',
-  CREATED: 'Tạo mới thành công',
-  UPDATED: 'Cập nhật thành công',
-  DELETED: 'Delete thành công',
-  APPROVED: 'Phê duyệt thành công',
-  REJECTED: 'Loại thành công',
-  IMPORTED: 'Import dữ liệu thành công',
-  EXPORTED: 'Export dữ liệu thành công',
-  PASSWORD_CHANGED: 'Đổi mật khẩu thành công',
-  BULK_CREATED: 'Tạo hàng loạt thành công',
-  BULK_UPDATED: 'Cập nhật hàng loạt thành công',
-  BULK_DELETED: 'Delete hàng loạt thành công',
-  BULK_APPROVED: 'Phê duyệt hàng loạt thành công',
-  BULK_REJECTED: 'Loại hàng loạt thành công',
+  LOGIN: 'Signed in successfully',
+  LOGOUT: 'Signed out successfully',
+  CREATED: 'Created successfully',
+  UPDATED: 'Updated successfully',
+  DELETED: 'Deleted successfully',
+  APPROVED: 'Approved successfully',
+  REJECTED: 'Rejected successfully',
+  IMPORTED: 'Imported successfully',
+  EXPORTED: 'Exported successfully',
+  PASSWORD_CHANGED: 'Password changed successfully',
+  BULK_CREATED: 'Items created successfully',
+  BULK_UPDATED: 'Items updated successfully',
+  BULK_DELETED: 'Items deleted successfully',
+  BULK_APPROVED: 'Items approved successfully',
+  BULK_REJECTED: 'Items rejected successfully',
 } as const;
 
 // Sorting Options

@@ -13,7 +13,7 @@ import {
 } from "@hr/components/ui/alert-dialog";
 import { Input } from "@hr/components/ui/input";
 import { Label } from "@hr/components/ui/label";
-import { formatKensynDate } from "./rule-formatters";
+import { formatKenyanDate } from "./rule-formatters";
 import type { FeeScheduleEntry } from "@hr/types/api/advance-payment-fee-schedule.types";
 
 interface Props {
@@ -32,7 +32,7 @@ export const FeeScheduleDeleteDialog = ({
   onConfirm,
 }: Props) => {
   const [typed, setTyped] = useState("");
-  const expected = entry ? formatKensynDate(entry.effectiveDate) : "";
+  const expected = entry ? formatKenyanDate(entry.effectiveDate) : "";
   const matches = typed.trim() === expected;
 
   useEffect(() => {

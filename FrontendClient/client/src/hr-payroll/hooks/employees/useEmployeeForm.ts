@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useChangePaymentSchedule, useUpdateEmployeeProjectAssignment } from "@hr/hooks/api/useProjectEmployees";
-import { validateFullname, validateMobileNotCCCD } from "@hr/lib/validation";
+import { validateFullname, validateMobileNotNationalID } from "@hr/lib/validation";
 import { toast } from "@hr/components/ui/sonner";
 import type { Employee } from "@hr/types/api/employee.types";
 import type { Bank } from "@hr/types/api/bank.types";
@@ -214,7 +214,7 @@ export const useEmployeeForm = ({ employee, onUpdate }: UseEmployeeFormProps) =>
         // A CCCD typed into the phone field is rejected by the backend too; check
         // here so the operator gets the message before the request round-trip.
         if (formData.mobile) {
-          const mobileGuard = validateMobileNotCCCD(formData.mobile);
+          const mobileGuard = validateMobileNotNationalID(formData.mobile);
           if (!mobileGuard.valid) {
             toast({
               title: "Error xác thực",

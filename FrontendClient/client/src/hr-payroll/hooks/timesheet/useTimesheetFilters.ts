@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Timesheet } from "@hr/types/api/timesheet.types";
-import { vietnameseIncludes } from "@hr/utils/vietnameseNormalization";
+import { textIncludes } from "@hr/utils/kenyan";
 
 export const useTimesheetFilters = (timesheets: Timesheet[]) => {
   const getCurrentMonth = () => {
@@ -18,9 +18,9 @@ export const useTimesheetFilters = (timesheets: Timesheet[]) => {
   const filteredTimesheets = useMemo(() => {
     return timesheets.filter(timesheet => {
       const matchesSearch =
-        (timesheet.employeeName && vietnameseIncludes(timesheet.employeeName, searchTerm)) ||
-        (timesheet.projectName && vietnameseIncludes(timesheet.projectName, searchTerm)) ||
-        (timesheet.notes && vietnameseIncludes(timesheet.notes, searchTerm));
+        (timesheet.employeeName && textIncludes(timesheet.employeeName, searchTerm)) ||
+        (timesheet.projectName && textIncludes(timesheet.projectName, searchTerm)) ||
+        (timesheet.notes && textIncludes(timesheet.notes, searchTerm));
 
       const matchesMonth = selectedMonth === "all" || timesheet.date.startsWith(selectedMonth);
       const matchesProject = selectedProject === "all" || timesheet.projectName === selectedProject;

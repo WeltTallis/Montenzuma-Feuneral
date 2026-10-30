@@ -373,7 +373,7 @@ export function FinancialChart({ className }: FinancialChartProps) {
                 width={80}
                 domain={[0, 'dataMax']}
                 tickFormatter={(value) => {
-                  // Vietnamese number format with thousands separator
+                  // Kenyan number format with thousands separator
                   return new Intl.NumberFormat('en-KE').format(value);
                 }}
               />

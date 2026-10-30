@@ -5,7 +5,7 @@ import { Label } from "@hr/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hr/components/ui/select";
 import { toast } from "@hr/components/ui/sonner";
 import { User, UserFormData, CreateUserData } from "@hr/types/user";
-import { validateFullname, formatVietnameseName } from "@hr/lib/validation";
+import { validateFullname, formatKenyanName } from "@hr/lib/validation";
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -122,7 +122,7 @@ export function AddUserModal({ isOpen, onClose, onAddUser, existingUsers }: AddU
               value={formData.fullname}
               onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
               onBlur={(e) => {
-                const formatted = formatVietnameseName(e.target.value);
+                const formatted = formatKenyanName(e.target.value);
                 if (formatted !== e.target.value) {
                   setFormData({ ...formData, fullname: formatted });
                 }

@@ -13,6 +13,9 @@ type EmployeeProfileResponse struct {
 	DateOfBirth       *time.Time `json:"date_of_birth"`
 	BankAccountNumber string     `json:"bank_account_number"`
 	BankAccountName   string     `json:"bank_account_name"`
+	KRAPIN            string     `json:"kra_pin"`
+	NSSFNumber        string     `json:"nssf_number"`
+	SHANumber         string     `json:"sha_number"`
 	Bank              *BankInfo  `json:"bank,omitempty"`
 	PaymentSchedule   string     `json:"payment_schedule"`
 	CheckInEnabled    bool       `json:"check_in_enabled"`
@@ -78,9 +81,12 @@ type BankInfo struct {
 
 // UpdateEmployeeProfileRequest represents update request for employee's own profile
 type UpdateEmployeeProfileRequest struct {
-	Fullname *string `json:"fullname" binding:"omitempty,min=2"`
-	Email    *string `json:"email" binding:"omitempty,email"`
-	Username *string `json:"username" binding:"omitempty,min=3"`
+	Fullname   *string `json:"fullname" binding:"omitempty,min=2"`
+	Email      *string `json:"email" binding:"omitempty,email"`
+	Username   *string `json:"username" binding:"omitempty,min=3"`
+	KRAPIN     *string `json:"kra_pin" binding:"omitempty,len=11,alphanum"`
+	NSSFNumber *string `json:"nssf_number" binding:"omitempty,max=32"`
+	SHANumber  *string `json:"sha_number" binding:"omitempty,max=32"`
 }
 
 // UpdateEmployeePasswordRequest represents password update request

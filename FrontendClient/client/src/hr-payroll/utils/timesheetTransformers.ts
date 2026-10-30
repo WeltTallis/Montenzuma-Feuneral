@@ -5,7 +5,7 @@
 import type { Employee } from '@hr/types/api/employee.types';
 import type { TimesheetEntry } from '../components/sheets/timesheet-entry/types/multi-timesheet.types';
 import type { NewTimesheetEntry } from '@hr/types/api/timesheet.types';
-import { normalizeKensyn } from '@hr/utils/kenyan';
+import { normalizeText } from '@hr/utils/kenyan';
 
 /**
  * Simple ID generator (using slice instead of deprecated substr)
@@ -52,7 +52,7 @@ export const transformEntriesToAPI = (entries: TimesheetEntry[]): NewTimesheetEn
       const currentDayType = entry.dayType || '';
 
       // Check if day type changed (normalized comparison)
-      const dayTypeChanged = normalizeKensyn(originalDayType) !== normalizeKensyn(currentDayType);
+      const dayTypeChanged = normalizeText(originalDayType) !== normalizeText(currentDayType);
 
       if (dayTypeChanged) {
         // Day type changed: delete old entries and create new ones
@@ -190,7 +190,7 @@ export const mergeAPIEntriesToUI = (
 
 /**
  * Check if two entries are equal for validation purposes
- * Uses normalized Vietnamese comparison for day types
+ * Uses normalized Kenyan comparison for day types
  */
 export const entriesEqual = (entry1: TimesheetEntry, entry2: TimesheetEntry): boolean => {
   return (
@@ -198,6 +198,6 @@ export const entriesEqual = (entry1: TimesheetEntry, entry2: TimesheetEntry): bo
     entry1.projectId === entry2.projectId &&
     entry1.date === entry2.date &&
     JSON.stringify(entry1.hours || {}) === JSON.stringify(entry2.hours || {}) &&
-    normalizeKensyn(entry1.dayType || '') === normalizeKensyn(entry2.dayType || '')
+    normalizeText(entry1.dayType || '') === normalizeText(entry2.dayType || '')
   );
 };

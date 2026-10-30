@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@hr/components/ui/dropdown-menu";
 import {
-  getVietnameseAdvancePaymentStatus,
+  getKenyanAdvancePaymentStatus,
   getAdvancePaymentStatusColor,
   formatPaymentLatency,
   getPaymentLatencyColor,
@@ -134,7 +134,7 @@ export function getAdvancePaymentColumns(
       cell: ({ row }) => {
         const status = row.original.status;
         const isPolling = ctx.pollingIds?.has(row.original.id);
-        const label = getVietnameseAdvancePaymentStatus(status);
+        const label = getKenyanAdvancePaymentStatus(status);
         const dot =
           status === "COMPLETED" ? "bg-emerald-500"
           : status === "FAILED" ? "bg-red-500"
@@ -380,7 +380,7 @@ export const requestMobileFields: MobileField<AdvancePaymentListItem>[] = [
           variant="outline"
           className={`text-xs px-1.5 py-0.5 font-semibold leading-none h-auto ${getAdvancePaymentStatusColor(row.status)}`}
         >
-          {getVietnameseAdvancePaymentStatus(row.status)}
+          {getKenyanAdvancePaymentStatus(row.status)}
         </Badge>
       </div>
     ),

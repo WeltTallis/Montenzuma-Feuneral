@@ -15,7 +15,7 @@ import { formatCurrency } from "@hr/utils/formatters";
 import {
   describeRuleFragments,
   formatDaysFromNow,
-  formatKensynDate,
+  formatKenyanDate,
   type RuleFragment,
 } from "./rule-formatters";
 import { buildComparisonRows } from "./compare-helpers";
@@ -95,7 +95,7 @@ export const FeeScheduleConfirmDialog = ({
             <p className="text-xs text-muted-foreground">
               Effective from{" "}
               <strong className="font-medium text-foreground/90">
-                {formatKensynDate(pending.effectiveDate)}
+                {formatKenyanDate(pending.effectiveDate)}
               </strong>{" "}
               ({formatDaysFromNow(days)})
             </p>

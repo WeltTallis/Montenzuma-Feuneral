@@ -15,7 +15,7 @@ import { toast } from "@hr/components/ui/sonner";
 import { ErrorState } from "@hr/components/ui/error-state";
 import { Skeleton } from "@hr/components/ui/skeleton";
 import { employeeService } from "@hr/services/api/employee.service";
-import { formatVietnameseName } from "@hr/lib/validation";
+import { formatKenyanName } from "@hr/lib/validation";
 import { cn } from "@hr/lib/utils";
 import {
   Eye,
@@ -362,7 +362,7 @@ export default function EditAdvPartnerUserSheet({
                           value={form.fullname}
                           onChange={(e) => set("fullname", e.target.value)}
                           onBlur={(e) => {
-                            const formatted = formatVietnameseName(e.target.value);
+                            const formatted = formatKenyanName(e.target.value);
                             if (formatted !== e.target.value) set("fullname", formatted);
                           }}
                           className="h-11 text-sm"

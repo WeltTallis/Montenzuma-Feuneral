@@ -17,9 +17,9 @@ export function copyRatesFromPosition(
 }
 
 /**
- * Parse Kensyn number format (remove dots and commas, parse as integer)
+ * Parse Kenyan number format (remove dots and commas, parse as integer)
  */
-export function parseKensynCurrency(value: string): number {
+export function parseKenyanCurrency(value: string): number {
   const cleanValue = value.replace(/[^\d]/g, '');
   return cleanValue ? parseInt(cleanValue, 10) : 0;
 }

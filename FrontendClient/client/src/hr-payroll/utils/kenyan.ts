@@ -1,8 +1,8 @@
-// Kensyn system utilities for the payroll UI.
+// Kenyan system utilities for the payroll UI.
 import { format, parseISO } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 
-export const formatKensynCurrency = (
+export const formatKenyanCurrency = (
   amount: number,
   options: { showSymbol?: boolean } = {}
 ): string => {
@@ -15,7 +15,7 @@ export const formatKensynCurrency = (
   return showSymbol ? `KES ${formattedAmount}` : formattedAmount;
 };
 
-export const formatKensynDate = (
+export const formatKenyanDate = (
   dateString: string | Date,
   formatPattern: string = 'dd/MM/yyyy'
 ): string => {
@@ -23,20 +23,20 @@ export const formatKensynDate = (
     const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
     return format(date, formatPattern, { locale: enGB });
   } catch (error) {
-    console.error('Error formatting Kensyn date:', error);
+    console.error('Error formatting Kenyan date:', error);
     return 'Invalid date';
   }
 };
 
-export const formatKensynDateTime = (
+export const formatKenyanDateTime = (
   dateString: string | Date,
   includeTime: boolean = true
 ): string => {
   const pattern = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
-  return formatKensynDate(dateString, pattern);
+  return formatKenyanDate(dateString, pattern);
 };
 
-export const formatKensynRelativeTime = (dateString: string | Date): string => {
+export const formatKenyanRelativeTime = (dateString: string | Date): string => {
   try {
     const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
     const now = new Date();
@@ -66,11 +66,11 @@ export const formatKensynRelativeTime = (dateString: string | Date): string => {
   }
 };
 
-export const formatKensynMonthYear = (dateString: string | Date): string => {
-  return formatKensynDate(dateString, 'MM/yyyy');
+export const formatKenyanMonthYear = (dateString: string | Date): string => {
+  return formatKenyanDate(dateString, 'MM/yyyy');
 };
 
-export const formatKensynPercentage = (
+export const formatKenyanPercentage = (
   value: number,
   decimals: number = 1
 ): string => {
@@ -81,7 +81,7 @@ export const formatKensynPercentage = (
   }).format(value / 100);
 };
 
-export const formatKensynNumber = (
+export const formatKenyanNumber = (
   value: number,
   decimals: number = 0
 ): string => {
@@ -91,13 +91,13 @@ export const formatKensynNumber = (
   }).format(value);
 };
 
-export const getKensynMonthName = (monthIndex: number): string => {
+export const getKenyanMonthName = (monthIndex: number): string => {
   if (!Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) return 'Invalid month';
   return new Intl.DateTimeFormat('en-KE', { month: 'long', timeZone: 'Africa/Nairobi' })
     .format(new Date(Date.UTC(2024, monthIndex, 1)));
 };
 
-export const getKensynDayName = (dayIndex: number): string => {
+export const getKenyanDayName = (dayIndex: number): string => {
   if (!Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6) return 'Invalid day';
   return new Intl.DateTimeFormat('en-KE', { weekday: 'long', timeZone: 'Africa/Nairobi' })
     .format(new Date(Date.UTC(2024, 0, 7 + dayIndex)));
@@ -111,7 +111,7 @@ export const formatChartMonthLabel = (monthString: string): string => {
     const [year, month] = monthString.split('-');
     const monthNum = parseInt(month, 10);
     if (monthNum < 1 || monthNum > 12) return monthString;
-    const monthName = getKensynMonthName(monthNum - 1).slice(0, 3);
+    const monthName = getKenyanMonthName(monthNum - 1).slice(0, 3);
     return `${monthName} ${year}`;
   } catch (error) {
     console.error('Error formatting chart month label:', error);
@@ -119,7 +119,7 @@ export const formatChartMonthLabel = (monthString: string): string => {
   }
 };
 
-export const getKensynActivityIcon = (activityType: string): string => {
+export const getKenyanActivityIcon = (activityType: string): string => {
   const iconMap: Record<string, string> = {
     'timesheet_approved': 'check-circle',
     'timesheet_rejected': 'x-circle',
@@ -134,7 +134,7 @@ export const getKensynActivityIcon = (activityType: string): string => {
   return iconMap[activityType] || 'activity';
 };
 
-export const getKensynNotificationIcon = (notificationType: string): string => {
+export const getKenyanNotificationIcon = (notificationType: string): string => {
   const iconMap: Record<string, string> = {
     'error': 'alert-triangle',
     'warning': 'alert-circle',
@@ -146,7 +146,7 @@ export const getKensynNotificationIcon = (notificationType: string): string => {
   return iconMap[notificationType] || 'bell';
 };
 
-export const getKensynProjectStatus = (status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled'): string => {
+export const getProjectStatus = (status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled'): string => {
   const statusMap: Record<string, string> = {
     'draft': 'Draft',
     'active': 'Active',
@@ -170,14 +170,23 @@ export const getProjectStatusVariant = (status: string): 'default' | 'secondary'
 
 const COMBINING_RE = /[\u0300-\u036f]/g;
 
-export function normalizeKensyn(str: string): string {
+export function stripDiacritics(str: string): string {
+  if (!str) return '';
   return str
     .normalize('NFD')
     .replace(COMBINING_RE, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase();
+    .replace(/[Đđ]/g, character => character === 'Đ' ? 'D' : 'd');
 }
+
+export function normalizeText(str: string): string {
+  return stripDiacritics(str).toLowerCase();
+}
+
+export const textIncludes = (text: string, searchTerm: string): boolean =>
+  normalizeText(text).includes(normalizeText(searchTerm));
+
+export const textEquals = (left: string, right: string): boolean =>
+  normalizeText(left) === normalizeText(right);
 
 export const findPreferredDayType = (
   availableDayTypes: string[],
@@ -187,9 +196,9 @@ export const findPreferredDayType = (
     return '';
   }
   const preferred = availableDayTypes.find(dayType => {
-    const normalized = normalizeKensyn(dayType);
+    const normalized = normalizeText(dayType);
     return preferredTypes.some(pref =>
-      normalized === normalizeKensyn(pref)
+      normalized === normalizeText(pref)
     );
   });
   return preferred || availableDayTypes[0];
@@ -199,8 +208,8 @@ export const isPreferredDayType = (
   dayType: string,
   preferredTypes: string[] = ['regular', 'ngay thuong']
 ): boolean => {
-  const normalized = normalizeKensyn(dayType);
+  const normalized = normalizeText(dayType);
   return preferredTypes.some(pref =>
-    normalized === normalizeKensyn(pref)
+    normalized === normalizeText(pref)
   );
 };

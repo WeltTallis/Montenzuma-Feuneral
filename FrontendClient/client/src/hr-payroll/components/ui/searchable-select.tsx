@@ -11,7 +11,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@hr/components/ui/popover';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 
 export interface SearchableSelectOption {
   value: string;
@@ -47,7 +47,7 @@ interface SearchableSelectProps {
  *
  * Complements MultiSearchableDropdown (multi) and AsyncSearchableDropdown
  * (server-side search): sync options, client-side diacritic-insensitive
- * filtering via vietnameseIncludes, cmdk command list inside a popover.
+ * filtering via textIncludes, cmdk command list inside a popover.
  */
 export function SearchableSelect({
   value,
@@ -77,8 +77,8 @@ export function SearchableSelect({
     return options.filter(
       (o) =>
         !o.disabled &&
-        (vietnameseIncludes(o.label, q) ||
-          (o.searchText !== undefined && vietnameseIncludes(o.searchText, q))),
+        (textIncludes(o.label, q) ||
+          (o.searchText !== undefined && textIncludes(o.searchText, q))),
     );
   }, [options, query]);
 

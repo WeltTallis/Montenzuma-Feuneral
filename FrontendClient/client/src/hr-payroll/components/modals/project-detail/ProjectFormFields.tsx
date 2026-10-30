@@ -3,7 +3,7 @@ import { Label } from '@hr/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hr/components/ui/select';
 import { Textarea } from '@hr/components/ui/textarea';
 import { Project } from '@hr/types/api/project.types';
-import { getKensynProjectStatus } from '@hr/utils/kenyan';
+import { getProjectStatus } from '@hr/utils/kenyan';
 import { SalaryPeriodFields } from '@hr/components/projects/SalaryPeriodFields';
 import {
   Clock,
@@ -22,11 +22,11 @@ interface ProjectFormFieldsProps {
 }
 
 const projectStatuses = [
-  { value: 'draft', label: getKensynProjectStatus('draft'), color: 'bg-muted', icon: Clock },
-  { value: 'active', label: getKensynProjectStatus('active'), color: 'bg-green-500', icon: TrendingUp },
-  { value: 'paused', label: getKensynProjectStatus('paused'), color: 'bg-orange-500', icon: Pause },
-  { value: 'completed', label: getKensynProjectStatus('completed'), color: 'bg-blue-600', icon: CheckCircle },
-  { value: 'cancelled', label: getKensynProjectStatus('cancelled'), color: 'bg-red-500', icon: XCircle }
+  { value: 'draft', label: getProjectStatus('draft'), color: 'bg-muted', icon: Clock },
+  { value: 'active', label: getProjectStatus('active'), color: 'bg-green-500', icon: TrendingUp },
+  { value: 'paused', label: getProjectStatus('paused'), color: 'bg-orange-500', icon: Pause },
+  { value: 'completed', label: getProjectStatus('completed'), color: 'bg-blue-600', icon: CheckCircle },
+  { value: 'cancelled', label: getProjectStatus('cancelled'), color: 'bg-red-500', icon: XCircle }
 ];
 
 export function ProjectNameField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {

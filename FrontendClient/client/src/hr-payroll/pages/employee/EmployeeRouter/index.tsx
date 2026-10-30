@@ -7,6 +7,7 @@ import FlexiblePayEmployeePage from "@hr/pages/employee/FlexiblePayEmployeePage"
 import { AlertCircle, RefreshCw05 } from "@untitledui/icons";
 import { EmployeeMobileShell } from "@hr/components/employees/EmployeeMobileShell";
 import { cn } from "@hr/lib/utils";
+import EmployeeTaxProfileForm from "@hr/pages/employee/EmployeeTaxProfileForm";
 
 /**
  * Router component that selects the appropriate employee page
@@ -36,7 +37,7 @@ const EmployeeRouter = () => {
 
   if (!profile) {
     return (
-      <SectionErrorBoundary sectionName="trang nhân viên">
+      <SectionErrorBoundary sectionName="employee page">
         <EmployeeMobileShell chrome="error" contentClassName="max-w-md">
           <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center text-center" role="alert">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--employee-warning-soft)] text-fg-warning-primary ring-1 ring-[var(--employee-warning-border)]/70">
@@ -46,7 +47,7 @@ const EmployeeRouter = () => {
               Chưa tải được hồ sơ
             </h1>
             <p className="mt-2 text-sm leading-6 text-fg-tertiary">
-              Check connection rồi thử lại.
+              Check your connection and try again.
             </p>
             <Button
               type="button"
@@ -55,7 +56,7 @@ const EmployeeRouter = () => {
               disabled={isFetching}
             >
               <RefreshCw05 className={cn("h-4 w-4", isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
-              {isFetching ? "Đang tải lại…" : "Refresh"}
+              {isFetching ? "Refreshing…" : "Refresh"}
             </Button>
           </div>
         </EmployeeMobileShell>
@@ -68,8 +69,11 @@ const EmployeeRouter = () => {
     : <EmployeePage />;
 
   return (
-    <SectionErrorBoundary sectionName="trang nhân viên">
-      <div className="mobile-page">{employeePage}</div>
+    <SectionErrorBoundary sectionName="employee page">
+    <div className="mobile-page space-y-6">
+      <EmployeeTaxProfileForm />
+      {employeePage}
+    </div>
     </SectionErrorBoundary>
   );
 };

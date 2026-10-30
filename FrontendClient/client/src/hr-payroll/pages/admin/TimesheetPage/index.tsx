@@ -15,13 +15,11 @@ import {
   Trash01,
   Upload01,
   UploadCloud01,
-  Wallet01,
 } from '@untitledui/icons';
 import { PageHeader } from '@hr/components/shared/PageHeader';
 import { MissingBankDetailsSection } from '@hr/components/employees/MissingBankDetailsSection';
 import { TimesheetDisplaySection } from '@hr/components/timesheet/TimesheetDisplaySection';
 import { ChuyenLoDialog } from '@hr/components/timesheet/ChuyenLoDialog';
-import { BulkTransferExportDialog } from '@hr/components/timesheet/BulkTransferExportDialog';
 import { TimesheetsExportDialog, TimesheetsExportParams } from '@hr/components/timesheet/TimesheetsExportDialog';
 import { BulkTransferResultUploadDialog } from '@hr/components/timesheet/BulkTransferResultUploadDialog';
 import { BulkTransferKQDialog } from '@hr/components/timesheet/BulkTransferKQDialog';
@@ -35,7 +33,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useTimesheetManagement } from '@hr/hooks/timesheet/useTimesheetManagement';
 import { useExportApprovedTimesheets } from '@hr/hooks/api/usePayrolls';
 import { useApproveAllTimesheets, useResetAllTimesheets, useCashReadiness, useTimesheetSummary } from '@hr/hooks/api/useTimesheets';
-import { useExportOnePayBulk } from '@hr/hooks/api/useOnePayExport';
 import { PayrollControlCenter } from '@hr/components/timesheet/PayrollControlCenter';
 import { useEmployeeModals, useModalNavigation } from '@hr/hooks/useModalNavigation';
 import { useSettingByKey } from '@hr/hooks/api/useSettings';
@@ -44,11 +41,9 @@ import { TimesheetMonthSelector } from '@hr/components/timesheet/TimesheetMonthS
 import { Skeleton } from '@hr/components/ui/skeleton';
 import type { Employee } from '@hr/types/api/employee.types';
 import type { Timesheet } from '@hr/types/api/timesheet.types';
-import type { BulkTransferExportParams } from '@hr/services/api/bulk-transfer.service';
 
 const TimesheetPage = () => {
   const [chuyenLoDialogOpen, setChuyenLoDialogOpen] = useState(false);
-  const [onePayDialogOpen, setOnePayDialogOpen] = useState(false);
   const [approvedTimesheetsDialogOpen, setApprovedTimesheetsDialogOpen] = useState(false);
   const [bulkApproveDialogOpen, setBulkApproveDialogOpen] = useState(false);
   const [resetAllDialogOpen, setResetAllDialogOpen] = useState(false);
@@ -131,7 +126,6 @@ const TimesheetPage = () => {
   const exportApprovedTimesheetsMutation = useExportApprovedTimesheets();
   const approveAllMutation = useApproveAllTimesheets();
   const resetAllMutation = useResetAllTimesheets();
-  const exportOnePayMutation = useExportOnePayBulk();
 
   const handleAddTimesheet = () => {
     openModal(MODAL_IDS.TIMESHEET_ENTRY);
@@ -208,29 +202,6 @@ const TimesheetPage = () => {
       // Error is handled by the mutation's onError callback
     }
   };
-
-  // OnePay uses weekly date ranges. Sending for_month switches the backend
-  // to the monthly employee cohort, so this action reuses the weekly period
-  // selector from "Chuyển lô" without exposing the monthly toggle.
-  const handleChuyenOnePay = () => {
-    setOnePayDialogOpen(true);
-  };
-
-  const handleChuyenOnePaySubmit = async (params: BulkTransferExportParams) => {
-    try {
-      await exportOnePayMutation.mutateAsync(params);
-      setOnePayDialogOpen(false);
-    } catch {
-      // Error + toast handled by useExportOnePayBulk onError.
-      // Keep the selected period in place so the admin can retry.
-    }
-  };
-
-  const onePayProjectIds = useMemo(() => {
-    if (timesheetManagement.selectedProject === 'all') return [];
-    const projectId = parseInt(timesheetManagement.selectedProject, 10);
-    return Number.isNaN(projectId) ? [] : [projectId];
-  }, [timesheetManagement.selectedProject]);
 
   const handleApprove = async (timesheet: Timesheet) => {
     await timesheetManagement.handleApprove(timesheet);
@@ -363,10 +334,6 @@ const TimesheetPage = () => {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {/* Group 3: Báo cáo / Reports */}
-              <DropdownMenuItem onClick={handleChuyenOnePay} disabled={exportOnePayMutation.isPending}>
-                <Wallet01 className="w-4 h-4 mr-2" aria-hidden="true" />
-                {exportOnePayMutation.isPending ? 'Exporting...' : 'Export to OnePay'}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleApprovedTimesheetsExport} disabled={exportApprovedTimesheetsMutation.isPending}>
                 <FileDownload01 className="w-4 h-4 mr-2" aria-hidden="true" />
                 {exportApprovedTimesheetsMutation.isPending ? 'Exporting...' : 'Export timesheets'}
@@ -425,15 +392,6 @@ const TimesheetPage = () => {
       <ChuyenLoDialog
         open={chuyenLoDialogOpen}
         onOpenChange={setChuyenLoDialogOpen}
-      />
-
-      <BulkTransferExportDialog
-        open={onePayDialogOpen}
-        onOpenChange={setOnePayDialogOpen}
-        onExport={handleChuyenOnePaySubmit}
-        isLoading={exportOnePayMutation.isPending}
-        mode="onepay"
-        preselectedProjectIds={onePayProjectIds}
       />
 
       <TimesheetsExportDialog

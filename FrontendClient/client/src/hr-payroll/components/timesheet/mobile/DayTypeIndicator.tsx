@@ -2,7 +2,7 @@ import { RadioGroup, RadioGroupItem } from '@hr/components/ui/radio-group';
 import { Label } from '@hr/components/ui/label';
 import { AlertTriangle, Calendar, Sun } from 'lucide-react';
 import { DayType } from '@hr/types/api/payrate.types';
-import { getDayTypeOrNull, isSaturdayRequiringDayType, isVietnamesePublicHoliday } from '@hr/utils/dateHelpers';
+import { getDayTypeOrNull, isKenyanPublicHoliday, isSaturdayRequiringDayType } from '@hr/utils/dateHelpers';
 
 interface DayTypeIndicatorProps {
   date: Date;
@@ -17,7 +17,7 @@ export function DayTypeIndicator({
 }: DayTypeIndicatorProps) {
   const dateString = date.toISOString().split('T')[0];
   const isSaturday = isSaturdayRequiringDayType(dateString);
-  const isHoliday = isVietnamesePublicHoliday(dateString);
+  const isHoliday = isKenyanPublicHoliday(dateString);
   const dayOfWeek = date.getDay();
   const isSunday = dayOfWeek === 0;
 

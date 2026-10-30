@@ -13,7 +13,7 @@ import { Label } from '@hr/components/ui/label';
 import { Download, X, Calendar, Loader2, Search, RefreshCw } from 'lucide-react';
 import { cn } from '@hr/lib/utils';
 import { dateToString } from '@hr/utils/dateHelpers';
-import { vietnameseIncludes } from '@hr/utils/vietnameseNormalization';
+import { textIncludes } from '@hr/utils/kenyan';
 import { apiClient, buildQueryString } from '@hr/services/api/client';
 import { API_ENDPOINTS } from '@hr/config/api.config';
 import { useProjects } from '@hr/hooks/api/useProjects';
@@ -63,7 +63,7 @@ export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps
   const filteredProjects = useMemo(() => {
     if (!projectSearch.trim()) return projects;
     return projects.filter(
-      (p) => vietnameseIncludes(p.name, projectSearch) || vietnameseIncludes(p.code, projectSearch),
+      (p) => textIncludes(p.name, projectSearch) || textIncludes(p.code, projectSearch),
     );
   }, [projects, projectSearch]);
 

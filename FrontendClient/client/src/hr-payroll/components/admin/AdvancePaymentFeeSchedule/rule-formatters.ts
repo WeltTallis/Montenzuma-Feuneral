@@ -1,4 +1,4 @@
-// Kensyn formatters for fee-schedule rules. Used by the
+// Kenyan formatters for fee-schedule rules. Used by the
 // "currently active" and "upcoming" summary cards so admins can read the
 // rule at a glance without parsing the schedule table.
 
@@ -9,8 +9,8 @@ import type {
 
 import { formatCurrency } from "@hr/utils/formatters";
 
-// "2" → "2%", "1.3" → "1.3%" (Kensyn decimal mark).
-export function formatKensynPercent(percentage: number): string {
+// "2" → "2%", "1.3" → "1.3%" (Kenyan decimal mark).
+export function formatKenyanPercent(percentage: number): string {
   const fixed = Number.isInteger(percentage)
     ? percentage.toString()
     : percentage.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
@@ -22,7 +22,7 @@ export interface RuleFragment {
   value: string;
 }
 
-// Kensyn rendering of the fee rule, returned as fragments so the
+// Kenyan rendering of the fee rule, returned as fragments so the
 // component can bold the numerical parts.
 export function describeRuleFragments(
   tiers: FeeScheduleTier[],
@@ -34,10 +34,10 @@ export function describeRuleFragments(
 
   if (tiers.length === 1) {
     if (minFeeVnd === 0) {
-      return [{ type: "emphasis", value: formatKensynPercent(tiers[0].percentage) }];
+      return [{ type: "emphasis", value: formatKenyanPercent(tiers[0].percentage) }];
     }
     return [
-      { type: "emphasis", value: formatKensynPercent(tiers[0].percentage) },
+      { type: "emphasis", value: formatKenyanPercent(tiers[0].percentage) },
       { type: "text", value: " with minimum fee of " },
       { type: "emphasis", value: formatCurrency(minFeeVnd) },
     ];
@@ -46,7 +46,7 @@ export function describeRuleFragments(
   const parts: RuleFragment[] = [];
   tiers.forEach((tier, idx) => {
     if (idx > 0) parts.push({ type: "text", value: " — " });
-    parts.push({ type: "emphasis", value: formatKensynPercent(tier.percentage) });
+    parts.push({ type: "emphasis", value: formatKenyanPercent(tier.percentage) });
 
     if (idx === 0 && tiers.length > 1) {
       parts.push({ type: "text", value: " for amounts below " });
@@ -104,12 +104,12 @@ export function formatActiveRange(
   start: string,
   next: FeeScheduleEntry | null,
 ): string {
-  const startDate = formatKensynDate(start);
+  const startDate = formatKenyanDate(start);
   if (!next) return `From ${startDate} onward`;
-  return `From ${startDate} to ${formatKensynDate(next.effectiveDate)}`;
+  return `From ${startDate} to ${formatKenyanDate(next.effectiveDate)}`;
 }
 
-export function formatKensynDate(iso: string): string {
+export function formatKenyanDate(iso: string): string {
   const d = new Date(iso);
   const day = String(d.getDate()).padStart(2, "0");
   const month = String(d.getMonth() + 1).padStart(2, "0");

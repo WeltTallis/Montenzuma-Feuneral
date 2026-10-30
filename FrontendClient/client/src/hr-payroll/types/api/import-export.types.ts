@@ -329,7 +329,7 @@ export interface ImportExportError {
   };
 }
 
-// Vietnamese translations
+// Kenyan translations
 export const VIETNAMESE_IMPORT_EXPORT_LABELS = {
   importTypes: {
     employees: 'Employees',

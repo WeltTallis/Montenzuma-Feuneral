@@ -4,7 +4,7 @@ import { Badge } from '@hr/components/ui/badge';
 import { Button } from '@hr/components/ui/button';
 import { Calendar, Users, Building2, Trash2 } from 'lucide-react';
 import { formatDateForDisplay } from '@hr/utils/dateHelpers';
-import { getKensynProjectStatus, getProjectStatusVariant } from '@hr/utils/kenyan';
+import { getProjectStatus, getProjectStatusVariant } from '@hr/utils/kenyan';
 import { getEmployeeCountColor, formatEmployeeCount } from '@hr/utils/projectHelpers';
 import type { Project } from '@hr/types/api/project.types';
 
@@ -122,7 +122,7 @@ export function createPartnerProjectColumns({
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
         
-        const statusText = getKensynProjectStatus(status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled') || status || 'Not specified';
+        const statusText = getProjectStatus(status as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled') || status || 'Not specified';
         const statusVariant = getProjectStatusVariant(status);
 
         return (

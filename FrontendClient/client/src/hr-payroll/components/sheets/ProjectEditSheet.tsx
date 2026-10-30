@@ -10,7 +10,7 @@ import { useUpdateProject } from "@hr/hooks/api/useProjects";
 import { Edit3, AlertTriangle, CheckCircle, Edit, XCircle, Pause } from "lucide-react";
 import type { ModalConfig } from "@hr/types/modal-config.types";
 import { ProjectStatus } from "@hr/components/projects/ProjectStatusBadge";
-import { getVietnameseProjectStatus } from "@hr/utils/vietnamese";
+import { getProjectStatus } from "@hr/utils/kenyan";
 import { OffDaysPicker } from "@hr/components/projects/OffDaysPicker";
 import { SalaryPeriodFields } from "@hr/components/projects/SalaryPeriodFields";
 import { authManager } from "@hr/lib/auth";
@@ -276,11 +276,11 @@ function ProjectEditSheet({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft"><div className="flex items-center gap-2"><Edit className="h-3.5 w-3.5 text-muted-foreground" />{getVietnameseProjectStatus('draft')}</div></SelectItem>
-                <SelectItem value="active"><div className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-700" />{getVietnameseProjectStatus('active')}</div></SelectItem>
-                <SelectItem value="completed"><div className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-blue-700" />{getVietnameseProjectStatus('completed')}</div></SelectItem>
-                <SelectItem value="paused"><div className="flex items-center gap-2"><Pause className="h-3.5 w-3.5 text-orange-700" />{getVietnameseProjectStatus('paused')}</div></SelectItem>
-                <SelectItem value="cancelled"><div className="flex items-center gap-2"><XCircle className="h-3.5 w-3.5 text-red-700" />{getVietnameseProjectStatus('cancelled')}</div></SelectItem>
+                <SelectItem value="draft"><div className="flex items-center gap-2"><Edit className="h-3.5 w-3.5 text-muted-foreground" />{getProjectStatus('draft')}</div></SelectItem>
+                <SelectItem value="active"><div className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-700" />{getProjectStatus('active')}</div></SelectItem>
+                <SelectItem value="completed"><div className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-blue-700" />{getProjectStatus('completed')}</div></SelectItem>
+                <SelectItem value="paused"><div className="flex items-center gap-2"><Pause className="h-3.5 w-3.5 text-orange-700" />{getProjectStatus('paused')}</div></SelectItem>
+                <SelectItem value="cancelled"><div className="flex items-center gap-2"><XCircle className="h-3.5 w-3.5 text-red-700" />{getProjectStatus('cancelled')}</div></SelectItem>
               </SelectContent>
             </Select>
           </div>

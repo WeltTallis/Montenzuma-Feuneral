@@ -1,4 +1,4 @@
-import { cronToVietnamese } from "@hr/utils/cron-human";
+import { cronToEnglish } from "@hr/utils/cron-human";
 import { cn } from "@hr/lib/utils";
 import { Card, CardContent } from "@hr/components/ui/card";
 import { Switch } from "@hr/components/ui/switch";
@@ -66,7 +66,7 @@ export function CronJobTable({ jobs, onToggle, isPending }: CronJobTableProps) {
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <span className="text-xs text-muted-foreground">{cronToVietnamese(job.cron)}</span>
+                  <span className="text-xs text-muted-foreground">{cronToEnglish(job.cron)}</span>
                 </TableCell>
                 <TableCell>
                   <CronStatusBadge status={job.last_status} variant="inline" />

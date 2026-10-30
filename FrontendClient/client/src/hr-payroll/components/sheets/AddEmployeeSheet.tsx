@@ -15,7 +15,7 @@ import { useDebounce } from '@hr/hooks/useDebounce';
 import { SlideSheetTemplate } from './templates/SlideSheetTemplate';
 import { useModalNavigation } from '@hr/hooks/useModalNavigation';
 import { authManager } from '@hr/lib/auth';
-import { validateFullname, formatVietnameseName, validateMobileNotCCCD } from '@hr/lib/validation';
+import { validateFullname, formatKenyanName, validateMobileNotNationalID } from '@hr/lib/validation';
 import { cn } from '@hr/lib/utils';
 import type { Bank } from '@hr/types/api/bank.types';
 import type { ModalConfig } from '@hr/types/modal-config.types';
@@ -260,7 +260,7 @@ function AddEmployeeSheetComponent({
     } else if (formData.mobile && !/^\d+$/.test(formData.mobile.replace(/\s/g, ''))) {
       newErrors.mobile = 'Số điện thoại chỉ được chứa số';
     } else if (formData.mobile) {
-      const cccdGuard = validateMobileNotCCCD(formData.mobile);
+      const cccdGuard = validateMobileNotNationalID(formData.mobile);
       if (!cccdGuard.valid) {
         newErrors.mobile = cccdGuard.error!;
       }
@@ -392,7 +392,7 @@ function AddEmployeeSheetComponent({
                 value={formData.fullname || ''}
                 onChange={(e) => handleInputChange("fullname", e.target.value)}
                 onBlur={(e) => {
-                  const formatted = formatVietnameseName(e.target.value);
+                  const formatted = formatKenyanName(e.target.value);
                   if (formatted !== e.target.value) {
                     handleInputChange("fullname", formatted);
                   }
@@ -568,7 +568,7 @@ function AddEmployeeSheetComponent({
                 value={formData.bank_account_name || ''}
                 onChange={(e) => handleInputChange("bank_account_name", e.target.value)}
                 onBlur={(e) => {
-                  const formatted = formatVietnameseName(e.target.value);
+                  const formatted = formatKenyanName(e.target.value);
                   if (formatted !== e.target.value) {
                     handleInputChange("bank_account_name", formatted);
                   }

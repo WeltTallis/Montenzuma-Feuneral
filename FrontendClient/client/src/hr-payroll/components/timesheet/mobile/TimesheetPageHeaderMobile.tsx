@@ -3,7 +3,7 @@ import { MobilePageHeader } from '@hr/components/shared/MobilePageHeader';
 import { Button } from '@hr/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@hr/components/ui/sheet';
 import { TimesheetMonthSelector } from '@hr/components/timesheet/TimesheetMonthSelector';
-import { Plus, MoreHorizontal, FileText, ArrowRightLeft, History, Upload, FileDown, CheckSquare, X, FileSpreadsheet, FileUp, FileSpreadsheet as TableIcon, Banknote, Trash2, Undo2 } from 'lucide-react';
+import { Plus, MoreHorizontal, FileText, ArrowRightLeft, History, Upload, FileDown, CheckSquare, X, FileSpreadsheet, FileUp, FileSpreadsheet as TableIcon, Trash2, Undo2 } from 'lucide-react';
 
 interface TimesheetPageHeaderMobileProps {
   onAddTimesheet: () => void;
@@ -11,7 +11,6 @@ interface TimesheetPageHeaderMobileProps {
   onPayrollReportExport?: () => void;
   // Admin-only
   onBulkTransferExport?: () => void;
-  onOnePayExport?: () => void;
   onBulkTransferResultUpload?: () => void;
   /** Admin-only "Tạo KQ CK" — build a bank result file from a chuyển-lô file. */
   onBulkTransferKQ?: () => void;
@@ -28,7 +27,6 @@ interface TimesheetPageHeaderMobileProps {
   onPaymentHistory?: () => void;
   isApprovedExportPending?: boolean;
   isPayrollReportPending?: boolean;
-  isOnePayExportPending?: boolean;
   userRole?: 'admin' | 'partner';
   monthValue: string;
   onMonthChange: (value: string) => void;
@@ -39,7 +37,6 @@ export function TimesheetPageHeaderMobile({
   onApprovedTimesheetsExport,
   onPayrollReportExport,
   onBulkTransferExport,
-  onOnePayExport,
   onBulkTransferResultUpload,
   onBulkTransferKQ,
   onBulkTransferHistory,
@@ -52,7 +49,6 @@ export function TimesheetPageHeaderMobile({
   onPaymentHistory,
   isApprovedExportPending = false,
   isPayrollReportPending = false,
-  isOnePayExportPending = false,
   userRole = 'admin',
   monthValue,
   onMonthChange,
@@ -143,20 +139,6 @@ export function TimesheetPageHeaderMobile({
                   >
                     <ArrowRightLeft className="h-5 w-5 text-muted-foreground shrink-0" />
                     <span className="text-sm font-medium">Export file chuyển lô</span>
-                  </Button>
-                )}
-
-                {onOnePayExport && (
-                  <Button
-                    variant="ghost"
-                    className="w-full min-h-11 justify-start h-auto px-2 py-3"
-                    onClick={() => { onOnePayExport(); close(); }}
-                    disabled={isOnePayExportPending}
-                  >
-                    <Banknote className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium">
-                      {isOnePayExportPending ? 'Đang xuất...' : 'Chuyển OnePay'}
-                    </span>
                   </Button>
                 )}
 

@@ -92,7 +92,7 @@ export interface CheckInTarget {
 // Advisory schedule windows. Values are absolute instants serialized as RFC 3339
 // (e.g. "2026-07-12T19:00:00+07:00") in the application timezone
 // (Africa/Nairobi). Compare against Date.now() / Date.getTime() — never against
-// getHours(), which is device-timezone-dependent. See @hr/utils/vn-time.
+// getHours(), which is device-timezone-dependent. See @hr/utils/ke-time.
 export interface AttendanceScheduleWindow {
   shift_start: string;
   shift_end: string;
@@ -121,6 +121,9 @@ export interface EmployeeProfile {
   } | null;
   bank_account_number?: string;
   bank_account_name?: string;
+  kra_pin?: string;
+  nssf_number?: string;
+  sha_number?: string;
   payment_schedule?: "weekly" | "monthly" | "flexible";
   check_in_enabled?: boolean;
   // Deferred check-in activation: enable is pending until day 1 of next month.
@@ -149,6 +152,9 @@ export interface UpdateEmployeeProfileData {
   fullname?: string;
   email?: string;
   username?: string;
+  kra_pin?: string;
+  nssf_number?: string;
+  sha_number?: string;
 }
 
 export interface EmployeeTimesheetEntry {

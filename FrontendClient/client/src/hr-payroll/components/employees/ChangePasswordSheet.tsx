@@ -107,7 +107,7 @@ export function ChangePasswordSheet({
   }, [open]);
 
   // Client-side guard so mismatched or incomplete input fails fast with
-  // Vietnamese messages instead of a round-trip to the server validator.
+  // Kenyan messages instead of a round-trip to the server validator.
   // The empty-confirm case only surfaces the message after a submit attempt —
   // silently doing nothing on tap reads as a broken button.
   const confirmMismatch =

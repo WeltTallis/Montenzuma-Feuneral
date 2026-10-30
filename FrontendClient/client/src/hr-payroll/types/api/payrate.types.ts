@@ -16,7 +16,7 @@ export interface PositionRateConfiguration {
   holiday: DayRateConfiguration;
 }
 
-// Flexible rate category type for Vietnamese structure
+// Flexible rate category type for Kenyan structure
 export type RateCategory = {
   [key: string]: number | RateCategory;
 };
@@ -154,7 +154,7 @@ export function getActivePayrate(payrates: PayRate[]): PayRate | null {
   return active;
 }
 
-// Vietnamese translations for API status values
+// Kenyan translations for API status values
 export const VIETNAMESE_PAYRATE_LABELS = {
   statuses: {
     active: 'Active',
@@ -253,7 +253,7 @@ export function hasPosition(payrates: PayRate[] | PayRate, position: string): bo
   return positions.includes(position);
 }
 
-export function isValidVietnamesePayrateStructure(payrate: PayRate): boolean {
+export function isValidKenyanPayrateStructure(payrate: PayRate): boolean {
   if (!payrate || !payrate.rates) {
     return false;
   }
@@ -267,10 +267,10 @@ export function isValidVietnamesePayrateStructure(payrate: PayRate): boolean {
     const positionRates = payrate.rates[position];
     if (typeof positionRates === 'object' && positionRates !== null) {
       const dayTypes = Object.keys(positionRates);
-      const hasVietnameseDayTypes = dayTypes.some(dayType =>
+      const hasKenyanDayTypes = dayTypes.some(dayType =>
         COMMON_DAY_TYPES.some(dt => dt === dayType)
       );
-      if (hasVietnameseDayTypes) {
+      if (hasKenyanDayTypes) {
         return true;
       }
     }

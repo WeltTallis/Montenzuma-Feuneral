@@ -1,4 +1,4 @@
-export type AdBannerCTAType = 'phone' | 'url' | 'zalo';
+export type AdBannerCTAType = 'phone' | 'url';
 
 export interface AdBannerCTA {
   label: string;

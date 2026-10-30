@@ -8,7 +8,7 @@ import { Users, X, Eye, EyeOff } from "lucide-react";
 import { User, CreateUserData } from "@hr/types/user";
 import { SlideSheetTemplate } from "./templates/SlideSheetTemplate";
 import { UserAvatar } from "@hr/components/ui/user-avatar";
-import { validateFullname, formatVietnameseName, validatePhoneNumber } from "@hr/lib/validation";
+import { validateFullname, formatKenyanName, validatePhoneNumber } from "@hr/lib/validation";
 import type { ModalConfig } from "@hr/types/modal-config.types";
 
 interface AddUserSheetProps {
@@ -237,7 +237,7 @@ function AddUserSheet({
                       value={formData.fullname}
                       onChange={(e) => handleInputChange("fullname", e.target.value)}
                       onBlur={(e) => {
-                        const formatted = formatVietnameseName(e.target.value);
+                        const formatted = formatKenyanName(e.target.value);
                         if (formatted !== e.target.value) {
                           handleInputChange("fullname", formatted);
                         }

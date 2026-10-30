@@ -27,7 +27,7 @@ class WalletBulkTransferService {
   /**
    * Upload a "Yêu cầu chuyển tiền" .xlsx. Returns the batch_id + counts on
    * success (HTTP 202). Throws a typed error on validation/conflict failures
-   * so the caller can map to a helpful Vietnamese message.
+   * so the caller can map to a helpful Kenyan message.
    */
   async upload(
     file: File,

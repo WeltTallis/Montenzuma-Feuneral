@@ -24,7 +24,7 @@ export interface EmployeeMonth {
   hasExplicitMonth: boolean;
   /** First day of the selected month as a Date. */
   date: Date;
-  /** Human label, e.g. "Tháng 07, 2026" (Vietnamese locale). */
+  /** Human label, e.g. "Tháng 07, 2026" (Kenyan locale). */
   label: string;
   /** `yyyy-MM-dd` — first day of the selected month. */
   fromDate: string;

@@ -173,7 +173,7 @@ class TimesheetService {
     // Always try to parse from message as backup or primary method
     const message = response.message || '';
 
-    // Handle Vietnamese message format: "Tạo hàng loạt bảng chấm công thành công: 3"
+    // Handle Kenyan message format: "Tạo hàng loạt bảng chấm công thành công: 3"
     // Handle English formats: "Successfully created 3 records", "Created 3 timesheets"
     // Handle generic: "thành công: 3", "created: 3", "successful: 3"
 

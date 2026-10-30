@@ -9,12 +9,11 @@ export interface TimesheetItem {
   hours_worked: number;
 
   // New 3-level payrate fields
-  position: string; // Position from payrate config (e.g., "phổ thông", "kinh nghiệm")
-  day_type: DayType; // Auto-calculated by backend: "ngày thường" | "ngày nghỉ" | "ngày lễ"
-  hour_type: string; // User input: "ca ngày", "ca đêm", "tăng ca", "08:00-17:00", etc.
-
-  payrate: number; // VND per hour - calculated by backend from 3-level structure
-  amount: number; // calculated by backend: hours_worked × payrate
+  position: string; // Positi
+  day_type: DayType; // Auto-calculated 
+  hour_type: string; // User input: "ca 
+  payrate: number; // VND per hour - 
+  amount: number; // calculated by 
 
   status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
   notes?: string;
@@ -24,7 +23,6 @@ export interface TimesheetItem {
   created_at: string;
   updated_at: string;
 
-  // Related objects (populated via joins)
   employee?: {
     id: number;
     fullname: string;
@@ -55,10 +53,8 @@ export interface TimesheetFormData {
   hours_worked: number;
 
   // New 3-level fields
-  position: string; // Required - position from payrate config
-  hour_type: string; // Required - hour type for rate calculation
-  // day_type will be auto-calculated by backend from date
-
+  position: string; // Required - 
+  hour_type: string; // Required - hour 
   notes?: string;
 }
 
@@ -91,18 +87,21 @@ export interface TimesheetFormOptions {
 
 // Utility functions
 export function getDisplayPosition(item: TimesheetItem): string {
-  return item.position || 'Chưa xác định';
+  return item.position || 'Not specified';
 }
 
 export function getDisplayHourType(item: TimesheetItem): string {
-  return item.hour_type || 'Chưa xác định';
+  return item.hour_type || 'Not specified';
 }
 
 export function getDisplayDayType(item: TimesheetItem): string {
   const dayTypeLabels = {
-    'ngày thường': 'Date thường',
-    'ngày nghỉ': 'Date nghỉ',
-    'ngày lễ': 'Date lễ'
+    weekday: 'Weekday',
+    weekend: 'Rest day',
+    holiday: 'Public holiday',
+    'ngày thường': 'Weekday',
+    'ngày nghỉ': 'Rest day',
+    'ngày lễ': 'Public holiday',
   };
   return dayTypeLabels[item.day_type] || item.day_type;
 }
@@ -113,31 +112,31 @@ export function validateTimesheetFormData(data: TimesheetFormData): { valid: boo
   const errors: string[] = [];
 
   if (!data.employee_id) {
-    errors.push('Employee là bắt buộc');
+    errors.push('Employee is required');
   }
 
   if (!data.project_id) {
-    errors.push('Project là bắt buộc');
+    errors.push('Project is required');
   }
 
   if (!data.date) {
-    errors.push('Date làm việc là bắt buộc');
+    errors.push('Work date is required');
   }
 
   if (data.hours_worked < 0) {
-    errors.push('Số giờ làm việc không thể âm');
+    errors.push('Hours worked cannot be negative');
   }
 
   if (data.hours_worked && data.hours_worked > 24) {
-    errors.push('Số giờ làm việc không thể vượt quá 24 giờ');
+    errors.push('Hours worked cannot exceed 24');
   }
 
   if (!data.position || !data.position.trim()) {
-    errors.push('Vị trí là bắt buộc');
+    errors.push('Position is required');
   }
 
   if (!data.hour_type || !data.hour_type.trim()) {
-    errors.push('Khung giờ là bắt buộc');
+    errors.push('Hour type is required');
   }
 
   return {
@@ -156,7 +155,7 @@ export function validateTimesheetFormDataWithPayrate(
 
   // Check if the payrate is 0 (slot is disabled)
   if (formOptions.ratePreview === 0) {
-    errors.push('Không thể tạo bản ghi cho khung giờ cấm (mức lương = 0)');
+    errors.push('A timesheet entry cannot be created for a disabled pay-rate slot.');
   }
 
   return {

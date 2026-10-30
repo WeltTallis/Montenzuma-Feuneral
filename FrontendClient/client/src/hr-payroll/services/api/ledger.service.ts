@@ -16,7 +16,6 @@ import type {
   AccountMetadata,
   AccountMetadataResponse,
   Asset,
-  OnePayFeeImportResponse,
 } from '@hr/types/api/financial.types';
 import { authManager } from '@hr/lib/auth';
 
@@ -258,24 +257,6 @@ class LedgerService {
    */
   async runWalletSettlement(): Promise<void> {
     await apiClient.post(API_ENDPOINTS.walletSettlement.run);
-  }
-
-  /**
-   * Import OnePay monthly fee report and create a ledger expense transaction.
-   */
-  async importOnePayFeeReport(file: File): Promise<OnePayFeeImportResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await apiClient.upload<OnePayFeeImportResponse>(
-      API_ENDPOINTS.ledger.onePayFeeReports,
-      formData
-    );
-
-    if (!response.data) {
-      throw new Error('API response missing expected data');
-    }
-    return response.data;
   }
 
   /**

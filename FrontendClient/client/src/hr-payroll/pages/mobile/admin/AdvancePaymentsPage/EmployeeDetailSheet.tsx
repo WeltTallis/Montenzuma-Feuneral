@@ -12,7 +12,7 @@ import { MobileProgressBar } from "@hr/components/shared/MobileProgressBar";
 import { MobileFilterPill } from "@hr/components/shared/MobileFilterPill";
 import { useAdvancePayments } from "@hr/hooks/api/useAdvancePayments";
 import {
-  getVietnameseAdvancePaymentStatus,
+  getKenyanAdvancePaymentStatus,
   getAdvancePaymentStatusColor,
 } from "@hr/utils/advancePaymentHelpers";
 import { formatCurrency } from "@hr/utils/formatters";
@@ -168,7 +168,7 @@ export function EmployeeDetailSheet({
                                 variant="outline"
                                 className={`${getAdvancePaymentStatusColor(req.status)} text-xs px-1.5 py-0 h-5`}
                               >
-                                {getVietnameseAdvancePaymentStatus(req.status)}
+                                {getKenyanAdvancePaymentStatus(req.status)}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">

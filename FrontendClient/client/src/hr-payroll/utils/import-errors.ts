@@ -69,7 +69,7 @@ export function getSafeImportErrorReason(reason: string): string {
     return 'The data is invalid.';
   }
   // Operator-facing file-level guidance from the backend (e.g. every hour in
-  // the file falls outside the chosen month): already clean Vietnamese that
+  // the file falls outside the chosen month): already clean Kenyan that
   // names the data range and the fix — pass it through instead of masking it
   // behind a generic category label.
   if (normalized.includes('ngoài tháng')) {

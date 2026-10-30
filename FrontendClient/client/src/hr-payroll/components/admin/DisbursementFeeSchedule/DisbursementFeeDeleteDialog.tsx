@@ -14,7 +14,7 @@ import {
 import { Input } from "@hr/components/ui/input";
 import { Label } from "@hr/components/ui/label";
 
-import { formatVietnameseDate } from "./helpers";
+import { formatKenyanDate } from "./helpers";
 import type { DisbursementFeeScheduleEntry } from "@hr/types/api/disbursement-fee-schedule.types";
 
 interface Props {
@@ -33,7 +33,7 @@ export const DisbursementFeeDeleteDialog = ({
   onConfirm,
 }: Props) => {
   const [typed, setTyped] = useState("");
-  const expected = entry ? formatVietnameseDate(entry.effectiveDate) : "";
+  const expected = entry ? formatKenyanDate(entry.effectiveDate) : "";
   const matches = typed.trim() === expected;
 
   useEffect(() => {

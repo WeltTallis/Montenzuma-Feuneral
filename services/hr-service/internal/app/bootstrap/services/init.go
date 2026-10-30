@@ -39,7 +39,6 @@ import (
 	"api-server/internal/app/services/timesheet"
 	"api-server/internal/app/services/user"
 	"api-server/internal/app/services/zaloconnect"
-	"api-server/internal/app/services/zaloreset"
 	"api-server/internal/app/workers"
 	appConfig "api-server/internal/config"
 	"api-server/internal/constants"
@@ -69,7 +68,6 @@ type Services struct {
 	User                              *user.UserService
 	PasswordResetJobManager           *user.PasswordResetJobManager
 	EmailPasswordReset                *passwordreset.Service          // Red Team M2: distinct name (collides with PasswordResetJobManager otherwise)
-	ZaloPasswordReset                 *zaloreset.Service              // Employee mobile-channel OTP reset (Phase 2)
 	ZaloConnect                       *zaloconnect.Service            // Admin-managed OA connection + runtime toggle (Phase 4)
 	APIKey                            *apikey.Service                 // Machine API keys for the vendor integration API
 	MCPAPIKey                         *mcpapikey.Service              // Machine API keys for the MCP agent surface
@@ -713,11 +711,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 	}
 
 	zaloResetStore := cache.NewZaloResetStore(redis.Client, cfg.Zalo.CodeTTL)
-	zaloResetService := zaloreset.NewService(
-		zaloResetStore, repos.User, repos.Employee, userService, zaloSender,
-		cfg.Zalo.TemplateID, cfg.Zalo.CodeTTL, zaloConnectSvc, eventBus, clk, logger,
-	)
-
 	// Machine API keys for the vendor integration API, the MCP agent surface,
 	// and the payroll-ops-mcp agent channel (pk_ops_*). The MCP and ops
 	// services also own scope-toggle auditing onto the audit:log:write
@@ -782,7 +775,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		User:                              userService,
 		PasswordResetJobManager:           passwordResetJobManager,
 		EmailPasswordReset:                emailPasswordResetService,
-		ZaloPasswordReset:                 zaloResetService,
 		ZaloConnect:                       zaloConnectSvc,
 		APIKey:                            apiKeyService,
 		MCPAPIKey:                         mcpAPIKeyService,
