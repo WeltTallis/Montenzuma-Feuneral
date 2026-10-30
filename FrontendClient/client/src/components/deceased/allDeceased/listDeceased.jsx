@@ -484,7 +484,7 @@ function HorizontalCalendar({ eventsData = [], selectedDate, onDateSelect }) {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
-const DeceasedListPage = () => {
+const DeceasedList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const today = new Date();
@@ -951,4 +951,4 @@ const DeceasedListPage = () => {
   );
 };
 
-export default DeceasedListPage;
+export default DeceasedList;
