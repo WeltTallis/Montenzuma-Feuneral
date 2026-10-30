@@ -310,20 +310,6 @@ export default function LoginPage() {
         }
       `}</style>
 
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        limit={3}
-      />
-
       <div className="login-container">
         {/* Sidebar */}
         <div className="login-sidebar">
