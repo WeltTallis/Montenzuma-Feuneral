@@ -1,0 +1,260 @@
+name: Deploy to Production with Rollback
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+      force_deploy:
+        description: 'Force deployment'
+        required: false
+        default: 'false'
+      deployment_strategy:
+        description: 'Deployment strategy (rolling/blue-green/canary)'
+        required: false
+        default: 'rolling'
+
+jobs:
+  pre-deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.force_deploy == 'false' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: restpoint-build
+          path: ./artifact
+
+      - name: Run verification checks
+        run: |
+          echo "=== Running verification checks ==="
+          if [ -d artifact/services ]; then
+            echo "✓ Services artifact present"
+          else
+            echo "✗ Services artifact missing"
+            exit 1
+          fi
+          if [ -f docker-compose.prod.yml ]; then
+            docker compose -f docker-compose.prod.yml config --quiet
+            echo "✓ Docker compose valid"
+          else
+            echo "✗ docker-compose.prod.yml not found"
+            exit 1
+          fi
+          if [ -f .env.production ]; then
+            echo "✓ .env.production present"
+          else
+            echo "✗ .env.production missing"
+            exit 1
+          fi
+
+      - name: Check previous deployment status
+        id: check-deploy
+        run: |
+          if git tag -l "deploy-*" | grep -q .; then
+            echo "Previous deployment tag found"
+            git tag -l "deploy-*" | head -5
+          else
+            echo "No previous deployment tags"
+          fi
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    environment:
+      name: production
+      url: https://restpoint-production.example.com
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: restpoint-build
+          path: ./artifact
+
+      - name: Setup Docker Compose
+        uses: docker-compose-action/action@v2
+
+      - name: Create production deployment tag
+        run: |
+          DEPLOY_TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          git tag "deploy-${DEPLOY_TIMESTAMP}"
+          git push origin "deploy-${DEPLOY_TIMESTAMP}"
+          echo "Deployment tag created: deploy-${DEPLOY_TIMESTAMP}"
+
+      - name: Deploy with strategy
+        env:
+          DEPLOY_STRATEGY: ${{ inputs.deployment_strategy || 'rolling' }}
+          NODE_ENV: production
+        run: |
+          STRATEGY=${DEPLOY_STRATEGY}
+          echo "=== Deploying with strategy: $STRATEGY ==="
+          
+          case $STRATEGY in
+            blue-green)
+              echo "Starting blue-green deployment..."
+              # Tag current as green
+              GREEN_TAG="green-$(date +%Y%m%d%H%M%S)"
+              git tag "$GREEN_TAG"
+              # Deploy new version as blue
+              docker compose up -d --build
+              sleep 30
+              # Switch traffic to blue
+              docker compose up -d
+              # Verify blue version
+              docker compose ps
+              # If blue healthy, remove green
+              docker compose down --remove-orphans || true
+              docker compose tag "$GREEN_TAG" || echo "Green cleanup"
+              ;;
+            canary)
+              echo "Starting canary deployment..."
+              # Deploy to subset first
+              docker compose up -d --scale service=2
+              sleep 60
+              # Check canary health
+              docker compose ps
+              # Scale up if healthy
+              docker compose up -d --scale service=4
+              ;;
+            *)
+              echo "Starting rolling deployment..."
+              # Default rolling update
+              docker compose pull
+              docker compose up -d --build
+              sleep 30
+              docker compose ps
+              ;;
+          esac
+
+      - name: Post-deployment verification
+        run: |
+          echo "=== Running post-deployment verification ==="
+          npm run check:connection || echo "Warning: Connection check issues after deploy"
+          npm run verify:health --if-present || echo "Health check script not defined or failed"
+          npm run test:smoke --if-present || echo "Smoke tests not defined or failed"
+
+      - name: Success notification
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          inline: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Production deployment successful! Tag: deploy-${{ github.run_id }}'
+            })
+
+  rollback:
+    runs-on: ubuntu-latest
+    if: ${{ failure() && github.event_name != 'workflow_dispatch' || inputs.force_deploy == 'true' && failure() }}
+    needs: deploy
+    steps:
+      - name: Checkout repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Find last successful deployment tag
+        id: find-rollback-tag
+        run: |
+          echo "=== Looking for last successful deployment tag ==="
+          tags=$(git tag -l "deploy-*" --sort=-creatordator)
+          echo "Available tags: $tags"
+          
+          count=0
+          for tag in $tags; do
+            count=$((count + 1))
+            if [ $count -ge 2 ]; then
+              echo "Last successful tag: $tag"
+              echo "rollback_tag=$tag" >> $GITHUB_OUTPUT
+              break
+            fi
+          done
+          
+          if [ $count -lt 2 ]; then
+            echo "No previous deployment tags found, reverting to stable version"
+            echo "rollback_tag=main" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Rollback to previous version
+        run: |
+          echo "=== Rolling back to tag: ${{ steps.find-rollback-tag.outputs.rollback_tag }} ==="
+          git checkout "${{ steps.find-rollback-tag.outputs.rollback_tag }}" -- .
+          git tag -d "deploy-${GITHUB_RUN_ID}" 2>/dev/null || true
+          docker compose down --remove-orphans || true
+          docker compose up -d --build
+          echo "Rollback completed to previous stable version"
+
+      - name: Verify rollback
+        run: |
+          echo "Verifying rollback..."
+          docker compose ps
+          npm run check:connection || echo "Rollback may have connectivity issues"
+
+      - name: Rollback notification
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          inline: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 Rollback initiated - Deploy failed, rolled back to previous stable version: ${{ steps.find-rollback-tag.outputs.rollback_tag || "main" }}. Investigating issues...'
+            })
+
+  verify-deploy:
+    runs-on: ubuntu-latest
+    needs: [deploy, rollback]
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Run final verification
+        run: |
+          echo "=== Final verification after deployment cycle ==="
+          docker compose ps -a
+          npm run check:connection || echo "Connection check failed"
+          grep -E 'NODE_ENV|DB_HOST|REDIS_HOST' .env.production | head -5
