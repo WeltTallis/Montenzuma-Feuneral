@@ -41,16 +41,9 @@ RUN npm run build
 # ---------- Stage 2: serve ----------
 FROM nginx:alpine AS production
 
-# Self-contained nginx server block (SPA routing + asset caching).
-# Written at build time with a *quoted* heredoc so $uri / regexes are
-# copied verbatim with no shell expansion. Placed as a plain `server`
-# block because the nginx:alpine base already provides `events`/`http`
-# context and includes /etc/nginx/conf.d/*.conf.
+
 RUN cat > /etc/nginx/conf.d/default.conf <<'NGINX'
-# WebSocket upgrade header map — REQUIRED for Socket.IO's WebSocket transport.
-# "upgrade" is sent for WS requests, "close" for plain HTTP (Socket.IO polling).
-# The nginx:alpine base includes /etc/nginx/conf.d/*.conf from inside http{}, so
-# the map is legal here at the TOP of the file — NOT inside the server block.
+
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
