@@ -1,30 +1,69 @@
+import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
 import express, { Request, Response, NextFunction } from 'express';
+import Logger from '../../packages/shared-logger/src/index';
 import { Server as SocketIOServer } from 'socket.io';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import http from 'http';
-import path from 'path';
+import https from 'https';
+import fs from 'fs';
+import { randomUUID } from 'crypto';
 
-
-dotenv.config();
+// Mount routes
+import postmortemRequestRoutes from './routes/postmortemRequestRoutes';
+import chargeSettingsRoutes from './routes/chargeSettingsRoutes';
+import documentsRoutes from './routes/documentsRoutes';
+import nextOfKinRoutes from './routes/nextOfKinRoutes';
+import deceasedRoutes from './routes/deceasedRoutes';
+import autopsyRoutes from './routes/autopsyRoutes';
+import chargesRoutes from './routes/chargesRoutes';
+import hearseRoutes from './routes/hearseRoutes';
+import exportExelRoutes from './routes/exportExel';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '5003', 10);
-
-// ─── Tenant identifier allowlists 
-const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
-
+dotenv.config();
 const TENANT_DB_NAME_RE = /^(?!information_schema$|mysql$|performance_schema$|sys$|tenant_tracking$)[a-z0-9][a-z0-9_-]{0,62}$/;
+const PORT = parseInt(process.env.PORT || '5003', 10);
+const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
+const mtlsRequired = process.env.DECEASED_MTLS_REQUIRED === 'true';
+
+function readTlsFile(variableName: string): Buffer {
+    const filePath = process.env[variableName];
+    if (!filePath) {
+        throw new Error(`${variableName} must be configured when deceased-service mTLS is required`);
+    }
+
+    try {
+        return fs.readFileSync(filePath);
+    } catch {
+        throw new Error(`${variableName} could not be read`);
+    }
+}
+
+if (process.env.NODE_ENV === 'production' && !mtlsRequired) {
+    throw new Error('DECEASED_MTLS_REQUIRED must be true in production');
+}
+
+const tlsOptions = mtlsRequired
+    ? {
+        key: readTlsFile('DECEASED_TLS_KEY_FILE'),
+        cert: readTlsFile('DECEASED_TLS_CERT_FILE'),
+        ca: readTlsFile('DECEASED_TLS_CA_FILE'),
+        requestCert: true,
+        rejectUnauthorized: true,
+        minVersion: 'TLSv1.2' as const,
+        insecureHTTPParser: false
+    }
+    : undefined;
 
 // CORS Configuration — explicit allowlist, never `origin: true` (audit 2.7).
-// `origin: true` echoes the caller's Origin and pairs it with
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
 
 const corsOriginGuard = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Same-origin, curl, server-to-server: no Origin header at all.
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error(`CORS origin rejected: ${origin}`));
@@ -51,6 +90,11 @@ app.use(cors({
     ],
 }));
 
+app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.locals.requestId = randomUUID();
+    next();
+});
+
 // Health check - BEFORE tenant middleware to avoid log spam
 app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({
@@ -72,15 +116,9 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // Redis diagnostics — is the cache actually reachable from THIS container?
-// Returns the live client state (UP/DISCONNECTED/DOWN) plus the latency, so
-// "the cache is not working" can be answered with one curl instead of guessing.
-// The process log carries the same proof on connect:
-//   [Redis]  Connected (redis://***@restpoint_redis:6379)
-//   [Redis]  SETEX/GET self-test passed — caching is ACTIVE
 app.get('/health/redis', async (req: Request, res: Response) => {
     try {
-        // Relative require: the shared package is shipped into the image and the
-        // other modules of this service import it the same way.
+
         const { redisHealth } = require('../../packages/shared-services/dist/redisService');
         const redis = await redisHealth();
         return res.status(redis.status === 'UP' ? 200 : 503).json({
@@ -90,16 +128,48 @@ app.get('/health/redis', async (req: Request, res: Response) => {
     } catch (error: any) {
         return res.status(500).json({
             service: 'deceased-service',
-            redis: { status: 'ERROR', error: error?.message || String(error) }
+            redis: { status: 'ERROR' }
         });
     }
 });
 
 // Middleware
-app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
-}));
+app.use(
+    helmet({
+        // Prevent unauthorized scripts and resources
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'"],
+                styleSrc: ["'self'"],
+                imgSrc: ["'self'", 'data:', 'https:'],
+                fontSrc: ["'self'", 'https:', 'data:'],
+                connectSrc: ["'self'"],
+                objectSrc: ["'none'"],
+                frameSrc: ["'none'"],
+                frameAncestors: ["'none'"],
+                baseUri: ["'self'"],
+                formAction: ["'self'"],
+            },
+        },
+
+        // Prevent clickjacking
+        xFrameOptions: {
+            action: 'deny',
+        },
+        referrerPolicy: {
+            policy: 'strict-origin-when-cross-origin',
+        },
+        // Isolate browsing context
+        crossOriginOpenerPolicy: {
+            policy: 'same-origin',
+        },
+        // Restrict cross-origin resource loading
+        crossOriginResourcePolicy: {
+            policy: 'same-origin',
+        },
+    })
+);
 
 
 app.use(express.json({ limit: '50mb' }));
@@ -115,22 +185,10 @@ const firstHeader = (value: unknown): string | undefined => {
 // Tenant Middleware
 app.use(async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // `x-slug` is the legacy spelling every other service still accepts
-        // (coffin/hearse/shared dbConfig), so honour it here too — otherwise a
-        // caller that only sends `x-slug` gets a blanket 403.
+
         const parentSlug = firstHeader(req.headers['x-tenant-slug']) || firstHeader(req.headers['x-slug']);
         const branchId = firstHeader(req.headers['x-branch-id']);
-        // The branch DATABASE, when the caller states one. The frontend sends
-        // `x-branch-db` alongside `x-tenant-slug` precisely because a branch
-        // user must be addressed with the branch slug — the parent slug resolves
-        // to the organisation's HQ database, which is how a Machakos/Thika user
-        // kept being served Nairobi's deceased. Trusting the branch header first
-        // makes the branch the single source of truth for which DB is read.
         const branchHeader = firstHeader(req.headers['x-branch-db']) || firstHeader(req.headers['x-branch-slug']);
-
-        // Only accept the branch header when it is itself a well-formed slug —
-        // it is still resolved through the tenant allowlist below, never used
-        // as a raw schema name, so this cannot become a privilege escalation.
         const tenantSlug = (branchHeader && TENANT_SLUG_RE.test(branchHeader))
             ? branchHeader
             : parentSlug;
@@ -156,42 +214,12 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
         let resolvedDbName: string | null = null;
 
-        // SECURITY + RESILIENCE (audit findings 2.3 and 1.1)
-        // ------------------------------------------------------------------
-        // This block used to create a BRAND NEW mysql2 pool for every single HTTP
-        // request, using the raw `x-tenant-slug` header as the database name, run
-        // `SELECT 1` against it, and then tear it down. That was wrong twice over:
-        //
-        //  (a) SECURITY — the slug was never checked against tenant_tracking.tenants,
-        //      so any value naming an existing MariaDB schema was accepted as
-        //      "the tenant": `information_schema`, `mysql`, `performance_schema`, or
-        //      simply another tenant's db_name. With the wildcard grants in
-        //      init-db.sql that is a direct path to reading any schema on the
-        //      server, including tenant_tracking.tenants.jwt_secret.
-        //
-        //  (b) RESILIENCE — two full TCP + auth handshakes per request against a
-        //      server capped at max_connections=500. The first burst of traffic
-        //      exhausted the server and took every other service down with it.
-        //
-        // Resolution is now ONE parameterised, circuit-broken, cached lookup
-        // against the tenant allowlist, and pools are created once and reused via
-        // the shared pool cache. Zero new connections per request.
         try {
             if (!TENANT_SLUG_RE.test(tenantSlug)) {
                 throw new Error(`Malformed tenant slug rejected: ${JSON.stringify(tenantSlug)}`);
             }
             const { lookupTenantDatabase } = require('../../shared/dbConfig');
-            // Resolve the slug through the tenant ALLOWLIST (tenant_tracking.tenants),
-            // so an arbitrary schema name can never be used as "the tenant".
-            //
-            // TENANT STATUS IS DELIBERATELY *NOT* ENFORCED FOR THIS SERVICE.
-            // The active-only lookup used to return null for any tenant whose row
-            // is not `status = "active"` (suspended / trial / pending / expired
-            // subscription), so the whole Deceased module answered
-            //   403 {"success":false,"message":"Tenant not found or not active"}
-            // even though its data was intact. We now fall back to a lookup that
-            // drops ONLY the status filter — the slug↔db_name allowlist check and
-            // the db-name validation below still run in both attempts.
+
             resolvedDbName = await lookupTenantDatabase(tenantSlug)
                 || await lookupTenantDatabase(tenantSlug, { requireActive: false });
 
@@ -224,10 +252,6 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
         (req as any).tenant = {
             db_name: resolvedDbName,
             // A hardcoded 0 here made EVERY branch share the cache namespace
-            // `deceased:list:0:page:1:...`. Two different branches therefore
-            // read and wrote the same Redis key, so one branch's rows were
-            // served to another. Scoping the key by the resolved database is
-            // what actually separates them — see getAllDeceased.
             id: resolvedDbName,
             tenant_id: resolvedDbName,
             name: tenantSlug,
@@ -236,11 +260,13 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
         next();
     } catch (error) {
-        console.error('[DECEASED] Tenant middleware error:', error);
-        res.status(500).json({
+        const requestId = res.locals.requestId;
+        const detail = error instanceof Error ? error.stack || error.message : String(error);
+        Logger.error(`[DECEASED] Tenant middleware failed (${requestId}): ${detail}`);
+        return res.status(500).json({
             success: false,
             message: 'Failed to initialize tenant database',
-            error: error.message
+            requestId
         });
     }
 });
@@ -253,19 +279,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     next();
 });
 
-// Mount routes
-import autopsyRoutes from './routes/autopsyRoutes';
-import chargesRoutes from './routes/chargesRoutes';
-import chargeSettingsRoutes from './routes/chargeSettingsRoutes';
-import postmortemRequestRoutes from './routes/postmortemRequestRoutes';
-import nextOfKinRoutes from './routes/nextOfKinRoutes';
-import hearseRoutes from './routes/hearseRoutes';
-import documentsRoutes from './routes/documentsRoutes';
-import deceasedRoutes from './routes/deceasedRoutes';
-import exportExelRoutes from './routes/exportExel';
+
+
 app.use('/', deceasedRoutes);
 app.use('/', exportExelRoutes);
-
 app.use('/', nextOfKinRoutes);
 app.use('/', hearseRoutes);
 app.use('/', documentsRoutes);
@@ -298,18 +315,20 @@ app.use((req: Request, res: Response) => {
 
 // Error handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-    console.error('[ERROR]', err.message);
+    const requestId = res.locals.requestId;
+    const detail = err instanceof Error ? err.stack || err.message : String(err);
+    Logger.error(`[DECEASED] Request failed (${requestId}) ${req.method} ${req.path}: ${detail}`);
     res.status(500).json({
         success: false,
         message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        requestId
     });
 });
 
 // Start server with socket error handling and graceful shutdown
-const server = http.createServer({
-    insecureHTTPParser: false,
-}, app);
+const server = tlsOptions
+    ? https.createServer(tlsOptions, app)
+    : http.createServer({ insecureHTTPParser: false }, app);
 
 // Initialize Socket.IO with the HTTP server
 const io = new SocketIOServer(server, {
@@ -334,8 +353,9 @@ async function initializeQueues() {
         if (!excelWorkerStarted) {
             const excelQueue = await getExcelExportQueue();
             if (excelQueue) {
+                startAsyncSideEffectWorker();
                 // Only import and start worker if queue is available
-                const { createExcelExportWorker } = await import('./workers/excelExportWorker.js');
+                const { createExcelExportWorker } = await import('./workers/richExcelExportWorker.js');
                 const worker = await createExcelExportWorker();
                 if (worker) {
                     excelWorkerStarted = true;
@@ -360,11 +380,7 @@ initializeQueues().catch(err => {
     console.warn('[SERVER] Background queue initialization error:', err.message);
 });
 
-// RETRY LOOP — previously initializeQueues() ran exactly ONCE at boot. If Redis
-// was briefly unavailable (or the worker import failed) the Excel worker never
-// started, and every queued export job sat in `bull:excel-export:prioritized`
-// FOREVER while the frontend polled "Export in progress..." until timeout.
-// Retry every 30s (max 20 tries ≈ 10 min) until the worker is actually running.
+
 let queueInitRetries = 0;
 const queueInitTimer = setInterval(() => {
     queueInitRetries += 1;
@@ -402,7 +418,7 @@ const gracefulShutdown = (signal: string) => {
         process.exit(0);
     });
     setTimeout(() => {
-        console.error('[SHUTDOWN] Forced shutdown after timeout.');
+        Logger.error('[SHUTDOWN] Forced shutdown after timeout.');
         process.exit(1);
     }, 10000);
 };
@@ -411,23 +427,24 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
-    console.error('[SECURITY] Unhandled Rejection:', reason);
+    Logger.error(`[SECURITY] Unhandled Rejection: ${reason}`);
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('[SECURITY] Uncaught Exception:', err.message);
+    Logger.error(`[SECURITY] Uncaught exception: ${err.stack || err.message}`);
+    process.exit(1);
 });
 
 server.on('connection', (socket) => {
     socket.setTimeout(120000);
     socket.on('error', (err) => {
-        console.error('[SECURITY] Socket error handled:', err.message);
+        Logger.error(`[SECURITY]   Socket  error:   ${err.message}`);
         socket.destroy();
     });
 });
 
 server.on('error', (err: NodeJS.ErrnoException) => {
-    console.error('[SECURITY] Server error:', err.message);
+    Logger.error(`[SERVER]   Server  error:    ${err.message}`);
     if (err.code === 'EADDRINUSE') {
         console.error(`Port ${PORT} is already in use`);
         process.exit(1);
@@ -435,7 +452,8 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Deceased service running on ${PORT}`);
+    Logger.info(`[SERVER] Deceased  Service   runing   on   port ${PORT}`)
+
 });
 
 export default app;

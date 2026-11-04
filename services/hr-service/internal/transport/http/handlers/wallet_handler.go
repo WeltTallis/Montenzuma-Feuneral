@@ -1,43 +1,21 @@
 package handlers
 
 import (
-	"errors"
-	"fmt"
-	"log/slog"
-	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"api-server/internal/app/services/disbursement"
-	"api-server/internal/constants"
-	infrastructure "api-server/internal/domain/ports/infrastructure"
 	"api-server/internal/domain/wallet"
-	"api-server/internal/infra/disbursement/ninepay"
-	"api-server/internal/pkg/clock"
 	"api-server/internal/transport/http/response"
-	"api-server/internal/transport/http/uploadguard"
 
 	"github.com/gin-gonic/gin"
 )
 
 type WalletHandler struct {
-	service  wallet.WalletService
-	registry *disbursement.Registry
-	clock    clock.Clock
-	logger   *slog.Logger
+	service wallet.WalletService
 }
 
-func NewWalletHandler(service wallet.WalletService, registry *disbursement.Registry, clk clock.Clock) *WalletHandler {
-	if clk == nil {
-		clk = clock.New()
-	}
-	return &WalletHandler{
-		service:  service,
-		registry: registry,
-		clock:    clk,
-		logger:   slog.Default().With("component", "WalletHandler"),
-	}
+func NewWalletHandler(service wallet.WalletService) *WalletHandler {
+	return &WalletHandler{service: service}
 }
 
 func (h *WalletHandler) GetBalance(c *gin.Context) {
@@ -46,73 +24,7 @@ func (h *WalletHandler) GetBalance(c *gin.Context) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-	response.Success(c, balance, "Lấy số dư ví thành công")
-}
-
-func (h *WalletHandler) SyncBalance(c *gin.Context) {
-	adminUserID, _ := c.Get(constants.CtxUserID)
-	userID := uint64(adminUserID.(uint))
-
-	result, err := h.service.SyncBalance(c.Request.Context(), userID)
-	if err != nil {
-		switch {
-		case errors.Is(err, wallet.ErrProviderNotConfigured):
-			response.BadRequest(c, "Chưa cấu hình nhà cung cấp thanh toán")
-		case errors.Is(err, wallet.ErrProviderBalanceUnsupported):
-			response.BadRequest(c, "Nhà cung cấp không hỗ trợ truy vấn số dư")
-		default:
-			h.logger.Error("sync-balance: failed", "error", err)
-			response.InternalServerError(c, err.Error())
-		}
-		return
-	}
-
-	response.Success(c, gin.H{
-		"provider_balance": result.ProviderBalance,
-		"local_balance":    result.LocalBalance,
-		"adjusted":         result.Adjusted,
-		"currency":         "VND",
-	}, "Đồng bộ số dư thành công")
-}
-
-func (h *WalletHandler) AdjustBalance(c *gin.Context) {
-	var body struct {
-		Amount int64  `json:"amount" binding:"required"`
-		Reason string `json:"reason" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	if body.Amount == 0 {
-		response.BadRequest(c, "Amount không được bằng 0")
-		return
-	}
-
-	adminUserID, _ := c.Get(constants.CtxUserID)
-	userID := uint64(adminUserID.(uint))
-
-	now := h.clock.Now()
-
-	var note *string
-	adjustedNote := fmt.Sprintf("[Điều chỉnh đối soát 9pay] %s", body.Reason)
-	note = &adjustedNote
-
-	req := wallet.CreateWalletTopupRequest{
-		Amount:     body.Amount,
-		BankRef:    fmt.Sprintf("SYNC-ADJ-%s", now.Format("20060102-150405")),
-		OccurredAt: now,
-		Note:       note,
-	}
-
-	topup, err := h.service.CreateTopup(c.Request.Context(), req, userID)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, toWalletTopupResponse(topup), "Điều chỉnh số dư thành công")
+	response.Success(c, balance, "Wallet balance retrieved")
 }
 
 func (h *WalletHandler) GetTransactions(c *gin.Context) {
@@ -159,28 +71,6 @@ func (h *WalletHandler) GetTransactions(c *gin.Context) {
 	})
 }
 
-func (h *WalletHandler) CreateTopup(c *gin.Context) {
-	var req wallet.CreateWalletTopupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	adminUserID, _ := c.Get(constants.CtxUserID)
-	userID := uint64(adminUserID.(uint))
-	topup, err := h.service.CreateTopup(c.Request.Context(), req, userID)
-	if err != nil {
-		if strings.Contains(err.Error(), "duplicate bank_ref") {
-			response.Conflict(c, err.Error())
-			return
-		}
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.SuccessCreated(c, toWalletTopupResponse(topup), "Tạo bản ghi nạp tiền thành công")
-}
-
 func (h *WalletHandler) GetTopupByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -194,7 +84,7 @@ func (h *WalletHandler) GetTopupByID(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, toWalletTopupResponse(topup), "Lấy chi tiết nạp tiền thành công")
+	response.Success(c, toWalletTopupResponse(topup), "Top-up record retrieved")
 }
 
 func (h *WalletHandler) ListTopups(c *gin.Context) {
@@ -233,7 +123,7 @@ func (h *WalletHandler) ListTopups(c *gin.Context) {
 		totalPages++
 	}
 
-	response.SuccessWithPagination(c, toWalletTopupResponses(topups), "Lấy danh sách nạp tiền thành công", response.Pagination{
+	response.SuccessWithPagination(c, toWalletTopupResponses(topups), "Top-up records retrieved", response.Pagination{
 		Page:         filter.Page,
 		PageSize:     filter.PageSize,
 		TotalPages:   totalPages,
@@ -254,7 +144,7 @@ func (h *WalletHandler) GetPaymentByID(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, toWalletPaymentResponse(payment), "Lấy chi tiết giao dịch thành công")
+	response.Success(c, toWalletPaymentResponse(payment), "Payment record retrieved")
 }
 
 func (h *WalletHandler) ListPayments(c *gin.Context) {
@@ -300,175 +190,12 @@ func (h *WalletHandler) ListPayments(c *gin.Context) {
 		totalPages++
 	}
 
-	response.SuccessWithPagination(c, toWalletPaymentResponses(payments), "Lấy danh sách giao dịch thành công", response.Pagination{
+	response.SuccessWithPagination(c, toWalletPaymentResponses(payments), "Payment records retrieved", response.Pagination{
 		Page:         filter.Page,
 		PageSize:     filter.PageSize,
 		TotalPages:   totalPages,
 		TotalRecords: int(total),
 	})
-}
-
-func (h *WalletHandler) UploadReconciliation(c *gin.Context) {
-	fileContent, _, ok := uploadguard.Receive(c, false)
-	if !ok {
-		return
-	}
-
-	adminUserID, _ := c.Get(constants.CtxUserID)
-	userID := uint64(adminUserID.(uint))
-	jobID, err := h.service.UploadReconciliation(c.Request.Context(), fileContent, userID)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, gin.H{"job_id": jobID}, "Tải file đối soát thành công")
-}
-
-func (h *WalletHandler) GetReconciliationJobStatus(c *gin.Context) {
-	jobID := c.Param("id")
-	job, err := h.service.GetReconciliationJobStatus(c.Request.Context(), jobID)
-	if err != nil {
-		response.NotFound(c, "Không tìm thấy job đối soát")
-		return
-	}
-	response.Success(c, job, "Lấy trạng thái đối soát thành công")
-}
-
-func (h *WalletHandler) ExportReconciliationReport(c *gin.Context) {
-	month := c.DefaultQuery("month", h.clock.Now().Format("2006-01"))
-
-	data, err := h.service.ExportReconciliationReport(c.Request.Context(), month)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	filename := fmt.Sprintf("reconciliation-report-%s.csv", month)
-	c.Header("Content-Disposition", "attachment; filename="+filename)
-	c.Data(http.StatusOK, "text/csv", data)
-}
-
-// ResolvePayment handles POST /wallet/payments/:id/resolve.
-// Manual admin override of payment status (complete, fail, or reverse).
-func (h *WalletHandler) ResolvePayment(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "ID không hợp lệ")
-		return
-	}
-
-	var body struct {
-		Action string `json:"action" binding:"required"`
-		Reason string `json:"reason"`
-	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	adminUserID, _ := c.Get(constants.CtxUserID)
-	userID := uint64(adminUserID.(uint))
-
-	payment, err := h.service.ResolvePayment(c.Request.Context(), id, body.Action, body.Reason, userID)
-	if err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, toWalletPaymentResponse(payment), "Cập nhật trạng thái giao dịch thành công")
-}
-
-// AutoReconcile handles POST /wallet/reconcile/auto.
-func (h *WalletHandler) AutoReconcile(c *gin.Context) {
-	if h.registry == nil {
-		response.BadRequest(c, "Chưa cấu hình nhà cung cấp thanh toán")
-		return
-	}
-
-	provider, err := h.registry.Active(c.Request.Context())
-	if err != nil {
-		response.BadRequest(c, "Không có nhà cung cấp thanh toán đang hoạt động")
-		return
-	}
-
-	exporter, ok := provider.(infrastructure.ReportExporter)
-	if !ok {
-		response.BadRequest(c, "Nhà cung cấp không hỗ trợ xuất đối soát")
-		return
-	}
-
-	now := h.clock.Now()
-	loc := now.Location()
-
-	var dateFrom, dateTo time.Time
-	startDateStr := c.Query("start_date")
-	endDateStr := c.Query("end_date")
-
-	if startDateStr != "" && endDateStr != "" {
-		var parseErr error
-		dateFrom, parseErr = time.ParseInLocation("02/01/2006", startDateStr, loc)
-		if parseErr != nil {
-			response.BadRequest(c, "Định dạng start_date không hợp lệ (DD/MM/YYYY)")
-			return
-		}
-		dateTo, parseErr = time.ParseInLocation("02/01/2006", endDateStr, loc)
-		if parseErr != nil {
-			response.BadRequest(c, "Định dạng end_date không hợp lệ (DD/MM/YYYY)")
-			return
-		}
-		dateFrom = time.Date(dateFrom.Year(), dateFrom.Month(), dateFrom.Day(), 0, 0, 0, 0, loc)
-		dateTo = time.Date(dateTo.Year(), dateTo.Month(), dateTo.Day(), 23, 59, 59, 0, loc)
-
-		if dateTo.Before(dateFrom) {
-			response.BadRequest(c, "start_date phải nhỏ hơn hoặc bằng end_date")
-			return
-		}
-		maxStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -30)
-		if dateFrom.Before(maxStart) {
-			response.BadRequest(c, "Khoảng ngày tối đa là 30 ngày")
-			return
-		}
-		todayEnd := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, loc)
-		if dateFrom.After(todayEnd) || dateTo.After(todayEnd) {
-			response.BadRequest(c, "Không được chọn ngày trong tương lai")
-			return
-		}
-	} else {
-		days := 7
-		if d, err := strconv.Atoi(c.DefaultQuery("days", "7")); err == nil && d > 0 && d <= 30 {
-			days = d
-		}
-		dateFrom = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -days)
-		dateTo = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc).AddDate(0, 0, -1)
-	}
-
-	h.logger.Info("auto-reconcile: downloading from provider",
-		"date_from", dateFrom.Format("02/01/2006"),
-		"date_to", dateTo.Format("02/01/2006"))
-
-	csvBytes, _, err := exporter.ExportReconciliation(c.Request.Context(), dateFrom, dateTo)
-	if err != nil {
-		if errors.Is(err, ninepay.ErrNoTransactions) {
-			h.logger.Info("auto-reconcile: no transactions in date range")
-			response.Success(c, gin.H{"job_id": nil}, "Không có giao dịch trong khoảng ngày đã chọn")
-			return
-		}
-		h.logger.Error("auto-reconcile: export failed", "error", err)
-		response.InternalServerError(c, "Tải file đối soát từ nhà cung cấp thất bại: "+err.Error())
-		return
-	}
-
-	adminUserID, _ := c.Get(constants.CtxUserID)
-	userID := uint64(adminUserID.(uint))
-	jobID, err := h.service.UploadReconciliation(c.Request.Context(), csvBytes, userID)
-	if err != nil {
-		h.logger.Error("auto-reconcile: processing failed", "error", err)
-		response.InternalServerError(c, err.Error())
-		return
-	}
-
-	response.Success(c, gin.H{"job_id": jobID}, "Tự động đối soát thành công")
 }
 
 func toWalletTopupResponse(t *wallet.WalletTopup) *wallet.WalletTopupResponse {

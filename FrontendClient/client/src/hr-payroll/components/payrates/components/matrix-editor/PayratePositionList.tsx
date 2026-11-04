@@ -70,9 +70,9 @@ export function PayratePositionList({
       <section className="border-b border-border/70 bg-muted/20 px-4 py-3" aria-labelledby="hour-types-title">
         <div className="mb-2 flex items-center justify-between gap-3">
           <h3 id="hour-types-title" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Khung giờ
+            Shift types
           </h3>
-          <span className="text-xs text-muted-foreground">Đơn vị: ₫/giờ</span>
+          <span className="text-xs text-muted-foreground">Rate: KES/hour</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {hourTypes.map(hourType => (

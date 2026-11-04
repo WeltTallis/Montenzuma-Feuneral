@@ -26,6 +26,8 @@ const connection = {
 };
 
 let pdfQueue: Queue | null = null;
+let pdfWorker: Worker<PDFGenerationJob> | null = null;
+let pdfWorkerStarting: Promise<Worker<PDFGenerationJob> | null> | null = null;
 
 /**
  * Safely initialize the PDF queue
@@ -102,22 +104,36 @@ async function processPDFGeneration(job: any): Promise<void> {
   console.log(`Processing PDF for: ${deceasedId}`);
 }
 
-export function startPDFWorker(): void {
-  // Only start worker if Redis is available
-  getPDFQueue().then((queue) => {
-    if (queue) {
-      const worker = new Worker<PDFGenerationJob>(PDF_QUEUE_NAME, processPDFGeneration, {
-        connection,
-        concurrency: 2,
-      });
-      worker.on('error', (err: Error) => {
-        console.warn(`[PDFWorker] Worker error: ${err.message}`);
-      });
-      console.log('PDF Worker started');
-    } else {
+export function startPDFWorker(): Promise<Worker<PDFGenerationJob> | null> {
+  if (pdfWorker) return Promise.resolve(pdfWorker);
+  if (pdfWorkerStarting) return pdfWorkerStarting;
+
+  pdfWorkerStarting = (async () => {
+    const queue = await getPDFQueue();
+    if (!queue) {
       console.log('PDF Worker not started - Redis not available');
+      return null;
     }
+
+    const worker = new Worker<PDFGenerationJob>(PDF_QUEUE_NAME, processPDFGeneration, {
+      connection,
+      concurrency: 2,
+    });
+    worker.on('error', (err: Error) => {
+      console.warn(`[PDFWorker] Worker error: ${err.message}`);
+    });
+    pdfWorker = worker;
+    console.log('PDF Worker started');
+    return worker;
+  })().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    Logger.warn(`[PDFWorker] Failed to start: ${message}`);
+    return null;
+  }).finally(() => {
+    pdfWorkerStarting = null;
   });
+
+  return pdfWorkerStarting;
 }
 
 export function isPDFQueueAvailable(): boolean {

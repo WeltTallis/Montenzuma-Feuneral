@@ -317,6 +317,25 @@ const generateTokens = async (
   return { accessToken, refreshToken };
 };
 
+const authCookieOptions = (maxAge: number) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  path: '/',
+  maxAge,
+});
+
+const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
+  res.cookie('access_token', accessToken, authCookieOptions(7 * 24 * 60 * 60 * 1000));
+  res.cookie('refresh_token', refreshToken, authCookieOptions(30 * 24 * 60 * 60 * 1000));
+};
+
+const clearAuthCookies = (res: Response) => {
+  const options = { ...authCookieOptions(0), maxAge: undefined };
+  res.clearCookie('access_token', options);
+  res.clearCookie('refresh_token', options);
+};
+
 // ============================================
 // CSRF HELPER
 // ============================================
@@ -464,6 +483,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     } catch { /* non-critical */ }
 
     const { accessToken, refreshToken } = await generateTokens(user, tenant, branchDbName, branchSlug);
+    const cookieAuth = req.headers['x-auth-cookie'] === '1';
+    if (cookieAuth) setAuthCookies(res, accessToken, refreshToken);
     // Session + JWT always anchor to the PARENT tenant slug; the branch scope
     // travels separately via branchId/branchSlug/branchDbName.
     const effectiveSlug = tenant.tenant_slug;
@@ -502,8 +523,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      accessToken,
-      refreshToken,
+      ...(cookieAuth ? {} : { accessToken, refreshToken }),
       deploymentType,
       user: {
         userId: user.user_id,
@@ -754,7 +774,8 @@ export const listUsers = async (req: Request, res: Response): Promise<void> => {
  * POST /auth/refresh
  */
 export const refresh = async (req: Request, res: Response): Promise<void> => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies?.refresh_token || req.body?.refreshToken;
+  const cookieAuth = req.headers['x-auth-cookie'] === '1' || !!req.cookies?.refresh_token;
   if (!refreshToken) {
     res.status(400).json({ success: false, message: 'Refresh token is required' });
     return;
@@ -811,11 +832,11 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     }
 
     const result = await generateTokens(rows[0], tenants[0], branchDbName, branchSlug);
+    if (cookieAuth) setAuthCookies(res, result.accessToken, result.refreshToken);
     res.status(200).json({
       success: true,
       message: 'Token refreshed successfully',
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
+      ...(cookieAuth ? {} : { accessToken: result.accessToken, refreshToken: result.refreshToken }),
     });
   } catch (error: any) {
     console.error('[Auth] Token refresh failed:', error.message);
@@ -830,6 +851,7 @@ export const logout = (req: Request, res: Response): void => {
   req.session.destroy((err) => {
     if (err) console.error('Session destroy error:', err);
     res.clearCookie('restpoint.sid');
+    clearAuthCookies(res);
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   });
 };
@@ -839,11 +861,13 @@ export const logout = (req: Request, res: Response): void => {
  */
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
+    : req.cookies?.access_token;
+  if (!token) {
     res.status(401).json({ success: false, message: 'No token provided' });
     return;
   }
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded: any = jwt.decode(token);
@@ -924,4 +948,3 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     });
   }
 };
-

@@ -15,9 +15,7 @@ export const getTenantHeaders = (tenantSlugOverride) => {
   try {
     const tenantSlug = localStorage.getItem('tenantSlug') || sessionStorage.getItem('tenantSlug');
     const tenantId = localStorage.getItem('tenantId') || sessionStorage.getItem('tenantId');
-    // Support both 'accessToken' and 'authToken' keys for cross-compatibility
-    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') ||
-                  localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = '';
     const branchSlug = localStorage.getItem('branchSlug') || sessionStorage.getItem('branchSlug');
     const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
 

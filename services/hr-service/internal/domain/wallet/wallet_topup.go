@@ -19,14 +19,6 @@ type WalletTopup struct {
 	Version    int64     `json:"version"`
 }
 
-// CreateWalletTopupRequest represents a request to create a wallet topup.
-type CreateWalletTopupRequest struct {
-	Amount     int64     `json:"amount" binding:"required"`
-	BankRef    string    `json:"bank_ref" binding:"required"`
-	OccurredAt time.Time `json:"occurred_at" binding:"required"`
-	Note       *string   `json:"note"`
-}
-
 // WalletTopupFilter represents filter options for querying wallet topups.
 type WalletTopupFilter struct {
 	BankRef   string     `json:"bank_ref"`

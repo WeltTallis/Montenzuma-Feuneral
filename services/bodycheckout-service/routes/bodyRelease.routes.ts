@@ -1,4 +1,4 @@
-import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
+import { protect, authorizeAny, enforceTenant } from '../../../services/app-global/middlewares/authMiddleware';
 import { Router } from 'express';
 import { releaseBodyController } from '../controllers/bodyRelease.controller';
 import { getReleaseController, listReleasesController, getReleaseByAdmissionController } from '../controllers/release.controller';
@@ -9,6 +9,16 @@ import {
 } from '../controllers/deceasedLookup.controller';
 
 const router = Router();
+
+const requireTenantContext = (req: any, res: any, next: any) => {
+  if (req.isPlatformAdmin || req.tenantSlug) return next();
+  return res.status(403).json({ success: false, message: 'Authenticated tenant context required' });
+};
+
+router.use(protect);
+router.use(enforceTenant);
+router.use(requireTenantContext);
+router.use(authorizeAny);
 
 // POST /body-release/checkout - Create new release with ID generation
 router.post('/checkout', releaseBodyController);

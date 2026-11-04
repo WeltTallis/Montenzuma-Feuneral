@@ -9,9 +9,9 @@ import * as dotenv from 'dotenv';
 
 for (const envPath of [
   path.resolve(__dirname, '.env'),            // service folder (source layout)
-  path.resolve(__dirname, '../../../.env'),     // service folder (dist layout)
-  path.resolve(__dirname, '../../.env'),        // repo root (source layout)
-  path.resolve(__dirname, '../../../../../.env'), // repo root (dist layout)
+  path.resolve(__dirname, '../../../.env'),     // service folder dist layout
+  path.resolve(__dirname, '../../.env'),        // repo root source layout
+  path.resolve(__dirname, '../../../../../.env'), // repo root dist layout
 ]) {
   dotenv.config({ path: envPath });
 }
@@ -151,9 +151,9 @@ export const transaction = async <T>(
   }
 };
 
-// ============================================
+
 // Knex Migration Runner
-// ============================================
+
 
 /**
  * Run Knex migrations - self-contained
@@ -263,9 +263,8 @@ export const resetDatabase = async (): Promise<void> => {
   await runMigrations();
 };
 
-// ============================================
 // Health Check
-// ============================================
+
 
 /**
  * Check if the database is healthy
@@ -281,9 +280,9 @@ export const healthCheck = async (): Promise<boolean> => {
   }
 };
 
-// ============================================
+
 // Exports
-// ============================================
+
 
 export default {
   getHearsePool,

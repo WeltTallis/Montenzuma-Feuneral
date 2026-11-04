@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"api-server/internal/pkg/clock"
 	"context"
 	"database/sql"
 	"fmt"
@@ -18,52 +17,12 @@ func NewWalletTopupRepository(db *sql.DB) wallet.WalletTopupRepository {
 	return &walletTopupRepository{db: db}
 }
 
-func (r *walletTopupRepository) Create(ctx context.Context, topup *wallet.WalletTopup) error {
-	query := `
-		INSERT INTO wallet_topups (amount, bank_ref, occurred_at, note, created_by, version)
-		VALUES (?, ?, ?, ?, ?, 0)
-	`
-
-	now := clock.Now()
-	if topup.CreatedAt.IsZero() {
-		topup.CreatedAt = now
-	}
-	topup.UpdatedAt = now
-
-	result, err := r.db.ExecContext(ctx, query,
-		topup.Amount,
-		topup.BankRef,
-		topup.OccurredAt,
-		topup.Note,
-		topup.CreatedBy,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create wallet topup: %w", err)
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("failed to get last insert id: %w", err)
-	}
-
-	topup.ID = uint64(id)
-	return nil
-}
-
 func (r *walletTopupRepository) GetByID(ctx context.Context, id uint64) (*wallet.WalletTopup, error) {
 	query := `
 		SELECT id, amount, bank_ref, occurred_at, note, created_by, created_at, updated_at, version
 		FROM wallet_topups WHERE id = ?
 	`
 	return r.scanOne(r.db.QueryRowContext(ctx, query, id))
-}
-
-func (r *walletTopupRepository) GetByBankRef(ctx context.Context, bankRef string) (*wallet.WalletTopup, error) {
-	query := `
-		SELECT id, amount, bank_ref, occurred_at, note, created_by, created_at, updated_at, version
-		FROM wallet_topups WHERE bank_ref = ?
-	`
-	return r.scanOne(r.db.QueryRowContext(ctx, query, bankRef))
 }
 
 func (r *walletTopupRepository) Sum(ctx context.Context) (int64, error) {

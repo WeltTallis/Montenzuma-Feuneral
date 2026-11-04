@@ -73,10 +73,7 @@ export const SocketProvider = ({ children }) => {
         console.log('[Socket] Connecting to:', socketUrl);
 
         // Connect to Socket.IO server (central socketio-service)
-        // The socketio-service handshake middleware REQUIRES a token in
-        // production (401 "Authentication required" otherwise). getSocketAuth()
-        // always attaches the freshest token + tenant + user id, and every
-        // reconnect_attempt below re-reads it so it never goes stale.
+        // The socket authenticates with the HttpOnly access cookie.
         const socketInstance = io(socketUrl, {
             // Polling FIRST, WebSocket second. Starting with 'websocket' made
             // every handshake a hard failure whenever a proxy in the path
@@ -95,7 +92,7 @@ export const SocketProvider = ({ children }) => {
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
             timeout: 20000,
-            withCredentials: false,
+            withCredentials: true,
             auth: getSocketAuth(),
             extraHeaders: {
                 'x-tenant-slug':

@@ -677,6 +677,7 @@ const DeceasedList = () => {
         const contentType = (response.headers?.['content-type'] || '').toLowerCase();
         if (isFileResponse(contentType)) { cleanup(); loadExportHistory(); showExportSuccess(response.data, filenameFromDisposition(response, `Deceased_Records_${todayKey()}.xlsx`), pinProtected); return; }
         let data; try { data = await parseBlobJson(response.data); } catch (e) { throw new Error('Unexpected status response'); }
+        if (data?.success && data?.status === 'completed' && data?.fileUrl) { cleanup(); loadExportHistory(); showExportSuccess(null, data.fileName, false, data.fileUrl); downloadExportFile(data.fileUrl, data.fileName); return; }
         if (data?.success && data?.status) { attempts++; if (attempts < maxAttempts) { timeoutId = setTimeout(poll, pollInterval); } else { cleanup(); fail('Export is taking longer than expected. Please try again later.'); } return; }
         cleanup(); throw new Error(data?.message || 'Unknown status');
       } catch (err) {

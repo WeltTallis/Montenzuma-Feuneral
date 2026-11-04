@@ -277,8 +277,6 @@ const AdvancePaymentsPage = () => {
             className="mobile-wallet-hero relative -mx-4 -mt-4 overflow-hidden"
           >
             <WalletBalanceCard
-              monthlyProviderFee={page.providerFees.monthlyProviderFee}
-              totalProviderFee={page.providerFees.totalProviderFee}
               className="rounded-none border-0 shadow-none"
             />
             {/* Shimmer overlay */}
@@ -323,8 +321,6 @@ const AdvancePaymentsPage = () => {
             {!isAdvPartner && (
               <div className={cn(isMobile && "hidden")}>
                 <WalletBalanceCard
-                  monthlyProviderFee={page.providerFees.monthlyProviderFee}
-                  totalProviderFee={page.providerFees.totalProviderFee}
                   compact={!isAdvPartner}
                   className="rounded-none border-0 shadow-none"
                 />

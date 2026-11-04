@@ -371,7 +371,8 @@ export default function OnboardingFlow() {
         localStorage.setItem('onboardingData', JSON.stringify(onboardingData));
         localStorage.setItem('onboardingComplete', 'true');
         localStorage.setItem('deploymentType', formData.deploymentType);
-        if (response.data.token) localStorage.setItem('authToken', response.data.token);
+        localStorage.removeItem('authToken');
+        sessionStorage.removeItem('authToken');
         if (response.data.user) localStorage.setItem('user', JSON.stringify(response.data.user));
 
         setTimeout(() => {

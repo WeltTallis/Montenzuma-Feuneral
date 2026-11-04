@@ -379,7 +379,7 @@ func (h *Handler) GetEmployeesMissingBankDetails(c *gin.Context) {
 
 // GetEmployeesMissingMobile retrieves employees with no mobile number on file
 // @Summary Get employees with missing mobile numbers
-// @Description Get employees who have no phone number on file — the data-quality nudge list (phone login, Zalo OTP password reset and self check-in all key off the number)
+// @Description Get employees who have no phone number on file for mobile-based login
 // @Tags employees
 // @Accept json
 // @Produce json

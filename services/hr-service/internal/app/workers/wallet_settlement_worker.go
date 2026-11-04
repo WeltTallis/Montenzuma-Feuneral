@@ -220,7 +220,7 @@ func (w *WalletSettlementWorker) settleDay(ctx context.Context, day string, paym
 
 // completionDay returns the YYYY-MM-DD completion day of a payment, preferring
 // settled_at and falling back to created_at. The timestamps are read through the
-// loc=Local DSN, so they carry Asia/Ho_Chi_Minh and Format yields the local day.
+// loc=Local DSN, so they carry Africa/Nairobi and Format yields the local day.
 // A completed payment missing settled_at is a data anomaly; warn so it surfaces.
 func (w *WalletSettlementWorker) completionDay(p *wallet.WalletPayment) string {
 	t := p.CreatedAt

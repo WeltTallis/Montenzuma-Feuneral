@@ -71,7 +71,9 @@ export async function runBodyCheckoutMigrations(): Promise<void> {
       error: error.message,
       stack: error.stack,
     });
+
   } finally {
+    
     await svc.close().catch(() => {});
   }
 }

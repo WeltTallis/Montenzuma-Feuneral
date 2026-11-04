@@ -16,11 +16,9 @@ import (
 	"api-server/internal/app/services/notification"
 	"api-server/internal/app/services/project"
 	"api-server/internal/app/services/scheduler"
-	"api-server/internal/app/services/zaloconnect"
 	"api-server/internal/constants"
 	"api-server/internal/domain"
 	domainServices "api-server/internal/domain/services"
-	"api-server/internal/domain/wallet"
 	"api-server/internal/pkg/utils"
 )
 
@@ -39,9 +37,7 @@ func registerSchedulerJobs(
 	reconcileService *ledger.ReconcileService,
 	apiMetricRepo domain.APIMetricRepository,
 	advancePaymentReqRepo domain.AdvancePaymentRequestRepository,
-	walletSyncService wallet.WalletService,
 	flexPayReconciliationService *domainServices.FlexPayReconciliationService,
-	zaloConnectService *zaloconnect.Service,
 	aggregateRecomputeService *project.AggregateRecomputeService,
 	walletBalanceAlertService *notification.WalletBalanceAlertService,
 	assetSvc *asset.AssetService,
@@ -270,35 +266,7 @@ func registerSchedulerJobs(
 		},
 	})
 
-	// 8. Sync wallet balance with provider every 5 minutes
-	s.AddJob(scheduler.Job{
-		Name:    "sync_wallet_balance",
-		Cron:    "*/5 * * * *",
-		Enabled: true,
-		Handler: func() {
-			ctx := context.Background()
-			logger.Info("Starting wallet balance sync with provider")
-
-			result, err := walletSyncService.SyncBalance(ctx, uint64(constants.AdminUserID)) // system user ID
-			if err != nil {
-				logger.Error("Wallet balance sync failed", "error", err)
-				return
-			}
-
-			if result.Adjusted {
-				logger.Info("Wallet balance adjusted",
-					"provider_balance", result.ProviderBalance,
-					"local_balance", result.LocalBalance,
-				)
-			} else {
-				logger.Info("Wallet balance in sync",
-					"balance", result.LocalBalance,
-				)
-			}
-		},
-	})
-
-	// 9. Cancel pending flexible advance payment requests - 9th at 23:59 (last day of the tail window)
+	// 8. Cancel pending flexible advance payment requests - 9th at 23:59 (last day of the tail window)
 	s.AddJob(scheduler.Job{
 		Name:    "cancel_flexible_pending_requests",
 		Cron:    "59 23 9 * *",
@@ -454,34 +422,6 @@ func registerSchedulerJobs(
 			logger.Info("Expired check-in roster assets cleaned",
 				"deleted", deleted, "notifications_marked_read", markedRead,
 				"retention_days", checkInRosterRetentionDays)
-		},
-	})
-
-	// 11. Zalo OA token renewal - daily. Access tokens live ~24h and the
-	// refresh_token is single-use: each exchange rotates the chain. Sends
-	// refresh reactively, but on a day with zero ZNS traffic the chain would
-	// go stale; this job advances it unconditionally. Skips silently when
-	// Zalo is not connected yet so the status panel stays clean pre-setup.
-	s.AddJob(scheduler.Job{
-		Name:    "zalo_token_renew",
-		Cron:    "0 7 * * *",
-		Enabled: true,
-		Handler: func() {
-			ctx := context.Background()
-			creds, err := zaloConnectService.Get(ctx)
-			if err != nil {
-				logger.Error("Failed to read Zalo credentials for token renewal", "error", err)
-				return
-			}
-			if !creds.HasTokens() {
-				logger.Info("Zalo not connected, skipping token renewal")
-				return
-			}
-			if err := zaloConnectService.RefreshNow(ctx); err != nil {
-				logger.Error("Failed to renew Zalo token", "error", err)
-				return
-			}
-			logger.Info("Zalo token renewed")
 		},
 	})
 

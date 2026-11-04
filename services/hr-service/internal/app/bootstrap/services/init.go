@@ -1,8 +1,6 @@
 package services
 
 import (
-	"context"
-	"io"
 	"log/slog"
 	"time"
 
@@ -21,21 +19,17 @@ import (
 	"api-server/internal/app/services/employee"
 	"api-server/internal/app/services/flex_pay"
 	infraServices "api-server/internal/app/services/infrastructure"
-	"api-server/internal/app/services/integration"
 	"api-server/internal/app/services/ledger"
-	"api-server/internal/app/services/loan"
 	"api-server/internal/app/services/notification"
 	"api-server/internal/app/services/otp"
 	"api-server/internal/app/services/passwordreset"
 	"api-server/internal/app/services/payroll"
-	"api-server/internal/app/services/payroll/bulktransfer"
 	"api-server/internal/app/services/project"
 	pushService "api-server/internal/app/services/push"
 	"api-server/internal/app/services/reporting"
 	"api-server/internal/app/services/settlement"
 	"api-server/internal/app/services/timesheet"
 	"api-server/internal/app/services/user"
-	"api-server/internal/app/services/zaloconnect"
 	"api-server/internal/app/workers"
 	appConfig "api-server/internal/config"
 	"api-server/internal/constants"
@@ -43,14 +37,11 @@ import (
 	domainServices "api-server/internal/domain/services"
 	"api-server/internal/domain/wallet"
 	"api-server/internal/infra/cache"
-	"api-server/internal/infra/disbursement/ninepay"
-	"api-server/internal/infra/disbursement/onepay"
 	"api-server/internal/infra/email"
 	"api-server/internal/infra/events"
 	"api-server/internal/infra/persistence"
 	"api-server/internal/infra/persistence/repositories"
 	"api-server/internal/infra/storage"
-	"api-server/internal/infra/zalo"
 	"api-server/internal/pkg/clock"
 
 	// Adapter imports
@@ -65,12 +56,6 @@ type Services struct {
 	User                              *user.UserService
 	PasswordResetJobManager           *user.PasswordResetJobManager
 	EmailPasswordReset                *passwordreset.Service          // Red Team M2: distinct name (collides with PasswordResetJobManager otherwise)
-	ZaloConnect                       *zaloconnect.Service            // Admin-managed OA connection + runtime toggle (Phase 4)
-	Integration                       *integration.Service            // Vendor password-reset + employee lookup (API-key auth)
-	IntegrationSelfCheckin            *integration.SelfCheckinService // Vendor self check-in enable/disable (API-key auth)
-	ZaloTokenPusher                   *zaloconnect.TokenWebhookPusher // Pushes the OA access token to the vendor webhook (rotation + startup)
-	FlexPayZNS                        *zaloconnect.FlexPayZNSService  // ZNS notifications for FlexPay salary notifications
-	FlexPaySalaryDelivery             *zaloconnect.SalaryNotificationDeliveryService
 	Auth                              *auth.AuthService
 	Authorization                     *auth.AuthorizationService
 	Dashboard                         *dashboard.Service
@@ -103,15 +88,12 @@ type Services struct {
 	Asset                             *asset.AssetService
 	Cache                             domain.CacheServiceUseCase
 	CacheService                      *infraServices.CacheService
-	Lender                            *loan.LenderService
-	Loan                              *loan.LoanService
 	Email                             *notification.EmailService
 	Metric                            *infraServices.MetricService
 	Audit                             *infraServices.AuditService
 	APIMetricCleanupService           *cleanup.APIMetricCleanupService
 	Idempotency                       *infraServices.IdempotencyService
 	Reconcile                         *ledger.ReconcileService
-	OnePayFeeImport                   *settlement.OnePayFeeImportService
 	AdvancePayment                    *advance_payment.Service
 	AdvancePaymentFeeSchedule         *advance_payment.FeeScheduleService
 	WeeklyPaymentFeeSchedule          *payroll.WeeklyPaymentFeeScheduleService
@@ -126,16 +108,8 @@ type Services struct {
 	BulkTransferPaymentWorkerConcrete *workers.BulkTransferPaymentWorker
 	Push                              *pushService.PushService
 	DisbursementRegistry              *disbursement.Registry
-	DisbursementFeeSchedule           *disbursement.FeeScheduleService
-	ProviderTransactions              *disbursement.WalletPaymentService
-	WalletPaymentStats                *disbursement.StatsService
 	Wallet                            wallet.WalletService
 	CashReadiness                     *services.CashReadinessForecastService
-	NinepayCloser                     io.Closer
-	NinePayBulkTransfer               *bulktransfer.NinePayBulkTransferService
-	NinePayBatchCompletion            *bulktransfer.NinePayBatchCompletionChecker
-	OnePayExporter                    *bulktransfer.OnePayExporter
-	AutoBulkTransfer                  bulktransfer.AutoBulkTransferService
 	BulkTransferPayment               workers.TransferTimesheetUpdater
 	BCCImport                         *services.BCCImportService
 	Attendance                        *attendance.AttendanceService
@@ -225,7 +199,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 
 	employeeUserService := employee.NewEmployeeUserService(repos.Employee, userService)
 	employeeProfileService := employee.NewEmployeeProfileService(repos.Employee, repos.Timesheet, repos.ProjectEmployee, repos.Payrate, repos.Attendance, userService, eventBus)
-	lenderService := loan.NewLenderService(repos.Lender, cacheService, eventBus)
 	attendanceService := attendance.NewAttendanceService(repos.Attendance, repos.ProjectEmployee, repos.Project, repos.Payrate, repos.AdvancePayment, settingsConfigService, transactionManager, asynqClient, clk)
 
 	// Geofence gates are now DB-backed (project.geofence_gates JSON column).
@@ -275,7 +248,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 	)
 
 	// Step 6: Create services that depend on other domain services using ports
-	loanService := loan.NewLoanService(repos.Loan, repos.Lender, repos.Ledger, repos.Transaction, transactionPort, transactionManager, cachePort, eventBus, notificationPort, repos.LoanRepaymentSchedule)
 
 	// Initialize FlexPay reconciliation services
 	flexPayReconciliationService := domainServices.NewFlexPayReconciliationService(
@@ -307,10 +279,8 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 	// Ad banner campaigns (employee portal "Quảng cáo").
 	adBannerService := ad_banner.NewService(repos.AdBanner, repos.ProjectEmployee, repos.Employee, eventBus, cacheService, logger)
 
-	// Pre-declare disbursement registry so the advance payment config closure
-	// can reference it. The actual NewRegistry() + provider registration happens
-	// later in this function — the closure only reads the variable at call-time.
-	var disbursementRegistry *disbursement.Registry
+	// Payroll disbursements are completed through manual bank-file workflows.
+	disbursementRegistry := disbursement.NewRegistry()
 
 	// Initialize advance payment service
 	advancePaymentConfig := &advance_payment.Config{
@@ -334,24 +304,9 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		GetAdvanceCashFeePercentage:     settingsConfigService.GetAdvanceCashFeePercentage,
 		GetPartnerCompany:               settingsConfigService.GetPartnerCompany,
 		GetSelfCheckInAdvancePercentage: settingsConfigService.GetSelfCheckInAdvancePercentage,
-		GetTransferLimits: func(ctx context.Context) advance_payment.ProviderTransferLimits {
-			limits := disbursementRegistry.ActiveTransferLimits(ctx)
-			return advance_payment.ProviderTransferLimits{
-				MinAmount: limits.MinAmount,
-				MaxAmount: limits.MaxAmount,
-			}
-		},
 	}
 	// Create audit service
 	auditService := infraServices.NewAuditService(eventBus)
-	onePayFeeImportService := settlement.NewOnePayFeeImportService(
-		repos.TxWalletPayment,
-		repos.Bank,
-		repos.Transaction,
-		transactionService,
-		auditService,
-		logger,
-	)
 
 	advancePaymentService := advance_payment.NewService(advancePaymentConfig, logger)
 
@@ -373,138 +328,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 	employeeImportProgressService := infraServices.NewEmployeeImportProgressService(cacheService)
 
 	idempotencyService := infraServices.NewIdempotencyService(redis.Client, logger)
-
-	// Disbursement provider registry. Registration is gated at boot by
-	// the master env flag (ENABLE_NINEPAY) AND the presence of provider
-	// credentials. When the flag is off or creds are blank, the registry
-	// stays empty and Active(ctx) returns ErrNoActiveProvider — use cases
-	// then fail closed without ever touching the provider.
-	disbursementRegistry = disbursement.NewRegistry()
-	var ninepayCloser io.Closer
-	switch {
-	case !cfg.Disbursement.Ninepay.Enabled:
-		logger.Info("disbursement: ENABLE_NINEPAY=false; 9pay provider not registered")
-	case cfg.Disbursement.Ninepay.MerchantKey == "":
-		logger.Info("disbursement: 9pay credentials not configured; provider not registered")
-	default:
-		// Resolve the merchant-portal device_id: env override > Settings
-		// table > auto-generate-and-persist. Done at boot rather than per
-		// request so the value is fixed for the lifetime of the process
-		// and the Settings round-trip happens once.
-		deviceID, devErr := resolveNinepayDeviceID(context.Background(), settingsService, cfg.Disbursement.Ninepay.WebDeviceID, logger)
-		if devErr != nil {
-			logger.Error("disbursement: resolve 9pay device_id failed; provider will not be registered", "error", devErr)
-			break
-		}
-		ninepayClient, err := ninepay.NewClient(ninepay.Config{
-			MerchantKey:       cfg.Disbursement.Ninepay.MerchantKey,
-			SecretKey:         cfg.Disbursement.Ninepay.SecretKey,
-			SecretKeyChecksum: cfg.Disbursement.Ninepay.SecretKeyChecksum,
-			Endpoint:          cfg.Disbursement.Ninepay.Endpoint,
-			WebEndpoint:       cfg.Disbursement.Ninepay.WebEndpoint,
-			Portal: ninepay.PortalAuthConfig{
-				AccountURL:  cfg.Disbursement.Ninepay.WebAccountURL,
-				WebEndpoint: cfg.Disbursement.Ninepay.WebEndpoint,
-				Username:    cfg.Disbursement.Ninepay.WebUsername,
-				Password:    cfg.Disbursement.Ninepay.WebPassword,
-				DeviceID:    deviceID,
-				ClientID:    cfg.Disbursement.Ninepay.WebClientID,
-				RedirectURI: cfg.Disbursement.Ninepay.WebRedirectURI,
-			},
-			WebMerchantID: cfg.Disbursement.Ninepay.WebMerchantID,
-		}, logger)
-		if err != nil {
-			logger.Error("disbursement: 9pay client init failed; provider will not be registered",
-				"error", err)
-		} else {
-			provider := ninepay.NewProvider(ninepayClient, logger)
-			queued := ninepay.NewQueuedProvider(provider, cfg.Disbursement.Ninepay.TPS, cfg.Disbursement.Ninepay.QueueBuffer, logger)
-			disbursementRegistry.Register(queued)
-			ninepayCloser = queued
-			logger.Info("disbursement: 9pay provider registered",
-				"endpoint", cfg.Disbursement.Ninepay.Endpoint,
-				"enabled_for_employee", cfg.Disbursement.Ninepay.EnabledForEmployee,
-				"tps", cfg.Disbursement.Ninepay.TPS)
-		}
-	}
-
-	// ---- OnePay ---------------------------------------------------------
-	switch {
-	case !cfg.Disbursement.Onepay.Enabled:
-		logger.Info("disbursement: ENABLE_ONEPAY=false; onepay provider not registered")
-	case cfg.Disbursement.Onepay.PartnerID == "" || cfg.Disbursement.Onepay.PartnerKey == "" || cfg.Disbursement.Onepay.AccountID == "":
-		logger.Warn("disbursement: onepay disabled (creds missing)",
-			"partner_id_set", cfg.Disbursement.Onepay.PartnerID != "",
-			"partner_key_set", cfg.Disbursement.Onepay.PartnerKey != "",
-			"account_id_set", cfg.Disbursement.Onepay.AccountID != "",
-		)
-	default:
-		opClient, err := onepay.NewClient(onepay.Config{
-			PartnerID:            cfg.Disbursement.Onepay.PartnerID,
-			PartnerKey:           cfg.Disbursement.Onepay.PartnerKey,
-			AccountID:            cfg.Disbursement.Onepay.AccountID,
-			Endpoint:             cfg.Disbursement.Onepay.Endpoint,
-			RequestExpirySeconds: cfg.Disbursement.Onepay.RequestExpirySeconds,
-			HTTPTimeout:          cfg.Disbursement.Onepay.HTTPTimeout,
-			TPS:                  cfg.Disbursement.Onepay.TPS,
-			QueueBuffer:          cfg.Disbursement.Onepay.QueueBuffer,
-		}, logger.With("provider", "1pay"))
-		if err != nil {
-			logger.Error("disbursement: onepay client init failed; provider will not be registered",
-				"error", err)
-		} else {
-			opProvider := onepay.NewProvider(opClient, logger.With("provider", "1pay"))
-			queued := onepay.NewQueuedProvider(opProvider, cfg.Disbursement.Onepay.TPS, cfg.Disbursement.Onepay.QueueBuffer, logger)
-			disbursementRegistry.Register(queued)
-			logger.Info("disbursement: onepay provider registered",
-				"endpoint", cfg.Disbursement.Onepay.Endpoint,
-				"for_employee", cfg.Disbursement.Onepay.EnabledForEmployee,
-				"tps", cfg.Disbursement.Onepay.TPS)
-		}
-	}
-
-	// Attach the selector chain: context hint (admin header) → feature
-	// flags (employee routing) → first-registered fallback.
-	sel := disbursement.ChainSelector{
-		Selectors: []disbursement.Selector{
-			disbursement.ContextSelector{},
-			disbursement.FlagSelector{
-				OnepayForEmployee:      cfg.Disbursement.Onepay.EnabledForEmployee,
-				NinepayForEmployee:     cfg.Disbursement.Ninepay.EnabledForEmployee,
-				OnepayForBulkTransfer:  cfg.Disbursement.Onepay.EnabledForBulkTransfer,
-				NinepayForBulkTransfer: cfg.Disbursement.Ninepay.EnabledForBulkTransfer,
-			},
-		},
-	}
-	disbursementRegistry.WithSelector(&sel)
-
-	// Disbursement fee schedule service: dated fee history mirroring the
-	// advance-payment fee schedule pattern. The provider transaction service
-	// stamps fee at INSERT time by resolving the active entry at clock.Now().
-	disbursementFeeScheduleService := disbursement.NewFeeScheduleService(db.DB, eventBus, logger)
-	disbursementFeeScheduleService.SetRegistry(disbursementRegistry)
-
-	// provider_transactions service stack: persistence + state-machine
-	// driver + read-only stats. Wired even when 9pay is dormant — the
-	// table and stats endpoint exist regardless, and other providers
-	// (future) will reuse the same service.
-	//
-	// Error translation is resolved at call time against the active
-	// provider's ErrorTranslator capability, so the service stays
-	// decoupled from any concrete provider package.
-	disbursementErrorTranslator := disbursementRegistry.ActiveErrorTranslator()
-	walletPaymentService := disbursement.NewWalletPaymentService(
-		repos.TxWalletPayment,
-		repos.AdvancePaymentRequest,
-		repos.Employee,
-		repos.Bank,
-		notificationService,
-		disbursementFeeScheduleService,
-		disbursementErrorTranslator,
-		disbursementRegistry,
-		logger,
-	)
-	walletPaymentStats := disbursement.NewStatsService(repos.TxWalletPayment, disbursementErrorTranslator)
 
 	// Initialize bulk transfer payment worker for per-transfer timesheet updates
 	bulkTransferPaymentWorker := workers.NewBulkTransferPaymentWorker(
@@ -552,7 +375,7 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		IsEmployeeMobileRequired: settingsConfigService.IsEmployeeMobileRequired,
 	}
 
-	walletService := services.NewWalletService(repos.WalletTopup, repos.WalletPayment, disbursementRegistry)
+	walletService := services.NewWalletService(repos.WalletTopup, repos.WalletPayment)
 	cashReadinessService := services.NewCashReadinessForecastService(
 		repos.Timesheet,
 		walletService,
@@ -592,42 +415,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		ledgerService,
 		clk,
 	))
-
-	// Create auto bulk transfer service (enabled when any disbursement provider is registered)
-	var autoBulkTransferSvc *bulktransfer.NinePayBulkTransferService
-	var ninePayBatchCompletion *bulktransfer.NinePayBatchCompletionChecker
-	var onePayExporter *bulktransfer.OnePayExporter
-	if len(disbursementRegistry.Names()) > 0 {
-		btSvc := payrollSvc.BulkTransferSvc()
-		autoBulkTransferSvc = bulktransfer.NewNinePayBulkTransferService(
-			btSvc.ExportService(),
-			btSvc.FileRepo(),
-			repos.TransactionCode,
-			nil, // asynqClient set later in container.go
-			eventBus,
-			logger,
-		)
-		autoBulkTransferSvc.SetFeeProvider(disbursementFeeScheduleService)
-		autoBulkTransferSvc.SetProviderResolver(disbursementRegistry)
-		autoBulkTransferSvc.SetWalletPaymentRepo(repos.TxWalletPayment)
-		ninePayBatchCompletion = bulktransfer.NewNinePayBatchCompletionChecker(
-			repos.TransactionCode,
-			repos.BulkTransferFile,
-			repos.TxWalletPayment,
-			idempotencyService,
-			eventBus,
-			logger,
-		)
-		// OnePay exporter reuses the same planner + transaction code repo as
-		// the 9Pay export path so selection logic stays identical. The only
-		// addition is bankRepo for SWIFT resolution.
-		onePayExporter = bulktransfer.NewOnePayExporter(
-			btSvc.ExportService().Planner(),
-			repos.Bank,
-			repos.TransactionCode,
-			logger,
-		)
-	}
 
 	employeeService := employee.NewEmployeeService(employeeConfig)
 
@@ -671,79 +458,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		constants.DefaultEmailSenderAddress, cfg.PasswordReset.ResetURL, clk, logger,
 	)
 
-	// Zalo-OTP employee password-reset (mobile channel). Two-step wire:
-	// zaloconnect.Service implements zalo.CredentialSource and owns the
-	// admin-managed connection (DB-backed); the zalo.Provider takes it.
-	// The admin pastes all four OA fields directly (no OAuth flow).
-	// SeedFromEnvIfEmpty runs on first boot only — thereafter DB is authoritative.
-	zaloConnectSvc := zaloconnect.NewService(repos.Settings, logger)
-	zaloProvider := zalo.NewProvider(zaloConnectSvc, zalo.DefaultConfig(), logger)
-	zaloProvider.SetRefreshCoordinator(zalo.NewRedisRefreshCoordinator(redis.Client))
-	zaloConnectSvc.SetProvider(zaloProvider)
-	// Push lane to TingHire (payroll is the sole OA token rotator): every
-	// persisted rotation — refresh exchange, validated admin paste, or metadata
-	// save — hands the new access token to the vendor webhook. The pusher skips
-	// itself when CHATBOT_OA_TOKEN_WEBHOOK_URL/KEY are unset, so wiring is
-	// unconditional and unconfigured deploys stay inert.
-	zaloTokenPusher := zaloconnect.NewTokenWebhookPusher(
-		cfg.Zalo.ChatbotTokenWebhookURL, cfg.Zalo.ChatbotTokenWebhookKey, logger)
-	zaloProvider.SetRotationHook(zaloTokenPusher.Push)
-	_ = zaloConnectSvc.SeedFromEnvIfEmpty(context.Background(), zaloconnect.EnvSeed{
-		Enabled:    cfg.Zalo.Enabled,
-		AppID:      cfg.Zalo.AppID,
-		SecretKey:  cfg.Zalo.SecretKey,
-		TemplateID: cfg.Zalo.TemplateID,
-	})
-
-	// Sandbox mode: when ZALO_USE_SANDBOX=true, the reset service uses a mock
-	// sender that logs the OTP to the terminal instead of hitting Zalo. This
-	// lets a developer test the full reset flow locally without a Zalo OA.
-	var zaloSender zalo.Sender = zaloProvider
-	if cfg.Zalo.UseSandbox {
-		zaloSender = zalo.NewSandboxSender(logger)
-		logger.Info("zalo: SANDBOX mode enabled — OTPs will be logged, not sent to Zalo")
-	}
-
-	zaloResetStore := cache.NewZaloResetStore(redis.Client, cfg.Zalo.CodeTTL)
-	// Vendor integration service (TingHire): password-reset OTP + employee
-	// lookup. Reuses the same Zalo store, sender, and enabled-checker as the
-	// self-service reset, but reports outcomes explicitly to the caller.
-	integrationService := integration.NewService(
-		zaloResetStore, repos.User, repos.Employee, userService, zaloSender,
-		cfg.Zalo.TemplateID, zaloConnectSvc, eventBus, clk, logger,
-	)
-
-	// Self check-in shares the OTP machinery but MUST live under its own
-	// Redis key namespace ("zsc"): its sessions and action tokens are then
-	// never consumable at the password-reset endpoints, and a reset token
-	// never unlocks a self check-in update (cross-flow replay defense).
-	selfCheckinStore := cache.NewZaloResetStoreWithPrefix(redis.Client, cfg.Zalo.CodeTTL, "zsc")
-	selfCheckinTemplate := cfg.SelfCheckin.TemplateID
-	if selfCheckinTemplate == "" {
-		selfCheckinTemplate = cfg.Zalo.TemplateID
-	}
-	selfCheckinService := integration.NewSelfCheckinService(
-		selfCheckinStore, repos.User, repos.Employee, repos.Project,
-		repos.ProjectEmployee, repos.Payrate, projectEmployeeSvc, zaloSender,
-		selfCheckinTemplate, zaloConnectSvc, cfg.SelfCheckin.SupportedProjectCodes,
-		clk, logger,
-	)
-
-	// FlexPay ZNS service for employee salary notifications
-	flexPayZNSService := zaloconnect.NewFlexPayZNSService(
-		zaloProvider,
-		logger,
-		zaloConnectSvc.IsFlexPayZNSEnabled,
-	)
-	flexPaySalaryDelivery := zaloconnect.NewSalaryNotificationDeliveryService(
-		repos.FlexPaySalaryNotification,
-		zaloSender,
-		asynqClient,
-		zaloConnectSvc.IsFlexPayZNSEnabled,
-		clk,
-		logger,
-	)
-
 	// Google OIDC nonce store (Redis) — single-use replay defense for id_tokens.
 	nonceStore := cache.NewNonceStore(redis.Client, 10*time.Minute)
 
@@ -761,12 +475,6 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		User:                              userService,
 		PasswordResetJobManager:           passwordResetJobManager,
 		EmailPasswordReset:                emailPasswordResetService,
-		ZaloConnect:                       zaloConnectSvc,
-		Integration:                       integrationService,
-		IntegrationSelfCheckin:            selfCheckinService,
-		ZaloTokenPusher:                   zaloTokenPusher,
-		FlexPayZNS:                        flexPayZNSService,
-		FlexPaySalaryDelivery:             flexPaySalaryDelivery,
 		Auth:                              auth.NewAuthService(userService, repos.Employee, repos.BlacklistedToken, eventBus, cfg.Auth.JWTSecret, cfg.Auth.AccessTTL, otpService, cfg.OTP, cfg.Google.ClientID, nonceStore, captchaService, logger),
 		Authorization:                     authorizationService,
 		Dashboard:                         dashboardService,
@@ -799,15 +507,12 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		Asset:                             assetService,
 		Cache:                             cacheService,
 		CacheService:                      cacheService,
-		Lender:                            lenderService,
-		Loan:                              loanService,
 		Email:                             emailService,
 		Metric:                            infraServices.NewMetricService(repos.APIMetric, repos.AuditLog),
 		Audit:                             auditService,
 		APIMetricCleanupService:           apiMetricCleanupService,
 		Idempotency:                       idempotencyService,
 		Reconcile:                         reconcileService,
-		OnePayFeeImport:                   onePayFeeImportService,
 		AdvancePayment:                    advancePaymentService,
 		AdvancePaymentFeeSchedule:         feeScheduleService,
 		WeeklyPaymentFeeSchedule:          weeklyPaymentFeeScheduleService,
@@ -822,16 +527,8 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 		BulkTransferPaymentWorkerConcrete: bulkTransferPaymentWorker,
 		Push:                              pushSvc,
 		DisbursementRegistry:              disbursementRegistry,
-		DisbursementFeeSchedule:           disbursementFeeScheduleService,
-		ProviderTransactions:              walletPaymentService,
-		WalletPaymentStats:                walletPaymentStats,
-		NinepayCloser:                     ninepayCloser,
 		Wallet:                            walletService,
 		CashReadiness:                     cashReadinessService,
-		NinePayBulkTransfer:               autoBulkTransferSvc,
-		AutoBulkTransfer:                  asAutoBulkTransfer(autoBulkTransferSvc),
-		NinePayBatchCompletion:            ninePayBatchCompletion,
-		OnePayExporter:                    onePayExporter,
 		BulkTransferPayment:               bulkTransferPaymentWorker,
 		BCCImport: services.NewBCCImportService(
 			repos.Payrate,
@@ -852,16 +549,4 @@ func Initialize(repos *bootstrapRepos.Repositories, cfg *appConfig.Config, logge
 	}
 
 	return servicesStruct
-}
-
-// asAutoBulkTransfer keeps the interface field truly empty when no disbursement
-// provider is registered. A nil *NinePayBulkTransferService stored in the
-// interface is NOT equal to nil, so it silently passed the handlers' nil guards
-// and the call panicked on the nil receiver — a 500 for what is really "feature
-// unavailable in this deployment".
-func asAutoBulkTransfer(svc *bulktransfer.NinePayBulkTransferService) bulktransfer.AutoBulkTransferService {
-	if svc == nil {
-		return nil
-	}
-	return svc
 }

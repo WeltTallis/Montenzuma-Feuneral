@@ -106,8 +106,8 @@ func (s *AuthService) CaptchaRequiredForUsername(ctx context.Context, username s
 // findUserByMobileIdentifier resolves a login identifier that is a phone
 // number. The lookup order (users.mobile for admin/partner/adv_partner, then
 // employees.mobile through employees.user_id) and the fail-closed rules live in
-// the shared identity resolver, so login cannot drift from the Zalo reset and
-// the duplicate check. A number carried by several employees comes back as a
+// the shared identity resolver, so login cannot drift from the duplicate
+// check. A number carried by several employees comes back as a
 // conflict error; Login then reports invalid credentials and mints no token.
 func (s *AuthService) findUserByMobileIdentifier(ctx context.Context, identifier string) (*domain.User, error) {
 	return identity.New(s.userService.UserRepo, s.employeeRepo).ResolveUserByMobile(ctx, identifier)

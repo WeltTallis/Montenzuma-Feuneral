@@ -2,7 +2,6 @@
 #   3306  mysql
 #   6379  redis
 #   8081  adminer
-#   9001  sandbox (9pay + onepay mocks)
 #   8080  backend (host process via `air`)
 #   5173  frontend (vite dev server, host process)
 
@@ -18,7 +17,7 @@ services:
       MYSQL_USER: payroll_user
       MYSQL_PASSWORD: payroll_pass
       PAYROLL_LOCAL_BOOTSTRAP: "1"
-      TZ: Asia/Ho_Chi_Minh
+      TZ: Africa/Nairobi
     ports:
       - "3306:3306"
     volumes:
@@ -59,47 +58,6 @@ services:
       timeout: 3s
       retries: 5
       interval: 5s
-
-  # Unified sandbox — mocks external APIs so local dev works
-  # without real credentials. Serves both:
-  #   • 9Pay disbursement mock (routes: /disbursement/*, /api/transaction/*)
-  #   • OnePay PayOut mock (routes: /onepayout/*)
-  sandbox:
-    build: ./sandbox
-    container_name: payroll-sandbox
-    restart: unless-stopped
-    ports:
-      - "9001:9001"
-    environment:
-      MOCK_LISTEN_ADDR: ":9001"
-      # 9Pay
-      MOCK_PUBLIC_URL: ${MOCK_PUBLIC_URL:-http://localhost:9001}
-      NINEPAY_MERCHANT_KEY: ${NINEPAY_MERCHANT_KEY:-mock-merchant}
-      NINEPAY_SECRET_KEY: ${NINEPAY_SECRET_KEY:-mock-secret}
-      NINEPAY_SECRET_KEY_CHECKSUM: ${NINEPAY_SECRET_KEY_CHECKSUM:-mock-checksum}
-      MOCK_IPN_URL: ${MOCK_IPN_URL:-http://host.docker.internal:8080/api/v1/webhooks/disbursement/9pay}
-      MOCK_IPN_DELAY: ${MOCK_IPN_DELAY:-3s}
-      MOCK_SLOW_DELAY: ${MOCK_SLOW_DELAY:-5m}
-      MOCK_BASE64_LINEWRAP: ${MOCK_BASE64_LINEWRAP:-alternate}
-      MOCK_SKIP_VERIFY: ${MOCK_SKIP_VERIFY:-false}
-      MOCK_DB_DSN: ${MOCK_DB_DSN:-root:${ROOT_PASSWORD}@tcp(mysql:3306)/payroll_db?parseTime=true&loc=UTC}
-      # OnePay
-      ONEPAY_PARTNER_ID: ${ONEPAY_PARTNER_ID:-TESTVFICPO}
-      ONEPAY_PARTNER_KEY: ${ONEPAY_PARTNER_KEY:-C2B5DA903DAE19E215454211C66A59DD}
-      ONEPAY_ACCOUNT_ID: ${ONEPAY_ACCOUNT_ID:-666894931888}
-      MOCK_ONEPAY_IPN_URL: ${MOCK_ONEPAY_IPN_URL:-http://host.docker.internal:8080/api/v1/webhooks/disbursement/1pay}
-      MOCK_ONEPAY_IPN_DELAY: ${MOCK_ONEPAY_IPN_DELAY:-3s}
-      MOCK_ONEPAY_SLOW_DELAY: ${MOCK_ONEPAY_SLOW_DELAY:-5m}
-      MOCK_ONEPAY_SKIP_VERIFY: ${MOCK_ONEPAY_SKIP_VERIFY:-false}
-      # Optional explicit holder-name override for testing mismatch warnings.
-      # By default the mock resolves the employee name from the local database.
-      MOCK_ONEPAY_HOLDER_NAME: ${MOCK_ONEPAY_HOLDER_NAME:-}
-      MOCK_ONEPAY_DB_DSN: ${MOCK_ONEPAY_DB_DSN:-root:${ROOT_PASSWORD}@tcp(mysql:3306)/payroll_db?parseTime=true&loc=UTC}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      mysql:
-        condition: service_healthy
 
   # Optional: Database management interface
   adminer:

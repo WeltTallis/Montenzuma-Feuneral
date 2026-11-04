@@ -28,6 +28,7 @@ class NotificationService {
       // sending only userId always results in a 401 rejection.
       auth: getSocketAuth(),
       transports: ['websocket', 'polling'],
+      withCredentials: true,
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,

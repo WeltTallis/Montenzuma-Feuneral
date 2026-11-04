@@ -213,11 +213,8 @@ const ProtectedRoute = ({ children }) => {
     return <Loader text="Validating session" color="#0e3345" />;
   }
 
-  // A live access token is enough to enter the app. The AuthContext may not
-  // have hydrated the user object yet (fresh tab, storage event still in
-  // flight), and this guard used to WIPE authToken/user from storage whenever
-  // `user` was missing — permanently signing genuinely logged-in clients out
-  // and bouncing them to /login on every navigation.
+  // Cached identity is only a routing hint; protected API requests still
+  // require the server-validated HttpOnly session cookie.
   if (!user && !hasSession()) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
@@ -356,7 +353,7 @@ const DashboardLayout = ({ children, tenantData, tenantSlug }) => {
 const TenantResolver = () => {
   const { slug } = useParams();
   const { setTenantData, setLoading, error, setError, tenantData } = useTenantStore();
-  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  const token = localStorage.getItem('user') || sessionStorage.getItem('user');
   const navigate = useNavigate();
   const location = useLocation();
   const cacheKey = `tenant_cache_${slug}`;

@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-mpesa-integration/config"
@@ -15,21 +18,44 @@ import (
 
 type AccessTokenResponse struct {
 	AccessToken string `json:"access_token"`
-	ExpiresIn   string `json:"expiry_in"`
+	ExpiresIn   string `json:"expires_in"`
 }
 
-func GenerateAccessToken(consumerKey string, consumerSecret string) (string, error) {
+var (
+	tokenHTTPClient = &http.Client{Timeout: 10 * time.Second}
+	tokenRefresh    = make(chan struct{}, 1)
+	tokenCacheMu    sync.RWMutex
+	cachedToken     string
+	cachedTokenKey  string
+	cachedTokenTill time.Time
+)
+
+func GenerateAccessToken(ctx context.Context, consumerKey string, consumerSecret string) (string, error) {
 	config := config.NewEnvConfig()
-	method := "GET"
-	client := &http.Client{}
-	req, err := http.NewRequest(method,config.MPesaTokenUrl, nil)
+	tokenKey := consumerKey + "\x00" + consumerSecret
+	if token, ok := getCachedToken(tokenKey); ok {
+		return token, nil
+	}
+
+	select {
+	case tokenRefresh <- struct{}{}:
+		defer func() { <-tokenRefresh }()
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+
+	if token, ok := getCachedToken(tokenKey); ok {
+		return token, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, config.MPesaTokenUrl, nil)
 
 	if err != nil {
 		return "", err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(consumerKey+":"+consumerSecret)))
-	res, err := client.Do(req)
+	res, err := tokenHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -62,7 +88,32 @@ func GenerateAccessToken(consumerKey string, consumerSecret string) (string, err
 	if strings.TrimSpace(accessTokenResponse.AccessToken) == "" {
 		return "", fmt.Errorf("M-Pesa OAuth returned no access_token: body: %s", string(body))
 	}
+
+	ttlSeconds, err := strconv.Atoi(accessTokenResponse.ExpiresIn)
+	if err != nil || ttlSeconds <= 0 {
+		ttlSeconds = 300
+	}
+	if ttlSeconds > 60 {
+		ttlSeconds -= 60
+	} else {
+		ttlSeconds /= 2
+	}
+	tokenCacheMu.Lock()
+	cachedToken = accessTokenResponse.AccessToken
+	cachedTokenKey = tokenKey
+	cachedTokenTill = time.Now().Add(time.Duration(ttlSeconds) * time.Second)
+	tokenCacheMu.Unlock()
+
 	return accessTokenResponse.AccessToken, nil
+}
+
+func getCachedToken(tokenKey string) (string, bool) {
+	tokenCacheMu.RLock()
+	defer tokenCacheMu.RUnlock()
+	if cachedTokenKey != tokenKey || time.Now().After(cachedTokenTill) {
+		return "", false
+	}
+	return cachedToken, true
 }
 
 

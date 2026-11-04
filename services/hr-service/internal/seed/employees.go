@@ -89,7 +89,7 @@ func (s *Seeder) seedEmployees(ctx context.Context, db *gorm.DB) error {
 			CreatedBy:   adminUser.ID,
 		}
 
-		// 90% of employees have bank accounts (realistic for Vietnamese workforce)
+		// Most employees have a bank account for salary payments.
 		if mathrand.Float64() < 0.90 {
 			bankID := banks[mathrand.IntN(len(banks))].ID
 			employee.BankID = &bankID

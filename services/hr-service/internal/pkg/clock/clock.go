@@ -7,13 +7,13 @@ import (
 
 // DefaultLocation is the application's canonical timezone.
 // All Now() calls return times in this location.
-var DefaultLocation = mustLoadLocation("Asia/Ho_Chi_Minh")
+var DefaultLocation = mustLoadLocation("Africa/Nairobi")
 
 // ─── Clock interface ────────────────────────────────────────────────────────
 
 // Clock is the interface every service should depend on for time.
 type Clock interface {
-	// Now returns the current time in the application timezone (Asia/Ho_Chi_Minh).
+	// Now returns the current time in the application timezone (Africa/Nairobi).
 	Now() time.Time
 
 	// NowUTC returns the current time in UTC.

@@ -158,7 +158,7 @@ func (r *EmployeeRepository) ListByMobiles(ctx context.Context, mobiles []string
 
 // GetByMobile resolves exactly one employee by mobile number. When several
 // employees share the number it returns a conflict instead of the first row:
-// the mobile number is a credential for password reset (Zalo OTP) and login, so
+// the mobile number is a credential for login, so
 // picking an arbitrary match could hand access to the wrong person.
 func (r *EmployeeRepository) GetByMobile(ctx context.Context, mobile string) (*domain.Employee, error) {
 	matches, err := r.ListByMobile(ctx, mobile)

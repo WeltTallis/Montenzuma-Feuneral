@@ -10,7 +10,7 @@ import {
   updateNextOfKin,
   deleteNextOfKin,
   markAsNotified
-} from '../controllers/nextOfKinController';
+} from '../controllers/kin/nextOfKinController';
 
 const router = Router();
 

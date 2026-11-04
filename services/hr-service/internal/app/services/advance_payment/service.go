@@ -235,29 +235,6 @@ func (s *Service) CreateRequestByUserID(ctx context.Context, userID uint64, requ
 	return s.CreateRequest(ctx, uint64(employee.ID), requestAmount, forMonth)
 }
 
-// validateTransferLimits checks that the disbursement net amount is within the
-// provider's min/max transfer limits. Shared by the admin and self-check-in
-// advance request flows. No-op when no limits function is configured.
-func (s *Service) validateTransferLimits(ctx context.Context, netAmount uint64) error {
-	if s.config.GetTransferLimits == nil {
-		return nil
-	}
-	limits := s.config.GetTransferLimits(ctx)
-	if limits.MinAmount > 0 && int64(netAmount) < limits.MinAmount {
-		return domain.NewValidationError(fmt.Sprintf(
-			"Số tiền thực nhận (%s) dưới mức tối thiểu chuyển tiền (%s). Vui lòng tăng số tiền yêu cầu.",
-			utils.FormatVND(int64(netAmount)), utils.FormatVND(limits.MinAmount),
-		))
-	}
-	if limits.MaxAmount > 0 && int64(netAmount) > limits.MaxAmount {
-		return domain.NewValidationError(fmt.Sprintf(
-			"Số tiền thực nhận (%s) vượt mức tối đa chuyển tiền (%s). Vui lòng giảm số tiền yêu cầu.",
-			utils.FormatVND(int64(netAmount)), utils.FormatVND(limits.MaxAmount),
-		))
-	}
-	return nil
-}
-
 // CreateRequest creates a new advance payment request
 func (s *Service) CreateRequest(ctx context.Context, employeeID uint64, requestAmount uint64, forMonth string) (*domain.AdvancePaymentRequest, error) {
 	// Validate minimum amount
@@ -341,10 +318,6 @@ func (s *Service) CreateRequest(ctx context.Context, employeeID uint64, requestA
 	fee, netAmount := s.calculator.CalculateFee(ctx, requestAmount, clock.Now())
 
 	// Validate that net amount respects disbursement provider limits.
-	if err := s.validateTransferLimits(ctx, netAmount); err != nil {
-		return nil, err
-	}
-
 	// Create request atomically with budget check (prevents TOCTOU race)
 	req := &domain.AdvancePaymentRequest{
 		AdvPayID:      advPay.ID,

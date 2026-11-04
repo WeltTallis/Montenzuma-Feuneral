@@ -1,6 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Add vehicle details
-// ============================================
+
 
 exports.up = function (knex) {
     return knex.schema.table('hearses', (table) => {

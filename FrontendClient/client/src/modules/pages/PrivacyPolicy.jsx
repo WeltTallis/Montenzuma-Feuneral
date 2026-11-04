@@ -120,38 +120,49 @@ export default function PrivacyPolicy() {
 
           <Reveal delay={200}>
             <h2>How We Use Your Information</h2>
-            <p>Your data is used exclusively to operate and improve the Rest Point platform. We use it to manage cases, process payments, communicate with families, and maintain your funeral home's records.</p>
+              <p>We use information to provide and maintain Rest Point, support case and account workflows, communicate about the service, protect the platform, and meet legal obligations. Optional website analytics are described below and are not loaded unless you allow them.</p>
           </Reveal>
 
           <Reveal delay={250}>
             <h2>Data Sharing</h2>
-            <p>We do not sell, rent, or share your personal information with third parties for their marketing purposes. Data may be shared only with your explicit consent or as required by law.</p>
+              <p>We do not sell or rent personal information. Information may be handled by service providers when needed to operate the service, or disclosed where required or permitted by law. We do not make claims here about provider processing locations that have not been verified.</p>
           </Reveal>
 
           <Reveal delay={300}>
             <div className="highlight-box">
-              <p style={{ color: C.ink, margin: 0 }}><strong>Your Data Stays Yours:</strong> You retain full ownership of all data stored in Rest Point. You can export, transfer, or delete your data at any time. We never use your funeral home data to train models or serve advertisements.</p>
+                <p style={{ color: C.ink, margin: 0 }}><strong>Your choices:</strong> You may ask us to access, correct, object to, delete, or provide a copy of personal information. Requests are reviewed in context and may be subject to legal retention requirements.</p>
             </div>
           </Reveal>
 
           <Reveal delay={350}>
             <h2>Data Security</h2>
-            <p>We implement industry-standard security measures including AES-256 encryption at rest, TLS 1.3 in transit, and role-based access controls. Regular security audits ensure your data remains protected.</p>
+              <p>We use technical and organizational safeguards intended to protect information. No online service can guarantee that storage or transmission is entirely risk-free.</p>
           </Reveal>
 
           <Reveal delay={400}>
             <h2>Data Integrity &amp; Responsibility</h2>
-            <p>RestPoint is deeply committed to preserving the fidelity of every record entered into our system. Sensitive information regarding the deceased is securely maintained in its original form and rigorously protected against unauthorized alteration or tampering.</p>
-            <p>Our infrastructure is engineered to ensure that data remains consistent, reliable, and fully traceable throughout its entire lifecycle. From routine updates to system maintenance, the accuracy of your stored information is never compromised. What is entered into RestPoint remains protected, permanently preserved, and managed with the highest standard of responsibility.</p>
-          </Reveal>
+              <p>Records about deceased people and their families can be sensitive. We ask users to enter information carefully and only for the relevant service purpose. If a record is inaccurate, contact us with enough detail to locate it; we will review correction requests and explain any legal or operational limits.</p>
+            </Reveal>
 
-          <Reveal delay={450}>
-            <h2>Contact</h2>
-            <div className="contact-box">
-              <p style={{ margin: 0, fontSize: '0.95rem' }}>For privacy related inquiries:</p>
-              <p style={{ margin: '0.5rem 0 0 0' }}><a href="mailto:privacy@restpoint.co.ke" style={{ color: C.brassLight, textDecoration: 'none', fontWeight: 500 }}>privacy@restpoint.co.ke</a></p>
-            </div>
-          </Reveal>
+            <Reveal delay={425}>
+              <h2>Website Analytics &amp; Provider Disclosure</h2>
+              <p>The website includes Google Analytics (measurement ID G-MTXE9PKZDC). The Google Analytics script is blocked until you choose “Allow analytics” in the cookie controls. If enabled, it measures website usage. You can withdraw that choice at any time using Cookie Settings in the site footer or the Cookie Policy page. The site does not load the separate Google Tag Manager container.</p>
+              <p>For information about Google's handling of data, see <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google's Privacy Policy</a>. This disclosure does not make assumptions about where provider processing takes place.</p>
+            </Reveal>
+
+            <Reveal delay={450}>
+              <h2>Privacy Requests, Response &amp; Complaints</h2>
+              <p>To request access, correction, objection, deletion, or an export/copy of your information, email <a href="mailto:privacy@restpoint.co.ke" style={{ color: C.brass }}>privacy@restpoint.co.ke</a>. Use the email address linked to your account where possible. Include the request type, account or workspace name, and enough information to identify the relevant record. Do not send identity documents or sensitive details unless we ask for them through an appropriate channel.</p>
+              <p>We may ask for information reasonably needed to verify your identity and, where relevant, your authority to act for the account or person concerned. We will acknowledge and assess your request, explain the decision and any applicable limitation, and respond within the time required by applicable law. If you are dissatisfied with our response or believe your rights have not been addressed, you may lodge a complaint with Kenya's <a href="https://www.odpc.go.ke/" target="_blank" rel="noreferrer">Office of the Data Protection Commissioner (ODPC)</a>.</p>
+            </Reveal>
+
+            <Reveal delay={475}>
+              <h2>Contact</h2>
+              <div className="contact-box">
+                <p style={{ margin: 0, fontSize: '0.95rem' }}>For privacy requests or questions:</p>
+                <p style={{ margin: '0.5rem 0 0 0' }}><a href="mailto:privacy@restpoint.co.ke" style={{ color: C.brassLight, textDecoration: 'none', fontWeight: 500 }}>privacy@restpoint.co.ke</a></p>
+              </div>
+            </Reveal>
 
           <footer>
             <span>© {new Date().getFullYear()} Rest Point. All rights reserved.</span>

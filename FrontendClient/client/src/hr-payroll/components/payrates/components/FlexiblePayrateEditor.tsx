@@ -20,7 +20,7 @@ const PRESET_SHIFTS = [
 ];
 
 /* ─── helpers ─── */
-const fmtVND = (n: number) => new Intl.NumberFormat('en-KE').format(n);
+const fmtKES = (n: number) => new Intl.NumberFormat('en-KE').format(n);
 const toMin  = (t: string) => { const [h,m] = t.split(':').map(Number); return h*60+m; };
 const isON   = (s: string, e: string) => toMin(e) <= toMin(s);
 const durH   = (s: string, e: string) => { let d = toMin(e)-toMin(s); if (d<=0) d+=1440; return +(d/60).toFixed(d%60?1:0); };
@@ -296,7 +296,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                       <div className="flex flex-col leading-tight">
                         <span className="text-xs text-muted-foreground font-semibold">Ca làm việc →</span>
                         <span className="text-sm font-bold text-foreground">Vị trí ↓</span>
-                        <span className="mt-1 text-xs font-semibold text-emerald-700">Payroll trọn ca (₫)</span>
+                        <span className="mt-1 text-xs font-semibold text-emerald-700">Shift pay (KES)</span>
                       </div>
                     </th>
                     {/* shift columns */}
@@ -414,7 +414,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                                 placeholder="0"
                                 aria-label={`Payroll trọn ca cho ${pos}, ca ${s.start}-${s.end}`}
                                 readOnly={readOnly}
-                                value={focused ? (val||'') : (has ? fmtVND(val) : '')}
+                                value={focused ? (val||'') : (has ? fmtKES(val) : '')}
                                 onFocus={() => setFocusKey(key)}
                                 onBlur={() => setFocusKey(null)}
                                 onChange={e => setRate(pos, s, e.target.value)}
@@ -427,7 +427,7 @@ export function FlexiblePayrateEditor({ rates, onChange, readOnly = false }: Pro
                                 }}
                               />
                               <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs"
-                                style={{ color: has ? '#047857' : '#94a3b8' }}>₫/ca</span>
+                                style={{ color: has ? '#047857' : '#94a3b8' }}>KES/shift</span>
                             </div>
                           </td>
                         );

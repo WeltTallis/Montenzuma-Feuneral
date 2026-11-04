@@ -9,6 +9,9 @@ type CreateEmployeeRequest struct {
 	Fullname          string  `json:"fullname" binding:"required"`
 	Email             *string `json:"email,omitempty" binding:"omitempty,email"`
 	CCCD              string  `json:"cccd" binding:"required"`
+	KRAPIN            string  `json:"kra_pin,omitempty" binding:"omitempty,alphanum,len=11"`
+	NSSFNumber        string  `json:"nssf_number,omitempty" binding:"omitempty,max=32"`
+	SHANumber         string  `json:"sha_number,omitempty" binding:"omitempty,max=32"`
 	Address           string  `json:"address,omitempty"`
 	Mobile            string  `json:"mobile,omitempty"`
 	BankID            *uint   `json:"bank_id,omitempty"`

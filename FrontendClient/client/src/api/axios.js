@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ENDPOINTS } from './endpoints';
 import env from '../utils/config/env';
-import { getUserId, getAuthToken, getTenantSlug, getBranchSlug, getBranchId, isAppPath } from '../utils/globalAuth';
+import { getUserId, getTenantSlug, getBranchSlug, getBranchId, isAppPath } from '../utils/globalAuth';
 import { reportFailure, reportSuccess } from './connectionStatus';
 
 // Alias for backwards compatibility
@@ -16,9 +16,7 @@ export const workshopApi = axios.create({
 });
 
 workshopApi.interceptors.request.use((config) => {
-  const token = getAuthToken();
   const slug = getTenantSlug();
-  if (token) config.headers['Authorization'] = `Bearer ${token}`;
   if (slug) config.headers['x-tenant-slug'] = slug;
 
   // Attach branch context for multi-branch routing
@@ -32,41 +30,18 @@ workshopApi.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
-// ─── Shared Auth Token (single source of truth) ──────────────────────────
-// Uses localStorage (primary) with sessionStorage as fallback
-// Auto-refreshes every 10 minutes
+// Authentication is provided by HttpOnly cookies. Remove legacy browser-readable
+// token copies so older sessions do not keep exposing credentials to scripts.
 
-let cachedToken = null;
 let cachedSlug = null;
 let refreshIntervalId = null;
 let isRefreshing = false; // Prevent concurrent refresh calls
 
-const getToken = () => cachedToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-const setToken = (token) => {
-  cachedToken = token;
-  if (token) {
-    localStorage.setItem('authToken', token);
-    sessionStorage.setItem('authToken', token);
-  } else {
-    localStorage.removeItem('authToken');
-    sessionStorage.removeItem('authToken');
+const clearLegacyTokens = () => {
+  for (const storage of [localStorage, sessionStorage]) {
+    ['authToken', 'accessToken', 'token', 'refreshToken'].forEach((key) => storage.removeItem(key));
   }
 };
-
-/** Get refresh token from sessionStorage first (where authApi stores it), fallback to localStorage */
-const getRefreshToken = () => sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
-
-/** Store refresh token in both storages for consistency */
-const setRefreshToken = (token) => {
-  if (token) {
-    localStorage.setItem('refreshToken', token);
-    sessionStorage.setItem('refreshToken', token);
-  } else {
-    localStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('refreshToken');
-  }
-};
-
 // ─── Token Refresh (every 10 minutes) ────────────────────────────────────
 export const startTokenRefresh = () => {
   // Guard: don't start multiple intervals
@@ -84,50 +59,23 @@ export const startTokenRefresh = () => {
 
     isRefreshing = true;
     try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-
-        return;
-      }
-
       const response = await axios.post(
         env.FULL_API_URL + ENDPOINTS.AUTH.REFRESH,
-        { refreshToken },
-        { withCredentials: true }
+        {},
+        { withCredentials: true, headers: { 'x-auth-cookie': '1' } }
       );
-      const newToken = response.data?.token || response.data?.accessToken;
-      const newRefreshToken = response.data?.refreshToken;
-      if (newToken) {
-        setToken(newToken);
-        if (newRefreshToken) {
-          setRefreshToken(newRefreshToken);
-        }
-
-      }
+      if (!response.data?.success) throw new Error('Cookie session refresh failed');
     } catch (error) {
       console.error('[Auth] Token refresh failed:', error.message);
       // If refresh fails, try once more in 30s then force logout
       if (error.response?.status === 401) {
         setTimeout(async () => {
           try {
-            const refreshToken = getRefreshToken();
-            if (!refreshToken) {
-              forceLogout();
-              return;
-            }
-            const retry = await axios.post(
+            await axios.post(
               env.FULL_API_URL + ENDPOINTS.AUTH.REFRESH,
-              { refreshToken },
-              { withCredentials: true }
+              {},
+              { withCredentials: true, headers: { 'x-auth-cookie': '1' } }
             );
-            if (retry.data?.token || retry.data?.accessToken) {
-              setToken(retry.data.token || retry.data.accessToken);
-              const retryRefreshToken = retry.data?.refreshToken;
-              if (retryRefreshToken) {
-                setRefreshToken(retryRefreshToken);
-              }
-              return;
-            }
           } catch {
             forceLogout();
           }
@@ -147,17 +95,13 @@ export const stopTokenRefresh = () => {
 };
 
 const forceLogout = (message = 'Your session has expired. Please log in again.') => {
-  setToken(null);
-  sessionStorage.removeItem('authToken');
+  clearLegacyTokens();
   localStorage.removeItem('tenantId');
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
     Object.keys(user).forEach(key => sessionStorage.removeItem(key));
   } catch { }
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
-  sessionStorage.removeItem('refreshToken');
   sessionStorage.removeItem('user');
   if (typeof window !== 'undefined') {
     // Dispatch custom event instead of alert() for cleaner UX
@@ -186,7 +130,6 @@ const api = axios.create({
 
 // Request interceptor
 api.interceptors.request.use((config) => {
-  const token = getToken();
   const slug = getSlug();
   const tenantId = localStorage.getItem('tenantId');
   const userId = getUserId();
@@ -198,7 +141,9 @@ api.interceptors.request.use((config) => {
   const branchDb = localStorage.getItem('branchDbName') || localStorage.getItem('branchDb');
   const branchId = getBranchId();
 
-  if (token) config.headers['Authorization'] = `Bearer ${token}`;
+  if (/\/auth\/(login|refresh)(?:$|[?#])/.test(config.url || '')) {
+    config.headers['x-auth-cookie'] = '1';
+  }
   if (slug && !config.headers['x-tenant-slug']) config.headers['x-tenant-slug'] = slug;
   if (tenantId) config.headers['x-tenant-id'] = tenantId;
   if (userId) config.headers['x-user-id'] = userId.toString();
@@ -259,20 +204,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshToken = getRefreshToken();
         const response = await axios.post(
           env.FULL_API_URL + ENDPOINTS.AUTH.REFRESH,
-          { refreshToken },
-          { withCredentials: true }
+          {},
+          { withCredentials: true, headers: { 'x-auth-cookie': '1' } }
         );
-        const newToken = response.data?.token || response.data?.accessToken;
-        const newRefreshToken = response.data?.refreshToken;
-        if (newToken) {
-          setToken(newToken);
-          if (newRefreshToken) {
-            setRefreshToken(newRefreshToken);
-          }
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        if (response.data?.success) {
+          delete originalRequest.headers['Authorization'];
           return api(originalRequest);
         }
       } catch (refreshError) {

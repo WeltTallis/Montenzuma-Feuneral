@@ -22,7 +22,5 @@ func setupWalletRoutes(v1 *gin.RouterGroup, container *Container) {
 
 		w.GET("/payments", container.Handlers.Wallet.ListPayments)
 		w.GET("/payments/:id", container.Handlers.Wallet.GetPaymentByID)
-
-		w.GET("/reconcile/export", container.Handlers.Wallet.ExportReconciliationReport)
 	}
 }

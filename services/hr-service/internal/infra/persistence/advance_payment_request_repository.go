@@ -685,7 +685,7 @@ func (r *AdvancePaymentRequestRepository) ClaimPendingForDisbursement(ctx contex
 func (r *AdvancePaymentRequestRepository) GetOrphanedApproved(ctx context.Context, limit int, provider string) ([]*domain.AdvancePaymentRequest, error) {
 	var requests []*domain.AdvancePaymentRequest
 
-	// Use clock.Now() (app timezone, Asia/Ho_Chi_Minh) instead of MySQL's
+	// Use clock.Now() (app timezone, Africa/Nairobi) instead of MySQL's
 	// NOW() (which may be UTC) so the 5-minute buffer is compared against the
 	// same timezone that wrote updated_at. A MySQL/Go timezone mismatch would
 	// otherwise make stale requests look fresh (or vice-versa).

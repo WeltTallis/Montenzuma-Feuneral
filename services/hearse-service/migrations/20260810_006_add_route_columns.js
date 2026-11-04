@@ -1,12 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Add route columns to hearse_bookings
-// ============================================
-// Persists the separate From / To locations for every hearse booking
-// (e.g. route "from NAIROBI to MASSI") as two distinct columns, plus a
-// booking_dates JSON-array column (stored as TEXT) that holds the list of
-// calendar dates the booking spans, e.g. '["2026-08-12","2026-08-13"]'.
-// All columns are optional/nullable so legacy rows remain valid, and the
-// migration is idempotent (hasColumn) so it is safe to run more than once.
+
 
 exports.up = async function (knex) {
     const hasFrom = await knex.schema.hasColumn('hearse_bookings', 'from_location');

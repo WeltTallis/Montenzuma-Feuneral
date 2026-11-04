@@ -1,22 +1,3 @@
-/**
- * ============================================
- * HEARSE BOOKING DTOs
- * ============================================
- * Data Transfer Objects for the hearse booking flow.
- *
- * The booking flow is intentionally simple:
- *   1. Caller sends one or more dates → HearseAvailabilityRequestDto / multi-date
- *   2. Backend returns every hearse that is free on those dates
- *      (with full details)  → HearseAvailabilityResponseDto
- *   3. Caller picks one hearse, fills client details, and the
- *      backend creates the booking  → HearseBookingRequestDto / HearseBookingResponseDto
- *
- * "Service charge" is OPTIONAL and always a single TOTAL for the whole booking —
- * there are no min/max daily rates on a hearse. It is persisted on the booking
- * (when supplied) so the invoice service can pick it up without recomputing.
- */
-
-// ─── Availability ───────────────────────────────────────────────
 
 /**
  * Request: just pick a date. That's all the caller needs to send.
@@ -31,9 +12,7 @@ export interface HearseAvailabilityRequestDto {
  * These map to the badge styles defined in the shared CSS variables.
  */
 export interface HearseStatusBadge {
-    /** Short label rendered inside the badge, e.g. "Active / In Morgue" */
     label: string;
-    /** CSS class key, e.g. "st-active" */
     cssClass: string;
 }
 
@@ -66,21 +45,12 @@ export interface HearseAvailabilityItemDto {
     plate_number: string;
     model: string;
     capacity: number;
-    /** Raw DB status: 'available' | 'booked' | 'maintenance' | 'out_of_service' */
     status: string;
-    /** Branch display fields */
     branch_id: number | null;
     branch_name: string | null;
-    /** Image path / URL */
     image: string | null;
-    /**
-     * OPTIONAL total service charge (KSH) for this booking.
-     * 0 when the hearse has no charge configured — never required.
-     */
     service_charge_ksh: number;
-    /** Badge label + css class for the status badge */
     status_badge: HearseStatusBadge;
-    /** True when the hearse is already booked on *this* date */
     is_booked: boolean;
 }
 
@@ -89,15 +59,10 @@ export interface HearseAvailabilityItemDto {
  */
 export interface HearseAvailabilityResponseDto {
     status: 'success';
-    /** The date that was queried */
     date: string;
-    /** Hearses that are free on `date` */
     available_hearses: HearseAvailabilityItemDto[];
-    /** Hearses that are already booked on `date` */
     booked_hearses: HearseAvailabilityItemDto[];
-    /** Count of available hearses */
     total_available: number;
-    /** Count of booked hearses */
     total_booked: number;
 }
 
@@ -106,13 +71,9 @@ export interface HearseAvailabilityResponseDto {
  * A hearse is "available" for that day when it has no active booking covering it.
  */
 export interface HearseDayAvailabilityDto {
-    /** The date key queried, YYYY-MM-DD */
     date: string;
-    /** Every non-maintenance hearse that is free on `date` */
     available_hearses: HearseAvailabilityItemDto[];
-    /** Active booking rows covering `date`, resolved against the fleet */
     booked_hearses: (HearseAvailabilityItemDto & {
-        /** The hearse id (`id` mirrors this for backwards compatibility) */
         hearse_id: number;
         booking_id: number | null;
         booking_code: string | null;
@@ -125,34 +86,24 @@ export interface HearseDayAvailabilityDto {
 
 /**
  * Response for `GET/POST /availability/check-by-dates`.
- *
- * Returns availability for ALL dates in a single round-trip, so the UI never
- * has to fan out one request per selected date (which flooded the gateway with
  * hundreds of parallel calls for month-long date ranges).
  */
 export interface HearseMultiDateAvailabilityResponseDto {
     status: 'success';
-    /** Every date that was queried, sorted, de-duplicated */
     dates: string[];
-    /** Per-day results — one entry per requested date */
     days: HearseDayAvailabilityDto[];
-    /** The full fleet, so the UI can render cards without a second call */
     hearses: HearseAvailabilityItemDto[];
-    /** Dates from the request that were not valid calendar keys */
     invalid_dates: string[];
-    /** Dates from the request that are before today */
     past_dates: string[];
-    /** Number of dates actually evaluated */
     matched_count: number;
 }
 
-// ─── Booking ─────────────────────────────────────────────────────
+// ─── Booking 
 
 /**
  * Request body for creating (or auto-matching) a hearse booking.
  */
 export interface HearseBookingRequestDto {
-    /** Optional — if omitted the backend auto-matches an available hearse */
     hearse_id?: number | string;
     deceased_id?: string;
     client_name: string;
@@ -161,12 +112,7 @@ export interface HearseBookingRequestDto {
     destination: string;
     from_location?: string;
     to_location?: string;
-    /** One or more YYYY-MM-DD strings (or ISO datetime strings) */
     booking_dates: string[];
-    /**
-     * OPTIONAL total service charge (KSH) for the WHOLE booking.
-     * Omit (or send 0) when no charge applies — it is never required.
-     */
     service_charge?: number;
     special_remarks?: string;
     from_timestamp?: string;

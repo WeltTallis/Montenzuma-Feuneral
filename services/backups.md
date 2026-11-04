@@ -110,7 +110,13 @@ Backup locations
 Local database backups
 /opt/backups/db/hourly/
 
-Local database backups are retained for approximately 7 days.
+Local uploads archives
+/opt/backups/uploads/daily/
+
+Local database dumps and uploads archives default to a finite 7-day retention.
+Makefile backups use BACKUP_RETENTION_DAYS; the documented cron scripts use
+DB_BACKUP_RETENTION_DAYS and UPLOADS_BACKUP_RETENTION_DAYS respectively.
+Cloud retention is independent and must be configured on both R2 prefixes.
 
 Cloud database backups
 Cloudflare R2
@@ -152,12 +158,14 @@ Example:
 restpoint_full_20260930_110002.sql.gz
 
 Upload backups
-The uploads directory is synchronized to Cloudflare R2 every night.
+An immutable, timestamped archive of the uploads directory is created each night
+and copied to Cloudflare R2. Unlike a mirror, each archive remains an independent
+restore point until its configured lifecycle expiration.
 
 /opt/storage/uploads/
 |
 v
-AWS CLI / S3 sync
+timestamped .tar.gz archive
 |
 v
 Cloudflare R2
@@ -296,12 +304,14 @@ nano /usr/local/bin/restpoint-db-backup.sh
 
 Use the following script:
 
+```bash
 #!/bin/bash
 
 set -euo pipefail
 
 BACKUP_DIR="/opt/backups/db/hourly"
 CONTAINER="restpoint_mariadb"
+DB_BACKUP_RETENTION_DAYS="${DB_BACKUP_RETENTION_DAYS:-7}"
 
 DB_USER="restpoint_user"
 DB_PASSWORD="YOUR_RESTPOINT_DB_PASSWORD"
@@ -310,10 +320,18 @@ R2_BUCKET="restpoint"
 R2_PREFIX="db-backups"
 R2_ENDPOINT="https://ACCOUNT_ID.r2.cloudflarestorage.com"
 
-TIMESTAMP="$(date +%Y%m%d\_%H%M%S)"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 
-BACKUP*FILE="${BACKUP_DIR}/restpoint_full*${TIMESTAMP}.sql.gz"
+BACKUP_FILE="${BACKUP_DIR}/restpoint_full_${TIMESTAMP}.sql.gz"
 TEMP_FILE="${BACKUP_FILE}.tmp"
+
+case "$DB_BACKUP_RETENTION_DAYS" in
+    ''|0*|*[!0-9]*) echo "DB_BACKUP_RETENTION_DAYS must be an integer from 1 to 36500" >&2; exit 1 ;;
+esac
+if [ "$DB_BACKUP_RETENTION_DAYS" -gt 36500 ]; then
+    echo "DB_BACKUP_RETENTION_DAYS must not exceed 36500" >&2
+    exit 1
+fi
 
 mkdir -p "$BACKUP_DIR"
 
@@ -365,15 +383,16 @@ aws s3 cp \
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') Cloud backup uploaded successfully."
 
-# Delete local database backups older than 7 days.
+# Delete local database backups older than the configured finite retention.
 
-find "$BACKUP*DIR" \
+find "$BACKUP_DIR" \
  -type f \
- -name 'restpoint_full*\*.sql.gz' \
- -mtime +7 \
+ -name 'restpoint_full_*.sql.gz' \
+ -mmin "+$((DB_BACKUP_RETENTION_DAYS * 1440))" \
  -delete
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') Database backup completed."
+```
 
 IMPORTANT
 Replace:
@@ -395,15 +414,29 @@ nano /usr/local/bin/restpoint-uploads-backup.sh
 
 Use:
 
+```bash
 #!/bin/bash
 
 set -euo pipefail
 
 UPLOAD_DIR="/opt/storage/uploads"
+BACKUP_DIR="/opt/backups/uploads/daily"
+UPLOADS_BACKUP_RETENTION_DAYS="${UPLOADS_BACKUP_RETENTION_DAYS:-7}"
 
 R2_BUCKET="restpoint"
 R2_PREFIX="uploads-backups"
 R2_ENDPOINT="https://ACCOUNT_ID.r2.cloudflarestorage.com"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+ARCHIVE="${BACKUP_DIR}/uploads_${TIMESTAMP}.tar.gz"
+TEMP_FILE="${ARCHIVE}.tmp"
+
+case "$UPLOADS_BACKUP_RETENTION_DAYS" in
+    ''|0*|*[!0-9]*) echo "UPLOADS_BACKUP_RETENTION_DAYS must be an integer from 1 to 36500" >&2; exit 1 ;;
+esac
+if [ "$UPLOADS_BACKUP_RETENTION_DAYS" -gt 36500 ]; then
+    echo "UPLOADS_BACKUP_RETENTION_DAYS must not exceed 36500" >&2
+    exit 1
+fi
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') Starting uploads backup..."
 
@@ -412,12 +445,24 @@ echo "ERROR: Upload directory does not exist: $UPLOAD_DIR" >&2
 exit 1
 fi
 
-aws s3 sync \
- "$UPLOAD_DIR/" \
-    "s3://${R2_BUCKET}/${R2_PREFIX}/" \
-    --endpoint-url "$R2_ENDPOINT"
+mkdir -p "$BACKUP_DIR"
+tar -czf "$TEMP_FILE" -C "$UPLOAD_DIR" .
+tar -tzf "$TEMP_FILE" >/dev/null
+mv "$TEMP_FILE" "$ARCHIVE"
+
+aws s3 cp \
+ "$ARCHIVE" \
+"s3://${R2_BUCKET}/${R2_PREFIX}/$(basename "$ARCHIVE")" \
+--endpoint-url "$R2_ENDPOINT"
+
+find "$BACKUP_DIR" \
+ -type f \
+ -name 'uploads_*.tar.gz' \
+ -mmin "+$((UPLOADS_BACKUP_RETENTION_DAYS * 1440))" \
+ -delete
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') Uploads backup completed successfully."
+```
 
 10. Make Backup Scripts Executable
     Run:
@@ -450,7 +495,7 @@ ls -lh /opt/backups/db/hourly/
 
 Test the gzip file:
 
-gzip -t /opt/backups/db/hourly/restpoint*full*\*.sql.gz
+gzip -t /opt/backups/db/hourly/restpoint_full_*.sql.gz
 
 If there is no output, the gzip test succeeded.
 
@@ -473,8 +518,7 @@ Run:
 Verify R2:
 
 aws s3 ls s3://restpoint/uploads-backups/ \
- --endpoint-url "$R2_ENDPOINT" \
- --recursive | head -20
+ --endpoint-url "$R2_ENDPOINT"
 
 13. Configure Cron Automation
     Open root's crontab:
@@ -485,11 +529,11 @@ Add:
 
 # Restpoint database backup - every hour
 
-0 \* \* \* \* /usr/local/bin/restpoint-db-backup.sh >> /var/log/restpoint-db-backup.log 2>&1
+0 \* \* \* \* DB_BACKUP_RETENTION_DAYS=7 /usr/local/bin/restpoint-db-backup.sh >> /var/log/restpoint-db-backup.log 2>&1
 
 # Restpoint uploads backup - every night at 02:00
 
-0 2 \* \* \* /usr/local/bin/restpoint-uploads-backup.sh >> /var/log/restpoint-uploads-backup.log 2>&1
+0 2 \* \* \* UPLOADS_BACKUP_RETENTION_DAYS=7 /usr/local/bin/restpoint-uploads-backup.sh >> /var/log/restpoint-uploads-backup.log 2>&1
 
 Save and exit.
 
@@ -536,11 +580,20 @@ aws s3 ls s3://restpoint/uploads-backups/ \
  --recursive | head -50
 
 16. Local Backup Retention
-    The database backup script automatically deletes local backups older than 7 days.
+    The database and uploads backup scripts automatically delete their own local
+archives older than their configured finite retention. Both default to 7 days;
+the cron examples set these values explicitly.
+
+For Makefile backups, the same finite 7-day default applies to the matching
+database dump and uploads archive files. Override it when running a backup, for
+example:
+
+make backup-all BACKUP_DIR=/opt/backups BACKUP_RETENTION_DAYS=14
 
 Manually inspect:
 
 ls -lh /opt/backups/db/hourly/
+ls -lh /opt/backups/uploads/daily/
 
 To manually delete one known backup:
 
@@ -727,18 +780,25 @@ Test the gzip archive:
 gzip -t /opt/backups/db/hourly/restpoint_full_20260930_110002.sql.gz
 
 24. Disaster Recovery: Restore Uploads from R2
-    Create the directory:
+    Create the recovery and local archive directories:
 
 mkdir -p /opt/storage/uploads
+mkdir -p /opt/backups/uploads/daily
 
 Restore everything:
 
-aws s3 sync \
- s3://restpoint/uploads-backups/ \
- /opt/storage/uploads/ \
+aws s3 cp \
+ s3://restpoint/uploads-backups/uploads_YYYYMMDD_HHMMSS.tar.gz \
+ /opt/backups/uploads/daily/ \
  --endpoint-url "$R2_ENDPOINT"
 
-This may take time depending on the number and size of files.
+tar -xzf /opt/backups/uploads/daily/uploads_YYYYMMDD_HHMMSS.tar.gz \
+ -C /opt/storage/uploads/
+
+Choose a specific archive after listing the prefix. This may take time depending
+on the number and size of files. Extraction adds/replaces paths in the target;
+it does not remove extra files already there. For a clean replacement, use an
+empty recovery uploads directory, not a live uploads directory.
 
 Check:
 
@@ -811,7 +871,14 @@ Find the MariaDB volume:
 
 docker volume ls | grep mariadb
 
-If the intended recovery is a complete replacement of the new empty MariaDB database, remove only the newly created MariaDB data volume:
+IMPORTANT: `docker volume rm` permanently erases every database stored in that
+volume; it is not a restore or rollback. First verify the exact volume name and
+confirm it is the newly-created recovery volume, not a production or only-copy
+volume. Do not remove any volume until a separate backup is available and the
+recovery operator has approved replacing its contents.
+
+If the intended recovery is a complete replacement of the newly-created empty
+MariaDB database, remove only that verified recovery data volume:
 
 docker volume rm restpoint_mariadb_data
 
@@ -1165,25 +1232,23 @@ Never upload an unencrypted production .env file unless the security model expli
 Never commit .env files containing secrets to Git.
 
 45. Cloudflare R2 Lifecycle Rules
-    Database backups are created hourly.
+    Cloud retention is separate from local retention. Without lifecycle
+management, timestamped backup objects can grow indefinitely. Configure finite
+object-expiration rules in the Cloudflare dashboard for both prefixes:
 
-Without lifecycle management, the number of backups can grow indefinitely.
+db-backups/       expire objects after 30 days (example)
+uploads-backups/  expire objects after 30 days (example)
 
-Configure a Cloudflare R2 lifecycle rule for:
+These are example values, not a legal or business retention recommendation.
+Choose periods with the data owner and validate that the retained recovery
+window is sufficient before enabling expiration. The uploads prefix contains
+timestamped full archives; do not lifecycle-expire the former live `aws s3 sync`
+mirror as though every object were a backup snapshot.
 
-db-backups/
-
-A typical retention policy might be:
-
-Delete database backups after 30 days
-
-or:
-
-Delete database backups after 90 days
-
-Choose the retention period appropriate for the application's recovery requirements.
-
-Before enabling deletion, verify that the retention period is sufficient.
+The dashboard lifecycle configuration is deployment-specific and is not
+configured by this repository. Verify the applied rules and inspect object ages
+before relying on automated expiration. Expiration permanently removes objects
+after the configured age; it is not a reversible restore operation.
 
 46. R2 Backup Integrity Check
     A backup is not considered trustworthy merely because it exists in R2.
@@ -1322,10 +1387,13 @@ aws s3 ls s3://restpoint/db-backups/ \
 Uploads
 mkdir -p /opt/storage/uploads
 
-aws s3 sync \
- s3://restpoint/uploads-backups/ \
- /opt/storage/uploads/ \
+aws s3 cp \
+ s3://restpoint/uploads-backups/uploads_YYYYMMDD_HHMMSS.tar.gz \
+ /opt/backups/uploads/daily/ \
  --endpoint-url "$R2_ENDPOINT"
+
+tar -xzf /opt/backups/uploads/daily/uploads_YYYYMMDD_HHMMSS.tar.gz \
+ -C /opt/storage/uploads/
 
 Database
 docker compose up -d mariadb

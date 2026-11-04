@@ -1,8 +1,8 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Tenant context columns
 // Adds tenant_id / tenant_slug to hearses & hearse_bookings and widens
 // branch_id to VARCHAR so multi-branch tenants can store UUID branch ids.
-// ============================================
+
 
 exports.up = async function (knex) {
   const hasTable = async (t) => { try { return await knex.schema.hasTable(t); } catch { return false; } };

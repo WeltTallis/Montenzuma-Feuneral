@@ -48,6 +48,22 @@ export default function CookiesPolicy() {
     const navigate = useNavigate();
     const goHome = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/'); };
     const goPrivacy = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/privacy'); };
+    const [analyticsChoice, setAnalyticsChoice] = useState(null);
+
+    useEffect(() => {
+        setAnalyticsChoice(window.rpGetAnalyticsConsent?.() ?? null);
+        const handleConsentChange = (event) => {
+            setAnalyticsChoice(event.detail?.analytics ?? null);
+        };
+        window.addEventListener('restpoint:cookie-consent-changed', handleConsentChange);
+        return () => window.removeEventListener('restpoint:cookie-consent-changed', handleConsentChange);
+    }, []);
+
+    const chooseAnalytics = (allowed) => {
+        if (typeof window.rpSetAnalyticsConsent !== 'function') return;
+        window.rpSetAnalyticsConsent(allowed);
+        setAnalyticsChoice(allowed);
+    };
 
     return (
         <>
@@ -86,6 +102,8 @@ export default function CookiesPolicy() {
         .badge-security { color: ${C.verdigrisDark}; background: #EDF2F0; border-color: #C9D8D3; }
         .cookie-group { margin-bottom: 1.2rem; }
         .cookie-group + .cookie-group { margin-top: 0.75rem; }
+        .preference-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 1rem 0 1.5rem; }
+        .preference-status { flex-basis: 100%; color: ${C.gray}; font-size: 0.9rem; }
       `}</style>
 
             <nav>
@@ -122,7 +140,7 @@ export default function CookiesPolicy() {
 
                     <Reveal delay={150}>
                         <h2>How We Use Cookies</h2>
-                        <p>Rest Point uses cookies to enhance your browsing experience, analyze site traffic, and personalize content. We use both session cookies (which expire when you close your browser) and persistent cookies (which remain until they expire or you delete them).</p>
+                        <p>Rest Point uses required first-party browser storage for core application functions and to remember your analytics choice. Optional Google Analytics is not loaded until you allow it. This site does not use analytics cookies to personalize content.</p>
                     </Reveal>
 
                     <Reveal delay={200}>
@@ -135,8 +153,7 @@ export default function CookiesPolicy() {
                                 <span className="badge badge-security" style={{ marginLeft: '0.6rem' }}>Always active</span>
                             </h3>
                             <p style={{ fontSize: '0.9rem', color: C.gray, marginBottom: '0.75rem' }}>
-                                These technologies are required to operate and protect the website. Cloudflare may use security
-                                cookies such as <strong>cf_clearance</strong> to help verify legitimate visitors.
+                                First-party storage supports login, application functionality, and saving this preference. These items are not optional analytics.
                             </p>
                             <table className="cookie-table">
                                 <thead>
@@ -149,10 +166,10 @@ export default function CookiesPolicy() {
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td><strong>cf_clearance</strong></td>
-                                        <td>Cloudflare<br /><span style={{ color: C.gray }}>.restpoint.co.ke</span></td>
-                                        <td>Security-dependent</td>
-                                        <td>Used by Cloudflare to help distinguish legitimate visitors and protect the website from malicious traffic.</td>
+                                        <td><strong>restpoint_cookie_consent</strong></td>
+                                        <td>RestPoint</td>
+                                        <td>Until changed or cleared</td>
+                                        <td>Stores whether optional analytics is allowed so the choice is remembered.</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Authentication / application storage</strong></td>
@@ -170,8 +187,7 @@ export default function CookiesPolicy() {
                                 <span className="badge" style={{ marginLeft: '0.6rem' }}>Optional</span>
                             </h3>
                             <p style={{ fontSize: '0.9rem', color: C.gray, marginBottom: '0.75rem' }}>
-                                Google Analytics cookies help RestPoint understand website traffic and usage.
-                                They are optional and can be disabled through the cookie banner preferences.
+                                The website uses Google Analytics (measurement ID G-MTXE9PKZDC) only after you allow analytics. If enabled, Google Analytics may set the first-party cookies listed below. Cookie names and lifetime can vary by browser and configuration. This website does not load its separate Google Tag Manager container.
                             </p>
                             <table className="cookie-table">
                                 <thead>
@@ -185,14 +201,14 @@ export default function CookiesPolicy() {
                                 <tbody>
                                     <tr>
                                         <td><strong>_ga</strong></td>
-                                        <td>Google Analytics<br /><span style={{ color: C.gray }}>.restpoint.co.ke</span></td>
-                                        <td>Approximately 2 years</td>
+                                        <td>Google Analytics<br /><span style={{ color: C.gray }}>RestPoint website domain</span></td>
+                                        <td>Varies</td>
                                         <td>Used to distinguish visitors for analytics measurement.</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>_ga_MTXE9PKZDC</strong></td>
-                                        <td>Google Analytics<br /><span style={{ color: C.gray }}>.restpoint.co.ke</span></td>
-                                        <td>Approximately 2 years</td>
+                                        <td><strong>_ga_*</strong></td>
+                                        <td>Google Analytics<br /><span style={{ color: C.gray }}>RestPoint website domain</span></td>
+                                        <td>Varies</td>
                                         <td>Used by Google Analytics to maintain session and measurement information.</td>
                                     </tr>
                                 </tbody>
@@ -249,7 +265,18 @@ export default function CookiesPolicy() {
 
                     <Reveal delay={250}>
                         <h2>Managing Cookies</h2>
-                        <p>You can control and manage cookies through your browser settings. Most browsers allow you to refuse or delete cookies. However, disabling essential cookies may affect the functionality of our website.</p>
+                        <p>Choose whether to allow optional Google Analytics below. Analytics stays disabled until you allow it. You can change or withdraw this choice at any time using these controls or Cookie Settings in the site footer. Withdrawing the choice disables further analytics collection and clears accessible Google Analytics cookies; browser controls can also remove stored site data.</p>
+                        <div className="preference-controls" aria-label="Optional analytics preferences">
+                            <span className="preference-status" role="status">
+                                {analyticsChoice === true
+                                    ? 'Optional analytics is currently allowed.'
+                                    : analyticsChoice === false
+                                        ? 'Optional analytics is currently disabled.'
+                                        : 'No analytics choice has been saved. Analytics remains disabled.'}
+                            </span>
+                            <button className="btn btn-line" type="button" onClick={() => chooseAnalytics(false)}>Decline / withdraw analytics</button>
+                            <button className="btn btn-dark" type="button" onClick={() => chooseAnalytics(true)}>Allow analytics</button>
+                        </div>
                         <p>To manage cookies in your browser:</p>
                         <ul>
                             <li><strong>Chrome:</strong> Settings → Privacy and security → Cookies and other site data</li>
@@ -261,13 +288,13 @@ export default function CookiesPolicy() {
 
                     <Reveal delay={300}>
                         <div className="highlight-box">
-                            <p style={{ color: C.ink, margin: 0 }}><strong>Your Choice Matters:</strong> We respect your privacy choices. You can update your cookie preferences at any time by clicking the cookie settings link in our footer or by clearing your browser cookies.</p>
+                            <p style={{ color: C.ink, margin: 0 }}><strong>Your choice matters:</strong> You can reopen the site-wide banner using <button type="button" onClick={() => window.rpOpenCookieSettings?.()} style={{ border: 0, padding: 0, background: 'none', color: C.brass, font: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>Cookie Settings</button> in the footer. Clearing browser storage may reset your saved preference.</p>
                         </div>
                     </Reveal>
 
                     <Reveal delay={350}>
                         <h2>Third Party Cookies</h2>
-                        <p>Some cookies are placed by third party services that appear on our pages. We do not control these cookies. These may include analytics services (like Google Analytics) and advertising networks. We encourage you to review the privacy policies of these third parties.</p>
+                        <p>The verified optional analytics integration on this website is Google Analytics. If you allow it, the browser loads Google's analytics script and sends website usage measurements to Google. For details about Google's handling of data, see <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google's Privacy Policy</a>. We do not list other third-party cookies unless their use is verified.</p>
                     </Reveal>
 
                     <Reveal delay={400}>

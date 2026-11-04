@@ -2,10 +2,8 @@ import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/di
 import { safeTenantQuery, safeTenantExecute, resolveDatabase } from '../../../shared/dbConfig';
 import redisService from '../../../packages/shared-services/dist/redisService';
 import Logger from '../../../packages/shared-logger/src/index';
-import generateUniqueDeceasedId from '../utils/deceasedId';
 import { Request, Response } from 'express';
-import { DateTime } from 'luxon';
-import * as crypto from 'crypto';
+import { tableColumns } from '../utils/tenantSchema';
 
 const SERVICE_NAME = 'deceased-service';
 
@@ -30,21 +28,21 @@ export const getAllDeceased = async (
 ): Promise<Response> => {
     try {
         // Determine database name for the tenant. Prefer the resolved tenant from middleware.
-    let dbName = (req as any).tenant?.db_name;
-    // If middleware didn't set dbName (e.g., public request), fall back to header slug.
-    const tenantSlugHeader = (req as any).tenantSlug || req.headers['x-tenant-slug'] as string;
-    const tenantSlug = tenantSlugHeader || "unknown";
-    if (!dbName && tenantSlug && tenantSlug !== "unknown") {
-        // Resolve the database name based on the tenant slug.
-        try {
-            dbName = await resolveDatabase(tenantSlug);
-        } catch (e) {
-            console.error('[DECEASED] resolveDatabase error:', e);
+        let dbName = (req as any).tenant?.db_name;
+        // If middleware didn't set dbName (e.g., public request), fall back to header slug.
+        const tenantSlugHeader = (req as any).tenantSlug || req.headers['x-tenant-slug'] as string;
+        const tenantSlug = tenantSlugHeader || "unknown";
+        if (!dbName && tenantSlug && tenantSlug !== "unknown") {
+            // Resolve the database name based on the tenant slug.
+            try {
+                dbName = await resolveDatabase(tenantSlug);
+            } catch (e) {
+                console.error('[DECEASED] resolveDatabase error:', e);
+            }
         }
-    }
-    // Namespace the cache by the DATABASE, not by a tenant id. Fallback to tenantSlug if dbName missing.
-    const tenantId = (req as any).tenant?.tenant_id ?? (req as any).tenant?.id;
-    const cacheScope = dbName || tenantId || tenantSlug;
+        // Namespace the cache by the DATABASE, not by a tenant id. Fallback to tenantSlug if dbName missing.
+        const tenantId = (req as any).tenant?.tenant_id ?? (req as any).tenant?.id;
+        const cacheScope = dbName || tenantId || tenantSlug;
 
 
         // If we still lack a database name, respond with a clear error.
@@ -64,13 +62,7 @@ export const getAllDeceased = async (
         } = req.query;
 
         // ── Year scoping: /deceased-all?year=2026 ─────────────────────────
-        // The deceased LIST always shows ONE full calendar year (current year
-        // by default). There is deliberately NO month filter — month scoping
-        // used to empty the list whenever the URL carried a stale ?month=.
-        //   year → integer 1900..2200. Missing/invalid → current year.
-        //   year=all → whole range (dashboards / analytics / exports).
-        //   month  → IGNORED entirely (kept out of the SQL + cache key) so a
-        //            stale ?month=10 can never narrow the list again.
+
         const rawYear = String(year ?? '').trim().toLowerCase();
         // year=all → whole range (dashboards / analytics / exports opt in).
         const explicitAll = rawYear === 'all';
@@ -161,11 +153,8 @@ export const getAllDeceased = async (
             }
         };
 
-        // SAVE TO REDIS — 5 minutes, not 60s. The old 60s TTL expired before a
-        // user could revisit the page (navigating list → profile → back), so
-        // the cache looked "broken". Correctness is guaranteed by the write
-        // paths (register/update/delete/status/charge-settings) which call
-        // clearServiceCache() and wipe every list/detail key for the tenant.
+        // SAVE TO REDIS 
+
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,
@@ -220,11 +209,7 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
         }
 
         // Try cache first — the FULL merged payload (record + current charges) is
-        // cached so repeated profile views are served straight from Redis.
-        // KEY MUST include tenantSlug so it lives under the
-        // service:deceased-service:tenant:<slug>:* namespace that
-        // clearServiceCache() scans. Without it the key is never invalidated
-        // on update/delete and never matches a cache hit after a clear.
+
         const cacheKey = `deceased:detail:${tenantSlug}:${id}`;
         const cached = await redisService.serviceGet('deceased-service', tenantSlug, cacheKey);
 
@@ -276,8 +261,8 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
                             currency ENUM('KES','USD') DEFAULT 'KES',
                             charge_type ENUM('daily','hourly') DEFAULT 'daily',
                             daily_rate DECIMAL(12,2) DEFAULT 3000.00,
-                            hourly_rate DECIMAL(12,2) DEFAULT 125.00,
-                            usd_rate DECIMAL(12,2) DEFAULT 130.00,
+                            hourly_rate DECIMAL(12,2) DEFAULT 0.00,
+                            usd_rate DECIMAL(12,2) DEFAULT 0.00,
                             updated_by VARCHAR(150) NULL,
                             created_at VARCHAR(255) NULL,
                             updated_at VARCHAR(255) NULL
@@ -302,14 +287,10 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
             if (chargeRows && chargeRows.length > 0) {
                 const cs = chargeRows[0];
                 // A row can bill per hour OR per day. `storage_rate` is the
-                // single "effective rate" the UI used to read unconditionally
-                // from daily_rate, which is why switching a record to per-hour
-                // appeared to do nothing — the day figure kept being shown.
-                // Resolve the basis first, then expose BOTH rates so callers can
-                // switch basis without another round-trip.
+
                 const chargeType = String(cs.charge_type ?? 'daily').toLowerCase() === 'hourly' ? 'hourly' : 'daily';
                 const dailyRate = Number(cs.daily_rate ?? cs.storage_rate ?? cs.per_day ?? 500);
-                const hourlyRate = Number(cs.hourly_rate ?? cs.per_hour ?? 125);
+                const hourlyRate = Number(cs.hourly_rate ?? cs.per_hour ?? 0);
                 deceased.charges = {
                     storage_rate: chargeType === 'hourly' ? hourlyRate : dailyRate,
                     per_day: dailyRate,
@@ -317,19 +298,14 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
                     currency: cs.currency ?? 'KES',
                     rate_profile: cs.rate_profile ?? 'standard',
                     charge_type: chargeType,
-                    usd_rate: Number(cs.usd_rate ?? 130),
+                    usd_rate: Number(cs.usd_rate ?? 0),
                     is_default: chargeIsDefault,
                     source: chargeIsDefault ? 'home_default' : 'deceased_specific',
                     updated_at: cs.updated_at ?? null
                 };
             }
-        } catch (e) { /* charge settings are optional — never block the profile */ }
+        } catch (e) { /* charge settings are optnal   */ }
 
-        // Cache the FINAL merged payload (10-minute TTL). Updates/deletes call
-        // clearServiceCache() which wipes this key together with every list key.
-        // The key already includes tenantSlug so serviceSet stores it as:
-        //   service:deceased-service:tenant:<slug>:deceased:detail:<slug>:<id>
-        // which is matched by the clearServiceCache SCAN pattern.
         await redisService.serviceSet(
             'deceased-service',
             tenantSlug,
@@ -354,9 +330,8 @@ export const getDeceasedById = async (req: Request, res: Response): Promise<Resp
     }
 };
 
-// ============================================
+
 // UPDATE DECEASED
-// ============================================
 export const updateDeceased = async (req: Request, res: Response): Promise<Response> => {
     const rawId = req.params.id;
     const id = (() => {
@@ -376,8 +351,6 @@ export const updateDeceased = async (req: Request, res: Response): Promise<Respo
     try {
         const dbName = (req as any).tenant?.db_name;
         const tenantSlug = (req as any).tenantSlug || "unknown";
-        const tenantId = (req as any).tenant?.id;
-
         if (!dbName) {
             return res.status(400).json({
                 success: false,
@@ -466,9 +439,9 @@ export const updateDeceased = async (req: Request, res: Response): Promise<Respo
     }
 };
 
-// ============================================
+
 // DELETE DECEASED
-// ============================================
+
 export const deleteDeceased = async (req: Request, res: Response): Promise<Response> => {
     const rawId = req.params.id;
     const id = (() => {
@@ -488,7 +461,6 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
     try {
         const dbName = (req as any).tenant?.db_name;
         const tenantSlug = (req as any).tenantSlug || "unknown";
-        const tenantId = (req as any).tenant?.id;
 
         if (!dbName) {
             return res.status(400).json({
@@ -499,20 +471,48 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
 
         const isNumeric = /^\d+$/.test(id);
 
-        // Get deceased details before deletion for notification
+        let deceasedColumns = await tableColumns(dbName, 'deceased');
+        if (deceasedColumns.size === 0) {
+            return res.status(404).json({ success: false, message: 'Deceased record not found' });
+        }
+
+        for (const [column, definition] of [
+            ['is_deleted', 'BOOLEAN DEFAULT FALSE'],
+            ['deleted_at', 'VARCHAR(255) NULL'],
+            ['deleted_by', 'VARCHAR(255) NULL']
+        ]) {
+            if (!deceasedColumns.has(column)) {
+                await safeTenantExecute(dbName, `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS ${column} ${definition}`, []);
+                deceasedColumns.add(column);
+            }
+        }
+
+        // Get deceased details before soft deletion for the audit notification.
         const checkQuery = `
-            SELECT deceased_id, full_name FROM deceased 
-            WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'} 
+            SELECT deceased_id, full_name FROM deceased
+            WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'}
+              AND (is_deleted = FALSE OR is_deleted IS NULL)
         `;
         const checkResult = await safeTenantQuery(dbName, checkQuery, [isNumeric ? parseInt(id, 10) : id]);
         const deceasedRecord = (checkResult as any[])[0];
 
+        if (!deceasedRecord) {
+            return res.status(404).json({ success: false, message: 'Deceased record not found' });
+        }
+
+        const user = (req as any).user || {};
+        const actor = user.userId || user.id || user.email || user.username || user.sub || 'unknown';
         const deleteQuery = `
-            DELETE FROM deceased
-            WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'} 
+            UPDATE deceased
+            SET is_deleted = TRUE, deleted_at = NOW(), deleted_by = ?, updated_at = NOW()
+            WHERE ${isNumeric ? 'id = ?' : 'deceased_id = ?'}
+              AND (is_deleted = FALSE OR is_deleted IS NULL)
             LIMIT 1
         `;
-        const result = await safeTenantExecute(dbName, deleteQuery, [isNumeric ? parseInt(id, 10) : id]);
+        const deleteResult = await safeTenantExecute(dbName, deleteQuery, [String(actor), isNumeric ? parseInt(id, 10) : id]);
+        if (!deleteResult?.affectedRows) {
+            return res.status(404).json({ success: false, message: 'Deceased record not found' });
+        }
 
         // Invalidate cache — wipe EVERY key for this service+tenant.
         try {
@@ -564,13 +564,19 @@ export const deleteDeceased = async (req: Request, res: Response): Promise<Respo
     }
 };
 
-// ============================================
-// UPDATE DECEASED STATUS (for cross-service calls)
-// ============================================
+
+// UPDATE DECEASED STATUS 
+
 export const updateDeceasedStatus = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { admission_number, deceased_id, body_status, is_embalmed } = req.body || {};
-        const tenantSlug = ((req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || (req as any).tenantSlug || 'system_shared');
+        const tenantSlug = (req.headers['x-slug'] as string) || (req.headers['x-tenant-slug'] as string) || (req as any).tenantSlug;
+        if (!tenantSlug) {
+            return res.status(400).json({
+                success: false,
+                message: 'Tenant is required'
+            });
+        }
         const dbName = (req as any).tenant?.db_name || await resolveDatabase(tenantSlug);
 
         if (!dbName) {
@@ -622,10 +628,7 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
         })();
 
         // Build dynamic update query.
-        // NOTE: the deceased table has NO `is_embalmed` column (embalming is
-        // tracked via admission_status). Writing is_embalmed used to throw
-        // "Unknown column" and silently cancel the whole status update, so
-        // released bodies never showed as Released on the deceased list.
+
         const updates: string[] = [];
         const values: any[] = [];
 
@@ -694,9 +697,8 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
     }
 };
 
-// ============================================
-// EXPORT ALL
-// ============================================
+
+
 export default {
     getAllDeceased,
     getDeceasedById,

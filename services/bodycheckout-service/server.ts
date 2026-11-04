@@ -1,6 +1,7 @@
 import { runBodyCheckoutMigrations } from './utilities/migrate';
 import Logger from '../../packages/shared-logger/dist/index';
 import bodyReleaseRoutes from './routes/bodyRelease.routes';
+import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
 
 import express from 'express';
 import helmet from 'helmet';
@@ -62,6 +63,7 @@ let server: ReturnType<typeof app.listen> | undefined;
 // Bootstrap: ensure body-checkout migrations have run on every active tenant
 // database before accepting traffic (matches how coffin/florist/hearse work).
 async function bootstrap(): Promise<void> {
+    startAsyncSideEffectWorker();
     try {
         await runBodyCheckoutMigrations();
     } catch (error: any) {

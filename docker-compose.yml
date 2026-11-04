@@ -28,6 +28,7 @@ services:
       - ./docker/mariadb/exporter-user.sql:/docker-entrypoint-initdb.d/01-exporter-user.sql:ro
     networks:
       - restpoint_network
+      - deceased_internal
     healthcheck:
       # Talks to the server DIRECTLY as root. See the long note in
       # docker-compose.prod.yml: `healthcheck.sh` reads credentials from
@@ -55,13 +56,14 @@ services:
     image: redis:7-alpine
     container_name: restpoint_redis
     restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 1gb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 1gb --maxmemory-policy noeviction
     ports:
       - '${REDIS_EXTERNAL_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     networks:
       - restpoint_network
+      - deceased_internal
     healthcheck:
       test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis123}', 'ping']
       interval: 15s
@@ -108,7 +110,11 @@ services:
       # Service URLs
       AUTH_SERVICE_URL: http://restpoint_auth_service:5000
       TENANT_SERVICE_URL: http://restpoint_tenant_service:5000
-      DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
+      DECEASED_SERVICE_URL: https://restpoint_deceased_service:5000
+      DECEASED_MTLS_REQUIRED: 'true'
+      DECEASED_MTLS_CA_FILE: /run/secrets/deceased-mtls/ca.crt
+      DECEASED_MTLS_CERT_FILE: /run/secrets/deceased-mtls/tls.crt
+      DECEASED_MTLS_KEY_FILE: /run/secrets/deceased-mtls/tls.key
       INVOICES_SERVICE_URL: http://restpoint_invoice_service:5000
       COFFIN_SERVICE_URL: http://restpoint_coffin_service:5000
       # Notification REST (bell list / mark-read / delete) is implemented by the
@@ -143,6 +149,9 @@ services:
         condition: service_healthy
     networks:
       - restpoint_network
+      - deceased_internal
+    volumes:
+      - ./secrets/deceased-mtls/gateway:/run/secrets/deceased-mtls:ro
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
@@ -256,6 +265,7 @@ services:
       PORT: 8080
     networks:
       - restpoint_network
+      - deceased_internal
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
       interval: 30s
@@ -270,16 +280,19 @@ services:
     image: restpoint-deceased-service:latest
     container_name: restpoint_deceased_service
     restart: always
-    ports:
-      - '${DECEASED_SERVICE_EXTERNAL_PORT:-5003}:5000'
     env_file:
       - .env.production
     environment:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: deceased-service
+      DECEASED_MTLS_REQUIRED: 'true'
+      DECEASED_TLS_CA_FILE: /run/secrets/deceased-mtls/ca.crt
+      DECEASED_TLS_CERT_FILE: /run/secrets/deceased-mtls/tls.crt
+      DECEASED_TLS_KEY_FILE: /run/secrets/deceased-mtls/tls.key
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       SMS_SERVICE_URL: http://restpoint_sms_service:8080
+      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
       REDIS_HOST: restpoint_redis
@@ -294,10 +307,12 @@ services:
       # Legacy mount kept for old code paths that still write to
       # /usr/src/app/uploads — now redirected INTO the shared storage.
       - /opt/storage/uploads/_legacy/deceased:/usr/src/app/uploads
+      - ./secrets/deceased-mtls/deceased:/run/secrets/deceased-mtls:ro
     networks:
-      - restpoint_network
+      - deceased_internal
+      - deceased_egress
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      test: ['CMD', 'node', 'services/deceased-service/healthcheck.js']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -659,6 +674,7 @@ services:
       - socketio_service_data:/usr/src/app/data
     networks:
       - restpoint_network
+      - deceased_internal
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
       interval: 30s
@@ -683,11 +699,8 @@ services:
       SERVICE_NAME: bodycheckout-service
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       SMS_SERVICE_URL: http://restpoint_sms_service:8080
-      # The release flow writes the Released status straight into the tenant DB
-      # and then pokes deceased-service so its Redis list/detail caches are
-      # invalidated. 5000 is the port INSIDE the container — 5003 is only the
-      # host mapping, which is why status updates used to fail silently.
-      DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
+      # Cache invalidation is queued over Redis; bodycheckout does not call
+      # deceased-service directly.
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
@@ -1056,6 +1069,14 @@ networks:
   restpoint_network:
     driver: bridge
     name: restpoint_network
+    attachable: true
+  deceased_internal:
+    driver: bridge
+    name: restpoint_deceased_internal
+    internal: true
+  deceased_egress:
+    driver: bridge
+    name: restpoint_deceased_egress
     attachable: true
 
 # VOLUMES

@@ -15,9 +15,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// isVietnameseHoliday checks if a date is a major Vietnamese public holiday
-func isVietnameseHoliday(date time.Time) bool {
-	holidays := GenerateVietnameseHolidays(date.Year())
+// isKenyanHoliday checks if a date is a major Kenyan public holiday.
+func isKenyanHoliday(date time.Time) bool {
+	holidays := GenerateKenyanHolidays(date.Year())
 	for _, holiday := range holidays {
 		if holiday.YearDay() == date.YearDay() && holiday.Year() == date.Year() {
 			return true
@@ -66,12 +66,12 @@ func (s *Seeder) seedTimesheets(ctx context.Context, db *gorm.DB) error {
 
 			// Set attendance characteristics based on position
 			switch pe.Position {
-			case "thực tập":
+			case "Intern":
 				profile.AttendanceRate = 0.75 + mathrand.Float64()*0.15  // 75-90%
 				profile.IsReliable = mathrand.Float64() < 0.6            // 60% reliable
 				profile.OvertimeTendency = 0.1 + mathrand.Float64()*0.2  // 10-30%
 				profile.WeekendWorkRate = 0.05 + mathrand.Float64()*0.15 // 5-20%
-			case "phổ thông":
+			case "General Worker":
 				profile.AttendanceRate = 0.80 + mathrand.Float64()*0.15   // 80-95%
 				profile.IsReliable = mathrand.Float64() < 0.75            // 75% reliable
 				profile.OvertimeTendency = 0.15 + mathrand.Float64()*0.25 // 15-40%
@@ -86,12 +86,12 @@ func (s *Seeder) seedTimesheets(ctx context.Context, db *gorm.DB) error {
 				profile.IsReliable = mathrand.Float64() < 0.90            // 90% reliable
 				profile.OvertimeTendency = 0.25 + mathrand.Float64()*0.35 // 25-60%
 				profile.WeekendWorkRate = 0.20 + mathrand.Float64()*0.30  // 20-50%
-			case "tổ trưởng", "giám sát":
+			case "Team Leader", "Supervisor":
 				profile.AttendanceRate = 0.90 + mathrand.Float64()*0.08   // 90-98%
 				profile.IsReliable = mathrand.Float64() < 0.95            // 95% reliable
 				profile.OvertimeTendency = 0.30 + mathrand.Float64()*0.40 // 30-70%
 				profile.WeekendWorkRate = 0.25 + mathrand.Float64()*0.35  // 25-60%
-			case "kỹ thuật":
+			case "Technician":
 				profile.AttendanceRate = 0.92 + mathrand.Float64()*0.06   // 92-98%
 				profile.IsReliable = mathrand.Float64() < 0.95            // 95% reliable
 				profile.OvertimeTendency = 0.35 + mathrand.Float64()*0.45 // 35-80%
@@ -142,7 +142,7 @@ func (s *Seeder) seedTimesheets(ctx context.Context, db *gorm.DB) error {
 		}
 
 		for current := actualStartDate; current.Before(actualEndDate) || current.Equal(actualEndDate); current = current.AddDate(0, 0, 1) {
-			// Skip Sundays (Vietnamese work week is Monday-Saturday)
+			// Skip Sundays for the sample Monday-to-Saturday work schedule.
 			if current.Weekday() == time.Sunday {
 				continue
 			}
@@ -172,7 +172,7 @@ func (s *Seeder) seedTimesheets(ctx context.Context, db *gorm.DB) error {
 			}
 
 			// Public holidays - very low work probability
-			if isVietnameseHoliday(current) {
+			if isKenyanHoliday(current) {
 				if mathrand.Float64() > 0.15 { // Only 15% chance of work on holidays
 					continue
 				}
@@ -214,7 +214,7 @@ func (s *Seeder) seedTimesheets(ctx context.Context, db *gorm.DB) error {
 			}
 
 			// Special holiday pay type
-			if isVietnameseHoliday(current) {
+			if isKenyanHoliday(current) {
 				payType = "holiday"
 			}
 
@@ -307,6 +307,6 @@ func (s *Seeder) seedTimesheets(ctx context.Context, db *gorm.DB) error {
 		}
 	}
 
-	fmt.Printf("    Created %d realistic timesheets with individual attendance patterns and Vietnamese work culture\n", timesheetCount)
+	fmt.Printf("    Created %d realistic timesheets with individual attendance patterns\n", timesheetCount)
 	return nil
 }

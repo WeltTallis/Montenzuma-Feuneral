@@ -323,8 +323,8 @@ func (b *EmployeeProjectQueryBuilder) BuildMissingBankDetailsCountQuery(filters 
 const missingMobilePredicate = `COALESCE(TRIM(employees.mobile), '') = ''`
 
 // BuildMissingMobileQuery lists employees with no mobile number on file. Unlike
-// the missing-bank list there is no pending-work gating: phone login, Zalo OTP
-// password reset and self check-in all key off the number regardless of payroll
+// the missing-bank list there is no pending-work gating: phone login keys off
+// the number regardless of payroll
 // activity, so every gap the caller can fix must surface.
 func (b *EmployeeProjectQueryBuilder) BuildMissingMobileQuery(filters domain.EmployeeFilters) *gorm.DB {
 	query := b.db.Model(&domain.Employee{})

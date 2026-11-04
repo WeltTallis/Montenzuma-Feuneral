@@ -27,7 +27,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     label,
     value,
     onChange,
-    placeholder = "Import số tiền...",
+    placeholder = "Enter amount...",
     className = "",
     disabled = false,
     required = false,
@@ -125,14 +125,14 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
             className={inputClassName}
             disabled={disabled}
             required={required}
-            aria-label={ariaLabel || (label ? `${label} (₫)` : 'Số tiền ₫')}
+            aria-label={ariaLabel || (label ? `${label} (KES)` : 'Amount in KES')}
             aria-describedby={ariaDescribedBy}
             aria-invalid={!!error}
           />
 
           {!focused && (
             <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-              <span className="typography-body-medium text-muted-foreground">₫</span>
+              <span className="typography-body-medium text-muted-foreground">KES</span>
             </div>
           )}
         </div>
@@ -153,7 +153,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
 
         {/* Screen reader helper */}
         <div className="sr-only">
-          Import số tiền bằng ₫. Ví dụ: 30000 cho 30.000 ₫
+          Enter the amount in Kenyan shillings. For example, 30000.
         </div>
       </div>
     );

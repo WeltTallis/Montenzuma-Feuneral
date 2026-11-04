@@ -570,6 +570,10 @@ const PostmortemVerifyPage = () => {
 
       if (response.data?.success && response.data?.data) {
         const { deceased, postmortem } = response.data.data;
+        if (!deceased || !postmortem) {
+          setError('Postmortem reports are available through the mortuary. Please contact the facility for assistance.');
+          return;
+        }
 
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 

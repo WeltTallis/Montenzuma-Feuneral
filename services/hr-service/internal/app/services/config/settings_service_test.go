@@ -442,7 +442,7 @@ func TestSettingsServiceUpdateSettingNullValueSemantics(t *testing.T) {
 	const credential = `{"app_id":"123","secret_key":"s3cr3t-key"}`
 
 	settingsRepo := newFakeSettingsRepoForUpdate(
-		&domain.Settings{ID: 1, Key: secret.ZaloCredentialsKey, Value: stringPointer(credential), ValueType: domain.ValueTypeJSON},
+		&domain.Settings{ID: 1, Key: secret.LegacyMessagingCredentialsKey, Value: stringPointer(credential), ValueType: domain.ValueTypeJSON},
 		&domain.Settings{ID: 2, Key: "transfer_bank_visible", Value: stringPointer("true"), ValueType: domain.ValueTypeString},
 	)
 	service := NewSettingsService(
@@ -483,7 +483,7 @@ func TestSettingsServiceDoesNotCacheProtectedSetting(t *testing.T) {
 	t.Cleanup(func() { _ = rdb.Close() })
 
 	settingsRepo := newFakeSettingsRepoForUpdate(
-		&domain.Settings{ID: 1, Key: secret.ZaloCredentialsKey, Value: stringPointer(`{"app_id":"123"}`), ValueType: domain.ValueTypeJSON},
+		&domain.Settings{ID: 1, Key: secret.LegacyMessagingCredentialsKey, Value: stringPointer(`{"app_id":"123"}`), ValueType: domain.ValueTypeJSON},
 		&domain.Settings{ID: 2, Key: "transfer_bank_visible", Value: stringPointer("true"), ValueType: domain.ValueTypeString},
 	)
 	service := NewSettingsService(
@@ -499,7 +499,7 @@ func TestSettingsServiceDoesNotCacheProtectedSetting(t *testing.T) {
 	if _, err := service.GetSettingByKey(context.Background(), "transfer_bank_visible"); err != nil {
 		t.Fatalf("GetSettingByKey(ordinary): %v", err)
 	}
-	if _, err := service.GetSettingByKey(context.Background(), secret.ZaloCredentialsKey); err != nil {
+	if _, err := service.GetSettingByKey(context.Background(), secret.LegacyMessagingCredentialsKey); err != nil {
 		t.Fatalf("GetSettingByKey(protected): %v", err)
 	}
 

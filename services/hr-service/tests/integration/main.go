@@ -115,7 +115,6 @@ func main() {
 	runPayratePartnerVisibilityTests(client, testData, reporter, cfg)
 	runSettingsTests(client, testData, reporter, cfg)
 	runAssetTests(client, testData, reporter, cfg)
-	runLoanTests(client, testData, reporter, cfg)
 	runLedgerTests(client, testData, reporter, cfg)
 	runTransactionTests(client, testData, reporter, cfg)
 
@@ -141,12 +140,6 @@ func main() {
 
 	// Approvals flow (MiMo assistant wave 1)
 	runApprovalsTests(client, testData, reporter, cfg)
-
-	// payroll-ops-mcp flow (pk_ops_* admin-equivalent machine keys)
-	runOpsMCPTests(client, testData, reporter, cfg)
-
-	// MCP API key flow (mcp_* chat-integration keys: admin scope toggle)
-	runMCPAPIKeyTests(client, testData, reporter, cfg)
 
 	// Summary
 	reporter.PrintSummary()

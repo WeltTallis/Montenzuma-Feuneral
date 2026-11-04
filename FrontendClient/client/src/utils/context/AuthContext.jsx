@@ -1,55 +1,28 @@
 import React,{ createContext, useContext, useEffect, useCallback, useState } from 'react';
-import { storeBranchContext, clearBranchContext, decodeTokenClaims } from '../../utils/globalAuth';
+import { storeBranchContext, clearBranchContext } from '../../utils/globalAuth';
 import api from '../../api/client';
 
 
 const AuthContext = createContext(null);
 
 /**
- * Read user state from storage synchronously.
- * Checks both localStorage and sessionStorage for cross-compatibility.
+ * Read the non-sensitive user profile cache. Authentication is enforced by
+ * the server-side HttpOnly cookie on protected API requests.
  */
 const restoreUserFromStorage = () => {
-  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
-  const tokenValid = !!token && token !== 'undefined' && token !== 'null';
 
-  if (tokenValid && userData) {
+  if (userData) {
     try {
       const parsedUser = JSON.parse(userData);
       return {
-        token,
+        token: null,
         isAuthenticated: true,
         ...parsedUser,
       };
     } catch (error) {
       // Invalid stored data — fall through to the token-claims recovery below
     }
-  }
-
-  // The token is alive but the persisted user blob is missing/corrupt (older
-  // build, partial logout, blocked storage, ...). Rebuild a minimal identity
-  // from the JWT claims instead of declaring the session dead — otherwise
-  // ProtectedRoute used to sign these users straight back out to /login on
-  // every single page load.
-  if (tokenValid) {
-    const claims = decodeTokenClaims(token) || {};
-    return {
-      token,
-      isAuthenticated: true,
-      userId: claims.userId || localStorage.getItem('userId') || sessionStorage.getItem('userId') || null,
-      tenantId: claims.tenantId || localStorage.getItem('tenantId') || null,
-      tenantSlug: claims.parentTenantSlug || claims.tenantSlug || localStorage.getItem('tenantSlug') || '',
-      parentTenantSlug: claims.parentTenantSlug || localStorage.getItem('parentTenantSlug') || '',
-      branchSlug: claims.branchSlug || null,
-      branchDbName: claims.branchDbName || null,
-      dbName: claims.dbName || null,
-      branchId: claims.branchId || null,
-      role: claims.role || null,
-      username: claims.email || 'User',
-      fullName: claims.email || 'User',
-      recoveredFromToken: true,
-    };
   }
 
   return null;
@@ -111,25 +84,15 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (credentials) => {
     try {
-      const response = await api.post('/auth/login', credentials);
+      const response = await api.post('/auth/login', credentials, { headers: { 'x-auth-cookie': '1' } });
       const data = response.data;
       if (data?.success) {
-        // Backend returns: { accessToken, refreshToken, user: {...}, ... }
-        const accessToken = data.accessToken || data.token;
-        const refreshTokenVal = data.refreshToken;
         const userData = data.user;
 
-        if (!accessToken) {
-          return { success: false, message: 'No token received from server' };
-        }
-
-        // Store in BOTH storages for cross-compatibility
-        localStorage.setItem('authToken', accessToken);
-        sessionStorage.setItem('authToken', accessToken);
-        if (refreshTokenVal) {
-          localStorage.setItem('refreshToken', refreshTokenVal);
-          sessionStorage.setItem('refreshToken', refreshTokenVal);
-        }
+        ['authToken', 'accessToken', 'token', 'refreshToken'].forEach((key) => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
         if (userData) {
           // SECURITY: Remove sensitive data from localStorage
           // Only store non-sensitive user information
@@ -257,7 +220,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         setUser({
-          token: accessToken,
+          token: null,
           isAuthenticated: true,
           ...userData,
         });
@@ -282,8 +245,6 @@ export const AuthProvider = ({ children }) => {
       // Continue with local logout even if server request fails
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       localStorage.removeItem('tenantSlug');
       localStorage.removeItem('tenantId');
@@ -294,6 +255,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('dbName');
       localStorage.removeItem('parentTenantSlug');
       clearBranchContext();
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
       sessionStorage.removeItem('authToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('user');

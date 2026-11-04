@@ -7,7 +7,7 @@ import {
     getPostmortemByDeceasedId,
     updatePostmortem,
     generatePostmortemPDF
-} from '../controllers/autopsyControl';
+} from '../controllers/autopsy/autopsyControl';
 
 const router = Router();
 

@@ -6,8 +6,8 @@ import "time"
 // combines the target Ky's current observed value and a short-horizon
 // projection of approvals still expected before its pay date.
 //
-// ADVISORY ONLY: this type never feeds SyncBalance/CreateTopup or any
-// disbursement — see CashReadinessForecastService's read-only ports.
+// ADVISORY ONLY: this type never initiates a bank transfer or modifies wallet
+// records — see CashReadinessForecastService's read-only ports.
 type CashReadiness struct {
 	// ObservedApproved is approved value already recorded inside the target Ky.
 	ObservedApproved int64

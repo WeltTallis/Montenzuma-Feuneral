@@ -61,6 +61,12 @@ const tenantQuery = async (req: Request, sql: string, params: any[] = []): Promi
   return safeQuery(sql, params, getTenantSlug(req));
 };
 
+const getEtimsSubmissionStatus = () => ({
+  submitted: false as const,
+  status: 'not_configured' as const,
+  reason: 'Tenant eTIMS credentials and KRA item mappings are not configured; no sales transaction was submitted.',
+});
+
 async function getRedisClient(): Promise<Redis> {
   if (!redisClient) {
     redisClient = new Redis({
@@ -114,6 +120,11 @@ export interface InvoiceItem {
   quantity?: number;
   unit_price?: number;
   amount?: number;
+  itemCd?: string;
+  itemClsCd?: string;
+  pkgUnitCd?: string;
+  qtyUnitCd?: string;
+  taxTyCd?: string;
 }
 
 export interface InvoiceData {
@@ -840,6 +851,7 @@ export const createSystemInvoice = async (req: Request, res: Response, next: Nex
     invoice_id: (result as any).insertId,
     deceased_folder: deceasedFolderName,
     system_generated: true,
+    etims_submission: getEtimsSubmissionStatus(),
   });
 };
 
@@ -913,6 +925,7 @@ export const createInvoice = async (req: Request, res: Response, next: NextFunct
     message: 'Manual invoice created successfully',
     invoice_id: (result as any).insertId,
     invoice_number,
+    etims_submission: getEtimsSubmissionStatus(),
   });
 };
 

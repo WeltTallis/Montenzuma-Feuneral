@@ -1,6 +1,11 @@
 /**
  * Global authentication utility helpers
  */
+if (typeof window !== 'undefined') {
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    ['authToken', 'accessToken', 'token', 'refreshToken'].forEach((key) => storage.removeItem(key));
+  }
+}
 
 /**
  * Decode the JWT payload WITHOUT verifying the signature.
@@ -76,10 +81,9 @@ export const getTenantSlug = () => {
   return '';
 };
 
-/** True when a usable access token exists (in either storage). */
+/** True when non-sensitive identity metadata is cached; APIs validate the cookie. */
 export const hasSession = () => {
-  const token = getAuthToken();
-  return !!token && token !== 'undefined' && token !== 'null';
+  return !!(localStorage.getItem('user') || sessionStorage.getItem('user'));
 };
 
 /**
@@ -208,7 +212,7 @@ export const getBranchScopeHeaders = (tenantSlug) => {
  * Get the current auth token from localStorage or sessionStorage
  */
 export const getAuthToken = () => {
-  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+  return '';
 };
 
 /**

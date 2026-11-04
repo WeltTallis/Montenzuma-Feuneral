@@ -20,16 +20,16 @@ func TestRequestCutoffDayValue(t *testing.T) {
 }
 
 // TestRequestWindowBoundaries exercises the three-phase window around the
-// day-8 cutoff using Asia/Ho_Chi_Minh local dates (the timezone the business
+// day-8 cutoff using Africa/Nairobi local dates (the timezone the business
 // runs in). July 2026 anchors the phases relative to calendar July:
 //
 //	days 1–8  -> tail of the previous period (for_month = June)
 //	days 9–19 -> locked gap
 //	days 20+   → new period opens (for_month rolls to July/August)
 func TestRequestWindowBoundaries(t *testing.T) {
-	vn, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	nairobi, err := time.LoadLocation("Africa/Nairobi")
 	if err != nil {
-		t.Fatalf("load Asia/Ho_Chi_Minh: %v", err)
+		t.Fatalf("load Africa/Nairobi: %v", err)
 	}
 
 	type expect struct {
@@ -49,7 +49,7 @@ func TestRequestWindowBoundaries(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		now := time.Date(2026, time.July, tc.day, 12, 0, 0, 0, vn)
+		now := time.Date(2026, time.July, tc.day, 12, 0, 0, 0, nairobi)
 		if got := IsBeforeCutoff(now); got != tc.beforeCutoff {
 			t.Errorf("day %d: IsBeforeCutoff = %v, want %v", tc.day, got, tc.beforeCutoff)
 		}

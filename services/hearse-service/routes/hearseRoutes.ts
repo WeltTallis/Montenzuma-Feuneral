@@ -1,12 +1,19 @@
 import express from 'express';
-import { registerHearse, updateHearse, deleteHearse, getAllHearses, getAvailableHearses, upload } from '../controllers/registerHearse';
-import { makeHearseBooking, checkHearseAvailability, getAllHearseBookings, assignDriverToBooking, updateBookingStatus, postponeHearseBooking, getAllDrivers, getBookingsByDriver, getDriverDashboard, getAvailabilityAcrossBranches, checkAvailabilityByDate, checkAvailabilityByDates } from '../controllers/bookHerse';
-import { getHearseFleetAnalytics, getHearsePeriodAnalytics } from '../controllers/hearseAnalytics';
 import { addFuelDeposit, allocateFuelFunds, getDriverFuelCards, getFuelWallet, recordDriverFuelPurchase, recordFuelPurchase, updateFuelThreshold } from '../controllers/hearseFuel';
+import { checkHearseAvailability, getAvailabilityAcrossBranches, checkAvailabilityByDate, checkAvailabilityByDates } from '../controllers/checkHeraseAvailablity';
+import { registerHearse, updateHearse, deleteHearse, getAllHearses, getAvailableHearses, upload } from '../controllers/registerHearse';
+
 import { assignBookingLineup, getDailyLineup, saveStandbyDriver } from '../controllers/hearseLineups';
-// @ts-ignore - authMiddleware is JavaScript, not TypeScript
+import { getHearseFleetAnalytics, getHearsePeriodAnalytics } from '../controllers/hearseAnalytics';
+import { getAllDrivers, getBookingsByDriver, getDriverDashboard } from '../controllers/drivers';
+import { getAllHearseBookings } from '../controllers/getAllHearseBookings';
+import { assignDriverToBooking } from '../controllers/asignDriverABooking';
+
+import { postponeHearseBooking } from '../controllers/postPoneHearseBooking';
+import { updateBookingStatus } from '../controllers/updateBookingStatus';
 import { protect } from '../../app-global/middlewares/authMiddleware';
-            
+import { makeHearseBooking } from '../controllers/bookHerse';
+
 const router = express.Router();
 
 // Hearse CRUD

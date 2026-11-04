@@ -267,10 +267,6 @@ func (s *Service) CreateCheckInAdvanceRequest(ctx context.Context, employeeID ui
 
 	fee, netAmount := s.calculator.CalculateFee(ctx, requestAmount, now)
 
-	if err := s.validateTransferLimits(ctx, netAmount); err != nil {
-		return nil, err
-	}
-
 	req := &domain.AdvancePaymentRequest{
 		AdvPayID:      advPay.ID,
 		ProjectID:     advPay.ProjectID,

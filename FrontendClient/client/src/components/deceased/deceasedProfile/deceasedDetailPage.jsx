@@ -445,7 +445,7 @@ const DeceasedDetailPage = () => {
                 currency: cs.currency ?? prev?.charges?.currency ?? 'KES',
                 rate_profile: cs.rateProfile ?? cs.rate_profile ?? prev?.charges?.rate_profile ?? 'standard',
                 charge_type: csChargeType,
-                usd_rate: Number(cs.usdRate ?? cs.usd_rate ?? prev?.charges?.usd_rate ?? 130),
+                usd_rate: Number(cs.usdRate ?? cs.usd_rate ?? prev?.charges?.usd_rate ?? 0),
                 updated_at: cs.updatedAt ?? cs.updated_at ?? prev?.charges?.updated_at ?? null,
                 is_default: csIsDefault,
                 source: csSource,

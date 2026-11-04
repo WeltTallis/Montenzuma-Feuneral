@@ -4,7 +4,7 @@ import {
     updateChargeSettings,
     getBillingSummary,
     recalculateBalance
-} from '../controllers/chargeSettingsController';
+} from '../controllers/settings/chargeSettingsController';
 
 const router = Router();
 

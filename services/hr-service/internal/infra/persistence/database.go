@@ -49,7 +49,7 @@ func NewDatabase(cfg DatabaseConfig) (*Database, error) {
 	var db *gorm.DB
 
 	// Keep SQL structure visible without rendering bound values. Settings rows
-	// contain credentials (including rotating Zalo tokens), so interpolated SQL
+	// contain credentials, so interpolated SQL
 	// would copy live secrets into application logs on every update.
 	gormLogger := newGORMLogger(os.Stdout)
 	config := &gorm.Config{

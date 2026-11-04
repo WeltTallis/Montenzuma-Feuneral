@@ -1,6 +1,6 @@
 import asyncHandler from 'express-async-handler';
-import { safeQuery } from '../database';
 import { Request, Response } from 'express';
+import { safeQuery } from '../database';
 
 /**
  * Get comprehensive hearse fleet analytics

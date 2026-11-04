@@ -109,41 +109,45 @@ export default function AccountDeletion() {
           <Reveal delay={100}>
             <div className="summary-box">
               <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Your Data, Your Control</h2>
-              <p style={{ color: C.ink, fontSize: '0.95rem', margin: 0 }}>You have the right to delete your account and all associated data at any time. We make this process straightforward and transparent.</p>
+              <p style={{ color: C.ink, fontSize: '0.95rem', margin: 0 }}>You can ask us to delete your account or specified personal information. We review each request and explain any information we are required or otherwise permitted to retain.</p>
             </div>
           </Reveal>
 
           <Reveal delay={150}>
-            <h2>How to Request Deletion</h2>
-            <p>To request account deletion, please follow these steps:</p>
+            <h2>Request Account Deletion</h2>
+            <p>Email <a href="mailto:privacy@restpoint.co.ke?subject=Account%20deletion%20request" style={{ color: C.brass }}>privacy@restpoint.co.ke</a> with “Account deletion request” in the subject. Use the email address linked to the account where possible and include the account or workspace name and the account holder's name. You may also ask us to delete specific personal information without closing an entire account.</p>
             <ol>
-              <li>Email us at <a href="mailto:privacy@restpoint.co.ke" style={{ color: C.brass }}>privacy@restpoint.co.ke</a></li>
-              <li>Use the email address registered with your account</li>
-              <li>Include "Account Deletion Request" in the subject line</li>
-              <li>We will confirm receipt within 48 hours</li>
+              <li>Tell us whether you want the account closed, specified information deleted, or both.</li>
+              <li>Include enough detail to identify the account or records. Do not send identity documents or sensitive details unless we request them through an appropriate channel.</li>
+              <li>We may ask for information reasonably needed to verify your identity and authority to request account-level deletion.</li>
             </ol>
           </Reveal>
 
           <Reveal delay={200}>
-            <h2>What Gets Deleted</h2>
-            <p>Upon account deletion, we remove all personal data, case files, documents, billing information, and user records associated with your account. Some anonymized data may be retained for legal compliance.</p>
+            <h2>Review, Retention &amp; Response</h2>
+            <p>We will review the request, confirm its scope, and explain what can be deleted and any information that must or may be retained for legal obligations, security, resolving disputes, or completing transactions. Deletion may affect access to account records and services. We will acknowledge and respond within the time required by applicable law; we do not promise an automatic or immediate deletion.</p>
           </Reveal>
 
           <Reveal delay={250}>
             <div className="highlight-box">
-              <p style={{ color: C.ink, margin: 0 }}><strong>Processing Time:</strong> Account deletion requests are processed within 30 days. During this time, you can cancel the deletion request by contacting our support team.</p>
+              <p style={{ color: C.ink, margin: 0 }}><strong>Need access, correction, or objection instead?</strong> You can use the same email address to request access to your information, ask us to correct it, object to a use, or request that we restrict or stop a particular use where applicable.</p>
             </div>
           </Reveal>
 
           <Reveal delay={300}>
-            <h2>Data Export</h2>
-            <p>Before deletion, we recommend exporting your data. You can request a complete data export by emailing our support team. We will provide your data in a standard, portable format within 14 days.</p>
+            <h2>Request a Copy or Export</h2>
+            <p>If you need a copy before requesting deletion, email <a href="mailto:privacy@restpoint.co.ke?subject=Personal%20information%20access%20or%20export%20request" style={{ color: C.brass }}>privacy@restpoint.co.ke</a> with “Access or export request” in the subject. Identify the account and describe the information or date range you need. We will verify the request, confirm the scope and available format, and respond within the time required by applicable law.</p>
+          </Reveal>
+
+          <Reveal delay={325}>
+            <h2>Response or Complaint Route</h2>
+            <p>We will explain the outcome and any limitation on the request. If you are dissatisfied with our response or believe your rights have not been addressed, you may lodge a complaint with Kenya's <a href="https://www.odpc.go.ke/" target="_blank" rel="noreferrer">Office of the Data Protection Commissioner (ODPC)</a>.</p>
           </Reveal>
 
           <Reveal delay={350}>
             <h2>Contact</h2>
             <div className="contact-box">
-              <p style={{ margin: 0, fontSize: '0.95rem' }}>For account deletion requests:</p>
+              <p style={{ margin: 0, fontSize: '0.95rem' }}>For privacy or account deletion requests:</p>
               <p style={{ margin: '0.5rem 0 0 0' }}><a href="mailto:privacy@restpoint.co.ke" style={{ color: C.brassLight, textDecoration: 'none', fontWeight: 500 }}>privacy@restpoint.co.ke</a></p>
             </div>
           </Reveal>

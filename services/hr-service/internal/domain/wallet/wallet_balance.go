@@ -32,16 +32,3 @@ type TransactionFilter struct {
 	Page     int     `json:"page"`
 	PageSize int     `json:"page_size"`
 }
-
-// ReconciliationJob represents an async reconciliation processing job.
-type ReconciliationJob struct {
-	ID          string     `json:"id"`
-	Status      string     `json:"status"` // "processing", "completed", "failed"
-	TotalRows   int        `json:"total_rows"`
-	Matched     int        `json:"matched"`
-	Unmatched   int        `json:"unmatched"`
-	Headers     []string   `json:"headers,omitempty"`
-	RawRows     [][]string `json:"raw_rows,omitempty"`
-	Error       string     `json:"error,omitempty"`
-	CompletedAt string     `json:"completed_at,omitempty"`
-}

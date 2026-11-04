@@ -16,16 +16,12 @@ import (
 	"api-server/internal/app/services/notification"
 	"api-server/internal/app/services/project"
 	"api-server/internal/app/services/scheduler"
-	"api-server/internal/app/services/wallet_bulk"
-	"api-server/internal/app/services/zaloconnect"
 	"api-server/internal/app/workers"
 	"api-server/internal/config"
 	"api-server/internal/domain"
 	domainServices "api-server/internal/domain/services"
-	"api-server/internal/domain/wallet"
 	asynqinfra "api-server/internal/infra/asynq"
 	"api-server/internal/infra/events"
-	"api-server/internal/infra/observability"
 	"api-server/internal/infra/persistence"
 	"api-server/internal/infra/storage"
 	"api-server/internal/pkg/clock"
@@ -36,9 +32,7 @@ import (
 	advancePaymentHandlers "api-server/internal/transport/http/handlers/advance_payment"
 	approvalHandlers "api-server/internal/transport/http/handlers/approval"
 	attendanceHandlers "api-server/internal/transport/http/handlers/attendance"
-	disbursementHandlers "api-server/internal/transport/http/handlers/disbursement"
 	employeeHandlers "api-server/internal/transport/http/handlers/employee"
-	integrationHandlers "api-server/internal/transport/http/handlers/integration"
 	pushHandlers "api-server/internal/transport/http/handlers/push"
 	timesheetHandlers "api-server/internal/transport/http/handlers/timesheet"
 	"api-server/internal/transport/http/middleware"
@@ -72,12 +66,6 @@ type Handlers struct {
 	EmployeeProfile        *handlers.EmployeeProfileHandler
 	ProjectEmployee        *handlers.ProjectEmployeeHandler
 	AdminClock             *adminHandlers.ClockHandler
-	AdminZalo              *adminHandlers.ZaloHandler
-	IntegrationReset       *integrationHandlers.PasswordResetHandler
-	IntegrationLookup      *integrationHandlers.EmployeeLookupHandler
-	IntegrationSelfCheckin *integrationHandlers.SelfCheckinHandler
-	IntegrationZaloToken   *integrationHandlers.ZaloTokenHandler
-	VendorTimesheet        *integrationHandlers.VendorTimesheetHandler
 	AdminAttendance        *adminHandlers.AttendanceHandler
 	Bank                   *handlers.BankHandler
 	Timesheet              *handlers.TimesheetHandler
@@ -91,8 +79,6 @@ type Handlers struct {
 	Settings               *handlers.SettingsHandler
 	Asset                  *handlers.AssetHandler
 	Cache                  *handlers.CacheHandler
-	Lender                 *handlers.LenderHandler
-	Loan                   *handlers.LoanHandler
 	Email                  *handlers.EmailHandler
 	Settlement             *handlers.SettlementHandler
 	Metric                 *handlers.MetricHandler
@@ -105,13 +91,8 @@ type Handlers struct {
 	Push                   *pushHandlers.Handler
 	Approval               *approvalHandlers.Handler
 	Cron                   *handlers.CronHandler
-	DisbursementWebhook    *disbursementHandlers.WebhookHandler
-	DisbursementSettings   *disbursementHandlers.SettingsHandler
-	ManualDisbursement     *disbursementHandlers.ManualDisbursementHandler
 	WeeklyPaymentFee       *handlers.WeeklyPaymentFeeHandler
-	ReconciliationExport   *disbursementHandlers.ReconciliationExportHandler
 	Wallet                 *handlers.WalletHandler
-	WalletBulkTransfer     *handlers.WalletBulkTransferHandler
 	AdvPartnerUser         *advPartnerHandlers.UserHandler
 	BCCImport              *timesheetHandlers.BCCImportHandler
 	Attendance             *attendanceHandlers.Handler
@@ -125,7 +106,6 @@ type Middleware struct {
 	APIRateLimit              gin.HandlerFunc
 	StrictRateLimit           gin.HandlerFunc
 	AdBannerClickRateLimit    gin.HandlerFunc
-	IntegrationRateLimit      gin.HandlerFunc // per-api-key cap for the /integration and /vendor machine routes
 	TenantSemaphore           *middleware.TenantSemaphoreMiddleware
 	APIMetrics                gin.HandlerFunc
 }
@@ -170,34 +150,7 @@ func NewContainer(cfg *config.Config, version string) (*Container, error) {
 
 	services := bootstrapServices.Initialize(repos, cfg, infra.Logger, infra.DB, infra.Redis, eventBus, asynqClient, clk)
 
-	// wallet_bulk service is constructed here (before initHandlers) so the
-	// HTTP handler can capture it. The row worker is constructed later with
-	// the rest of the asynq workers.
-	var walletBulkSvc *wallet_bulk.WalletBulkTransferService
-	if cfg.Disbursement.EmployeeDisbursementEnabled() {
-		walletBulkFileStorage := storage.NewLocalFileStorage(cfg.Asset.StoragePath, cfg.Asset.BaseURL)
-		walletBulkParser := wallet_bulk.NewYeuCauChuyenTienParser(infra.Logger)
-		walletBulkSvc = wallet_bulk.NewWalletBulkTransferService(wallet_bulk.ServiceDeps{
-			BatchRepo:       repos.BulkTransferBatch,
-			PaymentRepo:     repos.TxWalletPayment,
-			FileStorage:     walletBulkFileStorage,
-			AssetRepo:       repos.Asset,
-			AsynqClient:     asynqClient,
-			AuditEmitter:    walletBulkAuditAdapter{client: asynqClient}, // C3 fix
-			TxnSvc:          services.Transaction,
-			TxnAdjuster:     services.Transaction,
-			TxRunner:        services.TransactionManager, // C2 fix — atomic CreateTransaction + batch link
-			PartnerInfo:     services.SettingsConfig,
-			LedgerWriter:    services.Ledger,
-			TimesheetLinker: walletBulkTimesheetLinker{db: infra.DB.DB, repo: repos.Timesheet},
-			TxnCodeRepo:     repos.TransactionCode,
-			Parser:          walletBulkParser,
-			FeeProvider:     services.DisbursementFeeSchedule,
-			Logger:          infra.Logger,
-		})
-	}
-
-	h := initHandlers(services, repos, infra.DB, infra.Redis, infra.Logger, version, eventBus, cfg, asynqClient, clk, walletBulkSvc)
+	h := initHandlers(services, repos, infra.DB, infra.Redis, infra.Logger, version, eventBus, cfg, asynqClient, clk)
 	middlewares := initMiddleware(services.Auth, services.Authorization, services.ProjectPermission, services.EmployeePermission, repos.APIMetric, cfg, infra.Logger)
 	// The denormalised projects.*_vnd totals are written by this service alone
 	// (the bulk transfer worker builds its own instance from the same
@@ -211,107 +164,11 @@ func NewContainer(cfg *config.Config, version string) (*Container, error) {
 		infra.Logger,
 	)
 	aggregateRecomputeSvc := project.NewAggregateRecomputeService(repos.Project, clock.New(), infra.Logger)
-	sched := initScheduler(services.Notification, services.Email, services.ProjectEmployee, services.APIMetricCleanupService, services.Reconcile, repos.APIMetric, repos.AdvancePaymentRequest, services.Wallet, services.FlexPayReconciliationService, services.ZaloConnect, aggregateRecomputeSvc, walletBalanceAlertSvc, services.Asset, cfg, infra.Logger)
+	sched := initScheduler(services.Notification, services.Email, services.ProjectEmployee, services.APIMetricCleanupService, services.Reconcile, repos.APIMetric, repos.AdvancePaymentRequest, services.FlexPayReconciliationService, aggregateRecomputeSvc, walletBalanceAlertSvc, services.Asset, cfg, infra.Logger)
 	sched.SetRepo(repos.CronJobStatus)
 	h.Cron = handlers.NewCronHandler(repos.CronJobStatus, sched)
 	// init tenant queue manager for per-tenant background workers
 	tqm := tenantqueue.NewManager(cfg.TenantQueueWorkers, cfg.TenantQueueBuffer)
-
-	// Disbursement poller workers (conditional on provider flags)
-	var disbursementPollerWorker *workers.DisbursementPollerWorker
-	var disbursementExecuteWorker *workers.DisbursementExecuteWorker
-	if cfg.Disbursement.EmployeeDisbursementEnabled() {
-		disbursementPollerWorker = workers.NewDisbursementPollerWorker(
-			repos.AdvancePaymentRequest,
-			repos.AdvancePayment,
-			repos.Employee,
-			services.ProviderTransactions,
-			services.DisbursementRegistry,
-			asynqClient.AsynqClient(),
-			services.Wallet,
-			repos.User,
-			services.Email,
-			services.Notification,
-			infra.Logger,
-		)
-		disbursementExecuteWorker = workers.NewDisbursementExecuteWorker(
-			services.ProviderTransactions,
-			services.DisbursementRegistry,
-			repos.Bank,
-			services.Wallet,
-			repos.AdvancePaymentRequest,
-			services.EmployeeNotifier,
-			infra.Logger,
-		)
-		infra.Logger.Info("disbursement poller: enabled")
-	} else {
-		infra.Logger.Info("disbursement poller: disabled (no provider has EnabledForEmployee)")
-	}
-
-	// Wire 9Pay bulk transfer async client
-	if services.NinePayBulkTransfer != nil {
-		services.NinePayBulkTransfer.SetAsynqClient(asynqClient.AsynqClient())
-	}
-
-	// Create 9Pay bulk execute worker (nil if not enabled)
-	var ninePayBulkExecuteWorker *workers.NinePayBulkExecuteWorker
-	if services.NinePayBulkTransfer != nil {
-		ninePayBulkExecuteWorker = workers.NewNinePayBulkExecuteWorker(
-			services.ProviderTransactions,
-			services.DisbursementRegistry,
-			repos.BulkTransferFile,
-			infra.Logger,
-		)
-	}
-
-	// Wallet settlement worker — only when employee disbursement is enabled
-	var walletSettlementWorker *workers.WalletSettlementWorker
-	var statusInquiryPollerWorker *workers.StatusInquiryPollerWorker
-	bulkBatchFinalizer := workers.NewBulkBatchFinalizer(
-		repos.BulkTransferBatch,
-		repos.TxWalletPayment,
-		asynqClient,
-		walletBulkSvc,
-		infra.Logger,
-	)
-	// wallet_bulk row worker. The service itself is constructed earlier
-	// (above initHandlers) so the HTTP handler can capture it.
-	var walletBulkRowWorker *workers.WalletBulkTransferRowWorker
-	if cfg.Disbursement.EmployeeDisbursementEnabled() {
-		walletSettlementWorker = workers.NewWalletSettlementWorker(
-			repos.WalletPayment,
-			repos.AdvancePaymentRequest,
-			repos.Transaction,
-			repos.Ledger,
-			services.TransactionManager,
-			infra.Logger,
-		)
-		statusInquiryPollerWorker = workers.NewStatusInquiryPollerWorker(
-			repos.TxWalletPayment,
-			services.ProviderTransactions,
-			services.DisbursementRegistry,
-			services.BulkTransferPayment,
-			infra.Logger,
-		).WithBulkBatchFinalizer(bulkBatchFinalizer).
-			WithBankRepository(repos.Bank).
-			WithDisbursementTaskEnqueuer(asynqClient.AsynqClient())
-		walletBulkRowWorker = workers.NewWalletBulkTransferRowWorker(
-			services.ProviderTransactions,
-			services.Wallet, // Step-0 balance guard (C6 fix); nil-safe inside worker
-			services.DisbursementRegistry,
-			repos.TxWalletPayment,
-			repos.BulkTransferBatch,
-			asynqClient,
-			infra.Logger,
-		)
-	}
-
-	// OTP default is OFF (config.go:421). Bulk upload is money-moving — surface
-	// a startup warning so production doesn't ship without OTP enforcement.
-	if walletBulkSvc != nil && !cfg.OTP.Enabled {
-		infra.Logger.Warn("SECURITY: /wallet/bulk-transfer routes registered without OTP enforcement. " +
-			"Set OTP_ENABLE=true in production before enabling this feature.")
-	}
 
 	// Register Asynq handlers and periodic tasks
 	asynqHandlers := asynqinfra.NewHandlers(
@@ -325,53 +182,21 @@ func NewContainer(cfg *config.Config, version string) (*Container, error) {
 			repos.Asset,
 			services.AdvancePayment,
 			services.ImportProgress,
-			services.FlexPaySalaryDelivery,
 			cfg.Asset.StoragePath,
 		),
-		workers.NewFlexPaySalaryNotificationWorker(services.FlexPaySalaryDelivery),
-		workers.NewIPNProcessWorker(services.ProviderTransactions, repos.WalletIPN, services.BulkTransferPayment, infra.Logger).
-			WithBulkBatchFinalizer(bulkBatchFinalizer),
-		disbursementPollerWorker,
-		disbursementExecuteWorker,
-		ninePayBulkExecuteWorker,
 		services.BulkTransferTransactionWorker,
 		services.BulkTransferPaymentWorkerConcrete,
 		workers.NewAuditLogWriteWorker(repos.AuditLog),
 		workers.NewPayrollReportEmailWorker(services.Email, services.Idempotency, infra.Logger),
-		walletSettlementWorker,
-		statusInquiryPollerWorker,
 		workers.NewAutoRejectCheckoutWorker(services.Attendance),
 		workers.NewAutoRejectSweepWorker(services.Attendance),
 		workers.NewCreditQuotaWorker(services.Attendance),
 		workers.NewCreditQuotaSweepWorker(services.Attendance),
-		walletBulkRowWorker,
-		walletBulkSvc,
 	)
 	asynqHandlers.SetApprovalRetryProcessor(services.Approval)
 	asynqinfra.RegisterHandlers(asynqServer, asynqHandlers)
 	if err := asynqinfra.RegisterPeriodicTasks(asynqServer, asynqClient); err != nil {
 		return nil, err
-	}
-
-	// Register disbursement poller periodic task (only when enabled)
-	if disbursementPollerWorker != nil {
-		if err := asynqinfra.RegisterDisbursementPoller(asynqServer); err != nil {
-			return nil, err
-		}
-	}
-
-	// Register wallet settlement periodic task (only when employee disbursement enabled)
-	if walletSettlementWorker != nil {
-		if err := asynqinfra.RegisterWalletSettlement(asynqServer); err != nil {
-			return nil, err
-		}
-	}
-
-	// Register status inquiry poller periodic task (only when employee disbursement enabled)
-	if statusInquiryPollerWorker != nil {
-		if err := asynqinfra.RegisterStatusInquiryPoller(asynqServer); err != nil {
-			return nil, err
-		}
 	}
 
 	// Register the auto-reject fallback sweep (always on) — finalizes attendance
@@ -384,23 +209,6 @@ func NewContainer(cfg *config.Config, version string) (*Container, error) {
 	// scheduled 24h credit task was lost (Redis/process outage at check-out).
 	if err := asynqinfra.RegisterCreditQuotaSweep(asynqServer); err != nil {
 		return nil, err
-	}
-
-	// Register wallet bulk transfer sweepers (only when bulk pipeline is wired).
-	if walletBulkSvc != nil {
-		if err := asynqinfra.RegisterWalletBulkSweepers(asynqServer); err != nil {
-			return nil, err
-		}
-	}
-
-	// Startup push: hand TingHire the current OA access token the moment the
-	// app boots (owner requirement: "once payroll app start it should call
-	// webhook immediately to provide latest access token"), so the vendor holds
-	// the latest token even when no rotation runs for another ~24h. Fail-soft
-	// by design — the pusher logs its own failures; this goroutine must never
-	// block or fail container initialization.
-	if services.ZaloTokenPusher != nil {
-		go services.ZaloTokenPusher.PushCurrent(context.Background(), services.ZaloConnect)
 	}
 
 	return &Container{
@@ -419,7 +227,7 @@ func NewContainer(cfg *config.Config, version string) (*Container, error) {
 	}, nil
 }
 
-func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Repositories, db *persistence.Database, redis *persistence.RedisClient, logger *slog.Logger, version string, eventBus domain.EventBus, cfg *config.Config, asynqClient *asynqinfra.Client, clk clock.Clock, walletBulkSvc *wallet_bulk.WalletBulkTransferService) *Handlers {
+func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Repositories, db *persistence.Database, redis *persistence.RedisClient, logger *slog.Logger, version string, eventBus domain.EventBus, cfg *config.Config, asynqClient *asynqinfra.Client, clk clock.Clock) *Handlers {
 	healthCheckers := map[string]handlers.HealthChecker{
 		"database": db,
 		"redis":    redis,
@@ -449,9 +257,9 @@ func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Re
 		Bank:                 handlers.NewBankHandler(services.Bank),
 		Timesheet:            handlers.NewTimesheetHandler(services.Timesheet, services.PayrollReport, services.SettingsConfig, services.PayrollReportExporter, services.PayrollReportByProjectService, services.PayrollReportByProjectExporter, services.Project, services.ProjectEmployee, services.Payrate, services.ProjectPermission, services.EmployeePermission, services.SettlementUpload, repos.Timesheet, services.Audit, clk, services.CashReadiness),
 		TimesheetEditRequest: handlers.NewTimesheetEditRequestHandler(services.TimesheetEditRequest),
-		Payroll:              handlers.NewPayrollHandler(services.Payroll, services.AutoBulkTransfer, services.OnePayExporter, services.Cache, repos.BulkTransferFile, repos.Asset, fileStorage, eventBus),
+		Payroll:              handlers.NewPayrollHandler(services.Payroll, services.Cache, repos.BulkTransferFile, repos.Asset, fileStorage, eventBus),
 		Payrate:              handlers.NewPayrateHandler(services.Payrate, services.Project, services.ProjectPermission, clk),
-		Ledger:               handlers.NewLedgerHandler(services.Ledger, services.OnePayFeeImport, clk),
+		Ledger:               handlers.NewLedgerHandler(services.Ledger, clk),
 		Transaction:          handlers.NewTransactionHandler(services.Transaction, repos.BulkTransferFile, repos.Timesheet, services.Notification, eventBus, clk),
 		Health:               handlers.NewHealthHandler(healthCheckers, version),
 		Notification:         handlers.NewNotificationHandler(services.Notification),
@@ -459,8 +267,6 @@ func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Re
 		Approval:             approvalHandlers.NewHandler(services.Approval),
 		Asset:                handlers.NewAssetHandler(services.Asset),
 		Cache:                handlers.NewCacheHandler(services.Cache, logger),
-		Lender:               handlers.NewLenderHandler(services.Lender),
-		Loan:                 handlers.NewLoanHandler(services.Loan, clk),
 		Email:                handlers.NewEmailHandler(services.Email, asynqClient),
 		Settlement:           handlers.NewSettlementHandler(services.SettlementUpload, repos.Notification, clk),
 		Metric:               handlers.NewMetricHandler(services.Metric, services.Cache, eventBus, clk),
@@ -471,41 +277,10 @@ func initHandlers(services *bootstrapServices.Services, repos *bootstrapRepos.Re
 		EmployeeImport:       employeeImportHandler,
 		DBExport:             handlers.NewDBExportHandler(dbExportSvc.NewDBExportService(db, services.CacheService, cfg.Asset.StoragePath), services.Audit),
 		Push:                 pushHandlers.NewHandler(services.Push),
-		DisbursementWebhook: func() *disbursementHandlers.WebhookHandler {
-			var onepayFileLogger *slog.Logger
-			if cfg.Disbursement.Onepay.Enabled {
-				onepayFileLogger, _ = observability.NewFileLogger("logs/payment-gateway.log")
-			}
-			return disbursementHandlers.NewWebhookHandler(services.DisbursementRegistry, services.ProviderTransactions, asynqClient, repos.WalletIPN, redis, logger, onepayFileLogger)
-		}(),
-		DisbursementSettings: disbursementHandlers.NewSettingsHandler(
-			services.DisbursementRegistry,
-			services.DisbursementFeeSchedule,
-			services.Wallet,
-			cfg.Disbursement.Onepay.EnabledForEmployee,
-			cfg.Disbursement.Ninepay.EnabledForEmployee,
-			cfg.Disbursement.Onepay.EnabledForBulkTransfer,
-			cfg.Disbursement.Ninepay.EnabledForBulkTransfer,
-		),
 		WeeklyPaymentFee: handlers.NewWeeklyPaymentFeeHandler(services.WeeklyPaymentFeeSchedule, clk),
-		ManualDisbursement: disbursementHandlers.NewManualDisbursementHandler(services.DisbursementRegistry, services.ProviderTransactions, repos.Employee, repos.Bank, repos.TransactionCode, services.Wallet, logger, func() *slog.Logger {
-			if cfg.Disbursement.Onepay.Enabled {
-				l, _ := observability.NewFileLogger("logs/payment-gateway.log")
-				return l
-			}
-			return nil
-		}()),
-		ReconciliationExport:   disbursementHandlers.NewReconciliationExportHandler(services.DisbursementRegistry, logger),
 		AdminClock:             adminHandlers.NewClockHandler(clk, cfg.App.Env),
-		AdminZalo:              adminHandlers.NewZaloHandler(services.ZaloConnect),
-		IntegrationReset:       integrationHandlers.NewPasswordResetHandler(services.Integration),
-		IntegrationLookup:      integrationHandlers.NewEmployeeLookupHandler(services.Integration),
-		IntegrationSelfCheckin: integrationHandlers.NewSelfCheckinHandler(services.IntegrationSelfCheckin),
-		IntegrationZaloToken:   integrationHandlers.NewZaloTokenHandler(services.ZaloConnect),
-		VendorTimesheet:        integrationHandlers.NewVendorTimesheetHandler(services.Timesheet, repos.Project, repos.Employee, repos.ProjectEmployee),
 		AdminAttendance:        adminHandlers.NewAttendanceHandler(services.Attendance, repos.AttendanceFailedAttempt, repos.Project, clk, logger),
-		Wallet:                 handlers.NewWalletHandler(services.Wallet, services.DisbursementRegistry, clk),
-		WalletBulkTransfer:     newWalletBulkTransferHandler(walletBulkSvc, logger),
+		Wallet:                 handlers.NewWalletHandler(services.Wallet),
 		AdvPartnerUser:         advPartnerHandlers.NewUserHandler(services.Employee, services.ProjectEmployee, services.User),
 		BCCImport:              timesheetHandlers.NewBCCImportHandler(services.BCCImport, repos.Asset, fileStorage, services.ProjectPermission, services.Audit),
 		Attendance:             attendanceHandlers.NewHandler(services.Attendance, repos.Employee, repos.AttendanceFailedAttempt, clk, logger),
@@ -526,20 +301,19 @@ func initMiddleware(authService *auth.AuthService, authorizationService *auth.Au
 	}
 
 	return &Middleware{
-		Auth:                      middleware.NewAuthMiddleware(authService, nil, nil, cfg.OpsMCP),
+		Auth:                      middleware.NewAuthMiddleware(authService),
 		Authorization:             authorizationMiddleware,
 		LoginRateLimit:            middleware.CreateLoginRateLimit(cfg.Redis.Addr),
 		PasswordResetRateLimit:    middleware.CreatePasswordResetRateLimit(cfg.Redis.Addr, cfg.PasswordReset.RateLimitPerHour),
 		APIRateLimit:              middleware.CreateAPIRateLimit(cfg.Redis.Addr),
 		StrictRateLimit:           middleware.CreateStrictRateLimit(cfg.Redis.Addr),
 		AdBannerClickRateLimit:    middleware.CreateAdBannerClickRateLimit(cfg.Redis.Addr),
-		IntegrationRateLimit:      middleware.CreateIntegrationAPIRateLimit(cfg.Redis.Addr),
 		TenantSemaphore:           middleware.NewTenantSemaphoreMiddleware(tenantLimit),
 		APIMetrics:                middleware.APIMetrics(apiMetricRepo),
 	}
 }
 
-func initScheduler(notificationService *notification.NotificationService, emailService *notification.EmailService, projectEmployeeService *project.ProjectEmployeeService, apiMetricCleanupService *cleanup.APIMetricCleanupService, reconcileService *ledger.ReconcileService, apiMetricRepo domain.APIMetricRepository, advancePaymentReqRepo domain.AdvancePaymentRequestRepository, walletSvc wallet.WalletService, flexPayReconciliationSvc *domainServices.FlexPayReconciliationService, zaloConnectSvc *zaloconnect.Service, aggregateRecomputeSvc *project.AggregateRecomputeService, walletBalanceAlertSvc *notification.WalletBalanceAlertService, assetSvc *asset.AssetService, cfg *config.Config, logger *slog.Logger) *scheduler.Scheduler {
+func initScheduler(notificationService *notification.NotificationService, emailService *notification.EmailService, projectEmployeeService *project.ProjectEmployeeService, apiMetricCleanupService *cleanup.APIMetricCleanupService, reconcileService *ledger.ReconcileService, apiMetricRepo domain.APIMetricRepository, advancePaymentReqRepo domain.AdvancePaymentRequestRepository, flexPayReconciliationSvc *domainServices.FlexPayReconciliationService, aggregateRecomputeSvc *project.AggregateRecomputeService, walletBalanceAlertSvc *notification.WalletBalanceAlertService, assetSvc *asset.AssetService, cfg *config.Config, logger *slog.Logger) *scheduler.Scheduler {
 	s := scheduler.NewScheduler(
 		logger,
 		cfg.Scheduler.Timezone,
@@ -555,9 +329,7 @@ func initScheduler(notificationService *notification.NotificationService, emailS
 		reconcileService,
 		apiMetricRepo,
 		advancePaymentReqRepo,
-		walletSvc,
 		flexPayReconciliationSvc,
-		zaloConnectSvc,
 		aggregateRecomputeSvc,
 		walletBalanceAlertSvc,
 		assetSvc,
@@ -565,17 +337,4 @@ func initScheduler(notificationService *notification.NotificationService, emailS
 	)
 
 	return s
-}
-
-// newWalletBulkTransferHandler keeps the handler absent when the wallet bulk
-// transfer service is not wired (no employee-disbursement provider). That is
-// what routes_wallet.go checks before mounting /wallet/bulk-transfer/*, and what
-// the integration probe treats as "not enabled in this deployment". Building the
-// handler around a nil service instead left the routes registered and every call
-// panicked into an empty 500 — indistinguishable from a real outage.
-func newWalletBulkTransferHandler(svc *wallet_bulk.WalletBulkTransferService, logger *slog.Logger) *handlers.WalletBulkTransferHandler {
-	if svc == nil {
-		return nil
-	}
-	return handlers.NewWalletBulkTransferHandler(svc, logger)
 }

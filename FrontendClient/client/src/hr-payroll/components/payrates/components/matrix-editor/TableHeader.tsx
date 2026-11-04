@@ -73,7 +73,7 @@ export function TableHeader({
               >
                 <span className="break-words text-xs font-semibold text-foreground">{hourType}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {isFlexible ? '₫/ca' : '₫/giờ'}
+                  {isFlexible ? 'KES/shift' : 'KES/hour'}
                 </span>
               </button>
             )}

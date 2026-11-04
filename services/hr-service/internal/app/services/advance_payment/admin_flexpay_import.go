@@ -153,11 +153,6 @@ func (s *Service) ImportFlexPayFile(ctx context.Context, file *excelize.File, fo
 
 	processedRows := 0
 	var advancePayments []*domain.AdvancePayment
-	// Collect eligible employees for salary ZNS notifications. The last row for
-	// an assignment wins, matching the advance-payment import dedupe rule.
-	var employeeZNSData []dto.EmployeeZNSData
-	employeeZNSIndex := make(map[string]int)
-
 	// A period may be funded by the workbook OR by self check-in, never both.
 	// The per-employee answer is memoized because a workbook lists one row per
 	// employee and the same person can appear on several sheets.
@@ -273,35 +268,7 @@ func (s *Service) ImportFlexPayFile(ctx context.Context, file *excelize.File, fo
 				result.AssignmentsSkipped++
 			}
 
-			// Resolved once and reused: the notification cohort must match the
-			// quota cohort exactly.
 			isCheckInPeriod := checkInPeriods.isCheckInPeriod(ctx, assignment, employee.ID)
-
-			if shouldNotifyFlexPayZNS(hanMuc, mobile, assignment, isCheckInPeriod) {
-				// The card's "Hạn cuối" must match the ENFORCED request window:
-				// requests for payroll month M are accepted through
-				// RequestCutoffDay of month M+1 (inclusive) — not the end of
-				// month M. Invalid months cannot be made requestable, so they
-				// must not produce a notification.
-				expiryDate, err := time.Parse("2006-01", forMonth)
-				if err == nil {
-					key := fmt.Sprintf("%d:%d", project.ID, employee.ID)
-					notification := dto.EmployeeZNSData{
-						ProjectID:    project.ID,
-						EmployeeID:   employee.ID,
-						EmployeeName: fullName,
-						Mobile:       mobile,
-						Amount:       int64(hanMuc),
-						ExpiryDate:   expiryDate.AddDate(0, 1, clock.RequestCutoffDay-1),
-					}
-					if pos, exists := employeeZNSIndex[key]; exists {
-						employeeZNSData[pos] = notification
-					} else {
-						employeeZNSIndex[key] = len(employeeZNSData)
-						employeeZNSData = append(employeeZNSData, notification)
-					}
-				}
-			}
 
 			// Only create advance payment record if amount column is provided and > 0
 			if hanMuc > 0 {
@@ -378,21 +345,7 @@ func (s *Service) ImportFlexPayFile(ctx context.Context, file *excelize.File, fo
 		}
 	}
 
-	// Attach employee ZNS data to result for notification sending
-	result.EmployeeZNSData = employeeZNSData
-	s.logger.Info("collected employee data for ZNS", "count", len(employeeZNSData))
-
 	return result, nil
-}
-
-// shouldNotifyFlexPayZNS keeps the notification recipient cohort identical to
-// the import path that creates requestable FlexPay quota. A period the employee
-// spent on self check-in earns no requestable quota from this upload and must
-// not receive the upload notice either.
-func shouldNotifyFlexPayZNS(amount uint64, mobile string, assignment *domain.ProjectEmployee, isCheckInPeriod bool) bool {
-	return amount > 0 && mobile != "" && assignment != nil &&
-		assignment.PaymentSchedule == string(domain.PaymentScheduleFlexible) &&
-		!isCheckInPeriod
 }
 
 func resolveUploadDate(uploadedAt time.Time) string {

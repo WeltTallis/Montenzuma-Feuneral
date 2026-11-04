@@ -30,17 +30,17 @@ func (s *Seeder) seedProjectEmployees(ctx context.Context, db *gorm.DB) error {
 		return fmt.Errorf("find employees: %w", err)
 	}
 
-	// Use realistic Vietnamese position hierarchy - remove unused variable
+	// Use a weighted distribution of representative employee roles.
 
 	// Position distribution weights (more junior positions than senior)
 	positionWeights := map[string]int{
-		"thực tập":       15, // 15%
-		"phổ thông":      35, // 35%
-		"có kinh nghiệm": 25, // 25%
-		"chuyên môn":     15, // 15%
-		"tổ trưởng":      5,  // 5%
-		"giám sát":       3,  // 3%
-		"kỹ thuật":       2,  // 2%
+		"Intern":             15,
+		"General Worker":     35,
+		"Experienced Worker": 25,
+		"Skilled Worker":     15,
+		"Team Leader":        5,
+		"Supervisor":         3,
+		"Technician":         2,
 	}
 
 	// Create weighted position selector

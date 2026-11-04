@@ -47,9 +47,9 @@ func (s *Seeder) seedPayrates(ctx context.Context, db *gorm.DB) error {
 		baseMultiplier := 1.0
 
 		// Adjust rates based on project characteristics
-		if project.TotalReceivedVND > 5000000000 { // > 5 billion VND = high-budget project
+		if project.TotalReceivedVND > 5000000 { // > KES 5 million = high-budget project
 			baseMultiplier = 1.3
-		} else if project.TotalReceivedVND > 2000000000 { // > 2 billion VND = medium budget
+		} else if project.TotalReceivedVND > 2000000 { // > KES 2 million = medium budget
 			baseMultiplier = 1.15
 		}
 
@@ -57,12 +57,12 @@ func (s *Seeder) seedPayrates(ctx context.Context, db *gorm.DB) error {
 		positions := projectPositions[project.ID]
 		if len(positions) == 0 {
 			// Fallback: use standard rates if no employees assigned yet
-			positions = map[string]bool{"phổ thông": true}
+			positions = map[string]bool{"General Worker": true}
 		}
 
 		for position := range positions {
 			// Get base rates for this position
-			baseRates := GenerateRealisticPayrates(position, int(float64(vietnamesePositions[position].BaseRate)*baseMultiplier))
+			baseRates := GenerateRealisticPayrates(position, int(float64(kenyanPositions[position].BaseRate)*baseMultiplier))
 
 			// Add some project-specific variation (±10%)
 			payrateConfig := make(map[string]int)
@@ -91,7 +91,7 @@ func (s *Seeder) seedPayrates(ctx context.Context, db *gorm.DB) error {
 
 		// If no specific positions, create a general payrate
 		if len(positions) == 0 {
-			baseRates := GenerateRealisticPayrates("phổ thông", int(float64(25000)*baseMultiplier))
+			baseRates := GenerateRealisticPayrates("General Worker", int(float64(250)*baseMultiplier))
 			payrateJSON, _ := json.Marshal(baseRates)
 
 			fromDate := clock.Now().AddDate(0, -6, 0)
@@ -110,6 +110,6 @@ func (s *Seeder) seedPayrates(ctx context.Context, db *gorm.DB) error {
 		}
 	}
 
-	fmt.Printf("    Created %d position-based payrate configurations following Vietnamese labor standards\n", payrateCount)
+	fmt.Printf("    Created %d position-based payrate configurations with Kenyan shilling rates\n", payrateCount)
 	return nil
 }

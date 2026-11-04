@@ -13,7 +13,7 @@ import (
 )
 
 // Duplicate mobile numbers are permitted by the schema but the number is a
-// credential (Zalo password reset, phone login), so a single-row lookup must
+// credential for phone login, so a single-row lookup must
 // refuse to choose between employees rather than returning an arbitrary row.
 func TestEmployeeRepository_GetByMobile_FailsClosedOnDuplicates(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/mobile.db"), &gorm.Config{})

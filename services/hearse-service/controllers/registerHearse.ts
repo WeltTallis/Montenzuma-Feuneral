@@ -1,14 +1,17 @@
-import path from 'path';
-import fs from 'fs';
-import multer, { FileFilterCallback } from 'multer';
-import { Request, Response } from 'express';
-import asyncHandler from 'express-async-handler';
-import { getHearsePool } from '../database';
-import { hasHearseColumn } from '../utilities/hearseSchema';
+
+
 import { hearseCacheGet, hearseCacheSet, invalidateHearseCache, FLEET_CACHE_TTL } from '../utilities/hearseCache';
 import { getBranchRegistry } from '../utilities/branchNames';
 import { emitHearseDataChanged } from '../utilities/hearseRealtime';
 import { getKenyaTimeISO, getKenyaDate } from '@montezuma/shared-utils';
+import { hasHearseColumn } from '../utilities/hearseSchema';
+import multer, { FileFilterCallback } from 'multer';
+import asyncHandler from 'express-async-handler';
+import { Request, Response } from 'express';
+import { getHearsePool } from '../database';
+import path from 'path';
+import fs from 'fs';
+
 
 // Hearse images live in the ONE shared uploads folder (/opt/storage/uploads in
 // production, bind-mounted from the host) and are served to browsers at
@@ -27,7 +30,7 @@ const storage = multer.diskStorage({
         const ext = path.extname(file.originalname);
         cb(null, `hearse-${uniqueSuffix}${ext}`);
     },
-    
+
 });
 
 const upload = multer({ storage });
@@ -42,7 +45,7 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
     try {
 
         const dbName = (req as any).tenant?.db_name;
-        
+
         if (!dbName) {
             res.status(400).json({ success: false, message: 'Tenant database not found' });
             return;
@@ -133,9 +136,9 @@ export const registerHearse = asyncHandler(async (req: Request, res: Response) =
         const placeholders = insertValues.map(() => '?').join(', ');
         const escapedFields = insertFields.map(f => `\`${f}\``).join(', ');
         const query = `INSERT INTO hearses (${escapedFields}) VALUES (${placeholders})`;
-        
+
         const [result] = await pool.query(query, insertValues) as any;
-        
+
         // Emit real-time update via Socket.IO
         const io = req.app.get('io');
 
@@ -265,7 +268,7 @@ export const updateHearse = asyncHandler(async (req: Request, res: Response) => 
                 values.push(branch_id);
             }
         }
-        
+
         if (driver_id !== undefined && driver_id !== null) { fields.push('driver_id = ?'); values.push(driver_id); }
         if (description) { fields.push('description = ?'); values.push(description); }
 
@@ -337,10 +340,6 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
         const pool = await getHearsePool();
 
         // ACCURACY — this table lives in the SHARED operations database and MANY
-        // tenants write hearses into it. Every read MUST be scoped by the calling
-        // tenant's id (the frontend sends x-tenant-id). A hearse fleet is
-        // TENANT-wide, so we never filter by branch here — but we ALWAYS filter by
-        // tenant so one tenant can never see another tenant's hearses.
         const headerOf = (name: string): string | null => {
             const v = (req.headers as any)[name];
             return Array.isArray(v) ? (v[0] as string) : (v ? String(v) : null);
@@ -348,11 +347,8 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
         const tenantId = headerOf('x-tenant-id') || (req.query as any)?.tenant_id || (req as any).tenant?.id || (req as any).tenant?.tenant_id || null;
         const tenantSlug = headerOf('x-tenant-slug') || (req.query as any)?.tenant_slug || (req as any).tenant?.tenant_slug || (req as any).tenantSlug || null;
 
-        // ─── REDIS CACHE ─────────────────────────────────────────────────────
-        // The fleet page is a pure tenant-scoped read, so it is the safest thing
-        // in this service to cache (nothing to join, no date math). Only cache
-        // when x-tenant-id is actually present: without it the SQL below runs
-        // UNSCOPED against the shared operations DB and must not be memoised.
+        // ─── REDIS CACHE 
+
         const cacheKey = 'fleet:list';
         if (tenantId != null) {
             const cached = await hearseCacheGet<any>(req, cacheKey);

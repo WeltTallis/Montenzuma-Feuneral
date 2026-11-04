@@ -2,7 +2,7 @@ import { protect, authorizeAny } from '../../../services/app-global/middlewares/
 import { Router } from 'express';
 import {
     createPostmortemRequest, getPostmortemRequests, getPostmortemStats, sendPostmortemRequest, updatePostmortemRequestStatus
-} from '../controllers/postmortemRequestControl';
+} from '../controllers/autopsy/postmortemRequestControl';
 
 const router = Router();
 router.use(protect);

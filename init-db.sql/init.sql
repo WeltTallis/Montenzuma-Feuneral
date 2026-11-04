@@ -166,6 +166,8 @@ CREATE TABLE IF NOT EXISTS deceased (
     created_at VARCHAR(255),
     updated_at VARCHAR(255),
     is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at VARCHAR(255) NULL,
+    deleted_by VARCHAR(255) NULL,
     branch_code VARCHAR(50) NULL,
     INDEX idx_tenant_slug (tenant_slug),
     INDEX idx_status (admission_status),

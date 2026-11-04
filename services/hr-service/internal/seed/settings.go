@@ -15,23 +15,22 @@ func (s *Seeder) seedSettings(ctx context.Context, db *gorm.DB) error {
 		value     string
 		valueType string
 	}{
-		{"SourceAccountName", "Công ty TNHH Quản lý Nhân sự Việt Nam", "string"},
+		{"SourceAccountName", "RestPoint Kenya", "string"},
 		{"SourceAccountNumber", "1234567890123", "string"},
-		{"SourceBankName", "Ngân hàng TMCP Ngoại thương Việt Nam", "string"},
-		{"SourceBankBranch", "Chi nhánh Hà Nội", "string"},
-		{"DefaultCurrency", "₫", "string"},
-		{"TaxRate", "10", "number"},
-		{"CompanyName", "Công ty TNHH Quản lý Nhân sự Việt Nam", "string"},
-		{"CompanyAddress", "123 đường Nguyễn Trãi, Quận Thanh Xuân, Hà Nội", "string"},
-		{"CompanyPhone", "024-1234-5678", "string"},
-		{"CompanyEmail", "info@payroll-company.vn", "string"},
+		{"SourceBankName", "Kenyan Bank", "string"},
+		{"SourceBankBranch", "Nairobi", "string"},
+		{"DefaultCurrency", "KES", "string"},
+		{"CompanyName", "RestPoint Kenya", "string"},
+		{"CompanyAddress", "Nairobi, Kenya", "string"},
+		{"CompanyPhone", "+254700000000", "string"},
+		{"CompanyEmail", "payroll@example.co.ke", "string"},
 		{"AutoApproveTimesheets", "false", "boolean"},
 		{"MaxHoursPerDay", "12", "number"},
 		{"MinHoursPerDay", "1", "number"},
-		{"bulk_transfer_workbook_limit_vnd", "400000000", "number"},
+		{"bulk_transfer_workbook_limit_vnd", "4000000", "number"},
 		{"self_check_in_advance_percentage", "70", "number"},
 		{"self_check_in_advance_hold_hours", "24", "number"},
-		{"wallet_balance_alert_threshold_vnd", "50000000", "number"},
+		{"wallet_balance_alert_threshold_vnd", "250000", "number"},
 		// Seeded so GET /settings/key/transfer_bank_visible stops 404ing for
 		// environments where the admin has never saved the sao kê bank panel
 		// (the settings form creates the row on first save).

@@ -448,8 +448,6 @@ const AdvancePaymentsPageMobile = () => {
         {!isAdvPartner && (
           <WalletBalanceCard
             compact
-            monthlyProviderFee={page.providerFees.monthlyProviderFee}
-            totalProviderFee={page.providerFees.totalProviderFee}
             className="rounded-2xl border border-utility-gray-300 shadow-[0_16px_42px_-30px_rgba(15,23,42,0.75)]"
           />
         )}

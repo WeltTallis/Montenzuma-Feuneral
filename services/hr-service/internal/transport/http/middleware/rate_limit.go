@@ -251,92 +251,6 @@ func normalizeEmailForRateLimit(email string) string {
 	return strings.TrimSpace(n)
 }
 
-// CreateZaloResetRateLimit caps /auth/zalo-reset/request per normalized MOBILE
-// number (read from the body), falling back to client IP. Mirrors
-// CreatePasswordResetRateLimit but keys on phone digits. perHour is the allowed
-// requests per normalized mobile per hour (default 3).
-func CreateZaloResetRateLimit(redisURL string, perHour int) gin.HandlerFunc {
-	if perHour <= 0 {
-		perHour = 3
-	}
-	rate := fmt.Sprintf("%d-H", perHour)
-	return createRateLimiterWithKey(RateLimitConfig{Rate: rate, RedisURL: redisURL}, zaloResetMobileKeyGetter)
-}
-
-// zaloResetMobileKeyGetter extracts the mobile from the request body and
-// returns a per-mobile limiter key. Phone digits are normalized (strip
-// non-digits, drop leading 0/84) so "0987...", "+8498...", "8498...", and
-// "0987 654 321" all collapse to one bucket. Body is restored after reading
-// (same critical body-restore as passwordResetEmailKeyGetter).
-func zaloResetMobileKeyGetter(c *gin.Context) string {
-	const maxBody = 4 << 10
-	if c.Request != nil && c.Request.Body != nil {
-		raw, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody))
-		c.Request.Body = io.NopCloser(bytes.NewReader(raw)) // CRITICAL: restore body
-		if err == nil {
-			var payload struct {
-				Mobile string `json:"mobile"`
-			}
-			if json.Unmarshal(raw, &payload) == nil {
-				if m := strings.TrimSpace(payload.Mobile); m != "" {
-					return "zreset-mobile:" + normalizeMobileForRateLimit(m)
-				}
-			}
-		}
-	}
-	return "ip:" + c.ClientIP()
-}
-
-// normalizeMobileForRateLimit strips non-digits and drops the leading 0 or 84
-// country code so domestic and international forms of the same number share a
-// bucket. A number with no digits falls back to the raw trimmed string.
-func normalizeMobileForRateLimit(mobile string) string {
-	var b strings.Builder
-	for _, r := range mobile {
-		if r >= '0' && r <= '9' {
-			b.WriteRune(r)
-		}
-	}
-	digits := b.String()
-	if digits == "" {
-		return mobile
-	}
-	// Strip leading "84" country code first (so "84987654321" → "987654321"),
-	// then any remaining leading "0" (so "0987654321" → "987654321"). The
-	// order matters: a number already starting "840..." would lose the 84 then
-	// the 0, collapsing to the right bucket.
-	digits = strings.TrimPrefix(digits, "84")
-	digits = strings.TrimLeft(digits, "0")
-	return digits
-}
-
-// CreateZaloResetConfirmRateLimit caps /auth/zalo-reset/confirm and /resend per
-// otp_session_id (read from the body), falling back to client IP. Bounds
-// brute-force guesses against a harvested session id to 10/hour.
-func CreateZaloResetConfirmRateLimit(redisURL string) gin.HandlerFunc {
-	return createRateLimiterWithKey(RateLimitConfig{Rate: "10-H", RedisURL: redisURL}, zaloResetSessionKeyGetter)
-}
-
-// zaloResetSessionKeyGetter keys the confirm/resend limiter on the otp_session_id.
-func zaloResetSessionKeyGetter(c *gin.Context) string {
-	const maxBody = 4 << 10
-	if c.Request != nil && c.Request.Body != nil {
-		raw, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody))
-		c.Request.Body = io.NopCloser(bytes.NewReader(raw)) // CRITICAL: restore body
-		if err == nil {
-			var payload struct {
-				OTPSessionID string `json:"otp_session_id"`
-			}
-			if json.Unmarshal(raw, &payload) == nil {
-				if sid := strings.TrimSpace(payload.OTPSessionID); sid != "" {
-					return "zreset-sid:" + sid
-				}
-			}
-		}
-	}
-	return "ip:" + c.ClientIP()
-}
-
 // CreateAdBannerClickRateLimit caps ad CTA click reporting per ACCOUNT (the
 // authenticated user id), not per IP. Per-IP keys on this stack share one
 // Redis counter across every per-IP limiter — the global API limiter inflates
@@ -360,24 +274,4 @@ func adBannerClickAccountKeyGetter(c *gin.Context) string {
 	// Unauthenticated fallback (normally unreachable — Authenticate runs first
 	// and rejects); namespaced so it never joins the shared per-IP counter.
 	return "adclick-ip:" + c.ClientIP()
-}
-
-// CreateIntegrationAPIRateLimit caps the machine integration endpoints per API
-// key (the caller is a machine, so per-IP would lump unrelated machines behind
-// one NAT together). Falls back to a namespaced IP bucket when no key id is in
-// context, so it never joins the shared per-IP API counter.
-func CreateIntegrationAPIRateLimit(redisURL string) gin.HandlerFunc {
-	return createRateLimiterWithKey(
-		RateLimitConfig{Rate: "60-H", RedisURL: redisURL},
-		integrationAPIKeyKeyGetter,
-	)
-}
-
-func integrationAPIKeyKeyGetter(c *gin.Context) string {
-	if v, ok := c.Get(constants.CtxAPIKeyID); ok {
-		if id, ok := v.(uint); ok && id != 0 {
-			return "integ-key:" + strconv.FormatUint(uint64(id), 10)
-		}
-	}
-	return "integ-ip:" + c.ClientIP()
 }

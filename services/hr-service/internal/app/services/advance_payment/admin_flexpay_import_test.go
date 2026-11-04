@@ -113,41 +113,11 @@ func TestResolveUploadDate_FallsBackToBusinessClockWhenAssetTimestampMissing(t *
 	}
 }
 
-func TestShouldNotifyFlexPayZNS_OnlyForRequestableFlexibleEmployees(t *testing.T) {
-	eligible := &domain.ProjectEmployee{PaymentSchedule: string(domain.PaymentScheduleFlexible)}
-	weekly := &domain.ProjectEmployee{PaymentSchedule: string(domain.PaymentScheduleWeekly)}
-
-	tests := []struct {
-		name            string
-		amount          uint64
-		mobile          string
-		assignment      *domain.ProjectEmployee
-		isCheckInPeriod bool
-		want            bool
-	}{
-		{name: "eligible flexible employee", amount: 1_000_000, mobile: "0366178061", assignment: eligible, want: true},
-		{name: "check-in period", amount: 1_000_000, mobile: "0366178061", assignment: eligible, isCheckInPeriod: true},
-		{name: "non-flexible employee", amount: 1_000_000, mobile: "0366178061", assignment: weekly},
-		{name: "missing mobile", amount: 1_000_000, assignment: eligible},
-		{name: "zero amount", mobile: "0366178061", assignment: eligible},
-		{name: "missing assignment", amount: 1_000_000, mobile: "0366178061"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := shouldNotifyFlexPayZNS(tt.amount, tt.mobile, tt.assignment, tt.isCheckInPeriod)
-			if got != tt.want {
-				t.Fatalf("shouldNotifyFlexPayZNS() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 // TestImportFlexPayFile_SkipsCheckInEnabledEmployeeQuota pins the boundary
 // between the two quota sources: the admin workbook may top up the quota of
 // flexible-pay employees, but a self-check-in employee's quota comes from
 // check-in/out earnings and the upload must leave it untouched (while still
-// creating their employee/assignment rows and notification entry).
+// creating their employee/assignment rows).
 func TestImportFlexPayFile_SkipsCheckInEnabledEmployeeQuota(t *testing.T) {
 	project := &domain.Project{ID: 10, Code: "PROJ1"}
 	userID := uint(77)

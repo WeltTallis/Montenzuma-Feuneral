@@ -616,8 +616,8 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
             currency: data.currency || 'KES',
             chargeType: data.chargeType || 'daily',
             dailyRate: data.dailyRate || '',
-            hourlyRate: data.hourlyRate || '',
-            usdRate: data.usdRate || '130',
+            hourlyRate: data.hourlyRate ?? '0',
+            usdRate: data.usdRate ?? '',
           });
           setProvenance({
             loaded: true,
@@ -946,7 +946,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
                     name="usdRate"
                     value={formatVal(chargeSettings.usdRate)}
                     onChange={handleInputChange}
-                    placeholder="130"
+                    placeholder="Enter exchange rate"
                   />
                   <ControlSuffix>KES</ControlSuffix>
                 </Control>

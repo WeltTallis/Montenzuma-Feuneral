@@ -24,9 +24,8 @@ func (f *fakeTimesheetReader) GetAccrualCohort(_ context.Context, _ domain.Times
 	return f.cohort, nil
 }
 
-// fakeWallet implements only WalletBalanceReader. It deliberately has NO
-// SyncBalance/CreateTopup methods — the forecast's port type makes those
-// unreachable, which is the structural form of the advisory invariant.
+// fakeWallet implements only WalletBalanceReader to preserve the advisory
+// service boundary in tests.
 type fakeWallet struct {
 	balance     *wallet.WalletBalance
 	err         error
@@ -185,9 +184,9 @@ func TestGetCashReadiness_Deterministic(t *testing.T) {
 
 func TestGetCashReadiness_AdvisoryInvariant(t *testing.T) {
 	// The service depends on WalletBalanceReader (GetBalance only). It has no
-	// type-level access to SyncBalance/CreateTopup, so the invariant is enforced
-	// by the port. This test confirms the wallet is read via GetBalance and the
-	// forecast still returns when the wallet read fails (defensive).
+	// write access to wallet records, so the invariant is enforced by the port.
+	// This test confirms the wallet is read via GetBalance and the forecast
+	// still returns when the wallet read fails (defensive).
 	ts := &fakeTimesheetReader{cohort: currentCycleApproved(100_000_000)}
 	w := &fakeWallet{balance: &wallet.WalletBalance{Available: 30_000_000}}
 	svc := newSvc(t, ts, w, july3)

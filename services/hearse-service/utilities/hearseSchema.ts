@@ -1,18 +1,5 @@
 import { getHearsePool } from '../database';
-
-// ============================================
 // HEARSE SCHEMA CAPABILITY HELPERS
-// ============================================
-// The hearse-service reads/writes the SHARED `hearses` table in the
-// operations database. Different deployments may be on slightly different
-// schema versions (e.g. a column added by a migration that hasn't run yet,
-// or a DB provisioned out-of-band). These helpers report which optional
-// columns actually exist so callers can build their INSERT/UPDATE statements
-// against the *effective* schema instead of assuming a column is present and
-// failing with "Unknown column".
-//
-// Mirrors the ensureHoldColumns pattern used in workshop-service.
-// ============================================
 
 const CACHE_TTL_MS = 60_000;
 let cache: { at: number; columns: Set<string> } | null = null;

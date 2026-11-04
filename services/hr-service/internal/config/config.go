@@ -25,15 +25,11 @@ type Config struct {
 	WebSocket     WebSocketConfig
 	Scheduler     SchedulerConfig
 	Asset         AssetConfig
-	Disbursement  DisbursementConfig
 	OTP           OTPConfig
 	Google        GoogleConfig
 	Captcha       CaptchaConfig
 	PasswordReset PasswordResetConfig
-	Zalo          ZaloConfig
-	SelfCheckin   SelfCheckinConfig
 	CashForecast  CashForecastConfig
-	OpsMCP        OpsMCPConfig
 	// Tenant concurrency limit for per-tenant middleware
 	TenantConcurrencyLimit int
 	// Request timeout applied to each incoming HTTP request (e.g. "10s")
@@ -89,48 +85,7 @@ type PasswordResetConfig struct {
 	Enabled          bool          // PASSWORD_RESET_ENABLE (default true — low-risk self-service)
 	TokenTTL         time.Duration // PASSWORD_RESET_TOKEN_TTL (default 30m)
 	RateLimitPerHour int           // PASSWORD_RESET_RATE_LIMIT (default 3, per normalized email)
-	ResetURL         string        // PASSWORD_RESET_URL (default "https://tingting.vip/reset-password")
-}
-
-// ZaloConfig backs the Zalo-OTP password-reset feature for employees. These are
-// BOOTSTRAP-ONLY SEED VALUES — on first boot, if the zalo.credentials settings
-// row is empty, it is seeded from here. Thereafter the admin UI is authoritative
-// and these are ignored. The runtime toggle lives in DB (zalo.enabled), so
-// `Enabled` here only controls the first-boot seed value.
-type ZaloConfig struct {
-	Enabled    bool // ZALO_RESET_ENABLE (default false) — first-boot seed only
-	UseSandbox bool // ZALO_USE_SANDBOX (default false) — dev only: mock the ZNS send, log the OTP
-	AppID      string
-	SecretKey  string
-	TemplateID string // default "619684" (OTP-ZNS-v2)
-	CodeTTL    time.Duration
-	// OA token delivery to TingHire. Payroll is the sole rotator of the shared
-	// Zalo OA token pair; the vendor pulls the access token from the
-	// integration endpoint and additionally receives it pushed to this webhook
-	// after every rotation and once at startup. The refresh token never leaves
-	// payroll. Both values are optional — unset disables the push lane.
-	ChatbotTokenWebhookURL string // CHATBOT_OA_TOKEN_WEBHOOK_URL
-	ChatbotTokenWebhookKey string // CHATBOT_OA_TOKEN_WEBHOOK_KEY (sent as X-API-Key)
-}
-
-// SelfCheckinConfig gates the vendor self check-in flow. SupportedProjectCodes
-// lists the project codes whose employees may enable/disable via the
-// integration API, so rollout to a new project is a config change, not a code
-// edit. TemplateID selects a dedicated ZNS template; empty falls back to the
-// reset template until one is approved in the Zalo console.
-type SelfCheckinConfig struct {
-	TemplateID            string
-	SupportedProjectCodes []string
-}
-
-// OpsMCPConfig backs the payroll-ops-mcp agent channel (pk_ops_* keys).
-// Disabled is the kill switch: when set, every ops-key call — in-flight at
-// the next request cycle and every new one — fails closed with a structured
-// 503. RatePerMin is the ops-tier per-key budget, deliberately separate from
-// every other rate-limit pool.
-type OpsMCPConfig struct {
-	Disabled   bool // PAYROLL_OPS_MCP_DISABLED (default false)
-	RatePerMin int  // PAYROLL_OPS_MCP_RATE_PER_MIN (default 120)
+	ResetURL         string        // PASSWORD_RESET_URL (default "https://restpoint.co.ke/reset-password")
 }
 
 // GoogleConfig holds Google OIDC settings. GoogleClientID is the OAuth client
@@ -228,20 +183,10 @@ type AssetConfig struct {
 	CleanupDays int
 }
 
-type DisbursementConfig struct {
-	Ninepay NinepayConfig
-	Onepay  OnepayConfig
-}
-
-func (d DisbursementConfig) EmployeeDisbursementEnabled() bool {
-	return (d.Ninepay.Enabled && d.Ninepay.EnabledForEmployee) ||
-		(d.Onepay.Enabled && d.Onepay.EnabledForEmployee)
-}
-
 // CashForecastConfig governs the advisory timesheet cash-readiness forecast on
 // /admin/timesheet ("how much cash to prepare for the next weekly bulk
-// transfer"). Like the wallet forecast, this is DISPLAY ONLY — it never feeds
-// SyncBalance/CreateTopup or any disbursement.
+// transfer"). Like the wallet forecast, this is DISPLAY ONLY — it never
+// initiates a bank transfer or modifies wallet records.
 //
 // All fields optional; defaults give a p95 band, a 5000-draw Monte Carlo, a
 // 6-month cohort lookback (≈ 24 Ky observations across Ky 1–4), a 2-day
@@ -258,101 +203,6 @@ type CashForecastConfig struct {
 	CoverageMin               float64 // central interval coverage lower bound, default 0.85
 	CoverageMax               float64 // central interval coverage upper bound, default 0.95
 }
-
-// NinepayConfig holds the credentials, endpoint, and feature flags for
-// the 9pay disbursement provider. All values are env-only; nothing is
-// read from the Settings DB at runtime so a deploy fully describes what
-// 9pay can and cannot do.
-//
-// Two booleans gate the provider:
-//
-//   - Enabled (ENABLE_NINEPAY) — master switch. When false, the provider
-//     is not registered, debug routes 404, and the IPN webhook 404. The
-//     entire 9pay surface is dormant.
-//   - EnabledForEmployee (ENABLE_NINEPAY_FOR_EMPLOYEE) — only meaningful
-//     when Enabled=true. Routes employee/payroll disbursements through
-//     9pay vs. the existing flow. When false, 9pay can be exercised via
-//     the debug rig in isolation while real money continues through the
-//     pre-existing path.
-//
-// Blank credentials (MerchantKey/SecretKey/SecretKeyChecksum) suppress
-// registration even when Enabled=true — boot logs say so but does not
-// crash. This lets staging and prod share an env file with credentials
-// missing in the lower environment.
-type NinepayConfig struct {
-	Enabled                bool
-	EnabledForEmployee     bool
-	EnabledForBulkTransfer bool
-	MerchantKey            string
-	SecretKey              string
-	SecretKeyChecksum      string
-	Endpoint               string
-	// WebEndpoint is the host serving the 9pay merchant-web (back-office)
-	// API — distinct from the payment API in Endpoint. Production
-	// be.9pay.vn vs payment.9pay.vn; sandbox sand-be.9pay.vn vs
-	// sand-payment.9pay.vn. The reconciliation export endpoints
-	// (/api/transaction/disbursement/export, /api/transaction/download)
-	// live here. In dev we point both at the local mock.
-	WebEndpoint string
-	// Merchant-portal OAuth fields used for the merchant-web export
-	// endpoints. They authenticate via Laravel session login + OAuth
-	// authorization_code grant — distinct from the HMAC scheme used by
-	// the disbursement payment API. Empty WebUsername/WebPassword means
-	// "OAuth not configured"; the export endpoint will fail closed in
-	// that case (and works only against the local mock).
-	WebUsername     string
-	WebPassword     string
-	WebAccountURL   string
-	WebDeviceID     string
-	WebClientID     string
-	WebClientSecret string
-	WebRedirectURI  string
-	// WebMerchantID is the numeric 9pay merchant ID used as the
-	// merchant_id query param on the reconciliation export endpoint
-	// (distinct from MerchantKey, which is the alphanumeric HMAC key).
-	// Empty means "no filter" — return all transactions visible to the
-	// authenticated user. Set to scope exports to a single merchant when
-	// the portal account has access to multiple.
-	WebMerchantID string
-	TPS           int
-	// QueueBuffer is the buffered-channel capacity for the transfer queue
-	// wrapper. When full, callers receive an immediate error (back-pressure).
-	QueueBuffer int
-}
-
-// OnepayConfig holds the credentials, endpoint, and feature flags for
-// the OnePay disbursement provider. All values are env-only; nothing is
-// read from the Settings DB at runtime.
-//
-// Two booleans gate the provider:
-//
-//   - Enabled (ENABLE_ONEPAY) — master switch. When false, the provider
-//     is not registered and all OnePay routes return 404.
-//   - EnabledForEmployee (ENABLE_ONEPAY_FOR_EMPLOYEE) — only meaningful
-//     when Enabled=true. Routes employee/payroll disbursements through
-//     OnePay vs. the existing flow.
-type OnepayConfig struct {
-	Enabled                bool
-	EnabledForEmployee     bool
-	EnabledForBulkTransfer bool
-	PartnerID              string
-	PartnerKey             string
-	AccountID              string
-	Endpoint               string
-	RequestExpirySeconds   int
-	HTTPTimeout            time.Duration
-	TPS                    int
-	QueueBuffer            int
-	AllowedIPs             []string
-	// AllowedIPsUseRemoteAddr, when true, makes the IP-whitelist middleware
-	// read the client IP from the raw TCP socket (c.Request.RemoteAddr)
-	// instead of c.ClientIP(). Required when running behind a reverse
-	// proxy that is not in TRUSTED_PROXIES, or when you do not want
-	// client-supplied X-Forwarded-For to influence the allow/deny decision.
-	AllowedIPsUseRemoteAddr bool
-}
-
-const defaultOnePayAllowedIPs = "118.70.247.80/29,118.71.0.16/29,101.99.11.176/29,116.97.110.80/29,163.227.219.0/24,202.9.84.0/24"
 
 func Load() (*Config, error) {
 	// Load .env file if it exists (ignore errors in production)
@@ -449,10 +299,6 @@ func Load() (*Config, error) {
 			MaxFileSize: parseInt64(getEnv("ASSET_MAX_FILE_SIZE", "10485760")), // 10MB default
 			CleanupDays: parseInt(getEnv("ASSET_CLEANUP_DAYS", "30")),
 		},
-		Disbursement: DisbursementConfig{
-			Ninepay: newNinepayConfig(env),
-			Onepay:  newOnepayConfig(env),
-		},
 		OTP: OTPConfig{
 			Enabled:        parseBool(getEnv("OTP_ENABLE", "false")),
 			CodeTTL:        parseDuration(getEnv("OTP_CODE_TTL", "5m")),
@@ -468,25 +314,7 @@ func Load() (*Config, error) {
 			Enabled:          parseBool(getEnv("PASSWORD_RESET_ENABLE", "true")),
 			TokenTTL:         parseDuration(getEnv("PASSWORD_RESET_TOKEN_TTL", "30m")),
 			RateLimitPerHour: parseInt(getEnv("PASSWORD_RESET_RATE_LIMIT", "3")),
-			ResetURL:         getEnv("PASSWORD_RESET_URL", "https://tingting.vip/reset-password"),
-		},
-		Zalo: ZaloConfig{
-			Enabled:                parseBool(getEnv("ZALO_RESET_ENABLE", "false")),
-			UseSandbox:             parseBool(getEnv("ZALO_USE_SANDBOX", "false")),
-			AppID:                  getEnv("ZALO_APP_ID", ""),
-			SecretKey:              getEnv("ZALO_SECRET_KEY", ""),
-			TemplateID:             getEnv("ZALO_RESET_TEMPLATE_ID", "619684"),
-			CodeTTL:                parseDuration(getEnv("ZALO_RESET_CODE_TTL", "10m")),
-			ChatbotTokenWebhookURL: getEnv("CHATBOT_OA_TOKEN_WEBHOOK_URL", ""),
-			ChatbotTokenWebhookKey: getEnv("CHATBOT_OA_TOKEN_WEBHOOK_KEY", ""),
-		},
-		SelfCheckin: SelfCheckinConfig{
-			TemplateID:            getEnv("ZALO_SELFCHECKIN_TEMPLATE_ID", ""),
-			SupportedProjectCodes: splitCSV(getEnv("SELF_CHECKIN_SUPPORTED_PROJECT_CODES", "LGD")),
-		},
-		OpsMCP: OpsMCPConfig{
-			Disabled:   parseBool(getEnv("PAYROLL_OPS_MCP_DISABLED", "false")),
-			RatePerMin: parseInt(getEnv("PAYROLL_OPS_MCP_RATE_PER_MIN", "120")),
+			ResetURL:         getEnv("PASSWORD_RESET_URL", "https://restpoint.co.ke/reset-password"),
 		},
 		Captcha: CaptchaConfig{
 			Enabled:    parseBool(getEnv("CAPTCHA_ENABLE", "false")),
@@ -517,106 +345,6 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// newNinepayConfig builds the NinepayConfig from environment variables.
-// When APP_ENV is "development", it auto-enables the provider with mock
-// sandbox defaults so local dev works without manual credential setup.
-// Explicit env vars always override the dev defaults.
-func newNinepayConfig(env string) NinepayConfig {
-	isDev := env == "development" || env == "dev"
-
-	ninepayEnabled := getEnv("ENABLE_NINEPAY", "")
-	if ninepayEnabled == "" {
-		ninepayEnabled = func() string {
-			if isDev {
-				return "true"
-			}
-			return "false"
-		}()
-	}
-
-	defaultEndpoint := "https://payment.9pay.vn"
-	// Production merchant-portal hosts (verified via DNS + scraping the
-	// SPA at https://business.9pay.vn): the OAuth/SSO host is
-	// gc-sso.9pay.vn, the API base for /api/get-token + /api/transaction
-	// is gc-be.9pay.vn, and the callback lands on business.9pay.vn. The
-	// older "be.9pay.vn" / "account-mcv.9pay.vn" guesses (extrapolated
-	// from sandbox naming) DO NOT EXIST in DNS.
-	defaultWebEndpoint := "https://gc-be.9pay.vn"
-	defaultWebAccountURL := "https://gc-sso.9pay.vn"
-	defaultWebRedirectURI := "https://business.9pay.vn/callback"
-	// Production OAuth client_id from business.9pay.vn's app.js bundle.
-	defaultWebClientID := "9699afca-f36f-4081-8e3c-ecf01aa11f2f"
-	if isDev {
-		defaultEndpoint = "http://localhost:9001"
-		defaultWebEndpoint = "http://localhost:9001"
-		defaultWebAccountURL = "https://sand-account-mcv.9pay.vn"
-		defaultWebRedirectURI = "https://sand-business.9pay.vn/callback"
-		// Sandbox client_id observed on the sand-business.9pay.vn SPA.
-		defaultWebClientID = "9687bc2f-69fe-4ef5-b9d2-1fc555d8696b"
-	}
-
-	return NinepayConfig{
-		Enabled:                parseBool(ninepayEnabled),
-		EnabledForEmployee:     parseBool(getEnv("ENABLE_NINEPAY_FOR_EMPLOYEE", "false")),
-		EnabledForBulkTransfer: parseBool(getEnv("ENABLE_NINEPAY_FOR_BULK_TRANSFER", "false")),
-		MerchantKey:            getEnv("NINEPAY_MERCHANT_KEY", ""),
-		SecretKey:              getEnv("NINEPAY_SECRET_KEY", ""),
-		SecretKeyChecksum:      getEnv("NINEPAY_SECRET_KEY_CHECKSUM", ""),
-		Endpoint:               getEnv("NINEPAY_ENDPOINT", defaultEndpoint),
-		WebEndpoint:            getEnv("NINEPAY_BASE_URL", defaultWebEndpoint),
-		WebUsername:            getEnv("NINEPAY_WEB_USERNAME", ""),
-		WebPassword:            getEnv("NINEPAY_WEB_PASSWORD", ""),
-		WebAccountURL:          getEnv("NINEPAY_WEB_ACCOUNT_URL", defaultWebAccountURL),
-		WebDeviceID:            getEnv("NINEPAY_WEB_DEVICE_ID", ""),
-		WebClientID:            getEnv("NINEPAY_WEB_CLIENT_ID", defaultWebClientID),
-		WebClientSecret:        getEnv("NINEPAY_WEB_CLIENT_SECRET", ""),
-		WebRedirectURI:         getEnv("NINEPAY_WEB_REDIRECT_URI", defaultWebRedirectURI),
-		WebMerchantID:          getEnv("NINEPAY_WEB_MERCHANT_ID", ""),
-		TPS:                    parseInt(getEnv("NINEPAY_TPS", "3")),
-		QueueBuffer:            parseInt(getEnv("NINEPAY_QUEUE_BUFFER", "100")),
-	}
-}
-
-// newOnepayConfig builds the OnepayConfig from environment variables.
-// When APP_ENV is "development", it auto-enables the provider with
-// sandbox defaults so local dev works without manual credential setup.
-// Explicit env vars always override the dev defaults.
-func newOnepayConfig(env string) OnepayConfig {
-	isDev := env == "development" || env == "dev"
-
-	onepayEnabled := getEnv("ENABLE_ONEPAY", "")
-	if onepayEnabled == "" {
-		if isDev {
-			onepayEnabled = "true"
-		} else {
-			onepayEnabled = "false"
-		}
-	}
-
-	defaultEndpoint := "https://onepay.vn"
-	defaultEnabledForEmployee := "false"
-	if isDev {
-		defaultEndpoint = "http://localhost:9001"
-		defaultEnabledForEmployee = "true"
-	}
-
-	return OnepayConfig{
-		Enabled:                 parseBool(onepayEnabled),
-		EnabledForEmployee:      parseBool(getEnv("ENABLE_ONEPAY_FOR_EMPLOYEE", defaultEnabledForEmployee)),
-		EnabledForBulkTransfer:  parseBool(getEnv("ENABLE_ONEPAY_FOR_BULK_TRANSFER", "false")),
-		PartnerID:               getEnv("ONEPAY_PARTNER_ID", ""),
-		PartnerKey:              getEnv("ONEPAY_PARTNER_KEY", ""),
-		AccountID:               getEnv("ONEPAY_ACCOUNT_ID", ""),
-		Endpoint:                getEnv("ONEPAY_BASE_URL", defaultEndpoint),
-		RequestExpirySeconds:    parseInt(getEnv("ONEPAY_REQUEST_EXPIRY_SECONDS", "3600")),
-		HTTPTimeout:             parseDuration(getEnv("ONEPAY_HTTP_TIMEOUT", "30s")),
-		TPS:                     parseInt(getEnv("ONEPAY_TPS", "3")),
-		QueueBuffer:             parseInt(getEnv("ONEPAY_QUEUE_BUFFER", "100")),
-		AllowedIPs:              parseStringSlice(getEnvWithEmpty("ONEPAY_ALLOWED_IPS", defaultOnePayAllowedIPs)),
-		AllowedIPsUseRemoteAddr: parseBool(getEnv("ONEPAY_ALLOWED_IPS_USE_REMOTE_ADDR", "false")),
-	}
 }
 
 // LoadSecurityConfig loads and validates only the password-hashing subset of
@@ -674,24 +402,6 @@ func (c *Config) validate() error {
 	// secret — but a missing one means Google login silently fails at runtime.
 	if c.Google.OAuthEnabled && c.Google.ClientID == "" {
 		return fmt.Errorf("GOOGLE_CLIENT_ID must be set when GOOGLE_OAUTH_ENABLED=true")
-	}
-
-	// Disbursement mutual-exclusion: at most one provider may handle each
-	// routing category at a time. Boot-time fail-fast prevents silent
-	// misrouting of funds.
-	if c.Disbursement.Onepay.EnabledForEmployee && c.Disbursement.Ninepay.EnabledForEmployee {
-		return fmt.Errorf(
-			"config: ENABLE_NINEPAY_FOR_EMPLOYEE and ENABLE_ONEPAY_FOR_EMPLOYEE are both true; " +
-				"exactly one provider may handle employee disbursements at a time — " +
-				"set one to false",
-		)
-	}
-	if c.Disbursement.Onepay.EnabledForBulkTransfer && c.Disbursement.Ninepay.EnabledForBulkTransfer {
-		return fmt.Errorf(
-			"config: ENABLE_NINEPAY_FOR_BULK_TRANSFER and ENABLE_ONEPAY_FOR_BULK_TRANSFER are both true; " +
-				"exactly one provider may handle bulk transfers — " +
-				"set one to false",
-		)
 	}
 
 	// Cash-readiness forecast: the band upper quantile must be a valid

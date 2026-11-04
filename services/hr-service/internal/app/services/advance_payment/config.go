@@ -44,15 +44,4 @@ type Config struct {
 	// credited salary. Exposed to the employee app so per-shift rows can show
 	// the advanceable amount alongside the full wage.
 	GetSelfCheckInAdvancePercentage func(ctx context.Context) uint64
-	// GetTransferLimits returns the active disbursement provider's per-transfer
-	// amount bounds. Returns zero-value limits when no provider is configured.
-	// Used by CreateRequest to fail-fast when the net amount (after fee) would
-	// be rejected by the provider.
-	GetTransferLimits func(ctx context.Context) ProviderTransferLimits
-}
-
-// ProviderTransferLimits describes the disbursement provider's per-transfer bounds.
-type ProviderTransferLimits struct {
-	MinAmount int64
-	MaxAmount int64
 }

@@ -83,7 +83,7 @@ const ALLOWED_ORIGINS: string[] = process.env.ALLOWED_ORIGINS
 const corsOptions: cors.CorsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin) || process.env.SOCKETIO_CORS_ORIGIN === '*') {
+    if (ALLOWED_ORIGINS.includes(origin)) {
       return callback(null, true);
     }
     // Payment links run on tenant subdomains (*.restpoint.co.ke) and the
@@ -98,7 +98,7 @@ const corsOptions: cors.CorsOptions = {
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
-    callback(null, true);
+    callback(new Error('Origin is not allowed by Socket.IO CORS policy'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
@@ -318,15 +318,21 @@ initializeRedis().catch(console.error);
 
 io.use((socket, next) => {
   try {
-    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+    const cookieToken = socket.handshake.headers.cookie
+      ?.split(';')
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith('access_token='))
+      ?.slice('access_token='.length);
+    const token = socket.handshake.auth.token ||
+      socket.handshake.headers.authorization?.split(' ')[1] ||
+      (cookieToken ? decodeURIComponent(cookieToken) : undefined);
 
     if (!token) {
       // No token provided — reject in production, allow in development
       if (process.env.NODE_ENV === 'production') {
         Logger.warn({
           message: 'Socket handshake rejected: no token provided',
-          handshakeAuth: socket.handshake.auth,
-          headers: socket.handshake.headers,
+          origin: socket.handshake.headers.origin,
         });
         const err = new AppError('Authentication required', 401);
         err.code = 'AUTH_REQUIRED';

@@ -6,7 +6,12 @@ import { TenantModel } from '../models/Tenant.model';
 const redisHost = process.env.REDIS_HOST || '127.0.0.1';
 const redisPort = parseInt(process.env.REDIS_PORT || '6379');
 const redisPassword = process.env.REDIS_PASSWORD || undefined;
-const connection = { host: redisHost, port: redisPort, ...(redisPassword ? { password: redisPassword } : {}) };
+const connection = {
+  host: redisHost,
+  port: redisPort,
+  ...(redisPassword ? { password: redisPassword } : {}),
+  maxRetriesPerRequest: null
+};
 
 async function updateProvisioningStatus(tenantSlug: string, status: string, progress: number, details?: string, errorMessage?: string) {
   try {

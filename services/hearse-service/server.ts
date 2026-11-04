@@ -5,6 +5,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import asyncHandler from 'express-async-handler';
 import dotenv from 'dotenv';
 import path from 'path';
+import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
 
 import http from 'http';
 import cors from 'cors';
@@ -412,6 +413,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Initialize notification cron service
 import { initializeNotificationCron } from './utilities/notificationCronService';
 initializeNotificationCron(io);
+startAsyncSideEffectWorker();
 
 // Start server
 const PORT = Number(process.env.PORT) || 5002;

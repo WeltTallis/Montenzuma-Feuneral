@@ -183,26 +183,6 @@ type PasswordResetConfirmDTO struct {
 	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
 
-// ZaloResetRequestDTO is the body of POST /auth/zalo-reset/request. The endpoint
-// returns the SAME success response + a structurally identical session id
-// whether or not the mobile exists, to prevent mobile enumeration.
-type ZaloResetRequestDTO struct {
-	Mobile string `json:"mobile" binding:"required"`
-}
-
-// ZaloResetConfirmDTO is the body of POST /auth/zalo-reset/confirm. Code is the
-// 6-digit OTP delivered via ZNS; OTPSessionID is the opaque id from /request.
-type ZaloResetConfirmDTO struct {
-	OTPSessionID string `json:"otp_session_id" binding:"required"`
-	Code         string `json:"code" binding:"required,len=6"`
-	NewPassword  string `json:"new_password" binding:"required,min=8"`
-}
-
-// ZaloResetResendDTO is the body of POST /auth/zalo-reset/resend.
-type ZaloResetResendDTO struct {
-	OTPSessionID string `json:"otp_session_id" binding:"required"`
-}
-
 // UserActivitiesRequest represents the request parameters for user activities
 type UserActivitiesRequest struct {
 	Days int `form:"days,default=30" binding:"min=1,max=365"`

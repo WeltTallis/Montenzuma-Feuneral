@@ -1,15 +1,7 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Add fuel_card_number to hearses
-// ============================================
-// Stores the fuel card number assigned to a hearse (optional). The field
-// existed in the tenant-service canonical schema and in the application
-// code (registration INSERT, fleet PUT, frontend) but was never added to the
-// hearse-service (operations) database by any previous migration, so the
-// registration INSERT failed with "Unknown column 'fuel_card_number'".
-//
-// Idempotent (hasColumn) — safe to run more than once. Anchors the new
-// column AFTER a column that actually exists (mirrors the 011 precedent).
-// ============================================
+
+
 
 exports.up = async function (knex) {
     const hasColumn = async (t, c) => { try { return await knex.schema.hasColumn(t, c); } catch { return false; } };

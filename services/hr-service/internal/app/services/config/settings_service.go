@@ -23,7 +23,7 @@ const (
 )
 
 // settingsCacheVersion namespaces cached settings payloads. It was bumped to v2
-// when "zalo.credentials" started being sealed at rest: v1 payloads may hold the
+// when provider credentials started being sealed at rest: v1 payloads may hold the
 // decrypted credential, and a versioned key makes them unreachable immediately
 // instead of leaving them in Redis until the TTL expires. Cache invalidation
 // deletes "settings:<operation>:*", so the version stays purgeable.
@@ -357,7 +357,7 @@ func (s *SettingsService) ListSettings(ctx context.Context, filters domain.Setti
 
 	// Store in cache. A page containing a protected key is never cached — the
 	// payload would carry the decrypted credential — which also filters out
-	// searches such as "zalo" that intentionally ask for that row.
+	// searches that intentionally ask for a protected row.
 	if !containsProtectedKey(settings) {
 		result := cachedResult{Settings: settings, Count: count}
 		if cacheErr := s.CacheService.Set(ctx, cacheKey, result, SettingsListCacheTTL); cacheErr != nil {

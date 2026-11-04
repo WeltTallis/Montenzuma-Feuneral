@@ -7,9 +7,7 @@ import (
 
 // WalletTopupRepository defines the interface for wallet topup persistence.
 type WalletTopupRepository interface {
-	Create(ctx context.Context, topup *WalletTopup) error
 	GetByID(ctx context.Context, id uint64) (*WalletTopup, error)
-	GetByBankRef(ctx context.Context, bankRef string) (*WalletTopup, error)
 	Sum(ctx context.Context) (int64, error)
 	SumByDateRange(ctx context.Context, start, end time.Time) (int64, error)
 	List(ctx context.Context, filter WalletTopupFilter) ([]*WalletTopup, int64, error)

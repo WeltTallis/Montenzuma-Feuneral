@@ -78,16 +78,8 @@ func TestInitialize(t *testing.T) {
 		t.Error("BulkTransferFile repository is nil")
 	}
 
-	if repos.Lender == nil {
-		t.Error("Lender repository is nil")
-	}
-
 	if repos.Loan == nil {
 		t.Error("Loan repository is nil")
-	}
-
-	if repos.LoanRepaymentSchedule == nil {
-		t.Error("LoanRepaymentSchedule repository is nil")
 	}
 
 	if repos.APIMetric == nil {

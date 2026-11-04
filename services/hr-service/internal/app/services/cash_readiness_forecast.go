@@ -25,10 +25,8 @@ import (
 // live wallet balance to surface a single "cash to prepare" gap. Outstanding
 // payments from earlier cycles are intentionally excluded.
 //
-// ADVISORY ONLY: the service holds only READ-ONLY ports. It has no handle to
-// SyncBalance, CreateTopup, or any disbursement, so feeding it back into balance
-// sync is structurally impossible — this prevents re-introducing the
-// wallet-balance-inflation bug.
+// ADVISORY ONLY: the service holds only READ-ONLY ports and cannot initiate
+// transfers or modify wallet records.
 
 // ForecastProvider projects additional approved-pay accrual between two
 // cycle-day positions from a historical per-Ky cohort. The v1 implementation is
@@ -87,8 +85,7 @@ type TimesheetAccrualReader interface {
 	GetAccrualCohort(ctx context.Context, filters domain.TimesheetFilters) ([]domain.TimesheetAccrualDailyRow, error)
 }
 
-// WalletBalanceReader is the read-only wallet port. Defined narrow on purpose so
-// the forecast can call GetBalance but can never reach SyncBalance/CreateTopup.
+// WalletBalanceReader is the read-only wallet port used by the forecast.
 type WalletBalanceReader interface {
 	GetBalance(ctx context.Context) (*wallet.WalletBalance, error)
 }

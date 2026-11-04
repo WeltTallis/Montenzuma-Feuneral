@@ -5,7 +5,7 @@ router.use(protect);
 router.use(authorizeAny);
 
 // Import controllers
-import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exportExcelController';
+import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exel/exportExcelController';
 
 // ============================================
 // EXPORT ROUTES

@@ -60,13 +60,13 @@ export function EmployeeEditForm({
     <div className="space-y-3">
       {/* Personal info card */}
       <FieldGroup>
-        <SectionTitle icon={User} label="Thông tin cá nhân" />
+        <SectionTitle icon={User} label="Personal details" />
 
         <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
           <Field
             id="fullname"
-            label="Họ và tên"
-            warning={nameWarning ? "Họ tên không được chứa số hoặc ký tự đặc biệt" : undefined}
+            label="Full legal name"
+            warning={nameWarning ? "Name must not contain numbers or unsupported symbols." : undefined}
           >
             <Input
               id="fullname"
@@ -85,7 +85,7 @@ export function EmployeeEditForm({
               }}
             />
           </Field>
-          <Field id="cccd" label="CCCD">
+          <Field id="cccd" label="Kenyan National ID">
             <Input
               id="cccd"
               className="h-11 text-sm sm:h-9 font-mono tracking-wide"
@@ -138,18 +138,18 @@ export function EmployeeEditForm({
 
       {/* Bank info card */}
       <FieldGroup>
-        <SectionTitle icon={CreditCard} label="Thông tin ngân hàng" />
+        <SectionTitle icon={CreditCard} label="Bank details for salary payments" />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Ngân hàng">
+          <Field label="Bank">
             <BankSelector
               value={selectedBank}
               onSelect={onBankChange}
-              placeholder="Chọn ngân hàng..."
+              placeholder="Select a bank"
               canCreateBank={canCreateBank}
             />
           </Field>
-          <Field id="bank_account_number" label="Số tài khoản">
+          <Field id="bank_account_number" label="Account number">
             <Input
               id="bank_account_number"
               className="h-11 text-sm sm:h-9 font-mono"
@@ -159,8 +159,8 @@ export function EmployeeEditForm({
           </Field>
           <Field
             id="bank_account_name"
-            label="Chủ tài khoản"
-            warning={bankAccountNameWarning ? "Tên chủ tài khoản không được chứa số hoặc ký tự đặc biệt" : undefined}
+            label="Account holder name"
+            warning={bankAccountNameWarning ? "Account holder name must not contain numbers or unsupported symbols." : undefined}
           >
             <Input
               id="bank_account_name"

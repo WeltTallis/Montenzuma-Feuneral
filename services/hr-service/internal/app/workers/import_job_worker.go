@@ -9,7 +9,6 @@ import (
 
 	"api-server/internal/app/dto"
 	"api-server/internal/app/services/advance_payment"
-	"api-server/internal/app/services/zaloconnect"
 	"api-server/internal/domain"
 	"api-server/internal/pkg/excelkit"
 )
@@ -20,7 +19,6 @@ type ImportJobWorker struct {
 	assetRepo         domain.AssetRepository
 	importService     *advance_payment.Service
 	importProgressSvc *advance_payment.ImportProgressService
-	notificationSvc   *zaloconnect.SalaryNotificationDeliveryService
 	storagePath       string
 }
 
@@ -29,7 +27,6 @@ func NewImportJobWorker(
 	assetRepo domain.AssetRepository,
 	importService *advance_payment.Service,
 	importProgressSvc *advance_payment.ImportProgressService,
-	notificationSvc *zaloconnect.SalaryNotificationDeliveryService,
 	storagePath string,
 ) *ImportJobWorker {
 	return &ImportJobWorker{
@@ -37,7 +34,6 @@ func NewImportJobWorker(
 		assetRepo:         assetRepo,
 		importService:     importService,
 		importProgressSvc: importProgressSvc,
-		notificationSvc:   notificationSvc,
 		storagePath:       storagePath,
 	}
 }
@@ -84,26 +80,6 @@ func (w *ImportJobWorker) processJob(ctx context.Context, jobID uint, forMonth s
 	if err != nil {
 		w.markJobFailed(ctx, asset, fmt.Sprintf("Failed to process file: %v", err))
 		return err
-	}
-
-	// Persist notification work before reporting the import complete. A queue
-	// outage leaves durable pending records for the recovery sweep instead of
-	// losing a chargeable ZNS delivery.
-	if w.notificationSvc != nil && len(result.EmployeeZNSData) > 0 {
-		recipients := make([]zaloconnect.SalaryNotificationRecipient, len(result.EmployeeZNSData))
-		for i, data := range result.EmployeeZNSData {
-			recipients[i] = zaloconnect.SalaryNotificationRecipient{
-				ProjectID:    data.ProjectID,
-				EmployeeID:   data.EmployeeID,
-				EmployeeName: data.EmployeeName,
-				Amount:       data.Amount,
-				ExpiryDate:   data.ExpiryDate,
-				Mobile:       data.Mobile,
-			}
-		}
-		if err := w.notificationSvc.ScheduleImportRecipients(ctx, asset.ID, recipients); err != nil {
-			return fmt.Errorf("schedule salary notifications: %w", err)
-		}
 	}
 
 	if err := w.importProgressSvc.CompleteImport(ctx, asset.ID, result); err != nil {

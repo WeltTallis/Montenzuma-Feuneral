@@ -1,8 +1,6 @@
 // ============================================
 // AUTH STORE
-// Uses sessionStorage for access token (cleared on tab close)
-// Uses localStorage for refresh token (persists across page refreshes)
-// Auto-refresh every 10 minutes
+// Authentication tokens remain in HttpOnly cookies.
 // ============================================
 import { create } from 'zustand';
 import { startTokenRefresh, stopTokenRefresh, forceLogout } from '../../api/axios';
@@ -14,11 +12,7 @@ const useAuthStore = create((set, get) => ({
     isLoading: true,
     error: null,
 
-    login: (userData, token) => {
-        // authApi.login() already stores tokens and calls startTokenRefresh()
-        // So this store method should NOT call startTokenRefresh() again
-        // to avoid duplicate interval creation.
-        if (token) sessionStorage.setItem('authToken', token);
+    login: (userData) => {
         sessionStorage.setItem('user', JSON.stringify(userData));
         if (userData.tenantSlug) localStorage.setItem('tenantSlug', userData.tenantSlug);
         if (userData.branchId) localStorage.setItem('branchId', userData.branchId);
@@ -36,7 +30,7 @@ const useAuthStore = create((set, get) => ({
 
         set({
             user: userData,
-            token,
+            token: null,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -50,13 +44,9 @@ const useAuthStore = create((set, get) => ({
         stopTokenRefresh();
 
         // Clear sessionStorage (access token, user data)
-        sessionStorage.removeItem('authToken');
-        sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
 
         // Clear localStorage (non-sensitive metadata only)
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('refreshToken');
         localStorage.removeItem('tenantSlug');
         localStorage.removeItem('tenantId');
         localStorage.removeItem('branchSlug');
@@ -82,30 +72,26 @@ const useAuthStore = create((set, get) => ({
     setLoading: (status) => set({ isLoading: status }),
     setError: (error) => set({ error, isLoading: false }),
 
-    // Initialize from sessionStorage (called on app startup)
-    // Also checks localStorage as fallback for refresh token persistence
+    // Restore non-sensitive identity metadata; the server validates the cookie
+    // when protected API requests are made.
     initialize: () => {
         try {
-            const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+            for (const storage of [localStorage, sessionStorage]) {
+                ['authToken', 'accessToken', 'token', 'refreshToken'].forEach((key) => storage.removeItem(key));
+            }
             const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
 
-            if (token && userStr) {
+            if (userStr) {
                 const user = JSON.parse(userStr);
-                // Sync token to sessionStorage if it came from localStorage
-                sessionStorage.setItem('authToken', token);
                 sessionStorage.setItem('user', userStr);
-                // Sync refreshToken to sessionStorage if present in localStorage
-                const rt = localStorage.getItem('refreshToken');
-                if (rt) sessionStorage.setItem('refreshToken', rt);
 
                 set({
                     user,
-                    token,
+                    token: null,
                     isAuthenticated: true,
                     isLoading: false,
                 });
 
-                // Start auto-refresh every 10 minutes (guard prevents duplicate)
                 startTokenRefresh();
             } else {
                 set({ isLoading: false });

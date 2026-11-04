@@ -1,9 +1,11 @@
-import { Request, Response } from 'express';
-import asyncHandler from 'express-async-handler';
-import { Pool, PoolConnection } from 'mysql2/promise';
-import { getHearsePool } from '../database';
+
 import { extractRowDates } from '../utilities/hearseAvailability';
 import { emitHearseDataChanged } from '../utilities/hearseRealtime';
+import { Pool, PoolConnection } from 'mysql2/promise';
+import asyncHandler from 'express-async-handler';
+import { Request, Response } from 'express';
+import { getHearsePool } from '../database';
+
 
 const DEFAULT_LOW_BALANCE_THRESHOLD = '5000.00';
 
@@ -171,7 +173,7 @@ async function getSummary(pool: Pool, tenantKey: string, tenantSlug: string | nu
             [tenantKey]
         ),
         pool.query(
-             `SELECT fuel_card_number,
+            `SELECT fuel_card_number,
                  DATE_FORMAT(transaction_date, '%Y-%m-%d') AS activity_date,
                  COALESCE(SUM(CASE WHEN transaction_type = 'allocation' THEN amount ELSE 0 END), 0) AS allocations,
                  COALESCE(SUM(CASE WHEN transaction_type = 'fuel_purchase' THEN amount ELSE 0 END), 0) AS purchases
@@ -181,10 +183,10 @@ async function getSummary(pool: Pool, tenantKey: string, tenantSlug: string | nu
                 AND transaction_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
               GROUP BY fuel_card_number, DATE(transaction_date)
               ORDER BY activity_date`,
-             [tenantKey]
+            [tenantKey]
         ),
         pool.query(
-             `SELECT t.fuel_card_number, t.transaction_type, t.amount, t.station,
+            `SELECT t.fuel_card_number, t.transaction_type, t.amount, t.station,
                  t.reference, t.notes, t.driver_id, DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS transaction_date, t.created_at
               FROM hearse_fuel_transactions t
               INNER JOIN (
@@ -193,7 +195,7 @@ async function getSummary(pool: Pool, tenantKey: string, tenantSlug: string | nu
                   WHERE tenant_key = ? AND fuel_card_number IS NOT NULL
                   GROUP BY fuel_card_number
               ) latest ON latest.id = t.id`,
-             [tenantKey]
+            [tenantKey]
         ),
         pool.query("SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS today_date"),
     ]);

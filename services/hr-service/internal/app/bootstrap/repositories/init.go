@@ -29,9 +29,7 @@ type Repositories struct {
 	Settings                  domain.SettingsRepository
 	Asset                     domain.AssetRepository
 	BulkTransferFile          domain.BulkTransferFileRepository
-	Lender                    domain.LenderRepository
 	Loan                      domain.LoanRepository
-	LoanRepaymentSchedule     domain.LoanRepaymentScheduleRepository
 	APIMetric                 domain.APIMetricRepository
 	AdvancePayment            domain.AdvancePaymentRepository
 	AdvancePaymentRequest     domain.AdvancePaymentRequestRepository
@@ -77,9 +75,7 @@ func Initialize(db *persistence.Database, eventBus domain.EventBus) *Repositorie
 		Settings:                  persistence.NewSettingsRepository(db),
 		Asset:                     persistence.NewAssetRepository(db, eventBus),
 		BulkTransferFile:          persistence.NewBulkTransferFileRepository(db.DB, transactionCodeRepo),
-		Lender:                    persistence.NewLenderRepository(db),
 		Loan:                      persistence.NewLoanRepository(db),
-		LoanRepaymentSchedule:     persistence.NewLoanRepaymentScheduleRepository(db),
 		APIMetric:                 persistence.NewAPIMetricRepository(db),
 		AdvancePayment:            persistence.NewAdvancePaymentRepository(db),
 		AdvancePaymentRequest:     persistence.NewAdvancePaymentRequestRepository(db),

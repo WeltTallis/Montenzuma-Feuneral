@@ -83,7 +83,7 @@ func (s *EmployeeService) CheckDuplicates(ctx context.Context, params DuplicateC
 	if mobile != "" {
 		// The candidate forms (+84 / 84 / spaced → domestic 0XXXXXXXXX, raw value
 		// as fallback) come from the shared identity resolver, so this check
-		// cannot drift from login or the Zalo reset. Unlike those, it reports
+		// cannot drift from login. Unlike login, it reports
 		// EVERY match as a warning: duplicate numbers are allowed by the schema,
 		// and the point of the check is to warn the creator.
 		for _, e := range identity.EmployeesByMobile(ctx, s.EmployeeRepo, mobile) {

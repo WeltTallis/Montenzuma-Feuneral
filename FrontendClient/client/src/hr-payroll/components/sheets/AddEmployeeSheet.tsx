@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@hr/components/ui/button';
 import { Input } from '@hr/components/ui/input';
 import { Label } from '@hr/components/ui/label';
 import { BankSelector } from '@hr/components/ui/bank-selector';
 import { Alert, AlertDescription } from '@hr/components/ui/alert';
-import { X, User, CreditCard, UserPlus, Plus, Loader2, AlertTriangle, Search, HandHeart } from 'lucide-react';
+import { X, User, CreditCard, UserPlus, Plus, Loader2, AlertTriangle, Search, HandHeart, FileText } from 'lucide-react';
 import { toast } from '@hr/components/ui/sonner';
 import { CreateEmployeeData, DuplicateCheckMatch } from '@hr/types/api/employee.types';
 import { useCreateEmployee, useDuplicateCheck, useRequestEmployeeAccess } from '@hr/hooks/api/useEmployees';
@@ -15,7 +14,13 @@ import { useDebounce } from '@hr/hooks/useDebounce';
 import { SlideSheetTemplate } from './templates/SlideSheetTemplate';
 import { useModalNavigation } from '@hr/hooks/useModalNavigation';
 import { authManager } from '@hr/lib/auth';
-import { validateFullname, formatKenyanName, validateMobileNotNationalID } from '@hr/lib/validation';
+import {
+  validateFullname,
+  formatKenyanName,
+  validateKenyanNationalId,
+  validatePhoneNumber,
+  validateMobileNotNationalID,
+} from '@hr/lib/validation';
 import { cn } from '@hr/lib/utils';
 import type { Bank } from '@hr/types/api/bank.types';
 import type { ModalConfig } from '@hr/types/modal-config.types';
@@ -52,12 +57,12 @@ function DuplicateMatchCard({
           </div>
           <p className="typography-label-medium text-muted-foreground">
             {[
-              match.created_by_name && `Quản lý: ${match.created_by_name}`,
+              match.created_by_name && `Manager: ${match.created_by_name}`,
               match.current_project_names?.length
-                ? `Project: ${match.current_project_names.join(', ')}`
+                ? `Current assignment: ${match.current_project_names.join(', ')}`
                 : null,
               match.created_at
-                ? `Tạo: ${new Date(match.created_at).toLocaleDateString('en-KE')}`
+                ? `Registered: ${new Date(match.created_at).toLocaleDateString('en-KE')}`
                 : null,
             ]
               .filter(Boolean)
@@ -77,7 +82,7 @@ function DuplicateMatchCard({
             ) : (
               <HandHeart className="h-3.5 w-3.5" />
             )}
-            Yêu cầu quản lý
+            Request access
           </Button>
         )}
       </div>
@@ -115,6 +120,12 @@ function Field({ id, label, required, children }: { id?: string; label: string; 
   );
 }
 
+function normalizeKenyanMobileNumber(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (digits.startsWith('254')) return `0${digits.slice(3)}`;
+  return digits;
+}
+
 export const modalConfig: ModalConfig = {
   id: 'add-employee-sheet',
   name: 'Add Employee',
@@ -139,14 +150,13 @@ interface AddEmployeeSheetProps {
   onClose: () => void;
 }
 
-interface AddEmployeeSheetComponentProps extends AddEmployeeSheetProps {}
+interface AddEmployeeSheetComponentProps extends AddEmployeeSheetProps { }
 
 function AddEmployeeSheetComponent({
   isOpen,
   onClose
 }: AddEmployeeSheetComponentProps) {
   const createEmployee = useCreateEmployee();
-  const queryClient = useQueryClient();
   const userRole = authManager.getUserRole();
   const isAdmin = userRole === 'admin';
   const requestAccess = useRequestEmployeeAccess();
@@ -158,6 +168,9 @@ function AddEmployeeSheetComponent({
     fullname: '',
     email: '',
     cccd: '',
+    kra_pin: '',
+    nssf_number: '',
+    sha_number: '',
     address: '',
     mobile: '',
     bank_id: undefined,
@@ -171,17 +184,17 @@ function AddEmployeeSheetComponent({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // --- Duplicate detection (global, pre-create) ---
-  // Debounced check on the three stable identifiers; CCCD and mobile matches
+  // Debounced check on the three stable identifiers; National ID and mobile matches
   // are hard blocks (backend 409s anyway), email matches stay soft warnings.
   const debouncedCCCD = useDebounce(formData.cccd?.trim() || '', 500);
-  const debouncedMobile = useDebounce(formData.mobile?.replace(/\s/g, '') || '', 500);
+  const debouncedMobile = useDebounce(normalizeKenyanMobileNumber(formData.mobile || ''), 500);
   const debouncedEmail = useDebounce(formData.email?.trim() || '', 500);
 
   const checkParams = useMemo(() => {
     const params: { cccd?: string; mobile?: string; email?: string } = {};
     // Only check once identifiers are plausibly complete to avoid noisy
     // partial-input matches.
-    if (debouncedCCCD.length >= 8) params.cccd = debouncedCCCD;
+    if (debouncedCCCD.length >= 7) params.cccd = debouncedCCCD;
     if (debouncedMobile.length >= 9) params.mobile = debouncedMobile;
     if (debouncedEmail.includes('@') && debouncedEmail.includes('.')) params.email = debouncedEmail;
     return params;
@@ -209,7 +222,7 @@ function AddEmployeeSheetComponent({
   const handleClaim = async (employeeId: number) => {
     try {
       await requestAccess.mutateAsync(employeeId);
-      toast({ title: 'Đã thêm nhân viên vào danh sách quản lý của bạn' });
+      toast({ title: 'Employee added to your managed list.' });
       handleClose();
     } catch {
       // Error notification handled globally
@@ -223,6 +236,9 @@ function AddEmployeeSheetComponent({
         fullname: '',
         email: '',
         cccd: '',
+        kra_pin: '',
+        nssf_number: '',
+        sha_number: '',
         address: '',
         mobile: '',
         bank_id: undefined,
@@ -241,46 +257,56 @@ function AddEmployeeSheetComponent({
     // Required fields according to API documentation
     const fullnameValidation = validateFullname(formData.fullname || '');
     if (!fullnameValidation.valid) {
-      newErrors.fullname = fullnameValidation.error || 'Họ tên không hợp lệ';
+      newErrors.fullname = fullnameValidation.error || 'Enter a valid full name.';
     }
 
     if (!formData.cccd?.trim()) {
-      newErrors.cccd = 'CCCD là bắt buộc';
-    } else if (!/^[a-zA-Z0-9]+$/.test(formData.cccd.replace(/\s/g, ''))) {
-      newErrors.cccd = 'CCCD chỉ được chứa chữ cái và số';
+      newErrors.cccd = 'National ID is required.';
+    } else {
+      const nationalIdValidation = validateKenyanNationalId(formData.cccd);
+      if (!nationalIdValidation.valid) {
+        newErrors.cccd = nationalIdValidation.error || 'Enter a valid Kenyan National ID.';
+      }
     }
 
     // Optional fields validation
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ';
+      newErrors.email = 'Enter a valid email address.';
+    }
+
+    if (formData.kra_pin?.trim() && !/^[A-Za-z][A-Za-z0-9]{9}[A-Za-z]$/.test(formData.kra_pin.trim())) {
+      newErrors.kra_pin = 'Enter a valid 11-character KRA PIN.';
     }
 
     if (mobileRequired && !formData.mobile?.trim()) {
-      newErrors.mobile = 'Số điện thoại là bắt buộc';
-    } else if (formData.mobile && !/^\d+$/.test(formData.mobile.replace(/\s/g, ''))) {
-      newErrors.mobile = 'Số điện thoại chỉ được chứa số';
+      newErrors.mobile = 'Phone number is required.';
     } else if (formData.mobile) {
-      const cccdGuard = validateMobileNotNationalID(formData.mobile);
-      if (!cccdGuard.valid) {
-        newErrors.mobile = cccdGuard.error!;
+      const phoneValidation = validatePhoneNumber(formData.mobile);
+      if (!phoneValidation.valid) {
+        newErrors.mobile = phoneValidation.error || 'Enter a valid Kenyan mobile number.';
+      } else {
+        const nationalIdGuard = validateMobileNotNationalID(formData.mobile);
+        if (!nationalIdGuard.valid) {
+          newErrors.mobile = nationalIdGuard.error || 'Enter a mobile number, not a National ID.';
+        }
       }
     }
 
     if (formData.date_of_birth && !/^\d{4}-\d{2}-\d{2}$/.test(formData.date_of_birth)) {
-      newErrors.date_of_birth = 'Date of birth phải có định dạng YYYY-MM-DD';
+      newErrors.date_of_birth = 'Enter a valid date of birth.';
     }
 
     // Bank validation - if any bank field is provided, all are required
     const hasBankInfo = selectedBank || formData.bank_account_number?.trim() || formData.bank_account_name?.trim();
     if (hasBankInfo) {
       if (!selectedBank) {
-        newErrors.bank_id = 'Please chọn ngân hàng';
+        newErrors.bank_id = 'Select a bank.';
       }
       if (!formData.bank_account_number?.trim()) {
-        newErrors.bank_account_number = 'Số tài khoản là bắt buộc khi có thông tin ngân hàng';
+        newErrors.bank_account_number = 'Account number is required when bank details are provided.';
       }
       if (!formData.bank_account_name?.trim()) {
-        newErrors.bank_account_name = 'Tên chủ tài khoản là bắt buộc khi có thông tin ngân hàng';
+        newErrors.bank_account_name = 'Account holder name is required when bank details are provided.';
       }
     }
 
@@ -293,7 +319,7 @@ function AddEmployeeSheetComponent({
     // Only include fields that have values, excluding empty optional fields
     const requestData: CreateEmployeeData = {
       fullname: formData.fullname,
-      cccd: formData.cccd
+      cccd: formData.cccd.trim()
     };
 
     // Add optional fields only if they have values
@@ -303,8 +329,17 @@ function AddEmployeeSheetComponent({
     if (formData.address?.trim()) {
       requestData.address = formData.address.trim();
     }
+    if (formData.kra_pin?.trim()) {
+      requestData.kra_pin = formData.kra_pin.trim().toUpperCase();
+    }
+    if (formData.nssf_number?.trim()) {
+      requestData.nssf_number = formData.nssf_number.trim();
+    }
+    if (formData.sha_number?.trim()) {
+      requestData.sha_number = formData.sha_number.trim();
+    }
     if (formData.mobile?.trim() || mobileRequired) {
-      requestData.mobile = formData.mobile?.trim() ?? '';
+      requestData.mobile = normalizeKenyanMobileNumber(formData.mobile || '');
     }
     if (selectedBank) {
       requestData.bank_id = selectedBank.id;
@@ -350,8 +385,8 @@ function AddEmployeeSheetComponent({
       isOpen={isOpen}
       onClose={handleClose}
       avatar={{ icon: UserPlus }}
-      title="Add nhân viên mới"
-      description="Điền thông tin để tạo hồ sơ nhân viên"
+      title="Register employee"
+      description="Create an employee record for your funeral home."
       footer={
         <div className="grid w-full grid-cols-1 gap-2 min-[380px]:grid-cols-2">
           <Button
@@ -374,7 +409,7 @@ function AddEmployeeSheetComponent({
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}
-            {createEmployee.isPending ? 'Đang thêm...' : 'Add nhân viên'}
+            {createEmployee.isPending ? 'Registering…' : 'Register employee'}
           </Button>
         </div>
       }
@@ -382,13 +417,13 @@ function AddEmployeeSheetComponent({
       <div className="space-y-3">
         {/* Personal Info Section */}
         <FieldGroup>
-          <SectionTitle icon={User} label="Thông tin cá nhân" />
+          <SectionTitle icon={User} label="Personal details" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field id="fullname" label="Họ và tên" required>
+            <Field id="fullname" label="Full legal name" required>
               <Input
                 id="fullname"
-                placeholder="Nguyễn Văn A"
+                placeholder="e.g. Amina Wanjiku"
                 value={formData.fullname || ''}
                 onChange={(e) => handleInputChange("fullname", e.target.value)}
                 onBlur={(e) => {
@@ -400,6 +435,18 @@ function AddEmployeeSheetComponent({
                 className={cn("h-11 typography-body-medium", errors.fullname && "border-red-500")}
               />
               {errors.fullname && <p role="alert" className="typography-body-small text-financial-negative">{errors.fullname}</p>}
+            </Field>
+            <Field id="email" label="Email address">
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="employee@example.com"
+                value={formData.email || ''}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className={cn("h-11 typography-body-medium", errors.email && "border-red-500")}
+              />
+              {errors.email && <p role="alert" className="typography-body-small text-financial-negative">{errors.email}</p>}
             </Field>
 
             <Field id="date_of_birth" label="Date of birth">
@@ -414,11 +461,13 @@ function AddEmployeeSheetComponent({
             </Field>
           </div>
 
+
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field id="cccd" label="Số CCCD" required>
+            <Field id="cccd" label="Kenyan National ID" required>
               <Input
                 id="cccd"
-                placeholder="001234567890"
+                placeholder="National ID number"
                 value={formData.cccd || ''}
                 onChange={(e) => handleInputChange("cccd", e.target.value)}
                 className={cn("h-11 typography-body-medium font-mono tracking-wide", errors.cccd && "border-red-500")}
@@ -429,7 +478,7 @@ function AddEmployeeSheetComponent({
             <Field id="mobile" label="Phone number" required={mobileRequired}>
               <Input
                 id="mobile"
-                placeholder="0901234567"
+                placeholder="0712 345 678 or +254 712 345 678"
                 value={formData.mobile || ''}
                 onChange={(e) => handleInputChange("mobile", e.target.value)}
                 className={cn("h-11 typography-body-medium font-mono", errors.mobile && "border-red-500")}
@@ -438,15 +487,56 @@ function AddEmployeeSheetComponent({
             </Field>
           </div>
 
-          <Field id="address" label="Address">
+          <Field id="address" label="Home address">
             <Input
               id="address"
-              placeholder="Số nhà, đường, quận/huyện, tỉnh/thành phố"
+              placeholder="Estate, town, county"
               value={formData.address || ''}
               onChange={(e) => handleInputChange("address", e.target.value)}
               className="h-11 typography-body-medium"
             />
           </Field>
+        </FieldGroup>
+
+        <FieldGroup>
+          <SectionTitle icon={FileText} label="Kenyan statutory details" />
+          <p className="typography-body-small text-muted-foreground">
+            Add these identifiers for payroll records. Automatic statutory deduction calculations are not yet connected to payroll.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field id="kra_pin" label="KRA PIN">
+              <Input
+                id="kra_pin"
+                autoComplete="off"
+                maxLength={11}
+                placeholder="A000000000Z"
+                value={formData.kra_pin || ''}
+                onChange={(e) => handleInputChange('kra_pin', e.target.value.toUpperCase())}
+                className={cn("h-11 typography-body-medium font-mono", errors.kra_pin && "border-red-500")}
+              />
+              {errors.kra_pin && <p role="alert" className="typography-body-small text-financial-negative">{errors.kra_pin}</p>}
+            </Field>
+            <Field id="nssf_number" label="NSSF number">
+              <Input
+                id="nssf_number"
+                autoComplete="off"
+                maxLength={32}
+                value={formData.nssf_number || ''}
+                onChange={(e) => handleInputChange('nssf_number', e.target.value)}
+                className="h-11 typography-body-medium font-mono"
+              />
+            </Field>
+            <Field id="sha_number" label="SHA / SHIF member number">
+              <Input
+                id="sha_number"
+                autoComplete="off"
+                maxLength={32}
+                value={formData.sha_number || ''}
+                onChange={(e) => handleInputChange('sha_number', e.target.value)}
+                className="h-11 typography-body-medium font-mono"
+              />
+            </Field>
+          </div>
         </FieldGroup>
 
         {/* Duplicate detection results */}
@@ -456,10 +546,10 @@ function AddEmployeeSheetComponent({
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="typography-body-medium font-semibold">
-                  Employee với CCCD này đã tồn tại trong hệ thống
+                  An employee with this National ID already exists.
                 </p>
                 <AlertDescription>
-                  Không thể tạo mới trùng CCCD. Nếu đây là người bạn cần quản lý, hãy yêu cầu quản lý nhân viên hiện có.
+                  This ID cannot be registered twice. If you need access to this employee, ask their current manager to share the record.
                 </AlertDescription>
               </div>
             </div>
@@ -483,10 +573,10 @@ function AddEmployeeSheetComponent({
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="typography-body-medium font-semibold">
-                  Số điện thoại này đã thuộc về nhân viên khác
+                  This phone number is already assigned to another employee.
                 </p>
                 <AlertDescription>
-                  Không thể tạo mới khi trùng số điện thoại. Please thay đổi số điện thoại.
+                  Enter a different phone number to continue.
                 </AlertDescription>
               </div>
             </div>
@@ -510,10 +600,10 @@ function AddEmployeeSheetComponent({
               <Search className="h-4 w-4 shrink-0 mt-0.5 text-warning" />
               <div className="space-y-1">
                 <p className="typography-body-medium font-semibold">
-                  Thông tin liên hệ này đã được sử dụng
+                  Some contact details are already in use.
                 </p>
                 <AlertDescription>
-                  Có thể nhân viên này đã tồn tại. Bạn vẫn có thể tạo mới nếu chắc chắn đây là người khác.
+                  This person may already be registered. Check the details before creating another record.
                 </AlertDescription>
               </div>
             </div>
@@ -533,16 +623,16 @@ function AddEmployeeSheetComponent({
 
         {/* Bank Info Section */}
         <FieldGroup>
-          <SectionTitle icon={CreditCard} label="Thông tin ngân hàng" />
+          <SectionTitle icon={CreditCard} label="Bank details for salary payments" />
 
-          <Field label="Ngân hàng">
+          <Field label="Bank">
             <BankSelector
               value={selectedBank}
               onSelect={(bank) => {
                 setSelectedBank(bank);
                 handleInputChange("bank_id", bank?.id);
               }}
-              placeholder="Chọn ngân hàng..."
+              placeholder="Select a bank"
               className={errors.bank_id ? 'border-red-500' : ''}
               canCreateBank={isAdmin}
             />
@@ -550,10 +640,10 @@ function AddEmployeeSheetComponent({
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field id="bank_account_number" label="Số tài khoản">
+            <Field id="bank_account_number" label="Account number">
               <Input
                 id="bank_account_number"
-                placeholder="190123456789"
+                placeholder="Employee bank account number"
                 value={formData.bank_account_number || ''}
                 onChange={(e) => handleInputChange("bank_account_number", e.target.value)}
                 className={cn("h-11 typography-body-medium font-mono", errors.bank_account_number && "border-red-500")}
@@ -561,10 +651,10 @@ function AddEmployeeSheetComponent({
               {errors.bank_account_number && <p role="alert" className="typography-body-small text-financial-negative">{errors.bank_account_number}</p>}
             </Field>
 
-            <Field id="bank_account_name" label="Tên chủ tài khoản">
+            <Field id="bank_account_name" label="Account holder name">
               <Input
                 id="bank_account_name"
-                placeholder="NGUYỄN VĂN A"
+                placeholder="Name as shown on bank account"
                 value={formData.bank_account_name || ''}
                 onChange={(e) => handleInputChange("bank_account_name", e.target.value)}
                 onBlur={(e) => {
@@ -594,8 +684,6 @@ export function AddEmployeeSheet({
 }: AddEmployeeSheetProps) {
   const [searchParams] = useSearchParams();
   const { closeModal } = useModalNavigation();
-  const queryClient = useQueryClient();
-
   // Check if modal is open via URL
   const modalId = searchParams.get('modal');
   const isOpenViaUrl = modalId === 'add_employee';

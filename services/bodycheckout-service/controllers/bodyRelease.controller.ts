@@ -5,9 +5,9 @@ import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/dist/index';
 import { Request, Response, NextFunction } from 'express';
 import * as Zod from 'zod';
-import axios from 'axios';
-import { sendTransactionalSms } from '../../app-global/utils/sendTransactionalSms';
+import { enqueueSideEffect } from '../../app-global/utils/asyncSideEffectQueue';
 import sharp from 'sharp';
+
 
 /**
  * Force a signature image into pure INK-BLUE ink on a transparent background.
@@ -31,14 +31,12 @@ async function toInkBlue(buffer: Buffer): Promise<Buffer> {
     out[i + 1] = INK_BLUE.g;
     out[i + 2] = INK_BLUE.b;
     out[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
-  }
 
+  }
   return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } })
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
-
-
 
 const now = getKenyaTimeISO();
 
@@ -107,6 +105,7 @@ const releaseBodySchema = Zod.z.object({
   terms_accepted: Zod.z.boolean().refine(val => val === true, {
     message: "Terms must be accepted"
   }),
+
   everything_paid: Zod.z.boolean(),
   admission_number: Zod.z.string().optional(),
   date_of_removal: Zod.z.string().optional(),
@@ -167,8 +166,11 @@ const formatDateForMySQL = (dateStr?: string): string | null => {
 
 // POST /body-release/checkout - Create new release
 export const releaseBodyController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  let releaseConnection: any = null;
   try {
-    const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['X-tenant-slug'] as string;
+    const tenantSlug = req.headers['x-tenant-slug'] as string
+      || req.headers['X-tenant-slug'] as string
+      || (req as any).tenantSlug;
 
     if (!tenantSlug) {
       res.status(400).json({
@@ -183,7 +185,7 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
 
     // Generate release ID
     const releaseId = generateDatedCheckoutId();
-    Logger.info(`[RELEASE] Generated release ID: ${releaseId} for tenant: ${tenantSlug}`);
+    Logger.info(`[DISPATCH] Generated DISPATCH  ID: ${releaseId} for tenant: ${tenantSlug}`);
 
     // Get current datetime in KENYA wall time (platform convention — the old
     // UTC value made created_at and the deceased register's dispatch_date
@@ -300,42 +302,10 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       releaseData.created_at
     ];
 
-    await db.execute(query, params);
+    releaseConnection = await db.getConnection();
+    await releaseConnection.beginTransaction();
+    await releaseConnection.execute(query, params);
     Logger.info(`[RELEASE] Successfully created release: ${releaseId} in database: ${dbName}`);
-
-    await sendTransactionalSms({
-      phone: releaseData.tell_number,
-      tenantSlug,
-      event: 'body release confirmation',
-      message: `Montenzuma Monalisa Funeral Home: The body of ${releaseData.name_of_deceased || releaseData.admission_number || 'your loved one'} has been released to ${releaseData.next_kin}.${releaseData.final_destination ? ` Destination: ${releaseData.final_destination}.` : ''} For assistance, please contact the funeral home.`,
-    });
-
-    // Emit notification for body release
-    try {
-      // Internal docker address — the socketio container listens on 5000
-      // (5018 is only the host-published port, so the old fallback never
-      // connected and release notifications were silently dropped).
-      const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://restpoint_socketio_service:5000';
-      await axios.post(`${socketioServiceUrl}/emit/body-released`, {
-        tenantSlug,
-        data: {
-          id: `body-release-${releaseId}-${Date.now()}`,
-          admissionNumber: validatedData.admission_number || '',
-          nameOfDeceased: validatedData.name_of_deceased || '',
-          nextOfKin: validatedData.next_kin,
-          dateOfRemoval: validatedData.date_of_removal || '',
-          modeOfTransport: validatedData.mode_of_transport || '',
-          title: 'Body Released',
-          message: `Body released: ${validatedData.name_of_deceased || validatedData.admission_number}`,
-          type: 'release',
-          priority: 'high',
-          fullContent: `Release ID: ${releaseId}\nDeceased: ${validatedData.name_of_deceased || 'N/A'}\nNext of Kin: ${validatedData.next_kin}\nDate: ${validatedData.date_of_removal || 'N/A'}\nTransport: ${validatedData.mode_of_transport || 'N/A'}`,
-        }
-      }, { timeout: 5000 });
-      Logger.info(`[RELEASE] Emitted body-released notification for ${releaseId}`);
-    } catch (emitError: any) {
-      Logger.warn(`[RELEASE] Failed to emit body-released notification: ${emitError.message}`);
-    }
 
     // ── SYNC THE DECEASED REGISTER (authoritative) ──────────────────────────
     // The status MUST flip to Released in the same tenant database the release
@@ -345,65 +315,73 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     // timeout) was swallowed to the log — so the release looked successful
     // while the deceased register never changed.
     if (validatedData.admission_number) {
-      try {
-        const admissionNumber = String(validatedData.admission_number).trim();
-        const releaseDate = releaseData.date_of_removal || currentDateTime.slice(0, 10);
+      const admissionNumber = String(validatedData.admission_number).trim();
+      const releaseDate = releaseData.date_of_removal || currentDateTime.slice(0, 10);
+      const [syncResult]: any = await releaseConnection.execute(
+        `UPDATE deceased
+            SET body_status = 'Released',
+                release_status = 'released',
+                admission_status = 'released',
+                dispatch_date = COALESCE(dispatch_date, ?),
+                updated_at = ?
+          WHERE admission_number = ?
+             OR TRIM(admission_number) = ?`,
+        [releaseDate, currentDateTime, admissionNumber, admissionNumber]
+      );
 
-        const [syncResult]: any = await db.execute(
-          `UPDATE deceased
-              SET body_status = 'Released',
-                  release_status = 'released',
-                  admission_status = 'released',
-                  dispatch_date = COALESCE(dispatch_date, ?),
-                  updated_at = ?
-            WHERE admission_number = ?
-               OR TRIM(admission_number) = ?`,
-          [releaseDate, currentDateTime, admissionNumber, admissionNumber]
-        );
-
-        const affectedRows = Number(syncResult?.affectedRows || 0);
-        if (affectedRows > 0) {
-          Logger.info(`[RELEASE] Deceased register set to Released for ${admissionNumber} (${affectedRows} row(s))`);
-        } else {
-          Logger.warn(`[RELEASE] No deceased register row matched admission number "${admissionNumber}" — status not synced`);
-        }
-      } catch (syncError: any) {
-        // The release row itself is already stored; report loudly but do not
-        // fail the handover that already happened at the counter.
-        Logger.error(`[RELEASE] Failed to sync deceased register status: ${syncError.message}`);
+      if (Number(syncResult?.affectedRows || 0) === 0) {
+        const syncError: any = new Error(`No deceased row matched admission number ${admissionNumber}`);
+        syncError.code = 'DECEASED_NOT_FOUND';
+        throw syncError;
       }
+      Logger.info(`[RELEASE] Deceased register set to Released for ${admissionNumber}`);
     }
 
-    // ── CACHE INVALIDATION / CANONICAL SYNC (best effort) ───────────────────
-    // Keeps the deceased-service Redis list + detail caches from serving the
-    // pre-release status for up to their TTL.
-    if (validatedData.admission_number) {
-      try {
-        // 5000 is the port INSIDE the container — 5003 is only the host
-        // mapping, so the previous fallback URL could never connect.
-        const deceasedServiceUrl = process.env.DECEASED_SERVICE_URL || 'http://restpoint_deceased_service:5000';
-        await axios.post(
-          `${deceasedServiceUrl}/deceased/update-status`,
-          {
-            admission_number: validatedData.admission_number,
-            body_status: 'Released',
-            is_embalmed: true
+    await releaseConnection.commit();
+    releaseConnection.release();
+    releaseConnection = null;
+
+    const sideEffects = [
+      enqueueSideEffect({
+        kind: 'sms',
+        payload: {
+          phone: releaseData.tell_number,
+          tenantSlug,
+          event: 'body release confirmation',
+          message: `Montenzuma Monalisa Funeral Home: Dear ${releaseData.next_kin}, we wish to let you know that the body of ${releaseData.name_of_deceased || 'your loved one'} has been successfully released to you .  The  final  Destination  is   ${releaseData.final_destination ? `  ${releaseData.final_destination}` : ''}Thank you for trusting us to care for your loved one. We wish you and your family strength during this difficult time. Our   hearts  are  with you `,
+        },
+      }),
+      enqueueSideEffect({
+        kind: 'body-released',
+        payload: {
+          tenantSlug,
+          data: {
+            id: `body - release - ${releaseId} `,
+            admissionNumber: validatedData.admission_number || '',
+            nameOfDeceased: validatedData.name_of_deceased || '',
+            nextOfKin: validatedData.next_kin,
+            dateOfRemoval: validatedData.date_of_removal || '',
+            modeOfTransport: validatedData.mode_of_transport || '',
+            title: 'Body Released',
+            message: `Body released: ${validatedData.name_of_deceased || validatedData.admission_number} `,
+            type: 'release',
+            priority: 'high',
+            fullContent: `Release ID: ${releaseId} \nDeceased: ${validatedData.name_of_deceased || 'N/A'} \nNext of Kin: ${validatedData.next_kin} \nDate: ${validatedData.date_of_removal || 'N/A'} \nTransport: ${validatedData.mode_of_transport || 'N/A'} `,
           },
-          {
-            headers: {
-              'x-tenant-slug': tenantSlug,
-              'Content-Type': 'application/json'
-            },
-            timeout: 5000
-          }
-        );
-        Logger.info(`[RELEASE] Deceased service status endpoint acknowledged for admission: ${validatedData.admission_number}`);
-      } catch (error: any) {
-        // Non-fatal: the register was already updated directly above, this
-        // only refreshes the other service's cache.
-        Logger.warn(`[RELEASE] Deceased service status call skipped (${error.message}); register was updated directly.`);
-      }
+        },
+      }),
+    ];
+    if (validatedData.admission_number) {
+      sideEffects.push(enqueueSideEffect({
+        kind: 'cache-clear',
+        payload: { serviceName: 'deceased-service', scopes: [tenantSlug] },
+      }));
     }
+    void Promise.allSettled(sideEffects).then((results) => {
+      results.filter((result) => result.status === 'rejected').forEach((result) => {
+        Logger.warn(`[RELEASE] Failed to enqueue a post - release side effect: ${(result as PromiseRejectedResult).reason?.message || 'unknown error'} `);
+      });
+    });
 
     res.status(201).json({
       success: true,
@@ -416,6 +394,10 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       }
     });
   } catch (error: any) {
+    if (releaseConnection) {
+      await releaseConnection.rollback().catch(() => { });
+      releaseConnection.release();
+    }
     Logger.error({
       message: 'Error creating body release',
       error: error.message,
@@ -445,6 +427,11 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
         success: false,
         message: 'Invalid admission number or deceased record not found'
       });
+      return;
+    }
+
+    if (error.code === 'DECEASED_NOT_FOUND') {
+      res.status(404).json({ success: false, message: 'Admission number was not found; no release was recorded' });
       return;
     }
 

@@ -1,18 +1,8 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-// UU PRO restyle (W13c): lucide → verified @untitledui/icons; the dark
-// treasury panel keeps its on-dark accents, now on the UU utility ladder.
-import {
-  AlertTriangle,
-  RefreshCw05,
-} from "@untitledui/icons";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@hr/lib/utils";
 import { Skeleton } from "@hr/components/ui/skeleton";
 import { walletService } from "@hr/services/api/wallet.service";
 import { formatCurrency } from "@hr/utils/formatters";
-import { showErrorNotification } from "@hr/utils/error-handler";
-import { useDisbursementSettings } from "@hr/hooks/useDisbursementSettings";
 import {
   WALLET_BALANCE_REFETCH_INTERVAL_MS,
 } from "@hr/lib/cache/queryCacheTimes";
@@ -20,69 +10,21 @@ import { formatKenyanDateTime } from "@hr/utils/kenyan";
 import type { WalletBalance } from "@hr/types/api/wallet.types";
 
 interface WalletBalanceCardProps {
-  monthlyProviderFee?: number;
-  totalProviderFee?: number;
   className?: string;
   compact?: boolean;
 }
 
-export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, className, compact = false }: WalletBalanceCardProps) {
-  const queryClient = useQueryClient();
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const { data: settings, isLoading } = useDisbursementSettings();
-
-  // Wallet-page meta (as_of, pending_out) lives on the wallet-balance query,
-  // not on disbursement-settings. Only the non-compact form consumes it; band
-  // usages pass fee props instead and keep the fee rail. Polls every minute
-  // so the as-of line and pending-out figure stay current without a manual
-  // sync click — the backend cron handles the actual provider sync.
-  const { data: walletBalance } = useQuery<WalletBalance>({
+export function WalletBalanceCard({ className, compact = false }: WalletBalanceCardProps) {
+  const { data: walletBalance, isLoading } = useQuery<WalletBalance>({
     queryKey: ["wallet", "balance"],
     queryFn: () => walletService.getBalance(),
-    enabled: !compact,
     refetchInterval: WALLET_BALANCE_REFETCH_INTERVAL_MS,
   });
-  const showFeeRail = monthlyProviderFee != null || totalProviderFee != null;
-
-  const available = settings?.internal_balance?.available ?? 0;
-  const isLow = available < 1_000_000;
-  const showProviderBalance = !!settings?.active_provider?.capabilities?.balance_inquiry;
-  const providerBalance = settings?.provider_balance;
-  const divergence =
-    showProviderBalance && providerBalance
-      ? Math.abs(providerBalance.amount - available)
-      : 0;
-  const hasDivergence = divergence > 100_000;
-
-  // Refresh this card's data source and invalidate the canonical wallet query
-  // so any concurrently-open WalletPage/tab stays consistent after a sync.
-  // Fire-and-forget with errors swallowed: a refetch failure here must not be
-  // reported as a sync failure (the sync itself already succeeded).
-  const refreshBalances = () => {
-    queryClient.refetchQueries({ queryKey: ["disbursement-settings"] }).catch(() => {});
-    queryClient.invalidateQueries({ queryKey: ["wallet"] });
-  };
-
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      const result = await walletService.syncBalance();
-      // The backend always converges local to the provider balance (the
-      // provider is the source of truth), so a successful sync never leaves
-      // a mismatch to reconcile by hand.
-      toast.success(`Số dư đã đồng bộ: ${formatCurrency(result.local_balance)}`);
-      refreshBalances();
-    } catch (err) {
-      showErrorNotification(err, "Không thể đồng bộ số dư");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  const available = walletBalance?.available ?? 0;
 
   return (
     <section
-      aria-label="Ví tiền"
+      aria-label="Historical wallet balance"
       className={cn(
         "treasury-panel--dark relative h-full overflow-hidden text-white",
         "bg-[radial-gradient(130%_130%_at_0%_0%,#0C7A50_0%,#06452E_48%,#032B1D_100%)]",
@@ -140,7 +82,7 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
               </div>
             </div>
           )
-        ) : settings ? (
+        ) : walletBalance ? (
           compact ? (
             <>
               {/* Header */}
@@ -149,120 +91,61 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
                   <div className="flex items-center gap-2">
                     <span className="led-pulse h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_0_3px_rgba(110,231,183,0.18)]" />
                     <span className="text-xs font-bold uppercase tracking-[0.12em] text-utility-success-200">
-                      Ví tiền
+                      Historical wallet balance
                     </span>
                   </div>
-                  <button
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    title="Đồng bộ số dư với nhà cung cấp"
-                    aria-label="Đồng bộ số dư"
-                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50 touch-manipulation"
-                  >
-                    <RefreshCw05 className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
-                  </button>
                 </div>
 
                 {/* Main Balance */}
                 <div className={cn(
                   "treasury-value mt-1.5 max-w-full break-words font-financial font-semibold leading-[1.08] tracking-normal tabular-nums",
                   "text-[clamp(1.375rem,7.5vw,1.5rem)]",
-                  isLow
-                    ? "text-utility-error-400 [text-shadow:0_0_32px_rgba(248,113,113,0.35)]"
-                    : "text-white [text-shadow:0_0_36px_rgba(110,231,183,0.30)]"
+                  "text-white [text-shadow:0_0_36px_rgba(110,231,183,0.30)]"
                 )}>
-                  {formatCurrency(available).replace('₫', '')}
-                  <span className="ml-1 font-medium text-utility-success-200">₫</span>
+                  {formatCurrency(available, walletBalance.currency)}
                 </div>
 
-                {hasDivergence && showProviderBalance && providerBalance && (
-                  <div className="mt-2 inline-flex items-center gap-1 rounded border border-utility-warning-500/30 bg-utility-warning-500/10 px-2 py-0.5 text-xs font-medium text-utility-warning-400">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    NCC: {formatCurrency(providerBalance.amount)}
-                  </div>
-                )}
-
-                {isLow && !hasDivergence && (
-                  <div className="mt-1.5 text-xs text-utility-error-400/80">
-                    Số dư thấp — cân nhắc nạp thêm
-                  </div>
-                )}
+                <div className="mt-1.5 text-xs text-white/60">
+                  Legacy records retained for historical reference.
+                </div>
               </div>
 
-              {/* Footer rail — fee grid when fee props are supplied (band
-                  usages); otherwise the pending-out companion. */}
+              {/* Pending amounts are derived from retained historical records. */}
               <div className="treasury-rail treasury-rail--dark mt-3 pt-3">
-                {showFeeRail ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold uppercase tracking-[0.1em] text-white/60">
-                        Tổng phí trả
-                      </div>
-                      <div className="mt-1 break-words font-financial text-[13px] font-medium leading-snug text-white tabular-nums">
-                        {formatCurrency(totalProviderFee ?? 0)}
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold uppercase tracking-[0.1em] text-white/60">
-                        Fee tháng này
-                      </div>
-                      <div className="mt-1 break-words font-financial text-[13px] font-medium leading-snug text-white tabular-nums">
-                        {formatCurrency(monthlyProviderFee ?? 0)}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-xs font-semibold uppercase tracking-[0.1em] text-white/60">
-                      Chờ chi trả
-                    </span>
-                    <span className="break-words font-financial text-[13px] font-medium leading-snug tabular-nums text-white">
-                      {walletBalance ? formatCurrency(walletBalance.pending_out) : "—"}
-                    </span>
-                  </div>
-                )}
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-[0.1em] text-white/60">
+                    Recorded pending payments
+                  </span>
+                  <span className="break-words font-financial text-[13px] font-medium leading-snug tabular-nums text-white">
+                    {formatCurrency(walletBalance.pending_out, walletBalance.currency)}
+                  </span>
+                </div>
               </div>
             </>
           ) : (
             <>
-              {/* Wallet strip — one-row HUD readout. Label + balance on the
-                  left, as-of meta and the pending-out companion on the right.
-                  Zone ownership: pending out lives ONLY here. */}
+              {/* Historical balance and pending totals are read-only. */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                 {/* Balance cluster */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="led-pulse h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_0_3px_rgba(110,231,183,0.18)]" />
                     <span className="text-xs font-bold uppercase tracking-[0.12em] text-utility-success-200">
-                      Ví tiền
+                      Historical wallet balance
                     </span>
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <div className={cn(
                       "treasury-value max-w-full break-words font-financial font-semibold leading-none tracking-normal tabular-nums",
                       "text-[clamp(1.5rem,3vw,1.75rem)]",
-                      isLow
-                        ? "text-utility-error-400 [text-shadow:0_0_32px_rgba(248,113,113,0.35)]"
-                        : "text-white [text-shadow:0_0_36px_rgba(110,231,183,0.30)]"
+                      "text-white [text-shadow:0_0_36px_rgba(110,231,183,0.30)]"
                     )}>
-                      {formatCurrency(available).replace('₫', '')}
-                      <span className={cn("ml-1 font-medium", isLow ? "text-utility-error-400/80" : "text-utility-success-200")}>₫</span>
+                      {formatCurrency(available, walletBalance.currency)}
                     </div>
-                    {hasDivergence && showProviderBalance && providerBalance && (
-                      <div className="inline-flex items-center gap-1 rounded border border-utility-warning-500/30 bg-utility-warning-500/10 px-2 py-0.5 text-xs font-medium text-utility-warning-400">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        NCC: {formatCurrency(providerBalance.amount)}
-                      </div>
-                    )}
-                    {isLow && !hasDivergence && (
-                      <span className="text-xs text-utility-error-400/80">
-                        Số dư thấp — cân nhắc nạp thêm
-                      </span>
-                    )}
                   </div>
                 </div>
 
-                {/* Meta + sync cluster */}
+                {/* Historical update metadata */}
                 <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-5">
                   <div className="min-w-0 leading-tight">
                     {walletBalance?.as_of && (
@@ -275,19 +158,10 @@ export function WalletBalanceCard({ monthlyProviderFee, totalProviderFee, classN
                         Pending disbursements
                       </span>
                       <span className="font-financial text-[15px] font-medium leading-snug tabular-nums text-white">
-                        {walletBalance ? formatCurrency(walletBalance.pending_out) : "—"}
+                        {formatCurrency(walletBalance.pending_out, walletBalance.currency)}
                       </span>
                     </p>
                   </div>
-                  <button
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    title="Sync balance with provider"
-                    aria-label="Sync balance"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50 touch-manipulation"
-                  >
-                    <RefreshCw05 className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
-                  </button>
                 </div>
               </div>
             </>

@@ -133,13 +133,6 @@ func (s *Server) cleanup() {
 		}
 	}
 
-	// Close provider resources (e.g. ninepay queued provider goroutine)
-	if s.container.Services != nil && s.container.Services.NinepayCloser != nil {
-		if err := s.container.Services.NinepayCloser.Close(); err != nil {
-			s.logger.Error("Failed to close ninepay provider", "error", err)
-		}
-	}
-
 	// Stop tenant queue workers
 	if s.container.TenantQueueManager != nil {
 		s.container.TenantQueueManager.ShutdownAll()

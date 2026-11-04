@@ -4,9 +4,8 @@ import useAuthStore from '../utils/store/useAuthStore';
 import { storeBranchContext, clearBranchContext } from '../utils/globalAuth';
 
 // ─── Shared Auth API ──────────────────────────────────────────
-// Uses httpOnly cookies for refresh tokens (via withCredentials)
-// Uses sessionStorage for access tokens (cleared on tab close)
-// Tokens auto-refresh every 10 minutes
+// Authentication tokens remain in HttpOnly cookies; browser storage holds only
+// non-sensitive user and tenant context.
 
 export const authApi = {
   /**
@@ -20,23 +19,18 @@ export const authApi = {
     const response = await api.post(ENDPOINTS.AUTH.LOGIN, {
       identifier: loginIdentifier,
       password
-    });
+    }, { headers: { 'x-auth-cookie': '1' } });
 
     const data = response.data;
 
-    if (data?.accessToken) {
-      // Store in BOTH storages for cross-compatibility
-      // sessionStorage for tab isolation, localStorage for page refresh persistence
-      sessionStorage.setItem('authToken', data.accessToken);
-      localStorage.setItem('authToken', data.accessToken);
+    if (data?.success && data.user) {
+      ['authToken', 'accessToken', 'token', 'refreshToken'].forEach((key) => {
+        sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
+      });
       sessionStorage.setItem('user', JSON.stringify(data.user || {}));
       localStorage.setItem('user', JSON.stringify(data.user || {}));
 
-      // Store refresh token in BOTH storages for consistency
-      if (data.refreshToken) {
-        sessionStorage.setItem('refreshToken', data.refreshToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
-      }
 
       // Non-sensitive metadata in localStorage.
       // The slug used for routing/API headers must ALWAYS be the parent tenant
@@ -83,7 +77,7 @@ export const authApi = {
       startTokenRefresh();
 
       // Update zustand store
-      useAuthStore.getState().login(data.user, data.accessToken);
+      useAuthStore.getState().login(data.user);
     }
     return data;
   },
@@ -127,17 +121,11 @@ export const authApi = {
 
   /**
    * Refresh access token — POST /api/v1/restpoint/auth/refresh
-   * Sends refresh token in request body
+   * Uses the HttpOnly refresh cookie.
    */
   refresh: async () => {
-    const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
-    const response = await api.post(ENDPOINTS.AUTH.REFRESH, { refreshToken });
-    const data = response.data;
-    if (data?.accessToken) {
-      sessionStorage.setItem('authToken', data.accessToken);
-      localStorage.setItem('authToken', data.accessToken);
-    }
-    return data;
+    const response = await api.post(ENDPOINTS.AUTH.REFRESH, {}, { headers: { 'x-auth-cookie': '1' } });
+    return response.data;
   },
 
   /**
@@ -152,7 +140,7 @@ export const authApi = {
    * Get auth headers for external service calls
    */
   getAuthHeaders: () => {
-    const token = sessionStorage.getItem('authToken');
+    const token = '';
     const slug = localStorage.getItem('tenantSlug');
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -164,8 +152,7 @@ export const authApi = {
    * Check if user is authenticated
    */
   isAuthenticated: () => {
-    const token = sessionStorage.getItem('authToken');
-    return !!token && token !== 'undefined' && token !== 'null';
+    return !!(sessionStorage.getItem('user') || localStorage.getItem('user'));
   },
 
   getTenantContext: () => ({

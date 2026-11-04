@@ -1,10 +1,12 @@
+
+import { extractRowDates, isValidDateKey } from '../utilities/hearseAvailability';
+import { emitHearseDataChanged } from '../utilities/hearseRealtime';
+import { getHearseConnection, getHearsePool } from '../database';
+import { invalidateHearseCache } from '../utilities/hearseCache';
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import { PoolConnection } from 'mysql2/promise';
-import { getHearseConnection, getHearsePool } from '../database';
-import { extractRowDates, isValidDateKey } from '../utilities/hearseAvailability';
-import { invalidateHearseCache } from '../utilities/hearseCache';
-import { emitHearseDataChanged } from '../utilities/hearseRealtime';
+
 
 class LineupError extends Error {
     status: number;

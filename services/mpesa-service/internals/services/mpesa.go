@@ -10,6 +10,7 @@ import (
     "net/url"
     "strings"
     "os"
+    "time"
 
     "github.com/go-mpesa-integration/config"
     "github.com/go-mpesa-integration/interfacex"
@@ -30,6 +31,8 @@ type mpesaService struct {
     mpesaRepo repository.MpesaRepository
 }
 
+var stkHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func NewMpesaService(mpesaRepo repository.MpesaRepository) MpesaService {
     return &mpesaService{
         mpesaRepo: mpesaRepo,
@@ -38,7 +41,9 @@ func NewMpesaService(mpesaRepo repository.MpesaRepository) MpesaService {
 
 func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushRequest) (*interfacex.STKPushResponse, error) {
     enConfig := config.NewEnvConfig()
-    token, err := utils.GenerateAccessToken(enConfig.ConsumerKey, enConfig.ConsumerSecret)
+    oauthStarted := time.Now()
+    token, err := utils.GenerateAccessToken(ctx, enConfig.ConsumerKey, enConfig.ConsumerSecret)
+    logrus.Infof("M-Pesa OAuth token acquisition completed in %dms", time.Since(oauthStarted).Milliseconds())
 
     if err != nil {
         logrus.Errorf("Error generating access token: %v", err)
@@ -123,7 +128,7 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
         return nil, err
     }
 
-    req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+    req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(reqBody))
 
     if err != nil {
         logrus.Errorf("Error creating request: %v", err)
@@ -132,19 +137,22 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
 
     req.Header.Set("Authorization", "Bearer "+token)
     req.Header.Set("Content-Type", "application/json")
-    client := &http.Client{}
-
-    res, err := client.Do(req)
+    stkStarted := time.Now()
+    res, err := stkHTTPClient.Do(req)
 
     if err != nil {
-        logrus.Errorf("Error making request: %v", err)
+        logrus.Errorf("Safaricom STK request failed after %dms: %v", time.Since(stkStarted).Milliseconds(), err)
         return nil, err
     }
     defer res.Body.Close()
 
     var response interfacex.STKPushResponse
 
-    bodyBytes, _ := io.ReadAll(res.Body)
+    bodyBytes, err := io.ReadAll(res.Body)
+    logrus.Infof("Safaricom STK request completed in %dms", time.Since(stkStarted).Milliseconds())
+    if err != nil {
+        return nil, fmt.Errorf("read Safaricom STK response: %w", err)
+    }
     logrus.Infof("Safaricom STK Response status: %d body: %s", res.StatusCode, string(bodyBytes))
     err = json.Unmarshal(bodyBytes, &response)
 
@@ -168,10 +176,12 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
     logrus.Infof("STK mode=%s BusinessShortCode=%s PartyB=%s Phone=%s Amount=%s Ref=%s",
         transactionType, businessShortCode, partyB, request.PhoneNumber, request.Amount, request.AccountReference)
 
+    dbStarted := time.Now()
     if err := s.mpesaRepo.SaveSTKPush(ctx, request, &response); err != nil {
-        logrus.Errorf("Error saving transaction to db: %v", err)
+        logrus.Errorf("Saving STK request failed after %dms: %v", time.Since(dbStarted).Milliseconds(), err)
         return nil, err
     }
+    logrus.Infof("Saved STK request to database in %dms", time.Since(dbStarted).Milliseconds())
     return &response, nil
 }
 

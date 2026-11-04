@@ -3,7 +3,7 @@
 // third-party credentials in the clear.
 //
 // The settings table is a generic key/value store; rows such as
-// "zalo.credentials" hold a Zalo OA app secret and OAuth tokens verbatim. This
+// the legacy provider credentials row holds secret material. This
 // package seals those values with AES-256-GCM under a key supplied by the
 // SETTINGS_SECRET_KEY environment variable (base64, 32 bytes).
 //

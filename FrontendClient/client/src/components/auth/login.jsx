@@ -46,8 +46,7 @@ export default function LoginPage() {
   const navigatingRef = useRef(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    const hasValidToken = !!token && token !== 'undefined' && token !== 'null';
+    const hasCachedUser = !!(localStorage.getItem('user') || sessionStorage.getItem('user'));
 
     // Resume with the user's COMPLETE branch slug (`<org-slug>-<branch-name>`,
     // e.g. `...-nairobi` for Main / `...-machakos` for Machakos) so every
@@ -72,7 +71,7 @@ export default function LoginPage() {
       slug !== 'undefined' &&
       slug !== 'null';
 
-    if (hasValidToken) {
+    if (hasCachedUser) {
       // Someone who logged in before must land back INSIDE the app — they used
       // to get stranded on this form whenever no slug was stored.
       // Drivers ONLY ever land on the driver portal dashboard.
@@ -80,7 +79,7 @@ export default function LoginPage() {
       if (slugOk) {
         navigate(`/${slug}/${dest}`, { replace: true });
       } else {
-        // The token is fine but nothing says which tenant it belongs to:
+        // The session has no cached tenant slug:
         // /dashboard runs its recovery path (and clears a truly dead session).
         navigate('/dashboard', { replace: true });
       }

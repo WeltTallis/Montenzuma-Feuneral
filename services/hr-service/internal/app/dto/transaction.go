@@ -5,7 +5,7 @@ import "api-server/internal/domain"
 // CreateTransactionRequest represents the request to create a new transaction
 type CreateTransactionRequest struct {
 	Description     string                   `json:"description" binding:"required"`
-	TransactionType domain.TransactionType   `json:"transaction_type" binding:"required,oneof=expense revenue capital write_off loan_disbursement"`
+	TransactionType domain.TransactionType   `json:"transaction_type" binding:"required,oneof=expense revenue capital write_off"`
 	Amount          int64                    `json:"amount" binding:"required,gt=0"`
 	Party           string                   `json:"party" binding:"required"`
 	Status          domain.TransactionStatus `json:"status" binding:"required,oneof=settled pending"`

@@ -16,7 +16,7 @@ export function AddEmployeeModal() {
       console.error('AddEmployeeModal error:', error);
       toast({
         title: "Error",
-        description: "An error occurred khi tải modal.",
+        description: "An error occurred while loading the employee form.",
         variant: "destructive"
       });
     }

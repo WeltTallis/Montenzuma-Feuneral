@@ -1,6 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Add hearse_name column
-// ============================================
+
 
 exports.up = function (knex) {
     return knex.schema

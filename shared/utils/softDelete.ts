@@ -15,6 +15,20 @@
 
 import type { NextFunction, Request, Response } from 'express';
 
+function validatePurgeTableName(tableName: string): void {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableName)) {
+    throw new TypeError('Purge table name must be a plain SQL identifier');
+  }
+}
+
+function validatePurgeCutoff(cutoffDate: Date | string): Date {
+  const cutoff = cutoffDate instanceof Date ? cutoffDate : new Date(cutoffDate);
+  if (Number.isNaN(cutoff.getTime())) {
+    throw new TypeError('Purge cutoff must be a valid date');
+  }
+  return cutoff;
+}
+
 /**
  * SQL Query builders for soft delete operations
  */
@@ -46,6 +60,22 @@ export const SOFT_DELETE_QUERIES = {
    */
   hardDelete: (tableName: string, primaryKey = 'id'): string =>
     `DELETE FROM ${tableName} WHERE ${primaryKey} = ?`,
+
+  /**
+   * Count soft-deleted records older than an explicitly supplied cutoff.
+   */
+  countDeletedBefore: (tableName: string): string => {
+    validatePurgeTableName(tableName);
+    return `SELECT COUNT(*) AS expired_count FROM ${tableName} WHERE is_deleted = TRUE AND deleted_at IS NOT NULL AND deleted_at < ?`;
+  },
+
+  /**
+   * Purge a bounded batch of soft-deleted records older than an explicit cutoff.
+   */
+  purgeDeletedBefore: (tableName: string): string => {
+    validatePurgeTableName(tableName);
+    return `DELETE FROM ${tableName} WHERE is_deleted = TRUE AND deleted_at IS NOT NULL AND deleted_at < ? LIMIT ?`;
+  },
 
   /**
    * Filter clause to exclude soft-deleted records
@@ -193,6 +223,47 @@ export class SoftDeleteService {
       console.error(`❌ Batch hard delete failed for ${tableName}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Count soft-deleted records older than an explicitly chosen retention cutoff.
+   * This utility does not choose a retention period or run automatically.
+   */
+  static async countDeletedBefore(
+    connection: any,
+    tableName: string,
+    cutoffDate: Date | string
+  ): Promise<number> {
+    validatePurgeTableName(tableName);
+    const cutoff = validatePurgeCutoff(cutoffDate);
+    const [rows] = await connection.query(SOFT_DELETE_QUERIES.countDeletedBefore(tableName), [
+      cutoff,
+    ]);
+    return Number((rows as any[])[0]?.expired_count ?? 0);
+  }
+
+  /**
+   * Permanently remove at most 1,000 soft-deleted records older than an
+   * explicitly chosen cutoff. Review countDeletedBefore() and applicable
+   * retention requirements before calling; this method is never scheduled.
+   */
+  static async purgeDeletedBefore(
+    connection: any,
+    tableName: string,
+    cutoffDate: Date | string,
+    limit = 100
+  ): Promise<number> {
+    validatePurgeTableName(tableName);
+    const cutoff = validatePurgeCutoff(cutoffDate);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+      throw new RangeError('Purge batch limit must be an integer between 1 and 1000');
+    }
+
+    const [result] = await connection.query(SOFT_DELETE_QUERIES.purgeDeletedBefore(tableName), [
+      cutoff,
+      limit,
+    ]);
+    return (result as any).affectedRows;
   }
 }
 

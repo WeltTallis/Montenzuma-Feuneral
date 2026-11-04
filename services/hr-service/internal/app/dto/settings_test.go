@@ -16,7 +16,7 @@ func TestNewSettingResponseMasksProtectedValue(t *testing.T) {
 	credential := `{"app_id":"123","secret_key":"s3cr3t-key","refresh_token":"tok"}`
 	resp := NewSettingResponse(&domain.Settings{
 		ID:        7,
-		Key:       secret.ZaloCredentialsKey,
+		Key:       secret.LegacyMessagingCredentialsKey,
 		Value:     strPtr(credential),
 		ValueType: domain.ValueTypeJSON,
 		UpdatedAt: time.Unix(1700000000, 0),
@@ -47,7 +47,7 @@ func TestNewSettingResponseMasksProtectedValue(t *testing.T) {
 func TestNewSettingResponseReportsUnsetProtectedValue(t *testing.T) {
 	resp := NewSettingResponse(&domain.Settings{
 		ID:        8,
-		Key:       secret.ZaloCredentialsKey,
+		Key:       secret.LegacyMessagingCredentialsKey,
 		Value:     nil,
 		ValueType: domain.ValueTypeJSON,
 	})

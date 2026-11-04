@@ -28,6 +28,43 @@ const pool = mysql.createPool({
 });
 
 const SOCKETIO_URL = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+const PLATFORM_ROLES = new Set(['systemadmin', 'superadmin']);
+const ADMIN_REPLY_ROLES = new Set(['admin', 'systemadmin', 'superadmin']);
+const VALID_STATUSES = new Set(['open', 'in_progress', 'resolved', 'closed']);
+
+const getPrincipal = (req) => req.user || {};
+
+const getTenantSlug = (req) => {
+    const principal = getPrincipal(req);
+    return principal.tenantSlug || principal.tenant_slug || null;
+};
+
+const isPlatformAdmin = (req) => PLATFORM_ROLES.has(String(getPrincipal(req).role || ''));
+
+const getTicketScope = (req, ticketId) => {
+    if (isPlatformAdmin(req)) {
+        return {
+            sql: 'ticket_id = ?',
+            params: [ticketId],
+        };
+    }
+
+    const tenantSlug = getTenantSlug(req);
+    if (!tenantSlug) return null;
+    return {
+        sql: 'ticket_id = ? AND tenant_slug = ?',
+        params: [ticketId, tenantSlug],
+    };
+};
+
+const requireTenant = (req, res) => {
+    const tenantSlug = getTenantSlug(req);
+    if (tenantSlug) return tenantSlug;
+    res.status(403).json({ success: false, message: 'Authenticated tenant context is required' });
+    return null;
+};
+
+const getReplyUserType = (req) => ADMIN_REPLY_ROLES.has(String(getPrincipal(req).role || '')) ? 'admin' : 'tenant';
 
 // Helper to emit socket events
 const emitSocketEvent = async (event, tenantSlug, data) => {
@@ -45,7 +82,16 @@ const emitSocketEvent = async (event, tenantSlug, data) => {
 exports.createTicket = async (req, res) => {
     try {
         const { type, subject, message, tenantName, userEmail, userName } = req.body;
-        const tenantSlug = req.headers['x-tenant-slug'] || 'system_shared';
+        const principal = getPrincipal(req);
+        const tenantSlug = getTenantSlug(req) || 'system_shared';
+        const authenticated = Object.keys(principal).length > 0;
+        const requesterEmail = authenticated ? principal.email || '' : userEmail || '';
+        const requesterName = authenticated
+            ? principal.full_name || principal.fullName || principal.name || ''
+            : userName || '';
+        const requesterTenantName = authenticated
+            ? principal.tenantName || principal.tenant_name || ''
+            : tenantName || 'Unknown Tenant';
 
         if (!subject || !message) {
             return res.status(400).json({ success: false, message: 'Subject and message are required' });
@@ -54,7 +100,7 @@ exports.createTicket = async (req, res) => {
         const [result] = await pool.query(
             `INSERT INTO support_tickets (tenant_slug, tenant_name, user_email, user_name, type, subject, message)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [tenantSlug, tenantName || 'Unknown Tenant', userEmail || '', userName || '', type || 'help', subject, message]
+            [tenantSlug, requesterTenantName, requesterEmail, requesterName, type || 'help', subject, message]
         );
 
         const ticketId = result.insertId;
@@ -78,13 +124,14 @@ exports.createTicket = async (req, res) => {
 // Get tickets for a specific tenant (with replies)
 exports.getTickets = async (req, res) => {
     try {
-        const tenantSlug = req.query.tenant || req.headers['x-tenant-slug'] || 'system_shared';
+        const tenantSlug = requireTenant(req, res);
+        if (!tenantSlug) return;
 
         // Fetch tickets with their replies via LEFT JOIN
         const [tickets] = await pool.query(
             `SELECT t.*, r.reply_id, r.user_type, r.message AS reply_message, r.created_at AS reply_created_at
                FROM support_tickets t
-               LEFT JOIN ticket_replies r ON r.ticket_id = t.ticket_id
+               LEFT JOIN ticket_replies r ON r.ticket_id = t.ticket_id AND r.tenant_slug = t.tenant_slug
               WHERE t.tenant_slug = ?
               ORDER BY t.created_at DESC, r.created_at ASC
               LIMIT 200`,
@@ -131,6 +178,9 @@ exports.getTickets = async (req, res) => {
 // Get all support tickets (admin view)
 exports.getAllTickets = async (req, res) => {
     try {
+        if (!isPlatformAdmin(req)) {
+            return res.status(403).json({ success: false, message: 'Platform administrator role required' });
+        }
         const [tickets] = await pool.query(
             'SELECT * FROM support_tickets ORDER BY created_at DESC LIMIT 200'
         );
@@ -145,8 +195,12 @@ exports.getAllTickets = async (req, res) => {
 exports.replyToTicket = async (req, res) => {
     try {
         const { id } = req.params;
-        const { message, userType } = req.body;
-        const tenantSlug = req.headers['x-tenant-slug'] || 'system_shared';
+        const { message } = req.body;
+        const scope = getTicketScope(req, id);
+        if (!scope) {
+            return res.status(403).json({ success: false, message: 'Authenticated tenant context is required' });
+        }
+        const userType = getReplyUserType(req);
 
         if (!message || !message.trim()) {
             return res.status(400).json({ success: false, message: 'Message is required' });
@@ -154,8 +208,8 @@ exports.replyToTicket = async (req, res) => {
 
         // Get ticket info
         const [tickets] = await pool.query(
-            'SELECT * FROM support_tickets WHERE ticket_id = ?',
-            [id]
+            `SELECT * FROM support_tickets WHERE ${scope.sql}`,
+            scope.params
         );
 
         if (!tickets || tickets.length === 0) {
@@ -168,30 +222,30 @@ exports.replyToTicket = async (req, res) => {
         await pool.query(
             `INSERT INTO ticket_replies (ticket_id, user_type, message, tenant_slug)
        VALUES (?, ?, ?, ?)`,
-            [id, userType || 'tenant', message.trim(), tenantSlug]
+            [id, userType, message.trim(), ticket.tenant_slug]
         );
 
         // Update ticket status if it was open
         if (ticket.status === 'open') {
             await pool.query(
-                'UPDATE support_tickets SET status = ? WHERE ticket_id = ?',
-                ['in_progress', id]
+                `UPDATE support_tickets SET status = ? WHERE ${scope.sql}`,
+                ['in_progress', ...scope.params]
             );
         }
 
         // Emit socket events for real-time updates
-        await emitSocketEvent('ticket_response', ticket.tenant_slug || tenantSlug, {
+        await emitSocketEvent('ticket_response', ticket.tenant_slug, {
             ticketId: id,
             message: `New reply on ticket #${id}: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`,
-            userType: userType || 'tenant',
+            userType,
         });
 
-        await emitSocketEvent('ticket_updated', ticket.tenant_slug || tenantSlug, {
+        await emitSocketEvent('ticket_updated', ticket.tenant_slug, {
             ticketId: id,
             action: 'replied',
         });
 
-        console.log(`[Support] Reply added to ticket #${id} by ${userType || 'tenant'}`);
+        console.log(`[Support] Reply added to ticket #${id} by ${userType}`);
 
         res.json({ success: true, message: 'Reply added' });
     } catch (error) {
@@ -205,10 +259,17 @@ exports.updateTicketStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
+        const scope = getTicketScope(req, id);
+        if (!scope) {
+            return res.status(403).json({ success: false, message: 'Authenticated tenant context is required' });
+        }
+        if (!VALID_STATUSES.has(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid ticket status' });
+        }
 
         const [tickets] = await pool.query(
-            'SELECT * FROM support_tickets WHERE ticket_id = ?',
-            [id]
+            `SELECT * FROM support_tickets WHERE ${scope.sql}`,
+            scope.params
         );
 
         if (!tickets || tickets.length === 0) {
@@ -216,8 +277,8 @@ exports.updateTicketStatus = async (req, res) => {
         }
 
         await pool.query(
-            'UPDATE support_tickets SET status = ? WHERE ticket_id = ?',
-            [status, id]
+            `UPDATE support_tickets SET status = ? WHERE ${scope.sql}`,
+            [status, ...scope.params]
         );
 
         const ticket = tickets[0];
@@ -238,9 +299,21 @@ exports.updateTicketStatus = async (req, res) => {
 exports.getTicketReplies = async (req, res) => {
     try {
         const { id } = req.params;
+        const scope = getTicketScope(req, id);
+        if (!scope) {
+            return res.status(403).json({ success: false, message: 'Authenticated tenant context is required' });
+        }
+        const [tickets] = await pool.query(
+            `SELECT ticket_id, tenant_slug FROM support_tickets WHERE ${scope.sql}`,
+            scope.params
+        );
+        if (tickets.length === 0) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+
         const [replies] = await pool.query(
-            'SELECT * FROM ticket_replies WHERE ticket_id = ? ORDER BY created_at ASC',
-            [id]
+            'SELECT * FROM ticket_replies WHERE ticket_id = ? AND tenant_slug = ? ORDER BY created_at ASC',
+            [id, tickets[0].tenant_slug]
         );
 
         res.json({ success: true, replies });

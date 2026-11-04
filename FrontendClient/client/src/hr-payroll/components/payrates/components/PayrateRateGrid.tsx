@@ -89,7 +89,7 @@ export function PayrateRateGrid({ rates, isFlexible = false }: PayrateRateGridPr
                             <span className="text-xs font-semibold tabular-nums text-foreground">
                               {rate.toLocaleString('en-KE')}
                               <span className="ml-0.5 text-xs font-normal text-muted-foreground">
-                                {isFlexible ? "₫/ca" : "₫/giờ"}
+                                {isFlexible ? "KES/shift" : "KES/hour"}
                               </span>
                             </span>
                           ) : (

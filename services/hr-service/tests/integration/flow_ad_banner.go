@@ -43,7 +43,7 @@ func adBannerFlowPayloadFor(title string, targets []uint, priority int, startsAt
 		},
 		CTAs: []map[string]string{
 			{"label": "Gọi hotline", "type": "phone", "value": "0914827988"},
-			{"label": "Nhóm Zalo", "type": "url", "value": "https://zalo.me/g/ekvooqdb9hjcl3qmogof"},
+			{"label": "Employee portal", "type": "url", "value": "https://restpoint.co.ke"},
 		},
 		Footer:           "Ting Ting Software Solutions — Đồng hành cùng người lao động.",
 		TargetProjectIDs: targets,

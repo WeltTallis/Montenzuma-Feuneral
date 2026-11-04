@@ -48,7 +48,7 @@ _None at this level — all code is in subdirectories._
 ### Common Patterns
 ```go
 // Clock usage (ALWAYS for business logic)
-now := clock.Now()           // Asia/Ho_Chi_Minh timezone
+now := clock.Now()           // Africa/Nairobi timezone
 utc := clock.NowUTC()        // UTC
 
 // Retry with exponential backoff

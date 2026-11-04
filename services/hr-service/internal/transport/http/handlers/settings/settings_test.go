@@ -113,8 +113,8 @@ func decodeList(t *testing.T, body []byte) []map[string]any {
 // configured flags set — and the plaintext appears nowhere in the payload.
 func assertMasked(t *testing.T, entry map[string]any, rawBody string) {
 	t.Helper()
-	if entry["key"] != secret.ZaloCredentialsKey {
-		t.Fatalf("entry = %v, want the %s row", entry, secret.ZaloCredentialsKey)
+	if entry["key"] != secret.LegacyMessagingCredentialsKey {
+		t.Fatalf("entry = %v, want the %s row", entry, secret.LegacyMessagingCredentialsKey)
 	}
 	if entry["value"] != nil {
 		t.Fatalf("value = %v, want nil for a masked secret", entry["value"])
@@ -136,7 +136,7 @@ func assertMasked(t *testing.T, entry map[string]any, rawBody string) {
 // partner/employee hold GET grants on /settings/*.
 func TestSettingsGetShapesMaskProtectedKeys(t *testing.T) {
 	handler, settingsService, _ := newSettingsTestHarness(t)
-	keyID := seedSetting(t, settingsService, secret.ZaloCredentialsKey, fakeSealedSecret, domain.ValueTypeString)
+	keyID := seedSetting(t, settingsService, secret.LegacyMessagingCredentialsKey, fakeSealedSecret, domain.ValueTypeString)
 	seedSetting(t, settingsService, config.SettingKeyPartnerCompany, "CONG TY TEST", domain.ValueTypeString)
 	router := newSettingsRouter(handler)
 
@@ -148,7 +148,7 @@ func TestSettingsGetShapesMaskProtectedKeys(t *testing.T) {
 	}
 	var sealedEntry map[string]any
 	for _, entry := range decodeList(t, w.Body.Bytes()) {
-		if entry["key"] == secret.ZaloCredentialsKey {
+		if entry["key"] == secret.LegacyMessagingCredentialsKey {
 			sealedEntry = entry
 		}
 		if entry["key"] == config.SettingKeyPartnerCompany && entry["value"] != "CONG TY TEST" {
@@ -156,7 +156,7 @@ func TestSettingsGetShapesMaskProtectedKeys(t *testing.T) {
 		}
 	}
 	if sealedEntry == nil {
-		t.Fatalf("list did not include %s", secret.ZaloCredentialsKey)
+		t.Fatalf("list did not include %s", secret.LegacyMessagingCredentialsKey)
 	}
 	assertMasked(t, sealedEntry, w.Body.String())
 
@@ -170,7 +170,7 @@ func TestSettingsGetShapesMaskProtectedKeys(t *testing.T) {
 
 	// 3. By key
 	w = httptest.NewRecorder()
-	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/settings/key/"+secret.ZaloCredentialsKey, nil))
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/settings/key/"+secret.LegacyMessagingCredentialsKey, nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("by-key status = %d (%s)", w.Code, w.Body)
 	}
@@ -190,12 +190,12 @@ func TestSettingsGetShapesMaskProtectedKeys(t *testing.T) {
 	found := false
 	for _, raw := range activeData["settings"].([]any) {
 		entry := raw.(map[string]any)
-		if entry["key"] == secret.ZaloCredentialsKey {
+		if entry["key"] == secret.LegacyMessagingCredentialsKey {
 			found = true
 			assertMasked(t, entry, w.Body.String())
 		}
 	}
 	if !found {
-		t.Fatalf("active settings did not include %s", secret.ZaloCredentialsKey)
+		t.Fatalf("active settings did not include %s", secret.LegacyMessagingCredentialsKey)
 	}
 }

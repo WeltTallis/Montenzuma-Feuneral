@@ -34,7 +34,8 @@
     "../../packages/shared-services/src/**/*.ts",
     "../app-global/**/*",
     "../../configurations/**/*.ts",
-    "migrate-tenant-tables.js"
+    "migrate-tenant-tables.js",
+    "controllers/charges/chargesControl.ts"
   ],
   "exclude": [
     "node_modules",

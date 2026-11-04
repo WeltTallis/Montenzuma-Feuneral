@@ -201,6 +201,57 @@ class CentralizedUploadService {
     return this.writeBuffer(buffer, filename, tenantSlug, 'exports', subFolder);
   }
 
+  async uploadExcelFromFile(
+    sourcePath: string,
+    filename: string,
+    tenantSlug: string,
+    subFolder?: string
+  ): Promise<UploadResult> {
+    let destinationPath: string | null = null;
+    try {
+      const safeSlug = sanitize(tenantSlug);
+      const safeCat = 'exports';
+      const sub = subFolder ? sanitize(subFolder) : null;
+      const folder = sub
+        ? path.join(this.baseDir, safeSlug, safeCat, sub)
+        : path.join(this.baseDir, safeSlug, safeCat);
+      this.ensureDir(folder);
+
+      const safeFile = sanitizeFilename(filename);
+      const storedFilename = `${Date.now()}-${safeFile}`;
+      destinationPath = path.join(folder, storedFilename);
+      await fs.promises.copyFile(sourcePath, destinationPath);
+      const stat = await fs.promises.stat(destinationPath);
+      const rel = sub
+        ? path.posix.join(safeSlug, safeCat, sub, storedFilename)
+        : path.posix.join(safeSlug, safeCat, storedFilename);
+
+      console.log(`[UPLOAD] Saved: ${destinationPath}`);
+      return {
+        success: true,
+        filename: storedFilename,
+        path: destinationPath,
+        urlPath: `/uploads/${rel}`,
+        size: stat.size,
+        mimeType: mimeOf(filename),
+      };
+    } catch (error: any) {
+      if (destinationPath) {
+        await fs.promises.unlink(destinationPath).catch(() => undefined);
+      }
+      console.error('[UPLOAD] Streamed Excel save failed:', error && error.message);
+      return {
+        success: false,
+        filename: '',
+        path: '',
+        urlPath: '',
+        size: 0,
+        mimeType: '',
+        error: `${error && error.code ? error.code + ' ' : ''}${error && error.message ? error.message : String(error)}`,
+      };
+    }
+  }
+
   private async uploadFile(
     buffer: Buffer,
     filename: string,

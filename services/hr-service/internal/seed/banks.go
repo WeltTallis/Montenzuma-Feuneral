@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Seeder) seedBanks(ctx context.Context, db *gorm.DB) error {
-	for _, bank := range VietnameseBanks {
+	for _, bank := range kenyanBanks {
 		bankEntity := &domain.Bank{
 			BranchName: bank.Name,
 		}

@@ -26,127 +26,70 @@ type UserProfile struct {
 	BankAccount string
 }
 
-// Vietnamese data generators with weighted frequencies
-var vietnameseFirstNames = map[string]int{
-	"Nguyễn": 40, "Trần": 11, "Lê": 9, "Phạm": 7, "Hoàng": 4, "Huỳnh": 4,
-	"Phan": 3, "Vũ": 3, "Võ": 3, "Đặng": 2, "Bùi": 2, "Đỗ": 2,
-	"Hồ": 2, "Ngô": 2, "Dương": 2, "Lý": 2, "Mai": 2, "Đinh": 2, "Vương": 2,
-	"Chu": 1, "Cao": 1, "Trương": 1, "Tô": 1, "Lưu": 1, "Hà": 1,
+var kenyanFirstNames = []string{
+	"Achieng", "Akinyi", "Atieno", "Chebet", "Chepngeno", "Kamau", "Kariuki",
+	"Maina", "Muthoni", "Mwangi", "Njeri", "Njoki", "Odhiambo", "Otieno",
+	"Wafula", "Wanjiku", "Wanjiru", "Wekesa",
 }
 
-var vietnameseLastNames = []string{
-	"Văn Minh", "Thị Hương", "Văn Hùng", "Thị Lan", "Quốc Dũng", "Thị Mai",
-	"Văn Thành", "Thị Linh", "Đức Anh", "Thị Nga", "Văn Long", "Thị Thu",
-	"Quang Huy", "Thị Vân", "Văn Khoa", "Thị Hoa", "Đình Trọng", "Thị Xuân",
-	"Văn Tài", "Thị Bích", "Quốc Việt", "Thị Phương", "Văn Đức", "Thị Trang",
-	"Minh Tuấn", "Thị Yến", "Văn Nam", "Thị Thùy", "Đức Thắng", "Thị Loan",
-	"Thanh Huyền", "Anh Tuấn", "Thị Kim", "Văn Hải", "Quang Minh", "Thị Nhung",
-	"Đức Long", "Thị Hạnh", "Văn Quý", "Thị Tuyết", "Minh Đức", "Thị Hòa",
+var kenyanLastNames = []string{
+	"Abdi", "Barasa", "Cheruiyot", "Kamau", "Kipchoge", "Kiptoo", "Koech",
+	"Maina", "Moraa", "Muli", "Mutua", "Mwangi", "Njoroge", "Ochieng",
+	"Odhiambo", "Onyango", "Wambui", "Waweru",
 }
 
-var VietnameseCompanies = []string{
-	"Công ty TNHH Sản xuất Hóa mỹ phẩm VERICO",
-	"Công ty Cổ phần Dệt may Việt Nam",
-	"Công ty TNHH Sản xuất Giày dép Thành Công",
-	"Công ty Cổ phần Thực phẩm Sạch Việt",
-	"Công ty TNHH Sản xuất Đồ gỗ Nội thất",
-	"Công ty Cổ phần Điện tử Việt Nam",
-	"Công ty TNHH Sản xuất Nhựa Thái Bình",
-	"Công ty Cổ phần Dược phẩm Hà Nội",
+var kenyanCompanies = []string{
+	"Nairobi Manufacturing Ltd",
+	"Coastline Foods Ltd",
+	"Rift Valley Logistics Ltd",
+	"Lakeview Textiles Ltd",
+	"Highland Fresh Produce Ltd",
+	"Eastlands Construction Ltd",
+	"Greenfields Agribusiness Ltd",
+	"Kenya Digital Services Ltd",
 }
 
-var VietnameseBanks = []struct {
+var kenyanBanks = []struct {
 	Name string
 }{
-	{"Ngân hàng TMCP Ngoại thương Việt Nam - Chi nhánh Hà Nội"},
-	{"Ngân hàng Đầu tư và Phát triển Việt Nam - Chi nhánh TPHCM"},
-	{"Ngân hàng Nông nghiệp và Phát triển Nông thôn - Chi nhánh Đống Đa"},
-	{"Ngân hàng TMCP Kỹ thương Việt Nam - Chi nhánh Cầu Giấy"},
-	{"Ngân hàng TMCP Sài Gòn Thương Tín - Chi nhánh Hoàn Kiếm"},
-	{"Ngân hàng TMCP Á Châu - Chi nhánh Tây Hồ"},
-	{"Ngân hàng TMCP Quân đội - Chi nhánh Ba Đình"},
-	{"Ngân hàng TMCP Việt Nam Thịnh Vượng - Chi nhánh Hai Bà Trưng"},
+	{"KCB Bank - Nairobi"},
+	{"Equity Bank - Nairobi"},
+	{"Co-operative Bank - Nairobi"},
+	{"Absa Bank Kenya - Nairobi"},
+	{"NCBA Bank - Nairobi"},
+	{"Family Bank - Nairobi"},
+	{"I&M Bank - Nairobi"},
+	{"DTB Kenya - Nairobi"},
 }
 
-func GenerateVietnameseName() string {
-	// Generate weighted random first name
-	totalWeight := 0
-	for _, weight := range vietnameseFirstNames {
-		totalWeight += weight
-	}
-
-	randomValue := mathrand.IntN(totalWeight)
-	currentWeight := 0
-	var firstName string
-
-	for name, weight := range vietnameseFirstNames {
-		currentWeight += weight
-		if randomValue < currentWeight {
-			firstName = name
-			break
-		}
-	}
-
-	lastName := vietnameseLastNames[mathrand.IntN(len(vietnameseLastNames))]
+func GenerateKenyanName() string {
+	firstName := kenyanFirstNames[mathrand.IntN(len(kenyanFirstNames))]
+	lastName := kenyanLastNames[mathrand.IntN(len(kenyanLastNames))]
 	return firstName + " " + lastName
 }
 
-func GenerateCCCD() string {
-	// Generate 12-digit CCCD starting with valid province codes
-	provinceCodes := []string{"001", "002", "004", "006", "008", "010", "011", "012"}
-	provinceCode := provinceCodes[mathrand.IntN(len(provinceCodes))]
-
-	// Generate remaining 9 digits
-	remaining := fmt.Sprintf("%09d", mathrand.IntN(1000000000))
-	return provinceCode + remaining
+func GenerateNationalID() string {
+	return fmt.Sprintf("%08d", mathrand.IntN(100000000))
 }
 
 func GenerateBankAccount() string {
-	return gofakeit.CreditCardNumber(&gofakeit.CreditCardOptions{
-		Types: []string{"visa"},
-		Gaps:  false,
-	})[0:12]
+	return fmt.Sprintf("%010d", gofakeit.Number(0, 9999999999))
 }
 
-func GenerateVietnameseAddress() string {
-	districts := []string{
-		"Quận Ba Đình, Hà Nội",
-		"Quận Hoàn Kiếm, Hà Nội",
-		"Quận Hai Bà Trưng, Hà Nội",
-		"Quận Đống Đa, Hà Nội",
-		"Quận Tây Hồ, Hà Nội",
-		"Quận Cầu Giấy, Hà Nội",
-		"Quận 1, Thành phố Hồ Chí Minh",
-		"Quận 3, Thành phố Hồ Chí Minh",
-		"Quận Bình Thạnh, Thành phố Hồ Chí Minh",
-		"Quận Tân Bình, Thành phố Hồ Chí Minh",
+func GenerateKenyanAddress() string {
+	locations := []string{
+		"Westlands, Nairobi", "Kibera, Nairobi", "Eastleigh, Nairobi",
+		"Nyali, Mombasa", "Milimani, Kisumu", "Section 58, Nakuru",
+		"Langas, Eldoret", "Makupa, Mombasa",
 	}
-
-	streetNumber := gofakeit.Number(1, 999)
-	streetNames := []string{
-		"đường Nguyễn Trãi", "đường Lê Duẩn", "đường Hai Bà Trưng",
-		"đường Lý Thường Kiệt", "đường Nguyễn Huệ", "đường Điện Biên Phủ",
-		"đường Trần Hưng Đạo", "đường Lê Lợi", "đường Nguyễn Du",
-	}
-
-	street := gofakeit.RandomString(streetNames)
-	district := gofakeit.RandomString(districts)
-
-	return fmt.Sprintf("%d %s, %s", streetNumber, street, district)
+	return fmt.Sprintf("%d %s", gofakeit.Number(1, 999), gofakeit.RandomString(locations))
 }
 
 func GenerateRealisticEmail(name string) string {
-	domains := []string{"company.vn", "gmail.com", "yahoo.com", "hotmail.com", "outlook.com"}
+	domains := []string{"company.co.ke", "gmail.com", "outlook.com"}
 	emailDomain := gofakeit.RandomString(domains)
 
 	nameSlug := strings.ToLower(strings.ReplaceAll(name, " ", ""))
-	nameSlug = strings.ReplaceAll(nameSlug, "ă", "a")
-	nameSlug = strings.ReplaceAll(nameSlug, "â", "a")
-	nameSlug = strings.ReplaceAll(nameSlug, "đ", "d")
-	nameSlug = strings.ReplaceAll(nameSlug, "ê", "e")
-	nameSlug = strings.ReplaceAll(nameSlug, "ô", "o")
-	nameSlug = strings.ReplaceAll(nameSlug, "ơ", "o")
-	nameSlug = strings.ReplaceAll(nameSlug, "ư", "u")
 
 	if gofakeit.Bool() {
 		return fmt.Sprintf("%s%d@%s", nameSlug, gofakeit.Number(1, 999), emailDomain)
@@ -162,37 +105,23 @@ func GenerateRealisticPhone() string {
 
 func GenerateCompanyName() string {
 	if gofakeit.Bool() {
-		return gofakeit.RandomString(VietnameseCompanies)
+		return gofakeit.RandomString(kenyanCompanies)
 	}
 	return gofakeit.Company()
 }
 
 func GenerateProjectName() string {
-	buzzwords := []string{
-		"phát triển", "sản xuất", "xây dựng", "nghiên cứu", "thiết kế",
-		"marketing", "bán hàng", "quản lý", "vận hành", "cải tiến",
-	}
-	products := []string{
-		"ứng dụng di động", "website thương mại", "hệ thống CRM", "phần mềm quản lý",
-		"sản phẩm công nghệ", "giải pháp số", "nền tảng trực tuyến", "hệ thống tự động",
-	}
-
-	if gofakeit.Bool() {
-		buzzword := gofakeit.RandomString(buzzwords)
-		product := gofakeit.RandomString(products)
-		return fmt.Sprintf("Dự án %s %s", buzzword, product)
-	}
 	return fmt.Sprintf("Project %s", gofakeit.BuzzWord())
 }
 
 func GenerateJobTitle() string {
-	vietnameseRoles := []string{
-		"Lập trình viên", "Thiết kế đồ họa", "Quản lý dự án", "Nhân viên kinh doanh",
-		"Kế toán", "Nhân sự", "Marketing", "Bảo vệ", "Lao công", "Tài xế",
+	kenyanRoles := []string{
+		"Payroll Clerk", "HR Officer", "Accountant", "Site Supervisor",
+		"Warehouse Assistant", "Driver", "Security Guard", "Production Operator",
 	}
 
 	if gofakeit.Bool() {
-		return gofakeit.RandomString(vietnameseRoles)
+		return gofakeit.RandomString(kenyanRoles)
 	}
 	return gofakeit.JobTitle()
 }
@@ -230,7 +159,7 @@ func GenerateUniqueUsername(prefix string, existingUsernames map[string]bool) st
 }
 
 func GenerateUniqueEmail(name string, existingEmails map[string]bool) string {
-	domains := []string{"company.vn", "gmail.com", "yahoo.com", "hotmail.com", "outlook.com"}
+	domains := []string{"company.co.ke", "gmail.com", "outlook.com"}
 
 	nameSlug := strings.ToLower(strings.ReplaceAll(name, " ", ""))
 	nameSlug = strings.ReplaceAll(nameSlug, "ă", "a")
@@ -270,16 +199,15 @@ func GenerateUniqueEmail(name string, existingEmails map[string]bool) string {
 	}
 }
 
-func GenerateUniqueCCCD(existingCCCDs map[string]bool) string {
+func GenerateUniqueNationalID(existingIDs map[string]bool) string {
 	for i := 0; i < 1000; i++ {
-		cccd := GenerateCCCD()
-		if !existingCCCDs[cccd] {
-			existingCCCDs[cccd] = true
-			return cccd
+		id := GenerateNationalID()
+		if !existingIDs[id] {
+			existingIDs[id] = true
+			return id
 		}
 	}
-	// Should never reach here in normal cases
-	panic("unable to generate unique CCCD after 1000 attempts")
+	panic("unable to generate a unique national ID after 1000 attempts")
 }
 
 func GenerateUniqueProjectCode(existingCodes map[string]bool) string {
@@ -306,14 +234,14 @@ func GenerateUniqueProjectCode(existingCodes map[string]bool) string {
 
 // GenerateRealisticUserProfile creates a complete user profile with collision avoidance
 func GenerateRealisticUserProfile(existingUsernames, existingEmails, existingCCCDs map[string]bool) *UserProfile {
-	fullName := GenerateVietnameseName()
+	fullName := GenerateKenyanName()
 	return &UserProfile{
 		FullName:    fullName,
 		Username:    GenerateUniqueUsername("user", existingUsernames),
 		Email:       GenerateUniqueEmail(fullName, existingEmails),
 		Phone:       GenerateRealisticPhone(),
-		Address:     GenerateVietnameseAddress(),
-		CCCD:        GenerateUniqueCCCD(existingCCCDs),
+		Address:     GenerateKenyanAddress(),
+		CCCD:        GenerateUniqueNationalID(existingCCCDs),
 		BankAccount: GenerateBankAccount(),
 	}
 }
@@ -338,7 +266,7 @@ func GenerateUniqueUsernameWithDB(ctx context.Context, db *gorm.DB, prefix strin
 
 // GenerateUniqueEmailWithDB provides enhanced collision detection with database verification
 func GenerateUniqueEmailWithDB(ctx context.Context, db *gorm.DB, name string, existingEmails map[string]bool) string {
-	domains := []string{"company.vn", "gmail.com", "yahoo.com", "hotmail.com", "outlook.com"}
+	domains := []string{"company.co.ke", "gmail.com", "outlook.com"}
 
 	nameSlug := strings.ToLower(strings.ReplaceAll(name, " ", ""))
 	nameSlug = strings.ReplaceAll(nameSlug, "ă", "a")
@@ -385,7 +313,7 @@ type EmployeeProfile struct {
 	Position       string
 	Experience     string
 	Seniority      int // years of experience
-	BasePayRate    int // VND per hour
+	BasePayRate    int // KES per hour
 	IsReliable     bool
 	AttendanceRate float64
 }
@@ -402,57 +330,56 @@ type ProjectProfile struct {
 	TeamSize         int
 }
 
-// Vietnamese position hierarchy with typical pay rates (VND per hour)
-var vietnamesePositions = map[string]struct {
+// Position hierarchy with representative Kenyan hourly rates in KES.
+var kenyanPositions = map[string]struct {
 	BaseRate    int
 	MinExp      int
 	MaxExp      int
 	Description string
 }{
-	"thực tập":       {15000, 0, 1, "Thực tập sinh - người mới bắt đầu"},
-	"phổ thông":      {25000, 0, 3, "Công nhân phổ thông - không yêu cầu kinh nghiệm đặc biệt"},
-	"có kinh nghiệm": {35000, 2, 8, "Công nhân có kinh nghiệm - đã quen với công việc"},
-	"chuyên môn":     {45000, 3, 10, "Công nhân chuyên môn - có kỹ năng đặc biệt"},
-	"tổ trưởng":      {55000, 5, 15, "Tổ trưởng - quản lý nhóm nhỏ"},
-	"giám sát":       {65000, 7, 20, "Giám sát viên - quản lý ca làm việc"},
-	"kỹ thuật":       {75000, 4, 15, "Kỹ thuật viên - vận hành máy móc phức tạp"},
+	"Intern":             {150, 0, 1, "Entry-level employee"},
+	"General Worker":     {250, 0, 3, "General worker"},
+	"Experienced Worker": {350, 2, 8, "Experienced worker"},
+	"Skilled Worker":     {450, 3, 10, "Skilled worker"},
+	"Team Leader":        {550, 5, 15, "Leads a small team"},
+	"Supervisor":         {650, 7, 20, "Supervises a work shift"},
+	"Technician":         {750, 4, 15, "Operates and maintains equipment"},
 }
 
-// Vietnamese project types based on common manufacturing industries
-var vietnameseProjectTypes = []struct {
+var kenyanProjectTypes = []struct {
 	Industry     string
 	ProjectTypes []string
-	AvgBudget    float64 // million VND
+	AvgBudget    float64 // million KES
 	AvgDuration  int     // months
 }{
 	{
-		"Dệt may",
-		[]string{"Sản xuất áo thun", "Sản xuất quần jean", "Sản xuất đồng phục", "Dệt vải cotton"},
-		2500,
+		"Textiles",
+		[]string{"Uniform production", "Cotton processing", "Garment production", "Fabric finishing"},
+		25,
 		8,
 	},
 	{
-		"Hóa mỹ phẩm",
-		[]string{"Sản xuất xà phòng", "Sản xuất kem dưỡng da", "Sản xuất dầu gội", "Sản xuất nước hoa"},
-		1800,
+		"Agriculture",
+		[]string{"Fresh produce packing", "Tea processing", "Dairy production", "Grain milling"},
+		18,
 		6,
 	},
 	{
-		"Thực phẩm",
-		[]string{"Chế biến thực phẩm đông lạnh", "Sản xuất bánh kẹo", "Chế biến hải sản", "Sản xuất nước giải khát"},
-		3200,
+		"Food",
+		[]string{"Food processing", "Bakery production", "Dairy processing", "Beverage production"},
+		32,
 		10,
 	},
 	{
-		"Điện tử",
-		[]string{"Lắp ráp linh kiện điện tử", "Sản xuất cáp điện", "Lắp ráp thiết bị điện tử", "Sản xuất bo mạch"},
-		4500,
+		"Construction",
+		[]string{"Residential construction", "Road maintenance", "Building renovation", "Site preparation"},
+		45,
 		12,
 	},
 	{
-		"Đồ gỗ",
-		[]string{"Sản xuất nội thất", "Chế biến gỗ xuất khẩu", "Sản xuất đồ chơi gỗ", "Sản xuất đồ gia dụng"},
-		2000,
+		"Logistics",
+		[]string{"Warehouse operations", "Last-mile delivery", "Freight handling", "Fleet maintenance"},
+		20,
 		9,
 	},
 }
@@ -472,22 +399,22 @@ func GenerateRealisticEmployeeProfile(existingUsernames, existingEmails, existin
 	switch {
 	case seniority <= 1:
 		if mathrand.Float64() < 0.3 {
-			position = "thực tập"
+			position = "Intern"
 		} else {
-			position = "phổ thông"
+			position = "General Worker"
 		}
 	case seniority <= 3:
-		positions := []string{"phổ thông", "có kinh nghiệm"}
+		positions := []string{"General Worker", "Experienced Worker"}
 		position = gofakeit.RandomString(positions)
 	case seniority <= 8:
-		positions := []string{"có kinh nghiệm", "chuyên môn", "tổ trưởng"}
+		positions := []string{"Experienced Worker", "Skilled Worker", "Team Leader"}
 		position = gofakeit.RandomString(positions)
 	default:
-		positions := []string{"chuyên môn", "tổ trưởng", "giám sát", "kỹ thuật"}
+		positions := []string{"Skilled Worker", "Team Leader", "Supervisor", "Technician"}
 		position = gofakeit.RandomString(positions)
 	}
 
-	posInfo := vietnamesePositions[position]
+	posInfo := kenyanPositions[position]
 	baseRate = posInfo.BaseRate
 
 	// Add variation based on individual performance
@@ -516,25 +443,25 @@ func GenerateRealisticEmployeeProfile(existingUsernames, existingEmails, existin
 
 // GenerateRealisticProjectProfile creates a comprehensive project profile
 func GenerateRealisticProjectProfile(existingCodes map[string]bool) *ProjectProfile {
-	industryData := vietnameseProjectTypes[mathrand.IntN(len(vietnameseProjectTypes))]
+	industryData := kenyanProjectTypes[mathrand.IntN(len(kenyanProjectTypes))]
 	projectType := gofakeit.RandomString(industryData.ProjectTypes)
 
 	// Generate realistic client company name
-	companyTypes := []string{"Công ty TNHH", "Công ty Cổ phần", "Doanh nghiệp"}
+	companyTypes := []string{"Ltd", "PLC", "Company"}
 	companyType := gofakeit.RandomString(companyTypes)
 
 	industryNames := []string{
-		"Sản xuất " + strings.ToLower(industryData.Industry),
-		industryData.Industry + " Việt Nam",
-		industryData.Industry + " Thành Đạt",
-		industryData.Industry + " Hưng Phát",
+		industryData.Industry + " Kenya",
+		industryData.Industry + " Services",
+		industryData.Industry + " Enterprises",
+		industryData.Industry + " Solutions",
 	}
 	industryName := gofakeit.RandomString(industryNames)
 	clientName := fmt.Sprintf("%s %s", companyType, industryName)
 
 	// Generate budget with realistic variation
 	budgetVariation := 0.5 + mathrand.Float64()                  // 0.5x to 1.5x base budget
-	budget := industryData.AvgBudget * budgetVariation * 1000000 // convert to VND
+	budget := industryData.AvgBudget * budgetVariation * 1000000
 
 	// Generate duration with variation
 	durationVariation := 0.7 + mathrand.Float64()*0.6 // 0.7x to 1.3x
@@ -544,7 +471,7 @@ func GenerateRealisticProjectProfile(existingCodes map[string]bool) *ProjectProf
 	}
 
 	// Team size based on budget and duration
-	teamSize := int(budget / float64(duration) / 12 / 30 / 8 / 35000) // rough calculation based on average worker cost
+	teamSize := int(budget / float64(duration) / 12 / 30 / 8 / 350) // rough calculation based on average worker cost
 	if teamSize < 5 {
 		teamSize = 5 + mathrand.IntN(10)
 	}
@@ -567,9 +494,8 @@ func GenerateRealisticProjectProfile(existingCodes map[string]bool) *ProjectProf
 	}
 
 	description := fmt.Sprintf(
-		"Dự án %s được triển khai tại %s nhằm nâng cao năng suất và chất lượng sản phẩm. "+
-			"Dự kiến quy mô %d nhân viên trong %d tháng với ngân sách %.0f triệu VND.",
-		projectType, clientName, teamSize, duration, budget/1000000,
+		"%s project operated by %s with a team of %d employees over %d months and a budget of KES %.0f.",
+		projectType, clientName, teamSize, duration, budget,
 	)
 
 	return &ProjectProfile{
@@ -589,17 +515,17 @@ func GenerateRealisticPayrates(position string, baseRate int) map[string]int {
 	rates := make(map[string]int)
 
 	rates["normal"] = baseRate
-	rates["overtime"] = int(float64(baseRate) * 1.5) // 150% for overtime (Vietnamese labor law)
+	rates["overtime"] = int(float64(baseRate) * 1.5)
 	rates["weekend"] = int(float64(baseRate) * 2.0)  // 200% for weekend work
 	rates["holiday"] = int(float64(baseRate) * 3.0)  // 300% for holiday work
 
 	// Add some position-specific variations
 	switch position {
-	case "giám sát", "kỹ thuật":
+	case "Supervisor", "Technician":
 		// Supervisors get slightly higher weekend/holiday premiums
 		rates["weekend"] = int(float64(baseRate) * 2.2)
 		rates["holiday"] = int(float64(baseRate) * 3.5)
-	case "thực tập":
+	case "Intern":
 		// Interns get lower premiums
 		rates["overtime"] = int(float64(baseRate) * 1.3)
 		rates["weekend"] = int(float64(baseRate) * 1.8)
@@ -609,21 +535,17 @@ func GenerateRealisticPayrates(position string, baseRate int) map[string]int {
 	return rates
 }
 
-// GenerateVietnameseHolidays returns major Vietnamese holidays for a given year
-func GenerateVietnameseHolidays(year int) []time.Time {
+// GenerateKenyanHolidays returns public holidays with fixed calendar dates.
+func GenerateKenyanHolidays(year int) []time.Time {
 	holidays := []time.Time{
-		time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC),  // New Year
-		time.Date(year, 4, 30, 0, 0, 0, 0, time.UTC), // Liberation Day
-		time.Date(year, 5, 1, 0, 0, 0, 0, time.UTC),  // Labor Day
-		time.Date(year, 9, 2, 0, 0, 0, 0, time.UTC),  // National Day
+		time.Date(year, 1, 1, 0, 0, 0, 0, clock.DefaultLocation),
+		time.Date(year, 5, 1, 0, 0, 0, 0, clock.DefaultLocation),
+		time.Date(year, 6, 1, 0, 0, 0, 0, clock.DefaultLocation),
+		time.Date(year, 10, 20, 0, 0, 0, 0, clock.DefaultLocation),
+		time.Date(year, 12, 12, 0, 0, 0, 0, clock.DefaultLocation),
+		time.Date(year, 12, 25, 0, 0, 0, 0, clock.DefaultLocation),
+		time.Date(year, 12, 26, 0, 0, 0, 0, clock.DefaultLocation),
 	}
-
-	// Add Tet holidays (approximate - 3-5 days in Jan/Feb)
-	tetStart := time.Date(year, 1, 20+mathrand.IntN(20), 0, 0, 0, 0, time.UTC)
-	for i := 0; i < 4; i++ {
-		holidays = append(holidays, tetStart.AddDate(0, 0, i))
-	}
-
 	return holidays
 }
 

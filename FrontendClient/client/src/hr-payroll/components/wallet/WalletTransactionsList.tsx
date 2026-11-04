@@ -806,7 +806,7 @@ function EmptyState({
   return (
     <SharedEmptyState
       title="No transactions yet"
-      description="Your balance syncs automatically from the provider."
+      description="Historical wallet transactions are available for review."
       size="sm"
       className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 px-4"
     />

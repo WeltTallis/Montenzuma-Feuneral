@@ -1,14 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Make `model` nullable
-// ============================================
-// Aligns the operations DB with the tenant-service canonical schema
-// (model VARCHAR(100), nullable) and with the controller, which sends
-// `model || null`. The live DB had model NOT NULL, so registering a
-// hearse without a model failed with "Column 'model' cannot be null"
-// even though the frontend treats model as optional.
-//
-// Idempotent (hasColumn + columnInfo check).
-// ============================================
+
 
 exports.up = async function (knex) {
     const hasColumn = async (t, c) => { try { return await knex.schema.hasColumn(t, c); } catch { return false; } };

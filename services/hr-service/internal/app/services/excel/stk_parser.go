@@ -239,7 +239,7 @@ func detectSTKHeaderColumns(row []string) *stkColumnMap {
 // A 12-digit value is a CCCD, never a mobile number: the partner sheet has the
 // CCCD column next to the phone column and the two get swapped. Such a value is
 // dropped (logged) instead of persisted, because a CCCD in employees.mobile is
-// unusable for Zalo ZNS and for phone-based login.
+// unusable for phone-based login.
 func sanitizeMobile(s string) string {
 	digitsOnly := strings.Map(func(r rune) rune {
 		if r >= '0' && r <= '9' {

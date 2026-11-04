@@ -616,6 +616,7 @@ validate-dockerfiles:
 # ============================================================
 
 BACKUP_DIR ?= /opt/backups
+BACKUP_RETENTION_DAYS ?= 7
 
 backup:
 	@echo "$(BLUE)Creating database backup in $(BACKUP_DIR)...$(NC)"
@@ -624,8 +625,10 @@ backup:
 	docker-compose exec -T mariadb mysqldump -uroot -p$${DB_ROOT_PASSWORD:-rootpassword} --all-databases 2>/dev/null | gzip > $$BACKUP_FILE; \
 	if [ $$? -eq 0 ]; then \
 		echo "$(GREEN)✓ Database backup created: $$BACKUP_FILE$(NC)"; \
+		$(MAKE) --no-print-directory backup-retention; \
 	else \
 		echo "$(RED)✗ Backup failed$(NC)"; \
+		exit 1; \
 	fi
 
 # Archive every tenant upload (signatures, logos, documents, hearse images,
@@ -637,16 +640,39 @@ backup-uploads:
 	tar -czf $$ARCHIVE -C /opt/storage uploads 2>/dev/null; \
 	if [ $$? -eq 0 ]; then \
 		echo "$(GREEN)✓ Uploads backup created: $$ARCHIVE$(NC)"; \
+		$(MAKE) --no-print-directory backup-retention; \
 	else \
 		echo "$(RED)✗ Uploads backup failed$(NC)"; \
+		exit 1; \
 	fi
+
+backup-retention:
+	@case "$(BACKUP_RETENTION_DAYS)" in ''|0*|*[!0-9]*) \
+		echo "$(RED)✗ BACKUP_RETENTION_DAYS must be an integer from 1 to 36500$(NC)"; exit 1 ;; \
+	esac; \
+	if [ "$(BACKUP_RETENTION_DAYS)" -gt 36500 ]; then \
+		echo "$(RED)✗ BACKUP_RETENTION_DAYS must not exceed 36500$(NC)"; exit 1; \
+	fi; \
+	retention_minutes=$$(( $(BACKUP_RETENTION_DAYS) * 1440 )); \
+	for spec in "db:restpoint_db_*.sql.gz" "uploads:uploads_*.tar.gz"; do \
+		dir="$${spec%%:*}"; pattern="$${spec#*:}"; \
+		dir="$(BACKUP_DIR)/$$dir"; \
+		if [ -d "$$dir" ]; then \
+			find "$$dir" -type f -name "$$pattern" -mmin "+$$retention_minutes" -print -delete; \
+		fi; \
+	done
 
 backup-all: backup backup-uploads
 	@echo "$(GREEN)✓ Full backup (database + uploads) stored in $(BACKUP_DIR)$(NC)"
 
 restore:
-	@echo "$(RED)WARNING: This will overwrite the current database!$(NC)"
-	@read -p "Enter backup file path [default: newest in $(BACKUP_DIR)/db]: " backup_file; \
+	@echo "$(RED)WARNING: SQL restore imports data into MariaDB and can overwrite/conflict with existing data.$(NC)"
+	@echo "$(RED)For complete replacement, use only a verified clean recovery volume; removing a volume permanently erases its databases.$(NC)"
+	@printf "Type RESTORE to continue: "; \
+	IFS= read -r confirmation; \
+	if [ "$$confirmation" != "RESTORE" ]; then echo "Restore cancelled"; exit 1; fi; \
+	printf "Enter backup file path [default: newest in $(BACKUP_DIR)/db]: "; \
+	IFS= read -r backup_file; \
 	if [ -z "$$backup_file" ]; then \
 		backup_file=$$(ls -1t $(BACKUP_DIR)/db/*.sql.gz 2>/dev/null | head -n 1); \
 	fi; \

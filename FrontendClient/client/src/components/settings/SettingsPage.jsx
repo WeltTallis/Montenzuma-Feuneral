@@ -136,7 +136,7 @@ export default function SettingsPage() {
     const [editError, setEditError] = useState('');
     const [error, setError] = useState(null);
     const [assigningBranch, setAssigningBranch] = useState(null);
-    const [homeCharges, setHomeCharges] = useState({ chargeType: 'daily', currency: 'KES', dailyRate: '', hourlyRate: '', usdRate: '130' });
+    const [homeCharges, setHomeCharges] = useState({ chargeType: 'daily', currency: 'KES', dailyRate: '', hourlyRate: '0', usdRate: '' });
     const [homeChargesLoading, setHomeChargesLoading] = useState(false);
     const [homeChargesSaving, setHomeChargesSaving] = useState(false);
     const [chargesMsg, setChargesMsg] = useState(null); // inline status for the charges form
@@ -273,8 +273,8 @@ export default function SettingsPage() {
                 chargeType: data.chargeType || 'daily',
                 currency: data.currency || 'KES',
                 dailyRate: data.dailyRate || '',
-                hourlyRate: data.hourlyRate || '',
-                usdRate: data.usdRate || '130',
+                hourlyRate: data.hourlyRate ?? '0',
+                usdRate: data.usdRate ?? '',
             });
         } catch (err) {
             console.error('Failed to load home charge settings:', err);
@@ -295,6 +295,11 @@ export default function SettingsPage() {
             setChargesMsg({ type: 'error', message: 'Enter a positive default hourly charge.' });
             return;
         }
+        const usdRate = Number(homeCharges.usdRate || 0);
+        if (homeCharges.currency === 'USD' && usdRate <= 0) {
+            setChargesMsg({ type: 'error', message: 'Enter the USD exchange rate.' });
+            return;
+        }
         setHomeChargesSaving(true);
         try {
             // The `__DEFAULT__` sentinel in the URL is what scopes this write to
@@ -308,7 +313,7 @@ export default function SettingsPage() {
                 ...homeCharges,
                 dailyRate,
                 hourlyRate,
-                usdRate: Number(homeCharges.usdRate || 0),
+                usdRate,
                 isHomeDefault: true,
             });
             setError(null);
@@ -1130,6 +1135,7 @@ export default function SettingsPage() {
                                                 type="number"
                                                 min="0"
                                                 step="any"
+                                                placeholder="Enter exchange rate"
                                                 disabled={homeChargesLoading}
                                                 value={homeCharges.usdRate}
                                                 onChange={(e) => setHomeCharges((prev) => ({ ...prev, usdRate: e.target.value }))}

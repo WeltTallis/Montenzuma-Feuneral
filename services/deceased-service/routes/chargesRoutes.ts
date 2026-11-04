@@ -1,7 +1,7 @@
 import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import {
     getCharges, addCharge, updateCharge, deleteCharge, getPayments, recordPayment
-} from '../controllers/chargesControl';
+} from '../controllers/charges/chargesControl';
 import { Router } from 'express';
 const router = Router();
 

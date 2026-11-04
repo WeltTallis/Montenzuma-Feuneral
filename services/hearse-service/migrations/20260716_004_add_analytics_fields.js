@@ -1,6 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Add missing analytics fields
-// ============================================
+
 
 exports.up = function (knex) {
     return knex.schema.table('hearse_bookings', (table) => {

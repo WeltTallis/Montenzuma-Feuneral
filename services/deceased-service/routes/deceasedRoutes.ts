@@ -1,4 +1,4 @@
-import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
+import { protect, authorize, authorizeAny, enforceTenant } from '../../../services/app-global/middlewares/authMiddleware';
 import {
     getAllDeceased, getDeceasedById, updateDeceased, deleteDeceased,
 } from '../controllers/deceasedControl';
@@ -6,7 +6,7 @@ import {
 import { Router, Request, Response } from 'express';
 
 
-import { registerNewDeceased } from '../controllers/registerDeceased'
+import { registerNewDeceased } from '../controllers/deceased/registerDeceased'
 import { getAdmissionNumber } from '../utils/admissionNumberRoute'
 import {
     requestPostmortem,
@@ -14,15 +14,20 @@ import {
     getPostmortemByDeceasedId,
     updatePostmortem,
     generatePostmortemPDF
-} from '../controllers/autopsyControl';
+} from '../controllers/autopsy/autopsyControl';
 
 import { updateDeceasedStatus } from '../controllers/deceasedControl';
-import { getPostmortemRequests, getPostmortemStats } from '../controllers/postmortemRequestControl';
-import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exportExcelController';
-import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
+import { getPostmortemRequests, getPostmortemStats } from '../controllers/autopsy/postmortemRequestControl';
+import { exportExcelWithCharts, checkExportStatus, getExportHistory } from '../controllers/exel/exportExcelController';
+import { resolveDatabase, safeTenantQuery } from '../../../shared/dbConfig';
 import { tableColumns, pickAs } from '../utils/tenantSchema';
 
 const router = Router();
+
+const requireTenantContext = (req: any, res: any, next: any) => {
+    if (req.isPlatformAdmin || req.tenantSlug) return next();
+    return res.status(403).json({ success: false, message: 'Authenticated tenant context required' });
+};
 
 // ─── Tenant schema introspection ────────────────────────────────────────────
 // `tableColumns` / `pickAs` live in utils/tenantSchema so the public search and
@@ -33,7 +38,10 @@ const router = Router();
 const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
     try {
         const { phone, id_number, admission_number, deceased_id } = req.query;
-        const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-slug'] as string || 'system_shared';
+        const tenantSlug = req.headers['x-tenant-slug'] as string || req.headers['x-slug'] as string;
+        if (!tenantSlug || tenantSlug === 'system_shared') {
+            return res.status(400).json({ success: false, message: 'Valid tenant required' });
+        }
 
         if (!phone && !id_number && !admission_number && !deceased_id) {
             return res.status(400).json({
@@ -60,17 +68,17 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
             return notFound();
         }
 
-        // Columns the public portal contract promises. The frontend
-        // (PostmortemRequestForm / PostmortemResultsPage) reads these by name,
-        // so a tenant missing one still gets the key — just null.
+        // Keep the unauthenticated result limited to the fields needed to
+        // identify the case and submit a request.
         const DECEASED_COLS = [
             'deceased_id', 'full_name', 'date_of_death', 'admission_number',
-            'date_of_birth', 'age', 'gender', 'place_of_death', 'national_id',
-            'phone_number', 'signature',
         ];
 
         // Search by deceased_id, admission number, phone, or ID
         let query = `SELECT ${DECEASED_COLS.map((c) => pickAs(dCols, c, c)).join(', ')} FROM deceased WHERE 1=1`;
+        if (dCols.has('is_deleted')) {
+            query += ' AND (is_deleted = FALSE OR is_deleted IS NULL)';
+        }
         const params: any[] = [];
 
         if (deceased_id) {
@@ -92,8 +100,8 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
                 // the filter instead would return an arbitrary record.)
                 query += ' AND 1=0';
             } else {
-                query += ` AND (${phoneCols.map((c) => `${c} LIKE ?`).join(' OR ')})`;
-                phoneCols.forEach(() => params.push(`%${phone}%`));
+                query += ` AND (${phoneCols.map((c) => `${c} = ?`).join(' OR ')})`;
+                phoneCols.forEach(() => params.push(phone));
             }
         } else if (id_number) {
             if (!dCols.has('national_id')) return notFound();
@@ -110,26 +118,15 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
                 const nCols = await tableColumns(dbName, 'next_of_kin');
                 // The join needs the join keys plus a column to match the phone on.
                 if (nCols.size > 0 && nCols.has('deceased_id') && nCols.has('contact') && dCols.has('deceased_id')) {
-                    // Same schema-adaptive projection as the primary query: `d.*`
-                    // and `nok.*` are each selected only where they exist.
-                    const nokSelect = [
-                        ...DECEASED_COLS.map((c) => pickAs(dCols, c, c, 'd.')),
-                        pickAs(nCols, 'full_name', 'next_of_kin_name', 'nok.'),
-                        pickAs(nCols, 'relationship', 'next_of_kin_relationship', 'nok.'),
-                        pickAs(nCols, 'contact', 'next_of_kin_phone', 'nok.'),
-                        pickAs(nCols, 'email', 'next_of_kin_email', 'nok.'),
-                        pickAs(nCols, 'signature', 'next_of_kin_signature', 'nok.'),
-                    ].join(', ');
-
-                    // `is_deleted` is absent on some older tenants — only filter
-                    // on it when the column is really there.
-                    const notDeleted = nCols.has('is_deleted') ? ' AND nok.is_deleted = FALSE' : '';
+                    const nokSelect = DECEASED_COLS.map((c) => pickAs(dCols, c, c, 'd.')).join(', ');
+                    const nokDeleted = nCols.has('is_deleted') ? ' AND (nok.is_deleted = FALSE OR nok.is_deleted IS NULL)' : '';
+                    const deceasedDeleted = dCols.has('is_deleted') ? ' AND (d.is_deleted = FALSE OR d.is_deleted IS NULL)' : '';
                     const nokQuery = `SELECT ${nokSelect}
                         FROM deceased d
                         INNER JOIN next_of_kin nok ON d.deceased_id = nok.deceased_id
-                        WHERE nok.contact LIKE ?${notDeleted}
+                        WHERE nok.contact = ?${nokDeleted}${deceasedDeleted}
                         LIMIT 1`;
-                    const nokRecords = await safeTenantQuery(dbName, nokQuery, [`%${phone}%`]);
+                    const nokRecords = await safeTenantQuery(dbName, nokQuery, [phone]);
                     if (nokRecords && (nokRecords as any[]).length > 0) {
                         records = nokRecords;
                     }
@@ -145,76 +142,15 @@ const handlePublicPostmortemSearch = async (req: Request, res: Response) => {
 
         const deceased = (records as any[])[0];
 
-        // Get next of kin data if not already joined
-        if (!deceased.next_of_kin_name) {
-            try {
-                const nCols = await tableColumns(dbName, 'next_of_kin');
-                if (nCols.size > 0 && nCols.has('deceased_id')) {
-                    // `is_primary` / `is_deleted` are absent on older tenants, so
-                    // both the filter and the ordering are built conditionally —
-                    // otherwise this throws on those schemas and the kin details
-                    // are silently dropped from the response.
-                    const where = ['deceased_id = ?'];
-                    if (nCols.has('is_deleted')) where.push('is_deleted = FALSE');
-
-                    const order = [
-                        ...(nCols.has('is_primary') ? ['is_primary DESC'] : []),
-                        ...(nCols.has('created_at') ? ['created_at ASC'] : []),
-                    ];
-
-                    const nokQuery = `SELECT * FROM next_of_kin WHERE ${where.join(' AND ')}`
-                        + (order.length ? ` ORDER BY ${order.join(', ')}` : '')
-                        + ' LIMIT 1';
-                    const nokRecords = await safeTenantQuery(dbName, nokQuery, [deceased.deceased_id]);
-                    if (nokRecords && (nokRecords as any[]).length > 0) {
-                        const nok = (nokRecords as any[])[0];
-                        deceased.next_of_kin_name = nok.full_name;
-                        deceased.next_of_kin_relationship = nok.relationship;
-                        deceased.next_of_kin_phone = nok.contact;
-                        deceased.next_of_kin_email = nok.email;
-                        deceased.next_of_kin_id_number = nok.id_number || null;
-                        // Use next of kin signature if deceased doesn't have one
-                        if (!deceased.signature && nok.signature) {
-                            deceased.signature = nok.signature;
-                        }
-                    }
-                }
-            } catch (e) {
-                // next_of_kin table might not exist
-                console.error('[PUBLIC] Next of kin fetch error:', e);
-            }
-        }
-
-        // Get postmortem data if exists
-        let postmortem = null;
-        try {
-            const pmQuery = 'SELECT * FROM postmortem WHERE deceased_id = ? LIMIT 1';
-            const pmRecords = await safeTenantQuery(dbName, pmQuery, [deceased.deceased_id]);
-            if (pmRecords && (pmRecords as any[]).length > 0) {
-                postmortem = (pmRecords as any[])[0];
-            }
-        } catch (e) {
-            // Postmortem table might not exist yet
-        }
-
-        // Get tenant info
-        let tenantInfo = null;
-        try {
-            const tenantQuery = `SELECT name, address, phone, email FROM tenant_tracking WHERE slug = ? LIMIT 1`;
-            const tenantRecords = await safeTenantQuery('tenant_tracking', tenantQuery, [tenantSlug]);
-            if (tenantRecords && (tenantRecords as any[]).length > 0) {
-                tenantInfo = (tenantRecords as any[])[0];
-            }
-        } catch (e) {
-            // tenant_tracking table might not exist
-        }
-
         return res.status(200).json({
             success: true,
             data: {
-                deceased,
-                postmortem,
-                tenant: tenantInfo
+                deceased: {
+                    deceased_id: deceased.deceased_id,
+                    full_name: deceased.full_name,
+                    admission_number: deceased.admission_number,
+                    date_of_death: deceased.date_of_death,
+                }
             }
         });
     } catch (error: any) {
@@ -236,13 +172,16 @@ router.get('/deceased/public/postmortem/search', handlePublicPostmortemSearch);
 router.post('/public/postmortem/request', requestPostmortem);
 router.post('/deceased/public/postmortem/request', requestPostmortem);
 
-// POST - Update status (for cross-service calls, no auth required)
-router.post('/update-status', updateDeceasedStatus);
-router.post('/deceased/update-status', updateDeceasedStatus);
-
 // Apply authentication to all other routes
 router.use(protect);
+router.use(enforceTenant);
+router.use(requireTenantContext);
 router.use(authorizeAny);
+
+// Status updates are for authenticated tenant users and trusted services acting
+// with that user's token; public aliases are intentionally not available.
+router.post('/update-status', updateDeceasedStatus);
+router.post('/deceased/update-status', updateDeceasedStatus);
 
 // GET - Pre-generate admission number based on gender
 router.get('/admission-number/:gender', getAdmissionNumber);
@@ -304,11 +243,11 @@ router.put('/update-deceased/:id', updateDeceased);
 router.put('/deceased/:id', updateDeceased);
 router.put('/deceased/update-deceased/:id', updateDeceased);
 
-// DELETE - Delete
-router.delete('/:id', deleteDeceased);
-router.delete('/delete-deceased/:id', deleteDeceased);
-router.delete('/deceased/:id', deleteDeceased);
-router.delete('/deceased/delete-deceased/:id', deleteDeceased);
+// DELETE - Restrict record removal to tenant administrators.
+router.delete('/:id', authorize('admin', 'superadmin', 'systemadmin'), deleteDeceased);
+router.delete('/delete-deceased/:id', authorize('admin', 'superadmin', 'systemadmin'), deleteDeceased);
+router.delete('/deceased/:id', authorize('admin', 'superadmin', 'systemadmin'), deleteDeceased);
+router.delete('/deceased/delete-deceased/:id', authorize('admin', 'superadmin', 'systemadmin'), deleteDeceased);
 
 // POST - Postmortem/Autopsy routes
 router.post('/postmortem/request', requestPostmortem);
@@ -329,11 +268,9 @@ router.get('/deceased/autopsy/:deceased_id', getPostmortemByDeceasedId);
 router.put('/postmortem/:id', updatePostmortem);
 router.put('/autopsy/:id', updatePostmortem);
 
-// Public PDF generation - no auth required
+// GET - Generate PDF report (authenticated)
 router.get('/public/postmortem/:deceased_id/pdf', generatePostmortemPDF);
 router.get('/deceased/public/postmortem/:deceased_id/pdf', generatePostmortemPDF);
-
-// GET - Generate PDF report (authenticated)
 router.get('/postmortem/:deceased_id/pdf', generatePostmortemPDF);
 router.get('/autopsy/:deceased_id/pdf', generatePostmortemPDF);
 

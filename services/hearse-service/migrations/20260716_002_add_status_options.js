@@ -1,6 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Add more status options
-// ============================================
+
 // Prevents breakdown by supporting full lifecycle tracking
 
 exports.up = function (knex) {

@@ -3,8 +3,8 @@ package constants
 // Financial/Ledger Constants
 const (
 	// Party names used in ledger entries
-	LedgerPartyBank = "Ngân hàng"
+	LedgerPartyBank = "Bank"
 
-	// Settlement rounding tolerance in VND
+	// Settlement rounding tolerance in the application's smallest currency unit.
 	RoundingTolerance = 1000
 )

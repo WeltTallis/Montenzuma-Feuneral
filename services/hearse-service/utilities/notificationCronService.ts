@@ -1,8 +1,12 @@
-import cron from 'node-cron';
-import axios from 'axios';
-import { safeQuery } from '../database';
 import { getKenyaTimeISO } from '@montezuma/shared-utils';
 import { decorateBranchNames } from './branchNames';
+import { logger } from '@montezuma/shared-logger';
+import { safeQuery } from '../database';
+import cron from 'node-cron';
+import axios from 'axios';
+
+
+
 
 interface BookingReminder {
     booking_id: number;
@@ -25,18 +29,12 @@ interface BookingReminder {
 export class NotificationCronService {
     private io: any;
     private isRunning: boolean = false;
-    // Remembers the last emitted reminder per event+tenant so recurring cron
-    // runs do not spam the same "Upcoming Bookings Tomorrow" every 30 seconds
     private emittedSignatures: Map<string, string> = new Map();
 
     constructor(io: any) {
         this.io = io;
     }
 
-    /**
-     * Emits only when the booking set (or target day) changes for this
-     * event + tenant. Prevents duplicate notifications from cron re-runs.
-     */
     private shouldEmit(eventName: string, tenantSlug: string, signature: string): boolean {
         const key = `${eventName}:${tenantSlug}`;
         if (this.emittedSignatures.get(key) === signature) {
@@ -75,28 +73,22 @@ export class NotificationCronService {
      */
     start(): void {
         if (this.isRunning) {
-            console.log('  Notification cron service already running');
+            logger.info('Notification cron service is already running');
             return;
         }
 
-        console.log(' Starting notification cron service...');
+        logger.info('Starting notification cron service');
 
-        // Run every 4 seconds to check for upcoming bookings
-        cron.schedule('*/30 * * * * *', () => {
-            this.checkUpcomingBookings();
-        });
-
-        // Run every hour to check for upcoming bookings in the next 24 hours
+        // Check upcoming bookings hourly; the reminder is deduplicated by signature.
         cron.schedule('0 * * * *', () => {
             this.checkUpcomingBookings();
         });
 
-        // Run every 30 minutes to check for bookings in the next 2 hours (urgent)
         cron.schedule('*/3 * * * *', () => {
             this.checkUrgentBookings();
         });
 
-        // Run daily at 8 AM to check for bookings in the next 7 days
+
         cron.schedule('0 8 * * *', () => {
             this.checkWeeklyBookings();
         });
@@ -122,14 +114,6 @@ export class NotificationCronService {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-            // NOTE: no `LEFT JOIN branches` — `branches` is a per-tenant table
-            // (plus the tenant_tracking registry) and does not exist in
-            // restpoint_operations, so the old join failed this job with
-            // ER_NO_SUCH_TABLE ('restpoint_operations.branches' doesn't exist) on
-            // every run and no reminder was ever emitted.
-            // decorateBranchNames() below resolves the real branch name from the
-            // branch registry instead.
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
                         hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
@@ -141,15 +125,9 @@ export class NotificationCronService {
                  AND hb.status NOT IN ('completed', 'cancelled')`,
                 [`%"${tomorrowStr}"%`]
             );
-
-            // Real branch names (Nairobi / Thika / …) come from the branch
-            // registry — never from a `branches` join, which cannot work against
-            // this service's shared operations database.
             await decorateBranchNames(bookings as any[]);
 
-            // A booking made moments ago already raised its own instant "New
-            // Hearse Booking" alert, so repeating it in tomorrow's planning digest
-            // is pure noise. Keep this digest for genuinely pre-existing bookings.
+
             const FRESH_WINDOW_MS = 60 * 60 * 1000;
             const cutoff = Date.now() - FRESH_WINDOW_MS;
             const existingBookings = (bookings as any[]).filter((b: any) => {
@@ -159,10 +137,10 @@ export class NotificationCronService {
             });
 
             if (existingBookings.length > 0) {
-                // Group bookings by tenant so notifications go to the correct tenant room
+
                 const tenantGroups = this.groupBookingsByTenant(existingBookings);
                 for (const [tenantSlug, tenantBookings] of tenantGroups) {
-                    // Skip if this exact reminder (same day + same bookings) was already emitted
+
                     if (!this.shouldEmit('upcoming_bookings_24h', tenantSlug, this.bookingSignature(tenantBookings, tomorrowStr))) {
                         continue;
                     }
@@ -186,8 +164,7 @@ export class NotificationCronService {
                             plateNumber: b.plate_number || '',
                             branchId: b.branch_id,
                             branchCode: b.branch_code,
-                            // The REAL branch name (Nairobi / Thika / Eter Mumo). Without it
-                            // the UI fell back to branch_code, i.e. the useless "MAIN".
+
                             branchName: b.branch_name || ''
                         })),
                         timestamp: now
@@ -195,7 +172,7 @@ export class NotificationCronService {
                 }
             }
         } catch (error) {
-            console.error('Error checking upcoming bookings:', error);
+            logger.error({ err: error }, 'Error checking upcoming hearse bookings');
         }
     }
 
@@ -209,9 +186,6 @@ export class NotificationCronService {
             twoHoursLater.setHours(twoHoursLater.getHours() + 2);
             const twoHoursLaterStr = twoHoursLater.toISOString();
 
-            // NOTE: no `LEFT JOIN branches` — see checkUpcomingBookings(): the
-            // table does not exist in restpoint_operations and the join made this
-            // job fail with ER_NO_SUCH_TABLE on every run.
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
                         hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
@@ -228,10 +202,8 @@ export class NotificationCronService {
             await decorateBranchNames(bookings as any[]);
 
             if (bookings.length > 0) {
-                // Group bookings by tenant so notifications go to the correct tenant room
                 const tenantGroups = this.groupBookingsByTenant(bookings);
                 for (const [tenantSlug, tenantBookings] of tenantGroups) {
-                    // Skip if this exact urgent reminder was already emitted
                     if (!this.shouldEmit('urgent_bookings_2h', tenantSlug, this.bookingSignature(tenantBookings, now.split('T')[0]))) {
                         continue;
                     }
@@ -255,8 +227,6 @@ export class NotificationCronService {
                             plateNumber: b.plate_number || 'N/A',
                             branchId: b.branch_id,
                             branchCode: b.branch_code,
-                            // The REAL branch name (Nairobi / Thika / Eter Mumo). Without it
-                            // the UI fell back to branch_code, i.e. the useless "MAIN".
                             branchName: b.branch_name || ''
                         })),
                         timestamp: getKenyaTimeISO()
@@ -264,7 +234,7 @@ export class NotificationCronService {
                 }
             }
         } catch (error) {
-            console.error('Error checking urgent bookings:', error);
+            logger.error({ err: error }, 'Error checking urgent hearse bookings');
         }
     }
 
@@ -277,10 +247,6 @@ export class NotificationCronService {
             const nextWeek = new Date();
             nextWeek.setDate(nextWeek.getDate() + 7);
             const nextWeekStr = nextWeek.toISOString();
-
-            // NOTE: no `LEFT JOIN branches` — see checkUpcomingBookings(): the
-            // table does not exist in restpoint_operations and the join made this
-            // job fail with ER_NO_SUCH_TABLE on every run.
             const bookings = await safeQuery(
                 `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone,
                         hb.destination, hb.from_location, hb.to_location, hb.booking_dates, hb.tenant_db_name,
@@ -300,10 +266,6 @@ export class NotificationCronService {
                 // Group bookings by tenant so notifications go to the correct tenant room
                 const tenantGroups = this.groupBookingsByTenant(bookings);
                 for (const [tenantSlug, tenantBookings] of tenantGroups) {
-                    // Group by branch. Prefer the RESOLVED branch name that
-                    // decorateBranchNames() attached (Nairobi / Thika / …):
-                    // `branch_code` is a generic literal like "MAIN" on most rows,
-                    // which lumped every branch into one meaningless bucket.
                     const branchGroups = tenantBookings.reduce((acc: Record<string, any[]>, booking: any) => {
                         const branchKey = booking.branch_name || booking.branch_code || 'general';
                         if (!acc[branchKey]) {
@@ -357,7 +319,7 @@ export class NotificationCronService {
                 }
             }
         } catch (error) {
-            console.error('Error checking weekly bookings:', error);
+            logger.error({ err: error }, 'Error checking weekly hearse bookings');
         }
     }
 
@@ -393,12 +355,12 @@ export class NotificationCronService {
                     timestamp: getKenyaTimeISO()
                 }
             }, { timeout: 30000 }).then(() => {
-                console.log(`📤 Emitted notification: ${eventName} to tenant_${targetTenant}`);
+                logger.info({ eventName, tenantSlug: targetTenant }, 'Emitted hearse notification');
             }).catch((error) => {
-                console.error(`Error emitting notification ${eventName} to tenant_${targetTenant}:`, error.message);
+                logger.error({ err: error, eventName, tenantSlug: targetTenant }, 'Error emitting hearse notification');
             });
         } catch (error) {
-            console.error(`Error emitting notification ${eventName}:`, error);
+            logger.error({ err: error, eventName }, 'Error emitting hearse notification');
         }
     }
     /**

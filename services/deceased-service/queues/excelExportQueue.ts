@@ -1,10 +1,29 @@
 import { Queue } from 'bullmq';
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import Logger from '../../../packages/shared-logger/src/index';
 
 let excelExportQueue: Queue | null = null;
 // When Redis is unreachable, don't re-attempt on every request — back off for 30s.
 let redisUnavailableUntil = 0;
+
+export interface DeceasedReportJob {
+  tenant: { db_name: string; id: number; name: string; tenant_slug: string };
+  tenantSlug: string;
+  startDate?: string;
+  endDate?: string;
+  requestedBy?: string;
+}
+
+export function getExcelExportConnectionOptions(): RedisOptions {
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD || undefined,
+    connectTimeout: 3000,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: null,
+  };
+}
 
 /**
  * Safely initialize the Excel export queue
@@ -17,13 +36,7 @@ export async function getExcelExportQueue(): Promise<Queue | null> {
   if (Date.now() < redisUnavailableUntil) return null;
 
   try {
-    const connectionOptions = {
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD || undefined,
-      connectTimeout: 3000,
-      enableOfflineQueue: false,
-    };
+    const connectionOptions = getExcelExportConnectionOptions();
 
     // Probe the connection with a hard ceiling so callers never hang.
     // The error handler prevents "[ioredis] Unhandled error event" spam, and the
@@ -51,10 +64,7 @@ export async function getExcelExportQueue(): Promise<Queue | null> {
 
     // BullMQ requires maxRetriesPerRequest: null on the shared connection
     excelExportQueue = new Queue('excel-export', {
-      connection: {
-        ...connectionOptions,
-        maxRetriesPerRequest: null,
-      },
+      connection: connectionOptions,
       defaultJobOptions: {
         attempts: 3,
         backoff: {

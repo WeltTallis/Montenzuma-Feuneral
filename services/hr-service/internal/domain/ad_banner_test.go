@@ -10,23 +10,22 @@ func adBannerTestWindow() (time.Time, time.Time) {
 	return starts, starts.Add(30 * 24 * time.Hour)
 }
 
-// validAdBanner is the LG Display campaign shape: headline, lead paragraph,
-// three bullets, phone + Zalo CTA, 30-day window.
+// validAdBanner represents a Kenyan payroll campaign with phone and web CTAs.
 func validAdBanner() *AdBanner {
 	starts, ends := adBannerTestWindow()
 	return &AdBanner{
-		Title: "TING TING SOFTWARE SOLUTIONS xin thông báo",
-		Body:  "Công nhân dự án LG Display có thể CHẤM CÔNG TỰ ĐỘNG và ỨNG LƯƠNG NGAY trên điện thoại.",
+		Title: "RestPoint Kenya payroll update",
+		Body:  "Manage attendance and request a salary advance from your employee account.",
 		Bullets: []string{
-			"Chấm công tự động, chính xác từng ca làm",
-			"Ứng lương theo công đã làm, tối đa 70%, phí chỉ từ 1.3%",
-			"Nhận tiền nhanh chóng, chủ động chi tiêu",
+			"View attendance and payslips",
+			"Request an eligible salary advance",
+			"Update your employee details",
 		},
 		CTAs: []AdBannerCTA{
-			{Label: "Gọi hotline", Type: AdBannerCTATypePhone, Value: "0914827988"},
-			{Label: "Zalo", Type: AdBannerCTATypeZalo, Value: "https://zalo.me/g/ekvooqdb9hjcl3qmogof"},
+			{Label: "Call support", Type: AdBannerCTATypePhone, Value: "+254700000000"},
+			{Label: "Open portal", Type: AdBannerCTATypeURL, Value: "https://restpoint.co.ke"},
 		},
-		Footer:   "Ting Ting Software Solutions — Đồng hành cùng người lao động.",
+		Footer:   "RestPoint Kenya",
 		StartsAt: starts,
 		EndsAt:   ends,
 		IsActive: true,
@@ -35,7 +34,7 @@ func validAdBanner() *AdBanner {
 
 func TestAdBannerValidateAcceptsCampaignShape(t *testing.T) {
 	if err := validAdBanner().Validate(); err != nil {
-		t.Fatalf("expected LGD-shaped campaign to validate, got %v", err)
+		t.Fatalf("expected valid campaign to pass validation, got %v", err)
 	}
 }
 
@@ -68,22 +67,22 @@ func TestAdBannerValidateRules(t *testing.T) {
 			b.CTAs = []AdBannerCTA{{Label: string(make([]byte, 41)), Type: AdBannerCTATypeURL, Value: "https://a"}}
 		}},
 		{"unknown CTA type", func(b *AdBanner) {
-			b.CTAs = []AdBannerCTA{{Label: "Zalo", Type: "sms", Value: "https://zalo.me"}}
+			b.CTAs = []AdBannerCTA{{Label: "Support", Type: "sms", Value: "https://restpoint.co.ke"}}
 		}},
-		{"http zalo rejected", func(b *AdBanner) {
-			b.CTAs = []AdBannerCTA{{Label: "Zalo", Type: AdBannerCTATypeZalo, Value: "http://zalo.me"}}
+		{"unsupported messaging CTA rejected", func(b *AdBanner) {
+			b.CTAs = []AdBannerCTA{{Label: "Messaging", Type: "sms", Value: "https://example.co.ke"}}
 		}},
 		{"phone with letters", func(b *AdBanner) {
-			b.CTAs = []AdBannerCTA{{Label: "Gọi", Type: AdBannerCTATypePhone, Value: "0914abc988"}}
+			b.CTAs = []AdBannerCTA{{Label: "Call", Type: AdBannerCTATypePhone, Value: "+2547abc12345"}}
 		}},
 		{"phone too short", func(b *AdBanner) {
-			b.CTAs = []AdBannerCTA{{Label: "Gọi", Type: AdBannerCTATypePhone, Value: "123"}}
+			b.CTAs = []AdBannerCTA{{Label: "Call", Type: AdBannerCTATypePhone, Value: "123"}}
 		}},
 		{"http url rejected", func(b *AdBanner) {
-			b.CTAs = []AdBannerCTA{{Label: "Zalo", Type: AdBannerCTATypeURL, Value: "http://zalo.me"}}
+			b.CTAs = []AdBannerCTA{{Label: "Website", Type: AdBannerCTATypeURL, Value: "http://example.co.ke"}}
 		}},
 		{"javascript url rejected", func(b *AdBanner) {
-			b.CTAs = []AdBannerCTA{{Label: "Zalo", Type: AdBannerCTATypeURL, Value: "javascript:alert(1)"}}
+			b.CTAs = []AdBannerCTA{{Label: "Website", Type: AdBannerCTATypeURL, Value: "javascript:alert(1)"}}
 		}},
 		{"ends before starts", func(b *AdBanner) { b.StartsAt, b.EndsAt = b.EndsAt, b.StartsAt }},
 		{"ends equals starts", func(b *AdBanner) { b.EndsAt = b.StartsAt }},

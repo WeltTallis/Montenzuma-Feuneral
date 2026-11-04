@@ -58,8 +58,11 @@ const api = axios.create({
 
 // Request Interceptor
 api.interceptors.request.use((config) => {
+  if (/\/auth\/(login|refresh)(?:$|[?#])/.test(config.url || '')) {
+    config.headers['x-auth-cookie'] = '1';
+  }
   // Most components use 'authToken', but fallback to 'token' just in case
-  const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+  const token = '';
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
@@ -124,6 +127,7 @@ api.interceptors.response.use(
           subscribeTokenRefresh((token) => {
             if (token) {
               originalRequest.headers['Authorization'] = `Bearer ${token}`;
+              delete originalRequest.headers['Authorization'];
               resolve(api(originalRequest));
             } else {
               reject(error);
@@ -139,26 +143,20 @@ api.interceptors.response.use(
         const refreshUrl = env.API_URL + ENDPOINTS.AUTH.REFRESH;
         // The refresh token is sent via httpOnly cookie (withCredentials: true)
         // We also send it from localStorage as a fallback for backward compatibility
-        const refreshToken = localStorage.getItem('refreshToken');
-
         const response = await axios.post(
           refreshUrl,
-          refreshToken ? { refreshToken } : {},
-          { withCredentials: true }
+          {},
+          { withCredentials: true, headers: { 'x-auth-cookie': '1' } }
         );
 
-        const newToken = response.data?.token || response.data?.accessToken;
-        const newRefreshToken = response.data?.refreshToken;
+        const newToken = '';
 
-        if (newToken) {
+        if (response.data?.success) {
           // Update token in localStorage
-          localStorage.setItem('authToken', newToken);
-          if (newRefreshToken) {
-            localStorage.setItem('refreshToken', newRefreshToken);
-          }
           // Retry all queued requests
-          onTokenRefreshed(newToken);
+          onTokenRefreshed(true);
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          delete originalRequest.headers['Authorization'];
           return api(originalRequest);
         } else {
           // No token returned - refresh failed

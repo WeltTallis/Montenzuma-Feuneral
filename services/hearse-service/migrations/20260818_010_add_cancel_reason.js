@@ -1,10 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Add cancel_reason column
-// ============================================
-// Persists the reason a hearse booking was cancelled so the UI can display
-// *why* a booking was cancelled (in the booking detail sidebar). The column is
-// optional/nullable so legacy rows remain valid, and the migration is
-// idempotent (hasColumn guard) so it is safe to run more than once.
+
 
 exports.up = async function (knex) {
     const hasTable = async (t) => { try { return await knex.schema.hasTable(t); } catch { return false; } };

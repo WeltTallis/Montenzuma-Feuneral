@@ -1,31 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE - Branch display-name resolution
-// ============================================
-// WHY THIS EXISTS
-// ---------------
-// `branches` is a PER-TENANT table: the tenant-service creates it inside every
-// tenant database (branch_id, branch_name, branch_slug, branch_code,
-// branch_db_name, …) and mirrors it into the platform-wide registry
-// `tenant_tracking.branches`.
-//
-// It does NOT exist in `restpoint_operations` — the shared database the hearse
-// service is connected to. Two queries used to do
-// `LEFT JOIN branches b ON COALESCE(hb.branch_id, h.branch_id) = b.branch_id`
-// while pointing at restpoint_operations, so MySQL answered
-// `ER_NO_SUCH_TABLE (1146) Table 'restpoint_operations.branches' doesn't exist`
-// and:
-//   • GET /hearse-bookings returned 500 for every month, and
-//   • the notification cron logged the same error every 30 seconds.
-//
-// The join was also meaningless: `hearse_bookings.branch_id` /
-// `hearses.branch_id` are UUIDs (or NULL) while the old integer `branches`
-// schema they were matched against never existed here.
-//
-// This module resolves the display name from the REGISTRY instead, keyed on the
-// identifiers a booking actually carries (branch slug, tenant/branch db name,
-// branch code, branch id). Every lookup is best-effort: a missing registry or a
-// transient DB error must never break the booking list, so callers always get
-// their rows back (annotated when resolution worked, untouched when it did not).
+
 
 import { safeQuery } from '../database';
 
@@ -39,20 +14,9 @@ export interface BranchRegistryEntry {
 /** How long the (tiny) branch registry may be reused before being re-read. */
 const REGISTRY_TTL_MS = 5 * 60 * 1000;
 
-/**
- * Values that are NOT real branch names. `hearses.branch_name` is seeded with
- * "Main Branch" / "Branch 1" by older rows, so a resolved registry name must
- * win over them.
- */
 const GENERIC_BRANCH_NAMES = new Set([
     'main branch', 'main', 'default', 'branch', 'unknown', 'n/a', '—', ''
 ]);
-
-// Columns that exist in BOTH known schemas of tenant_tracking.branches:
-// the original init-db.sql table (id, tenant_slug, branch_slug, branch_name,
-// branch_db_name, parent_branch_id, is_active) and the newer one that also has
-// tenant_id / branch_code. `branch_id` is deliberately NOT used: it only exists
-// in the per-tenant `branches` table, not in this registry.
 const REGISTRY_SQL = `SELECT id, branch_slug, branch_name, branch_db_name
                         FROM tenant_tracking.branches
                        WHERE is_active = 1`;
@@ -62,12 +26,6 @@ let cache: { at: number; map: Map<string, BranchRegistryEntry> } | null = null;
 const isGenericBranchName = (name: unknown): boolean =>
     GENERIC_BRANCH_NAMES.has(String(name ?? '').trim().toLowerCase());
 
-/**
- * Cached `<any branch identifier> → { branch_name, branch_slug, branch_code }`
- * lookup. Never throws: if the registry is missing (older deployments) or the
- * query fails, an empty map is returned so callers fall back to the values
- * stored on the row itself.
- */
 export async function getBranchRegistry(): Promise<Map<string, BranchRegistryEntry>> {
     if (cache && Date.now() - cache.at < REGISTRY_TTL_MS) {
         return cache.map;
@@ -105,11 +63,6 @@ export async function getBranchRegistry(): Promise<Map<string, BranchRegistryEnt
     }
 }
 
-/**
- * Find the registry entry for a booking/hearse row using the identifiers that
- * row carries. The booking's OWN branch wins over the hearse's, because a
- * booking made by branch A can be served by a hearse owned by branch B.
- */
 function matchBranchEntry(row: any, map: Map<string, BranchRegistryEntry>): BranchRegistryEntry | undefined {
     if (!row) return undefined;
     const keys = [
@@ -134,14 +87,6 @@ export interface DecorateBranchNamesOptions {
     strip?: string[];
 }
 
-/**
- * Annotate booking rows with `branch_name` / `branch_slug` /
- * `branch_slug_resolved` (the key the hearse UI already reads).
- *
- * Rows are mutated in place and returned for convenience. When the registry has
- * no entry the row keeps whatever it already had, so the response shape stays
- * identical for deployments without a registry.
- */
 export async function decorateBranchNames(
     rows: any[],
     options: DecorateBranchNamesOptions = {}
@@ -155,9 +100,6 @@ export async function decorateBranchNames(
         if (!row) continue;
 
         const entry = matchBranchEntry(row, map);
-
-        // Prefer the registry name, then a real name already on the row, then
-        // the hearse's own (possibly generic) branch name.
         const ownName = String(row.branch_name || '').trim();
         const hearseName = String(row.hearse_branch_name || '').trim();
 
@@ -169,8 +111,7 @@ export async function decorateBranchNames(
             || hearseName
             || null;
 
-        // booking_branch_slug is what the UI's slug→name resolver keys on, so it
-        // is upgraded too when the registry knows the real slug.
+
         const slug = entry?.branch_slug
             || String(row.branch_slug || '').trim()
             || String(row.booking_branch_slug || '').trim();

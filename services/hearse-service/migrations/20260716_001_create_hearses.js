@@ -1,6 +1,6 @@
-// ============================================
+
 // HEARSE SERVICE MIGRATION - Create hearses table
-// ============================================
+
 
 exports.up = function (knex) {
     return knex.schema

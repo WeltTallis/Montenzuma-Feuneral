@@ -16,6 +16,7 @@ interface ExportJobData {
   requestedBy?: string;
 }
 
+
 /**
  * Create and configure the Excel export worker
  * This function should be called only when Redis is available

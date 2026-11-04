@@ -671,9 +671,9 @@ func (h *TransactionHandler) mapToLedgerEntriesResponse(entries []*domain.Ledger
 	return result
 }
 
-// GetTransactionMetadata returns transaction types and statuses with Vietnamese labels
+// GetTransactionMetadata returns transaction types and statuses for frontend dropdowns.
 // @Summary Get transaction metadata
-// @Description Get transaction types and statuses with Vietnamese labels for frontend dropdowns
+// @Description Get transaction types and statuses for frontend dropdowns
 // @Tags transactions
 // @Produce json
 // @Success 200 {object} response.SuccessResponse{data=dto.TransactionMetadataResponse}
@@ -681,21 +681,19 @@ func (h *TransactionHandler) mapToLedgerEntriesResponse(entries []*domain.Ledger
 func (h *TransactionHandler) GetTransactionMetadata(c *gin.Context) {
 	metadata := dto.TransactionMetadataResponse{
 		TransactionTypes: []dto.TransactionMetadata{
-			{Type: string(domain.TransactionTypeExpense), Label: "Chi phí"},
-			{Type: string(domain.TransactionTypeRevenue), Label: "Doanh thu"},
-			{Type: string(domain.TransactionTypeCapital), Label: "Vốn"},
-			{Type: string(domain.TransactionTypeWriteOff), Label: "Xóa nợ"},
-			{Type: string(domain.TransactionTypeLoanDisbursement), Label: "Tiền vay nợ"},
-			{Type: string(domain.TransactionTypeLoanRepayment), Label: "Thanh toán khoản vay"},
+			{Type: string(domain.TransactionTypeExpense), Label: "Expense"},
+			{Type: string(domain.TransactionTypeRevenue), Label: "Revenue"},
+			{Type: string(domain.TransactionTypeCapital), Label: "Capital"},
+			{Type: string(domain.TransactionTypeWriteOff), Label: "Write-off"},
 		},
 		Statuses: []dto.TransactionMetadata{
-			{Type: string(domain.TransactionStatusPending), Label: "Chờ thanh toán"},
-			{Type: string(domain.TransactionStatusSettled), Label: "Đã thanh toán"},
-			{Type: string(domain.TransactionStatusPartiallySettled), Label: "Thanh toán thiếu"},
+			{Type: string(domain.TransactionStatusPending), Label: "Pending"},
+			{Type: string(domain.TransactionStatusSettled), Label: "Settled"},
+			{Type: string(domain.TransactionStatusPartiallySettled), Label: "Partially settled"},
 		},
 	}
 
-	response.Success(c, metadata, "Lấy metadata giao dịch thành công")
+	response.Success(c, metadata, "Transaction metadata retrieved")
 }
 
 // ExportTransactions exports transactions to Excel format with optional date filtering

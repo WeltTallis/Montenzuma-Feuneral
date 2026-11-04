@@ -22,8 +22,6 @@ const (
 	TaskBCCImport                      = "timesheet:bcc_import"
 	TaskBCCImportSweep                 = "timesheet:bcc_import_sweep"
 	TaskImportJob                      = "import:job"
-	TaskFlexPaySalaryNotification      = "zns:flexpay_salary_notification"
-	TaskFlexPaySalaryNotificationSweep = "zns:flexpay_salary_notification_sweep"
 	// TaskIPNProcess is the provider-agnostic task type for verified
 	// disbursement IPN events. The wire payload carries the provider
 	// name so a single worker handles every disbursement provider.
@@ -116,7 +114,6 @@ type Handlers struct {
 	employeeImportWorker            *workers.EmployeeImportWorker
 	bccImportWorker                 *workers.BCCImportWorker
 	importJobWorker                 *workers.ImportJobWorker
-	flexPaySalaryNotificationWorker *workers.FlexPaySalaryNotificationWorker
 	ipnProcessWorker                *workers.IPNProcessWorker
 	disbursementPollerWorker        *workers.DisbursementPollerWorker
 	disbursementExecuteWorker       *workers.DisbursementExecuteWorker
@@ -152,7 +149,6 @@ func NewHandlers(
 	employeeImportWorker *workers.EmployeeImportWorker,
 	bccImportWorker *workers.BCCImportWorker,
 	importJobWorker *workers.ImportJobWorker,
-	flexPaySalaryNotificationWorker *workers.FlexPaySalaryNotificationWorker,
 	ipnProcessWorker *workers.IPNProcessWorker,
 	disbursementPollerWorker *workers.DisbursementPollerWorker,
 	disbursementExecuteWorker *workers.DisbursementExecuteWorker,
@@ -174,7 +170,6 @@ func NewHandlers(
 		employeeImportWorker:            employeeImportWorker,
 		bccImportWorker:                 bccImportWorker,
 		importJobWorker:                 importJobWorker,
-		flexPaySalaryNotificationWorker: flexPaySalaryNotificationWorker,
 		ipnProcessWorker:                ipnProcessWorker,
 		disbursementPollerWorker:        disbursementPollerWorker,
 		disbursementExecuteWorker:       disbursementExecuteWorker,
@@ -196,28 +191,6 @@ func NewHandlers(
 
 type bccImportPayload struct {
 	AssetID uint `json:"asset_id"`
-}
-
-type flexPaySalaryNotificationPayload struct {
-	NotificationID uint `json:"notification_id"`
-}
-
-func (h *Handlers) HandleFlexPaySalaryNotification(ctx context.Context, t *asynqlib.Task) error {
-	var payload flexPaySalaryNotificationPayload
-	if err := json.Unmarshal(t.Payload(), &payload); err != nil || payload.NotificationID == 0 {
-		return asynqlib.SkipRetry
-	}
-	if h.flexPaySalaryNotificationWorker == nil {
-		return nil
-	}
-	return h.flexPaySalaryNotificationWorker.ProcessJob(ctx, payload.NotificationID)
-}
-
-func (h *Handlers) HandleFlexPaySalaryNotificationSweep(ctx context.Context, _ *asynqlib.Task) error {
-	if h.flexPaySalaryNotificationWorker == nil {
-		return nil
-	}
-	return h.flexPaySalaryNotificationWorker.Recover(ctx)
 }
 
 func (h *Handlers) HandleBCCImport(ctx context.Context, t *asynqlib.Task) error {

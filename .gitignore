@@ -49,6 +49,7 @@ export-body.json
 .env.*
 !.env.example
 !.env.sample
+/secrets/
 
 # ---- editor / OS --------------------------------------------------------
 .DS_Store

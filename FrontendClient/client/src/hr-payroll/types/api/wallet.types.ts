@@ -21,13 +21,6 @@ export interface WalletTopup {
   updated_at: string;
 }
 
-export interface CreateWalletTopupRequest {
-  amount: number;
-  bank_ref: string;
-  occurred_at: string;
-  note?: string;
-}
-
 export interface WalletTopupListResponse {
   data: WalletTopup[];
   total: number;
@@ -109,22 +102,4 @@ export interface UnifiedTransactionFilter {
   end_date?: string;
   page?: number;
   page_size?: number;
-}
-
-// Reconciliation types
-export interface ReconciliationJob {
-  id: string;
-  status: 'processing' | 'completed' | 'failed';
-  total_rows: number;
-  matched: number;
-  unmatched: number;
-  headers?: string[];
-  raw_rows?: string[][];
-}
-
-export interface SyncBalanceResponse {
-  provider_balance: number;
-  local_balance: number;
-  adjusted: boolean;
-  currency: string;
 }

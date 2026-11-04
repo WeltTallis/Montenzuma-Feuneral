@@ -48,7 +48,7 @@ const corsOptions: cors.CorsOptions = {
   allowedHeaders: [
     'Content-Type', 'Authorization', 'X-Requested-With',
     'Accept', 'Origin', 'X-Tenant-Id', 'X-CSRF-Token',
-    'x-tenant-slug', 'x-branch-id'
+    'x-tenant-slug', 'x-branch-id', 'x-auth-cookie'
   ],
   exposedHeaders: ['Set-Cookie', 'X-CSRF-Token'],
   maxAge: 86400, // 24h preflight cache

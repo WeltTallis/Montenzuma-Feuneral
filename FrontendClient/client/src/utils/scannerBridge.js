@@ -210,8 +210,8 @@ const readStored = (key) => {
   try { return localStorage.getItem(key) || sessionStorage.getItem(key) || ''; } catch { return ''; }
 };
 
-/** The signed-in user's access token, if the app has one. */
-export const getAuthToken = () => readStored('authToken') || readStored('accessToken');
+/** Browser sessions use HttpOnly cookies; no access token is exposed to JavaScript. */
+export const getAuthToken = () => '';
 
 /**
  * Ask the Restpoint cloud for a short-lived bridge grant.
@@ -227,15 +227,12 @@ export const getAuthToken = () => readStored('authToken') || readStored('accessT
  *   → { ok: true, grant, expiresAt }  |  → { ok: false, reason }
  */
 export const fetchBridgeGrant = async (scope = 'bridge:scan', timeoutMs = 10000) => {
-  const token = getAuthToken();
-  if (!token) return { ok: false, reason: 'You need to sign in to Restpoint first.' };
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${env.API_GATEWAY_URL}/bridge/grant`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ scope }),
       signal: controller.signal,
@@ -311,15 +308,13 @@ export const authoriseSocket = (ws, grant, timeoutMs = 15000) =>
   });
 
 /**
- * Build the START_SCAN payload the bridge expects, enriched with the current
- * user session (token / tenant slug / gateway base) so the agent can upload the
+ * Build the START_SCAN payload with tenant scope and gateway base so the agent can upload the
  * scanned PDF straight to the documents-service.
  *
  * `sessionId` comes from the HELLO handshake and is mandatory: the bridge
  * refuses to drive the scanner without an authorised session.
  */
 export const buildStartScanMessage = ({ deceasedId, documentName, category, sessionId, extra = {} }) => {
-  const token = getAuthToken();
   const tenantSlug = readStored('tenantSlug') || readStored('tenant_slug');
 
   // The bridge is local, but document uploads must use the same canonical
@@ -334,7 +329,6 @@ export const buildStartScanMessage = ({ deceasedId, documentName, category, sess
     documentName: documentName || `Scan_${String(deceasedId || 'document')}.pdf`,
     category: category || 'Scan',
     apiBase,
-    ...(token ? { token } : {}),
     ...(tenantSlug ? { tenantSlug } : {}),
     resolution: 300,
     colorMode: 'color',

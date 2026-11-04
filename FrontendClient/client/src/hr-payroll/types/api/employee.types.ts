@@ -137,6 +137,9 @@ export interface CreateEmployeeData {
   fullname: string;
   email?: string;
   cccd: string;
+  kra_pin?: string;
+  nssf_number?: string;
+  sha_number?: string;
   address?: string;
   mobile?: string;
   bank_id?: number;

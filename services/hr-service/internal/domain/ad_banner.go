@@ -10,16 +10,13 @@ import (
 )
 
 // AdBannerCTAType determines how the employee portal renders and activates a
-// call-to-action button: phone opens the native dialer via tel:, url opens a
-// new tab, zalo hands the tap to the Zalo app through its zalo.me universal
-// link (same-tab navigation on mobile, new tab on desktop). Nothing else is
-// accepted — banners are typed content, never HTML.
+// call-to-action button. Nothing else is accepted — banners are typed content,
+// never HTML.
 type AdBannerCTAType string
 
 const (
 	AdBannerCTATypePhone AdBannerCTAType = "phone"
 	AdBannerCTATypeURL   AdBannerCTAType = "url"
-	AdBannerCTATypeZalo  AdBannerCTAType = "zalo"
 )
 
 // AdBannerMaxLifetime caps the starts_at→ends_at window so a typo'd year
@@ -98,8 +95,7 @@ func (b *AdBanner) TargetsAnyProject(projectIDs []uint) bool {
 	return false
 }
 
-// isValidCTAPhone accepts Vietnamese-shaped numbers with an optional leading
-// "+": digits only, 6–15 of them.
+// isValidCTAPhone accepts an international phone number with an optional "+".
 func isValidCTAPhone(value string) bool {
 	if value == "" {
 		return false
@@ -122,79 +118,79 @@ func isValidCTAPhone(value string) bool {
 func (b *AdBanner) Validate() error {
 	b.Title = strings.TrimSpace(b.Title)
 	if b.Title == "" {
-		return NewValidationError("Tiêu đề quảng cáo là bắt buộc")
+		return NewValidationError("Banner title is required")
 	}
 	if len(b.Title) > adBannerMaxTitleLen {
-		return NewValidationError("Tiêu đề quảng cáo tối đa 255 ký tự")
+		return NewValidationError("Banner title must be at most 255 characters")
 	}
 
 	b.Footer = strings.TrimSpace(b.Footer)
 	if len(b.Footer) > adBannerMaxFooterLen {
-		return NewValidationError("Câu chào kết tối đa 255 ký tự")
+		return NewValidationError("Banner footer must be at most 255 characters")
 	}
 
 	if len(b.Bullets) > adBannerMaxBullets {
-		return NewValidationError("Tối đa 6 gạch đầu dòng")
+		return NewValidationError("Banner can contain at most 6 bullet points")
 	}
 	for _, bullet := range b.Bullets {
 		bullet = strings.TrimSpace(bullet)
 		if bullet == "" {
-			return NewValidationError("Gạch đầu dòng không được để trống")
+			return NewValidationError("Bullet points cannot be empty")
 		}
 		if len(bullet) > adBannerMaxBulletLen {
-			return NewValidationError("Mỗi gạch đầu dòng tối đa 200 ký tự")
+			return NewValidationError("Bullet points must be at most 200 characters")
 		}
 	}
 
 	if len(b.CTAs) == 0 {
-		return NewValidationError("Quảng cáo cần ít nhất một nút hành động")
+		return NewValidationError("Banner must contain at least one CTA")
 	}
 	if len(b.CTAs) > adBannerMaxCTAs {
-		return NewValidationError("Tối đa 3 nút hành động")
+		return NewValidationError("Banner can contain at most 3 CTAs")
 	}
 	for _, cta := range b.CTAs {
 		label := strings.TrimSpace(cta.Label)
 		if label == "" {
-			return NewValidationError("Nhãn nút hành động là bắt buộc")
+			return NewValidationError("CTA label is required")
 		}
 		if len(label) > adBannerMaxCTALabelLen {
-			return NewValidationError("Nhãn nút hành động tối đa 40 ký tự")
+			return NewValidationError("CTA label must be at most 40 characters")
 		}
 		switch cta.Type {
 		case AdBannerCTATypePhone:
 			if !isValidCTAPhone(strings.TrimSpace(cta.Value)) {
-				return NewValidationError("Số điện thoại không hợp lệ")
+				return NewValidationError("Invalid CTA phone number")
 			}
-		case AdBannerCTATypeURL, AdBannerCTATypeZalo:
+		case AdBannerCTATypeURL:
 			if !strings.HasPrefix(strings.TrimSpace(cta.Value), "https://") {
-				return NewValidationError("Đường dẫn phải bắt đầu bằng https://")
+				return NewValidationError("CTA URL must use HTTPS")
 			}
 		default:
-			return NewValidationError("Loại nút hành động phải là 'phone', 'url' hoặc 'zalo'")
+			return NewValidationError("CTA type must be 'phone' or 'url'")
 		}
 	}
 
 	if b.StartsAt.IsZero() || b.EndsAt.IsZero() {
-		return NewValidationError("Thời gian bắt đầu và kết thúc là bắt buộc")
+		return NewValidationError("Banner start and end times are required")
 	}
 	if !b.EndsAt.After(b.StartsAt) {
-		return NewValidationError("Thời gian kết thúc phải sau thời gian bắt đầu")
+		return NewValidationError("Banner end time must be after its start time")
 	}
 	if b.EndsAt.Sub(b.StartsAt) > AdBannerMaxLifetime {
-		return NewValidationError("Thời gian hiển thị tối đa 180 ngày")
+		return NewValidationError("Banner duration cannot exceed 180 days")
 	}
 
 	if len(b.TargetProjectIDs) > 1 {
-		return NewValidationError("Chiến dịch chỉ được nhắm đến một dự án")
+		return NewValidationError("A banner can target only one project")
 	}
 
 	seen := make(map[uint]struct{}, len(b.TargetProjectIDs))
 	for _, id := range b.TargetProjectIDs {
 		if id == 0 {
-			return NewValidationError("Dự án mục tiêu không hợp lệ")
+			return NewValidationError("Target project ID is invalid")
 		}
 		if _, dup := seen[id]; dup {
-			return NewValidationError("Dự án mục tiêu không được trùng lặp")
+			return NewValidationError("Target project IDs must be unique")
 		}
 		seen[id] = struct{}{}
 	}

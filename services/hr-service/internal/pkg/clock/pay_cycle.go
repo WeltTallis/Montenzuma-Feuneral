@@ -148,12 +148,12 @@ type TimesheetPayCycle struct {
 // transfer is happening and its preparation window (pay date − lead days) has
 // already closed, so the card rolls forward to the next cycle.
 //
-// Concretely (HCM calendar): days 1–9 → Ky 1 (pay 10); days 10–16 → Ky 2
+// Concretely (Nairobi calendar): days 1–9 → Ky 1 (pay 10); days 10–16 → Ky 2
 // (pay 17); days 17–23 → Ky 3 (pay 24); days 24–end → Ky 4 (pay day 1 of the
 // next month). Keeping CycleDayToday strictly below MaxCycleDay is also what
 // leaves the projection window open — landing on the pay day itself would
 // collapse the accrual forecast to zero. All times are interpreted in
-// DefaultLocation (Asia/Ho_Chi_Minh).
+// DefaultLocation (Africa/Nairobi).
 func NextTimesheetPayCycle(t time.Time) TimesheetPayCycle {
 	now := t.In(DefaultLocation)
 	year, month := now.Year(), now.Month()

@@ -22,13 +22,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"api-server/internal/app/services/payroll"
-	"api-server/internal/app/services/payroll/bulktransfer"
 )
 
 type PayrollHandler struct {
 	payrollService       *payroll.PayrollService
-	autoBulkTransferSvc  bulktransfer.AutoBulkTransferService
-	onePayExporter       *bulktransfer.OnePayExporter
 	cacheService         domain.CacheServiceUseCase
 	bulkTransferFileRepo domain.BulkTransferFileRepository
 	assetRepo            domain.AssetRepository
@@ -39,8 +36,6 @@ type PayrollHandler struct {
 
 func NewPayrollHandler(
 	payrollService *payroll.PayrollService,
-	autoBulkTransferSvc bulktransfer.AutoBulkTransferService,
-	onePayExporter *bulktransfer.OnePayExporter,
 	cacheService domain.CacheServiceUseCase,
 	bulkTransferFileRepo domain.BulkTransferFileRepository,
 	assetRepo domain.AssetRepository,
@@ -49,8 +44,6 @@ func NewPayrollHandler(
 ) *PayrollHandler {
 	return &PayrollHandler{
 		payrollService:       payrollService,
-		autoBulkTransferSvc:  autoBulkTransferSvc,
-		onePayExporter:       onePayExporter,
 		cacheService:         cacheService,
 		bulkTransferFileRepo: bulkTransferFileRepo,
 		assetRepo:            assetRepo,
@@ -149,75 +142,6 @@ func (h *PayrollHandler) ExportBulkTransfer(c *gin.Context) {
 	c.Data(http.StatusOK, contentType, exportResponse.Data)
 }
 
-// ExportOnePayBulk exports approved timesheets to a "Yêu cầu chuyển tiền"
-// .xlsx in OnePay-API-compatible eMB_BulkPayment format, enriched with a
-// SWIFT code column resolved from each employee's bank record. The output
-// file is the canonical input for the wallet-page upload pipeline.
-//
-// Admin-only. Returns the .xlsx as a blob with metadata in X- headers:
-//   - X-Total-Count: number of rows in the export
-//   - X-Transfer-Amount: total VND across rows
-//   - X-Skipped-Count: employees skipped (missing bank info / unresolved SWIFT)
-//   - X-Cycle: weekly | monthly
-//   - X-Export-Cycle-Id: cycle tag for the file
-//
-// Frontend reads headers to show a toast + skipped-employees dialog.
-func (h *PayrollHandler) ExportOnePayBulk(c *gin.Context) {
-	if !isAdmin(c) {
-		response.Forbidden(c, constants.MsgForbiddenVN)
-		return
-	}
-	if h.onePayExporter == nil {
-		response.InternalServerError(c, "OnePay exporter not configured")
-		return
-	}
-
-	userID, exists := c.Get("user_id")
-	if !exists {
-		response.Forbidden(c, constants.MsgUserIDNotFoundInContextVN)
-		return
-	}
-	userIDUint, ok := userID.(uint)
-	if !ok {
-		response.InternalServerError(c, constants.MsgInvalidUserIDVN)
-		return
-	}
-
-	var req dto.ExportBulkTransferRequest
-	if !helpers.BindJSON(c, &req) {
-		return
-	}
-	if err := validateExportBulkTransferRequest(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	req.CreatedBy = userIDUint
-
-	result, err := h.onePayExporter.Export(c.Request.Context(), &req)
-	if err != nil {
-		h.logger.Error("ExportOnePayBulk error", "error", err)
-		response.HandleDomainError(c, err)
-		return
-	}
-
-	contentType := "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-	contentDisposition := mime.FormatMediaType("attachment", map[string]string{"filename": result.Filename})
-
-	c.Header("Content-Type", contentType)
-	c.Header("Content-Disposition", contentDisposition)
-	c.Header("Content-Length", strconv.Itoa(len(result.ExcelBytes)))
-	c.Header("Cache-Control", "no-store")
-	c.Header("X-Content-Type-Options", "nosniff")
-	c.Header("X-Total-Count", strconv.Itoa(result.TotalCount))
-	c.Header("X-Transfer-Amount", strconv.FormatInt(result.TransferAmount, 10))
-	c.Header("X-Skipped-Count", strconv.Itoa(len(result.SkippedEmployees)))
-	c.Header("X-Cycle", result.Cycle)
-	// Expose all custom headers to the browser (so the SPA can read them).
-	c.Header("Access-Control-Expose-Headers", "Content-Disposition, X-Total-Count, X-Transfer-Amount, X-Skipped-Count, X-Cycle")
-
-	c.Data(http.StatusOK, contentType, result.ExcelBytes)
-}
-
 // SimulateSettlement handles POST /payrolls/simulate-settlement.
 // Read-only dry-run: projects the current + next N−1 payroll cycles and
 // returns a full-pool coverage verdict without mutating any data.
@@ -256,75 +180,6 @@ func (h *PayrollHandler) SimulateSettlement(c *gin.Context) {
 	}
 
 	response.Success(c, result, "Mô phỏng đối soát thành công")
-}
-
-// InitiateAutoBulkTransfer initiates an auto bulk transfer for approved timesheets
-func (h *PayrollHandler) InitiateAutoBulkTransfer(c *gin.Context) {
-	if h.autoBulkTransferSvc == nil {
-		response.Forbidden(c, "Auto bulk transfer is not enabled")
-		return
-	}
-
-	userID, exists := c.Get("user_id")
-	if !exists {
-		response.Forbidden(c, constants.MsgUserIDNotFoundInContextVN)
-		return
-	}
-
-	userIDUint, ok := userID.(uint)
-	if !ok {
-		response.InternalServerError(c, constants.MsgInvalidUserIDVN)
-		return
-	}
-
-	var req dto.ExportBulkTransferRequest
-	if !helpers.BindJSON(c, &req) {
-		return
-	}
-
-	if err := validateExportBulkTransferRequest(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	req.CreatedBy = userIDUint
-
-	resp, err := h.autoBulkTransferSvc.InitiateBulkTransfer(c.Request.Context(), &req)
-	if err != nil {
-		h.logger.Error("InitiateAutoBulkTransfer error", "error", err)
-		response.HandleDomainError(c, err)
-		return
-	}
-
-	response.SuccessCreated(c, resp, "Auto bulk transfer initiated")
-}
-
-// GetAutoBulkTransferConfig returns whether auto bulk transfer is enabled.
-func (h *PayrollHandler) GetAutoBulkTransferConfig(c *gin.Context) {
-	response.Success(c, gin.H{"enabled": h.autoBulkTransferSvc != nil}, "")
-}
-
-// GetAutoBulkTransferStatus returns the status of an auto bulk transfer batch
-func (h *PayrollHandler) GetAutoBulkTransferStatus(c *gin.Context) {
-	if h.autoBulkTransferSvc == nil {
-		response.Forbidden(c, "Auto bulk transfer is not enabled")
-		return
-	}
-
-	batchID := c.Param("batch_id")
-	if batchID == "" {
-		response.BadRequest(c, "batch_id is required")
-		return
-	}
-
-	resp, err := h.autoBulkTransferSvc.GetBatchStatus(c.Request.Context(), batchID)
-	if err != nil {
-		h.logger.Error("GetAutoBulkTransferStatus error", "error", err)
-		response.HandleDomainError(c, err)
-		return
-	}
-
-	response.Success(c, resp, "")
 }
 
 // ImportBulkTransferResult imports bulk transfer results from an Excel file
@@ -727,31 +582,4 @@ func (h *PayrollHandler) GetPendingUploads(c *gin.Context) {
 	}
 
 	response.Success(c, items, "")
-}
-
-// EstimateFee returns the estimated disbursement fee for a potential bulk transfer.
-func (h *PayrollHandler) EstimateFee(c *gin.Context) {
-	if h.autoBulkTransferSvc == nil {
-		response.Forbidden(c, "Auto bulk transfer is not enabled")
-		return
-	}
-
-	var req dto.ExportBulkTransferRequest
-	if !helpers.BindJSON(c, &req) {
-		return
-	}
-
-	if err := validateExportBulkTransferRequest(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	resp, err := h.autoBulkTransferSvc.EstimateFee(c.Request.Context(), &req)
-	if err != nil {
-		h.logger.Error("EstimateFee error", "error", err)
-		response.HandleDomainError(c, err)
-		return
-	}
-
-	response.Success(c, resp, "")
 }

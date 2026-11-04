@@ -1,17 +1,8 @@
-// ============================================
-// HEARSE MULTI-DAY AVAILABILITY UTILITIES
-// ============================================
-// Pure, testable helpers for the multi-day hearse booking rule:
-//
-//   A hearse is UNAVAILABLE on EVERY date covered by an active booking.
-//   A NEW booking is valid ONLY IF NONE of its requested dates overlap
-//   any existing ACTIVE booking date (same hearse), checked ATOMICALLY
-//   inside a transaction that locks the hearse row (SELECT ... FOR UPDATE).
-//
-// Booking dates are always normalized to local calendar keys: "YYYY-MM-DD".
 
-import { PoolConnection } from 'mysql2/promise';
+// HEARSE MULTI-DAY AVAILABILITY UTILITIES
 import { getKenyaDate } from '@montezuma/shared-utils';
+import { PoolConnection } from 'mysql2/promise';
+
 
 const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -115,7 +106,7 @@ export function normalizeBookingDates(raw: any): string[] {
         const out: string[] = [];
         for (const entry of raw) {
             if (entry == null) continue;
-            
+
             // If entry is an object with start/end, treat it as a range
             if (typeof entry === 'object' && !Array.isArray(entry)) {
                 const start = entry.start_date || entry.startDate || entry.start || entry.from || entry.from_timestamp;
@@ -197,9 +188,6 @@ export function extractRowDates(row: any): string[] {
     if (row == null) return [];
     const dates = new Set<string>(normalizeBookingDates(row.booking_dates));
 
-    // Some legacy bookings have a booking_dates value containing only the start
-    // day even though their from/to timestamps span multiple days. Keep the
-    // explicit range columns too, so the final (inclusive) day remains blocked.
     const start = row.start_date || row.startDate || row.start || row.from || row.from_timestamp;
     const end = row.end_date || row.endDate || row.end || row.to || row.to_timestamp;
     if (start && end) {
@@ -308,7 +296,7 @@ export async function attemptHearseReservation(
     }
 
     const [bookingRows] = await conn.query(
-        `SELECT * FROM hearse_bookings
+        `SELECT booking_dates, booking_date, from_timestamp, to_timestamp FROM hearse_bookings
          WHERE hearse_id = ?
            AND status NOT IN ('completed', 'cancelled')
          FOR UPDATE`,
@@ -316,13 +304,11 @@ export async function attemptHearseReservation(
     );
 
     const bookedSet = new Set<string>();
-    const allBookedDates: string[] = [];
     for (const row of bookingRows as any[]) {
         const dates = extractRowDates(row);
         for (const d of dates) {
             if (isValidDateKey(d)) {
                 bookedSet.add(d);
-                allBookedDates.push(d);
             }
         }
     }
@@ -335,9 +321,9 @@ export async function attemptHearseReservation(
 
     if (conflicts.length > 0) {
         // Return debug info to help diagnose the issue
-        return { 
-            ok: false, 
-            conflictDate: conflicts[0].date, 
+        return {
+            ok: false,
+            conflictDate: conflicts[0].date,
             conflicts,
             debug: {
                 requested: normalizedRequested,

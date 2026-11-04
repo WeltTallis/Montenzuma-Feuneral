@@ -12,8 +12,6 @@ func RegisterHandlers(srv *Server, h *Handlers) {
 	srv.Mux().Handle(TaskBCCImport, asynqlib.HandlerFunc(h.HandleBCCImport))
 	srv.Mux().Handle(TaskBCCImportSweep, asynqlib.HandlerFunc(h.HandleBCCImportSweep))
 	srv.Mux().Handle(TaskImportJob, asynqlib.HandlerFunc(h.HandleImportJob))
-	srv.Mux().Handle(TaskFlexPaySalaryNotification, asynqlib.HandlerFunc(h.HandleFlexPaySalaryNotification))
-	srv.Mux().Handle(TaskFlexPaySalaryNotificationSweep, asynqlib.HandlerFunc(h.HandleFlexPaySalaryNotificationSweep))
 	srv.Mux().Handle(TaskIPNProcess, asynqlib.HandlerFunc(h.HandleIPNProcess))
 	srv.Mux().Handle(TaskBulkTransferTransaction, asynqlib.HandlerFunc(h.HandleBulkTransferTransaction))
 	srv.Mux().Handle(TaskBulkTransferPayment, asynqlib.HandlerFunc(h.HandleBulkTransferPayment))
@@ -53,7 +51,7 @@ func RegisterHandlers(srv *Server, h *Handlers) {
 	}
 
 	registered := []string{
-		TaskEmployeeImport, TaskBCCImport, TaskBCCImportSweep, TaskImportJob, TaskFlexPaySalaryNotification, TaskFlexPaySalaryNotificationSweep, TaskIPNProcess,
+		TaskEmployeeImport, TaskBCCImport, TaskBCCImportSweep, TaskImportJob, TaskIPNProcess,
 		TaskBulkTransferTransaction, TaskBulkTransferPayment,
 		TaskAuditLogWrite, TaskPayrollReportEmail, TaskAutoRejectCheckout, TaskAutoRejectSweep,
 		TaskCreditQuota, TaskCreditQuotaSweep,
@@ -88,14 +86,7 @@ func RegisterPeriodicTasks(srv *Server, _ *Client) error {
 	); err != nil {
 		return fmt.Errorf("failed to register BCC import recovery sweep: %w", err)
 	}
-	if _, err := srv.Scheduler().Register(
-		"@every 1m",
-		asynqlib.NewTask(TaskFlexPaySalaryNotificationSweep, nil),
-		asynqlib.Queue(QueueLow),
-	); err != nil {
-		return fmt.Errorf("failed to register salary notification recovery sweep: %w", err)
-	}
-	logger.Info("Registered asynq periodic tasks", "bcc_import_recovery", "1m", "salary_notification_recovery", "1m")
+	logger.Info("Registered asynq periodic tasks", "bcc_import_recovery", "1m")
 	return nil
 }
 

@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +14,6 @@ import (
 	"api-server/internal/pkg/timeutil"
 	"api-server/internal/transport/http/helpers"
 	"api-server/internal/transport/http/response"
-	"api-server/internal/transport/http/uploadguard"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -27,7 +24,6 @@ import (
 
 type LedgerHandler struct {
 	ledgerService          *settlement.LedgerService
-	onePayFeeImportService *settlement.OnePayFeeImportService
 	clock                  clock.Clock
 }
 
@@ -67,60 +63,14 @@ func getValidationErrorMessage(err error) string {
 	return fmt.Sprintf("%s: %v", constants.MsgInvalidRequestBodyVN, err)
 }
 
-func NewLedgerHandler(ledgerService *settlement.LedgerService, onePayFeeImportService *settlement.OnePayFeeImportService, clk clock.Clock) *LedgerHandler {
+func NewLedgerHandler(ledgerService *settlement.LedgerService, clk clock.Clock) *LedgerHandler {
 	if clk == nil {
 		clk = clock.New()
 	}
 	return &LedgerHandler{
 		ledgerService:          ledgerService,
-		onePayFeeImportService: onePayFeeImportService,
 		clock:                  clk,
 	}
-}
-
-func (h *LedgerHandler) UploadOnePayFeeReport(c *gin.Context) {
-	if h.onePayFeeImportService == nil {
-		response.InternalServerError(c, "Chức năng nhập phí OnePay chưa được cấu hình")
-		return
-	}
-
-	userID, ok := helpers.GetUserIDOrRespond(c)
-	if !ok {
-		return
-	}
-
-	// OnePay ships statements as .xlsx or legacy .xls (BBDS_DETAIL_PO_*);
-	// the parser opens both via excelkit.OpenWorkbook.
-	fileHeader, ok := uploadguard.Validate(c, true)
-	if !ok {
-		return
-	}
-	file, err := fileHeader.Open()
-	if err != nil {
-		response.BadRequest(c, "Không thể mở file Excel phí OnePay")
-		return
-	}
-	defer func() { _ = file.Close() }()
-
-	result, err := h.onePayFeeImportService.Import(c.Request.Context(), file, fileHeader.Filename, userID)
-	if err != nil {
-		var validationErr *settlement.OnePayFeeImportValidationError
-		if errors.As(err, &validationErr) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status":      "error",
-				"message":     validationErr.Error(),
-				"http_status": http.StatusBadRequest,
-				"details": gin.H{
-					"issues": validationErr.Issues,
-				},
-			})
-			return
-		}
-		response.HandleDomainError(c, err)
-		return
-	}
-
-	response.SuccessCreated(c, result, "Đã tạo chi phí OnePay trong sổ cái")
 }
 
 // parseLedgerFilters extracts common ledger filter parameters from query string.
