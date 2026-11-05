@@ -16,6 +16,7 @@ import https from 'https';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
+import { error } from 'console';
 
 
 interface TenantRequest extends Request {
@@ -772,13 +773,30 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                     }
                 }, { timeout: 5000 });
             } catch (emitError) {
-                console.warn('[POSTMORTEM] Failed to emit postmortem-results-ready notification:', emitError.message);
+
+
+
+
+                Logger.warn({
+                    message: "  Postmortem   Failed  to  emit   postmortem  redy     notification  ",
+                    error: emitError.message
+                })
+
+
+
+
             }
 
             return res.status(201).json({ success: true, message: 'Postmortem data saved successfully', data: { id: (result as any).insertId, deceased_id } });
         }
     } catch (error: any) {
-        console.error('Error in savePostmortem:', error);
+
+
+
+        Logger.error({
+            message: "  An    Eroror   Occurred    While  saving   postmortem",
+            error: error.message
+        })
         return res.status(500).json({ success: false, message: 'Internal Server Error', error: process.env.NODE_ENV === 'development' ? error.message : undefined });
     }
 };
@@ -794,7 +812,17 @@ const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data
                 tenantSlug, data: { deceasedId, data, timestamp: new Date().toISOString() }
             }, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
         } catch (error) {
-            console.error('[POSTMORTEM] Failed to emit postmortem-updated:', error.message);
+
+
+            Logger.error({
+                message: "   Postmortrm   Failed   ti    emit   postmortem  updated ",
+                error: error.message
+            })
+
+
+
+
+
         }
 
         if (data.status === 'completed') {
@@ -822,7 +850,14 @@ const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data
             }
         }
     } catch (error) {
-        console.error('[POSTMORTEM] Socket emit error:', error);
+
+
+        Logger.error({
+            message: "   Postmortem   Emit  error",
+            error: error.message
+        })
+
+
     }
 };
 
@@ -855,7 +890,15 @@ export const getPostmortemByDeceasedId = async (req: TenantRequest, res: Respons
 
         return res.status(200).json({ success: true, message: 'Postmortem record fetched successfully', data: postmortem });
     } catch (error: any) {
-        console.error(' Error in getPostmortemByDeceasedId:', error);
+
+
+        Logger.error({
+            message: "  Erroor   occured  in  getting  postmortem   by  id  ",
+            error: error.message
+        })
+
+
+
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
@@ -933,17 +976,18 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
 
         return res.status(200).json({ success: true, message: 'Postmortem record updated successfully' });
     } catch (error: any) {
-        console.error('Error in updatePostmortem:', error);
+
+        Logger.error({
+            messsage: "   AN   eroor   Occured   while  updating  postmortem",
+            error: error.message
+        })
+
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
 
-// ═══════════════════════════════════════════════════════════════
 // PUPPETEER LOADER
-// puppeteer v23+ is published as ESM-only, so it cannot be `require`d
-// from this CommonJS service. It is loaded once through a dynamic
-// import() (same pattern as xlsx-populate in exportExcelController.ts).
-// ═══════════════════════════════════════════════════════════════
+
 type PuppeteerNodeModule = typeof import('puppeteer', { with: { 'resolution-mode': 'import' } })['default'];
 
 let puppeteerModulePromise: Promise<PuppeteerNodeModule> | null = null;
@@ -956,9 +1000,8 @@ const loadPuppeteer = async (): Promise<PuppeteerNodeModule> => {
     return puppeteerModulePromise;
 };
 
-// ═══════════════════════════════════════════════════════════════
 // EXPORT: generatePostmortemPDF — Puppeteer, GUARANTEED 1 page
-// ═══════════════════════════════════════════════════════════════
+
 export const generatePostmortemPDF = async (req: TenantRequest, res: Response): Promise<void> => {
     const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
     const { deceased_id } = req.params;
@@ -994,10 +1037,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         const postmortem = (pmResults as any[])[0];
 
         // ── 2. QUERY DECEASED ──
-        // Schema-adaptive: older tenants are missing `age`, `signature`,
-        // `date_of_birth`, `national_id`, ... and this endpoint is PUBLIC
-        // (the results page requests the PDF right after the search), so a
-        // hardcoded list made it 500 on exactly the same tenants as the search.
+
         const dCols = await tableColumns(dbName, 'deceased');
         const DECEASED_PDF_COLS = [
             'full_name', 'date_of_death', 'signature', 'admission_number',
@@ -1012,8 +1052,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         }
 
         // ── 3. QUERY NEXT OF KIN ──
-        // `is_primary` / `is_deleted` are absent on some older tenants, so the
-        // filters are built from the real schema instead of being hardcoded.
+
         const nCols = await tableColumns(dbName, 'next_of_kin');
         let nextOfKin: any = null;
         if (nCols.size > 0 && nCols.has('deceased_id')) {
@@ -1092,10 +1131,7 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         }
 
         // ── 6. TENANT BRANDING (logo + name, same source as Settings) ──
-        // Previously the logo was a hardcoded third-party image and the name was
-        // derived from the URL slug, so every report showed another company's
-        // branding. Resolve the real record; the env var stays as an operator
-        // override for single-tenant deployments.
+
         const branding = await resolveTenantBranding(tenantSlug);
         const brandingName = branding.name || facilityName;   // fall back to the slug-derived name
         const logoBase64 = await loadLogoBase64(
@@ -1205,11 +1241,20 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
 
             await axios.post(`${socketioServiceUrl}/emit/postmortem-pdf-generated`, notificationPayload, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
         } catch (emitError: any) {
-            console.warn('[PDF] Failed to emit pdf generated event', emitError.message);
+            Logger.warn({
+                message: " Failed   to  emit  pdf   generated  event ",
+                error: emitError.message
+            })
+
+
         }
 
     } catch (error: any) {
-        console.error('Error in generatePostmortemPDF:', error);
+        Logger.error({
+            message: "  An   Errror   Ocuured   While  Trying to   genrate   PostmortmePDF",
+            error: error.message
+        })
+
         if (!res.headersSent) {
             res.status(500).json({ success: false, message: 'Internal Server Error' });
         }

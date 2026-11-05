@@ -11,3 +11,4 @@ func RegisterMpesaRoutes(server server.GinServer ,mpesaHandler *handler.MpesaHan
 	server.RegisterRoute("POST","/api/v1/stkcallback",mpesaHandler.STKCallback)
 	server.RegisterRoute("GET", "/api/v1/payment-status/:checkoutRequestID", mpesaHandler.PaymentStatus)
 }
+

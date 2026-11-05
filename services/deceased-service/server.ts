@@ -418,7 +418,7 @@ const gracefulShutdown = (signal: string) => {
         process.exit(0);
     });
     setTimeout(() => {
-        Logger.error('[SHUTDOWN] Forced shutdown after timeout.');
+        Logger.error('[SHUTDOWN] Forced shutdown after timeout   in  deceased  service.');
         process.exit(1);
     }, 10000);
 };
@@ -427,11 +427,11 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
-    Logger.error(`[SECURITY] Unhandled Rejection: ${reason}`);
+    Logger.error(`[SECURITY] Unhandled Rejection   deceased   service: ${reason}`);
 });
 
 process.on('uncaughtException', (err) => {
-    Logger.error(`[SECURITY] Uncaught exception: ${err.stack || err.message}`);
+    Logger.error(`[SECURITY] Uncaught exception    deceased    service: ${err.stack || err.message}`);
     process.exit(1);
 });
 

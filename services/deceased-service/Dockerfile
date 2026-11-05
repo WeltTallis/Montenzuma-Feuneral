@@ -66,23 +66,7 @@ COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/shared-services/package.json ./packages/shared-services/
 COPY packages/shared-stamps/package.json ./packages/shared-stamps/
 COPY shared/package.json ./shared/
-COPY services/api-gateway/package.json ./services/api-gateway/
-COPY services/analytics-service/package.json ./services/analytics-service/
-COPY services/auth-service/package.json ./services/auth-service/
-COPY services/billing-service/package.json ./services/billing-service/
-COPY services/bodycheckout-service/package.json ./services/bodycheckout-service/
-COPY services/chemical-service/package.json ./services/chemical-service/
-COPY services/coffin-service/package.json ./services/coffin-service/
-COPY services/deceased-service/package.json ./services/deceased-service/
-COPY services/documents-service/package.json ./services/documents-service/
-COPY services/extra-services/package.json ./services/extra-services/
-COPY services/florist-service/package.json ./services/florist-service/
-COPY services/hearse-service/package.json ./services/hearse-service/
-COPY services/invoice-service/package.json ./services/invoice-service/
-COPY services/socketio-service/package.json ./services/socketio-service/
-COPY services/support-service/package.json ./services/support-service/
-COPY services/tenant-service/package.json ./services/tenant-service/
-COPY services/workshop-service/package.json ./services/workshop-service/
+
 
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \

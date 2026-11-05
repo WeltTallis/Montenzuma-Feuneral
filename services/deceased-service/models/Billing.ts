@@ -1,5 +1,6 @@
 import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { tenantDB } from '../config/tenantDatabase';
+import { Logger } from '../../app-global/middlewares/serviceDiscovery';
 
 export interface BillingRecord {
   id: number;
@@ -34,11 +35,11 @@ export class BillingModel {
    */
   static async create(tenantSlug: string, data: CreateBillingDTO): Promise<BillingRecord | null> {
     const conn = await tenantDB.getConnection(tenantSlug);
-    
+
     try {
       const billingDate = new Date(data.billing_date).toISOString().split('T')[0];
       const billing_id = `BILL-${tenantSlug.toUpperCase()}-${data.deceased_id}-${billingDate}`;
-      
+
       const result = await conn.execute(
         `INSERT INTO billing (
           billing_id, deceased_id, tenant_slug, billing_date, amount, currency,
@@ -59,7 +60,13 @@ export class BillingModel {
 
       return this.getByBillingId(tenantSlug, billing_id);
     } catch (error) {
-      console.error('Error creating billing record:', error);
+
+
+      Logger.error({
+        message: "  Error   creating  billing records for   daily   deceased ",
+        error: error
+      })
+
       return null;
     } finally {
       conn.release();
@@ -71,7 +78,7 @@ export class BillingModel {
    */
   static async getByBillingId(tenantSlug: string, billingId: string): Promise<BillingRecord | null> {
     const conn = await tenantDB.getConnection(tenantSlug);
-    
+
     try {
       const result = await conn.execute(
         'SELECT * FROM billing WHERE billing_id = ? AND tenant_slug = ? AND is_deleted = FALSE',
@@ -95,7 +102,7 @@ export class BillingModel {
     endDate: Date
   ): Promise<BillingRecord[]> {
     const conn = await tenantDB.getConnection(tenantSlug);
-    
+
     try {
       const result = await conn.execute(
         `SELECT * FROM billing 
@@ -115,7 +122,7 @@ export class BillingModel {
    */
   static async getBillingSummary(tenantSlug: string, deceasedId: string): Promise<any[]> {
     const conn = await tenantDB.getConnection(tenantSlug);
-    
+
     try {
       const result = await conn.execute(
         `SELECT 
@@ -143,7 +150,7 @@ export class BillingModel {
    */
   static async existsForDate(tenantSlug: string, deceasedId: string, billingDate: Date): Promise<boolean> {
     const conn = await tenantDB.getConnection(tenantSlug);
-    
+
     try {
       const dateStr = new Date(billingDate).toISOString().split('T')[0];
       const result = await conn.execute(
@@ -165,7 +172,7 @@ export class BillingModel {
   static async generateDailyBillingForTenant(tenantSlug: string): Promise<number> {
     const conn = await tenantDB.getConnection(tenantSlug);
     let generatedCount = 0;
-    
+
     try {
       // Get all active deceased in this tenant
       const deceasedResult = await conn.execute(
@@ -183,7 +190,7 @@ export class BillingModel {
 
         // Check if billing already exists for today
         const existsToday = await this.existsForDate(tenantSlug, deceased_id, new Date(today));
-        
+
         if (existsToday) {
           continue;
         }
@@ -208,10 +215,23 @@ export class BillingModel {
         }
       }
 
-      console.log(`✅ [${tenantSlug}] Generated ${generatedCount} billing records`);
+
+      Logger.info({
+        message: ` Billing  records    genated    for   ${tenantSlug}`
+      })
+
+
       return generatedCount;
     } catch (error) {
-      console.error(`❌ Error generating billing for ${tenantSlug}:`, error);
+
+
+
+      Logger.error({
+        message: "Error   genarting   a   daily   billing for  deceased",
+        error: error
+      });
+
+
       return 0;
     } finally {
       conn.release();

@@ -2,11 +2,12 @@
 import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps'
 import { generateDatedCheckoutId } from '../utilities/generateCheckoutId';
 import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
-import Logger from '../../../packages/shared-logger/dist/index';
+import Logger from '@montezuma/shared-logger';
 import { Request, Response, NextFunction } from 'express';
 import * as Zod from 'zod';
 import { enqueueSideEffect } from '../../app-global/utils/asyncSideEffectQueue';
 import sharp from 'sharp';
+import releaseBodySchema from '../utilities/releaseBodyValidation'
 
 
 /**
@@ -97,40 +98,7 @@ async function processAndUploadSignature(
   return signatureData;
 }
 
-// Validation schema
-const releaseBodySchema = Zod.z.object({
-  id_number: Zod.z.string().min(1, "ID number is required"),
-  next_kin: Zod.z.string().min(1, "Next of kin is required"),
-  tell_number: Zod.z.string().min(1, "Telephone number is required"),
-  terms_accepted: Zod.z.boolean().refine(val => val === true, {
-    message: "Terms must be accepted"
-  }),
 
-  everything_paid: Zod.z.boolean(),
-  admission_number: Zod.z.string().optional(),
-  date_of_removal: Zod.z.string().optional(),
-  time_of_removal: Zod.z.string().optional(),
-  name_of_deceased: Zod.z.string().optional(),
-  permit_number: Zod.z.string().optional(),
-  mode_of_transport: Zod.z.string().optional(),
-  // Where the body is being taken after handover (home, cemetery, another mortuary…)
-  final_destination: Zod.z.string().optional(),
-  // Vehicle plate number for hearse / private-vehicle transport
-  plate_number: Zod.z.string().optional(),
-  // The release form sends release_date / release_time / time_received — accept
-  // them so they can be stored in date_of_removal / time_of_removal below.
-  release_date: Zod.z.string().optional(),
-  release_time: Zod.z.string().optional(),
-  time_received: Zod.z.string().optional(),
-  relationship: Zod.z.string().optional(),
-  signature: Zod.z.string().optional(),
-  staff_name: Zod.z.string().optional(),
-  staff_signature: Zod.z.string().optional(),
-  received_by: Zod.z.string().optional(),
-  items_returned: Zod.z.string().optional(),
-  notes: Zod.z.string().optional(),
-  released_by: Zod.z.string().optional(),
-});
 
 // ─── Kenya-time helpers ──────────────────────────────────────────────────────
 // The whole platform stores timestamps in Kenya wall time (see

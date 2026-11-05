@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import Logger from '../../../packages/shared-logger/dist/index';
+import Logger from '@montezuma/shared-logger';
 import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 
 /**
@@ -156,7 +156,7 @@ export const listReleasesController = async (req: Request, res: Response, next: 
       return;
     }
     const db = await getTenantDB(dbName);
-    
+
     const countQuery = `SELECT COUNT(*) as total FROM body_releases ${whereClause}`;
     const [countRows] = await db.execute(countQuery, params);
     const countResults = countRows as any[];

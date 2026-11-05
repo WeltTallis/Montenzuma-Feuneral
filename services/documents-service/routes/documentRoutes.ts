@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Document routes — authentication contract.
  *
  * This file used to be a single line that imported `protect` / `authorizeAny`
@@ -16,13 +16,17 @@
  *
  * Exported for reuse and for tests; importing it is optional.
  */
-const { protect, authorizeAny } = require('../../app-global/middlewares/authMiddleware');
+import { protect, authorizeAny } from '../../app-global/middlewares/authMiddleware';
 
 /**
  * Middleware pair to mount on any router that serves tenant documents.
  * Applied router-wide; keep /health outside the router so orchestrator
  * healthchecks continue to work without a token.
  */
-const documentAuth = [protect, authorizeAny];
+export const documentAuth = [protect, authorizeAny];
 
-module.exports = { documentAuth, protect, authorizeAny };
+/**
+ * Exported for reuse and for tests; importing it is optional. */
+
+
+export default { documentAuth, protect, authorizeAny };

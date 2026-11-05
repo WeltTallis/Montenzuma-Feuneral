@@ -76,14 +76,7 @@ export const ensurePostmortemRequestsTable = async (dbName: string): Promise<voi
 
 /**
  * The columns the postmortem controllers read and write.
- *
- * A previous revision of `ensurePostmortemTable` created a *stub* table with
- * only nine columns — no `pathologist_name`, `findings`, `completed_at` and so
- * on. Any tenant whose table was created by that revision therefore failed
- * `savePostmortem` with "Unknown column 'pathologist_name'" and failed
- * `getPostmortemRequests` on `p.completed_at`, which is part of why cases sat
- * on "Postmortem Pending" forever. The CREATE below now uses the full set, and
- * the repair pass adds anything an existing table is still missing.
+
  */
 const POSTMORTEM_TABLE_SQL = `
     CREATE TABLE IF NOT EXISTS postmortem (
@@ -242,12 +235,26 @@ export const createPostmortemRequest = async (req: TenantRequest, res: Response)
                 `UPDATE deceased SET body_status = 'Postmortem Requested', postmortem_requested = 1, postmortem_completed = 0, updated_at = ? WHERE deceased_id = ?`,
                 [now, deceased_id]);
         } catch (statusErr: any) {
-            console.warn('Failed to set deceased body_status to Postmortem Requested:', statusErr?.message);
+
+
+            Logger.warn({
+                message:
+                    `
+                Failed    to  set    deceased  body_statD   TO POSTMORTEM     requested   ${statusErr?.message}
+                `
+            })
+
         }
 
         return res.status(201).json({ success: true, data: rows[0], message: 'Postmortem request initiated' });
     } catch (error: any) {
-        console.error('Error creating postmortem request:', error);
+
+
+        Logger.error({
+            message: "  Error   Ocurred   while   Creating   Postmortem   Requets  ",
+            error: error.message
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to initiate postmortem request' });
     }
 };
@@ -285,7 +292,12 @@ export const getPostmortemRequests = async (req: TenantRequest, res: Response): 
         const rows: any[] = (await safeTenantQuery(dbName, sql, params)) || [];
         return res.json({ success: true, data: rows, count: rows.length });
     } catch (error: any) {
-        console.error('Error listing postmortem requests:', error);
+
+        Logger.error({
+            message: "    Error   Listing   Postmortem   requetss ",
+            error: error.message
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to retrieve postmortem requests' });
     }
 };
@@ -334,7 +346,12 @@ export const updatePostmortemRequestStatus = async (req: TenantRequest, res: Res
                     : 'Postmortem Requested';
             await safeTenantExecute(dbName, `UPDATE deceased SET body_status = ?, updated_at = ? WHERE deceased_id = ?`, [newBodyStatus, now, rows[0].deceased_id]);
         } catch (syncErr: any) {
-            console.warn('Failed to sync deceased body_status:', syncErr?.message);
+
+            Logger.warn({
+                message: `Failed   to  sysnc     deceased   body_status
+                ${syncErr?.message}`
+            })
+
         }
 
         // Real-time notification via central socketio-service
@@ -353,7 +370,13 @@ export const updatePostmortemRequestStatus = async (req: TenantRequest, res: Res
 
         return res.json({ success: true, data: rows[0], message: `Postmortem request marked as ${status}` });
     } catch (error: any) {
-        console.error('Error updating postmortem request status:', error);
+
+
+        Logger.error({
+            message: "  Error    updating    postmrtem   requets  status",
+            error: error.message
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to update postmortem request' });
     }
 };
@@ -421,7 +444,13 @@ export const sendPostmortemRequest = async (req: TenantRequest, res: Response): 
         const updated: any[] = (await safeTenantQuery(dbName, 'SELECT * FROM postmortem_requests WHERE id = ?', [id])) || [];
         return res.json({ success: true, data: updated[0], message: 'Postmortem request sent to requesting authority' });
     } catch (error: any) {
-        console.error('Error sending postmortem request:', error);
+
+
+        Logger.error({
+            message: "   An   Error   Ocuuured   While  Sending   Postmortem  Requetsts ",
+            error: error
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to send postmortem request' });
     }
 };
@@ -466,7 +495,12 @@ export const getPostmortemStats = async (req: TenantRequest, res: Response): Pro
         const rows: any[] = (await safeTenantQuery(dbName, sql, params)) || [];
         return res.json({ success: true, data: rows[0] || {} });
     } catch (error: any) {
-        console.error('Error building postmortem stats:', error);
+        Logger.error({
+            message: "    An   Error   Ocucured  WHile     Vuilding   Postmortem  stats ",
+            error: error.message
+
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to build postmortem stats' });
     }
 };

@@ -1,7 +1,10 @@
+
+
+import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
 import { runBodyCheckoutMigrations } from './utilities/migrate';
 import Logger from '../../packages/shared-logger/dist/index';
-import bodyReleaseRoutes from './routes/bodyRelease.routes';
-import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
+import bodyReleaseRoutes from './routes/routes';
+
 
 import express from 'express';
 import helmet from 'helmet';
@@ -85,7 +88,7 @@ bootstrap();
 
 process.on('uncaughtException', (error) => {
     Logger.error({
-        message: 'Uncaught Exception',
+        message: 'Uncaught Exception    bodycheckout  service',
         error: error.message,
         stack: error.stack
     });
@@ -101,7 +104,7 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason: any) => {
     Logger.error({
-        message: 'Unhandled Promise Rejection',
+        message: 'Unhandled Promise Rejection    bodycheckout   service',
         error: reason?.message || String(reason),
         stack: reason?.stack
     });

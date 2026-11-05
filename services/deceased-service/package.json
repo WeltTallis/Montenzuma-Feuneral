@@ -22,6 +22,7 @@
     "esbuild": "^0.28.2",
     "exceljs": "^3.4.0",
     "express": "^5.1.0",
+    "express-async-handler": "^1.2.0",
     "helmet": "^8.1.0",
     "http-proxy-middleware": "3.0.7",
     "ioredis": "^5.11.0",

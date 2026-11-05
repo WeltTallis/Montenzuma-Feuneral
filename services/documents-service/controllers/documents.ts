@@ -1,7 +1,9 @@
-const path = require('path');
-const fs = require('fs');
-const { lookupTenantDatabase, safeTenantQuery } = require('../../../shared/dbConfig');
-const { getKenyaTimeISO } = require('../../../packages/shared-utils/dist/timestamps');
+
+import { lookupTenantDatabase, safeTenantQuery } from '../../../shared/dbConfig';
+import { getKenyaTimeISO } from '../../../packages/shared-utils/dist/timestamps';
+import path from 'path';
+import fs from 'fs';
+
 /**
  * Resolve the canonical global uploads directory, honouring the platform
  * GLOBAL_UPLOADS_DIR / UPLOADS_BASE_DIR env vars first (same logic as server.js)
@@ -328,9 +330,4 @@ const deleteDocument = async (req, res) => {
   }
 };
 
-module.exports = {
-  uploadDocument,
-  getDocuments,
-  downloadDocument,
-  deleteDocument,
-};
+export { uploadDocument, getDocuments, downloadDocument, deleteDocument };

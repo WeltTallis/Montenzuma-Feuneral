@@ -1,12 +1,15 @@
-import { protect, authorizeAny, enforceTenant } from '../../../services/app-global/middlewares/authMiddleware';
-import { Router } from 'express';
-import { releaseBodyController } from '../controllers/bodyRelease.controller';
-import { getReleaseController, listReleasesController, getReleaseByAdmissionController } from '../controllers/release.controller';
+
+
+import { getReleaseController, listReleasesController, getReleaseByAdmissionController } from '../controllers/release';
 import {
   getDeceasedByAdmissionController,
   getDeceasedByIdController,
   listDeceasedForReleaseController,
-} from '../controllers/deceasedLookup.controller';
+} from '../controllers/deceasedLookup';
+
+import { protect, authorizeAny, enforceTenant } from '../../app-global/middlewares/authMiddleware';
+import { releaseBodyController } from '../controllers/bodyRelease';
+import { Router } from 'express';
 
 const router = Router();
 

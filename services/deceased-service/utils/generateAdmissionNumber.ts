@@ -1,52 +1,115 @@
+
+type Gender = "Male" | "Female" | "M" | "F";
+
 /**
- * Generate admission number in format: M/A01 or F/A001
- * Sequence progression:
- * - A01 to A99, then B01 to B99 ... up to Z99 (3 characters total after '/')
- * - After Z99, it cycles to A001 to A099, B001 to B099 ... up to Z099 (4 characters total after '/')
- * 
- * @param gender - "Male" | "Female" | "M" | "F"
- * @param sequence - Sequential number for this tenant (1-based index)
- * @returns Admission number like "F/A01"
+ * Admission number generator.
+ *
+ * PHASE 1:
+ * A1 - A900
+ * B1 - B900
+ * ...
+ * Z1 - Z900
+ *
+ * PHASE 2:
+ * A0001 - A0900
+ * B0001 - B0900
+ * ...
+ * Z0001 - Z0900
+ *
+ * Examples:
+ * MA1
+ * MA900
+ * MZ900
+ * MA0001
+ * MA0002
+ * MA0900
+ * MB0001
+ *
+ * Male and female share ONE sequence per tenant.
+ *
+ * Total capacity: 46,800 admissions.
  */
+
 const generateAdmissionNumber = (
-    gender: "Male" | "Female" | "M" | "F" | string,
+    gender: Gender,
     sequence: number
 ): string => {
-    const genderPrefix = gender?.toUpperCase() === "FEMALE" || gender?.toUpperCase() === "F"
-        ? "F"
-        : "M";
 
-    // Ensure sequence starts at 1
-    const seq = Math.max(1, sequence);
+    // Validate gender
+    if (typeof gender !== "string") {
+        throw new Error("Invalid gender supplied.");
+    }
 
-    let letterIndex = 0;
-    let numberVal = 0;
-    let useFourDigits = false;
+    const normalizedGender = gender.trim().toUpperCase();
 
-    if (seq <= 2574) {
-        // Phase 1: 3 characters (e.g., A01 to Z99)
-        const adjustedSeq = seq - 1;
-        letterIndex = Math.floor(adjustedSeq / 99);
-        numberVal = (adjustedSeq % 99) + 1;
-        useFourDigits = false;
+    let genderPrefix: "M" | "F";
+
+    if (normalizedGender === "M" || normalizedGender === "MALE") {
+        genderPrefix = "M";
+    } else if (
+        normalizedGender === "F" ||
+        normalizedGender === "FEMALE"
+    ) {
+        genderPrefix = "F";
     } else {
-        // Phase 2: 4 characters (e.g., A001 to Z099) and beyond if looping
-        const adjustedSeq = (seq - 2574 - 1);
-        const totalPhaseCapacity = 26 * 99;
-        const cycleSeq = adjustedSeq % totalPhaseCapacity;
+        throw new Error("Gender must be Male, Female, M or F.");
+    }
 
-        letterIndex = Math.floor(cycleSeq / 99);
-        numberVal = (cycleSeq % 99) + 1;
+    // Validate sequence
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+        throw new Error(
+            "Admission sequence must be a positive integer."
+        );
+    }
+
+    // Configuration
+    const LETTER_COUNT = 26;
+    const MAX_PER_LETTER = 900;
+
+    const PHASE_CAPACITY = LETTER_COUNT * MAX_PER_LETTER;
+
+    const TOTAL_CAPACITY = PHASE_CAPACITY * 2;
+
+    // Prevent cycling and duplicates
+    if (sequence > TOTAL_CAPACITY) {
+        throw new Error(
+            `Admission capacity reached. Maximum allowed is ${TOTAL_CAPACITY}.`
+        );
+    }
+
+    let adjustedSequence: number;
+    let useFourDigits: boolean;
+
+    // PHASE 1: A1 - Z900
+    if (sequence <= PHASE_CAPACITY) {
+
+        adjustedSequence = sequence - 1;
+        useFourDigits = false;
+
+    } else {
+
+        // PHASE 2: A0001 - Z0900
+        adjustedSequence = sequence - PHASE_CAPACITY - 1;
         useFourDigits = true;
     }
 
-    const letter = String.fromCharCode(65 + (letterIndex % 26));
-    const padLength = useFourDigits ? 3 : 2;
-    const numberPart = String(numberVal).padStart(padLength, "0");
+    // Determine letter
+    const letterIndex = Math.floor(
+        adjustedSequence / MAX_PER_LETTER
+    );
 
-    const sequencePart = `${letter}${numberPart}`;
+    const letter = String.fromCharCode(65 + letterIndex);
 
-    return `${genderPrefix}/${sequencePart}`;
+    // Determine number
+    const numberValue =
+        (adjustedSequence % MAX_PER_LETTER) + 1;
+
+    const numberPart = String(numberValue).padStart(
+        useFourDigits ? 4 : 1,
+        "0"
+    );
+
+    return `${genderPrefix}${letter}${numberPart}`;
 };
 
 export default generateAdmissionNumber;

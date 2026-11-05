@@ -103,12 +103,7 @@ server {
 
     # Infrastructure Monitor - GET /monitoring.
     # The dashboard polls the API gateway ROOT (/monitoring), NOT under
-    # /api/v1/restpoint. CRITICAL: without this block /monitoring falls into
-    # the SPA fallback below and returns index.html, so the dashboard throws
-    #   Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-    # and every card renders blank behind a GATEWAY UNREACHABLE banner.
-    # Exact match on purpose - it must not shadow the SPA route
-    # /<slug>/monitoring, which is a different path and must stay HTML.
+ 
     location = /monitoring {
         set $restpoint_gateway "restpoint_api_gateway:5000";
         proxy_pass http://$restpoint_gateway/monitoring;
@@ -130,16 +125,7 @@ server {
 
     # API traffic must NEVER fall through to the SPA fallback. A POST to a
     # non-existent path lands on `try_files ... /index.html`, and nginx cannot
-    # serve a static file over POST — it answers 405. That is what broke login:
-    #   POST /api/v1/restpoint/auth/login -> 405 Method Not Allowed
-    # Proxying /api/ here means the request is forwarded to the gateway even if
-    # the host reverse proxy sends it to this container (which it did — the
-    # access log shows POSTs to /api/ arriving here from 172.18.0.1).
-    #
-    # `^~` so no regex location below can shadow it. The target goes through a
-    # variable + `resolver` for the same reason as /monitoring and /socket.io/:
-    # a static proxy_pass would stop nginx from starting whenever the gateway
-    # container is not yet resolvable, taking the whole SPA down with it.
+
     location ^~ /api/ {
         set $restpoint_api "restpoint_api_gateway:5000";
         proxy_pass http://$restpoint_api;
@@ -189,31 +175,7 @@ server {
 
     # ------------------------------------------------------------------
     # /uploads/ — the ONE shared uploads folder (host /opt/storage/uploads,
-    # mounted READ-ONLY into this container; see the `volumes:` block on
-    # the `frontend` service in docker-compose.prod.yml).
-    # ------------------------------------------------------------------
-    # WHY THIS BLOCK IS REQUIRED: without it every /uploads/... request fell
-    # through to the SPA fallback below and was answered with index.html,
-    # which a browser renders as a broken <img> — signatures, tenant logos,
-    # coffin images and PDFs silently "disappeared" even though the files
-    # existed on the host. Previously they only worked because the HOST
-    # reverse proxy had its own `location /uploads/` → tenant-service:5002
-    # rule; anything that reached this container directly (portal subdomain,
-    # a bare :8080 hit) got HTML where an image was expected.
-    #
-    # `^~` is LOAD-BEARING, not cosmetic. The static-asset regex
-    # `~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff...)$` further down also
-    # matches /uploads/<tenant>/images/coffin.png, and a regex location
-    # beats a plain prefix one — so without `^~` that block would answer
-    # 404 from the SPA document root (/usr/share/nginx/html) instead of
-    # serving the mounted file. `^~` also stops regex evaluation entirely
-    # for this prefix.
-    #
-    # `alias` (rather than root + rewrite) keeps the mount point in exactly
-    # one place. `try_files` is deliberately NOT used alongside it: try_files
-    # resolves $uri against `root`, not against `alias`, and mis-resolves —
-    # nginx's own 404 for a missing file is both the correct answer here and
-    # the trigger for the fallback below.
+ 
     location ^~ /uploads/ {
         alias /opt/storage/uploads/;
 
@@ -222,10 +184,7 @@ server {
         autoindex off;
 
         # Uploaded content is user-supplied, so never serve dotfiles out of
-        # it (an upload named `.env` would otherwise be readable). The regex
-        # only matches a dot IMMEDIATELY after a slash, so a legitimate name
-        # like /uploads/acme.ltd/logo.png is unaffected. Returns 403, not
-        # 404, so this refusal cannot be rewritten by the 404 fallback below.
+     
         if ($uri ~ "(^|/)\.") { return 403; }
 
         # A `location`-level add_header REPLACES the inherited server-level
@@ -241,20 +200,11 @@ server {
         add_header Access-Control-Allow-Origin "*" always;
 
         # Files in the shared folder are written by the backend containers as
-        # uid 1001 while this worker runs as `nginx`, so a file that exists
-        # but is not yet world-readable must not 404 for ever. Fall through to
-        # the service that owns the same folder instead.
+   
         error_page 404 = @uploads_via_tenant_service;
     }
 
     # Fallback for when the read-only mount is absent (image run without the
-    # compose `volumes:` entry) or a file is unreadable: ask tenant-service,
-    # which owns the canonical static mount of the same directory
-    # (express.static(GLOBAL_UPLOADS_DIR) in services/tenant-service/server.ts).
-    # Same variable + `resolver` form as /monitoring, /api/ and /socket.io/
-    # above, so nginx still STARTS when the tenant-service container is down —
-    # this block is only reached per request, and then fails that ONE file
-    # instead of taking the whole SPA offline.
     location @uploads_via_tenant_service {
         set $restpoint_uploads "restpoint_tenant_service:5000";
         proxy_pass http://$restpoint_uploads;
@@ -280,9 +230,6 @@ server {
 
     # Scanner Bridge app download.
     # The zip ships as /downloads/restpoint-scanner-bridge-app.zip — serve it as a
-    # binary download (force Content-Disposition so the browser downloads instead
-    # of trying to render it, which is what caused the old "/downloads/..." link to
-    # fall through the SPA fallback and return the home page).
     location ^~ /downloads/ {
         alias /usr/share/nginx/html/downloads/;
         autoindex off;
@@ -310,14 +257,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
 
 # busybox wget, NOT GNU wget. `nginx:alpine` has no `wget` package installed, so
-# `wget` here is busybox's, whose option set is:
-#     [-cqS] [--spider] [-O FILE] [-o LOGFILE] [--header STR] ... [-T SEC]
-# It has NO `--no-verbose` and NO `--tries`, so the previous
-#     wget --no-verbose --tries=1 --spider http://localhost/
-# exited non-zero with "unrecognized option" on every probe. The SPA was serving
-# perfectly the whole time (real traffic in the access log) while Docker marked
-# the container `unhealthy` — purely a broken probe. `-q -O /dev/null` are both
-# supported by busybox and do a real GET, exiting 0 only on a 200.
+
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q -O /dev/null http://localhost/ || exit 1
 

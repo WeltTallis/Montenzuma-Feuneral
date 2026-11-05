@@ -2,8 +2,8 @@ import crypto from 'crypto';
 
 /**
  * Generate short dated ID
- * Format: RLS-YYMMDD-XXX
- * Example: RLS-240715-A3F
+ * Format: NRB-DSP-YYMMDD-XXX
+ * Example: DSP-240715-A3F
  */
 const generateDatedCheckoutId = (): string => {
     const date = new Date();
@@ -13,6 +13,9 @@ const generateDatedCheckoutId = (): string => {
     const random = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 3);
     return `DSP-${dateStr}-${random}`;
 };
+
+
+
 
 /**
  * Generate short timestamp ID

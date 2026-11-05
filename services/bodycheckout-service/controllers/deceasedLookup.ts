@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Logger from '../../../packages/shared-logger/dist/index';
+import Logger from '@montezuma/shared-logger';
 import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -83,7 +83,6 @@ const mergeDeceasedWithKin = (deceased: Row, kin: Row | null): Row => {
     body_status: deceased.body_status || 'In Morgue',
     permit_number: deceased.permit_number || '',
     phone_number: deceasedPhone || kinPhone,
-    // Kin aliases understood by the release form
     next_kin: kinName,
     contact_person: kinName,
     relationship: deceased.relationship || kin?.relationship || '',
@@ -111,11 +110,18 @@ export const getDeceasedByIdController = async (
       (req.headers['X-tenant-slug'] as string);
 
     if (!tenantSlug) {
+      Logger.warn({
+        message:  "Tennat   slug   miss   on deceased checkout"
+      })
       return res.status(400).json({ success: false, message: 'Tenant slug is required' });
+      
     }
 
     const id = decodeURIComponent(normalizeParam(req.params?.id)).trim();
     if (!id) {
+      Logger.warn({
+        message:   "deceased id  mising in  deceased checkout service"
+      })
       return res.status(400).json({ success: false, message: 'Deceased id is required' });
     }
 
@@ -124,6 +130,9 @@ export const getDeceasedByIdController = async (
     // slugs (e.g. `org-home-nairobi`), then getTenantDB pools the result.
     const dbName = await resolveDatabase(tenantSlug);
     if (!dbName) {
+      Logger.warn({
+        message:   "Tenant  Missing  a  database  configuration "
+      })
       return res.status(400).json({
         success: false,
         message: 'No database configured for this tenant',
@@ -142,6 +151,10 @@ export const getDeceasedByIdController = async (
     const deceased = list && list.length > 0 ? (list[0] as Row) : null;
 
     if (!deceased) {
+      Logger.warn({
+        message:   "deceased   record   was  not  found   for the   providedd    deceased   id "
+      })
+
       return res.status(404).json({ success: false, message: 'Deceased record not found' });
     }
 
@@ -153,6 +166,8 @@ export const getDeceasedByIdController = async (
       message: 'Deceased record fetched successfully',
       data: mergeDeceasedWithKin(deceased, kin),
     });
+
+    
   } catch (error: any) {
     Logger.error({
       message: 'getDeceasedByIdController error',

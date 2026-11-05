@@ -1,19 +1,22 @@
-const { resolveDatabase, safeTenantQuery, safeTenantExecute } = require('../../shared/dbConfig');
-const { safeQuery } = require('../../shared/database');
-const express = require('express');
-const helmet = require('helmet');
-const multer = require('multer');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
+import errorHandler from '../../services/app-global/middlewares/errorHandler';
+
+import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../shared/dbConfig';
+import { safeQuery } from '../../shared/database';
+import express from 'express';
+import helmet from 'helmet';
+import multer from 'multer';
+import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
 // Centralized Kenya-time timestamp helper (same source the legacy
 // controllers/documents.js uses) so every document insert records when it was
 // uploaded. The tenant `documents` table declares uploaded_at with NO default,
 // so omitting it left the column NULL and the UI rendered "—" for Uploaded Date.
-const { getKenyaTimeISO } = require('../../packages/shared-utils/dist/timestamps');
+import { getKenyaTimeISO } from '../../packages/shared-utils/dist/timestamps';
 
-const PDFDocument = require('pdfkit');
-const sharp = require('sharp');
+import PDFDocument from 'pdfkit';
+import sharp from 'sharp';
 
 // Auth middleware. `protect` verifies the JWT and, crucially, calls
 // attachTenantFromClaims(), which OVERWRITES req.tenantSlug with the tenant from
@@ -29,12 +32,14 @@ const sharp = require('sharp');
 // This require is a HARD require, so the service crash-looped; the identical
 // require at the bottom of this file is wrapped in try/catch and merely fell
 // back to a default, which is why the inconsistency went unnoticed.
-const { protect, authorizeAny } = require('../app-global/middlewares/authMiddleware');
+import { protect, authorizeAny } from '../app-global/middlewares/authMiddleware';
+
+// Safely import centralized upload service (fallback to local if missing)
+
 
 // Safely import centralized upload service (fallback to local if missing)
 let centralizedUploadService;
 try {
-  centralizedUploadService = require('@montezuma/shared-services/dist/centralizedUploadService.js').centralizedUploadService;
 } catch (e) {
   console.warn('[DOCUMENTS] centralizedUploadService not found, using local fallback.');
   centralizedUploadService = {
@@ -84,7 +89,7 @@ const getGlobalUploadsDir = () => {
       return p;
     } catch (e) { }
   }
-  return path.join(require('os').tmpdir(), 'restpoint-uploads');
+  return path.join(os.tmpdir(), 'restpoint-uploads');
 };
 
 const GLOBAL_UPLOADS_DIR = getGlobalUploadsDir();
@@ -499,18 +504,19 @@ app.use('/api/v1/restpoint/documents', documentsRouter);
 app.use('/v1/restpoint/documents', documentsRouter);
 app.use('/documents', documentsRouter);
 
-// Fallback Error Handlers (in case external files are missing)
+
+
 let notFoundHandler, errorHandler;
 try {
-  const errHandlers = require('../../services/app-global/middlewares/errorHandler');
-  notFoundHandler = errHandlers.notFoundHandler;
-  errorHandler = errHandlers.errorHandler;
+  notFoundHandler = errorHandler.notFoundHandler;
+  errorHandler = errorHandler.errorHandler;
 } catch (e) {
   notFoundHandler = (req, res) => res.status(404).json({ success: false, message: 'Route not found' });
   errorHandler = (err, req, res, next) => {
     console.error(err);
     res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
   };
+}
 }
 
 app.use((err, req, res, next) => {

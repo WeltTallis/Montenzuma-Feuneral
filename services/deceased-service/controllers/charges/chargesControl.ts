@@ -1,8 +1,11 @@
-import { Request, Response } from 'express';
-import { DateTime } from 'luxon';
+
 
 import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../../shared/dbConfig';
 import Logger from '@montezuma/shared-logger/src';
+import { Request, Response } from 'express';
+import { DateTime } from 'luxon';
+import { error } from 'node:console';
+
 
 interface TenantRequest extends Request {
     tenantSlug?: string;
@@ -130,7 +133,12 @@ const ensurePaymentsTable = async (dbName: string): Promise<void> => {
         } catch (err: any) {
             // ER_DUP_FIELDNAME means column already exists - safe to ignore
             if (!/duplicate/i.test(err?.message || '') && err?.code !== 'ER_DUP_FIELDNAME') {
-                console.warn('[CHARGES] payments ALTER skipped:', err?.message);
+
+                Logger.warn({
+                    Message: "   Message  ALTER   Skipped",
+                    error: err?.message
+                })
+
             }
         }
     }
@@ -154,7 +162,11 @@ const ensurePaymentsTable = async (dbName: string): Promise<void> => {
             );
         }
     } catch (err: any) {
-        console.warn('[CHARGES] payments method widen skipped:', err?.message);
+        Logger.warn({
+            message: "  [  CHNAGES ] Payments   method    widen   Skipped",
+            error: err?.message
+        })
+
     }
 };
 
@@ -188,7 +200,11 @@ export const getCharges = async (req: TenantRequest, res: Response): Promise<Res
 
         return res.json({ success: true, data: rows.map(mapChargeRow), message: 'Charges retrieved successfully' });
     } catch (error: any) {
-        console.error('Error getting charges:', error);
+        Logger.error({
+            message: "An    Error   Occured   While  Creating  Charges  ",
+            error: error?.message
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to retrieve charges' });
     }
 };
@@ -231,7 +247,11 @@ export const addCharge = async (req: TenantRequest, res: Response): Promise<Resp
 
         return res.status(201).json({ success: true, data: newCharge, message: 'Charge added successfully' });
     } catch (error: any) {
-        console.error('Error adding charge:', error);
+        Logger.error({
+            message: "   An   Erroor    Occured    While   Adding  Charge ",
+            error: error?.message
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to add charge' });
     }
 };
@@ -273,7 +293,12 @@ export const updateCharge = async (req: TenantRequest, res: Response): Promise<R
         if (!rows.length) return res.status(404).json({ success: false, message: 'Charge not found' });
         return res.json({ success: true, data: mapChargeRow(rows[0]), message: 'Charge updated successfully' });
     } catch (error: any) {
-        console.error('Error updating charge:', error);
+        Logger.error({
+            message: " An  Error   Occured  While  Updating  Charge",
+            error: error?.message
+
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to update charge' });
     }
 };
@@ -290,7 +315,11 @@ export const deleteCharge = async (req: TenantRequest, res: Response): Promise<R
 
         return res.json({ success: true, message: 'Charge deleted successfully' });
     } catch (error: any) {
-        console.error('Error deleting charge:', error);
+        Logger.error({
+            message: " An   Error   Occuured   Whle   Deliting Charge",
+            error: error?.message
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to delete charge' });
     }
 };
@@ -315,7 +344,11 @@ export const getPayments = async (req: TenantRequest, res: Response): Promise<Re
 
         return res.json({ success: true, data: rows.map(mapPaymentRow), message: 'Payments retrieved successfully' });
     } catch (error: any) {
-        console.error('Error getting payments:', error);
+        Logger.error({
+            message: "    NA  error    Occuured   WHile   getting payments",
+            error: error?.message
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to retrieve payments' });
     }
 };
@@ -371,7 +404,12 @@ export const recordPayment = async (req: TenantRequest, res: Response): Promise<
             message: 'Payment recorded successfully'
         });
     } catch (error: any) {
-        console.error('Error recording payment:', error);
+        Logger.error({
+            mesage: "  An Error    Occured   While    recording  payment",
+            error: error?.message
+
+        })
+
         return res.status(500).json({ success: false, message: error.message || 'Failed to record payment' });
     }
 };

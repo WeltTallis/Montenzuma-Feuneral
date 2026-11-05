@@ -1,51 +1,122 @@
-import crypto from 'crypto'
+
+import crypto from "crypto";
 
 /**
- * Deceased ID generator — high-entropy, collision-resistant.
+ * Deceased ID Generator
  *
- * Format:   {TENANT}-{NAME}{RANDOM}{YEAR}
- * Example:  MON-DEBQ9N3X6TR4K7WB8ZM2026
+ * Format:
+ * TEN-NAMERANDOMYEAR
  *
- * - TENANT : first 3 alphanumerics of the tenant slug (upper-cased)
- * - NAME   : first 3 letters of the deceased's full name (upper-cased, 'XXX' fallback)
- * - RANDOM : 16 characters drawn from an unambiguous 31-symbol alphabet
- *            (0/O and 1/I/L are excluded because they are easy to misread).
- *            31^16 ≈ 3.3e23 combinations (~2^77.5 of entropy), so the chance
- *            of two registrations ever colliding is practically zero — even
- *            with billions of records the probability stays ~1e-14.
- * - YEAR   : registration year in Kenya time (UTC+3, no daylight saving),
- *            matching the Kenya timestamps used across the service.
+ * Example:
+ * MON-JOHQ9N3X6TR4K7WB8ZM2026
+ *
+ * TEN    = First 3 tenant characters
+ * NAME   = First 3 alphabetic characters of deceased's name
+ * RANDOM = 16 cryptographically secure characters
+ * YEAR   = Kenya registration year (UTC+3)
  */
 
-// Unambiguous alphabet: excludes 0, 1, I, L, O.
-const ID_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+// CONFIGURATION
+
+
+const ID_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+
 const RANDOM_PART_LENGTH = 16;
-// 31 * 8 = 248 — rejecting bytes >= 248 keeps every symbol equally likely
-// (uniform distribution, no modulo bias).
+
 const REJECTION_THRESHOLD = 248;
 
-const randomPart = (): string => {
-    let out = '';
-    while (out.length < RANDOM_PART_LENGTH) {
-        const bytes = crypto.randomBytes(RANDOM_PART_LENGTH * 2);
+
+const generateRandomPart = (): string => {
+    let result = "";
+
+    while (result.length < RANDOM_PART_LENGTH) {
+        const bytes = crypto.randomBytes(32);
+
         for (const byte of bytes) {
-            if (byte >= REJECTION_THRESHOLD) continue;
-            out += ID_ALPHABET[byte % ID_ALPHABET.length];
-            if (out.length === RANDOM_PART_LENGTH) break;
+            // Avoid modulo bias
+            if (byte >= REJECTION_THRESHOLD) {
+                continue;
+            }
+
+            result += ID_ALPHABET[byte % ID_ALPHABET.length];
+
+            if (result.length === RANDOM_PART_LENGTH) {
+                break;
+            }
         }
     }
-    return out;
+
+    return result;
 };
 
-const generateUniqueDeceasedId = (fullName: string, tenantSlug: string): string => {
-    const sanitizedTenant = (tenantSlug || '').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
-    const namePart = (fullName || '').substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '') || 'XXX';
-    // Kenya time = UTC+3 all year round.
-    const year = new Date(Date.now() + 3 * 60 * 60 * 1000).getUTCFullYear();
-    return `${sanitizedTenant}-${namePart}${randomPart()}${year}`;
+
+
+const getKenyaYear = (): number => {
+    const now = new Date();
+
+    // Kenya uses UTC+3 throughout the year
+    const kenyaTime = new Date(
+        now.getTime() + 3 * 60 * 60 * 1000
+    );
+
+    return kenyaTime.getUTCFullYear();
 };
 
+
+
+const generateUniqueDeceasedId = (
+    fullName: string,
+    tenantSlug: string
+): string => {
+
+    try {
+        // Validate inputs
+        if (
+            typeof fullName !== "string" ||
+            !fullName.trim()
+        ) {
+            throw new Error("Deceased full name is required");
+        }
+
+        if (
+            typeof tenantSlug !== "string" ||
+            !tenantSlug.trim()
+        ) {
+            throw new Error("Tenant slug is required");
+        }
+
+        const sanitizedTenant = tenantSlug
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .substring(0, 3)
+            .toUpperCase();
+
+        if (!sanitizedTenant) {
+            throw new Error("Invalid tenant slug");
+        }
+
+        const sanitizedName = fullName
+            .normalize("NFKD")
+            .replace(/[^a-zA-Z]/g, "")
+            .substring(0, 3)
+            .toUpperCase();
+
+        const namePart = sanitizedName || "XXX";
+
+        const random = generateRandomPart();
+
+
+        const year = getKenyaYear();
+
+        return `${sanitizedTenant}-${namePart}${random}${year}`;
+
+    } catch (error) {
+
+        if (error instanceof Error) {
+            throw error;
+        }
+
+        throw new Error("Failed to generate deceased ID");
+    }
+};
 
 export default generateUniqueDeceasedId;
-
-
