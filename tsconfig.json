@@ -17,7 +17,8 @@
     },
     "include": [
         "**/*.ts",
-        "FrontendClient/client/src/components/analysis/new/feuneral/ui/select.tsx"
+        "FrontendClient/client/src/components/analysis/new/feuneral/ui/select.tsx",
+        "services/documents-service/server.js"
     ],
     "exclude": [
         "node_modules",

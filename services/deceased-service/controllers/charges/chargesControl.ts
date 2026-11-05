@@ -404,10 +404,11 @@ export const recordPayment = async (req: TenantRequest, res: Response): Promise<
             message: 'Payment recorded successfully'
         });
     } catch (error: any) {
+
+
         Logger.error({
             mesage: "  An Error    Occured   While    recording  payment",
             error: error?.message
-
         })
 
         return res.status(500).json({ success: false, message: error.message || 'Failed to record payment' });

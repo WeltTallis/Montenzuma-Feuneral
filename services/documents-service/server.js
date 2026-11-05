@@ -1,4 +1,4 @@
-import errorHandler from '../../services/app-global/middlewares/errorHandler';
+import errorHandler from '../app-global/middlewares/errorHandler';
 
 import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../shared/dbConfig';
 import { safeQuery } from '../../shared/database';
@@ -517,7 +517,7 @@ try {
     res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
   };
 }
-}
+
 
 app.use((err, req, res, next) => {
   if (err && (err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_UNEXPECTED_FILE' || err instanceof multer.MulterError)) {
