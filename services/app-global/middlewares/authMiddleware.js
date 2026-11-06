@@ -416,5 +416,6 @@ module.exports = {
   PLATFORM_ROLES,
   firstHeader,
   attachTenantFromClaims,
+  verifyTokenWithFallback,
   ALL_ROLES
 };

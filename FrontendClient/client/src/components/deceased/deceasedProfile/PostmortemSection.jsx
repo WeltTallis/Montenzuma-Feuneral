@@ -208,6 +208,7 @@ const PostmortemSection = ({ deceasedId, deceasedData, onUpdate }) => {
         // handshake auth the socketio-service requires in production.
         const socket = io(env.SOCKET_URL, {
             transports: ['websocket', 'polling'],
+            withCredentials: true,
             auth: getSocketAuth()
         });
 

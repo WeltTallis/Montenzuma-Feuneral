@@ -8,7 +8,7 @@ import cors from 'cors';
 import http from 'http';
 import https from 'https';
 import fs from 'fs';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 
 // Mount routes
 import postmortemRequestRoutes from './routes/postmortemRequestRoutes';
@@ -23,6 +23,7 @@ import exportExelRoutes from './routes/exportExel';
 
 const app = express();
 dotenv.config();
+const { verifyTokenWithFallback } = require('../app-global/middlewares/authMiddleware');
 const TENANT_DB_NAME_RE = /^(?!information_schema$|mysql$|performance_schema$|sys$|tenant_tracking$)[a-z0-9][a-z0-9_-]{0,62}$/;
 const PORT = parseInt(process.env.PORT || '5003', 10);
 const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -60,7 +61,7 @@ const tlsOptions = mtlsRequired
 // CORS Configuration — explicit allowlist, never `origin: true` (audit 2.7).
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean)
     : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
 
 const corsOriginGuard = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -68,6 +69,27 @@ const corsOriginGuard = (origin: string | undefined, callback: (err: Error | nul
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error(`CORS origin rejected: ${origin}`));
 };
+
+// Security headers cover health probes as well as application routes.
+app.disable('x-powered-by');
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'none'"],
+            baseUri: ["'none'"],
+            formAction: ["'none'"],
+            frameAncestors: ["'none'"],
+            objectSrc: ["'none'"],
+        },
+    },
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    referrerPolicy: { policy: 'no-referrer' },
+    strictTransportSecurity: process.env.NODE_ENV === 'production'
+        ? { maxAge: 31_536_000, includeSubDomains: true }
+        : false,
+    xFrameOptions: { action: 'deny' },
+}));
 
 app.use(cors({
     origin: corsOriginGuard,
@@ -118,6 +140,12 @@ app.get('/', (req: Request, res: Response) => {
 // Redis diagnostics — is the cache actually reachable from THIS container?
 app.get('/health/redis', async (req: Request, res: Response) => {
     try {
+        const configuredSecret = process.env.INTERNAL_SERVICE_SECRET || '';
+        const suppliedSecret = firstHeader(req.headers['x-internal-secret']) || '';
+        if (!configuredSecret || suppliedSecret.length !== configuredSecret.length ||
+            !timingSafeEqual(Buffer.from(suppliedSecret), Buffer.from(configuredSecret))) {
+            return res.status(404).json({ success: false, message: 'Not found' });
+        }
 
         const { redisHealth } = require('../../packages/shared-services/dist/redisService');
         const redis = await redisHealth();
@@ -133,47 +161,8 @@ app.get('/health/redis', async (req: Request, res: Response) => {
     }
 });
 
-// Middleware
-app.use(
-    helmet({
-        // Prevent unauthorized scripts and resources
-        contentSecurityPolicy: {
-            directives: {
-                defaultSrc: ["'self'"],
-                scriptSrc: ["'self'"],
-                styleSrc: ["'self'"],
-                imgSrc: ["'self'", 'data:', 'https:'],
-                fontSrc: ["'self'", 'https:', 'data:'],
-                connectSrc: ["'self'"],
-                objectSrc: ["'none'"],
-                frameSrc: ["'none'"],
-                frameAncestors: ["'none'"],
-                baseUri: ["'self'"],
-                formAction: ["'self'"],
-            },
-        },
-
-        // Prevent clickjacking
-        xFrameOptions: {
-            action: 'deny',
-        },
-        referrerPolicy: {
-            policy: 'strict-origin-when-cross-origin',
-        },
-        // Isolate browsing context
-        crossOriginOpenerPolicy: {
-            policy: 'same-origin',
-        },
-        // Restrict cross-origin resource loading
-        crossOriginResourcePolicy: {
-            policy: 'same-origin',
-        },
-    })
-);
-
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb', strict: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb', parameterLimit: 1000 }));
 
 // Duplicate headers arrive from Node as an array — always take the first
 // element rather than letting "[ 'a', 'b' ]" flow through as a string.
@@ -202,7 +191,13 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
             console.log(`[DECEASED] ${req.method} ${req.path} - Tenant: ${tenantSlug || 'undefined'}`);
         }
 
-        if (!tenantSlug || tenantSlug === 'system_shared') {
+        if (tenantSlug === 'system_shared') {
+            const configuredSecret = process.env.INTERNAL_SERVICE_SECRET || '';
+            const suppliedSecret = firstHeader(req.headers['x-internal-secret']) || '';
+            if (!configuredSecret || suppliedSecret.length !== configuredSecret.length ||
+                !timingSafeEqual(Buffer.from(suppliedSecret), Buffer.from(configuredSecret))) {
+                return res.status(403).json({ success: false, message: 'System tenant access is restricted' });
+            }
             (req as any).tenant = {
                 db_name: process.env.DB_NAME || 'restpoint_db',
                 tenant_id: 1,
@@ -210,6 +205,10 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
                 name: 'System Shared'
             };
             return next();
+        }
+
+        if (!tenantSlug) {
+            return res.status(403).json({ success: false, message: 'Tenant context is required' });
         }
 
         let resolvedDbName: string | null = null;
@@ -271,14 +270,6 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     }
 });
 
-// Request logging - only for non-health-check requests
-app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path !== '/health') {
-        console.log(`[DECEASED] ${req.method} ${req.path}`);
-    }
-    next();
-});
-
 
 
 app.use('/', deceasedRoutes);
@@ -318,9 +309,18 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     const requestId = res.locals.requestId;
     const detail = err instanceof Error ? err.stack || err.message : String(err);
     Logger.error(`[DECEASED] Request failed (${requestId}) ${req.method} ${req.path}: ${detail}`);
-    res.status(500).json({
+    if (res.headersSent) {
+        next(err);
+        return;
+    }
+    const status = err?.type === 'entity.too.large' ? 413 : err?.message?.startsWith('CORS origin rejected:') ? 403 : 500;
+    res.status(status).json({
         success: false,
-        message: 'Internal server error',
+        message: status === 413
+            ? 'Request body is too large'
+            : status === 403
+                ? 'Request origin is not allowed'
+                : 'Internal server error',
         requestId
     });
 });
@@ -333,8 +333,26 @@ const server = tlsOptions
 // Initialize Socket.IO with the HTTP server
 const io = new SocketIOServer(server, {
     cors: {
-        origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000'],
+        origin: allowedOrigins,
         credentials: true
+    }
+});
+
+// Socket.IO must prove the same identity as the HTTP routes before
+io.use(async (socket, next) => {
+    try {
+        const cookieHeader = socket.handshake.headers.cookie || '';
+        const accessCookie = cookieHeader.split(';').map((part) => part.trim())
+            .find((part) => part.startsWith('access_token='));
+        const token = accessCookie ? decodeURIComponent(accessCookie.slice('access_token='.length)) : '';
+        if (!token) return next(new Error('Unauthorized'));
+
+        const { decoded } = await verifyTokenWithFallback(token);
+        if (!decoded) return next(new Error('Unauthorized'));
+        socket.data.user = decoded;
+        next();
+    } catch {
+        next(new Error('Unauthorized'));
     }
 });
 
@@ -401,9 +419,23 @@ const queueInitTimer = setInterval(() => {
 io.on('connection', (socket) => {
     console.log(`[SOCKET] Client connected: ${socket.id}`);
 
-    socket.on('join-tenant', (tenantSlug: string) => {
+    socket.on('join-tenant', (requested: string | { tenantSlug?: string }, callback?: (result: { success: boolean; message?: string }) => void) => {
+        const claims = socket.data.user || {};
+        const claimSlug = String(claims.tenantSlug || claims.tenant_slug || '').toLowerCase();
+        const claimParentSlug = String(claims.parentTenantSlug || claims.parent_tenant_slug || '').toLowerCase();
+        const tenantSlug = (typeof requested === 'string' ? requested : requested?.tenantSlug || '').toLowerCase();
+        const isPlatformAdmin = ['systemadmin', 'superadmin'].includes(String(claims.role || '').toLowerCase());
+        const authorized = TENANT_SLUG_RE.test(tenantSlug) && (
+            isPlatformAdmin || tenantSlug === claimSlug || tenantSlug === claimParentSlug ||
+            (!!claimSlug && tenantSlug.startsWith(`${claimSlug}-`))
+        );
+        if (!authorized) {
+            callback?.({ success: false, message: 'Tenant room access denied' });
+            return;
+        }
         socket.join(`tenant:${tenantSlug}`);
-        console.log(`[SOCKET] Client ${socket.id} joined tenant: ${tenantSlug}`);
+        callback?.({ success: true });
+        console.log(`[SOCKET] Authenticated client joined tenant room: ${tenantSlug}`);
     });
 
     socket.on('disconnect', () => {
@@ -452,6 +484,7 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
+
     Logger.info(`[SERVER] Deceased  Service   runing   on   port ${PORT}`)
 
 });
