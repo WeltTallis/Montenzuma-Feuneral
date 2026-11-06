@@ -2,13 +2,13 @@
   "name": "@montezuma/documents-service",
   "version": "1.0.0",
   "description": "Montezuma Mortuary SaaS documents-service",
-  "main": "server.js",
+  "main": "../../dist/services/documents-service/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "build": "tsc -p tsconfig.base.json",
-    "watch": "tsc -p tsconfig.base.json --watch",
-    "typecheck": "tsc --noEmit -p tsconfig.base.json"
+    "start": "node ../../dist/services/documents-service/server.js",
+    "dev": "nodemon --exec ts-node server.ts",
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "bullmq": "^5.61.2",
@@ -26,6 +26,13 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^20.19.43",
+    "@types/pdfkit": "^0.17.6",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

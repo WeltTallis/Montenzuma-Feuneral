@@ -282,7 +282,8 @@ export function dedupeDateKeys(dates: string[]): string[] {
 export async function attemptHearseReservation(
     conn: PoolConnection,
     hearseId: number | string,
-    bookingDates: string[]
+    bookingDates: string[],
+    excludeBookingId?: number | string
 ): Promise<
     | { ok: true }
     | { ok: false; notFound?: boolean; conflictDate: string; conflicts: { date: string }[]; debug?: any }
@@ -295,12 +296,14 @@ export async function attemptHearseReservation(
         return { ok: false, notFound: true, conflictDate: '', conflicts: [] };
     }
 
+    const excludeBookingClause = excludeBookingId == null ? '' : ' AND id <> ?';
+    const bookingParams = excludeBookingId == null ? [hearseId] : [hearseId, excludeBookingId];
     const [bookingRows] = await conn.query(
         `SELECT booking_dates, booking_date, from_timestamp, to_timestamp FROM hearse_bookings
          WHERE hearse_id = ?
-           AND status NOT IN ('completed', 'cancelled')
+           AND status NOT IN ('completed', 'cancelled')${excludeBookingClause}
          FOR UPDATE`,
-        [hearseId]
+        bookingParams
     );
 
     const bookedSet = new Set<string>();

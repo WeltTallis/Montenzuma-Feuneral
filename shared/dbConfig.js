@@ -232,6 +232,10 @@ const getRootPool = async () => {
         }
         catch (err) {
             LOGGER.error('Root pool creation failed', { error: err.message });
+            const failedPool = rootPool;
+            rootPool = null;
+            await (failedPool === null || failedPool === void 0 ? void 0 : failedPool.end().catch(() => { }));
+            throw new Error(`Root database connection failed: ${err.message}`);
         }
         startPoolCleanup();
     }
@@ -740,6 +744,7 @@ const healthCheck = async () => {
             cacheSize: branchDbCache.size,
             rootPoolBreaker: rootPoolBreaker.getState(),
             timestamp: new Date().toISOString(),
+            error: (err === null || err === void 0 ? void 0 : err.message) || 'Unknown database health-check failure',
         };
     }
 };

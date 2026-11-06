@@ -427,6 +427,21 @@ const api = {
     if (!r.ok) throw new Error('Failed');
     return r.json();
   },
+  postponeBooking: async (id, date, reason) => {
+    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+    const r = await fetch(`${API_BASE_URL}/hearse-bookings/${encodeURIComponent(id)}/postpone`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ new_departure_time: date, reason }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const error = new Error(data.message || 'Could not postpone this booking.');
+      error.conflicts = data.conflicts || [];
+      throw error;
+    }
+    return data;
+  },
 
   //     register   hearse  ..
   registerHearse: async (data) => {
@@ -918,6 +933,10 @@ const HearseBookings = () => {
   const [cancelBooking, setCancelBooking] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [postponeBooking, setPostponeBooking] = useState(null);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [postponeReason, setPostponeReason] = useState('');
+  const [postponeLoading, setPostponeLoading] = useState(false);
 
   const { socket, connected } = useSocket();
   const { user } = useAuthStore();
@@ -1216,6 +1235,50 @@ const HearseBookings = () => {
     setCancelReason(b?.cancel_reason || '');
     setActionMenuId(null);
   }, []);
+
+  const openPostponeModal = useCallback((booking) => {
+    setPostponeBooking(booking);
+    setPostponeDate(formatDateStr(new Date()));
+    setPostponeReason('');
+    setActionMenuId(null);
+  }, []);
+
+  const closePostponeModal = useCallback(() => {
+    if (postponeLoading) return;
+    setPostponeBooking(null);
+    setPostponeDate('');
+    setPostponeReason('');
+  }, [postponeLoading]);
+
+  const confirmPostpone = useCallback(async () => {
+    if (!postponeBooking || !postponeDate) {
+      notify.error('Choose a new departure date first.');
+      return;
+    }
+    setPostponeLoading(true);
+    try {
+      const id = postponeBooking.booking_id || postponeBooking.id;
+      await api.postponeBooking(id, postponeDate, postponeReason.trim());
+      await refreshData();
+      notify.success('Booking postponed successfully.');
+      setPostponeBooking(null);
+      setPostponeDate('');
+      setPostponeReason('');
+      closeDrawer();
+    } catch (error) {
+      const conflictDates = (error.conflicts || []).map((conflict) => conflict.date).filter(Boolean);
+      await Swal.fire({
+        icon: 'error',
+        title: conflictDates.length ? 'Hearse is unavailable' : 'Could not postpone booking',
+        text: conflictDates.length
+          ? `${error.message} Conflicting date${conflictDates.length === 1 ? '' : 's'}: ${conflictDates.join(', ')}`
+          : error.message,
+        confirmButtonColor: '#1a5f7a',
+      });
+    } finally {
+      setPostponeLoading(false);
+    }
+  }, [postponeBooking, postponeDate, postponeReason, refreshData, closeDrawer]);
 
   // FIX: missing closeCancelModal function — now defined
   const closeCancelModal = useCallback(() => {
@@ -1572,7 +1635,7 @@ const HearseBookings = () => {
                                       <ActionMenuItem onClick={() => changeStatus(b, 'completed')}>{Icons.check} Mark Completed</ActionMenuItem>
                                     )}
                                     {!['completed', 'cancelled'].includes(b.status) && (
-                                      <ActionMenuItem onClick={() => changeStatus(b, 'postponed')}>{Icons.clock} Postpone</ActionMenuItem>
+                                      <ActionMenuItem onClick={() => openPostponeModal(b)}>{Icons.clock} Postpone</ActionMenuItem>
                                     )}
                                     {!['completed', 'cancelled'].includes(b.status) && (
                                       <ActionMenuItem onClick={() => openCancelModal(b)} style={{ color: COLORS.danger }}>
@@ -1767,6 +1830,12 @@ const HearseBookings = () => {
                     <DetailValue style={{ color: COLORS.danger }}>{selectedBooking.cancel_reason}</DetailValue>
                   </DetailItem>
                 )}
+                {selectedBooking.postpone_reason && (
+                  <DetailItem style={{ gridColumn: '1 / -1' }}>
+                    <DetailLabel>Postponement Reason</DetailLabel>
+                    <DetailValue>{selectedBooking.postpone_reason}</DetailValue>
+                  </DetailItem>
+                )}
               </DetailGrid>
 
               {!['completed', 'cancelled'].includes(selectedBooking.status) && (
@@ -1892,6 +1961,46 @@ const HearseBookings = () => {
                   </PrimaryButton>
                 </ModalFoot>
               </form>
+            </ModalBody>
+          </ModalBox>
+        </ModalOverlay>
+      )}
+
+      {postponeBooking && (
+        <ModalOverlay onClick={closePostponeModal}>
+          <ModalBox onClick={(event) => event.stopPropagation()}>
+            <ModalHead>
+              <div>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Postpone Hearse Booking</div>
+                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.7)' }}>
+                  {postponeBooking.booking_code || genId(postponeBooking.booking_id || postponeBooking.id)}
+                </div>
+              </div>
+              <button type="button" onClick={closePostponeModal} disabled={postponeLoading} aria-label="Close postpone dialog"
+                style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                <X size={14} />
+              </button>
+            </ModalHead>
+            <ModalBody>
+              <p style={{ marginTop: 0, color: COLORS.textSecondary, fontSize: '0.82rem' }}>
+                The service checks availability before saving. Multi-day bookings keep their duration.
+              </p>
+              <div style={{ marginBottom: '0.85rem' }}>
+                <ModalLabel htmlFor="hearse-postpone-date">New departure date *</ModalLabel>
+                <ModalInput id="hearse-postpone-date" type="date" min={formatDateStr(new Date())} value={postponeDate}
+                  onChange={(event) => setPostponeDate(event.target.value)} required />
+              </div>
+              <div>
+                <ModalLabel htmlFor="hearse-postpone-reason">Reason (optional)</ModalLabel>
+                <ModalInput id="hearse-postpone-reason" value={postponeReason} maxLength={500}
+                  onChange={(event) => setPostponeReason(event.target.value)} placeholder="Reason for postponement" />
+              </div>
+              <ModalFoot>
+                <SecondaryButton type="button" onClick={closePostponeModal} disabled={postponeLoading}>Cancel</SecondaryButton>
+                <PrimaryButton type="button" onClick={confirmPostpone} disabled={postponeLoading || !postponeDate}>
+                  {postponeLoading ? 'Checking availability…' : 'Check & Postpone'}
+                </PrimaryButton>
+              </ModalFoot>
             </ModalBody>
           </ModalBox>
         </ModalOverlay>

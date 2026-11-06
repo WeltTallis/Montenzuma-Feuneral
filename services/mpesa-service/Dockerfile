@@ -1,7 +1,9 @@
 FROM golang:1.22-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
-RUN go mod download
+ENV GOPROXY=https://proxy.golang.org,direct \
+    GOSUMDB=sum.golang.org
+RUN for attempt in 1 2 3 4 5; do go mod download && exit 0; echo "go mod download failed (attempt ${attempt}/5), retrying..."; sleep 15; done; exit 1
 COPY . ./
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/mpesa-service .
 

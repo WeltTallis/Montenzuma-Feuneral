@@ -68,10 +68,8 @@ COPY packages/shared-logger/package.json ./packages/shared-logger/
 COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/shared-services/package.json ./packages/shared-services/
 COPY shared/package.json ./shared/
-COPY services/api-gateway/package.json ./services/api-gateway/
 COPY services/analytics-service/package.json ./services/analytics-service/
 COPY services/auth-service/package.json ./services/auth-service/
-COPY services/billing-service/package.json ./services/billing-service/
 COPY services/bodycheckout-service/package.json ./services/bodycheckout-service/
 COPY services/chemical-service/package.json ./services/chemical-service/
 COPY services/coffin-service/package.json ./services/coffin-service/

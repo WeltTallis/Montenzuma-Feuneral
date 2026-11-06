@@ -71,7 +71,7 @@ RUN npm config set fetch-timeout 1200000 \
 # GUARD: this service hard-requires the redis client (Socket.IO Redis
 # adapter + notification REST store). Fail the build instead of shipping a
 # broken image (see legacy Dockerfile).
-RUN cd services/socketio-service && node -e "require('redis'); require('@socket.io/redis-adapter'); require('socket.io'); require('jsonwebtoken'); console.log('[GUARD] redis + @socket.io/redis-adapter + socket.io + jsonwebtoken OK')"
+RUN node -e "require('redis'); require('@socket.io/redis-adapter'); require('socket.io'); require('jsonwebtoken'); console.log('[GUARD] redis + @socket.io/redis-adapter + socket.io + jsonwebtoken OK')"
 
 # ---------------------------------------------------------------------------
 # Stage 4/4 — runtime: final image

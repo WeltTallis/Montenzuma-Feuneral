@@ -28,7 +28,7 @@ const registerDeceasedSchema = z.object({
     body_status: z.string().optional().nullable(),
     contact_person: z.string().optional().nullable(),
     tell_no: z.string().optional().nullable(),
-    gender: z.string().optional().nullable(),
+    gender: z.enum(["Male", "Female", "M", "F", "male", "female"]).optional().nullable(),
     date_of_death: z.string().optional().nullable(),
     signature: z.string().optional().nullable(),
     place_of_death: z.string().optional().nullable(),
@@ -40,9 +40,9 @@ const registerDeceasedSchema = z.object({
 
 });
 
-// ============================================
+
 // REGISTER DECEASED
-// ============================================
+
 
 export const registerNewDeceased = async (
     req: Request,
@@ -67,9 +67,9 @@ export const registerNewDeceased = async (
             });
         }
 
-        // ==============================
+
         // VALIDATE BODY
-        // ==============================
+
 
         const validation = registerDeceasedSchema.safeParse(req.body);
 
@@ -83,18 +83,18 @@ export const registerNewDeceased = async (
         const data = validation.data;
         full_name = data.full_name;
 
-        // ==============================
+
         // CREATE ID
-        // ==============================
+
         Logger.info({
             message: "Generating deceased system identification"
         });
         deceased_id = generateUniqueDeceasedId(full_name, tenantSlug);
         const now = getKenyaTimeISO();
 
-        // ==============================
+
         // SAVE SIGNATURE AS PNG FILE
-        // ==============================
+
 
         let signaturePath = null;
         if (data.signature && data.signature.startsWith('data:image/png;base64,')) {
@@ -121,9 +121,9 @@ export const registerNewDeceased = async (
             }
         }
 
-        // ==============================
+
         // DUPLICATE REGISTRATION PROTECTION (Idempotency)
-        // ==============================
+
         // REMOVED 'signature' from SELECT since it was causing issues
         const duplicateCheckQuery = `SELECT deceased_id, admission_number, created_at FROM deceased WHERE deceased_id = ? AND (is_deleted = 0 OR is_deleted IS NULL)`;
         const duplicateResult = await safeTenantQuery(dbName, duplicateCheckQuery, [deceased_id]);
@@ -154,19 +154,23 @@ export const registerNewDeceased = async (
             });
         }
 
-        // ==============================
+
         // GENERATE ADMISSION NUMBER
-        // ==============================
+
 
         const countQuery = `SELECT COUNT(*) as total FROM deceased WHERE (is_deleted = 0 OR is_deleted IS NULL)`;
         const countResult = await safeTenantQuery(dbName, countQuery);
         const total = Number((countResult as any)[0]?.total || 0);
         const nextSequence = total + 1;
-        const admission_number = generateAdmissionNumber(data.gender || "M", nextSequence);
+        const admissionGender =
+            data.gender === "male"
+                ? "Male"
+                : data.gender === "female"
+                    ? "Female"
+                    : data.gender || "M";
+        const admission_number = generateAdmissionNumber(admissionGender, nextSequence);
 
-        // ==============================
-        // INSERT RECORD - MATCHING EXACT COLUMN ORDER FROM TABLE
-        // ==============================
+
 
         // Updated INSERT query without county and currency
         const insertQuery = `
@@ -184,7 +188,7 @@ export const registerNewDeceased = async (
         received_from,
         contact_person,
         receiving_officer,
-                date_admitted,
+        date_admitted,
         time_received,
         date_of_birth,
         date_of_death,
@@ -261,10 +265,9 @@ export const registerNewDeceased = async (
             }),
         ];
 
-        // ==============================
+
         // INVALIDATE CACHE — wipe every deceased key for this tenant
-        // This ensures newly registered deceased appear immediately in the list
-        // ==============================
+
         if (tenantSlug && tenantId) {
             sideEffects.push(() => enqueueSideEffect({
                 kind: 'cache-clear',

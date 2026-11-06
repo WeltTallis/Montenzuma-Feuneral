@@ -6,6 +6,7 @@ import (
     "encoding/json"
     "fmt"
     "io"
+    "net"
     "net/http"
     "net/url"
     "strings"
@@ -31,7 +32,19 @@ type mpesaService struct {
     mpesaRepo repository.MpesaRepository
 }
 
-var stkHTTPClient = &http.Client{Timeout: 30 * time.Second}
+var stkHTTPClient = &http.Client{
+	Timeout: 20 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 5 * time.Second,
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+	},
+}
 
 func NewMpesaService(mpesaRepo repository.MpesaRepository) MpesaService {
     return &mpesaService{
@@ -42,7 +55,9 @@ func NewMpesaService(mpesaRepo repository.MpesaRepository) MpesaService {
 func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushRequest) (*interfacex.STKPushResponse, error) {
     enConfig := config.NewEnvConfig()
     oauthStarted := time.Now()
-    token, err := utils.GenerateAccessToken(ctx, enConfig.ConsumerKey, enConfig.ConsumerSecret)
+    tokenCtx, cancelToken := context.WithTimeout(ctx, 8*time.Second)
+    defer cancelToken()
+    token, err := utils.GenerateAccessToken(tokenCtx, enConfig.ConsumerKey, enConfig.ConsumerSecret)
     logrus.Infof("M-Pesa OAuth token acquisition completed in %dms", time.Since(oauthStarted).Milliseconds())
 
     if err != nil {
@@ -128,7 +143,9 @@ func (s *mpesaService) STKPush(ctx context.Context, request *interfacex.STKPushR
         return nil, err
     }
 
-    req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(reqBody))
+    stkCtx, cancelSTK := context.WithTimeout(ctx, 20*time.Second)
+    defer cancelSTK()
+    req, err := http.NewRequestWithContext(stkCtx, http.MethodPost, url, bytes.NewBuffer(reqBody))
 
     if err != nil {
         logrus.Errorf("Error creating request: %v", err)

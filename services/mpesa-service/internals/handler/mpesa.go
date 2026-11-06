@@ -2,6 +2,7 @@
 
 import (
     "bytes"
+	"context"
     "encoding/json"
     "errors"
     "fmt"
@@ -214,6 +215,7 @@ func (h *MpesaHandler) STKCallback(c *gin.Context) {
         }
     }
     if target := os.Getenv("INSURANCE_CALLBACK_URL"); target != "" {
+        go func(target string) {
         forward, _ := json.Marshal(map[string]string{
             "reference":           orderID,
             "ResultCode":          resultCode,
@@ -236,19 +238,23 @@ func (h *MpesaHandler) STKCallback(c *gin.Context) {
         } else {
             logrus.Errorf("invalid insurance callback request: %v", err)
         }
+        }(target)
     }
 
     if resultCode == "0" {
+		tenantSlug := c.Query("tenantSlug")
+		deceasedID := c.Query("deceasedId")
+		admissionNumber := c.Query("admissionNumber")
+		payerName := c.Query("payerName")
+		go func(tenantSlug, deceasedID, admissionNumber, payerName string) {
         target := os.Getenv("DECEASED_PAYMENT_CALLBACK_URL")
-        tenantSlug := c.Query("tenantSlug")
-        deceasedID := c.Query("deceasedId")
-        admissionNumber := c.Query("admissionNumber")
-        payerName := c.Query("payerName")
         secret := os.Getenv("DECEASED_PAYMENT_CALLBACK_SECRET")
         if secret == "" {
             secret = os.Getenv("JWT_SECRET")
         }
-        initiated, lookupErr := h.mpesaService.GetSTKPushByCheckoutRequestID(c.Request.Context(), checkoutRequestID)
+		lookupCtx, cancelLookup := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancelLookup()
+		initiated, lookupErr := h.mpesaService.GetSTKPushByCheckoutRequestID(lookupCtx, checkoutRequestID)
         requestedAmount := ""
         if initiated != nil {
             requestedAmount = initiated.Amount
@@ -301,6 +307,7 @@ func (h *MpesaHandler) STKCallback(c *gin.Context) {
         } else {
             logrus.Warn("deceased payment callback skipped: callback URL, secret, metadata, or matching STK request is missing")
         }
+		}(tenantSlug, deceasedID, admissionNumber, payerName)
     }
 
     if resultCode == "0" {

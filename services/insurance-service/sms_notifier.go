@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -28,7 +27,7 @@ func formatInternationalPhone(raw string) string {
 	return raw
 }
 
-// sendSMSNotification dispatches SMS via the SMS microservice or Africa's Talking API
+// sendSMSNotification dispatches SMS via the SMS microservice.
 func sendSMSNotification(phone, message string) (bool, string) {
 	cleanPhone := formatInternationalPhone(phone)
 	if cleanPhone == "" || strings.TrimSpace(message) == "" {
@@ -65,53 +64,7 @@ func sendSMSNotification(phone, message string) (bool, string) {
 		}
 	}
 
-	// 2. Direct fallback to Africa's Talking API if credentials exist
-	apiKey := os.Getenv("atApiKey")
-	if apiKey == "" {
-		apiKey = os.Getenv("AFRICANS_TALKING_API_KEY")
-	}
-	if apiKey != "" {
-		username := os.Getenv("atUserName")
-		if username == "" {
-			username = "sandbox"
-		}
-		isSandbox := os.Getenv("sandboxEnv")
-		if isSandbox == "" {
-			isSandbox = os.Getenv("sandbox")
-		}
-		apiURL := "https://api.sandbox.africastalking.com/version1/messaging"
-		if isSandbox == "false" || isSandbox == "0" {
-			apiURL = "https://api.africastalking.com/version1/messaging"
-		}
-
-		data := url.Values{}
-		data.Set("username", username)
-		data.Set("to", cleanPhone)
-		data.Set("message", message)
-		if sc := strings.TrimSpace(os.Getenv("atShortCode")); sc != "" {
-			data.Set("from", sc)
-		}
-
-		atReq, err := http.NewRequest("POST", apiURL, strings.NewReader(data.Encode()))
-		if err == nil {
-			atReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			atReq.Header.Set("Accept", "application/json")
-			atReq.Header.Set("apiKey", apiKey)
-
-			atResp, err := httpClient.Do(atReq)
-			if err == nil {
-				defer atResp.Body.Close()
-				bodyBytes, _ := io.ReadAll(atResp.Body)
-				if atResp.StatusCode >= 200 && atResp.StatusCode < 300 {
-					log.Printf("[SMS] Sent directly via Africa's Talking to %s: %s", cleanPhone, string(bodyBytes))
-					return true, "Dispatched directly via Africa's Talking"
-				}
-				log.Printf("[SMS] Africa's Talking returned %d: %s", atResp.StatusCode, string(bodyBytes))
-			}
-		}
-	}
-
-	// 3. Fallback: Log simulation in dev mode so registration and payments are never interrupted
+	// Fallback: Log simulation in dev mode so registration and payments are never interrupted.
 	log.Printf("[SMS SIMULATED] To: %s | Message: %s", cleanPhone, message)
 	return true, "SMS queued / logged (simulated delivery mode)"
 }

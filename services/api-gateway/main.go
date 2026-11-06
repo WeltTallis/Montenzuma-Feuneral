@@ -18,10 +18,12 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -69,16 +71,25 @@ type Gateway struct {
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	if err := run(logger); err != nil {
+		logger.Error("gateway stopped unexpectedly", "error", err.Error())
+		os.Exit(1)
+	}
+}
+
+func run(logger *slog.Logger) error {
+	if err := os.Remove("/tmp/api-gateway-health-failures"); err != nil && !errors.Is(err, os.ErrNotExist) {
+		logger.Warn("could not reset liveness failure counter", "error", err.Error())
+	}
+
 	cfg, err := loadConfig()
 	if err != nil {
-		logger.Error("gateway configuration is invalid", "error", err.Error())
-		os.Exit(1)
+		return fmt.Errorf("gateway configuration is invalid: %w", err)
 	}
 
 	gateway, err := newGateway(cfg, logger)
 	if err != nil {
-		logger.Error("gateway initialization failed", "error", err.Error())
-		os.Exit(1)
+		return fmt.Errorf("gateway initialization failed: %w", err)
 	}
 
 	server := &http.Server{
@@ -88,19 +99,47 @@ func main() {
 		IdleTimeout:       90 * time.Second,
 		MaxHeaderBytes:    1 << 20,
 	}
-	logger.Info("Go gateway reference implementation is starting",
+	logger.Info("API gateway is starting",
 		"address", cfg.Address,
 		"environment", cfg.Environment,
 		"software_name", cfg.SoftwareIdentity.Name,
 		"software_version", cfg.SoftwareIdentity.Version,
 		"software_tracking_id", cfg.SoftwareIdentity.ProductID,
 		"deceased_mtls", cfg.DeceasedMTLS,
-		"note", "not wired into the JavaScript gateway or deployment",
 	)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("gateway stopped unexpectedly", "error", err.Error())
-		os.Exit(1)
+
+	serverErrors := make(chan error, 1)
+	go func() {
+		serverErrors <- server.ListenAndServe()
+	}()
+
+	shutdownSignals, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case err := <-serverErrors:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("HTTP server failed: %w", err)
+		}
+		return nil
+	case <-shutdownSignals.Done():
+		logger.Info("gateway shutdown signal received; draining in-flight requests")
 	}
+
+	shutdownContext, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownContext); err != nil {
+		logger.Error("graceful shutdown timed out; closing active connections", "error", err.Error())
+		if closeErr := server.Close(); closeErr != nil {
+			return fmt.Errorf("force-close HTTP server after shutdown timeout: %w", closeErr)
+		}
+		return fmt.Errorf("graceful shutdown timed out: %w", err)
+	}
+
+	if err := <-serverErrors; err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("HTTP server failed during shutdown: %w", err)
+	}
+	return nil
 }
 
 func newGateway(cfg Config, logger *slog.Logger) (*Gateway, error) {
@@ -138,6 +177,7 @@ func newGateway(cfg Config, logger *slog.Logger) (*Gateway, error) {
 		transport := http.DefaultTransport.(*http.Transport).Clone()
 		transport.MaxIdleConns = 200
 		transport.MaxIdleConnsPerHost = 100
+		transport.MaxConnsPerHost = 200
 		transport.IdleConnTimeout = 90 * time.Second
 		transport.TLSHandshakeTimeout = 10 * time.Second
 		if serviceName == "deceased" && deceasedTLS != nil {
@@ -254,8 +294,8 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			routing[name] = true
 		}
 		writeJSON(recorder, http.StatusOK, map[string]any{
-			"success": true, "status": "ok", "service": cfg.SoftwareIdentity.Name,
-			"version": cfg.SoftwareIdentity.Version, "trackingId": cfg.SoftwareIdentity.ProductID,
+			"success": true, "status": "ok", "service": g.config.SoftwareIdentity.Name,
+			"version": g.config.SoftwareIdentity.Version, "trackingId": g.config.SoftwareIdentity.ProductID,
 			"uptimeSeconds": int64(time.Since(g.startedAt).Seconds()),
 			"services": routing,
 		})
@@ -265,7 +305,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(recorder, http.StatusOK, map[string]any{
 			"success": true,
 			"data": map[string]any{
-				"service": cfg.SoftwareIdentity.Name, "version": cfg.SoftwareIdentity.Version, "trackingId": cfg.SoftwareIdentity.ProductID,
+				"service": g.config.SoftwareIdentity.Name, "version": g.config.SoftwareIdentity.Version, "trackingId": g.config.SoftwareIdentity.ProductID,
 				"uptimeSeconds": int64(time.Since(g.startedAt).Seconds()),
 				"requests": g.requests.Load(), "upstream5xx": g.upstream5xx.Load(),
 				"generatedAt": time.Now().UTC().Format(time.RFC3339Nano),
@@ -308,6 +348,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"message": "HR payroll uses RestPoint authentication; payroll-service login is disabled.",
 			"requestId": requestID,
 		})
+		
 		return
 	}
 

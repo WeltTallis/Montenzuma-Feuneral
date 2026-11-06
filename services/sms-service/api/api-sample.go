@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,11 +10,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	africastalking "github.com/tech-kenya/africastalkingsms"
 )
 
 type Handler struct {
-	Client *africastalking.SMSClient
+	Client *HostPinnacleClient
 }
 
 func corsMiddleware() gin.HandlerFunc {
@@ -33,26 +33,16 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		_ = godotenv.Load("../.env")
 	}
-	apiKey := os.Getenv("atApiKey")
-	if apiKey == "" {
-		apiKey = os.Getenv("AFRICANS_TALKING_API_KEY")
-	}
-	username := os.Getenv("atUserName")
-	if username == "" {
-		username = "sandbox"
-	}
-	atShortCode := os.Getenv("atShortCode")
-	sandbox := os.Getenv("sandbox")
-	if sandbox == "" {
-		sandbox = os.Getenv("sandboxEnv")
-	}
-	if sandbox == "" {
-		sandbox = "true"
-	}
-
-	client, err := africastalking.NewSMSClient(apiKey, username, atShortCode, sandbox)
-	if err != nil {
-		log.Printf("Warning: failed to initialize Africa's Talking client (%v), running in mock fallback mode", err)
+	apiKey := strings.TrimSpace(os.Getenv("HOSTPINNACLE_API_KEY"))
+	userID := strings.TrimSpace(os.Getenv("HOSTPINNACLE_USER_ID"))
+	password := os.Getenv("HOSTPINNACLE_PASSWORD")
+	senderID := strings.TrimSpace(os.Getenv("HOSTPINNACLE_SENDER_ID"))
+	endpoint := strings.TrimSpace(os.Getenv("HOSTPINNACLE_API_URL"))
+	var client *HostPinnacleClient
+	if apiKey != "" || (userID != "" && password != "") {
+		client = NewHostPinnacleClient(apiKey, userID, password, senderID, endpoint)
+	} else {
+		log.Print("HostPinnacle credentials are not configured; SMS requests will be simulated")
 	}
 
 	handler := Handler{Client: client}
@@ -61,7 +51,7 @@ func main() {
 	r.Use(corsMiddleware())
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "sms-service", "sandbox": sandbox})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "sms-service", "provider": "hostpinnacle"})
 	})
 	r.POST("/send-sms", handler.sendSMS)
 	r.POST("/send-monthly-reminders", handler.sendMonthlyReminders)
@@ -99,15 +89,11 @@ func (h *Handler) sendSMS(c *gin.Context) {
 
 	if h.Client == nil {
 		log.Printf("[MOCK SMS] To: %s | Message: %s", targetPhone, reqBody.Message)
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "simulated",
-			"message": "SMS simulated (no Africa's Talking credentials provided)",
-			"number":  targetPhone,
-		})
+		c.JSON(http.StatusOK, gin.H{"status": "simulated", "number": targetPhone})
 		return
 	}
 
-	resp, err := h.Client.SendSMS(targetPhone, reqBody.Message)
+	resp, err := h.Client.SendSMS(c.Request.Context(), targetPhone, reqBody.Message)
 	if err != nil {
 		log.Printf("[SMS ERROR] Failed to send to %s: %v", targetPhone, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -116,7 +102,7 @@ func (h *Handler) sendSMS(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.SMSMessageData)
+	c.JSON(http.StatusOK, resp)
 }
 
 type ReminderItem struct {
@@ -159,11 +145,11 @@ func (h *Handler) sendMonthlyReminders(c *gin.Context) {
 			continue
 		}
 
-		resp, err := h.Client.SendSMS(phone, msg)
+		resp, err := h.Client.SendSMS(context.Background(), phone, msg)
 		if err != nil {
 			results = append(results, gin.H{"phone": phone, "status": "error", "error": err.Error()})
 		} else {
-			results = append(results, gin.H{"phone": phone, "status": "sent", "data": resp.SMSMessageData})
+			results = append(results, gin.H{"phone": phone, "status": "sent", "data": resp})
 			sentCount++
 		}
 	}

@@ -228,6 +228,10 @@ export const getRootPool = async (): Promise<mysql.Pool> => {
       LOGGER.info('Root database pool created (tenant_tracking)');
     } catch (err: any) {
       LOGGER.error('Root pool creation failed', { error: err.message });
+      const failedPool = rootPool;
+      rootPool = null;
+      await failedPool?.end().catch(() => {});
+      throw new Error(`Root database connection failed: ${err.message}`);
     }
 
     startPoolCleanup();
@@ -809,6 +813,7 @@ export const healthCheck = async (): Promise<{
   cacheSize: number;
   rootPoolBreaker: string;
   timestamp: string;
+  error?: string;
 }> => {
   try {
     const pool = await getRootPool();
@@ -827,6 +832,7 @@ export const healthCheck = async (): Promise<{
       cacheSize: branchDbCache.size,
       rootPoolBreaker: rootPoolBreaker.getState(),
       timestamp: new Date().toISOString(),
+      error: err?.message || 'Unknown database health-check failure',
     };
   }
 };

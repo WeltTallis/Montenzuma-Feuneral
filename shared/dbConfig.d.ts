@@ -44,6 +44,7 @@ export declare const healthCheck: () => Promise<{
     cacheSize: number;
     rootPoolBreaker: string;
     timestamp: string;
+    error?: string;
 }>;
 declare const _default: {
     getRootPool: () => Promise<mysql.Pool>;
@@ -65,6 +66,7 @@ declare const _default: {
         cacheSize: number;
         rootPoolBreaker: string;
         timestamp: string;
+        error?: string;
     }>;
 };
 export default _default;

@@ -105,6 +105,8 @@ services:
     image: restpoint-api-gateway:latest
     container_name: restpoint_api_gateway
     restart: always
+    init: true
+    stop_grace_period: 30s
     ports:
       - '127.0.0.1:${API_GATEWAY_EXTERNAL_PORT:-5000}:5000'
     env_file:
@@ -112,6 +114,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
+      GATEWAY_PROXY_TIMEOUT_MS: ${GATEWAY_PROXY_TIMEOUT_MS:-900000}
       # Service URLs
       AUTH_SERVICE_URL: http://restpoint_auth_service:5000
       TENANT_SERVICE_URL: http://restpoint_tenant_service:5000
@@ -132,7 +135,6 @@ services:
       BODYCHECKOUT_SERVICE_URL: http://restpoint_bodycheckout_service:5000
       CALENDAR_SERVICE_URL: http://restpoint_calender_service:5000
       CHEMICALS_SERVICE_URL: http://restpoint_chemical_service:5000
-      BILLING_SERVICE_URL: http://restpoint_billing_service:5000
       HEARSE_SERVICE_URL: http://restpoint_hearse_service:5000
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
@@ -142,24 +144,19 @@ services:
       HR_PAYROLL_SERVICE_URL: http://restpoint_hr_payroll_api:8080
       FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@restpoint_redis:6379
-    depends_on:
-      mariadb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    # Gateway starts independently of databases and queues. It can return a
+    # clear 503 for a failed upstream while remaining available for other APIs.
     networks:
       - restpoint_network
       - deceased_internal
     volumes:
       - ./secrets/deceased-mtls/gateway:/run/secrets/deceased-mtls:ro
     healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
-      interval: 30s
-      timeout: 10s
+      test: [ 'CMD', '/usr/local/bin/gateway-healthcheck' ]
+      interval: 5s
+      timeout: 3s
       retries: 3
-      start_period: 40s
+      start_period: 30s
 
   # APPLICATION SERVICES
 
@@ -813,37 +810,6 @@ services:
       retries: 3
       start_period: 40s
 
-  billing-service:
-    build:
-      context: .
-      dockerfile: services/billing-service/Dockerfile
-    image: restpoint-billing-service:latest
-    container_name: restpoint_billing_service
-    restart: always
-    env_file:
-      - .env.production
-    environment:
-      NODE_ENV: production
-      PORT: 5000
-      SERVICE_NAME: billing-service
-      DB_HOST: restpoint_mariadb
-      DB_PORT: 3306
-      REDIS_HOST: restpoint_redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
-    volumes:
-      - billing_service_data:/usr/src/app/data
-      # Billing invoice PDFs live on the shared HOST storage too
-      - /opt/storage/invoices/billing:/usr/src/app/invoices
-    networks:
-      - restpoint_network
-    healthcheck:
-      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
   # =============================================================================
   # HEARSE SERVICE
   # =============================================================================
@@ -1111,8 +1077,6 @@ volumes:
   support_service_data:
     driver: local
   chemical_service_data:
-    driver: local
-  billing_service_data:
     driver: local
   hearse_service_data:
     driver: local

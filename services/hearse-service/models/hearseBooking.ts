@@ -19,4 +19,5 @@ export interface HearseBooking {
     from_timestamp?: string;
     to_timestamp?: string;
     special_requests?: string;
+    postpone_reason?: string | null;
 }

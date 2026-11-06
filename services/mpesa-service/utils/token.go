@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,7 +23,19 @@ type AccessTokenResponse struct {
 }
 
 var (
-	tokenHTTPClient = &http.Client{Timeout: 10 * time.Second}
+	tokenHTTPClient = &http.Client{
+		Timeout: 8 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 20,
+			IdleConnTimeout:     90 * time.Second,
+			TLSHandshakeTimeout: 5 * time.Second,
+			DialContext: (&net.Dialer{
+				Timeout:   5 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+		},
+	}
 	tokenRefresh    = make(chan struct{}, 1)
 	tokenCacheMu    sync.RWMutex
 	cachedToken     string

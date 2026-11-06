@@ -99,7 +99,7 @@ func loadConfig() (Config, error) {
 		RateLimitGeneral: positiveInt("RATE_LIMIT_MAX_REQUESTS", 600),
 		RateLimitAuth:    positiveInt("RATE_LIMIT_AUTH_MAX", 10),
 		RateLimitWrite:   positiveInt("RATE_LIMIT_WRITE_MAX", 200),
-		ProxyTimeout:     30 * time.Second,
+		ProxyTimeout:     time.Duration(positiveInt("GATEWAY_PROXY_TIMEOUT_MS", 900_000)) * time.Millisecond,
 		Services:         make(map[string]*url.URL),
 		DeceasedMTLS:     strings.EqualFold(os.Getenv("DECEASED_MTLS_REQUIRED"), "true"),
 		DeceasedCAFile:   os.Getenv("DECEASED_MTLS_CA_FILE"),

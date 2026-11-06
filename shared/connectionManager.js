@@ -410,8 +410,20 @@ class ConnectionManager {
    * variable is either null (timeout) or a valid connection (acquired).
    */
   async acquireConnection(metadata, tenantDbName) {
+    let timedOut = false;
+    let timeoutId;
+    const acquisition = metadata.pool.getConnection().then((connection) => {
+      // getConnection() cannot be cancelled. If the timeout wins, release any
+      // connection that arrives later instead of leaking it from the pool.
+      if (timedOut) {
+        connection.release();
+        throw new Error(`Timed out waiting for connection from pool "${tenantDbName}" after ${this.config.acquireTimeoutMs}ms`);
+      }
+      return connection;
+    });
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
         reject(
           new Error(
             `Timed out waiting for connection from pool "${tenantDbName}" after ${this.config.acquireTimeoutMs}ms`
@@ -419,9 +431,12 @@ class ConnectionManager {
         );
       }, this.config.acquireTimeoutMs);
     });
-    // Race between acquiring a connection and timing out
-    const connection = await Promise.race([metadata.pool.getConnection(), timeoutPromise]);
-    return connection;
+    try {
+      return await Promise.race([acquisition, timeoutPromise]);
+    }
+    finally {
+      clearTimeout(timeoutId);
+    }
   }
   /**
    * Validates a database connection by executing a fast health-check query.

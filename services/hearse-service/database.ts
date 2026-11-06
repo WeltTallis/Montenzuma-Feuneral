@@ -169,11 +169,13 @@ export const runMigrations = async (): Promise<void> => {
     multipleStatements: true
   });
 
-  await rootPool.query(
-    `CREATE DATABASE IF NOT EXISTS \`${HEARSE_DB_CONFIG.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-  );
-
-  await rootPool.end();
+  try {
+    await rootPool.query(
+      `CREATE DATABASE IF NOT EXISTS \`${HEARSE_DB_CONFIG.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
+  } finally {
+    await rootPool.end();
+  }
 
   // Run knex migrations
   const knexInstance: Knex = knex({

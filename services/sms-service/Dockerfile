@@ -3,11 +3,13 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 # Copy module definition files
-COPY api/go.mod api/go.sum ./api/
+COPY api/go.mod ./api/
 COPY go.mod go.sum ./
 
 # Download dependencies
-RUN cd api && go mod download
+ENV GOPROXY=https://proxy.golang.org,direct \
+    GOSUMDB=sum.golang.org
+RUN for attempt in 1 2 3 4 5; do (cd api && go mod download) && exit 0; echo "go mod download failed (attempt ${attempt}/5), retrying..."; sleep 15; done; exit 1
 
 # Copy source code
 COPY . .

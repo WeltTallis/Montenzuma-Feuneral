@@ -57,7 +57,7 @@ function absoluteStoredPath(storedPath) {
  * Ensure folder exists with retry mechanism
  */
 function ensureFolderExists(dir, retries = 3, delay = 100) {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const attempt = () => {
       try {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -152,7 +152,7 @@ const uploadDocument = async (req, res) => {
 
     const relativePath = normalizePath(finalPath);
 
-    const result = await safeTenantQuery(
+    const result: any = await safeTenantQuery(
       dbName,
       `INSERT INTO documents 
         (deceased_id, document_type, file_name, file_path, mime_type, uploaded_at, created_at, tenant_slug) 

@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	"sync"
+
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -26,16 +28,23 @@ type EnvCofig struct {
 	CallbackUrl    string `env:"CALL_BACK_URL,required"`
 }
 
-func NewEnvConfig() *EnvCofig {
-	err := godotenv.Load()
-	if err != nil && !os.IsNotExist(err) {
-		logrus.Fatalf("Error loading .env file: %v", err)
-	}
-	config := &EnvCofig{}
+var (
+	configOnce    sync.Once
+	cachedConfig  *EnvCofig
+)
 
-	if err := env.Parse(config); err != nil {
-		logrus.Fatalf("Error parsing env file : %v", err)
-	}
-	logrus.Info("Env Config Loaded successfully")
-	return config
+func NewEnvConfig() *EnvCofig {
+	configOnce.Do(func() {
+		err := godotenv.Load()
+		if err != nil && !os.IsNotExist(err) {
+			logrus.Fatalf("Error loading .env file: %v", err)
+		}
+		parsed := &EnvCofig{}
+		if err := env.Parse(parsed); err != nil {
+			logrus.Fatalf("Error parsing env file: %v", err)
+		}
+		cachedConfig = parsed
+		logrus.Info("Env Config Loaded successfully")
+	})
+	return cachedConfig
 }

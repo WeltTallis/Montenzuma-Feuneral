@@ -35,6 +35,7 @@ export async function getExcelExportQueue(): Promise<Queue | null> {
 
   if (Date.now() < redisUnavailableUntil) return null;
 
+  let testConnection: Redis | null = null;
   try {
     const connectionOptions = getExcelExportConnectionOptions();
 
@@ -42,7 +43,7 @@ export async function getExcelExportQueue(): Promise<Queue | null> {
     // The error handler prevents "[ioredis] Unhandled error event" spam, and the
     // PING catches auth problems (NOAUTH) that a bare TCP connect hides —
     // without it the queue is created but every queue.add fails with NOAUTH.
-    const testConnection = new Redis({
+    testConnection = new Redis({
       ...connectionOptions,
       lazyConnect: true,
       maxRetriesPerRequest: 1,
@@ -52,15 +53,13 @@ export async function getExcelExportQueue(): Promise<Queue | null> {
 
     await Promise.race([
       (async () => {
-        await testConnection.connect();
-        await testConnection.ping();
+        await testConnection!.connect();
+        await testConnection!.ping();
       })(),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Redis connect timeout (3s)')), 3000)
       ),
     ]);
-
-    try { testConnection.disconnect(); } catch { /* already closed */ }
 
     // BullMQ requires maxRetriesPerRequest: null on the shared connection
     excelExportQueue = new Queue('excel-export', {
@@ -88,6 +87,8 @@ export async function getExcelExportQueue(): Promise<Queue | null> {
     excelExportQueue = null;
     redisUnavailableUntil = Date.now() + 30_000; // retry the connection in 30s
     return null;
+  } finally {
+    try { testConnection?.disconnect(); } catch { /* already closed */ }
   }
 }
 

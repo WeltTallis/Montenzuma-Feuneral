@@ -33,11 +33,9 @@ const io = new SocketIOServer(server, {
 
 app.set('io', io);
 
-// Initialize hearse database on startup using knex migrations
+// Database schema must be ready before the service accepts requests or reports
+// healthy. A migration failure exits so the container's restart policy can retry.
 const { runMigrations } = require('./database');
-runMigrations().catch((err: Error) => {
-    console.error('Failed to run hearse database migrations:', err);
-});
 
 
 
@@ -410,15 +408,26 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     });
 });
 
-// Initialize notification cron service
 import { initializeNotificationCron } from './utilities/notificationCronService';
-initializeNotificationCron(io);
-startAsyncSideEffectWorker();
 
-// Start server
 const PORT = Number(process.env.PORT) || 5002;
-server.listen(PORT, () => {
-    console.log(`Hearse Service running on port ${PORT}`);
+async function startHearseService(): Promise<void> {
+    await runMigrations();
+    initializeNotificationCron(io);
+    startAsyncSideEffectWorker();
+    await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(PORT, () => {
+            server.off('error', reject);
+            console.log(`Hearse Service running on port ${PORT}`);
+            resolve();
+        });
+    });
+}
+
+void startHearseService().catch((err: Error) => {
+    console.error('Hearse service startup failed:', err);
+    process.exit(1);
 });
 
 export { app, server, io };

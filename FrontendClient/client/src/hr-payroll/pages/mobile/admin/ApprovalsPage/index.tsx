@@ -55,7 +55,7 @@ const ApprovalsPageMobile = () => {
   const handlePrepareSaoKe = () => {
     const reportAtDate = prepareDate.trim();
     if (!reportAtDate) {
-      toast.error('Chọn ngày sao kê trước khi chuẩn bị.');
+      toast.error('Chọn ngày sao kê .');
       return;
     }
     fileApproval.mutate(

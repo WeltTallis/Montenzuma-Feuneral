@@ -7,7 +7,6 @@ import { Label } from '@hr/components/ui/label';
 import {
   calculateKenyanPayrollTax,
   KENYAN_PAYROLL_RATES,
-  type KenyanPayrollRates,
 } from '@hr/utils/kenyan-payroll-tax';
 
 const kesFormatter = new Intl.NumberFormat('en-KE', {
@@ -29,12 +28,6 @@ const TaxCalculatorPage = () => {
   const [additionalPension, setAdditionalPension] = useState('0');
   const [monthlyInsurancePremiums, setMonthlyInsurancePremiums] = useState('0');
   const [payrollMonth, setPayrollMonth] = useState(getCurrentPayrollMonth);
-  const [ratesEffectiveFrom, setRatesEffectiveFrom] = useState(KENYAN_PAYROLL_RATES.effectiveFrom);
-  const [nssfRate, setNssfRate] = useState(String(KENYAN_PAYROLL_RATES.nssfRate * 100));
-  const [nssfUpperLimit, setNssfUpperLimit] = useState(String(KENYAN_PAYROLL_RATES.nssfUpperEarningsLimit));
-  const [shifRate, setShifRate] = useState(String(KENYAN_PAYROLL_RATES.shifRate * 100));
-  const [minimumShif, setMinimumShif] = useState(String(KENYAN_PAYROLL_RATES.minimumMonthlyShif));
-  const [housingLevyRate, setHousingLevyRate] = useState(String(KENYAN_PAYROLL_RATES.housingLevyRate * 100));
 
   const calculation = useMemo(() => {
     const rawValues = [grossPay, additionalPension, monthlyInsurancePremiums];
@@ -47,31 +40,9 @@ const TaxCalculatorPage = () => {
       return { result: null, error: 'Enter valid, non-negative amounts in Kenyan shillings.' };
     }
 
-    if (!/^\d{4}-\d{2}$/.test(payrollMonth) || !/^\d{4}-\d{2}-\d{2}$/.test(ratesEffectiveFrom)) {
-      return { result: null, error: 'Select a payroll month and valid rate effective date.' };
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)) {
+      return { result: null, error: 'Select a valid payroll month.' };
     }
-
-    const statutoryValues = [nssfRate, nssfUpperLimit, shifRate, minimumShif, housingLevyRate].map(Number);
-    if (
-      statutoryValues.some((value) => !Number.isFinite(value) || value < 0)
-      || statutoryValues[0] > 100
-      || statutoryValues[2] > 100
-      || statutoryValues[4] > 100
-    ) {
-      return { result: null, error: 'Enter valid, non-negative statutory rates and limits.' };
-    }
-
-    const hasOverrides = `${payrollMonth}-01` >= ratesEffectiveFrom;
-    const rates: KenyanPayrollRates = hasOverrides
-      ? {
-        ...KENYAN_PAYROLL_RATES,
-        nssfRate: statutoryValues[0] / 100,
-        nssfUpperEarningsLimit: statutoryValues[1],
-        shifRate: statutoryValues[2] / 100,
-        minimumMonthlyShif: statutoryValues[3],
-        housingLevyRate: statutoryValues[4] / 100,
-      }
-      : KENYAN_PAYROLL_RATES;
 
     try {
       return {
@@ -79,7 +50,7 @@ const TaxCalculatorPage = () => {
           grossPay: values[0],
           additionalPensionContribution: values[1],
           monthlyInsurancePremiums: values[2],
-        }, rates),
+        }),
         error: null,
       };
     } catch (error) {
@@ -91,14 +62,8 @@ const TaxCalculatorPage = () => {
   }, [
     additionalPension,
     grossPay,
-    housingLevyRate,
-    minimumShif,
     monthlyInsurancePremiums,
-    nssfRate,
-    nssfUpperLimit,
     payrollMonth,
-    ratesEffectiveFrom,
-    shifRate,
   ]);
 
   const resultRows = calculation.result
@@ -209,45 +174,6 @@ const TaxCalculatorPage = () => {
                 Insurance relief is 15% of qualifying premiums, capped at KES 5,000 per month.
               </p>
             </div>
-            <details className="rounded-lg border border-slate-200 p-3">
-              <summary className="cursor-pointer font-medium text-slate-800">
-                Statutory rate overrides
-              </summary>
-              <p className="mt-2 text-xs text-amber-800">
-                Calculator-only overrides. They are not saved and do not change payroll processing.
-              </p>
-              <div className="mt-3 space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="rates-effective-from">Effective from</Label>
-                  <Input
-                    id="rates-effective-from"
-                    type="date"
-                    value={ratesEffectiveFrom}
-                    onChange={(event) => setRatesEffectiveFrom(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nssf-rate">NSSF contribution rate (%)</Label>
-                  <Input id="nssf-rate" type="number" min="0" step="0.01" value={nssfRate} onChange={(event) => setNssfRate(event.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nssf-limit">NSSF upper earnings limit (KES)</Label>
-                  <Input id="nssf-limit" type="number" min="0" step="1" value={nssfUpperLimit} onChange={(event) => setNssfUpperLimit(event.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="shif-rate">SHIF contribution rate (%)</Label>
-                  <Input id="shif-rate" type="number" min="0" step="0.01" value={shifRate} onChange={(event) => setShifRate(event.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minimum-shif">Minimum SHIF contribution (KES)</Label>
-                  <Input id="minimum-shif" type="number" min="0" step="1" value={minimumShif} onChange={(event) => setMinimumShif(event.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="housing-levy-rate">Affordable Housing Levy rate (%)</Label>
-                  <Input id="housing-levy-rate" type="number" min="0" step="0.01" value={housingLevyRate} onChange={(event) => setHousingLevyRate(event.target.value)} />
-                </div>
-              </div>
-            </details>
             {calculation.error && (
               <p className="text-sm font-medium text-red-700" role="alert">{calculation.error}</p>
             )}

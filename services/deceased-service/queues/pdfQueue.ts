@@ -28,6 +28,8 @@ const connection = {
 let pdfQueue: Queue | null = null;
 let pdfWorker: Worker<PDFGenerationJob> | null = null;
 let pdfWorkerStarting: Promise<Worker<PDFGenerationJob> | null> | null = null;
+let redisUnavailableUntil = 0;
+const REDIS_RETRY_BACKOFF_MS = 30_000;
 
 /**
  * Safely initialize the PDF queue
@@ -35,6 +37,7 @@ let pdfWorkerStarting: Promise<Worker<PDFGenerationJob> | null> | null = null;
  */
 export async function getPDFQueue(): Promise<Queue | null> {
   if (pdfQueue) return pdfQueue;
+  if (Date.now() < redisUnavailableUntil) return null;
 
   let testConnection: Redis | null = null;
   try {
@@ -76,11 +79,13 @@ export async function getPDFQueue(): Promise<Queue | null> {
       Logger.warn(`[PDFQueue] Queue error: ${err.message}`);
     });
 
+    redisUnavailableUntil = 0;
     Logger.info('[PDFQueue] Queue initialized successfully');
     return pdfQueue;
   } catch (error: any) {
     Logger.warn(`[PDFQueue] Redis not available - queue disabled (${error.message})`);
     pdfQueue = null;
+    redisUnavailableUntil = Date.now() + REDIS_RETRY_BACKOFF_MS;
     return null;
   } finally {
     try { testConnection?.disconnect(); } catch { /* already closed */ }

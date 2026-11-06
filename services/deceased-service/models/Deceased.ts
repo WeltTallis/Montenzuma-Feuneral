@@ -65,6 +65,7 @@ export class DeceasedModel {
         'SELECT COUNT(*) as count FROM deceased WHERE tenant_slug = ? AND YEAR(date_of_death) = ?',
         [tenantSlug, year]
       );
+
       const count = (countResult as any[])[0]?.count || 0;
       const deceased_id = `${slugify(tenantSlug).toUpperCase()}_${year}_${String(count + 1).padStart(4, '0')}`;
 
@@ -176,8 +177,10 @@ export class DeceasedModel {
 
   /**
    * Update deceased record
-   */
+  */
+
   static async update(tenantSlug: string, id: number, data: UpdateDeceasedDTO): Promise<DeceasedRecord | null> {
+
     const conn = await tenantDB.getConnection(tenantSlug);
 
     try {
@@ -222,6 +225,7 @@ export class DeceasedModel {
       );
 
       return this.getById(tenantSlug, id);
+
     } finally {
       conn.release();
     }

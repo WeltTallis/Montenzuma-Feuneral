@@ -19,6 +19,9 @@ import fs from 'fs';
 import { error } from 'console';
 
 
+const SOCKET_URI = process.env.SOCKETIO_SERVICE_URL;
+
+
 interface TenantRequest extends Request {
     tenantSlug?: string;
 }
@@ -534,8 +537,8 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
 
         try {
             const axios = require('axios');
-            const configuredUrl = process.env.SOCKETIO_SERVICE_URL || '';
-            const candidateUrls = [configuredUrl, 'http://localhost:5018', 'http://127.0.0.1:5018'].filter(Boolean);
+
+            const candidateUrls = SOCKET_URI
 
             const emitPayload = {
                 tenantSlug,
@@ -637,9 +640,9 @@ const syncPostmortemCompletion = async (
     }
     await safeTenantExecute(dbName, `UPDATE deceased SET ${sets.join(', ')} WHERE deceased_id = ?`, [now, deceasedId]);
 };
-// ═══════════════════════════════════════════════════════════════
+
 // EXPORT: savePostmortem (unchanged)
-// ═══════════════════════════════════════════════════════════════
+
 export const savePostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
     const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
 
@@ -696,11 +699,6 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                 head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
                 toxicology_findings || null, custom_findings || null, signature_base64,
                 staff_username || null, mortuary_name || null,
-                // THE FIX: this status used to be announced over the socket but
-                // never written to the row, so the record stayed 'pending' in the
-                // database and every reload showed "Postmortem Pending". COALESCE
-                // keeps the FIRST completion timestamp, so amending a report
-                // never rewrites when the examination was actually carried out.
                 finalStatus, isCompleted ? now : null, now, deceased_id]);
 
             await syncPostmortemCompletion(dbName, deceased_id, now, isCompleted);
@@ -708,13 +706,15 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
             emitPostmortemUpdate(tenantSlug, deceased_id, { status: finalStatus, pathologist_name, cause_of_death, manner_of_death, completed_at: isCompleted ? now : null });
 
             try {
+
                 let deceasedName = '';
                 try {
                     const nRows: any[] = (await safeTenantQuery(dbName, 'SELECT full_name FROM deceased WHERE deceased_id = ?', [deceased_id])) || [];
                     deceasedName = nRows[0]?.full_name || '';
                 } catch { }
 
-                const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+                const socketioServiceUrl = SOCKET_URI;
+
                 const axios = require('axios');
                 const who = deceasedName || deceased_id;
                 await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
@@ -731,6 +731,8 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
             }
 
             return res.status(200).json({ success: true, message: 'Postmortem data saved successfully', data: { deceased_id } });
+
+
         } else {
             const insertQuery = `
                 INSERT INTO postmortem (
@@ -760,7 +762,8 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
                     deceasedName = nRows[0]?.full_name || '';
                 } catch { }
 
-                const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+                const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL;
+
                 const axios = require('axios');
                 const who = deceasedName || deceased_id;
                 await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
@@ -802,7 +805,9 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
 };
 
 const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data: any) => {
-    const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+
+    const socketioServiceUrl = SOCKET_URI;
+
     try {
         const axios = require('axios');
         if (!tenantSlug || tenantSlug === 'system_shared') return;
@@ -916,10 +921,7 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
         await ensurePostmortemTable(dbName);
 
         const updates = req.body;
-        // `status` and `completed_at` used to be missing from this allow-list,
-        // so a record could never be closed through this endpoint — it could
-        // only ever stay pending. Accept them now, and stamp completed_at on the
-        // transition so the caller does not have to supply it.
+        // `status` and completed_at
         const allowedFields = [
             'pathologist_name', 'external_pathologist_name', 'external_pathologist_mobile', 'external_pathologist_id',
             'examination_summary', 'cause_of_death', 'immediate_cause_of_death', 'underlying_cause_of_death',
@@ -1016,6 +1018,9 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
     try {
         const dbName = await resolveDatabase(tenantSlug);
         if (!dbName) {
+            Logger.warn({
+                message: "[POSTMORTEM-FAILED]  Failed  To  resolve  tenat database  "
+            })
             res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
             return;
         }

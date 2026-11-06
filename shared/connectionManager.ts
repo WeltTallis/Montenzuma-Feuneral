@@ -490,8 +490,23 @@ export class ConnectionManager {
     metadata: PoolMetadata,
     tenantDbName: string
   ): Promise<mysql.PoolConnection> {
+    let timedOut = false;
+    let timeoutId: NodeJS.Timeout;
+    const acquisition = metadata.pool.getConnection().then((connection) => {
+      // getConnection() cannot be cancelled. If the timeout wins, release any
+      // connection that arrives later instead of leaking it from the pool.
+      if (timedOut) {
+        connection.release();
+        throw new Error(
+          `Timed out waiting for connection from pool "${tenantDbName}" after ${this.config.acquireTimeoutMs}ms`
+        );
+      }
+      return connection;
+    });
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
         reject(
           new Error(
             `Timed out waiting for connection from pool "${tenantDbName}" after ${this.config.acquireTimeoutMs}ms`
@@ -500,10 +515,11 @@ export class ConnectionManager {
       }, this.config.acquireTimeoutMs);
     });
 
-    // Race between acquiring a connection and timing out
-    const connection = await Promise.race([metadata.pool.getConnection(), timeoutPromise]);
-
-    return connection;
+    try {
+      return await Promise.race([acquisition, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
   }
 
   /**
