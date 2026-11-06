@@ -10,7 +10,7 @@ const generateDatedCheckoutId = (): string => {
     const dateStr = date.getFullYear().toString().slice(2) +
         String(date.getMonth() + 1).padStart(2, '0') +
         String(date.getDate()).padStart(2, '0');
-    const random = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 3);
+    const random = crypto.randomBytes(4).toString('hex').toUpperCase();
     return `DSP-${dateStr}-${random}`;
 };
 
@@ -24,7 +24,7 @@ const generateDatedCheckoutId = (): string => {
  */
 const generateTimestampCheckoutId = (): string => {
     const timestamp = Date.now().toString(36).toUpperCase().slice(-5);
-    const random = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 3);
+    const random = crypto.randomBytes(4).toString('hex').toUpperCase();
     return `DSP-${timestamp}-${random}`;
 };
 

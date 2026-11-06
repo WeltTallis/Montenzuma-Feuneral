@@ -87,6 +87,7 @@ bootstrap();
 
 
 process.on('uncaughtException', (error) => {
+
     Logger.error({
         message: 'Uncaught Exception    bodycheckout  service',
         error: error.message,
@@ -100,6 +101,7 @@ process.on('uncaughtException', (error) => {
 
     // Force exit if shutdown hangs
     setTimeout(() => process.exit(1), 5000);
+
 });
 
 process.on('unhandledRejection', (reason: any) => {

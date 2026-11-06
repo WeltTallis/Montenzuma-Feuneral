@@ -1,5 +1,5 @@
 
-import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps'
+import { getKenyaTimeISO } from '../../../packages/shared-utils/dist/timestamps'
 import { generateDatedCheckoutId } from '../utilities/generateCheckoutId';
 import { getTenantDB, resolveDatabase } from '../../../shared/dbConfig';
 import Logger from '@montezuma/shared-logger';
@@ -38,8 +38,6 @@ async function toInkBlue(buffer: Buffer): Promise<Buffer> {
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
-
-const now = getKenyaTimeISO();
 
 /**
  * Process a base64 signature and upload it to the centralized uploads service.
@@ -198,7 +196,7 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
       tell_number: validatedData.tell_number,
       relationship: validatedData.relationship || null,
       date_of_removal: formatDateForMySQL(validatedData.date_of_removal || validatedData.release_date),
-      time_of_removal: now,
+      time_of_removal: validatedData.time_of_removal || currentDateTime.slice(11, 19),
       permit_number: validatedData.permit_number || null,
       mode_of_transport: validatedData.mode_of_transport || null,
       final_destination: validatedData.final_destination || null,
@@ -285,23 +283,39 @@ export const releaseBodyController = async (req: Request, res: Response, next: N
     if (validatedData.admission_number) {
       const admissionNumber = String(validatedData.admission_number).trim();
       const releaseDate = releaseData.date_of_removal || currentDateTime.slice(0, 10);
-      const [syncResult]: any = await releaseConnection.execute(
-        `UPDATE deceased
-            SET body_status = 'Released',
-                release_status = 'released',
-                admission_status = 'released',
-                dispatch_date = COALESCE(dispatch_date, ?),
-                updated_at = ?
-          WHERE admission_number = ?
-             OR TRIM(admission_number) = ?`,
-        [releaseDate, currentDateTime, admissionNumber, admissionNumber]
+      const [deceasedColumns]: any = await releaseConnection.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'deceased'`
       );
-
-      if (Number(syncResult?.affectedRows || 0) === 0) {
+      const availableColumns = new Set((deceasedColumns as Array<{ COLUMN_NAME: string }>).map((column) => column.COLUMN_NAME));
+      if (!availableColumns.has('body_status')) {
+        throw new Error('The deceased table is missing its body_status column');
+      }
+      const assignments = ["body_status = 'Released'"];
+      const updateValues: unknown[] = [];
+      if (availableColumns.has('release_status')) assignments.push("release_status = 'released'");
+      if (availableColumns.has('admission_status')) assignments.push("admission_status = 'released'");
+      if (availableColumns.has('dispatch_date')) {
+        assignments.push('dispatch_date = COALESCE(dispatch_date, ?)');
+        updateValues.push(releaseDate);
+      }
+      if (availableColumns.has('updated_at')) {
+        assignments.push('updated_at = ?');
+        updateValues.push(currentDateTime);
+      }
+      updateValues.push(admissionNumber, admissionNumber);
+      const [matchingRows]: any = await releaseConnection.execute(
+        'SELECT deceased_id FROM deceased WHERE admission_number = ? OR TRIM(admission_number) = ? LIMIT 1 FOR UPDATE',
+        [admissionNumber, admissionNumber]
+      );
+      if (!(matchingRows as unknown[]).length) {
         const syncError: any = new Error(`No deceased row matched admission number ${admissionNumber}`);
         syncError.code = 'DECEASED_NOT_FOUND';
         throw syncError;
       }
+      await releaseConnection.execute(
+        `UPDATE deceased SET ${assignments.join(', ')} WHERE admission_number = ? OR TRIM(admission_number) = ?`,
+        updateValues
+      );
       Logger.info(`[RELEASE] Deceased register set to Released for ${admissionNumber}`);
     }
 
