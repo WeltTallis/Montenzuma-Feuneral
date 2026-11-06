@@ -1235,6 +1235,9 @@ const DeceasedRegistrationForm = () => {
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  const [registrationRequestId, setRegistrationRequestId] = useState(() =>
+    globalThis.crypto?.randomUUID?.() || `intake-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
 
   const fetchPausedDrafts = async () => {
     try {
@@ -1393,6 +1396,7 @@ const DeceasedRegistrationForm = () => {
     const signatureData = sigPadRef1.current?.toDataURL();
 
     const payload = {
+      registration_request_id: registrationRequestId,
       full_name: formData.full_name,
       cause_of_death: formData.cause_of_death,
       national_id: formData.id_number,
@@ -1444,6 +1448,7 @@ const DeceasedRegistrationForm = () => {
           time_received: getCurrentTime(),
           date_admitted: todayKey(),
         });
+        setRegistrationRequestId(globalThis.crypto?.randomUUID?.() || `intake-${Date.now()}-${Math.random().toString(36).slice(2)}`);
         setAdmissionId('');
         sigPadRef1.current?.clear();
         setErrors({});
@@ -1505,6 +1510,7 @@ const DeceasedRegistrationForm = () => {
         time_received: getCurrentTime(),
         date_admitted: todayKey(),
       });
+      setRegistrationRequestId(globalThis.crypto?.randomUUID?.() || `intake-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       setAdmissionId('');
       sigPadRef1.current?.clear();
       setErrors({});
@@ -1591,6 +1597,7 @@ const DeceasedRegistrationForm = () => {
       time_received: getCurrentTime(),
       date_admitted: todayKey(),
     });
+    setRegistrationRequestId(globalThis.crypto?.randomUUID?.() || `intake-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     setErrors({});
     setMessage({ type: '', text: '' });
     setAdmissionId('');

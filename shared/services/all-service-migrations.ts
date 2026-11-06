@@ -107,6 +107,10 @@ const DECEASED_SERVICE_MIGRATIONS: Migration[] = [
     sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS contact_person VARCHAR(255) NULL AFTER received_from`,
   },
   {
+    name: '010c_add_deceased_registration_idempotency_key',
+    sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS registration_request_id VARCHAR(64) NULL, ADD UNIQUE INDEX IF NOT EXISTS uq_deceased_registration_request_id (registration_request_id)`,
+  },
+  {
     name: '011_create_next_of_kin_table',
     sql: `CREATE TABLE IF NOT EXISTS next_of_kin (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(50) NOT NULL, tenant_slug VARCHAR(255) NOT NULL, full_name VARCHAR(255) NOT NULL, relationship VARCHAR(100) NOT NULL, contact VARCHAR(30) NOT NULL, email VARCHAR(255), alternative_phone VARCHAR(20), id_number VARCHAR(100), id_type ENUM('national-id', 'passport', 'voters-card', 'other') NULL, address TEXT, is_primary BOOLEAN DEFAULT TRUE, is_notified BOOLEAN DEFAULT FALSE, notified_at VARCHAR(255) NULL, created_by VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), is_deleted BOOLEAN DEFAULT FALSE, deleted_at VARCHAR(255) NULL, deleted_by VARCHAR(255), FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_relationship (relationship), INDEX idx_tenant_slug (tenant_slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   },
