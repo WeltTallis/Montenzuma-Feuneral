@@ -12,15 +12,53 @@ import cors from 'cors';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8115', 10);
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = new Set(
+    [process.env.ALLOWED_ORIGINS, process.env.FRONTEND_URL]
+        .filter(Boolean)
+        .flatMap((value) => String(value).split(','))
+        .map((origin) => origin.trim().replace(/\/$/, ''))
+        .filter(Boolean)
+);
 
-// Middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(helmet());
+// Security headers: this service only serves JSON APIs, so it does not need
+// inline scripts, embedded frames, cross-origin resource access, or referrers.
+app.disable('x-powered-by');
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'none'"],
+            baseUri: ["'none'"],
+            formAction: ["'none'"],
+            frameAncestors: ["'none'"],
+        },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    referrerPolicy: { policy: 'no-referrer' },
+    strictTransportSecurity: isProduction
+        ? { maxAge: 31_536_000, includeSubDomains: true }
+        : false,
+    xFrameOptions: { action: 'deny' },
+}));
+
+app.use(express.json({ limit: '5mb', strict: true }));
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+        // Non-browser clients (service-to-service calls, health probes) may
+        // omit Origin. Browser callers must match the explicit allowlist.
+        if (!origin || allowedOrigins.has(origin.replace(/\/$/, ''))) {
+            callback(null, true);
+            return;
+        }
+        callback(new Error('Origin is not allowed by CORS'));
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'X-tenant-slug']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'Idempotency-Key'],
+    maxAge: 600,
+    optionsSuccessStatus: 204,
 }));
 
 
@@ -55,9 +93,19 @@ app.use((err: any, req: any, res: any, next: any) => {
         error: err.message
     });
 
-    res.status(500).json({
+    if (res.headersSent) {
+        next(err);
+        return;
+    }
+
+    const status = err?.type === 'entity.too.large' ? 413 : err?.message === 'Origin is not allowed by CORS' ? 403 : 500;
+    res.status(status).json({
         success: false,
-        message: 'Internal server error'
+        message: status === 413
+            ? 'Request body is too large'
+            : status === 403
+                ? 'Request origin is not allowed'
+                : 'Internal server error'
     });
 });
 
