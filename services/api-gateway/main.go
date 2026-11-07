@@ -313,6 +313,10 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if strings.HasPrefix(r.URL.Path, "/bridge/") {
+		g.serveBridge(recorder, r)
+		return
+	}
 	if !strings.HasPrefix(r.URL.Path, "/api/") {
 		writeJSON(recorder, http.StatusNotFound, map[string]any{
 			"success": false, "message": "Route not found", "requestId": requestID,
@@ -341,6 +345,20 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"service": service, "requestId": requestID,
 		})
 		return
+	}
+	if key == "documents" && r.Method == http.MethodPost && strings.HasPrefix(pathAfterMount, "documents/upload") {
+		grant := strings.TrimSpace(r.Header.Get("X-Bridge-Grant"))
+		if grant != "" {
+			claims, ok := readBridgeGrant(grant, g.config.JWTSecret)
+			if !ok || claims.Scope != "bridge:scan" {
+				writeJSON(recorder, http.StatusUnauthorized, map[string]any{"success": false, "message": "Scanner upload grant is invalid or expired", "requestId": requestID})
+				return
+			}
+			r.Header.Set("Authorization", "Bearer "+claims.Token)
+			r.Header.Set("X-Tenant-Slug", claims.Tenant)
+			r.Header.Set("X-User-Id", claims.Subject)
+			r.Header.Del("X-Bridge-Grant")
+		}
 	}
 	if key == "hrPayroll" && isPayrollLogin(pathAfterMount) {
 		writeJSON(recorder, http.StatusForbidden, map[string]any{

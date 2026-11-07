@@ -1,6 +1,5 @@
 
 
-import { ensurePostmortemRequestsTable, ensurePostmortemTable, ensureDeceasedPostmortemFlags } from './postmortemRequestControl';
 import { safeTenantExecute, safeTenantQuery, resolveDatabase, getRootPool } from '../../../../shared/dbConfig';
 import { getKenyaTimeISO, getKenyaDate } from '../../../../packages/shared-utils/dist/timestamps';
 import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
@@ -22,13 +21,13 @@ import { error } from 'console';
 const SOCKET_URI = process.env.SOCKETIO_SERVICE_URL;
 
 
-interface TenantRequest extends Request {
+export interface TenantRequest extends Request {
     tenantSlug?: string;
 }
 
 const nowNairobi = getKenyaTimeISO();
 
-const formatFacilityName = (tenantSlug: string): string => {
+export const formatFacilityName = (tenantSlug: string): string => {
     if (!tenantSlug || tenantSlug === 'system_shared') return 'RestPoint Mortuary';
     return tenantSlug
         .replace(/[-_]/g, ' ')
@@ -39,7 +38,7 @@ const formatFacilityName = (tenantSlug: string): string => {
 };
 
 // ─── PDF HELPERS ──────────────────────────────────────────────
-function fmtLong(iso: string | null | undefined): string {
+export function fmtLong(iso: string | null | undefined): string {
     if (!iso) return 'N/A';
     try {
         return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -48,7 +47,7 @@ function fmtLong(iso: string | null | undefined): string {
     }
 }
 
-function fmtShort(iso: string | null | undefined): string {
+export function fmtShort(iso: string | null | undefined): string {
     if (!iso) return 'N/A';
     try {
         return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -74,7 +73,7 @@ function esc(s: string | null | undefined): string {
  * Resolve the real tenant branding from `tenant_tracking.tenants`.
  * The PDF used to derive its header from the URL slug
  */
-async function resolveTenantBranding(tenantSlug: string): Promise<{
+export async function resolveTenantBranding(tenantSlug: string): Promise<{
     name: string; logoUrl: string; phone: string; email: string; address: string;
 }> {
     const empty = { name: '', logoUrl: '', phone: '', email: '', address: '' };
@@ -135,7 +134,7 @@ async function resolveTenantBranding(tenantSlug: string): Promise<{
  * Never throws; returns null when no logo can be loaded, in which case the
  * template simply omits the image.
  */
-async function loadLogoBase64(logoUrl: string): Promise<string | null> {
+export async function loadLogoBase64(logoUrl: string): Promise<string | null> {
     if (!logoUrl) return null;
 
     const raw = String(logoUrl).trim();
@@ -239,7 +238,7 @@ function fetchLogoBase64(url: string, depth = 0): Promise<string | null> {
 // HTML TEMPLATE — height:297mm + overflow:hidden = GUARANTEED 1 page
 // flex pushes bottom section to bottom, filling the page
 // async: renders the barcode (await generateBarcodeBars) into the HTML.
-async function buildReportHtml(p: {
+export async function buildReportHtml(p: {
     tenantName: string;
     tenantAddress: string;
     tenantPhone: string;
@@ -434,7 +433,7 @@ async function buildReportHtml(p: {
 }
 
 // ─── INK-BLUE SIGNATURE NORMALIZATION (unchanged) ─────────────
-async function toInkBlueBuffer(buffer: Buffer): Promise<Buffer> {
+export async function toInkBlueBuffer(buffer: Buffer): Promise<Buffer> {
     const { data, info } = await sharp(buffer)
         .ensureAlpha()
         .raw()
@@ -457,7 +456,7 @@ async function toInkBlueBuffer(buffer: Buffer): Promise<Buffer> {
         .toBuffer();
 }
 
-async function normalizeSignatureToInkBlue(signatureDataUrl: string): Promise<string> {
+export async function normalizeSignatureToInkBlue(signatureDataUrl: string): Promise<string> {
     if (!signatureDataUrl || !signatureDataUrl.startsWith('data:image')) {
         return signatureDataUrl;
     }
@@ -472,144 +471,8 @@ async function normalizeSignatureToInkBlue(signatureDataUrl: string): Promise<st
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// EXPORT: requestPostmortem (unchanged)
-// ═══════════════════════════════════════════════════════════════
-export const requestPostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
-    const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
-    if (!tenantSlug || tenantSlug === 'system_shared') {
-        return res.status(400).json({ success: false, message: 'Valid tenant required. Please provide x-tenant-slug header' });
-    }
-    try {
-        const { deceased_id, reason, requested_by, requesting_authority, notes, source, priority } = req.body;
-        if (!deceased_id || !reason || !requested_by) {
-            return res.status(400).json({ success: false, message: 'deceased_id, reason, and requested_by are required' });
-        }
-        const dbName = await resolveDatabase(tenantSlug);
-        if (!dbName) {
-            return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
-        }
 
-        const now = getKenyaTimeISO();
-        const requestId = `PMREQ-${Date.now()}-${deceased_id}`;
-        const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
-        const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
-
-        if (existing && (existing as any[]).length > 0) {
-            const updateQuery = `UPDATE postmortem SET status = 'pending', requested_by = ?, requested_at = ?, requesting_authority = ?, updated_at = ? WHERE deceased_id = ?`;
-            await safeTenantExecute(dbName, updateQuery, [requested_by, now, reason, now, deceased_id]);
-        } else {
-            const insertQuery = `INSERT INTO postmortem (deceased_id, status, requested_by, requested_at, requesting_authority, examination_summary, created_at, updated_at) VALUES (?, 'pending', ?, ?, ?, ?, ?, ?)`;
-            await safeTenantExecute(dbName, insertQuery, [deceased_id, requested_by, now, reason, reason, now, now]);
-        }
-
-        let trackingRequestId: number | null = null;
-        try {
-            await ensurePostmortemRequestsTable(dbName);
-            const requestRef = `PMR-${Date.now()}`;
-            const sourceTag = typeof source === 'string' && source.trim() ? source.trim() : 'postmortem_request_form';
-            const trackingNotes = [
-                typeof notes === 'string' && notes.trim() ? notes.trim() : null,
-                `Source: ${sourceTag}`,
-                typeof priority === 'string' && priority.trim() ? `Priority: ${priority.trim()}` : null,
-            ].filter(Boolean).join(' · ') || null;
-
-            const tracked: any = await safeTenantExecute(dbName, `
-                INSERT INTO postmortem_requests
-                    (deceased_id, request_ref, requested_by, requesting_authority, reason, notes, status, initiated_by, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'initiated', ?, ?, ?)
-            `, [deceased_id, requestRef, requested_by, requesting_authority || null, reason, trackingNotes, requested_by, now, now]);
-            trackingRequestId = tracked?.insertId ?? null;
-        } catch (trackErr: any) {
-            Logger.warn({ message: 'Failed to mirror postmortem request into postmortem_requests', error: trackErr?.message });
-        }
-
-        // Sync the deceased record: the body is now awaiting postmortem examination.
-        // `postmortem_requested` is the flag analytics-service counts on.
-        try {
-            await ensureDeceasedPostmortemFlags(dbName);
-            await safeTenantExecute(dbName,
-                `UPDATE deceased SET body_status = 'Postmortem Requested', postmortem_requested = 1, postmortem_completed = 0, updated_at = ? WHERE deceased_id = ?`,
-                [now, deceased_id]);
-        } catch (statusErr: any) {
-            Logger.warn({ message: 'Failed to set deceased body_status to Postmortem Requested', error: statusErr?.message });
-        }
-
-        try {
-            const axios = require('axios');
-
-            const candidateUrls = SOCKET_URI
-
-            const emitPayload = {
-                tenantSlug,
-                data: {
-                    id: `postmortem-request-${deceased_id}-${Date.now()}`,
-                    deceasedId: deceased_id, requestId, requestedBy: requested_by, reason,
-                    title: 'Postmortem Requested', message: `Postmortem examination requested for deceased ${deceased_id}`,
-                    type: 'postmortem_requested', priority: 'high',
-                    fullContent: `Request ID: ${requestId}\nDeceased ID: ${deceased_id}\nRequested By: ${requested_by}\nReason: ${reason}\nDate: ${now}`,
-                }
-            };
-
-            for (const socketioServiceUrl of candidateUrls) {
-                try {
-                    await axios.post(`${socketioServiceUrl}/emit/postmortem-requested`, emitPayload, { timeout: 3000 });
-                    break;
-                } catch (urlError: any) {
-                    Logger.warn({ message: `SocketIO URL failed: ${socketioServiceUrl}`, error: urlError.message });
-                }
-            }
-
-            const trackingPayload = {
-                tenantSlug,
-                data: {
-                    id: trackingRequestId ? `pmr-${trackingRequestId}` : `postmortem-request-${deceased_id}-${Date.now()}`,
-                    requestId: trackingRequestId ? String(trackingRequestId) : '', deceasedId: deceased_id,
-                    requestedBy: requested_by, requestingAuthority: requesting_authority || '', reason,
-                    title: 'Postmortem Request Received', message: `Postmortem request submitted by ${requested_by}`,
-                    type: 'postmortem_request', priority: 'high',
-                    fullContent: [`Deceased ID: ${deceased_id}`, `Requested By: ${requested_by}`, requesting_authority ? `Requesting Authority: ${requesting_authority}` : null, `Reason: ${reason}`, typeof source === 'string' && source ? `Source: ${source}` : null, `Date: ${now}`].filter(Boolean).join('\n'),
-                },
-            };
-
-            for (const socketioServiceUrl of candidateUrls) {
-                try {
-                    await axios.post(`${socketioServiceUrl}/emit/postmortem-request-created`, trackingPayload, { timeout: 3000 });
-                    break;
-                } catch (urlError: any) {
-                    Logger.warn({ message: `SocketIO URL failed for postmortem-request-created: ${socketioServiceUrl}`, error: urlError.message });
-                }
-            }
-        } catch (emitError: any) {
-            Logger.warn({ message: `Failed to emit postmortem-requested notification`, error: emitError.message });
-        }
-
-        return res.status(201).json({
-            success: true, message: "Postmortem request submitted successfully",
-            data: { requestId, deceased_id, status: 'pending' }
-        });
-
-    } catch (error: any) {
-        Logger.error({ message: "Error requesting postmortem", error: error.message || error });
-        return res.status(500).json({ success: false, message: error.sqlMessage || error.message || "Internal server error" });
-    }
-};
-
-/**
- * Mirror the examination state onto everything else that tracks it.
- *
- * `savePostmortem` used to write only the findings columns, so the row's
- * `status` stayed 'pending' forever — every read path (profile sidebar,
- * deceased timeline, dashboard "Pending Postmortem" card, analytics counters)
- * kept reporting a finished case as outstanding. The deceased row was equally
- * stale: `body_status` was pinned to 'Postmortem Requested' with nothing ever
- * moving it on.
- *
- * Every write is guarded independently so a tenant missing a column — or one
- * whose `postmortem_requests` predates the `completed` state — still receives
- * the parts it can accept.
- */
-const syncPostmortemCompletion = async (
+export const syncPostmortemCompletion = async (
     dbName: string,
     deceasedId: string,
     now: string,
@@ -617,7 +480,6 @@ const syncPostmortemCompletion = async (
 ): Promise<void> => {
     // 1. Close out the tracked request so it stops showing as outstanding.
     try {
-        await ensurePostmortemRequestsTable(dbName);
         await safeTenantExecute(
             dbName,
             `UPDATE postmortem_requests SET status = ?, completed_at = ?, updated_at = ?
@@ -631,7 +493,6 @@ const syncPostmortemCompletion = async (
     // 2. The deceased row — flags analytics-service reads, plus body_status.
     //    This update MUST succeed — if it silently fails, the deceased stays on
     //    'Postmortem Requested' forever even after results are saved.
-    await ensureDeceasedPostmortemFlags(dbName);
     const sets: string[] = ['updated_at = ?', 'postmortem_requested = 1', `postmortem_completed = ${completed ? 1 : 0}`];
     if (completed) {
         // Only advance the body_status when it is still awaiting the exam —
@@ -674,7 +535,6 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
         const rawSignature = (req.body as any).signature_base64;
         const signature_base64 = rawSignature ? await normalizeSignatureToInkBlue(rawSignature) : null;
 
-        await ensurePostmortemTable(dbName);
 
         const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
         const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
@@ -804,7 +664,7 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
     }
 };
 
-const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data: any) => {
+export const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data: any) => {
 
     const socketioServiceUrl = SOCKET_URI;
 
@@ -908,364 +768,7 @@ export const getPostmortemByDeceasedId = async (req: TenantRequest, res: Respons
     }
 };
 
-export const updatePostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
-    const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
-    const { id } = req.params;
-
-    if (!id || !tenantSlug) return res.status(400).json({ success: false, message: 'id and tenant are required' });
-
-    try {
-        const dbName = await resolveDatabase(tenantSlug);
-        if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
-
-        await ensurePostmortemTable(dbName);
-
-        const updates = req.body;
-        // `status` and completed_at
-        const allowedFields = [
-            'pathologist_name', 'external_pathologist_name', 'external_pathologist_mobile', 'external_pathologist_id',
-            'examination_summary', 'cause_of_death', 'immediate_cause_of_death', 'underlying_cause_of_death',
-            'contributing_conditions', 'manner_of_death', 'requesting_authority', 'findings', 'report_pdf_url',
-            'signature', 'status', 'completed_at'];
-
-        const VALID_STATUSES = ['pending', 'in_progress', 'completed'];
-        const requestedStatus = updates.status !== undefined ? String(updates.status).trim().toLowerCase() : null;
-        if (requestedStatus !== null && !VALID_STATUSES.includes(requestedStatus)) {
-            return res.status(400).json({ success: false, message: `status must be one of: ${VALID_STATUSES.join(', ')}` });
-        }
-
-        const now = getKenyaTimeISO();
-        const fields: string[] = [];
-        const values: any[] = [];
-
-        for (const field of allowedFields) {
-            if (updates[field] === undefined) continue;
-            // completed_at is stamped below so the transition itself dates the row.
-            if (field === 'completed_at' && requestedStatus === 'completed') continue;
-            fields.push(`${field} = ?`);
-            const value = field === 'findings' && typeof updates[field] === 'object'
-                ? JSON.stringify(updates[field])
-                : field === 'signature' && typeof updates[field] === 'string' && updates[field].startsWith('data:image')
-                    ? await normalizeSignatureToInkBlue(updates[field])
-                    : updates[field];
-            values.push(value);
-        }
-
-        if (requestedStatus === 'completed') {
-            fields.push('completed_at = COALESCE(completed_at, ?)');
-            values.push(now);
-        }
-
-        if (fields.length === 0) return res.status(400).json({ success: false, message: 'No fields to update' });
-
-        fields.push('updated_at = ?');
-        values.push(now);
-        values.push(id);
-
-        const updateQuery = `UPDATE postmortem SET ${fields.join(', ')} WHERE id = ?`;
-        await safeTenantExecute(dbName, updateQuery, values);
-
-        // Keep the surrounding records in step with the new state, otherwise the
-        // timeline / dashboard / analytics keep reporting the old one.
-        if (requestedStatus) {
-            const owner: any[] = (await safeTenantQuery(dbName, 'SELECT deceased_id FROM postmortem WHERE id = ?', [id])) || [];
-            const deceasedId = owner[0]?.deceased_id;
-            if (deceasedId) {
-                await syncPostmortemCompletion(dbName, deceasedId, now, requestedStatus === 'completed');
-                emitPostmortemUpdate(tenantSlug, deceasedId, { status: requestedStatus, completed_at: requestedStatus === 'completed' ? now : null });
-            }
-        }
-
-        return res.status(200).json({ success: true, message: 'Postmortem record updated successfully' });
-    } catch (error: any) {
-
-        Logger.error({
-            messsage: "   AN   eroor   Occured   while  updating  postmortem",
-            error: error.message
-        })
-
-        return res.status(500).json({ success: false, message: 'Internal Server Error' });
-    }
-};
-
-// PUPPETEER LOADER
-
-type PuppeteerNodeModule = typeof import('puppeteer', { with: { 'resolution-mode': 'import' } })['default'];
-
-let puppeteerModulePromise: Promise<PuppeteerNodeModule> | null = null;
-
-const loadPuppeteer = async (): Promise<PuppeteerNodeModule> => {
-    if (!puppeteerModulePromise) {
-        puppeteerModulePromise = import('puppeteer')
-            .then((mod: any) => (mod.default || mod) as PuppeteerNodeModule);
-    }
-    return puppeteerModulePromise;
-};
-
-// EXPORT: generatePostmortemPDF — Puppeteer, GUARANTEED 1 page
-
-export const generatePostmortemPDF = async (req: TenantRequest, res: Response): Promise<void> => {
-    const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
-    const { deceased_id } = req.params;
-
-    if (!deceased_id || !tenantSlug) {
-        res.status(400).json({ success: false, message: 'deceased_id and tenant are required' });
-        return;
-    }
-
-    let browser: Browser | null = null;
-
-    try {
-        const dbName = await resolveDatabase(tenantSlug);
-        if (!dbName) {
-            Logger.warn({
-                message: "[POSTMORTEM-FAILED]  Failed  To  resolve  tenat database  "
-            })
-            res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
-            return;
-        }
-
-        // ── 1. QUERY POSTMORTEM ──
-        const postmortemQuery = `
-            SELECT id, deceased_id, status, pathologist_name, external_pathologist_name,
-                   external_pathologist_mobile, external_pathologist_id,
-                   examination_summary, cause_of_death, immediate_cause_of_death,
-                   underlying_cause_of_death, contributing_conditions,
-                   manner_of_death, requesting_authority, signature,
-                   created_at, updated_at
-            FROM postmortem WHERE deceased_id = ?`;
-        const pmResults = await safeTenantQuery(dbName, postmortemQuery, [deceased_id]);
-        if (!pmResults || (pmResults as any[]).length === 0) {
-            res.status(404).json({ success: false, message: 'Postmortem record not found' });
-            return;
-        }
-        const postmortem = (pmResults as any[])[0];
-
-        // ── 2. QUERY DECEASED ──
-
-        const dCols = await tableColumns(dbName, 'deceased');
-        const DECEASED_PDF_COLS = [
-            'full_name', 'date_of_death', 'signature', 'admission_number',
-            'date_of_birth', 'age', 'gender', 'place_of_death', 'national_id',
-        ];
-        let deceased: any = null;
-        if (dCols.has('deceased_id')) {
-            const deceasedQuery = `SELECT ${DECEASED_PDF_COLS.map((c) => pickAs(dCols, c, c)).join(', ')}
-                FROM deceased WHERE deceased_id = ?`;
-            const decResults = await safeTenantQuery(dbName, deceasedQuery, [deceased_id]);
-            deceased = decResults && (decResults as any[]).length > 0 ? (decResults as any[])[0] : null;
-        }
-
-        // ── 3. QUERY NEXT OF KIN ──
-
-        const nCols = await tableColumns(dbName, 'next_of_kin');
-        let nextOfKin: any = null;
-        if (nCols.size > 0 && nCols.has('deceased_id')) {
-            const where = ['deceased_id = ?'];
-            if (nCols.has('is_primary')) where.push('is_primary = 1');
-            if (nCols.has('is_deleted')) where.push('is_deleted = 0');
-            const kinSelect = ['full_name', 'relationship', 'contact']
-                .map((c) => pickAs(nCols, c, c))
-                .join(', ');
-            const kinQuery = `SELECT ${kinSelect} FROM next_of_kin WHERE ${where.join(' AND ')} LIMIT 1`;
-            const kinResults = await safeTenantQuery(dbName, kinQuery, [deceased_id]);
-            nextOfKin = kinResults && (kinResults as any[]).length > 0 ? (kinResults as any[])[0] : null;
-        }
-
-        // ── 4. EXTRACT VALUES ──
-        const facilityName = formatFacilityName(tenantSlug);
-        const fullName = deceased?.full_name || 'Unknown';
-        const admissionNumber = deceased?.admission_number || deceased_id;
-        const dateOfDeath = fmtLong(deceased?.date_of_death);
-        const age = deceased?.age || 'N/A';
-        const gender = deceased?.gender || 'N/A';
-
-        const pathologistName = postmortem.external_pathologist_name || postmortem.pathologist_name || 'Attending Pathologist';
-        const pathologistLicense = postmortem.external_pathologist_id || '';
-        const pathologistCredentials = pathologistLicense ? 'MBChB, MMed (Pathology)' : 'Pathologist';
-        const examDate = fmtLong(postmortem.updated_at || postmortem.created_at);
-        const mannerOfDeath = postmortem.manner_of_death || 'N/A';
-        const immediateCause = postmortem.immediate_cause_of_death || postmortem.cause_of_death || 'N/A';
-        const underlyingCause = postmortem.underlying_cause_of_death || 'N/A';
-        const examinationSummary = postmortem.examination_summary || '';
-
-        const kinName = nextOfKin?.full_name || deceased?.full_name || 'N/A';
-        const kinRelationship = nextOfKin?.relationship || 'N/A';
-        const kinPhone = nextOfKin?.contact || 'N/A';
-
-        const issuedDate = fmtLong(new Date().toISOString());
-        const verifiedDate = fmtShort(new Date().toISOString());
-        const reportRef = `PM-${deceased_id}-${DateTime.now().setZone('Africa/Nairobi').toFormat('yyyyMMdd')}`;
-        const fullTimestamp = DateTime.now().setZone('Africa/Nairobi').toFormat('yyyy-MM-dd hh:mm:ss a');
-
-        // ── 5. LOAD SIGNATURE ──
-        let signatureBase64: string | null = null;
-        const signaturePath =
-            postmortem?.signature ||
-            postmortem?.pathologist_signature ||
-            deceased?.pathologist_signature ||
-            deceased?.signature;
-
-        if (signaturePath && typeof signaturePath === 'string') {
-            try {
-                let sigBuffer: Buffer | null = null;
-                if (signaturePath.startsWith('data:image')) {
-                    const base64Data = signaturePath.split(',')[1];
-                    sigBuffer = Buffer.from(base64Data, 'base64');
-                } else if (signaturePath.startsWith('http')) {
-                    const axios = require('axios');
-                    const response = await axios.get(signaturePath, { responseType: 'arraybuffer', timeout: 10000 });
-                    sigBuffer = Buffer.from(response.data);
-                } else {
-                    const uploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-                    const relativePath = signaturePath.replace(/^\/uploads\//, '');
-                    const fsPath = path.join(uploadsBase, relativePath);
-                    if (fs.existsSync(fsPath)) sigBuffer = fs.readFileSync(fsPath);
-                }
-                if (sigBuffer) {
-                    try {
-                        const inkBuffer = await toInkBlueBuffer(sigBuffer);
-                        signatureBase64 = 'data:image/png;base64,' + inkBuffer.toString('base64');
-                    } catch {
-                        signatureBase64 = 'data:image/png;base64,' + sigBuffer.toString('base64');
-                    }
-                }
-            } catch (sigError) {
-                console.warn('[PDF] Failed to load signature:', sigError);
-            }
-        }
-
-        // ── 6. TENANT BRANDING (logo + name, same source as Settings) ──
-
-        const branding = await resolveTenantBranding(tenantSlug);
-        const brandingName = branding.name || facilityName;   // fall back to the slug-derived name
-        const logoBase64 = await loadLogoBase64(
-            branding.logoUrl || process.env.FUNERAL_HOME_LOGO_URL || '',
-        );
-
-        // ── 7. BUILD HTML ──
-        // await: buildReportHtml renders the barcode, which is async.
-        const html = await buildReportHtml({
-            tenantName: brandingName,
-            tenantAddress: branding.address,
-            tenantPhone: branding.phone,
-            tenantEmail: branding.email,
-            deceasedFullName: fullName,
-            deceasedAdmission: admissionNumber,
-            deceasedDateOfDeath: dateOfDeath,
-            deceasedAge: age,
-            deceasedGender: gender,
-            examDate,
-            pathologistName,
-            pathologistCredentials,
-            pathologistLicense,
-            mannerOfDeath,
-            immediateCause,
-            underlyingCause,
-            examinationSummary,
-            kinName,
-            kinRelationship,
-            kinPhone,
-            verifiedDate,
-            issuedDate,
-            logoBase64,
-            signatureBase64,
-        });
-
-        // ── 8. GENERATE PDF WITH PUPPETEER ──
-        const puppeteer = await loadPuppeteer();
-        browser = await puppeteer.launch({
-            // v25 accepts `boolean | 'shell'` only — `true` = new headless mode
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--font-render-hinting=none'],
-        });
-
-        const page = await browser.newPage();
-
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            const url = req.url();
-            if (url.startsWith('data:') || url.startsWith('about:') || url.startsWith('file:')) {
-                req.continue();
-            } else {
-                req.abort();
-            }
-        });
-
-        await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 });
-
-        await page.setContent(html, {
-            waitUntil: 'domcontentloaded',
-            timeout: 15000,
-        });
-
-        await new Promise(r => setTimeout(r, 500));
-
-        // ── 9. GENERATE PDF — preferCSSPageSize respects our @page rule ──
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
-            preferCSSPageSize: true,
-        });
-
-        // ── 10. SEND RESPONSE ──
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="postmortem-${deceased_id}.pdf"`);
-        res.send(pdfBuffer);
-
-        // ── 11. SOCKET EMIT ──
-        try {
-            const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
-            const axios = require('axios');
-            const notificationPayload = {
-                tenantSlug,
-                data: {
-                    id: `postmortem-pdf-${deceased_id}-${Date.now()}`,
-                    deceasedId: deceased_id,
-                    deceasedName: fullName,
-                    reportRef,
-                    title: 'Postmortem PDF Generated',
-                    message: `Postmortem report PDF has been generated for ${fullName} (${deceased_id})`,
-                    type: 'postmortem_pdf_generated',
-                    priority: 'high',
-                    fullContent: `Postmortem Report PDF Generated\nDeceased ID: ${deceased_id}\nName: ${fullName}\nReport Reference: ${reportRef}\nPathologist: ${pathologistName}\nCause of Death: ${immediateCause}\nManner of Death: ${mannerOfDeath}\nGenerated: ${fullTimestamp}`,
-                    data: {
-                        deceased_id: deceased_id,
-                        deceased_name: fullName,
-                        report_ref: reportRef,
-                        pathologist: pathologistName,
-                        cause_of_death: immediateCause,
-                        manner_of_death: mannerOfDeath,
-                        generated_at: fullTimestamp,
-                    },
-                    timestamp: new Date().toISOString(),
-                    expiresAt: Date.now() + (2 * 60 * 60 * 1000),
-                },
-            };
-
-            await axios.post(`${socketioServiceUrl}/emit/postmortem-pdf-generated`, notificationPayload, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
-        } catch (emitError: any) {
-            Logger.warn({
-                message: " Failed   to  emit  pdf   generated  event ",
-                error: emitError.message
-            })
 
 
-        }
 
-    } catch (error: any) {
-        Logger.error({
-            message: "  An   Errror   Ocuured   While  Trying to   genrate   PostmortmePDF",
-            error: error.message
-        })
 
-        if (!res.headersSent) {
-            res.status(500).json({ success: false, message: 'Internal Server Error' });
-        }
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
-};

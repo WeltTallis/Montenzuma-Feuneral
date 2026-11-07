@@ -97,6 +97,7 @@ const NAPS2_SEARCH_DIRS_WIN = [
   'C:\\Users\\Public\\Desktop',
 ];
 const isWin = process.platform === 'win32';
+const isMac = process.platform === 'darwin';
 
 /** First NAPS2 binary that exists insinull when there is none. */
 function pickBinaryInDir(dir: string): string | null {
@@ -185,6 +186,7 @@ const SCAN_TIMEOUT_MS = Math.max(10000, Number(process.env.SCAN_TIMEOUT_MS || 12
 const DEFAULT_FORMAT = (process.env.SCANNER_DEFAULT_FORMAT || 'pdf').toLowerCase();
 const SCANNER_STDIO = process.env.SCANNER_STDIO === 'inherit' ? 'inherit' : 'pipe';
 const DEFAULT_RESOLUTION = Number(process.env.SCANNER_DEFAULT_DPI || 300);
+const SCANNER_PAGE_SIZE = (process.env.SCANNER_PAGE_SIZE || 'a4').trim().toLowerCase();
 const SCAN_COMMAND_EXTRA = (process.env.SCAN_COMMAND_EXTRA || '').trim();
 const SCANNER_NAME = (process.env.SCANNER_NAME || '').trim();
 const SCAN_COMMAND = (process.env.SCAN_COMMAND || '').trim();
@@ -239,18 +241,22 @@ const CLOUD_URL = String(
     process.env.BRIDGE_CLOUD_URL || 'https://restpoint.co.ke'
 ).replace(/\/+$/, '');
 
-const GRANT_TOLERANCE_MS = 90_000;   // session outlives the 60s grant a little
+const GRANT_TOLERANCE_MS = 10 * 60_000;
 
 
-const SCANNER_DRIVER = (process.env.SCANNER_DRIVER || (isWin ? 'wia' : '')).trim().toLowerCase();
+const DEFAULT_SCANNER_DRIVER = isWin ? 'wia' : isMac ? 'apple' : 'sane';
+const SCANNER_DRIVER = (process.env.SCANNER_DRIVER || DEFAULT_SCANNER_DRIVER).trim().toLowerCase();
 const SCANNER_SOURCE = (process.env.SCANNER_SOURCE || (DEFAULT_DUPLEX ? 'duplex' : '')).trim().toLowerCase();
 /** Optional named NAPS2 profile; when empty the bridge uses --noprofile (deterministic flags). */
 const SCANNER_PROFILE = (process.env.SCANNER_PROFILE || '').trim();
 /** When SCANNER_NAME is empty, bind to the first device the driver reports. */
 const SCANNER_AUTO_DETECT = process.env.SCANNER_AUTO_DETECT === undefined ? true : truthy(process.env.SCANNER_AUTO_DETECT);
 /** Drivers probed by GET_SCANNERS (escl does network discovery — opt in only). */
-const SCANNER_DRIVERS = (process.env.SCANNER_DRIVERS || (SCANNER_DRIVER ? `${SCANNER_DRIVER},twain` : 'wia,twain'))
-  .split(',').map((d) => d.trim().toLowerCase()).filter((d) => /^(wia|twain|escl|sane|apple)$/.test(d));
+const DEFAULT_SCANNER_DRIVERS = isWin
+    ? [SCANNER_DRIVER, SCANNER_DRIVER === 'wia' ? 'twain' : 'wia'].join(',')
+    : SCANNER_DRIVER;
+const SCANNER_DRIVERS = (process.env.SCANNER_DRIVERS || DEFAULT_SCANNER_DRIVERS)
+  .split(',').map((d) => d.trim().toLowerCase()).filter((d, i, all) => /^(wia|twain|escl|sane|apple)$/.test(d) && all.indexOf(d) === i);
 
 /** Map the app'svalues (color|gray|bw). */
 function bitDepthFor(mode?: string): string {
@@ -377,11 +383,12 @@ function substituteTokens(o: ScanOptions): string {
         '{OUTPUT}': `"${o.output}"`,
         '{FORMAT}': o.format || DEFAULT_FORMAT,
         '{RESOLUTION}': String(o.resolution || DEFAULT_RESOLUTION),
+        '{PAGESIZE}': SCANNER_PAGE_SIZE ? ('--pagesize ' + SCANNER_PAGE_SIZE) : '',
         '{MODE}': o.colorMode ? ('--bitdepth ' + bitDepthFor(o.colorMode)) : '',
         '{DUPLEX}': o.duplex ? '--source duplex' : '',
         '{SOURCE}': (o.source && o.source !== 'auto') ? ('--source ' + o.source) : '',
-        '{SCANNER}': SCANNER_NAME ? ('--device "' + SCANNER_NAME + '"') : '',
-        '{DRIVER}': SCANNER_DRIVER ? ('--driver ' + SCANNER_DRIVER) : '',
+        '{SCANNER}': resolveScannerName() ? ('--device "' + resolveScannerName() + '"') : '',
+        '{DRIVER}': resolveScannerDriver() ? ('--driver ' + resolveScannerDriver()) : '',
     };
     let cmd = SCAN_COMMAND;
     for (const [k, v] of Object.entries(map)) {
@@ -400,14 +407,16 @@ function defaultScanArgv(o: ScanOptions): string[] {
     const args: string[] = [NAPS2_BIN, '-o', o.output];
     args.push('--dpi', String(o.resolution || DEFAULT_RESOLUTION));
     args.push('--bitdepth', bitDepthFor(o.colorMode || DEFAULT_COLOR_MODE));
+    if (SCANNER_PAGE_SIZE) args.push('--pagesize', SCANNER_PAGE_SIZE);
 
     // Paper source: the per-scan override wins, then the env default, then duplex.
     const source = String(o.source || SCANNER_SOURCE || (o.duplex ? 'duplex' : '')).toLowerCase();
     if (source && source !== 'auto') args.push('--source', source);
 
     // NAPS2 8.x requires an explicit driver before a devic
-    if (SCANNER_DRIVER) args.push('--driver', SCANNER_DRIVER);
     const device = resolveScannerName();
+    const driver = resolveScannerDriver();
+    if (driver) args.push('--driver', driver);
     if (device) args.push('--device', device);
 
     if (SCANNER_PROFILE) args.push('-p', SCANNER_PROFILE);
@@ -527,6 +536,7 @@ interface UploadContext {
     documentName: string;
     category: string;
     token?: string;
+    bridgeGrant?: string;
     tenantSlug?: string;
     userId?: string;
     format?: string;
@@ -565,6 +575,7 @@ async function uploadScannedDocument(ctx: UploadContext): Promise<{ body: any; h
         'Content-Length': String(body.length),
     };
     if (ctx.token) headers['Authorization'] = `Bearer ${ctx.token}`;
+    if (ctx.bridgeGrant) headers['X-Bridge-Grant'] = ctx.bridgeGrant;
     if (ctx.tenantSlug) headers['x-tenant-slug'] = String(ctx.tenantSlug).replace(/[\r\n]+/g, '').trim();
     if (ctx.userId) headers['x-user-id'] = String(ctx.userId).replace(/[\r\n]+/g, '').trim();
 
@@ -1142,13 +1153,17 @@ function listDevices(driver: string): string[] {
 }
 
 let _scannerName: string | null = null;
+let _scannerDriver: string | null = null;
 /**
  * The device to hand NAPS2 as --device. NAPS2 8.x refuses to scan without one
  * ("No device was specified."), so unless SCANNER_NAME pins a device we bind to
  * the first one the driver reports (cached after the first probe).
  */
 function resolveScannerName(): string {
-    if (SCANNER_NAME) return SCANNER_NAME;
+    if (SCANNER_NAME) {
+        _scannerDriver = SCANNER_DRIVER || SCANNER_DRIVERS[0] || '';
+        return SCANNER_NAME;
+    }
     if (!SCANNER_AUTO_DETECT) return '';
     if (_scannerName !== null) return _scannerName;
     _scannerName = '';
@@ -1156,12 +1171,17 @@ function resolveScannerName(): string {
         const devices = listDevices(driver);
         if (devices.length) {
             _scannerName = devices[0];
+            _scannerDriver = driver;
             console.log('[BRIDGE] auto-detected scanner: ' + _scannerName + ' (' + driver + ')');
             break;
         }
     }
     if (!_scannerName) console.warn('[BRIDGE] no scanner device detected - connect the scanner or set SCANNER_NAME.');
     return _scannerName;
+}
+
+function resolveScannerDriver(): string {
+    return _scannerDriver || SCANNER_DRIVER || SCANNER_DRIVERS[0] || '';
 }
 
 /**
@@ -1190,9 +1210,20 @@ function getScanners(): unknown[] {
     return scanners;
 }
 
-async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Promise<void> {
+async function handleStartScan(socket: WebSocket, msg: Record<string, any>, session: BridgeSession): Promise<void> {
     const deceasedId = String(msg?.deceasedId || '').trim();
-    const apiBase = String(msg?.apiBase || 'http://localhost:5000/api/v1/restpoint').trim();
+    const apiBase = String(msg?.apiBase || `${CLOUD_URL}/api/v1/restpoint`).trim();
+    try {
+        const requested = new URL(apiBase);
+        const trusted = new URL(process.env.BRIDGE_API_BASE || `${CLOUD_URL}/api/v1/restpoint`);
+        if (requested.origin !== trusted.origin || !requested.pathname.replace(/\/+$/, '').endsWith('/api/v1/restpoint')) {
+            sendJson(socket, { status: 'ERROR', code: 'UNTRUSTED_API_BASE', message: 'The upload destination is not the configured Restpoint cloud API.' });
+            return;
+        }
+    } catch {
+        sendJson(socket, { status: 'ERROR', code: 'INVALID_API_BASE', message: 'The Restpoint cloud API address is invalid.' });
+        return;
+    }
     if (!deceasedId) {
         sendJson(socket, { status: 'ERROR', message: 'Missing deceasedId. The web app must pass the deceased profile id.' });
         return;
@@ -1232,9 +1263,9 @@ async function handleStartScan(socket: WebSocket, msg: Record<string, any>): Pro
             filePath: pdfPath,
             documentName: fileName,
             category: msg?.category || 'Scan',
-            token: msg?.token,
-            tenantSlug: msg?.tenantSlug,
-            userId: msg?.userId,
+            bridgeGrant: session.uploadGrant,
+            tenantSlug: session.tenant,
+            userId: session.subject,
             format,
         });
 
@@ -1420,6 +1451,7 @@ interface BridgeSession {
     subject: string;
     expiresAt: number;
     scope: string;
+    uploadGrant: string;
 }
 
 const sessions = new Map<WebSocket, BridgeSession>();
@@ -1499,6 +1531,7 @@ function handleMessage(socket: WebSocket, raw: unknown): void {
                     // cloud that does not report one is treated as scan-only, so
                     // the fail-closed direction is always the safe one.
                     scope: String(verdict.data?.scope || SCOPE_SCAN),
+                    uploadGrant: String(grant),
                 };
                 sessions.set(socket, session);
                 console.log(`[BRIDGE] authorised ${session.subject} @ ${session.tenant} on ${BRIDGE_ID.slice(0, 8)} (${session.scope})`);
@@ -1519,7 +1552,7 @@ function handleMessage(socket: WebSocket, raw: unknown): void {
                 // and tell that state apart from "authorised to scan".
                 authorised: !!sessionFor(socket), mock: MOCK_MODE,
                 scanner: SCANNER_NAME || null, busy, time: Date.now(),
-                naps2: resolvedNaps2Path, driver: SCANNER_DRIVER || null, device: _scannerName || null,
+                naps2: resolvedNaps2Path, driver: resolveScannerDriver() || null, device: resolveScannerName() || null,
                 // Printing is a separate capability from scanning, so report it
                 // separately rather than implying the bridge can do both.
                 printing: PRINTING_ENABLED, printMock: PRINT_MOCK,
@@ -1604,7 +1637,11 @@ function handleMessage(socket: WebSocket, raw: unknown): void {
                 sendJson(socket, { status: 'ERROR', message: 'Another scan is already in progress. Wait for it to finish, then try again.' });
                 return;
             }
-            void handleStartScan(socket, msg);
+            if (!session.uploadGrant) {
+                sendJson(socket, { status: 'ERROR', code: 'UPLOAD_AUTH_MISSING', message: 'Restpoint did not authorize document upload. Please reconnect and try again.' });
+                return;
+            }
+            void handleStartScan(socket, msg, session);
             return;
 
         case 'SHUTDOWN':
@@ -1692,7 +1729,7 @@ if (!MOCK_MODE && !fs.existsSync(resolvedNaps2Path)) {
     console.warn(`  ⚠  ${resolvedNaps2Path} does not exist — set NAPS2_PATH to NAPS2.Console.exe`);
 }
 console.log(`  scanner     →  ${SCANNER_NAME || 'auto-detect'}`);
-console.log(`  driver      →  ${SCANNER_DRIVER || 'auto'}`);
+console.log(`  driver      →  ${resolveScannerDriver() || 'auto'}`);
 console.log(`  printing    →  ${PRINTING_ENABLED ? 'enabled' : 'DISABLED (PRINTING_ENABLED=0)'}`);
 if (PRINTING_ENABLED) {
     const printers = getPrinters();

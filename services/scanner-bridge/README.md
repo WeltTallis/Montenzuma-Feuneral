@@ -70,10 +70,10 @@ NAPS2.Console.exe -o out.pdf --dpi 300 --bitdepth color --source feeder --driver
 4. If you use a different tool (exactly the driver JAR, `scanimage`, `wia` …), override
    the whole command:
    ```bash
-   SCAN_COMMAND='{NAPS2} -o "{OUTPUT}" --dpi {RESOLUTION} {MODE} {DUPLEX} {DRIVER} {SCANNER} {SOURCE}' node dist/agent.js
+   SCAN_COMMAND='{NAPS2} -o "{OUTPUT}" --dpi {RESOLUTION} {PAGESIZE} {MODE} {DUPLEX} {DRIVER} {SCANNER} {SOURCE}' node dist/agent.js
    ```
-   Tokens: `{NAPS2} {OUTPUT} {FORMAT} {RESOLUTION} {MODE} {DUPLEX} {SOURCE} {SCANNER} {DRIVER}`
-   (`{MODE}` expands to `--bitdepth color|gray|bw`, `{DUPLEX}` to `--source duplex`,
+   Tokens: `{NAPS2} {OUTPUT} {FORMAT} {RESOLUTION} {PAGESIZE} {MODE} {DUPLEX} {SOURCE} {SCANNER} {DRIVER}`
+   (`{MODE}` expands to `--bitdepth color|gray|bw`, `{PAGESIZE}` to `--pagesize a4`, `{DUPLEX}` to `--source duplex`,
    `{DRIVER}` to `--driver wia`, `{SCANNER}` to `--device "name"`.)
 
 ### Scanner environment variables
@@ -87,7 +87,8 @@ NAPS2.Console.exe -o out.pdf --dpi 300 --bitdepth color --source feeder --driver
 | `SCANNER_PROFILE`    | `--noprofile`  | Optional named NAPS2 profile (`-p`); otherwise flags win.                       |
 | `SCANNER_DRIVERS`    | `wia,twain`    | Drivers probed by `GET_SCANNERS` (`escl` does network discovery — opt in only). |
 | `SCANNER_AUTO_DETECT` | `true`        | When `SCANNER_NAME` is empty, bind to the first detected device — NAPS2 8.x refuses to scan without `--device`. |
-| `SCANNER_DEFAULT_DPI` | `300`         | `--dpi`.                                                                       |
+| `SCANNER_DEFAULT_DPI` | `300`         | `--dpi` (the HP ScanJet Pro 2600 f1 supports up to 600 dpi optical).            |
+| `SCANNER_PAGE_SIZE` | `a4` | `--pagesize`; set to an NAPS2 size such as `letter` or `legal` if needed. |
 | `SCANNER_DEFAULT_COLOR_MODE` | `color` | `--bitdepth color\|gray\|bw`.                                                 |
 
 ## Printing
@@ -165,7 +166,7 @@ Bluetooth but that have no queue yet; `CONNECT_PRINTER` installs one in a click.
 
 ### Grants are scoped
 
-`POST {gateway}/bridge/grant` takes a `scope` and mints a single-use, 60-second
+`POST {gateway}/bridge/grant` takes a `scope` and mints an encrypted, 10-minute
 grant for it: `bridge:scan` (default) or `bridge:print`. The bridge records the
 scope of the grant that authorised a session and enforces it per action, so a
 grant fetched in order to print cannot drive the scanner and vice versa. Both
@@ -173,9 +174,11 @@ grant fetched in order to print cannot drive the scanner and vice versa. Both
 `GET_PRINTERS` do not, because they only read local device metadata.
 
 `apiBase` is the Restpoint API gateway base (e.g. `https://restpoint.co.ke/api/v1/restpoint`)
-— the web app passes it automatically, and the agent posts the scanned PDF straight to
-`{apiBase}/documents/upload/{deceasedId}` with `Authorization: Bearer <token>` and
-`x-tenant-slug` headers.
+— the web app passes it automatically. The bridge redeems the signed grant with the
+cloud gateway, then posts the scanned PDF to `{apiBase}/documents/upload/{deceasedId}`
+using the verified bridge grant and tenant headers. The gateway decrypts the
+grant and attaches the user token upstream; the browser and local agent do not
+receive the underlying login token.
 
 ## Test (no scanner needed)
 
@@ -213,7 +216,7 @@ scanner.
 | Nothing prints although `PRINTED` is returned | Windows accepted the job into the queue. The problem is at the device — offline, out of paper, wrong tray. Check the printer itself. |
 | PDFs print blank / nothing | Install SumatraPDF so the bridge uses a real PDF renderer instead of the `printto` shell verb. |
 | `This session was authorised for printing, not scanning` | A print grant cannot drive the scanner. Reconnect the modal so a scan grant is fetched. |
-| `WRONG_SCOPE` on PRINT | The cloud did not issue a `bridge:print` grant — check the gateway is running the current `services/api-gateway/bridge.js`. |
+| `WRONG_SCOPE` on PRINT | The cloud did not issue a `bridge:print` grant — check the API gateway bridge handlers are deployed. |
 
 ## Production / autostart notes
 

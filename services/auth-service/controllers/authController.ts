@@ -8,11 +8,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import validator from 'validator';
 import mysql from 'mysql2/promise';
+import crypto from 'crypto';
 
 
-// ============================================
+
 // TYPE DECLARATIONS - Fix for TypeScript errors
-// ============================================
+
 import 'express-session';
 
 declare module 'express-session' {
@@ -50,10 +51,9 @@ declare global {
     }
   }
 }
-// ============================================
-// ============================================
+
 // GLOBAL SECRETS (validated at startup)
-// ============================================
+
 const GLOBAL_JWT_SECRET: string = process.env.JWT_SECRET || '';
 const GLOBAL_REFRESH_SECRET: string = process.env.REFRESH_TOKEN_SECRET || '';
 
@@ -61,9 +61,9 @@ if (!GLOBAL_JWT_SECRET || !GLOBAL_REFRESH_SECRET) {
   throw new Error('JWT_SECRET and REFRESH_TOKEN_SECRET must be set in environment variables');
 }
 
-// ============================================
+
 // CONNECTION POOL
-// ============================================
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306'),
@@ -78,9 +78,9 @@ const pool = mysql.createPool({
 
 export { pool };
 
-// ============================================
+
 // TYPES
-// ============================================
+
 
 interface Tenant {
   id: number;
@@ -114,13 +114,30 @@ interface TokenResult {
   refreshToken: string;
 }
 
-// ============================================
+
 // DATABASE HELPERS
-// ============================================
+
 
 const queryServer = async (sql: string, params: any[] = []): Promise<any[]> => {
   const [rows] = await pool.query(sql, params);
   return rows as any[];
+};
+
+const getBrevoSenderEmail = (): string => {
+  const candidates = [
+    process.env.BREVO_SENDER_EMAIL,
+    process.env.BREVO_EMAIL_FROM,
+    process.env.SMTP_USER,
+    process.env.EMAIL_FROM,
+    '98834f001@smtp-brevo.com',
+  ];
+
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (trimmed) return trimmed;
+  }
+
+  return '';
 };
 
 const queryTenantDB = async (dbName: string, sql: string, params: any[] = []): Promise<any[]> => {
@@ -946,5 +963,114 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
       message: 'An error occurred while changing password',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
+  }
+};
+
+// Password recovery uses a one-time, hashed token stored in tenant_tracking.
+// The raw token is sent only to the registered email address.
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const genericMessage = 'If an account exists for that email, a password reset link has been sent.';
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!validator.isEmail(email)) {
+      res.status(400).json({ success: false, message: 'Enter a valid email address.' });
+      return;
+    }
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS tenant_tracking.password_reset_tokens (
+      token_hash CHAR(64) NOT NULL PRIMARY KEY,
+      tenant_id VARCHAR(64) NOT NULL,
+      tenant_db VARCHAR(64) NOT NULL,
+      user_id VARCHAR(64) NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_password_reset_account (tenant_id, user_id, expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    const tenants = await findTenantCandidatesByUserEmail(email);
+    const resetLinks: string[] = [];
+    for (const tenant of tenants) {
+      const user = await findUserInTenantDB(tenant.db_name, email);
+      if (!user?.user_id || Number(user.is_active) === 0) continue;
+      const tenantId = String(tenant.id ?? tenant.tenant_id ?? '').trim();
+      if (!tenantId) continue;
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      await pool.query(
+        `DELETE FROM tenant_tracking.password_reset_tokens WHERE tenant_id = ? AND user_id = ? AND used_at IS NULL`,
+        [tenantId, String(user.user_id)]
+      );
+      await pool.query(
+        `INSERT INTO tenant_tracking.password_reset_tokens (token_hash, tenant_id, tenant_db, user_id, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))`,
+        [tokenHash, tenantId, tenant.db_name, String(user.user_id)]
+      );
+      const account = encodeURIComponent(`${tenantId}:${user.user_id}`);
+      const base = String(process.env.FRONTEND_URL || process.env.APP_URL || 'https://restpoint.co.ke').replace(/\/+$/, '');
+      resetLinks.push(`${base}/reset-password?account=${account}&token=${rawToken}`);
+    }
+
+    if (resetLinks.length) {
+      const apiKey = process.env.BREVO_API_KEY?.trim();
+      const senderEmail = getBrevoSenderEmail();
+      if (!apiKey || !senderEmail) {
+        throw new Error('BREVO_API_KEY and a sender email are required to send password reset emails');
+      }
+      const links = resetLinks.map((link) => `<p><a href="${link}">Reset your Restpoint password</a></p>`).join('');
+      const mailResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'api-key': apiKey, 'Content-Type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+          sender: { name: process.env.BREVO_SENDER_NAME || 'RestPoint', email: senderEmail },
+          to: [{ email }],
+          subject: 'Reset your Restpoint password',
+          textContent: `Use this link to reset your password. It expires in 15 minutes.\n\n${resetLinks.join('\n\n')}`,
+          htmlContent: `<p>We received a request to reset your Restpoint password.</p>${links}<p>Each link expires in 15 minutes. If you did not request this, ignore this email.</p>`,
+        }),
+      });
+      if (!mailResponse.ok) throw new Error(`Brevo email request failed (HTTP ${mailResponse.status})`);
+    }
+    res.status(200).json({ success: true, message: genericMessage });
+  } catch (error: any) {
+    console.error('[AUTH] Forgot password request failed:', error?.message || error);
+    // Keep the public response identical for unknown accounts and delivery errors.
+    res.status(200).json({ success: true, message: genericMessage });
+  }
+};
+
+export const resetPasswordWithToken = async (req: Request, res: Response): Promise<void> => {
+  const account = String(req.body?.account || '').trim();
+  const token = String(req.body?.token || '').trim();
+  const password = String(req.body?.password || '');
+  const [tenantId, userId, ...extra] = account.split(':');
+  if (!tenantId || !userId || extra.length || !/^[a-f0-9]{64}$/i.test(token) || password.length < 8) {
+    res.status(400).json({ success: false, message: 'The reset link is invalid or expired.' });
+    return;
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const [rows]: any = await conn.query(
+      `SELECT tenant_db FROM tenant_tracking.password_reset_tokens WHERE token_hash = ? AND tenant_id = ? AND user_id = ? AND used_at IS NULL AND expires_at > NOW() FOR UPDATE`,
+      [tokenHash, tenantId, userId]
+    );
+    const dbName = String(rows?.[0]?.tenant_db || '');
+    if (!/^[a-zA-Z0-9_-]+$/.test(dbName)) throw new Error('INVALID_RESET_TOKEN');
+    const passwordHash = await bcrypt.hash(password, 12);
+    await conn.query(`UPDATE \`${dbName}\`.users SET password_hash = ?, updated_at = NOW() WHERE user_id = ? AND is_active = 1`, [passwordHash, userId]);
+    const [result]: any = await conn.query(
+      `UPDATE tenant_tracking.password_reset_tokens SET used_at = NOW() WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW()`,
+      [tokenHash]
+    );
+    if (!result?.affectedRows) throw new Error('INVALID_RESET_TOKEN');
+    await conn.commit();
+    res.status(200).json({ success: true, message: 'Password reset successfully.' });
+  } catch (error: any) {
+    await conn.rollback();
+    const invalid = error?.message === 'INVALID_RESET_TOKEN';
+    res.status(invalid ? 400 : 500).json({ success: false, message: invalid ? 'The reset link is invalid or expired.' : 'Could not reset your password. Please try again.' });
+  } finally {
+    conn.release();
   }
 };

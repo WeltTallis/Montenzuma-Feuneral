@@ -71,6 +71,7 @@ var serviceDefinitions = map[string]serviceDefinition{
 var serviceRoutes = map[string]string{
 	"auth": "auth", "login": "auth", "register": "auth", "logout": "auth",
 	"refresh": "auth", "users": "auth", "change-password": "auth", "me": "auth",
+	"forgot-password": "auth", "reset-password": "auth",
 	"tenant": "tenant", "tenants": "tenant", "system-admin": "tenant", "uploads": "tenant",
 	"blog": "tenant", "blog-engagement": "tenant", "onboarding": "tenant",
 	"deceased": "deceased", "autopsy": "deceased", "postmortem": "deceased",

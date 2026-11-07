@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, ShieldCheck, CheckCircle, AlertCircle, Mail, KeyRound, Lock, Check } from '../../utils/icons/icons';
-import { authApi } from '../../api/authApi';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, ShieldCheck, CheckCircle, AlertCircle, Check } from '../../utils/icons/icons';
 import { ENDPOINTS } from '../../api/endpoints';
 import api from '../../api/axios';
 
@@ -66,28 +65,24 @@ const StepPill = ({ number, label, active, done }) => (
 
 const STEPS = [
   { n: 1, label: 'Email' },
-  { n: 2, label: 'Code' },
+  { n: 2, label: 'Check email' },
   { n: 3, label: 'Password' },
 ];
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  const codeInputRefs = useRef([]);
+  const query = new URLSearchParams(window.location.search);
+  const initialAccount = query.get('account') || '';
+  const resetToken = query.get('token') || '';
+  const [account] = useState(initialAccount);
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState(['', '', '', '', '', '']);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(initialAccount && resetToken ? 3 : 1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  useEffect(() => {
-    if (step === 2) {
-      setTimeout(() => codeInputRefs.current[0]?.focus(), 100);
-    }
-  }, [step]);
 
   const handleSendCode = async (e) => {
     e.preventDefault();
@@ -100,8 +95,8 @@ const ForgotPassword = () => {
     try {
       const response = await api.post(ENDPOINTS.AUTH.FORGOT_PASSWORD, { email: email.trim() });
       if (response.data?.success) {
-        setMessage({ type: 'success', text: 'Verification code sent to your email.' });
-        setTimeout(() => { setStep(2); setMessage({ type: '', text: '' }); }, 900);
+        setMessage({ type: 'success', text: response.data?.message || 'If an account exists for that email, a password reset link has been sent.' });
+        setStep(2);
       } else {
         setMessage({ type: 'error', text: response.data?.message || 'Could not send the code.' });
       }
@@ -112,61 +107,10 @@ const ForgotPassword = () => {
     }
   };
 
-  const handleCodeChange = (index, value) => {
-    if (value.length > 1) return;
-    const newCode = [...code];
-    newCode[index] = value.replace(/\D/g, '');
-    setCode(newCode);
-    if (value && index < 5) {
-      codeInputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleCodeKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      codeInputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleCodePaste = (e) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (pasted.length === 0) return;
-    const newCode = [...code];
-    pasted.split('').forEach((ch, i) => { if (i < 6) newCode[i] = ch; });
-    setCode(newCode);
-    const focusIdx = Math.min(pasted.length, 5);
-    codeInputRefs.current[focusIdx]?.focus();
-  };
-
-  const handleVerifyCode = async (e) => {
-    e.preventDefault();
-    const codeStr = code.join('');
-    if (codeStr.length !== 6) {
-      setMessage({ type: 'error', text: 'Please enter the full 6-digit code.' });
-      return;
-    }
-    setIsLoading(true);
-    setMessage({ type: '', text: '' });
-    try {
-      const response = await api.post(ENDPOINTS.AUTH.VERIFY_CODE, { email: email.trim(), code: codeStr });
-      if (response.data?.success) {
-        setMessage({ type: 'success', text: 'Code verified successfully.' });
-        setTimeout(() => { setStep(3); setMessage({ type: '', text: '' }); }, 900);
-      } else {
-        setMessage({ type: 'error', text: response.data?.message || 'That code did not match.' });
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Could not verify that code.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+    if (newPassword.length < 8) {
+      setMessage({ type: 'error', text: 'Password must be at least 8 characters.' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -177,8 +121,8 @@ const ForgotPassword = () => {
     setMessage({ type: '', text: '' });
     try {
       const response = await api.post(ENDPOINTS.AUTH.RESET_PASSWORD, {
-        email: email.trim(),
-        code: code.join(''),
+        account,
+        token: resetToken,
         password: newPassword,
       });
       if (response.data?.success) {
@@ -195,7 +139,7 @@ const ForgotPassword = () => {
   };
 
   const goBack = () => {
-    if (step === 2) { setStep(1); setCode(['', '', '', '', '', '']); }
+    if (step === 2) { setStep(1); }
     else if (step === 3) { setStep(2); }
     setMessage({ type: '', text: '' });
   };
@@ -203,11 +147,11 @@ const ForgotPassword = () => {
   const sidebarContent = {
     1: {
       headline: 'Don\'t worry, it happens.',
-      text: 'We\'ll send a secure verification code to your email so you can reset your password and get back to what matters.',
+      text: 'We\'ll send a secure reset link to your registered email address.',
     },
     2: {
       headline: 'Check your inbox.',
-      text: 'Enter the 6-digit code we sent. It expires in 10 minutes for your security.',
+      text: 'If the address matches an account, a reset link will arrive by email. The link expires in 15 minutes.',
     },
     3: {
       headline: 'Almost there.',
@@ -388,7 +332,7 @@ const ForgotPassword = () => {
               <>
                 <div className="fp-form-header">
                   <h1>Forgot your password?</h1>
-                  <p>Enter your email and we'll send a verification code.</p>
+                  <p>Enter your registered email and we'll send you a secure reset link.</p>
                 </div>
 
                 <form onSubmit={handleSendCode}>
@@ -412,64 +356,34 @@ const ForgotPassword = () => {
 
                   <button type="submit" disabled={isLoading} className="fp-btn-primary">
                     {isLoading ? (
-                      <><Spinner /><span>Sending code...</span></>
+                      <><Spinner /><span>Sending reset link...</span></>
                     ) : (
-                      <><span>Send verification code</span><ArrowRight size={16} /></>
+                      <><span>Send reset link</span><ArrowRight size={16} /></>
                     )}
                   </button>
                 </form>
               </>
             )}
 
-            {/* Step 2: Code */}
+            {/* Step 2: Email confirmation */}
             {step === 2 && (
               <>
                 <div className="fp-form-header">
-                  <h1>Enter the code</h1>
-                  <p>Sent to <span>{email}</span></p>
+                  <h1>Check your email</h1>
+                  <p>We received a password reset request for <span>{email}</span>.</p>
                 </div>
-
-                <form onSubmit={handleVerifyCode}>
-                  <AlertMessage type={message.type} text={message.text} />
-
-                  <div className="fp-code-row" onPaste={handleCodePaste}>
-                    {code.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={(el) => { codeInputRefs.current[index] = el; }}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleCodeChange(index, e.target.value)}
-                        onKeyDown={(e) => handleCodeKeyDown(index, e)}
-                        className="fp-code-input"
-                        placeholder="·"
-                        autoFocus={index === 0}
-                      />
-                    ))}
-                  </div>
-
-                  <button type="submit" disabled={isLoading} className="fp-btn-primary">
-                    {isLoading ? (
-                      <><Spinner /><span>Verifying...</span></>
-                    ) : (
-                      <><span>Verify code</span><ArrowRight size={16} /></>
-                    )}
+                <AlertMessage type="success" text={message.text || 'If an account exists for that email, a password reset link has been sent.'} />
+                <p style={{ color: C.gray, fontSize: '0.88rem', lineHeight: 1.6 }}>Check your inbox and spam folder. The link expires in 15 minutes.</p>
+                <div className="fp-btn-row">
+                  <button type="button" className="fp-btn-ghost verdigris" onClick={goBack}>
+                    <ArrowLeft size={14} /> Use a different email
                   </button>
-
-                  <div className="fp-btn-row">
-                    <button type="button" className="fp-btn-ghost verdigris" onClick={goBack}>
-                      <ArrowLeft size={14} /> Different email
-                    </button>
-                    <button type="button" className="fp-btn-ghost brass" onClick={handleSendCode} disabled={isLoading}>
-                      Resend code
-                    </button>
-                  </div>
-                </form>
+                  <button type="button" className="fp-btn-ghost brass" onClick={handleSendCode} disabled={isLoading}>
+                    Resend link
+                  </button>
+                </div>
               </>
             )}
-
             {/* Step 3: New Password */}
             {step === 3 && (
               <>
@@ -488,7 +402,7 @@ const ForgotPassword = () => {
                         type={showNewPassword ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(e) => { setNewPassword(e.target.value); if (message.text) setMessage({ type: '', text: '' }); }}
-                        placeholder="At least 6 characters"
+                        placeholder="At least 8 characters"
                         disabled={isLoading}
                         autoComplete="new-password"
                         className="fp-input"

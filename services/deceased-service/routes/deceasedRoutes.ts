@@ -9,12 +9,12 @@ import { Router, Request, Response } from 'express';
 import { registerNewDeceased } from '../controllers/deceased/registerDeceased'
 import { getAdmissionNumber } from '../utils/admissionNumberRoute'
 import {
-    requestPostmortem,
     savePostmortem,
     getPostmortemByDeceasedId,
-    updatePostmortem,
-    generatePostmortemPDF
 } from '../controllers/autopsy/autopsyControl';
+import { requestPostmortem } from '../controllers/autopsy/requestPostmortem';
+import { updatePostmortem } from '../controllers/autopsy/updatePostmortem';
+import { generatePostmortemPDF } from '../controllers/autopsy/generatePostmortmePDF';
 
 import { updateDeceasedStatus } from '../controllers/deceasedControl';
 import { getPostmortemRequests, getPostmortemStats } from '../controllers/autopsy/postmortemRequestControl';

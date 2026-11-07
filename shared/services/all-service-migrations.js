@@ -41,8 +41,7 @@ exports.getBranchMigrations = getBranchMigrations;
 exports.getSingleTenantMigrations = getSingleTenantMigrations;
 exports.getAllTenantMigrations = getAllTenantMigrations;
 exports.getOperationsMigrations = getOperationsMigrations;
-//  Tenant Service Migrations 
-
+// ─── Tenant Service Migrations ───────────────────────────────────────────────
 const TENANT_SERVICE_MIGRATIONS = [
     {
         name: '001_create_organizations_table',
@@ -74,11 +73,11 @@ const TENANT_SERVICE_MIGRATIONS = [
     },
     {
         name: '003a_add_tenant_id_to_users',
-        sql: 'ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(36) NULL AFTER branch_id',
+        sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(36) NULL AFTER branch_id`,
     },
     {
         name: '003b_add_tenant_id_index_to_users',
-        sql: 'ALTER TABLE users ADD INDEX IF NOT EXISTS idx_tenant_id (tenant_id)',
+        sql: `ALTER TABLE users ADD INDEX IF NOT EXISTS idx_tenant_id (tenant_id)`,
     },
     {
         name: '004_create_mortuary_settings_table',
@@ -98,15 +97,23 @@ exports.TENANT_SERVICE_MIGRATIONS = TENANT_SERVICE_MIGRATIONS;
 const DECEASED_SERVICE_MIGRATIONS = [
     {
         name: '010_create_deceased_table',
-        sql: `CREATE TABLE IF NOT EXISTS deceased (id INT NOT NULL AUTO_INCREMENT, deceased_id VARCHAR(100) NOT NULL COMMENT 'Unique identifier', admission_number VARCHAR(100) NOT NULL UNIQUE, full_name VARCHAR(255) NOT NULL, gender ENUM('Male', 'Female', 'Other') NOT NULL DEFAULT 'Other', age INT DEFAULT 0, date_of_birth DATE NULL, date_of_death DATE NULL, date_registered VARCHAR(255) NULL, date_admitted VARCHAR(255) NULL, time_received TIME NULL, cause_of_death TEXT, place_of_death VARCHAR(255), physician VARCHAR(255), body_status VARCHAR(100) DEFAULT 'In Morgue', national_id VARCHAR(100), id_type ENUM('national-id', 'passport', 'voters-card', 'other') NULL, email VARCHAR(255), phone_number VARCHAR(20), alternative_phone VARCHAR(20), received_from VARCHAR(255), receiving_officer VARCHAR(255), signature TEXT, verified_by VARCHAR(255), relationship VARCHAR(100), permit_number VARCHAR(100) NULL, county VARCHAR(100) DEFAULT 'Unknown', location VARCHAR(255), portal_slug VARCHAR(255) UNIQUE NULL, admission_status ENUM('admitted', 'embalmed', 'released', 'buried') DEFAULT 'admitted', release_status ENUM('pending', 'approved', 'released') DEFAULT 'pending', chamber_assigned VARCHAR(100), total_mortuary_charge DECIMAL(10,2) DEFAULT 0.00, currency VARCHAR(3) DEFAULT 'KES', burial_type VARCHAR(50) NULL, coffin_status VARCHAR(50), dispatch_date DATE, extra_charges_amount DECIMAL(10,2) DEFAULT 0, next_of_kin_count INT DEFAULT 0, created_by VARCHAR(255), status VARCHAR(50) DEFAULT 'active', is_deleted BOOLEAN DEFAULT FALSE, deleted_at VARCHAR(255) NULL, deleted_by VARCHAR(255) NULL, branch_code VARCHAR(50) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), PRIMARY KEY (id), UNIQUE KEY unique_deceased_id (deceased_id), UNIQUE KEY unique_admission_number (admission_number), INDEX idx_deceased_id (deceased_id), INDEX idx_date_of_death (date_of_death), INDEX idx_created_at (created_at), INDEX idx_full_name (full_name), INDEX idx_status (admission_status), INDEX idx_is_deleted (is_deleted)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Deceased persons'`,
+        sql: `CREATE TABLE IF NOT EXISTS deceased (id INT NOT NULL AUTO_INCREMENT, deceased_id VARCHAR(100) NOT NULL COMMENT 'Unique identifier', admission_number VARCHAR(100) NOT NULL UNIQUE, full_name VARCHAR(255) NOT NULL, gender ENUM('Male', 'Female', 'Other') NOT NULL DEFAULT 'Other', age INT DEFAULT 0, date_of_birth DATE NULL, date_of_death DATE NULL, date_registered VARCHAR(255) NULL, date_admitted VARCHAR(255) NULL, time_received TIME NULL, cause_of_death TEXT, place_of_death VARCHAR(255), physician VARCHAR(255), body_status VARCHAR(100) DEFAULT 'In Morgue', national_id VARCHAR(100), id_type ENUM('national-id', 'passport', 'voters-card', 'other') NULL, email VARCHAR(255), phone_number VARCHAR(20), alternative_phone VARCHAR(20), received_from VARCHAR(255), contact_person VARCHAR(255) NULL, receiving_officer VARCHAR(255), signature TEXT, verified_by VARCHAR(255), relationship VARCHAR(100), permit_number VARCHAR(100) NULL, county VARCHAR(100) DEFAULT 'Unknown', location VARCHAR(255), portal_slug VARCHAR(255) UNIQUE NULL, admission_status ENUM('admitted', 'embalmed', 'released', 'buried') DEFAULT 'admitted', release_status ENUM('pending', 'approved', 'released') DEFAULT 'pending', chamber_assigned VARCHAR(100), total_mortuary_charge DECIMAL(10,2) DEFAULT 0.00, currency VARCHAR(3) DEFAULT 'KES', burial_type VARCHAR(50) NULL, coffin_status VARCHAR(50), dispatch_date DATE, extra_charges_amount DECIMAL(10,2) DEFAULT 0, next_of_kin_count INT DEFAULT 0, created_by VARCHAR(255), status VARCHAR(50) DEFAULT 'active', is_deleted BOOLEAN DEFAULT FALSE, branch_code VARCHAR(50) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), PRIMARY KEY (id), UNIQUE KEY unique_deceased_id (deceased_id), UNIQUE KEY unique_admission_number (admission_number), INDEX idx_deceased_id (deceased_id), INDEX idx_date_of_death (date_of_death), INDEX idx_created_at (created_at), INDEX idx_full_name (full_name), INDEX idx_status (admission_status), INDEX idx_is_deleted (is_deleted)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Deceased persons'`,
     },
     {
         name: '010a_alter_deceased_table_add_missing_columns',
-        sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS date_registered VARCHAR(255) NULL AFTER date_of_death, ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active' AFTER created_by, ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'KES' AFTER total_mortuary_charge, ADD COLUMN IF NOT EXISTS burial_type VARCHAR(50) NULL AFTER currency, ADD COLUMN IF NOT EXISTS extra_charges_amount DECIMAL(10,2) DEFAULT 0 AFTER dispatch_date, ADD COLUMN IF NOT EXISTS next_of_kin_count INT DEFAULT 0 AFTER extra_charges_amount, ADD COLUMN IF NOT EXISTS branch_code VARCHAR(50) NULL AFTER is_deleted`,
+        sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS contact_person VARCHAR(255) NULL AFTER received_from, ADD COLUMN IF NOT EXISTS date_registered VARCHAR(255) NULL AFTER date_of_death, ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active' AFTER created_by, ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'KES' AFTER total_mortuary_charge, ADD COLUMN IF NOT EXISTS burial_type VARCHAR(50) NULL AFTER currency, ADD COLUMN IF NOT EXISTS extra_charges_amount DECIMAL(10,2) DEFAULT 0 AFTER dispatch_date, ADD COLUMN IF NOT EXISTS next_of_kin_count INT DEFAULT 0 AFTER extra_charges_amount, ADD COLUMN IF NOT EXISTS branch_code VARCHAR(50) NULL AFTER is_deleted`,
     },
     {
-        name: '010b_add_deceased_delete_audit_columns',
-        sql: 'ALTER TABLE deceased ADD COLUMN IF NOT EXISTS deleted_at VARCHAR(255) NULL AFTER is_deleted, ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(255) NULL AFTER deleted_at',
+        // The 011c backfill reads contact_person from the deceased table, and the
+        // intake form + frontend rely on it too. Older tenant DBs (created before
+        // contact_person was added to 010/010a) still need the column, so add it
+        // idempotently so it exists before the 011c backfill runs.
+        name: '010b_add_contact_person_to_deceased',
+        sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS contact_person VARCHAR(255) NULL AFTER received_from`,
+    },
+    {
+        name: '010c_add_deceased_registration_idempotency_key',
+        sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS registration_request_id VARCHAR(64) NULL, ADD UNIQUE INDEX IF NOT EXISTS uq_deceased_registration_request_id (registration_request_id)`,
     },
     {
         name: '011_create_next_of_kin_table',
@@ -117,27 +124,61 @@ const DECEASED_SERVICE_MIGRATIONS = [
         sql: 'ALTER TABLE next_of_kin ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT FALSE AFTER email, ADD COLUMN IF NOT EXISTS is_notified BOOLEAN DEFAULT FALSE AFTER is_primary, ADD COLUMN IF NOT EXISTS notified_at VARCHAR(255) NULL AFTER is_notified, ADD COLUMN IF NOT EXISTS alternative_contact VARCHAR(50) NULL AFTER address, ADD COLUMN IF NOT EXISTS created_by VARCHAR(100) NULL AFTER alternative_contact, ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE AFTER created_at, ADD COLUMN IF NOT EXISTS deleted_at VARCHAR(255) NULL AFTER is_deleted, ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(100) NULL AFTER deleted_at, ADD COLUMN IF NOT EXISTS updated_at VARCHAR(255) AFTER created_at',
     },
     {
-        name: '013_create_postmortem_table',
-        sql: `CREATE TABLE IF NOT EXISTS postmortem (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, pathologist_name VARCHAR(255), external_pathologist_name VARCHAR(255), external_pathologist_mobile VARCHAR(20), external_pathologist_id VARCHAR(50), examination_summary TEXT, cause_of_death TEXT, immediate_cause_of_death TEXT, underlying_cause_of_death TEXT, contributing_conditions TEXT, manner_of_death VARCHAR(50), requesting_authority VARCHAR(100), findings JSON, head_findings TEXT, chest_findings TEXT, abdomen_findings TEXT, extremities_findings TEXT, toxicology_findings TEXT, custom_findings JSON, report_pdf_url VARCHAR(500), staff_username VARCHAR(255), mortuary_name VARCHAR(255), status VARCHAR(50) DEFAULT 'pending', requested_by VARCHAR(255), requested_at VARCHAR(255), completed_at VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), created_by INT, updated_by INT, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_status (status), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+        name: '011b_fix_next_of_kin_tenant_slug_and_id_columns',
+        sql: `ALTER TABLE next_of_kin MODIFY COLUMN tenant_slug VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE next_of_kin ADD COLUMN IF NOT EXISTS id_number VARCHAR(100) NULL AFTER email;
+ALTER TABLE next_of_kin ADD COLUMN IF NOT EXISTS id_type ENUM('national-id', 'passport', 'voters-card', 'other') NULL AFTER id_number`,
     },
     {
-        // A finished examination has to be recordable, otherwise the tracked request stays
-        // 'sent'/'initiated' forever and the PM register keeps listing a completed case as
-        // outstanding. Widens the ENUM and adds the timestamp the controller writes.
+        // Backfill next_of_kin rows for every deceased registered before auto-
+        // registration existed, so legacy records show kin details too.
+        name: '011c_backfill_next_of_kin_from_deceased',
+        sql: `INSERT INTO next_of_kin (deceased_id, tenant_slug, full_name, relationship, contact, alternative_contact, id_number, id_type, is_primary, created_at)
+SELECT d.deceased_id, LEFT(DATABASE(), 255),
+       COALESCE(NULLIF(d.contact_person, ''), 'Not Provided'),
+       COALESCE(NULLIF(d.relationship, ''), 'Not Specified'),
+       COALESCE(d.phone_number, ''),
+       d.alternative_phone,
+       d.national_id,
+       CASE WHEN d.national_id IS NULL OR d.national_id = '' THEN NULL ELSE 'national-id' END,
+       TRUE,
+       COALESCE(d.created_at, NOW())
+FROM deceased d
+WHERE (d.is_deleted = 0 OR d.is_deleted IS NULL)
+  AND NOT EXISTS (SELECT 1 FROM next_of_kin k WHERE k.deceased_id = d.deceased_id AND k.is_deleted = FALSE)
+  AND (NULLIF(d.phone_number, '') IS NOT NULL OR NULLIF(d.relationship, '') IS NOT NULL OR NULLIF(d.national_id, '') IS NOT NULL)`,
+    },
+    {
+        name: '013_create_postmortem_table',
+        sql: `CREATE TABLE IF NOT EXISTS postmortem (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, pathologist_name VARCHAR(255), external_pathologist_name VARCHAR(255), external_pathologist_mobile VARCHAR(20), external_pathologist_id VARCHAR(50), examination_summary TEXT, cause_of_death TEXT, immediate_cause_of_death TEXT, underlying_cause_of_death TEXT, contributing_conditions TEXT, manner_of_death VARCHAR(50), requesting_authority VARCHAR(100), findings JSON, head_findings TEXT, chest_findings TEXT, abdomen_findings TEXT, extremities_findings TEXT, toxicology_findings TEXT, custom_findings JSON, signature LONGTEXT NULL, report_pdf_url VARCHAR(500), staff_username VARCHAR(255), mortuary_name VARCHAR(255), status VARCHAR(50) DEFAULT 'pending', requested_by VARCHAR(255), requested_at VARCHAR(255), completed_at VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), created_by INT, updated_by INT, FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_deceased_id (deceased_id), INDEX idx_status (status), INDEX idx_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
+    {
+        name: '013b_add_signature_to_postmortem',
+        sql: `ALTER TABLE postmortem ADD COLUMN IF NOT EXISTS signature LONGTEXT NULL AFTER custom_findings`,
+    },
+    {
         name: '013a_create_postmortem_requests_table',
         sql: `CREATE TABLE IF NOT EXISTS postmortem_requests (id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, request_ref VARCHAR(60) NULL, requested_by VARCHAR(150) NULL, requesting_authority VARCHAR(200) NULL, reason TEXT, notes TEXT, status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated', initiated_by VARCHAR(150) NULL, sent_at VARCHAR(255) NULL, cancelled_at VARCHAR(255) NULL, completed_at VARCHAR(255) NULL, created_at VARCHAR(255) NULL, updated_at VARCHAR(255) NULL, INDEX idx_pmr_deceased_id (deceased_id), INDEX idx_pmr_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
     {
+        // A finished examination has to be recordable, otherwise the tracked
+        // request stays 'sent'/'initiated' forever and the PM register keeps
+        // listing an already-completed case as outstanding. Widens the ENUM and
+        // adds the timestamp column the controller writes.
         name: '013d_postmortem_requests_completed_state',
         sql: `ALTER TABLE postmortem_requests ADD COLUMN IF NOT EXISTS completed_at VARCHAR(255) NULL AFTER cancelled_at;
-              ALTER TABLE postmortem_requests MODIFY COLUMN status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated'`,
+          ALTER TABLE postmortem_requests MODIFY COLUMN status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated'`,
     },
     {
-        // analytics-service reads deceased.postmortem_requested / postmortem_completed for its
-        // "awaiting autopsy" and "postmortem completion" panels, but neither column has ever
-        // existed — those queries threw or silently returned zeros.
+        // analytics-service reads deceased.postmortem_requested / postmortem_completed
+        // for its "awaiting autopsy" and "postmortem completion" panels, but neither
+        // column has ever existed — those queries threw or silently returned zeros.
         name: '013e_deceased_postmortem_flags',
         sql: `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS postmortem_requested TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS postmortem_completed TINYINT(1) NOT NULL DEFAULT 0`,
+    },
+    {
+        name: '013c_create_charge_settings_table',
+        sql: `CREATE TABLE IF NOT EXISTS charge_settings (deceased_id VARCHAR(100) NOT NULL PRIMARY KEY, rate_profile VARCHAR(50) DEFAULT 'standard', currency ENUM('KES','USD') DEFAULT 'KES', charge_type ENUM('daily','hourly') DEFAULT 'daily', daily_rate DECIMAL(12,2) DEFAULT 3000.00, hourly_rate DECIMAL(12,2) DEFAULT 125.00, usd_rate DECIMAL(12,2) DEFAULT 130.00, updated_by VARCHAR(150) NULL, created_at VARCHAR(255) NULL, updated_at VARCHAR(255) NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
     {
         name: '014_create_charges_table',
@@ -151,6 +192,139 @@ const DECEASED_SERVICE_MIGRATIONS = [
         // to filesystem-only storage. (Fixes documents migration on tenant creation.)
         name: '015_create_documents_table',
         sql: `CREATE TABLE IF NOT EXISTS documents (document_id INT AUTO_INCREMENT PRIMARY KEY, deceased_id VARCHAR(100) NOT NULL, document_type VARCHAR(100), file_name VARCHAR(255), original_name VARCHAR(255), stored_name VARCHAR(255), file_path VARCHAR(500), mime_type VARCHAR(100), file_size BIGINT DEFAULT 0, category VARCHAR(100) DEFAULT 'General', uploaded_by VARCHAR(255), status VARCHAR(50) DEFAULT 'pending', uploaded_at VARCHAR(255), created_at VARCHAR(255), updated_at VARCHAR(255), tenant_slug VARCHAR(255), FOREIGN KEY (deceased_id) REFERENCES deceased(deceased_id) ON DELETE CASCADE, INDEX idx_documents_deceased (deceased_id), INDEX idx_documents_tenant (tenant_slug), INDEX idx_documents_type (document_type), INDEX idx_documents_uploaded (uploaded_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
+    {
+        // Schema parity for the PUBLIC postmortem portal.
+        //
+        // Tenant databases were provisioned at different times, so many of them
+        // predate several `deceased` / `next_of_kin` columns. The public search
+        // endpoint selects `age`, `phone_number`, `alternative_phone`, `signature`,
+        // `date_of_birth`, ... unconditionally, so on those tenants MySQL raised
+        // ER_BAD_FIELD_ERROR ("Unknown column 'age' in 'SELECT'") and the endpoint
+        // answered 500 "Search failed" for every lookup.
+        //
+        // The route is now schema-adaptive (degrades to NULL), and this migration
+        // brings the underlying data back to full parity. ADD COLUMN IF NOT EXISTS
+        // is a no-op where the column is already present, so it is safe to re-run
+        // and safe on fresh databases created by 010/011.
+        name: '016_public_postmortem_schema_parity',
+        sql: `ALTER TABLE deceased
+        ADD COLUMN IF NOT EXISTS age INT DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS date_of_birth DATE NULL,
+        ADD COLUMN IF NOT EXISTS gender VARCHAR(20) DEFAULT 'Male',
+        ADD COLUMN IF NOT EXISTS place_of_death VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS national_id VARCHAR(100) NULL,
+        ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20) NULL,
+        ADD COLUMN IF NOT EXISTS alternative_phone VARCHAR(20) NULL,
+        ADD COLUMN IF NOT EXISTS signature TEXT NULL;
+ALTER TABLE next_of_kin
+    ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL,
+    ADD COLUMN IF NOT EXISTS alternative_phone VARCHAR(20) NULL,
+    ADD COLUMN IF NOT EXISTS id_number VARCHAR(100) NULL,
+    ADD COLUMN IF NOT EXISTS id_type VARCHAR(50) NULL,
+    ADD COLUMN IF NOT EXISTS signature LONGTEXT NULL,
+    ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS created_at VARCHAR(255) NULL;`,
+    },
+    {
+        // Keep postmortem schema repair in tenant provisioning/migration runs.
+        // Controllers must never create or alter tenant tables while serving requests.
+        name: '017_postmortem_table_column_parity',
+        sql: `CREATE TABLE IF NOT EXISTS postmortem (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        deceased_id VARCHAR(100) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        requested_by VARCHAR(255) NULL,
+        requested_at VARCHAR(255) NULL,
+        requesting_authority VARCHAR(255) NULL,
+        examination_summary TEXT NULL,
+        pathologist_name VARCHAR(255) NULL,
+        external_pathologist_name VARCHAR(255) NULL,
+        external_pathologist_mobile VARCHAR(20) NULL,
+        external_pathologist_id VARCHAR(50) NULL,
+        cause_of_death TEXT NULL,
+        immediate_cause_of_death TEXT NULL,
+        underlying_cause_of_death TEXT NULL,
+        contributing_conditions TEXT NULL,
+        manner_of_death VARCHAR(50) NULL,
+        findings JSON NULL,
+        head_findings TEXT NULL,
+        chest_findings TEXT NULL,
+        abdomen_findings TEXT NULL,
+        extremities_findings TEXT NULL,
+        toxicology_findings TEXT NULL,
+        custom_findings JSON NULL,
+        signature LONGTEXT NULL,
+        report_pdf_url VARCHAR(500) NULL,
+        staff_username VARCHAR(255) NULL,
+        mortuary_name VARCHAR(255) NULL,
+        completed_at VARCHAR(255) NULL,
+        created_at VARCHAR(255) NULL,
+        updated_at VARCHAR(255) NULL,
+        INDEX idx_pm_deceased_id (deceased_id),
+        INDEX idx_pm_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS postmortem_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        deceased_id VARCHAR(100) NOT NULL,
+        request_ref VARCHAR(60) NULL,
+        requested_by VARCHAR(150) NULL,
+        requesting_authority VARCHAR(200) NULL,
+        reason TEXT NULL,
+        notes TEXT NULL,
+        status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated',
+        initiated_by VARCHAR(150) NULL,
+        sent_at VARCHAR(255) NULL,
+        cancelled_at VARCHAR(255) NULL,
+        completed_at VARCHAR(255) NULL,
+        created_at VARCHAR(255) NULL,
+        updated_at VARCHAR(255) NULL,
+        INDEX idx_pmr_deceased_id (deceased_id),
+        INDEX idx_pmr_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ALTER TABLE postmortem
+        ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending',
+        ADD COLUMN IF NOT EXISTS requested_by VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS requested_at VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS requesting_authority VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS examination_summary TEXT NULL,
+        ADD COLUMN IF NOT EXISTS pathologist_name VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS external_pathologist_name VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS external_pathologist_mobile VARCHAR(20) NULL,
+        ADD COLUMN IF NOT EXISTS external_pathologist_id VARCHAR(50) NULL,
+        ADD COLUMN IF NOT EXISTS cause_of_death TEXT NULL,
+        ADD COLUMN IF NOT EXISTS immediate_cause_of_death TEXT NULL,
+        ADD COLUMN IF NOT EXISTS underlying_cause_of_death TEXT NULL,
+        ADD COLUMN IF NOT EXISTS contributing_conditions TEXT NULL,
+        ADD COLUMN IF NOT EXISTS manner_of_death VARCHAR(50) NULL,
+        ADD COLUMN IF NOT EXISTS findings JSON NULL,
+        ADD COLUMN IF NOT EXISTS head_findings TEXT NULL,
+        ADD COLUMN IF NOT EXISTS chest_findings TEXT NULL,
+        ADD COLUMN IF NOT EXISTS abdomen_findings TEXT NULL,
+        ADD COLUMN IF NOT EXISTS extremities_findings TEXT NULL,
+        ADD COLUMN IF NOT EXISTS toxicology_findings TEXT NULL,
+        ADD COLUMN IF NOT EXISTS custom_findings JSON NULL,
+        ADD COLUMN IF NOT EXISTS signature LONGTEXT NULL,
+        ADD COLUMN IF NOT EXISTS report_pdf_url VARCHAR(500) NULL,
+        ADD COLUMN IF NOT EXISTS staff_username VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS mortuary_name VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS completed_at VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS created_at VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS updated_at VARCHAR(255) NULL;
+ALTER TABLE postmortem_requests
+        ADD COLUMN IF NOT EXISTS request_ref VARCHAR(60) NULL,
+        ADD COLUMN IF NOT EXISTS requested_by VARCHAR(150) NULL,
+        ADD COLUMN IF NOT EXISTS requesting_authority VARCHAR(200) NULL,
+        ADD COLUMN IF NOT EXISTS reason TEXT NULL,
+        ADD COLUMN IF NOT EXISTS notes TEXT NULL,
+        ADD COLUMN IF NOT EXISTS status ENUM('initiated', 'sent', 'cancelled', 'completed') DEFAULT 'initiated',
+        ADD COLUMN IF NOT EXISTS initiated_by VARCHAR(150) NULL,
+        ADD COLUMN IF NOT EXISTS sent_at VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS cancelled_at VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS completed_at VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS created_at VARCHAR(255) NULL,
+        ADD COLUMN IF NOT EXISTS updated_at VARCHAR(255) NULL;`,
     },
 ];
 exports.DECEASED_SERVICE_MIGRATIONS = DECEASED_SERVICE_MIGRATIONS;
@@ -296,15 +470,15 @@ const CHEMICALS_SERVICE_MIGRATIONS = [];
 const LEAVE_SERVICE_MIGRATIONS = [
     {
         name: '170_create_leave_requests_table',
-        sql: `CREATE TABLE IF NOT EXISTS leave_requests (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, leave_type VARCHAR(50) NOT NULL, priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium', start_date DATE NOT NULL, end_date DATE NOT NULL, days DECIMAL(5,2) NOT NULL, reason TEXT, supporting_document VARCHAR(500), is_half_day BOOLEAN DEFAULT FALSE, status VARCHAR(50) DEFAULT 'pending', rejection_reason TEXT, approved_by INT NULL, approved_at VARCHAR(255) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_leave_user (user_id), INDEX idx_leave_tenant (tenant_slug), INDEX idx_leave_status (status), INDEX idx_leave_dates (start_date, end_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+        sql: `CREATE TABLE IF NOT EXISTS leave_requests (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, leave_type VARCHAR(50) NOT NULL, priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium', start_date DATE NOT NULL, end_date DATE NOT NULL, days DECIMAL(5,2) NOT NULL, reason TEXT, supporting_document VARCHAR(500), is_half_day BOOLEAN DEFAULT FALSE, status VARCHAR(50) DEFAULT 'pending', rejection_reason TEXT, reference_code VARCHAR(40) NULL, approved_by VARCHAR(36) NULL, approved_at VARCHAR(255) NULL, created_at VARCHAR(255), updated_at VARCHAR(255), INDEX idx_leave_user (user_id), INDEX idx_leave_tenant (tenant_slug), INDEX idx_leave_status (status), INDEX idx_leave_dates (start_date, end_date), INDEX idx_leave_ref (reference_code)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
     {
         name: '171_create_leave_day_additions_table',
-        sql: 'CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by INT NOT NULL, created_at DATE DEFAULT NULL, INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+        sql: 'CREATE TABLE IF NOT EXISTS leave_day_additions (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, days INT NOT NULL, reason TEXT, added_by VARCHAR(36) NOT NULL, created_at DATE DEFAULT NULL, INDEX idx_addition_user (user_id), INDEX idx_addition_tenant (tenant_slug), INDEX idx_addition_date (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     },
     {
         name: '172_create_holiday_compensations_table',
-        sql: 'CREATE TABLE IF NOT EXISTS holiday_compensations (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, tenant_slug VARCHAR(100) NOT NULL, holiday_date DATE NOT NULL, holiday_name VARCHAR(255) NOT NULL, note TEXT, recorded_by INT NOT NULL, created_at VARCHAR(255), INDEX idx_holiday_user (user_id), INDEX idx_holiday_tenant (tenant_slug), INDEX idx_holiday_date (holiday_date), UNIQUE KEY unique_user_holiday (user_id, holiday_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+        sql: 'CREATE TABLE IF NOT EXISTS holiday_compensations (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, holiday_date DATE NOT NULL, holiday_name VARCHAR(255) NOT NULL, note TEXT, recorded_by VARCHAR(36) NOT NULL, created_at VARCHAR(255), INDEX idx_holiday_user (user_id), INDEX idx_holiday_tenant (tenant_slug), INDEX idx_holiday_date (holiday_date), UNIQUE KEY unique_user_holiday (user_id, holiday_date)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     },
     {
         name: '173_add_annual_leave_balance_to_users',
@@ -313,6 +487,26 @@ const LEAVE_SERVICE_MIGRATIONS = [
     {
         name: '174_update_default_leave_balance',
         sql: 'UPDATE users SET annual_leave_balance = 26.00 WHERE annual_leave_balance IS NULL OR annual_leave_balance = 0',
+    },
+    {
+        name: '175_alter_leave_requests_user_id_to_uuid',
+        sql: "ALTER TABLE leave_requests MODIFY COLUMN user_id VARCHAR(36) NOT NULL",
+    },
+    {
+        name: '176_alter_leave_requests_approved_by_to_uuid',
+        sql: "ALTER TABLE leave_requests MODIFY COLUMN approved_by VARCHAR(36) NULL",
+    },
+    {
+        name: '177_alter_leave_additions_holiday_user_id_to_uuid',
+        sql: "ALTER TABLE leave_day_additions MODIFY COLUMN user_id VARCHAR(36) NOT NULL, MODIFY COLUMN added_by VARCHAR(36) NOT NULL",
+    },
+    {
+        name: '178_alter_holiday_compensations_user_id_recorded_by_to_uuid',
+        sql: "ALTER TABLE holiday_compensations MODIFY COLUMN user_id VARCHAR(36) NOT NULL, MODIFY COLUMN recorded_by VARCHAR(36) NOT NULL",
+    },
+    {
+        name: '179_add_leave_reference_code',
+        sql: "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reference_code VARCHAR(40) NULL, ADD INDEX IF NOT EXISTS idx_leave_ref (reference_code)",
     },
 ];
 exports.LEAVE_SERVICE_MIGRATIONS = LEAVE_SERVICE_MIGRATIONS;
@@ -332,7 +526,7 @@ const FLORIST_SERVICE_MIGRATIONS = [
     },
     {
         name: '163_add_flower_booking_extras',
-        sql: 'ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1 AFTER amount, ADD COLUMN IF NOT EXISTS arrangements TEXT AFTER quantity, ADD COLUMN IF NOT EXISTS primary_color VARCHAR(50) DEFAULT NULL AFTER arrangements, ADD COLUMN IF NOT EXISTS accent_color VARCHAR(50) DEFAULT NULL AFTER primary_color, ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(50) DEFAULT NULL AFTER accent_color',
+        sql: 'ALTER TABLE flower_bookings ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1 AFTER amount, ADD COLUMN IF NOT EXISTS arrangements TEXT AFTER quantity, ADD COLUMN IF NOT EXISTS primary_color VARCHAR(50) DEFAULT NULL AFTER arrangements, ADD COLUMN IF NOT EXISTS accent_color VARCHAR(50) DEFAULT NULL AFTER primary_color, ADD COLUMN IF NOT EXISTS ribbon_color VARCHAR(50) DEFAULT NULL AFTER accent_color, ADD COLUMN IF NOT EXISTS size VARCHAR(50) DEFAULT NULL AFTER ribbon_color',
     },
     {
         name: '164_add_price_to_flower_samples',
@@ -344,7 +538,15 @@ const FLORIST_SERVICE_MIGRATIONS = [
     },
     {
         name: '166_create_flower_sample_likes_table',
-        sql: `CREATE TABLE IF NOT EXISTS flower_sample_likes (id INT AUTO_INCREMENT PRIMARY KEY, arrangement_id VARCHAR(100) NOT NULL, tenant_slug VARCHAR(100) NOT NULL, client_key VARCHAR(128) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_flower_like (arrangement_id, tenant_slug, client_key), INDEX idx_flower_like_arr (arrangement_id, tenant_slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+        sql: `CREATE TABLE IF NOT EXISTS flower_sample_likes (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      arrangement_id VARCHAR(100) NOT NULL,
+      tenant_slug VARCHAR(100) NOT NULL,
+      client_key VARCHAR(128) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_flower_like (arrangement_id, tenant_slug, client_key),
+      INDEX idx_flower_like_arr (arrangement_id, tenant_slug)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
 ];
 // ─── Extra Services Migrations ───────────────────────────────────────────────
@@ -392,7 +594,7 @@ exports.ALL_TENANT_MIGRATIONS = [
 // tenant shares these tables; isolation is via tenant_slug / tenant_id columns.
 // Each service runs its own knex migrations independently against this DB.
 // NOTE: Leave tables are NOT here — they are per-tenant (see ALL_TENANT_MIGRATIONS).
-exports.OPERATIONS_MIGRATIONS = [...EXTRA_SERVICES_MIGRATIONS];
+exports.OPERATIONS_MIGRATIONS = [...EXTRA_SERVICES_MIGRATIONS, ...FLORIST_SERVICE_MIGRATIONS];
 // Alias for backward compatibility
 exports.ALL_SERVICE_MIGRATIONS = exports.ALL_TENANT_MIGRATIONS;
 // No longer creates separate branch databases — all branches share the single

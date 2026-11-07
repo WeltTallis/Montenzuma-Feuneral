@@ -14,6 +14,8 @@ import {
   listUsers,
   getMe,
   changePassword,
+  forgotPassword,
+  resetPasswordWithToken,
 } from '../controllers/authController';
 import { protect } from '../middleware/authMiddleware';
 
@@ -32,6 +34,13 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const recoveryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  message: { success: false, message: 'Too many recovery attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // AUTH ROUTES
@@ -45,6 +54,8 @@ router.post('/register', register);
 
 // Token refresh
 router.post('/refresh', refresh);
+router.post('/forgot-password', recoveryLimiter, forgotPassword);
+router.post('/reset-password', recoveryLimiter, resetPasswordWithToken);
 
 // Get current user from token
 router.get('/me', getMe);

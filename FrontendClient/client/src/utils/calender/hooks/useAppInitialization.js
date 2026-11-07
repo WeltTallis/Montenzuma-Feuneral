@@ -100,7 +100,7 @@ export const useAppInitialization = () => {
         const currentPath = location.pathname;
 
         // Skip for public pages
-        const publicPaths = ['/login', '/register', '/forgot-password', '/', '/privacy', '/terms', '/security', '/about', '/contact', '/support', '/why-us'];
+        const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/', '/privacy', '/terms', '/security', '/about', '/contact', '/support', '/why-us'];
         const isPublicPage = publicPaths.some(path => currentPath === path || currentPath.startsWith(path + '/'));
 
         if (isPublicPage) {

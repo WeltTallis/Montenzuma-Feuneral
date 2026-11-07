@@ -1,7 +1,6 @@
 import { safeTenantExecute, safeTenantQuery, resolveDatabase, getRootPool } from '../../../shared/dbConfig';
 import { getKenyaTimeISO, getKenyaDate } from '../../../packages/shared-utils/dist/timestamps';
 import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
-import { ensurePostmortemRequestsTable, ensurePostmortemTable, ensureDeceasedPostmortemFlags } from './postmortemRequestControl';
 import { tableColumns, pickAs } from '../utils/tenantSchema';
 import Logger from '../../../packages/shared-logger/src/index';
 import { Request, Response } from 'express';
@@ -517,7 +516,6 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
 
         let trackingRequestId: number | null = null;
         try {
-            await ensurePostmortemRequestsTable(dbName);
             const requestRef = `PMR-${Date.now()}`;
             const sourceTag = typeof source === 'string' && source.trim() ? source.trim() : 'postmortem_request_form';
             const trackingNotes = [
@@ -539,7 +537,6 @@ export const requestPostmortem = async (req: TenantRequest, res: Response): Prom
         // Sync the deceased record: the body is now awaiting postmortem examination.
         // `postmortem_requested` is the flag analytics-service counts on.
         try {
-            await ensureDeceasedPostmortemFlags(dbName);
             await safeTenantExecute(dbName,
                 `UPDATE deceased SET body_status = 'Postmortem Requested', postmortem_requested = 1, postmortem_completed = 0, updated_at = ? WHERE deceased_id = ?`,
                 [now, deceased_id]);
@@ -629,7 +626,6 @@ const syncPostmortemCompletion = async (
 ): Promise<void> => {
     // 1. Close out the tracked request so it stops showing as outstanding.
     try {
-        await ensurePostmortemRequestsTable(dbName);
         await safeTenantExecute(
             dbName,
             `UPDATE postmortem_requests SET status = ?, completed_at = ?, updated_at = ?
@@ -642,7 +638,6 @@ const syncPostmortemCompletion = async (
 
     // 2. The deceased row — flags analytics-service reads, plus body_status.
     try {
-        await ensureDeceasedPostmortemFlags(dbName);
         const sets: string[] = ['updated_at = ?', 'postmortem_requested = 1', `postmortem_completed = ${completed ? 1 : 0}`];
         if (completed) {
             // Only advance the body_status when it is still awaiting the exam —
@@ -688,7 +683,6 @@ export const savePostmortem = async (req: TenantRequest, res: Response): Promise
         const rawSignature = (req.body as any).signature_base64;
         const signature_base64 = rawSignature ? await normalizeSignatureToInkBlue(rawSignature) : null;
 
-        await ensurePostmortemTable(dbName);
 
         const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
         const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
@@ -888,7 +882,6 @@ export const updatePostmortem = async (req: TenantRequest, res: Response): Promi
         const dbName = await resolveDatabase(tenantSlug);
         if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
 
-        await ensurePostmortemTable(dbName);
 
         const updates = req.body;
         // `status` and `completed_at` used to be missing from this allow-list,

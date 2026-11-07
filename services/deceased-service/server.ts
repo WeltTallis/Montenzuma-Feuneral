@@ -118,7 +118,7 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 });
 
 // Health check - BEFORE tenant middleware to avoid log spam
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({
         status: 'UP',
         service: 'deceased-service',
@@ -128,7 +128,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Root health check for API gateway
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
     res.status(200).json({
         status: 'UP',
         service: 'deceased-service',
@@ -153,7 +153,7 @@ app.get('/health/redis', async (req: Request, res: Response) => {
             service: 'deceased-service',
             redis
         });
-    } catch (error: any) {
+    } catch {
         return res.status(500).json({
             service: 'deceased-service',
             redis: { status: 'ERROR' }
@@ -321,7 +321,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
             : status === 403
                 ? 'Request origin is not allowed'
                 : 'Internal server error',
-        requestId
+          requestId
     });
 });
 

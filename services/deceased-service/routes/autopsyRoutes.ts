@@ -2,12 +2,12 @@
 import { protect, authorizeAny } from '../../../services/app-global/middlewares/authMiddleware';
 import { Router } from 'express';
 import {
-    requestPostmortem,
     savePostmortem,
-    getPostmortemByDeceasedId,
-    updatePostmortem,
-    generatePostmortemPDF
 } from '../controllers/autopsy/autopsyControl';
+import { getPostmortemByDeceasedId } from '../controllers/autopsy/autopsyControl';
+import { requestPostmortem } from '../controllers/autopsy/requestPostmortem';
+import { updatePostmortem } from '../controllers/autopsy/updatePostmortem';
+import { generatePostmortemPDF } from '../controllers/autopsy/generatePostmortmePDF';
 
 const router = Router();
 

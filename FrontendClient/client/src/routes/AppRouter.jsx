@@ -1000,6 +1000,7 @@ const AppRouter = () => (
       <Route path="/register" element={<OnboardingFlow />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ForgotPassword />} />
       <Route path="/change-password" element={<ChangePassword />} />
       <Route path="/portal" element={<Navigate to="/portal/login" replace />} />
       <Route path="/reception" element={<ReceptionPortal />} />

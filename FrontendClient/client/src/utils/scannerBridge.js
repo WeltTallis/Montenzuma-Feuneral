@@ -217,7 +217,7 @@ export const getAuthToken = () => '';
  * Ask the Restpoint cloud for a short-lived bridge grant.
  *
  * The grant is what proves to the bridge that this tab is a genuine, signed-in
- * Restpoint session. It expires in 60s and is single-use, which is why it is
+ * Restpoint session. It expires in 10 minutes, which is why it is
  * fetched per job rather than cached.
  *
  * `scope` selects which physical action the grant unlocks - 'bridge:scan' to
