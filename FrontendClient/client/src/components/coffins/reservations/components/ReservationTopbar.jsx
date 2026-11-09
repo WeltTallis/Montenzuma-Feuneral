@@ -1,8 +1,8 @@
 import React from 'react';
 
-/* ============================================================================
-   ReservationTopbar — brand bar: CoffinBook mark + New Booking action.
-   ============================================================================ */
+/* 
+   ReservationTopbar  brand bar: CoffinBook mark + New Booking action.
+ */
 function PlusIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">

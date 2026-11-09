@@ -4,14 +4,6 @@ import { logger } from '@montezuma/shared-logger';
 
 /**
  * Redis configuration
- *
- * Priority:
- * 1. REDIS_URL
- * 2. REDIS_HOST + REDIS_PORT + REDIS_PASSWORD
- *
- * In Docker, REDIS_HOST should normally be the Redis container/service name,
- * for example:
- *
  *   REDIS_HOST=restpoint_redis
  *   REDIS_PORT=6379
  */
@@ -43,7 +35,15 @@ connection.on('ready', () => {
 });
 
 connection.on('error', (error: Error) => {
-  logger.error('Analytics Redis connection error', error);
+  logger.error(
+
+    {
+      message: 'Analytics Redis connection error',
+      error: error?.message
+    }
+
+
+  );
 });
 
 connection.on('close', () => {
@@ -82,6 +82,27 @@ async function addJob(
   }
 
   return String(job.id);
+}
+
+async function scheduleDailyOperationsSms(): Promise<void> {
+  if (process.env.DAILY_OPERATIONS_SMS_ENABLED === 'false') {
+    logger.info('Daily operations SMS schedule is disabled');
+    return;
+  }
+
+  const cron = process.env.DAILY_OPERATIONS_SMS_CRON || '0 18 * * *';
+  const timeZone = process.env.DAILY_OPERATIONS_SMS_TIMEZONE || 'Africa/Nairobi';
+  await analyticsQueue.add(
+    'daily-operations-sms',
+    {},
+    {
+      jobId: 'daily-operations-sms',
+      repeat: { pattern: cron, tz: timeZone },
+      removeOnComplete: { age: 86400, count: 50 },
+      removeOnFail: { age: 604800, count: 50 },
+    },
+  );
+  logger.info({ msg: 'Daily operations SMS schedule registered', cron, timeZone });
 }
 
 /**
@@ -144,8 +165,12 @@ async function cleanupOldJobs(
     logger.info('Analytics queue cleanup completed');
   } catch (error) {
     logger.error(
-      'Error cleaning old analytics jobs',
-      error,
+
+      {
+        message: 'Error cleaning old analytics jobs',
+        error: error?.message,
+      }
+
     );
   }
 }
@@ -175,8 +200,10 @@ if (process.env.ENABLE_JOB_CLEANUP !== 'false') {
     cleanupTimer = setInterval(() => {
       cleanupOldJobs().catch((error) => {
         logger.error(
-          'cleanupOldJobs error',
-          error,
+          {
+            message: 'cleanupOldJobs error',
+            error,
+          }
         );
       });
     }, cleanupIntervalMs);
@@ -214,8 +241,10 @@ async function closeQueue(): Promise<void> {
     );
   } catch (error) {
     logger.error(
-      'Error closing analytics queue',
-      error,
+      {
+        message: 'Error closing analytics queue',
+        error: error?.message
+      }
     );
   }
 }
@@ -224,6 +253,7 @@ export {
   analyticsQueue as queue,
   addJob,
   getJob,
+  scheduleDailyOperationsSms,
   cleanupOldJobs,
   closeQueue,
 };

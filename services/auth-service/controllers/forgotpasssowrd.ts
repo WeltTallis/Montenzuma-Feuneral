@@ -1,1 +1,0 @@
-export { forgotPassword } from './authController';

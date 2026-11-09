@@ -1,0 +1,1 @@
+export { resetPasswordWithToken as resetPassword } from '../authController';

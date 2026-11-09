@@ -1,7 +1,11 @@
-import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
+import {
+    closeAsyncSideEffectResources,
+    startAsyncSideEffectWorker,
+} from '../app-global/utils/asyncSideEffectQueue';
 import express, { Request, Response, NextFunction } from 'express';
 import Logger from '../../packages/shared-logger/src/index';
 import { Server as SocketIOServer } from 'socket.io';
+import type { Worker } from 'bullmq';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -9,6 +13,9 @@ import http from 'http';
 import https from 'https';
 import fs from 'fs';
 import { randomUUID, timingSafeEqual } from 'crypto';
+import { closeAllConnections } from '../../shared/dbConfig';
+import { closeExcelExportQueue } from './queues/excelExportQueue';
+import { closePDFQueueResources, startPDFWorker } from './queues/pdfQueue';
 
 // Mount routes
 import postmortemRequestRoutes from './routes/postmortemRequestRoutes';
@@ -361,21 +368,30 @@ io.use(async (socket, next) => {
 
 // Initialize BullMQ Worker for Excel Export (with graceful Redis fallback)
 import { getExcelExportQueue } from './queues/excelExportQueue';
-import { startPDFWorker } from './queues/pdfQueue';
 
 // Initialize queues asynchronously - don't block server startup
 let excelWorkerStarted = false;
+let shuttingDown = false;
+let excelWorker: Worker | null = null;
+let queueInitialization: Promise<void> | null = null;
 
 async function initializeQueues() {
+    if (shuttingDown) return;
     try {
         if (!excelWorkerStarted) {
             const excelQueue = await getExcelExportQueue();
             if (excelQueue) {
+                if (shuttingDown) return;
                 startAsyncSideEffectWorker();
                 // Only import and start worker if queue is available
                 const { createExcelExportWorker } = await import('./workers/richExcelExportWorker.js');
                 const worker = await createExcelExportWorker();
                 if (worker) {
+                    if (shuttingDown) {
+                        await worker.close();
+                        return;
+                    }
+                    excelWorker = worker;
                     excelWorkerStarted = true;
                     console.log('[SERVER] Excel export worker initialized');
                 } else {
@@ -387,20 +403,25 @@ async function initializeQueues() {
         }
 
         // Initialize PDF worker
-        startPDFWorker();
+        await startPDFWorker();
     } catch (error: any) {
         console.warn(`[SERVER] Queue initialization failed: ${error.message}`);
     }
 }
 
 // Start queue initialization in background
-initializeQueues().catch(err => {
+queueInitialization = initializeQueues();
+queueInitialization.catch(err => {
     console.warn('[SERVER] Background queue initialization error:', err.message);
 });
 
 
 let queueInitRetries = 0;
 const queueInitTimer = setInterval(() => {
+    if (shuttingDown) {
+        clearInterval(queueInitTimer);
+        return;
+    }
     queueInitRetries += 1;
     if (excelWorkerStarted || queueInitRetries > 20) {
         clearInterval(queueInitTimer);
@@ -410,7 +431,8 @@ const queueInitTimer = setInterval(() => {
         return;
     }
     console.log(`[SERVER] Retrying queue/worker initialization (attempt ${queueInitRetries})...`);
-    initializeQueues().catch(err => {
+    queueInitialization = initializeQueues();
+    queueInitialization.catch(err => {
         console.warn('[SERVER] Queue init retry error:', err.message);
     });
 }, 30_000);
@@ -443,28 +465,86 @@ io.on('connection', (socket) => {
     });
 });
 
-const gracefulShutdown = (signal: string) => {
-    console.log(`[SHUTDOWN] Received ${signal}. Starting graceful shutdown...`);
-    server.close(() => {
-        console.log('[SHUTDOWN] HTTP server closed.');
-        process.exit(0);
-    });
-    setTimeout(() => {
-        Logger.error('[SHUTDOWN] Forced shutdown after timeout   in  deceased  service.');
+async function gracefulShutdown(signal: string, exitCode = 0): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    process.exitCode = exitCode;
+    Logger.info(`[SHUTDOWN] ${signal} received. Starting graceful shutdown.`);
+    clearInterval(queueInitTimer);
+
+    const forceExitTimer = setTimeout(() => {
+        Logger.error('[SHUTDOWN] Deceased service shutdown timed out; forcing exit.');
         process.exit(1);
-    }, 10000);
-};
+    }, 10_000);
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    const serverClosed = new Promise<void>((resolve) => {
+        if (!server.listening) {
+            resolve();
+            return;
+        }
+        io.close(() => resolve());
+    });
 
-process.on('unhandledRejection', (reason) => {
-    Logger.error(`[SECURITY] Unhandled Rejection   deceased   service: ${reason}`);
+    const initializationStopped = queueInitialization
+        ? queueInitialization.catch((error: unknown) => {
+            Logger.error(
+                `[SHUTDOWN] Queue initialization failed during shutdown: ${
+                    error instanceof Error ? error.message : String(error)
+                }`,
+            );
+        })
+        : Promise.resolve();
+
+    const drainResults = await Promise.allSettled([serverClosed, initializationStopped]);
+    for (const result of drainResults) {
+        if (result.status === 'rejected') {
+            const error = result.reason;
+            Logger.error(
+                `[SHUTDOWN] Request drain failed: ${
+                    error instanceof Error ? error.stack || error.message : String(error)
+                }`,
+            );
+            process.exitCode = 1;
+        }
+    }
+
+    const resourceResults = await Promise.allSettled([
+        Promise.resolve().then(() => excelWorker?.close()),
+        Promise.resolve().then(() => closeAsyncSideEffectResources()),
+        Promise.resolve().then(() => closeExcelExportQueue()),
+        Promise.resolve().then(() => closePDFQueueResources()),
+        Promise.resolve().then(() => closeAllConnections()),
+    ]);
+
+    for (const result of resourceResults) {
+        if (result.status === 'rejected') {
+            const error = result.reason;
+            Logger.error(
+                `[SHUTDOWN] Cleanup failed: ${
+                    error instanceof Error ? error.stack || error.message : String(error)
+                }`,
+            );
+            process.exitCode = 1;
+        }
+    }
+
+    clearTimeout(forceExitTimer);
+    Logger.info('[SHUTDOWN] Deceased service shutdown complete.');
+    if (process.exitCode) process.exit(process.exitCode);
+}
+
+process.once('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => void gracefulShutdown('SIGINT'));
+
+process.once('unhandledRejection', (reason: unknown) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    Logger.error(`[FATAL] Unhandled promise rejection: ${error.stack || error.message}`);
+    void gracefulShutdown('unhandledRejection', 1);
 });
 
-process.on('uncaughtException', (err) => {
-    Logger.error(`[SECURITY] Uncaught exception    deceased    service: ${err.stack || err.message}`);
-    process.exit(1);
+process.once('uncaughtException', (error: Error) => {
+    Logger.error(`[FATAL] Uncaught exception: ${error.stack || error.message}`);
+    void gracefulShutdown('uncaughtException', 1);
 });
 
 server.on('connection', (socket) => {
@@ -477,10 +557,10 @@ server.on('connection', (socket) => {
 
 server.on('error', (err: NodeJS.ErrnoException) => {
     Logger.error(`[SERVER]   Server  error:    ${err.message}`);
-    if (err.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use`);
-        process.exit(1);
-    }
+    void gracefulShutdown(
+        err.code === 'EADDRINUSE' ? `EADDRINUSE on port ${PORT}` : 'server error',
+        1,
+    );
 });
 
 server.listen(PORT, '0.0.0.0', () => {

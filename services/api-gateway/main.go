@@ -21,7 +21,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -692,5 +691,4 @@ func newRequestID() string {
 	hex := fmt.Sprintf("%x", bytes)
 	return hex[:8] + "-" + hex[8:12] + "-" + hex[12:16] + "-" + hex[16:20] + "-" + hex[20:]
 }
-
 

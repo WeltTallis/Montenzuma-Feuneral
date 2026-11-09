@@ -2,9 +2,9 @@ import React from 'react';
 import { format, startOfWeek, addDays, isSameDay, isSameMonth, isToday } from 'date-fns';
 import { getStatusStyle, parseHour, fmtTime12, fmtHour, fmtMDY } from '../tokens';
 
-/* ============================================================================
-   ReservationCalendar — day/week time grid with untimed lane.
-   ============================================================================ */
+/* 
+   ReservationCalendar  day/week time grid with untimed lane.
+    */
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = [];
 for (let h = 6; h < 22; h++) HOURS.push(h);
@@ -57,7 +57,7 @@ export function ReservationCalendar({ view, sel, visible, viewMonth, viewYear, c
         className="cb-chip"
         style={{ '--chip-c': st.color }}
         onClick={() => onPick(b)}
-        title={`${b.clientName} · ${st.label}`}
+        title={`${b.clientName} ï¿½ ${st.label}`}
       >
         {b.time ? <span className="t">{fmtTime12(b.time)}</span> : null}
         <span className="n">{b.clientName}</span>

@@ -1,9 +1,9 @@
 import React from 'react';
 import { C, getStatusStyle, money, fmtMDY } from '../tokens';
 
-/* ============================================================================
-   ReservationDetailPanel — slide-in client/amount/payment panel.
-   ============================================================================ */
+/* 
+   ReservationDetailPanel  slide-in client/amount/payment panel.
+  */
 function CloseIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -49,7 +49,7 @@ export function ReservationDetailPanel({ booking, markingPaid, onClose, onMarkPa
             <div className="cb-pb-grid">
               <div className="cb-pb-card">
                 <div className="cb-pb-card-l">Phone</div>
-                <div className="cb-pb-card-v">{b.phone || '—'}</div>
+                <div className="cb-pb-card-v">{b.phone || 'ï¿½'}</div>
               </div>
               <div className="cb-pb-card">
                 <div className="cb-pb-card-l">Payment</div>

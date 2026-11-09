@@ -1,9 +1,13 @@
 
 
-import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
+import {
+    closeAsyncSideEffectResources,
+    startAsyncSideEffectWorker,
+} from '../app-global/utils/asyncSideEffectQueue';
 import { runBodyCheckoutMigrations } from './utilities/migrate';
 import Logger from '../../packages/shared-logger/dist/index';
 import bodyReleaseRoutes from './routes/routes';
+import { closeAllConnections } from '../../shared/dbConfig';
 
 
 import express from 'express';
@@ -110,11 +114,13 @@ app.use((err: any, req: any, res: any, next: any) => {
 });
 
 let server: ReturnType<typeof app.listen> | undefined;
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+let shuttingDown = false;
+let startupTask: Promise<void> | null = null;
 
 // Bootstrap: ensure body-checkout migrations have run on every active tenant
 // database before accepting traffic (matches how coffin/florist/hearse work).
 async function bootstrap(): Promise<void> {
-    startAsyncSideEffectWorker();
     try {
         await runBodyCheckoutMigrations();
     } catch (error: any) {
@@ -123,50 +129,111 @@ async function bootstrap(): Promise<void> {
             error: error.message,
             stack: error.stack
         });
+        throw error;
     }
 
+    if (shuttingDown) return;
+    startAsyncSideEffectWorker();
     server = app.listen(PORT, '0.0.0.0', () => {
         Logger.info(`Bodycheckout service running on port ${PORT}`);
     });
+    server.on('error', (error) => {
+        Logger.error({
+            message: 'Bodycheckout HTTP server error',
+            error: error.message,
+            stack: error.stack,
+        });
+        void gracefulShutdown('HTTP server error', 1);
+    });
 }
 
-bootstrap();
+async function gracefulShutdown(signal: string, exitCode = 0): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    process.exitCode = exitCode;
+    Logger.info(`[SHUTDOWN] Bodycheckout received ${signal}; starting shutdown.`);
 
+    const forceExitTimer = setTimeout(() => {
+        Logger.error('[SHUTDOWN] Bodycheckout shutdown timed out; forcing exit.');
+        process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
 
+    const serverClosed = new Promise<void>((resolve, reject) => {
+        if (!server?.listening) {
+            resolve();
+            return;
+        }
+        server.close((error) => error ? reject(error) : resolve());
+    });
+    const startupStopped = startupTask
+        ? startupTask.catch((error: unknown) => {
+            Logger.error({
+                message: 'Bodycheckout startup failed during shutdown',
+                error: error instanceof Error ? error.message : String(error),
+            });
+        })
+        : Promise.resolve();
 
-process.on('uncaughtException', (error) => {
+    const drainResults = await Promise.allSettled([serverClosed, startupStopped]);
+    for (const result of drainResults) {
+        if (result.status === 'rejected') {
+            const error = result.reason;
+            Logger.error({
+                message: 'Bodycheckout request drain failed',
+                error: error instanceof Error ? error.message : String(error),
+            });
+            process.exitCode = 1;
+        }
+    }
 
+    const cleanupResults = await Promise.allSettled([
+        Promise.resolve().then(() => closeAsyncSideEffectResources()),
+        Promise.resolve().then(() => closeAllConnections()),
+    ]);
+    for (const result of cleanupResults) {
+        if (result.status === 'rejected') {
+            const error = result.reason;
+            Logger.error({
+                message: 'Bodycheckout resource cleanup failed',
+                error: error instanceof Error ? error.stack || error.message : String(error),
+            });
+            process.exitCode = 1;
+        }
+    }
+
+    clearTimeout(forceExitTimer);
+    Logger.info('[SHUTDOWN] Bodycheckout shutdown complete.');
+    if (process.exitCode) process.exit(process.exitCode);
+}
+
+process.once('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => void gracefulShutdown('SIGINT'));
+
+process.once('unhandledRejection', (reason: unknown) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
     Logger.error({
-        message: 'Uncaught Exception    bodycheckout  service',
+        message: 'Unhandled promise rejection in bodycheckout service',
         error: error.message,
         stack: error.stack
     });
-
-    // Stop accepting new requests
-    server?.close(() => {
-        process.exit(1);
-    });
-
-    // Force exit if shutdown hangs
-    setTimeout(() => process.exit(1), 5000);
-
+    void gracefulShutdown('unhandledRejection', 1);
 });
 
-process.on('unhandledRejection', (reason: any) => {
+process.once('uncaughtException', (error: Error) => {
     Logger.error({
-        message: 'Unhandled Promise Rejection    bodycheckout   service',
-        error: reason?.message || String(reason),
-        stack: reason?.stack
+        message: 'Uncaught exception in bodycheckout service',
+        error: error.message,
+        stack: error.stack
     });
+    void gracefulShutdown('uncaughtException', 1);
+});
 
-    server?.close(() => {
-        Logger.error({
-
-            message: "  Process   Closed  and  exited Bodycheckout  service",
-
-        })
-        process.exit(1);
+startupTask = bootstrap();
+startupTask.catch((error: unknown) => {
+    Logger.error({
+        message: 'Bodycheckout service startup failed',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
     });
-
-    setTimeout(() => process.exit(1), 5000);
+    void gracefulShutdown('startup failure', 1);
 });

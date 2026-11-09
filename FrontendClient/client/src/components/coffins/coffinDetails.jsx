@@ -6,7 +6,7 @@ import api from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
 import env from '../../utils/config/env';
 
-// ─── Color Palette (Elegant Vintage) ───────────────────────────────────────
+// ─── Color Palette (Elegant Vintage)
 const Colors = {
     ink: '#15171A',
     bone: '#FAF8F4',
@@ -43,7 +43,7 @@ const Colors = {
     warningLine: '#EDE4D0',
 };
 
-// ─── Animations ────────────────────────────────────────────────────────────
+//  Animation
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -70,7 +70,7 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-// ─── Styled Components ─────────────────────────────────────────────────────
+// Styled Componen
 
 const PageContainer = styled.div`
   background: ${Colors.bone};
@@ -238,7 +238,7 @@ const Button = styled.button`
   &.sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; min-height: 32px; svg { width: 14px; height: 14px; } }
 `;
 
-// ─── Product Gallery ───────────────────────────────────────────────────────
+//  Product Gallery 
 
 const ProductLayout = styled.div`
   display: grid;
@@ -334,7 +334,7 @@ const Thumbnail = styled.div`
   @media (max-width: 576px) { height: 60px; }
 `;
 
-// ─── Product Details ───────────────────────────────────────────────────────
+//  Product Details 
 
 const DetailsSection = styled.div`
   padding: 0;

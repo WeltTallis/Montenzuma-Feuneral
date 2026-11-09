@@ -1,16 +1,4 @@
-﻿/**
- * Coffin Service - Central (shared) Coffin Database helper
- * -------------------------------------------------
- * All coffin-domain data (inventory, bookings/orders, stock requests, images,
- * coffin usage, deceased-coffin assignments) lives in ONE central database that
- * serves every tenant. Tenant isolation is enforced through the tenant_slug
- * (and tenant_id) columns inside that single database.
- *
- * This module lazily creates the central database, provides a mysql2 pool for
- * queries and a knex instance for migrations, and exposes the migration runner
- * that the coffin service executes independently on startup (and via the
- * standalone `node migrate-coffin-db.js` script).
- */
+﻿
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
@@ -75,7 +63,7 @@ async function ensureCoffinDatabase() {
     await admin.query(
       `CREATE DATABASE IF NOT EXISTS \`${COFFIN_DATABASE}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     );
-    
+
     dbEnsured = true;
     logger.info({ msg: 'Coffin central database ensured', database: COFFIN_DATABASE });
   } finally {
@@ -236,11 +224,11 @@ async function runCoffinMigrations() {
 
 async function closeCoffinDb() {
   if (coffinPool) {
-    await coffinPool.end().catch(() => {});
+    await coffinPool.end().catch(() => { });
     coffinPool = null;
   }
   if (coffinKnex) {
-    await coffinKnex.destroy().catch(() => {});
+    await coffinKnex.destroy().catch(() => { });
     coffinKnex = null;
   }
 }

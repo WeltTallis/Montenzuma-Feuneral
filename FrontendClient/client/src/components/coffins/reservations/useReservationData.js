@@ -1,5 +1,5 @@
 /**
- * useReservationData — month-scoped fetching for the reservations tab.
+ * useReservationData  month-scoped fetching for the reservations tab.
  * Preserves the parent booking/coffin prop seeding and URL-driven month state.
  */
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';

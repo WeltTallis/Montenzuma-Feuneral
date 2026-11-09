@@ -1,9 +1,9 @@
 import React from 'react';
 import { money } from '../tokens';
 
-/* ============================================================================
-   ReservationStatStrip — colored KPI cards for month stats.
-   ============================================================================ */
+/* 
+   ReservationStatStrip  colored KPI cards for month stats.
+   */
 function CalIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

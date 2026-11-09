@@ -282,6 +282,13 @@ export const healthCheck = async (): Promise<boolean> => {
   }
 };
 
+export const closeHearsePool = async (): Promise<void> => {
+  if (!hearsePool) return;
+  const pool = hearsePool;
+  hearsePool = null;
+  await pool.end();
+};
+
 
 // Exports
 
@@ -297,6 +304,7 @@ export default {
   rollbackMigrations,
   resetDatabase,
   healthCheck,
+  closeHearsePool,
   HEARSE_DB_CONFIG
 };
 

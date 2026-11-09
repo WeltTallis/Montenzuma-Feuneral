@@ -45,13 +45,14 @@ const corsOptions: cors.CorsOptions = {
 
 logger.info({ msg: 'Starting coffin service...' });
 
-// Prevent process from exiting
 process.on('uncaughtException', (error: any) => {
   logger.error({ msg: 'Uncaught Exception', error: error.message, stack: error.stack });
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason: any) => {
   logger.error({ msg: 'Unhandled Rejection', reason: reason?.message || reason });
+  process.exit(1);
 });
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────
@@ -88,7 +89,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     // The central coffin database serves every tenant - the tenant is identified
     // by slug and/or id, not by a dedicated database.
     (req as any).tenant = {
-            db_name: process.env.OPERATIONS_DATABASE || process.env.DB_NAME || 'restpoint_operations',
+      db_name: process.env.OPERATIONS_DATABASE || process.env.DB_NAME || 'restpoint_operations',
       tenant_slug: tenantSlug,
       tenant_id: (req as any).tenantId,
       tenant_name: tenantSlug,
@@ -220,7 +221,7 @@ async function startServer() {
         port: PORT,
         health: `http://localhost:${PORT}/health`,
         endpoints: `http://localhost:${PORT}/`,
-                centralDb: process.env.OPERATIONS_DATABASE || 'restpoint_operations'
+        centralDb: process.env.OPERATIONS_DATABASE || 'restpoint_operations'
       });
     });
 
@@ -236,10 +237,16 @@ async function startServer() {
     // Graceful shutdown
     const shutdown = (signal: string) => {
       logger.info({ msg: `Received ${signal}, shutting down gracefully...` });
-      server.close(async () => {
-        await closeCoffinDb();
-        logger.info({ msg: 'Server closed successfully' });
-        process.exit(0);
+      server.close(() => {
+        closeCoffinDb()
+          .then(() => {
+            logger.info({ msg: 'Server closed successfully' });
+            process.exit(0);
+          })
+          .catch((error: any) => {
+            logger.error({ msg: 'Failed to close coffin database', error: error.message, stack: error.stack });
+            process.exit(1);
+          });
       });
       // Force exit after 10 seconds if graceful shutdown fails
       setTimeout(() => {

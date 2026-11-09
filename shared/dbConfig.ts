@@ -6,9 +6,9 @@
 
 import * as mysql from 'mysql2/promise';
 
-// ============================================
+
 // Logger (production-safe, no console.log)
-// ============================================
+
 const LOGGER = {
   info: (msg: string, data?: any) => {
     if (process.env.NODE_ENV !== 'test') {
@@ -29,16 +29,16 @@ const LOGGER = {
   },
 };
 
-// ============================================
+
 // GSSAPI Auth Plugin Fix for MariaDB 10.11+
-// ============================================
+
 const auth_gssapi_client = () => () => {
   throw new Error('GSSAPI not supported - use mysql_native_password');
 };
 
-// ============================================
+
 // Circuit Breaker
-// ============================================
+
 class CircuitBreaker {
   private failures = 0;
   private lastFailureTime = 0;
@@ -110,9 +110,9 @@ class CircuitBreaker {
   }
 }
 
-// ============================================
+
 // Configuration
-// ============================================
+
 const DB_CONFIG = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: Number.parseInt(process.env.DB_PORT || '3306', 10),
@@ -183,7 +183,7 @@ function startPoolCleanup(): void {
 
       const toRemove = sorted.slice(0, tenantPoolCache.size - MAX_POOL_CACHE_SIZE);
       for (const [key, entry] of toRemove) {
-        entry.pool.end().catch(() => {});
+        entry.pool.end().catch(() => { });
         tenantPoolCache.delete(key);
         cleaned++;
       }
@@ -205,7 +205,7 @@ function stopPoolCleanup(): void {
   }
 }
 
-// ─── Root Pool ───────────────────────────────────────────────────────────────
+// ─── Root Pool 
 
 export const getRootPool = async (): Promise<mysql.Pool> => {
   if (!rootPool) {
@@ -223,14 +223,14 @@ export const getRootPool = async (): Promise<mysql.Pool> => {
     // Test connection
     try {
       const conn = await rootPool.getConnection();
-  
+
       conn.release();
       LOGGER.info('Root database pool created (tenant_tracking)');
     } catch (err: any) {
       LOGGER.error('Root pool creation failed', { error: err.message });
       const failedPool = rootPool;
       rootPool = null;
-      await failedPool?.end().catch(() => {});
+      await failedPool?.end().catch(() => { });
       throw new Error(`Root database connection failed: ${err.message}`);
     }
 
@@ -239,7 +239,7 @@ export const getRootPool = async (): Promise<mysql.Pool> => {
   return rootPool;
 };
 
-// ─── Tenant Lookup with Circuit Breaker ──────────────────────────────────────
+// ─── Tenant Lookup with Circuit Breaker 
 
 /**
  * Schemas that must NEVER be handed back as a tenant database, whatever the
@@ -639,7 +639,7 @@ export const getTenantDB = async (tenantDbName: string): Promise<mysql.Pool> => 
   if (tenantPoolCache.size >= MAX_POOL_CACHE_SIZE) {
     const oldest = [...tenantPoolCache.entries()].sort((a, b) => a[1].lastUsed - b[1].lastUsed)[0];
     if (oldest) {
-      oldest[1].pool.end().catch(() => {});
+      oldest[1].pool.end().catch(() => { });
       tenantPoolCache.delete(oldest[0]);
       LOGGER.info('Evicted oldest pool to maintain cache limit', { dbName: oldest[0] });
     }
@@ -659,7 +659,7 @@ export const getTenantDB = async (tenantDbName: string): Promise<mysql.Pool> => 
   // Test connection
   try {
     const conn = await pool.getConnection();
-    
+
     conn.release();
     LOGGER.info('Connected to tenant database', { dbName: tenantDbName });
   } catch (err: any) {
@@ -669,7 +669,7 @@ export const getTenantDB = async (tenantDbName: string): Promise<mysql.Pool> => 
     // message instead of caching a poisoned pool whose error only surfaces later at
     // the call site (e.g. "Unknown database" inside a controller).
     if (err && (err.code === 'ER_BAD_DB_ERROR' || /Unknown database/i.test(err.message || ''))) {
-      await pool.end().catch(() => {});
+      await pool.end().catch(() => { });
       throw new Error(`Unknown database '${tenantDbName}'. Did you mean to resolveDatabase(slug) first?`);
     }
   }
@@ -728,7 +728,7 @@ export const execute = async (
 
   try {
     const pool = await getTenantDB(dbName);
-        const [result] = await pool.query(sql, params);
+    const [result] = await pool.query(sql, params);
     return result as unknown as mysql.ResultSetHeader;
   } catch (error: any) {
     LOGGER.error('Execute error', { dbName, message: error.message, sql: sql.substring(0, 200) });
@@ -764,7 +764,7 @@ export const safeTenantExecute = async (
 ): Promise<mysql.ResultSetHeader> => {
   try {
     const pool = await getTenantDB(dbName);
-        const [result] = await pool.query(sql, params);
+    const [result] = await pool.query(sql, params);
     return result as unknown as mysql.ResultSetHeader;
   } catch (error: any) {
     LOGGER.error('safeTenantExecute error', {
@@ -781,7 +781,7 @@ export const safeTenantExecute = async (
 export const closeTenantDB = async (tenantDbName: string): Promise<void> => {
   const entry = tenantPoolCache.get(tenantDbName);
   if (entry) {
-    await entry.pool.end().catch(() => {});
+    await entry.pool.end().catch(() => { });
     tenantPoolCache.delete(tenantDbName);
     LOGGER.info('Closed pool for tenant', { dbName: tenantDbName });
   }
@@ -791,7 +791,7 @@ export const closeAllConnections = async (): Promise<void> => {
   stopPoolCleanup();
 
   for (const [dbName, entry] of tenantPoolCache) {
-    await entry.pool.end().catch(() => {});
+    await entry.pool.end().catch(() => { });
     LOGGER.info('Closed pool', { dbName });
   }
   tenantPoolCache.clear();
@@ -799,7 +799,7 @@ export const closeAllConnections = async (): Promise<void> => {
   tenantLookupCache.clear();
 
   if (rootPool) {
-    await rootPool.end().catch(() => {});
+    await rootPool.end().catch(() => { });
     rootPool = null;
     LOGGER.info('Closed root pool');
   }

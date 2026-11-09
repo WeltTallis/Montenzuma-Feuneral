@@ -2,14 +2,7 @@ import React from "react";
 
 /**
  * GlobalLoader — a single, consistent loader used across the whole app.
- *
- * PERFORMANCE: Uses pure CSS animations — no JavaScript animation loops,
- * no requestAnimationFrame, no setState. The browser compositor handles
- * everything, keeping the main thread free for rendering.
- *
- * Backwards compatible with the previous shared loader API:
- *   <Loader text="Loading…" size="medium|small|large|xlarge" color="primary|#" overlay fullScreen />
- * `CoolLoader` and `GlobalLoaderStyles` named exports are also provided.
+
  */
 const SIZE = {
   small: { spinner: 34 },
@@ -62,8 +55,8 @@ const Loader = ({
 
 
     backdropFilter: "none",
-WebkitBackdropFilter: "none",
-   
+    WebkitBackdropFilter: "none",
+
     fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif",
     ...style,
   };
@@ -167,7 +160,6 @@ export const GlobalLoaderStyles = () => (
   </style>
 );
 
-// Alias kept for backwards compatibility with existing consumers.
 export const CoolLoader = Loader;
 
 export default Loader;

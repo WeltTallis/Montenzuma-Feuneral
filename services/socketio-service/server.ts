@@ -4,7 +4,6 @@ import Logger from '../../packages/shared-logger/dist/index';
 import { Server as SocketIOServer } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import { createClient } from 'redis';
-import { error } from 'console';
 import dotenv from 'dotenv';
 import * as jwt from 'jsonwebtoken';
 import helmet from 'helmet';
@@ -52,9 +51,9 @@ const errorHandler = (err: Error, req: Request, res: Response, _next: NextFuncti
   res.status(statusCode).json(response);
 };
 
-// ============================================
+
 // EXPRESS APP SETUP WITH SECURITY HEADERS
-// ============================================
+
 
 const app = express();
 const server = http.createServer(app);
@@ -68,9 +67,9 @@ app.use(helmet({
 
 const ALLOWED_ORIGINS: string[] = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean)
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
   : [
     'http://localhost:3000',
     'http://localhost:3001',
@@ -129,9 +128,8 @@ app.use('/emit', limiter as any);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// ============================================
 // SOCKET.IO SETUP WITH ERROR HANDLING
-// ============================================
+
 
 const PORT = parseInt(process.env.PORT || process.env.SOCKET_PORT || '5018', 10);
 
@@ -187,15 +185,20 @@ const io = new SocketIOServer(server, {
   serveClient: false
 });
 
-// ============================================
+
 // REDIS ADAPTER WITH GRACEFUL FALLBACK
-// ============================================
+
 
 let redisConnected = false;
+let pubRedisReady = false;
+let subRedisReady = false;
 let pubClient: ReturnType<typeof createClient> | null = null;
 let subClient: ReturnType<typeof createClient> | null = null;
 let redisRetryTimer: ReturnType<typeof setTimeout> | null = null;
 const REDIS_RETRY_DELAY_MS = 10_000;
+const updateRedisReadiness = () => {
+  redisConnected = pubRedisReady && subRedisReady;
+};
 
 const initializeRedis = async (): Promise<void> => {
   try {
@@ -223,12 +226,14 @@ const initializeRedis = async (): Promise<void> => {
 
     pubClient.on('error', (err: Error) => {
       console.error('Redis Pub Client Error:', err.message);
-      redisConnected = false;
+      pubRedisReady = false;
+      updateRedisReadiness();
     });
 
     subClient.on('error', (err: Error) => {
       console.error('Redis Sub Client Error:', err.message);
-      redisConnected = false;
+      subRedisReady = false;
+      updateRedisReadiness();
     });
 
     pubClient.on('connect', () => {
@@ -244,11 +249,13 @@ const initializeRedis = async (): Promise<void> => {
     // 'error') keeps the health endpoint and the REST notification endpoints
     // honest during reconnects.
     pubClient.on('ready', () => {
-      redisConnected = true;
+      pubRedisReady = true;
+      updateRedisReadiness();
     });
 
     subClient.on('ready', () => {
-      redisConnected = true;
+      subRedisReady = true;
+      updateRedisReadiness();
     });
 
     await Promise.all([
@@ -256,7 +263,11 @@ const initializeRedis = async (): Promise<void> => {
       subClient.connect()
     ]);
 
-    redisConnected = true;
+    pubRedisReady = pubClient.isReady;
+    subRedisReady = subClient.isReady;
+    updateRedisReadiness();
+    if (!redisConnected) throw new Error('Redis publisher and subscriber are not both ready');
+
     io.adapter(createAdapter(pubClient, subClient));
     console.log('Socket.IO Redis Adapter connected successfully');
 
@@ -268,16 +279,20 @@ const initializeRedis = async (): Promise<void> => {
       clearTimeout(redisRetryTimer);
       redisRetryTimer = null;
     }
-    io.sockets.sockets.forEach((s) => {
+    for (const s of io.sockets.sockets.values()) {
       const rooms = socketTenantRooms.get(s.id);
-      if (rooms) rooms.forEach((r) => s.join(r));
+      if (rooms) {
+        for (const room of rooms) await s.join(room);
+      }
       const userData = userRooms.get(s.id);
-      if (userData) s.join(`user_${userData.userId}`);
-    });
+      if (userData) await s.join(`user_${userData.userId}`);
+    }
 
   } catch (error: any) {
     console.warn('Redis connection failed, falling back to in-memory adapter:', error.message);
-    redisConnected = false;
+    pubRedisReady = false;
+    subRedisReady = false;
+    updateRedisReadiness();
 
     try {
       if (pubClient) await pubClient.disconnect();
@@ -289,7 +304,7 @@ const initializeRedis = async (): Promise<void> => {
       })
     }
     Logger.warn({
-     message:          'Socket.IO running in-memory mode - horizontal scaling unavailable',
+      message: 'Socket.IO running in-memory mode - horizontal scaling unavailable',
     })
 
     // SELF-HEAL: keep retrying in the background so a Redis container that
@@ -312,9 +327,9 @@ const initializeRedis = async (): Promise<void> => {
 
 initializeRedis().catch(console.error);
 
-// ============================================
+
 // SOCKET.IO MIDDLEWARE - AUTHENTICATION
-// ============================================
+
 
 io.use((socket, next) => {
   try {
@@ -384,9 +399,9 @@ io.use((socket, next) => {
   }
 });
 
-// ============================================
+
 // STATE & ORG REGISTRY TRACKING
-// ============================================
+
 
 const userRooms = new Map<string, { tenantSlug: string; userId: string; userRole: string; connectedAt: Date }>();
 const socketIdMap = new Map<string, Set<string>>();
@@ -410,15 +425,15 @@ function resolveOrgRooms(tenantSlug: string): string[] {
   return Array.from(rooms);
 }
 
-// ============================================
+
 // SOCKET.IO EVENT HANDLERS
-// ============================================
+
 
 io.on('connection', (socket) => {
- 
+
 
   Logger.info({
-    message:    `   👤   New   user  connected   to teh  sockets   &{socket.id}`,
+    message: `     New   user  connected   to teh  sockets   &{socket.id}`,
 
   })
 
@@ -428,7 +443,7 @@ io.on('connection', (socket) => {
     timestamp: new Date().toISOString()
   });
 
-  socket.on('join-tenant', (data: { tenantSlug?: string; userId?: string; userRole?: string; parentTenantSlug?: string }, callback?: Function) => {
+  socket.on('join-tenant', async (data: { tenantSlug?: string; userId?: string; userRole?: string; parentTenantSlug?: string }, callback?: Function) => {
     try {
       if (!data || typeof data !== 'object') {
         throw new AppError('Invalid data format', 400);
@@ -453,7 +468,7 @@ io.on('connection', (socket) => {
       // Update socket metadata if user changed on same socket
       const existing = userRooms.get(socket.id);
       if (existing && existing.userId !== userId) {
-        socket.leave(`user_${existing.userId}`);
+        await socket.leave(`user_${existing.userId}`);
       }
 
       // Maintain user's active rooms
@@ -474,8 +489,8 @@ io.on('connection', (socket) => {
       }
 
       // Explicitly rejoin ALL tracked rooms on current socket connection
-      rooms.forEach((r) => socket.join(r));
-      socket.join(userRoom);
+      for (const room of rooms) await socket.join(room);
+      await socket.join(userRoom);
 
       userRooms.set(socket.id, {
         tenantSlug,
@@ -489,14 +504,14 @@ io.on('connection', (socket) => {
       }
       socketIdMap.get(userId)!.add(socket.id);
 
-    
-    
+
+
 
 
 
       Logger.info({
-        message:   
-      ` 📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`
+        message:
+          ` 📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`
       })
 
 
@@ -526,8 +541,8 @@ io.on('connection', (socket) => {
     } catch (error: any) {
       console.error('Join tenant error:', error);
       Logger.error({
-        message:    "Joined    tenat  error",
-        error:   error
+        message: "Joined    tenat  error",
+        error: error
       })
       if (typeof callback === 'function') {
         callback({
@@ -542,7 +557,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join-deceased', (data: { tenantSlug?: string; deceasedId?: string }, callback?: Function) => {
+  socket.on('join-deceased', async (data: { tenantSlug?: string; deceasedId?: string }, callback?: Function) => {
     try {
       const { tenantSlug, deceasedId } = data;
 
@@ -555,7 +570,7 @@ io.on('connection', (socket) => {
       }
 
       const deceasedRoom = `deceased_${tenantSlug}_${deceasedId}`;
-      socket.join(deceasedRoom);
+      await socket.join(deceasedRoom);
 
       console.log(`📎 Socket ${socket.id} joined ${deceasedRoom}`);
 
@@ -608,14 +623,6 @@ io.on('connection', (socket) => {
   });
 });
 
-process.on('uncaughtException', (error: Error) => {
-  console.error('Uncaught Exception:', error);
-});
-
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
 // ============================================
 // REST ENDPOINTS - NOTIFICATION EMIT
 // ============================================
@@ -645,6 +652,60 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
 
     const noPrefixEvents = ['ticket_response', 'ticket_updated', 'onboarding-progress', 'hearse_data_changed'];
     const eventName = noPrefixEvents.includes(event) ? event : `notification:${event}`;
+
+    if (target && typeof target !== 'string' &&
+      (!Array.isArray(target) || target.some((room) => typeof room !== 'string'))) {
+      throw new AppError('Target must be a string or array of strings', 400);
+    }
+    if (!target && Array.isArray(branchSlugs) && branchSlugs.length > 0 &&
+      !branchSlugs.some((slug) => typeof slug === 'string' && /^[a-z0-9-]+$/.test(slug))) {
+      throw new AppError('No valid branch slugs provided', 400);
+    }
+
+    const requiresPersistence = eventName.startsWith('notification:') || eventName.startsWith('alert:') ||
+      eventName.startsWith('new_booking') || eventName.startsWith('booking_');
+    if (requiresPersistence) {
+      if (!redisConnected || !pubClient?.isReady) {
+        throw new AppError('Notification storage is temporarily unavailable', 503, null, 'REDIS_UNAVAILABLE');
+      }
+
+      try {
+        const notifId = data.id || `notif-${Date.now()}`;
+        const notifValue = JSON.stringify({
+          id: notifId,
+          title: data.title || eventName,
+          message: data.message || `New event: ${eventName}`,
+          type: data.type || 'info',
+          priority: data.priority || 'low',
+          fullContent: data.fullContent || data.details || data.message || '',
+          data,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 86400000).toISOString(),
+          read: false,
+          delivered: false,
+        });
+
+        if (tenantSlug === 'system' || tenantSlug === 'all') {
+          const allTenants = new Set<string>([
+            'restpoint',
+            'default',
+            'main',
+            'system',
+            'system_shared'
+          ]);
+
+          userRooms.forEach((userData) => allTenants.add(userData.tenantSlug));
+          await Promise.all(Array.from(allTenants, (tenant) =>
+            pubClient!.setEx(`notifications:${tenant}:socketio:${notifId}`, 86400, notifValue)
+          ));
+        } else {
+          await pubClient.setEx(`notifications:${tenantSlug}:socketio:${notifId}`, 86400, notifValue);
+        }
+      } catch (error: any) {
+        console.error('Failed to store notification in Redis:', error);
+        throw new AppError('Notification could not be persisted; please retry', 503, null, 'REDIS_WRITE_FAILED');
+      }
+    }
 
     if (target) {
       if (typeof target === 'string') {
@@ -687,63 +748,13 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       console.log(`[SocketIO] Emitted ${eventName} to [${rooms.join(', ')}]`);
     }
 
-    if (
-      redisConnected &&
-      pubClient &&
-      (eventName.startsWith('notification:') || eventName.startsWith('alert:') ||
-        eventName.startsWith('new_booking') || eventName.startsWith('booking_'))
-    ) {
-      try {
-        const notifId = data.id || `notif-${Date.now()}`;
-        const notifValue = JSON.stringify({
-          id: notifId,
-          title: data.title || eventName,
-          message: data.message || `New event: ${eventName}`,
-          type: data.type || 'info',
-          priority: data.priority || 'low',
-          fullContent: data.fullContent || data.details || data.message || '',
-          data: data,
-          createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 86400000).toISOString(),
-          read: false,
-          delivered: false,
-        });
-
-        if (tenantSlug === 'system' || tenantSlug === 'all') {
-          const allTenants = new Set<string>([
-            'restpoint',
-            'default',
-            'main',
-            'system',
-            'system_shared'
-          ]);
-
-          userRooms.forEach((userData) => {
-            allTenants.add(userData.tenantSlug);
-          });
-
-          const storePromises = Array.from(allTenants).map(tenant => {
-            const key = `notifications:${tenant}:socketio:${notifId}`;
-            return pubClient.setEx(key, 86400, notifValue);
-          });
-
-          await Promise.all(storePromises);
-          console.log(`💾 Stored system notification under ${allTenants.size} tenants: ${Array.from(allTenants).join(', ')}`);
-        } else {
-          const notifKey = `notifications:${tenantSlug}:socketio:${notifId}`;
-          await pubClient.setEx(notifKey, 86400, notifValue);
-        }
-      } catch (err: any) {
-        console.error('Failed to store notification in Redis:', err);
-      }
-    }
-
     console.log(`📨 Emitted ${eventName} to tenant_${tenantSlug}`);
 
     res.json({
       success: true,
       event: eventName,
       tenantSlug,
+      deliveryScope: redisConnected ? 'cluster' : 'local_only',
       timestamp: new Date().toISOString()
     });
 
@@ -766,7 +777,9 @@ app.get('/health', (req: Request, res: Response) => {
         socketIdMap: socketIdMap.size
       },
       redis: {
-        connected: redisConnected
+        connected: redisConnected,
+        publisherReady: pubRedisReady,
+        subscriberReady: subRedisReady
       },
       environment: process.env.NODE_ENV || 'development'
     };
@@ -837,44 +850,49 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Graceful Shutdown
-const gracefulShutdown = async (signal: string) => {
+let shuttingDown = false;
+const gracefulShutdown = async (signal: string, exitCode = 0): Promise<void> => {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log(`\n Received ${signal}, starting graceful shutdown...`);
 
-  server.close(() => {
-    console.log('HTTP server closed');
-  });
-
-  if (redisConnected) {
-    try {
-      await pubClient?.quit();
-      await subClient?.quit();
-      console.log('Redis connections closed');
-    } catch (error: any) {
-      console.error('Redis shutdown error:', error);
-    }
-  }
-
-  io.close(() => {
-    console.log('Socket.IO closed');
-  });
-
-  setTimeout(() => {
-    console.log('Graceful shutdown timeout, forcing exit...');
+  const forceExit = setTimeout(() => {
+    console.error('Graceful shutdown timeout, forcing exit...');
     process.exit(1);
   }, 10000);
 
-  process.exit(0);
+  try {
+    if (redisRetryTimer) {
+      clearTimeout(redisRetryTimer);
+      redisRetryTimer = null;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      io.close((error?: Error) => error ? reject(error) : resolve());
+    });
+
+    for (const client of [pubClient, subClient]) {
+      if (client?.isOpen) await client.quit();
+    }
+
+    clearTimeout(forceExit);
+    process.exit(exitCode);
+  } catch (error: any) {
+    clearTimeout(forceExit);
+    console.error('Graceful shutdown failed:', error);
+    process.exit(1);
+  }
 };
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
+process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
+process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
 process.on('uncaughtException', (error: Error) => {
-  console.error('💥 Uncaught Exception:', error.message);
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
 });
-
 process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  void gracefulShutdown('Unhandled rejection', 1);
 });
 
 // Start Server

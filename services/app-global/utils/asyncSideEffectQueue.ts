@@ -108,3 +108,14 @@ export function startAsyncSideEffectWorker(): Worker<SideEffectJob> {
     });
     return sideEffectWorker;
 }
+
+export async function closeAsyncSideEffectResources(): Promise<void> {
+    if (sideEffectWorker) {
+        await sideEffectWorker.close();
+        sideEffectWorker = null;
+    }
+    if (sideEffectQueue) {
+        await sideEffectQueue.close();
+        sideEffectQueue = null;
+    }
+}

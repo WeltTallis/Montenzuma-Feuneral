@@ -43,6 +43,7 @@ app.use(express.json());
 // DATABASE CONNECTION
 // ============================================
 let floristKnex: knex.Knex | null = null;
+let floristServer: ReturnType<typeof app.listen> | null = null;
 
 const initDatabase = async () => {
     try {
@@ -418,7 +419,7 @@ async function startServer() {
     const PORT = Number(process.env.FLORIST_PORT) || Number(process.env.PORT) || 7070;
     const HOST = process.env.HOST || '0.0.0.0';
 
-    app.listen(PORT, HOST, () => {
+    floristServer = app.listen(PORT, HOST, () => {
         console.log(`   DB: ${process.env.OPERATIONS_DATABASE || 'restpoint_operations'}`);
         console.log(`   Storage: ${process.env.STORAGE_PATH || '/opt/storage/uploads'}`);
 
@@ -428,6 +429,7 @@ async function startServer() {
 // Handle unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
     console.error('[FLORIST] Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
 });
 
 // Handle uncaught exceptions
@@ -436,26 +438,43 @@ process.on('uncaughtException', (error) => {
     process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
+let shuttingDown = false;
 
-    console.log('[FLORIST] SIGTERM received, shutting down gracefully...');
-    if (floristKnex) {
-        floristKnex.destroy();
+async function shutdown(signal: string): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[FLORIST] ${signal} received, shutting down gracefully...`);
+
+    const forceExit = setTimeout(() => {
+        console.error('[FLORIST] Forced shutdown after 10 seconds');
+        process.exit(1);
+    }, 10000);
+
+    try {
+        const server = floristServer;
+        if (server?.listening) {
+            await new Promise<void>((resolve, reject) => {
+                server.close((error?: Error) => error ? reject(error) : resolve());
+            });
+            floristServer = null;
+        }
+
+        if (floristKnex) {
+            await floristKnex.destroy();
+            floristKnex = null;
+        }
+
+        clearTimeout(forceExit);
+        process.exit(0);
+    } catch (error: any) {
+        clearTimeout(forceExit);
+        console.error('[FLORIST] Graceful shutdown failed:', error);
+        process.exit(1);
     }
-    process.exit(0);
+}
 
-});
-
-process.on('SIGINT', () => {
-
-    console.log('[FLORIST] SIGINT received, shutting down gracefully...');
-    if (floristKnex) {
-        floristKnex.destroy();
-    }
-    process.exit(0);
-
-});
+process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
+process.on('SIGINT', () => { void shutdown('SIGINT'); });
 
 // Initialize and start
 startServer();

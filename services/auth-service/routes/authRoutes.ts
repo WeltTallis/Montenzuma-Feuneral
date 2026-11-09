@@ -15,6 +15,7 @@ import {
   getMe,
   changePassword,
   forgotPassword,
+  verifyPasswordResetCode,
   resetPasswordWithToken,
 } from '../controllers/authController';
 import { protect } from '../middleware/authMiddleware';
@@ -55,6 +56,7 @@ router.post('/register', register);
 // Token refresh
 router.post('/refresh', refresh);
 router.post('/forgot-password', recoveryLimiter, forgotPassword);
+router.post('/verify-code', recoveryLimiter, verifyPasswordResetCode);
 router.post('/reset-password', recoveryLimiter, resetPasswordWithToken);
 
 // Get current user from token

@@ -2,9 +2,9 @@ import React from 'react';
 import { format } from 'date-fns';
 import { getStatusStyle, getPaymentStatus, money, fmtMD, fmtTime12 } from '../tokens';
 
-/* ============================================================================
+/* 
    ReservationList  month table + clicked-day filter banner.
-   ============================================================================ */
+ */
 function PhoneIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

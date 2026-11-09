@@ -1,8 +1,3 @@
-/* ============================================================================
-   CoffinBook Reservations — Design Tokens
-   Single source of truth for colors, radii, shadows, transitions.
-   Update here to re-theme the entire reservations tab.
-   ============================================================================ */
 :root {
   --cb-ink: #111827;
   --cb-ink2: #374151;

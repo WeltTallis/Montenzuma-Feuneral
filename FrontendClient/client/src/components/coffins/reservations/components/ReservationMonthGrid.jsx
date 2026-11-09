@@ -12,9 +12,7 @@ import {
 } from 'date-fns';
 
 /* Payment states — must match ReservationDashboard's ST so chips, dots,
-   filters and the detail panel all agree.
-   The backend keeps every coffin booking at status='active' and records the
-   money in paid/amount/deposit, so bookings are coloured by WHO HAS PAID:
+
    Paid = green, Deposited = amber, Unpaid = red. */
 const statusStyles = {
   paid: { color: '#16a34a', label: 'Paid', mark: 'PAID' },

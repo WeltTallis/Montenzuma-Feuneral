@@ -1,11 +1,21 @@
-import { safeTenantQuery, safeTenantExecute, resolveDatabase, getTenantDB, getRootPool } from '../../shared/dbConfig';
+import {
+    closeAllConnections,
+    safeTenantQuery,
+    safeTenantExecute,
+    resolveDatabase,
+    getTenantDB,
+    getRootPool,
+} from '../../shared/dbConfig';
 import express, { Request, Response, NextFunction } from 'express';
 import { validateTenantActive } from '../../shared/tenancy';
 import { Server as SocketIOServer } from 'socket.io';
 import asyncHandler from 'express-async-handler';
 import dotenv from 'dotenv';
 import path from 'path';
-import { startAsyncSideEffectWorker } from '../app-global/utils/asyncSideEffectQueue';
+import {
+    closeAsyncSideEffectResources,
+    startAsyncSideEffectWorker,
+} from '../app-global/utils/asyncSideEffectQueue';
 
 import http from 'http';
 import cors from 'cors';
@@ -18,6 +28,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../../../../.env') });
 
 import restpointRoutes from './routes/hearseRoutes';
+import { closeHearsePool, runMigrations } from './database';
+import {
+    initializeNotificationCron,
+    NotificationCronService,
+} from './utilities/notificationCronService';
 
 const app = express();
 const server = http.createServer(app);
@@ -35,14 +50,6 @@ app.set('io', io);
 
 // Database schema must be ready before the service accepts requests or reports
 // healthy. A migration failure exits so the container's restart policy can retry.
-const { runMigrations } = require('./database');
-
-
-
-
-
-
-
 // Middleware
 const corsOptions = {
     origin: true,
@@ -408,12 +415,17 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     });
 });
 
-import { initializeNotificationCron } from './utilities/notificationCronService';
-
 const PORT = Number(process.env.PORT) || 5002;
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+let shuttingDown = false;
+let notificationCron: NotificationCronService | null = null;
+let startupTask: Promise<void> | null = null;
+
 async function startHearseService(): Promise<void> {
+    if (shuttingDown) return;
     await runMigrations();
-    initializeNotificationCron(io);
+    if (shuttingDown) return;
+    notificationCron = initializeNotificationCron(io);
     startAsyncSideEffectWorker();
     await new Promise<void>((resolve, reject) => {
         server.once('error', reject);
@@ -425,9 +437,87 @@ async function startHearseService(): Promise<void> {
     });
 }
 
-void startHearseService().catch((err: Error) => {
-    console.error('Hearse service startup failed:', err);
-    process.exit(1);
+async function gracefulShutdown(signal: string, exitCode = 0): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    process.exitCode = exitCode;
+    console.error(`[hearse-service] ${signal}; shutting down`);
+
+    notificationCron?.stop();
+    const forceExitTimer = setTimeout(() => {
+        console.error('[hearse-service] Shutdown timed out; forcing exit');
+        process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+
+    const serverClosed = new Promise<void>((resolve, reject) => {
+        if (!server.listening) {
+            resolve();
+            return;
+        }
+        io.close((error?: Error) => error ? reject(error) : resolve());
+    });
+    const startupStopped = startupTask
+        ? startupTask.catch((error: unknown) => {
+            console.error(
+                '[hearse-service] Startup failed while shutting down:',
+                error instanceof Error ? error.message : String(error),
+            );
+        })
+        : Promise.resolve();
+
+    const drainResults = await Promise.allSettled([serverClosed, startupStopped]);
+    for (const result of drainResults) {
+        if (result.status === 'rejected') {
+            const error = result.reason;
+            console.error(
+                '[hearse-service] Request drain failed:',
+                error instanceof Error ? error.message : String(error),
+            );
+            process.exitCode = 1;
+        }
+    }
+
+    const cleanupResults = await Promise.allSettled([
+        Promise.resolve().then(() => closeAsyncSideEffectResources()),
+        Promise.resolve().then(() => closeHearsePool()),
+        Promise.resolve().then(() => closeAllConnections()),
+    ]);
+    for (const result of cleanupResults) {
+        if (result.status === 'rejected') {
+            const error = result.reason;
+            console.error(
+                '[hearse-service] Cleanup failed:',
+                error instanceof Error ? error.stack || error.message : String(error),
+            );
+            process.exitCode = 1;
+        }
+    }
+
+    clearTimeout(forceExitTimer);
+    console.info('[hearse-service] Shutdown complete');
+    if (process.exitCode) process.exit(process.exitCode);
+}
+
+process.once('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => void gracefulShutdown('SIGINT'));
+process.once('unhandledRejection', (reason: unknown) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    console.error('[hearse-service] Unhandled promise rejection:', error.stack || error.message);
+    void gracefulShutdown('unhandledRejection', 1);
+});
+
+process.once('uncaughtException', (error: Error) => {
+    console.error('[hearse-service] Uncaught exception:', error.stack || error.message);
+    void gracefulShutdown('uncaughtException', 1);
+});
+
+startupTask = startHearseService();
+startupTask.catch((err: unknown) => {
+    console.error(
+        '[hearse-service] Startup failed:',
+        err instanceof Error ? err.stack || err.message : String(err),
+    );
+    void gracefulShutdown('startup failure', 1);
 });
 
 export { app, server, io };

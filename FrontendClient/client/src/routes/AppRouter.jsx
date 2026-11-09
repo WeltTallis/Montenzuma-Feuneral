@@ -503,9 +503,9 @@ const TenantResolver = () => {
   return <TenantDashboardRoutes tenantData={tenantData || {}} tenantSlug={resolvedSlug} />;
 };
 
-// ============================================================
+
 // REMOVED: RoleBasedRoute - Now allowing direct access to all pages
-// ============================================================
+
 
 const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
   const { slug: urlSlug } = useParams();
@@ -513,6 +513,13 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
 
   // Use the resolved tenant slug from TenantResolver, falling back to URL slug
   const slug = propTenantSlug || urlSlug;
+  const deploymentType = tenantData?.deploymentType || localStorage.getItem('deploymentType');
+  const hasDeploymentMetadata = !!deploymentType || tenantData?.branchCount != null;
+  const isSingleTenant = hasDeploymentMetadata && normalizeDeploymentType(
+    deploymentType,
+    tenantData?.branchCount || 0,
+    tenantData || {}
+  ) === 'single';
 
   // Always use DashboardLayout with sidebar for all users
   const Layout = DashboardLayout;
@@ -570,9 +577,13 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
 
         {/* Payroll lives in the shared app shell and uses the RestPoint session. */}
         <Route path="hr/*" element={
-          <Layout tenantData={tenantData} tenantSlug={slug}>
-            <Suspense fallback={<RouteLoadingFallback />}><HrPayrollWorkspace /></Suspense>
-          </Layout>
+          isSingleTenant ? (
+            <Navigate to={`/${slug}/deceased`} replace />
+          ) : (
+            <Layout tenantData={tenantData} tenantSlug={slug}>
+              <Suspense fallback={<RouteLoadingFallback />}><HrPayrollWorkspace /></Suspense>
+            </Layout>
+          )
         } />
 
         {/* Deceased Management - All authenticated users */}

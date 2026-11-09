@@ -33,9 +33,9 @@ const TRANSITIONS = {
   default: '0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
-// ============================================================
+
 // STYLED COMPONENTS
-// ============================================================
+
 
 const SidebarWrapper = styled.div`
   position: fixed;
@@ -162,13 +162,7 @@ const MenuBadge = styled.span`
 `;
 
 // Red COUNT badge for "Apply Leave" (was an 8px dot that could only say
-// "something", never "how much"). Deliberately oversized and solid red: this is
-// the one signal that tells an employee their leave was approved or rejected,
-// and it has to be legible at a glance from across a desk.
-//
-// The white ring keeps it readable over both the white nav row and the navy
-// active row it sits on, and the pulse makes it impossible to miss on first
-// arrival — then settles so it stops nagging.
+
 const LeaveAlertDot = styled.span`
   position: absolute;
   top: 2px;
@@ -450,9 +444,8 @@ const CloseButton = styled.button`
   margin-bottom: 16px;
 `;
 
-// ============================================================
 // SINGLE TENANT COMPONENTS
-// ============================================================
+
 
 const SingleTenantMenuButton = styled.button`
   position: fixed;
@@ -515,9 +508,9 @@ const SingleTenantSidebar = styled.aside`
   border-right: 1px solid ${COLORS.border};
 `;
 
-// ============================================================
+
 // MAIN COMPONENT - FIXED
-// ============================================================
+
 
 const ModernSidebar = ({
   onLogout = () => { },
@@ -545,16 +538,12 @@ const ModernSidebar = ({
 
   const isSingleTenant = deploymentType === 'single';
 
-  // ============================================================
+
   // CRITICAL FIX: Get tenant slug from props FIRST, then localStorage
-  // DO NOT rely on useParams() - it may not work correctly here
-  // ============================================================
+
   const getTenantSlug = useCallback(() => {
     // Priority 1: the logged-in user's COMPLETE BRANCH SLUG
-    // (`<org-slug>-<branch-name>` — e.g. `org-home-nairobi` for the Main
-    // branch, `org-home-machakos` / `org-home-thika` for children). EVERY
-    // nav link must carry the complete slug of the user's own branch; the
-    // backend resolves any complete branch slug back to the right database.
+
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const branchSlug = user?.branchSlug || user?.branch_slug || '';
@@ -604,20 +593,7 @@ const ModernSidebar = ({
   const tenantSlug = getTenantSlug();
 
   // ── Red COUNT badge on "Apply Leave" ──────────────────────────────────────
-  // Shows how many of THIS user's requests an approver has DECIDED
-  // (approved/rejected) that they have not opened the Apply Leave page to see
-  // yet. Deliberately NOT the notification bell — it is a badge on this nav item.
-  //
-  // This used to POLL: a GET /leaves/my-leaves every 60s, re-armed on EVERY
-  // route change by its `location.pathname` dependency. With several tabs open
-  // that is a request per user per minute per tab, and it was the leave endpoint
-  // that kept tripping the API gateway's rate limiter.
-  //
-  // It is now event-driven. leave-service publishes to the platform socket bus
-  // (SOCKETIO_SERVICE_URL/emit/...), which arrives here already prefixed as
-  // `notification:leave:updated`. The socket is ALSO the reconnect safety net:
-  // a slow poll is kept only while the socket is DOWN, so a user who never
-  // approves anything generates zero requests on a healthy connection.
+
   const [leaveAlertCount, setLeaveAlertCount] = useState(0);
   const { socket, connected } = useSocket();
   const leaveRowsRef = useRef([]);
@@ -657,9 +633,7 @@ const ModernSidebar = ({
     fetchOnce();
 
     // ── Recovery poll, ONLY while the socket is down ──
-    // A 60s retry is cheap when compared with polling unconditionally, and it
-    // guarantees the badge self-heals if the socket was down when a decision
-    // landed (otherwise the miss would persist until the next reload).
+
     const poll = setInterval(() => {
       if (!connected) fetchOnce();
     }, 60000);
@@ -723,20 +697,14 @@ const ModernSidebar = ({
   }, [socket, recomputeBadge]);
 
   // Opening the Apply Leave page IS the "I have seen it" signal — the badge must
-  // NOT self-dismiss on a timer or after N seconds. It stays put until the user
-  // deliberately visits the page, because a leave decision that quietly vanishes
-  // is worse than one that nags.
-  //
-  // `markDecisionsSeen` is imported statically (not via a dynamic import) so it
-  // cannot lose a race with the badge recompute or fail silently on a slow chunk.
+
   useEffect(() => {
     if (!location.pathname.includes('/leaves/apply')) return;
     markDecisionsSeen(leaveRowsRef.current, getUserId());
     recomputeBadge();
   }, [location.pathname, recomputeBadge]);
 
-  // Debug log to show what slug we're using
-  console.log('[ModernSidebar] Final tenant slug:', tenantSlug);
+
 
   const checkMobile = useCallback(() => {
     const mobile = window.innerWidth < 768;
@@ -806,13 +774,7 @@ const ModernSidebar = ({
         { icon: Calendar, label: 'Leaves', path: `/${tenantSlug}/leaves` },
         { icon: FileText, label: 'Apply Leave', path: `/${tenantSlug}/leaves/apply` },
         { icon: LifeBuoy, label: 'Support', path: `/${tenantSlug}/support` },
-        // "Store Journal" used to sit HERE as its own admin-only nav item. It is
-        // gone because the Journal is no longer a separate destination: the
-        // Calendar + History journal is part of the Store view inside the
-        // Operations dashboard's Workshop module (dashboard/WorkshopPanel.jsx →
-        // StoreView), which every user reaches from Workshop → Dashboard. Leaving
-        // a second, duplicate entry point here meant two UIs for one feature and
-        // a dead-looking link for anyone who was not an admin.
+
       ]
     }
   ];
@@ -823,10 +785,6 @@ const ModernSidebar = ({
       ...section,
       items: (section.items || []).filter((item) => {
         // Root-level twins plus both the new (/{slug}/…) and the legacy
-        // (/tenant/{slug}/…) spellings of the tenant-scoped paths.
-        // NOTE: Chemicals is deliberately NOT hidden. It has no other entry
-        // point, so filtering it here left single-tenant users with no way to
-        // reach /chemicals at all.
         const hiddenPaths = [
           `/${tenantSlug}/dashboard`, `/${tenantSlug}/analytics`, `/${tenantSlug}/workshop`,
           `/tenant/${tenantSlug}/dashboard`, `/tenant/${tenantSlug}/analytics`, `/tenant/${tenantSlug}/workshop`,
@@ -834,7 +792,18 @@ const ModernSidebar = ({
         ];
         const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop'];
         const itemPath = item.path || '';
-        return !(hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop'));
+        const label = String(item.label || '');
+        const pathSegments = itemPath.split(/[/?#]/).filter(Boolean);
+        const routeSegments =
+          pathSegments[0] === 'tenant' && pathSegments[1] === tenantSlug
+            ? pathSegments.slice(2)
+            : pathSegments[0] === tenantSlug
+              ? pathSegments.slice(1)
+              : pathSegments;
+        const isHrItem =
+          /\bhr\b|human resources|payroll/i.test(label) ||
+          routeSegments.some((segment) => ['hr', 'payroll', 'human-resources'].includes(segment.toLowerCase()));
+        return !(isHrItem || hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop'));
       })
     })).filter((section) => (section.items || []).length > 0);
 

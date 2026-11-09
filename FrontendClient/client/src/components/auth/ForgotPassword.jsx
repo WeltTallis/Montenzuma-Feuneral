@@ -65,7 +65,7 @@ const StepPill = ({ number, label, active, done }) => (
 
 const STEPS = [
   { n: 1, label: 'Email' },
-  { n: 2, label: 'Check email' },
+  { n: 2, label: 'Verify code' },
   { n: 3, label: 'Password' },
 ];
 
@@ -76,6 +76,9 @@ const ForgotPassword = () => {
   const resetToken = query.get('token') || '';
   const [account] = useState(initialAccount);
   const [email, setEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verifiedAccounts, setVerifiedAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [step, setStep] = useState(initialAccount && resetToken ? 3 : 1);
@@ -95,13 +98,44 @@ const ForgotPassword = () => {
     try {
       const response = await api.post(ENDPOINTS.AUTH.FORGOT_PASSWORD, { email: email.trim() });
       if (response.data?.success) {
-        setMessage({ type: 'success', text: response.data?.message || 'If an account exists for that email, a password reset link has been sent.' });
+        setVerificationCode('');
+        setVerifiedAccounts([]);
+        setSelectedAccount('');
+        setMessage({ type: 'success', text: response.data?.message || 'If an account exists for that email, a password reset code has been sent.' });
         setStep(2);
       } else {
         setMessage({ type: 'error', text: response.data?.message || 'Could not send the code.' });
       }
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.message || 'Could not send the code. Please try again.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(verificationCode)) {
+      setMessage({ type: 'error', text: 'Enter the 6-digit code from your email.' });
+      return;
+    }
+    setIsLoading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const response = await api.post(ENDPOINTS.AUTH.VERIFY_CODE, {
+        email: email.trim(),
+        code: verificationCode,
+      });
+      const accounts = response.data?.accounts || [];
+      if (response.data?.success && accounts.length) {
+        setVerifiedAccounts(accounts);
+        setSelectedAccount(accounts[0].account);
+        setStep(3);
+      } else {
+        setMessage({ type: 'error', text: response.data?.message || 'The code is invalid or expired.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.message || 'The code is invalid or expired.' });
     } finally {
       setIsLoading(false);
     }
@@ -121,8 +155,9 @@ const ForgotPassword = () => {
     setMessage({ type: '', text: '' });
     try {
       const response = await api.post(ENDPOINTS.AUTH.RESET_PASSWORD, {
-        account,
-        token: resetToken,
+        ...(resetToken
+          ? { account, token: resetToken }
+          : { email: email.trim(), code: verificationCode, account: selectedAccount }),
         password: newPassword,
       });
       if (response.data?.success) {
@@ -139,7 +174,12 @@ const ForgotPassword = () => {
   };
 
   const goBack = () => {
-    if (step === 2) { setStep(1); }
+    if (step === 2) {
+      setStep(1);
+      setVerificationCode('');
+      setVerifiedAccounts([]);
+      setSelectedAccount('');
+    }
     else if (step === 3) { setStep(2); }
     setMessage({ type: '', text: '' });
   };
@@ -147,11 +187,11 @@ const ForgotPassword = () => {
   const sidebarContent = {
     1: {
       headline: 'Don\'t worry, it happens.',
-      text: 'We\'ll send a secure reset link to your registered email address.',
+      text: 'We\'ll send a secure reset code to your registered email address.',
     },
     2: {
       headline: 'Check your inbox.',
-      text: 'If the address matches an account, a reset link will arrive by email. The link expires in 15 minutes.',
+      text: 'Enter the 6-digit code from your email. The code expires in 15 minutes.',
     },
     3: {
       headline: 'Almost there.',
@@ -332,7 +372,7 @@ const ForgotPassword = () => {
               <>
                 <div className="fp-form-header">
                   <h1>Forgot your password?</h1>
-                  <p>Enter your registered email and we'll send you a secure reset link.</p>
+                  <p>Enter your registered email and we'll send you a secure reset code.</p>
                 </div>
 
                 <form onSubmit={handleSendCode}>
@@ -356,30 +396,55 @@ const ForgotPassword = () => {
 
                   <button type="submit" disabled={isLoading} className="fp-btn-primary">
                     {isLoading ? (
-                      <><Spinner /><span>Sending reset link...</span></>
+                      <><Spinner /><span>Sending code...</span></>
                     ) : (
-                      <><span>Send reset link</span><ArrowRight size={16} /></>
+                      <><span>Send reset code</span><ArrowRight size={16} /></>
                     )}
                   </button>
                 </form>
               </>
             )}
 
-            {/* Step 2: Email confirmation */}
+            {/* Step 2: Verify emailed code */}
             {step === 2 && (
               <>
                 <div className="fp-form-header">
                   <h1>Check your email</h1>
-                  <p>We received a password reset request for <span>{email}</span>.</p>
+                  <p>Enter the 6-digit reset code sent to <span>{email}</span>.</p>
                 </div>
-                <AlertMessage type="success" text={message.text || 'If an account exists for that email, a password reset link has been sent.'} />
-                <p style={{ color: C.gray, fontSize: '0.88rem', lineHeight: 1.6 }}>Check your inbox and spam folder. The link expires in 15 minutes.</p>
+                <form onSubmit={handleVerifyCode}>
+                  <AlertMessage type={message.type} text={message.text} />
+                  <div className="fp-form-group">
+                    <label className="fp-form-label">Verification code</label>
+                    <div className="fp-input-wrap">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        value={verificationCode}
+                        onChange={(e) => {
+                          setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                          if (message.text) setMessage({ type: '', text: '' });
+                        }}
+                        placeholder="6-digit code"
+                        disabled={isLoading}
+                        autoFocus
+                        className="fp-input"
+                        maxLength={6}
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={isLoading} className="fp-btn-primary">
+                    {isLoading ? <><Spinner /><span>Verifying...</span></> : <><span>Verify code</span><ArrowRight size={16} /></>}
+                  </button>
+                </form>
+                <p style={{ color: C.gray, fontSize: '0.88rem', lineHeight: 1.6, marginTop: '1rem' }}>The code expires in 15 minutes. Check your spam folder if it is not in your inbox.</p>
                 <div className="fp-btn-row">
                   <button type="button" className="fp-btn-ghost verdigris" onClick={goBack}>
                     <ArrowLeft size={14} /> Use a different email
                   </button>
                   <button type="button" className="fp-btn-ghost brass" onClick={handleSendCode} disabled={isLoading}>
-                    Resend link
+                    Resend code
                   </button>
                 </div>
               </>
@@ -394,6 +459,26 @@ const ForgotPassword = () => {
 
                 <form onSubmit={handleResetPassword}>
                   <AlertMessage type={message.type} text={message.text} />
+
+                  {!resetToken && verifiedAccounts.length > 1 && (
+                    <div className="fp-form-group">
+                      <label className="fp-form-label">Account</label>
+                      <div className="fp-input-wrap">
+                        <select
+                          value={selectedAccount}
+                          onChange={(e) => setSelectedAccount(e.target.value)}
+                          disabled={isLoading}
+                          className="fp-input"
+                        >
+                          {verifiedAccounts.map((verifiedAccount) => (
+                            <option key={verifiedAccount.account} value={verifiedAccount.account}>
+                              {verifiedAccount.tenantName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="fp-form-group">
                     <label className="fp-form-label">New password</label>

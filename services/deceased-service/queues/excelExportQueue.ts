@@ -99,5 +99,11 @@ export function isExcelExportQueueAvailable(): boolean {
   return excelExportQueue !== null;
 }
 
+export async function closeExcelExportQueue(): Promise<void> {
+  if (!excelExportQueue) return;
+  await excelExportQueue.close();
+  excelExportQueue = null;
+}
+
 // Export for backward compatibility
 export { excelExportQueue as queue };

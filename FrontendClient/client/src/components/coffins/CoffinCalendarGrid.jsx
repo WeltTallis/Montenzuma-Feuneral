@@ -5,18 +5,6 @@ import {
 } from 'date-fns';
 
 /* Coffin reservations — DAY and WEEK calendar grids.
- *
- * Clean, modern calendar for coffin bookings:
- *  - DAY view: single day with a 6am–10pm time spine; bookings land on their
- *    service hour row.
- *  - WEEK view: seven days side by side; bookings stack as payment-coloured
- *    chips (PAID / DEPOSIT / UNPAID) under each day header.
- *  - Click a booking chip → onPick(booking) opens the reservation panel.
- *  - Click a day header → onPickDay(date) jumps to that day.
- *
- * Coffins carry `service_time` only when the booking was given a time, so a
- * booking with no time is parked in the "No time" lane rather than being
- * dropped or forced into a fake hour.
  */
 
 const C = {
@@ -43,15 +31,11 @@ const C = {
 
 /* Payment palette — must match ReservationDashboard so chips/panel agree.
  * The backend stores every coffin booking as status='active' and tracks the
- * money in paid / amount / deposit, so a chip is coloured by payment state:
- * Paid = green, Deposited = amber, Unpaid = red. Colouring by a booking
- * status painted every chip the same colour (and 'paid'/'deposited'/'unpaid'
- * were unknown keys, so everything fell back to one grey), which made it
  * impossible to see who had paid. */
 const ST = {
-  paid:      { label: 'Paid',      mark: 'PAID',    color: C.suc,     tint: '#ecfdf5' },
+  paid: { label: 'Paid', mark: 'PAID', color: C.suc, tint: '#ecfdf5' },
   deposited: { label: 'Deposited', mark: 'DEPOSIT', color: '#d97706', tint: '#fffbeb' },
-  unpaid:    { label: 'Unpaid',    mark: 'UNPAID',  color: C.dng,     tint: '#fef2f2' },
+  unpaid: { label: 'Unpaid', mark: 'UNPAID', color: C.dng, tint: '#fef2f2' },
 };
 
 const statusOf = (b) => ST[b?.status] || ST.unpaid;

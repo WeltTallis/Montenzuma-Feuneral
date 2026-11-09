@@ -50,9 +50,9 @@ const fadeIn = keyframes`
   to { opacity: 1; }
 `;
 
-// ===============================
+
 // Panel chrome — mirrors the Scanner Bridge side panel
-// ===============================
+
 const Scrim = styled.div`
   position: fixed;
   inset: 0;
@@ -628,11 +628,11 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
             // quoting the home rate even while the user edits the fields.
             home: !hasOwnRow && data.exists !== false
               ? {
-                  chargeType: data.chargeType || 'daily',
-                  currency: data.currency || 'KES',
-                  dailyRate: Number(data.dailyRate) || 0,
-                  hourlyRate: Number(data.hourlyRate) || 0,
-                }
+                chargeType: data.chargeType || 'daily',
+                currency: data.currency || 'KES',
+                dailyRate: Number(data.dailyRate) || 0,
+                hourlyRate: Number(data.hourlyRate) || 0,
+              }
               : null,
           });
         }

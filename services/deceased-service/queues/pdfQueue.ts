@@ -145,5 +145,15 @@ export function isPDFQueueAvailable(): boolean {
   return pdfQueue !== null;
 }
 
+export async function closePDFQueueResources(): Promise<void> {
+  const worker = pdfWorker;
+  pdfWorker = null;
+  if (worker) await worker.close();
+
+  const queue = pdfQueue;
+  pdfQueue = null;
+  if (queue) await queue.close();
+}
+
 // Export for backward compatibility
 export { pdfQueue as queue };

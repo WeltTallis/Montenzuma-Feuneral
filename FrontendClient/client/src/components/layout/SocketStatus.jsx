@@ -9,8 +9,7 @@ import { useSocket } from '../../utils/context/socketContext';
  *   • error       → red     "Realtime error" (+ last error message on hover)
  *   • disconnected→ grey    "Realtime offline"
  *
- * Render it ONCE inside <SocketProvider> (see App.jsx). It is intentionally
- * dependency-free (inline styles) so it can never break the bundle.
+
  */
 const STYLES = {
     wrap: {

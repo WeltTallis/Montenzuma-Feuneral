@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle, AlertCircle } from '../../utils/icons/icons';
 import { useAuth } from '../../utils/context/AuthContext';
 import { getTenantSlug } from '../../utils/globalAuth';
@@ -33,6 +33,7 @@ const AlertMessage = ({ type, text }) => {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: authLogin } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -180,6 +181,14 @@ export default function LoginPage() {
         setShowSuccess(true);
 
         const destPath = buildDestPath(userData, response);
+        const requestedPath = location.state?.from;
+        const returnPath =
+          typeof requestedPath === 'string' &&
+          requestedPath.startsWith('/') &&
+          !requestedPath.startsWith('//') &&
+          !requestedPath.startsWith('/login')
+            ? requestedPath
+            : null;
 
         // Give the success modal a brief beat to render, then navigate.
         // IMPORTANT: navigate with replace:true so the login page is removed
@@ -191,7 +200,7 @@ export default function LoginPage() {
           setShowSuccess(false);
           setIdentifier('');
           setPassword('');
-          navigate(destPath, { replace: true });
+          navigate(returnPath || destPath, { replace: true });
         }, 700);
       } catch (err) {
         navigatingRef.current = false;

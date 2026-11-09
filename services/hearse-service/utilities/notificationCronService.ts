@@ -30,6 +30,7 @@ export class NotificationCronService {
     private io: any;
     private isRunning: boolean = false;
     private emittedSignatures: Map<string, string> = new Map();
+    private scheduledTasks: ReturnType<typeof cron.schedule>[] = [];
 
     constructor(io: any) {
         this.io = io;
@@ -80,18 +81,18 @@ export class NotificationCronService {
         logger.info('Starting notification cron service');
 
         // Check upcoming bookings hourly; the reminder is deduplicated by signature.
-        cron.schedule('0 * * * *', () => {
+        this.scheduledTasks.push(cron.schedule('0 * * * *', () => {
             this.checkUpcomingBookings();
-        });
+        }));
 
-        cron.schedule('*/3 * * * *', () => {
+        this.scheduledTasks.push(cron.schedule('*/3 * * * *', () => {
             this.checkUrgentBookings();
-        });
+        }));
 
 
-        cron.schedule('0 8 * * *', () => {
+        this.scheduledTasks.push(cron.schedule('0 8 * * *', () => {
             this.checkWeeklyBookings();
-        });
+        }));
 
         this.isRunning = true;
 
@@ -102,7 +103,10 @@ export class NotificationCronService {
      */
     stop(): void {
         this.isRunning = false;
-
+        for (const task of this.scheduledTasks) {
+            task.stop();
+        }
+        this.scheduledTasks = [];
     }
 
     /**

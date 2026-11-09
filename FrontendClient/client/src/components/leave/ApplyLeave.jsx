@@ -1,7 +1,4 @@
-﻿// ApplyLeave.jsx — redesigned leave application page (segmented balance gauge,
-// range-strip calendar, chips/segmented form, time-ago requests). Drop-in
-// replacement: same props/imports/routes as before. Mobile responsive.
-
+﻿
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +9,7 @@ import { getUserId, getTenantSlug, getParentTenantSlug } from '../../utils/globa
 import { markDecisionsSeen } from '../../utils/leaveDecisionBadge';
 import notify from '../../utils/notify';
 
-/* ═══════════════════════ DESIGN TOKENS ═══════════════════════ */
+/*  DESIGN TOKENS  */
 const C = {
   ink: '#111827', mid: '#374151', gray: '#6b7280', lgray: '#9ca3af',
   line: '#e5e7eb', line2: '#f3f4f6',
@@ -53,7 +50,7 @@ const STATUS_META = {
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/* ═══════════════════════ HELPERS ═══════════════════════ */
+/* HELPERS */
 const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const TODAY_STR = toStr(new Date());
 
@@ -153,7 +150,7 @@ function useCountUp(target, dur = 700) {
   return v;
 }
 
-/* ═══════════════════════ ICONS (self-contained — swap for your lib if you like) ═══════════════════════ */
+/*  ICONS (self-contained — swap for your lib if you like) */
 const ICONS = {
   cal: 'M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7Zm-2 8h14v10H5V10Z',
   med: 'M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3Z',
@@ -175,7 +172,7 @@ const Ic = ({ n, s = 16 }) => (
   </svg>
 );
 
-/* ═══════════════════════ GLOBAL / SHELL ═══════════════════════ */
+/*  GLOBAL / SHELL */
 const GlobalStyle = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800&display=swap');
   * { box-sizing: border-box; }
@@ -260,7 +257,7 @@ const HeadChip = styled.span`
   &.warn { color: ${C.warning}; background: ${C.warningBg}; border-color: rgba(180,83,9,.3); }
 `;
 
-/* ═══════════════════════ BANNER ═══════════════════════ */
+/*  BANNER  */
 const Banner = styled.div`
   display: flex; align-items: center; gap: 11px; padding: 13px 16px;
   border-radius: 11px; font-size: 14px; font-weight: 600; margin-bottom: 18px;
@@ -272,7 +269,7 @@ const Banner = styled.div`
            &:hover { opacity: 1; } }
 `;
 
-/* ═══════════════════════ CALENDAR ═══════════════════════ */
+/* CALENDAR  */
 const RangeStrip = styled.div`
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   background: ${C.field}; border: 1px dashed ${C.line}; border-radius: 10px;
@@ -369,7 +366,7 @@ const CalHint = styled.p`
   @media (max-width: 640px) { font-size: 11.5px; }
 `;
 
-/* ═══════════════════════ FORM ═══════════════════════ */
+/*  FORM  */
 const FormGrid = styled.div`
   display: grid;
   /* minmax(0, 1fr) on both tracks: the default min-width:auto lets a long
@@ -483,7 +480,7 @@ const Spin = styled.span`
   @keyframes rot { to { transform: rotate(360deg); } }
 `;
 
-/* ═══════════════════════ BALANCE (segmented gauge) ═══════════════════════ */
+/*  BALANCE (segmented gauge) */
 const GaugeWrap = styled.div`
   display: flex; flex-direction: column; align-items: center; padding: 4px 0 2px;
 `;
@@ -545,7 +542,7 @@ const LowNote = styled.div`
   border-radius: 9px; padding: 9px 11px; font-size: 12.5px; font-weight: 700;
 `;
 
-/* ═══════════════════════ REQUESTS ═══════════════════════ */
+/*  REQUESTS */
 const Req = styled.div`
   display: flex; gap: 11px;
   border: 1px solid ${C.line};
@@ -602,7 +599,7 @@ const LoadingRow = styled.div`
   svg, .spin { animation: rot 1s linear infinite; }
 `;
 
-/* ═══════════════════════ CALENDAR COMPONENT ═══════════════════════ */
+/* CALENDAR COMPONENT  */
 
 function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
   const today = new Date();
@@ -756,7 +753,7 @@ function LeaveCalendar({ myLeaves, rangeStart, rangeEnd, onRangeChange }) {
   );
 }
 
-/* ═══════════════════════ RANGE STRIP (inside calendar card) ═══════════════════════ */
+/* RANGE STRIP (inside calendar card)  */
 
 function RangeStripBar({ range, onClear }) {
   const { start, end } = range;
@@ -781,7 +778,7 @@ function RangeStripBar({ range, onClear }) {
   );
 }
 
-/* ═══════════════════════ MAIN ═══════════════════════ */
+/*  MAIN */
 
 const ApplyLeave = ({ onClose, onSubmitted }) => {
   const navigate = useNavigate();
@@ -976,7 +973,7 @@ const ApplyLeave = ({ onClose, onSubmitted }) => {
     }
   };
 
-  /* ── file handling ────────────────────────────────────────────────────── */
+  /*  file handling  */
   const fileInputRef = useRef(null);
 
   const pickFile = (f) => {
@@ -1031,7 +1028,7 @@ const ApplyLeave = ({ onClose, onSubmitted }) => {
         )}
 
         <Layout>
-          {/* ═══════ LEFT COLUMN ═══════ */}
+          {/*  LEFT COLUMN  */}
           <div>
             <Card>
               <CardHead>
@@ -1168,7 +1165,7 @@ const ApplyLeave = ({ onClose, onSubmitted }) => {
             </Card>
           </div>
 
-          {/* ═══════ RIGHT COLUMN ═══════ */}
+          {/*  RIGHT COLUMN  */}
           <aside>
             <SideInner>
               <Card>

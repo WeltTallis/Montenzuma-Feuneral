@@ -1,5 +1,6 @@
 import { getMainTenantMigrations, getBranchMigrations, getSingleTenantMigrations, getAllTenantMigrations } from '../../../shared/services/all-service-migrations';
 import { MigrationService } from '../../../shared/services/migration-service';
+import Logger from '@montezuma/shared-logger'
 import mysql from 'mysql2/promise';
 import { v4 as uuidv4 } from 'uuid';
 import * as dotenv from 'dotenv';
@@ -8,6 +9,7 @@ import slugify from 'slugify';
 import * as path from 'path';
 import axios from 'axios';
 import * as fs from 'fs';
+
 
 dotenv.config();
 
@@ -61,9 +63,9 @@ export interface BranchInfo {
     created_at: Date;
 }
 
-// ============================================
+
 // CONFIGURATION HELPERS
-// ============================================
+
 
 function getDbConfig() {
     return {
@@ -87,8 +89,6 @@ let serverPool: mysql.Pool | null = null;
 async function getServerPool(): Promise<mysql.Pool> {
     if (!serverPool) {
         // Use admin/root credentials when configured so the service can
-        // AUTO-PROVISION tenant databases (CREATE DATABASE + GRANT ALL).
-        // Falls back to the application user (restpoint_user) otherwise.
         const user = process.env.DB_ADMIN_USER || process.env.DB_ROOT_USER || process.env.DB_USER || 'restpoint_user';
         const password = process.env.DB_ADMIN_PASSWORD || process.env.DB_ROOT_PASSWORD || process.env.DB_PASSWORD;
         serverPool = mysql.createPool({
@@ -243,12 +243,20 @@ const UPLOAD_SUBDIRS = [
 async function createTenantUploadDirectories(tenantSlug: string): Promise<void> {
     const baseDir = path.join(getUploadsBaseDir(), 'tenants', tenantSlug);
     fs.mkdirSync(baseDir, { recursive: true });
-    console.log(`📂 Created base upload directory: ${baseDir}`);
+
+    Logger.info({
+        message: '   Created tenat  uploads  directories '
+    })
+
 
     for (const subdir of UPLOAD_SUBDIRS) {
         const dirPath = path.join(baseDir, subdir);
         fs.mkdirSync(dirPath, { recursive: true });
-        console.log(`   📁 Created: ${subdir}/`);
+
+        Logger.info({
+            message: `  Created   uploads  subdiectory    ${subdir}    for   tenant ${tenantSlug} `
+        })
+
     }
 
     for (const subdir of UPLOAD_SUBDIRS) {
@@ -356,7 +364,14 @@ async function createCompleteTenantDatabase(
     const migrationResult = await migrationService.runTenantMigrations(dbName, primaryMigrations, dbConfig);
     if (!migrationResult.success) {
 
+
+        Logger.error({
+            message: `Failed   to  create   tennat  datbase   ${dbName}   for  tenat  ${tenantName}   `,
+            error: migrationResult.errors?.join(', ') || 'Uknown  Error'
+        })
+
         throw new Error(`Failed to create tenant database: ${migrationResult.errors.join(', ')}`);
+
     }
 
     emitOnboardingProgress(subdomain, 'Setting up', 70, 'Creating branches and admin user');
@@ -419,7 +434,11 @@ async function createCompleteTenantDatabase(
                 branch_db_name: branch.branch_db_name,
                 parent_branch_id: null,
             });
-            console.log(`✅ Primary branch "${branch.branch_name}" → DB: ${dbName} (slug: ${firstBranchSlugFull})`);
+
+            Logger.info({
+                message: `  Primary Branch   ${branch.brach_name}  DB:    ${dbName}  for   ${tenantName}  `
+            })
+
         } else {
             const uniqueSlug = `${firstBranchSlugFull}-${Date.now()}`;
             await tenantConn.query(

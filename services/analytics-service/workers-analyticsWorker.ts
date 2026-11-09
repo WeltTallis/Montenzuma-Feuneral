@@ -1,9 +1,15 @@
 import { Worker, type Job } from 'bullmq';
 import IORedis from 'ioredis';
 
-import backgroundJob from '../services/backgroundJob';
-import AnalyticsService from '../services/analyticsService';
-import metrics from '../services/metrics';
+import { queue as analyticsQueue } from './services/backgroundJob';
+import AnalyticsService from './services/analyticsService';
+import { sendDailyOperationsReports } from './services/dailyOperationsSms';
+import {
+  incrementFailure,
+  incrementSuccess,
+  init as initMetrics,
+  observeJobDuration,
+} from './services/metrics';
 
 import { logger } from '@montezuma/shared-logger';
 
@@ -82,7 +88,7 @@ function getErrorMessage(error: unknown): string {
  * Initialize metrics polling for the analytics queue.
  */
 try {
-  metrics.init(backgroundJob.queue);
+  initMetrics(analyticsQueue);
 } catch (error: unknown) {
   logger.warn(
     `Could not initialize metrics polling: ${getErrorMessage(error)}`,
@@ -110,15 +116,24 @@ interface AnalyticsJobResult {
   data: unknown;
 }
 
+interface DailyOperationsSmsJobResult {
+  tenants: number;
+  messagesSent: number;
+}
+
 /**
  * Create BullMQ worker.
  */
 const worker = new Worker<
   AnalyticsJobData,
-  AnalyticsJobResult
+  AnalyticsJobResult | DailyOperationsSmsJobResult
 >(
   'analytics-jobs',
   async (job: Job<AnalyticsJobData>) => {
+    if (job.name === 'daily-operations-sms') {
+      return sendDailyOperationsReports();
+    }
+
     const {
       tenantId,
       startDate,
@@ -164,12 +179,12 @@ const worker = new Worker<
       /**
        * Record successful metrics.
        */
-      metrics.observeJobDuration(
+      observeJobDuration(
         durationSec,
         tenantId,
       );
 
-      metrics.incrementSuccess(tenantId);
+      incrementSuccess(tenantId);
 
       logger.info(
         `[${requestId}] Analytics job ${jobId} completed successfully`,
@@ -191,12 +206,12 @@ const worker = new Worker<
        * Record failure metrics.
        */
       if (tenantId) {
-        metrics.observeJobDuration(
+        observeJobDuration(
           durationSec,
           tenantId,
         );
 
-        metrics.incrementFailure(tenantId);
+        incrementFailure(tenantId);
       }
 
       logger.error(
@@ -221,7 +236,7 @@ const worker = new Worker<
  */
 worker.on(
   'completed',
-  (job: Job<AnalyticsJobData, AnalyticsJobResult>) => {
+  (job: Job<AnalyticsJobData, AnalyticsJobResult | DailyOperationsSmsJobResult>) => {
     logger.info(
       `Analytics job ${String(job.id)} completed`,
     );
@@ -234,7 +249,7 @@ worker.on(
 worker.on(
   'failed',
   (
-    job: Job<AnalyticsJobData, AnalyticsJobResult> | undefined,
+    job: Job<AnalyticsJobData, AnalyticsJobResult | DailyOperationsSmsJobResult> | undefined,
     error: Error,
   ) => {
     logger.error(
@@ -309,36 +324,24 @@ async function shutdown(signal: string): Promise<void> {
 /**
  * Handle Docker/systemd shutdown signals.
  */
-process.once('SIGTERM', () => {
-  void shutdown('SIGTERM');
-});
+if (require.main === module) {
+  process.once('SIGTERM', () => {
+    void shutdown('SIGTERM');
+  });
 
-process.once('SIGINT', () => {
-  void shutdown('SIGINT');
-});
+  process.once('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
 
-/**
- * Handle unexpected process errors.
- */
-process.on(
-  'unhandledRejection',
-  (reason: unknown) => {
-    logger.error(
-      `Unhandled promise rejection: ${getErrorMessage(reason)}`,
-    );
-  },
-);
+  process.once('unhandledRejection', (reason: unknown) => {
+    logger.error(`Unhandled promise rejection: ${getErrorMessage(reason)}`);
+    void shutdown('unhandledRejection');
+  });
 
-process.on(
-  'uncaughtException',
-  (error: Error) => {
-    logger.error(
-      'Uncaught exception in analytics worker',
-      error,
-    );
-
+  process.once('uncaughtException', (error: Error) => {
+    logger.error('Uncaught exception in analytics worker', error);
     void shutdown('uncaughtException');
-  },
-);
+  });
+}
 
 export { worker };
