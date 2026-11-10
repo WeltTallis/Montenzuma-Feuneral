@@ -85,3 +85,56 @@ test -f scripts/list-build-services.sh
 // If the test fails, this checkout is missing the required helper. Update to the commit
 // that adds it, then retry:
 make build
+
+
+
+/./  host  nginix and  cert boats 
+
+
+
+sudo apt update
+sudo apt install -y nginx certbot
+sudo mkdir -p /var/www/certbot/.well-known/acme-challenge  
+
+sudo tee /etc/nginx/sites-available/restpoint >/dev/null <<'EOF'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name restpoint.co.ke www.restpoint.co.ke app.restpoint.co.ke portal.restpoint.co.ke paymontenzuma.restpoint.co.ke;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 404;
+    }
+}
+EOF
+
+sudo ln -sfn /etc/nginx/sites-available/restpoint /etc/nginx/sites-enabled/restpoint
+sudo nginx -t && sudo systemctl enable --now nginx && sudo systemctl reload nginx
+
+sudo certbot certonly --webroot \
+  -w /var/www/certbot \
+  --cert-name restpoint.co.ke \
+  -d restpoint.co.ke \
+  -d www.restpoint.co.ke \
+  -d app.restpoint.co.ke \
+  -d portal.restpoint.co.ke \
+  -d paymontenzuma.restpoint.co.ke \
+  --email YOUR_EMAIL \
+  --agree-tos \
+  --no-eff-email 
+
+
+  cd /opt/restpoint
+sudo cp nginx-host.conf /etc/nginx/sites-available/restpoint
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot renew --dry-run
+
+
+sudo ufw allow 'Nginx Full' 
+
+cd /opt/restpoint
+docker compose -f docker-compose.prod.yml ps 
