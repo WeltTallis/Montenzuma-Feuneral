@@ -531,10 +531,10 @@ const Colophon = styled.footer`
 /* Feature data */
 
 const FEATURES = [
-  { no: '01', title: 'Touch Signatures', text: 'Families sign intake and release forms directly on screen.' },
-  { no: '02', title: 'Ink-Sign Stylus', isNew: true, text: 'Pressure-sensitive pen for natural, binding signatures.' },
-  { no: '03', title: 'Digital Intake', text: 'A guided, paperless process for completing arrangements.' },
-  { no: '04', title: 'Secure Releases', text: 'Simple, verified digital authorizations, end to end.' },
+  { no: '01', title: 'Digital Body Signatures', text: 'Capture signatures on the body-intake and body-release forms directly on screen.' },
+  { no: '02', title: 'Pressure-Sensitive Stylus', isNew: true, text: 'An optional pen for writing digital signatures naturally on screen.' },
+  { no: '03', title: 'Body Intake', text: 'Record each admission in the digital intake workflow.' },
+  { no: '04', title: 'Body Release', text: 'Record the release and capture the recipient’s digital signature.' },
   { no: '05', title: 'Curated Florals', text: 'A visual catalog to select and annotate arrangements.' },
 ];
 
@@ -596,11 +596,11 @@ const HardwareRequirementSection = () => {
 
               <Reveal delay={0.16}>
                 <HeroP>
-                  A dedicated touchscreen reception portal for funeral homes, one respectful,
-                  seamless surface for browsing floral arrangements, completing intake, and
-                  signing final documents. <strong>iPad or Android</strong>, any tablet works.
-                  Plus a <strong>pressure-sensitive stylus</strong>, an add-on for facilities
-                  that want every signature in ink.
+                  A dedicated touchscreen reception portal for funeral homes: record body
+                  intake, capture digital signatures on body-intake and body-release forms,
+                  and let families browse floral arrangements. <strong>iPad or Android</strong>,
+                  any tablet works. A <strong>pressure-sensitive stylus</strong> is an optional
+                  add-on for signing those forms naturally on screen.
                 </HeroP>
               </Reveal>
 
@@ -670,9 +670,10 @@ const HardwareRequirementSection = () => {
               </Reveal>
               <Reveal delay={0.12}>
                 <aside>
-                  To operate the Restpoint system, all funeral homes purchase one tablet,
-                  iPad or Android, whichever they prefer. It is the facility's primary digital
-                  registry, from intake through release. The stylus is our recommended add on.
+                  Every facility needs one iPad or Android tablet for its reception portal.
+                  Staff record body intake and body release, with digital signatures captured
+                  directly on each form. Families can also browse floral samples at reception.
+                  A pressure-sensitive stylus is optional for signing on screen.
                 </aside>
               </Reveal>
             </ReqHead>
@@ -691,9 +692,9 @@ const HardwareRequirementSection = () => {
                   <span className="sub">iPad or Android, whichever the facility prefers</span>
                 </div>
                 <p className="spec">
-                  The facility's primary digital registry. Every Restpoint feature, intake,
-                  florals,  release,  postmortem Requests runs on this single device, from the first
-                  admission to the final signature.
+                  Run the reception portal on one tablet to record body intake and release,
+                  capture digital signatures directly on both forms, and show families curated
+                  flower samples. Available for iPad or Android.
                 </p>
                 <div className="status">
                   <span className="lchip req">Required</span>
@@ -710,9 +711,8 @@ const HardwareRequirementSection = () => {
                   <span className="sub">Pressure-sensitive · Palm rejection</span>
                 </div>
                 <p className="spec">
-                  Our recommended add on. A weighted pen for natural, binding signatures,
-                  in intake &  Release Forms .
-                  One per tablet.
+                  Optional pressure-sensitive pen for writing digital signatures directly on
+                  the body-intake and body-release forms. One stylus per tablet.
                 </p>
                 <div className="status">
                   <span className="lchip add">Add-on</span>
