@@ -1,12 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { createAdapter } from '@socket.io/redis-adapter';
 import Logger from '../../packages/shared-logger/dist/index';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { Server as SocketIOServer } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import { createClient } from 'redis';
-import dotenv from 'dotenv';
 import * as jwt from 'jsonwebtoken';
 import helmet from 'helmet';
+import dotenv from 'dotenv';
 import cors from 'cors';
 import http from 'http';
 
@@ -97,6 +97,13 @@ const corsOptions: cors.CorsOptions = {
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
+
+    Logger.warn({
+      message: "   Origin    not  allowed    by  SOCKET.IO    CORS   Policy",
+      origin: origin,
+      allowedOrigins: ALLOWED_ORIGINS
+    })
+
     callback(new Error('Origin is not allowed by Socket.IO CORS policy'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -147,7 +154,14 @@ const getRedisUrl = (): string => {
     }
     return 'redis://redis:6379';
   } catch (error) {
-    console.error('Redis URL construction error:', error);
+
+    Logger.error({
+      message: " A   Redis  URL   Constructor    Happened  ",
+      error: error?.message || '  Uknown  Error'
+    })
+
+
+
     return 'redis://redis:6379';
   }
 };
@@ -206,11 +220,7 @@ const initializeRedis = async (): Promise<void> => {
       url: REDIS_URL,
       socket: {
         reconnectStrategy: (retries: number) => {
-          // NEVER give up permanently. Returning an Error here stops the client
-          // from reconnecting FOREVER, which left redisConnected=false (empty
-          // notification list, no cross-instance pub/sub) even after Redis came
-          // back — this was the "Redis max reconnection attempts reached"
-          // outage. Retry forever with a capped 5s backoff instead.
+
           if (retries > 0 && retries % 12 === 0) {
             Logger.warn({
               message: `Redis still reconnecting (attempt ${retries}) — retrying with 5s backoff`
@@ -225,23 +235,30 @@ const initializeRedis = async (): Promise<void> => {
     subClient = pubClient.duplicate();
 
     pubClient.on('error', (err: Error) => {
-      console.error('Redis Pub Client Error:', err.message);
+
+
       pubRedisReady = false;
       updateRedisReadiness();
     });
 
     subClient.on('error', (err: Error) => {
-      console.error('Redis Sub Client Error:', err.message);
+
+
       subRedisReady = false;
       updateRedisReadiness();
     });
 
     pubClient.on('connect', () => {
-      console.log('Redis Pub Client connected');
+      Logger.info({
+        message: "  Redis   pub  Client Connected   Successfully"
+      })
+
     });
 
     subClient.on('connect', () => {
-      console.log('Redis Sub Client connected');
+      Logger.info({
+        message: "  Redis   sub  Client Connected   Successfully"
+      })
     });
 
     // 'ready' fires after the handshake (and auth) completes — this is when the
@@ -269,7 +286,9 @@ const initializeRedis = async (): Promise<void> => {
     if (!redisConnected) throw new Error('Redis publisher and subscriber are not both ready');
 
     io.adapter(createAdapter(pubClient, subClient));
-    console.log('Socket.IO Redis Adapter connected successfully');
+    Logger.info({
+      message: 'Socket.IO Redis Adapter connected successfully'
+    });
 
     // Redis recovered AFTER startup (or after a fallback window): cancel any
     // pending retry and re-attach every tracked socket to its rooms, because
@@ -289,7 +308,14 @@ const initializeRedis = async (): Promise<void> => {
     }
 
   } catch (error: any) {
-    console.warn('Redis connection failed, falling back to in-memory adapter:', error.message);
+
+
+    Logger.warn({
+      message: "   Redis   Adapter   Initialization  Failed   -  Falin  back  to the   memmory   adpater  ",
+      error: error?.message || "   Uknown  Ereror "
+    })
+
+
     pubRedisReady = false;
     subRedisReady = false;
     updateRedisReadiness();
@@ -351,6 +377,13 @@ io.use((socket, next) => {
         });
         const err = new AppError('Authentication required', 401);
         err.code = 'AUTH_REQUIRED';
+
+        Logger.warn({
+          message: "   Socket  handshake   rejected    no  token   provided  ",
+          error: err?.message || "   Uknown   Error "
+        })
+
+
         return next(err);
       }
       // Development: allow connection without token
@@ -374,15 +407,18 @@ io.use((socket, next) => {
       });
 
       next();
+
     } catch (jwtError: any) {
       // JWT verification failed
       Logger.warn({
         message: 'Socket handshake rejected: invalid token',
         error: jwtError.message,
       });
+
       const err = new AppError('Invalid authentication token', 401);
       err.code = 'INVALID_TOKEN';
       next(err);
+
     }
   } catch (error: any) {
     Logger.error({
@@ -391,6 +427,12 @@ io.use((socket, next) => {
     });
     if (process.env.NODE_ENV === 'production') {
       const err = new AppError('Authentication failed', 401);
+
+      Logger.error({
+        message: "    Socket   middleware   Error  -  Authenticated fai;led",
+        error: error?.message || "  Uknown  Error"
+      })
+
       err.code = 'AUTH_FAILED';
       next(err);
     } else {
@@ -504,20 +546,10 @@ io.on('connection', (socket) => {
       }
       socketIdMap.get(userId)!.add(socket.id);
 
-
-
-
-
-
       Logger.info({
         message:
           ` 📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`
       })
-
-
-
-
-
 
       if (typeof callback === 'function') {
         callback({
@@ -539,17 +571,23 @@ io.on('connection', (socket) => {
       });
 
     } catch (error: any) {
-      console.error('Join tenant error:', error);
+
+
+
+
       Logger.error({
         message: "Joined    tenat  error",
         error: error
       })
+
       if (typeof callback === 'function') {
+
         callback({
           success: false,
           error: error.message || 'Failed to join tenant room'
         });
       }
+
       socket.emit('error', {
         message: error.message || 'Failed to join tenant room',
         code: error instanceof AppError ? error.statusCode : 400
@@ -559,6 +597,7 @@ io.on('connection', (socket) => {
 
   socket.on('join-deceased', async (data: { tenantSlug?: string; deceasedId?: string }, callback?: Function) => {
     try {
+
       const { tenantSlug, deceasedId } = data;
 
       if (!tenantSlug || !deceasedId) {
@@ -589,7 +628,10 @@ io.on('connection', (socket) => {
       });
 
     } catch (error: any) {
-      console.error('Join deceased error:', error);
+      Logger.error({
+        message: "Join deceased error",
+        error: error
+      });
       if (typeof callback === 'function') {
         callback({ success: false, error: error.message });
       }
@@ -611,11 +653,17 @@ io.on('connection', (socket) => {
     }
     userRooms.delete(socket.id);
     socketTenantRooms.delete(socket.id);
-    console.log(`👋 User disconnected: ${socket.id}`);
+    Logger.info({
+      message: "User disconnected",
+      userId: socket.id
+    });
   });
 
   socket.on('error', (error: Error) => {
-    console.error(`❌ Socket error (${socket.id}):`, error);
+    Logger.error({
+      message: "Socket error",
+      error: error
+    });
     socket.emit('error', {
       message: 'An unexpected error occurred',
       code: 'INTERNAL_ERROR'
@@ -623,9 +671,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// ============================================
+
 // REST ENDPOINTS - NOTIFICATION EMIT
-// ============================================
+
 
 interface EmitBody {
   tenantSlug?: string;
@@ -735,7 +783,11 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       console.log(`[SocketIO] Emitted ${eventName} to branch rooms [${branchRooms.join(', ')}]`);
     } else if (tenantSlug === 'system' || tenantSlug === 'all') {
       io.emit(eventName, payload);
-      console.log(`📢 Broadcasted ${eventName} to all clients`);
+
+      Logger.info({
+        message: `    Broadcasted    $   {eventName}   to all      available  clients   `
+      })
+
     } else {
       const rooms = resolveOrgRooms(tenantSlug);
       // ONE union broadcast (not one packet per room). resolveOrgRooms returns
@@ -748,7 +800,13 @@ app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction)
       console.log(`[SocketIO] Emitted ${eventName} to [${rooms.join(', ')}]`);
     }
 
-    console.log(`📨 Emitted ${eventName} to tenant_${tenantSlug}`);
+
+
+    Logger.info({
+      message: ` Emmited     ${eventName}   to  tenant   ${tenantSlug}`
+    })
+
+
 
     res.json({
       success: true,
@@ -787,7 +845,10 @@ app.get('/health', (req: Request, res: Response) => {
     res.status(200).json(health);
 
   } catch (error) {
-    console.error('Health check error:', error);
+    Logger.error({
+      message: 'Health check error',
+      error: error
+    });
     res.status(500).json({
       status: 'ERROR',
       error: error.message,
@@ -810,6 +871,10 @@ app.get('/stats', (req: Request, res: Response, next: NextFunction) => {
     res.json(stats);
 
   } catch (error) {
+    Logger.error({
+      message: 'Stats error',
+      error: error
+    });
     next(error);
   }
 });
@@ -838,7 +903,9 @@ app.get('/rooms/:room/members', (req: Request, res: Response, next: NextFunction
 
 // Global 404 & Error Handler
 app.use((req, res) => {
-  console.log(`[404] ${req.method} ${req.path}`);
+  Logger.info({
+    message: `[404] ${req.method} ${req.path}`
+  });
   res.status(404).json({
     success: false,
     error: 'Route not found',
@@ -854,10 +921,14 @@ let shuttingDown = false;
 const gracefulShutdown = async (signal: string, exitCode = 0): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`\n Received ${signal}, starting graceful shutdown...`);
+  Logger.info({
+    message: `Received ${signal}, starting graceful shutdown...`
+  });
 
   const forceExit = setTimeout(() => {
-    console.error('Graceful shutdown timeout, forcing exit...');
+    Logger.error({
+      message: 'Graceful shutdown timeout, forcing exit...'
+    });
     process.exit(1);
   }, 10000);
 
@@ -879,28 +950,52 @@ const gracefulShutdown = async (signal: string, exitCode = 0): Promise<void> => 
     process.exit(exitCode);
   } catch (error: any) {
     clearTimeout(forceExit);
-    console.error('Graceful shutdown failed:', error);
+    Logger.error({
+      message: 'Graceful shutdown failed',
+      error: error
+    });
     process.exit(1);
   }
 };
 
 process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
 process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
+
+
 process.on('uncaughtException', (error: Error) => {
-  console.error('Uncaught Exception:', error);
+  Logger.error({
+    message: 'Uncaught Exception',
+    error: error
+  });
   process.exit(1);
 });
+
 process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  Logger.error({
+    message: 'Unhandled Rejection',
+    error: reason
+  });
   void gracefulShutdown('Unhandled rejection', 1);
 });
 
 // Start Server
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Socket.IO Server running on port ${PORT}`);
-  console.log(`Redis: ${redisConnected ? 'Connected' : 'Fallback mode'}`);
-  console.log(`Origins: ${ALLOWED_ORIGINS.join(', ')}`);
-  console.log(`Security: Helmet + CORS + Rate Limiting enabled`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Health: http://localhost:${PORT}/health`);
+  Logger.info({
+    message: `Socket.IO Server running on port ${PORT}`
+  });
+  Logger.info({
+    message: `Redis: ${redisConnected ? 'Connected' : 'Fallback mode'}`
+  });
+  Logger.info({
+    message: `Origins: ${ALLOWED_ORIGINS.join(', ')}`
+  });
+  Logger.info({
+    message: `Security: Helmet + CORS + Rate Limiting enabled`
+  });
+  Logger.info({
+    message: `Environment: ${process.env.NODE_ENV || 'development'}`
+  });
+  Logger.info({
+    message: `Health: http://localhost:${PORT}/health`
+  });
 });
