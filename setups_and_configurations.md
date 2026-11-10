@@ -138,3 +138,68 @@ sudo ufw allow 'Nginx Full'
 
 cd /opt/restpoint
 docker compose -f docker-compose.prod.yml ps 
+
+
+
+//  install and  setup  fail  2  ban 
+sudo apt update
+sudo apt install fail2ban -y
+
+
+enable it 
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+
+
+status  sudo systemctl status fail2ban
+
+
+sudo nano /etc/fail2ban/jail.d/sshd.local 
+
+[sshd]
+enabled = true
+backend = systemd
+port = ssh
+
+maxretry = 5
+findtime = 10m
+bantime = -1 
+
+sudo fail2ban-client -t 
+
+sudo systemctl restart fail2ban 
+
+sudo fail2ban-client status sshd 
+
+sudo fail2ban-client status sshd
+
+sudo fail2ban-client get sshd bantime
+
+//install  UFW  
+sudo apt update
+sudo apt install ufw -y
+
+
+sudo ufw allow 22/tcp
+
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+
+sudo ufw deny 3306/tcp
+sudo ufw deny 5432/tcp
+sudo ufw deny 27017/tcp
+sudo ufw deny 27018/tcp
+sudo ufw deny 6379/tcp
+sudo ufw deny 9200/tcp
+sudo ufw deny 11211/tcp
+
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+
+sudo ufw enable
+
+sudo ufw status numbered
+
+sudo ufw status verbose

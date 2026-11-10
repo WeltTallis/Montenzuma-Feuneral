@@ -3,7 +3,6 @@ package advance_payment
 import (
 	"api-server/internal/constants"
 	"api-server/internal/pkg/clock"
-	"api-server/internal/pkg/utils"
 	"context"
 	"fmt"
 	"log/slog"
