@@ -4,8 +4,9 @@ import {
   startOfWeek, addDays, isSameDay, isSameMonth, isToday, format,
 } from 'date-fns';
 
-/* Coffin reservations — DAY and WEEK calendar grids.
- */
+/*
+ Coffin reservations — DAY and WEEK calendar grids.
+*/
 
 const C = {
   ink: '#111827',
@@ -146,8 +147,7 @@ for (let h = SH; h < EH; h++) HOURS.push(h);
 export default function CoffinCalendarGrid({ view, date, bookings = [], onPick, onPickDay }) {
   const isWeek = view === 'week';
 
-  /* The seven days on screen. For the DAY view this is just the one day, which
-     lets a single grid implementation serve both views. */
+  /* The seven days on screen. For the DAY view this is just the one day, which lets a single grid implementation serve both views. */
   const days = useMemo(() => {
     if (isWeek) {
       const start = startOfWeek(date, { weekStartsOn: 1 });
@@ -156,10 +156,7 @@ export default function CoffinCalendarGrid({ view, date, bookings = [], onPick, 
     return [date];
   }, [isWeek, date]);
 
-  /* ONE pass over the bookings builds the per-day model: which land on which
-     day, which have a usable time, and which hour row each sits in. Days are
-     keyed on the LOCAL date, never toISOString(): that converts to UTC and
-     silently shifts every evening booking into the next day. */
+  /* ONE pass over the bookings builds the per-day model: which land on which day, which have a usable time, and which hour row each sits in. Days ar   keyed on the LOCAL date, never toISOString(): that converts to UTC and silently shifts every evening booking into the next day. */
   const model = useMemo(() => {
     const buckets = new Map();
     days.forEach((d) => buckets.set(format(d, 'yyyy-MM-dd'), []));

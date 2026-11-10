@@ -88,24 +88,24 @@ export default function PremiumReporting() {
           while the black band runs edge to edge */}
       <div className="wrap" style={{ position: 'relative', zIndex: 10 }}>
 
-      {/* Top Attention Grabber (full edge-to-edge width) */}
-      <div style={{ position: 'relative', zIndex: 10, paddingLeft: '1.5rem', paddingRight: '1.5rem', marginBottom: '6rem', textAlign: 'center' }}>
-        <Reveal>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
-          }}>
-            <span style={{
-              width: '8px', height: '8px', background: '#ffffff', borderRadius: '50%', display: 'inline-block',
-              animation: 'prPulse 2s infinite',
-            }} />
-            <span style={{
-              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#f5f5f5', textTransform: 'uppercase',
-            }}>Premium document workspace</span>
-          </div>
-        </Reveal>
-        <Reveal delay={100}>
-          <h2 style={{
+        {/* Top Attention Grabber (full edge-to-edge width) */}
+        <div style={{ position: 'relative', zIndex: 10, paddingLeft: '1.5rem', paddingRight: '1.5rem', marginBottom: '6rem', textAlign: 'center' }}>
+          <Reveal>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 1.25rem', borderRadius: '9999px', marginBottom: '2rem',
+            }}>
+              <span style={{
+                width: '8px', height: '8px', background: '#ffffff', borderRadius: '50%', display: 'inline-block',
+                animation: 'prPulse 2s infinite',
+              }} />
+              <span style={{
+                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', color: '#f5f5f5', textTransform: 'uppercase',
+              }}>Premium document workspace</span>
+            </div>
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 style={{
               fontFamily: "'Fraunces', serif",
               fontSize: 'clamp(2.2rem, 5vw, 4rem)',
               fontWeight: 300, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em', color: '#ffffff',
@@ -153,8 +153,8 @@ export default function PremiumReporting() {
                   paddingBottom: '12px', borderBottom: '2px solid #1A1A1A', marginBottom: '16px',
                 }}>
                   <div>
-                    <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: '14px', fontWeight: 700, color: '#1A1A1A' }}>Sterling & Hayes</h3>
-                    <p style={{ fontSize: '6px', color: '#6B6862', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '2px' }}>Official Postmortem Record</p>
+                    <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: '14px', fontWeight: 700, color: '#1A1A1A' }}> RP  Feuneral   Homes </h3>
+                    <p style={{ fontSize: '6px', color: '#6B6862', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '2px' }}>Official Death    Certificate Record</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{
@@ -165,7 +165,7 @@ export default function PremiumReporting() {
                         clipPath: 'polygon(0% 0%, 20% 0%, 30% 50%, 20% 100%, 0% 100%, 10% 50%)',
                       }} />
                     </div>
-                    <p style={{ fontSize: '6px', color: '#0f33e7', fontWeight: 700 }}>BLS-2024-0843</p>
+                    <p style={{ fontSize: '6px', color: '#0f33e7', fontWeight: 700 }}>RSP-2024-0843</p>
                   </div>
                 </div>
 
@@ -224,14 +224,14 @@ export default function PremiumReporting() {
                   width: '48px', height: '48px', background: '#107C41', borderRadius: '8px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
                 }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M21.17 3H7.83A1.83 1.83 0 006 4.83v14.34A1.83 1.83 0 007.83 21h13.34A1.83 1.83 0 0023 19.17V4.83A1.83 1.83 0 0021.17 3zM12 17h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M21.17 3H7.83A1.83 1.83 0 006 4.83v14.34A1.83 1.83 0 007.83 21h13.34A1.83 1.83 0 0023 19.17V4.83A1.83 1.83 0 0021.17 3zM12 17h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z" /></svg>
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#107C41', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Exported</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#107C41"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <span style={{ color: '#107C41', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Auto  - Exported</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#107C41"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
                   </div>
-                  <p style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginTop: '4px' }}>Audit_Export.xlsx</p>
+                  <p style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginTop: '4px' }}>2026_deceased_records.xlsx</p>
                   <div style={{
                     marginTop: '8px', width: '128px', height: '4px', background: '#333', borderRadius: '9999px', overflow: 'hidden',
                   }}>
@@ -282,14 +282,14 @@ export default function PremiumReporting() {
                   flexShrink: 0, width: '56px', height: '56px', border: '1px solid rgba(16,124,65,0.3)',
                   borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#107C41',
                 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H8v-2h4v2zm0-4H8v-2h4v2zm0-4H8V7h4v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H8v-2h4v2zm0-4H8v-2h4v2zm0-4H8V7h4v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z" /></svg>
                 </div>
                 <div>
                   <h3 style={{
                     fontFamily: "'Fraunces', serif", fontSize: '1.5rem', color: 'white', marginBottom: '8px', fontWeight: 500,
-                  }}>A high-end document view</h3>
+                  }}>View documents in Rest Point</h3>
                   <p style={{ color: '#8A8A8A', lineHeight: 1.8, fontSize: '1rem' }}>
-                    Review important records in a clear, refined workspace built for professional funeral homes. Open, organise, share, and revisit documents without digging through folders or paper files.
+                    Preview important records right in Rest Point there’s no need to open Word or another external document viewer. Organise, share, and revisit documents in one workspace without digging through folders or paper files.
                   </p>
                 </div>
               </div>
@@ -360,4 +360,3 @@ export default function PremiumReporting() {
     </section>
   );
 }
-

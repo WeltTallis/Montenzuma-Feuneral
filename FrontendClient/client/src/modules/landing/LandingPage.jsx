@@ -252,9 +252,19 @@ export default function App() {
   };
 
   const landingModules = [
-    { dark: true, to: true, category: 'NEW - INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve, and track time off in real time - no spreadsheets or external HR tools.', status: 'NOW LIVE' },
-    { static: true, category: 'PREMIUM FLORAL BOOKING', accent: C.verdigris, title: 'High-End Funeral Flowers', excerpt: 'We built a premium floral booking flow for funeral homes: families browse refined tribute arrangements, the system recommends elegant options based on the service style and season, and each order is sent directly to the florist with no confusion. This is crafted for funeral homes that take pride in dignified, high-end floral presentation.', status: 'RECEPTIONIST PORTAL' },
-    { dark: true, to: true, category: 'NEW - SUPPORT CENTER', accent: C.brass, title: 'Real-time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond to, and resolve them in real time with full status tracking and communication history.', status: 'NOW LIVE' },
+
+    {
+      dark: true, to: true, category: 'NEW  INTEGRATED', accent: C.brass, title: 'Leave Management', excerpt: 'Staff leave is now fully handled inside Rest Point. Request, approve, and track time off in real time no spreadsheets or external HR tools.', status: 'NOW LIVE'
+    },
+
+    {
+      static: true, category: 'PREMIUM FLORAL BOOKING', accent: C.verdigris, title: 'High-End Funeral Flowers', excerpt: 'We built a premium floral booking flow for funeral homes: families browse refined tribute arrangements, the system recommends elegant options based on the service style and season, and each order is sent directly to the florist with no confusion. This is crafted for funeral homes that take pride in dignified, high-end floral presentation.', status: 'RECEPTIONIST PORTAL'
+    },
+
+    {
+      dark: true, to: true, category: 'NEW  SUPPORT CENTER', accent: C.brass, title: 'Real-time Customer Support', excerpt: 'Submit issues directly through the platform and our support agents receive, respond to, and resolve them in real time with full status tracking and communication history.', status: 'NOW LIVE'
+    },
+
   ];
 
   const marqueeItems = ['Case Management', 'Family Portal', 'Smart Dispatch', 'Fleet Tracking', 'Funeral Insurance', 'Real-time Support', 'Billing & Invoicing', 'Analytics & Reports', 'Welfare Schemes'];
@@ -651,7 +661,7 @@ export default function App() {
           </div>
         </section>
 
-   
+
 
 
         <Footer />

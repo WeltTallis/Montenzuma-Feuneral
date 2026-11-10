@@ -387,6 +387,7 @@ const LedgerRow = styled.div`
     font-weight: 420;
     font-size: 1.55rem;
     letter-spacing: -0.015em;
+    color: #fff;
   }
   .sub {
     display: block;
@@ -395,7 +396,7 @@ const LedgerRow = styled.div`
     font-size: 0.55rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: ${C.verdSub};
+    color: #fff;
   }
 
   .spec {
@@ -532,18 +533,19 @@ const Colophon = styled.footer`
 
 const FEATURES = [
   { no: '01', title: 'Digital Body Signatures', text: 'Capture signatures on the body-intake and body-release forms directly on screen.' },
-  { no: '02', title: 'Pressure-Sensitive Stylus', isNew: true, text: 'An optional pen for writing digital signatures naturally on screen.' },
+  { no: '02', title: 'Optional Stylus', isNew: true, text: 'Add a pressure-sensitive pen for signing intake and release forms on screen.' },
   { no: '03', title: 'Body Intake', text: 'Record each admission in the digital intake workflow.' },
-  { no: '04', title: 'Body Release', text: 'Record the release and capture the recipient’s digital signature.' },
-  { no: '05', title: 'Curated Florals', text: 'A visual catalog to select and annotate arrangements.' },
+  { no: '04', title: 'Body Release', text: 'Record each release and capture the recipient’s signature on the form.' },
+  { no: '05', title: 'Floral Samples', text: 'Let families browse arrangements at the reception desk.' },
 ];
 
 const MARQUEE_ITEMS = [
-  { text: 'Required for all facilities' },
-  { text: 'FrontDesk Portal', em: true },
-  { text: 'iPad or Android, both work' },
-  { text: 'Your facility, digitally elevated', em: true },
-  { text: 'Signature-grade intake' },
+  { text: 'One tablet for every facility' },
+  { text: 'FrontDesk Reception Portal', em: true },
+  { text: 'iPad or Android' },
+  { text: 'Digital body intake & release', em: true },
+  { text: 'On-screen signatures' },
+  { text: 'Floral samples at reception' },
 ];
 
 /* Main component */
@@ -587,11 +589,11 @@ const HardwareRequirementSection = () => {
             {/* Left column */}
             <div>
               <Reveal>
-                <Eyebrow>§ 06 · Materials &amp; Hardware</Eyebrow>
+                <Eyebrow>§ 06 · The FrontDesk reception portal</Eyebrow>
               </Reveal>
 
               <Reveal delay={0.08}>
-                <H1>FrontDesk<em>Tablet &amp; Stylus</em></H1>
+                <H1>FrontDesk<em>Tablet &amp; Reception Portal</em></H1>
               </Reveal>
 
               <Reveal delay={0.16}>
@@ -599,14 +601,14 @@ const HardwareRequirementSection = () => {
                   A dedicated touchscreen reception portal for funeral homes: record body
                   intake, capture digital signatures on body-intake and body-release forms,
                   and let families browse floral arrangements. <strong>iPad or Android</strong>,
-                  any tablet works. A <strong>pressure-sensitive stylus</strong> is an optional
-                  add-on for signing those forms naturally on screen.
+                  any tablet works. A pressure-sensitive stylus is optional for signing those
+                  forms on screen.
                 </HeroP>
               </Reveal>
 
               <Reveal delay={0.32}>
                 <Features>
-                  <FeaturesHead>On the device</FeaturesHead>
+                  <FeaturesHead>In the reception portal</FeaturesHead>
 
                   {FEATURES.map((f) => (
                     <Feat key={f.no}>
@@ -633,7 +635,7 @@ const HardwareRequirementSection = () => {
                 <PlateFrame ref={plateRef}>
                   <PlateHead>
                     <span className="title">Plate I.</span>
-                    <span className="meta">FrontDesk tablet</span>
+                    <span className="meta">FrontDesk reception tablet</span>
                   </PlateHead>
 
                   <PhotoStage>
@@ -649,7 +651,7 @@ const HardwareRequirementSection = () => {
                   </PhotoStage>
 
                   <PlateCaption>
-                    <b>Fig. 1</b> · FrontDesk tablet. iPad shown; Android equally supported.
+                    <b>Fig. 1</b> · FrontDesk reception tablet. iPad shown; Android equally supported.
                   </PlateCaption>
                 </PlateFrame>
               </Reveal>
@@ -664,16 +666,16 @@ const HardwareRequirementSection = () => {
             <ReqHead>
               <Reveal>
                 <div>
-                  <ReqEyebrow>§ 07 · The requirement</ReqEyebrow>
-                  <h2>Required in <em>every</em> facility.<br />Recommended in every hand.</h2>
+                  <ReqEyebrow>§ 07 · The tablet requirement</ReqEyebrow>
+                  <h2>One tablet in <em>every</em> facility.<br />A stylus for on-screen signatures.</h2>
                 </div>
               </Reveal>
               <Reveal delay={0.12}>
                 <aside>
-                  Every facility needs one iPad or Android tablet for its reception portal.
-                  Staff record body intake and body release, with digital signatures captured
-                  directly on each form. Families can also browse floral samples at reception.
-                  A pressure-sensitive stylus is optional for signing on screen.
+                  The FrontDesk reception portal runs on one iPad or Android tablet. Staff use
+                  it to record body intake and release and capture digital signatures directly
+                  on both forms. Families can browse floral arrangements at reception. A
+                  pressure-sensitive stylus is optional for signing on screen.
                 </aside>
               </Reveal>
             </ReqHead>
@@ -688,13 +690,13 @@ const HardwareRequirementSection = () => {
               <LedgerRow>
                 <span className="no">01</span>
                 <div>
-                  <h3>FrontDesk Tablet</h3>
+                  <h3>FrontDesk Reception Tablet</h3>
                   <span className="sub">iPad or Android, whichever the facility prefers</span>
                 </div>
                 <p className="spec">
-                  Run the reception portal on one tablet to record body intake and release,
-                  capture digital signatures directly on both forms, and show families curated
-                  flower samples. Available for iPad or Android.
+                  Required to run the FrontDesk reception portal. Record body intake and release,
+                  capture digital signatures directly on both forms, and let families browse
+                  floral arrangements. Choose an iPad or Android tablet.
                 </p>
                 <div className="status">
                   <span className="lchip req">Required</span>
