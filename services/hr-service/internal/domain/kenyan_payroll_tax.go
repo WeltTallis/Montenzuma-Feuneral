@@ -161,7 +161,7 @@ func calculateKenyanPAYE(taxablePay float64, bands []KenyanTaxBand) float64 {
 			tax += (upperLimit - lowerLimit) * band.Rate
 		}
 		lowerLimit = float64(band.UpperLimit)
-		if band.UpperLimit == 0 || taxablePay <= band.UpperLimit {
+		if band.UpperLimit == 0 || taxablePay <= upperLimit {
 			break
 		}
 	}
