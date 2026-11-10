@@ -62,7 +62,7 @@ COPY packages/shared-logger/package.json ./packages/shared-logger/
 COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/shared-services/package.json ./packages/shared-services/
 COPY shared/package.json ./shared/
-
+COPY services/auth-service/package.json ./services/auth-service/
 
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \
@@ -74,7 +74,7 @@ RUN npm config set fetch-timeout 1200000 \
 # --omit=dev partial-workspace installs can silently skip packages and
 # exit 0 — fail the build HERE instead of shipping a broken auth service.
 # Mirrors the socketio-service guard.
-RUN node -e "['express','express-rate-limit','express-session','helmet','hpp','cors','cookie-parser','dotenv','validator','bcryptjs','jsonwebtoken','redis','mysql2'].forEach(p=>require.resolve(p)); console.log('[GUARD] auth-service: production deps OK')"
+RUN cd services/auth-service && node -e "['express','express-rate-limit','express-session','helmet','hpp','cors','cookie-parser','dotenv','validator','bcryptjs','jsonwebtoken','redis','mysql2'].forEach(p=>require.resolve(p)); console.log('[GUARD] auth-service: production deps OK')"
 
 # ---------------------------------------------------------------------------
 # Stage 4/4 — runtime: final image
