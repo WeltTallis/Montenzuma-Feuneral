@@ -3,8 +3,7 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 # Copy module definition files
-COPY api/go.mod ./api/
-COPY go.mod go.sum ./
+COPY api/go.mod api/go.sum ./api/
 
 # Download dependencies
 ENV GOPROXY=https://proxy.golang.org,direct \
