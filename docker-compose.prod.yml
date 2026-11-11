@@ -140,6 +140,7 @@ services:
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
       WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
+      LEAVE_SERVICE_URL: http://restpoint_hr_service:5000
       FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@restpoint_redis:6379
     # Gateway starts independently of databases and queues. It can return a
@@ -868,6 +869,39 @@ services:
       - restpoint_network
     healthcheck:
       test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health' ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =============================================================================
+  # HR SERVICE
+  # =============================================================================
+
+  hr-service:
+    build:
+      context: .
+      dockerfile: services/hr-service/Dockerfile
+    image: restpoint-hr-service:latest
+    container_name: restpoint_hr_service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: hr-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+    volumes:
+      # Leave supporting documents live in the shared HOST uploads folder
+      # /opt/storage/uploads/leave-documents (served at /uploads/leave-documents/...)
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health' ]
       interval: 30s
       timeout: 10s
       retries: 3

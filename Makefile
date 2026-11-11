@@ -214,8 +214,8 @@ build-service-fast:
 # tagged images, while the cleanup removes only layers no container references.
 rebuild-slim:
 	@echo "$(BLUE)Rebuilding oversized services with the generated slim Dockerfiles...$(NC)"
-	@set -e; for svc in florist-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
-	@set -e; for svc in florist-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE) up -d --no-deps $$svc; done
+	@set -e; for svc in florist-service hr-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
+	@set -e; for svc in florist-service hr-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE) up -d --no-deps $$svc; done
 	@echo "$(BLUE)Removing unused old image layers and build cache...$(NC)"
 	@if [ -f scripts/docker-cleanup.mjs ] && command -v node >/dev/null 2>&1; then \
 		node scripts/docker-cleanup.mjs --apply; \
@@ -226,8 +226,8 @@ rebuild-slim:
 
 rebuild-slim-prod:
 	@echo "$(BLUE)Rebuilding oversized production services with slim images...$(NC)"
-	@set -e; for svc in florist-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE_PROD) build --no-cache $$svc; done
-	@set -e; for svc in florist-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE_PROD) up -d --no-deps $$svc; done
+	@set -e; for svc in florist-service hr-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE_PROD) build --no-cache $$svc; done
+	@set -e; for svc in florist-service hr-service hearse-service workshop-service; do echo "  -> restarting $$svc"; $(COMPOSE_PROD) up -d --no-deps $$svc; done
 	@echo "$(BLUE)Removing unused old production layers and build cache...$(NC)"
 	@if [ -f scripts/docker-cleanup.mjs ] && command -v node >/dev/null 2>&1; then \
 		node scripts/docker-cleanup.mjs --apply; \
