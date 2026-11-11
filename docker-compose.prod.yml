@@ -140,8 +140,6 @@ services:
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
       WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
-      LEAVE_SERVICE_URL: http://restpoint_hr_service:5000
-      HR_PAYROLL_SERVICE_URL: http://restpoint_hr_payroll_api:8080
       FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@restpoint_redis:6379
     # Gateway starts independently of databases and queues. It can return a
@@ -872,40 +870,6 @@ services:
       test: [ 'CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health' ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  hr-payroll-api:
-    profiles: ['payroll']
-    build:
-      context: ./services/hr-service
-      dockerfile: payroll.Dockerfile
-    image: restpoint-hr-payroll-api:latest
-    container_name: restpoint_hr_payroll_api
-    restart: unless-stopped
-    env_file:
-      - .env.production
-    environment:
-      APP_ENV: production
-      APP_PORT: 8080
-      DB_DRIVER: mysql
-      DB_DSN: ${HR_PAYROLL_DB_DSN:-}
-      REDIS_ADDR: restpoint_redis:6379
-      GOOGLE_OAUTH_ENABLED: 'false'
-      ENABLE_ONEPAY: 'false'
-      ENABLE_ONEPAY_FOR_EMPLOYEE: 'false'
-      ENABLE_ONEPAY_FOR_BULK_TRANSFER: 'false'
-      ENABLE_NINEPAY: 'false'
-      SCHEDULER_TIMEZONE: Africa/Nairobi
-      TZ: Africa/Nairobi
-    ports:
-      - '127.0.0.1:${HR_PAYROLL_API_EXTERNAL_PORT:-5080}:8080'
-    networks:
-      - restpoint_network
-    healthcheck:
-      test: [ 'CMD', '/api-server', 'healthcheck' ]
-      interval: 30s
-      timeout: 5s
       retries: 3
       start_period: 40s
 
