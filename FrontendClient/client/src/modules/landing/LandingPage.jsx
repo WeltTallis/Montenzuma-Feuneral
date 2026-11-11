@@ -9,7 +9,7 @@ import FloatingCTA from './FloatingCTA';
 import MissionSection from './Mission';
 import SiteNav from './nav';
 import Hero from './hero';
-import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, LifeBuoy } from '../../utils/icons/icons';
+import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, LifeBuoy, MessageCircle } from '../../utils/icons/icons';
 import PremiumReporting from './PremiumReporting';
 
 /* 
@@ -203,7 +203,7 @@ const FloralPreview = () => {
   );
 };
 
-const Showcase = ({ no, title, desc, reverse, points, cta, floral, children }) => {
+const Showcase = ({ no, badge, title, desc, reverse, points, cta, floral, children }) => {
   const navigate = useNavigate();
   const goExplore = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -213,7 +213,7 @@ const Showcase = ({ no, title, desc, reverse, points, cta, floral, children }) =
     <Reveal className={`showcase-mobile${floral ? ' floral-showcase' : ''}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '7rem' }}>
       <div className="showcase-text" style={{ order: reverse ? 2 : 1, paddingRight: reverse ? '0' : '2rem', paddingLeft: reverse ? '2rem' : '0' }}>
         <div className="showcase-module">
-          <span className="showcase-no">Module {no}</span>
+          <span className="showcase-no">{badge || `Module ${no}`}</span>
           <span className="showcase-rule" />
         </div>
         <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', marginBottom: '1.2rem', lineHeight: 1.25 }}>{title}</h2>
@@ -450,6 +450,19 @@ export default function App() {
         .showcase-check { width: 20px; height: 20px; border-radius: 50%; background: ${C.verdigrisTint}; color: ${C.verdigris}; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
         .showcase-cta { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.9rem; background: none; border: none; border-bottom: 1.5px solid ${C.brass}; padding: 0 0 0.4rem; color: ${C.ink}; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: color 0.3s ease, gap 0.3s ease; }
         .showcase-cta:hover { color: ${C.brass}; gap: 0.75rem; }
+        .sms-preview { width: 100%; max-width: 470px; padding: clamp(1.35rem,4vw,2rem); background: #FFFFFF; border: 1px solid ${C.line}; border-radius: 18px; box-shadow: 0 24px 60px rgba(21,23,26,0.1); }
+        .sms-preview-head { display: flex; align-items: center; gap: 0.8rem; padding-bottom: 1.3rem; border-bottom: 1px solid ${C.line}; margin-bottom: 1.2rem; }
+        .sms-preview-icon { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; color: ${C.verdigris}; background: ${C.verdigrisTint}; border-radius: 12px; }
+        .sms-preview-eyebrow, .sms-preview-label { display: block; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; color: ${C.gray}; text-transform: uppercase; }
+        .sms-preview-head h3 { margin: 0.15rem 0 0; font-family: 'Cormorant Garamond',serif; font-size: 1.25rem; color: ${C.ink}; }
+        .sms-preview-live { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; padding: 0.4rem 0.6rem; border-radius: 999px; background: ${C.verdigrisTint}; color: ${C.verdigris}; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+        .sms-preview-live span { width: 6px; height: 6px; border-radius: 50%; background: ${C.verdigris}; }
+        .sms-preview-step { display: flex; align-items: flex-start; gap: 0.75rem; margin-top: 1rem; }
+        .sms-preview-step-icon { display: flex; flex: 0 0 24px; width: 24px; height: 24px; align-items: center; justify-content: center; margin-top: 0.3rem; color: ${C.verdigris}; background: ${C.verdigrisTint}; border-radius: 50%; }
+        .sms-preview-message { flex: 1; padding: 0.9rem 1rem; background: ${C.bone}; border: 1px solid ${C.line}; border-radius: 4px 14px 14px; }
+        .sms-preview-label { color: ${C.verdigris}; }
+        .sms-preview-message p { margin: 0.45rem 0 0; color: ${C.ink}; font-size: 0.88rem; line-height: 1.6; }
+        .sms-preview-foot { margin: 1.25rem 0 0 2.2rem; color: ${C.gray}; font-size: 0.75rem; line-height: 1.5; }
 
         /* -- Professional app mockups -- */
         .case-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.4rem; }
@@ -578,6 +591,43 @@ export default function App() {
         <section id="features" className="section">
           <div className="wrap">
             <PremiumReporting />
+            <Showcase
+              badge="Available now"
+              title="Keep families informed, automatically."
+              desc="Rest Point sends the next of kin an SMS at two important moments in the care journey, so families receive timely updates without your team having to send each message manually."
+              points={[
+                'At body intake, the next of kin receives an SMS confirming their loved one has been received into the mortuary.',
+                'At release, the next of kin receives an SMS confirming the release and the recorded final destination.',
+                'Your team records intake and release in Rest Point; the updates are sent automatically.',
+              ]}
+              cta="See Rest Point in action"
+            >
+              <div className="sms-preview" aria-label="Example of automatic next-of-kin SMS updates at intake and release">
+                <div className="sms-preview-head">
+                  <div className="sms-preview-icon"><MessageCircle size={20} /></div>
+                  <div>
+                    <span className="sms-preview-eyebrow">Family communication</span>
+                    <h3>Next-of-kin updates</h3>
+                  </div>
+                  <span className="sms-preview-live"><span />Automatic</span>
+                </div>
+                <div className="sms-preview-step">
+                  <span className="sms-preview-step-icon"><Check size={14} /></span>
+                  <div className="sms-preview-message">
+                    <span className="sms-preview-label">BODY INTAKE</span>
+                    <p>Your loved one has been received into our care. We are here to support your family.</p>
+                  </div>
+                </div>
+                <div className="sms-preview-step">
+                  <span className="sms-preview-step-icon"><Check size={14} /></span>
+                  <div className="sms-preview-message">
+                    <span className="sms-preview-label">BODY RELEASE</span>
+                    <p>Your loved one has been released. The final destination is included in the update.</p>
+                  </div>
+                </div>
+                <div className="sms-preview-foot">Triggered by intake and release records in Rest Point</div>
+              </div>
+            </Showcase>
             <Showcase no="03" floral title="The Right Flowers. Right in Front of Them." reverse={false} cta="Discover the floral concierge" desc={
               <>
                 <strong style={{ display: 'block', fontSize: '1.18rem', color: C.ink, lineHeight: 1.45, marginBottom: '1.2rem' }}>

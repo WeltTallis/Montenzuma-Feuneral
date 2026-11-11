@@ -203,3 +203,65 @@ sudo ufw enable
 sudo ufw status numbered
 
 sudo ufw status verbose
+
+
+
+///seting up ngnix   
+turn cloudlared   host to  DNS  only  
+
+
+dig   dig +short restpoint.co.ke A
+dig +short www.restpoint.co.ke A
+
+
+ certbot --nginx -d restpoint.co.ke -d www.restpoint.co.ke
+
+
+ cat > /etc/nginx/sites-available/restpoint <<'EOF'
+server {
+    listen 80;
+    server_name restpoint.co.ke www.restpoint.co.ke;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name restpoint.co.ke www.restpoint.co.ke;
+
+    ssl_certificate /etc/letsencrypt/live/restpoint.co.ke/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/restpoint.co.ke/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+EOF
+
+
+ ln -sf /etc/nginx/sites-available/restpoint \
+/etc/nginx/sites-enabled/restpoint
+
+rm -f /etc/nginx/sites-enabled/default
+
+nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+root@vmi3742487:/opt/restpoint# systemctl reload nginx
+root@vmi3742487:/opt/restpoint#
+
+
+
