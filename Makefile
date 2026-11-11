@@ -496,14 +496,23 @@ prod-build: check-build-list-prod
 # `--no-deps`, and the rest of the stack is brought up afterwards. nginx serves
 # index.html immediately and the SPA's own API calls simply fail until the
 # backend is back, which is the behaviour we want.
-prod-up: validate check-build-list-prod check-prod-images
+check-prod-env:
+	@if [ ! -f .env.production ]; then \
+		echo "$(RED)✗ .env.production not found in $(CURDIR)$(NC)"; \
+		echo "$(YELLOW)  Copy your production environment file to .env.production, then retry.$(NC)"; \
+		exit 1; \
+	fi
+
+prod-up: check-prod-env validate check-build-list-prod check-prod-images
 	@echo "$(BLUE)Phase 1/3: starting the UI (independent of the backend)...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build --no-deps frontend
 	@echo "$(BLUE)Phase 2/3: starting infrastructure...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build mariadb redis rabbitmq
 	@echo "$(BLUE)Phase 3/3: starting application services...$(NC)"
-	@$(COMPOSE_PROD) up -d --no-build || \
-		echo "$(YELLOW)⚠ Some services did not start. The UI is already up — run 'make prod-doctor'.$(NC)"
+	@if ! $(COMPOSE_PROD) up -d --no-build; then \
+		echo "$(RED)✗ Some production services did not start. Run 'make prod-doctor' for details.$(NC)"; \
+		exit 1; \
+	fi
 	@echo "$(GREEN)✓ Production services started$(NC)"
 	@sleep 30
 	@$(COMPOSE_PROD) ps
@@ -525,6 +534,22 @@ prod-logs:
 # (the real error), the live connection usage, and the containers that are
 # restarting, so the cause is identified in one command instead of guessed at.
 prod-doctor:
+	@echo "$(BLUE)=== Production environment file ===$(NC)"
+	@if [ -f .env.production ]; then \
+		echo "$(GREEN)✓ .env.production found$(NC)"; \
+	else \
+		echo "$(RED)✗ .env.production is missing from $(CURDIR)$(NC)"; \
+		echo "$(YELLOW)  Compose services using env_file cannot start until it is present.$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)=== Production Compose configuration ===$(NC)"
+	@if $(COMPOSE_PROD) config --quiet 2>/dev/null; then \
+		echo "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)"; \
+	else \
+		echo "$(RED)✗ docker-compose.prod.yml configuration failed; details follow:$(NC)"; \
+		$(COMPOSE_PROD) config --quiet || true; \
+	fi
+	@echo ""
 	@echo "$(BLUE)=== Container status ===$(NC)"
 	@$(COMPOSE_PROD) ps -a --format 'table {{.Name}}\t{{.Status}}' 2>/dev/null || docker ps -a --format 'table {{.Names}}\t{{.Status}}'
 	@echo ""
@@ -582,9 +607,21 @@ fix-db-healthcheck:
 
 validate:
 	@echo "$(BLUE)Validating docker-compose files...$(NC)"
-	@$(COMPOSE) config > /dev/null 2>&1 && echo "$(GREEN)✓ docker-compose.yml is valid$(NC)" || echo "$(RED)✗ docker-compose.yml invalid$(NC)"
+	@if $(COMPOSE) config --quiet 2>/dev/null; then \
+		echo "$(GREEN)✓ docker-compose.yml is valid$(NC)"; \
+	else \
+		echo "$(RED)✗ docker-compose.yml configuration failed; details follow:$(NC)"; \
+		$(COMPOSE) config --quiet; \
+		exit 1; \
+	fi
 	@if [ -f docker-compose.prod.yml ]; then \
-		$(COMPOSE_PROD) config > /dev/null 2>&1 && echo "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)" || echo "$(RED)✗ docker-compose.prod.yml invalid$(NC)"; \
+		if $(COMPOSE_PROD) config --quiet 2>/dev/null; then \
+			echo "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)"; \
+		else \
+			echo "$(RED)✗ docker-compose.prod.yml configuration failed; details follow:$(NC)"; \
+			$(COMPOSE_PROD) config --quiet; \
+			exit 1; \
+		fi; \
 	fi
 	@sh scripts/list-build-services.sh verify-dockerfiles
 	@sh scripts/list-build-services.sh docker-compose.prod.yml verify-dockerfiles
