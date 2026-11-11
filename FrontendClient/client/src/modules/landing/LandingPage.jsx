@@ -502,25 +502,26 @@ export default function App() {
         .modules-header { text-align: center; margin-bottom: 3rem; padding: 0 1rem; }
         .modules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 900px; margin: 0 auto; align-items: stretch; }
         .modules-grid > div { display: flex; }
-        .module-sms { display: grid; grid-template-columns: 1fr 0.9fr; gap: clamp(2rem,5vw,4rem); align-items: center; max-width: 1000px; margin: 0 auto 2rem; padding: clamp(1.5rem,4vw,3rem); overflow: hidden; border: 1px solid ${C.line}; border-radius: 20px; background: linear-gradient(135deg,#FFFFFF 0%,${C.bone2} 100%); box-shadow: 0 18px 48px rgba(21,23,26,0.07); }
+        .module-sms { display: grid; grid-template-columns: 1fr 0.9fr; gap: clamp(2rem,5vw,4rem); align-items: center; max-width: 1000px; margin: 0 auto 2rem; padding: clamp(1.5rem,4vw,3rem); overflow: hidden; border: 1px solid rgba(250,248,244,0.12); border-radius: 20px; background: linear-gradient(135deg,${C.verdigrisDark} 0%,${C.ink} 100%); box-shadow: 0 18px 48px rgba(21,23,26,0.16); }
         .module-sms-copy { min-width: 0; }
         .module-sms-status { display: inline-flex; align-items: center; gap: 0.55rem; margin-bottom: 1.15rem; padding: 0.48rem 0.8rem; border: 1px solid rgba(61,79,71,0.18); border-radius: 999px; background: ${C.verdigrisTint}; color: ${C.verdigris}; font-family: 'Saira',sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
         .module-sms-status span { width: 7px; height: 7px; border-radius: 50%; background: ${C.verdigris}; box-shadow: 0 0 0 4px rgba(61,79,71,0.1); }
-        .module-sms-title { margin: 0 0 0.8rem; color: ${C.ink}; font-size: clamp(1.8rem,3.5vw,2.5rem); line-height: 1.12; }
-        .module-sms-desc { max-width: 530px; margin: 0; color: ${C.gray}; font-family: 'Saira',sans-serif; font-size: 0.98rem; line-height: 1.75; }
-        .module-sms-cta { display: inline-flex; align-items: center; gap: 0.55rem; margin-top: 1.5rem; padding: 0.82rem 1.15rem; border: 0; border-radius: 8px; background: ${C.ink}; color: ${C.bone}; font-family: 'Saira',sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; }
-        .module-sms-cta:hover { background: ${C.verdigris}; transform: translateY(-2px); }
+        .module-sms .module-sms-title { margin: 0 0 0.8rem; color: ${C.bone}; font-size: clamp(1.8rem,3.5vw,2.5rem); line-height: 1.12; }
+        .module-sms-desc { max-width: 530px; margin: 0; color: rgba(250,248,244,0.76); font-family: 'Saira',sans-serif; font-size: 0.98rem; line-height: 1.75; }
+        .module-sms-cta { display: inline-flex; align-items: center; gap: 0.55rem; margin-top: 1.5rem; padding: 0.82rem 1.15rem; border: 0; border-radius: 8px; background: ${C.brassLight}; color: #FFFFFF; font-family: 'Saira',sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; }
+        .module-sms-cta:hover { background: ${C.brass}; transform: translateY(-2px); }
         .module-sms-visual { display: flex; justify-content: center; padding: clamp(1rem,3vw,2rem); border: 1px solid rgba(250,248,244,0.1); border-radius: 16px; background: radial-gradient(ellipse at top right,rgba(169,143,110,0.2),transparent 55%),${C.verdigrisDark}; }
         .module-sms-phone { width: 100%; max-width: 320px; padding: 1.15rem; border: 1px solid rgba(21,23,26,0.08); border-radius: 16px; background: #FFFFFF; box-shadow: 0 16px 38px rgba(0,0,0,0.2); }
         .module-sms-phone-head { display: flex; align-items: center; gap: 0.65rem; padding-bottom: 0.85rem; border-bottom: 1px solid ${C.line}; }
         .module-sms-phone-icon { display: flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; background: ${C.verdigrisTint}; color: ${C.verdigris}; }
         .module-sms-phone-head strong { display: block; color: ${C.ink}; font-family: 'Saira',sans-serif; font-size: 0.8rem; }
         .module-sms-phone-head small { display: block; margin-top: 0.12rem; color: ${C.gray}; font-family: 'Saira',sans-serif; font-size: 0.68rem; }
+        .module-sms-phone-head em { display: block; margin-top: 0.1rem; color: ${C.gray}; font-family: 'Saira',sans-serif; font-size: 0.61rem; font-style: normal; }
         .module-sms-update { position: relative; margin: 0.9rem 0 0 0.45rem; padding: 0 0 0.9rem 1.25rem; border-left: 1px solid ${C.line}; }
         .module-sms-update:last-child { padding-bottom: 0; border-left-color: transparent; }
         .module-sms-update::before { position: absolute; top: 0.15rem; left: -5px; width: 9px; height: 9px; border: 2px solid #FFFFFF; border-radius: 50%; background: ${C.verdigris}; box-shadow: 0 0 0 1px ${C.verdigris}; content: ''; }
         .module-sms-update-label { display: block; margin-bottom: 0.35rem; color: ${C.verdigris}; font-family: 'Saira',sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; }
-        .module-sms-update p { margin: 0; padding: 0.7rem 0.8rem; border-radius: 4px 12px 12px; background: ${C.bone}; color: ${C.ink}; font-family: 'Saira',sans-serif; font-size: 0.75rem; line-height: 1.55; }
+        .module-sms-update p { margin: 0; padding: 0.7rem 0.8rem; border: 1px solid rgba(21,23,26,0.06); border-radius: 4px 12px 12px; background: #FFFFFF; color: ${C.ink}; font-family: 'Saira',sans-serif; font-size: 0.75rem; line-height: 1.55; }
         .module-card { flex: 1; width: 100%; display: flex; flex-direction: column; padding: 1.5rem; border: 1px solid ${C.line}; border-radius: 12px; background: ${C.bone}; transition: all 0.4s cubic-bezier(0.16,1,0.3,1); cursor: pointer; text-decoration: none; }
         .module-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 24px color-mix(in srgb,var(--accent) 10%,transparent); }
         .module-card.dark { background: ${C.ink}; border-color: rgba(250,248,244,0.12); }
@@ -678,17 +679,18 @@ export default function App() {
                     <div className="module-sms-phone-head">
                       <div className="module-sms-phone-icon"><MessageCircle size={17} /></div>
                       <div>
-                        <strong>Family updates</strong>
-                        <small>Sent automatically by Rest Point</small>
+                        <strong>MM FUNERAL HOME</strong>
+                        <small>Family updates</small>
+                        <em>Sent automatically by Rest Point</em>
                       </div>
                     </div>
                     <div className="module-sms-update">
-                      <span className="module-sms-update-label">BODY RECEIVED</span>
-                      <p>Your loved one has been received into our care. We are here to support your family.</p>
+                      <span className="module-sms-update-label">BODY INTAKE</span>
+                      <p>We wish to inform you that the body of Mary Wanjiku has been received into our care. Admission number: RP-2026-0142. Please be assured that we will care for your loved one with dignity and respect. If there is anything you need, we are just a call away. Call +254740045355.</p>
                     </div>
                     <div className="module-sms-update">
                       <span className="module-sms-update-label">BODY RELEASED</span>
-                      <p>Your loved one has been released. The final destination is included in the update.</p>
+                      <p>Dear Wanjiku, we wish to let you know that the body of Mary Wanjiku has been successfully released to you. The final destination is Eldoret. Thank you for trusting us to care for your loved one. We wish you and your family strength during this difficult time. Our hearts are with you.</p>
                     </div>
                   </div>
                 </div>
