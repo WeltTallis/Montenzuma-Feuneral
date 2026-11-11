@@ -203,7 +203,7 @@ const FloralPreview = () => {
   );
 };
 
-const Showcase = ({ no, badge, title, desc, reverse, points, cta, floral, children }) => {
+const Showcase = ({ no, title, desc, reverse, points, cta, floral, children }) => {
   const navigate = useNavigate();
   const goExplore = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -213,7 +213,7 @@ const Showcase = ({ no, badge, title, desc, reverse, points, cta, floral, childr
     <Reveal className={`showcase-mobile${floral ? ' floral-showcase' : ''}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '7rem' }}>
       <div className="showcase-text" style={{ order: reverse ? 2 : 1, paddingRight: reverse ? '0' : '2rem', paddingLeft: reverse ? '2rem' : '0' }}>
         <div className="showcase-module">
-          <span className="showcase-no">{badge || `Module ${no}`}</span>
+          <span className="showcase-no">Module {no}</span>
           <span className="showcase-rule" />
         </div>
         <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', marginBottom: '1.2rem', lineHeight: 1.25 }}>{title}</h2>
@@ -450,20 +450,6 @@ export default function App() {
         .showcase-check { width: 20px; height: 20px; border-radius: 50%; background: ${C.verdigrisTint}; color: ${C.verdigris}; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
         .showcase-cta { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.9rem; background: none; border: none; border-bottom: 1.5px solid ${C.brass}; padding: 0 0 0.4rem; color: ${C.ink}; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: color 0.3s ease, gap 0.3s ease; }
         .showcase-cta:hover { color: ${C.brass}; gap: 0.75rem; }
-        .sms-preview { width: 100%; max-width: 470px; padding: clamp(1.35rem,4vw,2rem); background: #FFFFFF; border: 1px solid ${C.line}; border-radius: 18px; box-shadow: 0 24px 60px rgba(21,23,26,0.1); }
-        .sms-preview-head { display: flex; align-items: center; gap: 0.8rem; padding-bottom: 1.3rem; border-bottom: 1px solid ${C.line}; margin-bottom: 1.2rem; }
-        .sms-preview-icon { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; color: ${C.verdigris}; background: ${C.verdigrisTint}; border-radius: 12px; }
-        .sms-preview-eyebrow, .sms-preview-label { display: block; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; color: ${C.gray}; text-transform: uppercase; }
-        .sms-preview-head h3 { margin: 0.15rem 0 0; font-family: 'Cormorant Garamond',serif; font-size: 1.25rem; color: ${C.ink}; }
-        .sms-preview-live { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; padding: 0.4rem 0.6rem; border-radius: 999px; background: ${C.verdigrisTint}; color: ${C.verdigris}; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-        .sms-preview-live span { width: 6px; height: 6px; border-radius: 50%; background: ${C.verdigris}; }
-        .sms-preview-step { display: flex; align-items: flex-start; gap: 0.75rem; margin-top: 1rem; }
-        .sms-preview-step-icon { display: flex; flex: 0 0 24px; width: 24px; height: 24px; align-items: center; justify-content: center; margin-top: 0.3rem; color: ${C.verdigris}; background: ${C.verdigrisTint}; border-radius: 50%; }
-        .sms-preview-message { flex: 1; padding: 0.9rem 1rem; background: ${C.bone}; border: 1px solid ${C.line}; border-radius: 4px 14px 14px; }
-        .sms-preview-label { color: ${C.verdigris}; }
-        .sms-preview-message p { margin: 0.45rem 0 0; color: ${C.ink}; font-size: 0.88rem; line-height: 1.6; }
-        .sms-preview-foot { margin: 1.25rem 0 0 2.2rem; color: ${C.gray}; font-size: 0.75rem; line-height: 1.5; }
-
         /* -- Professional app mockups -- */
         .case-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.4rem; }
         .case-name { font-size: 1.45rem; font-family: 'Cormorant Garamond', serif; color: ${C.ink}; margin-top: 0.25rem; line-height: 1.2; }
@@ -516,6 +502,25 @@ export default function App() {
         .modules-header { text-align: center; margin-bottom: 3rem; padding: 0 1rem; }
         .modules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 900px; margin: 0 auto; align-items: stretch; }
         .modules-grid > div { display: flex; }
+        .module-sms { display: grid; grid-template-columns: 1fr 0.9fr; gap: clamp(2rem,5vw,4rem); align-items: center; max-width: 1000px; margin: 0 auto 2rem; padding: clamp(1.5rem,4vw,3rem); overflow: hidden; border: 1px solid ${C.line}; border-radius: 20px; background: linear-gradient(135deg,#FFFFFF 0%,${C.bone2} 100%); box-shadow: 0 18px 48px rgba(21,23,26,0.07); }
+        .module-sms-copy { min-width: 0; }
+        .module-sms-status { display: inline-flex; align-items: center; gap: 0.55rem; margin-bottom: 1.15rem; padding: 0.48rem 0.8rem; border: 1px solid rgba(61,79,71,0.18); border-radius: 999px; background: ${C.verdigrisTint}; color: ${C.verdigris}; font-family: 'Saira',sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+        .module-sms-status span { width: 7px; height: 7px; border-radius: 50%; background: ${C.verdigris}; box-shadow: 0 0 0 4px rgba(61,79,71,0.1); }
+        .module-sms-title { margin: 0 0 0.8rem; color: ${C.ink}; font-size: clamp(1.8rem,3.5vw,2.5rem); line-height: 1.12; }
+        .module-sms-desc { max-width: 530px; margin: 0; color: ${C.gray}; font-family: 'Saira',sans-serif; font-size: 0.98rem; line-height: 1.75; }
+        .module-sms-cta { display: inline-flex; align-items: center; gap: 0.55rem; margin-top: 1.5rem; padding: 0.82rem 1.15rem; border: 0; border-radius: 8px; background: ${C.ink}; color: ${C.bone}; font-family: 'Saira',sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; }
+        .module-sms-cta:hover { background: ${C.verdigris}; transform: translateY(-2px); }
+        .module-sms-visual { display: flex; justify-content: center; padding: clamp(1rem,3vw,2rem); border: 1px solid rgba(250,248,244,0.1); border-radius: 16px; background: radial-gradient(ellipse at top right,rgba(169,143,110,0.2),transparent 55%),${C.verdigrisDark}; }
+        .module-sms-phone { width: 100%; max-width: 320px; padding: 1.15rem; border: 1px solid rgba(21,23,26,0.08); border-radius: 16px; background: #FFFFFF; box-shadow: 0 16px 38px rgba(0,0,0,0.2); }
+        .module-sms-phone-head { display: flex; align-items: center; gap: 0.65rem; padding-bottom: 0.85rem; border-bottom: 1px solid ${C.line}; }
+        .module-sms-phone-icon { display: flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; background: ${C.verdigrisTint}; color: ${C.verdigris}; }
+        .module-sms-phone-head strong { display: block; color: ${C.ink}; font-family: 'Saira',sans-serif; font-size: 0.8rem; }
+        .module-sms-phone-head small { display: block; margin-top: 0.12rem; color: ${C.gray}; font-family: 'Saira',sans-serif; font-size: 0.68rem; }
+        .module-sms-update { position: relative; margin: 0.9rem 0 0 0.45rem; padding: 0 0 0.9rem 1.25rem; border-left: 1px solid ${C.line}; }
+        .module-sms-update:last-child { padding-bottom: 0; border-left-color: transparent; }
+        .module-sms-update::before { position: absolute; top: 0.15rem; left: -5px; width: 9px; height: 9px; border: 2px solid #FFFFFF; border-radius: 50%; background: ${C.verdigris}; box-shadow: 0 0 0 1px ${C.verdigris}; content: ''; }
+        .module-sms-update-label { display: block; margin-bottom: 0.35rem; color: ${C.verdigris}; font-family: 'Saira',sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; }
+        .module-sms-update p { margin: 0; padding: 0.7rem 0.8rem; border-radius: 4px 12px 12px; background: ${C.bone}; color: ${C.ink}; font-family: 'Saira',sans-serif; font-size: 0.75rem; line-height: 1.55; }
         .module-card { flex: 1; width: 100%; display: flex; flex-direction: column; padding: 1.5rem; border: 1px solid ${C.line}; border-radius: 12px; background: ${C.bone}; transition: all 0.4s cubic-bezier(0.16,1,0.3,1); cursor: pointer; text-decoration: none; }
         .module-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 24px color-mix(in srgb,var(--accent) 10%,transparent); }
         .module-card.dark { background: ${C.ink}; border-color: rgba(250,248,244,0.12); }
@@ -551,6 +556,8 @@ export default function App() {
           .showcase-mobile .showcase-visual { order: 1 !important; justify-content: center !important; }
           .insurance-content { max-width: 100%; }
           .modules-grid { grid-template-columns: 1fr; }
+          .module-sms { grid-template-columns: 1fr; gap: 1.5rem; }
+          .module-sms-visual { padding: 1rem; }
           .about-grid { grid-template-columns: 1fr; gap: 2rem; }
           .window-body { padding: 1.5rem; }
           .features-head { margin-bottom: 3.5rem; }
@@ -591,43 +598,6 @@ export default function App() {
         <section id="features" className="section">
           <div className="wrap">
             <PremiumReporting />
-            <Showcase
-              badge="Available now"
-              title="Keep families informed, automatically."
-              desc="Rest Point sends the next of kin an SMS at two important moments in the care journey, so families receive timely updates without your team having to send each message manually."
-              points={[
-                'At body intake, the next of kin receives an SMS confirming their loved one has been received into the mortuary.',
-                'At release, the next of kin receives an SMS confirming the release and the recorded final destination.',
-                'Your team records intake and release in Rest Point; the updates are sent automatically.',
-              ]}
-              cta="See Rest Point in action"
-            >
-              <div className="sms-preview" aria-label="Example of automatic next-of-kin SMS updates at intake and release">
-                <div className="sms-preview-head">
-                  <div className="sms-preview-icon"><MessageCircle size={20} /></div>
-                  <div>
-                    <span className="sms-preview-eyebrow">Family communication</span>
-                    <h3>Next-of-kin updates</h3>
-                  </div>
-                  <span className="sms-preview-live"><span />Automatic</span>
-                </div>
-                <div className="sms-preview-step">
-                  <span className="sms-preview-step-icon"><Check size={14} /></span>
-                  <div className="sms-preview-message">
-                    <span className="sms-preview-label">BODY INTAKE</span>
-                    <p>Your loved one has been received into our care. We are here to support your family.</p>
-                  </div>
-                </div>
-                <div className="sms-preview-step">
-                  <span className="sms-preview-step-icon"><Check size={14} /></span>
-                  <div className="sms-preview-message">
-                    <span className="sms-preview-label">BODY RELEASE</span>
-                    <p>Your loved one has been released. The final destination is included in the update.</p>
-                  </div>
-                </div>
-                <div className="sms-preview-foot">Triggered by intake and release records in Rest Point</div>
-              </div>
-            </Showcase>
             <Showcase no="03" floral title="The Right Flowers. Right in Front of Them." reverse={false} cta="Discover the floral concierge" desc={
               <>
                 <strong style={{ display: 'block', fontSize: '1.18rem', color: C.ink, lineHeight: 1.45, marginBottom: '1.2rem' }}>
@@ -689,6 +659,41 @@ export default function App() {
                 <h2>Powerful modules, built right in</h2>
               </Reveal>
             </div>
+            <Reveal>
+              <article className="module-sms">
+                <div className="module-sms-copy">
+                  <span className="module-sms-status"><span />Available now</span>
+                  <h3 className="module-sms-title">Keep families informed, automatically.</h3>
+                  <p className="module-sms-desc">
+                    Rest Point automatically texts the next of kin when a loved one is received into the
+                    mortuary and again when they are released. Families get timely updates, while your
+                    team can focus on caring for them.
+                  </p>
+                  <button className="module-sms-cta" onClick={goStart}>
+                    See Rest Point in action <ArrowRight size={16} />
+                  </button>
+                </div>
+                <div className="module-sms-visual" role="img" aria-label="Example next-of-kin text updates at intake and release">
+                  <div className="module-sms-phone">
+                    <div className="module-sms-phone-head">
+                      <div className="module-sms-phone-icon"><MessageCircle size={17} /></div>
+                      <div>
+                        <strong>Family updates</strong>
+                        <small>Sent automatically by Rest Point</small>
+                      </div>
+                    </div>
+                    <div className="module-sms-update">
+                      <span className="module-sms-update-label">BODY RECEIVED</span>
+                      <p>Your loved one has been received into our care. We are here to support your family.</p>
+                    </div>
+                    <div className="module-sms-update">
+                      <span className="module-sms-update-label">BODY RELEASED</span>
+                      <p>Your loved one has been released. The final destination is included in the update.</p>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </Reveal>
             <div className="modules-grid">
               {landingModules.map((m, i) => (
                 <Reveal key={i} delay={i * 120}>
