@@ -278,4 +278,17 @@ SHOW GRANTS FOR 'restpoint_user'@'%';
 
 
 
+//authorize all  of them now  
+chown -R 1001:65533 /opt/storage
+
+chmod -R 755 /opt/storage
+
+chmod -R 775 /opt/storage/uploads
+
+docker exec restpoint_tenant_service sh -c \
+'id && ls -ld /opt/storage /opt/storage/uploads'
+
+
+
+
 

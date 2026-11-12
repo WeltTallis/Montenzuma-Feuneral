@@ -149,6 +149,37 @@ func TestCookieFilterRemovesAccessTokenAndRestrictsRefreshToken(t *testing.T) {
 	}
 }
 
+func TestForwardAuthCookieModeOnlyForLoginAndRefresh(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        string
+		header      string
+		wantForward bool
+	}{
+		{"auth login", "/api/v1/restpoint/auth/login", "1", true},
+		{"login alias", "/api/v1/restpoint/login", "1", true},
+		{"auth refresh", "/api/v1/restpoint/auth/refresh", "1", true},
+		{"other auth route", "/api/v1/restpoint/auth/me", "1", false},
+		{"other service", "/api/v1/restpoint/deceased/login", "1", false},
+		{"missing opt-in", "/api/v1/restpoint/auth/login", "", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			incoming := httptestRequest(test.path)
+			incoming.Header.Set("X-Auth-Cookie", test.header)
+			outgoing := httptestRequest(test.path)
+			outgoing.Header.Set("X-Auth-Cookie", "untrusted")
+
+			forwardAuthCookieMode(outgoing, incoming)
+
+			got := outgoing.Header.Get("X-Auth-Cookie") == "1"
+			if got != test.wantForward {
+				t.Fatalf("cookie mode forwarded = %t, want %t", got, test.wantForward)
+			}
+		})
+	}
+}
+
 func httptestRequest(path string) *http.Request {
 	request, err := http.NewRequest(http.MethodGet, path, strings.NewReader(""))
 	if err != nil {
@@ -156,4 +187,3 @@ func httptestRequest(path string) *http.Request {
 	}
 	return request
 }
-

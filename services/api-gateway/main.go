@@ -187,7 +187,7 @@ func (g *Gateway) newProxy(target *url.URL, transport http.RoundTripper) *httput
 				}
 			}
 			proxyRequest.Out.Header.Del("X-Slug")
-			proxyRequest.Out.Header.Del("X-Auth-Cookie")
+			forwardAuthCookieMode(proxyRequest.Out, incoming)
 			proxyRequest.Out.Header.Set("X-Request-ID", incoming.Header.Get("X-Request-ID"))
 			filterProxyCookies(proxyRequest.Out, incoming.URL.Path)
 		},
@@ -565,6 +565,30 @@ func filterProxyCookies(out *http.Request, originalPath string) {
 		return
 	}
 	out.Header.Set("Cookie", strings.Join(kept, "; "))
+}
+
+func forwardAuthCookieMode(out, incoming *http.Request) {
+	out.Header.Del("X-Auth-Cookie")
+	if incoming.Header.Get("X-Auth-Cookie") == "1" && isAuthCookieEndpoint(incoming.URL.Path) {
+		out.Header.Set("X-Auth-Cookie", "1")
+	}
+}
+
+func isAuthCookieEndpoint(path string) bool {
+	service := routeKey(path)
+	if service != "auth" && service != "login" && service != "refresh" {
+		return false
+	}
+	tail, ok := pathAfterAPIMount(path)
+	if !ok {
+		tail = path
+	}
+	segments := splitPath(tail)
+	if len(segments) == 0 {
+		return false
+	}
+	endpoint := segments[len(segments)-1]
+	return endpoint == "login" || endpoint == "refresh"
 }
 
 func isPayrollLogin(path string) bool {
