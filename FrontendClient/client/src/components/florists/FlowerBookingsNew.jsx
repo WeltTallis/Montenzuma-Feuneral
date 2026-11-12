@@ -839,7 +839,7 @@ const FLX_RESPONSIVE = `
 `;
 
 const FlowerBookingsNew = () => {
-  const { socket, connected } = useSocket()
+  const { socket } = useSocket()
   const [bookings, setBookings] = useState([]);
   const [bookingSearch, setBookingSearch] = useState('');
   const [announcements, setAnnouncements] = useState([]);
@@ -932,6 +932,28 @@ const FlowerBookingsNew = () => {
     const id = Date.now();
     setToasts(p => [...p, { id, message: msg, type }]);
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3000);
+  }, []);
+
+  const addNotification = useCallback((type, title, body, bookingRef) => {
+    const now = Date.now();
+    setNotifications(previous => {
+      const duplicate = bookingRef && previous.some(notification =>
+        notification.type === type
+        && String(notification.bookingRef) === String(bookingRef)
+        && now - new Date(notification.createdAt).getTime() < 2000
+      );
+      if (duplicate) return previous;
+      const note = {
+        id: `${type}-${now}-${Math.random().toString(36).slice(2, 7)}`,
+        type,
+        title,
+        body,
+        bookingRef,
+        read: false,
+        createdAt: new Date(now).toISOString(),
+      };
+      return [note, ...previous].slice(0, 200);
+    });
   }, []);
 
   const loadBookings = useCallback(async () => {
@@ -1036,22 +1058,9 @@ const FlowerBookingsNew = () => {
 
   // Real-time socket listeners for flower bookings
   useEffect(() => {
-    if (!socket || !connected) return;
+    if (!socket) return;
 
     console.log('[FlowerBookings] Setting up real-time listeners');
-
-    const addNotification = (type, title, body, bookingRef) => {
-      const note = {
-        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type,
-        title,
-        body,
-        bookingRef,
-        read: false,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications(prev => [note, ...prev].slice(0, 200));
-    };
 
     const handleNewBooking = (data) => {
       console.log('[FlowerBookings] New booking received:', data);
@@ -1099,7 +1108,7 @@ const FlowerBookingsNew = () => {
       socket.off('notification:flower-booking-updated', handleBookingUpdated);
       socket.off('notification:flower-booking-deleted', handleBookingDeleted);
     };
-  }, [socket, connected, showToast, loadBookings]);
+  }, [socket, showToast, loadBookings, addNotification]);
 
   useEffect(() => {
     loadArrangements();
@@ -1391,13 +1400,16 @@ const FlowerBookingsNew = () => {
       };
       const sampleFiles = newBooking.sample_uploads || [];
       let sampleUploadFailed = false;
+      let savedBooking = null;
       if (editingBookingId) {
-        await api.put(`/florist/bookings/${encodeURIComponent(editingBookingId)}`, payload);
+        const response = await api.put(`/florist/bookings/${encodeURIComponent(editingBookingId)}`, payload);
+        savedBooking = response.data?.data;
         if (sampleFiles.length) {
           sampleUploadFailed = !(await updateBookingSamples(editingBookingId, sampleFiles));
         }
       } else {
         const response = await api.post('/florist/bookings', payload);
+        savedBooking = response.data?.data;
         const createdBookingId = response.data?.data?.id || response.data?.data?.booking_id;
         if (sampleFiles.length) {
           if (createdBookingId) {
@@ -1410,7 +1422,21 @@ const FlowerBookingsNew = () => {
       }
 
       await loadBookings();
+      addNotification(
+        editingBookingId ? 'booking_updated' : 'booking_created',
+        editingBookingId ? 'Booking edited' : 'New booking made',
+        editingBookingId
+          ? `Flower booking updated for ${savedBooking?.deceased_name || newBooking.deceased_name}`
+          : `${headline} for ${savedBooking?.deceased_name || newBooking.deceased_name}`,
+        savedBooking?.booking_id || savedBooking?.id || editingBookingId
+      );
       if (sampleUploadFailed) {
+        addNotification(
+          'booking_warning',
+          'Booking saved, but photos were not saved',
+          'Some reference photos could not be linked. Open the booking details and try uploading them again.',
+          savedBooking?.booking_id || savedBooking?.id || editingBookingId
+        );
         showToast(editingBookingId
           ? 'Booking updated, but some reference photos could not be saved.'
           : 'Booking placed, but some reference photos could not be saved.', 'error');
@@ -1463,18 +1489,31 @@ const FlowerBookingsNew = () => {
         || (e?.code === 'ECONNABORTED'
           ? 'The booking request timed out. Check the bookings list before trying again.'
           : `Failed to ${editingBookingId ? 'update' : 'create'} booking`);
+      addNotification(
+        'booking_warning',
+        editingBookingId ? 'Booking update failed' : 'Booking was not saved',
+        failureMessage,
+        editingBookingId
+      );
       showToast(failureMessage, 'error');
     } finally {
       placingRef.current = false;
       setPlacingOrder(false);
     }
-  }, [newBooking, editingBookingId, editingLineItems, editingInitialQuantity, showToast, loadBookings, updateBookingSamples]);
+  }, [newBooking, editingBookingId, editingLineItems, editingInitialQuantity, showToast, loadBookings, updateBookingSamples, addNotification]);
 
   const updateStatus = useCallback(async (id, nextStatus) => {
     const url = `/florist/bookings/${id}/status`;
     console.info(`[FlowerBookings] PATCH ${url} →`, nextStatus);
     try {
-      await api.patch(url, { status: nextStatus });
+      const response = await api.patch(url, { status: nextStatus });
+      const booking = response.data?.data;
+      addNotification(
+        'booking_updated',
+        'Booking status updated',
+        `Status changed to ${STATUS_LABELS[nextStatus] || nextStatus} for ${booking?.deceased_name || booking?.customer || 'flower booking'}`,
+        booking?.booking_id || booking?.id || id
+      );
       showToast(`Status updated to ${STATUS_LABELS[nextStatus] || nextStatus}`);
       await loadBookings();
     } catch (e) {
@@ -1486,15 +1525,19 @@ const FlowerBookingsNew = () => {
         serverSaid: e?.response?.data,
         message: e?.message
       });
-      showToast(
-        e.response?.data?.message ||
+      const failureMessage = e.response?.data?.message ||
         e.response?.data?.error ||
         e.friendlyMessage ||
-        `Failed to update status${e?.response ? ` (HTTP ${e.response.status})` : ''}`,
-        'error'
+        `Failed to update status${e?.response ? ` (HTTP ${e.response.status})` : ''}`;
+      addNotification(
+        'booking_warning',
+        'Booking status was not updated',
+        failureMessage,
+        id
       );
+      showToast(failureMessage, 'error');
     }
-  }, [showToast, loadBookings]);
+  }, [showToast, loadBookings, addNotification]);
 
   // ─── Image preflight ────────────────────────────────────────────────────────
   //
@@ -3138,7 +3181,7 @@ const FlowerBookingsNew = () => {
                   <h2 id="flower-notifications-title" style={{ margin: 0, color: '#fff', fontSize: '17px', fontWeight: 700 }}>Real-time notifications</h2>
                 </div>
                 <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.9 }}>
-                  Booking made · Booking edited · Booking cancelled
+                  Booking made · Booking edited · Booking cancelled · Warnings
                 </div>
               </header>
               <div style={{ padding: '12px 16px', overflowY: 'auto', flex: 1 }}>
@@ -3149,6 +3192,7 @@ const FlowerBookingsNew = () => {
                     booking_created: { bg: '#DCF5E5', border: '#BFEBD0', dot: '#15803D', text: '#14532d' },
                     booking_updated: { bg: '#FCE0EC', border: '#F6C6DA', dot: '#BE185D', text: '#881337' },
                     booking_deleted: { bg: '#FDE4E4', border: '#FECDD3', dot: '#B91C1C', text: '#7f1d1d' },
+                    booking_warning: { bg: '#FFF7DB', border: '#FDE68A', dot: '#B45309', text: '#78350F' },
                   };
                   const c = typeColors[n.type] || typeColors.booking_created;
                   const ago = timeAgo(n.createdAt);
@@ -3170,7 +3214,13 @@ const FlowerBookingsNew = () => {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
                         <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: c.dot }}>
-                          {n.type === 'booking_created' ? 'New booking made' : n.type === 'booking_updated' ? 'Booking edited' : 'Booking cancelled'}
+                          {n.type === 'booking_created'
+                            ? 'New booking made'
+                            : n.type === 'booking_updated'
+                              ? 'Booking edited'
+                              : n.type === 'booking_warning'
+                                ? 'Warning'
+                                : 'Booking cancelled'}
                         </span>
                         <span style={{ fontSize: '10px', color: '#9C9389' }}>{ago}</span>
                       </div>

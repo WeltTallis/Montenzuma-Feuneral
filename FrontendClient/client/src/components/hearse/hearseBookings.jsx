@@ -56,22 +56,6 @@ const GENERIC_BRANCH_NAMES = new Set([
 
 
 
-const STATUS_CONFIG = {
-  pending: { label: 'Pending', progress: 10, color: COLORS.red, bg: COLORS.dangerLight, dotColor: COLORS.red },
-  booked: { label: 'Booked', progress: 25, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },
-  confirmed: { label: 'Confirmed', progress: 25, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
-  scheduled: { label: 'Scheduled', progress: 25, color: COLORS.brass, bg: COLORS.warningLight, dotColor: COLORS.brass },
-  in_transit: { label: 'In Transit', progress: 60, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },
-  in_progress: { label: 'In Progress', progress: 60, color: COLORS.ink, bg: COLORS.bone2, dotColor: COLORS.ink },
-  postponed: { label: 'Postponed', progress: 15, color: COLORS.yellow, bg: COLORS.warningLight, dotColor: COLORS.yellow },
-  completed: { label: 'Completed', progress: 100, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
-  delivered: { label: 'Delivered', progress: 100, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
-  cancelled: { label: 'Cancelled', progress: 0, color: COLORS.red, bg: COLORS.dangerLight, dotColor: COLORS.red },
-  maintenance: { label: 'Maintenance', progress: 0, color: COLORS.ink, bg: COLORS.bone2, dotColor: COLORS.ink },
-};
-
-const STATUS_LIST = Object.keys(STATUS_CONFIG);
-
 const COLORS = {
   // Dispatch palette (matches HTML reference design)
   ink: '#15171A',
@@ -115,6 +99,22 @@ const COLORS = {
   shadowLg: '0 10px 30px rgba(0,0,0,0.10)',
   transition: 'all 0.15s ease',
 };
+
+const STATUS_CONFIG = {
+  pending: { label: 'Pending', progress: 10, color: COLORS.red, bg: COLORS.dangerLight, dotColor: COLORS.red },
+  booked: { label: 'Booked', progress: 25, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },
+  confirmed: { label: 'Confirmed', progress: 25, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
+  scheduled: { label: 'Scheduled', progress: 25, color: COLORS.brass, bg: COLORS.warningLight, dotColor: COLORS.brass },
+  in_transit: { label: 'In Transit', progress: 60, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },
+  in_progress: { label: 'In Progress', progress: 60, color: COLORS.ink, bg: COLORS.bone2, dotColor: COLORS.ink },
+  postponed: { label: 'Postponed', progress: 15, color: COLORS.yellow, bg: COLORS.warningLight, dotColor: COLORS.yellow },
+  completed: { label: 'Completed', progress: 100, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
+  delivered: { label: 'Delivered', progress: 100, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
+  cancelled: { label: 'Cancelled', progress: 0, color: COLORS.red, bg: COLORS.dangerLight, dotColor: COLORS.red },
+  maintenance: { label: 'Maintenance', progress: 0, color: COLORS.ink, bg: COLORS.bone2, dotColor: COLORS.ink },
+};
+
+const STATUS_LIST = Object.keys(STATUS_CONFIG);
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(6px); }
