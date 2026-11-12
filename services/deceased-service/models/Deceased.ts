@@ -14,6 +14,7 @@ export interface DeceasedRecord {
   date_registered: Date;
   full_name: string;
   gender: 'Male' | 'Female' | 'Other';
+  height_cm?: number | null;
   place_of_death: string;
   county: string;
   national_id: string;
@@ -49,6 +50,7 @@ export interface UpdateDeceasedDTO {
   admission_status?: 'admitted' | 'embalmed' | 'released' | 'buried';
   release_status?: 'pending' | 'approved' | 'released';
   chamber_assigned?: string;
+  height_cm?: number | null;
 }
 
 export class DeceasedModel {
@@ -276,4 +278,3 @@ export class DeceasedModel {
     }
   }
 }
-

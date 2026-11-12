@@ -359,6 +359,17 @@ export const updateDeceased = async (req: Request, res: Response): Promise<Respo
         }
 
         const updates = req.body;
+        const hasHeight = Object.prototype.hasOwnProperty.call(updates, 'height_cm')
+            && updates.height_cm !== undefined;
+        const heightCm = updates.height_cm === null || updates.height_cm === ''
+            ? null
+            : Number(updates.height_cm);
+        if (hasHeight && heightCm !== null && (!Number.isFinite(heightCm) || heightCm <= 0 || heightCm > 300)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Height must be greater than 0 and no more than 300 cm'
+            });
+        }
         const isNumeric = /^\d+$/.test(id);
 
         // Check if record exists
@@ -378,9 +389,20 @@ export const updateDeceased = async (req: Request, res: Response): Promise<Respo
         const allowedFields = new Set([
             'full_name', 'cause_of_death', 'location', 'status',
             'burial_location', 'burial_date', 'total_mortuary_charge',
-            'extra_charges_amount', 'is_embalmed', 'dispatch_date',
+            'extra_charges_amount', 'is_embalmed', 'dispatch_date', 'height_cm',
             'county', 'place_of_death', 'gender'
         ]);
+
+        if (hasHeight) {
+            let columns = await tableColumns(dbName, 'deceased');
+            if (!columns.has('height_cm')) {
+                await safeTenantExecute(dbName, 'ALTER TABLE deceased ADD COLUMN IF NOT EXISTS height_cm DECIMAL(5,2) NULL', []);
+                columns = await tableColumns(dbName, 'deceased');
+            }
+            if (!columns.has('height_cm')) {
+                return res.status(500).json({ success: false, message: 'Height field could not be added to the deceased record' });
+            }
+        }
 
         const fields: string[] = [];
         const values: any[] = [];
@@ -388,7 +410,7 @@ export const updateDeceased = async (req: Request, res: Response): Promise<Respo
         for (const [field, value] of Object.entries(updates)) {
             if (allowedFields.has(field) && value !== undefined) {
                 fields.push(`${field} = ?`);
-                values.push(value);
+                values.push(field === 'height_cm' ? heightCm : value);
             }
         }
 
@@ -625,6 +647,7 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
             };
 
             return aliases[normalized] || raw;
+
         })();
 
         // Build dynamic update query.

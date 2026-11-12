@@ -1,9 +1,8 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import DeceasedStkPushModal from '../DeceasedStkPushModal';
 import ScheduleDispatchModal from './ScheduleDispatchModal';
 import RouteOptimizer from '../../hearse/RouteOptimizer';
 import styled, { keyframes, css } from 'styled-components';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import bwipjs from '@bwip-js/browser';
 
 
@@ -95,6 +94,38 @@ const HeaderActions = styled.div`
     gap: 8px;
     width: 100%;
   }
+`;
+
+const HeightControl = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 5px 8px 5px 12px;
+  border: 1px solid ${C.border};
+  border-radius: 4px;
+  background: ${C.white};
+  color: ${C.dark};
+  font-size: 13px;
+  strong { font-weight: 700; }
+  @media (max-width: 640px) { justify-content: space-between; width: 100%; }
+`;
+
+const HeightEditor = styled.form`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  input {
+    width: 92px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid ${C.border};
+    border-radius: 4px;
+    color: ${C.dark};
+    font: inherit;
+  }
+  span { font-size: 12px; color: ${C.gray}; }
+  @media (max-width: 640px) { width: 100%; input { flex: 1; min-width: 0; } }
 `;
 
 // ─── Base button ───
@@ -252,18 +283,36 @@ const Barcode = ({ value }) => {
 };
 
 // ─── Component ───
-const DeceasedProfileHeader = ({ deceased, nextOfKin, onBack, onTabSwitch, onChargeSettingsClick, scheduleDispatch, onRefresh, refreshing = false, onScanClick }) => {
+const DeceasedProfileHeader = ({ deceased, onSaveHeight, onBack, onTabSwitch, onChargeSettingsClick, scheduleDispatch, onRefresh, refreshing = false, onScanClick }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const pathParams = useParams();
   const deceasedId = searchParams.get('id') || pathParams.id;
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [showStkPush, setShowStkPush] = useState(false);
   const [showScheduleDispatchModal, setShowScheduleDispatchModal] = useState(false);
+  const [editingHeight, setEditingHeight] = useState(false);
+  const [heightDraft, setHeightDraft] = useState('');
+  const [savingHeight, setSavingHeight] = useState(false);
 
   const displayId = deceased?.deceased_id || deceased?.id;
   const admissionNo = deceased?.admission_number || deceased?.admission_no || '—';
+
+  useEffect(() => {
+    setHeightDraft(deceased?.height_cm == null ? '' : String(deceased.height_cm));
+  }, [deceased?.height_cm]);
+
+  const saveHeight = async (event) => {
+    event.preventDefault();
+    const heightCm = Number(heightDraft);
+    if (!Number.isFinite(heightCm) || heightCm <= 0 || heightCm > 300) return;
+    setSavingHeight(true);
+    try {
+      if (await onSaveHeight(heightCm)) setEditingHeight(false);
+    } finally {
+      setSavingHeight(false);
+    }
+  };
 
   const navigateToReleaseForm = () => {
     let slug = localStorage.getItem('tenantSlug') || '';
@@ -286,7 +335,6 @@ const DeceasedProfileHeader = ({ deceased, nextOfKin, onBack, onTabSwitch, onCha
   return (
     <>
       {showRouteOptimizer && <RouteOptimizer onClose={() => setShowRouteOptimizer(false)} />}
-      {showStkPush && <DeceasedStkPushModal deceased={deceased} nextOfKin={nextOfKin} onClose={() => setShowStkPush(false)} />}
 
       <BackBtn onClick={onBack}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -313,13 +361,44 @@ const DeceasedProfileHeader = ({ deceased, nextOfKin, onBack, onTabSwitch, onCha
 
         {/* Action buttons at top-right */}
         <HeaderActions>
-          <Btn $primary type="button" onClick={() => setShowStkPush(true)} disabled={!deceased}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2" />
-              <path d="M8 6h8M9 18h6" />
-            </svg>
-            STK Push
-          </Btn>
+          <HeightControl aria-label="Deceased height">
+            <span aria-hidden="true" style={{ fontWeight: 800, color: C.route }}>H</span>
+            {editingHeight ? (
+              <HeightEditor onSubmit={saveHeight}>
+                <input
+                  type="number"
+                  min="1"
+                  max="300"
+                  step="0.1"
+                  value={heightDraft}
+                  onChange={(event) => setHeightDraft(event.target.value)}
+                  aria-label="Deceased height in centimeters"
+                  placeholder="Height"
+                  autoFocus
+                  required
+                />
+                <span>cm</span>
+                <Btn type="submit" disabled={savingHeight || !heightDraft || Number(heightDraft) <= 0 || Number(heightDraft) > 300}>
+                  {savingHeight ? 'Saving…' : 'Save'}
+                </Btn>
+                <Btn type="button" onClick={() => {
+                  setHeightDraft(deceased?.height_cm == null ? '' : String(deceased.height_cm));
+                  setEditingHeight(false);
+                }} disabled={savingHeight}>Cancel</Btn>
+              </HeightEditor>
+            ) : (
+              <>
+                <strong>
+                  {deceased?.height_cm == null
+                    ? 'Height not recorded'
+                    : `${Number(deceased.height_cm).toLocaleString(undefined, { maximumFractionDigits: 2 })} cm`}
+                </strong>
+                <Btn type="button" onClick={() => setEditingHeight(true)} disabled={!deceased} aria-label="Edit deceased height">
+                  {deceased?.height_cm == null ? 'Add height' : 'Edit'}
+                </Btn>
+              </>
+            )}
+          </HeightControl>
 
           <RefreshBtn
             type="button"

@@ -3,6 +3,8 @@ import styled, { keyframes } from 'styled-components';
 import { getTenantSlug, getAuthToken, getBranchScopeHeaders } from '../../../utils/globalAuth';
 import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useSocket } from '../../../utils/context/socketContext';
+import { ENDPOINTS } from '../../../api/endpoints';
+import apiClient from '../../../api/axios';
 
 // Import your existing sub-components
 import ScanDocumentModal from '../../scanner/ScanDocumentModal';
@@ -571,6 +573,36 @@ const DeceasedDetailPage = () => {
     }
   }, [deceasedId, fetchData, refreshing]);
 
+  const saveDeceasedHeight = useCallback(async (heightCm) => {
+    try {
+      const response = await apiClient.put(
+        `${ENDPOINTS.DECEASED.BASE}/${encodeURIComponent(deceasedId)}`,
+        { height_cm: heightCm },
+        {
+          headers: {
+            'x-tenant-slug': profileBranchSlug,
+            'x-branch-slug': profileBranchSlug,
+            ...getBranchScopeHeaders(profileBranchSlug),
+          },
+        }
+      );
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Failed to update deceased height');
+      }
+      setDeceased((current) => current ? { ...current, height_cm: heightCm } : current);
+      const cacheKey = `${deceasedId}-${profileBranchSlug}`;
+      const cached = _getCached(cacheKey);
+      if (cached?.deceased) {
+        _setCache(cacheKey, { ...cached, deceased: { ...cached.deceased, height_cm: heightCm } });
+      }
+      showToast.success('Deceased height updated');
+      return true;
+    } catch (error) {
+      showToast.error(error.response?.data?.message || error.message || 'Failed to update deceased height');
+      return false;
+    }
+  }, [deceasedId, profileBranchSlug]);
+
   const scheduleDispatch = useCallback(async (dispatchDate, notes) => {
     if (!deceasedId) {
       showToast.error('No deceased ID found');
@@ -617,6 +649,7 @@ const DeceasedDetailPage = () => {
 
         <DeceasedProfileHeader
           deceased={deceased}
+          onSaveHeight={saveDeceasedHeight}
           nextOfKin={nextOfKin}
           onBack={() => {
             if (location.state?.from) {
