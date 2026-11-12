@@ -65,12 +65,15 @@ COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/shared-services/package.json ./packages/shared-services/
 COPY packages/shared-stamps/package.json ./packages/shared-stamps/
 COPY shared/package.json ./shared/
+COPY services/invoice-service/package.json ./services/invoice-service/
 
 
 RUN npm config set fetch-timeout 1200000 \
  && npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 120000 \
  && npm config set fetch-retry-maxtimeout 600000 && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund
+
+RUN node -e "const p=require('./services/invoice-service/package.json'); for(const d of Object.keys(p.dependencies||{}).filter(d=>!d.startsWith('@montezuma/'))) require.resolve(d,{paths:[process.cwd()+'/services/invoice-service']}); console.log('[GUARD] invoice-service production dependencies OK')"
 
 # ---------------------------------------------------------------------------
 # Stage 4/4 — runtime: final image
@@ -88,6 +91,7 @@ WORKDIR /usr/src/app
 
 # Production-only dependency tree (dev toolchain excluded by --omit=dev)
 COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/node_modules ./node_modules
+COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/services/ ./services/
 # Shared packages incl. their built dist/ (relative @montezuma/* symlinks
 # inside node_modules resolve against this path)
 COPY --from=build --chown=nodejs:nodejs /usr/src/app/packages ./packages

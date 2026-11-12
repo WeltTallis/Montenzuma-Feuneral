@@ -63,6 +63,7 @@ COPY packages/shared-logger/package.json ./packages/shared-logger/
 COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/shared-services/package.json ./packages/shared-services/
 COPY shared/package.json ./shared/
+COPY services/support-service/package.json ./services/support-service/
 
 
 RUN npm config set fetch-timeout 1200000 \
@@ -83,6 +84,7 @@ WORKDIR /usr/src/app
 
 # Production-only dependency tree (dev toolchain excluded by --omit=dev)
 COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/node_modules ./node_modules
+COPY --from=prod-deps --chown=nodejs:nodejs /usr/src/app/services/ ./services/
 # Shared packages incl. their built dist/ (relative @montezuma/* symlinks
 # inside node_modules resolve against this path)
 COPY --from=build --chown=nodejs:nodejs /usr/src/app/packages ./packages

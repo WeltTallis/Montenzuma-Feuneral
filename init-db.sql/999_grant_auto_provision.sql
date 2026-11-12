@@ -1,30 +1,6 @@
 -- ============================================================
 -- 999_grant_auto_provision.sql
--- ============================================================
--- Grants the app user (restpoint_user) the global CREATE + GRANT
--- privileges it needs to AUTO-PROVISION per-tenant databases at
--- runtime (TenantModel.registerTenant creates one database per
--- tenant and Grants the app user access to it).
---
--- Without these privileges every new tenant fails with:
---   Access denied for user 'restpoint_user'@'%' to database '<tenant>'
---
--- Run ONCE as the MariaDB root/admin user:
---
---   docker exec -i restpoint_mariadb mysql -uroot -p"<DB_ROOT_PASSWORD>" \
---     < init-db.sql/999_grant_auto_provision.sql
---
--- Alternatively start the stack with DB_ADMIN_USER / DB_ADMIN_PASSWORD
--- set (compose wires these automatically) — the tenant-service will then
--- auto-create databases as admin instead of requiring this manual grant.
---
--- NOTE: restpoint_user is already created by the MariaDB container env
--- (MARIADB_USER / MARIADB_PASSWORD), so no CREATE USER is needed here;
--- GRANT auto-creates it if missing and NEVER changes its password.
--- ============================================================
 
--- Global privileges: allows CREATE DATABASE for any new tenant DB and
--- GRANT access to the application user on those databases.
 GRANT ALL PRIVILEGES ON *.* TO 'restpoint_user'@'%' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO 'restpoint_user'@'localhost' WITH GRANT OPTION;
 

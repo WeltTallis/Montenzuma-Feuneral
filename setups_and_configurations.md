@@ -265,3 +265,17 @@ root@vmi3742487:/opt/restpoint#
 
 
 
+
+docker exec -it restpoint_mariadb mariadb -uroot -p
+
+
+
+CREATE DATABASE IF NOT EXISTS restpoint_operations;
+CREATE USER IF NOT EXISTS 'restpoint_user'@'%' IDENTIFIED BY 'USE_THE_EXACT_DB_PASSWORD_FROM_.env.production';
+GRANT ALL PRIVILEGES ON restpoint_operations.* TO 'restpoint_user'@'%';
+SHOW GRANTS FOR 'restpoint_user'@'%';
+
+
+
+
+
