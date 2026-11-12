@@ -35,6 +35,36 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const HEARSE_LIST_FIELDS = [
+    'id',
+    'tenant_id',
+    'tenant_slug',
+    'hearse_code',
+    'hearse_name',
+    'plate_number',
+    'model',
+    'capacity',
+    'status',
+    'branch_id',
+    'branch_name',
+    'branch_code',
+    'image',
+    'fuel_card_number',
+    'is_active',
+    'active_bookings',
+    'created_at',
+    'updated_at',
+] as const;
+
+const HEARSE_LIST_COLUMNS = HEARSE_LIST_FIELDS.map((field) => `h.${field}`).join(', ');
+
+function projectHearseListFields(hearse: Record<string, unknown>): Record<string, unknown> {
+    return HEARSE_LIST_FIELDS.reduce<Record<string, unknown>>((projected, field) => {
+        if (hearse[field] !== undefined) projected[field] = hearse[field];
+        return projected;
+    }, {});
+}
+
 /**
  * Register a new hearse
  */
@@ -353,15 +383,18 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
         if (tenantId != null) {
             const cached = await hearseCacheGet<any>(req, cacheKey);
             if (cached) {
+                const hearses = Array.isArray(cached.hearses)
+                    ? cached.hearses.map(projectHearseListFields)
+                    : [];
                 res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
                 res.set('Pragma', 'no-cache');
                 res.set('Expires', '0');
-                res.json({ success: true, count: cached.hearses?.length ?? 0, hearses: cached.hearses, source: 'cache' });
+                res.json({ success: true, count: hearses.length, hearses, source: 'cache' });
                 return;
             }
         }
 
-        let sql = `SELECT h.*, h.branch_name, h.branch_code, h.image FROM hearses h`;
+        let sql = `SELECT ${HEARSE_LIST_COLUMNS} FROM hearses h`;
         const params: any[] = [];
         if (tenantId || tenantSlug) {
             const clauses: string[] = [];
@@ -385,7 +418,8 @@ export const getAllHearses = asyncHandler(async (req: Request, res: Response) =>
         }
         sql += ` ORDER BY h.created_at DESC`;
 
-        const [hearses] = await pool.query(sql, params) as any;
+        const [rows] = await pool.query(sql, params) as any;
+        const hearses = (rows as Record<string, unknown>[]).map(projectHearseListFields);
 
         if (tenantId != null) {
             await hearseCacheSet(req, cacheKey, { hearses }, FLEET_CACHE_TTL);
@@ -417,7 +451,7 @@ export const getAvailableHearses = asyncHandler(async (req: Request, res: Respon
         if (date) {
             const key = String(date).slice(0, 10);
             const [rows] = await pool.query(
-                `SELECT h.*, h.branch_name, h.branch_code
+                `SELECT ${HEARSE_LIST_COLUMNS}
                  FROM hearses h
                  WHERE ${notServicing}
                    AND NOT EXISTS (
@@ -432,7 +466,7 @@ export const getAvailableHearses = asyncHandler(async (req: Request, res: Respon
             hearses = rows;
         } else {
             const [rows] = await pool.query(
-                `SELECT h.*, h.branch_name, h.branch_code
+                `SELECT ${HEARSE_LIST_COLUMNS}
                  FROM hearses h
                  WHERE ${notServicing}
                  ORDER BY h.created_at DESC`

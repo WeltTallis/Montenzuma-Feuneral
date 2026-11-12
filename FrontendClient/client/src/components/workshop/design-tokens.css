@@ -1,8 +1,8 @@
-/* ============================================================================
-   Eternal Craft Workshop — Design Tokens
+/* 
+   Eternal Craft Workshop  Design Tokens
    Central place for colors, spacing, radii, shadows, transitions.
    Update here to re-theme the entire dashboard.
-   ============================================================================ */
+    */
 :root {
   /* ── Palette ── */
   --ec-bg: #eef0f4;

@@ -257,10 +257,12 @@ function FleetDashboard({ embedded = false }) {
         request(`/hearse-fuel?t=${Date.now()}`),
       ]);
       const fleetRows = Array.isArray(fleetResponse?.hearses) ? fleetResponse.hearses : [];
-      const walletCards = Array.isArray(walletResponse?.cards) ? walletResponse.cards : [];
-      const walletTxns = Array.isArray(walletResponse?.transactions) ? walletResponse.transactions : [];
+      if (walletResponse?.success !== true || !Array.isArray(walletResponse.cards) || !Array.isArray(walletResponse.transactions)) {
+        throw new Error('Fuel account service returned an invalid account summary.');
+      }
+      const walletCards = walletResponse.cards;
+      const walletTxns = walletResponse.transactions;
       if (!fleetRows.length) throw new Error('Fleet service returned an invalid hearse list.');
-      if (!walletCards.length && !walletTxns.length) throw new Error('Fuel account service returned an invalid account summary.');
       setHearses(fleetRows);
       setFuelWallet({ ...walletResponse, cards: walletCards, transactions: walletTxns });
       setThresholdDraft(walletResponse?.low_balance_threshold || '5000.00');
