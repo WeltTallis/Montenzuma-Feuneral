@@ -7,7 +7,7 @@ export async function up(knex) {
   await knex.schema.createTable('flower_bookings', (table) => {
     table.increments('id').primary();
     table.string('booking_id', 50).unique().notNullable();
-    table.string('flower_type', 100).notNullable();
+    table.text('flower_type', 'mediumtext').notNullable();
     table.text('flower_description');
     table.text('service_type');
     table.string('customer', 255).notNullable();

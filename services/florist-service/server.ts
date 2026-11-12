@@ -99,7 +99,13 @@ const runMigrations = async () => {
             } else {
                 // Check if new columns exist (for existing installations)
                 const hasQuantity = await migrationKnex.schema.hasColumn('flower_bookings', 'quantity');
-                if (!hasQuantity) {
+                const hasFlowerType = await migrationKnex.schema.hasColumn('flower_bookings', 'flower_type');
+                const flowerTypeInfo = hasFlowerType
+                    ? await migrationKnex('flower_bookings').columnInfo('flower_type')
+                    : null;
+                const flowerType = String(flowerTypeInfo?.type || '').toLowerCase();
+                const needsFlowerTypeExpansion = !flowerType.includes('mediumtext') && !flowerType.includes('longtext');
+                if (!hasQuantity || needsFlowerTypeExpansion) {
                     await migrationKnex.migrate.latest();
                     console.log('[FLORIST] Additional migrations completed');
                 } else {
@@ -267,7 +273,7 @@ async function ensureFloristTables(dbName: string) {
             table.increments('id').primary();
             table.string('booking_id', 50).unique().notNullable();
             table.string('tenant_slug', 100).notNullable();
-            table.string('flower_type', 100).notNullable();
+            table.text('flower_type', 'mediumtext').notNullable();
             table.text('flower_description');
             table.text('service_type');
             table.string('customer', 255).notNullable();

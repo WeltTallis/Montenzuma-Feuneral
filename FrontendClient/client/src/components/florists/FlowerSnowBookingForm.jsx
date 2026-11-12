@@ -594,8 +594,8 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
 
       await api.post('/florist/bookings', {
         arrangement_id: lineItems[0]?.arrangement_id || null,
-        arrangement_name: headline.slice(0, 255),
-        flower_type: headline.slice(0, 255),
+        arrangement_name: headline,
+        flower_type: headline,
         flower_description: flowerNames.join(', ') || null,
         arrangements: lineItems,
         // Which branch fulfils the order. Without this the server falls back to

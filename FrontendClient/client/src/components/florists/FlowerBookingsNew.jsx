@@ -1375,10 +1375,10 @@ const FlowerBookingsNew = () => {
         editedTag,
       ].filter(Boolean).join(' ');
       const payload = {
-        arrangement_name: headline.slice(0, 255),
+        arrangement_name: headline,
         arrangement_type: arrangementTypes.join(', '),
         arrangement_id: null,
-        flower_type: headline.slice(0, 100),
+        flower_type: headline,
         flower_description: '',
         arrangements: items,
         ribbon_color: newBooking.any_color ? null : colors[0] || null,
