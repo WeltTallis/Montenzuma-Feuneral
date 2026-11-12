@@ -28,10 +28,6 @@ type Config struct {
 	RateLimitWrite     int
 	ProxyTimeout       time.Duration
 	Services           map[string]*url.URL
-	DeceasedMTLS       bool
-	DeceasedCAFile     string
-	DeceasedCertFile   string
-	DeceasedKeyFile    string
 	SoftwareIdentity   *config.SoftwareIdentity
 }
 
@@ -99,13 +95,9 @@ func loadConfig() (Config, error) {
 		AuthRateLimitWindow: time.Duration(positiveInt("RATE_LIMIT_AUTH_WINDOW_MS", 900000)) * time.Millisecond,
 		RateLimitGeneral: positiveInt("RATE_LIMIT_MAX_REQUESTS", 600),
 		RateLimitAuth:    positiveInt("RATE_LIMIT_AUTH_MAX", 10),
-		RateLimitWrite:   positiveInt("RATE_LIMIT_WRITE_MAX", 200),
-		ProxyTimeout:     time.Duration(positiveInt("GATEWAY_PROXY_TIMEOUT_MS", 900_000)) * time.Millisecond,
-		Services:         make(map[string]*url.URL),
-		DeceasedMTLS:     strings.EqualFold(os.Getenv("DECEASED_MTLS_REQUIRED"), "true"),
-		DeceasedCAFile:   os.Getenv("DECEASED_MTLS_CA_FILE"),
-		DeceasedCertFile: os.Getenv("DECEASED_MTLS_CERT_FILE"),
-		DeceasedKeyFile:  os.Getenv("DECEASED_MTLS_KEY_FILE"),
+		RateLimitWrite:      positiveInt("RATE_LIMIT_WRITE_MAX", 200),
+		ProxyTimeout:        time.Duration(positiveInt("GATEWAY_PROXY_TIMEOUT_MS", 900_000)) * time.Millisecond,
+		Services:             make(map[string]*url.URL),
 	}
 
 	secret := os.Getenv("JWT_SECRET")
@@ -154,19 +146,6 @@ func loadConfig() (Config, error) {
 			return Config{}, fmt.Errorf("invalid URL configured for %s", definition.env)
 		}
 		cfg.Services[name] = target
-	}
-
-	if cfg.Environment == "production" && !cfg.DeceasedMTLS {
-		return Config{}, errors.New("DECEASED_MTLS_REQUIRED must be true in production")
-	}
-	if cfg.DeceasedMTLS {
-		deceased := cfg.Services["deceased"]
-		if deceased.Scheme != "https" {
-			return Config{}, errors.New("DECEASED_SERVICE_URL must use HTTPS when deceased-service mTLS is required")
-		}
-		if cfg.DeceasedCAFile == "" || cfg.DeceasedCertFile == "" || cfg.DeceasedKeyFile == "" {
-			return Config{}, errors.New("deceased-service mTLS CA, client certificate, and key file paths are required")
-		}
 	}
 
 	releaseID := env("SOFTWARE_RELEASE_ID", "")

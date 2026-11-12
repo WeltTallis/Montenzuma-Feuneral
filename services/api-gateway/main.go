@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -104,7 +103,6 @@ func run(logger *slog.Logger) error {
 		"software_name", cfg.SoftwareIdentity.Name,
 		"software_version", cfg.SoftwareIdentity.Version,
 		"software_tracking_id", cfg.SoftwareIdentity.ProductID,
-		"deceased_mtls", cfg.DeceasedMTLS,
 	)
 
 	serverErrors := make(chan error, 1)
@@ -151,27 +149,6 @@ func newGateway(cfg Config, logger *slog.Logger) (*Gateway, error) {
 		startedAt: time.Now(),
 	}
 
-	var deceasedTLS *tls.Config
-	if cfg.DeceasedMTLS {
-		caPEM, err := os.ReadFile(cfg.DeceasedCAFile)
-		if err != nil {
-			return nil, fmt.Errorf("read deceased mTLS CA file: %w", err)
-		}
-		roots := x509.NewCertPool()
-		if !roots.AppendCertsFromPEM(caPEM) {
-			return nil, errors.New("deceased mTLS CA file contains no valid certificates")
-		}
-		clientCert, err := tls.LoadX509KeyPair(cfg.DeceasedCertFile, cfg.DeceasedKeyFile)
-		if err != nil {
-			return nil, fmt.Errorf("load deceased mTLS client certificate: %w", err)
-		}
-		deceasedTLS = &tls.Config{
-			MinVersion:   tls.VersionTLS12,
-			RootCAs:      roots,
-			Certificates: []tls.Certificate{clientCert},
-		}
-	}
-
 	for serviceName, target := range cfg.Services {
 		transport := http.DefaultTransport.(*http.Transport).Clone()
 		transport.MaxIdleConns = 200
@@ -179,11 +156,7 @@ func newGateway(cfg Config, logger *slog.Logger) (*Gateway, error) {
 		transport.MaxConnsPerHost = 200
 		transport.IdleConnTimeout = 90 * time.Second
 		transport.TLSHandshakeTimeout = 10 * time.Second
-		if serviceName == "deceased" && deceasedTLS != nil {
-			transport.TLSClientConfig = deceasedTLS.Clone()
-		} else {
-			transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-		}
+		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 		g.proxies[serviceName] = g.newProxy(target, transport)
 	}
 	return g, nil
@@ -691,4 +664,3 @@ func newRequestID() string {
 	hex := fmt.Sprintf("%x", bytes)
 	return hex[:8] + "-" + hex[8:12] + "-" + hex[12:16] + "-" + hex[16:20] + "-" + hex[20:]
 }
-

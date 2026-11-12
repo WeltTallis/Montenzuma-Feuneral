@@ -10,8 +10,6 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import http from 'http';
-import https from 'https';
-import fs from 'fs';
 import { randomUUID, timingSafeEqual } from 'crypto';
 import { closeAllConnections } from '../../shared/dbConfig';
 import { closeExcelExportQueue } from './queues/excelExportQueue';
@@ -34,36 +32,6 @@ const { verifyTokenWithFallback } = require('../app-global/middlewares/authMiddl
 const TENANT_DB_NAME_RE = /^(?!information_schema$|mysql$|performance_schema$|sys$|tenant_tracking$)[a-z0-9][a-z0-9_-]{0,62}$/;
 const PORT = parseInt(process.env.PORT || '5003', 10);
 const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
-const mtlsRequired = process.env.DECEASED_MTLS_REQUIRED === 'true';
-
-function readTlsFile(variableName: string): Buffer {
-    const filePath = process.env[variableName];
-    if (!filePath) {
-        throw new Error(`${variableName} must be configured when deceased-service mTLS is required`);
-    }
-
-    try {
-        return fs.readFileSync(filePath);
-    } catch {
-        throw new Error(`${variableName} could not be read`);
-    }
-}
-
-if (process.env.NODE_ENV === 'production' && !mtlsRequired) {
-    throw new Error('DECEASED_MTLS_REQUIRED must be true in production');
-}
-
-const tlsOptions = mtlsRequired
-    ? {
-        key: readTlsFile('DECEASED_TLS_KEY_FILE'),
-        cert: readTlsFile('DECEASED_TLS_CERT_FILE'),
-        ca: readTlsFile('DECEASED_TLS_CA_FILE'),
-        requestCert: true,
-        rejectUnauthorized: true,
-        minVersion: 'TLSv1.2' as const,
-        insecureHTTPParser: false
-    }
-    : undefined;
 
 // CORS Configuration — explicit allowlist, never `origin: true` (audit 2.7).
 
@@ -333,9 +301,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start server with socket error handling and graceful shutdown
-const server = tlsOptions
-    ? https.createServer(tlsOptions, app)
-    : http.createServer({ insecureHTTPParser: false }, app);
+const server = http.createServer({ insecureHTTPParser: false }, app);
 
 // Initialize Socket.IO with the HTTP server
 const io = new SocketIOServer(server, {

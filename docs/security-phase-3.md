@@ -10,28 +10,15 @@ weekly npm update pull requests. Review moderate advisories and run the
 test/build suite before merging updates; do not silence advisories with an
 allowlist without documenting the risk and expiry.
 
-## Gateway-to-deceased mTLS
+## Gateway-to-deceased connection
 
-Both Compose files require mutual TLS for the gateway-to-deceased connection.
-The deceased service refuses to start in production unless mTLS is enabled and
-its CA, server certificate, and private key are readable. The gateway similarly
-refuses to start without its client credentials, a trusted CA, and an HTTPS
-deceased-service URL. Certificate verification is enabled; TLS 1.2 is the
-minimum.
-
-1. On a trusted administrative machine with OpenSSL, run
-   `.\scripts\generate-deceased-mtls-certs.ps1`.
-2. Transfer `secrets/deceased-mtls/deceased/` and
-   `secrets/deceased-mtls/gateway/` to the deployment host using a secure
-   channel. Never transfer or mount `secrets/deceased-mtls/ca/ca.key`; keep it
-   offline and back it up securely.
-3. Ensure each container's runtime user (UID 1001) can read its own `tls.key`,
-   but other users cannot. Keep the two certificate directories separate and
-   mounted read-only.
-4. Deploy with the Compose files. The deceased service is no longer published
-   on a host port; it is reachable on the private backend network and requires
-   a CA-signed client certificate. Rotate leaf certificates before their
-   397-day expiry; rotate the CA through a planned overlap deployment.
+The gateway connects to the deceased service over HTTP on a dedicated,
+internal-only Docker network shared with its required database, Redis, SMS,
+and Socket.IO dependencies. The deceased service is not published on a host
+port. This removes the need to provision or mount service certificates.
+Traffic on this private container network is not encrypted, so do not attach
+untrusted containers or external workloads to the network. External traffic
+should continue to terminate TLS at the public edge.
 
 The service remains attached to a separate egress network for its outbound
 integrations. Only the gateway and the deceased service's required database,
@@ -41,9 +28,7 @@ Redis, SMS, and Socket.IO dependencies join the internal backend network.
 
 Existing `.env.production` injection remains supported. Keep that file out of
 version control, restrict its host permissions, rotate credentials if exposed,
-and do not add secret values to Compose literals or logs. mTLS private keys
-are mounted as read-only files rather than passed through environment
-variables.
+and do not add secret values to Compose literals or logs.
 
 ## Error responses
 

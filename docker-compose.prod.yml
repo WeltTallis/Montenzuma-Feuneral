@@ -118,11 +118,7 @@ services:
       # Service URLs
       AUTH_SERVICE_URL: http://restpoint_auth_service:5000
       TENANT_SERVICE_URL: http://restpoint_tenant_service:5000
-      DECEASED_SERVICE_URL: https://restpoint_deceased_service:5000
-      DECEASED_MTLS_REQUIRED: 'true'
-      DECEASED_MTLS_CA_FILE: /run/secrets/deceased-mtls/ca.crt
-      DECEASED_MTLS_CERT_FILE: /run/secrets/deceased-mtls/tls.crt
-      DECEASED_MTLS_KEY_FILE: /run/secrets/deceased-mtls/tls.key
+      DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
       INVOICES_SERVICE_URL: http://restpoint_invoice_service:5000
       COFFIN_SERVICE_URL: http://restpoint_coffin_service:5000
       # Notification REST (bell list / mark-read / delete) is implemented by the
@@ -148,8 +144,6 @@ services:
     networks:
       - restpoint_network
       - deceased_internal
-    volumes:
-      - ./secrets/deceased-mtls/gateway:/run/secrets/deceased-mtls:ro
     healthcheck:
       test: [ 'CMD', '/usr/local/bin/gateway-healthcheck' ]
       interval: 5s
@@ -282,10 +276,6 @@ services:
       NODE_ENV: production
       PORT: 5000
       SERVICE_NAME: deceased-service
-      DECEASED_MTLS_REQUIRED: 'true'
-      DECEASED_TLS_CA_FILE: /run/secrets/deceased-mtls/ca.crt
-      DECEASED_TLS_CERT_FILE: /run/secrets/deceased-mtls/tls.crt
-      DECEASED_TLS_KEY_FILE: /run/secrets/deceased-mtls/tls.key
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
       SMS_SERVICE_URL: http://restpoint_sms_service:8080
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
@@ -303,7 +293,6 @@ services:
       # Legacy mount kept for old code paths that still write to
       # /usr/src/app/uploads â€” now redirected INTO the shared storage.
       - /opt/storage/uploads/_legacy/deceased:/usr/src/app/uploads
-      - ./secrets/deceased-mtls/deceased:/run/secrets/deceased-mtls:ro
     networks:
       - deceased_internal
       - deceased_egress
