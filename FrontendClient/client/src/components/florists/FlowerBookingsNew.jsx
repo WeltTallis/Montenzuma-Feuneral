@@ -846,6 +846,7 @@ const FlowerBookingsNew = () => {
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const [announcementDraft, setAnnouncementDraft] = useState({ title: '', message: '' });
   const [postingAnnouncement, setPostingAnnouncement] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   // Deep-link support: ?view=samples opens this page straight on the uploaded
@@ -1039,20 +1040,51 @@ const FlowerBookingsNew = () => {
 
     console.log('[FlowerBookings] Setting up real-time listeners');
 
+    const addNotification = (type, title, body, bookingRef) => {
+      const note = {
+        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type,
+        title,
+        body,
+        bookingRef,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+      setNotifications(prev => [note, ...prev].slice(0, 200));
+    };
+
     const handleNewBooking = (data) => {
       console.log('[FlowerBookings] New booking received:', data);
+      addNotification(
+        'booking_created',
+        'New booking made',
+        `${data.flowerType || 'Flower arrangement'} for ${data.deceasedName || data.customer || 'customer'}`,
+        data.bookingId || data.id
+      );
       showToast(`New booking: ${data.flowerType || 'Flower booking'} for ${data.deceasedName || 'customer'}`, 'success');
       loadBookings();
     };
 
     const handleBookingUpdated = (data) => {
       console.log('[FlowerBookings] Booking updated:', data);
+      addNotification(
+        'booking_updated',
+        'Booking edited',
+        `Status changed to ${data.status} for ${data.deceasedName || data.customer || 'customer'}`,
+        data.bookingId || data.id
+      );
       showToast(`Booking ${data.bookingId} status changed to ${data.status}`, 'info');
       loadBookings();
     };
 
     const handleBookingDeleted = (data) => {
       console.log('[FlowerBookings] Booking deleted:', data);
+      addNotification(
+        'booking_deleted',
+        'Booking cancelled',
+        `${data.bookingId || data.id} has been cancelled`,
+        data.bookingId || data.id
+      );
       showToast(`Booking ${data.bookingId} has been cancelled`, 'error');
       loadBookings();
     };
@@ -1682,7 +1714,6 @@ const FlowerBookingsNew = () => {
             ['Coffin', getBookingNoteTag(booking, 'COFFIN')],
             ['Vehicle plate', getBookingNoteTag(booking, 'VEHICLE')],
             ['Dedication', initials],
-            ['Booked by', booking.booked_by || booking.customer],
           ].filter(([, value]) => value);
           return (
             <section className="flower-urgency-detail" aria-live="polite">
@@ -1742,8 +1773,8 @@ const FlowerBookingsNew = () => {
                 setShowAnnouncements(true);
                 loadAnnouncements();
               }}
-              aria-label={`Open announcements${announcements.length ? `, ${announcements.length} recent` : ''}`}
-              title="Team announcements"
+              aria-label={`Open notifications & announcements (${notifications.length + announcements.length})`}
+              title="Notifications & announcements"
               style={{
                 position: 'relative',
                 display: 'inline-flex',
@@ -1759,7 +1790,7 @@ const FlowerBookingsNew = () => {
               }}
             >
               <Bell size={18} />
-              {announcements.length > 0 && (
+              {notifications.length + announcements.length > 0 && (
                 <span style={{
                   position: 'absolute',
                   top: '-5px',
@@ -1774,9 +1805,30 @@ const FlowerBookingsNew = () => {
                   fontWeight: 700,
                   lineHeight: '17px',
                 }}>
-                  {announcements.length}
+                  {notifications.length + announcements.length}
                 </span>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setView('samples'); setShowAnnouncements(false); }}
+              aria-label="View uploaded arrangement samples"
+              title="View arrangement samples"
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '42px',
+                minWidth: '42px',
+                border: '1px solid #EAE7E2',
+                borderRadius: '8px',
+                background: '#fff',
+                color: '#475A43',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16.5V20.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V16.5M16 11.5V7.5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4m8 0a2 2 0 0 0 2 2m0 0v4a2 2 0 0 0-2 2m0-4V13.5m0 0a2 2 0 0 0-2-2M9 17.5V20.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/></svg>
             </button>
             <button
               style={{
@@ -2765,48 +2817,6 @@ const FlowerBookingsNew = () => {
               {asList(product.types).join(' · ') || 'Custom Arrangement'}
             </p>
 
-            {/* ── Who booked this (kin) — name + phone, front and centre ── */}
-            <div
-              className="flower-booking-contact"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                background: 'linear-gradient(135deg, #FDF1F6 0%, #FFFFFF 70%)',
-                border: '1px solid #F6C6DA',
-                borderRadius: '14px',
-                padding: '12px 14px',
-                marginBottom: '20px'
-              }}
-            >
-              <div
-                aria-hidden="true"
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: '#FCE0EC',
-                  color: '#BE185D',
-                  fontWeight: 700,
-                  fontSize: '15px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}
-              >
-                {bookerInitial}
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9C9389' }}>
-                  Booked By
-                </div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1C1A17', wordBreak: 'break-word' }}>
-                  {bookerName || '—'}
-                </div>
-              </div>
-            </div>
-
             {/* Compact horizontal status tracker — replaces the tall vertical card */}
             <div style={styles.trackRow}>
               {STATUS_FLOW.map((status, idx) => {
@@ -2989,10 +2999,6 @@ const FlowerBookingsNew = () => {
                     <dd style={styles.specValue}>{contactName}{bookerPhone ? ` · ${bookerPhone}` : ''}</dd>
                   </div>
                 )}
-                {bookerName && <div style={styles.specRow}>
-                  <dt style={styles.specLabel}>Booked By</dt>
-                  <dd style={styles.specValue}>{bookerName}</dd>
-                </div>}
                 {bookerPhone && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Transport Coordinator</dt>
                   <dd style={styles.specValue}>
@@ -3091,78 +3097,183 @@ const FlowerBookingsNew = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1200,
+            zIndex: 1300,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             padding: '16px',
-            background: 'rgba(20, 25, 20, 0.48)',
+            background: 'rgba(20, 25, 20, 0.5)',
           }}
         >
           <section
             role="dialog"
             aria-modal="true"
-            aria-labelledby="flower-announcements-title"
+            aria-labelledby="flower-notifications-title"
             onClick={event => event.stopPropagation()}
             style={{
-              width: 'min(560px, 100%)',
-              maxHeight: 'min(760px, 92vh)',
-              display: 'flex',
-              flexDirection: 'column',
+              width: 'min(1120px, 98vw)',
+              maxHeight: 'min(820px, 92vh)',
+              display: 'grid',
+              gridTemplateColumns: '380px 1fr',
+              gap: '0',
               overflow: 'hidden',
-              borderRadius: '14px',
+              borderRadius: '16px',
               background: '#fff',
-              boxShadow: '0 20px 60px rgba(0,0,0,.24)',
+              boxShadow: '0 24px 80px rgba(0,0,0,.28)',
             }}
           >
-            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid #EAE7E2' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#475A43' }}>
-                <Bell size={19} />
-                <h2 id="flower-announcements-title" style={{ margin: 0, color: '#1C1A17', fontSize: '18px' }}>Team announcements</h2>
+            {/* Left column — Real-time notifications (main thing) */}
+            <aside
+              style={{
+                borderRight: '1px solid #F0E4EA',
+                background: '#FAF9F7',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <header style={{ padding: '18px 20px', borderBottom: '1px solid #EAE7E2', background: '#475A43', color: '#fff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Bell size={18} style={{ color: '#fff' }} />
+                  <h2 id="flower-notifications-title" style={{ margin: 0, color: '#fff', fontSize: '17px', fontWeight: 700 }}>Real-time notifications</h2>
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.9 }}>
+                  Booking made · Booking edited · Booking cancelled
+                </div>
+              </header>
+              <div style={{ padding: '12px 16px', overflowY: 'auto', flex: 1 }}>
+                {notifications.length === 0 ? (
+                  <p style={{ margin: 0, padding: '24px 8px', color: '#9C9389', textAlign: 'center', fontSize: '13px' }}>No notifications yet.</p>
+                ) : notifications.map(n => {
+                  const typeColors = {
+                    booking_created: { bg: '#DCF5E5', border: '#BFEBD0', dot: '#15803D', text: '#14532d' },
+                    booking_updated: { bg: '#FCE0EC', border: '#F6C6DA', dot: '#BE185D', text: '#881337' },
+                    booking_deleted: { bg: '#FDE4E4', border: '#FECDD3', dot: '#B91C1C', text: '#7f1d1d' },
+                  };
+                  const c = typeColors[n.type] || typeColors.booking_created;
+                  const ago = timeAgo(n.createdAt);
+                  return (
+                    <div
+                      key={n.id}
+                      style={{
+                        padding: '12px 14px',
+                        borderBottom: '1px solid #F0E4EA',
+                        cursor: 'pointer',
+                        background: n.read ? '#fff' : c.bg,
+                        transition: 'background .15s ease',
+                      }}
+                      onClick={() => {
+                        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+                        if (n.bookingRef) setActiveBookingId(n.bookingRef);
+                        setShowAnnouncements(false);
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: c.dot }}>
+                          {n.type === 'booking_created' ? 'New booking made' : n.type === 'booking_updated' ? 'Booking edited' : 'Booking cancelled'}
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#9C9389' }}>{ago}</span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: c.text, fontWeight: 600, lineHeight: 1.45 }}>{n.title}</div>
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: '#6E675E', lineHeight: 1.4 }}>{n.body}</div>
+                      {n.bookingRef && (
+                        <div style={{ marginTop: '6px', fontSize: '10px', color: '#9C9389' }}>Ref: {n.bookingRef}</div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <button type="button" aria-label="Close announcements" onClick={() => setShowAnnouncements(false)} style={{ border: 0, background: 'transparent', color: '#716B63', fontSize: '24px', cursor: 'pointer' }}>×</button>
-            </header>
-            <div style={{ overflowY: 'auto', padding: '16px 20px' }}>
-              <form onSubmit={postAnnouncement} style={{ display: 'grid', gap: '10px', paddingBottom: '18px', borderBottom: '1px solid #EAE7E2' }}>
-                <label style={{ display: 'grid', gap: '6px', color: '#574F47', fontSize: '12px', fontWeight: 700 }}>
-                  Announcement title
-                  <input
-                    value={announcementDraft.title}
-                    onChange={event => setAnnouncementDraft(prev => ({ ...prev, title: event.target.value }))}
-                    maxLength={120}
-                    required
-                    placeholder="e.g. Church stand returns"
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #EAE7E2', borderRadius: '8px', font: 'inherit' }}
-                  />
-                </label>
-                <label style={{ display: 'grid', gap: '6px', color: '#574F47', fontSize: '12px', fontWeight: 700 }}>
-                  Message
-                  <textarea
-                    value={announcementDraft.message}
-                    onChange={event => setAnnouncementDraft(prev => ({ ...prev, message: event.target.value }))}
-                    maxLength={3000}
-                    required
-                    rows={3}
-                    placeholder="Share a clarification or important team update."
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #EAE7E2', borderRadius: '8px', font: 'inherit', resize: 'vertical' }}
-                  />
-                </label>
-                <button type="submit" disabled={postingAnnouncement} style={{ justifySelf: 'end', border: 0, borderRadius: '8px', padding: '10px 15px', background: postingAnnouncement ? '#9C9389' : '#475A43', color: '#fff', fontWeight: 700, cursor: postingAnnouncement ? 'wait' : 'pointer' }}>
-                  {postingAnnouncement ? 'Posting…' : 'Post announcement'}
+              <div style={{ padding: '12px 16px', borderTop: '1px solid #EAE7E2', background: '#fff' }}>
+                <button
+                  type="button"
+                  onClick={() => setNotifications([])}
+                  style={{
+                    width: '100%',
+                    border: '1px solid #EAE7E2',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    color: '#9C9389',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear all
                 </button>
-              </form>
-              <div style={{ display: 'grid', gap: '10px', paddingTop: '16px' }}>
-                {announcements.length === 0 ? (
-                  <p style={{ margin: 0, padding: '18px 4px', color: '#716B63', textAlign: 'center', fontSize: '13px' }}>No team announcements yet.</p>
-                ) : announcements.map(announcement => (
-                  <article key={announcement.id} style={{ padding: '12px 14px', border: '1px solid #EAE7E2', borderRadius: '10px', background: '#FAF9F7' }}>
-                    <h3 style={{ margin: '0 0 6px', color: '#1C1A17', fontSize: '14px' }}>{announcement.title}</h3>
-                    <p style={{ margin: 0, color: '#574F47', fontSize: '13px', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{announcement.message}</p>
-                    <small style={{ display: 'block', marginTop: '9px', color: '#9C9389', fontSize: '11px' }}>
-                      {announcement.created_by ? `${announcement.created_by} · ` : ''}{announcement.created_at ? new Date(announcement.created_at).toLocaleString() : ''}
-                    </small>
-                  </article>
-                ))}
+              </div>
+            </aside>
+            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <header style={{ padding: '18px 22px', borderBottom: '1px solid #EAE7E2', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#475A43' }}>
+                  <Flower2 size={18} style={{ color: '#475A43' }} />
+                  <h2 style={{ margin: 0, color: '#1C1A17', fontSize: '17px', fontWeight: 700 }}>Team announcements</h2>
+                </div>
+                <button type="button" aria-label="Close announcements" onClick={() => setShowAnnouncements(false)} style={{ border: 0, background: 'transparent', color: '#716B63', fontSize: '24px', cursor: 'pointer' }}>×</button>
+              </header>
+              <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                <form onSubmit={postAnnouncement} style={{ display: 'grid', gap: '10px', padding: '18px 22px', borderBottom: '1px solid #EAE7E2' }}>
+                  <label style={{ display: 'grid', gap: '6px', color: '#574F47', fontSize: '12px', fontWeight: 700 }}>
+                    Announcement title
+                    <input
+                      value={announcementDraft.title}
+                      onChange={event => setAnnouncementDraft(prev => ({ ...prev, title: event.target.value }))}
+                      maxLength={120}
+                      required
+                      placeholder="e.g. Church stand returns"
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #EAE7E2', borderRadius: '8px', font: 'inherit' }}
+                    />
+                  </label>
+                  <label style={{ display: 'grid', gap: '6px', color: '#574F47', fontSize: '12px', fontWeight: 700 }}>
+                    Message
+                    <textarea
+                      value={announcementDraft.message}
+                      onChange={event => setAnnouncementDraft(prev => ({ ...prev, message: event.target.value }))}
+                      maxLength={3000}
+                      required
+                      rows={3}
+                      placeholder="Share a clarification or important team update."
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #EAE7E2', borderRadius: '8px', font: 'inherit', resize: 'vertical' }}
+                    />
+                  </label>
+                  <button type="submit" disabled={postingAnnouncement} style={{ justifySelf: 'end', border: 0, borderRadius: '8px', padding: '10px 15px', background: postingAnnouncement ? '#9C9389' : '#475A43', color: '#fff', fontWeight: 700, cursor: postingAnnouncement ? 'wait' : 'pointer' }}>
+                    {postingAnnouncement ? 'Posting…' : 'Post announcement'}
+                  </button>
+                </form>
+                <div style={{ display: 'grid', gap: '10px', padding: '16px 22px' }}>
+                  {announcements.length === 0 ? (
+                    <p style={{ margin: 0, padding: '24px 8px', color: '#9C9389', textAlign: 'center', fontSize: '13px' }}>No team announcements yet.</p>
+                  ) : announcements.map(announcement => {
+                    const poster = announcement.created_by || 'Team';
+                    return (
+                      <article
+                        key={announcement.id}
+                        style={{
+                          padding: '14px 16px',
+                          border: '1px solid #EAE7E2',
+                          borderRadius: '12px',
+                          background: '#fff',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '12px',
+                        }}
+                      >
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#FDF1F6', color: '#BE185D', fontWeight: 800, fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {poster.trim().charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+                            <h3 style={{ margin: 0, color: '#1C1A17', fontSize: '14px', fontWeight: 700 }}>{announcement.title}</h3>
+                            <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#475A43' }}>Posted by {poster}</span>
+                          </div>
+                          <p style={{ margin: 0, color: '#574F47', fontSize: '13px', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{announcement.message}</p>
+                          <small style={{ display: 'block', marginTop: '8px', color: '#9C9389', fontSize: '11px' }}>
+                            {announcement.created_at ? new Date(announcement.created_at).toLocaleString() : ''}
+                          </small>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>

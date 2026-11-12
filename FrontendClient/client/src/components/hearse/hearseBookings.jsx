@@ -56,53 +56,62 @@ const GENERIC_BRANCH_NAMES = new Set([
 
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pending', progress: 10, color: '#FFD700', bg: '#FFD700', dotColor: '#FFD700' },
-  booked: { label: 'Booked', progress: 25, color: '#00296B', bg: '#00296B', dotColor: '#00296B' },
-  confirmed: { label: 'Confirmed', progress: 25, color: '#00296B', bg: '#00296B', dotColor: '#00296B' },
-  scheduled: { label: 'Scheduled', progress: 25, color: '#E36414', bg: '#E36414', dotColor: '#E36414' },
-  in_transit: { label: 'In Transit', progress: 60, color: '#E36414', bg: '#E36414', dotColor: '#E36414' },
-  in_progress: { label: 'In Progress', progress: 60, color: '#0c0b0f', bg: '#0c0b0f', dotColor: '#0c0b0f' },
-  postponed: { label: 'Postponed', progress: 15, color: '#FFD700', bg: '#FFD700', dotColor: '#FFD700' },
-  completed: { label: 'Completed', progress: 100, color: '#5F0F40', bg: '#5F0F40', dotColor: '#5F0F40' },
-  delivered: { label: 'Delivered', progress: 100, color: '#132A13', bg: '#132A13', dotColor: '#132A13' },
-  cancelled: { label: 'Cancelled', progress: 0, color: '#DD2D4A', bg: '#DD2D4A', dotColor: '#DD2D4A' },
-  maintenance: { label: 'Maintenance', progress: 0, color: '#03071E', bg: '#03071E', dotColor: '#03071E' },
+  pending: { label: 'Pending', progress: 10, color: COLORS.red, bg: COLORS.dangerLight, dotColor: COLORS.red },
+  booked: { label: 'Booked', progress: 25, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },
+  confirmed: { label: 'Confirmed', progress: 25, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
+  scheduled: { label: 'Scheduled', progress: 25, color: COLORS.brass, bg: COLORS.warningLight, dotColor: COLORS.brass },
+  in_transit: { label: 'In Transit', progress: 60, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },
+  in_progress: { label: 'In Progress', progress: 60, color: COLORS.ink, bg: COLORS.bone2, dotColor: COLORS.ink },
+  postponed: { label: 'Postponed', progress: 15, color: COLORS.yellow, bg: COLORS.warningLight, dotColor: COLORS.yellow },
+  completed: { label: 'Completed', progress: 100, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
+  delivered: { label: 'Delivered', progress: 100, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
+  cancelled: { label: 'Cancelled', progress: 0, color: COLORS.red, bg: COLORS.dangerLight, dotColor: COLORS.red },
+  maintenance: { label: 'Maintenance', progress: 0, color: COLORS.ink, bg: COLORS.bone2, dotColor: COLORS.ink },
 };
 
 const STATUS_LIST = Object.keys(STATUS_CONFIG);
 
 const COLORS = {
-  primary: '#1a5f7a',
-  primaryLight: '#2c8ac9',
-  primaryDark: '#134b5f',
+  // Dispatch palette (matches HTML reference design)
+  ink: '#15171A',
+  bone: '#FAF8F4',
+  bone2: '#F3EFE6',
+  brass: '#8B7355',
+  verdigris: '#3D4F47',
+  verdigrisTint: '#EBEFEE',
+  line: '#E3DDD0',
+  gray: '#6B6862',
+  red: '#9B4A3F',
+  orange: '#D97843',
+  yellow: '#C9A227',
+  green: '#475A43',
   white: '#FFFFFF',
-  bg: '#f5f7fa',
   surface: '#ffffff',
-  border: '#d1d5db',
-  borderLight: '#e5e7eb',
-  text: '#111827',
-  textSecondary: '#6b7280',
-  textMuted: '#9ca3af',
-  success: '#10b981',
-  successLight: '#d1fae5',
-  successDark: '#059669',
-  warning: '#f59e0b',
-  warningLight: '#fef3c7',
-  warningDark: '#d97706',
-  danger: '#ef4444',
-  dangerLight: '#fee2e2',
-  dangerDark: '#dc2626',
-  info: '#3b82f6',
-  infoLight: '#dbeafe',
-  infoDark: '#2563eb',
-  accent: '#3b82f6',
-  accentHover: '#2563eb',
-  radius: '8px',
-  radiusSm: '6px',
+  border: '#E3DDD0',
+  borderLight: '#F3EFE6',
+  text: '#15171A',
+  textSecondary: '#6B6862',
+  textMuted: '#8A8780',
+  success: '#475A43',
+  successLight: '#EBEFEE',
+  successDark: '#3D4F47',
+  warning: '#C9A227',
+  warningLight: '#F7F2E5',
+  warningDark: '#8B7355',
+  danger: '#9B4A3F',
+  dangerLight: '#F4E9E5',
+  dangerDark: '#7A3B33',
+  info: '#D97843',
+  infoLight: '#F4E9E5',
+  infoDark: '#B05A30',
+  accent: '#3D4F47',
+  accentHover: '#2E3C38',
+  radius: '12px',
+  radiusSm: '8px',
   radiusXs: '4px',
-  shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04)',
-  shadowMd: '0 4px 6px rgba(0, 0, 0, 0.06)',
-  shadowLg: '0 10px 15px rgba(0, 0, 0, 0.08)',
+  shadowSm: '0 1px 3px rgba(0,0,0,0.06)',
+  shadowMd: '0 4px 12px rgba(0,0,0,0.08)',
+  shadowLg: '0 10px 30px rgba(0,0,0,0.10)',
   transition: 'all 0.15s ease',
 };
 
@@ -455,8 +464,8 @@ const api = {
 /* ===== STYLED COMPONENTS ===== */
 const Container = styled.div`
   min-height: 100vh;
-  background: ${COLORS.bg};
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: ${COLORS.bone};
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: ${COLORS.text};
   box-sizing: border-box;
   *, *::before, *::after { box-sizing: border-box; }
@@ -548,59 +557,107 @@ const TableCard = styled.div`
   background: ${COLORS.surface};
   border-radius: ${COLORS.radius};
   box-shadow: ${COLORS.shadowSm};
-  border: 1px solid ${COLORS.border};
+  border: 1px solid ${COLORS.line};
   overflow: hidden;
 `;
 
-const Table = styled.table`width:100%;border-collapse:collapse;font-size:0.8125rem;min-width:800px;`;
-const TableHead = styled.thead`background:${COLORS.bg};border-bottom:1px solid ${COLORS.border};`;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 900px;
+  font-family: 'Inter', sans-serif;
+`;
+
+const TableHead = styled.thead`
+  background: ${COLORS.ink};
+  border-bottom: none;
+`;
 
 const TableRow = styled.tr`
-  border-bottom: 1px solid ${COLORS.border};
+  border-bottom: 1px solid ${COLORS.line};
   cursor: pointer;
   transition: ${COLORS.transition};
-  background: ${({ $status }) => {
-    const normalized = String($status || '').toLowerCase().replace(/\s+/g, '_');
-    const config = STATUS_CONFIG[normalized] || STATUS_CONFIG['booked'];
-    return config?.bg || COLORS.surface;
-  }};
-  color: ${({ $status }) => {
-    const normalized = String($status || '').toLowerCase().replace(/\s+/g, '_');
-    const config = STATUS_CONFIG[normalized] || STATUS_CONFIG['booked'];
-    return config?.bg && config.bg !== COLORS.surface ? '#ffffff' : COLORS.text;
-  }};
-  &:hover { background: ${COLORS.bg}; color: ${COLORS.text}; }
+  background: ${({ $striped }) => ($striped ? COLORS.bone2 : COLORS.surface)};
+  &:hover { background: ${COLORS.verdigrisTint}; }
   &:last-child { border-bottom: none; }
 `;
 
-const TableCell = styled.td`padding:0.875rem 1rem;vertical-align:middle;`;
+const TableCell = styled.td`
+  padding: 1rem 1.25rem;
+  vertical-align: middle;
+  border-bottom: none;
+  color: ${COLORS.text};
+`;
 
 const TableHeader = styled.th`
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
   text-align: left;
   font-weight: 600;
-  color: ${COLORS.textSecondary};
-  font-size: 0.75rem;
+  color: ${COLORS.bone};
+  font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   white-space: nowrap;
+  border-bottom: none;
+  font-family: 'Fraunces', 'Inter', serif;
 `;
 
 const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.3rem 0.75rem;
-  border-radius: 2rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};
-  color: #ffffff;
+  gap: 0.5rem;
+  padding: 0.28rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: ${props => STATUS_CONFIG[props.$status]?.color || COLORS.text};
+  background: ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.bone2};
+  border: 1px solid ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.line};
   &::before {
     content: '';
-    width: 6px; height: 6px;
+    width: 8px; height: 8px;
     border-radius: 50%;
-    background: ${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};
+    background: ${props => STATUS_CONFIG[props.$status]?.dotColor || COLORS.borderLight};
+    flex-shrink: 0;
+  }
+`;
+
+// Priority badge — matches HTML dispatch design (colored dot + label)
+const PriorityBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  .priority-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+`;
+
+// Driver tag — matches HTML dispatch design (initials in dot + name)
+const DriverTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: ${COLORS.ink};
+  font-weight: 500;
+  .dot {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: ${COLORS.verdigris};
+    color: ${COLORS.bone};
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', 'Inter', serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
   }
 `;
 
