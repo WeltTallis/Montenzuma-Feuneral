@@ -249,23 +249,6 @@ const SectionTitle = styled.h2`
   margin: 0;
 `;
 
-const SensitiveRecordNotice = styled.aside`
-  margin: -0.5rem 0 1.5rem;
-  padding: 1rem 1.15rem;
-  border-left: 3px solid ${COLORS.brass};
-  border-radius: 3px;
-  background: ${COLORS.bone2};
-  color: ${COLORS.ink};
-  font-size: 0.88rem;
-  line-height: 1.55;
-
-  strong {
-    display: block;
-    margin-bottom: 0.25rem;
-    color: ${COLORS.verdigris};
-  }
-`;
-
 const Row = styled.div`
   display: flex;
   gap: 1.5rem;
@@ -1722,11 +1705,6 @@ const DeceasedRegistrationForm = () => {
                   <SectionNum>02</SectionNum>
                   <SectionTitle>Deceased Information</SectionTitle>
                 </SectionHead>
-
-                <SensitiveRecordNotice role="note" aria-label="Sensitive information notice">
-                  <strong>Privacy reminder for sensitive information</strong>
-                  This record contains sensitive details about the deceased and family contacts. Explain to the next of kin or contact person what information is being recorded and why it is needed for intake and care coordination. Enter only details relevant to this case, and avoid unnecessary sensitive narrative. This reminder is separate from the accuracy confirmation later in the form.
-                </SensitiveRecordNotice>
 
                 <Row>
                   <Col2>
