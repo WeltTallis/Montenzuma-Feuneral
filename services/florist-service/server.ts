@@ -294,6 +294,18 @@ async function ensureFloristTables(dbName: string) {
             table.string('deceased_gender', 40); // Add the new column for deceased gender
         });
 
+        await ensureFloristTable(tenantKnex, 'flower_announcements', (table) => {
+            table.increments('id').primary();
+            table.string('tenant_slug', 100).notNullable();
+            table.string('tenant_id', 36).nullable();
+            table.string('title', 120).notNullable();
+            table.text('message').notNullable();
+            table.string('created_by', 255).nullable();
+            table.timestamp('created_at').defaultTo(tenantKnex.fn.now());
+            table.index(['tenant_id', 'created_at'], 'idx_flower_announcements_tenant_id');
+            table.index(['tenant_slug', 'created_at'], 'idx_flower_announcements_tenant_slug');
+        });
+
         // flower_samples — must expose `arrangement_id` (used by controllers)
         await ensureFloristTable(tenantKnex, 'flower_samples', (table) => {
             table.increments('id').primary();

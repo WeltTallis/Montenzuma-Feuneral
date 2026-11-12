@@ -697,12 +697,111 @@ export const updateDeceasedStatus = async (req: Request, res: Response): Promise
     }
 };
 
+export const scheduleDeceasedDispatch = async (req: Request, res: Response): Promise<Response> => {
+    const id = String(req.params.id || '').trim();
+    const { dispatchDate, notes } = req.body || {};
 
+    if (!id) {
+        return res.status(400).json({ success: false, message: 'Deceased ID is required' });
+    }
+
+    if (typeof dispatchDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dispatchDate)) {
+        return res.status(400).json({ success: false, message: 'A valid dispatch date is required (YYYY-MM-DD)' });
+    }
+    const parsedDate = new Date(`${dispatchDate}T00:00:00.000Z`);
+    if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dispatchDate) {
+        return res.status(400).json({ success: false, message: 'Dispatch date is invalid' });
+    }
+    if (dispatchDate < getKenyaDate()) {
+        return res.status(400).json({ success: false, message: 'Dispatch date cannot be in the past' });
+    }
+    if (notes !== undefined && notes !== null && typeof notes !== 'string') {
+        return res.status(400).json({ success: false, message: 'Dispatch notes must be text' });
+    }
+
+    const dispatchNotes = typeof notes === 'string' ? notes.trim() : '';
+    if (dispatchNotes.length > 2000) {
+        return res.status(400).json({ success: false, message: 'Dispatch notes must be 2000 characters or fewer' });
+    }
+
+    try {
+        const tenantSlug = (req as any).tenantSlug || (req as any).tenant?.slug || 'unknown';
+        const dbName = (req as any).tenant?.db_name || await resolveDatabase(tenantSlug);
+        if (!dbName) {
+            return res.status(400).json({ success: false, message: 'No database configured for this tenant' });
+        }
+
+        let columns = await tableColumns(dbName, 'deceased');
+        if (columns.size === 0 || (!columns.has('deceased_id') && !columns.has('id'))) {
+            return res.status(500).json({ success: false, message: 'The deceased table is missing required dispatch fields' });
+        }
+
+        for (const [column, definition] of [
+            ['dispatch_date', 'VARCHAR(255) NULL'],
+            ['dispatch_notes', 'TEXT NULL']
+        ]) {
+            if (!columns.has(column)) {
+                await safeTenantExecute(dbName, `ALTER TABLE deceased ADD COLUMN IF NOT EXISTS ${column} ${definition}`, []);
+                columns = await tableColumns(dbName, 'deceased');
+            }
+        }
+        if (!columns.has('dispatch_date') || !columns.has('dispatch_notes')) {
+            return res.status(500).json({ success: false, message: 'Dispatch fields could not be added to the tenant schema' });
+        }
+
+        const isNumeric = /^\d+$/.test(id) && columns.has('id');
+        const idColumn = isNumeric ? 'id' : 'deceased_id';
+        if (!columns.has(idColumn)) {
+            return res.status(404).json({ success: false, message: 'Deceased record not found' });
+        }
+        const idValue = isNumeric ? parseInt(id, 10) : id;
+        const activeFilter = columns.has('is_deleted') ? ' AND (is_deleted = FALSE OR is_deleted IS NULL)' : '';
+        const existing = await safeTenantQuery(
+            dbName,
+            `SELECT ${idColumn} FROM deceased WHERE ${idColumn} = ?${activeFilter} LIMIT 1`,
+            [idValue]
+        );
+        if (!Array.isArray(existing) || existing.length === 0) {
+            return res.status(404).json({ success: false, message: 'Deceased record not found' });
+        }
+
+        const assignments = ['dispatch_date = ?', 'dispatch_notes = ?'];
+        if (columns.has('updated_at')) assignments.push('updated_at = NOW()');
+        await safeTenantExecute(
+            dbName,
+            `UPDATE deceased SET ${assignments.join(', ')} WHERE ${idColumn} = ?${activeFilter} LIMIT 1`,
+            [dispatchDate, dispatchNotes || null, idValue]
+        );
+
+        try {
+            await redisService.clearServiceCache('deceased-service', tenantSlug);
+        } catch (cacheError: any) {
+            Logger.warn({
+                message: 'Failed to invalidate deceased cache during dispatch scheduling',
+                error: cacheError?.message
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Dispatch scheduled successfully',
+            data: { deceased_id: id, dispatch_date: dispatchDate, dispatch_notes: dispatchNotes || null }
+        });
+    } catch (error: any) {
+        Logger.error('scheduleDeceasedDispatch error: ' + (error as Error).message);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to schedule dispatch',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
 
 export default {
     getAllDeceased,
     getDeceasedById,
     updateDeceased,
     deleteDeceased,
-    updateDeceasedStatus
+    updateDeceasedStatus,
+    scheduleDeceasedDispatch
 };

@@ -1,6 +1,6 @@
 import { protect, authorize, authorizeAny, enforceTenant } from '../../../services/app-global/middlewares/authMiddleware';
 import {
-    getAllDeceased, getDeceasedById, updateDeceased, deleteDeceased,
+    getAllDeceased, getDeceasedById, updateDeceased, deleteDeceased, scheduleDeceasedDispatch,
 } from '../controllers/deceasedControl';
 
 import { Router, Request, Response } from 'express';
@@ -228,6 +228,10 @@ router.get('/export-history', getExportHistory);
 router.post('/deceased/export-excel', exportExcelWithCharts);
 router.get('/deceased/export-status/:jobId', checkExportStatus);
 router.get('/deceased/export-history', getExportHistory);
+
+// Schedule the planned dispatch without changing the deceased release status.
+router.post('/deceased/:id/schedule-dispatch', scheduleDeceasedDispatch);
+router.post('/:id/schedule-dispatch', scheduleDeceasedDispatch);
 
 // GET - By ID - SUPPORT ALL PATTERN TYPES
 router.get('/deceased-id/:id', getDeceasedById);  // /deceased/deceased-id/:id

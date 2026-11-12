@@ -16,6 +16,10 @@ import {
     getStats,
     getMonthlyTrend
 } from '../controllers/flowerBooking.ts';
+import {
+    createFlowerAnnouncement,
+    getFlowerAnnouncements,
+} from '../controllers/flowerAnnouncements.ts';
 const router = Router();
 export const flowerBookingRouter = Router();
 // Import authentication middleware
@@ -53,6 +57,8 @@ router.use(authorizeAny as any);
 // ============================================
 flowerBookingRouter.get('/stats', getStats);
 flowerBookingRouter.get('/stats/monthly-trend', getMonthlyTrend);
+flowerBookingRouter.get('/announcements', protect, authorizeAny as any, getFlowerAnnouncements);
+flowerBookingRouter.post('/announcements', protect, authorizeAny as any, createFlowerAnnouncement);
 
 // ============================================
 // BOOKINGS

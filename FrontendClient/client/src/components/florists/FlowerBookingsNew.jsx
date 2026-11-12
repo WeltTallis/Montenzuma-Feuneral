@@ -1,6 +1,6 @@
 
 // Package was only used by the removed icon-box tiles.
-import { Flower2, User, Calendar, X, Check, Home, Phone } from '../../utils/icons/icons';
+import { Flower2, User, Calendar, X, Check, Home, Phone, Bell } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import env from '../../utils/config/env';
@@ -128,6 +128,30 @@ const wasBookingEdited = booking => Boolean(getBookingNoteTag(booking, 'EDITED')
 const toTimeOnly = v => {
   const d = parseUtilDate(v);
   return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+};
+
+// Relative "time ago" label for a booking (e.g. "6 hrs ago", "3 days ago").
+const timeAgo = v => {
+  if (!v) return '';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const diffMs = now - d;
+  if (diffMs < 0) return 'just now';
+  const secs = Math.floor(diffMs / 1000);
+  const mins = Math.floor(secs / 60);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (secs < 60) return 'just now';
+  if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`;
+  if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks} wk${weeks === 1 ? '' : 's'} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} mo${months === 1 ? '' : 's'} ago`;
+  const years = Math.floor(days / 365);
+  return `${years} yr${years === 1 ? '' : 's'} ago`;
 };
 
 // Resolve a branch name from a branch reference (id, slug, or name).
@@ -818,6 +842,10 @@ const FlowerBookingsNew = () => {
   const { socket, connected } = useSocket()
   const [bookings, setBookings] = useState([]);
   const [bookingSearch, setBookingSearch] = useState('');
+  const [announcements, setAnnouncements] = useState([]);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
+  const [announcementDraft, setAnnouncementDraft] = useState({ title: '', message: '' });
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   // Deep-link support: ?view=samples opens this page straight on the uploaded
@@ -853,7 +881,6 @@ const FlowerBookingsNew = () => {
     ribbon_message: '',
     size: '',
     quantity: 1,
-    service_type: 'Funeral service before final burial',
     funeral_date: '',
     service_time: '',
     route: '',
@@ -923,6 +950,35 @@ const FlowerBookingsNew = () => {
     }
     setLoading(false);
   }, [showToast]);
+
+  const loadAnnouncements = useCallback(async () => {
+    try {
+      const res = await api.get('/florist/announcements', {
+        params: { tenant_id: getTenantId() || undefined },
+      });
+      setAnnouncements(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (e) {
+      console.error('[FlowerBookings] Failed to load announcements:', e?.response?.status, e?.response?.data || e.message);
+      showToast(e.friendlyMessage || 'Failed to load flower announcements', 'error');
+    }
+  }, [showToast]);
+
+  const postAnnouncement = useCallback(async (event) => {
+    event.preventDefault();
+    if (postingAnnouncement) return;
+    setPostingAnnouncement(true);
+    try {
+      await api.post('/florist/announcements', announcementDraft);
+      setAnnouncementDraft({ title: '', message: '' });
+      await loadAnnouncements();
+      showToast('Announcement posted');
+    } catch (e) {
+      console.error('[FlowerBookings] Failed to post announcement:', e?.response?.status, e?.response?.data || e.message);
+      showToast(e?.response?.data?.message || 'Failed to post announcement', 'error');
+    } finally {
+      setPostingAnnouncement(false);
+    }
+  }, [announcementDraft, loadAnnouncements, postingAnnouncement, showToast]);
 
   const updateBookingSamples = useCallback(async (bookingId, files = [], removeImages = []) => {
     if (!bookingId || updatingBookingSamples) return false;
@@ -1016,7 +1072,8 @@ const FlowerBookingsNew = () => {
   useEffect(() => {
     loadArrangements();
     loadBookings();
-  }, [loadBookings, loadArrangements]);
+    loadAnnouncements();
+  }, [loadAnnouncements, loadBookings, loadArrangements]);
 
   useEffect(() => {
     const timer = setInterval(() => setUrgencyNow(Date.now()), 60_000);
@@ -1157,7 +1214,6 @@ const FlowerBookingsNew = () => {
       ribbon_message: '',
       size: '',
       quantity: 1,
-      service_type: 'Funeral service before final burial',
       funeral_date: '',
       service_time: '',
       route: '',
@@ -1198,7 +1254,6 @@ const FlowerBookingsNew = () => {
       ribbon_message: booking?.ribbon_message || '',
       size: booking?.size || '',
       quantity: lineItems[0]?.quantity || 1,
-      service_type: booking?.service_type || 'Funeral service before final burial',
       funeral_date: toDateOnly(booking?.funeral_date) || '',
       service_time: getBookingNoteTag(booking, 'SERVICE-TIME'),
       route: getBookingNoteTag(booking, 'ROUTE'),
@@ -1262,6 +1317,7 @@ const FlowerBookingsNew = () => {
       const routeTag = newBooking.route?.trim() ? `[ROUTE:${clean(newBooking.route)}]` : '';
       const vehicleTag = newBooking.vehicle_plate?.trim() ? `[VEHICLE:${clean(newBooking.vehicle_plate)}]` : '';
       const contactTag = newBooking.contact_name?.trim() ? `[CONTACT:${clean(newBooking.contact_name)}]` : '';
+      const serviceTimeTag = newBooking.service_time?.trim() ? `[SERVICE-TIME:${clean(newBooking.service_time)}]` : '';
       const editedTag = editingBookingId ? `[EDITED:${new Date().toISOString()}]` : '';
       const priorityTag = newBooking.priority?.trim() ? `[PRIORITY:${clean(newBooking.priority)}]` : '';
       const notesValue = [
@@ -1273,6 +1329,7 @@ const FlowerBookingsNew = () => {
         routeTag,
         vehicleTag,
         contactTag,
+        serviceTimeTag,
         priorityTag,
         editedTag,
       ].filter(Boolean).join(' ');
@@ -1283,7 +1340,6 @@ const FlowerBookingsNew = () => {
         flower_type: headline.slice(0, 100),
         flower_description: '',
         arrangements: items,
-        service_type: newBooking.service_type || 'Funeral service before final burial',
         ribbon_color: newBooking.any_color ? null : colors[0] || null,
         primary_color: newBooking.any_color ? 'Any color (florist choice)' : colors[0] || null,
         accent_color: newBooking.any_color ? null : colors.slice(1).join(', ') || null,
@@ -1346,7 +1402,6 @@ const FlowerBookingsNew = () => {
         ribbon_message: '',
         size: '',
         quantity: 1,
-        service_type: 'Funeral service before final burial',
         funeral_date: '',
         service_time: '',
         route: '',
@@ -1590,7 +1645,7 @@ const FlowerBookingsNew = () => {
                     : `in ${Math.ceil(hoursUntil / 24)} d`;
               const urgencyClass = isDueToday || hoursUntil < 8 ? 'is-hot' : hoursUntil < 24 ? 'is-soon' : 'is-later';
               const lineItems = parseLineItems(booking);
-              const itemLabel = lineItems.map(item => `${item.name} ×${item.quantity}`).join(', ');
+              const itemLabel = lineItems.map(item => item.name).join(', ');
               const isSelected = String(selectedUrgencyBookingId) === bookingId;
               return (
                 <button
@@ -1627,7 +1682,6 @@ const FlowerBookingsNew = () => {
             ['Coffin', getBookingNoteTag(booking, 'COFFIN')],
             ['Vehicle plate', getBookingNoteTag(booking, 'VEHICLE')],
             ['Dedication', initials],
-            ['Service', booking.service_type],
             ['Booked by', booking.booked_by || booking.customer],
           ].filter(([, value]) => value);
           return (
@@ -1643,7 +1697,7 @@ const FlowerBookingsNew = () => {
                 </div>
               </div>
               <div className="flower-urgency-arrangements">
-                {items.map((item, index) => <span key={`${item.name}-${index}`}>{item.name} ×{item.quantity}</span>)}
+                {items.map((item, index) => <span key={`${item.name}-${index}`}>{item.name}</span>)}
               </div>
               {fields.length > 0 && (
                 <dl className="flower-urgency-facts">
@@ -1682,6 +1736,48 @@ const FlowerBookingsNew = () => {
             <button style={styles.viewBtn(view === 'calendar')} onClick={() => setView('calendar')}>Calendar</button>
           </div>
           <div className="flx-actions" style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAnnouncements(true);
+                loadAnnouncements();
+              }}
+              aria-label={`Open announcements${announcements.length ? `, ${announcements.length} recent` : ''}`}
+              title="Team announcements"
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '42px',
+                minWidth: '42px',
+                border: '1px solid #EAE7E2',
+                borderRadius: '8px',
+                background: '#fff',
+                color: '#475A43',
+                cursor: 'pointer',
+              }}
+            >
+              <Bell size={18} />
+              {announcements.length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  right: '-5px',
+                  minWidth: '17px',
+                  height: '17px',
+                  padding: '0 4px',
+                  borderRadius: '999px',
+                  background: '#BE185D',
+                  color: '#fff',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  lineHeight: '17px',
+                }}>
+                  {announcements.length}
+                </span>
+              )}
+            </button>
             <button
               style={{
                 ...styles.placeBookingBtn,
@@ -2012,27 +2108,20 @@ const FlowerBookingsNew = () => {
         )}
         <div style={styles.bookingInfo}>
           <div className="fb-booking-name" style={styles.bookingName}>
-            {b.flower_type || b.arrangement_name || product.title}
-            {lineItems.length > 1 && <span className="flower-quantity-chip">+{lineItems.length - 1} more</span>}
-            {Number(b.quantity) > 1 && <span className="flower-quantity-chip">×{b.quantity}</span>}
+            {lineItems.length > 0
+              ? lineItems.map(item => item.name).join(' · ')
+              : (b.flower_type || b.arrangement_name || product.title)}
             {wasEdited && <span className="flower-edited-chip">Updated</span>}
           </div>
           <div className="fb-card-meta" style={styles.bookingMeta}>
             {lineItems.length > 0 && (
-              <div style={styles.metaRow}>Arrangements: {lineItems.map(item => `${item.name} ×${item.quantity}`).join(' · ')}</div>
+              <div style={styles.metaRow}>Arrangements: {lineItems.map(item => item.name).join(' · ')}</div>
             )}
             {(b.flower_description || lineItems.length > 0) && (
               <div style={styles.metaRow}>Flowers: {b.flower_description || lineItems.map(i => i.name).join(' · ')}</div>
             )}
             {displayText(b.deceased_name) && <div style={styles.metaRow}><User size={14} /> {displayText(b.deceased_name)}</div>}
             {initials && <div className="flower-card-initials">Dedication: {initials}</div>}
-            {(displayText(b.booked_by || b.customer) || displayText(b.customer_phone || b.phone)) && (
-              <div style={styles.metaRow}>
-                <User size={14} />
-                {displayText(b.booked_by || b.customer) && ` Booked by ${displayText(b.booked_by || b.customer)}`}
-                {displayText(b.customer_phone || b.phone) && ` · ${displayText(b.customer_phone || b.phone)}`}
-              </div>
-            )}
             {(b.branch || b.funeral_home) && getBranches().length > 1 && (
               <div style={styles.metaRow}>
                 <Home size={14} /> {resolveBranchName(b.branch || b.funeral_home)}
@@ -2047,8 +2136,11 @@ const FlowerBookingsNew = () => {
           </div>
         </div>
         <div className="flx-card-right" style={styles.bookingRight}>
-          {/* No "Expected By" line — the value it showed was the day the order
-              was BOOKED, which the feed header already groups under. */}
+          {b.created_at && (
+            <div style={{ fontSize: '11px', color: '#9C9389', whiteSpace: 'nowrap' }}>
+              {timeAgo(b.created_at)}
+            </div>
+          )}
           <div className="fb-card-pills" style={styles.pillsRow}>
             <span style={{ ...styles.priorityPill, background: priority.toLowerCase() === 'high' ? '#FEE2E2' : priority.toLowerCase() === 'low' ? '#DCFCE7' : '#F1F5F9', color: priority.toLowerCase() === 'high' ? '#B91C1C' : priority.toLowerCase() === 'low' ? '#166534' : '#475569' }}>
               {priority}
@@ -2332,22 +2424,22 @@ const FlowerBookingsNew = () => {
             onChange={e => setNewBooking(prev => ({ ...prev, coffin_type: e.target.value }))}
           />
 
-          <label style={lbl} htmlFor="flower-service-type">Service Type</label>
-          <input
-            id="flower-service-type"
-            type="text"
-            style={{ ...inp, marginBottom: '22px' }}
-            placeholder="e.g. Funeral service before final burial"
-            value={newBooking.service_type}
-            onChange={e => setNewBooking(prev => ({ ...prev, service_type: e.target.value }))}
-          />
-
           <label style={{ ...lbl, marginBottom: '12px' }}>Funeral / Service Date <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span></label>
           <input
             type="date"
             style={{ ...inp, marginBottom: '22px' }}
             value={newBooking.funeral_date}
             onChange={e => setNewBooking(prev => ({ ...prev, funeral_date: e.target.value }))}
+          />
+          <label style={{ ...lbl, marginBottom: '12px' }} htmlFor="flower-service-time">
+            Service Time <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span>
+          </label>
+          <input
+            id="flower-service-time"
+            type="time"
+            style={{ ...inp, marginBottom: '22px' }}
+            value={newBooking.service_time}
+            onChange={e => setNewBooking(prev => ({ ...prev, service_time: e.target.value }))}
           />
           <button
             type="button"
@@ -2574,7 +2666,6 @@ const FlowerBookingsNew = () => {
     const contactName = displayText(getBookingNoteTag(b, 'CONTACT'));
     const flowerSize = displayText(b.size || asList(product.sizes).join(', ') || sizeNote);
     const deceasedName = displayText(b.deceased_name);
-    const serviceType = displayText(b.service_type);
     const funeralDate = displayText(b.funeral_date);
     const funeralDateText = funeralDate && !Number.isNaN(new Date(funeralDate).getTime())
       ? fmtDateOnly(funeralDate)
@@ -2625,7 +2716,9 @@ const FlowerBookingsNew = () => {
               Back to bookings
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={styles.detailCrumb}>{shortBookingCode(b)}</span>
+              <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px', background: priority.toLowerCase() === 'high' ? '#FEE2E2' : priority.toLowerCase() === 'low' ? '#DCFCE7' : '#F1F5F9', color: priority.toLowerCase() === 'high' ? '#B91C1C' : priority.toLowerCase() === 'low' ? '#166534' : '#475569' }}>
+                {priority}
+              </span>
               <button onClick={backToList} aria-label="Close details" style={{ background: 'none', border: 'none', color: '#9C9389', fontSize: '26px', lineHeight: 1, cursor: 'pointer', padding: 0 }}>×</button>
             </div>
           </div>
@@ -2661,13 +2754,13 @@ const FlowerBookingsNew = () => {
             </div>
           )}
           <div style={styles.detailBody}>
-            <div style={styles.chipRow}>
-              <div style={styles.chipPrimary}>{shortBookingCode(b)}</div>
-              <span style={{ ...styles.priorityPill, fontSize: '12px', padding: '6px 12px' }}>{priority} Priority</span>
-              {edited && <span className="flower-edited-chip">Updated</span>}
-            </div>
+            {edited && (
+              <div style={styles.chipRow}>
+                <span className="flower-edited-chip">Updated</span>
+              </div>
+            )}
 
-            <h2 className="flower-detail-title" style={styles.detailTitle}>{product.title}{lineItems.length > 1 ? ` +${lineItems.length - 1} more` : ''}</h2>
+            <h2 className="flower-detail-title" style={styles.detailTitle}>{lineItems.length > 0 ? lineItems.map(item => item.name).join(' · ') : product.title}</h2>
             <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#8A8178' }}>
               {asList(product.types).join(' · ') || 'Custom Arrangement'}
             </p>
@@ -2739,7 +2832,7 @@ const FlowerBookingsNew = () => {
             {/* ── Selected arrangements ── */}
             <div style={{ background: '#fff', border: '1px solid #EAE7E2', borderRadius: '14px', padding: '14px 16px', marginBottom: '24px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '10px' }}>
-                Arrangements in this Order · {Number(b.quantity) || lineItems.reduce((total, item) => total + item.quantity, 0)} total
+                Arrangements in this Order
               </div>
               {lineItems.map((li, i) => {
                 const s = arrangements.find(a => String(a.arrangement_id || a.id) === String(li.arrangement_id) || a.title === li.name);
@@ -2770,7 +2863,7 @@ const FlowerBookingsNew = () => {
                       </button>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#1C1A17' }}>{li.name} <span className="flower-quantity-chip">×{li.quantity}</span></div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#1C1A17' }}>{li.name}</div>
                       {sampleDetails && <div style={{ fontSize: '11px', color: '#9C9389' }}>{sampleDetails}</div>}
                     </div>
                   </div>
@@ -2878,12 +2971,6 @@ const FlowerBookingsNew = () => {
                   <dt style={styles.specLabel}>Funeral / Service Date</dt>
                   <dd style={styles.specValue}>{funeralDateText}</dd>
                 </div>}
-                {serviceType && (
-                  <div style={styles.specRow}>
-                    <dt style={styles.specLabel}>Service Type</dt>
-                    <dd style={styles.specValue}>{serviceType}</dd>
-                  </div>
-                )}
                 {routeText && (
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Route / Service Location</dt>
@@ -2902,10 +2989,6 @@ const FlowerBookingsNew = () => {
                     <dd style={styles.specValue}>{contactName}{bookerPhone ? ` · ${bookerPhone}` : ''}</dd>
                   </div>
                 )}
-                <div style={styles.specRow}>
-                  <dt style={styles.specLabel}>Total Quantity</dt>
-                  <dd style={styles.specValue}>{Number(b.quantity) || lineItems.reduce((total, item) => total + item.quantity, 0)}</dd>
-                </div>
                 {bookerName && <div style={styles.specRow}>
                   <dt style={styles.specLabel}>Booked By</dt>
                   <dd style={styles.specValue}>{bookerName}</dd>
@@ -2999,6 +3082,91 @@ const FlowerBookingsNew = () => {
           <div style={styles.panelScrim} onClick={() => setView('list')} />
           {renderNewBooking()}
         </>
+      )}
+
+      {showAnnouncements && (
+        <div
+          role="presentation"
+          onClick={() => setShowAnnouncements(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            background: 'rgba(20, 25, 20, 0.48)',
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="flower-announcements-title"
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: 'min(560px, 100%)',
+              maxHeight: 'min(760px, 92vh)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              borderRadius: '14px',
+              background: '#fff',
+              boxShadow: '0 20px 60px rgba(0,0,0,.24)',
+            }}
+          >
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid #EAE7E2' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#475A43' }}>
+                <Bell size={19} />
+                <h2 id="flower-announcements-title" style={{ margin: 0, color: '#1C1A17', fontSize: '18px' }}>Team announcements</h2>
+              </div>
+              <button type="button" aria-label="Close announcements" onClick={() => setShowAnnouncements(false)} style={{ border: 0, background: 'transparent', color: '#716B63', fontSize: '24px', cursor: 'pointer' }}>×</button>
+            </header>
+            <div style={{ overflowY: 'auto', padding: '16px 20px' }}>
+              <form onSubmit={postAnnouncement} style={{ display: 'grid', gap: '10px', paddingBottom: '18px', borderBottom: '1px solid #EAE7E2' }}>
+                <label style={{ display: 'grid', gap: '6px', color: '#574F47', fontSize: '12px', fontWeight: 700 }}>
+                  Announcement title
+                  <input
+                    value={announcementDraft.title}
+                    onChange={event => setAnnouncementDraft(prev => ({ ...prev, title: event.target.value }))}
+                    maxLength={120}
+                    required
+                    placeholder="e.g. Church stand returns"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #EAE7E2', borderRadius: '8px', font: 'inherit' }}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: '6px', color: '#574F47', fontSize: '12px', fontWeight: 700 }}>
+                  Message
+                  <textarea
+                    value={announcementDraft.message}
+                    onChange={event => setAnnouncementDraft(prev => ({ ...prev, message: event.target.value }))}
+                    maxLength={3000}
+                    required
+                    rows={3}
+                    placeholder="Share a clarification or important team update."
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #EAE7E2', borderRadius: '8px', font: 'inherit', resize: 'vertical' }}
+                  />
+                </label>
+                <button type="submit" disabled={postingAnnouncement} style={{ justifySelf: 'end', border: 0, borderRadius: '8px', padding: '10px 15px', background: postingAnnouncement ? '#9C9389' : '#475A43', color: '#fff', fontWeight: 700, cursor: postingAnnouncement ? 'wait' : 'pointer' }}>
+                  {postingAnnouncement ? 'Posting…' : 'Post announcement'}
+                </button>
+              </form>
+              <div style={{ display: 'grid', gap: '10px', paddingTop: '16px' }}>
+                {announcements.length === 0 ? (
+                  <p style={{ margin: 0, padding: '18px 4px', color: '#716B63', textAlign: 'center', fontSize: '13px' }}>No team announcements yet.</p>
+                ) : announcements.map(announcement => (
+                  <article key={announcement.id} style={{ padding: '12px 14px', border: '1px solid #EAE7E2', borderRadius: '10px', background: '#FAF9F7' }}>
+                    <h3 style={{ margin: '0 0 6px', color: '#1C1A17', fontSize: '14px' }}>{announcement.title}</h3>
+                    <p style={{ margin: 0, color: '#574F47', fontSize: '13px', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{announcement.message}</p>
+                    <small style={{ display: 'block', marginTop: '9px', color: '#9C9389', fontSize: '11px' }}>
+                      {announcement.created_by ? `${announcement.created_by} · ` : ''}{announcement.created_at ? new Date(announcement.created_at).toLocaleString() : ''}
+                    </small>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
       )}
 
       {previewSample && (
