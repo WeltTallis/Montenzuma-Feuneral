@@ -24,7 +24,7 @@ export const COLORS = {
 
 };
 
-const LINEUP_GRID_COLUMNS = 'minmax(150px, 1.15fr) minmax(110px, .8fr) minmax(140px, 1.1fr) minmax(155px, 1.2fr) minmax(80px, .55fr) minmax(100px, .75fr) minmax(145px, 1fr) minmax(100px, .7fr)';
+const LINEUP_GRID_COLUMNS = 'minmax(150px, 1.15fr) minmax(110px, .8fr) minmax(140px, 1.1fr) minmax(155px, 1.2fr) minmax(80px, .55fr) minmax(165px, 1fr) minmax(100px, .7fr)';
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -569,11 +569,18 @@ const DailyHeadingActions = styled.div`
   @media (max-width: 420px) { gap: 7px; }
 `;
 
+const StandbyControl = styled.div`
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+  margin-left: auto;
+  @media (max-width: 420px) { width: 100%; }
+`;
+
 const StandbyEditor = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
   label { color: #475569; font-size: 10px; font-weight: 800; white-space: nowrap; }
   input {
     width: 150px;
@@ -588,7 +595,6 @@ const StandbyEditor = styled.div`
     font-size: 10px;
   }
   input:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
-  @media (max-width: 640px) { margin-left: 0; }
   @media (max-width: 420px) { width: 100%; input { flex: 1; } }
 `;
 
@@ -799,62 +805,6 @@ const DayPanelHeader = styled.div`
   span { color: #8a8f98; font-size: 11px; font-weight: 700; white-space: nowrap; }
 `;
 
-const BookingLineup = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  align-items: end;
-  gap: 10px;
-  min-width: 1026px;
-  margin: 0 12px 14px;
-  padding: 12px 14px;
-  border: 1px solid #E3DDD0;
-  border-top: 0;
-  border-radius: 0 0 8px 8px;
-  background: #F3EFE6;
-  label { display: grid; min-width: 0; gap: 5px; color: #6B6862; font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-  input, select {
-    width: 100%;
-    min-width: 0;
-    min-height: 36px;
-    padding: 0 9px;
-    border: 1px solid #E3DDD0;
-    border-radius: 6px;
-    background: #fff;
-    color: #15171A;
-    font: inherit;
-    font-size: 11px;
-    text-transform: none;
-    letter-spacing: normal;
-    &:focus { outline: 2px solid #EBEFEF; border-color: #3D4F47; }
-  }
-  button {
-    min-height: 36px;
-    padding: 0 13px;
-    border: 1px solid #3D4F47;
-    border-radius: 6px;
-    background: #3D4F47;
-    color: #fff;
-    font: inherit;
-    font-size: 10px;
-    font-weight: 800;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background .15s ease, transform .15s ease;
-    &:hover:not(:disabled) { background: #15171A; transform: translateY(-1px); }
-    &:disabled { opacity: .55; cursor: wait; }
-  }
-  @media (max-width: 700px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 0 8px 12px;
-    padding: 11px;
-    button { grid-column: 1 / -1; }
-  }
-  @media (max-width: 420px) {
-    grid-template-columns: minmax(0, 1fr);
-    button { grid-column: auto; }
-  }
-`;
-
 const BackToCalendar = styled.button`
   min-height: 30px;
   padding: 0 12px;
@@ -966,17 +916,6 @@ const LineupDriver = styled.span`
   .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   &.unassigned { color: #6B6862; font-size: 11px; font-style: italic; font-weight: 400; }
   small { color: #6B6862; font-size: 10px; font-weight: 400; }
-`;
-
-const LineupPriority = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: ${p => p.$color};
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  &::before { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: ${p => p.$color}; content: ''; }
 `;
 
 const LineupStatus = styled.strong`
@@ -1364,9 +1303,7 @@ const HearseCalendar = ({
   standbyDriverName = '',
   lineupLoading = false,
   savingStandby = false,
-  savingBookingLineup = null,
   onSaveStandby,
-  onSaveBookingLineup,
   onItemClick,
   onCreateBooking,
   selectedDate,
@@ -1380,7 +1317,6 @@ const HearseCalendar = ({
   const [dayViewMode, setDayViewMode] = useState('schedule');
   const [editingStandby, setEditingStandby] = useState(false);
   const [standbyDraft, setStandbyDraft] = useState('');
-  const [lineupDrafts, setLineupDrafts] = useState({});
   // ══ V3 MONTH GRID HOOKS ═══════════════════════════════════════════════════
   // These power the plain-HTML month grid that replaces FullCalendar.
   // The colored cards use inline backgroundColor — bulletproof against CSS.
@@ -2021,7 +1957,6 @@ const HearseCalendar = ({
         <DailyView>
           <DailyHeading>
             <DailyHeadingActions>
-              <TodayButton type="button" onClick={() => selectDay(toDateKey(new Date()))}>Today</TodayButton>
               <BackToCalendar type="button" onClick={() => setDayViewDate(null)}>Back to calendar</BackToCalendar>
               <SelectedDateBadge>
                 <span className="dot" />
@@ -2046,67 +1981,69 @@ const HearseCalendar = ({
               >
                 <Users size={14} aria-hidden="true" /> Driver lineup
               </ViewSwitchButton>
-              {lineupLoading ? (
-                <StandbyEditor><label>Standby</label><span>Loading…</span></StandbyEditor>
-              ) : resolvedStandbyDriverName && !editingStandby ? (
-                <StandbyBadge aria-label={`Standby driver for this day: ${resolvedStandbyDriverName}`}>
-                  <span className="icon"><Users size={13} aria-hidden="true" /></span>
-                  <span className="label">Standby</span>
-                  <span className="name">{resolvedStandbyDriverName}</span>
-                  <button type="button" onClick={() => setEditingStandby(true)}>Edit</button>
-                </StandbyBadge>
-              ) : (
-                <StandbyEditor>
-                  <label htmlFor="daily-standby-driver">Standby</label>
-                  <input
-                    id="daily-standby-driver"
-                    type="text"
-                    list="daily-standby-driver-options"
-                    value={standbyDraft}
-                    onChange={(event) => setStandbyDraft(event.target.value)}
-                    disabled={savingStandby}
-                    placeholder="Enter driver name"
-                    aria-label="Standby driver for this day"
-                    maxLength={200}
-                  />
-                  <datalist id="daily-standby-driver-options">
-                    {registeredDrivers.map((driver) => (
-                      <option
-                        key={driver.driver_id ?? driver.id}
-                        value={driver.driver_name || driver.full_name || `Driver ${driver.driver_id ?? driver.id}`}
-                      />
-                    ))}
-                  </datalist>
-                  <TodayButton
-                    type="button"
-                    disabled={savingStandby || standbyDraft.trim() === resolvedStandbyDriverName.trim()}
-                    onClick={() => {
-                      const enteredName = standbyDraft.trim();
-                      const selectedDriver = registeredDrivers.find((driver) =>
-                        String(driver.driver_name || driver.full_name || '').trim().toLowerCase() === enteredName.toLowerCase()
-                      );
-                      onSaveStandby?.({
-                        driver_id: enteredName && selectedDriver ? selectedDriver.driver_id ?? selectedDriver.id : null,
-                        driver_name: enteredName || null,
-                      });
-                    }}
-                  >
-                    {savingStandby ? 'Saving…' : standbyDraft.trim() ? 'Save standby' : 'Clear standby'}
-                  </TodayButton>
-                  {resolvedStandbyDriverName && (
-                    <ViewSwitchButton
-                      type="button"
+              <StandbyControl>
+                {lineupLoading ? (
+                  <StandbyEditor><label>Standby</label><span>Loading…</span></StandbyEditor>
+                ) : resolvedStandbyDriverName && !editingStandby ? (
+                  <StandbyBadge aria-label={`Standby driver for this day: ${resolvedStandbyDriverName}`}>
+                    <span className="icon"><Users size={13} aria-hidden="true" /></span>
+                    <span className="label">Standby</span>
+                    <span className="name">{resolvedStandbyDriverName}</span>
+                    <button type="button" onClick={() => setEditingStandby(true)}>Edit</button>
+                  </StandbyBadge>
+                ) : (
+                  <StandbyEditor>
+                    <label htmlFor="daily-standby-driver">Standby</label>
+                    <input
+                      id="daily-standby-driver"
+                      type="text"
+                      list="daily-standby-driver-options"
+                      value={standbyDraft}
+                      onChange={(event) => setStandbyDraft(event.target.value)}
                       disabled={savingStandby}
+                      placeholder="Enter driver name"
+                      aria-label="Standby driver for this day"
+                      maxLength={200}
+                    />
+                    <datalist id="daily-standby-driver-options">
+                      {registeredDrivers.map((driver) => (
+                        <option
+                          key={driver.driver_id ?? driver.id}
+                          value={driver.driver_name || driver.full_name || `Driver ${driver.driver_id ?? driver.id}`}
+                        />
+                      ))}
+                    </datalist>
+                    <TodayButton
+                      type="button"
+                      disabled={savingStandby || standbyDraft.trim() === resolvedStandbyDriverName.trim()}
                       onClick={() => {
-                        setStandbyDraft(resolvedStandbyDriverName);
-                        setEditingStandby(false);
+                        const enteredName = standbyDraft.trim();
+                        const selectedDriver = registeredDrivers.find((driver) =>
+                          String(driver.driver_name || driver.full_name || '').trim().toLowerCase() === enteredName.toLowerCase()
+                        );
+                        onSaveStandby?.({
+                          driver_id: enteredName && selectedDriver ? selectedDriver.driver_id ?? selectedDriver.id : null,
+                          driver_name: enteredName || null,
+                        });
                       }}
                     >
-                      Cancel
-                    </ViewSwitchButton>
-                  )}
-                </StandbyEditor>
-              )}
+                      {savingStandby ? 'Saving…' : standbyDraft.trim() ? 'Save standby' : 'Clear standby'}
+                    </TodayButton>
+                    {resolvedStandbyDriverName && (
+                      <ViewSwitchButton
+                        type="button"
+                        disabled={savingStandby}
+                        onClick={() => {
+                          setStandbyDraft(resolvedStandbyDriverName);
+                          setEditingStandby(false);
+                        }}
+                      >
+                        Cancel
+                      </ViewSwitchButton>
+                    )}
+                  </StandbyEditor>
+                )}
+              </StandbyControl>
             </DailyHeadingActions>
           </DailyHeading>
 
@@ -2156,7 +2093,6 @@ const HearseCalendar = ({
                   <span>Pickup</span>
                   <span>Destination</span>
                   <span>Time</span>
-                  <span>Priority</span>
                   <span>Driver</span>
                   <span>Status</span>
                 </LineupTableHeader>
@@ -2183,13 +2119,6 @@ const HearseCalendar = ({
                 const { from: routeFrom, to: routeTo } = getBookingRoute(booking);
                 const driverPhone = assignedDriver?.driver_phone || assignedDriver?.phone_number || assignedDriver?.phone || '';
                 const assistantName = booking.assistant_name || '';
-                const priority = booking.priority || 'Normal';
-                const priorityColor = ({
-                  critical: '#9B4A3F',
-                  high: '#D97843',
-                  medium: '#C9A227',
-                  low: '#475A43',
-                })[String(priority).toLowerCase()] || '#6B6862';
                 const lineupStatusColor = ({
                   pending: '#9B4A3F',
                   booked: '#8B7355',
@@ -2203,13 +2132,6 @@ const HearseCalendar = ({
                   cancelled: '#9B4A3F',
                 })[String(booking.status || '').toLowerCase()] || '#6B6862';
                 const bookingKey = String(booking.booking_id || booking.id);
-                const lineup = lineupDrafts[bookingKey] || {
-                  driverId: booking.driver_id == null ? '' : String(booking.driver_id),
-                  driverName: booking.manual_driver_name || (!booking.driver_id ? booking.assigned_driver_name || '' : ''),
-                  assistantName: booking.assistant_name || '',
-                  assistantPhone: booking.assistant_phone || '',
-                };
-                const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
                 return (
                   <React.Fragment key={bookingKey}>
                     {dayViewMode === 'lineup' ? (
@@ -2225,7 +2147,6 @@ const HearseCalendar = ({
                         <LineupCell>{routeFrom}</LineupCell>
                         <LineupCell>{routeTo}</LineupCell>
                         <LineupCell><strong>{schedule.allDay ? 'All Day' : schedule.fs || 'Not set'}</strong></LineupCell>
-                        <LineupCell><LineupPriority $color={priorityColor}>{priority}</LineupPriority></LineupCell>
                         <LineupCell>
                           <LineupDriver className={assignedDriverName === 'Unassigned' ? 'unassigned' : ''}>
                             {assignedDriverName === 'Unassigned'
@@ -2282,102 +2203,6 @@ const HearseCalendar = ({
                         </DayBookingBody>
                       </DayBookingRow>
                     )}
-                    {dayViewMode === 'lineup' && <BookingLineup>
-                      <label>
-                        Select driver (optional)
-                        <select
-                          value={lineup.driverId}
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event) => {
-                            const selectedId = event.target.value;
-                            const selectedDriver = drivers.find((driver) =>
-                              String(driver.driver_id ?? driver.id) === selectedId
-                            );
-                            const isNumericDriverId = /^[1-9]\d*$/.test(selectedId);
-                            setLineupDrafts((current) => ({
-                              ...current,
-                              [bookingKey]: {
-                                ...lineup,
-                                driverId: isNumericDriverId ? selectedId : '',
-                                driverName: isNumericDriverId ? '' : selectedDriver?.driver_name || selectedDriver?.full_name || '',
-                              },
-                            }));
-                          }}
-                          aria-label={`Assign driver for booking ${bookingId}`}
-                        >
-                          <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
-                          {drivers.map((driver) => {
-                            const driverId = driver.driver_id ?? driver.id;
-                            const assignedElsewhere = dayBookings.some((other) =>
-                              String(other.booking_id || other.id) !== bookingKey
-                              && String(other.driver_id || '') === String(driverId)
-                              && activeStatuses.has(String(other.status || '').toLowerCase()));
-                            const isStandby = String(standbyDriverId || '') === String(driverId);
-                            return (
-                              <option
-                                key={driverId}
-                                value={driverId}
-                                disabled={(assignedElsewhere || isStandby) && String(lineup.driverId) !== String(driverId)}
-                              >
-                                {driver.driver_name || driver.full_name || `Driver ${driverId}`}
-                                {isStandby ? ' · standby' : assignedElsewhere ? ' · assigned to another booking' : ''}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </label>
-                      <label>
-                        Or enter driver name
-                        <input
-                          value={lineup.driverName}
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event) => setLineupDrafts((current) => ({
-                            ...current,
-                            [bookingKey]: { ...lineup, driverId: '', driverName: event.target.value },
-                          }))}
-                          placeholder="Type driver name"
-                          aria-label={`Enter driver name for booking ${bookingId}`}
-                        />
-                      </label>
-                      <label>
-                        Assistant name (optional)
-                        <input
-                          value={lineup.assistantName}
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event) => setLineupDrafts((current) => ({
-                            ...current,
-                            [bookingKey]: { ...lineup, assistantName: event.target.value },
-                          }))}
-                          placeholder="Enter assistant name"
-                          aria-label={`Assistant name for booking ${bookingId}`}
-                        />
-                      </label>
-                      <label>
-                        Assistant phone
-                        <input
-                          value={lineup.assistantPhone}
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event) => setLineupDrafts((current) => ({
-                            ...current,
-                            [bookingKey]: { ...lineup, assistantPhone: event.target.value },
-                          }))}
-                          placeholder="Optional contact"
-                          aria-label={`Assistant phone for booking ${bookingId}`}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        disabled={String(savingBookingLineup || '') === bookingKey}
-                        onClick={() => onSaveBookingLineup?.(booking.booking_id || booking.id, {
-                          driver_id: lineup.driverName.trim() ? null : lineup.driverId || null,
-                          driver_name: lineup.driverName.trim(),
-                          assistant_name: lineup.assistantName,
-                          assistant_phone: lineup.assistantPhone,
-                        })}
-                      >
-                        {String(savingBookingLineup || '') === bookingKey ? 'Saving…' : 'Save lineup'}
-                      </button>
-                    </BookingLineup>}
                   </React.Fragment>
                 );
               }) : (

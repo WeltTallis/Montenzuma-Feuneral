@@ -1,9 +1,4 @@
-// ===== Shared status colours for Hearse bookings =====
-// These are the exact status → colour values used by the Day Timeline.
-// The Monthly / Weekly / Day calendar views import them too so every
-// view renders the same status with the same colour.
 
-// Card / event / dot colour — matches the DayTimeline card palette.
 export const STATUS_COLOR = {
   pending: '#d97706',
   booked: '#00296B',
@@ -18,10 +13,7 @@ export const STATUS_COLOR = {
   maintenance: '#03071E',
 };
 
-// One combined config used by the calendar views:
-//   { label, color, bg, textColor }
-// `bg` is a light badge background and `textColor` is readable on it,
-// both matched to the corresponding card colour.
+
 export const STATUS_CONFIG = {
   pending: { label: 'Pending', color: '#d97706', bg: '#FFFBEB', textColor: '#92400E' },
   booked: { label: 'Booked', color: '#00296B', bg: '#EFF6FF', textColor: '#1E40AF' },

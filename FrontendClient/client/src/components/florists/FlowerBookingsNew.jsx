@@ -1,6 +1,6 @@
 
 // Package was only used by the removed icon-box tiles.
-import { Flower2, User, Calendar, X, Check, Home, Phone, Bell } from '../../utils/icons/icons';
+import { Flower2, User, Calendar, X, Check, Home, Phone, Bell, Clock, ChevronRight } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import env from '../../utils/config/env';
@@ -864,6 +864,10 @@ const FlowerBookingsNew = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [editingBookingId, setEditingBookingId] = useState(null);
+  const [serviceTimePickerOpen, setServiceTimePickerOpen] = useState(false);
+  const [draftServiceHour, setDraftServiceHour] = useState('9');
+  const [draftServiceMinute, setDraftServiceMinute] = useState('00');
+  const [draftServicePeriod, setDraftServicePeriod] = useState('AM');
   const [editingLineItems, setEditingLineItems] = useState([]);
   const [editingInitialQuantity, setEditingInitialQuantity] = useState(null);
   const [previewSample, setPreviewSample] = useState(null);
@@ -1242,6 +1246,7 @@ const FlowerBookingsNew = () => {
 
   const openNewBookingForm = useCallback((dateStr) => {
     setEditingBookingId(null);
+    setServiceTimePickerOpen(false);
     setEditingLineItems([]);
     setEditingInitialQuantity(null);
     setBookingSamplePreviews([]);
@@ -1285,6 +1290,7 @@ const FlowerBookingsNew = () => {
     setEditingLineItems(lineItems);
     setEditingInitialQuantity(lineItems[0]?.quantity || 1);
     setEditingBookingId(String(booking?.id || booking?.booking_id || ''));
+    setServiceTimePickerOpen(false);
     setNewBooking({
       arrangement_type: lineItems.map(item => item.name).join(', '),
       flower_designs: getBookingNoteTag(booking, 'DESIGN'),
@@ -2529,13 +2535,150 @@ const FlowerBookingsNew = () => {
           <label style={{ ...lbl, marginBottom: '12px' }} htmlFor="flower-service-time">
             Service Time <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span>
           </label>
-          <input
-            id="flower-service-time"
-            type="time"
-            style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.service_time}
-            onChange={e => setNewBooking(prev => ({ ...prev, service_time: e.target.value }))}
-          />
+          <div style={{ position: 'relative', marginBottom: '22px' }}>
+            <button
+              id="flower-service-time"
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={serviceTimePickerOpen}
+              onClick={() => {
+                if (!serviceTimePickerOpen) {
+                  const [hour, minute] = newBooking.service_time
+                    ? newBooking.service_time.split(':').map(Number)
+                    : [9, 0];
+                  setDraftServiceHour(String(hour % 12 || 12));
+                  setDraftServiceMinute(String(minute || 0).padStart(2, '0'));
+                  setDraftServicePeriod(hour >= 12 ? 'PM' : 'AM');
+                }
+                setServiceTimePickerOpen(open => !open);
+              }}
+              style={{
+                ...inp,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: 0,
+                textAlign: 'left',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              <Clock size={17} />
+              <span style={{ flex: 1 }}>
+                {newBooking.service_time
+                  ? (() => {
+                    const [hour, minute] = newBooking.service_time.split(':').map(Number);
+                    return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
+                  })()
+                  : 'Select service time'}
+              </span>
+              <ChevronRight size={15} />
+            </button>
+            {serviceTimePickerOpen && (
+              <div
+                role="dialog"
+                aria-label="Select service time"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  zIndex: 30,
+                  width: 'min(300px, calc(100vw - 56px))',
+                  padding: '14px 16px 16px',
+                  border: '1px solid #E3DDD0',
+                  borderRadius: '12px',
+                  background: '#fff',
+                  boxShadow: '0 18px 48px rgba(21, 23, 26, .18)',
+                }}
+              >
+                <div style={{ marginBottom: '8px', color: '#8A8780', fontSize: '10px', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>Service time</div>
+                <div style={{ marginBottom: '12px', color: '#15171A', fontSize: '28px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
+                  {draftServiceHour}:{draftServiceMinute}<span style={{ marginLeft: '6px', color: '#6B6862', fontSize: '13px' }}>{draftServicePeriod}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <label style={{ display: 'grid', gap: '5px', color: '#6B6862', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>
+                    Hour
+                    <select
+                      value={draftServiceHour}
+                      onChange={event => setDraftServiceHour(event.target.value)}
+                      style={{ ...inp, marginBottom: 0, padding: '8px 10px', fontWeight: 700 }}
+                    >
+                      {Array.from({ length: 12 }, (_, index) => String(index + 1)).map(hour => (
+                        <option key={hour} value={hour}>{hour}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: 'grid', gap: '5px', color: '#6B6862', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>
+                    Minute
+                    <select
+                      value={draftServiceMinute}
+                      onChange={event => setDraftServiceMinute(event.target.value)}
+                      style={{ ...inp, marginBottom: 0, padding: '8px 10px', fontWeight: 700 }}
+                    >
+                      {Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0')).map(minute => (
+                        <option key={minute} value={minute}>{minute}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '10px' }}>
+                  {['AM', 'PM'].map(period => (
+                    <button
+                      key={period}
+                      type="button"
+                      aria-pressed={draftServicePeriod === period}
+                      onClick={() => setDraftServicePeriod(period)}
+                      style={{
+                        height: '36px',
+                        border: `1px solid ${draftServicePeriod === period ? '#15171A' : '#E3DDD0'}`,
+                        borderRadius: '8px',
+                        color: draftServicePeriod === period ? '#fff' : '#6B6862',
+                        background: draftServicePeriod === period ? '#15171A' : '#fff',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewBooking(prev => ({ ...prev, service_time: '' }));
+                      setServiceTimePickerOpen(false);
+                    }}
+                    style={{ height: '36px', border: '1px solid #E3DDD0', borderRadius: '8px', background: '#fff', color: '#6B6862', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setServiceTimePickerOpen(false)}
+                    style={{ height: '36px', border: '1px solid #E3DDD0', borderRadius: '8px', background: '#fff', color: '#6B6862', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const hour12 = Number(draftServiceHour);
+                      const hour24 = (hour12 % 12) + (draftServicePeriod === 'PM' ? 12 : 0);
+                      setNewBooking(prev => ({
+                        ...prev,
+                        service_time: `${String(hour24).padStart(2, '0')}:${draftServiceMinute}`,
+                      }));
+                      setServiceTimePickerOpen(false);
+                    }}
+                    style={{ height: '36px', border: '1px solid #3D4F47', borderRadius: '8px', background: '#3D4F47', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => setNewBooking(prev => ({ ...prev, funeral_date: fmtDateStr(addDays(new Date(), 1)) }))}

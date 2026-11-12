@@ -203,7 +203,9 @@ export const saveStandbyDriver = asyncHandler(async (req: Request, res: Response
         await connection.rollback();
         sendError(res, error, 'Unable to save the standby driver.');
     } finally {
+
         connection.release();
+
     }
 });
 
@@ -214,10 +216,9 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
     const driverId = req.body.driver_id == null || req.body.driver_id === '' ? null : Number(req.body.driver_id);
     const manualDriverName = String(req.body.driver_name || '').trim();
     const assistantName = String(req.body.assistant_name || '').trim();
-    const assistantPhone = String(req.body.assistant_phone || '').trim();
     if (!Number.isInteger(bookingId) || bookingId < 1
         || (driverId !== null && (!Number.isInteger(driverId) || driverId < 1))
-        || manualDriverName.length > 200 || assistantName.length > 200 || assistantPhone.length > 50) {
+        || manualDriverName.length > 200 || assistantName.length > 200) {
         res.status(400).json({ success: false, message: 'Enter valid booking, driver and assistant details.' });
         return;
     }
@@ -246,9 +247,9 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
         }
         await connection.query(
             `UPDATE hearse_bookings hb
-             SET driver_id = ?, manual_driver_name = ?, assistant_name = ?, assistant_phone = ?, updated_at = ?
+             SET driver_id = ?, manual_driver_name = ?, assistant_name = ?, updated_at = ?
              WHERE hb.id = ? AND ${tenantFilter.clause}`,
-            [driverId, driverId === null ? manualDriverName || null : null, assistantName || null, assistantPhone || null, new Date(), bookingId, ...tenantFilter.params]
+            [driverId, driverId === null ? manualDriverName || null : null, assistantName || null, new Date(), bookingId, ...tenantFilter.params]
         );
         await connection.commit();
         await invalidateHearseCache(req);
@@ -259,7 +260,6 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
             driver_id: driverId,
             driver_name: driverId === null ? manualDriverName || null : null,
             assistant_name: assistantName || null,
-            assistant_phone: assistantPhone || null,
         });
     } catch (error) {
         await connection.rollback();

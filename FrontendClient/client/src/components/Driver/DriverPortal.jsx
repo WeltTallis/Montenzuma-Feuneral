@@ -172,7 +172,7 @@ function tripTimeLabel(b) {
     return fmtTime(raw);
 }
 
-/* ─── PICKUPS (workshop store dispatches) ─────────────────────────────────
+/* ─── PICKUPS (workshop store dispatches) 
    A "pickup" is a coffin that left the workshop Store shelf and was assigned
    to this driver — see workshop-service storeController (getDriverPickups).
    Rows arrive as raw `store_transactions`; these helpers turn one into the

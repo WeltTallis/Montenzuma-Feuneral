@@ -625,10 +625,9 @@ export default function BookNewHearseModal({
       if (reqId !== fleetReqRef.current) return; // superseded by a newer check
 
       // Build the fleet map: seed from the full hearse list (prop carries model
-      // + status), then merge every day's buckets. The merge lives in a pure
-      // helper so the multi-date rule — a booking on ANY selected date makes the
-      // hearse unavailable for the WHOLE selection — is unit-testable outside
-      // the panel (./hearseFleetAvailability.test.js).
+      // + status), then merge every day's buckets. The pure helper applies the
+      // multi-date rule: a booking on ANY selected date makes the hearse
+      // unavailable for the WHOLE selection.
       // It runs in TWO passes because one interleaved day-by-day loop let a
       // later day's `avail` list overwrite an earlier day's booking: with
       // "3 dates selected, 1 already booked" the row used to show "Free" when

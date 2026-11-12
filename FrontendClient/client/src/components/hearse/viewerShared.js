@@ -1,11 +1,8 @@
-// ===== Shared constants, helpers and embeddable stylesheet =====
-// Used by the external daily (dailyView.jsx) and weekly (weeklyView.jsx) hearse
-// dispatch viewers so both render with identical styling and data rules.
+
 
 export const HH = 68;
 
-// Maximum height of a booking card (px) - prevents single all-day bookings
-// from stretching the whole grid; cards cap at about one hour slot.
+
 export const MAX_H = 64;
 
 export const BR = {
@@ -16,9 +13,7 @@ export const BR = {
   kisumu: { name: 'Kisumu', color: '#EA580C' }
 };
 
-// Real branch name mapping from backend slugs → human-readable names.
-// The backend stores the complete branch slug (e.g. "montenzuma-monalisa-feuneral-home-machakos")
-// in booking.branch / booking.branch_slug. This map resolves those to display names.
+
 export const BRANCH_SLUG_TO_NAME = {
   // Parent / main branches (complete slugs)
   'montenzuma-monalisa-feuneral-home-nairobi': 'Nairobi',
@@ -141,12 +136,12 @@ export function resolveBranchName(booking) {
 // For single-day bookings, returns the branch color.
 export function resolveBranchColor(booking) {
   if (!booking) return '#6B7280';
-  
+
   // Multi-day bookings get their own distinct color
   if (isMultiDay(booking)) {
     return getMultiDayColor(booking);
   }
-  
+
   const slug = booking.branch_slug || booking.branchSlug || booking.branch || 'nairobi';
   return BR[slug]?.color || '#6B7280';
 }

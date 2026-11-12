@@ -10,9 +10,9 @@ import { useSocket } from '../../utils/context/socketContext';
 // Journal" nav item; the Journal now lives inside the dashboard's Store view.
 import { LayoutDashboard, Users, FileText, Calendar, Box, Hammer, ShoppingCart, Package, Beaker, Activity, LifeBuoy, Settings, LogOut, Menu, X, ChevronLeft, ChevronRight } from '../../utils/icons/icons';
 
-// ============================================================
+
 // DESIGN SYSTEM
-// ============================================================
+
 
 const COLORS = {
   bgPage: '#F4F5F7',
@@ -592,7 +592,7 @@ const ModernSidebar = ({
 
   const tenantSlug = getTenantSlug();
 
-  // ── Red COUNT badge on "Apply Leave" ──────────────────────────────────────
+  // ── Red COUNT badge on "Apply Leave" 
 
   const [leaveAlertCount, setLeaveAlertCount] = useState(0);
   const { socket, connected } = useSocket();
@@ -607,8 +607,7 @@ const ModernSidebar = ({
     setLeaveAlertCount(countUnseenDecisions(leaveRowsRef.current, uid));
   }, []);
 
-  // Seed once per mount: one request to learn the CURRENT state. The badge must
-  // be right on first paint, before any event has had a chance to fire.
+
   useEffect(() => {
     const uid = getUserId();
     if (!uid) return undefined;
@@ -748,14 +747,14 @@ const ModernSidebar = ({
     }
   }, [isOpen, isMobile, hasMounted]);
 
-  // ============================================================
+
   // FIXED: Build paths with the correct tenant slug
-  // ============================================================
+
   const defaultMenuItems = [
     {
       section: 'Main',
       items: [
-        { icon: Calendar, label: 'Hearse Bookings', path: `/${tenantSlug}/hearse` },
+        { icon: Calendar, label: 'Hearse', path: `/${tenantSlug}/hearse` },
         { icon: Users, label: 'Morgue', path: `/${tenantSlug}/deceased` },
         { icon: Package, label: 'Coffins', path: `/${tenantSlug}/coffins` },
         { icon: Beaker, label: 'Chemicals', path: `/${tenantSlug}/chemicals` },
@@ -764,7 +763,7 @@ const ModernSidebar = ({
         { icon: Box, label: 'Mini Store', path: `/${tenantSlug}/mini-store` },
         { icon: LayoutDashboard, label: 'Dashboard', path: `/${tenantSlug}/dashboard` },
         { icon: Activity, label: 'Insurance', path: `/${tenantSlug}/insurance` },
-        { icon: Users, label: 'HR Attendance', path: `/${tenantSlug}/hr` },
+        { icon: Users, label: 'HR & PR', path: `/${tenantSlug}/hr` },
       ]
     },
     {

@@ -975,6 +975,11 @@ const HearseBookings = () => {
   const [selectedDate, setSelectedDate] = useState(formatDateStr(new Date()));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [bookingLineupDraft, setBookingLineupDraft] = useState({
+    driverId: '',
+    driverName: '',
+    assistantName: '',
+  });
   const [newBookingOpen, setNewBookingOpen] = useState(false);
   const [newBookingInitialDates, setNewBookingInitialDates] = useState([]);
 
@@ -1138,6 +1143,23 @@ const HearseBookings = () => {
     setSavingBookingLineup(String(bookingId));
     try {
       await api.assignBookingLineup(bookingId, lineup);
+      const selectedDriver = drivers.find((driver) =>
+        String(driver.driver_id ?? driver.id) === String(lineup.driver_id ?? '')
+      );
+      const assignedDriverName = lineup.driver_name
+        || selectedDriver?.driver_name
+        || selectedDriver?.full_name
+        || '';
+      setSelectedBooking((current) => {
+        if (!current || String(current.booking_id || current.id) !== String(bookingId)) return current;
+        return {
+          ...current,
+          driver_id: lineup.driver_id || null,
+          manual_driver_name: lineup.driver_name || null,
+          assigned_driver_name: assignedDriverName,
+          assistant_name: lineup.assistant_name || null,
+        };
+      });
       await refreshData();
       notify.success('Booking driver and assistant lineup saved.');
     } catch (error) {
@@ -1145,7 +1167,7 @@ const HearseBookings = () => {
     } finally {
       setSavingBookingLineup(null);
     }
-  }, [refreshData]);
+  }, [drivers, refreshData]);
 
   useEffect(() => {
     if (!socket || !connected) return;
@@ -1227,7 +1249,16 @@ const HearseBookings = () => {
     return { total, pending, inProgress, completed, active };
   }, [bookings]);
 
-  const openDrawer = useCallback((b) => { setSelectedBooking(b); setDrawerOpen(true); setActionMenuId(null); }, []);
+  const openDrawer = useCallback((b) => {
+    setSelectedBooking(b);
+    setBookingLineupDraft({
+      driverId: b.driver_id == null ? '' : String(b.driver_id),
+      driverName: b.manual_driver_name || (!b.driver_id ? b.assigned_driver_name || '' : ''),
+      assistantName: b.assistant_name || '',
+    });
+    setDrawerOpen(true);
+    setActionMenuId(null);
+  }, []);
   const closeDrawer = useCallback(() => { setDrawerOpen(false); setSelectedBooking(null); }, []);
 
   const changeStatus = useCallback(async (booking, status, reason) => {
@@ -1597,7 +1628,7 @@ const HearseBookings = () => {
             <SecondaryButton onClick={refreshData} disabled={refreshing} style={{ marginLeft: 'auto' }}>
               {Icons.refresh} {refreshing ? 'Refreshing...' : 'Refresh'}
             </SecondaryButton>
-            <PrimaryButton onClick={() => openNewBooking('')}>{Icons.plus} Book Hearse</PrimaryButton>
+            <PrimaryButton $bg="#DD2D4A" onClick={() => openNewBooking('')}>{Icons.plus} Book Hearse</PrimaryButton>
             <PrimaryButton
               onClick={() => {
                 const currentBranchId = String(getBranchId() || '');
@@ -1757,9 +1788,7 @@ const HearseBookings = () => {
               standbyDriverName={standbyDriverName}
               lineupLoading={lineupLoading}
               savingStandby={savingStandby}
-              savingBookingLineup={savingBookingLineup}
               onSaveStandby={saveStandby}
-              onSaveBookingLineup={saveBookingLineup}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onDateClick={(date) => {
@@ -1921,6 +1950,91 @@ const HearseBookings = () => {
                   </DetailItem>
                 )}
               </DetailGrid>
+
+              <div style={{
+                border: `1px solid ${COLORS.line}`,
+                borderRadius: COLORS.radiusSm,
+                padding: '1rem',
+                marginBottom: '1.25rem',
+                background: COLORS.bone,
+              }}>
+                <div style={{ marginBottom: '0.85rem' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: COLORS.ink }}>Driver lineup</div>
+                  <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: COLORS.gray }}>
+                    Assign or update the driver and assistant for this booking.
+                  </div>
+                </div>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveBookingLineup(selectedBooking.booking_id || selectedBooking.id, {
+                      driver_id: bookingLineupDraft.driverName.trim() ? null : bookingLineupDraft.driverId || null,
+                      driver_name: bookingLineupDraft.driverName.trim(),
+                      assistant_name: bookingLineupDraft.assistantName,
+                    });
+                  }}
+                  style={{ display: 'grid', gap: '0.75rem' }}
+                >
+                  <div>
+                    <ModalLabel htmlFor="booking-lineup-driver">Select driver (optional)</ModalLabel>
+                    <Select
+                      id="booking-lineup-driver"
+                      value={bookingLineupDraft.driverId}
+                      onChange={(event) => setBookingLineupDraft((current) => ({
+                        ...current,
+                        driverId: event.target.value,
+                        driverName: '',
+                      }))}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
+                      {drivers.map((driver) => {
+                        const driverId = driver.driver_id ?? driver.id;
+                        return (
+                          <option key={driverId} value={driverId}>
+                            {driver.driver_name || driver.full_name || `Driver ${driverId}`}
+                          </option>
+                        );
+                      })}
+                    </Select>
+                  </div>
+                  <div>
+                    <ModalLabel htmlFor="booking-lineup-manual-driver">Or enter driver name</ModalLabel>
+                    <ModalInput
+                      id="booking-lineup-manual-driver"
+                      value={bookingLineupDraft.driverName}
+                      onChange={(event) => setBookingLineupDraft((current) => ({
+                        ...current,
+                        driverId: '',
+                        driverName: event.target.value,
+                      }))}
+                      placeholder="Type driver name"
+                    />
+                  </div>
+                  <div>
+                    <ModalLabel htmlFor="booking-lineup-assistant">Assistant name (optional)</ModalLabel>
+                    <ModalInput
+                      id="booking-lineup-assistant"
+                      value={bookingLineupDraft.assistantName}
+                      onChange={(event) => setBookingLineupDraft((current) => ({
+                        ...current,
+                        assistantName: event.target.value,
+                      }))}
+                      placeholder="Enter assistant name"
+                    />
+                  </div>
+                  <div>
+                    <PrimaryButton
+                      type="submit"
+                      disabled={String(savingBookingLineup || '') === String(selectedBooking.booking_id || selectedBooking.id)}
+                    >
+                      {String(savingBookingLineup || '') === String(selectedBooking.booking_id || selectedBooking.id)
+                        ? 'Saving lineup...'
+                        : 'Save lineup'}
+                    </PrimaryButton>
+                  </div>
+                </form>
+              </div>
 
               {!['completed', 'cancelled'].includes(selectedBooking.status) && (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
