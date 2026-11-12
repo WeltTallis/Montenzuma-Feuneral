@@ -19,6 +19,7 @@ import Swal from 'sweetalert2';
 
 // SweetAlert2 v11 does not have Swal.setDefaults(). Use CSS z-index instead
 // so confirmation dialogs render above drawer/modal overlays (z-index 9998–9999).
+
 import {
   Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical,
   ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, List, Grid, X,
@@ -537,7 +538,7 @@ const SearchInput = styled.input`
   color: ${COLORS.text};
   background: ${COLORS.surface};
   transition: ${COLORS.transition};
-  &:focus { outline: none; border-color: ${COLORS.primary}; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  &:focus { outline: none; border-color: ${COLORS.accent}; box-shadow: 0 0 0 3px rgba(61, 79, 71, 0.1); }
   @media (max-width: 900px) { width: 100%; min-width: 0; flex: 1 1 100%; }
 `;
 
@@ -550,7 +551,7 @@ const Select = styled.select`
   background: ${COLORS.surface};
   cursor: pointer;
   transition: ${COLORS.transition};
-  &:focus { outline: none; border-color: ${COLORS.primary}; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  &:focus { outline: none; border-color: ${COLORS.accent}; box-shadow: 0 0 0 3px rgba(61, 79, 71, 0.1); }
 `;
 
 const TableCard = styled.div`
@@ -676,7 +677,7 @@ const ActionButton = styled.button`
 `;
 
 const PrimaryButton = styled.button`
-  background: ${props => props.$bg || COLORS.primary};
+  background: ${props => props.$bg || COLORS.accent};
   color: ${COLORS.white};
   border: none;
   border-radius: ${COLORS.radiusSm};
@@ -691,7 +692,7 @@ const PrimaryButton = styled.button`
   box-shadow: ${COLORS.shadowSm};
   white-space: nowrap;
   &:hover { opacity: 0.9; }
-  &:disabled { background: ${COLORS.textMuted}; cursor: not-allowed; }
+  &:disabled { background: ${COLORS.borderLight}; cursor: not-allowed; }
 `;
 
 const SecondaryButton = styled.button`
@@ -708,7 +709,7 @@ const SecondaryButton = styled.button`
   gap: 0.375rem;
   transition: ${COLORS.transition};
   white-space: nowrap;
-  &:hover { background: ${COLORS.bg}; }
+  &:hover { background: ${COLORS.bone2}; }
 `;
 
 const EmptyState = styled.div`
@@ -747,9 +748,9 @@ const PageButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   transition: ${COLORS.transition};
-  &:hover:not(:disabled) { background: ${COLORS.bg}; border-color: ${COLORS.primary}; color: ${COLORS.primary}; }
+  &:hover:not(:disabled) { background: ${COLORS.bone2}; border-color: ${COLORS.accent}; color: ${COLORS.accent}; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
-  ${props => props.$active && `background:${COLORS.primary};color:${COLORS.white};border-color:${COLORS.primary};`}
+  ${props => props.$active && `background:${COLORS.accent};color:${COLORS.white};border-color:${COLORS.accent};`}
 `;
 
 const DrawerOverlay = styled.div`position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:9998;animation:${fadeIn}0.12s ease-out;backdrop-filter:blur(3px);`;
@@ -768,7 +769,7 @@ const Drawer = styled.div`
 
 const DrawerHeader = styled.div`
   padding:1.1rem 1.25rem;
-  background:linear-gradient(135deg,${COLORS.primaryDark},${COLORS.primary});
+  background:linear-gradient(135deg,${COLORS.accentHover},${COLORS.accent});
   display:flex;justify-content:space-between;align-items:center;gap:0.5rem;
   flex-shrink:0;
 `;
@@ -824,7 +825,7 @@ const DetailItem = styled.div`
 const DetailLabel = styled.div`
   font-size:0.6875rem;
   font-weight:700;
-  color:${COLORS.textMuted};
+  color:${COLORS.textSecondary};
   text-transform:uppercase;
   letter-spacing:0.06em;
 `;
@@ -840,10 +841,10 @@ const DetailValue = styled.div`
 
 const ModalOverlay = styled.div`position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:1rem;`;
 const ModalBox = styled.div`background:${COLORS.white};border-radius:${COLORS.radius};width:460px;max-width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 40px rgba(0,0,0,0.15);animation:${fadeIn}0.15s ease-out;`;
-const ModalHead = styled.div`padding:1rem 1.25rem;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,${COLORS.primaryDark},${COLORS.primary});border-radius:${COLORS.radius} ${COLORS.radius} 0 0;`;
+const ModalHead = styled.div`padding:1rem 1.25rem;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,${COLORS.accentHover},${COLORS.accent});border-radius:${COLORS.radius} ${COLORS.radius} 0 0;`;
 const ModalBody = styled.div`padding:1.25rem;`;
 const ModalFoot = styled.div`display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;border-top:1px solid ${COLORS.border};padding-top:1rem;`;
-const ModalInput = styled.input`width:100%;padding:0.5rem 0.75rem;border:1px solid ${COLORS.border};border-radius:${COLORS.radiusSm};font-size:0.8125rem;color:${COLORS.text};background:${COLORS.white};outline:none;box-sizing:border-box;&::placeholder{color:${COLORS.textMuted}}&:focus{border-color:${COLORS.primaryLight};box-shadow:0 0 0 2px rgba(44,138,201,0.1);}`;
+const ModalInput = styled.input`width:100%;padding:0.5rem 0.75rem;border:1px solid ${COLORS.border};border-radius:${COLORS.radiusSm};font-size:0.8125rem;color:${COLORS.text};background:${COLORS.white};outline:none;box-sizing:border-box;&::placeholder{color:${COLORS.textSecondary}}&:focus{border-color:${COLORS.accent};box-shadow:0 0 0 2px rgba(61,79,71,0.1);}`;
 const ModalLabel = styled.label`display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.78rem;color:${COLORS.text};`;
 
 const ActionMenu = styled.div`
@@ -1432,7 +1433,7 @@ const HearseBookings = () => {
     for (let i = 1; i <= totalPages; i++) {
       if (totalPages > 7 && i > 2 && i < totalPages - 1 && Math.abs(i - currentPage) > 1) {
         if (i === 3 || i === totalPages - 2) {
-          btns.push(<span key={`dots-${i}`} style={{ padding: '0 0.25rem', color: COLORS.textMuted, fontSize: '0.8rem' }}>…</span>);
+          btns.push(<span key={`dots-${i}`} style={{ padding: '0 0.25rem', color: COLORS.textSecondary, fontSize: '0.8rem' }}>…</span>);
         }
         continue;
       }
@@ -1514,7 +1515,7 @@ const HearseBookings = () => {
   if (loading) {
     return (
       <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <RefreshCw size={32} color={COLORS.primary} className="animate-spin" />
+        <RefreshCw size={32} color={COLORS.accent} className="animate-spin" />
       </Container>
     );
   }
@@ -1580,14 +1581,14 @@ const HearseBookings = () => {
               <ActionButton
                 onClick={() => setViewMode('table')}
                 style={{
-                  background: viewMode === 'table' ? COLORS.primary : COLORS.surface,
+                  background: viewMode === 'table' ? COLORS.accent : COLORS.surface,
                   color: viewMode === 'table' ? COLORS.white : COLORS.textSecondary
                 }}
               >{Icons.list}</ActionButton>
               <ActionButton
                 onClick={() => setViewMode('calendar')}
                 style={{
-                  background: viewMode === 'calendar' ? COLORS.primary : COLORS.surface,
+                  background: viewMode === 'calendar' ? COLORS.accent : COLORS.surface,
                   color: viewMode === 'calendar' ? COLORS.white : COLORS.textSecondary
                 }}
               >{Icons.grid}</ActionButton>
@@ -1627,14 +1628,14 @@ const HearseBookings = () => {
                 <Table>
                   <TableHead>
                     <tr>
-                      <TableHeader>Booking ID</TableHeader>
-                      <TableHeader>Client</TableHeader>
-                      <TableHeader>Route</TableHeader>
-                      <TableHeader>Hearse</TableHeader>
-                      <TableHeader>Branch</TableHeader>
-                      <TableHeader>Dates</TableHeader>
+                      <TableHeader>Hearse Name</TableHeader>
+                      <TableHeader>Number Plate</TableHeader>
+                      <TableHeader>Pickup</TableHeader>
+                      <TableHeader>Destination</TableHeader>
+                      <TableHeader>Time</TableHeader>
+                      <TableHeader>Priority</TableHeader>
+                      <TableHeader>Driver</TableHeader>
                       <TableHeader>Status</TableHeader>
-                      <TableHeader>Actions</TableHeader>
                     </tr>
                   </TableHead>
                   <tbody>
@@ -1643,39 +1644,65 @@ const HearseBookings = () => {
                         <td colSpan={8}>
                           <EmptyState>
                             <Truck />
-                            <h4>No bookings found</h4>
+                            <h4>No dispatches found</h4>
                             <p>Try adjusting your filters or create a new booking.</p>
                           </EmptyState>
                         </td>
                       </tr>
                     ) : (
-                      pageData.map((b) => {
+                      pageData.map((b, idx) => {
                         const bid = b.booking_id || b.id;
                         const code = b.booking_code || genId(bid, b.plate_number);
+                        const statusConfig = STATUS_CONFIG[String(b.status || '').toLowerCase().replace(/\s+/g, '_')] || STATUS_CONFIG.booked;
+                        const priority = b.priority || 'Normal';
+                        const priorityColor =
+                          priority === 'Critical' || priority === 'critical' ? COLORS.red :
+                            priority === 'High' || priority === 'high' ? COLORS.orange :
+                              priority === 'Medium' || priority === 'medium' ? COLORS.yellow :
+                                COLORS.green;
+                        const driverName = b.driver_name || b.driver || 'Unassigned';
+                        const driverInitials = driverName
+                          .split(' ')
+                          .map((w) => w[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase() || 'DR';
                         return (
-                          <TableRow key={bid} $status={b.status} onClick={() => openDrawer(b)}>
+                          <TableRow key={bid} $striped={idx % 2 === 1} onClick={() => openDrawer(b)}>
                             <TableCell>
-                              <span style={{ fontWeight: 600, color: COLORS.primary, fontSize: '0.78rem' }}>{code}</span>
+                              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: COLORS.ink }}>{b.hearse_name || code}</div>
+                              {b.plate_number && (
+                                <span className="plate" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: COLORS.brass, letterSpacing: '0.06em', display: 'block', marginTop: '2px' }}>{b.plate_number}</span>
+                              )}
                             </TableCell>
                             <TableCell>
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{b.hearse_name || 'N/A'}</div>
-                              {b.plate_number && <div style={{ fontSize: '0.7rem', color: COLORS.textMuted }}>{b.plate_number}</div>}
+                              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.82rem', color: COLORS.brass }}>{b.plate_number || '—'}</div>
                             </TableCell>
                             <TableCell>
-                              <div style={{ fontSize: '0.78rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                <span style={{ color: COLORS.primary }}>From: {b.from_location || 'N/A'}</span>
-                              </div>
-                              <div style={{ fontSize: '0.78rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                <span style={{ color: COLORS.primary }}>To: {b.to_location || b.destination || 'N/A'}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell><div style={{ fontSize: '0.78rem' }}>{branchLabel(b)}</div></TableCell>
-                            <TableCell>
-                              <div style={{ fontSize: '0.78rem' }}>{fmtBookingDates(b)}</div>
-                              <div style={{ fontSize: '0.7rem', color: COLORS.textMuted }}>Pickup: {fmtBookingTime(b)}</div>
+                              <div style={{ fontSize: '0.82rem', color: COLORS.textSecondary }}>{b.from_location || '—'}</div>
                             </TableCell>
                             <TableCell>
-                              <StatusBadge $status={b.status}>{STATUS_CONFIG[b.status]?.label || b.status}</StatusBadge>
+                              <div style={{ fontSize: '0.82rem', color: COLORS.textSecondary }}>{b.to_location || b.destination || '—'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div style={{ fontWeight: 600, fontSize: '0.85rem', color: COLORS.ink }}>{fmtBookingTime(b)}</div>
+                            </TableCell>
+                            <TableCell>
+                              <PriorityBadge>
+                                <span className="priority-dot" style={{ background: priorityColor }} />
+                                <span style={{ color: priorityColor }}>{priority}</span>
+                              </PriorityBadge>
+                            </TableCell>
+                            <TableCell>
+                              <DriverTag>
+                                <span className="dot">{driverInitials}</span>
+                                {driverName}
+                              </DriverTag>
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge $status={String(b.status || '').toLowerCase().replace(/\s+/g, '_')}>
+                                {statusConfig.label || b.status}
+                              </StatusBadge>
                             </TableCell>
                             <TableCell>
                               <div style={{ position: 'relative' }} ref={actionMenuRef}>
@@ -1779,7 +1806,7 @@ const HearseBookings = () => {
                   <DetailValue>
                     {selectedBooking.client_name || 'N/A'}
                     {selectedBooking.client_phone && (
-                      <div style={{ fontSize: '0.78rem', color: COLORS.textMuted, marginTop: '0.15rem' }}>
+                      <div style={{ fontSize: '0.78rem', color: COLORS.textSecondary, marginTop: '0.15rem' }}>
                         {selectedBooking.client_phone}
                       </div>
                     )}
@@ -1833,7 +1860,7 @@ const HearseBookings = () => {
                   <DetailValue>
                     {selectedBooking.hearse_name || 'N/A'}
                     {selectedBooking.plate_number && (
-                      <div style={{ fontSize: '0.78rem', color: COLORS.textMuted, marginTop: '0.15rem' }}>
+                      <div style={{ fontSize: '0.78rem', color: COLORS.textSecondary, marginTop: '0.15rem' }}>
                         {selectedBooking.plate_number}
                       </div>
                     )}
@@ -1846,7 +1873,7 @@ const HearseBookings = () => {
                       fontWeight: 700,
                       color: Number(selectedBooking.service_charge ?? selectedBooking.total_service_charge ?? selectedBooking.total_charge) > 0
                         ? COLORS.successDark
-                        : COLORS.textMuted,
+                        : COLORS.textSecondary,
                     }}
                   >
                     {(() => {

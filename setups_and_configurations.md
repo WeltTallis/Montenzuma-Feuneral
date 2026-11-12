@@ -289,6 +289,34 @@ docker exec restpoint_tenant_service sh -c \
 'id && ls -ld /opt/storage /opt/storage/uploads'
 
 
+//  stop   all vp s  auto updates  
+systemctl stop unattended-upgrades
+systemctl disable unattended-upgrades
+
+
+systemctl stop apt-daily.timer
+systemctl stop apt-daily-upgrade.timer
+
+systemctl disable apt-daily.timer
+systemctl disable apt-daily-upgrade.timer
+
+dpkg -l | grep -E 'docker|containerd'
+
+apt-mark hold docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+
+///   disable   serve r  reboots
+grep -R "Automatic-Reboot" /etc/apt/apt.conf.d/
+cat > /etc/apt/apt.conf.d/99restpoint-no-auto-reboot <<'EOF'
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+
+//disbale ubuntu upgardes   
+systemctl disable --now unattended-upgrades
+systemctl disable --now apt-daily.timer
+systemctl disable --now apt-daily-upgrade.timer
+apt-mark hold docker-ce-rootless-extras
+
 
 
 
