@@ -99,16 +99,24 @@ const HeaderActions = styled.div`
 const HeightControl = styled.div`
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 5px 8px 5px 12px;
-  border: 1px solid ${C.border};
-  border-radius: 4px;
-  background: ${C.white};
+  gap: 6px;
   color: ${C.dark};
   font-size: 13px;
   strong { font-weight: 700; }
-  @media (max-width: 640px) { justify-content: space-between; width: 100%; }
+`;
+
+const HeightButton = styled.button`
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid ${C.border};
+  border-radius: 4px;
+  background: ${C.white};
+  color: ${C.route};
+  font: 800 14px 'Source Sans 3', sans-serif;
+  cursor: pointer;
+  &:hover { background: ${C.bgField}; border-color: ${C.gray}; }
+  &:disabled { cursor: not-allowed; opacity: 0.6; }
 `;
 
 const HeightEditor = styled.form`
@@ -361,8 +369,7 @@ const DeceasedProfileHeader = ({ deceased, onSaveHeight, onBack, onTabSwitch, on
 
         {/* Action buttons at top-right */}
         <HeaderActions>
-          <HeightControl aria-label="Deceased height">
-            <span aria-hidden="true" style={{ fontWeight: 800, color: C.route }}>H</span>
+          <HeightControl>
             {editingHeight ? (
               <HeightEditor onSubmit={saveHeight}>
                 <input
@@ -388,14 +395,18 @@ const DeceasedProfileHeader = ({ deceased, onSaveHeight, onBack, onTabSwitch, on
               </HeightEditor>
             ) : (
               <>
-                <strong>
-                  {deceased?.height_cm == null
-                    ? 'Height not recorded'
-                    : `${Number(deceased.height_cm).toLocaleString(undefined, { maximumFractionDigits: 2 })} cm`}
-                </strong>
-                <Btn type="button" onClick={() => setEditingHeight(true)} disabled={!deceased} aria-label="Edit deceased height">
-                  {deceased?.height_cm == null ? 'Add height' : 'Edit'}
-                </Btn>
+                <HeightButton
+                  type="button"
+                  onClick={() => setEditingHeight(true)}
+                  disabled={!deceased}
+                  aria-label={deceased?.height_cm == null ? 'Add deceased height' : 'Edit deceased height'}
+                  title={deceased?.height_cm == null ? 'Add height' : 'Edit height'}
+                >
+                  H
+                </HeightButton>
+                {deceased?.height_cm != null && (
+                  <strong>{Number(deceased.height_cm).toLocaleString(undefined, { maximumFractionDigits: 2 })} cm</strong>
+                )}
               </>
             )}
           </HeightControl>

@@ -3145,6 +3145,10 @@ const FlowerBookingsNew = () => {
                   <dt style={styles.specLabel}>Funeral / Service Date</dt>
                   <dd style={styles.specValue}>{funeralDateText}</dd>
                 </div>}
+                {bookerName && <div style={styles.specRow}>
+                  <dt style={styles.specLabel}>Booked By</dt>
+                  <dd style={styles.specValue}>{bookerName}</dd>
+                </div>}
                 {routeText && (
                   <div style={styles.specRow}>
                     <dt style={styles.specLabel}>Route / Service Location</dt>
