@@ -2860,28 +2860,6 @@ const FlowerBookingsNew = () => {
               {asList(product.types).join(' · ') || 'Custom Arrangement'}
             </p>
 
-            {/* Compact horizontal status tracker — replaces the tall vertical card */}
-            <div style={styles.trackRow}>
-              {STATUS_FLOW.map((status, idx) => {
-                const done = idx < currentStatusIdx;
-                const active = idx === currentStatusIdx;
-                return (
-                  <React.Fragment key={status}>
-                    {idx > 0 && <div style={styles.trackArrow}>›</div>}
-                    <div style={{
-                      ...styles.trackStep,
-                      background: active ? (status === 'completed' ? '#DCF5E5' : '#FCE0EC') : done ? '#EAF7EF' : '#FAF9F7',
-                      color: active ? (status === 'completed' ? '#15803D' : '#BE185D') : done ? '#15803D' : '#B9B2A8',
-                      borderColor: active ? (status === 'completed' ? '#BFEBD0' : '#F6C6DA') : done ? '#BFEBD0' : '#EAE7E2',
-                    }}>
-                      {done ? <Check size={11} strokeWidth={3} /> : <span style={styles.trackNum}>{idx + 1}</span>}
-                      {STATUS_LABELS[status]}
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-
             {/* ── Selected arrangements ── */}
             <div style={{ background: '#fff', border: '1px solid #EAE7E2', borderRadius: '14px', padding: '14px 16px', marginBottom: '24px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '10px' }}>
