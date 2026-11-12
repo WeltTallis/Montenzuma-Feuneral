@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -57,14 +57,15 @@ func loggingMiddleware(next http.Handler, logger *slog.Logger) http.Handler {
 }
 
 type Gateway struct {
-	config     Config
-	logger     *slog.Logger
-	identity   *identityCache
-	limiters   *rateLimiter
-	proxies    map[string]*httputil.ReverseProxy
-	startedAt  time.Time
-	requests   atomic.Uint64
-	upstream5xx atomic.Uint64
+	config         Config
+	logger         *slog.Logger
+	identity       *identityCache
+	identityClient *http.Client
+	limiters       *rateLimiter
+	proxies        map[string]*httputil.ReverseProxy
+	startedAt      time.Time
+	requests       atomic.Uint64
+	upstream5xx    atomic.Uint64
 }
 
 func main() {
@@ -144,8 +145,14 @@ func newGateway(cfg Config, logger *slog.Logger) (*Gateway, error) {
 		config:   cfg,
 		logger:   logger,
 		identity: newIdentityCache(),
-		limiters: newRateLimiter(),
-		proxies:  make(map[string]*httputil.ReverseProxy),
+		identityClient: &http.Client{
+			Timeout: 3 * time.Second,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		limiters:  newRateLimiter(),
+		proxies:   make(map[string]*httputil.ReverseProxy),
 		startedAt: time.Now(),
 	}
 
@@ -164,7 +171,7 @@ func newGateway(cfg Config, logger *slog.Logger) (*Gateway, error) {
 
 func (g *Gateway) newProxy(target *url.URL, transport http.RoundTripper) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
-		Transport: transport,
+		Transport:     transport,
 		FlushInterval: 100 * time.Millisecond,
 		Rewrite: func(proxyRequest *httputil.ProxyRequest) {
 			incoming := proxyRequest.In
@@ -173,7 +180,7 @@ func (g *Gateway) newProxy(target *url.URL, transport http.RoundTripper) *httput
 			proxyRequest.Out.Header = incoming.Header.Clone()
 			proxyRequest.SetXForwarded()
 
-			identity := applyTenantIdentity(proxyRequest.Out.Header, incoming, g.config.JWTSecret, g.identity)
+			identity := applyTenantIdentityWithVerifier(proxyRequest.Out.Header, incoming, g.verifyIdentity)
 			g.logger.Debug("tenant identity resolved for upstream request",
 				"verified", identity.Verified,
 				"reason", identity.Reason,
@@ -269,7 +276,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"success": true, "status": "ok", "service": g.config.SoftwareIdentity.Name,
 			"version": g.config.SoftwareIdentity.Version, "trackingId": g.config.SoftwareIdentity.ProductID,
 			"uptimeSeconds": int64(time.Since(g.startedAt).Seconds()),
-			"services": routing,
+			"services":      routing,
 		})
 		return
 	}
@@ -279,7 +286,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"data": map[string]any{
 				"service": g.config.SoftwareIdentity.Name, "version": g.config.SoftwareIdentity.Version, "trackingId": g.config.SoftwareIdentity.ProductID,
 				"uptimeSeconds": int64(time.Since(g.startedAt).Seconds()),
-				"requests": g.requests.Load(), "upstream5xx": g.upstream5xx.Load(),
+				"requests":      g.requests.Load(), "upstream5xx": g.upstream5xx.Load(),
 				"generatedAt": time.Now().UTC().Format(time.RFC3339Nano),
 			},
 		})
@@ -334,15 +341,15 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if key == "hrPayroll" && isPayrollLogin(pathAfterMount) {
 		writeJSON(recorder, http.StatusForbidden, map[string]any{
-			"success": false,
-			"message": "HR payroll uses RestPoint authentication; payroll-service login is disabled.",
+			"success":   false,
+			"message":   "HR payroll uses RestPoint authentication; payroll-service login is disabled.",
 			"requestId": requestID,
 		})
-		
+
 		return
 	}
 
-	identity := verifyIdentity(r, g.config.JWTSecret, g.identity)
+	identity := g.verifyIdentity(r)
 	category := limitCategory(r.Method, service)
 	clientKey := g.clientKey(r, identity)
 	now := time.Now()

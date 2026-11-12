@@ -6,9 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func testToken(t *testing.T, claims map[string]any, secret []byte) string {
@@ -36,16 +39,128 @@ func TestVerifyHS256RejectsWrongSignature(t *testing.T) {
 	}
 }
 
+func TestTenantSpecificJWTUsesAuthServiceFallback(t *testing.T) {
+	tenantSecret := []byte("tenant-secret")
+	token := testToken(t, map[string]any{
+		"tenantSlug":   "org-one",
+		"tenantId":     "42",
+		"userId":       "user-7",
+		"role":         "staff",
+		"branchDbName": "org-one-east",
+		"branchSlug":   "org-one-east",
+		"branchId":     "east-id",
+	}, tenantSecret)
+	var verificationCalls atomic.Int32
+	authService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		verificationCalls.Add(1)
+		if r.URL.Path != "/auth/me" {
+			t.Errorf("auth verification path = %q, want /auth/me", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer "+token {
+			t.Errorf("authorization = %q, want bearer token", got)
+		}
+		if _, err := verifyHS256(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), tenantSecret); err != nil {
+			http.Error(w, `{"success":false}`, http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"user":{"userId":"user-7"}}`))
+	}))
+	defer authService.Close()
+	authURL, err := url.Parse(authService.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway := &Gateway{
+		config: Config{
+			JWTSecret:        []byte("gateway-secret"),
+			RateLimitGeneral: 600,
+			RateLimitWindow:  15 * time.Minute,
+			Services:         map[string]*url.URL{"auth": authURL},
+		},
+		identity:       newIdentityCache(),
+		identityClient: authService.Client(),
+		limiters:       newRateLimiter(),
+	}
+	request := httptestRequest("/api/v1/restpoint/deceased/charge-settings")
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("X-Tenant-Slug", "attacker-tenant")
+	request.Header.Set("X-User-Id", "attacker-user")
+	request.Header.Set("X-Branch-Db", "attacker-branch")
+	headers := request.Header.Clone()
+
+	id := applyTenantIdentityWithVerifier(headers, request, gateway.verifyIdentity)
+	if !id.Verified {
+		t.Fatal("expected tenant-specific JWT to verify")
+	}
+	if got := headers.Get("X-Tenant-Slug"); got != "org-one-east" {
+		t.Fatalf("tenant scope = %q, want signed branch scope", got)
+	}
+	if got := headers.Get("X-Tenant-Id"); got != "42" {
+		t.Fatalf("tenant ID = %q, want signed tenant ID", got)
+	}
+	if got := headers.Get("X-User-Id"); got != "user-7" {
+		t.Fatalf("user ID = %q, want signed user ID", got)
+	}
+	if got := headers.Get("X-Branch-Id"); got != "east-id" {
+		t.Fatalf("branch ID = %q, want signed branch ID", got)
+	}
+	if got := verificationCalls.Load(); got != 1 {
+		t.Fatalf("auth service verification calls = %d, want 1", got)
+	}
+	if cached := gateway.verifyIdentity(request); !cached.Verified {
+		t.Fatal("expected tenant identity to be available from cache")
+	}
+	if got := verificationCalls.Load(); got != 1 {
+		t.Fatalf("cached verification made %d auth service calls, want 1", got-1)
+	}
+}
+
+func TestTenantSpecificJWTIsRejectedWhenAuthServiceDoesNotVerify(t *testing.T) {
+	token := testToken(t, map[string]any{"tenantSlug": "org-one"}, []byte("tenant-secret"))
+	authService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, `{"success":false}`, http.StatusServiceUnavailable)
+	}))
+	defer authService.Close()
+	authURL, err := url.Parse(authService.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway := &Gateway{
+		config: Config{
+			JWTSecret:        []byte("gateway-secret"),
+			RateLimitGeneral: 600,
+			RateLimitWindow:  15 * time.Minute,
+			Services:         map[string]*url.URL{"auth": authURL},
+		},
+		identity:       newIdentityCache(),
+		identityClient: authService.Client(),
+		limiters:       newRateLimiter(),
+	}
+	request := httptestRequest("/api/v1/restpoint/deceased/charge-settings")
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("X-Tenant-Slug", "attacker-tenant")
+	headers := request.Header.Clone()
+
+	id := applyTenantIdentityWithVerifier(headers, request, gateway.verifyIdentity)
+	if id.Verified {
+		t.Fatal("tenant token must remain unverified when auth service rejects it")
+	}
+	if got := headers.Get("X-Tenant-Slug"); got != "" {
+		t.Fatalf("unverified client tenant header = %q, want it stripped", got)
+	}
+}
+
 func TestTenantIdentityPinsBranchToSignedClaims(t *testing.T) {
 	secret := []byte("gateway-test-secret")
 	token := testToken(t, map[string]any{
-		"tenantSlug": "org-one",
-		"tenantId":   "42",
-		"userId":     "user-7",
-		"role":       "staff",
+		"tenantSlug":   "org-one",
+		"tenantId":     "42",
+		"userId":       "user-7",
+		"role":         "staff",
 		"branchDbName": "org-one-east",
-		"branchSlug": "org-one-east",
-		"branchId":   "east-id",
+		"branchSlug":   "org-one-east",
+		"branchId":     "east-id",
 	}, secret)
 	request := httptestRequest("/api/v1/restpoint/deceased/charge-settings")
 	request.Header.Set("Authorization", "Bearer "+token)
