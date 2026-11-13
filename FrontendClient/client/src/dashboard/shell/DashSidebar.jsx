@@ -32,7 +32,7 @@ const SidebarNav = styled.nav`
 const NavGroup = styled.div`
   display: flex;
   flex-direction: column;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 `;
 
 const NavCaption = styled.div`
@@ -53,10 +53,10 @@ const NavCaption = styled.div`
 const MenuItem = styled.button`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   width: 100%;
-  height: 40px;
-  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 10px")};
+  height: 36px;
+  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 8px")};
   justify-content: ${({ $collapsed }) => ($collapsed ? "center" : "flex-start")};
   border-radius: 10px;
   margin-bottom: 2px;

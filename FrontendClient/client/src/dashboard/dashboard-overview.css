@@ -435,6 +435,11 @@
   background: linear-gradient(135deg, #FF4757, #D32F2F);
 }
 
+.rpd .dashboard .branch-card.blue {
+  background: linear-gradient(135deg, #1976D2, #0D47A1);
+  color: #fff;
+}
+
 .rpd .dashboard .branch-card.yellow {
   background: linear-gradient(135deg, #FFC107, #E6A800);
   color: #1a1a1a;
