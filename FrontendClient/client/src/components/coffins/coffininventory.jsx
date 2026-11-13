@@ -698,6 +698,7 @@ const styles = {
     flexDirection: 'column',
     overflow: 'hidden',
   },
+  bkBookingSidebar: { maxWidth: 560 },
   bkSidebarOpen: { transform: 'translateX(0)' },
   bkHeader: {
     display: 'flex',
@@ -2400,7 +2401,7 @@ const CoffinDashboard = () => {
           </div>
           <div style="${objToStr(styles.fg)}">
             <label style="${objToStr(styles.fl)}">Client Name *</label>
-            <input class="drawer-input" id="ir-client" placeholder="John Doe">
+            <input class="drawer-input" id="ir-client" placeholder="Wanja">
           </div>
           <div style="${objToStr(styles.fg)}">
             <label style="${objToStr(styles.fl)}">Client Phone</label>
@@ -4826,6 +4827,7 @@ const CoffinDashboard = () => {
         <div
           style={{
             ...styles.bkSidebar,
+            ...styles.bkBookingSidebar,
             ...(modal.open && modal.type === 'booking' ? styles.bkSidebarOpen : {}),
           }}
         >
@@ -4898,7 +4900,7 @@ const CoffinDashboard = () => {
                       onChange={(e) =>
                         setModal({ ...modal, data: { ...modal.data, client_name: e.target.value } })
                       }
-                      placeholder="John Doe"
+                      placeholder="Wanja"
                     />
                   </div>
 

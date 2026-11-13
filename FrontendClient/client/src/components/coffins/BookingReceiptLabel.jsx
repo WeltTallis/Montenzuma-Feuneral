@@ -151,7 +151,7 @@ var PRINT_CSS = `
 ` + RECEIPT_CSS;
 
 /* Build the receipt markup. Shared by preview and print. */
-function receiptHtml(b, fmt, printedAt, barcodeText) {
+function receiptHtml(b, fmt, printedAt, barcodeText, brand) {
   var pay = PAY[b.status] || PAY.unpaid;
   var price = Number(b.price || 0);
   var collected = b.status === 'paid' ? price
@@ -179,7 +179,7 @@ function receiptHtml(b, fmt, printedAt, barcodeText) {
     '<div class="mz-rct-receipt">' +
     '<div class="mz-rct-hdr">' +
     '<div class="mz-rct-brandmark">' + coffinSvg + '</div>' +
-    '<div class="mz-rct-brandname">' + (brand?.name || 'tenant') + '</div>' +
+    '<div class="mz-rct-brandname">' + esc(brand?.name || 'tenant') + '</div>' +
 
     '<div class="mz-rct-summary">' +
     '<div class="mz-rct-cicon">' + coffinSvg + '</div>' +
