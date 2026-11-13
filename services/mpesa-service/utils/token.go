@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,7 +45,17 @@ var (
 )
 
 func GenerateAccessToken(ctx context.Context, consumerKey string, consumerSecret string) (string, error) {
-	config := config.NewEnvConfig()
+	envConfig := config.NewEnvConfig()
+	oauthURL, err := normalizeOAuthURL(envConfig.MPesaTokenUrl)
+	if err != nil {
+		return "", err
+	}
+	consumerKey = strings.TrimSpace(consumerKey)
+	consumerSecret = strings.TrimSpace(consumerSecret)
+	if consumerKey == "" || consumerSecret == "" {
+		return "", fmt.Errorf("M-Pesa OAuth consumer key and secret must be configured")
+	}
+
 	tokenKey := consumerKey + "\x00" + consumerSecret
 	if token, ok := getCachedToken(tokenKey); ok {
 		return token, nil
@@ -61,13 +72,13 @@ func GenerateAccessToken(ctx context.Context, consumerKey string, consumerSecret
 		return token, nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, config.MPesaTokenUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, oauthURL, nil)
 
 	if err != nil {
 		return "", err
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(consumerKey+":"+consumerSecret)))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(consumerKey+":"+consumerSecret)))
 	res, err := tokenHTTPClient.Do(req)
 	if err != nil {
 		return "", err
@@ -90,7 +101,10 @@ func GenerateAccessToken(ctx context.Context, consumerKey string, consumerSecret
 		return "", err
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return "", fmt.Errorf("M-Pesa OAuth failed: HTTP %d body: %s", res.StatusCode, string(body))
+		if res.StatusCode == http.StatusBadRequest && strings.TrimSpace(string(body)) == "" {
+			return "", fmt.Errorf("M-Pesa OAuth failed: HTTP 400 with an empty response; verify MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET match the configured Safaricom environment")
+		}
+		return "", fmt.Errorf("M-Pesa OAuth failed: configured MPESA_OAUTH_URL with grant_type=client_credentials returned HTTP %d body: %s", res.StatusCode, string(body))
 	}
 
 	var accessTokenResponse AccessTokenResponse
@@ -120,6 +134,20 @@ func GenerateAccessToken(ctx context.Context, consumerKey string, consumerSecret
 	return accessTokenResponse.AccessToken, nil
 }
 
+func normalizeOAuthURL(rawURL string) (string, error) {
+	endpoint, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return "", fmt.Errorf("invalid MPESA_OAUTH_URL: %w", err)
+	}
+	if endpoint.Scheme == "" || endpoint.Host == "" {
+		return "", fmt.Errorf("invalid MPESA_OAUTH_URL: absolute URL required")
+	}
+	query := endpoint.Query()
+	query.Set("grant_type", "client_credentials")
+	endpoint.RawQuery = query.Encode()
+	return endpoint.String(), nil
+}
+
 func getCachedToken(tokenKey string) (string, bool) {
 	tokenCacheMu.RLock()
 	defer tokenCacheMu.RUnlock()
@@ -128,7 +156,6 @@ func getCachedToken(tokenKey string) (string, bool) {
 	}
 	return cachedToken, true
 }
-
 
 func  GenerateTimeStamp() string {
 	// Safaricom expects Africa/Nairobi wall time (UTC+3, no DST).

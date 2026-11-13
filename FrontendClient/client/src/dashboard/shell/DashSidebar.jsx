@@ -23,7 +23,7 @@ const SidebarNav = styled.nav`
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: ${({ $collapsed }) => ($collapsed ? "20px 8px" : "20px 16px")};
+  padding: ${({ $collapsed }) => ($collapsed ? "16px 8px" : "16px 12px")};
   display: flex;
   flex-direction: column;
   &::-webkit-scrollbar { width: 0; }
@@ -32,7 +32,7 @@ const SidebarNav = styled.nav`
 const NavGroup = styled.div`
   display: flex;
   flex-direction: column;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 `;
 
 const NavCaption = styled.div`
@@ -41,7 +41,7 @@ const NavCaption = styled.div`
   letter-spacing: 1px;
   text-transform: uppercase;
   color: ${COLORS.light};
-  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 12px 12px")};
+  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 10px 8px")};
   text-align: ${({ $collapsed }) => ($collapsed ? "center" : "left")};
   opacity: ${({ $collapsed }) => ($collapsed ? 0 : 1)};
   max-height: ${({ $collapsed }) => ($collapsed ? "12px" : "24px")};
@@ -53,23 +53,25 @@ const NavCaption = styled.div`
 const MenuItem = styled.button`
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   width: 100%;
-  height: 44px;
-  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 12px")};
+  height: 40px;
+  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 10px")};
   justify-content: ${({ $collapsed }) => ($collapsed ? "center" : "flex-start")};
-  border: 1px solid transparent;
   border-radius: 10px;
-  margin-bottom: 4px;
-  background: ${({ $active }) => ($active ? COLORS.accentBg : "transparent")};
-  color: ${({ $active }) => ($active ? COLORS.accent : COLORS.text)};
+  margin-bottom: 2px;
   font-family: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   position: relative;
   transition: all ${TRANSITIONS.default};
-  &:hover {
+  && {
+    border: 1px solid transparent;
+    background: ${({ $active }) => ($active ? COLORS.accentBg : "transparent")};
+    color: ${({ $active }) => ($active ? COLORS.accent : COLORS.text)};
+  }
+  &&:hover {
     background: ${COLORS.hover};
     color: ${COLORS.text};
   }
@@ -143,9 +145,6 @@ const FooterButton = styled.button`
   padding: ${({ $collapsed, $danger }) =>
     $collapsed ? "0" : $danger ? "0 12px" : "0 10px"};
   justify-content: ${({ $collapsed }) => ($collapsed ? "center" : "flex-start")};
-  border: ${({ $danger }) => ($danger ? "none" : `1px solid ${COLORS.border}`)};
-  background: ${({ $danger }) => ($danger ? "#d32f2f" : "#f4f5f7")};
-  color: ${({ $danger }) => ($danger ? "#fff" : COLORS.text)};
   font-family: inherit;
   font-size: ${({ $danger }) => ($danger ? "13px" : "12px")};
   font-weight: 700;
@@ -154,7 +153,12 @@ const FooterButton = styled.button`
   transition: all ${TRANSITIONS.default};
   white-space: nowrap;
   text-align: left;
-  &:hover {
+  && {
+    border: ${({ $danger }) => ($danger ? "none" : `1px solid ${COLORS.border}`)};
+    background: ${({ $danger }) => ($danger ? "#d32f2f" : "#f4f5f7")};
+    color: ${({ $danger }) => ($danger ? "#fff" : COLORS.text)};
+  }
+  &&:hover {
     background: ${({ $danger }) => ($danger ? "#b71c1c" : "#eee")};
     color: ${({ $danger }) => ($danger ? "#fff" : COLORS.text)};
   }
@@ -178,13 +182,15 @@ const ToggleButton = styled.button`
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid ${COLORS.border};
-  background: #f4f5f7;
-  color: ${COLORS.text};
   cursor: pointer;
   border-radius: 8px;
   transition: all ${TRANSITIONS.default};
-  &:hover { background: ${COLORS.text}; color: #fff; }
+  && {
+    border: 1px solid ${COLORS.border};
+    background: #f4f5f7;
+    color: ${COLORS.text};
+  }
+  &&:hover { background: ${COLORS.text}; color: #fff; }
 `;
 export const NAV_ITEMS = [
   { id: "overview", group: "Workspace", label: "Overview", icon: "home", full: "Overview" },
