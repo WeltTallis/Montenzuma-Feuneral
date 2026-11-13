@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { Ic } from "../opsIcons";
 
-const TRANSITIONS = { default: "0.22s cubic-bezier(0.4, 0, 0.2, 1)" };
+const TRANSITIONS = { default: "0.3s cubic-bezier(0.4, 0, 0.2, 1)" };
 
 const COLORS = {
 
@@ -26,16 +26,13 @@ const SidebarNav = styled.nav`
   padding: ${({ $collapsed }) => ($collapsed ? "20px 8px" : "20px 16px")};
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: #e2e4df; border-radius: 2px; }
+  &::-webkit-scrollbar { width: 0; }
 `;
 
 const NavGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 14px;
+  margin-bottom: 24px;
 `;
 
 const NavCaption = styled.div`
@@ -47,9 +44,10 @@ const NavCaption = styled.div`
   padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 12px 12px")};
   text-align: ${({ $collapsed }) => ($collapsed ? "center" : "left")};
   opacity: ${({ $collapsed }) => ($collapsed ? 0 : 1)};
-  max-height: ${({ $collapsed }) => ($collapsed ? "0px" : "24px")};
+  max-height: ${({ $collapsed }) => ($collapsed ? "12px" : "24px")};
   overflow: hidden;
   transition: opacity ${TRANSITIONS.default}, max-height ${TRANSITIONS.default}, padding ${TRANSITIONS.default};
+  ${({ $collapsed }) => $collapsed && "height: 12px; margin-bottom: 16px;"}
 `;
 
 const MenuItem = styled.button`
@@ -62,6 +60,7 @@ const MenuItem = styled.button`
   justify-content: ${({ $collapsed }) => ($collapsed ? "center" : "flex-start")};
   border: 1px solid transparent;
   border-radius: 10px;
+  margin-bottom: 4px;
   background: ${({ $active }) => ($active ? COLORS.accentBg : "transparent")};
   color: ${({ $active }) => ($active ? COLORS.accent : COLORS.text)};
   font-family: inherit;
@@ -69,7 +68,7 @@ const MenuItem = styled.button`
   font-weight: 700;
   cursor: pointer;
   position: relative;
-  transition: background 0.15s ease, color 0.15s ease, padding ${TRANSITIONS.default};
+  transition: all ${TRANSITIONS.default};
   &:hover {
     background: ${COLORS.hover};
     color: ${COLORS.text};
@@ -128,30 +127,37 @@ const CollapsedBadge = styled.span`
 
 const Footer = styled.div`
   border-top: 1px solid ${COLORS.border};
-  padding: 10px 12px 12px;
+  padding: ${({ $collapsed }) => ($collapsed ? "12px 8px" : "12px 16px")};
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  transition: padding ${TRANSITIONS.default};
 `;
 
 const FooterButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: ${({ $danger }) => ($danger ? "14px" : "8px")};
   width: 100%;
-  height: 40px;
-  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 12px")};
+  height: ${({ $danger }) => ($danger ? "40px" : "36px")};
+  padding: ${({ $collapsed, $danger }) =>
+    $collapsed ? "0" : $danger ? "0 12px" : "0 10px"};
   justify-content: ${({ $collapsed }) => ($collapsed ? "center" : "flex-start")};
-  border: none;
-  background: transparent;
-  color: ${COLORS.muted};
+  border: ${({ $danger }) => ($danger ? "none" : `1px solid ${COLORS.border}`)};
+  background: ${({ $danger }) => ($danger ? "#d32f2f" : "#f4f5f7")};
+  color: ${({ $danger }) => ($danger ? "#fff" : COLORS.text)};
   font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: ${({ $danger }) => ($danger ? "13px" : "12px")};
+  font-weight: 700;
   cursor: pointer;
-  border-radius: 10px;
-  transition: background 0.15s ease, color 0.15s ease, padding ${TRANSITIONS.default};
-  &:hover { background: ${COLORS.hover}; color: ${COLORS.accent}; }
+  border-radius: 8px;
+  transition: all ${TRANSITIONS.default};
+  white-space: nowrap;
+  text-align: left;
+  &:hover {
+    background: ${({ $danger }) => ($danger ? "#b71c1c" : "#eee")};
+    color: ${({ $danger }) => ($danger ? "#fff" : COLORS.text)};
+  }
 `;
 
 const FooterLabel = styled.span`
@@ -168,15 +174,17 @@ const ToggleButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  padding: 8px;
-  border: none;
-  background: transparent;
-  color: ${COLORS.light};
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid ${COLORS.border};
+  background: #f4f5f7;
+  color: ${COLORS.text};
   cursor: pointer;
   border-radius: 8px;
-  transition: background 0.15s ease, color 0.15s ease;
-  &:hover { background: ${COLORS.hover}; color: ${COLORS.accent}; }
+  transition: all ${TRANSITIONS.default};
+  &:hover { background: ${COLORS.text}; color: #fff; }
 `;
 export const NAV_ITEMS = [
   { id: "overview", group: "Workspace", label: "Overview", icon: "home", full: "Overview" },
@@ -240,7 +248,7 @@ export default function DashSidebar({
         aria-controls="dashboard-navigation"
         aria-expanded={mobileNavOpen}
       >
-        <Ic n="menu" s={18} />
+        <Ic n="menu" s={22} />
       </button>
       <div className="rpd-nav-scrim" onClick={onCloseMobile} aria-hidden="true" />
       <aside id="dashboard-navigation" className={`rpd-nav${collapsed ? " is-collapsed" : ""}`} aria-label="Dashboard navigation">
@@ -250,37 +258,8 @@ export default function DashSidebar({
           onClick={onCloseMobile}
           aria-label="Close navigation"
         >
-          <Ic n="menu" s={18} />
+          <Ic n="x" s={20} />
         </button>
-
-        <div
-          className="rpd-shell-brand"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: collapsedMode ? "center" : "space-between",
-            gap: "8px",
-          }}
-        >
-          <span className="rpd-shell-mark" title="RestPoint">RP</span>
-          {!collapsedMode && (
-            <span className="rpd-shell-brand-copy">
-              <b>RestPoint</b>
-              <small>Operations</small>
-            </span>
-          )}
-          {!isMobile && !collapsedMode && (
-            <button
-              type="button"
-              className="rpd-nav-collapse"
-              onClick={() => onToggleCollapse()}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              <Ic n={collapsed ? "chevR" : "chevL"} s={16} />
-            </button>
-          )}
-        </div>
 
         <SidebarNav $collapsed={collapsedMode}>
           {NAV_ITEMS.map((item, index) => {
@@ -306,7 +285,7 @@ export default function DashSidebar({
                   aria-current={isActive ? "page" : undefined}
                 >
                   <MenuIcon $active={isActive}>
-                    <Ic n={item.icon} s={16} />
+                    <Ic n={item.icon} s={20} />
                   </MenuIcon>
                   <MenuLabel $visible={!collapsedMode}>{item.label}</MenuLabel>
                   {badge > 0 &&
@@ -321,31 +300,32 @@ export default function DashSidebar({
           })}
         </SidebarNav>
 
-        <Footer>
+        <Footer $collapsed={collapsedMode}>
           <FooterButton
             type="button"
+            $danger={false}
             $collapsed={collapsedMode}
             onClick={() => navigate(siteHref)}
             title="Back to main site"
           >
-            <Ic n="arrowL" s={14} />
+            <Ic n="arrowL" s={16} />
             <FooterLabel $visible={!collapsedMode}>Back to main site</FooterLabel>
           </FooterButton>
 
           <FooterButton
             type="button"
+            $danger
             $collapsed={collapsedMode}
             onClick={handleLogout}
             title="Sign out"
           >
-            <Ic n="logout" s={14} />
+            <Ic n="logout" s={18} />
             <FooterLabel $visible={!collapsedMode}>Sign out</FooterLabel>
           </FooterButton>
 
           {!isMobile && (
             <ToggleButton
               type="button"
-              className="rpd-nav-collapse"
               onClick={() => onToggleCollapse()}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}

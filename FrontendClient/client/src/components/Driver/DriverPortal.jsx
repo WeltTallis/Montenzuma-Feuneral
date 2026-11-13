@@ -239,18 +239,16 @@ function toPickup(row) {
     };
 }
 
-/* ─── DESIGN TOKENS (pure black, teal/plum/blue/orange) ────────────────────
-   Mirrors the :root block of the reference design. Exposed as an object as
-   well so inline styles and the stylesheet can never drift apart. */
+/*  DESIGN TOKENS */
 const T = {
     bg: '#000000',
     card: '#000000',
     card2: '#101215',
     line: 'rgba(255,255,255,.08)',
     line2: 'rgba(255,255,255,.16)',
-    text: '#F5F7F8',
-    dim: '#A0A8AF',
-    faint: '#6E757C',
+    text: '#ffffff',
+    dim: '#e6e8ea',
+    faint: '#e7e7e7',
     teal: '#134B5F',
     plum: '#5F0F40',
     blue: '#00296B',
@@ -285,7 +283,7 @@ const LEAVE = {
 };
 
 /* Every rule is namespaced under #rp-driver. The portal renders outside the
-   app Layout, but its <style> tag still lands in the document head — an
+   app Layout, but its <style> tag still lands in the document head  an
    unscoped `.card` or `.btn` would restyle every other route in the app. */
 const css = `
 #rp-driver{
@@ -550,15 +548,15 @@ const css = `
 }
 `;
 
-/* ═══════════════════════════════════════════════════════════════════════
-   UI COMPONENTS
-   ═══════════════════════════════════════════════════════════════════════ */
+/*  UI COMPONENTS */
 
 const Toast = ({ type, message, onClose }) => {
     useEffect(() => {
         if (!message) return undefined;
+
         const t = setTimeout(() => onClose?.(), 3200);
         return () => clearTimeout(t);
+
     }, [message, onClose]);
 
     if (!message) return null;
@@ -628,9 +626,7 @@ const Loading = ({ text }) => (
     </div>
 );
 
-/* ═══════════════════════════════════════════════════════════════════════
-   CARDS
-   ═══════════════════════════════════════════════════════════════════════ */
+/* CARDS */
 
 const clockIcon = <Clock size={10} strokeWidth={2.4} />;
 
@@ -833,9 +829,7 @@ const LeaveCard = ({ leave: l, i }) => {
     );
 };
 
-/* ═══════════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-   ═══════════════════════════════════════════════════════════════════════ */
+/*MAIN COMPONENT */
 const DriverPortal = () => {
     const navigate = useNavigate();
     const { socket, connected } = useSocket();
