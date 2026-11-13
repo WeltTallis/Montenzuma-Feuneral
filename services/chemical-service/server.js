@@ -579,15 +579,21 @@ async function ensureChemicalTables(dbName) {
     const createRegex = /CREATE TABLE IF NOT EXISTS \w+[\s\S]*?\)\s*ENGINE=InnoDB[^;]*;/gi;
     let match;
     let count = 0;
+    const failedTables = [];
     while ((match = createRegex.exec(CHEMICAL_TABLES_SQL)) !== null) {
+      const tableName = match[0].match(/CREATE TABLE IF NOT EXISTS (\w+)/i)?.[1] || 'unknown';
       try {
         await connection.query(match[0]);
-        const tableName = match[0].match(/CREATE TABLE IF NOT EXISTS (\w+)/i)?.[1] || 'unknown';
         console.log(`  Table '${tableName}' ensured in ${dbName}`);
         count++;
       } catch (err) {
+        failedTables.push(`${tableName}: ${err.message}`);
         console.warn(` Table creation warning: ${err.message}`);
       }
+    }
+
+    if (failedTables.length > 0) {
+      throw new Error(`Failed to create required chemical tables: ${failedTables.join('; ')}`);
     }
 
     await normalizePPERequestsSchema(connection, dbName);
@@ -616,9 +622,11 @@ async function ensureChemicalTables(dbName) {
 // ============================================
 async function startServer() {
   // Run auto-migration on the main database
-    const mainDb = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
+  const mainDb = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
   console.log(`Running auto-migration for chemical tables in: ${mainDb}`);
-  await ensureChemicalTables(mainDb);
+  if (!(await ensureChemicalTables(mainDb))) {
+    throw new Error(`Chemical schema migration failed in ${mainDb}; refusing to start`);
+  }
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log('========================================');
@@ -628,6 +636,9 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error('[CHEMICAL] Startup failed:', error);
+  process.exitCode = 1;
+});
 
 module.exports = app;
