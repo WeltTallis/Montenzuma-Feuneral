@@ -1414,7 +1414,7 @@ const CoffinDashboard = () => {
       return;
     }
     const clientName = String(d.client_name || '').trim();
-    const serviceDate = String(d.service_date || '');
+    const serviceDate = String(d.service_date || '').trim() || todayKey();
     if (!clientName) { toast.error('Client name is required'); return; }
     if (!serviceDate) { toast.error('Service date is required'); return; }
     const today = todayKey();
@@ -1448,7 +1448,7 @@ const CoffinDashboard = () => {
         color: coffinColor,
         size: requestedSize || '',
         quantity: d.quantity || 1,
-        service_date: d.service_date,
+        service_date: serviceDate,
         service_time: d.service_time || '',
         amount: d.amount != null ? Number(d.amount) : 0,
         deposit: d.deposit != null ? Number(d.deposit) : 0,
@@ -1485,7 +1485,7 @@ const CoffinDashboard = () => {
               client_name: d.client_name,
               client_phone: d.client_phone,
               deceased_name: d.deceased_name,
-              service_date: d.service_date,
+              service_date: serviceDate,
               notes: d.notes || 'Inter-branch reservation - transfer required',
               req_type: 'client',
             });
