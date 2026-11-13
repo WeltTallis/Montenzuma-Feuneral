@@ -40,9 +40,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.healthCheck = exports.closeAllConnections = exports.closeTenantDB = exports.safeTenantExecute = exports.safeTenantQuery = exports.execute = exports.query = exports.getTenantDBBySlug = exports.getTenantDB = exports.resolveDatabase = exports.lookupTenantDatabase = exports.getRootPool = void 0;
 const mysql = __importStar(require("mysql2/promise"));
-// ============================================
 // Logger (production-safe, no console.log)
-// ============================================
 const LOGGER = {
     info: (msg, data) => {
         if (process.env.NODE_ENV !== 'test') {
@@ -56,15 +54,11 @@ const LOGGER = {
         process.stderr.write(JSON.stringify({ level: 'error', msg, data, ts: new Date().toISOString() }) + '\n');
     },
 };
-// ============================================
 // GSSAPI Auth Plugin Fix for MariaDB 10.11+
-// ============================================
 const auth_gssapi_client = () => () => {
     throw new Error('GSSAPI not supported - use mysql_native_password');
 };
-// ============================================
 // Circuit Breaker
-// ============================================
 class CircuitBreaker {
     failures = 0;
     lastFailureTime = 0;
@@ -131,9 +125,7 @@ class CircuitBreaker {
         this.halfOpenRequests = 0;
     }
 }
-// ============================================
 // Configuration
-// ============================================
 const DB_CONFIG = {
     host: process.env.DB_HOST || '127.0.0.1',
     port: Number.parseInt(process.env.DB_PORT || '3306', 10),
@@ -211,7 +203,7 @@ function stopPoolCleanup() {
         cleanupInterval = null;
     }
 }
-// ─── Root Pool ───────────────────────────────────────────────────────────────
+// ─── Root Pool 
 const getRootPool = async () => {
     if (!rootPool) {
         rootPool = mysql.createPool({
@@ -234,7 +226,7 @@ const getRootPool = async () => {
             LOGGER.error('Root pool creation failed', { error: err.message });
             const failedPool = rootPool;
             rootPool = null;
-            await (failedPool === null || failedPool === void 0 ? void 0 : failedPool.end().catch(() => { }));
+            await failedPool?.end().catch(() => { });
             throw new Error(`Root database connection failed: ${err.message}`);
         }
         startPoolCleanup();
@@ -242,7 +234,7 @@ const getRootPool = async () => {
     return rootPool;
 };
 exports.getRootPool = getRootPool;
-// ─── Tenant Lookup with Circuit Breaker ──────────────────────────────────────
+// ─── Tenant Lookup with Circuit Breaker 
 /**
  * Schemas that must NEVER be handed back as a tenant database, whatever the
  * registry says. Last line of defence for a malformed/attacked tracking row.
@@ -744,7 +736,7 @@ const healthCheck = async () => {
             cacheSize: branchDbCache.size,
             rootPoolBreaker: rootPoolBreaker.getState(),
             timestamp: new Date().toISOString(),
-            error: (err === null || err === void 0 ? void 0 : err.message) || 'Unknown database health-check failure',
+            error: err?.message || 'Unknown database health-check failure',
         };
     }
 };

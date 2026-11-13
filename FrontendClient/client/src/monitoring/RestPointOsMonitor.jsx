@@ -64,19 +64,20 @@ const clockOf = (iso) => {
 function deriveAlerts(d) {
   const out = [];
   const when = clockOf(d.generatedAt);
+  const summary = d.summary || {};
 
   (d.services || []).filter((s) => !s.up).forEach((s) => {
     out.push({ when, sev: 'err', msg: `Service unreachable (${s.error || 'no response'})`, svc: s.name });
   });
 
-  if (d.summary.serverError > 0) {
-    out.push({ when, sev: 'err', msg: `${num(d.summary.serverError)} server errors (5xx) recorded`, svc: 'api_gateway' });
+  if (summary.serverError > 0) {
+    out.push({ when, sev: 'err', msg: `${num(summary.serverError)} server errors (5xx) recorded`, svc: 'api_gateway' });
   }
-  if (d.summary.rateLimited > 0) {
-    out.push({ when, sev: 'warn', msg: `${num(d.summary.rateLimited)} rate-limited requests (429)`, svc: 'api_gateway' });
+  if (summary.rateLimited > 0) {
+    out.push({ when, sev: 'warn', msg: `${num(summary.rateLimited)} rate-limited requests (429)`, svc: 'api_gateway' });
   }
-  if (d.summary.avgLatencyMs > 500) {
-    out.push({ when, sev: 'warn', msg: `Average latency high: ${Math.round(d.summary.avgLatencyMs)}ms`, svc: 'api_gateway' });
+  if (summary.avgLatencyMs > 500) {
+    out.push({ when, sev: 'warn', msg: `Average latency high: ${Math.round(summary.avgLatencyMs)}ms`, svc: 'api_gateway' });
   }
   if (d.queues?.available && d.queues.totals?.failed > 0) {
     out.push({ when, sev: 'warn', msg: `${num(d.queues.totals.failed)} background jobs failed`, svc: 'bullmq' });
