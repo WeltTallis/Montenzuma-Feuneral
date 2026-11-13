@@ -79,6 +79,9 @@ RUN apk add --no-cache dumb-init wget \
  && addgroup -g 1001 -S nodejs \
  && adduser -S nodejs -u 1001
 
+# tsx runs the TypeScript service entry directly.
+RUN npm install -g tsx --no-audit --no-fund
+
 WORKDIR /usr/src/app
 
 # Production-only dependency tree (dev toolchain excluded by --omit=dev)
@@ -110,4 +113,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node","services/documents-service/server.js"]
+CMD ["tsx","services/documents-service/server.ts"]
