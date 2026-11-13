@@ -6,7 +6,7 @@ import axios from 'axios';
 import env from '../../utils/config/env';
 import notify from '../../utils/notify';
 
-// ─── Fonts ──────────────────────────────────────────────────────
+//Fonts 
 const GlobalStyles = createGlobalStyle`
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -19,7 +19,7 @@ const GlobalStyles = createGlobalStyle`
   }
 `;
 
-// ─── Design tokens ──────────────────────────────────────────────
+//  Design tokens 
 const C = {
     ink: '#252923',
     ink2: '#62675f',
@@ -40,13 +40,13 @@ const C = {
 
 const BASE_URL = env.FULL_API_URL;
 
-// ─── Animations ─────────────────────────────────────────────────
+// Animations 
 const fadeIn = keyframes`from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}`;
 const fadeUp = keyframes`from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}`;
 const spin = keyframes`to{transform:rotate(360deg)}`;
 const shake = keyframes`0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}`;
 
-// ─── Layout ─────────────────────────────────────────────────────
+//  Layout 
 const Shell = styled.div`
     font-family: ${C.sans};
     background: ${C.paper};
@@ -61,13 +61,12 @@ const Shell = styled.div`
 
 const Card = styled.div`
     width: 100%;
-    max-width: 860px;
+    max-width: 2200px;
     background: #fff;
     box-shadow: 0 2px 8px rgba(37,41,35,.04), 0 22px 54px -26px rgba(37,41,35,.18);
     animation: ${fadeIn} .5s ${C.ease} both;
     display: flex;
     flex-direction: column;
-
     @media (max-width: 600px) { min-height: 100vh; }
 `;
 
@@ -76,7 +75,7 @@ const AccentLine = styled.div`
     background: linear-gradient(90deg, ${C.ox} 0 68%, ${C.amber} 68% 100%);
 `;
 
-// ─── Condolence (plain white — no background, no border) ────────
+//Condolence (plain white — no background, no border) 
 const Condolence = styled.div`
     text-align: center;
     padding: 16px 28px;
@@ -85,7 +84,7 @@ const Condolence = styled.div`
     color: ${C.ink2};
 `;
 
-// ─── Document header (step 1 only) ──────────────────────────────
+//  Document header (step 1 only)
 const DocHeader = styled.header`
     display: flex;
     justify-content: space-between;
@@ -145,7 +144,7 @@ const QrLabel = styled.span`
     @media (max-width: 640px) { font-size: 8px; letter-spacing: .12em; }
 `;
 
-// ─── Title ──────────────────────────────────────────────────────
+// Title 
 const TitleSection = styled.div`
     padding: 30px 40px 26px;
     text-align: center;
@@ -160,7 +159,7 @@ const TitleSection = styled.div`
     }
 `;
 
-// ─── Section bar (dark ink + mono label) ────────────────────────
+//  Section bar (dark ink + mono label) 
 const SBar = styled.div`
     display: flex; align-items: center; gap: .75rem;
     margin-bottom: 1.6rem;
@@ -172,7 +171,7 @@ const SBar = styled.div`
     .t { font-family: ${C.mono}; font-size: .78rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #faf8f4; }
 `;
 
-// ─── Body / footer ──────────────────────────────────────────────
+//  Body / footer 
 const Body = styled.div`
     padding: 28px 40px;
     @media (max-width: 640px) { padding: 22px 20px; }
@@ -191,7 +190,7 @@ const FormFooter = styled.div`
     }
 `;
 
-// ─── Form primitives (underline-only fields) ────────────────────
+//  Form primitives (underline-only fields) 
 const FormGroup = styled.div`
     display: flex; flex-direction: column; gap: 9px; margin-bottom: 26px;
     &:last-child { margin-bottom: 0; }
@@ -248,7 +247,7 @@ const TextareaField = styled.textarea`
     &:focus { border-bottom-color: ${C.ox}; }
 `;
 
-// ─── Notices (plain text — no background, no border) ────────────
+//  Notices (plain text — no background, no border) 
 const Hint = styled.p`
     font-size: 14px; line-height: 1.65;
     color: ${C.ink2}; margin-bottom: 26px;
@@ -267,7 +266,7 @@ const NoteOk = styled.p`
     animation: ${fadeUp} .25s ease both;
 `;
 
-// ─── Case record (step 2) ───────────────────────────────────────
+// Case record (step 2)
 const CaseId = styled.div`
     display: flex; justify-content: space-between; align-items: flex-start;
     gap: 16px; margin-bottom: 1.7rem;
@@ -320,7 +319,7 @@ const CaseItem = styled.div`
     dd { font-size: 14.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
 `;
 
-// ─── Priority (no background fills — ox underline) ──────────────
+// Priority (no background fills — ox underline) 
 const Seg = styled.div`
     display: grid; grid-template-columns: repeat(3, 1fr);
     border-bottom: 1px solid ${C.line};
@@ -356,7 +355,7 @@ const SegOpt = styled.button`
     `}
 `;
 
-// ─── Buttons ────────────────────────────────────────────────────
+//  Buttons 
 const Btn = styled.button`
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     padding: 12px 24px;
@@ -388,7 +387,7 @@ const Spinner = styled.div`
     animation: ${spin} .7s linear infinite;
 `;
 
-// ─── Confirmation ───────────────────────────────────────────────
+//  Confirmation 
 const Confirm = styled.div`
     text-align: center; padding: 14px 0 10px;
 
@@ -415,7 +414,7 @@ const Confirm = styled.div`
     }
 `;
 
-// ─── Dark footer ────────────────────────────────────────────────
+// Dark footer 
 const ElegantFooter = styled.footer`
     position: relative;
     width: 100%; overflow: hidden;
@@ -473,7 +472,7 @@ const FooterBar = styled.div`
     }
 `;
 
-// ─── Component ──────────────────────────────────────────────────
+// Component
 export default function PostmortemRequestForm() {
     const { slug } = useParams();
     const navigate = useNavigate();
@@ -633,7 +632,7 @@ export default function PostmortemRequestForm() {
             <Shell>
                 <Card>
 
-                    {/* ══════ STEP 1 — FIND CASE ══════ */}
+                    {/* STEP 1 — FIND CASE */}
                     {!step1Done && !step2Done && (
                         <>
                             <AccentLine aria-hidden="true" />
@@ -661,10 +660,6 @@ export default function PostmortemRequestForm() {
                                 </QrWrapper>
                             </DocHeader>
 
-                            <TitleSection>
-                                <h1>Postmortem <em>Examination</em> Request</h1>
-                                <p>Complete all fields accurately to authorize the procedure.</p>
-                            </TitleSection>
 
                             <form onSubmit={handleLookup}>
                                 <Body>

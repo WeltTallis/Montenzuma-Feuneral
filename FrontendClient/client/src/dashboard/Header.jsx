@@ -1,12 +1,10 @@
 import { Ic } from "./opsIcons";
 
 /**
- * The dashboard header area: the top strip (menu, title, date, theme, refresh)
- * and, when the ops section is active, the secondary toolbar (nav pills,
- * search, branch, schedule, avatar).
+ * The operations toolbar for navigation, search, branch, schedule, and account
+ * controls.
  */
 export function Header({
-  activeNavMeta,
   showOpsToolbar,
   section,
   view,
@@ -21,13 +19,6 @@ export function Header({
   branchOptions,
   cases,
   today,
-  now,
-  dark,
-  refreshing,
-  navOpen,
-  setNavOpen,
-  setDark,
-  doRefresh,
   setSearch,
   setBranch,
   setFilters,
@@ -59,42 +50,6 @@ export function Header({
 
   return (
     <>
-      <div className="rpd-topbar">
-        <button
-          type="button"
-          className="rpd-topbar-menu"
-          onClick={() => setNavOpen(true)}
-          aria-label="Open navigation"
-        >
-          <Ic n="menu" s={17} />
-        </button>
-        <div className="rpd-topbar-title">
-          <b>{activeNavMeta.label}</b>
-          {activeNavMeta.full && activeNavMeta.full.toLowerCase() !== activeNavMeta.label.toLowerCase() && (
-            <small>{activeNavMeta.full}</small>
-          )}
-        </div>
-        <div className="rpd-topbar-sp" />
-        <span className="rpd-topbar-date">{now.day} · {now.date}</span>
-        <button
-          className="tb-btn sq"
-          title="Toggle theme"
-          onClick={() => setDark((d) => !d)}
-          aria-label="Toggle theme"
-        >
-          <Ic n={dark ? "sun" : "moon"} s={14} />
-        </button>
-        <button
-          className="tb-btn sq"
-          title="Refresh"
-          onClick={doRefresh}
-          aria-label="Refresh"
-        >
-          <span className={refreshing ? "spin" : ""}>
-            <Ic n="sync" s={13} />
-          </span>
-        </button>
-      </div>
       {showOpsToolbar ? (
         <header
           className={`tbar${isBoardPeriod ? " sched-mode" : ""}`}

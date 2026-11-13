@@ -21,7 +21,7 @@ import { Header } from "./Header";
 
 import {
   DOWF, DOWM, MO, TYPE_C, addDays, baseList, buildCases, calcStats, eventsOf,
-  initials, isReleased, matchPill, nowClock, pad, pillsFor, searchMatch,
+  initials, isReleased, matchPill, pad, pillsFor, searchMatch,
   todayKey,
 } from "./opsData";
 import { TipBox, useTooltip } from "./opsBits";
@@ -34,7 +34,7 @@ import CoffinCommandCenter from "./CoffinCommandCenter";
 import SimpleCoffinInventory from "./SimpleCoffinInventory";
 import DeceasedScheduleCalendar from "./HearseCalendar";
 import DashboardOverview from "./DashboardOverview";
-import DashSidebar, { NAV_ITEMS } from "./shell/DashSidebar";
+import DashSidebar from "./shell/DashSidebar";
 const FleetDashboard = lazy(() => import("../components/hearse/FleetDashboard"));
 
 /* Sidebar view → the ops section it lands on. */
@@ -55,7 +55,6 @@ const CAL_TYPE = {
   transfer: { label: "Hearse Transfer", status: "in_transit", color: "#00296B", bg: "#eff4fa", icon: <Clock size={12} /> },
 };
 
-const DARK_KEY = "rpd-ops-dark";
 const NAV_COLLAPSE_KEY = "rpd-nav-collapsed";
 const NAV_VIEW_KEY = "rpd-nav-view";
 
@@ -67,7 +66,7 @@ const NAV = [
 ];
 
 export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
-  const { cases, loading, reload } = useCaseData();
+  const { cases, loading } = useCaseData();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -94,15 +93,8 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   const [filters, setFilters] = useState([]);
   const [branch, setBranch] = useState("");
   const [search, setSearch] = useState("");
-  const [dark, setDark] = useState(() => {
-    try { return localStorage.getItem(DARK_KEY) === "1"; } catch { return false; }
-  });
-
-
-
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   // Newest FIRST. `sortRegisters` multiplies by `dir`, so d:1 was ascending —
   // the record just registered sank to the BOTTOM of the register and the
   // oldest body sat on top. Every register section is a "what just happened" log,
@@ -113,7 +105,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     pm: { f: "date", d: -1 },
   });
   const [toast, setToast] = useState("");
-  const [now, setNow] = useState(nowClock());
   const contentScrollRef = useRef(null);
 
   const tooltip = useTooltip();
@@ -213,14 +204,9 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     return eventsOf(searched).filter((event) => daySet.has(event.date)).length;
   }, [scheduleWindow.startKey, searched, view]);
 
-  const activeNavMeta = NAV_ITEMS.find((n) => n.id === navView) || NAV_ITEMS[0];
   const showOpsToolbar = !isModuleView && !isOverviewView && !isReleaseCalendarView;
   const headerNav = NAV;
   /* effects */
-  useEffect(() => {
-    try { localStorage.setItem(DARK_KEY, dark ? "1" : "0"); } catch { /* storage blocked */ }
-  }, [dark]);
-
   /* Sidebar collapse + last destination persist across reloads. */
   const [navCollapsed, setNavCollapsed] = useState(() => {
     try { return localStorage.getItem(NAV_COLLAPSE_KEY) === "1"; } catch { return false; }
@@ -235,11 +221,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
   useEffect(() => {
     if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0;
   }, [navView, section]);
-  useEffect(() => {
-    const id = setInterval(() => setNow(nowClock()), 30000);
-    return () => clearInterval(id);
-  }, []);
-
   /* Keep the schedule on *today* when the dashboard is left open across
      midnight: if the day changes and the view was sitting on yesterday's
      "today", roll the selection (and the sidebar calendar) forward. */
@@ -345,14 +326,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
       };
     });
 
-  const doRefresh = async () => {
-    if (refreshing) return;
-    setRefreshing(true);
-    await reload(true);
-    setRefreshing(false);
-    setToast("Refreshed");
-  };
-
   const onNav = (id) => {
     setSection(id);
     setFilters([]);
@@ -399,14 +372,16 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
     setTodayMode(false);
   };
   return (
-    <div className={`rpd${dark ? " dark" : ""}${isReleaseCalendarView ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}${isOverviewView ? " rpd-home" : ""}`}>
+    <div className={`rpd${isReleaseCalendarView ? " no-side" : ""}${navOpen ? " rpd-nav-open" : ""}${isOverviewView ? " rpd-home" : ""}`}>
       <div className="app">
         <DashSidebar
           active={navView}
           collapsed={navCollapsed}
           onNavigate={onNavView}
           onToggleCollapse={() => setNavCollapsed((c) => !c)}
+          onOpenMobile={() => setNavOpen(true)}
           onCloseMobile={() => setNavOpen(false)}
+          mobileNavOpen={navOpen}
           tenantSlug={tenantSlug}
           itemBadges={{
             intake: badges.intake,
@@ -416,7 +391,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
         <div className="rpd-body">
           <div className="rpd-main">
             <Header
-              activeNavMeta={activeNavMeta}
               showOpsToolbar={showOpsToolbar}
               section={section}
               view={view}
@@ -431,13 +405,6 @@ export default function Dashboard({ tenantSlug = "", tenantData } = {}) {
               branchOptions={branchOptions}
               cases={cases}
               today={today}
-              now={now}
-              dark={dark}
-              refreshing={refreshing}
-              navOpen={navOpen}
-              setNavOpen={setNavOpen}
-              setDark={setDark}
-              doRefresh={doRefresh}
               setSearch={setSearch}
               setBranch={setBranch}
               setFilters={setFilters}

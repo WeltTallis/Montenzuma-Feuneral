@@ -8,21 +8,21 @@ const TRANSITIONS = { default: "0.22s cubic-bezier(0.4, 0, 0.2, 1)" };
 
 const COLORS = {
   bg: "#ffffff",
-  border: "#e8e9e5",
-  text: "#252b25",
-  muted: "#62675f",
-  light: "#8b9088",
-  accent: "#2e563b",
-  accentBg: "#edf2ed",
-  hover: "#f7f8f6",
-  mark: "#29312b",
+  border: "#e8e8e8",
+  text: "#000000",
+  muted: "#555555",
+  light: "#999999",
+  accent: "#2e7d32",
+  accentBg: "#e8f5e9",
+  hover: "#f5f5f5",
+  mark: "#2e7d32",
 };
 
 const SidebarNav = styled.nav`
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: ${({ $collapsed }) => ($collapsed ? "12px 8px 6px" : "12px 10px 6px")};
+  padding: ${({ $collapsed }) => ($collapsed ? "20px 8px" : "20px 16px")};
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -33,17 +33,17 @@ const SidebarNav = styled.nav`
 const NavGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 6px;
+  gap: 4px;
+  margin-bottom: 14px;
 `;
 
 const NavCaption = styled.div`
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: ${COLORS.light};
-  padding: ${({ $collapsed }) => ($collapsed ? "10px 0 4px" : "12px 10px 6px")};
+  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 12px 12px")};
   text-align: ${({ $collapsed }) => ($collapsed ? "center" : "left")};
   opacity: ${({ $collapsed }) => ($collapsed ? 0 : 1)};
   max-height: ${({ $collapsed }) => ($collapsed ? "0px" : "24px")};
@@ -54,23 +54,24 @@ const NavCaption = styled.div`
 const MenuItem = styled.button`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   width: 100%;
-  padding: 9px ${({ $collapsed }) => ($collapsed ? "0" : "10px")};
+  height: 44px;
+  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 12px")};
   justify-content: ${({ $collapsed }) => ($collapsed ? "center" : "flex-start")};
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   background: ${({ $active }) => ($active ? COLORS.accentBg : "transparent")};
-  color: ${({ $active }) => ($active ? COLORS.accent : COLORS.muted)};
+  color: ${({ $active }) => ($active ? COLORS.accent : COLORS.text)};
   font-family: inherit;
-  font-size: 13px;
-  font-weight: ${({ $active }) => ($active ? 700 : 600)};
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   position: relative;
   transition: background 0.15s ease, color 0.15s ease, padding ${TRANSITIONS.default};
   &:hover {
-    background: ${({ $active }) => ($active ? COLORS.accentBg : COLORS.hover)};
-    color: ${COLORS.accent};
+    background: ${COLORS.hover};
+    color: ${COLORS.text};
   }
 `;
 
@@ -80,21 +81,21 @@ const MenuIcon = styled.span`
   flex: 0 0 22px;
   display: grid;
   place-items: center;
-  color: ${({ $active }) => ($active ? COLORS.accent : COLORS.light)};
+  color: ${({ $active }) => ($active ? COLORS.accent : COLORS.text)};
 `;
 
 const MenuLabel = styled.span`
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: ${({ $visible }) => ($visible ? "1" : "0 0 0")};
   opacity: ${({ $visible }) => ($visible ? 1 : 0)};
   transition: opacity ${TRANSITIONS.default};
 `;
 
 const MenuBadge = styled.span`
-  background: ${COLORS.accent};
+  background: ${COLORS.text};
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -113,7 +114,7 @@ const CollapsedBadge = styled.span`
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: ${COLORS.accent};
+  background: ${COLORS.text};
   color: #fff;
   font-size: 9px;
   font-weight: 700;
@@ -126,7 +127,7 @@ const CollapsedBadge = styled.span`
 
 const Footer = styled.div`
   border-top: 1px solid ${COLORS.border};
-  padding: 8px;
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -137,21 +138,24 @@ const FooterButton = styled.button`
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 9px ${({ $collapsed }) => ($collapsed ? "0" : "10px")};
+  height: 40px;
+  padding: ${({ $collapsed }) => ($collapsed ? "0" : "0 12px")};
   justify-content: ${({ $collapsed }) => ($collapsed ? "center" : "flex-start")};
   border: none;
   background: transparent;
   color: ${COLORS.muted};
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: background 0.15s ease, color 0.15s ease, padding ${TRANSITIONS.default};
   &:hover { background: ${COLORS.hover}; color: ${COLORS.accent}; }
 `;
 
 const FooterLabel = styled.span`
+  flex: ${({ $visible }) => ($visible ? "1" : "0 0 0")};
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -175,10 +179,10 @@ const ToggleButton = styled.button`
 `;
 export const NAV_ITEMS = [
   { id: "overview", group: "Workspace", label: "Overview", icon: "home", full: "Overview" },
-  { id: "release-calendar", group: "Workspace", label: "Deceased calendar", icon: "cal", full: "Deceased calendar" },
-  { id: "fleet", group: "Workspace", label: "Hearse fleet", icon: "truck", full: "Hearse fleet" },
+  { id: "release-calendar", group: "Workspace", label: "Morgue", icon: "cal", full: "Morgue" },
+  { id: "fleet", group: "Workspace", label: "Fleet", icon: "truck", full: "Fleet" },
   { id: "store", group: "Management", label: "Store", icon: "store", full: "Store" },
-  { id: "coffin-store", group: "Management", label: "Coffin inventory", icon: "store", full: "Coffin inventory" },
+  { id: "coffin-store", group: "Management", label: "Coffins", icon: "store", full: "Coffins" },
   { id: "flowers", group: "Management", label: "Florist", icon: "flower", full: "Florist" },
 ];
 
@@ -187,7 +191,9 @@ export default function DashSidebar({
   collapsed,
   onNavigate,
   onToggleCollapse,
+  onOpenMobile,
   onCloseMobile,
+  mobileNavOpen,
   tenantSlug,
   itemBadges = {},
 }) {
@@ -225,8 +231,18 @@ export default function DashSidebar({
 
   return (
     <>
+      <button
+        type="button"
+        className="rpd-nav-open-trigger"
+        onClick={onOpenMobile}
+        aria-label="Open dashboard navigation"
+        aria-controls="dashboard-navigation"
+        aria-expanded={mobileNavOpen}
+      >
+        <Ic n="menu" s={18} />
+      </button>
       <div className="rpd-nav-scrim" onClick={onCloseMobile} aria-hidden="true" />
-      <aside className={`rpd-nav${collapsed ? " is-collapsed" : ""}`} aria-label="Dashboard navigation">
+      <aside id="dashboard-navigation" className={`rpd-nav${collapsed ? " is-collapsed" : ""}`} aria-label="Dashboard navigation">
         <button
           type="button"
           className="rpd-nav-burger"
@@ -246,6 +262,12 @@ export default function DashSidebar({
           }}
         >
           <span className="rpd-shell-mark" title="RestPoint">RP</span>
+          {!collapsedMode && (
+            <span className="rpd-shell-brand-copy">
+              <b>RestPoint</b>
+              <small>Operations</small>
+            </span>
+          )}
           {!isMobile && !collapsedMode && (
             <button
               type="button"
@@ -280,17 +302,18 @@ export default function DashSidebar({
                   onClick={() => onNavigate(item.id)}
                   title={collapsedMode ? item.full : undefined}
                   aria-label={item.full}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <MenuIcon $active={isActive}>
                     <Ic n={item.icon} s={16} />
                   </MenuIcon>
                   <MenuLabel $visible={!collapsedMode}>{item.label}</MenuLabel>
-                  {badge > 0 && (
-                    <>
-                      <MenuBadge $visible={!collapsedMode}>{badge}</MenuBadge>
-                      <CollapsedBadge $visible={collapsedMode}>{badge}</CollapsedBadge>
-                    </>
-                  )}
+                  {badge > 0 &&
+                    (collapsedMode ? (
+                      <CollapsedBadge $visible>{badge}</CollapsedBadge>
+                    ) : (
+                      <MenuBadge $visible>{badge}</MenuBadge>
+                    ))}
                 </MenuItem>
               </NavGroup>
             );
