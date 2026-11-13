@@ -133,6 +133,24 @@ sudo cp nginx-host.conf /etc/nginx/sites-available/restpoint
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot renew --dry-run
 
+Cloudflare edge maintenance fallback (for when the origin host itself is unreachable):
+
+1. Make sure the domain is proxied through Cloudflare and the Cloudflare account has
+   Workers enabled for the `restpoint.co.ke` zone.
+2. From the repository root, authenticate Wrangler with an account that can deploy
+   Workers and manage routes for that zone:
+
+   ```sh
+   npx wrangler login
+   npx wrangler deploy --config cloudflare/wrangler.jsonc
+   ```
+
+The Worker passes normal traffic through to the origin and serves
+`nginx/maintenance.html` only for browser page requests when the origin is
+unreachable or returns a 5xx. API, upload, bridge, health, monitoring, and
+Socket.IO traffic is not converted into an HTML page. The host Nginx fallback
+remains useful when only the frontend container is unavailable.
+
 
 sudo ufw allow 'Nginx Full' 
 
@@ -316,7 +334,6 @@ systemctl disable --now unattended-upgrades
 systemctl disable --now apt-daily.timer
 systemctl disable --now apt-daily-upgrade.timer
 apt-mark hold docker-ce-rootless-extras
-
 
 
 

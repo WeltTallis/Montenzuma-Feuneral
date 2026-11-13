@@ -1,0 +1,18 @@
+{
+  "name": "restpoint-maintenance-fallback",
+  "main": "./maintenance-worker.mjs",
+  "compatibility_date": "2026-11-12",
+  "workers_dev": false,
+  "assets": {
+    "directory": "../nginx",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "routes": [
+    { "pattern": "restpoint.co.ke/*", "zone_name": "restpoint.co.ke" },
+    { "pattern": "www.restpoint.co.ke/*", "zone_name": "restpoint.co.ke" },
+    { "pattern": "app.restpoint.co.ke/*", "zone_name": "restpoint.co.ke" },
+    { "pattern": "portal.restpoint.co.ke/*", "zone_name": "restpoint.co.ke" },
+    { "pattern": "paymontenzuma.restpoint.co.ke/*", "zone_name": "restpoint.co.ke" }
+  ]
+}
