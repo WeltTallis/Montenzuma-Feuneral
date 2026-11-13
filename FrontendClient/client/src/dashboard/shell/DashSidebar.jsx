@@ -7,6 +7,7 @@ import { Ic } from "../opsIcons";
 const TRANSITIONS = { default: "0.22s cubic-bezier(0.4, 0, 0.2, 1)" };
 
 const COLORS = {
+
   bg: "#ffffff",
   border: "#e8e8e8",
   text: "#000000",

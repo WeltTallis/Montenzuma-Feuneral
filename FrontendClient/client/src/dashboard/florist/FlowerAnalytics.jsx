@@ -2,10 +2,10 @@
    Ports the florist/chart.html decision engine ("Flower bookings: trends and
    decisions") from sample numbers to REAL bookings (GET /florist/bookings,
    tenant-wide like FlowerBookingsNew), rendered with recharts.
-   Decision rule kept verbatim: past-period averages = "usual"; a value 10%+
-   above usual = Rising, 25%+ = High; the banner follows the worst of next-7
-   days / weekly / monthly. [WHEN:…] note tags + funeral_date are honoured
-   for bucketing, same as FlowerBookingsNew. */
+   Historical averages remain the comparison baseline; without history the
+   near-term schedule is checked for concentrated demand instead. Bookings are
+   counted as orders, not package quantities. [WHEN:…] and funeral_date are
+   honoured for bucketing, same as FlowerBookingsNew. */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,6 +26,11 @@ const parseKey = (k) => { const p = String(k || "").split("-").map(Number); retu
 const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOf(d); };
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 const lvl = (v, u) => (u > 0 && v >= u * 1.25 ? 2 : u > 0 && v >= u * 1.10 ? 1 : 0);
+// With no history, detect a concentrated near-term rush without comparing it to zero.
+const lvlWithoutHistory = (v, u) => {
+  const ratio = v / Math.max(u, 1);
+  return v >= 3 && ratio >= 2 ? 2 : v >= 2 && ratio >= 1.5 ? 1 : 0;
+};
 const pc = (v, u) => (u > 0 ? Math.round((v / u - 1) * 100) : 0);
 const fmtDay = (k) => parseKey(k).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -63,7 +68,6 @@ const flowerNames = (b) => {
   if (tok) return tok[1].split("|").map((s) => s.trim()).filter(Boolean);
   return [b?.flower_type || "Custom Arrangement"];
 };
-const bookingQty = (b) => Math.max(1, Number(b?.quantity) || 1);
 const isVoid = (b) => ["cancelled", "canceled"].includes(String(b?.status || "").toLowerCase());
 
 function useFlowerData() {
@@ -79,12 +83,26 @@ function useFlowerData() {
   const load = useCallback(async () => {
     try {
       setErr("");
-      /* Fetch big (limit 500): the analytics needs ~8 weeks of history, and
-         the endpoint's own page uses { limit: 100 } only for its list UI. */
-      const res = await api.get("/florist/bookings", {
-        params: { tenant_id: getTenantId() || undefined, limit: 500 },
-      });
-      setBookings(unwrap(res));
+      const params = { tenant_id: getTenantId() || undefined, limit: 100 };
+      const firstPage = await api.get("/florist/bookings", { params: { ...params, page: 1 } });
+      const totalPages = Number(firstPage?.data?.pagination?.totalPages);
+      const pageCount = Number.isFinite(totalPages) && totalPages > 0 ? Math.ceil(totalPages) : 1;
+      const rows = unwrap(firstPage);
+
+      for (let page = 2; page <= pageCount; page += 4) {
+        const pages = Array.from(
+          { length: Math.min(4, pageCount - page + 1) },
+          (_, index) => page + index,
+        );
+        const responses = await Promise.all(
+          pages.map((pageNumber) =>
+            api.get("/florist/bookings", { params: { ...params, page: pageNumber } }),
+          ),
+        );
+        rows.push(...responses.flatMap(unwrap));
+      }
+
+      setBookings(rows);
     } catch (e) {
       setErr(e?.friendlyMessage || e?.response?.data?.message || e?.message || "Could not load flower bookings");
     } finally {
@@ -113,13 +131,17 @@ function useFlowerData() {
     const today = keyOf(new Date());
     const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return keyOf(d); })();
     const byDay = new Map();
-    live.forEach((b) => { const k = bookingDay(b); if (k) byDay.set(k, (byDay.get(k) || 0) + bookingQty(b)); });
+    live.forEach((b) => {
+      const k = bookingDay(b);
+      if (k) byDay.set(k, (byDay.get(k) || 0) + 1);
+    });
 
     const daily7 = Array.from({ length: 7 }, (_, i) => byDay.get(addDays(today, i)) || 0);
     const weekIdxOf = (k) => { const m = parseKey(monday); const d = Math.floor((parseKey(k) - m) / 864e5); return d < 0 ? -1 : Math.floor(d / 7); };
     const pastW = Array(8).fill(0); const aheadW = [0, 0, 0];
     const monthIdxOf = (k) => { const t = new Date(); return (t.getFullYear() - parseKey(k).getFullYear()) * 12 + (t.getMonth() - parseKey(k).getMonth()); };
     const pastM = Array(6).fill(0);
+    const busiestDay = daily7.reduce((best, value, index) => value > daily7[best] ? index : best, 0);
     let monthSoFar = 0;
     byDay.forEach((v, k) => {
       const w = weekIdxOf(k);
@@ -129,37 +151,65 @@ function useFlowerData() {
       if (m === 0) monthSoFar += v; else if (m >= 1 && m <= 6) pastM[6 - m] += v;
     });
 
-    const avgW = sum(pastW) / pastW.length || 0;
-    const avgD = avgW / 7;
-    const avgM = sum(pastM) / pastM.length || 0;
+    const weekHistory = pastW.some((value) => value > 0);
+    const monthHistory = pastM.some((value) => value > 0);
+    const avgW = weekHistory ? sum(pastW) / pastW.length : 0;
+    const avgD = weekHistory ? avgW / 7 : 0;
+    const avgM = monthHistory ? sum(pastM) / pastM.length : 0;
     const dim = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
     const proj = monthSoFar > 0 ? Math.round((monthSoFar / new Date().getDate()) * dim) : 0;
     const sum7 = sum(daily7);
     let peakI = 0; aheadW.forEach((v, i) => { if (v > aheadW[peakI]) peakI = i; });
     const peakW = aheadW[peakI];
     const wkName = ["this week", "next week", "in 2 weeks"][peakI];
-    const L7 = lvl(sum7, avgW), LW = lvl(peakW, avgW), LM = lvl(proj, avgM);
+    const hasWeekHistory = weekHistory;
+    const hasMonthHistory = monthHistory;
+    const otherDaysAvg = (sum7 - daily7[busiestDay]) / (daily7.length - 1);
+    const otherWeeksAvg = (sum(aheadW) - peakW) / (aheadW.length - 1);
+    const L7 = hasWeekHistory ? lvl(sum7, avgW) : lvlWithoutHistory(daily7[busiestDay], otherDaysAvg);
+    const LW = hasWeekHistory ? lvl(peakW, avgW) : lvlWithoutHistory(peakW, otherWeeksAvg);
+    const LM = hasMonthHistory ? lvl(proj, avgM) : 0;
     const worst = Math.max(L7, LW, LM);
-    const pct = Math.max(pc(sum7, avgW), pc(peakW, avgW), pc(proj, avgM));
     const start = peakI === 0 ? today : addDays(monday, 7 * peakI);
-    let by = addDays(start, -LEAD_DAYS); if (by < today) by = today;
-    const when = L7 > 0 ? "today" : LW > 0 ? "by " + fmtDay(by) : "this week";
+    let by = addDays(start, -LEAD_DAYS);
+    if (by < today) by = today;
+    const alerts = [
+      L7 > 0 && { level: L7, pct: hasWeekHistory ? pc(sum7, avgW) : null, when: "on " + fmtDay(addDays(today, busiestDay)) },
+      LW > 0 && { level: LW, pct: hasWeekHistory ? pc(peakW, avgW) : null, when: "by " + fmtDay(by) },
+      LM > 0 && { level: LM, pct: pc(proj, avgM), when: "this month" },
+    ].filter(Boolean);
+    const strongestAlert = alerts.reduce((best, alert) =>
+      !best || alert.level > best.level || (alert.level === best.level && (alert.pct ?? -1) > (best.pct ?? -1))
+        ? alert
+        : best, null);
+    const alertPct = strongestAlert?.pct ?? null;
+    const pct = alertPct ?? 0;
+    const when = strongestAlert?.when || "this week";
 
-    /* Flowers: stems in the last 30 days vs the 30 before. */
+    /* Compare flower names by booking occurrence, not package quantity. */
     const cutoff = addDays(today, -30), prevCutoff = addDays(today, -60);
     const cur = new Map(), prev = new Map();
+    const hasFlowerHistory = live.some((b) => {
+      const k = bookingDay(b);
+      return k && k > prevCutoff && k <= cutoff;
+    });
     live.forEach((b) => {
       const k = bookingDay(b); if (!k) return;
       const target = k > cutoff ? cur : k > prevCutoff ? prev : null;
       if (!target) return;
-      flowerNames(b).forEach((n) => target.set(n, (target.get(n) || 0) + bookingQty(b)));
+      new Set(flowerNames(b)).forEach((n) => target.set(n, (target.get(n) || 0) + 1));
     });
     const flowers = [...cur.entries()].map(([name, v]) => ({ name, cur: v, prev: prev.get(name) || 0 }))
       .sort((a, b2) => b2.cur - a.cur).slice(0, 8);
 
     const half = sum(pastW.slice(4)) / 4, prevAvg = sum(pastW.slice(0, 4)) / 4;
-    const trend = pc(half, prevAvg);
-    return { daily7, pastW, aheadW, pastM, monthSoFar, proj, avgW, avgD, avgM, sum7, peakW, wkName, peakI, worst, pct, when, flowers, trend, today, monday, total: sum([...byDay.values()]), weekAvgHalf: half, weekAvgPrev: prevAvg };
+    const trend = prevAvg > 0 ? pc(half, prevAvg) : half > 0 ? null : 0;
+    return {
+      daily7, pastW, aheadW, pastM, monthSoFar, proj, avgW, avgD, avgM, sum7, peakW,
+      wkName, peakI, worst, pct, alertPct, when, flowers, trend, today, monday, busiestDay,
+      busiestDayCount: daily7[busiestDay], hasWeekHistory, hasMonthHistory, hasFlowerHistory,
+      total: sum([...byDay.values()]), weekAvgHalf: half, weekAvgPrev: prevAvg,
+    };
   }, [bookings]);
 
   return { bookings, stats, loading, err, connected, tenantSlug, reload: load };
@@ -182,16 +232,21 @@ const band = (v, u) => lvl(v, u);
 function FlowerBody({ s, live, onManage }) {
   const d7 = s.daily7.map((v, i) => {
     const d = parseKey(addDays(s.today, i));
-    return { name: (i === 0 ? "Today" : d.toLocaleDateString("en-GB", { weekday: "short" })) + " " + d.getDate(), stems: v, level: band(v, s.avgD) };
+    const usualDay = s.hasWeekHistory ? s.avgD : (s.sum7 - v) / (s.daily7.length - 1);
+    return {
+      name: (i === 0 ? "Today" : d.toLocaleDateString("en-GB", { weekday: "short" })) + " " + d.getDate(),
+      bookings: v,
+      level: s.hasWeekHistory ? band(v, usualDay) : lvlWithoutHistory(v, usualDay),
+    };
   });
   const wk = s.pastW.map((v, i) => ({
     name: parseKey(addDays(s.monday, 7 * (i - s.pastW.length))).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
-    stems: v,
-  })).concat(s.aheadW.map((v, i) => ({ name: ["This week", "Next week", "In 2 wks"][i], stems: v })));
+    bookings: v,
+  })).concat(s.aheadW.map((v, i) => ({ name: ["This week", "Next week", "In 2 wks"][i], bookings: v })));
   const mo = s.pastM.map((v, i) => {
     const d = new Date(); d.setMonth(d.getMonth() - (s.pastM.length - i));
-    return { name: MON[d.getMonth()], stems: v, past: true };
-  }).concat([{ name: MON[new Date().getMonth()] + " *", stems: s.proj, past: false }]);
+    return { name: MON[d.getMonth()], bookings: v, past: true };
+  }).concat([{ name: MON[new Date().getMonth()] + " *", bookings: s.proj, past: false }]);
 
   const banner = [
     { cls: "ok", tag: "Normal", h: "Bookings are normal", p: "Keep ordering your usual amount of materials. No action needed." },
@@ -199,8 +254,16 @@ function FlowerBody({ s, live, onManage }) {
     { cls: "bad", tag: "High", h: "Bookings are high: order more materials now", p: `Order about ${s.pct}% more flowers and materials than usual, ${s.when}. Suppliers need about ${LEAD_DAYS} days.` },
   ][s.worst];
 
-  let busiest = 0; s.daily7.forEach((v, i) => { if (v > s.daily7[busiest]) busiest = i; });
   const rise = s.flowers.filter((f) => band(f.cur, f.prev) > 0);
+  const newFlowers = s.flowers.filter((f) => f.prev === 0 && f.cur > 0);
+  const hasAnyBaseline = s.hasWeekHistory || s.hasMonthHistory;
+  const busyPeriodMessage = `The busiest day is ${fmtDay(addDays(s.today, s.busiestDay))} with ${s.busiestDayCount} bookings. No previous-week history is available for comparison yet.`;
+  const bannerTitle = !hasAnyBaseline && s.worst === 0 ? "Building your booking baseline" : s.alertPct === null && s.worst > 0 ? "Busy bookings ahead" : banner.h;
+  const bannerMessage = !hasAnyBaseline && s.worst === 0
+    ? `${s.sum7} bookings are scheduled in the next 7 days. ${busyPeriodMessage}`
+    : s.alertPct === null && s.worst > 0
+      ? busyPeriodMessage
+      : banner.p;
   const maxF = s.flowers.length ? s.flowers[0].cur : 1;
   return (
     <div className="fl-wrap">
@@ -212,61 +275,77 @@ function FlowerBody({ s, live, onManage }) {
         </div>
       </div>
       <div className={`fl-status ${banner.cls}`}>
-        <span className="fl-tag">{banner.tag}</span><h2>{banner.h}</h2><p>{banner.p}</p>
+        <span className="fl-tag">{!hasAnyBaseline && s.worst === 0 ? "New" : banner.tag}</span><h2>{bannerTitle}</h2><p>{bannerMessage}</p>
       </div>
       <div className="fl-grid">
         <section className="fl-card">
-          <h3>Next 7 days</h3><p>Stems due per day, usual day: {s.avgD.toFixed(1)}</p>
+          <h3>Next 7 days</h3><p>Bookings due per day, {s.hasWeekHistory ? `usual day: ${s.avgD.toFixed(1)}` : "no prior-week baseline yet"}</p>
           <div className="fl-chart">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={d7} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-18} dy={8} height={52} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} /><Tooltip />
-                <ReferenceLine y={s.avgD} stroke="#888" strokeDasharray="5 4" />
-                <Bar dataKey="stems" radius={[5, 5, 0, 0]}>
+                {s.hasWeekHistory && <ReferenceLine y={s.avgD} stroke="#888" strokeDasharray="5 4" />}
+                <Bar dataKey="bookings" radius={[5, 5, 0, 0]}>
                   {d7.map((e, i) => <Cell key={i} fill={lvlColor(e.level)} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="fl-take"><b>{s.sum7} stems in the next 7 days</b> ({(pc(s.sum7, s.avgW) >= 0 ? "+" : "") + pc(s.sum7, s.avgW)}% vs a usual week of {Math.round(s.avgW)}). Busiest day: <b>{fmtDay(addDays(s.today, busiest))}</b> with {s.daily7[busiest]}.</div>
+          <div className="fl-take">
+            <b>{s.sum7} bookings in the next 7 days</b>
+            {s.hasWeekHistory
+              ? <> ({(pc(s.sum7, s.avgW) >= 0 ? "+" : "") + pc(s.sum7, s.avgW)}% vs a usual week of {Math.round(s.avgW)}).</>
+              : <>. No previous-week booking history is available for comparison yet.</>}
+            {" "}Busiest day: <b>{fmtDay(addDays(s.today, s.busiestDay))}</b> with {s.busiestDayCount}.
+          </div>
         </section>
         <section className="fl-card">
-          <h3>Weekly rhythm</h3><p>Last 8 weeks behind, 3 weeks ahead, usual: {Math.round(s.avgW)}</p>
+          <h3>Weekly rhythm</h3><p>{s.hasWeekHistory ? `Last 8 weeks behind, 3 weeks ahead, usual: ${Math.round(s.avgW)}` : "No bookings in the previous 8 weeks to establish a usual week yet."}</p>
           <div className="fl-chart">
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={wk} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={1} angle={-18} dy={8} height={52} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} /><Tooltip />
-                <ReferenceLine y={s.avgW} stroke="#888" strokeDasharray="5 4" />
-                <Line type="monotone" dataKey="stems" stroke={GREEN} strokeWidth={2.5} dot={{ r: 3 }} />
+                {s.hasWeekHistory && <ReferenceLine y={s.avgW} stroke="#888" strokeDasharray="5 4" />}
+                <Line type="monotone" dataKey="bookings" stroke={GREEN} strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="fl-take">Busiest week ahead: <b>{s.wkName} with {s.peakW}</b> ({(pc(s.peakW, s.avgW) >= 0 ? "+" : "") + pc(s.peakW, s.avgW)}% vs usual). 8-week trend is {Math.abs(s.trend) < 3 ? "flat" : s.trend > 0 ? "up " + s.trend + "%" : "down " + Math.abs(s.trend) + "%"}.</div>
+          <div className="fl-take">
+            Busiest week ahead: <b>{s.wkName} with {s.peakW}</b>
+            {s.hasWeekHistory
+              ? <> ({(pc(s.peakW, s.avgW) >= 0 ? "+" : "") + pc(s.peakW, s.avgW)}% vs usual). 8-week trend is {s.trend === null ? "up from no bookings in the earlier 4 weeks" : Math.abs(s.trend) < 3 ? "flat" : s.trend > 0 ? "up " + s.trend + "%" : "down " + Math.abs(s.trend) + "%" }.</>
+              : <>. There is no past-week baseline yet.</>}
+          </div>
         </section>
       </div>
       <div className="fl-grid">
         <section className="fl-card">
-          <h3>Monthly momentum</h3><p>Last 6 full months + this month projected, usual: {Math.round(s.avgM)}</p>
+          <h3>Monthly momentum</h3><p>{s.hasMonthHistory ? `Last 6 full months + this month projected, usual: ${Math.round(s.avgM)}` : "No bookings in the previous 6 full months to establish a usual month yet."}</p>
           <div className="fl-chart">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={mo} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis allowDecimals={false} tick={{ fontSize: 11 }} /><Tooltip />
-                <ReferenceLine y={s.avgM} stroke="#888" strokeDasharray="5 4" />
-                <Bar dataKey="stems" radius={[5, 5, 0, 0]}>
-                  {mo.map((e, i) => <Cell key={i} fill={e.past ? "#cfc8c0" : lvlColor(band(e.stems, s.avgM))} />)}
+                {s.hasMonthHistory && <ReferenceLine y={s.avgM} stroke="#888" strokeDasharray="5 4" />}
+                <Bar dataKey="bookings" radius={[5, 5, 0, 0]}>
+                  {mo.map((e, i) => <Cell key={i} fill={e.past ? "#cfc8c0" : lvlColor(band(e.bookings, s.avgM))} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="fl-take"><b>{s.monthSoFar} bookings so far this month</b>, on track for about <b>{s.proj}</b> ({(pc(s.proj, s.avgM) >= 0 ? "+" : "") + pc(s.proj, s.avgM)}% vs a usual month of {Math.round(s.avgM)}).</div>
+          <div className="fl-take">
+            <b>{s.monthSoFar} bookings so far this month</b>, on track for about <b>{s.proj}</b>
+            {s.hasMonthHistory
+              ? <> ({(pc(s.proj, s.avgM) >= 0 ? "+" : "") + pc(s.proj, s.avgM)}% vs a usual month of {Math.round(s.avgM)}).</>
+              : <>. No previous-month booking history is available for comparison yet.</>}
+          </div>
         </section>
         <section className="fl-card">
-          <h3>Most booked flowers</h3><p>Last 30 days vs the 30 days before</p>
+          <h3>Most booked flowers</h3><p>{s.hasFlowerHistory ? "Last 30 days vs the 30 days before" : "Most requested arrangements in the last 30 days"}</p>
           <div className="fl-chart">
             <ResponsiveContainer width="100%" height={Math.max(180, s.flowers.length * 34)}>
               <BarChart data={s.flowers} layout="vertical" margin={{ top: 4, right: 40, left: 8, bottom: 0 }}>
@@ -285,12 +364,20 @@ function FlowerBody({ s, live, onManage }) {
                 <div key={f.name} className={`fl-row${k === 2 ? " hi" : k === 1 ? " mid" : ""}`}>
                   <span>{f.name}</span>
                   <div className="fl-track"><i style={{ width: `${(f.cur / maxF) * 100}%` }} /></div>
-                  <div><b>{f.cur}</b><small>{(p >= 0 ? "+" : "") + p}%</small></div>
+                  <div><b>{f.cur}</b><small>{f.prev > 0 ? `${p >= 0 ? "+" : ""}${p}%` : "New"}</small></div>
                 </div>
               );
             })}
           </div>
-          <div className="fl-take">{rise.length ? <><b>Order more: {rise.map((f) => f.name).join(", ")}.</b> Booked 10%+ above the previous 30 days.</> : "No flower is booked much above the previous 30 days. Keep your usual flower order."}</div>
+          <div className="fl-take">
+            {!s.hasFlowerHistory
+              ? "No flower bookings in the previous 30 days to compare against; current bookings establish the baseline."
+              : rise.length
+                ? <><b>Order more: {rise.map((f) => f.name).join(", ")}.</b> Booked 10%+ above the previous 30 days.</>
+                : newFlowers.length
+                  ? <>New arrangements this period: {newFlowers.map((f) => f.name).join(", ")}.</>
+                  : "No flower is booked much above the previous 30 days. Keep your usual flower order."}
+          </div>
         </section>
       </div>
       <div className="fl-key">

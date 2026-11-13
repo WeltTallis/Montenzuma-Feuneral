@@ -164,48 +164,34 @@ app.get('/health', (_req: any, res: any) => {
 // AUTO-MIGRATION: Ensure workshop tables exist in tenant databases
 // ============================================
 async function ensureWorkshopTables(dbName: string) {
-    try {
-        // Create a knex instance for the tenant database
-        const tenantKnex = knex({
-            client: 'mysql2',
-            connection: {
-                host: process.env.DB_HOST || 'localhost',
-                user: process.env.DB_USER || 'root',
-                password: process.env.DB_PASSWORD || '',
-                database: dbName,
-            },
-            pool: { min: 1, max: 5 },
-        });
+    const tenantKnex = knex({
+        client: 'mysql2',
+        connection: {
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD || '',
+            database: dbName,
+        },
+        pool: { min: 1, max: 5 },
+    });
 
+    try {
         console.log(`[WORKSHOP] Ensuring workshop tables in: ${dbName}`);
 
-        // Check if tables already exist
-        const hasUsers = await tenantKnex.schema.hasTable('users');
         const hasOrders = await tenantKnex.schema.hasTable('coffin_orders');
-        const hasMaterials = await tenantKnex.schema.hasTable('materials');
-
-        if (!hasUsers || !hasOrders || !hasMaterials) {
-            // Run the migration for this tenant
-            // @ts-ignore - migration file is JavaScript
-            const { up } = await import('./migrations/20240622000001_create_workshop_tables.js');
-            await up(tenantKnex);
-            console.log(`[WORKSHOP] ✅ Workshop tables created in: ${dbName}`);
-        } else {
-            console.log(`[WORKSHOP] ✓ Workshop tables already exist in: ${dbName}`);
-        }
 
         // ── Incremental, knex-run migrations for existing tables ──────────
         // Runs each pending schema change (via knex schema builder) so new
         // columns/tables are applied without dropping or touching existing data.
-        if (await tenantKnex.schema.hasColumn('coffin_orders', 'size') === false) {
+        if (hasOrders && await tenantKnex.schema.hasColumn('coffin_orders', 'size') === false) {
             const sizeMigration = await import('./migrations/20240701000001_add_size_to_coffin_orders.js');
             await sizeMigration.up(tenantKnex);
             console.log(`[WORKSHOP] ✅ Added 'size' column to coffin_orders in: ${dbName}`);
         }
 
         // -- Simplify coffin_orders: add coffin_name, drop customer/deceased & costs
-        const hasCoffinNameCol = await tenantKnex.schema.hasColumn('coffin_orders', 'coffin_name');
-        if (!hasCoffinNameCol) {
+        const hasCoffinNameCol = hasOrders && await tenantKnex.schema.hasColumn('coffin_orders', 'coffin_name');
+        if (hasOrders && !hasCoffinNameCol) {
             const simplifyMig = await import('./migrations/20240703000001_simplify_coffin_orders.js');
             await simplifyMig.up(tenantKnex);
             console.log(`[WORKSHOP] Added coffin_name, removed obsolete columns in: ${dbName}`);
@@ -217,14 +203,46 @@ async function ensureWorkshopTables(dbName: string) {
             console.log(`[WORKSHOP] ✅ Created workshop_workers table in: ${dbName}`);
         }
 
-        // ── Ensure workshop-only tables (safe: CREATE TABLE IF NOT EXISTS) ──
-        // The full workshop migration above only runs when coffin_orders does NOT
-        // already exist. When it *does* exist (e.g. it was created first by another
-        // module such as the coffin/front-desk flow), production_stages,
-        // worker_assignments, material_usage, costing, etc. are never created. That
-        // makes order creation fail (INSERT INTO production_stages) and order
-        // listing fail (subqueries on worker_assignments), showing an empty [].
+        // ── Ensure workshop tables (safe for partially provisioned databases) ──
         const workshopOnlyTables: string[] = [
+            `CREATE TABLE IF NOT EXISTS users (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                tenant_slug VARCHAR(100) NOT NULL,
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                role VARCHAR(50) DEFAULT 'worker',
+                created_at VARCHAR(255),
+                updated_at VARCHAR(255),
+                INDEX idx_users_role (role),
+                INDEX idx_users_tenant (tenant_slug)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+            `CREATE TABLE IF NOT EXISTS coffin_orders (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                tenant_slug VARCHAR(100) NOT NULL,
+                order_number VARCHAR(50) NOT NULL,
+                coffin_name VARCHAR(255) NOT NULL,
+                coffin_type VARCHAR(50) DEFAULT 'standard',
+                color VARCHAR(100),
+                interior_fabric VARCHAR(100),
+                size VARCHAR(100),
+                notes TEXT,
+                instructions TEXT,
+                due_date DATE,
+                priority VARCHAR(20) DEFAULT 'normal',
+                branch_id INT DEFAULT 1,
+                hold_reason TEXT,
+                created_by VARCHAR(255),
+                status VARCHAR(50) DEFAULT 'pending',
+                delivery_date DATE,
+                order_date VARCHAR(255),
+                created_at VARCHAR(255),
+                updated_at VARCHAR(255),
+                UNIQUE KEY uniq_coffin_order_number (order_number),
+                INDEX idx_orders_status (status),
+                INDEX idx_orders_date (order_date),
+                INDEX idx_orders_branch (branch_id),
+                INDEX idx_orders_tenant (tenant_slug)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
             `CREATE TABLE IF NOT EXISTS materials (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 tenant_slug VARCHAR(100) NOT NULL,
@@ -325,6 +343,10 @@ async function ensureWorkshopTables(dbName: string) {
             }
         }
 
+        if (!(await tenantKnex.schema.hasTable('coffin_orders'))) {
+            throw new Error(`Required table coffin_orders was not created in ${dbName}`);
+        }
+
                         // ── Ensure the workshop columns coffin_orders needs ──────────────────────
         // If coffin_orders was created by another module it may be missing the
         // columns the workshop INSERT relies on. Add them idempotently.
@@ -423,6 +445,11 @@ async function ensureWorkshopTables(dbName: string) {
         return true;
     } catch (error: any) {
         console.error(`[WORKSHOP] ❌ Failed to ensure workshop tables in ${dbName}:`, error.message);
+        try {
+            await tenantKnex.destroy();
+        } catch (cleanupError: any) {
+            console.error(`[WORKSHOP] ❌ Failed to close schema connection for ${dbName}:`, cleanupError.message);
+        }
         return false;
     }
 }
@@ -434,7 +461,9 @@ async function startServer() {
     // Run auto-migration on the ONE central operations database (all tenants share it)
     const workshopDb = process.env.OPERATIONS_DATABASE || 'restpoint_operations';
     console.log(`[WORKSHOP] Running auto-migration for workshop tables in: ${workshopDb}`);
-    await ensureWorkshopTables(workshopDb);
+    if (!(await ensureWorkshopTables(workshopDb))) {
+        throw new Error(`Workshop schema migration failed for ${workshopDb}; service will not start`);
+    }
     console.log('[WORKSHOP] Operations database ready (workshop tables shared by all tenants, scoped via tenant_slug)');
 
     const PORT = Number(process.env.PORT) || 6060;
@@ -449,6 +478,9 @@ async function startServer() {
     });
 }
 
-startServer();
+startServer().catch((error: any) => {
+    console.error('[WORKSHOP] Server startup failed:', error?.message || error);
+    process.exitCode = 1;
+});
 
 export default app;
