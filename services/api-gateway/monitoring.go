@@ -128,7 +128,7 @@ func (g *Gateway) monitoringReport() map[string]any {
 	total := g.apiRequests
 	avgLatencyMs := float64(0)
 	if total > 0 {
-		avgLatencyMs = float64(g.latencyTotal.Milliseconds()) / float64(total)
+		avgLatencyMs = float64(g.latencyTotal) / float64(total) / float64(time.Millisecond)
 	}
 
 	perService := make(map[string]map[string]uint64, len(g.config.Services))

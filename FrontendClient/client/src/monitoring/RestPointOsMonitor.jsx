@@ -5,9 +5,7 @@
  * at /<slug>/monitoring. Gateway counters and service health are live;
  * unsupported Redis/queue metrics are labelled unavailable, not zero.
  *
- * Cards whose original metric has no real source (e.g. "Slow Query Tracker" —
- * nothing exposes slow-query telemetry) are re-pointed at real data rather than
- * filled with plausible-looking dummy numbers.
+ * The dashboard never fills unsupported metrics with plausible-looking values.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chart, registerables } from 'chart.js';
@@ -55,9 +53,7 @@ const clockOf = (iso) => {
 };
 
 /**
- * Alerts are DERIVED from the live report — there is no alert store. Anything
- * genuinely wrong (service down, 5xx, failed jobs, bad latency, Redis down)
- * becomes a row; when everything is healthy we say so instead of inventing one.
+ * Alerts are derived from telemetry the gateway actually exposes.
  */
 function deriveAlerts(d) {
   const out = [];
@@ -83,10 +79,6 @@ function deriveAlerts(d) {
   if (d.queues?.available && d.queues.totals?.waiting > 500) {
     out.push({ when, sev: 'warn', msg: `Queue backlog: ${num(d.queues.totals.waiting)} jobs waiting`, svc: 'bullmq' });
   }
-  if (d.cache && d.cache.available === false) {
-    out.push({ when, sev: 'warn', msg: `Cache telemetry unavailable: ${d.cache.reason || 'unknown'}`, svc: 'redis' });
-  }
-
   const slow = (d.services || []).filter((s) => s.up && s.latencyMs > 800);
   slow.slice(0, 3).forEach((s) => {
     out.push({ when, sev: 'warn', msg: `Slow response: ${s.latencyMs}ms`, svc: s.name });
@@ -256,6 +248,14 @@ export default function RestPointOsMonitor() {
   const perService = data?.requests?.perService || {};
   const alerts = useMemo(() => (data ? deriveAlerts(data) : []), [data]);
   const services = data?.services || [];
+  const activeUsers = useMemo(() => {
+    const unique = new Map();
+    for (const session of activeSessions || []) {
+      const key = `${session.tenantId || ''}:${session.userId || session.email}`;
+      if (!unique.has(key)) unique.set(key, session);
+    }
+    return Array.from(unique.values());
+  }, [activeSessions]);
   const cache = data?.cache || { available: false };
   const queues = data?.queues || { available: false, queues: [] };
   // New panels. Both are optional in the payload so an older gateway (or a
@@ -284,6 +284,7 @@ export default function RestPointOsMonitor() {
   const topServices = useMemo(() => {
     const totals = Object.entries(perService)
       .map(([name, v]) => [name, Number(v?.count) || 0])
+      .filter(([, count]) => count > 0)
       .sort((a, b) => b[1] - a[1]);
     return totals.slice(0, 6).map(([name]) => name);
   }, [perService]);
@@ -469,7 +470,7 @@ export default function RestPointOsMonitor() {
   });
 
   /** Slowest recent API requests. */
-  const buildSlowQueries = () => {
+  const buildSlowRequests = () => {
     const rows = (data?.slowRequests?.slowest || []).slice(0, 12);
     return {
       type: 'bar',
@@ -539,16 +540,20 @@ export default function RestPointOsMonitor() {
           <details className="rpm-active-users">
             <summary className="rpm-pill">
               <div className="rpm-dot" />
-              <span>ACTIVE USERS {activeSessions === null ? '…' : num(activeSessions.length)}</span>
+              <span>
+                ACTIVE USERS {activeSessions === null
+                  ? activeSessionsLoading ? '…' : '—'
+                  : num(activeUsers.length)}
+              </span>
             </summary>
             <div className="rpm-active-users-menu">
               <div className="rpm-active-users-title">Currently signed in</div>
               {activeSessionsLoading && <div className="rpm-active-users-state">Loading active users…</div>}
               {activeSessionsError && <div className="rpm-active-users-state error">{activeSessionsError}</div>}
-              {!activeSessionsLoading && !activeSessionsError && activeSessions?.length === 0 && (
+              {!activeSessionsLoading && !activeSessionsError && activeUsers.length === 0 && (
                 <div className="rpm-active-users-state">No active users recorded.</div>
               )}
-              {activeSessions?.map((session) => (
+              {activeUsers.map((session) => (
                 <div className="rpm-active-user" key={`${session.userId}-${session.loggedInAt}`}>
                   <span className="name">{session.fullName || session.email}</span>
                   <span className="email">{session.email}</span>
@@ -560,13 +565,13 @@ export default function RestPointOsMonitor() {
           <div className="rpm-pill">
             <div className={`rpm-dot ${error ? 'wait' : s.allUp === false ? 'bad' : ''}`} />
             <span>
-              {error ? 'GATEWAY UNREACHABLE'
-                : `${s.servicesUp || 0}/${s.servicesTotal || 0} SERVICES ONLINE`}
+              {error ? /401|403/.test(error) ? 'ACCESS DENIED' : 'GATEWAY UNREACHABLE'
+                : data ? `${s.servicesUp}/${s.servicesTotal} SERVICES RESPONDING` : 'CONNECTING'}
             </span>
             <button onClick={() => load()} type="button">{refreshing ? '…' : 'REFRESH'}</button>
           </div>
           <div className="rpm-pill">
-            <span>UPTIME: {uptime(s.uptimeSeconds)}</span>
+            <span>UPTIME: {data ? uptime(s.uptimeSeconds) : '—'}</span>
             <button onClick={() => setAuto((a) => !a)} type="button">{auto ? 'PAUSE' : 'LIVE'}</button>
           </div>
         </div>
@@ -585,7 +590,7 @@ export default function RestPointOsMonitor() {
             </span>
           </div>
           <div className="rpm-stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
-            <Stat tone="info" title="API Requests" value={num(s.total)} />
+            <Stat tone="info" title="API Requests" value={data ? num(s.total) : '—'} />
             <Stat tone="success" title="Cache Hit Rate" value={cache.available ? `${cache.hitRatePct}%` : '—'} />
             <Stat tone="danger" title="Jobs Failed" value={queues.available ? num(q.failed) : '—'} />
             <Stat tone="warning" title="Gateway Heap" value={proc.heapAllocMb != null ? `${num(proc.heapAllocMb)} MB` : '—'} />
@@ -615,7 +620,7 @@ export default function RestPointOsMonitor() {
           <div className="rpm-card-head"><h2>Critical Alerts</h2><span className="label">Live</span></div>
           <div className="rpm-alerts">
             {alerts.length === 0 ? (
-              <div className="rpm-empty">{data ? 'All systems nominal — no alerts' : 'No data yet'}</div>
+              <div className="rpm-empty">{data ? 'No alerts from available telemetry' : 'No data yet'}</div>
             ) : alerts.map((a, i) => (
               <div key={i} className={`rpm-alert ${a.sev === 'err' ? '' : a.sev}`}>
                 <div className="when">{a.when}</div>
@@ -723,7 +728,7 @@ export default function RestPointOsMonitor() {
               title="Worst Service"
               value={(() => {
                 const worst = Object.entries(slow.byService).sort((a, b) => b[1] - a[1])[0];
-                return worst ? `${worst[0]} (${worst[1]})` : '—';
+                return worst ? `${worst[0]} (${Math.round(worst[1])}ms)` : '—';
               })()}
             />
           </div>
@@ -737,7 +742,7 @@ export default function RestPointOsMonitor() {
           ) : (
             <ChartBox
               className="rpm-chart rpm-chart-tall"
-              build={buildSlowQueries}
+              build={buildSlowRequests}
               deps={[data?.slowRequests]}
             />
           )}
@@ -773,7 +778,6 @@ export default function RestPointOsMonitor() {
               <option value="ERROR">ERROR</option>
               <option value="WARN">WARN</option>
               <option value="INFO">INFO</option>
-              <option value="DEBUG">DEBUG</option>
             </select>
             <input
               className="rpm-log-input"
@@ -829,7 +833,7 @@ export default function RestPointOsMonitor() {
 
         <div className="rpm-card rpm-span-4">
           <div className="rpm-card-head">
-            <h2>System Service Status</h2>
+            <h2>Service Reachability</h2>
             <div className="rpm-pill">
               <div className={`rpm-dot ${s.allUp === false ? 'bad' : ''}`} />
               <span>{data ? `Refreshed at ${clockOf(data.generatedAt)}` : 'Connecting…'}</span>
@@ -850,7 +854,7 @@ export default function RestPointOsMonitor() {
                   </div>
                 </div>
                 <div className={`rpm-status-text ${sv.up ? 'up' : 'down'}`}>
-                  {sv.up ? 'Active' : 'Down'}
+                  {sv.up ? 'Reachable' : 'Down'}
                 </div>
               </div>
             ))}
