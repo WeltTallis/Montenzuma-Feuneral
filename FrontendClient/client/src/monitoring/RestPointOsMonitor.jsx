@@ -153,9 +153,10 @@ export default function RestPointOsMonitor() {
       setActiveSessions(sessions);
       setActiveSessionsError(null);
     } catch (e) {
-      setActiveSessionsError(
-        e.response?.data?.message || e.message || 'Unable to load active users'
-      );
+      const message = e.response?.data?.message || e.message || 'Unable to load active users';
+      setActiveSessionsError(e.response?.status === 404
+        ? `Auth service returned 404: ${message}. Deploy the auth-service version that registers GET /auth/active-sessions.`
+        : message);
     } finally {
       setActiveSessionsLoading(false);
     }
@@ -537,31 +538,12 @@ export default function RestPointOsMonitor() {
           </div>
         </div>
         <div className="rpm-header-right">
-          <details className="rpm-active-users">
-            <summary className="rpm-pill">
-              <div className="rpm-dot" />
-              <span>
-                ACTIVE USERS {activeSessions === null
-                  ? activeSessionsLoading ? '…' : '—'
-                  : num(activeUsers.length)}
-              </span>
-            </summary>
-            <div className="rpm-active-users-menu">
-              <div className="rpm-active-users-title">Currently signed in</div>
-              {activeSessionsLoading && <div className="rpm-active-users-state">Loading active users…</div>}
-              {activeSessionsError && <div className="rpm-active-users-state error">{activeSessionsError}</div>}
-              {!activeSessionsLoading && !activeSessionsError && activeUsers.length === 0 && (
-                <div className="rpm-active-users-state">No active users recorded.</div>
-              )}
-              {activeUsers.map((session) => (
-                <div className="rpm-active-user" key={`${session.userId}-${session.loggedInAt}`}>
-                  <span className="name">{session.fullName || session.email}</span>
-                  <span className="email">{session.email}</span>
-                  <span className="role">{session.role}{session.tenantName ? ` · ${session.tenantName}` : ''}</span>
-                </div>
-              ))}
-            </div>
-          </details>
+          <div className="rpm-pill">
+            <div className={`rpm-dot ${activeSessionsError ? 'bad' : ''}`} />
+            <span>ACTIVE USERS {activeSessions === null
+              ? activeSessionsLoading ? '…' : '—'
+              : num(activeUsers.length)}</span>
+          </div>
           <div className="rpm-pill">
             <div className={`rpm-dot ${error ? 'wait' : s.allUp === false ? 'bad' : ''}`} />
             <span>
@@ -581,6 +563,33 @@ export default function RestPointOsMonitor() {
         {error && (
           <div className="rpm-banner rpm-span-4" style={{ margin: 0 }}>{error}</div>
         )}
+
+        <div className="rpm-card rpm-span-4">
+          <div className="rpm-card-head">
+            <h2>Currently Signed In</h2>
+            <span className="label">
+              {activeSessionsLoading ? 'Loading'
+                : activeSessionsError ? 'Unavailable'
+                  : `${num(activeUsers.length)} active users`}
+            </span>
+          </div>
+          {activeSessionsError && <div className="rpm-banner">{activeSessionsError}</div>}
+          {activeSessionsLoading && <div className="rpm-empty">Loading active users…</div>}
+          {!activeSessionsLoading && !activeSessionsError && activeUsers.length === 0 && (
+            <div className="rpm-empty">No active users recorded.</div>
+          )}
+          {activeUsers.length > 0 && (
+            <div className="rpm-active-users-grid">
+              {activeUsers.map((session) => (
+                <div className="rpm-active-user" key={`${session.tenantId}-${session.userId}`}>
+                  <span className="name">{session.fullName || session.email}</span>
+                  <span className="email">{session.email}</span>
+                  <span className="role">{session.role}{session.tenantName ? ` · ${session.tenantName}` : ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="rpm-card rpm-span-4">
           <div className="rpm-card-head">

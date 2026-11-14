@@ -67,23 +67,8 @@
 .rpm-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: rpmPulse 2s infinite; }
 .rpm-dot.bad { background: var(--red); box-shadow: 0 0 8px var(--red); }
 .rpm-dot.wait { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
-.rpm-active-users { position: relative; }
-.rpm-active-users > summary { cursor: pointer; list-style: none; user-select: none; }
-.rpm-active-users > summary::-webkit-details-marker { display: none; }
-.rpm-active-users-menu {
-  position: absolute; top: calc(100% + 0.5rem); right: 0; z-index: 120;
-  width: min(360px, calc(100vw - 2rem)); max-height: 60vh; overflow-y: auto;
-  background: var(--dark-1); border: 1px solid var(--line); border-radius: 6px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); padding: 0.6rem;
-}
-.rpm-active-users-title {
-  color: var(--gray-light); font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem; letter-spacing: 0.08em; padding: 0.5rem 0.6rem;
-  text-transform: uppercase;
-}
-.rpm-active-users-state { color: var(--gray-light); font-size: 0.78rem; padding: 0.8rem 0.6rem; }
-.rpm-active-users-state.error { color: var(--yellow); }
-.rpm-active-user { border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.2rem; padding: 0.7rem 0.6rem; }
+.rpm-active-users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
+.rpm-active-user { background: var(--dark-2); border: 1px solid var(--line); border-radius: 6px; display: flex; flex-direction: column; gap: 0.25rem; padding: 0.8rem; min-width: 0; }
 .rpm-active-user .name { color: var(--bone); font-size: 0.85rem; }
 .rpm-active-user .email, .rpm-active-user .role { color: var(--gray-light); font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; overflow-wrap: anywhere; }
 .rpm-active-user .role { color: var(--brass); }
