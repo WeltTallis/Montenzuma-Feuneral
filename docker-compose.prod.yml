@@ -56,6 +56,34 @@ services:
       retries: 5
       start_period: 10s
 
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:v17.0.0
+    container_name: restpoint_mailserver
+    hostname: mail.restpoint.co.ke
+    restart: always
+    stop_grace_period: 1m
+    environment:
+      SSL_TYPE: letsencrypt
+      PERMIT_DOCKER: none
+      SPOOF_PROTECTION: "1"
+      POSTFIX_INET_PROTOCOLS: ipv4
+      ENABLE_AMAVIS: "0"
+      TZ: Africa/Nairobi
+    ports:
+      - "25:25"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - mailserver_data:/var/mail
+      - mailserver_state:/var/mail-state
+      - mailserver_logs:/var/log/mail
+      - mailserver_config:/tmp/docker-mailserver
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      restpoint_network:
+        aliases:
+          - mail.restpoint.co.ke
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: restpoint_rabbitmq
@@ -152,6 +180,11 @@ services:
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
       JWT_EXPIRY: 24h
       REFRESH_TOKEN_EXPIRY: 7d
+      SMTP_HOST: ${SMTP_HOST:-mail.restpoint.co.ke}
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_SECURE: "${SMTP_SECURE:-false}"
+      SMTP_FROM: ${SMTP_FROM:-noreply@restpoint.co.ke}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-RestPoint}
     depends_on:
       mariadb:
         condition: service_healthy
@@ -946,4 +979,12 @@ volumes:
   hearse_service_data:
     driver: local
   workshop_service_data:
+    driver: local
+  mailserver_data:
+    driver: local
+  mailserver_state:
+    driver: local
+  mailserver_logs:
+    driver: local
+  mailserver_config:
     driver: local
