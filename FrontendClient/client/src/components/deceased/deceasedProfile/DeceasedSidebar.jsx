@@ -304,14 +304,36 @@ const StorageBadge = styled.strong`
 `;
 
 const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
+  const [, setClockTick] = React.useState(0);
+  React.useEffect(() => {
+    const timer = setInterval(() => setClockTick(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const name = deceased?.full_name || deceased?.name || 'Unknown';
   const sex = deceased?.sex || deceased?.gender || '';
   const isFemale = sex.toLowerCase() === 'female';
   const documentCount = Array.isArray(deceased?.documents) ? deceased.documents.length : 0;
   const releaseData = deceased?.releaseData || null;
   const admittedAt = deceased?.date_admitted || deceased?.created_at;
-  const daysInCare = getDaysInMorgue(admittedAt);
-  const hoursInCare = getHoursInMorgue(admittedAt);
+
+  const RELEASE_STATES = [
+    'released', 'transferred', 'transfer', 'buried', 'dispatched',
+    'completed', 'complete', 'ready for collection', 'collected',
+  ];
+  const isBodyReleased = Boolean(releaseData?.release_id) || [bodyStatus, deceased?.body_status, deceased?.admission_status, deceased?.release_status]
+    .filter(Boolean)
+    .map((status) => String(status).trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' '))
+    .some((status) => RELEASE_STATES.some((state) => status === state || status.includes(state)));
+  const removalDate = releaseData?.date_of_removal || releaseData?.release_date;
+  const removalTime = releaseData?.time_of_removal || releaseData?.release_time;
+  const releaseDate = isBodyReleased
+    ? removalDate && removalTime
+      ? `${String(removalDate).slice(0, 10)} ${removalTime}`
+      : removalDate || releaseData?.created_at || deceased?.dispatch_date
+    : null;
+  const daysInCare = getDaysInMorgue(admittedAt, releaseDate);
+  const hoursInCare = getHoursInMorgue(admittedAt, releaseDate);
 
   // ── Charge basis: a record bills EITHER per day OR per hour ────────────────
   // This block used to read `per_day` unconditionally and always multiply it by
@@ -359,19 +381,6 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   // Requested, Postmortem Done, Transferred, Buried, …). Deriving the badge
   // from the release vocabulary keeps the two sides consistent: a body under
   // examination used to be labelled "Released" while still in the morgue.
-  const bodyStatusNorm = String(bodyStatus || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ');
-  const RELEASE_STATES = [
-    'released', 'transferred', 'transfer', 'buried', 'dispatched',
-    'completed', 'complete', 'ready for collection', 'collected',
-  ];
-  const isBodyReleased = RELEASE_STATES.some(
-    (state) => bodyStatusNorm === state || bodyStatusNorm.includes(state)
-  );
-
   const tenantSlug = getTenantSlug();
   const profileUrl = typeof window !== 'undefined' && tenantSlug && deceasedId
     ? `${window.location.origin}/${encodeURIComponent(tenantSlug)}/deceased?id=${encodeURIComponent(deceasedId)}`
@@ -447,7 +456,7 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
         <NotifItem>
           <NotifIcon $info>i</NotifIcon>
           <div>
-            <NotifText>Record status: {bodyStatus}</NotifText>
+            <NotifText>Record status: {isBodyReleased ? 'Released' : bodyStatus}</NotifText>
             <NotifTime>Updated {formatDate(deceased?.updated_at)}</NotifTime>
           </div>
         </NotifItem>

@@ -85,38 +85,28 @@ export const getInitials = (name) => {
   return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 };
 
-export const getDaysInMorgue = (admittedDate) => {
+export const getDaysInMorgue = (admittedDate, untilDate) => {
   if (!admittedDate) return 0;
   const parsed = parseDate(admittedDate);
   if (!parsed) return 0;
-  // Compare calendar dates (ignoring clock time) so a body admitted today
-  // counts as day 0 — never -1 from timezone/hour offsets.
-  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const days = Math.floor((startOfDay(new Date()) - startOfDay(parsed)) / (1000 * 60 * 60 * 24));
-  return Math.max(0, days);
+  const end = untilDate ? parseDate(untilDate) : new Date();
+  if (!end) return 0;
+  // Daily billing increments only after each complete 24-hour stay.
+  return Math.max(0, Math.floor((end.getTime() - parsed.getTime()) / (24 * 60 * 60 * 1000)));
 };
 
 /**
  * Elapsed hours in care — the billing unit when a charge record is configured
  * as "per hour" instead of "per day".
- *
- * It is deliberately kept consistent with getDaysInMorgue: a full day is only
- * charged once the calendar day has rolled over, so the first partial day is
- * billed from the admission TIMESTAMP rather than from midnight. A body
- * admitted at 09:00 and viewed at 14:00 is therefore 5 hours (not 14, and not
- * 0 as it would be if we rounded straight to whole days). Every later day
- * contributes its full 24 hours. That way switching a record between the two
- * bases never silently changes the money owed for the elapsed period.
  */
-export const getHoursInMorgue = (admittedDate) => {
+export const getHoursInMorgue = (admittedDate, untilDate) => {
   if (!admittedDate) return 0;
   const parsed = parseDate(admittedDate);
   if (!parsed) return 0;
+  const end = untilDate ? parseDate(untilDate) : new Date();
+  if (!end) return 0;
   const HOUR_MS = 1000 * 60 * 60;
-  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const elapsed = Date.now() - parsed.getTime();
+  const elapsed = end.getTime() - parsed.getTime();
   if (elapsed <= 0) return 0;
-  const wholeDays = Math.floor((startOfDay(new Date()) - startOfDay(parsed)) / (24 * HOUR_MS));
-  const hoursToday = (Date.now() - startOfDay(new Date())) / HOUR_MS;
-  return Math.max(0, Math.round((wholeDays * 24 + hoursToday) * 100) / 100);
+  return Math.round((elapsed / HOUR_MS) * 100) / 100;
 };

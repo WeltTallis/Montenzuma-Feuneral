@@ -174,11 +174,48 @@ export class BillingModel {
     let generatedCount = 0;
 
     try {
-      // Get all active deceased in this tenant
+      const [schemaRows] = await conn.execute(
+        `SELECT TABLE_NAME, COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME IN ('deceased', 'body_releases')`
+      );
+      const schemaColumns = new Map<string, Set<string>>();
+      for (const row of schemaRows as Array<{ TABLE_NAME: string; COLUMN_NAME: string }>) {
+        const columns = schemaColumns.get(row.TABLE_NAME) || new Set<string>();
+        columns.add(row.COLUMN_NAME);
+        schemaColumns.set(row.TABLE_NAME, columns);
+      }
+
+      const deceasedColumns = schemaColumns.get('deceased') || new Set<string>();
+      const releaseColumns = schemaColumns.get('body_releases') || new Set<string>();
+      const activeConditions = [
+        'd.tenant_slug = ?',
+        'd.is_deleted = FALSE',
+        'd.date_admitted <= DATE_SUB(NOW(), INTERVAL 24 HOUR)',
+      ];
+      if (deceasedColumns.has('admission_status')) {
+        activeConditions.push("LOWER(COALESCE(d.admission_status, '')) NOT IN ('released', 'buried')");
+      }
+      if (deceasedColumns.has('release_status')) {
+        activeConditions.push("LOWER(COALESCE(d.release_status, '')) <> 'released'");
+      }
+      if (deceasedColumns.has('body_status')) {
+        activeConditions.push(
+          "LOWER(COALESCE(d.body_status, '')) NOT IN ('released', 'transferred', 'buried', 'dispatched', 'completed', 'collected')"
+        );
+      }
+      if (deceasedColumns.has('admission_number') && releaseColumns.has('admission_number')) {
+        activeConditions.push(
+          'NOT EXISTS (SELECT 1 FROM body_releases br WHERE br.admission_number = d.admission_number)'
+        );
+      }
+
+      // Only charge full 24-hour stays, and never charge after a release record exists.
       const deceasedResult = await conn.execute(
-        `SELECT deceased_id, date_admitted FROM deceased 
-         WHERE tenant_slug = ? AND is_deleted = FALSE 
-         AND admission_status NOT IN ('released', 'buried')`,
+        `SELECT d.deceased_id, d.date_admitted
+         FROM deceased d
+         WHERE ${activeConditions.join(' AND ')}`,
         [tenantSlug]
       );
 

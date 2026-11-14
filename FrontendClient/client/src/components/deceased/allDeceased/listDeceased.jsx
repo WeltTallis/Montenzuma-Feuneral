@@ -7,8 +7,9 @@ import { showToast } from '../../../utils/toast';
 import { ToastContainer } from 'react-toastify';
 import DeceasedStkPushModal from '../DeceasedStkPushModal';
 import {
-  formatDate, daysFromNow, todayKey,
+  formatDate, todayKey,
 } from '../../../utils/dates/parseDates';
+import { getDaysInMorgue } from '../deceasedProfile/theme';
 import { normalizeYM, ymFromDate } from '../../../utils/dates/ym';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
@@ -610,7 +611,15 @@ const DeceasedList = () => {
   });
 
   const getInitials = (name) => { if (!name) return 'NA'; return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(); };
-  const getDaysInMorgue = (admittedDate) => { if (!admittedDate) return 0; const days = daysFromNow(admittedDate); return days != null ? Math.abs(days) : 0; };
+  const getDaysForRecord = (record, admittedDate) => {
+    const released = [record.body_status, record.admission_status, record.release_status, record.status]
+      .filter(Boolean)
+      .some((status) => getStatusInfo(status).filter === 'released');
+    const releaseDate = released
+      ? record.dispatch_date || record.release_date || record.date_released
+      : null;
+    return getDaysInMorgue(admittedDate, releaseDate);
+  };
   const openProfile = (id) => { const tenantSlug = getTenantSlug(); navigate(`/${tenantSlug}/deceased?id=${encodeURIComponent(id)}`); };
 
   // ─── Export Functions ───
@@ -832,8 +841,8 @@ const DeceasedList = () => {
                         const name = r.full_name || r.name || 'Unknown';
                         const id = r.deceased_id || r.id;
                         const adm = r.admission_number || r.admission_no || '—';
-                        const admitted = r.created_at || r.date_admitted || r.admission_date;
-                        const days = getDaysInMorgue(admitted);
+                        const admitted = r.date_admitted || r.created_at || r.admission_date;
+                        const days = getDaysForRecord(r, admitted);
                         const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
                         const sex = r.sex || r.gender || '';
                         const isFemale = sex.toLowerCase() === 'female';
@@ -860,8 +869,8 @@ const DeceasedList = () => {
                     const name = r.full_name || r.name || 'Unknown';
                     const id = r.deceased_id || r.id;
                     const adm = r.admission_number || r.admission_no || '—';
-                    const admitted = r.created_at || r.date_admitted || r.admission_date;
-                    const days = getDaysInMorgue(admitted);
+                    const admitted = r.date_admitted || r.created_at || r.admission_date;
+                    const days = getDaysForRecord(r, admitted);
                     const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
                     const sex = r.sex || r.gender || '';
                     const isFemale = sex.toLowerCase() === 'female';
