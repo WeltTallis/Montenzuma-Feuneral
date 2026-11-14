@@ -85,6 +85,13 @@ export const getInitials = (name) => {
   return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 };
 
+export const withDateTime = (date, time, useProvidedTime = false) => {
+  if (!date || !time) return date;
+  const value = date instanceof Date ? date.toISOString() : String(date).trim();
+  if (useProvidedTime) return `${value.slice(0, 10)} ${time}`;
+  return /^\d{4}-\d{1,2}-\d{1,2}$/.test(value) ? `${value} ${time}` : date;
+};
+
 export const getDaysInMorgue = (admittedDate, untilDate) => {
   if (!admittedDate) return 0;
   const parsed = parseDate(admittedDate);
@@ -108,5 +115,15 @@ export const getHoursInMorgue = (admittedDate, untilDate) => {
   const HOUR_MS = 1000 * 60 * 60;
   const elapsed = end.getTime() - parsed.getTime();
   if (elapsed <= 0) return 0;
-  return Math.round((elapsed / HOUR_MS) * 100) / 100;
+  return elapsed / HOUR_MS;
+};
+
+export const formatCareDuration = (days, hours) => {
+  if (days > 0) return `${days} day${days === 1 ? '' : 's'}`;
+  if (hours < 1) {
+    const minutes = Math.floor(hours * 60);
+    return `${minutes} min${minutes === 1 ? '' : 's'}`;
+  }
+  const wholeHours = Math.min(23, Math.floor(hours));
+  return `${wholeHours} hr${wholeHours === 1 ? '' : 's'}`;
 };

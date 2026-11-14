@@ -9,7 +9,9 @@ import DeceasedStkPushModal from '../DeceasedStkPushModal';
 import {
   formatDate, todayKey,
 } from '../../../utils/dates/parseDates';
-import { getDaysInMorgue } from '../deceasedProfile/theme';
+import {
+  getDaysInMorgue, getHoursInMorgue, formatCareDuration, withDateTime,
+} from '../deceasedProfile/theme';
 import { normalizeYM, ymFromDate } from '../../../utils/dates/ym';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
@@ -611,14 +613,26 @@ const DeceasedList = () => {
   });
 
   const getInitials = (name) => { if (!name) return 'NA'; return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(); };
-  const getDaysForRecord = (record, admittedDate) => {
-    const released = [record.body_status, record.admission_status, record.release_status, record.status]
+  const getDurationForRecord = (record, admittedDate) => {
+    const released = Boolean(record.releaseData?.release_id) ||
+      [record.body_status, record.admission_status, record.release_status, record.status]
       .filter(Boolean)
       .some((status) => getStatusInfo(status).filter === 'released');
+    const removalDate = record.releaseData?.date_of_removal || record.releaseData?.release_date;
+    const removalTime = record.releaseData?.time_of_removal || record.releaseData?.release_time;
     const releaseDate = released
-      ? record.dispatch_date || record.release_date || record.date_released
+      ? removalDate && removalTime
+        ? withDateTime(removalDate, removalTime, true)
+        : removalDate || record.releaseData?.created_at || withDateTime(
+          record.dispatch_date || record.release_date || record.date_released,
+          record.dispatch_time || record.release_time
+        )
       : null;
-    return getDaysInMorgue(admittedDate, releaseDate);
+    const start = withDateTime(admittedDate, record.time_received || record.admission_time);
+    return {
+      days: getDaysInMorgue(start, releaseDate),
+      hours: getHoursInMorgue(start, releaseDate),
+    };
   };
   const openProfile = (id) => { const tenantSlug = getTenantSlug(); navigate(`/${tenantSlug}/deceased?id=${encodeURIComponent(id)}`); };
 
@@ -832,7 +846,7 @@ const DeceasedList = () => {
 
           <TableWrap>
             <StyledTable>
-              <thead><tr><th>Deceased Name</th><th>Admission No.</th><th>Date Admitted</th><th>Days in Morgue</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Deceased Name</th><th>Admission No.</th><th>Date Admitted</th><th>Time in Morgue</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
                 {loading ? (<tr><td colSpan={6}><LoadingState><div className="spinner" /> Loading records...</LoadingState></td></tr>)
                   : serviceUnavailable ? (<tr><td colSpan={6}><EmptyRow>Unable to load records at this time. Please try again later.</EmptyRow></td></tr>)
@@ -842,7 +856,7 @@ const DeceasedList = () => {
                         const id = r.deceased_id || r.id;
                         const adm = r.admission_number || r.admission_no || '—';
                         const admitted = r.date_admitted || r.created_at || r.admission_date;
-                        const days = getDaysForRecord(r, admitted);
+                        const duration = getDurationForRecord(r, admitted);
                         const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
                         const sex = r.sex || r.gender || '';
                         const isFemale = sex.toLowerCase() === 'female';
@@ -851,7 +865,7 @@ const DeceasedList = () => {
                             <td><NameCell><AvatarSm $female={isFemale}>{getInitials(name)}</AvatarSm><div><div style={{ fontWeight: 600 }}>{name}</div><div className="meta">{sex ? `${sex}, ` : ''}{r.age || '—'} yrs</div></div></NameCell></td>
                             <td>{adm}</td>
                             <td>{formatDate(admitted)}</td>
-                            <td>{days} days</td>
+                            <td>{formatCareDuration(duration.days, duration.hours)}</td>
                             <td><StatusBadge $c={statusInfo.c}>{statusInfo.label}</StatusBadge></td>
                             <td><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></td>
                           </tr>
@@ -870,7 +884,7 @@ const DeceasedList = () => {
                     const id = r.deceased_id || r.id;
                     const adm = r.admission_number || r.admission_no || '—';
                     const admitted = r.date_admitted || r.created_at || r.admission_date;
-                    const days = getDaysForRecord(r, admitted);
+                    const duration = getDurationForRecord(r, admitted);
                     const statusInfo = getStatusInfo(r.body_status || r.admission_status || r.release_status || r.status || 'active');
                     const sex = r.sex || r.gender || '';
                     const isFemale = sex.toLowerCase() === 'female';
@@ -882,7 +896,7 @@ const DeceasedList = () => {
                         </MobileCardHeader>
                         <MobileCardDetails>
                           <div><span>Admission No.</span><strong>{adm}</strong></div>
-                          <div><span>Days in Morgue</span><strong>{days} days</strong></div>
+                          <div><span>Time in Morgue</span><strong>{formatCareDuration(duration.days, duration.hours)}</strong></div>
                           <div style={{ gridColumn: 'span 2' }}><span>Date Admitted</span><strong>{formatDate(admitted)}</strong></div>
                         </MobileCardDetails>
                         <MobileCardFooter><Btn $sm $primary onClick={(e) => { e.stopPropagation(); openProfile(id); }}>View Profile</Btn></MobileCardFooter>

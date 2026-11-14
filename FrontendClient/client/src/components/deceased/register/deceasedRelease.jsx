@@ -12,6 +12,7 @@ import InOurCare from '../../common/InOurCare';
 // and 02:59 Kenya time stored YESTERDAY's date ("Released Date: Sep 21"
 // while the handover happened on Sep 22).
 import { todayKey } from '../../../utils/dates/parseDates';
+import { getDaysInMorgue, getHoursInMorgue, formatCareDuration, withDateTime } from '../deceasedProfile/theme';
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
 
@@ -907,25 +908,15 @@ const RecordInfoStrip = styled.div`
   }
 `;
 
-/* Days spent in our care — calendar days from admission to release (or today).
-   Mirrors getDaysInMorgue() in the deceased profile so both screens agree:
-   a body admitted today counts as 0 elapsed days. */
-const getDaysInCare = (admittedFrom, until) => {
+/* Count only complete 24-hour stays, using the recorded admission/release times. */
+const getDaysInCare = (admittedFrom, admissionTime, until, releaseTime) => {
   if (!admittedFrom) return null;
-  const raw = String(admittedFrom);
-  const start = new Date(raw.length <= 10 ? `${raw}T00:00:00` : raw);
-  if (Number.isNaN(start.getTime())) return null;
-
-  let end = new Date();
-  if (until) {
-    const rawUntil = String(until);
-    const parsedUntil = new Date(rawUntil.length <= 10 ? `${rawUntil}T00:00:00` : rawUntil);
-    if (!Number.isNaN(parsedUntil.getTime())) end = parsedUntil;
-  }
-
-  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const days = Math.floor((startOfDay(end) - startOfDay(start)) / (1000 * 60 * 60 * 24));
-  return Math.max(0, days);
+  const start = withDateTime(admittedFrom, admissionTime);
+  const end = until ? withDateTime(until, releaseTime) : null;
+  return {
+    days: getDaysInMorgue(start, end),
+    hours: getHoursInMorgue(start, end),
+  };
 };
 
 const DeceasedReleaseForm = () => {
@@ -944,6 +935,7 @@ const DeceasedReleaseForm = () => {
   const sigPadRef1 = useRef(null);
   const searchTimer = useRef(null);
   const lastSearchedRef = useRef('');
+  const releaseDateEditedRef = useRef(false);
   const releaseTimeEditedRef = useRef(false);
 
   const [loading, setLoading] = useState(false);
@@ -1050,6 +1042,11 @@ const DeceasedReleaseForm = () => {
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  const [clockTick, setClockTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setClockTick(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // The admission number shown in the header masthead + printed as the
   // barcode. Official identifiers are always stored uppercase, so normalise
@@ -1057,6 +1054,7 @@ const DeceasedReleaseForm = () => {
   const admissionId = String(formData.admission_number || '').trim().toUpperCase();
 
   useEffect(() => {
+    releaseDateEditedRef.current = false;
     releaseTimeEditedRef.current = false;
     setFormData(prev => ({
       ...prev,
@@ -1066,10 +1064,18 @@ const DeceasedReleaseForm = () => {
   }, []);
 
   // Length of stay shown in the green "N days in our care" badge above the
-  // Released By field: admission date → release date (or today when blank).
+  // Released By field: only completed 24-hour stays count.
+  const liveReleaseDate = !releaseDateEditedRef.current && !releaseTimeEditedRef.current
+    ? null
+    : formData.release_date;
   const daysInCare = useMemo(
-    () => getDaysInCare(formData.date_admitted, formData.release_date),
-    [formData.date_admitted, formData.release_date]
+    () => getDaysInCare(
+      formData.date_admitted,
+      formData.time_received,
+      liveReleaseDate,
+      liveReleaseDate ? formData.release_time : null
+    ),
+    [formData.date_admitted, formData.time_received, liveReleaseDate, formData.release_time, clockTick]
   );
 
   useEffect(() => {
@@ -1123,6 +1129,7 @@ const DeceasedReleaseForm = () => {
         const result = await response.json();
         if (response.ok && result.data) {
           fillDeceasedIntoForm(result.data);
+          releaseDateEditedRef.current = false;
           releaseTimeEditedRef.current = false;
           setFormData(prev => ({
             ...prev,
@@ -1173,6 +1180,7 @@ const DeceasedReleaseForm = () => {
       [name]: type === 'checkbox' ? checked : processedValue,
       ...(name === 'mode_of_transport' && value === 'outsourced' ? { plate_number: '' } : {}),
     }));
+    if (name === 'release_date') releaseDateEditedRef.current = true;
     if (name === 'release_time') releaseTimeEditedRef.current = true;
 
     if (name === 'admission_number') {
@@ -1230,6 +1238,7 @@ const DeceasedReleaseForm = () => {
 
     const foundAdmissionNumber = String(deceased.admission_number || '').trim().toUpperCase();
     lastSearchedRef.current = foundAdmissionNumber;
+    releaseDateEditedRef.current = false;
     releaseTimeEditedRef.current = false;
 
     setFormData(prev => ({
@@ -1249,6 +1258,7 @@ const DeceasedReleaseForm = () => {
       id_number: '',
       tel_number: '',
       date_admitted: deceased.date_admitted || prev.date_admitted,
+      time_received: deceased.time_received || prev.time_received,
       permit_number: deceased.permit_number || deceased.permit_no || '',
     }));
   };
@@ -1416,6 +1426,7 @@ const DeceasedReleaseForm = () => {
       });
       setShowSuccess(true);
 
+      releaseDateEditedRef.current = false;
       releaseTimeEditedRef.current = false;
       setFormData({
         ...initialFormData,
@@ -1443,6 +1454,7 @@ const DeceasedReleaseForm = () => {
   };
 
   const handleClear = () => {
+    releaseDateEditedRef.current = false;
     releaseTimeEditedRef.current = false;
     setFormData({
       ...initialFormData,
@@ -2050,12 +2062,10 @@ const DeceasedReleaseForm = () => {
                       <GridName>
                         {daysInCare !== null && (
                           <InCareBadge
-                            title={`${formData.full_name || 'The deceased'} — ${daysInCare} day${daysInCare === 1 ? '' : 's'} in our care`}
+                            title={`${formData.full_name || 'The deceased'} — ${formatCareDuration(daysInCare.days, daysInCare.hours)} in our care`}
                           >
                             <Check size={13} strokeWidth={3} />
-                            {daysInCare === 0
-                              ? 'In our care today'
-                              : `${daysInCare} day${daysInCare === 1 ? '' : 's'} in our care`}
+                            {`${formatCareDuration(daysInCare.days, daysInCare.hours)} in our care`}
                           </InCareBadge>
                         )}
                         <Label>Released By <span style={{ color: COLORS.red }}>*</span></Label>

@@ -189,10 +189,18 @@ export class BillingModel {
 
       const deceasedColumns = schemaColumns.get('deceased') || new Set<string>();
       const releaseColumns = schemaColumns.get('body_releases') || new Set<string>();
+      const admissionClock = deceasedColumns.has('time_received')
+        ? "COALESCE(d.time_received, '00:00:00')"
+        : "'00:00:00'";
+      const admissionTimestamp = `CASE
+        WHEN d.date_admitted REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}'
+          THEN STR_TO_DATE(REPLACE(LEFT(d.date_admitted, 19), 'T', ' '), '%Y-%m-%d %H:%i:%s')
+        ELSE TIMESTAMP(LEFT(d.date_admitted, 10), ${admissionClock})
+      END`;
       const activeConditions = [
         'd.tenant_slug = ?',
         'd.is_deleted = FALSE',
-        'd.date_admitted <= DATE_SUB(NOW(), INTERVAL 24 HOUR)',
+        `${admissionTimestamp} <= DATE_SUB(NOW(), INTERVAL 24 HOUR)`,
       ];
       if (deceasedColumns.has('admission_status')) {
         activeConditions.push("LOWER(COALESCE(d.admission_status, '')) NOT IN ('released', 'buried')");

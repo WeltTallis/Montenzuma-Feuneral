@@ -8,7 +8,12 @@ import { toast } from 'react-toastify';
 import api from '../../../api/axios';
 import { ENDPOINTS } from '../../../api/endpoints';
 import env from '../../../utils/config/env';
-import { getDaysInMorgue as calculateDaysInMorgue } from '../deceasedProfile/theme';
+import {
+  getDaysInMorgue as calculateDaysInMorgue,
+  getHoursInMorgue as calculateHoursInMorgue,
+  formatCareDuration,
+  withDateTime,
+} from '../deceasedProfile/theme';
 
 // Base API URL (kept for parity with the standalone page)
 const BASE_API = env.API_URL || 'https://restpoint.co.ke/api/v1/restpoint';
@@ -727,15 +732,28 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
 
   const getDaysInMorgue = () => {
     if (!deceasedData?.date_admitted) return 0;
-    const isReleased = [deceasedData.body_status, deceasedData.admission_status, deceasedData.release_status]
-      .filter(Boolean)
-      .map((value) => String(value).trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' '))
-      .some((status) => ['released', 'transferred', 'buried', 'dispatched', 'completed', 'collected']
-        .some((value) => status === value || status.includes(value)));
+    const releaseData = deceasedData.releaseData;
+    const isReleased = Boolean(releaseData?.release_id) ||
+      [deceasedData.body_status, deceasedData.admission_status, deceasedData.release_status]
+        .filter(Boolean)
+        .map((value) => String(value).trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' '))
+        .some((status) => ['released', 'transferred', 'buried', 'dispatched', 'completed', 'collected']
+          .some((value) => status === value || status.includes(value)));
+    const removalDate = releaseData?.date_of_removal || releaseData?.release_date;
+    const removalTime = releaseData?.time_of_removal || releaseData?.release_time;
     const releaseDate = isReleased
-      ? deceasedData.dispatch_date || deceasedData.release_date || deceasedData.date_released
+      ? removalDate && removalTime
+        ? withDateTime(removalDate, removalTime, true)
+        : removalDate || releaseData?.created_at || withDateTime(
+          deceasedData.dispatch_date || deceasedData.release_date || deceasedData.date_released,
+          deceasedData.dispatch_time || deceasedData.release_time
+        )
       : null;
-    return calculateDaysInMorgue(deceasedData.date_admitted, releaseDate);
+    const admittedAt = withDateTime(deceasedData.date_admitted, deceasedData.time_received || deceasedData.admission_time);
+    return formatCareDuration(
+      calculateDaysInMorgue(admittedAt, releaseDate),
+      calculateHoursInMorgue(admittedAt, releaseDate)
+    );
   };
 
   // Drop this record's override so it bills from the home default again (and
@@ -816,7 +834,7 @@ const ChargeSettingsModal = ({ isOpen, onClose, deceasedId, deceasedData, onUpda
             <div>
               <StripName>{deceasedData?.full_name || 'Client'}</StripName>
               <StripMeta>
-                Admitted {deceasedData?.date_admitted ? new Date(deceasedData.date_admitted).toLocaleDateString() : '—'} · {getDaysInMorgue()} days in morgue
+                Admitted {deceasedData?.date_admitted ? new Date(deceasedData.date_admitted).toLocaleDateString() : '—'} · {getDaysInMorgue()} in morgue
               </StripMeta>
             </div>
           </Strip>

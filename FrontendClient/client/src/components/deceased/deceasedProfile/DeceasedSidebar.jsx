@@ -1,7 +1,10 @@
 import React from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { QRCodeSVG } from 'qrcode.react';
-import { C, getInitials, formatDate, getDaysInMorgue, getHoursInMorgue } from './theme';
+import {
+  C, getInitials, formatDate, getDaysInMorgue, getHoursInMorgue,
+  formatCareDuration, withDateTime,
+} from './theme';
 import { getTenantSlug } from '../../../utils/globalAuth';
 
 /* ─── Pulse animation for active timeline dots ─── */
@@ -315,7 +318,10 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   const isFemale = sex.toLowerCase() === 'female';
   const documentCount = Array.isArray(deceased?.documents) ? deceased.documents.length : 0;
   const releaseData = deceased?.releaseData || null;
-  const admittedAt = deceased?.date_admitted || deceased?.created_at;
+  const admittedAt = withDateTime(
+    deceased?.date_admitted || deceased?.created_at,
+    deceased?.time_received || deceased?.admission_time
+  );
 
   const RELEASE_STATES = [
     'released', 'transferred', 'transfer', 'buried', 'dispatched',
@@ -329,7 +335,7 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
   const removalTime = releaseData?.time_of_removal || releaseData?.release_time;
   const releaseDate = isBodyReleased
     ? removalDate && removalTime
-      ? `${String(removalDate).slice(0, 10)} ${removalTime}`
+      ? withDateTime(removalDate, removalTime, true)
       : removalDate || releaseData?.created_at || deceased?.dispatch_date
     : null;
   const daysInCare = getDaysInMorgue(admittedAt, releaseDate);
@@ -421,11 +427,11 @@ const DeceasedSidebar = ({ deceased, postmortem, bodyStatus, age }) => {
           <strong>{isHourly ? 'Per hour' : 'Per day'}</strong>
         </ChargeRow>
         <ChargeRow>
-          <span>{isHourly ? 'Hours in care' : 'Days in care'}</span>
+          <span>{isHourly || daysInCare === 0 ? 'Hours in care' : 'Days in care'}</span>
           <strong>
             {isHourly
               ? `${fmtMoney(hoursInCare)} hour${hoursInCare === 1 ? '' : 's'}`
-              : `${daysInCare} day${daysInCare === 1 ? '' : 's'}`}
+              : admittedAt ? formatCareDuration(daysInCare, hoursInCare) : '—'}
           </strong>
         </ChargeRow>
         <ChargeRow>
