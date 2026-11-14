@@ -69,7 +69,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
             } catch { /* non-critical */ }
         }
 
-        const result = await generateTokens(rows[0], tenants[0], branchDbName, branchSlug);
+        const sessionId = verified.sessionId || req.sessionID;
+        const result = await generateTokens(rows[0], tenants[0], branchDbName, branchSlug, sessionId);
         if (cookieAuth) setAuthCookies(res, result.accessToken, result.refreshToken);
         res.status(200).json({
             success: true,

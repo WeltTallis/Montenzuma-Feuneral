@@ -109,6 +109,7 @@ export const protect = async (
       dbName: decoded.dbName,
       role: verified.role,
       branchDbName: decoded.branchDbName || null,
+      sessionId: verified.sessionId,
     };
 
     next();

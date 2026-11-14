@@ -9,4 +9,5 @@ export { listUsers } from './auth/getUsers';
 export { logout } from './auth/authLogout';
 export { getMe } from './auth/getMe';
 export { login } from './auth/login';
+export { getActiveSessions } from './auth/activeSessions';
 export { pool } from './auth/shared';

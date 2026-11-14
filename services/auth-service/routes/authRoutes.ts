@@ -17,6 +17,7 @@ import {
   forgotPassword,
   verifyPasswordResetCode,
   resetPasswordWithToken,
+  getActiveSessions,
 } from '../controllers/authController';
 import { protect } from '../middleware/authMiddleware';
 
@@ -77,6 +78,7 @@ router.post('/users', protect, createUser);
 
 // List all users (admin only)
 router.get('/users', protect, listUsers);
+router.get('/active-sessions', protect, getActiveSessions);
 
 // ============================================
 // SESSION STATUS

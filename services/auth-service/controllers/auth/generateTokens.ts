@@ -7,7 +7,8 @@ export const generateTokens = async (
     user: User,
     tenant: Tenant,
     branchDbName: string | null = null,
-    branchSlug: string | null = null
+    branchSlug: string | null = null,
+    sessionId?: string
 ): Promise<TokenResult> => {
     // Support both legacy tenant_id values and current UUID id values.
     const tenantId = tenant.tenant_id ?? tenant.id;
@@ -25,6 +26,7 @@ export const generateTokens = async (
         branchDbName,
         branchSlug: branchSlug || null,
         parentTenantSlug: tenant.tenant_slug,
+        ...(sessionId ? { sessionId } : {}),
         ...(user.branch_id ? { branchId: user.branch_id } : {}),
     } as any;
     const { jwtSecret, refreshSecret } = await getTenantJwtSecret(tenantId);

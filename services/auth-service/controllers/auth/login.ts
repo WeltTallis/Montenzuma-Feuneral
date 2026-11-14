@@ -15,6 +15,7 @@ import {
     type User,
 } from './shared';
 import { generateTokens } from './generateTokens';
+import { recordActiveLogin } from './activeSessions';
 
 export const login = async (req: Request, res: Response): Promise<void> => {
     const identifierInput: string = (req.body.email || req.body.identifier || req.body.username || '').trim();
@@ -143,15 +144,38 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             }
         } catch { /* non-critical */ }
 
-        const { accessToken, refreshToken } = await generateTokens(user, tenant, branchDbName, branchSlug);
-        const cookieAuth = req.headers['x-auth-cookie'] === '1';
-        if (cookieAuth) setAuthCookies(res, accessToken, refreshToken);
         // Session + JWT always anchor to the PARENT tenant slug; the branch scope
         // travels separately via branchId/branchSlug/branchDbName.
         const effectiveSlug = tenant.tenant_slug;
         // Resolve the tenant id across schemas: legacy rows carried `tenant_id`, the
         // current tenant_tracking.tenants primary key is `id` (VARCHAR(36) UUID).
         const tenantId = tenant.tenant_id ?? tenant.id;
+        const sessionId = req.sessionID;
+        if (!sessionId) {
+            throw new Error('Unable to create an authenticated session');
+        }
+        const { accessToken, refreshToken } = await generateTokens(user, tenant, branchDbName, branchSlug, sessionId);
+        const cookieAuth = req.headers['x-auth-cookie'] === '1';
+        try {
+            await recordActiveLogin({
+                sessionId,
+                userId: user.user_id,
+                email: user.email,
+                fullName: user.full_name,
+                role: user.role || 'admin',
+                tenantId,
+                tenantName: tenant.tenant_name,
+                tenantSlug: effectiveSlug,
+                tenantDb: tenant.db_name,
+                branchId,
+                branchSlug,
+                branchDb: branchDbName,
+            });
+        } catch (error) {
+            console.error('[Auth] Failed to record active login session:', error);
+            res.status(503).json({ success: false, message: 'Unable to record the login session' });
+            return;
+        }
 
         // Set session
         const session = req.session as any;
@@ -159,6 +183,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         session.tenantId = tenantId;
         session.tenantSlug = effectiveSlug;
         session.dbName = dbName;
+        if (cookieAuth) setAuthCookies(res, accessToken, refreshToken);
 
         // Full branch list with parent/child relationships so the frontend can persist
         // the branch hierarchy (branch_id -> parent_branch_id) after login.
