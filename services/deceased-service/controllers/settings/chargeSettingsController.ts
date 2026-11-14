@@ -2,6 +2,7 @@ import { safeTenantExecute, safeTenantQuery, resolveDatabase } from '../../../..
 import redisService from '@montezuma/shared-services/dist/redisService';
 import Logger from '@montezuma/shared-logger/src';
 import { Request, Response } from 'express';
+import { loadChargesForDeceased, loadPaymentsForDeceased } from '../charges/chargesControl';
 
 
 
@@ -273,12 +274,32 @@ export const updateChargeSettings = async (req: TenantRequest, res: Response): P
     }
 };
 
-export const getBillingSummary = async (req: Request, res: Response): Promise<Response> => {
-    return res.status(200).json({
-        success: true,
-        message: 'Billing summary placeholder',
-        data: { id: req.params.id }
-    });
+export const getBillingSummary = async (req: TenantRequest, res: Response): Promise<Response> => {
+    const deceasedId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!deceasedId) {
+        return res.status(400).json({ success: false, message: 'A deceased id is required.' });
+    }
+
+    const tenantSlug = getTenantSlugFromReq(req);
+    try {
+        const dbName = await resolveDatabase(tenantSlug);
+        if (!dbName) {
+            return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
+        }
+
+        const [charges, payments] = await Promise.all([
+            loadChargesForDeceased(dbName, deceasedId),
+            loadPaymentsForDeceased(dbName, deceasedId),
+        ]);
+        return res.status(200).json({
+            success: true,
+            message: 'Billing summary retrieved successfully',
+            data: { id: deceasedId, charges, payments }
+        });
+    } catch (error: any) {
+        Logger.error({ message: 'Failed to load deceased billing summary', tenantSlug, deceasedId, error: error?.message });
+        return res.status(500).json({ success: false, message: error?.message || 'Failed to load billing summary' });
+    }
 };
 
 export const recalculateBalance = async (req: Request, res: Response): Promise<Response> => {

@@ -97,7 +97,7 @@ const AnimatedNumber = ({ end, suffix = '', duration = 2000 }) => {
 const Marquee = ({ items, speed = 35 }) => (
   <div className="marquee-strip">
     <div className="marquee-track" style={{ animationDuration: `${speed}s` }}>
-      {[...items, ...items, ...items, ...items].map((item, i) => (
+      {[...items, ...items].map((item, i) => (
         <span key={i} className="marquee-item">
           <span className="marquee-dot" />{item}
         </span>
@@ -168,35 +168,27 @@ const FloralPreview = () => {
   const current = FLP_FLOWERS[index];
 
   return (
-    <div className="flp-tablet-wrapper">
-      <div className="flp-tablet-scale">
-        <div className="flp-tablet-scale-inner">
-          <div className="flp-tablet-frame">
-            <div className="flp-tablet-screen">
-              <img className="flp-hero" src={current.img} alt={current.alt} loading="lazy" decoding="async" style={{ opacity: fading ? 0 : 1 }} />
-              <div className="flp-overlay" />
-              <div className="flp-strip">
-                {FLP_FLOWERS.map((f, i) => (
-                  <button key={f.label} className="flp-story" onClick={() => setFlower(i)}>
-                    <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`}>
-                      <div className="flp-ring-inner">
-                        <img src={f.img} alt={f.alt} loading="lazy" decoding="async" />
-                      </div>
-                    </div>
-                    <span className="flp-story-label">{f.label}</span>
-                  </button>
-                ))}
+    <div className="flp-tablet-frame">
+      <div className="flp-tablet-screen">
+        <img className="flp-hero" src={current.img} alt={current.alt} loading="lazy" decoding="async" style={{ opacity: fading ? 0 : 1 }} />
+        <div className="flp-overlay" />
+        <div className="flp-strip">
+          {FLP_FLOWERS.map((f, i) => (
+            <button key={f.label} className="flp-story" onClick={() => setFlower(i)}>
+              <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`}>
+                <img src={f.img} alt={f.alt} loading="lazy" decoding="async" />
               </div>
-              <div className="flp-title-block">
-                <div className="flp-name-tag">Premium Funeral Flowers</div>
-                <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1, transform: fading ? 'translateY(15px)' : 'translateY(0)' }}>{current.title}</h2>
-              </div>
-              <div className="flp-wordmark">
-                <div className="flp-wordmark-name">RestPoint Floral Concierge</div>
-                <div className="flp-wordmark-sub">Curated for funeral homes</div>
-              </div>
-            </div>
-          </div>
+              <span className="flp-story-label">{f.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flp-title-block">
+          <div className="flp-name-tag">Premium Funeral Flowers</div>
+          <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1, transform: fading ? 'translateY(15px)' : 'translateY(0)' }}>{current.title}</h2>
+        </div>
+        <div className="flp-wordmark">
+          <div className="flp-wordmark-name">RestPoint Floral Concierge</div>
+          <div className="flp-wordmark-sub">Curated for funeral homes</div>
         </div>
       </div>
     </div>

@@ -121,25 +121,21 @@ const ensurePaymentsTable = async (dbName: string): Promise<void> => {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `;
     await safeTenantExecute(dbName, sql, []);
-    // Tables created by older migrations may miss these columns - add best-effort.
+    const columnRows: any[] = (await safeTenantQuery(
+        dbName,
+        `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'payments'`,
+        [dbName]
+    )) || [];
+    const existingColumns = new Set(columnRows.map((row) => String(row.COLUMN_NAME || row.column_name)));
     const alters = [
-        `ALTER TABLE payments ADD COLUMN recorded_by VARCHAR(100) NULL`,
-        `ALTER TABLE payments ADD COLUMN insurance_provider VARCHAR(150) NULL`,
-        `ALTER TABLE payments ADD COLUMN currency ENUM('KES', 'USD', 'EUR', 'GBP') DEFAULT 'USD'`
+        { column: 'recorded_by', sql: 'ALTER TABLE payments ADD COLUMN recorded_by VARCHAR(100) NULL' },
+        { column: 'insurance_provider', sql: 'ALTER TABLE payments ADD COLUMN insurance_provider VARCHAR(150) NULL' },
+        { column: 'currency', sql: "ALTER TABLE payments ADD COLUMN currency ENUM('KES', 'USD', 'EUR', 'GBP') DEFAULT 'USD'" }
     ];
-    for (const alterSQL of alters) {
-        try {
-            await safeTenantExecute(dbName, alterSQL, []);
-        } catch (err: any) {
-            // ER_DUP_FIELDNAME means column already exists - safe to ignore
-            if (!/duplicate/i.test(err?.message || '') && err?.code !== 'ER_DUP_FIELDNAME') {
-
-                Logger.warn({
-                    Message: "   Message  ALTER   Skipped",
-                    error: err?.message
-                })
-
-            }
+    for (const alter of alters) {
+        if (!existingColumns.has(alter.column)) {
+            await safeTenantExecute(dbName, alter.sql, []);
         }
     }
 
@@ -180,6 +176,26 @@ const resolveDbOr400 = async (req: TenantRequest, res: Response): Promise<string
     return dbName;
 };
 
+export const loadChargesForDeceased = async (dbName: string, deceasedId: string): Promise<any[]> => {
+    await ensureExtraChargesTable(dbName);
+    const rows: any[] = (await safeTenantQuery(
+        dbName,
+        'SELECT * FROM extra_charges WHERE deceased_id = ? AND is_deleted = FALSE ORDER BY charge_id DESC',
+        [deceasedId]
+    )) || [];
+    return rows.map(mapChargeRow);
+};
+
+export const loadPaymentsForDeceased = async (dbName: string, deceasedId: string): Promise<any[]> => {
+    await ensurePaymentsTable(dbName);
+    const rows: any[] = (await safeTenantQuery(
+        dbName,
+        'SELECT * FROM payments WHERE deceased_id = ? ORDER BY payment_id DESC',
+        [deceasedId]
+    )) || [];
+    return rows.map(mapPaymentRow);
+};
+
 // ---------------------------------------------------------------------------
 // Charges - persisted per-deceased billing items (individual USD billing)
 // ---------------------------------------------------------------------------
@@ -187,18 +203,12 @@ const resolveDbOr400 = async (req: TenantRequest, res: Response): Promise<string
 /** GET /charges/:deceased_id */
 export const getCharges = async (req: TenantRequest, res: Response): Promise<Response> => {
     try {
-        const { deceased_id } = req.params;
+        const deceased_id = Array.isArray(req.params.deceased_id) ? req.params.deceased_id[0] : req.params.deceased_id;
         const dbName = await resolveDbOr400(req, res);
         if (!dbName) return res as unknown as Response;
 
-        await ensureExtraChargesTable(dbName);
-        const rows: any[] = (await safeTenantQuery(
-            dbName,
-            'SELECT * FROM extra_charges WHERE deceased_id = ? AND is_deleted = FALSE ORDER BY charge_id DESC',
-            [deceased_id]
-        )) || [];
-
-        return res.json({ success: true, data: rows.map(mapChargeRow), message: 'Charges retrieved successfully' });
+        const charges = await loadChargesForDeceased(dbName, deceased_id);
+        return res.json({ success: true, data: charges, message: 'Charges retrieved successfully' });
     } catch (error: any) {
         Logger.error({
             message: "An    Error   Occured   While  Creating  Charges  ",
@@ -331,18 +341,12 @@ export const deleteCharge = async (req: TenantRequest, res: Response): Promise<R
 /** GET /payments/:deceased_id */
 export const getPayments = async (req: TenantRequest, res: Response): Promise<Response> => {
     try {
-        const { deceased_id } = req.params;
+        const deceased_id = Array.isArray(req.params.deceased_id) ? req.params.deceased_id[0] : req.params.deceased_id;
         const dbName = await resolveDbOr400(req, res);
         if (!dbName) return res as unknown as Response;
 
-        await ensurePaymentsTable(dbName);
-        const rows: any[] = (await safeTenantQuery(
-            dbName,
-            'SELECT * FROM payments WHERE deceased_id = ? ORDER BY payment_id DESC',
-            [deceased_id]
-        )) || [];
-
-        return res.json({ success: true, data: rows.map(mapPaymentRow), message: 'Payments retrieved successfully' });
+        const payments = await loadPaymentsForDeceased(dbName, deceased_id);
+        return res.json({ success: true, data: payments, message: 'Payments retrieved successfully' });
     } catch (error: any) {
         Logger.error({
             message: "    NA  error    Occuured   WHile   getting payments",

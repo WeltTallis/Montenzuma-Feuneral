@@ -19,7 +19,7 @@ const SummaryCards = ({ chemicals, summary, ppeRequests }) => {
   ).length;
   const usage = Number(summary.total_usage_30d || 0);
   const cards = [
-    { label: 'Chemical items', value: chemicals.length, note: 'Active inventory', icon: Package, tone: ['#e9f4ef', '#176b53'] },
+    { label: 'Chemical items', value: chemicals.length, note: 'Active inventory', icon: Package, tone: ['#eef4f9', '#1a5f7a'] },
     { label: 'Low stock', value: lowStock, note: lowStock ? 'Needs attention' : 'All levels healthy', icon: AlertTriangle, tone: ['#fff3e5', '#c87820'] },
     { label: 'Usage · 30 days', value: Number.isFinite(usage) ? usage.toLocaleString() : '0', note: 'Across all branches', icon: TrendingUp, tone: ['#edf1fb', '#526db0'] },
     { label: 'PPE requests', value: ppeRequests.length, note: 'Requests on record', icon: ShieldCheck, tone: ['#f2edfa', '#8054a6'] },

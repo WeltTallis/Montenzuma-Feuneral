@@ -77,38 +77,38 @@ const InventoryTable = ({
     <style>{`
       .inventory-heading { align-items:center; }
       .inventory-title-line { display:flex;align-items:center;gap:9px;flex-wrap:wrap; }
-      .item-count { padding:4px 8px;border-radius:20px;background:#f0f5f2;color:#638375;font-size:10px;font-weight:750; }
+      .item-count { padding:4px 8px;border-radius:20px;background:#eef3f7;color:#5a7a8c;font-size:10px;font-weight:750; }
       .inventory-toolbar { display:flex;align-items:center;gap:8px;padding:0 20px 14px; }
-      .search-field { display:flex;align-items:center;gap:8px;flex:1;min-width:170px;height:38px;padding:0 11px;border:1px solid #e6ece8;border-radius:9px;color:#8b9b95;background:#fbfcfb; }
-      .search-field input { width:100%;border:0;outline:0;background:transparent;color:#34544a;font-size:12px; }
-      .inventory-toolbar select { height:38px;padding:0 10px;border:1px solid #e6ece8;border-radius:9px;background:#fff;color:#5d746a;font-size:11px; }
+      .search-field { display:flex;align-items:center;gap:8px;flex:1;min-width:170px;height:38px;padding:0 11px;border:1px solid #e3e9ef;border-radius:9px;color:#7a8fa0;background:#f8fafc; }
+      .search-field input { width:100%;border:0;outline:0;background:transparent;color:#3d5a6a;font-size:12px; }
+      .inventory-toolbar select { height:38px;padding:0 10px;border:1px solid #e3e9ef;border-radius:9px;background:#fff;color:#6a8294;font-size:11px; }
       .table-scroll { overflow-x:auto; }
       table { width:100%;border-collapse:collapse;text-align:left; }
-      thead { background:#f7faf8; }
-      th { padding:10px 15px;color:#899890;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap; }
-      td { padding:12px 15px;border-top:1px solid #eef2ef;color:#536c61;font-size:11px; }
+      thead { background:#f4f7fa; }
+      th { padding:10px 15px;color:#7a8fa0;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap; }
+      td { padding:12px 15px;border-top:1px solid #eef2ef;color:#4d6a7c;font-size:11px; }
       .item-name { display:flex;align-items:center;gap:10px;min-width:190px; }
-      .item-icon { width:33px;height:33px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px;color:#267858;background:#eaf5ee; }
+      .item-icon { width:33px;height:33px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px;color:#1a5f7a;background:#e7f0f6; }
       .item-icon.low { color:#bf6929;background:#fff2e4; }
       .item-name strong,.item-name small,.stock-amount strong,.stock-amount small { display:block; }
-      .item-name strong { color:#26463a;font-size:12px;font-weight:750; }
-      .item-name small { margin-top:4px;color:#91a098;font-size:10px; }
-      .category-chip { display:inline-block;padding:5px 8px;border-radius:6px;background:#f1f5f2;color:#668075;font-size:10px; }
+      .item-name strong { color:#1f3a4d;font-size:12px;font-weight:750; }
+      .item-name small { margin-top:4px;color:#8a9aa8;font-size:10px; }
+      .category-chip { display:inline-block;padding:5px 8px;border-radius:6px;background:#eef3f7;color:#5a7a8c;font-size:10px; }
       .stock-cell { min-width:155px; }
       .stock-amount { display:flex;align-items:center;justify-content:space-between;gap:6px; }
-      .stock-amount strong { color:#315a48;font-size:11px;white-space:nowrap; }
-      .stock-amount small { color:#94a29b;font-size:9px;white-space:nowrap; }
+      .stock-amount strong { color:#2d526e;font-size:11px;white-space:nowrap; }
+      .stock-amount small { color:#8a9aa8;font-size:9px;white-space:nowrap; }
       .stock-amount .text-low { color:#b9573e; }
-      .stock-meter { height:4px;margin-top:8px;overflow:hidden;border-radius:4px;background:#edf2ee; }
-      .stock-meter span { display:block;height:100%;border-radius:4px;background:#4b9b75; }
+      .stock-meter { height:4px;margin-top:8px;overflow:hidden;border-radius:4px;background:#e7edf2; }
+      .stock-meter span { display:block;height:100%;border-radius:4px;background:#2c8ac9; }
       .stock-meter span.low { background:#e2a35c; }
       .hazard-tag { display:inline-block;padding:4px 8px;border-radius:20px;font-size:9px;font-weight:750;text-transform:capitalize; }
-      .hazard-high { color:#ad493e;background:#fff0ed; }.hazard-medium { color:#ae7626;background:#fff6e8; }.hazard-low { color:#408160;background:#eaf6ed; }
+      .hazard-high { color:#ad493e;background:#fff0ed; }.hazard-medium { color:#ae7626;background:#fff6e8; }.hazard-low { color:#2c8ac9;background:#e7f0f6; }
       .row-actions { display:flex;justify-content:flex-end;gap:4px; }
-      .row-actions button { width:29px;height:29px;display:grid;place-items:center;border:1px solid transparent;border-radius:8px;color:#7a9185;background:transparent; }
-      .row-actions button:hover { color:#176b53;border-color:#dbe9e0;background:#f3f8f5; }
-      .table-state { min-height:170px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#91a098;font-size:12px; }
-      .table-state strong { color:#405c50;font-size:13px; }.table-state span { font-size:11px; }
+      .row-actions button { width:29px;height:29px;display:grid;place-items:center;border:1px solid transparent;border-radius:8px;color:#6a8294;background:transparent; }
+      .row-actions button:hover { color:#1a5f7a;border-color:#d1e0ea;background:#eef4f9; }
+      .table-state { min-height:170px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#8a9aa8;font-size:12px; }
+      .table-state strong { color:#3d5a6a;font-size:13px; }.table-state span { font-size:11px; }
       .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
       @media(max-width:620px) { .inventory-heading { align-items:flex-start;flex-direction:column; }.inventory-toolbar { flex-wrap:wrap;padding:0 13px 12px; }.search-field { flex-basis:100%; }.inventory-toolbar select { flex:1;min-width:0; }.inventory-heading { padding:16px 14px 12px; } th,td { padding-left:10px;padding-right:10px; } }
     `}</style>

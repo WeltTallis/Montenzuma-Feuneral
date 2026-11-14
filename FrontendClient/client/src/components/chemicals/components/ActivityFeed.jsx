@@ -21,7 +21,7 @@ const ActivityFeed = ({ transactions, loading }) => (
   <section className="panel activity-panel">
     <div className="panel-heading">
       <div><h2>Recent activity</h2><p>Latest stock movements in this inventory</p></div>
-      <Clock3 size={17} color="#779184" />
+      <Clock3 size={17} color="#6a8294" />
     </div>
     {loading && !transactions.length ? <p className="activity-empty">Loading activity…</p> : !transactions.length ? (
       <p className="activity-empty">No recent stock movements.</p>
@@ -50,11 +50,11 @@ const ActivityFeed = ({ transactions, loading }) => (
       .activity-list { list-style:none;margin:0;padding:0 20px 10px; }
       .activity-list li { display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid #eef2ef; }
       .activity-icon { width:32px;height:32px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px; }
-      .activity-icon.received { color:#267858;background:#eaf5ee; }.activity-icon.consumed { color:#b87832;background:#fff4e8; }.activity-icon.adjusted { color:#526db0;background:#edf1fb; }
+      .activity-icon.received { color:#1a5f7a;background:#e7f0f6; }.activity-icon.consumed { color:#b87832;background:#fff4e8; }.activity-icon.adjusted { color:#526db0;background:#edf1fb; }
       .activity-copy { min-width:0;flex:1; }.activity-copy strong,.activity-copy small { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-      .activity-copy strong { color:#355448;font-size:11px;font-weight:720; }.activity-copy small { color:#94a29b;font-size:10px;margin-top:4px; }
-      .activity-quantity { white-space:nowrap;font-size:10px;font-weight:750; }.activity-quantity.received { color:#32815d; }.activity-quantity.consumed { color:#bd803c; }.activity-quantity.adjusted { color:#6479a8; }
-      .activity-empty { padding:8px 20px 20px;color:#91a098;font-size:12px; }
+      .activity-copy strong { color:#1f3a4d;font-size:11px;font-weight:720; }.activity-copy small { color:#8a9aa8;font-size:10px;margin-top:4px; }
+      .activity-quantity { white-space:nowrap;font-size:10px;font-weight:750; }.activity-quantity.received { color:#2c8ac9; }.activity-quantity.consumed { color:#bd803c; }.activity-quantity.adjusted { color:#6479a8; }
+      .activity-empty { padding:8px 20px 20px;color:#7a8fa0;font-size:12px; }
       @media(max-width:520px) { .activity-list { padding:0 13px 8px; }.activity-copy small { max-width:190px; }.activity-quantity { font-size:9px; } }
     `}</style>
   </section>

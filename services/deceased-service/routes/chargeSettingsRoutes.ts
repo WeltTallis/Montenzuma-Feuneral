@@ -24,6 +24,7 @@ router.put('/deceased/charge-settings/:id', updateChargeSettings);
 router.get('/', getChargeSettings);
 router.put('/:id', updateChargeSettings);
 router.get('/billing-summary/:id', getBillingSummary);
+router.get('/deceased/billing-summary/:id', getBillingSummary);
 router.post('/:id/recalculate', recalculateBalance);
 
 export default router;

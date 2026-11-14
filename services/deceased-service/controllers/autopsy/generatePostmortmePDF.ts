@@ -208,6 +208,9 @@ export const generatePostmortemPDF = async (req: TenantRequest, res: Response): 
         browser = await puppeteer.launch({
             // v25 accepts `boolean | 'shell'` only — `true` = new headless mode
             headless: true,
+            ...(process.env.PUPPETEER_EXECUTABLE_PATH
+                ? { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH }
+                : {}),
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--font-render-hinting=none'],
         });
 

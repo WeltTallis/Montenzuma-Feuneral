@@ -204,19 +204,19 @@ const ChemicalDialog = ({ mode, chemical, chemicals, branches, mainBranchSlug, b
                 </form>
             </section>
             <style>{`
-        .dialog-backdrop { position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:18px;background:rgba(18,39,32,.48);backdrop-filter:blur(3px); }
-        .chemical-dialog { width:min(580px,100%);max-height:min(90vh,800px);overflow:auto;border:1px solid #e4ebe7;border-radius:18px;background:#fff;box-shadow:0 24px 80px rgba(13,42,30,.25); }
-        .dialog-header { display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:21px 23px 17px;border-bottom:1px solid #edf1ee; }
-        .dialog-header h2 { color:#1f4336;font-size:18px;letter-spacing:-.03em; }.dialog-header p { color:#809189;font-size:12px;margin-top:6px; }
-        .dialog-close { width:32px;height:32px;display:grid;place-items:center;flex:0 0 auto;border:1px solid #e6ece8;border-radius:9px;color:#62796e;background:#fff; }
+        .dialog-backdrop { position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:18px;background:rgba(19,49,63,.48);backdrop-filter:blur(3px); }
+        .chemical-dialog { width:min(580px,100%);max-height:min(90vh,800px);overflow:auto;border:1px solid #d1e0ea;border-radius:18px;background:#fff;box-shadow:0 24px 80px rgba(26,95,122,.25); }
+        .dialog-header { display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:21px 23px 17px;border-bottom:1px solid #e3e9ef; }
+        .dialog-header h2 { color:#13313f;font-size:18px;letter-spacing:-.03em; }.dialog-header p { color:#6b8390;font-size:12px;margin-top:6px; }
+        .dialog-close { width:32px;height:32px;display:grid;place-items:center;flex:0 0 auto;border:1px solid #d7e0e8;border-radius:9px;color:#5a7a8c;background:#fff; }
         .dialog-close:disabled { opacity:.5; }.dialog-body { display:grid;gap:14px;padding:19px 23px; }
         .dialog-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px; }
-        .dialog-field { min-width:0;display:grid;gap:6px; }.dialog-field > span { color:#566f63;font-size:11px;font-weight:720; }.dialog-field b { color:#c45c49; }
-        .dialog-field input,.dialog-field select,.dialog-field textarea { width:100%;min-height:39px;padding:9px 10px;border:1px solid #e0e8e3;border-radius:9px;outline:none;color:#315244;background:#fff;font-size:12px; }
-        .dialog-field textarea { resize:vertical; }.dialog-field input:focus,.dialog-field select:focus,.dialog-field textarea:focus { border-color:#6fa68a;box-shadow:0 0 0 3px rgba(70,143,105,.1); }
-        .dialog-context { grid-column:1/-1;display:grid;gap:5px;padding:11px 12px;border:1px solid #e2eee6;border-radius:10px;background:#f4f9f6; }.dialog-context strong { color:#315d48;font-size:13px; }.dialog-context span { color:#788e82;font-size:11px; }
+        .dialog-field { min-width:0;display:grid;gap:6px; }.dialog-field > span { color:#5a7a8c;font-size:11px;font-weight:720; }.dialog-field b { color:#c45c49; }
+        .dialog-field input,.dialog-field select,.dialog-field textarea { width:100%;min-height:39px;padding:9px 10px;border:1px solid #c9d6df;border-radius:9px;outline:none;color:#3d5a6a;background:#fff;font-size:12px; }
+        .dialog-field textarea { resize:vertical; }.dialog-field input:focus,.dialog-field select:focus,.dialog-field textarea:focus { border-color:#1a5f7a;box-shadow:0 0 0 3px rgba(26,95,122,.1); }
+        .dialog-context { grid-column:1/-1;display:grid;gap:5px;padding:11px 12px;border:1px solid #d1e0ea;border-radius:10px;background:#eef4f9; }.dialog-context strong { color:#13313f;font-size:13px; }.dialog-context span { color:#6b8390;font-size:11px; }
         .dialog-error { display:flex;align-items:center;gap:8px;padding:10px 11px;border:1px solid #f1c9c4;border-radius:9px;color:#a33d32;background:#fff3f1;font-size:12px; }
-        .dialog-footer { display:flex;justify-content:flex-end;gap:9px;padding:14px 23px 20px;border-top:1px solid #edf1ee; }
+        .dialog-footer { display:flex;justify-content:flex-end;gap:9px;padding:14px 23px 20px;border-top:1px solid #e3e9ef; }
         @media(max-width:520px) { .dialog-backdrop { padding:8px; }.chemical-dialog { max-height:94vh; }.dialog-header { padding:17px 16px 14px; }.dialog-body { padding:15px 16px; }.dialog-footer { padding:12px 16px 16px; }.dialog-grid { grid-template-columns:1fr; }.dialog-context { grid-column:auto; } }
       `}</style>
         </div>

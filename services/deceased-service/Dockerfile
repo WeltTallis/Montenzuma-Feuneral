@@ -20,6 +20,7 @@ WORKDIR /usr/src/app
 # Do NOT use --omit=optional anywhere: it prunes sharp's platform binaries
 # (@img/sharp-linuxmusl-x64 / @img/sharp-libvips-linuxmusl-x64) on Alpine.
 ENV NODE_OPTIONS=--max-old-space-size=2048
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared-config/package.json ./packages/shared-config/
 COPY packages/shared-logger/package.json ./packages/shared-logger/
@@ -59,6 +60,7 @@ RUN cd packages/shared-config && npm run build && cd ../.. && \
 FROM node:24-alpine AS prod-deps
 WORKDIR /usr/src/app
 ENV NODE_OPTIONS=--max-old-space-size=2048
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared-config/package.json ./packages/shared-config/
 COPY packages/shared-logger/package.json ./packages/shared-logger/
@@ -81,7 +83,7 @@ RUN node -e "const p=require('./services/deceased-service/package.json'); for(co
 # ---------------------------------------------------------------------------
 FROM node:24-alpine AS runtime
 
-RUN apk add --no-cache dumb-init wget \
+RUN apk add --no-cache dumb-init wget chromium \
  && addgroup -g 1001 -S nodejs \
  && adduser -S nodejs -u 1001
 
@@ -114,6 +116,7 @@ USER nodejs
 EXPOSE 5000
 ENV NODE_ENV=production
 ENV PORT=5000
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node services/deceased-service/healthcheck.js
