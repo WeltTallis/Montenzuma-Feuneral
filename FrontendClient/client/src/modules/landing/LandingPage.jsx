@@ -168,27 +168,35 @@ const FloralPreview = () => {
   const current = FLP_FLOWERS[index];
 
   return (
-    <div className="flp-tablet-frame">
-      <div className="flp-tablet-screen">
-        <img className="flp-hero" src={current.img} alt={current.alt} loading="lazy" decoding="async" style={{ opacity: fading ? 0 : 1 }} />
-        <div className="flp-overlay" />
-        <div className="flp-strip">
-          {FLP_FLOWERS.map((f, i) => (
-            <button key={f.label} className="flp-story" onClick={() => setFlower(i)}>
-              <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`}>
-                <img src={f.img} alt={f.alt} loading="lazy" decoding="async" />
+    <div className="flp-tablet-wrapper">
+      <div className="flp-tablet-scale">
+        <div className="flp-tablet-scale-inner">
+          <div className="flp-tablet-frame">
+            <div className="flp-tablet-screen">
+              <img className="flp-hero" src={current.img} alt={current.alt} loading="lazy" decoding="async" style={{ opacity: fading ? 0 : 1 }} />
+              <div className="flp-overlay" />
+              <div className="flp-strip">
+                {FLP_FLOWERS.map((f, i) => (
+                  <button key={f.label} className="flp-story" onClick={() => setFlower(i)}>
+                    <div className={`flp-ring ${i === index ? 'flp-unseen' : 'flp-seen'}`}>
+                      <div className="flp-ring-inner">
+                        <img src={f.img} alt={f.alt} loading="lazy" decoding="async" />
+                      </div>
+                    </div>
+                    <span className="flp-story-label">{f.label}</span>
+                  </button>
+                ))}
               </div>
-              <span className="flp-story-label">{f.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="flp-title-block">
-          <div className="flp-name-tag">Premium Funeral Flowers</div>
-          <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1, transform: fading ? 'translateY(15px)' : 'translateY(0)' }}>{current.title}</h2>
-        </div>
-        <div className="flp-wordmark">
-          <div className="flp-wordmark-name">RestPoint Floral Concierge</div>
-          <div className="flp-wordmark-sub">Curated for funeral homes</div>
+              <div className="flp-title-block">
+                <div className="flp-name-tag">Premium Funeral Flowers</div>
+                <h2 className="flp-headline" style={{ opacity: fading ? 0 : 1, transform: fading ? 'translateY(15px)' : 'translateY(0)' }}>{current.title}</h2>
+              </div>
+              <div className="flp-wordmark">
+                <div className="flp-wordmark-name">RestPoint Floral Concierge</div>
+                <div className="flp-wordmark-sub">Curated for funeral homes</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -494,12 +502,12 @@ export default function App() {
         .modules-header { text-align: center; margin-bottom: 3rem; padding: 0 1rem; }
         .modules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 900px; margin: 0 auto; align-items: stretch; }
         .modules-grid > div { display: flex; }
-        .module-sms { display: grid; grid-template-columns: 1fr 0.9fr; gap: clamp(2rem,5vw,4rem); align-items: center; max-width: 1000px; margin: 0 auto 2rem; padding: clamp(1.5rem,4vw,3rem); overflow: hidden; border: 1px solid rgba(250,248,244,0.12); border-radius: 20px; background: linear-gradient(135deg,${C.verdigrisDark} 0%,${C.ink} 100%); box-shadow: 0 18px 48px rgba(21,23,26,0.16); }
+        .module-sms { display: grid; grid-template-columns: 1fr 0.9fr; gap: clamp(2rem,5vw,4rem); align-items: center; max-width: 1000px; margin: 0 auto 2rem; padding: clamp(1.5rem,4vw,3rem); overflow: hidden; border: 1px solid rgba(250,248,244,0.12); border-radius: 20px; background: #FFFFFF; box-shadow: 0 18px 48px rgba(21,23,26,0.16); }
         .module-sms-copy { min-width: 0; }
         .module-sms-status { display: inline-flex; align-items: center; gap: 0.55rem; margin-bottom: 1.15rem; padding: 0.48rem 0.8rem; border: 1px solid rgba(61,79,71,0.18); border-radius: 999px; background: ${C.verdigrisTint}; color: ${C.verdigris}; font-family: 'Saira',sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
         .module-sms-status span { width: 7px; height: 7px; border-radius: 50%; background: ${C.verdigris}; box-shadow: 0 0 0 4px rgba(61,79,71,0.1); }
-        .module-sms .module-sms-title { margin: 0 0 0.8rem; color: ${C.bone}; font-size: clamp(1.8rem,3.5vw,2.5rem); line-height: 1.12; }
-        .module-sms-desc { max-width: 530px; margin: 0; color: rgba(250,248,244,0.76); font-family: 'Saira',sans-serif; font-size: 0.98rem; line-height: 1.75; }
+        .module-sms .module-sms-title { margin: 0 0 0.8rem; color: #000000; font-size: clamp(1.8rem,3.5vw,2.5rem); font-weight: 800; line-height: 1.12; }
+        .module-sms-desc { max-width: 530px; margin: 0; color: #000000; font-family: 'Saira',sans-serif; font-size: 0.98rem; line-height: 1.75; }
         .module-sms-cta { display: inline-flex; align-items: center; gap: 0.55rem; margin-top: 1.5rem; padding: 0.82rem 1.15rem; border: 0; border-radius: 8px; background: ${C.brassLight}; color: #FFFFFF; font-family: 'Saira',sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; }
         .module-sms-cta:hover { background: ${C.brass}; transform: translateY(-2px); }
         .module-sms-visual { display: flex; justify-content: center; padding: clamp(1rem,3vw,2rem); border: 1px solid rgba(250,248,244,0.1); border-radius: 16px; background: radial-gradient(ellipse at top right,rgba(169,143,110,0.2),transparent 55%),${C.verdigrisDark}; }

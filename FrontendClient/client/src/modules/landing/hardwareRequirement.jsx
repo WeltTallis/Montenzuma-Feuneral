@@ -670,14 +670,6 @@ const HardwareRequirementSection = () => {
                   <h2>One tablet in <em>every</em> facility.<br />A stylus for on-screen signatures.</h2>
                 </div>
               </Reveal>
-              <Reveal delay={0.12}>
-                <aside>
-                  The FrontDesk reception portal runs on one iPad or Android tablet. Staff use
-                  it to record body intake and release and capture digital signatures directly
-                  on both forms. Families can browse floral arrangements at reception. A
-                  pressure-sensitive stylus is optional for signing on screen.
-                </aside>
-              </Reveal>
             </ReqHead>
 
             <Reveal>
@@ -687,40 +679,9 @@ const HardwareRequirementSection = () => {
             </Reveal>
 
             <Reveal delay={0.08}>
-              <LedgerRow>
-                <span className="no">01</span>
-                <div>
-                  <h3>FrontDesk Reception Tablet</h3>
-                  <span className="sub">iPad or Android, whichever the facility prefers</span>
-                </div>
-                <p className="spec">
-                  Required to run the FrontDesk reception portal. Record body intake and release,
-                  capture digital signatures directly on both forms, and let families browse
-                  floral arrangements. Choose an iPad or Android tablet.
-                </p>
-                <div className="status">
-                  <span className="lchip req">Required</span>
-                  <span className="qty">×1</span>
-                </div>
-              </LedgerRow>
             </Reveal>
 
             <Reveal delay={0.16}>
-              <LedgerRow>
-                <span className="no">02</span>
-                <div>
-                  <h3>Precision Stylus</h3>
-                  <span className="sub">Pressure-sensitive · Palm rejection</span>
-                </div>
-                <p className="spec">
-                  Optional pressure-sensitive pen for writing digital signatures directly on
-                  the body-intake and body-release forms. One stylus per tablet.
-                </p>
-                <div className="status">
-                  <span className="lchip add">Add-on</span>
-                  <span className="qty">×0</span>
-                </div>
-              </LedgerRow>
             </Reveal>
 
             <Reveal>
