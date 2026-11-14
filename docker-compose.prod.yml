@@ -281,6 +281,7 @@ services:
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       DB_HOST: restpoint_mariadb
       DB_PORT: 3306
+      DB_USER: restpoint_user
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}

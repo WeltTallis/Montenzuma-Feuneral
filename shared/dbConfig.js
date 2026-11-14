@@ -484,7 +484,9 @@ const lookupTenantDatabase = async (tenantSlug, options = {}) => {
             nearMisses,
         });
         return remember(null);
-    }, () => null);
+    }, () => {
+        throw new Error('Tenant database lookup unavailable while the root database circuit breaker is open');
+    });
 };
 exports.lookupTenantDatabase = lookupTenantDatabase;
 // ─── Unified Slug Resolution ─────────────────────────────────────────

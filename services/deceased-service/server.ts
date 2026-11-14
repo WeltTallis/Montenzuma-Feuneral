@@ -188,10 +188,14 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
         let resolvedDbName: string | null = null;
 
+        if (!TENANT_SLUG_RE.test(tenantSlug)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Tenant not found or not active'
+            });
+        }
+
         try {
-            if (!TENANT_SLUG_RE.test(tenantSlug)) {
-                throw new Error(`Malformed tenant slug rejected: ${JSON.stringify(tenantSlug)}`);
-            }
             const { lookupTenantDatabase } = require('../../shared/dbConfig');
 
             resolvedDbName = await lookupTenantDatabase(tenantSlug)
@@ -204,10 +208,14 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
                 resolvedDbName = null;
             }
         } catch (dbErr: any) {
-            // Log but do not 500 — a health check must still be able to report.
+            // Health checks are registered before this middleware.
             if (req.path !== '/health') {
                 console.error('[DECEASED] Tenant database resolution failed:', dbErr?.message || dbErr);
             }
+            return res.status(503).json({
+                success: false,
+                message: 'Tenant database lookup is temporarily unavailable'
+            });
         }
 
         if (!resolvedDbName) {

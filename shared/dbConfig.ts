@@ -532,7 +532,9 @@ export const lookupTenantDatabase = async (
       );
       return remember(null);
     },
-    () => null
+    () => {
+      throw new Error('Tenant database lookup unavailable while the root database circuit breaker is open');
+    }
   );
 };
 
