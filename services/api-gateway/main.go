@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -57,15 +58,26 @@ func loggingMiddleware(next http.Handler, logger *slog.Logger) http.Handler {
 }
 
 type Gateway struct {
-	config         Config
-	logger         *slog.Logger
-	identity       *identityCache
-	identityClient *http.Client
-	limiters       *rateLimiter
-	proxies        map[string]*httputil.ReverseProxy
-	startedAt      time.Time
-	requests       atomic.Uint64
-	upstream5xx    atomic.Uint64
+	config          Config
+	logger          *slog.Logger
+	identity        *identityCache
+	identityClient  *http.Client
+	limiters        *rateLimiter
+	proxies         map[string]*httputil.ReverseProxy
+	startedAt       time.Time
+	requests        atomic.Uint64
+	upstream5xx     atomic.Uint64
+	monitorMu       sync.RWMutex
+	apiRequests     uint64
+	apiServerError  uint64
+	apiRateLimited  uint64
+	latencyTotal    time.Duration
+	perService      map[string]serviceRequestStats
+	requestLogs     []monitorLogEntry
+	series          []monitorSeriesPoint
+	healthProbeMu   sync.Mutex
+	healthCheckedAt time.Time
+	serviceHealth   []monitorServiceStatus
 }
 
 func main() {
@@ -151,9 +163,10 @@ func newGateway(cfg Config, logger *slog.Logger) (*Gateway, error) {
 				return http.ErrUseLastResponse
 			},
 		},
-		limiters:  newRateLimiter(),
-		proxies:   make(map[string]*httputil.ReverseProxy),
-		startedAt: time.Now(),
+		limiters:   newRateLimiter(),
+		proxies:    make(map[string]*httputil.ReverseProxy),
+		startedAt:  time.Now(),
+		perService: make(map[string]serviceRequestStats),
 	}
 
 	for serviceName, target := range cfg.Services {
@@ -254,6 +267,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 	defer func() {
 		g.requests.Add(1)
+		g.recordAPIRequest(r, recorder.status, time.Since(started))
 		g.logger.Info("gateway request",
 			"request_id", requestID,
 			"method", r.Method,
@@ -281,14 +295,22 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/monitoring" && r.Method == http.MethodGet {
+		if !g.authorizeMonitoring(recorder, r) {
+			return
+		}
 		writeJSON(recorder, http.StatusOK, map[string]any{
 			"success": true,
-			"data": map[string]any{
-				"service": g.config.SoftwareIdentity.Name, "version": g.config.SoftwareIdentity.Version, "trackingId": g.config.SoftwareIdentity.ProductID,
-				"uptimeSeconds": int64(time.Since(g.startedAt).Seconds()),
-				"requests":      g.requests.Load(), "upstream5xx": g.upstream5xx.Load(),
-				"generatedAt": time.Now().UTC().Format(time.RFC3339Nano),
-			},
+			"data":    g.monitoringReport(),
+		})
+		return
+	}
+	if r.URL.Path == "/monitoring/logs" && r.Method == http.MethodGet {
+		if !g.authorizeMonitoring(recorder, r) {
+			return
+		}
+		writeJSON(recorder, http.StatusOK, map[string]any{
+			"success": true,
+			"data":    g.searchRequestLogs(r),
 		})
 		return
 	}

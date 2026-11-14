@@ -103,7 +103,7 @@ export const recordActiveLogout = async (sessionId: string): Promise<void> => {
 
 export const getActiveSessions = async (req: Request, res: Response): Promise<void> => {
   const role = String(req.user?.role || '').toLowerCase().replace(/[-_\s]/g, '');
-  const isSystemAdmin = role === 'systemadmin';
+  const isSystemAdmin = ['systemadmin', 'systemadministrator', 'platformadmin'].includes(role);
   const canViewSessions = isSystemAdmin || ['admin', 'tenantadmin', 'owner'].includes(role);
   if (!canViewSessions) {
     res.status(403).json({ success: false, message: 'Administrator access is required' });

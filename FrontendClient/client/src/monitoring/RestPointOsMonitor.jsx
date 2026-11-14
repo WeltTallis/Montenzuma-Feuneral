@@ -2,11 +2,8 @@
  * Rest Point OS — Infrastructure Monitor
  *
  * React port of the standalone monitoring/index.html, now served inside the app
- * at /<slug>/monitoring. Every value comes from the API gateway's
- * GET /monitoring endpoint (services/api-gateway/monitoring.js) — live service
- * probes, real Redis cache counters, real BullMQ queue depth, and real request
- * metrics recorded by the gateway. The old Grafana / Prometheus / Loki /
- * Promtail / blackbox-exporter / uptime-kuma stack is gone.
+ * at /<slug>/monitoring. Gateway counters and service health are live;
+ * unsupported Redis/queue metrics are labelled unavailable, not zero.
  *
  * Cards whose original metric has no real source (e.g. "Slow Query Tracker" —
  * nothing exposes slow-query telemetry) are re-pointed at real data rather than
@@ -14,6 +11,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chart, registerables } from 'chart.js';
+import api from '../api/client';
 import env from '../utils/config/env';
 import './monitor.css';
 
@@ -142,6 +140,9 @@ export default function RestPointOsMonitor() {
   const [refreshing, setRefreshing] = useState(false);
   const [range, setRange] = useState(15);
   const [auto, setAuto] = useState(true);
+  const [activeSessions, setActiveSessions] = useState(null);
+  const [activeSessionsLoading, setActiveSessionsLoading] = useState(true);
+  const [activeSessionsError, setActiveSessionsError] = useState(null);
 
   // Log viewer state. searchResult is null until the user searches, so the card
   // can show the live request log by default and switch to query results.
@@ -149,6 +150,24 @@ export default function RestPointOsMonitor() {
   const [searchResult, setSearchResult] = useState(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
+
+  const loadActiveSessions = useCallback(async () => {
+    try {
+      const response = await api.get('/auth/active-sessions');
+      const sessions = response.data?.activeSessions;
+      if (!Array.isArray(sessions)) {
+        throw new Error('The active-session endpoint returned an invalid response');
+      }
+      setActiveSessions(sessions);
+      setActiveSessionsError(null);
+    } catch (e) {
+      setActiveSessionsError(
+        e.response?.data?.message || e.message || 'Unable to load active users'
+      );
+    } finally {
+      setActiveSessionsLoading(false);
+    }
+  }, []);
 
   const runLogSearch = useCallback(async (q) => {
     setSearching(true);
@@ -162,6 +181,7 @@ export default function RestPointOsMonitor() {
       params.set('limit', '200');
 
       const res = await fetch(`${MONITOR_URL}/logs?${params.toString()}`, {
+        credentials: 'include',
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(8000),
       });
@@ -182,9 +202,9 @@ export default function RestPointOsMonitor() {
   const load = useCallback(async (silent) => {
     if (!silent) setRefreshing(true);
     try {
-      // Bypass the axios instance: /monitoring lives at the gateway ROOT, not
-      // under the /api/v1/restpoint service prefix, and needs no auth token.
+      // The gateway-root endpoint is protected and uses the auth cookie.
       const res = await fetch(MONITOR_URL, {
+        credentials: 'include',
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(REFRESH_MS * 2),
       });
@@ -222,6 +242,11 @@ export default function RestPointOsMonitor() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
+    loadActiveSessions();
+    const id = setInterval(loadActiveSessions, 15000);
+    return () => clearInterval(id);
+  }, [loadActiveSessions]);
+  useEffect(() => {
     if (!auto) return undefined;
     const id = setInterval(() => load(true), REFRESH_MS);
     return () => clearInterval(id);
@@ -235,9 +260,7 @@ export default function RestPointOsMonitor() {
   const queues = data?.queues || { available: false, queues: [] };
   // New panels. Both are optional in the payload so an older gateway (or a
   // partial report) degrades to an empty card rather than crashing the render.
-  const slow = data?.slowQueries || { thresholdMs: 1500, total: 0, worstMs: 0, avgMs: 0, byService: {}, slowest: [] };
-  const logsStore = data?.logsStore || { lokiConfigured: false, lokiUrl: null };
-
+  const slow = data?.slowRequests || { available: false, reason: 'Slow-request telemetry is unavailable', thresholdMs: 1500, total: 0, worstMs: 0, avgMs: 0, byService: {}, slowest: [] };
   // Trend = request volume seen at each sample; falls back to the running total
   // so the chart is never a flat line of invented values.
   const trendLabels = useMemo(
@@ -329,12 +352,6 @@ export default function RestPointOsMonitor() {
   const q = queues.totals || {};
   const s = data?.summary || {};
   const proc = data?.process || {};
-
-  /* The four chart builders below were referenced by the cards but never
-     declared, so the first render threw `ReferenceError: buildHistory is not
-     defined` and the Error Boundary replaced the whole monitor. Each returns
-     the same Chart.js config shape as buildTrend and reads only real fields
-     from the gateway's /monitoring payload. */
 
   /** API requests per service (cumulative since start). */
   const buildHistory = () => {
@@ -451,9 +468,9 @@ export default function RestPointOsMonitor() {
     },
   });
 
-  /** Slowest requests — the DB-bound ones. Bar per request, slowest at the top. */
+  /** Slowest recent API requests. */
   const buildSlowQueries = () => {
-    const rows = (data?.slowQueries?.slowest || []).slice(0, 12);
+    const rows = (data?.slowRequests?.slowest || []).slice(0, 12);
     return {
       type: 'bar',
       data: {
@@ -464,7 +481,7 @@ export default function RestPointOsMonitor() {
           // Colour by severity against the configured threshold, so one glance
           // separates "slow" from "unacceptable".
           backgroundColor: rows.map((r) => {
-            const thr = Number(data?.slowQueries?.thresholdMs) || 1500;
+            const thr = Number(data?.slowRequests?.thresholdMs) || 1500;
             const ms = Number(r.ms) || 0;
             if (ms >= thr * 3) return C.red;
             if (ms >= thr * 2) return C.yellow;
@@ -519,6 +536,27 @@ export default function RestPointOsMonitor() {
           </div>
         </div>
         <div className="rpm-header-right">
+          <details className="rpm-active-users">
+            <summary className="rpm-pill">
+              <div className="rpm-dot" />
+              <span>ACTIVE USERS {activeSessions === null ? '…' : num(activeSessions.length)}</span>
+            </summary>
+            <div className="rpm-active-users-menu">
+              <div className="rpm-active-users-title">Currently signed in</div>
+              {activeSessionsLoading && <div className="rpm-active-users-state">Loading active users…</div>}
+              {activeSessionsError && <div className="rpm-active-users-state error">{activeSessionsError}</div>}
+              {!activeSessionsLoading && !activeSessionsError && activeSessions?.length === 0 && (
+                <div className="rpm-active-users-state">No active users recorded.</div>
+              )}
+              {activeSessions?.map((session) => (
+                <div className="rpm-active-user" key={`${session.userId}-${session.loggedInAt}`}>
+                  <span className="name">{session.fullName || session.email}</span>
+                  <span className="email">{session.email}</span>
+                  <span className="role">{session.role}{session.tenantName ? ` · ${session.tenantName}` : ''}</span>
+                </div>
+              ))}
+            </div>
+          </details>
           <div className="rpm-pill">
             <div className={`rpm-dot ${error ? 'wait' : s.allUp === false ? 'bad' : ''}`} />
             <span>
@@ -550,7 +588,7 @@ export default function RestPointOsMonitor() {
             <Stat tone="info" title="API Requests" value={num(s.total)} />
             <Stat tone="success" title="Cache Hit Rate" value={cache.available ? `${cache.hitRatePct}%` : '—'} />
             <Stat tone="danger" title="Jobs Failed" value={queues.available ? num(q.failed) : '—'} />
-            <Stat tone="warning" title="Memory (RSS)" value={proc.rssMb != null ? `${proc.rssMb} MB` : '—'} />
+            <Stat tone="warning" title="Gateway Heap" value={proc.heapAllocMb != null ? `${num(proc.heapAllocMb)} MB` : '—'} />
           </div>
         </div>
 
@@ -600,7 +638,9 @@ export default function RestPointOsMonitor() {
             <Stat tone="warning" title="Misses" value={cache.available ? num(cache.misses) : '—'} />
             <Stat tone="info" title="Total" value={cache.available ? num(cache.total) : '—'} />
           </div>
-          <ChartBox build={buildCache} deps={[cache.hits, cache.misses, cache.available]} className="rpm-chart-sm" />
+          {cache.available
+            ? <ChartBox build={buildCache} deps={[cache.hits, cache.misses, cache.available]} className="rpm-chart-sm" />
+            : <div className="rpm-empty">{cache.reason || 'Cache metrics unavailable'}</div>}
         </div>
 
         <div className="rpm-card">
@@ -667,16 +707,15 @@ export default function RestPointOsMonitor() {
         {/* ── Slow queries ──────────────────────────────────────────────── */}
         <div className="rpm-card rpm-span-4">
           <div className="rpm-card-head">
-            <h2>Slow Queries</h2>
+            <h2>Slow API Requests</h2>
             <span className="label">
-              {slow.total > 0
-                ? `${num(slow.total)} over ${slow.thresholdMs}ms · worst ${num(Math.round(slow.worstMs))}ms`
-                : `none over ${slow.thresholdMs}ms`}
+              {!slow.available ? 'Not instrumented'
+                : `${num(slow.total)} over ${slow.thresholdMs}ms · recent requests`}
             </span>
           </div>
 
           <div className="rpm-stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}>
-            <Stat tone="danger" title="Slow Recorded" value={num(slow.total)} />
+            <Stat tone="danger" title="Slow Recorded" value={slow.available ? num(slow.total) : '—'} />
             <Stat tone="warning" title="Worst (ms)" value={slow.worstMs ? num(Math.round(slow.worstMs)) : '—'} />
             <Stat tone="info" title="Avg (ms)" value={slow.avgMs ? num(slow.avgMs) : '—'} />
             <Stat
@@ -689,31 +728,29 @@ export default function RestPointOsMonitor() {
             />
           </div>
 
-          {(slow.slowest || []).length === 0 ? (
+          {!slow.available ? (
+            <div className="rpm-empty">{slow.reason}</div>
+          ) : (slow.slowest || []).length === 0 ? (
             <div className="rpm-empty">
-              No request has taken longer than {slow.thresholdMs}ms since the gateway started.
-              These are end-to-end timings measured around the real upstream call, so they
-              include the downstream service&apos;s database time.
+              No request exceeded {slow.thresholdMs}ms in the recent gateway request log.
             </div>
           ) : (
             <ChartBox
               className="rpm-chart rpm-chart-tall"
               build={buildSlowQueries}
-              deps={[data?.slowQueries]}
+              deps={[data?.slowRequests]}
             />
           )}
         </div>
 
-        {/* ── Application logs (Loki-backed) ───────────────────────────── */}
+        {/* ── Gateway request logs ─────────────────────────────────────── */}
         <div className="rpm-card rpm-span-4">
           <div className="rpm-card-head">
-            <h2>Application Logs</h2>
+            <h2>Gateway Request Logs</h2>
             <span className="label">
               {searchResult?.available
-                ? `Loki · ${num(searchResult.total)} lines`
-                : logsStore.lokiConfigured
-                  ? 'Loki unreachable — request log'
-                  : 'Loki not deployed — request log'}
+                ? `Gateway ring buffer · ${num(searchResult.total)} matches`
+                : 'Gateway ring buffer · recent requests'}
             </span>
           </div>
 
@@ -723,7 +760,7 @@ export default function RestPointOsMonitor() {
           >
             <input
               className="rpm-log-input"
-              placeholder="service (e.g. coffin-service)"
+              placeholder="service (e.g. coffin)"
               value={logQuery.service}
               onChange={(e) => setLogQuery((q) => ({ ...q, service: e.target.value }))}
             />
@@ -762,9 +799,7 @@ export default function RestPointOsMonitor() {
 
           {searchResult && !searchResult.available && (
             <div className="rpm-banner" style={{ margin: '0 0 12px' }}>
-              {searchResult.reason || 'Loki unavailable'}. The Loki/Promtail stack is not in
-              docker-compose, so there is no central log store to query — showing the
-              gateway&apos;s live request log instead.
+              {searchResult.reason || 'Gateway request-log search is unavailable'}.
             </div>
           )}
 
