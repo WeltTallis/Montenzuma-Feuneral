@@ -552,7 +552,8 @@ func rewriteUpstreamPath(incoming *url.URL, service string) (string, string) {
 		} else {
 			path = "/api/v1" + native
 		}
-	case "auth", "login", "register", "logout", "refresh", "users", "change-password", "me":
+	case "auth", "login", "register", "logout", "refresh", "users", "change-password", "me",
+		"forgot-password", "verify-code", "reset-password", "active-sessions":
 		if !strings.HasPrefix(path, "/auth/") && path != "/auth" {
 			path = "/auth" + path
 		}

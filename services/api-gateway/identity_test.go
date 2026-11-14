@@ -229,6 +229,10 @@ func TestRewriteUpstreamPaths(t *testing.T) {
 		want string
 	}{
 		{"auth alias", "/api/v1/restpoint/login", "/auth/login"},
+		{"forgot password alias", "/api/v1/restpoint/forgot-password", "/auth/forgot-password"},
+		{"verify code alias", "/api/v1/restpoint/verify-code", "/auth/verify-code"},
+		{"reset password alias", "/api/v1/restpoint/reset-password", "/auth/reset-password"},
+		{"active sessions alias", "/api/v1/restpoint/active-sessions", "/auth/active-sessions"},
 		{"HR prefix", "/api/v1/restpoint/hr/payroll", "/api/v1/payroll"},
 		{"store prefix", "/api/v1/restpoint/store/items", "/api/store/items"},
 		{"mpesa prefix", "/api/v1/restpoint/mpesa/callback", "/api/v1/callback"},

@@ -1,11 +1,9 @@
-﻿# PRODUCTION Docker Compose - Single Network Configuration
-# All internal services run on port 5000
-# All services have health checks and proper dependencies
+﻿# PRODUCTION Docker Compose - Single  Network  Configurations
 
 services:
-  # =============================================================================
+
   # INFRASTRUCTURE SERVICES
-  # =============================================================================
+
 
   mariadb:
     image: mariadb:10.11
@@ -28,28 +26,7 @@ services:
       - restpoint_network
       - deceased_internal
     healthcheck:
-      # WHY THIS NO LONGER USES `healthcheck.sh`
-      # --------------------------------------
-      # mariadb:10.11 (10.11.19+) has healthcheck.sh read credentials from
-      # /var/lib/mysql/.my-healthcheck.cnf, a file the entrypoint generates ONLY on
-      # first volume init. `_check_if_upgrade_is_needed` deliberately skips the
-      # repair when that file already exists, so a volume where the file survived
-      # but the `healthcheck` SQL account did not is stuck permanently:
-      #     ERROR 1045 (28000): Access denied for user 'healthcheck'@'localhost'
-      #     healthcheck innodb_initialized failed
-      # Note the server itself was completely fine â€” only the PROBE could not
-      # authenticate â€” yet `condition: service_healthy` on api-gateway then blocked
-      # the entire stack, including the UI.
-      #
-      # This probe therefore talks to the server DIRECTLY as root, so it depends on
-      # nothing but the root password and the socket:
-      #   * no .my-healthcheck.cnf      -> cannot go stale
-      #   * no `healthcheck` SQL user   -> nothing to create or re-grant
-      #   * `SELECT 1 ... information_schema.ENGINES` is the same assertion the
-      #     image's own `innodb_initialized` test makes, so crash-recovery
-      #     completion is still verified (a bare `SELECT 1` would pass too early).
-      # `$$` escapes to `$` so the value is expanded inside the container, not by
-      # Compose.
+   
       test:
         - 'CMD-SHELL'
         - >-
@@ -220,11 +197,7 @@ services:
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
       - tenant_service_data:/usr/src/app/data
-      # The ONE shared uploads folder â€” HOST DIRECTORY /opt/storage (bind mount,
-      # host path == container path). Every service writes signatures/logos/
-      # documents here and this service serves it to browsers at /uploads/...
-      # NOTE: the host dir must be writable by container uid 1001 â€” run
-      # scripts/setup-production-storage.sh (chown -R 1001:1001 /opt/storage).
+    
       - /opt/storage:/opt/storage
     depends_on:
       mariadb:
@@ -573,16 +546,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # NOTE: No notification-service container â€” and none is needed. The
-  # notification REST endpoints used by the UI bell (list / mark-read / delete)
-  # are implemented by the socketio-service below, and the gateway's
-  # NOTIFICATION_SERVICE_URL points at that container. Do NOT re-add a
-  # services/notification-service build block: there is no source folder, so
-  # every `docker compose up --build` would fail with
-  #   resolve: lstat .../services/notification-service: no such file or directory
-
-  # Mini Store â€” persistent inventory + stock module. Backed by the operations
-  # DB (mini_store_items / mini_store_transactions), so items survive refreshes.
   store-service:
     build:
       context: .
@@ -801,9 +764,9 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
+  # 
   # HEARSE SERVICE
-  # =============================================================================
+  # 
 
   hearse-service:
     build:
@@ -838,10 +801,9 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
+  
   # WORKSHOP SERVICE
-  # =============================================================================
-
+  
   workshop-service:
     build:
       context: .
@@ -866,9 +828,9 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
+
   # HR SERVICE
-  # =============================================================================
+ 
 
   hr-service:
     build:
@@ -887,8 +849,7 @@ services:
       DB_PORT: 3306
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
-      # Leave supporting documents live in the shared HOST uploads folder
-      # /opt/storage/uploads/leave-documents (served at /uploads/leave-documents/...)
+   
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
@@ -899,9 +860,9 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
+ 
   # FRONTEND
-  # =============================================================================
+
 
   frontend:
     build:
@@ -911,63 +872,16 @@ services:
     container_name: restpoint_frontend
     restart: always
     ports:
-      # The UI is PINNED to host port 8080 â€” deliberately NOT configurable.
-      # It was previously '${FRONTEND_EXTERNAL_PORT:-8080}:80', and
-      # .env.production set FRONTEND_EXTERNAL_PORT=8082, so production served the
-      # UI on 8082 while nginx-host.conf reverse-proxies the SPA to
-      # http://127.0.0.1:8080. Pinning to 8080 keeps both in sync.
+  
       - '127.0.0.1:8080:80'
-    # NO depends_on HERE â€” DELIBERATELY.
-    #
-    # An earlier version gated the UI on the gateway:
-    #     depends_on: { api-gateway: { condition: service_healthy } }
-    # and changing it to `service_started` was NOT enough either, because
-    # api-gateway itself has `depends_on: { mariadb: { condition: service_healthy } }`.
-    # Any depends_on on the gateway is therefore TRANSITIVELY a depends_on MariaDB,
-    # so an unhealthy database blocked the UI through both conditions:
-    #     mariadb unhealthy -> api-gateway never starts
-    #                        -> frontend waits forever ("Container ... Waiting")
-    # The UI is a static nginx bundle that serves index.html and its hashed assets
-    # from its own container; it does not need the gateway to answer `GET /`.
-    # Its own Dockerfile already handles an absent gateway correctly â€” the
-    # `/monitoring` and `/socket.io` proxy_pass targets go through the
-    # `resolver 127.0.0.11` + variable form precisely so nginx does not refuse to
-    # start when the gateway is not resolvable yet, and it resolves the name
-    # lazily per request. So there is no ordering requirement to express here, and
-    # omitting the block is what makes the UI genuinely independent.
-    #
-    # Consequence: the SPA is reachable during a backend outage and its own
-    # API calls fail visibly, which is the correct behaviour â€” far better than
-    # the browser getting connection-refused for the entire application.
+  
     networks:
       - restpoint_network
     volumes:
-      # READ-ONLY view of the ONE shared uploads folder, so the container's
-      # own nginx can serve /uploads/... directly from disk (see the
-      # `location ^~ /uploads/` block in FrontendClient/Dockerfile).
-      #
-      # Without this the SPA has no /uploads/ route at all: every request
-      # falls through `try_files ... /index.html` and the browser renders
-      # index.html as a broken image / unparseable PDF. Files were only
-      # visible because the HOST nginx proxied /uploads/ -> tenant-service;
-      # any request that reached this container directly got HTML.
-      #
-      # `:ro` â€” this container only ever READS uploads. Every service that
-      # WRITES them mounts /opt/storage read-write instead; keeping the
-      # frontend read-only means a compromised web tier cannot delete or
-      # overwrite tenant documents.
-      #
-      # Permissions: files are written by the backend containers as uid 1001
-      # while nginx's workers run as `nginx`, so the tree must be readable â€”
-      # `chmod -R a+rX /opt/storage/uploads` (setup-production-storage.sh).
-      # Files that are present but unreadable still resolve through the
-      # tenant-service fallback in the nginx config.
+      
       - /opt/storage/uploads:/opt/storage/uploads:ro
     healthcheck:
-      # busybox wget, not GNU wget. `nginx:alpine` ships no `wget` package, so
-      # `wget` is busybox's, which supports neither `--no-verbose` nor `--tries`
-      # and exited non-zero on every probe â€” marking a perfectly healthy SPA
-      # `unhealthy`. `-q -O /dev/null` are supported and exit 0 only on a 200.
+    
       test: [ 'CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost/' ]
       interval: 30s
       timeout: 10s
@@ -1014,13 +928,7 @@ volumes:
     driver: local
   documents_service_data:
     driver: local
-  # NOTE: uploads are NOT a docker named volume anymore â€” every service
-  # bind-mounts the HOST directory /opt/storage (host path == container
-  # path), so all tenant uploads (signatures, logos, documents, hearse
-  # images, scans, invoices) physically live in /opt/storage on the server.
-  # Run scripts/setup-production-storage.sh once before `docker compose up`
-  # to create the dirs, migrate old volume data and set uid-1001 ownership.
-  # Database dumps / upload archives go to /opt/backups (see `make backup`).
+ 
   analytics_service_data:
     driver: local
   notification_service_data:

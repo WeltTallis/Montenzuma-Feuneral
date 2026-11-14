@@ -117,21 +117,6 @@ export interface TokenResult {
 // DATABASE HELPERS
 
 
-export const getBrevoSenderEmail = (): string => {
-  const candidates = [
-    process.env.BREVO_SENDER_EMAIL,
-    process.env.BREVO_EMAIL_FROM,
-    process.env.EMAIL_FROM,
-  ];
-
-  for (const candidate of candidates) {
-    const trimmed = candidate?.trim();
-    if (trimmed) return trimmed;
-  }
-
-  return '';
-};
-
 export const getPasswordResetCodeHash = (email: string, code: string): string =>
   crypto.createHmac('sha256', GLOBAL_JWT_SECRET).update(`${email}:${code}`).digest('hex');
 

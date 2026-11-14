@@ -1,16 +1,58 @@
 
 import { Request, Response } from 'express';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import validator from 'validator';
 import {
     ensurePasswordResetOtpTable,
     findTenantCandidatesByUserEmail,
     findUserInTenantDB,
-    getBrevoSenderEmail,
     getPasswordResetCodeHash,
     pool,
 } from './shared';
 import { buildPasswordResetEmail } from './buildPasswordResetEmail';
+
+let smtpTransporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+
+const getSmtpSenderAddress = (): string => {
+    const senderEmail = process.env.SMTP_FROM?.trim() || process.env.EMAIL_FROM?.trim() || process.env.SMTP_USER?.trim();
+    if (!senderEmail || !validator.isEmail(senderEmail)) {
+        throw new Error('SMTP_FROM or EMAIL_FROM must be a valid sender email address');
+    }
+    return senderEmail;
+};
+
+const getSmtpTransporter = (): ReturnType<typeof nodemailer.createTransport> => {
+    const host = process.env.SMTP_HOST?.trim();
+    const port = Number(process.env.SMTP_PORT || 587);
+    const username = process.env.SMTP_USER?.trim();
+    const password = process.env.SMTP_PASSWORD;
+
+    if (!host) throw new Error('SMTP_HOST is required to send password reset codes');
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        throw new Error('SMTP_PORT must be a valid TCP port');
+    }
+    if (Boolean(username) !== Boolean(password)) {
+        throw new Error('SMTP_USER and SMTP_PASSWORD must be configured together');
+    }
+    getSmtpSenderAddress();
+
+    if (!smtpTransporter) {
+        const secureSetting = process.env.SMTP_SECURE?.trim().toLowerCase();
+        const secure = secureSetting
+            ? ['true', '1', 'yes'].includes(secureSetting)
+            : port === 465;
+        smtpTransporter = nodemailer.createTransport({
+            host,
+            port,
+            secure,
+            requireTLS: Boolean(username && password && !secure),
+            ...(username && password ? { auth: { user: username, pass: password } } : {}),
+        });
+    }
+
+    return smtpTransporter;
+};
 
 // Password recovery stores only an HMAC of the short-lived code in tenant_tracking.
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
@@ -37,11 +79,6 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
         if (accounts.length) {
             const code = crypto.randomInt(100000, 1000000).toString();
             const codeHash = getPasswordResetCodeHash(email, code);
-            const apiKey = process.env.BREVO_API_KEY?.trim();
-            const senderEmail = getBrevoSenderEmail();
-            if (!apiKey || !senderEmail) {
-                throw new Error('BREVO_API_KEY and a sender email are required to send password reset codes');
-            }
             await pool.query(
                 'DELETE FROM tenant_tracking.password_reset_otp_codes WHERE email = ? AND used_at IS NULL',
                 [email]
@@ -56,18 +93,16 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
             }
 
             const emailContent = buildPasswordResetEmail(email, code);
-            const mailResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: { 'api-key': apiKey, 'Content-Type': 'application/json', accept: 'application/json' },
-                body: JSON.stringify({
-                    sender: { name: process.env.BREVO_SENDER_NAME || 'RestPoint', email: senderEmail },
-                    to: [{ email }],
-                    subject: 'Your RestPoint password reset code',
-                    textContent: emailContent.text,
-                    htmlContent: emailContent.html,
-                }),
+            await getSmtpTransporter().sendMail({
+                from: {
+                    name: process.env.SMTP_FROM_NAME?.trim() || process.env.EMAIL_FROM_NAME?.trim() || 'RestPoint',
+                    address: getSmtpSenderAddress(),
+                },
+                to: email,
+                subject: 'Your RestPoint password reset code',
+                text: emailContent.text,
+                html: emailContent.html,
             });
-            if (!mailResponse.ok) throw new Error(`Brevo email request failed (HTTP ${mailResponse.status})`);
         }
         res.status(200).json({ success: true, message: genericMessage });
     } catch (error: any) {
