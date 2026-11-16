@@ -36,7 +36,7 @@
       margin: 0;
     }
 
-    /* ── Boot loader: shows instantly before React mounts ── */
+    /* ─ Boot loader: shows instantly before React mounts  */
     #boot-loader {
       position: fixed;
       inset: 0;
@@ -238,11 +238,6 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
 
-  <!-- Fonts are loaded from ONE combined @import at the top of src/index.css,
-       which is the single source of truth for every family the app uses. The
-       <link> that used to live here was a second, overlapping request for a
-       subset of those families — keeping both meant fetching the same fonts
-       twice. Preconnects are kept so the single request starts early. -->
 
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -257,9 +252,6 @@
 
 
   <!-- Primary SEO Meta -->
-  <!-- Leads with the two things a premium Kenyan funeral home actually searches
-       for: the category term, and the iPad/tablet mortuary intake + release
-       workflow (photo, signature, barcode) that competitors never mention. -->
 
 
   <meta name="description"
@@ -269,8 +261,7 @@
   <meta name="author" content="Peter Mumo, Welt Tallis Technologies" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <link rel="canonical" href="https://restpoint.co.ke/" />
-  <!-- Mobile / iPad: the mortuary intake + release flow is touch-first, so ask
-       Google to show the richer preview on tablets rather than a text snippet. -->
+  <!-- Mobile / iPad: the mortuary intake + release flow. -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
 
@@ -776,32 +767,32 @@
       var identities = {
         'restpoint.co.ke': {
           siteName: 'RestPoint',
-          title: 'RestPoint – Official Website',
+          title: 'RestPoint  Official Website',
           url: 'https://restpoint.co.ke/'
         },
         'www.restpoint.co.ke': {
           siteName: 'RestPoint',
-          title: 'RestPoint – Official Website',
+          title: 'RestPoint Official Website',
           url: 'https://restpoint.co.ke/'
         },
         'portal.restpoint.co.ke': {
           siteName: 'RestPoint Portal',
-          title: 'RestPoint Portal – Login & Services',
+          title: 'RestPoint Portal  Login & Services',
           url: 'https://portal.restpoint.co.ke/'
         },
         'if.restpoint.co.ke': {
           siteName: 'RestPoint IF',
-          title: 'RestPoint IF – Official Platform',
+          title: 'RestPoint IF Official Platform',
           url: 'https://if.restpoint.co.ke/'
         },
         'pay.restpoint.co.ke': {
           siteName: 'RestPoint Payments',
-          title: 'RestPoint Payments – Online Payments',
+          title: 'RestPoint Payments  Online Payments',
           url: 'https://pay.restpoint.co.ke/'
         },
         'app.restpoint.co.ke': {
           siteName: 'RestPoint App',
-          title: 'RestPoint App – Online Platform',
+          title: 'RestPoint App  Online Platform',
           url: 'https://app.restpoint.co.ke/'
         }
       };
@@ -1062,7 +1053,7 @@
       var RP_CONSENT_KEY = 'restpoint_cookie_consent';
       var RP_GA_ID = 'G-MTXE9PKZDC';
 
-      /* ── Consent storage ─────────────────────────────────── */
+      /* Consent storage  */
 
       function rpGetConsent() {
         try { return localStorage.getItem(RP_CONSENT_KEY); }
@@ -1081,7 +1072,7 @@
         catch (e) { /* storage unavailable — consent stays in memory */ }
       }
 
-      /* ── Banner visibility ─── */
+      /*  Banner visibility  */
 
       function rpBanner() { return document.getElementById('rpCookieBanner'); }
 
@@ -1117,7 +1108,7 @@
         window['ga-disable-' + RP_GA_ID] = true;
       }
 
-      /* ── Application storage ──────────────────────────────── */
+      /*  Application storage */
 
       function rpEnableApplicationStorage() {
         window.rpApplicationStorageAllowed = true;
@@ -1127,7 +1118,7 @@
         window.rpApplicationStorageAllowed = false;
       }
 
-      /* ── Public actions ───────────────────────────────────── */
+      /*  Public actions */
 
       window.rpAcceptAll = function () {
         rpSaveConsent(true, true);
@@ -1148,7 +1139,7 @@
         if (banner) banner.style.display = 'flex';
       };
 
-      /* ── Initialize ───────────────────────────────────────── */
+      /*  Initialize */
 
       document.addEventListener('DOMContentLoaded', function () {
         var saved = rpGetConsent();
