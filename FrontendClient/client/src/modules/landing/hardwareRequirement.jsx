@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
+import CardPaymentIntegration from './CardPaymentIntegration';
 
 /* Tokens */
 
@@ -658,6 +659,8 @@ const HardwareRequirementSection = () => {
 
           </HeroInner>
         </HeroTab>
+
+        <CardPaymentIntegration />
 
         {/* Requirement ledger */}
         <Requirement>

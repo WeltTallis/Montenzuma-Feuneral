@@ -114,10 +114,10 @@ export default function GrowthSection() {
         </p>
 
         <div
+          className="growth-section-grid"
           style={{
             marginTop: '3.5rem',
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
             gap: 0,
             borderTop: '1px solid rgba(26, 25, 22, 0.09)',
           }}
@@ -190,14 +190,18 @@ export default function GrowthSection() {
           transform: translateY(-3px);
           color: #8b7355;
         }
+        .growth-section-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
         @media (max-width: 920px) {
-          .growth-section > div > div:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .growth-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .growth-section article:nth-child(2) { border-right: none; }
           .growth-section article:nth-child(1),
           .growth-section article:nth-child(2) { border-bottom: 1px solid rgba(26, 25, 22, 0.09); }
         }
         @media (max-width: 560px) {
-          .growth-section > div > div:last-child { grid-template-columns: 1fr; }
+          .growth-section { padding: 3.5rem 0 !important; }
+          .growth-section-grid { grid-template-columns: 1fr; margin-top: 2rem !important; }
           .growth-section article { border-right: none !important; border-bottom: 1px solid rgba(26, 25, 22, 0.09); }
           .growth-section article:last-child { border-bottom: none; }
         }
