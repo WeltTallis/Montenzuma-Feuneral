@@ -32,6 +32,55 @@ const STATUS_LABELS = {
 
 };
 
+const FLOWER_BOOKING_DEMO = {
+  id: 'FLW-DEMO-001',
+  booking_id: 'FLW-DEMO-001',
+  tenant_slug: 'demo-funeral-home',
+  flower_type: 'Casket Spray',
+  flower_description: 'Casket Spray',
+  customer: 'Demo Family',
+  customer_phone: '',
+  customer_email: '',
+  deceased_name: 'Sample Deceased',
+  branch: 'Main Branch',
+  arrangement_id: 'ARR-DEMO-001',
+  date: '2026-11-14',
+  time: '11:23:00',
+  status: 'pending',
+  notes: '[TYPES:Casket Spray] [WHEN:2026-11-14 11:23]',
+  quantity: 3,
+  arrangements: JSON.stringify([{
+    arrangement_id: 'ARR-DEMO-001',
+    name: 'Casket Spray',
+    types: ['Casket Spray'],
+    colors: [],
+    quantity: 3,
+  }]),
+  size: 'Large',
+  funeral_date: '2026-11-14',
+  sample_images: null,
+  arrangement: {
+    title: 'Casket Spray',
+    types: ['Casket Spray'],
+    images: [{
+      url: 'https://restpoint.co.ke/uploads/montezuma-monalisa-funeral/flowers/1794473790329-1000938165.jpg',
+      alt_text: 'Casket Spray arrangement',
+    }],
+  },
+};
+
+const FLOWER_BOOKING_DEMO_ARRANGEMENT = {
+  arrangement_id: 'ARR-DEMO-001',
+  title: 'Casket Spray',
+  types: ['Casket Spray'],
+  images: [{
+    url: 'https://restpoint.co.ke/uploads/montezuma-monalisa-funeral/flowers/1794473790329-1000938165.jpg',
+    alt_text: 'Casket Spray arrangement',
+  }],
+  colors: [],
+  sizes: ['Large'],
+};
+
 
 // Normalise ANY historical status onto the two-value flow
 
@@ -840,6 +889,9 @@ const FLX_RESPONSIVE = `
 
 const FlowerBookingsNew = () => {
   const { socket } = useSocket()
+  const isDemoPreview = typeof window !== 'undefined'
+    && window.location.pathname === '/preview/flower-bookings'
+    && new URLSearchParams(window.location.search).get('demo') === '1';
   const [bookings, setBookings] = useState([]);
   const [bookingSearch, setBookingSearch] = useState('');
   const [announcements, setAnnouncements] = useState([]);
@@ -863,6 +915,7 @@ const FlowerBookingsNew = () => {
   const [calDate, setCalDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeBookingId, setActiveBookingId] = useState(null);
+  const [deletingBookingId, setDeletingBookingId] = useState(null);
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [serviceTimePickerOpen, setServiceTimePickerOpen] = useState(false);
   const [draftServiceHour, setDraftServiceHour] = useState('9');
@@ -961,6 +1014,13 @@ const FlowerBookingsNew = () => {
   }, []);
 
   const loadBookings = useCallback(async () => {
+    if (isDemoPreview) {
+      setBookings([FLOWER_BOOKING_DEMO]);
+      setActiveBookingId(FLOWER_BOOKING_DEMO.id);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
 
@@ -976,7 +1036,7 @@ const FlowerBookingsNew = () => {
       showToast(e.friendlyMessage || 'Failed to load bookings', 'error');
     }
     setLoading(false);
-  }, [showToast]);
+  }, [isDemoPreview, showToast]);
 
   const loadAnnouncements = useCallback(async () => {
     try {
@@ -1062,7 +1122,7 @@ const FlowerBookingsNew = () => {
 
   // Real-time socket listeners for flower bookings
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || isDemoPreview) return;
 
     console.log('[FlowerBookings] Setting up real-time listeners');
 
@@ -1112,13 +1172,19 @@ const FlowerBookingsNew = () => {
       socket.off('notification:flower-booking-updated', handleBookingUpdated);
       socket.off('notification:flower-booking-deleted', handleBookingDeleted);
     };
-  }, [socket, showToast, loadBookings, addNotification]);
+  }, [socket, showToast, loadBookings, addNotification, isDemoPreview]);
 
   useEffect(() => {
+    if (isDemoPreview) {
+      setArrangements([FLOWER_BOOKING_DEMO_ARRANGEMENT]);
+      loadBookings();
+      return;
+    }
+
     loadArrangements();
     loadBookings();
     loadAnnouncements();
-  }, [loadAnnouncements, loadBookings, loadArrangements]);
+  }, [isDemoPreview, loadAnnouncements, loadBookings, loadArrangements]);
 
   useEffect(() => {
     const timer = setInterval(() => setUrgencyNow(Date.now()), 60_000);
@@ -1544,6 +1610,44 @@ const FlowerBookingsNew = () => {
       showToast(failureMessage, 'error');
     }
   }, [showToast, loadBookings, addNotification]);
+
+  const deleteBooking = useCallback(async (booking) => {
+    const id = booking?.id || booking?.booking_id;
+    if (!id) {
+      showToast('Cannot delete this booking because its ID is missing.', 'error');
+      return;
+    }
+    if (isDemoPreview) return;
+    if (!window.confirm(`Delete flower booking ${booking.booking_id || id}? This cannot be undone.`)) return;
+
+    setDeletingBookingId(String(id));
+    try {
+      await api.delete(`/florist/bookings/${encodeURIComponent(id)}`);
+      setBookings(current => current.filter(item =>
+        String(item.id || item.booking_id) !== String(id)
+        && String(item.booking_id) !== String(id)
+      ));
+      setActiveBookingId(null);
+      showToast('Flower booking deleted');
+      addNotification(
+        'booking_deleted',
+        'Booking deleted',
+        `Flower booking ${booking.booking_id || id} was deleted`,
+        booking.booking_id || id
+      );
+    } catch (error) {
+      console.error('[FlowerBookings] Booking delete failed:', error?.response?.data || error.message);
+      showToast(
+        error?.response?.data?.message
+        || error?.response?.data?.error
+        || error?.friendlyMessage
+        || 'Failed to delete flower booking',
+        'error'
+      );
+    } finally {
+      setDeletingBookingId(null);
+    }
+  }, [addNotification, isDemoPreview, showToast]);
 
   // ─── Image preflight ────────────────────────────────────────────────────────
   //
@@ -2857,11 +2961,14 @@ const FlowerBookingsNew = () => {
     );
     const productName = b.flower_type || b.arrangement_name || matchedSample?.title || 'Custom Arrangement';
     const product = matchedSample || { title: productName, images: [], types: [], colors: [], sizes: [] };
-    const bookingImages = lineItems.flatMap(item => {
+    const bookingImages = lineItems.flatMap((item, index) => {
       const sample = arrangements.find(a =>
         String(a.arrangement_id || a.id) === String(item.arrangement_id || '') || a.title === item.name
       );
-      return (Array.isArray(sample?.images) ? sample.images : []).map(image => ({
+      const sampleImages = Array.isArray(sample?.images) && sample.images.length
+        ? sample.images
+        : index === 0 && Array.isArray(b.arrangement?.images) ? b.arrangement.images : [];
+      return sampleImages.map(image => ({
         src: resolveFlowerImageUrl(image),
         alt: item.name,
       }));
@@ -2922,7 +3029,7 @@ const FlowerBookingsNew = () => {
     if (normStatus(b.status) === 'cancelled') {
       actionBtnHtml = (
         <button style={styles.actionBtnOutline} disabled>
-          <X size={18} style={{ color: '#ef4444' }} />
+          <X size={14} style={{ color: '#ef4444' }} />
           Order Cancelled
         </button>
       );
@@ -2930,14 +3037,14 @@ const FlowerBookingsNew = () => {
       const nextStatus = STATUS_FLOW[currentStatusIdx + 1];
       actionBtnHtml = (
         <button style={styles.actionBtn} onClick={() => updateStatus(b.id, nextStatus)}>
-          {nextStatus === 'completed' ? <Home size={18} /> : <Check size={18} />}
+          {nextStatus === 'completed' ? <Home size={14} /> : <Check size={14} />}
           Mark as {STATUS_LABELS[nextStatus]}
         </button>
       );
     } else {
       actionBtnHtml = (
         <button style={styles.actionBtnOutline} disabled>
-          <Check size={18} style={{ color: '#10B981' }} />
+          <Check size={14} style={{ color: '#10B981' }} />
           Delivery Completed
         </button>
       );
@@ -3010,7 +3117,7 @@ const FlowerBookingsNew = () => {
               </div>
               {lineItems.map((li, i) => {
                 const s = arrangements.find(a => String(a.arrangement_id || a.id) === String(li.arrangement_id) || a.title === li.name);
-                const sampleImageUrl = resolveFlowerImageUrl(s?.images?.[0]);
+                const sampleImageUrl = resolveFlowerImageUrl(s?.images?.[0] || (i === 0 ? b.arrangement?.images?.[0] : null));
                 const sampleFlowers = [...new Set([...(li.types || []), ...asList(s?.types)])].join(', ');
                 const sampleColors = [...new Set([...(li.colors || []), ...asList(s?.colors)])].join(', ');
                 const sampleDetails = [
@@ -3199,11 +3306,24 @@ const FlowerBookingsNew = () => {
               <button
                 type="button"
                 className="flower-edit-booking-button"
+                disabled={isDemoPreview}
                 onClick={() => openEditBooking(b)}
               >
                 Edit booking
               </button>
-              {actionBtnHtml}
+              <button
+                type="button"
+                className="flower-delete-booking-button"
+                aria-label="Delete flower booking"
+                title={isDemoPreview ? 'Preview booking is read-only' : 'Delete booking'}
+                disabled={isDemoPreview || deletingBookingId === String(b.id || b.booking_id)}
+                onClick={() => deleteBooking(b)}
+              >
+                {deletingBookingId === String(b.id || b.booking_id) ? 'Deleting…' : 'Delete'}
+              </button>
+              {React.isValidElement(actionBtnHtml)
+                ? React.cloneElement(actionBtnHtml, { disabled: isDemoPreview || actionBtnHtml.props.disabled })
+                : actionBtnHtml}
             </div>
           </div>
         </aside>
@@ -3577,8 +3697,12 @@ const FlowerBookingsNew = () => {
         .flower-quantity-chip { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: #FCE0EC; color: #BE185D; font: 700 11px 'DM Sans', system-ui, sans-serif; vertical-align: 2px; }
         .flower-edited-chip { display: inline-flex; margin-left: 8px; padding: 3px 8px; border: 1px solid #ddd6fe; border-radius: 999px; background: #f5f3ff; color: #6d28d9; font: 700 10px 'DM Sans', system-ui, sans-serif; vertical-align: 2px; }
         .flower-card-initials { width: fit-content; max-width: 100%; overflow: hidden; padding: 3px 8px; border: 1px solid #ddd6fe; border-radius: 6px; background: #f5f3ff; color: #6d28d9; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-        .flower-edit-booking-button { flex: 1; padding: 14px 12px; border: 1px solid #c4b5fd; border-radius: 10px; background: #f5f3ff; color: #6d28d9; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .flower-edit-booking-button:hover { border-color: #7c3aed; background: #ede9fe; }
+        .flower-edit-booking-button, .flower-delete-booking-button { flex: 0 0 auto; padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .flower-edit-booking-button { border: 1px solid #c4b5fd; background: #f5f3ff; color: #6d28d9; }
+        .flower-edit-booking-button:hover:not(:disabled) { border-color: #7c3aed; background: #ede9fe; }
+        .flower-delete-booking-button { border: 1px solid #fecaca; background: #fff7f7; color: #b91c1c; }
+        .flower-delete-booking-button:hover:not(:disabled) { border-color: #ef4444; background: #fee2e2; }
+        .flower-edit-booking-button:disabled, .flower-delete-booking-button:disabled { cursor: not-allowed; opacity: .55; }
         .fb-card[data-status="completed"] .flower-quantity-chip { background: #D8F4E4; color: #0E7A54; }
         .flower-funeral-date { display: inline-flex; margin-top: 4px; padding: 2px 8px; border: 1px solid #E7D9F6; border-radius: 999px; background: #F5EEFB; color: #7E3FA1; font-size: 10px; font-weight: 700; }
         .flower-booking-service-meta { overflow: hidden; color: #526071; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -4613,39 +4737,40 @@ const styles = {
   },
   detailActions: {
     display: 'flex',
-    gap: '12px',
-    paddingBottom: '40px',
+    flexWrap: 'wrap',
+    gap: '8px',
+    paddingBottom: '24px',
   },
   actionBtn: {
-    flex: 1,
+    flex: '1 1 130px',
     background: '#2F4F3E',
     color: '#fff',
-    padding: '16px',
-    borderRadius: '12px',
-    fontSize: '15px',
+    padding: '8px 10px',
+    borderRadius: '8px',
+    fontSize: '12px',
     fontWeight: 600,
     border: 'none',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
+    gap: '6px',
     boxShadow: '0 4px 12px rgba(47,79,62,.15)',
   },
   actionBtnOutline: {
-    flex: 1,
+    flex: '1 1 130px',
     background: 'transparent',
     color: '#1C1A17',
-    padding: '16px',
-    borderRadius: '12px',
-    fontSize: '15px',
+    padding: '8px 10px',
+    borderRadius: '8px',
+    fontSize: '12px',
     fontWeight: 600,
     border: '1px solid #EAE7E2',
     cursor: 'not-allowed',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
+    gap: '6px',
     opacity: 0.6,
   },
   trackRow: {

@@ -107,9 +107,8 @@ const Marquee = ({ items, speed = 35 }) => (
   </div>
 );
 
-/* ---------------------------------------
-   MOCK COMPONENTS
-   --------------------------------------- */
+
+
 /* -- Floral Preview -- */
 const FLP_FLOWERS = [
   {
@@ -123,7 +122,7 @@ const FLP_FLOWERS = [
     title: (<>Wreaths &amp; Cross<br /><em>on Stand</em></>),
   },
   {
-    img: 'https://lh3.googleusercontent.com/grass-cs/ACvplmNcnjmG_DCkbiEq13xxkcDXWJ1z3V-j1e6EAEsPQPvmIyRP3OAqntGk_Y6UGfOPwWIIM73WQABVhLWZzm1QPBUeogNK8nkJxTIzd2TWXKXMCxrL759AgbZCVLwzjqblHsVds02pL-moRo-O=s1360-w1360-h1020-rw',
+    img: 'https://restpoint.co.ke/uploads/montezuma-monalisa-funeral/flowers/1794473790329-1000938165.jpg',
     label: 'Spray', alt: 'Elegant Floral Spray',
     title: (<>Elegant<br /><em>Floral Spray</em></>),
   },
@@ -204,11 +203,11 @@ const FloralPreview = () => {
   );
 };
 
-const Showcase = ({ no, title, desc, reverse, points, cta, floral, children }) => {
+const Showcase = ({ no, title, desc, reverse, points, cta, ctaTo, floral, children }) => {
   const navigate = useNavigate();
   const goExplore = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    navigate('/register');
+    navigate(ctaTo || '/register');
   };
   return (
     <Reveal className={`showcase-mobile${floral ? ' floral-showcase' : ''}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '7rem' }}>
@@ -600,7 +599,7 @@ export default function App() {
         <section id="features" className="section">
           <div className="wrap">
             <PremiumReporting />
-            <Showcase no="03" floral title="The Right Flowers. Right in Front of Them." reverse={false} cta="Discover the floral concierge" desc={
+            <Showcase no="03" floral title="The Right Flowers. Right in Front of Them." reverse={false} cta="Discover the floral concierge" ctaTo="/preview/flower-bookings?demo=1" desc={
               <>
                 <strong style={{ display: 'block', fontSize: '1.18rem', color: C.ink, lineHeight: 1.45, marginBottom: '1.2rem' }}>
                   Make the right tribute easier to choose.
