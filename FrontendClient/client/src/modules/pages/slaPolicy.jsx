@@ -153,7 +153,7 @@ export default function SLAPolicy() {
   const goTerms = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/terms'); };
 
   const availabilityFeatures = [
-    { icon: Activity, title: '99.9% Target Monthly Uptime', desc: 'Industry-leading reliability target for mission critical access.' },
+    { icon: Activity, title: '99.9% Target every  6 Months Uptime', desc: 'Industry leading reliability target for mission critical access.' },
     { icon: Zap, title: 'Zero-Downtime Deployments', desc: 'PM2 cluster architecture ensures updates happen without service interruption.' },
     { icon: Server, title: '24/7 System Monitoring', desc: 'Continuous surveillance of all infrastructure and services.' },
     { icon: ShieldCheck, title: 'Performance Optimization', desc: 'Ongoing security updates and speed enhancements.' },
@@ -311,7 +311,7 @@ export default function SLAPolicy() {
           <Reveal>
             <h2>Our Commitment</h2>
             <p>
-              When an organization chooses RestPoint, they are doing far more than purchasing softwareâ€”they are entrusting us with one of the most critical parts of their daily operations.
+              When an organization chooses RestPoint, they are doing far more than purchasing software they are entrusting us with one of the most critical parts of their daily operations.
             </p>
             <p>
               We understand that a mortuary never stops operating. Admissions, deceased registration, billing, dispatch, body tracking, and releases can happen at any hour of the day or night. Every minute of availability matters.
@@ -327,7 +327,7 @@ export default function SLAPolicy() {
                 Our engineering and support teams work continuously to maintain a secure, reliable, and highly available platform that your staff can depend on every day. We proactively monitor system performance, perform preventive maintenance, and respond rapidly to any issue that could affect your operations.
               </p>
               <p style={{ marginTop: '1rem' }}>
-                We target <strong>99.9% monthly uptime</strong>, with the goal of ensuring your team has uninterrupted access to the system whenever it is needed. Through our advanced PM2 cluster deployment architecture, we achieve <strong>zero-downtime deployments</strong> for system updates and maintenanceâ€”meaning your operations continue without interruption during software updates.
+                We target <strong>99.9% monthly uptime</strong>, with the goal of ensuring your team has uninterrupted access to the system whenever it is needed. Through our advanced PM2 cluster deployment architecture, we achieve <strong>zero downtime deployments</strong> for system updates and maintenanceâ€”meaning your operations continue without interruption during software updates.
               </p>
             </div>
           </Reveal>

@@ -212,6 +212,7 @@ func (g *Gateway) newProxy(target *url.URL, transport http.RoundTripper) *httput
 			filterProxyCookies(proxyRequest.Out, incoming.URL.Path)
 		},
 		ModifyResponse: func(response *http.Response) error {
+			stripUpstreamCORSHeaders(response.Header)
 			if response.StatusCode >= http.StatusInternalServerError {
 				g.upstream5xx.Add(1)
 			}
@@ -231,6 +232,21 @@ func (g *Gateway) newProxy(target *url.URL, transport http.RoundTripper) *httput
 				"timestamp": time.Now().UTC().Format(time.RFC3339Nano),
 			})
 		},
+	}
+}
+
+// stripUpstreamCORSHeaders keeps the gateway as the single CORS policy owner.
+func stripUpstreamCORSHeaders(headers http.Header) {
+	for _, name := range []string{
+		"Access-Control-Allow-Origin",
+		"Access-Control-Allow-Credentials",
+		"Access-Control-Allow-Methods",
+		"Access-Control-Allow-Headers",
+		"Access-Control-Expose-Headers",
+		"Access-Control-Max-Age",
+		"Access-Control-Allow-Private-Network",
+	} {
+		headers.Del(name)
 	}
 }
 
