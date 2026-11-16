@@ -14,7 +14,7 @@ export default function CardPaymentIntegration() {
             way to pay in person.
           </p>
           <p>
-            Accept payments at the counter and keep your team 's payment process
+            Accept payments at the Frontdesk and keep your team 's payment process
             connected to the rest of your funeral home operations.
           </p>
         </div>
