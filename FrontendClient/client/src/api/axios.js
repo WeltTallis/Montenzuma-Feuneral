@@ -14,15 +14,29 @@ const API_ORIGIN = new URL(env.FULL_API_URL).origin;
 // the request is going to the RestPoint API origin.
 axios.interceptors.request.use((config) => {
   const requestUrl = new URL(config.url || '', config.baseURL || env.FULL_API_URL);
-  if (requestUrl.origin === API_ORIGIN) config.withCredentials = true;
+  if (requestUrl.origin === API_ORIGIN) {
+    config.withCredentials = true;
+    const authorization = config.headers?.get?.('Authorization') ?? config.headers?.Authorization;
+    if (typeof authorization === 'string' && /^Bearer\s*$/i.test(authorization)) {
+      if (typeof config.headers.delete === 'function') config.headers.delete('Authorization');
+      else delete config.headers.Authorization;
+    }
+  }
   return config;
 }, (error) => Promise.reject(error));
 
 export const fetchWithCredentials = (url, options = {}) => {
   const apiUrl = new URL(url, typeof window === 'undefined' ? env.FULL_API_URL : window.location.href);
+  const requestOptions = { ...options };
+  if (apiUrl.origin === API_ORIGIN) {
+    requestOptions.credentials = 'include';
+    const headers = new Headers(options.headers);
+    const authorization = headers.get('Authorization');
+    if (authorization && /^Bearer\s*$/i.test(authorization)) headers.delete('Authorization');
+    requestOptions.headers = headers;
+  }
   return fetch(url, {
-    ...options,
-    ...(apiUrl.origin === API_ORIGIN ? { credentials: 'include' } : {}),
+    ...requestOptions,
   });
 };
 

@@ -527,9 +527,9 @@ const DeceasedList = () => {
     try {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-      // The deceased-service resolves its DATABASE from these headers, so a
-
-      const headers = { 'Authorization': `Bearer ${token}`, ...getBranchScopeHeaders(tenantSlug) };
+      // The deceased-service resolves its database from these branch-scope headers.
+      const headers = { ...getBranchScopeHeaders(tenantSlug) };
+      if (token) headers.Authorization = `Bearer ${token}`;
       const collected = []; let pageNum = 1; const pageSize = 200; let totalPages = 2;
       // `_t` + no-store: never let the browser (or an intermediary) answer this
       // read with a cached page — a just-registered body must appear here the

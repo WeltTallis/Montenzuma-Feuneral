@@ -14,9 +14,6 @@ const generateDatedCheckoutId = (): string => {
     return `DSP-${dateStr}-${random}`;
 };
 
-
-
-
 /**
  * Generate short timestamp ID
  * Format: RLS-XXXXX-XXX
