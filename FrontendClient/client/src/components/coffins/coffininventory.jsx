@@ -691,7 +691,7 @@ const styles = {
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  bkBookingSidebar: { maxWidth: 560 },
+  bkBookingSidebar: { maxWidth: 720 },
   bkSidebarOpen: { transform: 'translateX(0)' },
   bkHeader: {
     display: 'flex',

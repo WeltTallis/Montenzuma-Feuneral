@@ -17,8 +17,7 @@ import env from '../../utils/config/env';
 import notify from '../../utils/notify';
 import Swal from 'sweetalert2';
 
-// SweetAlert2 v11 does not have Swal.setDefaults(). Use CSS z-index instead
-// so confirmation dialogs render above drawer/modal overlays (z-index 9998–9999).
+// SweetAlert2 
 
 import {
   Truck, Car, Clock, Check, Search, Plus, RefreshCw, MoreVertical,
@@ -799,9 +798,9 @@ const StatusStrip = styled.div`
   background:${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};
   border:1px solid ${props => (STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight) + '55'};
   margin-bottom:0.35rem;
-  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${props => STATUS_CONFIG[props.$status]?.bg || COLORS.borderLight};}
-  .lbl{font-size:0.875rem;font-weight:700;color:#ffffff;opacity:0.9;align-self:center;}
-  .cap{margin-left:auto;font-size:0.625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#ffffff;opacity:0.7;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${props => STATUS_CONFIG[props.$status]?.color || COLORS.ink};}
+  .lbl{font-size:0.875rem;font-weight:700;color:${COLORS.ink};opacity:0.95;align-self:center;}
+  .cap{margin-left:auto;font-size:0.625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${COLORS.textMuted};opacity:0.9;}
 `;
 
 /* Booking details — clean text rows (no boxes) */
