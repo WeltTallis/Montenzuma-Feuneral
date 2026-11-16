@@ -5,6 +5,7 @@ import {
 } from '../../utils/icons/icons';
 import { useSocket } from '../../utils/context/socketContext';
 import env from '../../utils/config/env';
+import { fetchWithCredentials } from '../../api/axios';
 import ApplyLeave from '../leave/ApplyLeave';
 
 const API_BASE_URL = env.FULL_API_URL;
@@ -876,7 +877,7 @@ const DriverPortal = () => {
     const loadB = useCallback(async (silent = false) => {
         if (silent) setRefreshing(true); else setLoadingB(true);
         try {
-            const r = await fetch(`${API_BASE_URL}/hearse-bookings?t=${Date.now()}`, { headers: getAuthHeaders() });
+            const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings?t=${Date.now()}`, { headers: getAuthHeaders() });
             const d = JSON.parse(await r.text());
             if (d.status === 'success' || d.bookings) setBookings(d.bookings || []);
             else if (!silent) setError(d.message || 'Failed to load trips');
@@ -894,7 +895,7 @@ const DriverPortal = () => {
             const identity = new URLSearchParams();
             if (driverId) identity.set('driver_id', String(driverId));
             if (driverName) identity.set('driver_name', String(driverName));
-            const r = await fetch(
+            const r = await fetchWithCredentials(
                 `${API_BASE_URL}/workshop/store/pickups?${identity.toString()}&t=${Date.now()}`,
                 { headers: getAuthHeaders() }
             );
@@ -912,7 +913,7 @@ const DriverPortal = () => {
         if (!silent) setDriverFuelLoading(true);
         setFuelError('');
         try {
-            const r = await fetch(`${API_BASE_URL}/hearse-fuel/driver-cards?t=${Date.now()}`, { headers: getAuthHeaders() });
+            const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-fuel/driver-cards?t=${Date.now()}`, { headers: getAuthHeaders() });
             const data = await r.json();
             if (!r.ok) throw new Error(data.message || 'Unable to load your fuel card.');
             const cards = Array.isArray(data.cards) ? data.cards : [];
@@ -935,7 +936,7 @@ const DriverPortal = () => {
         setLoadingL(true);
         try {
             const h = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-            const r = await fetch(`${API_BASE_URL}/leaves/my-leaves`, { headers: h });
+            const r = await fetchWithCredentials(`${API_BASE_URL}/leaves/my-leaves`, { headers: h });
             const d = await r.json();
             setLeaves(d?.leaves || d?.data || []);
         } catch { setLeaves([]); }
@@ -999,7 +1000,7 @@ const DriverPortal = () => {
         setBusy(true);
         try {
             const h = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-            const r = await fetch(`${API_BASE_URL}/hearse-bookings/${id}/status`, {
+            const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings/${id}/status`, {
                 method: 'PUT', headers: h, body: JSON.stringify({ status: s }),
             });
             if (!r.ok) throw new Error();
@@ -1018,7 +1019,7 @@ const DriverPortal = () => {
         // truth so the driver is never left looking at a lie.
         setPickups(prev => prev.map(p => (p.rowId === id ? { ...p, status } : p)));
         try {
-            const r = await fetch(`${API_BASE_URL}/workshop/store/pickups/${id}`, {
+            const r = await fetchWithCredentials(`${API_BASE_URL}/workshop/store/pickups/${id}`, {
                 method: 'PATCH',
                 headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status }),
@@ -1039,7 +1040,7 @@ const DriverPortal = () => {
         setDriverFuelBusy(true);
         setFuelError('');
         try {
-            const r = await fetch(`${API_BASE_URL}/hearse-fuel/driver-purchases`, {
+            const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-fuel/driver-purchases`, {
                 method: 'POST',
                 headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({

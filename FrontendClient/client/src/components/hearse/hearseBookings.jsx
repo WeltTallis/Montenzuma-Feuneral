@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { getTenantId, getBranchId, getBranchSlug, getBranches as getCachedBranches, getParentTenantSlug } from '../../utils/globalAuth';
 import { useSocket } from '../../utils/context/socketContext';
 import useAuthStore from '../../utils/store/useAuthStore';
-import apiClient from '../../api/axios';
+import apiClient, { fetchWithCredentials } from '../../api/axios';
 import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import BookNewHearseModal from './BookNewHearseModal';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
@@ -34,9 +34,7 @@ const API_BASE_URL = import.meta.env.PROD
 
 const RESULTS_PER_PAGE = 10;
 
-// Placeholder branch labels the backend used to store literally. They are NOT
-// real branch names, so they must never be shown as a booking's branch — a
-// booking either resolves to a real place ("Nairobi", "Thika", "Eter Mumo")
+// Placeholder branch labels the backend used to store
 // or it shows "Unknown".
 const GENERIC_BRANCH_NAMES = new Set([
   'main branch',
@@ -301,13 +299,13 @@ const api = {
     if (params.to) qs.set('to', params.to);
     if (params.status && params.status !== 'all') qs.set('status', params.status);
     const query = qs.toString();
-    const r = await fetch(`${API_BASE_URL}/hearse-bookings${query ? `?${query}` : ''}&t=${Date.now()}`, { headers: getAuthHeaders() });
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings${query ? `?${query}` : ''}&t=${Date.now()}`, { headers: getAuthHeaders() });
     if (!r.ok) throw new Error('Failed');
     return (await r.json()).bookings || [];
   },
   getBranches: async () => {
     try {
-      const r = await fetch(`${API_BASE_URL}/tenant/${getTenantSlug()}/branches`, { headers: getAuthHeaders() });
+      const r = await fetchWithCredentials(`${API_BASE_URL}/tenant/${getTenantSlug()}/branches`, { headers: getAuthHeaders() });
       if (r.ok) {
         const payload = await r.json();
         const list = Array.isArray(payload)
@@ -323,7 +321,7 @@ const api = {
 
   //get   all  herases
   getAllHearses: async () => {
-    const r = await fetch(`${API_BASE_URL}/hearses`, { headers: { ...getTenantHeaders(), ...getAuthHeaders() } });
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearses`, { headers: { ...getTenantHeaders(), ...getAuthHeaders() } });
     return r.ok ? (await r.json()).hearses || [] : [];
   },
   getDrivers: async () => {
@@ -398,13 +396,13 @@ const api = {
     return [];
   },
   getDailyLineup: async (date) => {
-    const r = await fetch(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
     if (!r.ok) throw new Error('Failed to load the daily driver lineup');
     return r.json();
   },
   saveStandbyDriver: async (date, assignment) => {
     const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const r = await fetch(`${API_BASE_URL}/hearse-lineups/standby`, {
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/standby`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({
@@ -419,7 +417,7 @@ const api = {
   },
   assignBookingLineup: async (bookingId, lineup) => {
     const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const r = await fetch(`${API_BASE_URL}/hearse-bookings/${encodeURIComponent(bookingId)}/lineup`, {
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings/${encodeURIComponent(bookingId)}/lineup`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(lineup),
@@ -433,13 +431,13 @@ const api = {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
     const body = { status, booking_id: id };
     if (String(status) === 'cancelled') body.cancel_reason = reason || null;
-    const r = await fetch(`${API_BASE_URL}/hearse-bookings/${id}/status`, { method: 'PUT', headers: h, body: JSON.stringify(body) });
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings/${id}/status`, { method: 'PUT', headers: h, body: JSON.stringify(body) });
     if (!r.ok) throw new Error('Failed');
     return r.json();
   },
   postponeBooking: async (id, date, reason) => {
     const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const r = await fetch(`${API_BASE_URL}/hearse-bookings/${encodeURIComponent(id)}/postpone`, {
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings/${encodeURIComponent(id)}/postpone`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify({ new_departure_time: date, reason }),
@@ -456,7 +454,7 @@ const api = {
   //     register   hearse  ..
   registerHearse: async (data) => {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
-    const r = await fetch(`${API_BASE_URL}/hearses`, { method: 'POST', headers: h, body: JSON.stringify(data) });
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearses`, { method: 'POST', headers: h, body: JSON.stringify(data) });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.message || 'Failed to register'); }
     return r.json();
   },

@@ -4,6 +4,7 @@ import { Upload, FileText, X, Loader2, FileDigit, Box, FileUp, CheckCircle, Tras
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import env from '../../utils/config/env';
+import { fetchWithCredentials } from '../../api/axios';
 
 const API_BASE_URL = env.API_URL; // resolves to https://restpoint.co.ke/api/v1/restpoint in production
 
@@ -477,7 +478,7 @@ const DocumentUpload = ({ deceasedId, onUploadSuccess, deceasedData }) => {
         });
       }, 300);
 
-      const response = await fetch(`${API_BASE_URL}/deceased/${deceasedId}/documents`, {
+      const response = await fetchWithCredentials(`${API_BASE_URL}/deceased/${deceasedId}/documents`, {
         method: 'POST',
         body: formData
       });

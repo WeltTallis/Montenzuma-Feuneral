@@ -7,6 +7,25 @@ import { reportFailure, reportSuccess } from './connectionStatus';
 // Alias for backwards compatibility
 const getSlug = getTenantSlug;
 
+const API_ORIGIN = new URL(env.FULL_API_URL).origin;
+
+// Some older modules call the default axios export instead of the configured
+// API instance. Include the login cookie for those requests too, but only when
+// the request is going to the RestPoint API origin.
+axios.interceptors.request.use((config) => {
+  const requestUrl = new URL(config.url || '', config.baseURL || env.FULL_API_URL);
+  if (requestUrl.origin === API_ORIGIN) config.withCredentials = true;
+  return config;
+}, (error) => Promise.reject(error));
+
+export const fetchWithCredentials = (url, options = {}) => {
+  const apiUrl = new URL(url, typeof window === 'undefined' ? env.FULL_API_URL : window.location.href);
+  return fetch(url, {
+    ...options,
+    ...(apiUrl.origin === API_ORIGIN ? { credentials: 'include' } : {}),
+  });
+};
+
 // Workshop service axios instance
 export const workshopApi = axios.create({
   baseURL: env.WORKSHOP_API_URL,

@@ -3,6 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import env from '../../utils/config/env';
 import { X, ChevronLeft, ChevronRight, Clock } from '../../utils/icons/icons';
 import { mergeFleetAvailability } from './hearseFleetAvailability';
+import { fetchWithCredentials } from '../../api/axios';
 import {
   getBranchId,
   getBranchSlug,
@@ -584,7 +585,7 @@ export default function BookNewHearseModal({
 
       // 1) Preferred: ONE batch request covering every selected date.
       try {
-        const r = await fetch(`${API_BASE_URL}/availability/check-by-dates`, {
+        const r = await fetchWithCredentials(`${API_BASE_URL}/availability/check-by-dates`, {
           method: 'POST',
           headers: { ...hdr, 'Content-Type': 'application/json' },
           body: JSON.stringify({ dates: days }),
@@ -611,7 +612,7 @@ export default function BookNewHearseModal({
       if (!dayResults.length) {
         for (const date of days) {
           try {
-            const r = await fetch(`${API_BASE_URL}/availability/check-by-date?date=${encodeURIComponent(date)}`, { headers: hdr });
+            const r = await fetchWithCredentials(`${API_BASE_URL}/availability/check-by-date?date=${encodeURIComponent(date)}`, { headers: hdr });
             const j = await r.json().catch(() => null);
             if (!r.ok || !j) {
               if (!serverError) serverError = j?.error ? `${j.message} (${j.error})` : `HTTP ${r.status}`;
@@ -827,7 +828,7 @@ export default function BookNewHearseModal({
         branch_code: form.branch_code || '',
         service_charge: svcCharge,
       };
-      const r = await fetch(`${API_BASE_URL}/hearse-bookings`, { method: 'POST', headers: hdr, body: JSON.stringify(body) });
+      const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings`, { method: 'POST', headers: hdr, body: JSON.stringify(body) });
       const ed = await r.json().catch(() => ({}));
       if (!r.ok) {
         if (r.status === 409) throw new Error(ed.message || 'Just booked by another user.');

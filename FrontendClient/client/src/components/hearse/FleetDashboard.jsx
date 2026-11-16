@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import env from '../../utils/config/env';
 import { getTenantHeaders } from '../../api/endpoints';
+import { fetchWithCredentials } from '../../api/axios';
 import { useSocket } from '../../utils/context/socketContext';
 import notify from '../../utils/notify';
 
@@ -69,7 +70,7 @@ const formatKES = (amount) => new Intl.NumberFormat('en-KE', {
 const todayDate = () => new Date().toISOString().slice(0, 10);
 
 const request = async (path, options = {}) => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetchWithCredentials(`${API_BASE_URL}${path}`, {
     ...options,
     headers: { ...getTenantHeaders(), ...(options.headers || {}) },
   });

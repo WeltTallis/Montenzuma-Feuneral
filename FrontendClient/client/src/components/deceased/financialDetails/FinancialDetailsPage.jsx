@@ -437,6 +437,7 @@ const getTenantSlug = () => {
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
 

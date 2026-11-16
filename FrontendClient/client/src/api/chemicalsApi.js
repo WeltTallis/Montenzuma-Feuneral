@@ -5,6 +5,7 @@
  */
 
 import env from '../utils/config/env';
+import { fetchWithCredentials } from './axios';
 
 const API_BASE = `${env.FULL_API_URL}/chemicals`;
 
@@ -43,17 +44,17 @@ const handleResponse = async (response) => {
 export const fetchChemicals = async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     const url = query ? `${API_BASE}?${query}` : API_BASE;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetchWithCredentials(url, { headers: getHeaders() });
     return handleResponse(response);
 };
 
 export const fetchChemicalById = async (id) => {
-    const response = await fetch(`${API_BASE}/${id}`, { headers: getHeaders() });
+    const response = await fetchWithCredentials(`${API_BASE}/${id}`, { headers: getHeaders() });
     return handleResponse(response);
 };
 
 export const createChemical = async (data) => {
-    const response = await fetch(API_BASE, {
+    const response = await fetchWithCredentials(API_BASE, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data),
@@ -62,7 +63,7 @@ export const createChemical = async (data) => {
 };
 
 export const updateChemical = async (id, data) => {
-    const response = await fetch(`${API_BASE}/${id}`, {
+    const response = await fetchWithCredentials(`${API_BASE}/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(data),
@@ -71,7 +72,7 @@ export const updateChemical = async (id, data) => {
 };
 
 export const deleteChemical = async (id) => {
-    const response = await fetch(`${API_BASE}/${id}`, {
+    const response = await fetchWithCredentials(`${API_BASE}/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
     });
@@ -83,7 +84,7 @@ export const deleteChemical = async (id) => {
 // ============================================
 
 export const receiveStock = async (id, quantity, notes = '') => {
-    const response = await fetch(`${API_BASE}/${id}/receive`, {
+    const response = await fetchWithCredentials(`${API_BASE}/${id}/receive`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ quantity, notes }),
@@ -92,7 +93,7 @@ export const receiveStock = async (id, quantity, notes = '') => {
 };
 
 export const adjustStock = async (id, new_quantity, reason = '') => {
-    const response = await fetch(`${API_BASE}/${id}/adjust`, {
+    const response = await fetchWithCredentials(`${API_BASE}/${id}/adjust`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ new_quantity, reason }),
@@ -101,7 +102,7 @@ export const adjustStock = async (id, new_quantity, reason = '') => {
 };
 
 export const fetchTransactions = async (id) => {
-    const response = await fetch(`${API_BASE}/${id}/transactions`, { headers: getHeaders() });
+    const response = await fetchWithCredentials(`${API_BASE}/${id}/transactions`, { headers: getHeaders() });
     return handleResponse(response);
 };
 
@@ -110,7 +111,7 @@ export const fetchTransactions = async (id) => {
 // ============================================
 
 export const recordUsage = async (data) => {
-    const response = await fetch(`${API_BASE}/usage`, {
+    const response = await fetchWithCredentials(`${API_BASE}/usage`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data),
@@ -119,14 +120,14 @@ export const recordUsage = async (data) => {
 };
 
 export const fetchUsageByDeceased = async (deceasedId) => {
-    const response = await fetch(`${API_BASE}/usage/deceased/${deceasedId}`, { headers: getHeaders() });
+    const response = await fetchWithCredentials(`${API_BASE}/usage/deceased/${deceasedId}`, { headers: getHeaders() });
     return handleResponse(response);
 };
 
 export const fetchUsageReport = async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     const url = query ? `${API_BASE}/usage/report?${query}` : `${API_BASE}/usage/report`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetchWithCredentials(url, { headers: getHeaders() });
     return handleResponse(response);
 };
 
@@ -135,19 +136,19 @@ export const fetchUsageReport = async (params = {}) => {
 // ============================================
 
 export const fetchBranchUsage = async (branchId) => {
-    const response = await fetch(`${API_BASE}/usage/branch/${branchId}`, { headers: getHeaders() });
+    const response = await fetchWithCredentials(`${API_BASE}/usage/branch/${branchId}`, { headers: getHeaders() });
     return handleResponse(response);
 };
 
 export const fetchChemicalAnalytics = async (branchId) => {
     const url = branchId ? `${API_BASE}/analytics/${branchId}` : `${API_BASE}/analytics`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetchWithCredentials(url, { headers: getHeaders() });
     return handleResponse(response);
 };
 
 export const fetchDashboardSummary = async (branchId) => {
     const url = branchId ? `${API_BASE}/dashboard/summary/${branchId}` : `${API_BASE}/dashboard/summary`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetchWithCredentials(url, { headers: getHeaders() });
     return handleResponse(response);
 };
 
@@ -156,7 +157,7 @@ export const fetchDashboardSummary = async (branchId) => {
 // ============================================
 
 export const fetchLowStockAlerts = async () => {
-    const response = await fetch(`${API_BASE}/alerts/low-stock`, { headers: getHeaders() });
+    const response = await fetchWithCredentials(`${API_BASE}/alerts/low-stock`, { headers: getHeaders() });
     return handleResponse(response);
 };
 
@@ -165,7 +166,7 @@ export const fetchLowStockAlerts = async () => {
 // ============================================
 
 export const createPPERequest = async (data) => {
-    const response = await fetch(`${API_BASE}/ppe-requests`, {
+    const response = await fetchWithCredentials(`${API_BASE}/ppe-requests`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data),
@@ -175,12 +176,12 @@ export const createPPERequest = async (data) => {
 
 export const fetchPPERequests = async (branchId) => {
     const url = branchId ? `${API_BASE}/ppe-requests/${branchId}` : `${API_BASE}/ppe-requests`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetchWithCredentials(url, { headers: getHeaders() });
     return handleResponse(response);
 };
 
 export const updatePPERequest = async (id, data) => {
-    const response = await fetch(`${API_BASE}/ppe-requests/${id}`, {
+    const response = await fetchWithCredentials(`${API_BASE}/ppe-requests/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(data),
@@ -193,7 +194,7 @@ export const updatePPERequest = async (id, data) => {
 // ============================================
 
 export const createTransfer = async (data) => {
-    const response = await fetch(`${API_BASE}/transfers`, {
+    const response = await fetchWithCredentials(`${API_BASE}/transfers`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data),
@@ -203,12 +204,12 @@ export const createTransfer = async (data) => {
 
 export const fetchTransfers = async (branchId) => {
     const url = branchId ? `${API_BASE}/transfers/${branchId}` : `${API_BASE}/transfers`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetchWithCredentials(url, { headers: getHeaders() });
     return handleResponse(response);
 };
 
 export const approveTransfer = async (id, status) => {
-    const response = await fetch(`${API_BASE}/transfers/${id}`, {
+    const response = await fetchWithCredentials(`${API_BASE}/transfers/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ status }),

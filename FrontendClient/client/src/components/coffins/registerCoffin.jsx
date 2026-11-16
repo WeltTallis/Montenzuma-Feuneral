@@ -7,6 +7,7 @@ import { Square as Button } from 'lucide-react';
 import { Form, Row, Col, Alert } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
+import { fetchWithCredentials } from '../../api/axios';
 import env from '../../utils/config/env';
 import { getBranchId } from '../../utils/globalAuth';
 import {
@@ -1288,7 +1289,7 @@ const RegisterCoffin = () => {
       // Use the API gateway URL directly for coffin registration
       // The gateway proxies /api/v1/restpoint/coffins/register to the coffin service
       const registerUrl = `${env.FULL_API_URL}${ENDPOINTS.COFFINS.BASE}/register`;
-      const response = await fetch(registerUrl, {
+      const response = await fetchWithCredentials(registerUrl, {
         method: 'POST',
         headers: getTenantHeaders(),
         body: formData,

@@ -10,15 +10,11 @@ import OfficialStamp from '../../../utils/stamp/stamp';
 import env from '../../../utils/config/env';
 import notify from '../../../utils/notify';
 import axios from 'axios';
-import api from '../../../api/axios';
+import api, { fetchWithCredentials } from '../../../api/axios';
 import InOurCare from '../../common/InOurCare';
-// Kenya-safe "today" (YYYY-MM-DD in the browser's local/Nairobi clock).
-// The old `new Date().toISOString().split('T')[0]` default sliced the UTC
-// date, which is 3 hours behind Nairobi — an intake captured between 00:00
-// and 02:59 Kenya time stored YESTERDAY's admission date.
+
 import { todayKey } from '../../../utils/dates/parseDates';
-// Registering a body changes the deceased register — this wipes the dashboard's
-// cached payloads and tells the dashboard / list page to re-read immediately.
+// Registering a body changes the deceased register — this 
 import { notifyDeceasedChanged } from '../../../api/dashboardDataApi';
 
 // The shared official-record masthead (branding, condolence slider, facility
@@ -1244,7 +1240,7 @@ const DeceasedRegistrationForm = () => {
       let uploaded = 0;
       for (const item of queue) {
         try {
-          const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
+          const response = await fetchWithCredentials(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1448,7 +1444,7 @@ const DeceasedRegistrationForm = () => {
       const tenantSlug = getTenantSlug();
       const token = getAuthToken();
 
-      const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
+      const response = await fetchWithCredentials(`${env.FULL_API_URL}${ENDPOINTS.DECEASED.CREATE}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

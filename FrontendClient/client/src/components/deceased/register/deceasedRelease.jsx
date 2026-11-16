@@ -53,6 +53,7 @@ import OfficialStamp from '../../../utils/stamp/stamp';
 import env from '../../../utils/config/env';
 import notify from '@/utils/notify';
 import axios from 'axios';
+import { fetchWithCredentials } from '../../../api/axios';
 import {
   Check, Loader2, CheckCircle, X, FileText, User, RotateCcw, ShieldCheck,
   AlertCircle, ArrowRight, Calendar, Clock, Phone, IdCard, MapPin
@@ -1119,7 +1120,7 @@ const DeceasedReleaseForm = () => {
       setIsLoadingDeceased(true);
       try {
         const tenantSlug = getTenantSlug();
-        const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.DECEASED_DETAIL(deceasedId)}`, {
+        const response = await fetchWithCredentials(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.DECEASED_DETAIL(deceasedId)}`, {
           headers: {
             'x-tenant-slug': tenantSlug,
             'Authorization': `Bearer ${getAuthToken()}`,
@@ -1389,7 +1390,7 @@ const DeceasedReleaseForm = () => {
         final_destination: String(formData.final_destination || '').trim(),
       };
 
-      const response = await fetch(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.CHECKOUT}`, {
+      const response = await fetchWithCredentials(`${env.FULL_API_URL}${ENDPOINTS.BODYCHECKOUT.CHECKOUT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

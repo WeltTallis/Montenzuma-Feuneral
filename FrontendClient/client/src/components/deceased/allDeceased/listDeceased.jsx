@@ -15,6 +15,7 @@ import {
 import { normalizeYM, ymFromDate } from '../../../utils/dates/ym';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
+import { fetchWithCredentials } from '../../../api/axios';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_URL || '/api/v1/restpoint';
 const BASE_URL = `${API_GATEWAY_URL}/deceased`;
@@ -648,7 +649,7 @@ const DeceasedList = () => {
     const absFileUrl = /^https?:\/\//i.test(fileUrl) ? fileUrl : `${uploadsOrigin()}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
     try {
       const token = getAuthToken ? getAuthToken() : localStorage.getItem('token') || '';
-      const res = await fetch(absFileUrl, { headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
+      const res = await fetchWithCredentials(absFileUrl, { headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       downloadExportBlob(await res.blob(), fileName || 'export.xlsx');
       return true;

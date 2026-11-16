@@ -6,6 +6,7 @@ import {
 import { Activity, AlertCircle, ArrowUpRight, CalendarDays, CheckCircle2, RefreshCw, Truck, Users } from "lucide-react";
 import { careOf } from "./opsData";
 import { getTenantHeaders } from "../api/endpoints";
+import { fetchWithCredentials } from "../api/axios";
 import env from "../utils/config/env";
 
 const API_BASE_URL = import.meta.env.PROD ? "https://restpoint.co.ke/api/v1/restpoint" : (env.FULL_API_URL || "http://localhost:5000/api/v1/restpoint");
@@ -62,8 +63,8 @@ export default function DashboardAnalytics({ cases = [], caseLoading = false }) 
     delete headers["x-branch-db"];
     try {
       const [fleetResult, bookingResult] = await Promise.allSettled([
-        fetch(`${API_BASE_URL}/hearses`, { headers }),
-        fetch(`${API_BASE_URL}/hearse-bookings`, { headers }),
+        fetchWithCredentials(`${API_BASE_URL}/hearses`, { headers }),
+        fetchWithCredentials(`${API_BASE_URL}/hearse-bookings`, { headers }),
       ]);
       const failures = [];
       if (fleetResult.status === "fulfilled" && fleetResult.value.ok) setFleet(collection(await fleetResult.value.json(), "hearses"));

@@ -7,7 +7,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useReactToPrint } from 'react-to-print';
-import api from '../../api/axios';
+import api, { fetchWithCredentials } from '../../api/axios';
 import { ENDPOINTS } from '../../api/endpoints';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
@@ -949,7 +949,7 @@ const EnhancedPDFViewer = ({ document, onClose }) => {
 
     try {
       const cache = await caches.open('pdf-viewer-cache');
-      const response = await fetch(document.url);
+      const response = await fetchWithCredentials(document.url);
       await cache.put(document.url, response.clone());
       setIsCached(true);
       const blob = await response.blob();
@@ -1440,7 +1440,7 @@ const DocumentsPage = () => {
     try {
       const downloadUrl = ENDPOINTS.DOCUMENTS.DOWNLOAD(document.documentId);
       
-      const response = await fetch(downloadUrl, {
+      const response = await fetchWithCredentials(downloadUrl, {
         headers: {
           'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
         }
@@ -1478,7 +1478,7 @@ const DocumentsPage = () => {
         });
         toast.info(`Opening PDF document...`);
       } else {
-        const response = await fetch(viewUrl, {
+        const response = await fetchWithCredentials(viewUrl, {
           headers: {
             'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
           }
@@ -1507,7 +1507,7 @@ const DocumentsPage = () => {
     try {
       const printUrl = ENDPOINTS.DOCUMENTS.DOWNLOAD(document.documentId);
       
-      const response = await fetch(printUrl, {
+      const response = await fetchWithCredentials(printUrl, {
         headers: {
           'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
         }
@@ -1604,7 +1604,7 @@ const DocumentsPage = () => {
       try {
         const downloadUrl = ENDPOINTS.DOCUMENTS.DOWNLOAD(sharingDocument.documentId);
         
-        const response = await fetch(downloadUrl, {
+        const response = await fetchWithCredentials(downloadUrl, {
           headers: {
             'x-tenant-slug': localStorage.getItem('tenantSlug') || 'system_shared'
           }
