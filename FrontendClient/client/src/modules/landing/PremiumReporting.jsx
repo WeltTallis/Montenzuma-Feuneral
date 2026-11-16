@@ -121,7 +121,7 @@ export default function PremiumReporting() {
             <p style={{
               fontSize: '1.1rem', color: '#bdbdbd', maxWidth: '720px', margin: '0 auto', fontWeight: 300, lineHeight: 1.7,
             }}>
-              Scan or upload documents, keep every record in the right case, view files in a polished document workspace, and export structured data to Excel when your team needs it.
+              Scan or upload files, link them to the right case, review them in one workspace, and export structured data to Excel whenever your team needs it.
             </p>
           </Reveal>
         </div>
@@ -153,8 +153,8 @@ export default function PremiumReporting() {
                   paddingBottom: '12px', borderBottom: '2px solid #1A1A1A', marginBottom: '16px',
                 }}>
                   <div>
-                    <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: '14px', fontWeight: 700, color: '#1A1A1A' }}> RP  Feuneral   Homes </h3>
-                    <p style={{ fontSize: '6px', color: '#6B6862', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '2px' }}>Official Death    Certificate Record</p>
+                    <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: '14px', fontWeight: 700, color: '#1A1A1A' }}>RP Funeral Homes</h3>
+                    <p style={{ fontSize: '6px', color: '#6B6862', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '2px' }}>Official Death Certificate Record</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{
@@ -228,7 +228,7 @@ export default function PremiumReporting() {
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#107C41', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Auto  - Exported</span>
+                    <span style={{ color: '#107C41', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Auto-exported</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="#107C41"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
                   </div>
                   <p style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginTop: '4px' }}>2026_deceased_records.xlsx</p>
@@ -247,7 +247,7 @@ export default function PremiumReporting() {
                 padding: '8px 16px', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '8px',
               }}>
                 <Bolt size={12} color="#A98F6E" />
-                <span style={{ fontSize: '10px', fontWeight: 700, color: 'white', letterSpacing: '0.1em', textTransform: 'uppercase' }}>1-Click Gen</span>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'white', letterSpacing: '0.1em', textTransform: 'uppercase' }}>1-click export</span>
               </div>
             </div>
           </Reveal>
@@ -269,7 +269,7 @@ export default function PremiumReporting() {
                     fontFamily: "'Fraunces', serif", fontSize: '1.5rem', color: 'white', marginBottom: '8px', fontWeight: 500,
                   }}>Scan and upload with confidence</h3>
                   <p style={{ color: '#8A8A8A', lineHeight: 1.8, fontSize: '1rem' }}>
-                    Capture documents from a scanner or upload them directly. Rest Point keeps admissions, releases, signatures, and supporting records together with the right case, so nothing gets misplaced.
+                    Scan directly into the correct deceased case using a connected or portable scanner your team can carry between locations. You can also upload files, keeping admissions, releases, signatures, and supporting paperwork together for easy access.
                   </p>
                 </div>
               </div>
@@ -289,7 +289,7 @@ export default function PremiumReporting() {
                     fontFamily: "'Fraunces', serif", fontSize: '1.5rem', color: 'white', marginBottom: '8px', fontWeight: 500,
                   }}>View documents in Rest Point</h3>
                   <p style={{ color: '#8A8A8A', lineHeight: 1.8, fontSize: '1rem' }}>
-                    Preview important records right in Rest Point there’s no need to open Word or another external document viewer. Organise, share, and revisit documents in one workspace without digging through folders or paper files.
+                    Preview files in Rest Point without opening Word or another viewer. Organise and share them from one place instead of searching through folders or paper files.
                   </p>
                 </div>
               </div>
@@ -309,7 +309,7 @@ export default function PremiumReporting() {
                     fontFamily: "'Fraunces', serif", fontSize: '1.5rem', color: 'white', marginBottom: '8px', fontWeight: 500,
                   }}>Export the data you need</h3>
                   <p style={{ color: '#8A8A8A', lineHeight: 1.8, fontSize: '1rem' }}>
-                    Turn your operational records into structured Excel exports for reporting, audits, reconciliation, and day-to-day planning. The information stays organised and ready when your team needs it.
+                    Export operational data to Excel for reporting, audits, reconciliation, and day-to-day planning, ready when your team needs it.
                   </p>
                 </div>
               </div>

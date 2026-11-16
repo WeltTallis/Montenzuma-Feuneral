@@ -533,7 +533,6 @@ const Colophon = styled.footer`
 
 const FEATURES = [
   { no: '01', title: 'Digital Body Signatures', text: 'Capture signatures on the body-intake and body-release forms directly on screen.' },
-  { no: '02', title: 'Optional Stylus', isNew: true, text: 'Add a pressure-sensitive pen for signing intake and release forms on screen.' },
   { no: '03', title: 'Body Intake', text: 'Record each admission in the digital intake workflow.' },
   { no: '04', title: 'Body Release', text: 'Record each release and capture the recipient’s signature on the form.' },
   { no: '05', title: 'Floral Samples', text: 'Let families browse arrangements at the reception desk.' },
@@ -599,10 +598,10 @@ const HardwareRequirementSection = () => {
               <Reveal delay={0.16}>
                 <HeroP>
                   A dedicated touchscreen reception portal for funeral homes: record body
-                  intake, capture digital signatures on body-intake and body-release forms,
-                  and let families browse floral arrangements. <strong>iPad or Android</strong>,
-                  any tablet works. A pressure-sensitive stylus is optional for signing those
-                  forms on screen.
+                  intake, capture digital signatures on intake and release forms, and let
+                  clients request post-mortem (PM) examinations using an iPad. Families can
+                  also browse floral arrangements. <strong>iPad or Android</strong>, any tablet
+                  works. A pressure-sensitive stylus is optional for signing forms on screen.
                 </HeroP>
               </Reveal>
 
@@ -614,7 +613,7 @@ const HardwareRequirementSection = () => {
                     <Feat key={f.no}>
                       <span className="no">{f.no}</span>
                       <div>
-                        <h4>
+                        <h4 style={{ color: '#fff' }}>
                           {f.title}
                           {f.isNew && <TagNew>New</TagNew>}
                         </h4>
@@ -673,9 +672,7 @@ const HardwareRequirementSection = () => {
             </ReqHead>
 
             <Reveal>
-              <LedgerHead>
-                <span>No.</span><span>Item</span><span>Specification</span><span>Status / Qty</span>
-              </LedgerHead>
+              <LedgerHead aria-hidden="true" />
             </Reveal>
 
             <Reveal delay={0.08}>

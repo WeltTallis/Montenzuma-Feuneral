@@ -7,6 +7,7 @@ import Footer from '../../components/layout/Footer';
 import C from '../../utils/colors/index'
 import FloatingCTA from './FloatingCTA';
 import MissionSection from './Mission';
+import GrowthSection from './GrowthSection';
 import SiteNav from './nav';
 import Hero from './hero';
 import { ChevronDown, Menu, Check, ShieldCheck, Server, Zap, ArrowRight, X, Activity, Users, Newspaper, ExternalLink, LayoutDashboard, Lock, Globe, Layers, LifeBuoy, MessageCircle } from '../../utils/icons/icons';
@@ -605,16 +606,16 @@ export default function App() {
                   Make the right tribute easier to choose.
                 </strong>
                 <span style={{ display: 'block', marginBottom: '1rem' }}>
-                  Families should not have to search the internet for hours to find flowers that fit the moment.
+                  We upload beautiful flower arrangements and tribute samples directly into the system so families can browse them on an iPad in a calm, guided experience.
                 </span>
                 <span style={{ display: 'block', marginBottom: '1rem' }}>
-                  Put a curated collection at the front desk. They browse, compare, and choose with confidence.
+                  Families explore arrangement styles, compare designs, and request the one they love most right at the front desk.
                 </span>
                 <span style={{ display: 'block', marginBottom: '1rem' }}>
-                  The booking appears instantly in Rest Point, and your florist is notified right away.
+                  Each selection is sent instantly to the florist, and the family can customize details such as ribbon colors, preferred flowers, and personal messages while they are still there.
                 </span>
                 <span style={{ display: 'block' }}>
-                  Add ribbon colors, flower preferences, and personal messages while the family is still there.
+                  It is a smooth, dignified floral ordering flow that keeps every request accurate and directly connected to the florist.
                 </span>
               </>
             }>
@@ -644,6 +645,9 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        {/* -- Growth -- */}
+        <GrowthSection />
 
         {/* -- Hardware Requirement (replaces the old uptime/audit-trail infrastructure block) -- */}
         <HardwareRequirementSection />

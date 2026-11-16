@@ -503,7 +503,7 @@
 
   <!-- SCHEMA: WebSite — with search action                  -->
 
-  <script type="application/ld+json">
+  <script id="rp-website-schema" type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
@@ -770,6 +770,78 @@
   </script>
 
   <title>Funeral Home Software Kenya | iPad Mortuary Intake | Rest Point</title>
+
+  <script>
+    (function () {
+      var identities = {
+        'restpoint.co.ke': {
+          siteName: 'RestPoint',
+          title: 'RestPoint – Official Website',
+          url: 'https://restpoint.co.ke/'
+        },
+        'www.restpoint.co.ke': {
+          siteName: 'RestPoint',
+          title: 'RestPoint – Official Website',
+          url: 'https://restpoint.co.ke/'
+        },
+        'portal.restpoint.co.ke': {
+          siteName: 'RestPoint Portal',
+          title: 'RestPoint Portal – Login & Services',
+          url: 'https://portal.restpoint.co.ke/'
+        },
+        'if.restpoint.co.ke': {
+          siteName: 'RestPoint IF',
+          title: 'RestPoint IF – Official Platform',
+          url: 'https://if.restpoint.co.ke/'
+        },
+        'pay.restpoint.co.ke': {
+          siteName: 'RestPoint Payments',
+          title: 'RestPoint Payments – Online Payments',
+          url: 'https://pay.restpoint.co.ke/'
+        },
+        'app.restpoint.co.ke': {
+          siteName: 'RestPoint App',
+          title: 'RestPoint App – Online Platform',
+          url: 'https://app.restpoint.co.ke/'
+        }
+      };
+      var identity = identities[window.location.hostname.toLowerCase()];
+      if (!identity) return;
+
+      window.__RP_SITE_IDENTITY__ = identity;
+      document.title = identity.title;
+
+      function setMeta(attribute, name, content) {
+        var selector = 'meta[' + attribute + '="' + name + '"]';
+        var element = document.querySelector(selector);
+        if (!element) {
+          element = document.createElement('meta');
+          element.setAttribute(attribute, name);
+          document.head.appendChild(element);
+        }
+        element.setAttribute('content', content);
+      }
+
+      setMeta('property', 'og:title', identity.title);
+      setMeta('property', 'og:url', identity.url);
+      setMeta('property', 'og:site_name', identity.siteName);
+      setMeta('name', 'twitter:title', identity.title);
+      var canonical = document.querySelector('link[rel="canonical"]');
+      if (canonical) canonical.setAttribute('href', identity.url);
+
+      if (window.location.pathname === '/') {
+        var websiteSchema = document.getElementById('rp-website-schema');
+        if (websiteSchema) {
+          var data = JSON.parse(websiteSchema.textContent);
+          data.name = identity.siteName;
+          data.alternateName = identity.siteName;
+          data.url = identity.url;
+          if (identity.siteName !== 'RestPoint') delete data.potentialAction;
+          websiteSchema.textContent = JSON.stringify(data);
+        }
+      }
+    })();
+  </script>
 </head>
 
 <body>

@@ -13,11 +13,16 @@ const SEOHead = ({
 }) => {
     const location = useLocation();
     const baseUrl = 'https://restpoint.co.ke';
-    const fullUrl = url ? `${baseUrl}${url}` : `${baseUrl}${location.pathname}`;
+    const siteIdentity = typeof window !== 'undefined' ? window.__RP_SITE_IDENTITY__ : null;
+    const isIdentityHomepage = location.pathname === '/' && Boolean(siteIdentity);
+    const pageTitle = isIdentityHomepage ? siteIdentity.title : title;
+    const fullUrl = isIdentityHomepage
+        ? siteIdentity.url
+        : url ? `${baseUrl}${url}` : `${baseUrl}${location.pathname}`;
 
     useEffect(() => {
         // Update document title
-        document.title = title;
+        document.title = pageTitle;
 
         // Update or create meta tags
         const updateMetaTag = (name, content, isProperty = false) => {
@@ -39,17 +44,17 @@ const SEOHead = ({
         updateMetaTag('googlebot', 'index, follow');
 
         // Open Graph / Facebook
-        updateMetaTag('og:title', title, true);
+        updateMetaTag('og:title', pageTitle, true);
         updateMetaTag('og:description', description, true);
         updateMetaTag('og:image', image, true);
         updateMetaTag('og:url', fullUrl, true);
         updateMetaTag('og:type', type, true);
-        updateMetaTag('og:site_name', 'Rest Point', true);
+        updateMetaTag('og:site_name', isIdentityHomepage ? siteIdentity.siteName : 'Rest Point', true);
         updateMetaTag('og:locale', 'en_KE');
 
         // Twitter
         updateMetaTag('twitter:card', 'summary_large_image');
-        updateMetaTag('twitter:title', title);
+        updateMetaTag('twitter:title', pageTitle);
         updateMetaTag('twitter:description', description);
         updateMetaTag('twitter:image', image);
 
@@ -77,7 +82,7 @@ const SEOHead = ({
         return () => {
             // Optionally remove meta tags on unmount
         };
-    }, [title, description, keywords, image, fullUrl, type, schema]);
+    }, [title, pageTitle, description, keywords, image, fullUrl, type, schema, isIdentityHomepage, siteIdentity]);
 
     return null;
 };
