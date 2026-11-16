@@ -8,10 +8,24 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import ReusableCalendar from '../../utils/calender/calender';
 import { useSocket } from '../../utils/context/socketContext'
 import api from '../../api/axios'
+import Swal from 'sweetalert2';
 
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const confirmFlowerDeletion = (title) => Swal.fire({
+  title,
+  text: 'This action cannot be undone.',
+  icon: 'warning',
+  showCancelButton: true,
+  confirmButtonText: 'Delete',
+  cancelButtonText: 'Cancel',
+  confirmButtonColor: '#D6336C',
+  cancelButtonColor: '#6E675E',
+  reverseButtons: true,
+  focusCancel: true,
+});
 
 
 
@@ -901,11 +915,7 @@ const FlowerBookingsNew = () => {
   const [notifications, setNotifications] = useState([]);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  // Deep-link support: ?view=samples opens this page straight on the uploaded
-  // arrangements grid. LEGACY — the ReceptionPortal's "Flower Arrangements" tile
-  // now links to the standalone user-facing gallery at
-  // /<slug>/flower-samples (florists/Samples.jsx). This param is kept
-  // only so older bookmarks / cached builds still land somewhere sensible.
+
   const [view, setView] = useState(() => {
     const v = new URLSearchParams(window.location.search).get('view');
     return v === 'samples' ? 'samples' : 'list';
@@ -1618,7 +1628,8 @@ const FlowerBookingsNew = () => {
       return;
     }
     if (isDemoPreview) return;
-    if (!window.confirm(`Delete flower booking ${booking.booking_id || id}? This cannot be undone.`)) return;
+    const confirmation = await confirmFlowerDeletion(`Delete flower booking ${booking.booking_id || id}?`);
+    if (!confirmation.isConfirmed) return;
 
     setDeletingBookingId(String(id));
     try {
@@ -1774,7 +1785,8 @@ const FlowerBookingsNew = () => {
   const deleteArrangement = useCallback(async (arrangement) => {
     const id = arrangement?.arrangement_id || arrangement?.id;
     if (!id) return showToast('This sample has no id and cannot be deleted', 'error');
-    if (!window.confirm(`Delete "${arrangement.title || 'this sample'}"? This cannot be undone.`)) return;
+    const confirmation = await confirmFlowerDeletion(`Delete "${arrangement.title || 'this sample'}"?`);
+    if (!confirmation.isConfirmed) return;
 
     setDeletingId(String(id));
     try {
@@ -1981,7 +1993,7 @@ const FlowerBookingsNew = () => {
                 cursor: 'pointer',
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16.5V20.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V16.5M16 11.5V7.5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4m8 0a2 2 0 0 0 2 2m0 0v4a2 2 0 0 0-2 2m0-4V13.5m0 0a2 2 0 0 0-2-2M9 17.5V20.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16.5V20.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V16.5M16 11.5V7.5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4m8 0a2 2 0 0 0 2 2m0 0v4a2 2 0 0 0-2 2m0-4V13.5m0 0a2 2 0 0 0-2-2M9 17.5V20.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3" /></svg>
             </button>
             <button
               style={{
