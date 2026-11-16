@@ -22,8 +22,8 @@ const Colors = {
   danger: '#DC2626',
 };
 
-// API URLs
-const API_BASE = env.API_URL; // resolves to https://restpoint.co.ke/api/v1/restpoint in production
+
+const API_BASE = env.API_URL;
 const API_URL = `${API_BASE}/coffins`;
 const ASSIGN_URL = `${API_BASE}${ENDPOINTS.COFFINS.ASSIGN}`;
 const STOCK_URL = (id) => `${API_BASE}${ENDPOINTS.COFFINS.STOCK(id)}`;

@@ -1,6 +1,6 @@
 
 // Package was only used by the removed icon-box tiles.
-import { Flower2, User, Calendar, X, Check, Home, Phone, Bell, Clock, ChevronRight } from '../../utils/icons/icons';
+import { Flower2, User, Calendar, X, Check, Home, Phone, Bell } from '../../utils/icons/icons';
 import { toDateKey, todayKey, parseDate as parseUtilDate } from '../../utils/dates/parseDates';
 import { getBranchSlug, getBranchId, getBranches, getTenantId } from '../../utils/globalAuth';
 import env from '../../utils/config/env';
@@ -9,6 +9,7 @@ import ReusableCalendar from '../../utils/calender/calender';
 import { useSocket } from '../../utils/context/socketContext'
 import api from '../../api/axios'
 import Swal from 'sweetalert2';
+import FlowerBookingForm from './FlowerBookingForm';
 
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -927,17 +928,10 @@ const FlowerBookingsNew = () => {
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [deletingBookingId, setDeletingBookingId] = useState(null);
   const [editingBookingId, setEditingBookingId] = useState(null);
-  const [serviceTimePickerOpen, setServiceTimePickerOpen] = useState(false);
-  const [draftServiceHour, setDraftServiceHour] = useState('9');
-  const [draftServiceMinute, setDraftServiceMinute] = useState('00');
-  const [draftServicePeriod, setDraftServicePeriod] = useState('AM');
-  const [bookingCalendarOpen, setBookingCalendarOpen] = useState(false);
-  const [bookingCalendarMonth, setBookingCalendarMonth] = useState(() => new Date());
   const [editingLineItems, setEditingLineItems] = useState([]);
   const [editingInitialQuantity, setEditingInitialQuantity] = useState(null);
   const [previewSample, setPreviewSample] = useState(null);
   const [updatingBookingSamples, setUpdatingBookingSamples] = useState(false);
-  const [bookingSamplePreviews, setBookingSamplePreviews] = useState([]);
   const imageCarouselRef = useRef(null);
   const urgencyRailRef = useRef(null);
   const bookingSampleInputRef = useRef(null);
@@ -1127,10 +1121,6 @@ const FlowerBookingsNew = () => {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [previewSample]);
-
-  useEffect(() => () => {
-    bookingSamplePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
-  }, [bookingSamplePreviews]);
 
   // Real-time socket listeners for flower bookings
   useEffect(() => {
@@ -1324,10 +1314,8 @@ const FlowerBookingsNew = () => {
 
   const openNewBookingForm = useCallback((dateStr) => {
     setEditingBookingId(null);
-    setServiceTimePickerOpen(false);
     setEditingLineItems([]);
     setEditingInitialQuantity(null);
-    setBookingSamplePreviews([]);
     setNewBooking({
       arrangement_type: '',
       flower_designs: '',
@@ -1358,7 +1346,6 @@ const FlowerBookingsNew = () => {
   const openEditBooking = useCallback((booking) => {
     const lineItems = parseLineItems(booking);
     const notes = String(booking?.notes || '');
-    setBookingSamplePreviews([]);
     const humanNotes = notes
       .replace(/\[(?:TYPES|WHEN|DESIGN|INITIALS|COFFIN|ROUTE|VEHICLE|CONTACT|SERVICE-TIME|EDITED|PRIORITY):[^\]]*\]/gi, '')
       .trim();
@@ -1368,7 +1355,6 @@ const FlowerBookingsNew = () => {
     setEditingLineItems(lineItems);
     setEditingInitialQuantity(lineItems[0]?.quantity || 1);
     setEditingBookingId(String(booking?.id || booking?.booking_id || ''));
-    setServiceTimePickerOpen(false);
     setNewBooking({
       arrangement_type: lineItems.map(item => item.name).join(', '),
       flower_designs: getBookingNoteTag(booking, 'DESIGN'),
@@ -1558,8 +1544,7 @@ const FlowerBookingsNew = () => {
         priority: 'Normal',
         sample_uploads: []
       });
-      setBookingSamplePreviews([]);
-    } catch (e) {
+      } catch (e) {
       const serverError = e?.response?.data;
       console.error('[FlowerBookings] Place order FAILED:', JSON.stringify({
         status: e?.response?.status,
@@ -2565,493 +2550,17 @@ const FlowerBookingsNew = () => {
     );
   };
 
-  const renderNewBooking = () => {
-    // Shared styling tokens — mirror the Create Arrangement panel exactly
-    const lbl = { display: 'block', fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9C9389', marginBottom: '8px' };
-    const inp = { width: '100%', padding: '12px 14px', border: '1px solid #EAE7E2', borderRadius: '8px', fontSize: '13px', fontFamily: "'DM Sans', system-ui, sans-serif", background: '#FAF9F7', color: '#1C1A17', outline: 'none' };
-    const monthStart = new Date(bookingCalendarMonth.getFullYear(), bookingCalendarMonth.getMonth(), 1);
-    const calendarStart = (monthStart.getDay() + 6) % 7;
-    const calendarDays = Array.from({ length: 42 }, (_, index) => addDays(monthStart, index - calendarStart));
-    const chosenDate = newBooking.funeral_date
-      ? new Date(`${newBooking.funeral_date}T00:00:00`)
-      : null;
-    const chosenDateLabel = chosenDate
-      ? chosenDate.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
-      : 'Choose a service date';
-    const suggestionChip = {
-      display: 'inline-flex',
-      alignItems: 'center',
-      borderRadius: '999px',
-      border: '1px solid #EAE7E2',
-      background: '#F7F4EF',
-      color: '#574F47',
-      fontSize: '11px',
-      fontWeight: 600,
-      padding: '6px 10px',
-      cursor: 'pointer',
-      transition: 'all 0.15s ease'
-    };
-    const addSuggestion = (field, value) => {
-      const candidate = String(value || '').trim();
-      if (!candidate) return;
-      setNewBooking(prev => {
-        const existing = splitCommaList(prev[field]);
-        const merged = [...new Set([...existing, ...splitCommaList(candidate)])];
-        return { ...prev, [field]: merged.join(', ') };
-      });
-    };
-    return (
-      <div style={styles.formContainer} className="flower-booking-form-panel">
-        <div className="flower-booking-form-header">
-          <div>
-            <h2>New Flower Booking</h2>
-            <p>Capture the arrangement and service details in one place.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            aria-label="Close new flower booking"
-            className="flower-booking-form-close"
-          >×</button>
-        </div>
-
-        <form onSubmit={submitBooking} className="flower-booking-form">
-          <div className="flower-booking-form-grid">
-            <section className="flower-booking-form-section">
-              <h3>Flower details</h3>
-          <label style={lbl} htmlFor="flower-arrangement-types">Arrangement / Requested Flower Item(s)</label>
-          <textarea
-            id="flower-arrangement-types"
-            rows={2}
-            style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="Record the request as given: full set, casket flowers only, 4 extra rings, portrait flowers, 100 stems"
-            value={newBooking.arrangement_type}
-            onChange={e => setNewBooking(prev => ({ ...prev, arrangement_type: e.target.value }))}
-          />
-          <label style={lbl} htmlFor="flower-designs">Flower Design(s)</label>
-          <textarea
-            id="flower-designs"
-            rows={2}
-            style={{ ...inp, resize: 'vertical', marginBottom: '8px' }}
-            placeholder="Optional — e.g. Casket spray, portrait flowers"
-            value={newBooking.flower_designs}
-            onChange={e => setNewBooking(prev => ({ ...prev, flower_designs: e.target.value }))}
-          />
-          <label style={lbl} htmlFor="flower-initials">Initials / Dedication</label>
-          <input
-            id="flower-initials"
-            type="text"
-            style={{ ...inp, marginBottom: '8px' }}
-            placeholder="e.g. Mum, Shosho, Mum & Dad"
-            value={newBooking.initials}
-            onChange={e => setNewBooking(prev => ({ ...prev, initials: e.target.value }))}
-          />
-          <label style={lbl} htmlFor="flower-coffin-type">Coffin Type</label>
-          <input
-            id="flower-coffin-type"
-            type="text"
-            style={{ ...inp, marginBottom: 0 }}
-            placeholder="e.g. Standard, half couch, full couch"
-            value={newBooking.coffin_type}
-            onChange={e => setNewBooking(prev => ({ ...prev, coffin_type: e.target.value }))}
-          />
-
-            </section>
-
-            <section className="flower-booking-form-section">
-              <h3>Service schedule</h3>
-          <label style={{ ...lbl, marginBottom: '8px' }} id="flower-service-date-label">
-            Funeral / Service Date <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span>
-          </label>
-          <div className="flower-booking-date-picker">
-            <button
-              type="button"
-              className="flower-booking-date-trigger"
-              aria-labelledby="flower-service-date-label"
-              aria-haspopup="dialog"
-              aria-expanded={bookingCalendarOpen}
-              onClick={() => {
-                if (!bookingCalendarOpen && chosenDate) {
-                  setBookingCalendarMonth(new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1));
-                }
-                setBookingCalendarOpen(open => !open);
-              }}
-            >
-              <Calendar size={17} />
-              <span>{chosenDateLabel}</span>
-              <ChevronRight size={15} />
-            </button>
-            {bookingCalendarOpen && (
-              <div className="flower-booking-date-popover" role="dialog" aria-label="Choose funeral or service date">
-                <div className="flower-booking-calendar-heading">
-                  <strong>{MONTHS[bookingCalendarMonth.getMonth()]} {bookingCalendarMonth.getFullYear()}</strong>
-                  <div>
-                    <button
-                      type="button"
-                      aria-label="Previous month"
-                      onClick={() => setBookingCalendarMonth(month => new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-                    >‹</button>
-                    <button
-                      type="button"
-                      aria-label="Next month"
-                      onClick={() => setBookingCalendarMonth(month => new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-                    >›</button>
-                  </div>
-                </div>
-                <div className="flower-booking-calendar-weekdays">
-                  {WEEKDAYS.map(day => <span key={day}>{day}</span>)}
-                </div>
-                <div className="flower-booking-calendar-days">
-                  {calendarDays.map(day => {
-                    const dateKey = fmtDateStr(day);
-                    const isSelected = dateKey === newBooking.funeral_date;
-                    const hasBookings = (evCountByDate[dateKey] || 0) > 0;
-                    return (
-                      <button
-                        key={dateKey}
-                        type="button"
-                        aria-pressed={isSelected}
-                        className={[
-                          day.getMonth() !== bookingCalendarMonth.getMonth() ? 'outside-month' : '',
-                          dateKey === todayKey() ? 'today' : '',
-                          isSelected ? 'selected' : '',
-                        ].filter(Boolean).join(' ')}
-                        title={hasBookings ? `${dateKey} · ${evCountByDate[dateKey]} existing booking${evCountByDate[dateKey] === 1 ? '' : 's'}` : dateKey}
-                        onClick={() => {
-                          setNewBooking(prev => ({ ...prev, funeral_date: dateKey }));
-                          setBookingCalendarOpen(false);
-                        }}
-                      >
-                        {day.getDate()}
-                        {hasBookings && <span aria-hidden="true" />}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flower-booking-calendar-shortcuts">
-                  <button type="button" onClick={() => {
-                    setNewBooking(prev => ({ ...prev, funeral_date: todayKey() }));
-                    setBookingCalendarOpen(false);
-                  }}>Today</button>
-                  <button type="button" onClick={() => {
-                    setNewBooking(prev => ({ ...prev, funeral_date: fmtDateStr(addDays(new Date(), 1)) }));
-                    setBookingCalendarOpen(false);
-                  }}>Tomorrow</button>
-                  <button type="button" onClick={() => {
-                    setNewBooking(prev => ({ ...prev, funeral_date: '' }));
-                    setBookingCalendarOpen(false);
-                  }}>Clear</button>
-                </div>
-              </div>
-            )}
-          </div>
-          <label style={{ ...lbl, marginBottom: '12px' }} htmlFor="flower-service-time">
-            Service Time <span style={{ color: '#A39A8E', fontWeight: 400, textTransform: 'none' }}>optional</span>
-          </label>
-          <div style={{ position: 'relative', marginBottom: '22px' }}>
-            <button
-              id="flower-service-time"
-              type="button"
-              aria-haspopup="dialog"
-              aria-expanded={serviceTimePickerOpen}
-              onClick={() => {
-                if (!serviceTimePickerOpen) {
-                  const [hour, minute] = newBooking.service_time
-                    ? newBooking.service_time.split(':').map(Number)
-                    : [9, 0];
-                  setDraftServiceHour(String(hour % 12 || 12));
-                  setDraftServiceMinute(String(minute || 0).padStart(2, '0'));
-                  setDraftServicePeriod(hour >= 12 ? 'PM' : 'AM');
-                }
-                setServiceTimePickerOpen(open => !open);
-              }}
-              style={{
-                ...inp,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                marginBottom: 0,
-                textAlign: 'left',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              <Clock size={17} />
-              <span style={{ flex: 1 }}>
-                {newBooking.service_time
-                  ? (() => {
-                    const [hour, minute] = newBooking.service_time.split(':').map(Number);
-                    return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
-                  })()
-                  : 'Select service time'}
-              </span>
-              <ChevronRight size={15} />
-            </button>
-            {serviceTimePickerOpen && (
-              <div
-                role="dialog"
-                aria-label="Select service time"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  left: 0,
-                  zIndex: 30,
-                  width: 'min(300px, calc(100vw - 56px))',
-                  padding: '14px 16px 16px',
-                  border: '1px solid #E3DDD0',
-                  borderRadius: '12px',
-                  background: '#fff',
-                  boxShadow: '0 18px 48px rgba(21, 23, 26, .18)',
-                }}
-              >
-                <div style={{ marginBottom: '8px', color: '#8A8780', fontSize: '10px', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>Service time</div>
-                <div style={{ marginBottom: '12px', color: '#15171A', fontSize: '28px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
-                  {draftServiceHour}:{draftServiceMinute}<span style={{ marginLeft: '6px', color: '#6B6862', fontSize: '13px' }}>{draftServicePeriod}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <label style={{ display: 'grid', gap: '5px', color: '#6B6862', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>
-                    Hour
-                    <select
-                      value={draftServiceHour}
-                      onChange={event => setDraftServiceHour(event.target.value)}
-                      style={{ ...inp, marginBottom: 0, padding: '8px 10px', fontWeight: 700 }}
-                    >
-                      {Array.from({ length: 12 }, (_, index) => String(index + 1)).map(hour => (
-                        <option key={hour} value={hour}>{hour}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label style={{ display: 'grid', gap: '5px', color: '#6B6862', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>
-                    Minute
-                    <select
-                      value={draftServiceMinute}
-                      onChange={event => setDraftServiceMinute(event.target.value)}
-                      style={{ ...inp, marginBottom: 0, padding: '8px 10px', fontWeight: 700 }}
-                    >
-                      {Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0')).map(minute => (
-                        <option key={minute} value={minute}>{minute}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '10px' }}>
-                  {['AM', 'PM'].map(period => (
-                    <button
-                      key={period}
-                      type="button"
-                      aria-pressed={draftServicePeriod === period}
-                      onClick={() => setDraftServicePeriod(period)}
-                      style={{
-                        height: '36px',
-                        border: `1px solid ${draftServicePeriod === period ? '#15171A' : '#E3DDD0'}`,
-                        borderRadius: '8px',
-                        color: draftServicePeriod === period ? '#fff' : '#6B6862',
-                        background: draftServicePeriod === period ? '#15171A' : '#fff',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {period}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '12px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewBooking(prev => ({ ...prev, service_time: '' }));
-                      setServiceTimePickerOpen(false);
-                    }}
-                    style={{ height: '36px', border: '1px solid #E3DDD0', borderRadius: '8px', background: '#fff', color: '#6B6862', fontWeight: 700, cursor: 'pointer' }}
-                  >
-                    Clear
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setServiceTimePickerOpen(false)}
-                    style={{ height: '36px', border: '1px solid #E3DDD0', borderRadius: '8px', background: '#fff', color: '#6B6862', fontWeight: 700, cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const hour12 = Number(draftServiceHour);
-                      const hour24 = (hour12 % 12) + (draftServicePeriod === 'PM' ? 12 : 0);
-                      setNewBooking(prev => ({
-                        ...prev,
-                        service_time: `${String(hour24).padStart(2, '0')}:${draftServiceMinute}`,
-                      }));
-                      setServiceTimePickerOpen(false);
-                    }}
-                    style={{ height: '36px', border: '1px solid #3D4F47', borderRadius: '8px', background: '#3D4F47', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-            </section>
-
-            <section className="flower-booking-form-section">
-              <h3>Logistics &amp; notes</h3>
-          <label style={lbl} htmlFor="flower-route">Route / Service Location</label>
-          <input
-            id="flower-route"
-            type="text"
-            style={{ ...inp, marginBottom: '22px' }}
-            placeholder="e.g. Montezuma to Mbumbuni"
-            value={newBooking.route}
-            onChange={e => setNewBooking(prev => ({ ...prev, route: e.target.value }))}
-          />
-          <label style={lbl} htmlFor="flower-vehicle-plate">Hearse / Vehicle Number Plate</label>
-          <input
-            id="flower-vehicle-plate"
-            type="text"
-            style={{ ...inp, marginBottom: '22px' }}
-            placeholder="e.g. KCV 095H"
-            value={newBooking.vehicle_plate}
-            onChange={e => setNewBooking(prev => ({ ...prev, vehicle_plate: e.target.value.toUpperCase() }))}
-          />
-          {/* ── Special instructions ── */}
-          <label style={lbl}>Special Remarks</label>
-          <textarea
-            rows={3}
-            style={{ ...inp, resize: 'vertical', marginBottom: '22px' }}
-            placeholder="Extra stems, hearse details, car plate, or other instructions"
-            value={newBooking.remarks}
-            onChange={e => setNewBooking(prev => ({ ...prev, remarks: e.target.value }))}
-          />
-
-            </section>
-
-            <section className="flower-booking-form-section">
-              <h3>Reference photos</h3>
-          <label style={lbl}>Client Reference Photos</label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ ...inp, marginBottom: '22px', padding: '10px 12px' }}
-            onChange={e => {
-              const files = Array.from(e.target.files || []);
-              e.target.value = '';
-              const newPreviews = files.map(file => ({
-                name: file.name,
-                url: URL.createObjectURL(file),
-              }));
-              // Append new photos so each selection adds to the gallery
-              // instead of replacing what was already chosen (real-time update).
-              setBookingSamplePreviews(prev => [...prev, ...newPreviews]);
-              setNewBooking(prev => ({ ...prev, sample_uploads: [...(prev.sample_uploads || []), ...files] }));
-            }}
-          />
-          {bookingSamplePreviews.length > 0 && (
-            <div className="flower-booking-upload-previews" aria-label="Selected reference photos">
-              {bookingSamplePreviews.map((preview, index) => (
-                <figure key={`${preview.name}-${index}`}>
-                  <img src={preview.url} alt={preview.name} />
-                  <figcaption>{preview.name}</figcaption>
-                </figure>
-              ))}
-            </div>
-          )}
-          <p style={{ margin: '-14px 0 22px', color: '#6E675E', fontSize: '12px', lineHeight: 1.5 }}>
-            Add photos showing the exact design the family requested. These will be saved with the booking.
-          </p>
-            </section>
-
-            <section className="flower-booking-form-section">
-              <h3>Booking details</h3>
-          <label style={lbl}>Deceased Name *</label>
-          <input
-            type="text"
-            style={{ ...inp, marginBottom: '16px' }}
-            placeholder="Name of the deceased"
-            value={newBooking.deceased_name}
-            onChange={e => setNewBooking(prev => ({ ...prev, deceased_name: e.target.value }))}
-            required
-          />
-
-          <label style={lbl}>Priority Level</label>
-          <select
-            style={{ ...inp, marginBottom: '22px' }}
-            value={newBooking.priority || 'Normal'}
-            onChange={e => setNewBooking(prev => ({ ...prev, priority: e.target.value }))}
-          >
-            <option value="Normal">Normal</option>
-            <option value="Urgent">Urgent</option>
-          </select>
-
-            </section>
-
-            <section className="flower-booking-form-section">
-              <h3>Client / T-Cord coordinator</h3>
-          <label style={lbl} htmlFor="flower-contact-name">Family / T-Cord Contact Name</label>
-          <input
-            id="flower-contact-name"
-            type="text"
-            placeholder="e.g. Felistus"
-            style={{ ...inp, marginBottom: 0 }}
-            value={newBooking.contact_name}
-            onChange={e => setNewBooking(prev => ({ ...prev, contact_name: e.target.value }))}
-          />
-            </section>
-          </div>
-
-          {/* Footer actions — mirrors Create Arrangement */}
-          <div className="flower-booking-form-footer">
-            <button
-              type="button"
-              onClick={() => setView('list')}
-              style={{
-                padding: '11px 20px',
-                borderRadius: '8px',
-                background: 'transparent',
-                color: '#574F47',
-                fontSize: '10px',
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                border: '1px solid #EAE7E2',
-                cursor: 'pointer',
-                fontFamily: "'DM Sans', system-ui, sans-serif"
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={placingOrder}
-              style={{
-                padding: '11px 24px',
-                borderRadius: '8px',
-                background: '#475A43',
-                color: '#fff',
-                fontSize: '10px',
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                border: 'none',
-                cursor: placingOrder ? 'not-allowed' : 'pointer',
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                opacity: placingOrder ? 0.65 : 1
-              }}
-            >
-              <Check size={14} />
-              {placingOrder
-                ? (editingBookingId ? 'Saving Changes…' : 'Placing Order…')
-                : (editingBookingId ? 'Save Changes' : 'Place Order')}
-            </button>
-          </div>
-        </form>
-      </div>
-    );
-  };
+  const renderNewBooking = () => (
+    <FlowerBookingForm
+      newBooking={newBooking}
+      setNewBooking={setNewBooking}
+      submitBooking={submitBooking}
+      placingOrder={placingOrder}
+      editingBookingId={editingBookingId}
+      evCountByDate={evCountByDate}
+      onClose={() => setView('list')}
+    />
+  );
 
   const renderDetail = () => {
     const b = bookings.find(x => String(x.id || x.booking_id) === String(activeBookingId));
@@ -3725,51 +3234,6 @@ const FlowerBookingsNew = () => {
         .flower-bookings-main { min-width: 0; padding: 0 18px 18px; }
         .flower-bookings-layout .flx-split { grid-template-columns: minmax(0, 1fr) !important; }
         .flower-bookings-layout .flx-rail { display: none !important; }
-        .flower-booking-form-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; border-bottom: 1px solid #F0E4EA; background: linear-gradient(110deg, #fff 60%, #FDF3F7); }
-        .flower-booking-form-header h2 { margin: 0; color: #1C1A17; font: 600 24px/1.2 'Playfair Display', Georgia, serif; }
-        .flower-booking-form-header p { margin: 5px 0 0; color: #8A8178; font-size: 12px; }
-        .flower-booking-form-close { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; border: 1px solid #F0E4EA; border-radius: 50%; background: #fff; color: #6E675E; font-size: 24px; cursor: pointer; }
-        .flower-booking-form { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; padding: 16px 20px 20px; }
-        .flower-booking-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: start; gap: 14px; }
-        .flower-booking-form-section { min-width: 0; padding: 16px; border: 1px solid #F0E4EA; border-radius: 14px; background: #FFFEFD; box-shadow: 0 4px 14px rgba(80, 44, 58, .035); }
-        .flower-booking-form-section h3 { margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid #F5E9EE; color: #342B2D; font: 600 15px/1.3 'Playfair Display', Georgia, serif; }
-        .flower-booking-form-section > label { margin-bottom: 6px !important; }
-        .flower-booking-form-section > input,
-        .flower-booking-form-section > textarea,
-        .flower-booking-form-section > select { margin-bottom: 12px !important; padding: 10px 12px !important; }
-        .flower-booking-form-section > div[style] { margin-bottom: 12px !important; }
-        .flower-booking-form-section > :last-child { margin-bottom: 0 !important; }
-        .flower-booking-date-picker { position: relative; margin-bottom: 16px; }
-        .flower-booking-date-trigger { display: flex; width: 100%; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid #EAE7E2; border-radius: 8px; background: #FAF9F7; color: #1C1A17; font: 600 13px 'DM Sans', system-ui, sans-serif; text-align: left; cursor: pointer; }
-        .flower-booking-date-trigger span { min-width: 0; flex: 1; }
-        .flower-booking-date-trigger:hover { border-color: #E8A9C3; background: #fff; }
-        .flower-booking-date-popover { position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; width: min(340px, calc(100vw - 48px)); padding: 14px; border: 1px solid #F0E4EA; border-radius: 14px; background: #fff; box-shadow: 0 18px 48px rgba(48, 30, 37, .18); }
-        .flower-booking-calendar-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; color: #342B2D; font-size: 13px; }
-        .flower-booking-calendar-heading > div { display: flex; gap: 6px; }
-        .flower-booking-calendar-heading button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #F0E4EA; border-radius: 8px; background: #fff; color: #6E675E; font-size: 20px; cursor: pointer; }
-        .flower-booking-calendar-weekdays,
-        .flower-booking-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
-        .flower-booking-calendar-weekdays { margin-bottom: 5px; color: #A39A8E; font-size: 10px; font-weight: 700; }
-        .flower-booking-calendar-days button { position: relative; display: grid; min-width: 0; aspect-ratio: 1; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #342B2D; font: 500 12px 'DM Sans', system-ui, sans-serif; cursor: pointer; }
-        .flower-booking-calendar-days button:hover { border-color: #F0B7CE; background: #FDF1F6; }
-        .flower-booking-calendar-days button.outside-month { color: #C8C0B9; }
-        .flower-booking-calendar-days button.today { border-color: #D6336C; color: #D6336C; font-weight: 700; }
-        .flower-booking-calendar-days button.selected { border-color: #D6336C; background: #D6336C; color: #fff; }
-        .flower-booking-calendar-days button span { position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: #D6336C; }
-        .flower-booking-calendar-days button.selected span { background: #fff; }
-        .flower-booking-calendar-shortcuts { display: flex; justify-content: space-between; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #F5E9EE; }
-        .flower-booking-calendar-shortcuts button { padding: 5px 7px; border: 0; border-radius: 6px; background: transparent; color: #9D1F50; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .flower-booking-calendar-shortcuts button:hover { background: #FDF1F6; }
-        .flower-booking-form-footer { position: sticky; bottom: -20px; display: flex; justify-content: flex-end; gap: 12px; margin: auto -20px -20px; padding: 14px 20px max(14px, env(safe-area-inset-bottom)); border-top: 1px solid #F0E4EA; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
-        @media (max-width: 720px) {
-          .flower-booking-form-panel { top: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; border-radius: 0; }
-          .flower-booking-form-header { padding: 14px 16px; }
-          .flower-booking-form-header h2 { font-size: 21px; }
-          .flower-booking-form { padding: 12px 12px 16px; }
-          .flower-booking-form-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-          .flower-booking-form-section { padding: 13px; }
-          .flower-booking-form-footer { bottom: -16px; margin: auto -12px -16px; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
-        }
         .flower-detail-panel { position: sticky; top: 0; height: 100vh; min-width: 0; overflow-y: auto; border-left: 1px solid #F0E4EA; background: #fff; padding: 0 18px 18px; }
         .flower-detail-panel-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -24px 18px; padding: 10px 10px; border-bottom: 1px solid #C42A61; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
         .flower-detail-back { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #C42A61; border-radius: 8px; background: #C42A61; color: #fff; font-size: 12px; font-weight: 700; }
@@ -3794,10 +3258,6 @@ const FlowerBookingsNew = () => {
         .flower-client-samples-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
         .flower-client-samples-head h3 { margin: 0; color: #1C1A17; font-size: 14px; font-weight: 700; }
         .flower-client-samples-head p { margin: 3px 0 0; color: #8A8178; font-size: 11px; }
-        .flower-booking-upload-previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 9px; margin: -12px 0 20px; }
-        .flower-booking-upload-previews figure { min-width: 0; margin: 0; overflow: hidden; border: 1px solid #F0E4EA; border-radius: 9px; background: #fff; }
-        .flower-booking-upload-previews img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
-        .flower-booking-upload-previews figcaption { padding: 5px 7px; overflow: hidden; color: #6E675E; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
         .flower-client-samples-add { min-height: 38px; flex: 0 0 auto; padding: 8px 12px; border: 1px solid #F6C6DA; border-radius: 9px; background: #FDF1F6; color: #9D1F50; font-size: 12px; font-weight: 700; cursor: pointer; }
         .flower-client-samples-add:disabled,
         .flower-client-sample figcaption button:disabled { cursor: wait; opacity: .6; }
@@ -4514,22 +3974,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
-  },
-  formContainer: {
-    position: 'fixed',
-    top: '1vh',
-    right: '1vw',
-    bottom: '1vh',
-    width: 'min(1040px, 98vw)',
-    background: '#fff',
-    zIndex: 1001,
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    padding: 0,
-    borderRadius: '18px',
-    boxShadow: '-24px 0 60px rgba(28,26,23,0.14)',
-    animation: 'floristPanelIn .32s cubic-bezier(0.16,1,0.3,1)',
   },
   panelScrim: {
     position: 'fixed',

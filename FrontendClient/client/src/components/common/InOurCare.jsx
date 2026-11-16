@@ -1,30 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-/**
- * InOurCare — the post-submission vigil page.
- *
- * After a successful deceased intake ("The register is signed") or body
- * release ("The journey home begins") this page takes over: a candle is
- * hand-drawn on canvas and lit in the deceased's memory inside a black
- * room, the words arrive one by one, and a filled brass "Return home"
- * button flips the whole card over to a white "Welcome home." face.
- *
- * When the flip lands, onDone() hands control back to the portal — the
- * same contract as the old Done button, with the flip as the transition.
- * Esc mirrors the button from either face.
- *
- * Design notes (matching the approved standalone page):
- *  – Still flame: no flicker noise, no pointer wind, no sparks. The flame
- *    holds its shape with a barely-perceptible slow breath (<2% movement).
- *  – No dish under the candle: the pillar stands on a soft pool of shadow.
- *  – Palette: ink #1a1a1a · white #FFFFFF · line #e5e5e5 · gray #666666 ·
- *    verdigris #3D4F47 · brass #7A2F26 · success #475A43.
- *  – born / passed / reference are still accepted for interface
- *    compatibility, but the redesign no longer displays the dates or
- *    file-number lines.
- *
- * Respects prefers-reduced-motion.
- */
+
 
 const CSS = `
   .ioc-root{position:fixed;inset:0;z-index:9998;background:#030303;color:#FFFFFF;

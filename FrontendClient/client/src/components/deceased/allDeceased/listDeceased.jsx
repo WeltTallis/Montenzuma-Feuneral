@@ -68,6 +68,8 @@ const getStatusInfo = (statusStr) => {
   const raw = String(statusStr ?? '').trim();
   if (!raw) return STATUS_CONFIG['under care'];
   const normalized = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+
   const aliases = {
     active: STATUS_CONFIG['under care'],
     received: STATUS_CONFIG['under care'],
@@ -104,6 +106,7 @@ const getStatusInfo = (statusStr) => {
     'in maintenance': STATUS_CONFIG.maintenance,
     default: STATUS_CONFIG.default,
   };
+
   if (aliases[normalized]) return aliases[normalized];
   const fallback = normalized.length >= 3
     ? Object.entries(STATUS_CONFIG).find(([key]) => {
@@ -616,8 +619,8 @@ const DeceasedList = () => {
   const getDurationForRecord = (record, admittedDate) => {
     const released = Boolean(record.releaseData?.release_id) ||
       [record.body_status, record.admission_status, record.release_status, record.status]
-      .filter(Boolean)
-      .some((status) => getStatusInfo(status).filter === 'released');
+        .filter(Boolean)
+        .some((status) => getStatusInfo(status).filter === 'released');
     const removalDate = record.releaseData?.date_of_removal || record.releaseData?.release_date;
     const removalTime = record.releaseData?.time_of_removal || record.releaseData?.release_time;
     const releaseDate = released
