@@ -25,8 +25,7 @@ const allowedOrigins = new Set(
         .filter(Boolean)
 );
 
-// Security headers: this service only serves JSON APIs, so it does not need
-// inline scripts, embedded frames, cross-origin resource access, or referrers.
+// Security headers
 app.disable('x-powered-by');
 app.use(helmet({
     contentSecurityPolicy: {

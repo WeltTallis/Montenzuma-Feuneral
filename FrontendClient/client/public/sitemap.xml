@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-  <!-- ============================================================
-       Rest Point (restpoint.co.ke) — Sitemap
-       Generated: 2026-09-13
-       Only PUBLIC, indexable pages are listed. Tenant dashboards,
-       deceased records, portals and pre-authenticated routes are
-       deliberately excluded (see robots.txt).
-       ============================================================ -->
 
-  <!-- ============ HOMEPAGE ============ -->
   <url>
     <loc>https://restpoint.co.ke/</loc>
     <lastmod>2026-09-13</lastmod>

@@ -4,14 +4,7 @@ import { getRootPool } from '../../../shared/dbConfig';
 import Logger from '../../../packages/shared-logger/dist/index';
 
 /**
- * Run the body-checkout migrations (070 body_checkout, 071 checkout_approvals,
- * 072 body_releases, 073 destination/plate columns) against EVERY active tenant
- * database at service startup.
- *
- * This makes the body-checkout service self-sufficient: even tenants that were
- * provisioned before the central migration runner added the body_releases table
- * will get it created here, mirroring how coffin / florist / hearse services
- * ensure their tables at boot.
+ * Run the body-checkout migrations
  */
 export async function runBodyCheckoutMigrations(): Promise<void> {
   const host = process.env.DB_HOST || '127.0.0.1';
@@ -73,7 +66,7 @@ export async function runBodyCheckoutMigrations(): Promise<void> {
     });
 
   } finally {
-    
-    await svc.close().catch(() => {});
+
+    await svc.close().catch(() => { });
   }
 }

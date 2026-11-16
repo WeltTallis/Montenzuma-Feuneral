@@ -68,10 +68,10 @@ const processSignature = async (
     const timestamp = Date.now();
     const filename = `signature_${id}_${timestamp}.png`;
 
-    // ─── INK-BLUE ENFORCEMENT ───────────────────────────────────────────
+
     // Signatures must always be stored as ink blue (#0f33e7) on a
-    // transparent background — flatten/grayscale/palette encoding could
-    // render the ink black. Normalize the pixels first.
+
+
     const INK_BLUE = { r: 15, g: 51, b: 231 }; // #0f33e7 — same as the signature pad
     const { data: raw, info: rawInfo } = await sharp(file.buffer)
         .ensureAlpha()
@@ -130,8 +130,7 @@ const processSignature = async (
     // scoped per tenant so every signature lives at
     // /opt/storage/uploads/<tenant>/signatures/)
     const globalUploadsDir = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
-    // Sanitize the slug exactly like generateSlug() so the on-disk folder and
-    // the /uploads/... URL always match and tenant signatures never mix.
+    // Sanitize the slug 
     const safeSlug = String(tenantSlug || 'system')
         .toLowerCase()
         .replace(/[^a-z0-9._-]+/g, '-')
