@@ -131,6 +131,32 @@ async function assertDriverAvailable(
     if (conflict) throw new LineupError(409, 'This driver is already assigned to another booking on one of these dates.');
 }
 
+async function assertRegisteredNameAvailable(
+    connection: PoolConnection,
+    tenantScope: NonNullable<ReturnType<typeof getTenantScope>>,
+    driverName: string,
+    dates: string[],
+    excludedBookingId?: number
+): Promise<void> {
+    const tenantFilter = await getBookingTenantFilter(connection, tenantScope);
+    const params = [...tenantFilter.params, driverName, ...ACTIVE_BOOKING_STATUSES];
+    const [rows]: any = await connection.query(
+        `SELECT hb.id, hb.booking_dates, hb.booking_date, hb.from_timestamp, hb.to_timestamp
+           FROM hearse_bookings hb
+           LEFT JOIN drivers d ON d.id = hb.driver_id
+          WHERE ${tenantFilter.clause}
+            AND LOWER(TRIM(COALESCE(NULLIF(hb.manual_driver_name, ''), d.full_name))) = LOWER(TRIM(?))
+            AND hb.status IN (${ACTIVE_BOOKING_STATUSES.map(() => '?').join(', ')})
+          FOR UPDATE`,
+        params
+    );
+    const conflict = (rows as any[]).some((booking) => {
+        if (Number(booking.id) === excludedBookingId) return false;
+        return extractRowDates(booking).some((date) => dates.includes(date));
+    });
+    if (conflict) throw new LineupError(409, 'This registered driver is already assigned to another booking on one of these dates.');
+}
+
 export const getDailyLineup = asyncHandler(async (req: Request, res: Response) => {
     const tenantScope = requireTenant(req, res);
     if (!tenantScope) return;
@@ -215,10 +241,11 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
     const bookingId = Number(req.params.booking_id);
     const driverId = req.body.driver_id == null || req.body.driver_id === '' ? null : Number(req.body.driver_id);
     const manualDriverName = String(req.body.driver_name || '').trim();
+    const registeredDriverKey = String(req.body.registered_driver_key || '').trim();
     const assistantName = String(req.body.assistant_name || '').trim();
     if (!Number.isInteger(bookingId) || bookingId < 1
         || (driverId !== null && (!Number.isInteger(driverId) || driverId < 1))
-        || manualDriverName.length > 200 || assistantName.length > 200) {
+        || manualDriverName.length > 200 || assistantName.length > 200 || registeredDriverKey.length > 200) {
         res.status(400).json({ success: false, message: 'Enter valid booking, driver and assistant details.' });
         return;
     }
@@ -244,6 +271,8 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
         if (driverId !== null) {
             await lockDriver(connection, driverId);
             await assertDriverAvailable(connection, tenantScope, driverId, dates, bookingId);
+        } else if (registeredDriverKey && manualDriverName) {
+            await assertRegisteredNameAvailable(connection, tenantScope, manualDriverName, dates, bookingId);
         }
         await connection.query(
             `UPDATE hearse_bookings hb

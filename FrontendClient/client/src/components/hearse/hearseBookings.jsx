@@ -2109,6 +2109,7 @@ const HearseBookings = () => {
                         ? (selectedDriver.driver_id ?? null)
                         : (bookingLineupDraft.driverName.trim() ? null : bookingLineupDraft.driverId || null),
                       driver_name: bookingLineupDraft.driverName.trim() || selectedDriver?.driver_name || '',
+                      registered_driver_key: selectedDriver?.tenant_user_id || null,
                       assistant_name: bookingLineupDraft.assistantName,
                     });
                   }}
