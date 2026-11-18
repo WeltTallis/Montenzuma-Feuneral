@@ -790,6 +790,13 @@ const DrawerBody = styled.div`
   &::-webkit-scrollbar{width:5px}
   &::-webkit-scrollbar-thumb{background:${COLORS.borderLight};border-radius:99px}
 `;
+const DrawerColumns = styled.div`
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(320px,0.9fr);
+  gap:1.25rem;
+  align-items:start;
+  @media(max-width:900px){grid-template-columns:1fr;}
+`;
 
 /* Status banner */
 const StatusStrip = styled.div`
@@ -1826,6 +1833,7 @@ const HearseBookings = () => {
                 <span className="cap">Current status</span>
               </StatusStrip>
 
+             <DrawerColumns>
               <DetailGrid>
                 <DetailItem>
                   <DetailLabel>Client</DetailLabel>
@@ -2032,6 +2040,7 @@ const HearseBookings = () => {
                   </div>
                 </form>
               </div>
+             </DrawerColumns>
 
               {!['completed', 'cancelled'].includes(selectedBooking.status) && (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
