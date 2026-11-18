@@ -731,10 +731,18 @@ const DrawerBody = styled.div`
 `;
 const DrawerColumns = styled.div`
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(320px,0.9fr);
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:1.25rem;
   align-items:start;
   @media(max-width:900px){grid-template-columns:1fr;}
+`;
+
+const LineupForm = styled.form`
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:0.75rem;
+  & > div:last-child{grid-column:1 / -1;}
+  @media(max-width:560px){grid-template-columns:1fr;& > div:last-child{grid-column:auto;}}
 `;
 
 /* Status banner */
@@ -763,6 +771,15 @@ const DetailItem = styled.div`
   padding:0.65rem 0;
   border-bottom:1px solid ${COLORS.borderLight};
   &:last-child{border-bottom:none;padding-bottom:0.35rem;}
+`;
+
+const BookingMetaGrid = styled(DetailGrid)`
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:0.75rem 1rem;
+  align-items:stretch;
+  & > ${DetailItem}{padding:0.65rem 0.75rem;border:1px solid ${COLORS.borderLight};border-radius:${COLORS.radiusSm};}
+  @media(max-width:560px){grid-template-columns:1fr;}
 `;
 
 const DetailLabel = styled.div`
@@ -1885,7 +1902,7 @@ const HearseBookings = () => {
                     Assign or update the driver and assistant for this booking.
                   </div>
                 </div>
-                <form
+                <LineupForm
                   onSubmit={(event) => {
                     event.preventDefault();
                     saveBookingLineup(selectedBooking.booking_id || selectedBooking.id, {
@@ -1894,7 +1911,6 @@ const HearseBookings = () => {
                       assistant_name: bookingLineupDraft.assistantName,
                     });
                   }}
-                  style={{ display: 'grid', gap: '0.75rem' }}
                 >
                   <div>
                     <ModalLabel htmlFor="booking-lineup-driver">Select driver (optional)</ModalLabel>
@@ -1954,9 +1970,9 @@ const HearseBookings = () => {
                         : 'Save lineup'}
                     </PrimaryButton>
                   </div>
-                </form>
+                </LineupForm>
               </div>
-               <DetailGrid style={{ marginTop: '1rem', marginBottom: 0 }}>
+               <BookingMetaGrid style={{ marginTop: '1rem', marginBottom: 0 }}>
                  <DetailItem>
                    <DetailLabel>Branch</DetailLabel>
                    <DetailValue style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1985,7 +2001,7 @@ const HearseBookings = () => {
                    <DetailLabel>Created</DetailLabel>
                    <DetailValue>{fmtDate(selectedBooking.created_at)}</DetailValue>
                  </DetailItem>
-               </DetailGrid>
+               </BookingMetaGrid>
              </DrawerColumns>
 
               {!['completed', 'cancelled'].includes(selectedBooking.status) && (

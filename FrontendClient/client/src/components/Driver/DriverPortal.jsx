@@ -441,6 +441,9 @@ const css = `
 #rp-driver .card-bd{ padding:16px 17px; }
 #rp-driver .c-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
 #rp-driver .c-code{ font:700 .9rem var(--mono); letter-spacing:.02em; }
+#rp-driver .assigned-head{ color:#fff; }
+#rp-driver .assigned-head .assigned-name{ color:#fff; font:700 .9rem var(--disp); }
+#rp-driver .assigned-head .assigned-assistant{ color:#fff; font:500 .72rem 'Inter'; margin-top:4px; }
 #rp-driver .c-chip{ display:inline-flex; align-items:center; gap:5px; margin-top:7px; padding:3px 9px;
   border-radius:6px; background:rgba(255,255,255,.07); border:1px solid var(--line);
   font:500 .62rem var(--mono); letter-spacing:.02em; color:var(--dim); }
@@ -681,12 +684,12 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
         <article className={`card anim-up ${done ? '' : 'pickup-pending'}`} style={{ animationDelay: `${i * .05}s` }}>
             <div className="card-bd">
                 <div className="c-top">
-                    <div>
-                        <div className="c-code">{assignedDriver}</div>
+                    <div className="assigned-head">
+                        <div className="assigned-name">Assigned driver: {assignedDriver}</div>
+                        <div className="assigned-assistant">Assistant: {b.assistant_name || 'Not assigned'}</div>
                         <span className="c-chip">Assigned driver</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <Pill status={b.status} />
                         {overdue && <span className="tag-over">⚠ Overdue</span>}
                     </div>
                 </div>
@@ -719,18 +722,6 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
                         <div className="kv-row">
                             <span className="k">Phone</span>
                             <span className="v mono">{b.client_phone}</span>
-                        </div>
-                    )}
-                    {(b.assistant_name || b.assistant_phone) && (
-                        <div className="kv-row">
-                            <span className="k">Assistant</span>
-                            <span className="v">{b.assistant_name || 'Not assigned'}{b.assistant_phone ? ` · ${b.assistant_phone}` : ''}</span>
-                        </div>
-                    )}
-                    {!b.assistant_name && !b.assistant_phone && (
-                        <div className="kv-row">
-                            <span className="k">Assistant</span>
-                            <span className="v">Not assigned</span>
                         </div>
                     )}
                 </div>

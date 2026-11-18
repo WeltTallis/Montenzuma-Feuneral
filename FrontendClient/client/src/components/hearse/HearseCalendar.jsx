@@ -24,6 +24,16 @@ export const COLORS = {
 
 };
 
+// Calendar booking colors identify the branch, while the status label remains
+// visible as text. This makes bookings easy to distinguish at a glance.
+export const getBranchBookingColor = (branchName) => {
+  const branch = String(branchName || '').trim().toLowerCase();
+  if (branch.includes('machakos')) return '#E36414';
+  if (branch.includes('thika')) return '#5F0F40';
+  // Nairobi/main and unknown legacy branch names use the primary blue.
+  return '#00296B';
+};
+
 const LINEUP_GRID_COLUMNS = 'minmax(150px, 1.15fr) minmax(110px, .8fr) minmax(140px, 1.1fr) minmax(155px, 1.2fr) minmax(80px, .55fr) minmax(165px, 1fr) minmax(100px, .7fr)';
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -1389,8 +1399,12 @@ const HearseCalendar = ({
   };
 
   const renderMonthEvent = (b) => {
-    const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
     const route = getBookingRoute(b);
+    const branchName = resolveBranchName(
+      b.branch_id,
+      b.booking_branch_slug || b.branch_slug || b.branchSlug || b.branch,
+      b.branch_name || b.branchName || b.hearse_branch_name || b.branch
+    );
     const hearseName = b.hearse_name || b.hearse?.name || b.vehicle_name || 'Hearse';
     const plate = b.plate_number || b.hearse_plate || b.number_plate || '';
     const startDate = b.from_timestamp || getBookingDates(b)[0];
@@ -1398,7 +1412,7 @@ const HearseCalendar = ({
     return (
       <MonthEventCard
         key={String(b.booking_id || b.id || Math.random())}
-        color={status.color}
+        color={getBranchBookingColor(branchName)}
         hearseName={hearseName}
         plate={plate}
         routeFrom={route.from}
@@ -1524,6 +1538,7 @@ const HearseCalendar = ({
         b.booking_branch_slug || b.branch_slug || b.branchSlug || b.branch,
         b.branch_name || b.branchName || b.hearse_branch_name || b.branch
       );
+      const branchColor = getBranchBookingColor(resolvedBranchName);
 
       const isMultiDay = bookingDates.length > 1 || (() => {
         if (bookingDates.length === 1) {
@@ -1541,18 +1556,16 @@ const HearseCalendar = ({
         start: startDate,
         end: fcEnd,
         allDay: isAllDay,
-        /* RICH saturated status colour — solid background (blue / orange /
-           green / pink-red etc). Both FC's outer wrapper (this backgroundColor)
-           AND the inner card (statusColor) use the same saturated hex, so the
-           whole card fills with the rich colour. */
-        backgroundColor: status.color,
-        borderColor: status.color,
+        /* Branch color is used consistently by the outer event and inner card. */
+        backgroundColor: branchColor,
+        borderColor: branchColor,
         textColor: '#FFFFFF',
         extendedProps: {
           ...b,
           status: b.status,
           statusLabel: status.label,
-          statusColor: status.color,
+          statusColor: branchColor,
+          branchColor,
           statusBg: status.bg,
           statusTextColor: status.textColor,
           from: route.from,
@@ -1746,7 +1759,7 @@ const HearseCalendar = ({
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
-    const itemColor = props.statusColor || '#00296B';   // rich saturated hex
+    const itemColor = props.branchColor || props.statusColor || '#00296B';
 
     if (isMonthView) {
       const from = props.from || '—';
@@ -2113,24 +2126,18 @@ const HearseCalendar = ({
                   || assignedDriver?.full_name
                   || (assignedDriverId ? `Driver ${assignedDriverId}` : 'Unassigned');
                 const bookingId = booking.booking_code || booking.booking_id || booking.id || '—';
-                const branchName = booking.branch_name || booking.branchName || booking.branch || '—';
+                const branchName = resolveBranchName(
+                  booking.branch_id,
+                  booking.booking_branch_slug || booking.branch_slug || booking.branchSlug || booking.branch,
+                  booking.branch_name || booking.branchName || booking.hearse_branch_name || booking.branch
+                );
+                const branchColor = getBranchBookingColor(branchName);
                 const clientName = booking.client_name || booking.client || '—';
                 const clientPhone = booking.client_phone || booking.phone || '—';
                 const { from: routeFrom, to: routeTo } = getBookingRoute(booking);
                 const driverPhone = assignedDriver?.driver_phone || assignedDriver?.phone_number || assignedDriver?.phone || '';
                 const assistantName = booking.assistant_name || '';
-                const lineupStatusColor = ({
-                  pending: '#9B4A3F',
-                  booked: '#8B7355',
-                  confirmed: '#475A43',
-                  scheduled: '#8B7355',
-                  in_transit: '#D97843',
-                  transit: '#D97843',
-                  in_progress: '#D97843',
-                  completed: '#475A43',
-                  delivered: '#475A43',
-                  cancelled: '#9B4A3F',
-                })[String(booking.status || '').toLowerCase()] || '#6B6862';
+                const lineupStatusColor = branchColor;
                 const bookingKey = String(booking.booking_id || booking.id);
                 return (
                   <React.Fragment key={bookingKey}>
@@ -2174,7 +2181,7 @@ const HearseCalendar = ({
                           </DayBookingVehicle>
                           <DayBookingMeta>
                             {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
-                            <BookingStatus $bg={status.bg} $color={status.textColor}>{status.label}</BookingStatus>
+                            <BookingStatus $bg={branchColor} $color="#FFFFFF">{status.label}</BookingStatus>
                           </DayBookingMeta>
                         </DayBookingHeader>
                         <DayBookingBody>
