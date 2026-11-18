@@ -1099,8 +1099,12 @@ const DriverPortal = () => {
 
     /* ─── derived ─── */
     const nowN = getNairobiNow();
-    const assignedBookings = bookings.filter((booking) => isAssignedToDriver(booking, driverId, driverName));
-    const rated = assignedBookings
+    // The driver portal is the fleet's daily lineup view. The API already
+    // scopes this response to the tenant, so do not filter it by the logged-in
+    // driver's identity: unassigned and other-driver lineups must remain
+    // visible for the selected day.
+    const scheduleBookings = bookings;
+    const rated = scheduleBookings
         .map(b => ({ b, kind: tripKind(b, nowN) }))
         .filter(x => x.kind)
         .sort((a, z) => (a.kind === z.kind ? tripTimeMs(a.b) - tripTimeMs(z.b) : a.kind === 'upcoming' ? -1 : 1));
@@ -1108,20 +1112,20 @@ const DriverPortal = () => {
     const upcomingCount = rated.filter(x => x.kind === 'upcoming').length;
     const overdueCount = rated.filter(x => x.kind === 'overdue').length;
     const overdueIds = new Set(rated.filter(x => x.kind === 'overdue').map(x => String(x.b.booking_id)));
-    const transit = assignedBookings.filter(b => b.status === 'in_transit').length;
+    const transit = scheduleBookings.filter(b => b.status === 'in_transit').length;
     const pendingPicks = pickups.filter(p => p.status === 'pending').length;
     const todayKey = dayKey(nowN);
     const tripCalendarDays = Array.from({ length: 7 }, (_, index) => {
         const date = new Date(nowN);
         date.setDate(date.getDate() + index);
         const key = dayKey(date);
-        const count = assignedBookings.filter((booking) =>
+        const count = scheduleBookings.filter((booking) =>
             !CLOSED_STATUSES.includes(String(booking.status || '').toLowerCase())
             && bookingDateKeys(booking).includes(key)
         ).length;
         return { key, date, count };
     });
-    const selectedDayBookings = assignedBookings
+    const selectedDayBookings = scheduleBookings
         .filter((booking) => !CLOSED_STATUSES.includes(String(booking.status || '').toLowerCase()))
         .filter((booking) => bookingDateKeys(booking).includes(selectedTripDate))
         .sort((a, b) => tripTimeMs(a) - tripTimeMs(b));
@@ -1132,7 +1136,7 @@ const DriverPortal = () => {
         [...overdueForToday, ...selectedDayBookings].map((booking) => [String(booking.booking_id), booking])
     ).values()];
     const overdueTripIds = new Set(overdueForToday.map((booking) => String(booking.booking_id)));
-    const assignedTripCount = assignedBookings.filter(
+    const assignedTripCount = scheduleBookings.filter(
         (booking) => !CLOSED_STATUSES.includes(String(booking.status || '').toLowerCase())
     ).length;
 

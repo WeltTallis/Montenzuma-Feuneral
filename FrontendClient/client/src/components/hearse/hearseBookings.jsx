@@ -1807,7 +1807,7 @@ const HearseBookings = () => {
 
       {/* ─── Detail Drawer ─── */}
       {drawerOpen && <DrawerOverlay onClick={closeDrawer} />}
-      <Drawer $open={drawerOpen} $w="620px">
+      <Drawer $open={drawerOpen} $w="860px">
         <DrawerHeader>
           <div>
             <DrawerTitle>Booking Details</DrawerTitle>
