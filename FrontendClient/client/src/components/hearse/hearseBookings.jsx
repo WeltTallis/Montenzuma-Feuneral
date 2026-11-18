@@ -1,11 +1,11 @@
 import { resolveBranchName, isMultiDay, getBookingDateRange, getMultiDayColor } from './viewerShared';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getTenantId, getBranchId, getBranchSlug, getBranches as getCachedBranches, getParentTenantSlug } from '../../utils/globalAuth';
+import { getBranchId, getBranchSlug, getBranches as getCachedBranches } from '../../utils/globalAuth';
 import { useSocket } from '../../utils/context/socketContext';
 import useAuthStore from '../../utils/store/useAuthStore';
-import apiClient, { fetchWithCredentials } from '../../api/axios';
-import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
+import { fetchWithCredentials } from '../../api/axios';
+import { getTenantHeaders } from '../../api/endpoints';
 import BookNewHearseModal from './BookNewHearseModal';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 
@@ -83,6 +83,7 @@ const COLORS = {
   danger: '#9B4A3F',
   dangerLight: '#F4E9E5',
   dangerDark: '#7A3B33',
+  bookingAccent: '#8A1B46',
   info: '#D97843',
   infoLight: '#F4E9E5',
   infoDark: '#B05A30',
@@ -324,75 +325,13 @@ const api = {
     return r.ok ? (await r.json()).hearses || [] : [];
   },
   getDrivers: async () => {
-    const candidates = [
-      getParentTenantSlug(),
-      getTenantSlug(),
-      localStorage.getItem('tenantSlug'),
-      localStorage.getItem('parentTenantSlug'),
-    ].filter((slug, index, slugs) => slug && slugs.indexOf(slug) === index);
-    if (!candidates.length) {
-      throw new Error('Could not resolve your organisation to load drivers. Please sign in again.');
-    }
-
-    const isDriver = (user) => {
-      const roles = [
-        user?.role,
-        user?.role_name,
-        user?.user_role,
-        ...(Array.isArray(user?.roles) ? user.roles : []),
-      ].map((role) => String(typeof role === 'object' ? role?.name || role?.role : role || '')
-        .toLowerCase()
-        .replace(/[\s_-]+/g, '_'));
-      return roles.some((role) => role === 'driver' || role.includes('driver'));
-    };
-    let lastUserList = [];
-    let successfulLookup = false;
-    let lastLookupError = null;
-
-    for (const slug of candidates) {
-      let response;
-      try {
-        response = await apiClient.get(ENDPOINTS.TENANT.USERS(slug));
-      } catch (error) {
-        if (error?.response?.status === 404) continue;
-        lastLookupError = error;
-
-        continue;
-      }
-
-      const payload = response?.data;
-      const users = Array.isArray(payload)
-        ? payload
-        : payload?.data?.users || payload?.data || payload?.users;
-      if (!Array.isArray(users)) {
-        lastLookupError = new Error(`Tenant user service returned an invalid list for "${slug}".`);
-
-        continue;
-      }
-
-      successfulLookup = true;
-      lastUserList = users;
-      const drivers = users
-        .filter(isDriver)
-        .map((user) => ({
-          id: user.driver_id ?? user.user_id ?? user.id,
-          driver_id: user.driver_id ?? user.user_id ?? user.id,
-          driver_name: user.driver_name || user.full_name
-            || `${user.first_name || ''} ${user.last_name || ''}`.trim()
-            || user.username || '',
-          driver_phone: user.driver_phone || user.phone_number || user.phone || '',
-          role: user.role,
-        }))
-        .filter((driver) => driver.id != null && driver.driver_name);
-      if (drivers.length) return drivers;
-    }
-
-    if (!successfulLookup && lastLookupError) {
-      throw new Error(lastLookupError?.response?.data?.message || lastLookupError.message || 'Unable to load tenant users for driver lineup.');
-    }
-    const roles = [...new Set(lastUserList.map((user) => String(user?.role || '')).filter(Boolean))];
-
-    return [];
+    const r = await fetchWithCredentials(`${API_BASE_URL}/all-drivers`, {
+      headers: { ...getTenantHeaders(), ...getAuthHeaders() },
+    });
+    if (!r.ok) throw new Error('Unable to load registered drivers for lineup.');
+    const payload = await r.json();
+    const drivers = Array.isArray(payload) ? payload : payload?.drivers || payload?.data?.drivers || [];
+    return Array.isArray(drivers) ? drivers.filter((driver) => driver?.driver_id != null && driver?.driver_name) : [];
   },
   getDailyLineup: async (date) => {
     const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
@@ -1167,7 +1106,10 @@ const HearseBookings = () => {
       await refreshData();
       notify.success('Booking driver and assistant lineup saved.');
     } catch (error) {
-      notify.error(error.message || 'Failed to save the booking lineup.');
+      const message = error.message || 'Failed to save the booking lineup.';
+      notify.error(lineup.driver_id
+        ? `Registered driver warning: ${message}`
+        : message);
     } finally {
       setSavingBookingLineup(null);
     }
@@ -1916,32 +1858,6 @@ const HearseBookings = () => {
                     })()}
                   </DetailValue>
                 </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Branch</DetailLabel>
-                  <DetailValue style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {(() => {
-                      const name = branchLabel(selectedBooking);
-                      const multiDay = isMultiDay(selectedBooking);
-                      const color = multiDay ? getMultiDayColor(selectedBooking) : null;
-                      return (
-                        <>
-                          {color && (
-                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
-                          )}
-                          <span style={{ fontWeight: 600, color: color || 'inherit' }}>{name}</span>
-                        </>
-                      );
-                    })()}
-                  </DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Booked By</DetailLabel>
-                  <DetailValue>{selectedBooking.booked_by || 'System'}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Created</DetailLabel>
-                  <DetailValue>{fmtDate(selectedBooking.created_at)}</DetailValue>
-                </DetailItem>
                 {selectedBooking.cancel_reason && (
                   <DetailItem style={{ gridColumn: '1 / -1' }}>
                     <DetailLabel>Cancel Reason</DetailLabel>
@@ -2040,6 +1956,36 @@ const HearseBookings = () => {
                   </div>
                 </form>
               </div>
+               <DetailGrid style={{ marginTop: '1rem', marginBottom: 0 }}>
+                 <DetailItem>
+                   <DetailLabel>Branch</DetailLabel>
+                   <DetailValue style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                     {(() => {
+                       const name = branchLabel(selectedBooking);
+                       const multiDay = isMultiDay(selectedBooking);
+                       const color = multiDay ? getMultiDayColor(selectedBooking) : null;
+                       return (
+                         <>
+                           {color && (
+                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+                           )}
+                           <span style={{ fontWeight: 600, color: color || 'inherit' }}>{name}</span>
+                         </>
+                       );
+                     })()}
+                   </DetailValue>
+                 </DetailItem>
+                 <DetailItem>
+                   <DetailLabel>Booked By</DetailLabel>
+                   <DetailValue style={{ color: COLORS.bookingAccent }}>
+                     {selectedBooking.booked_by || 'System'}
+                   </DetailValue>
+                 </DetailItem>
+                 <DetailItem>
+                   <DetailLabel>Created</DetailLabel>
+                   <DetailValue>{fmtDate(selectedBooking.created_at)}</DetailValue>
+                 </DetailItem>
+               </DetailGrid>
              </DrawerColumns>
 
               {!['completed', 'cancelled'].includes(selectedBooking.status) && (
@@ -2056,7 +2002,11 @@ const HearseBookings = () => {
                   )}
                   <SecondaryButton
                     onClick={() => { openCancelModal(selectedBooking); closeDrawer(); }}
-                    style={{ color: COLORS.danger, borderColor: COLORS.dangerLight }}
+                    style={{
+                      background: COLORS.bookingAccent,
+                      color: COLORS.white,
+                      borderColor: COLORS.bookingAccent,
+                    }}
                   >
                     {Icons.x} Cancel Booking
                   </SecondaryButton>
