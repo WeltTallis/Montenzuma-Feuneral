@@ -1,11 +1,10 @@
 # PRODUCTION Docker Compose - Single Network Configuration
-# All internal services run on port 5000
-# All services have health checks and proper dependencies
+
 
 services:
-  # =============================================================================
+
   # INFRASTRUCTURE SERVICES
-  # =============================================================================
+ 
 
   mariadb:
     image: mariadb:10.11
@@ -16,9 +15,7 @@ services:
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
-      # Kept ONLY for the healthcheck below — the image entrypoint unsets
-      # MARIADB_ROOT_PASSWORD before exec'ing the server, so it is not readable
-      # at runtime and a separate variable is needed.
+   
       MARIADB_HEALTH_PW: ${DB_ROOT_PASSWORD}
     ports:
       - '${MARIADB_EXTERNAL_PORT:-3306}:3306'
@@ -31,14 +28,7 @@ services:
       - deceased_internal
     healthcheck:
       # Talks to the server DIRECTLY as root. See the long note in
-      # docker-compose.prod.yml: `healthcheck.sh` reads credentials from
-      # /var/lib/mysql/.my-healthcheck.cnf, a file only generated on FIRST volume
-      # init, and the entrypoint's repair path is skipped whenever that file
-      # already exists. A volume where the file survived but the `healthcheck` SQL
-      # account did not is then permanently unhealthy even though the server is
-      # fine, and `condition: service_healthy` blocks the whole stack.
-      # The query below is the same assertion the image's `innodb_initialized`
-      # test makes, so crash-recovery completion is still verified.
+   
       test:
         - 'CMD-SHELL'
         - >-
@@ -116,8 +106,7 @@ services:
       DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
       INVOICES_SERVICE_URL: http://restpoint_invoice_service:5000
       COFFIN_SERVICE_URL: http://restpoint_coffin_service:5000
-      # Notification REST (bell list / mark-read / delete) is implemented by the
-      # socketio-service — there is no notification-service container in this repo.
+  
       NOTIFICATION_SERVICE_URL: http://restpoint_socketio_service:5000
       DOCUMENTS_SERVICE_URL: http://restpoint_documents_service:5000
       ANALYTICS_SERVICE_URL: http://restpoint_analytics_service:5000
@@ -130,15 +119,13 @@ services:
       SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
       EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
       WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
-      # Mini Store. Was ONLY reachable via .env.production (env_file), which is a
-      # back to the bundled 127.0.0.1:7071, gets rewritten to
+    
       STORE_SERVICE_URL: http://restpoint_store_service:5000
       SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
       LEAVE_SERVICE_URL: http://restpoint_hr_service:5000
       FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@restpoint_redis:6379
     # Gateway can start while dependencies recover; failed upstreams return 503
-    # without taking the gateway process offline.
     networks:
       - restpoint_network
       - deceased_internal
@@ -220,11 +207,8 @@ services:
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
       - tenant_service_data:/usr/src/app/data
-      # The ONE shared uploads folder — HOST DIRECTORY /opt/storage (bind mount,
-      # host path == container path). Every service writes signatures/logos/
-      # documents here and this service serves it to browsers at /uploads/...
-      # NOTE: the host dir must be writable by container uid 1001 — run
-      # scripts/setup-production-storage.sh (chown -R 1001:1001 /opt/storage).
+      # The ONE shared uploads folder — HOST DIRECTORY /opt/storage 
+  
       - /opt/storage:/opt/storage
     depends_on:
       mariadb:
@@ -288,11 +272,10 @@ services:
     volumes:
       - deceased_service_data:/usr/src/app/data
       # Write signatures/reports into the SAME shared host folder
-      # (/opt/storage) the tenant-service serves at /uploads/...
-      # (single source of truth). Bind mount: host == container path.
+
       - /opt/storage:/opt/storage
       # Legacy mount kept for old code paths that still write to
-      # /usr/src/app/uploads — now redirected INTO the shared storage.
+ 
       - /opt/storage/uploads/_legacy/deceased:/usr/src/app/uploads
     networks:
       - deceased_internal
@@ -327,10 +310,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - invoice_service_data:/usr/src/app/data
-      # Generated invoice PDFs now live on the host under /opt/storage too
+   
       - /opt/storage/invoices/invoice-service:/usr/src/app/generated
-      # Shared uploads (reads tenant signature/logo images from
-      # /opt/storage/uploads/<tenant>/signatures when stamping PDFs)
+    
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
@@ -363,24 +345,17 @@ services:
       REDIS_HOST: restpoint_redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
-      # Coffin inventory lists are large (image URLs per row + booking notes), so
-      # the service registers a bigger Redis budget than the 10MB shared default.
-      # Without this, checkAndBalance() evicted the cached list moments after it
-      # was written and every request fell through to MySQL.
+      # Coffin inventory lists are large (image URLs per row
+   
       COFFIN_REDIS_MAX_MEMORY_MB: 20
       COFFIN_REDIS_SOFT_LIMIT_MB: 16
     volumes:
       - coffin_service_data:/usr/src/app/data
-      # Coffin-service imports @montezuma/shared-services, whose barrel
-      # immediately inits FileStorageService → mkdir /opt/storage/uploads.
-      # Without this mount the non-root container crashes with EACCES.
-      # Bind mount to the HOST /opt/storage directory (uid 1001 writable).
+      # Coffin-service 
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
-    # Redis must be up BEFORE the coffin service accepts traffic. Without this the
-    # first requests run uncached: getRedisClient() backs off after a failed
-    # attempt, so early calls silently hit the database instead of the cache.
+    # Redis must be up BEFORE the coffin service accepts traffic
     depends_on:
       redis:
         condition: service_healthy
@@ -400,10 +375,7 @@ services:
     image: restpoint-documents-service:latest
     container_name: restpoint_documents_service
     restart: always
-    # Bound to loopback only — the api-gateway reaches it over the internal
-    # docker network. Publishing this port on 0.0.0.0 let anyone who could
-    # reach it bypass the gateway's auth and read/write every tenant's documents.
-    # Override DOCUMENTS_SERVICE_BIND=0.0.0.0 only for local debugging.
+ 
     expose:
       - '5000'
     ports:
@@ -422,10 +394,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - documents_service_data:/usr/src/app/data
-      # Documents service serves /uploads AND writes to it — use the shared
-      # HOST directory /opt/storage (host path == container path)
+      # Documents service serves /uploads
       - /opt/storage:/opt/storage
-      # Legacy mount redirected INTO the shared storage as well
+  
       - /opt/storage/uploads/_legacy/documents:/usr/src/app/uploads
     networks:
       - restpoint_network
@@ -468,8 +439,7 @@ services:
       start_period: 40s
 
   # Amani Cover insurance: policies, group members and claims.
-  # Own database (INSURANCE_DATABASE) because these rows carry national ID
-  # numbers - see services/insurance-service/knexfile.js.
+
   mpesa-postgres:
     image: postgres:16-alpine
     restart: always
@@ -545,12 +515,8 @@ services:
     container_name: restpoint_insurance_service
     restart: always
     ports:
-      # Host 3030, NOT 5013. This block was copied from socketio-service and
-      # kept its `:-5013` default, so insurance and socketio both bound 5013
-      # and docker refused to start insurance with "port is already allocated"
-      # (socketio won the race because .env.production sets its port
-      # explicitly, while this var was never set there and fell back to the
-      # default). 3030 is unused by every other service.
+      # Host 3030, NOT 5013socketio-service
+   
       - '5050:5050'
     env_file:
       - .env.production
@@ -577,24 +543,14 @@ services:
       - restpoint_network
     healthcheck:
       # busybox wget has NO --no-verbose / --tries / --spider flags (GNU-only),
-      # which is why the analytics healthcheck above can never pass.
-      # `wget -q -O /dev/null <url>` is the busybox form and does a real GET.
+   
       test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:5050/health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # NOTE: No notification-service container — and none is needed. The
-  # notification REST endpoints used by the UI bell (list / mark-read / delete)
-  # are implemented by the socketio-service below, and the gateway's
-  # NOTIFICATION_SERVICE_URL points at that container. Do NOT re-add a
-  # services/notification-service build block: there is no source folder, so
-  # every `docker compose up --build` would fail with
-  #   resolve: lstat .../services/notification-service: no such file or directory
 
-  # Mini Store — persistent inventory + stock module. Backed by the operations
-  # DB (mini_store_items / mini_store_transactions), so items survive refreshes.
   store-service:
     build:
       context: .
@@ -608,9 +564,7 @@ services:
       - .env.production
     environment:
       NODE_ENV: production
-      # STORE_SERVICE_PORT in .env.production is 7071; force the CONTAINER
-      # internal port to 5000 so it matches the gateway URL
-      # (http://restpoint_store_service:5000) and the port mapping above.
+      # STORE_SERVICE_PORT 
       STORE_SERVICE_PORT: 5000
       PORT: 5000
       SERVICE_NAME: store-service
@@ -696,7 +650,7 @@ services:
     volumes:
       - bodycheckout_service_data:/usr/src/app/data
       # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
-      # (HOST bind mount — host path == container path)
+     
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
@@ -818,9 +772,7 @@ services:
       OPERATIONS_DATABASE: restpoint_operations
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
-      # Flower-sample images go to the SAME host /opt/storage as every other
-      # service (was a separate florist-only volume before — data migrated by
-      # scripts/setup-production-storage.sh)
+      # Flower-sample images
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
@@ -831,9 +783,9 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
+
   # HEARSE SERVICE
-  # =============================================================================
+
 
   hearse-service:
     build:
@@ -858,8 +810,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - hearse_service_data:/usr/src/app/data
-      # Hearse images are stored in the shared HOST uploads folder
-      # /opt/storage/uploads/hearses and served via /uploads/hearses/...
+  
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
@@ -870,9 +821,9 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
+
   # WORKSHOP SERVICE
-  # =============================================================================
+
 
   workshop-service:
     build:
@@ -901,10 +852,8 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
   # HR SERVICE
-  # =============================================================================
-
+ 
   hr-service:
     build:
       context: .
@@ -925,7 +874,7 @@ services:
       GLOBAL_UPLOADS_DIR: /opt/storage/uploads
     volumes:
       # Leave supporting documents live in the shared HOST uploads folder
-      # /opt/storage/uploads/leave-documents (served at /uploads/leave-documents/...)
+
       - /opt/storage:/opt/storage
     networks:
       - restpoint_network
@@ -936,9 +885,8 @@ services:
       retries: 3
       start_period: 40s
 
-  # =============================================================================
+
   # FRONTEND
-  # =============================================================================
 
   frontend:
     build:
@@ -948,34 +896,14 @@ services:
     container_name: restpoint_frontend
     restart: always
     ports:
-      # The UI is PINNED to host port 8080 — deliberately NOT configurable.
-      # It was previously '${FRONTEND_EXTERNAL_PORT:-8080}:80', which meant the
-      # UI silently moved to 8082 whenever .env.production (8082) was the
-      # interpolation source, breaking nginx-host.conf, which reverse-proxies
-      # the SPA to http://127.0.0.1:8080. Keep this at 8080; FRONTEND_EXTERNAL_PORT
-      # in .env / .env.production is kept at 8080 for documentation only.
       - '8080:80'
-    # NO depends_on HERE — DELIBERATELY. See the full note in
-    # docker-compose.prod.yml. In short: api-gateway itself has
-    # `depends_on: { mariadb: { condition: service_healthy } }`, so ANY depends_on
-    # the UI declares on the gateway is transitively a depends_on MariaDB — which
-    # is how one unhealthy database probe kept the UI from ever starting. The UI
-    # is a static nginx bundle that serves `GET /` on its own, and its Dockerfile
-    # already resolves the gateway lazily via `resolver 127.0.0.11`, so no
-    # ordering requirement needs expressing here.
     networks:
       - restpoint_network
     volumes:
-      # READ-ONLY view of the shared uploads folder so the container's own
-      # nginx serves /uploads/... from disk (see `location ^~ /uploads/` in
-      # FrontendClient/Dockerfile). Without it those requests fall through
-      # `try_files ... /index.html` and every signature/logo/PDF renders as a
-      # broken image. `:ro` because this container only ever reads.
+  
       - /opt/storage/uploads:/opt/storage/uploads:ro
     healthcheck:
-      # busybox wget, not GNU wget — `nginx:alpine` ships no `wget` package, so
-      # `wget` is busybox's and supports neither `--no-verbose` nor `--tries`.
-      # See the identical note in docker-compose.prod.yml.
+    
       test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1/']
       interval: 30s
       timeout: 10s
@@ -1022,13 +950,6 @@ volumes:
     driver: local
   documents_service_data:
     driver: local
-  # NOTE: uploads are NOT a docker named volume anymore — every service
-  # bind-mounts the HOST directory /opt/storage (host path == container
-  # path), so all tenant uploads (signatures, logos, documents, hearse
-  # images, scans, invoices) physically live in /opt/storage on the server.
-  # Run scripts/setup-production-storage.sh once before `docker compose up`
-  # to create the dirs, migrate old volume data and set uid-1001 ownership.
-  # Database dumps / upload archives go to /opt/backups (see `make backup`).
   analytics_service_data:
     driver: local
   notification_service_data:

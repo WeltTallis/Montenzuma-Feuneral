@@ -91,30 +91,52 @@ const fmtDateShort = (d) =>
 
 const genId = (id) => `BK-${String(id ?? '').padStart(4, '0')}`;
 
-// Extract every scheduled day (YYYY-MM-DD) for a booking. booking_dates is a
-// JSON array of day strings — normalize every legacy shape we may encounter.
+// Extract every scheduled day (YYYY-MM-DD) for a booking. The API has both
+// the current JSON `booking_dates` column and several legacy date columns, so
+// merge them instead of using `||`: an empty booking_dates value must not hide
+// booking_date/from_timestamp on older records.
 function bookingDateKeys(b) {
     if (!b) return [];
-    const raw = b.booking_dates || b.dates || b.booking_date || b.event_date || b.scheduled_date || b.pickup_date || b.date;
-    if (Array.isArray(raw)) {
-        return raw
-            .map(x => (x && typeof x === 'object') ? (x.date || x.start_date || x.booking_date) : x)
-            .filter(Boolean)
-            .map(x => String(x).slice(0, 10));
-    }
-    if (typeof raw === 'string' && raw.trim()) {
-        const t = raw.trim();
-        if (t.startsWith('[')) {
-            try {
-                return JSON.parse(t)
-                    .map(x => (x && typeof x === 'object') ? (x.date || x.start_date || x.booking_date) : x)
-                    .filter(Boolean)
-                    .map(x => String(x).slice(0, 10));
-            } catch { return [t.slice(0, 10)]; }
+
+    const out = new Set();
+    const add = (value) => {
+        if (value == null || value === '') return;
+        if (Array.isArray(value)) {
+            value.forEach(add);
+            return;
         }
-        return [t.slice(0, 10)];
-    }
-    return [];
+        if (typeof value === 'object') {
+            const start = value.start_date || value.startDate || value.start || value.from || value.from_timestamp;
+            const end = value.end_date || value.endDate || value.end || value.to || value.to_timestamp;
+            if (start && end) {
+                const cursor = new Date(`${String(start).slice(0, 10)}T00:00:00`);
+                const last = new Date(`${String(end).slice(0, 10)}T00:00:00`);
+                if (!Number.isNaN(cursor.getTime()) && !Number.isNaN(last.getTime())) {
+                    while (cursor <= last) {
+                        out.add(dayKey(cursor));
+                        cursor.setDate(cursor.getDate() + 1);
+                    }
+                }
+                return;
+            }
+            add(value.date || value.booking_date || value.event_date || value.scheduled_date || value.pickup_date);
+            return;
+        }
+        const text = String(value).trim();
+        if (!text) return;
+        if (text.startsWith('[') || text.startsWith('{')) {
+            try { add(JSON.parse(text)); return; } catch { /* use the date prefix below */ }
+        }
+        const match = text.match(/\d{4}-\d{2}-\d{2}/);
+        if (match) out.add(match[0]);
+    };
+
+    [
+        b.booking_dates, b.dates, b.booking_date, b.event_date,
+        b.scheduled_date, b.pickup_date, b.date, b.from_timestamp,
+        b.to_timestamp, b.start_date, b.end_date,
+    ].forEach(add);
+    return [...out].sort();
 }
 
 const CLOSED_STATUSES = ['completed', 'cancelled', 'postponed'];

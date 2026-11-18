@@ -220,7 +220,13 @@ server {
         proxy_read_timeout    30s;
     }
 
-                # SPA fallback: any route that is not a static file returns index.html
+    # Explicit maintenance page. The production Compose file mounts the
+    # repository's nginx/maintenance.html into this document root.
+    location = /maintenance {
+        return 302 /maintenance.html;
+    }
+
+    # SPA fallback: any route that is not a static file returns index.html
     location / {
         try_files $uri $uri/ /index.html;
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;

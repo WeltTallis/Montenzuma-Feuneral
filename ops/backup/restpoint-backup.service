@@ -1,0 +1,10 @@
+[Unit]
+Description=Restpoint database and uploads backup to Cloudflare R2
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/restpoint
+EnvironmentFile=/etc/restpoint/backup.env
+ExecStart=/opt/restpoint/ops/backup/backup-to-r2.sh

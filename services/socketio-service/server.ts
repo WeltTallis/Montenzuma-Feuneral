@@ -1,125 +1,36 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import { AppError, errorHandler } from './controllers/errors';
 import Logger from '../../packages/shared-logger/dist/index';
-import { createAdapter } from '@socket.io/redis-adapter';
+import { corsOptions, ALLOWED_ORIGINS } from './utils/cors'
+import { initializeRedis, redisState } from './utils/initializeRedis';
+import { PORT } from './utils/getRedisURL';
 import { Server as SocketIOServer } from 'socket.io';
+import { SOCKET_CORS } from './utils/socketCors'
 import rateLimit from 'express-rate-limit';
-import { createClient } from 'redis';
+import { createRoutes } from './routes';
 import * as jwt from 'jsonwebtoken';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import http from 'http';
 
+//dotenv  configurations  
 dotenv.config();
 
-// ERROR HANDLING UTILITIES
-
-class AppError extends Error {
-  public statusCode: number;
-  public details: any;
-  public isOperational: boolean;
-  public code: string;
-
-  constructor(message: string, statusCode: number, details: any = null, code: string = 'ERROR') {
-    super(message);
-    this.statusCode = statusCode;
-    this.details = details;
-    this.isOperational = true;
-    this.code = code;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
-
-interface ErrorResponse {
-  success: boolean;
-  message: string;
-  details?: any;
-  stack?: string;
-}
-
-const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction): void => {
-  const statusCode = err instanceof AppError ? err.statusCode : 500;
-  const isOperational = err instanceof AppError ? err.isOperational : false;
-
-  const response: ErrorResponse = {
-    success: false,
-    message: isOperational ? err.message : 'Internal server error',
-    ...(err instanceof AppError && err.details ? { details: err.details } : {}),
-    ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {})
-  };
-
-  res.status(statusCode).json(response);
-};
-
-
 // EXPRESS APP SETUP WITH SECURITY HEADERS
-
 
 const app = express();
 const server = http.createServer(app);
 
 app.use(helmet({
+
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
   crossOriginOpenerPolicy: false,
   crossOriginResourcePolicy: false,
+
 }));
 
-const ALLOWED_ORIGINS: string[] = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean)
-  : [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:8080',
-    'https://restpoint.co.ke',
-  ];
-
-const corsOptions: cors.CorsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) {
-      return callback(null, true);
-    }
-    // Payment links run on tenant subdomains (*.restpoint.co.ke) and the
-    // standalone pay subdomain — accept any restpoint.co.ke origin so the
-    // socket handshake from a payment link is never CORS-rejected.
-    try {
-      const hostname = new URL(origin).hostname.toLowerCase();
-      if (hostname === 'restpoint.co.ke' || hostname.endsWith('.restpoint.co.ke')) {
-        return callback(null, true);
-      }
-    } catch (e) { /* malformed Origin -> fall through */ }
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-
-    Logger.warn({
-      message: "   Origin    not  allowed    by  SOCKET.IO    CORS   Policy",
-      origin: origin,
-      allowedOrigins: ALLOWED_ORIGINS
-    })
-
-    callback(new Error('Origin is not allowed by Socket.IO CORS policy'));
-  },
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'x-tenant-slug',
-    'x-tenant-id',
-    'x-user-id',
-    'x-branch-slug',
-    'x-branch-id',
-  ]
-};
 app.use(cors(corsOptions));
 
 const limiter = rateLimit({
@@ -138,58 +49,6 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // SOCKET.IO SETUP WITH ERROR HANDLING
 
 
-const PORT = parseInt(process.env.PORT || process.env.SOCKET_PORT || '5018', 10);
-
-const getRedisUrl = (): string => {
-  try {
-    if (process.env.REDIS_URL) {
-      return process.env.REDIS_URL;
-    }
-    if (process.env.REDIS_HOST) {
-      const password = process.env.REDIS_PASSWORD
-        ? `:${encodeURIComponent(process.env.REDIS_PASSWORD)}@`
-        : '';
-      const port = process.env.REDIS_PORT || 6379;
-      return `redis://${password}${process.env.REDIS_HOST}:${port}`;
-    }
-    return 'redis://redis:6379';
-  } catch (error) {
-
-    Logger.error({
-      message: " A   Redis  URL   Constructor    Happened  ",
-      error: error?.message || '  Uknown  Error'
-    })
-
-
-
-    return 'redis://redis:6379';
-  }
-};
-
-const REDIS_URL = getRedisUrl();
-
-const SOCKET_CORS = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin) || process.env.SOCKETIO_CORS_ORIGIN === '*') {
-      return callback(null, true);
-    }
-    try {
-      const hostname = new URL(origin).hostname.toLowerCase();
-      if (hostname === 'restpoint.co.ke' || hostname.endsWith('.restpoint.co.ke')) {
-        return callback(null, true);
-      }
-    } catch { /* malformed Origin -> reject */ }
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    callback(null, false);
-  },
-  methods: ['GET', 'POST'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug'],
-};
-
 const io = new SocketIOServer(server, {
   cors: SOCKET_CORS,
   transports: ['websocket', 'polling'],
@@ -200,162 +59,28 @@ const io = new SocketIOServer(server, {
 });
 
 
-// REDIS ADAPTER WITH GRACEFUL FALLBACK
+// REDIS INITIALIZE
 
 
-let redisConnected = false;
-let pubRedisReady = false;
-let subRedisReady = false;
-let pubClient: ReturnType<typeof createClient> | null = null;
-let subClient: ReturnType<typeof createClient> | null = null;
-let redisRetryTimer: ReturnType<typeof setTimeout> | null = null;
-const REDIS_RETRY_DELAY_MS = 10_000;
-const updateRedisReadiness = () => {
-  redisConnected = pubRedisReady && subRedisReady;
-};
+const userRooms = new Map<string, { tenantSlug: string; userId: string; userRole: string; connectedAt: Date }>();
+const socketIdMap = new Map<string, Set<string>>();
+const socketTenantRooms = new Map<string, Set<string>>();
+const tenantParents = new Map<string, string>();
+const tenantBranches = new Map<string, Set<string>>();
 
-const initializeRedis = async (): Promise<void> => {
-  try {
-    pubClient = createClient({
-      url: REDIS_URL,
-      socket: {
-        reconnectStrategy: (retries: number) => {
-
-          if (retries > 0 && retries % 12 === 0) {
-            Logger.warn({
-              message: `Redis still reconnecting (attempt ${retries}) — retrying with 5s backoff`
-            });
-          }
-          return Math.min(retries * 200, 5000);
-        },
-        timeout: 10000
-      }
-    });
-
-    subClient = pubClient.duplicate();
-
-    pubClient.on('error', (err: Error) => {
-
-
-      pubRedisReady = false;
-      updateRedisReadiness();
-    });
-
-    subClient.on('error', (err: Error) => {
-
-
-      subRedisReady = false;
-      updateRedisReadiness();
-    });
-
-    pubClient.on('connect', () => {
-      Logger.info({
-        message: "  Redis   pub  Client Connected   Successfully"
-      })
-
-    });
-
-    subClient.on('connect', () => {
-      Logger.info({
-        message: "  Redis   sub  Client Connected   Successfully"
-      })
-    });
-
-    // 'ready' fires after the handshake (and auth) completes — this is when the
-    // clients are truly usable. Tracking the flag here (and resetting it on
-    // 'error') keeps the health endpoint and the REST notification endpoints
-    // honest during reconnects.
-    pubClient.on('ready', () => {
-      pubRedisReady = true;
-      updateRedisReadiness();
-    });
-
-    subClient.on('ready', () => {
-      subRedisReady = true;
-      updateRedisReadiness();
-    });
-
-    await Promise.all([
-      pubClient.connect(),
-      subClient.connect()
-    ]);
-
-    pubRedisReady = pubClient.isReady;
-    subRedisReady = subClient.isReady;
-    updateRedisReadiness();
-    if (!redisConnected) throw new Error('Redis publisher and subscriber are not both ready');
-
-    io.adapter(createAdapter(pubClient, subClient));
-    Logger.info({
-      message: 'Socket.IO Redis Adapter connected successfully'
-    });
-
-    // Redis recovered AFTER startup (or after a fallback window): cancel any
-    // pending retry and re-attach every tracked socket to its rooms, because
-    // swapping the adapter resets room membership for clients that connected
-    // while the service was running in in-memory mode.
-    if (redisRetryTimer) {
-      clearTimeout(redisRetryTimer);
-      redisRetryTimer = null;
-    }
-    for (const s of io.sockets.sockets.values()) {
-      const rooms = socketTenantRooms.get(s.id);
-      if (rooms) {
-        for (const room of rooms) await s.join(room);
-      }
-      const userData = userRooms.get(s.id);
-      if (userData) await s.join(`user_${userData.userId}`);
-    }
-
-  } catch (error: any) {
-
-
-    Logger.warn({
-      message: "   Redis   Adapter   Initialization  Failed   -  Falin  back  to the   memmory   adpater  ",
-      error: error?.message || "   Uknown  Ereror "
-    })
-
-
-    pubRedisReady = false;
-    subRedisReady = false;
-    updateRedisReadiness();
-
-    try {
-      if (pubClient) await pubClient.disconnect();
-      if (subClient) await subClient.disconnect();
-    } catch (cleanupError: any) {
-      Logger.error({
-        message: 'Redis cleanup error detected during fallback',
-        error: cleanupError
-      })
-    }
-    Logger.warn({
-      message: 'Socket.IO running in-memory mode - horizontal scaling unavailable',
-    })
-
-    // SELF-HEAL: keep retrying in the background so a Redis container that
-    // boots late (or restarts) is re-attached WITHOUT a socketio-service
-    // restart. Previously a startup failure meant permanent in-memory mode.
-    if (!redisRetryTimer) {
-      redisRetryTimer = setTimeout(() => {
-        redisRetryTimer = null;
-        if (!redisConnected) {
-          console.log(`Retrying Redis adapter initialization (${REDIS_URL})...`);
-          initializeRedis().catch((retryError: any) =>
-            console.error('Redis retry failed:', retryError?.message || retryError)
-          );
-        }
-      }, REDIS_RETRY_DELAY_MS);
-      redisRetryTimer.unref?.();
-    }
+function resolveOrgRooms(tenantSlug: string): string[] {
+  const rooms = new Set<string>([`tenant_${tenantSlug}`]);
+  const parent = tenantParents.get(tenantSlug);
+  if (parent) {
+    rooms.add(`tenant_${parent}`);
+    tenantBranches.get(parent)?.forEach((branch) => rooms.add(`tenant_${branch}`));
+  } else {
+    tenantBranches.get(tenantSlug)?.forEach((branch) => rooms.add(`tenant_${branch}`));
   }
-};
+  return Array.from(rooms);
+}
 
-initializeRedis().catch(console.error);
-
-
-// SOCKET.IO MIDDLEWARE - AUTHENTICATION
-
+void initializeRedis(io, socketTenantRooms, userRooms);
 
 io.use((socket, next) => {
   try {
@@ -391,82 +116,32 @@ io.use((socket, next) => {
       return next();
     }
 
-    // Verify the JWT token
-    const jwtSecret = process.env.JWT_SECRET || 'RestPointJWTSecret2024ChangeMe!SuperSecureInProduction';
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) return next(new AppError('JWT_SECRET is not configured', 500));
     try {
       const decoded = jwt.verify(token, jwtSecret) as any;
       socket.data.authenticated = true;
       socket.data.user = decoded;
       socket.data.userId = decoded.userId || decoded.user_id || decoded.id;
       socket.data.tenantSlug = decoded.tenantSlug || decoded.tenant_slug;
-
-      Logger.info({
-        message: 'Socket authenticated',
-        userId: socket.data.userId,
-        tenantSlug: socket.data.tenantSlug,
-      });
-
-      next();
-
+      Logger.info({ message: 'Socket authenticated', userId: socket.data.userId, tenantSlug: socket.data.tenantSlug });
+      return next();
     } catch (jwtError: any) {
-      // JWT verification failed
-      Logger.warn({
-        message: 'Socket handshake rejected: invalid token',
-        error: jwtError.message,
-      });
-
+      Logger.warn({ message: 'Socket handshake rejected: invalid token', error: jwtError.message });
       const err = new AppError('Invalid authentication token', 401);
       err.code = 'INVALID_TOKEN';
-      next(err);
-
+      return next(err);
     }
   } catch (error: any) {
-    Logger.error({
-      message: 'Socket middleware error',
-      error: error.message,
-    });
+    Logger.error({ message: 'Socket middleware error', error: error.message });
     if (process.env.NODE_ENV === 'production') {
       const err = new AppError('Authentication failed', 401);
-
-      Logger.error({
-        message: "    Socket   middleware   Error  -  Authenticated fai;led",
-        error: error?.message || "  Uknown  Error"
-      })
-
       err.code = 'AUTH_FAILED';
-      next(err);
-    } else {
-      next();
+      return next(err);
     }
+    return next();
   }
 });
-
-
-// STATE & ORG REGISTRY TRACKING
-
-
-const userRooms = new Map<string, { tenantSlug: string; userId: string; userRole: string; connectedAt: Date }>();
-const socketIdMap = new Map<string, Set<string>>();
-const socketTenantRooms = new Map<string, Set<string>>();
-
-const tenantParents = new Map<string, string>();      // branchSlug -> parentSlug
-const tenantBranches = new Map<string, Set<string>>(); // parentSlug -> Set<branchSlug>
-
-function resolveOrgRooms(tenantSlug: string): string[] {
-  const rooms = new Set<string>([`tenant_${tenantSlug}`]);
-  const parent = tenantParents.get(tenantSlug);
-
-  if (parent) {
-    rooms.add(`tenant_${parent}`);
-    const siblings = tenantBranches.get(parent);
-    if (siblings) siblings.forEach((b) => rooms.add(`tenant_${b}`));
-  } else {
-    const branches = tenantBranches.get(tenantSlug);
-    if (branches) branches.forEach((b) => rooms.add(`tenant_${b}`));
-  }
-  return Array.from(rooms);
-}
-
 
 // SOCKET.IO EVENT HANDLERS
 
@@ -548,7 +223,7 @@ io.on('connection', (socket) => {
 
       Logger.info({
         message:
-          ` 📎 Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`
+          ` Socket ${socket.id} joined for user ${userId}: rooms=[${Array.from(rooms).join(', ')}]`
       })
 
       if (typeof callback === 'function') {
@@ -571,10 +246,6 @@ io.on('connection', (socket) => {
       });
 
     } catch (error: any) {
-
-
-
-
       Logger.error({
         message: "Joined    tenat  error",
         error: error
@@ -672,234 +343,16 @@ io.on('connection', (socket) => {
 });
 
 
-// REST ENDPOINTS - NOTIFICATION EMIT
-
-
-interface EmitBody {
-  tenantSlug?: string;
-  data?: any;
-  target?: string | string[];
-  branchSlugs?: string[];
-}
-
-app.post('/emit/:event', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { event } = req.params;
-    const { tenantSlug, data, target, branchSlugs } = req.body as EmitBody;
-
-    if (!event || typeof event !== 'string') throw new AppError('Invalid event name', 400);
-    if (!tenantSlug) throw new AppError('tenantSlug is required', 400);
-    if (!data || typeof data !== 'object') throw new AppError('Data must be a valid object', 400);
-    if (!/^[a-zA-Z0-9\-_]+$/.test(event)) throw new AppError('Invalid event name format', 400);
-    if (!/^[a-z0-9-]+$/.test(tenantSlug)) throw new AppError('Invalid tenant slug format', 400);
-
-    const payload = {
-      ...data,
-      timestamp: new Date().toISOString()
-    };
-
-    const noPrefixEvents = ['ticket_response', 'ticket_updated', 'onboarding-progress', 'hearse_data_changed'];
-    const eventName = noPrefixEvents.includes(event) ? event : `notification:${event}`;
-
-    if (target && typeof target !== 'string' &&
-      (!Array.isArray(target) || target.some((room) => typeof room !== 'string'))) {
-      throw new AppError('Target must be a string or array of strings', 400);
-    }
-    if (!target && Array.isArray(branchSlugs) && branchSlugs.length > 0 &&
-      !branchSlugs.some((slug) => typeof slug === 'string' && /^[a-z0-9-]+$/.test(slug))) {
-      throw new AppError('No valid branch slugs provided', 400);
-    }
-
-    const requiresPersistence = eventName.startsWith('notification:') || eventName.startsWith('alert:') ||
-      eventName.startsWith('new_booking') || eventName.startsWith('booking_');
-    if (requiresPersistence) {
-      if (!redisConnected || !pubClient?.isReady) {
-        throw new AppError('Notification storage is temporarily unavailable', 503, null, 'REDIS_UNAVAILABLE');
-      }
-
-      try {
-        const notifId = data.id || `notif-${Date.now()}`;
-        const notifValue = JSON.stringify({
-          id: notifId,
-          title: data.title || eventName,
-          message: data.message || `New event: ${eventName}`,
-          type: data.type || 'info',
-          priority: data.priority || 'low',
-          fullContent: data.fullContent || data.details || data.message || '',
-          data,
-          createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 86400000).toISOString(),
-          read: false,
-          delivered: false,
-        });
-
-        if (tenantSlug === 'system' || tenantSlug === 'all') {
-          const allTenants = new Set<string>([
-            'restpoint',
-            'default',
-            'main',
-            'system',
-            'system_shared'
-          ]);
-
-          userRooms.forEach((userData) => allTenants.add(userData.tenantSlug));
-          await Promise.all(Array.from(allTenants, (tenant) =>
-            pubClient!.setEx(`notifications:${tenant}:socketio:${notifId}`, 86400, notifValue)
-          ));
-        } else {
-          await pubClient.setEx(`notifications:${tenantSlug}:socketio:${notifId}`, 86400, notifValue);
-        }
-      } catch (error: any) {
-        console.error('Failed to store notification in Redis:', error);
-        throw new AppError('Notification could not be persisted; please retry', 503, null, 'REDIS_WRITE_FAILED');
-      }
-    }
-
-    if (target) {
-      if (typeof target === 'string') {
-        io.to(target).emit(eventName, payload);
-      } else if (Array.isArray(target)) {
-        // Broadcast to the room array in ONE pass. io.in([...rooms]) unions the
-        // sockets of all listed rooms, so a socket that belongs to several of
-        // them (e.g. a branch user's socket sits in its branch room AND the
-        // parent org room) receives the event exactly once. The previous
-        // per-room forEach emitted a separate packet per room and every user
-        // in more than one targeted room got the SAME notification twice.
-        io.in(target).emit(eventName, payload);
-      } else {
-        throw new AppError('Target must be a string or array of strings', 400);
-      }
-    } else if (Array.isArray(branchSlugs) && branchSlugs.length > 0) {
-      // Branch-targeted emission: deliver ONLY to the specified branch rooms
-      // (complete branch slugs, e.g. org-home-machakos). Skips the org-wide
-      // fan-out so other branches NEVER see this notification.
-      const branchRooms = branchSlugs
-        .filter((s: any): s is string => typeof s === 'string' && /^[a-z0-9-]+$/.test(s))
-        .map((s: string) => `tenant_${s}`);
-      if (branchRooms.length === 0) throw new AppError('No valid branch slugs provided', 400);
-      // ONE union broadcast (not one packet per room) — see the comment on the
-      // target-array branch above for why per-room loops duplicate deliveries.
-      io.in(branchRooms).emit(eventName, payload);
-      console.log(`[SocketIO] Emitted ${eventName} to branch rooms [${branchRooms.join(', ')}]`);
-    } else if (tenantSlug === 'system' || tenantSlug === 'all') {
-      io.emit(eventName, payload);
-
-      Logger.info({
-        message: `    Broadcasted    $   {eventName}   to all      available  clients   `
-      })
-
-    } else {
-      const rooms = resolveOrgRooms(tenantSlug);
-      // ONE union broadcast (not one packet per room). resolveOrgRooms returns
-      // the tenant room + parent + sibling branch rooms, and join-tenant puts
-      // branch sockets in BOTH their branch room and the parent org room — so
-      // the previous per-room forEach made those sockets receive every
-      // notification twice (admissions, hearse bookings, store dispatch, …).
-      // io.in([...rooms]) delivers at most one copy per socket.
-      io.in(rooms).emit(eventName, payload);
-      console.log(`[SocketIO] Emitted ${eventName} to [${rooms.join(', ')}]`);
-    }
-
-
-
-    Logger.info({
-      message: ` Emmited     ${eventName}   to  tenant   ${tenantSlug}`
-    })
-
-
-
-    res.json({
-      success: true,
-      event: eventName,
-      tenantSlug,
-      deliveryScope: redisConnected ? 'cluster' : 'local_only',
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get('/health', (req: Request, res: Response) => {
-  try {
-    const health = {
-      status: 'UP',
-      service: 'socketio-service',
-      version: '1.0.0',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      connections: {
-        active: typeof io.engine.clientsCount === 'number' ? io.engine.clientsCount : 0,
-        userRooms: userRooms.size,
-        socketIdMap: socketIdMap.size
-      },
-      redis: {
-        connected: redisConnected,
-        publisherReady: pubRedisReady,
-        subscriberReady: subRedisReady
-      },
-      environment: process.env.NODE_ENV || 'development'
-    };
-
-    res.status(200).json(health);
-
-  } catch (error) {
-    Logger.error({
-      message: 'Health check error',
-      error: error
-    });
-    res.status(500).json({
-      status: 'ERROR',
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-app.get('/stats', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const stats = {
-      activeConnections: Number(io.engine.clientsCount) || 0,
-      userRooms: userRooms.size,
-      socketIdMap: socketIdMap.size,
-      redisConnected,
-      rooms: Array.from(io.sockets.adapter.rooms.keys()).filter((r: string) => r.startsWith('tenant_')),
-      timestamp: new Date().toISOString()
-    };
-
-    res.json(stats);
-
-  } catch (error) {
-    Logger.error({
-      message: 'Stats error',
-      error: error
-    });
-    next(error);
-  }
-});
-
-app.get('/rooms/:room/members', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { room } = req.params;
-
-    if (!room || typeof room !== 'string') {
-      throw new AppError('Invalid room name', 400);
-    }
-
-    const roomData = io.sockets.adapter.rooms.get(room);
-
-    res.json({
-      room,
-      members: roomData ? Array.from(roomData) : [],
-      count: roomData ? roomData.size : 0,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    next(error);
-  }
-});
+// REST endpoints are registered in one route module and receive only the
+// runtime dependencies needed by their controllers.
+app.use(createRoutes({
+  io,
+  logger: Logger,
+      redisConnected: () => redisState.connected,
+      pubClient: () => redisState.publisher,
+  userRooms,
+  resolveOrgRooms,
+}));
 
 // Global 404 & Error Handler
 app.use((req, res) => {
@@ -918,6 +371,7 @@ app.use(errorHandler);
 
 // Graceful Shutdown
 let shuttingDown = false;
+
 const gracefulShutdown = async (signal: string, exitCode = 0): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
@@ -933,16 +387,16 @@ const gracefulShutdown = async (signal: string, exitCode = 0): Promise<void> => 
   }, 10000);
 
   try {
-    if (redisRetryTimer) {
-      clearTimeout(redisRetryTimer);
-      redisRetryTimer = null;
+    if (redisState.retryTimer) {
+      clearTimeout(redisState.retryTimer);
+      redisState.retryTimer = null;
     }
 
     await new Promise<void>((resolve, reject) => {
       io.close((error?: Error) => error ? reject(error) : resolve());
     });
 
-    for (const client of [pubClient, subClient]) {
+    for (const client of [redisState.publisher, redisState.subscriber]) {
       if (client?.isOpen) await client.quit();
     }
 
@@ -984,7 +438,7 @@ server.listen(PORT, '0.0.0.0', () => {
     message: `Socket.IO Server running on port ${PORT}`
   });
   Logger.info({
-    message: `Redis: ${redisConnected ? 'Connected' : 'Fallback mode'}`
+    message: `Redis: ${redisState.connected ? 'Connected' : 'Fallback mode'}`
   });
   Logger.info({
     message: `Origins: ${ALLOWED_ORIGINS.join(', ')}`

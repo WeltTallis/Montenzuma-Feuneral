@@ -1,10 +1,7 @@
 version: '3.8'
 
-# ============================================================================
 # SERVICE REGISTRY - Consul
-# ============================================================================
-# This file adds Consul service registry to your existing stack.
-# Run: docker-compose -f docker-compose.yml -f docker-compose.registry.yml up -d
+
 
 services:
   # Consul Server - Service Registry

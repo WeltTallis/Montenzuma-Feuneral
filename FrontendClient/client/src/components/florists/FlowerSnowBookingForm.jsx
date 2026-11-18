@@ -1,8 +1,4 @@
 // FlowerSnowBookingForm.jsx
-// Flower booking side panel: two step wizard, autofilled ready-at time,
-// the arrangements the client picked in the gallery, departed name dedication,
-// free text ribbon color, size cards, review step, and the compact
-// confirmation. Rosewood footer inside.
 
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -11,14 +7,7 @@ import Snowfall from './Snowfall'
 import notify from '../../utils/notify';
 import { resolveTenantLogoSrc, getTenantBrandingFromStorage, firstNonEmptyString } from '../../utils/tenantResolver/tenantBranding';
 import { getBranchSlug, getBranchId } from '../../utils/globalAuth';
-/* ─────────────────────────────────────────────────────────────────────────────
-   Flower booking panel — "intake sheet" design language.
-   Palette + component treatment follow the approved reference: paper-white
-   panel, brass section rules, dashed-underline fields, verdigris tick badges
-   and berry reserved for buttons + footer only.
-   Fonts (Saira / Cormorant Garamond / JetBrains Mono / Karla) are already
-   loaded once in src/index.css — never re-import them here.
-   ───────────────────────────────────────────────────────────────────────── */
+
 const FORM_CSS = `
 :root{
   --ink:#15171A; --ink2:#5F584C; --faint:#A8A29E;
@@ -673,245 +662,245 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
         <button className="fbp-close" onClick={onClose} aria-label="Close booking panel">×</button>
 
         <div className="fbp-scroll">
-              <header className="doc-head">
-                {/* The REAL funeral home crest: tenant settings first, session
+          <header className="doc-head">
+            {/* The REAL funeral home crest: tenant settings first, session
                     branding second, then a monogram, then the sprig. A broken or
                     missing image degrades instead of showing a broken icon. */}
-                <div className={'logo-wrap' + (!showLogo && !showMonogram ? ' fallback' : '')}>
-                  {showLogo && (
-                    <img key={branding.logoUrl} src={branding.logoUrl} alt={`${branding.name} logo`} onError={() => setLogoBroken(true)} />
+            <div className={'logo-wrap' + (!showLogo && !showMonogram ? ' fallback' : '')}>
+              {showLogo && (
+                <img key={branding.logoUrl} src={branding.logoUrl} alt={`${branding.name} logo`} onError={() => setLogoBroken(true)} />
+              )}
+              {showMonogram && (
+                <div className="logo-mono" aria-label={branding.name}>{branding.monogram}</div>
+              )}
+              <svg className="sprig" aria-hidden="true"><use href="#sprig" /></svg>
+            </div>
+            <h1>Flower <em>Booking</em> Request</h1>
+            <p className="doc-sub">Hand-arranged · Delivered with grace</p>
+            {!confirm && dep && <p className="inmemory">Flowers for {dep}</p>}
+            <p className="doc-meta">
+              DATE <b>{clock.date || '—'}</b> &nbsp;·&nbsp; TIME <b>{clock.time || '—'}</b>
+            </p>
+          </header>
+          <div className="doc-rule" />
+
+          {!confirm && (
+            <ol className="stepstrip">
+              <li className={step === 1 ? 'cur' : step > 1 ? 'done' : ''} aria-current={step === 1 ? 'step' : undefined}>
+                <i>01</i><span>Arrangement</span>
+              </li>
+              <li className={step === 2 ? 'cur' : ''} aria-current={step === 2 ? 'step' : undefined}>
+                <i>02</i><span>Details</span>
+              </li>
+            </ol>
+          )}
+
+          <div className="panes">
+
+            {/* STEP 1: arrangement */}
+            {step === 1 && (
+              <section className="pane active">
+                {/* 01 · SERVICE */}
+                <div className="section">
+                  <div className="section-head"><span className="n">01</span><span className="t">Service &amp; Tribute</span></div>
+
+                  <div className="frow">
+                    <div className="field">
+                      <label htmlFor="fFuneralDate">Funeral date <span className="opt">(optional)</span></label>
+                      <div className={'inwrap' + (form.funeralDate ? ' has-val' : '')}>
+                        <input type="date" id="fFuneralDate" {...set('funeralDate')} />
+                        <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                      </div>
+                    </div>
+                    <div className={'field' + (bad.dep ? ' bad' : '')}>
+                      <label htmlFor="fDep">Departed name <span className="req">*</span></label>
+                      <div className={'inwrap' + (form.dep ? ' has-val' : '')}>
+                        <input type="text" id="fDep" placeholder="e.g. Mary Wanjiku" autoComplete="off" {...set('dep')} />
+                        <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                      </div>
+                      <p className="err">Please enter the departed name</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 02 · ARRANGEMENT */}
+                <div className="section">
+                  <div className="section-head"><span className="n">02</span><span className="t">Arrangement Details</span></div>
+
+                  {/* The arrangements the client picked in the gallery */}
+                  {chosen.length > 0 && (
+                    <div className="chosen" role="list">
+                      {chosen.map(c => (
+                        <div className="chosenRow" key={c.id || c.title} role="listitem">
+                          {c.image && <img className="chosenThumb" src={c.image} alt={c.title} />}
+                          <div className="chosenInfo">
+                            <b>{c.title}</b>
+                            <span>{[c.types[0], c.colors.slice(0, 2).join(', '), c.sizes[0]].filter(Boolean).join(' · ') || 'Custom arrangement'}</span>
+                          </div>
+                          <div className="chosenQty" role="group" aria-label={`Quantity for ${c.title}`}>
+                            <button
+                              type="button"
+                              className="qtybtn"
+                              onClick={() => bumpQty(c.id, -1)}
+                              disabled={qtyOf(c.id) <= 1}
+                              aria-label={`Decrease quantity of ${c.title}`}
+                            >−</button>
+                            <span className="qtyval">{qtyOf(c.id)}</span>
+                            <button
+                              type="button"
+                              className="qtybtn"
+                              onClick={() => bumpQty(c.id, 1)}
+                              disabled={qtyOf(c.id) >= 99}
+                              aria-label={`Increase quantity of ${c.title}`}
+                            >+</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  {showMonogram && (
-                    <div className="logo-mono" aria-label={branding.name}>{branding.monogram}</div>
-                  )}
+
+                  <div className="field">
+                    <label htmlFor="fFlowers">Flowers</label>
+                    {flowerOptions.length > 0 && (
+                      <div className="flower-choice-list">
+                        {flowerOptions.map(flower => (
+                          <label key={flower} className={selectedFlowers.includes(flower) ? 'on' : ''}>
+                            <input type="checkbox" checked={selectedFlowers.includes(flower)} onChange={() => toggleFlower(flower)} />
+                            <span>{flower}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    <div className={'inwrap' + (form.flowers ? ' has-val' : '')}>
+                      <input type="text" id="fFlowers" placeholder="e.g. Red Roses, White Lilies, Gypsophila" autoComplete="off" {...set('flowers')} />
+                      <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                    </div>
+                    <p className="autofilled">Leave blank and the florist will arrange seasonal flowers.</p>
+                  </div>
+
+                  <div className="field">
+                    <label>Size preference <span className="opt">(optional)</span></label>
+                    <div className="sizes">
+                      {SIZES.map(([s, sub]) => (
+                        <button
+                          key={s}
+                          type="button"
+                          className={'sizecard' + (form.size === s ? ' on' : '')}
+                          onClick={() => toggleSize(s)}
+                          aria-pressed={form.size === s}
+                        >
+                          <span className="tick"><svg><use href="#tick" /></svg></span>
+                          <b>{s}</b>
+                          <small>{sub}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="fNotes">Special design instructions <span className="opt">(optional)</span></label>
+                    <div className={'tareawrap' + (form.notes ? ' has-val' : '')}>
+                      <textarea id="fNotes" maxLength={300} placeholder="Favourite blooms, colours..." {...set('notes')} />
+                      <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                      <span className="counter">{form.notes.length} / 300</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="actions">
+                  <button type="button" className="btn-primary" onClick={goDetails}>
+                    Continue
+                    <svg className="b" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* STEP 2: review + details */}
+            {step === 2 && (
+              <section className="pane active">
+                <div className="section">
+                  <div className="section-head"><span className="n">01</span><span className="t">Review Request</span></div>
+                  <dl className="review">
+                    {reviewRows.length
+                      ? reviewRows.map(([k, v]) => (
+                        <div className="rv" key={k}><dt>{k}</dt><dd>{v}</dd></div>
+                      ))
+                      : <div className="rv"><dt>Arrangement</dt><dd>Standard, florist's choice</dd></div>}
+                  </dl>
+                </div>
+
+                <div className="section">
+                  <div className="section-head"><span className="n">02</span><span className="t">Your Details</span></div>
+
+                  <div className={'field' + (bad.name ? ' bad' : '')}>
+                    <label htmlFor="fName">Full name <span className="req">*</span></label>
+                    <div className={'inwrap' + (form.name ? ' has-val' : '')}>
+                      <input type="text" id="fName" autoComplete="name" placeholder="e.g. John Kamau" {...set('name')} />
+                      <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                    </div>
+                    <p className="err">Please enter your name</p>
+                  </div>
+
+                  <div className={'field' + (bad.phone ? ' bad' : '')}>
+                    <label htmlFor="fPhone">Phone <span className="req">*</span></label>
+                    <div className={'inwrap' + (form.phone ? ' has-val' : '')}>
+                      <input type="tel" id="fPhone" autoComplete="tel" inputMode="tel" placeholder="e.g. +254 700 000 000" value={form.phone} onChange={setPhone} />
+                      <span className="tickbadge"><svg><use href="#tick" /></svg></span>
+                    </div>
+                    <p className="err">Enter a valid phone number</p>
+                  </div>
+                </div>
+
+                <div className="actions">
+                  <button type="button" className="btn-ghost" onClick={() => setStep(1)}>Back</button>
+                  <button className="btn-primary" type="button" onClick={submit} disabled={sending}>
+                    {sending ? <><span className="fbspin" />Submitting…</> : <>Request Booking</>}
+                  </button>
+                </div>
+                <p className="formnote">No payment now. We'll confirm by phone.</p>
+              </section>
+            )}
+
+            {/* CONFIRMATION: heading first, sprig below the button */}
+            {step === 3 && confirm && (
+              <section className="pane active">
+                <div className="conf">
+                  <h2>Booking <em>Received</em></h2>
+                  <p className="csub">{confirm.mem}</p>
+                  <div className="cref">
+                    {confirm.ref && <span>Ref · {confirm.ref}</span>}
+                  </div>
+                  <div className="conf-meta">
+                    {clock.date && <span>Logged · <b>{clock.date}</b></span>}
+                    {confirm.size && <span>Size · <b>{confirm.size.toUpperCase()}</b></span>}
+                  </div>
+                  <div className="actions">
+                    <button type="button" className="btn-primary" onClick={() => {
+                      const slug = localStorage.getItem('tenantSlug') || ''
+                      navigate(slug ? `/${slug}/receptionist` : '/reception')
+                    }}>
+                      Done
+                    </button>
+                  </div>
                   <svg className="sprig" aria-hidden="true"><use href="#sprig" /></svg>
                 </div>
-                <h1>Flower <em>Booking</em> Request</h1>
-                <p className="doc-sub">Hand-arranged · Delivered with grace</p>
-                {!confirm && dep && <p className="inmemory">Flowers for {dep}</p>}
-                <p className="doc-meta">
-                  DATE <b>{clock.date || '—'}</b> &nbsp;·&nbsp; TIME <b>{clock.time || '—'}</b>
-                </p>
-              </header>
-              <div className="doc-rule" />
+              </section>
+            )}
 
-              {!confirm && (
-                <ol className="stepstrip">
-                  <li className={step === 1 ? 'cur' : step > 1 ? 'done' : ''} aria-current={step === 1 ? 'step' : undefined}>
-                    <i>01</i><span>Arrangement</span>
-                  </li>
-                  <li className={step === 2 ? 'cur' : ''} aria-current={step === 2 ? 'step' : undefined}>
-                    <i>02</i><span>Details</span>
-                  </li>
-                </ol>
-              )}
+          </div>
 
-                <div className="panes">
-
-                  {/* STEP 1: arrangement */}
-                  {step === 1 && (
-                    <section className="pane active">
-                      {/* 01 · SERVICE */}
-                      <div className="section">
-                        <div className="section-head"><span className="n">01</span><span className="t">Service &amp; Tribute</span></div>
-
-                        <div className="frow">
-                          <div className="field">
-                            <label htmlFor="fFuneralDate">Funeral date <span className="opt">(optional)</span></label>
-                            <div className={'inwrap' + (form.funeralDate ? ' has-val' : '')}>
-                              <input type="date" id="fFuneralDate" {...set('funeralDate')} />
-                              <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                            </div>
-                          </div>
-                          <div className={'field' + (bad.dep ? ' bad' : '')}>
-                            <label htmlFor="fDep">Departed name <span className="req">*</span></label>
-                            <div className={'inwrap' + (form.dep ? ' has-val' : '')}>
-                              <input type="text" id="fDep" placeholder="e.g. Mary Wanjiku" autoComplete="off" {...set('dep')} />
-                              <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                            </div>
-                            <p className="err">Please enter the departed name</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 02 · ARRANGEMENT */}
-                      <div className="section">
-                        <div className="section-head"><span className="n">02</span><span className="t">Arrangement Details</span></div>
-
-                      {/* The arrangements the client picked in the gallery */}
-                      {chosen.length > 0 && (
-                        <div className="chosen" role="list">
-                          {chosen.map(c => (
-                            <div className="chosenRow" key={c.id || c.title} role="listitem">
-                              {c.image && <img className="chosenThumb" src={c.image} alt={c.title} />}
-                              <div className="chosenInfo">
-                                <b>{c.title}</b>
-                                <span>{[c.types[0], c.colors.slice(0, 2).join(', '), c.sizes[0]].filter(Boolean).join(' · ') || 'Custom arrangement'}</span>
-                              </div>
-                              <div className="chosenQty" role="group" aria-label={`Quantity for ${c.title}`}>
-                                <button
-                                  type="button"
-                                  className="qtybtn"
-                                  onClick={() => bumpQty(c.id, -1)}
-                                  disabled={qtyOf(c.id) <= 1}
-                                  aria-label={`Decrease quantity of ${c.title}`}
-                                >−</button>
-                                <span className="qtyval">{qtyOf(c.id)}</span>
-                                <button
-                                  type="button"
-                                  className="qtybtn"
-                                  onClick={() => bumpQty(c.id, 1)}
-                                  disabled={qtyOf(c.id) >= 99}
-                                  aria-label={`Increase quantity of ${c.title}`}
-                                >+</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="field">
-                          <label htmlFor="fFlowers">Flowers</label>
-                          {flowerOptions.length > 0 && (
-                            <div className="flower-choice-list">
-                              {flowerOptions.map(flower => (
-                                <label key={flower} className={selectedFlowers.includes(flower) ? 'on' : ''}>
-                                  <input type="checkbox" checked={selectedFlowers.includes(flower)} onChange={() => toggleFlower(flower)} />
-                                  <span>{flower}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                          <div className={'inwrap' + (form.flowers ? ' has-val' : '')}>
-                            <input type="text" id="fFlowers" placeholder="e.g. Red Roses, White Lilies, Gypsophila" autoComplete="off" {...set('flowers')} />
-                            <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                          </div>
-                          <p className="autofilled">Leave blank and the florist will arrange seasonal flowers.</p>
-                        </div>
-
-                      <div className="field">
-                          <label>Size preference <span className="opt">(optional)</span></label>
-                          <div className="sizes">
-                            {SIZES.map(([s, sub]) => (
-                              <button
-                                key={s}
-                                type="button"
-                                className={'sizecard' + (form.size === s ? ' on' : '')}
-                                onClick={() => toggleSize(s)}
-                                aria-pressed={form.size === s}
-                              >
-                                <span className="tick"><svg><use href="#tick" /></svg></span>
-                                <b>{s}</b>
-                                <small>{sub}</small>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="field">
-                          <label htmlFor="fNotes">Special design instructions <span className="opt">(optional)</span></label>
-                          <div className={'tareawrap' + (form.notes ? ' has-val' : '')}>
-                            <textarea id="fNotes" maxLength={300} placeholder="Favourite blooms, colours..." {...set('notes')} />
-                            <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                            <span className="counter">{form.notes.length} / 300</span>
-                          </div>
-                        </div>
-                      </div>
-
-                        <div className="actions">
-                          <button type="button" className="btn-primary" onClick={goDetails}>
-                            Continue
-                            <svg className="b" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                          </button>
-                        </div>
-                    </section>
-                  )}
-
-                  {/* STEP 2: review + details */}
-                  {step === 2 && (
-                    <section className="pane active">
-                      <div className="section">
-                        <div className="section-head"><span className="n">01</span><span className="t">Review Request</span></div>
-                        <dl className="review">
-                          {reviewRows.length
-                            ? reviewRows.map(([k, v]) => (
-                              <div className="rv" key={k}><dt>{k}</dt><dd>{v}</dd></div>
-                            ))
-                            : <div className="rv"><dt>Arrangement</dt><dd>Standard, florist's choice</dd></div>}
-                        </dl>
-                      </div>
-
-                      <div className="section">
-                        <div className="section-head"><span className="n">02</span><span className="t">Your Details</span></div>
-
-                        <div className={'field' + (bad.name ? ' bad' : '')}>
-                          <label htmlFor="fName">Full name <span className="req">*</span></label>
-                          <div className={'inwrap' + (form.name ? ' has-val' : '')}>
-                            <input type="text" id="fName" autoComplete="name" placeholder="e.g. John Kamau" {...set('name')} />
-                            <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                          </div>
-                          <p className="err">Please enter your name</p>
-                        </div>
-
-                        <div className={'field' + (bad.phone ? ' bad' : '')}>
-                          <label htmlFor="fPhone">Phone <span className="req">*</span></label>
-                          <div className={'inwrap' + (form.phone ? ' has-val' : '')}>
-                            <input type="tel" id="fPhone" autoComplete="tel" inputMode="tel" placeholder="e.g. +254 700 000 000" value={form.phone} onChange={setPhone} />
-                            <span className="tickbadge"><svg><use href="#tick" /></svg></span>
-                          </div>
-                          <p className="err">Enter a valid phone number</p>
-                        </div>
-                      </div>
-
-                      <div className="actions">
-                        <button type="button" className="btn-ghost" onClick={() => setStep(1)}>Back</button>
-                        <button className="btn-primary" type="button" onClick={submit} disabled={sending}>
-                          {sending ? <><span className="fbspin" />Submitting…</> : <>Request Booking</>}
-                        </button>
-                      </div>
-                      <p className="formnote">No payment now. We'll confirm by phone.</p>
-                    </section>
-                  )}
-
-                  {/* CONFIRMATION: heading first, sprig below the button */}
-                  {step === 3 && confirm && (
-                    <section className="pane active">
-                      <div className="conf">
-                        <h2>Booking <em>Received</em></h2>
-                        <p className="csub">{confirm.mem}</p>
-                        <div className="cref">
-                          {confirm.ref && <span>Ref · {confirm.ref}</span>}
-                        </div>
-                        <div className="conf-meta">
-                          {clock.date && <span>Logged · <b>{clock.date}</b></span>}
-                          {confirm.size && <span>Size · <b>{confirm.size.toUpperCase()}</b></span>}
-                        </div>
-                        <div className="actions">
-                          <button type="button" className="btn-primary" onClick={() => {
-                            const slug = localStorage.getItem('tenantSlug') || ''
-                            navigate(slug ? `/${slug}/receptionist` : '/reception')
-                          }}>
-                            Done
-                          </button>
-                        </div>
-                        <svg className="sprig" aria-hidden="true"><use href="#sprig" /></svg>
-                      </div>
-                    </section>
-                  )}
-
-                </div>
-
-              <footer className="site-foot">
-                <div className="leafmark">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#F5EFE3" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" /><path d="M4 20c4-6.5 8.5-10 13-12.5" />
-                  </svg>
-                </div>
-                <p className="tagline">Every farewell, arranged with grace.</p>
-                <div className="values">
-                  <span>Dignity</span><b>·</b><span>Care</span><b>·</b><span>Respect</span>
-                </div>
-              </footer>
+          <footer className="site-foot">
+            <div className="leafmark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#F5EFE3" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" /><path d="M4 20c4-6.5 8.5-10 13-12.5" />
+              </svg>
+            </div>
+            <p className="tagline">Every farewell, arranged with grace.</p>
+            <div className="values">
+              <span>Dignity</span><b>·</b><span>Care</span><b>·</b><span>Respect</span>
+            </div>
+          </footer>
         </div>
       </aside>
     </>

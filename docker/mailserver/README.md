@@ -1,6 +1,22 @@
 # RestPoint self-hosted mail
 
-The production Compose file runs Docker Mailserver for `restpoint.co.ke`.
+//pull image  
+cd /opt/restpoint
+
+sed -i 's#ghcr.io/docker-mailserver/docker-mailserver:v17.0.0#ghcr.io/docker-mailserver/docker-mailserver:17.0.0-r2#' docker-compose.prod.yml
+
+grep -n 'docker-mailserver' docker-compose.prod.yml
+
+docker compose --env-file .env.production -f docker-compose.prod.yml config --images | grep mailserver
+
+docker compose --env-file .env.production -f docker-compose.prod.yml pull mailserver
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d mailserver
+
+
+
+
+The production Compose file runs Docker Mailserver `17.0.0-r2` for
+`restpoint.co.ke`.
 The auth service submits mail to `mail.restpoint.co.ke:587` using STARTTLS;
 Docker's network alias routes that hostname to the mail container internally.
 The mailserver also exposes SMTP on port 25 for delivery and IMAPS on 993.
@@ -63,6 +79,64 @@ Verify without printing secrets:
 ```sh
 docker exec restpoint_auth_service node -e 'console.log({host:process.env.SMTP_HOST,userSet:!!process.env.SMTP_USER,passwordSet:!!process.env.SMTP_PASSWORD})'
 ```
+
+## Troubleshooting
+
+Use the production Compose file when checking the mail service:
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml ps mailserver auth-service
+docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=200 mailserver
+docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=200 auth-service
+```
+
+Confirm the certificate and mailbox exist:
+
+```sh
+sudo test -s /etc/letsencrypt/live/mail.restpoint.co.ke/fullchain.pem
+sudo test -s /etc/letsencrypt/live/mail.restpoint.co.ke/privkey.pem
+docker exec restpoint_mailserver setup email list
+docker exec restpoint_auth_service node -e 'console.log({host:process.env.SMTP_HOST,port:process.env.SMTP_PORT,userSet:!!process.env.SMTP_USER,passwordSet:!!process.env.SMTP_PASSWORD})'
+```
+
+The auth service reads `SMTP_PASSWORD`, not `SMTP_PASS`. Keep the mail host
+DNS-only in Cloudflare; the web proxy cannot proxy SMTP, IMAPS, or MX traffic.
+After fixing a missing certificate or mailbox, recreate the services:
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d mailserver
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --no-deps --force-recreate auth-service
+```
+
+If password reset logs report `Hostname/IP does not match certificate's
+altnames`, the certificate mounted for the mailserver is a web certificate.
+It must contain `DNS:mail.restpoint.co.ke`:
+
+```sh
+sudo openssl x509 -in /etc/letsencrypt/live/mail.restpoint.co.ke/fullchain.pem \
+  -noout -subject -issuer -dates -ext subjectAltName
+```
+
+Issue a certificate specifically for the mail hostname. A DNS challenge avoids
+stopping the web stack:
+
+```sh
+sudo certbot certonly --manual --preferred-challenges dns \
+  -d mail.restpoint.co.ke
+```
+
+Publish the TXT record Certbot requests in Cloudflare, wait for propagation,
+and complete the prompt. Then reload mail and retest:
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  up -d --force-recreate mailserver
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  up -d --no-deps --force-recreate auth-service
+```
+
+Do not disable TLS certificate verification to work around this error; that
+would allow a wrong or intercepted SMTP endpoint to receive reset codes.
 
 ## DKIM and DMARC
 

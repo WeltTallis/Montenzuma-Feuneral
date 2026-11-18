@@ -1,6 +1,6 @@
-# ============================================================
+
 # RestPoint Docker Makefile — Production Build System
-# ============================================================
+
 
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
@@ -11,28 +11,13 @@ PARALLEL ?= 1
 export COMPOSE_PARALLEL_LIMIT := $(PARALLEL)
 export NODE_OPTIONS := --max-old-space-size=2048
 
-# ------------------------------------------------------------
+
 # Compose commands
-# ------------------------------------------------------------
+
 COMPOSE      := docker compose
 COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 
-# Build-service list — DERIVED from the compose files' `build:` blocks by
-# scripts/list-build-services.sh.
-#
-# POSIX sh + awk on purpose: the production host runs Docker on a plain Debian
-# VPS with NO Node.js installed. Shelling out to `node` here broke every target:
-#     /bin/sh: 1: node: not found
-#     make: *** [Makefile:454: validate] Error 127
-#
-# The list used to be hand-maintained, and it drifted: florist-service exists in
-# BOTH compose files but was never added, so every build target silently skipped
-# it and the later `up --no-build` died with:
-#   Error response from daemon: No such image: restpoint-florist-service:latest
-# Deriving the list makes a newly added compose service impossible to forget.
-#
-# Override to build a subset, e.g.
-#   make build RAW_BUILD_SERVICES="api-gateway frontend"
+
 ALL_BUILD_SERVICES_DEV  := $(shell sh scripts/list-build-services.sh 2>/dev/null)
 ALL_BUILD_SERVICES_PROD := $(shell sh scripts/list-build-services.sh docker-compose.prod.yml 2>/dev/null)
 
@@ -53,21 +38,8 @@ YELLOW := \033[0;33m
 CYAN   := \033[0;36m
 NC     := \033[0m # No Color
 
-# ------------------------------------------------------------
+
 # Service-list guards
-#
-# An empty derived list turns every build loop into a no-op that still prints
-# "✓ Build complete" — that is how broken/unbuilt images silently reached
-# production before. Wire these in as prerequisites so the failure is loud.
-#
-# The list itself is captured with `2>/dev/null` so a transient compose error
-# does not spam stderr on every `make help`. But that ALSO means the real
-# reason is thrown away, and the guard used to report only "No buildable
-# services" — which is true but useless: it is indistinguishable from a broken
-# compose file, a missing Dockerfile, a missing .env.production, or Docker not
-# being installed at all. So on failure we re-run the detector WITH stderr and
-# print whatever compose actually said.
-# ------------------------------------------------------------
 check-build-list:
 	@if [ -z "$(strip $(BUILD_SERVICES))" ]; then \
 		echo "$(RED)✗ No buildable services found in docker-compose.yml$(NC)"; \
@@ -90,9 +62,9 @@ check-build-list-prod:
 .DEFAULT_GOAL := help
 
 help:
-	@echo "$(BLUE)RestPoint Docker Makefile — Production Build System$(NC)"
+	@echo "$(BLUE)RestPoint Docker Makefile  Production Build System$(NC)"
 	@echo ""
-	@echo "$(GREEN)── Build (serial / OOM-safe) ──────────────────────────────$(NC)"
+	@echo "$(GREEN) Build (serial / OOM-safe)$(NC)"
 	@echo "  make build                - Build all images (with cache)"
 	@echo "  make build-fast           - Build all images with BuildKit (serial, cached)"
 	@echo "  make build-no-cache       - Rebuild all images from scratch (sequential)"
@@ -107,7 +79,7 @@ help:
 	@echo "  make rebuild-slim         - Rebuild the previously oversized services, then reclaim old layers"
 	@echo "  make rebuild-slim-prod    - Same slim rebuild using docker-compose.prod.yml"
 	@echo ""
-	@echo "$(GREEN)── Lifecycle ───────────────────────────────────────────$(NC)"
+	@echo "$(GREEN) Lifecycle $(NC)"
 	@echo "  make up                   - Start all services (dev, build + up)"
 	@echo "  make up-force             - Force recreate all containers"
 	@echo "  make down                 - Stop and remove all services"
@@ -116,7 +88,7 @@ help:
 	@echo "  make stop                 - Stop services (keep containers)"
 	@echo "  make kill                 - Kill all containers immediately"
 	@echo ""
-	@echo "$(GREEN)── Logs / Status / Access ──────────────────────────────$(NC)"
+	@echo "$(GREEN) Logs / Status / Access $(NC)"
 	@echo "  make logs                 - Show all logs"
 	@echo "  make logs-service SVC=X   - Show logs for service"
 	@echo "  make health               - Check all services"
@@ -126,7 +98,7 @@ help:
 	@echo "  make shell SVC=X          - Shell into service"
 	@echo "  make exec SVC=X CMD='cmd' - Execute command"
 	@echo ""
-	@echo "$(GREEN)── Production Deployment ─────────────────────────$(NC)"
+	@echo "$(GREEN) Production Deployment $(NC)"
 	@echo "  make deploy-prod          - Deploy to production (docker-compose.prod.yml)"
 	@echo "  make deploy-staging       - Deploy to staging"
 	@echo "  make prod-up              - Start production services (requires built images)"
@@ -137,11 +109,11 @@ help:
 	@echo "  make prod-doctor          - Diagnose why a service will not start"
 	@echo "  make fix-db-healthcheck   - Repair MariaDB healthcheck user (access denied)"
 	@echo ""
-	@echo "$(GREEN)── Frontend ────────────────────────────────────────────$(NC)"
+	@echo "$(GREEN) Frontend $(NC)"
 	@echo "  make fix-frontend         - Rebuild ONLY the UI from scratch (no cache)"
 	@echo "  make prod-ui-up           - Start ONLY the prod UI, ignoring all backend deps"
 	@echo ""
-	@echo "$(GREEN)── Maintenance ─────────────────────────────────────────$(NC)"
+	@echo "$(GREEN) Maintenance $(NC)"
 	@echo "  make clean                - Remove containers & volumes (DESTRUCTIVE)"
 	@echo "  make validate             - Validate docker-compose files"
 	@echo "  make prune                - Remove unused resources"
@@ -149,9 +121,9 @@ help:
 	@echo "  make fix-gateway          - Rebuild & restart api-gateway"
 	@echo ""
 
-# ============================================================
+
 # BUILD TARGETS
-# ============================================================
+
 
 # Standard build (with cache) — builds ONE image at a time (OOM-safe)
 build: check-build-list
@@ -209,9 +181,7 @@ build-service-fast:
 	@DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $(SVC)
 	@echo "$(GREEN)✓ $(SVC) built successfully$(NC)"
 
-# Rebuild services that historically carried the old 2–3GB single-stage image.
-# The generated Dockerfiles are already multi-stage; rebuilding replaces the
-# tagged images, while the cleanup removes only layers no container references.
+# Rebuild services 
 rebuild-slim:
 	@echo "$(BLUE)Rebuilding oversized services with the generated slim Dockerfiles...$(NC)"
 	@set -e; for svc in florist-service hr-service hearse-service workshop-service; do echo "  -> building $$svc"; DOCKER_BUILDKIT=1 $(COMPOSE) build --no-cache $$svc; done
@@ -222,7 +192,7 @@ rebuild-slim:
 	else \
 		echo "$(YELLOW)  skipped layer reclamation (needs node + scripts/docker-cleanup.mjs)$(NC)"; \
 	fi
-	@echo "$(GREEN)✓ Slim rebuild and safe reclamation complete$(NC)"
+	@echo "$(GREEN) Slim rebuild and safe reclamation complete$(NC)"
 
 rebuild-slim-prod:
 	@echo "$(BLUE)Rebuilding oversized production services with slim images...$(NC)"
@@ -234,28 +204,27 @@ rebuild-slim-prod:
 	else \
 		echo "$(YELLOW)  skipped layer reclamation (needs node + scripts/docker-cleanup.mjs)$(NC)"; \
 	fi
-	@echo "$(GREEN)✓ Production slim rebuild and safe reclamation complete$(NC)"
+	@echo "$(GREEN) Production slim rebuild and safe reclamation complete$(NC)"
 
 # Build with cache optimizations
 build-optimized: check-build-list
 	@echo "$(BLUE)Building with cache optimizations (serial)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --build-arg BUILDKIT_INLINE_CACHE=1 $$svc; done
-	@echo "$(GREEN)✓ Optimized build complete$(NC)"
+	@echo "$(GREEN) Optimized build complete$(NC)"
 
 # Clear Docker build cache
 clear-cache:
 	@echo "$(YELLOW)Clearing Docker build cache...$(NC)"
 	@docker builder prune -f
 	@docker buildx prune -f 2>/dev/null || true
-	@echo "$(GREEN)✓ Cache cleared$(NC)"
+	@echo "$(GREEN) Cache cleared$(NC)"
 
 # ULTRA FAST - Full rebuild with cache clear
 rebuild-fast: clear-cache build-no-cache-fast up
-	@echo "$(GREEN)✓ Fast rebuild complete$(NC)"
+	@echo "$(GREEN) Fast rebuild complete$(NC)"
 
-# ============================================================
 # STARTUP TARGETS
-# ============================================================
+
 
 up: validate check-build-list
 	@echo "$(BLUE)Stopping old containers and starting fresh...$(NC)"
@@ -264,7 +233,7 @@ up: validate check-build-list
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@echo "$(BLUE)Starting all services...$(NC)"
 	@$(COMPOSE) up -d --no-build --remove-orphans
-	@echo "$(GREEN)✓ Services started$(NC)"
+	@echo "$(GREEN) Services started$(NC)"
 	@echo "Waiting for services to be healthy..."
 	@sleep 30
 	@make health
@@ -274,42 +243,42 @@ up-force: check-build-list
 	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@$(COMPOSE) up -d --no-build --remove-orphans --force-recreate
-	@echo "$(GREEN)✓ Services recreated$(NC)"
+	@echo "$(GREEN) Services recreated$(NC)"
 	@sleep 30
 	@make health
 
 down:
 	@echo "$(BLUE)Stopping all services...$(NC)"
 	@$(COMPOSE) down --remove-orphans
-	@echo "$(GREEN)✓ Services stopped$(NC)"
+	@echo "$(GREEN) Services stopped$(NC)"
 
 restart:
 	@echo "$(BLUE)Restarting all services...$(NC)"
 	@$(COMPOSE) down --remove-orphans
 	@echo "$(BLUE)Starting fresh...$(NC)"
 	@$(COMPOSE) up -d --no-build --remove-orphans
-	@echo "$(GREEN)✓ Services restarted$(NC)"
+	@echo "$(GREEN) Services restarted$(NC)"
 
 # Start services WITHOUT building anything (images must already exist).
 # Use this when you just want everything running — no builds, no rebuilds.
 start:
 	@echo "$(BLUE)Starting all services (no build)...$(NC)"
 	@$(COMPOSE) up -d --no-build --remove-orphans
-	@echo "$(GREEN)✓ Services started$(NC)"
+	@echo "$(GREEN) Services started$(NC)"
 
 stop:
 	@echo "$(BLUE)Stopping services (keeping containers)...$(NC)"
 	@$(COMPOSE) stop
-	@echo "$(GREEN)✓ Services stopped$(NC)"
+	@echo "$(GREEN) Services stopped$(NC)"
 
 kill:
 	@echo "$(RED)Killing all containers immediately...$(NC)"
 	@$(COMPOSE) kill
-	@echo "$(RED)✓ All containers killed$(NC)"
+	@echo "$(RED) All containers killed$(NC)"
 
-# ============================================================
+
 # CLEANUP TARGETS
-# ============================================================
+
 
 clean: kill
 	@echo "$(RED)WARNING: This will remove all containers, networks, and volumes!$(NC)"
@@ -318,7 +287,7 @@ clean: kill
 		echo "$(RED)Cleaning up...$(NC)"; \
 		$(COMPOSE) down -v; \
 		docker system prune -f; \
-		echo "$(RED)✓ Cleanup complete$(NC)"; \
+		echo "$(RED) Cleanup complete$(NC)"; \
 	else \
 		echo "Cancelled."; \
 	fi
@@ -330,14 +299,14 @@ clean-full:
 		echo "$(RED)Cleaning up everything...$(NC)"; \
 		$(COMPOSE) down -v --rmi all; \
 		docker system prune -a -f; \
-		echo "$(RED)✓ Complete cleanup done$(NC)"; \
+		echo "$(RED) Complete cleanup done$(NC)"; \
 	else \
 		echo "Cancelled."; \
 	fi
 
-# ============================================================
+
 # MONITORING TARGETS
-# ============================================================
+
 
 logs:
 	@$(COMPOSE) logs -f --tail=100
@@ -367,9 +336,8 @@ ps-all:
 	@echo "$(BLUE)All containers (including stopped):$(NC)"
 	@docker ps -a | grep restpoint
 
-# ============================================================
-# SHELL ACCESS
-# ============================================================
+
+
 
 shell:
 	@if [ -z "$(SVC)" ]; then \
@@ -387,9 +355,8 @@ exec:
 	@echo "$(BLUE)Executing in $(SVC): $(CMD)$(NC)"
 	@$(COMPOSE) exec $(SVC) sh -c "$(CMD)"
 
-# ============================================================
+
 # ENVIRONMENT SETUP
-# ============================================================
 
 dev:
 	@echo "$(BLUE)Setting up development environment...$(NC)"
@@ -415,9 +382,9 @@ dev:
 	@echo "$(GREEN)✓ Development environment ready$(NC)"
 	@make build-fast
 
-# ============================================================
+
 # PRODUCTION TARGETS
-# ============================================================
+
 
 prod:
 	@echo "$(BLUE)Setting up production environment...$(NC)"
@@ -426,7 +393,7 @@ prod:
 		exit 1; \
 	fi
 	@cp .env.prod .env
-	@echo "$(GREEN)✓ Production environment configured$(NC)"
+	@echo "$(GREEN) Production environment configured$(NC)"
 	@make build-no-cache-fast
 
 deploy-prod: validate check-build-list-prod
@@ -439,10 +406,10 @@ deploy-prod: validate check-build-list-prod
 	@cp .env.production .env
 	@echo "$(BLUE)Building production images...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES_PROD); do echo "  -> building $$svc"; $(COMPOSE_PROD) build --no-cache $$svc; done
-	@echo "$(GREEN)✓ Production build complete$(NC)"
+	@echo "$(GREEN) Production build complete$(NC)"
 	@echo "$(BLUE)Starting production services...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build
-	@echo "$(GREEN)✓ Production deployment complete$(NC)"
+	@echo "$(GREEN) Production deployment complete$(NC)"
 	@echo "Waiting 30s for services to stabilize..."
 	@sleep 30
 	@$(COMPOSE_PROD) ps
@@ -451,12 +418,9 @@ deploy-staging: check-build-list
 	@echo "$(BLUE)Deploying to STAGING...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@$(COMPOSE) up -d --no-build
-	@echo "$(GREEN)✓ Staging deployment complete$(NC)"
+	@echo "$(GREEN) Staging deployment complete$(NC)"
 
-# Fail early with an actionable message when an image a service depends on was
-# never built. Without this, `up -d --no-build` only surfaces Docker's opaque
-# "No such image: restpoint-<svc>:latest" AFTER it has already created every
-# volume and network.
+# Fail early with an actionable message when an image 
 check-prod-images:
 	@missing=""; \
 	for img in $$(sh scripts/list-build-services.sh docker-compose.prod.yml image-list); do \
@@ -476,26 +440,7 @@ prod-build: check-build-list-prod
 	@set -e; for svc in $(BUILD_SERVICES_PROD); do echo "  -> building $$svc"; $(COMPOSE_PROD) build $$svc; done
 	@echo "$(GREEN)✓ Production build complete$(NC)"
 
-# `up -d` ABORTS the moment any `condition: service_healthy` dependency is not
-# satisfied, which used to leave the box with NO services started at all — one
-# unhealthy database probe took down the entire deployment, including the UI that
-# had nothing to do with the database. Starting in two phases fixes that:
-#
-#   1. infra (mariadb/redis/rabbitmq) — `up -d` here is still all-or-nothing, but
-#      these three have no service_healthy dependents to wait on, so it cannot
-#      cascade.
-#   2. everything else — with infra already running, Compose evaluates the
-#      health conditions against live containers instead of starting from zero.
-#
-# `--wait` is deliberately NOT used: it would reintroduce the same all-or-nothing
-# abort on any service that fails to reach `healthy`.
-# A `service_healthy` dependency that never becomes healthy makes `up -d` sit at
-# "Container ... Waiting" until the CLI gives up — and because Compose resolves
-# dependencies before starting dependents, that hang blocks the UI too, even
-# though the SPA needs none of it. So the UI is started FIRST, on its own, with
-# `--no-deps`, and the rest of the stack is brought up afterwards. nginx serves
-# index.html immediately and the SPA's own API calls simply fail until the
-# backend is back, which is the behaviour we want.
+
 check-prod-env:
 	@if [ ! -f .env.production ]; then \
 		echo "$(RED)✗ .env.production not found in $(CURDIR)$(NC)"; \
@@ -513,38 +458,33 @@ prod-up: check-prod-env validate check-build-list-prod check-prod-images
 		echo "$(RED)✗ Some production services did not start. Run 'make prod-doctor' for details.$(NC)"; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)✓ Production services started$(NC)"
+	@echo "$(GREEN) Production services started$(NC)"
 	@sleep 30
 	@$(COMPOSE_PROD) ps
 
 prod-down:
 	@echo "$(BLUE)Stopping production services...$(NC)"
 	@$(COMPOSE_PROD) down
-	@echo "$(GREEN)✓ Production services stopped$(NC)"
+	@echo "$(GREEN) Production services stopped$(NC)"
 
 prod-logs:
 	@$(COMPOSE_PROD) logs -f --tail=100
 
-# -----------------------------------------------------------------------------
+
 # DIAGNOSIS
-# -----------------------------------------------------------------------------
-# `make prod-up` failing with
-#     dependency failed to start: container restpoint_mariadb is unhealthy
-# says nothing about WHY. This target prints the actual health-check output
-# (the real error), the live connection usage, and the containers that are
-# restarting, so the cause is identified in one command instead of guessed at.
+#
 prod-doctor:
 	@echo "$(BLUE)=== Production environment file ===$(NC)"
 	@if [ -f .env.production ]; then \
-		echo "$(GREEN)✓ .env.production found$(NC)"; \
+		echo "$(GREEN) .env.production found$(NC)"; \
 	else \
-		echo "$(RED)✗ .env.production is missing from $(CURDIR)$(NC)"; \
+		echo "$(RED) .env.production is missing from $(CURDIR)$(NC)"; \
 		echo "$(YELLOW)  Compose services using env_file cannot start until it is present.$(NC)"; \
 	fi
 	@echo ""
 	@echo "$(BLUE)=== Production Compose configuration ===$(NC)"
 	@if $(COMPOSE_PROD) config --quiet 2>/dev/null; then \
-		echo "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)"; \
+		echo "$(GREEN) docker-compose.prod.yml is valid$(NC)"; \
 	else \
 		echo "$(RED)✗ docker-compose.prod.yml configuration failed; details follow:$(NC)"; \
 		$(COMPOSE_PROD) config --quiet || true; \
@@ -586,39 +526,25 @@ prod-doctor:
 	@curl -s -o /dev/null -w '    http://localhost:8080 -> HTTP %{http_code}\n' http://localhost:8080/ 2>/dev/null || echo "    (no response)"
 
 # Repair the MariaDB healthcheck user.
-#
-# mariadb:10.11 (10.11.19+) authenticates healthcheck.sh using credentials stored
-# in /var/lib/mysql/.my-healthcheck.cnf, and its entrypoint only creates the
-# matching SQL account on FIRST volume init. `_check_if_upgrade_is_needed` skips
-# the repair whenever that file already exists, so a volume where the file
-# survived but the account did not is stuck forever:
-#     ERROR 1045 (28000): Access denied for user 'healthcheck'@'localhost'
-#     healthcheck innodb_initialized failed
-# The server is fine — it is the PROBE that cannot authenticate — yet the
-# container reports `unhealthy` and `condition: service_healthy` then blocks the
-# whole stack. This target recreates the account using the password from that
-# same file (never an invented one) and verifies with the image's own binary.
+
 fix-db-healthcheck:
 	@sh scripts/fix-db-healthcheck.sh
-
-# ============================================================
 # VALIDATION
-# ============================================================
 
 validate:
 	@echo "$(BLUE)Validating docker-compose files...$(NC)"
 	@if $(COMPOSE) config --quiet 2>/dev/null; then \
-		echo "$(GREEN)✓ docker-compose.yml is valid$(NC)"; \
+		echo "$(GREEN) docker-compose.yml is valid$(NC)"; \
 	else \
-		echo "$(RED)✗ docker-compose.yml configuration failed; details follow:$(NC)"; \
+		echo "$(RED) docker-compose.yml configuration failed; details follow:$(NC)"; \
 		$(COMPOSE) config --quiet; \
 		exit 1; \
 	fi
 	@if [ -f docker-compose.prod.yml ]; then \
 		if $(COMPOSE_PROD) config --quiet 2>/dev/null; then \
-			echo "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)"; \
+			echo "$(GREEN) docker-compose.prod.yml is valid$(NC)"; \
 		else \
-			echo "$(RED)✗ docker-compose.prod.yml configuration failed; details follow:$(NC)"; \
+			echo "$(RED) docker-compose.prod.yml configuration failed; details follow:$(NC)"; \
 			$(COMPOSE_PROD) config --quiet; \
 			exit 1; \
 		fi; \
@@ -626,9 +552,7 @@ validate:
 	@sh scripts/list-build-services.sh verify-dockerfiles
 	@sh scripts/list-build-services.sh docker-compose.prod.yml verify-dockerfiles
 
-# Every buildable service must have its Dockerfile on disk. Catches a compose
-# file pointing at a Dockerfile that does not exist BEFORE the slow serial
-# builds start (and before `up --no-build` fails on a missing image).
+# Every buildable service must have its Dockerfile on 
 check-dockerfiles:
 	@echo "$(BLUE)Checking Dockerfiles for every buildable service...$(NC)"
 	@sh scripts/list-build-services.sh verify-dockerfiles
@@ -646,11 +570,9 @@ validate-dockerfiles:
 		fi; \
 	done
 
-# ============================================================
+
 # BACKUP & RECOVERY
-# All backups are written to /opt/backups on the production
-# server (override with BACKUP_DIR=... for local runs).
-# ============================================================
+
 
 BACKUP_DIR ?= /opt/backups
 BACKUP_RETENTION_DAYS ?= 7
@@ -668,27 +590,26 @@ backup:
 		exit 1; \
 	fi
 
-# Archive every tenant upload (signatures, logos, documents, hearse images,
-# scans, invoices) from the shared host storage directory.
+# Archive every tenant upload (signatures, logos, 
 backup-uploads:
 	@echo "$(BLUE)Archiving /opt/storage/uploads into $(BACKUP_DIR)...$(NC)"
 	@mkdir -p $(BACKUP_DIR)/uploads
 	@ARCHIVE="$(BACKUP_DIR)/uploads/uploads_$$(date +%Y%m%d_%H%M%S).tar.gz"; \
 	tar -czf $$ARCHIVE -C /opt/storage uploads 2>/dev/null; \
 	if [ $$? -eq 0 ]; then \
-		echo "$(GREEN)✓ Uploads backup created: $$ARCHIVE$(NC)"; \
+		echo "$(GREEN) Uploads backup created: $$ARCHIVE$(NC)"; \
 		$(MAKE) --no-print-directory backup-retention; \
 	else \
-		echo "$(RED)✗ Uploads backup failed$(NC)"; \
+		echo "$(RED) Uploads backup failed$(NC)"; \
 		exit 1; \
 	fi
 
 backup-retention:
 	@case "$(BACKUP_RETENTION_DAYS)" in ''|0*|*[!0-9]*) \
-		echo "$(RED)✗ BACKUP_RETENTION_DAYS must be an integer from 1 to 36500$(NC)"; exit 1 ;; \
+		echo "$(RED) BACKUP_RETENTION_DAYS must be an integer from 1 to 36500$(NC)"; exit 1 ;; \
 	esac; \
 	if [ "$(BACKUP_RETENTION_DAYS)" -gt 36500 ]; then \
-		echo "$(RED)✗ BACKUP_RETENTION_DAYS must not exceed 36500$(NC)"; exit 1; \
+		echo "$(RED) BACKUP_RETENTION_DAYS must not exceed 36500$(NC)"; exit 1; \
 	fi; \
 	retention_minutes=$$(( $(BACKUP_RETENTION_DAYS) * 1440 )); \
 	for spec in "db:restpoint_db_*.sql.gz" "uploads:uploads_*.tar.gz"; do \
@@ -700,7 +621,19 @@ backup-retention:
 	done
 
 backup-all: backup backup-uploads
-	@echo "$(GREEN)✓ Full backup (database + uploads) stored in $(BACKUP_DIR)$(NC)"
+	@echo "$(GREEN) Full backup (database + uploads) stored in $(BACKUP_DIR)$(NC)"
+
+backup-r2:
+	@bash ops/backup/backup-to-r2.sh
+
+verify-r2-backup:
+	@bash ops/backup/verify-r2-backup.sh
+
+backup-restore-test:
+	@bash ops/backup/backup-restore-test.sh
+
+restore-r2:
+	@bash ops/backup/restore-from-r2.sh
 
 restore:
 	@echo "$(RED)WARNING: SQL restore imports data into MariaDB and can overwrite/conflict with existing data.$(NC)"
@@ -726,21 +659,20 @@ restore:
 		exit 1; \
 	fi
 
-# ============================================================
 # TESTING
-# ============================================================
+
 
 test:
 	@echo "$(BLUE)Running tests...$(NC)"
 	@if docker-compose exec api-gateway npm test 2>/dev/null; then \
-		echo "$(GREEN)✓ Tests complete$(NC)"; \
+		echo "$(GREEN) Tests complete$(NC)"; \
 	else \
 		echo "$(YELLOW)No tests found or service not running$(NC)"; \
 	fi
 
-# ============================================================
+
 # UTILITY TARGETS
-# ============================================================
+
 
 ps-images:
 	@echo "$(BLUE)Docker images:$(NC)"
@@ -784,14 +716,13 @@ info:
 	@echo "Services: $$(docker-compose config --services | wc -l)"
 
 rebuild: clean build up
-	@echo "$(GREEN)✓ Full rebuild complete$(NC)"
+	@echo "$(GREEN) Full rebuild complete$(NC)"
 
 reset: clean dev
-	@echo "$(GREEN)✓ Reset to development state complete$(NC)"
-
-# ============================================================
+	@echo "$(GREEN) Reset to development state complete$(NC)"
+=
 # FIX SERVICES
-# ============================================================
+
 
 start-all:
 	@echo "$(BLUE)Starting all services including missing ones...$(NC)"
@@ -814,7 +745,7 @@ fix-tenant:
 	@docker rm -f restpoint_tenant_service 2>/dev/null || true
 	@$(COMPOSE) build --no-cache tenant-service
 	@$(COMPOSE) up -d --no-build tenant-service
-	@echo "$(GREEN)✓ Tenant service rebuilt and started$(NC)"
+	@echo "$(GREEN) Tenant service rebuilt and started$(NC)"
 	@docker logs restpoint_tenant_service --tail=20
 
 fix-gateway:
@@ -824,14 +755,12 @@ fix-gateway:
 	@docker rm -f restpoint_api_gateway 2>/dev/null || true
 	@$(COMPOSE) build --no-cache api-gateway
 	@$(COMPOSE) up -d --no-build api-gateway
-	@echo "$(GREEN)✓ Gateway rebuilt and started$(NC)"
+	@echo "$(GREEN) Gateway rebuilt and started$(NC)"
 	@docker logs restpoint_api_gateway --tail=20
 
-# ----------------------------------------------------------------------------
+
 # FRONTEND-ONLY TARGETS
-# Rebuild and redeploy ONLY the UI container. `up -d --no-deps frontend`
-# guarantees the api-gateway (or any other service) is never recreated.
-# ----------------------------------------------------------------------------
+
 build-frontend:
 	@echo "$(BLUE)Building ONLY the frontend image (cached layers)...$(NC)"
 	@$(COMPOSE) build frontend
@@ -848,12 +777,7 @@ fix-frontend:
 	@sleep 5
 	@docker logs restpoint_frontend --tail=20
 
-# Bring the UI up on PRODUCTION right now, ignoring every backend dependency.
-# This is the emergency lever when something like MariaDB is stuck and
-# `make prod-up` hangs at "Container restpoint_mariadb Waiting" — the SPA is a
-# static nginx bundle, so it does not need the database to serve index.html.
-# `--no-deps` is what makes this work: without it Compose would still resolve
-# the dependency chain and block on the unhealthy database.
+# Bring the UI up on PRODUCTION 
 prod-ui-up:
 	@echo "$(BLUE)Starting ONLY the UI, ignoring all backend dependencies...$(NC)"
 	@$(COMPOSE_PROD) up -d --no-build --no-deps frontend
@@ -867,13 +791,12 @@ fix-all: check-build-list
 	@$(COMPOSE) down --remove-orphans
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build --no-cache $$svc; done
 	@$(COMPOSE) up -d --no-build --remove-orphans
-	@echo "$(GREEN)✓ All services rebuilt and started$(NC)"
+	@echo "$(GREEN) All services rebuilt and started$(NC)"
 	@sleep 30
 	@make ps
 
-# ============================================================
 # USAGE TIPS
-# ============================================================
+
 
 usage-tips:
 	@echo "$(CYAN)=== DOCKER BUILD OPTIMIZATION TIPS ===$(NC)"
