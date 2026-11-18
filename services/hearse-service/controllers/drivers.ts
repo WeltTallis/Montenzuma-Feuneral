@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import { safeQuery } from '../database';
-import { hearseCacheGet, hearseCacheSet, FLEET_CACHE_TTL } from '../utilities/hearseCache';
 
 /**
  * Get driver dashboard
@@ -57,15 +56,6 @@ export const getAllDrivers = asyncHandler(async (req: Request, res: Response) =>
         // namespace as every other hearse read, so invalidateHearseCache() on
         // booking/hearse writes drops this key too; FLEET_CACHE_TTL bounds
         // staleness for the rows that only change via direct DB edits.
-        // Version this key so the old cached empty list cannot mask drivers
-        // after the driver-table query/response shape changes.
-        const cacheKey = 'drivers:list:v2';
-        const cachedDrivers = await hearseCacheGet<any>(req, cacheKey);
-        if (cachedDrivers) {
-            res.status(200).json({ ...cachedDrivers, source: 'cache' });
-            return;
-        }
-
         const drivers = await safeQuery(
             `SELECT id AS driver_id, full_name AS driver_name, phone AS driver_phone, license_number, status, created_at
                FROM drivers
@@ -73,7 +63,6 @@ export const getAllDrivers = asyncHandler(async (req: Request, res: Response) =>
             []
         );
         const payload = { status: 'success', total: drivers.length, drivers };
-        await hearseCacheSet(req, cacheKey, payload, FLEET_CACHE_TTL);
         res.status(200).json({ ...payload, source: 'database' });
     } catch (error) {
         console.error('Failed to fetch drivers:', error);

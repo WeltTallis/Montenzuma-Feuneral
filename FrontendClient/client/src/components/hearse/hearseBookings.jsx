@@ -4,8 +4,8 @@ import { useSearchParams } from 'react-router-dom';
 import { getBranchId, getBranchSlug, getBranches as getCachedBranches } from '../../utils/globalAuth';
 import { useSocket } from '../../utils/context/socketContext';
 import useAuthStore from '../../utils/store/useAuthStore';
-import { fetchWithCredentials } from '../../api/axios';
-import { getTenantHeaders } from '../../api/endpoints';
+import apiClient, { fetchWithCredentials } from '../../api/axios';
+import { ENDPOINTS, getTenantHeaders } from '../../api/endpoints';
 import BookNewHearseModal from './BookNewHearseModal';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 
@@ -337,7 +337,7 @@ const api = {
         : Array.isArray(payload?.data)
           ? payload.data
           : payload?.data?.drivers || [];
-    return Array.isArray(rawDrivers)
+    const registeredDrivers = Array.isArray(rawDrivers)
       ? rawDrivers.map((driver) => ({
         ...driver,
         driver_id: driver?.driver_id ?? driver?.id,
@@ -345,6 +345,34 @@ const api = {
         driver_phone: driver?.driver_phone || driver?.phone || '',
       })).filter((driver) => driver.driver_id != null && driver.driver_name)
       : [];
+    if (registeredDrivers.length) return registeredDrivers;
+
+    // Driver accounts are also maintained as tenant users in Settings. Use
+    // them when the legacy operations `drivers` table is empty; UUIDs stay as
+    // selector keys and are never sent as the integer booking driver_id.
+    const candidates = [getTenantSlug(), localStorage.getItem('parentTenantSlug')]
+      .filter((slug, index, list) => slug && list.indexOf(slug) === index);
+    for (const slug of candidates) {
+      try {
+        const response = await apiClient.get(ENDPOINTS.TENANT.USERS(slug));
+        const payload = response?.data;
+        const users = Array.isArray(payload) ? payload : payload?.data?.users || payload?.data || payload?.users || [];
+        if (!Array.isArray(users)) continue;
+        const drivers = users.filter((user) => {
+          const roles = [user?.role, user?.role_name, ...(Array.isArray(user?.roles) ? user.roles : [])]
+            .map((role) => String(typeof role === 'object' ? role?.name || role?.role : role || '').toLowerCase().replace(/[\s-]+/g, '_'));
+          return roles.some((role) => role === 'driver' || role.includes('driver'));
+        }).map((user) => ({
+          driver_id: null,
+          driver_key: user.user_id || user.id || user.email,
+          driver_name: user.full_name || user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || '',
+          driver_phone: user.phone || user.phone_number || '',
+          tenant_user_id: user.user_id || user.id,
+        })).filter((driver) => driver.driver_key && driver.driver_name);
+        if (drivers.length) return drivers;
+      } catch { /* try the next tenant identity */ }
+    }
+    return [];
   },
   getDailyLineup: async (date) => {
     const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
@@ -2073,9 +2101,14 @@ const HearseBookings = () => {
                 <LineupForm
                   onSubmit={(event) => {
                     event.preventDefault();
+                    const selectedDriver = drivers.find((driver) =>
+                      String(driver.driver_id ?? driver.driver_key ?? '') === String(bookingLineupDraft.driverId || '')
+                    );
                     saveBookingLineup(selectedBooking.booking_id || selectedBooking.id, {
-                      driver_id: bookingLineupDraft.driverName.trim() ? null : bookingLineupDraft.driverId || null,
-                      driver_name: bookingLineupDraft.driverName.trim(),
+                      driver_id: selectedDriver
+                        ? (selectedDriver.driver_id ?? null)
+                        : (bookingLineupDraft.driverName.trim() ? null : bookingLineupDraft.driverId || null),
+                      driver_name: bookingLineupDraft.driverName.trim() || selectedDriver?.driver_name || '',
                       assistant_name: bookingLineupDraft.assistantName,
                     });
                   }}
@@ -2094,7 +2127,7 @@ const HearseBookings = () => {
                     >
                       <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
                       {drivers.map((driver) => {
-                        const driverId = driver.driver_id ?? driver.id;
+                        const driverId = driver.driver_id ?? driver.driver_key ?? driver.id;
                         return (
                           <option key={driverId} value={driverId}>
                             {driver.driver_name || driver.full_name || `Driver ${driverId}`}
