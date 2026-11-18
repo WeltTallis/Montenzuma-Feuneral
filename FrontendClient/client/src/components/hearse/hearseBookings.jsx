@@ -377,6 +377,17 @@ const api = {
     if (!r.ok) throw new Error(data.message || 'Failed to save the booking lineup');
     return data;
   },
+  updateBooking: async (bookingId, details) => {
+    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings/${encodeURIComponent(bookingId)}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(details),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.message || 'Failed to update the booking');
+    return data.booking || data;
+  },
   //updates    hearses
   updateStatus: async (id, status, reason) => {
     const h = getAuthHeaders(); h['Content-Type'] = 'application/json';
@@ -851,6 +862,69 @@ const ActionMenuItem = styled.button`
 
 // ═════════════════════════════════════════════════════════════════════════════════════
 
+const BookingInlineEditor = ({ draft, setDraft, hearses, branches, onSubmit, onCancel, saving }) => (
+  <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+      <div>
+        <ModalLabel htmlFor="inline-edit-client">Client name</ModalLabel>
+        <ModalInput id="inline-edit-client" value={draft.client_name} onChange={(e) => setDraft({ ...draft, client_name: e.target.value })} />
+      </div>
+      <div>
+        <ModalLabel htmlFor="inline-edit-phone">Client phone</ModalLabel>
+        <ModalInput id="inline-edit-phone" value={draft.client_phone} onChange={(e) => setDraft({ ...draft, client_phone: e.target.value })} />
+      </div>
+    </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+      <div>
+        <ModalLabel htmlFor="inline-edit-from">Pickup location</ModalLabel>
+        <ModalInput id="inline-edit-from" value={draft.from_location} onChange={(e) => setDraft({ ...draft, from_location: e.target.value })} />
+      </div>
+      <div>
+        <ModalLabel htmlFor="inline-edit-to">Destination</ModalLabel>
+        <ModalInput id="inline-edit-to" value={draft.to_location} onChange={(e) => setDraft({ ...draft, to_location: e.target.value })} />
+      </div>
+    </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+      <div>
+        <ModalLabel htmlFor="inline-edit-date">Pickup date</ModalLabel>
+        <ModalInput id="inline-edit-date" type="date" value={draft.booking_date} onChange={(e) => setDraft({ ...draft, booking_date: e.target.value })} />
+      </div>
+      <div>
+        <ModalLabel htmlFor="inline-edit-time">Pickup time</ModalLabel>
+        <ModalInput id="inline-edit-time" type="time" value={draft.booking_time} onChange={(e) => setDraft({ ...draft, booking_time: e.target.value })} />
+      </div>
+    </div>
+    <div>
+      <ModalLabel htmlFor="inline-edit-hearse">Hearse</ModalLabel>
+      <Select id="inline-edit-hearse" value={draft.hearse_id} onChange={(e) => setDraft({ ...draft, hearse_id: e.target.value })} style={{ width: '100%' }}>
+        <option value="">No hearse selected</option>
+        {(hearses || []).map((hearse) => <option key={hearse.id} value={hearse.id}>{hearse.hearse_name || hearse.plate_number || `Hearse ${hearse.id}`}</option>)}
+      </Select>
+    </div>
+    <div>
+      <ModalLabel htmlFor="inline-edit-branch">Branch</ModalLabel>
+      <Select id="inline-edit-branch" value={draft.branch_id} onChange={(e) => {
+        const branch = (branches || []).find((item) => String(item.branch_id ?? item.id) === String(e.target.value));
+        setDraft({ ...draft, branch_id: e.target.value, branch_name: branch?.branch_name || branch?.name || draft.branch_name });
+      }} style={{ width: '100%' }}>
+        <option value="">Current branch</option>
+        {(branches || []).map((branch) => {
+          const id = branch.branch_id ?? branch.id;
+          return <option key={id} value={id}>{branch.branch_name || branch.name || branch.branch_code || id}</option>;
+        })}
+      </Select>
+    </div>
+    <div>
+      <ModalLabel htmlFor="inline-edit-charge">Service charge</ModalLabel>
+      <ModalInput id="inline-edit-charge" type="number" min="0" step="0.01" value={draft.service_charge} onChange={(e) => setDraft({ ...draft, service_charge: e.target.value })} />
+    </div>
+    <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <PrimaryButton type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</PrimaryButton>
+      <SecondaryButton type="button" onClick={onCancel} disabled={saving}>Cancel</SecondaryButton>
+    </div>
+  </form>
+);
+
 const HearseBookings = () => {
   // ── URL state (canonical numeric month) ─────────────────────────────────
   // The visible month lives in the query string so the page is linkable and
@@ -956,6 +1030,9 @@ const HearseBookings = () => {
   const [newBookingOpen, setNewBookingOpen] = useState(false);
   const [newBookingInitialDates, setNewBookingInitialDates] = useState([]);
   const [editingBooking, setEditingBooking] = useState(null);
+  const [bookingDetailsEditing, setBookingDetailsEditing] = useState(false);
+  const [editBookingDraft, setEditBookingDraft] = useState(null);
+  const [editBookingSaving, setEditBookingSaving] = useState(false);
 
   const [actionMenuId, setActionMenuId] = useState(null);
   const actionMenuRef = useRef(null);
@@ -967,9 +1044,6 @@ const HearseBookings = () => {
   const [registerLoading, setRegisterLoading] = useState(false);
 
   // Cancel modal
-  const [cancelBooking, setCancelBooking] = useState(null);
-  const [cancelReason, setCancelReason] = useState('');
-  const [cancelLoading, setCancelLoading] = useState(false);
   const [postponeBooking, setPostponeBooking] = useState(null);
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeReason, setPostponeReason] = useState('');
@@ -1238,7 +1312,7 @@ const HearseBookings = () => {
   }, []);
   const closeDrawer = useCallback(() => { setDrawerOpen(false); setSelectedBooking(null); }, []);
 
-  const changeStatus = useCallback(async (booking, status, reason) => {
+  const changeStatus = useCallback(async (booking, status, reason, skipConfirmation = false) => {
     const id = booking.booking_id || booking.id;
 
     // ── Date gating ─────────────────────────────────────────────────────────
@@ -1266,7 +1340,7 @@ const HearseBookings = () => {
       ? `<div style="text-align:left;"><p style="margin:0 0 0.5rem 0;"><b>Are you sure you want to mark this hearse as <span style="color:#5F0F40">Completed</span>?</b></p><p style="margin:0;color:#ef4444;font-size:0.85rem;"><b>Warning:</b> Once completed, this hearse will become <b>available and ready for booking</b> again.</p></div>`
       : `<div style="text-align:left;"><p style="margin:0;"><b>Are you sure you want to update this hearse status to <span style="color:#1a5f7a">${STATUS_CONFIG[status]?.label || status}</span>?</b></p></div>`;
 
-    const result = await Swal.fire({
+    const result = skipConfirmation ? { isConfirmed: true } : await Swal.fire({
       icon: isCompleted ? 'warning' : 'question',
       title: isCompleted ? 'Confirm Completion' : 'Confirm Status Update',
       html: confirmHtml,
@@ -1296,11 +1370,26 @@ const HearseBookings = () => {
     } catch { notify.error('Failed to update'); }
   }, [selectedBooking]);
 
-  const openCancelModal = useCallback((b) => {
-    setCancelBooking(b);
-    setCancelReason(b?.cancel_reason || '');
+  const openCancelModal = useCallback(async (b) => {
     setActionMenuId(null);
-  }, []);
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Cancel Booking?',
+      text: b?.booking_code || genId(b?.booking_id),
+      input: 'textarea',
+      inputValue: b?.cancel_reason || '',
+      inputPlaceholder: 'Enter reason for cancellation...',
+      inputAttributes: { 'aria-label': 'Cancellation reason' },
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel booking',
+      cancelButtonText: 'Keep booking',
+      confirmButtonColor: '#134b5f',
+      cancelButtonColor: '#64748b',
+      reverseButtons: true,
+      inputValidator: (value) => !String(value || '').trim() ? 'A cancellation reason is required.' : undefined,
+    });
+    if (result.isConfirmed) await changeStatus(b, 'cancelled', String(result.value).trim(), true);
+  }, [changeStatus]);
 
   const openPostponeModal = useCallback((booking) => {
     setPostponeBooking(booking);
@@ -1347,20 +1436,6 @@ const HearseBookings = () => {
   }, [postponeBooking, postponeDate, postponeReason, refreshData, closeDrawer]);
 
   // FIX: missing closeCancelModal function — now defined
-  const closeCancelModal = useCallback(() => {
-    setCancelBooking(null);
-    setCancelReason('');
-  }, []);
-
-  const confirmCancel = useCallback(async () => {
-    if (!cancelBooking) return;
-    if (!cancelReason.trim()) { notify.error('Please enter a cancel reason'); return; }
-    setCancelLoading(true);
-    await changeStatus(cancelBooking, 'cancelled', cancelReason.trim());
-    setCancelLoading(false);
-    closeCancelModal();
-  }, [cancelBooking, cancelReason, changeStatus, closeCancelModal]);
-
   const openNewBooking = useCallback((date) => {
     const initialDates = date ? [date] : [];
     setNewBookingInitialDates(initialDates);
@@ -1374,11 +1449,69 @@ const HearseBookings = () => {
   }, []);
 
   const openEditBooking = useCallback((booking) => {
-    closeDrawer();
-    setEditingBooking(booking);
-    setNewBookingInitialDates([]);
-    setNewBookingOpen(true);
-  }, [closeDrawer]);
+    let dates = [];
+    try {
+      dates = typeof booking.booking_dates === 'string' ? JSON.parse(booking.booking_dates) : booking.booking_dates;
+    } catch { dates = []; }
+    const bookingDate = Array.isArray(dates) && dates.length
+      ? String(dates[0]).slice(0, 10)
+      : String(booking.booking_date || booking.from_timestamp || '').slice(0, 10);
+    const timeMatch = String(booking.from_timestamp || '').match(/(?:T|\s)(\d{2}:\d{2})/);
+    setEditBookingDraft({
+      client_name: booking.client_name || '',
+      client_phone: booking.client_phone || '',
+      from_location: booking.from_location || '',
+      to_location: booking.to_location || booking.destination || '',
+      booking_date: bookingDate,
+      booking_time: booking.booking_time || timeMatch?.[1] || '',
+      booking_dates: Array.isArray(dates) && dates.length ? dates : [bookingDate],
+      hearse_id: booking.hearse_id == null ? '' : String(booking.hearse_id),
+      branch_id: booking.branch_id == null ? '' : String(booking.branch_id),
+      branch_name: booking.branch_name || '',
+      service_charge: Number(booking.service_charge || 0),
+    });
+    setBookingDetailsEditing(true);
+  }, []);
+
+  const cancelEditBooking = useCallback(() => {
+    setBookingDetailsEditing(false);
+    setEditBookingDraft(null);
+  }, []);
+
+  const saveEditBooking = useCallback(async (event) => {
+    event.preventDefault();
+    if (!selectedBooking || !editBookingDraft) return;
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Are you sure?',
+      text: 'Save these booking detail changes?',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, save changes',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#134b5f',
+      cancelButtonColor: '#64748b',
+      reverseButtons: true,
+    });
+    if (!result.isConfirmed) return;
+    setEditBookingSaving(true);
+    try {
+      const dates = [editBookingDraft.booking_date].filter(Boolean);
+      const updated = await api.updateBooking(selectedBooking.booking_id || selectedBooking.id, {
+        ...editBookingDraft,
+        booking_dates: dates,
+        service_charge: Number(editBookingDraft.service_charge) || 0,
+      });
+      setSelectedBooking((current) => ({ ...current, ...updated }));
+      setBookingDetailsEditing(false);
+      setEditBookingDraft(null);
+      await refreshData();
+      notify.success('Booking updated successfully.');
+    } catch (error) {
+      notify.error(error.message || 'Failed to update the booking.');
+    } finally {
+      setEditBookingSaving(false);
+    }
+  }, [editBookingDraft, refreshData, selectedBooking]);
 
   const onCreateBooking = useCallback((dates) => {
     if (!dates || dates.length === 0) return;
@@ -1816,6 +1949,17 @@ const HearseBookings = () => {
 
              <DrawerColumns>
               <DetailGrid>
+              {bookingDetailsEditing && editBookingDraft ? (
+                <BookingInlineEditor
+                  draft={editBookingDraft}
+                  setDraft={setEditBookingDraft}
+                  hearses={allHearses}
+                  branches={branches}
+                  onSubmit={saveEditBooking}
+                  onCancel={cancelEditBooking}
+                  saving={editBookingSaving}
+                />
+              ) : (<>
                 <DetailItem>
                   <DetailLabel>Client</DetailLabel>
                   <DetailValue>
@@ -1909,6 +2053,7 @@ const HearseBookings = () => {
                     <DetailValue>{selectedBooking.postpone_reason}</DetailValue>
                   </DetailItem>
                 )}
+              </>)}
               </DetailGrid>
 
               <div style={{ minWidth: 0 }}>
@@ -2213,8 +2358,8 @@ const HearseBookings = () => {
         </ModalOverlay>
       )}
 
-      {/* ─── Cancel Modal ─── */}
-      {cancelBooking && (
+      {/* Cancellation UI is handled by SweetAlert above. */}
+      {false && (
         <ModalOverlay onClick={closeCancelModal}>
           <ModalBox onClick={(e) => e.stopPropagation()}>
             <ModalHead>

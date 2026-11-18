@@ -26,7 +26,8 @@ export const COLORS = {
 
 // Calendar booking colors identify the branch, while the status label remains
 // visible as text. This makes bookings easy to distinguish at a glance.
-export const getBranchBookingColor = (branchName) => {
+export const getBranchBookingColor = (branchName, status) => {
+  if (String(status || '').toLowerCase() === 'cancelled') return '#DD2D4A';
   const branch = String(branchName || '').trim().toLowerCase();
   if (branch.includes('machakos')) return '#E36414';
   if (branch.includes('thika')) return '#5F0F40';
@@ -1396,7 +1397,7 @@ const HearseCalendar = ({
     return (
       <MonthEventCard
         key={String(b.booking_id || b.id || Math.random())}
-        color={getBranchBookingColor(branchName)}
+        color={getBranchBookingColor(branchName, b.status)}
         hearseName={hearseName}
         plate={plate}
         routeFrom={route.from}
@@ -1521,7 +1522,7 @@ const HearseCalendar = ({
         b.booking_branch_slug || b.branch_slug || b.branchSlug || b.branch,
         b.branch_name || b.branchName || b.hearse_branch_name || b.branch
       );
-      const branchColor = getBranchBookingColor(resolvedBranchName);
+      const branchColor = getBranchBookingColor(resolvedBranchName, b.status);
 
       const isMultiDay = bookingDates.length > 1 || (() => {
         if (bookingDates.length === 1) {
@@ -2075,7 +2076,7 @@ const HearseCalendar = ({
                   booking.booking_branch_slug || booking.branch_slug || booking.branchSlug || booking.branch,
                   booking.branch_name || booking.branchName || booking.hearse_branch_name || booking.branch
                 );
-                const branchColor = getBranchBookingColor(branchName);
+                const branchColor = getBranchBookingColor(branchName, booking.status);
                 const clientName = booking.client_name || booking.client || '—';
                 const clientPhone = booking.client_phone || booking.phone || '—';
                 const { from: routeFrom, to: routeTo } = getBookingRoute(booking);
