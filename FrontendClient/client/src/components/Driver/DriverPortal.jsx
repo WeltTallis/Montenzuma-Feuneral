@@ -508,6 +508,7 @@ const css = `
 #rp-driver .rt-rail .bar{ width:0; flex:1; min-height:30px; margin:4px 0; border-left:1.5px dashed var(--line2); }
 #rp-driver .rt-pts{ flex:1; display:flex; flex-direction:column; justify-content:space-between; gap:11px; }
 #rp-driver .rp .k{ font:600 .54rem 'Inter'; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:2px; }
+#rp-driver .rp .k,#rp-driver .rp .v{ color:#fff; }
 #rp-driver .rp .v{ font:600 .93rem 'Inter'; line-height:1.35; }
 
 /* task strip */
@@ -667,6 +668,7 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
 
     const vehicle = b.vehicle_name || b.hearse_name || b.model || 'Assigned';
     const plate = b.plate_number || b.number_plate || '';
+    const assignedDriver = b.assigned_driver_name || b.manual_driver_name || b.driver_name || 'Unassigned';
 
     const done = ['completed', 'cancelled', 'declined'].includes(String(b.status || '').toLowerCase());
     const action = done
@@ -680,8 +682,8 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
             <div className="card-bd">
                 <div className="c-top">
                     <div>
-                        <div className="c-code">{genId(b.booking_id)}</div>
-                        <span className="c-chip">{clockIcon} Created {fmtDateShort(b.created_at)}{b.created_at ? ` · ${fmtTime(b.created_at)}` : ''}</span>
+                        <div className="c-code">{assignedDriver}</div>
+                        <span className="c-chip">Assigned driver</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <Pill status={b.status} />
@@ -723,6 +725,12 @@ const TripCard = ({ booking: b, onStatusChange, i, overdue, busy }) => {
                         <div className="kv-row">
                             <span className="k">Assistant</span>
                             <span className="v">{b.assistant_name || 'Not assigned'}{b.assistant_phone ? ` · ${b.assistant_phone}` : ''}</span>
+                        </div>
+                    )}
+                    {!b.assistant_name && !b.assistant_phone && (
+                        <div className="kv-row">
+                            <span className="k">Assistant</span>
+                            <span className="v">Not assigned</span>
                         </div>
                     )}
                 </div>
