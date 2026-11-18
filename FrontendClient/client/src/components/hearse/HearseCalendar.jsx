@@ -35,7 +35,6 @@ export const getBranchBookingColor = (branchName, status) => {
   return '#00296B';
 };
 
-const LINEUP_GRID_COLUMNS = 'minmax(150px, 1.15fr) minmax(110px, .8fr) minmax(140px, 1.1fr) minmax(155px, 1.2fr) minmax(80px, .55fr) minmax(165px, 1fr)';
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -752,27 +751,12 @@ const DateStripButton = styled.button`
 
 const DayPanel = styled.section`
   min-width: 0;
-  overflow-x: ${p => p.$lineup ? 'auto' : 'hidden'};
+  overflow-x: hidden;
   overflow-y: hidden;
   border: 1px solid #ece7ea;
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 17, 20, .03);
-`;
-
-const LineupTableHeader = styled.div`
-  display: grid;
-  grid-template-columns: ${LINEUP_GRID_COLUMNS};
-  min-width: 1050px;
-  padding: 0 8px;
-  background: #15171A;
-  color: #FAF8F4;
-  span {
-    padding: 14px 12px;
-    font-size: 11px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
 `;
 
 const BookingToolbar = styled.div`
@@ -835,24 +819,23 @@ const BackToCalendar = styled.button`
 `;
 
 const DayBookingRow = styled.button`
-  display: ${p => p.$lineup ? 'grid' : 'block'};
-  grid-template-columns: ${p => p.$lineup ? LINEUP_GRID_COLUMNS : 'none'};
+  display: block;
   align-items: stretch;
   width: 100%;
-  min-width: ${p => p.$lineup ? '1050px' : '0'};
+  min-width: 0;
   margin: 0;
-  padding: ${p => p.$lineup ? '0 8px' : '0'};
+  padding: 0;
   border: 0;
   border-bottom: 1px solid #E3DDD0;
   border-radius: 0;
-  background: ${p => p.$lineup ? p.$stripe ? '#F3EFE6' : '#FAF8F4' : '#fff'};
+  background: #fff;
   color: #15171A;
   cursor: pointer;
   font: inherit;
   text-align: left;
   overflow: hidden;
-  transition: ${p => p.$lineup ? 'background .15s ease' : 'none'};
-  &:hover { background: ${p => p.$lineup ? '#EBEFEF' : '#fff'}; }
+  transition: none;
+  &:hover { background: #fff; }
   &:focus-visible { outline: 2px solid #3D4F47; outline-offset: -2px; }
 `;
 
@@ -871,62 +854,6 @@ const DayBookingHeader = styled.span`
     gap: 10px;
     padding: 12px;
   }
-`;
-
-const LineupPlate = styled.span`
-  color: #8B7355;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  white-space: nowrap;
-`;
-
-const LineupCell = styled.span`
-  display: flex;
-  min-width: 0;
-  min-height: 58px;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 12px;
-  border-right: 1px solid rgba(227, 221, 208, .7);
-  color: #6B6862;
-  font-size: 12px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  &:last-child { border-right: 0; }
-`;
-
-const LineupHearseName = styled.strong`
-  color: #15171A;
-  font-size: 13px;
-  font-weight: 600;
-`;
-
-const LineupDriver = styled.span`
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-  color: #15171A;
-  font-size: 12px;
-  font-weight: 600;
-  .initials {
-    display: inline-grid;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
-    place-items: center;
-    border-radius: 50%;
-    background: #3D4F47;
-    color: #FAF8F4;
-    font-size: 9px;
-    font-weight: 600;
-  }
-  .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  &.unassigned { color: #6B6862; font-size: 11px; font-style: italic; font-weight: 400; }
-  small { color: #6B6862; font-size: 10px; font-weight: 400; }
 `;
 
 const DayBookingVehicle = styled.span`
@@ -1304,14 +1231,18 @@ const HearseCalendar = ({
   selectedDate,
   onDateSelect,
   onDateClick,
+  onDayViewChange,
   month,
   onMonthChange,
 }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [dayViewDate, setDayViewDate] = useState(null);
-  const [dayViewMode, setDayViewMode] = useState('schedule');
   const [editingStandby, setEditingStandby] = useState(false);
   const [standbyDraft, setStandbyDraft] = useState('');
+
+  useEffect(() => {
+    onDayViewChange?.(Boolean(dayViewDate));
+  }, [dayViewDate, onDayViewChange]);
   // ══ V3 MONTH GRID HOOKS ═══════════════════════════════════════════════════
   // These power the plain-HTML month grid that replaces FullCalendar.
   // The colored cards use inline backgroundColor — bulletproof against CSS.
@@ -1925,22 +1856,6 @@ const HearseCalendar = ({
                   {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
               </SelectedDateBadge>
-              <ViewSwitchButton
-                type="button"
-                $active={dayViewMode === 'schedule'}
-                aria-pressed={dayViewMode === 'schedule'}
-                onClick={() => setDayViewMode('schedule')}
-              >
-                Schedule
-              </ViewSwitchButton>
-              <ViewSwitchButton
-                type="button"
-                $active={dayViewMode === 'lineup'}
-                aria-pressed={dayViewMode === 'lineup'}
-                onClick={() => setDayViewMode('lineup')}
-              >
-                <Users size={14} aria-hidden="true" /> Driver lineup
-              </ViewSwitchButton>
               <StandbyControl>
                 {lineupLoading ? (
                   <StandbyEditor><label>Standby</label><span>Loading…</span></StandbyEditor>
@@ -2045,18 +1960,8 @@ const HearseCalendar = ({
           </DateStrip>
 
           <DaySchedule>
-            <DayPanel $lineup={dayViewMode === 'lineup'}>
-              {dayViewMode === 'lineup' && (
-                <LineupTableHeader>
-                  <span>Hearse Name</span>
-                  <span>Number Plate</span>
-                  <span>Pickup</span>
-                  <span>Destination</span>
-                  <span>Time</span>
-                  <span>Driver</span>
-                </LineupTableHeader>
-              )}
-              {visibleDayBookings.length ? visibleDayBookings.map((booking, lineupIndex) => {
+            <DayPanel>
+              {visibleDayBookings.length ? visibleDayBookings.map((booking) => {
                 const schedule = getTimeInfo(booking);
                 const hearse = hearses.find((item) => String(item.id ?? item.hearse_id) === String(booking.hearse_id ?? booking.hearse?.id));
                 const hearseName = booking.hearse_name || booking.hearse?.hearse_name || hearse?.hearse_name || 'Hearse not assigned';
@@ -2084,35 +1989,10 @@ const HearseCalendar = ({
                 const assistantName = booking.assistant_name || '';
                 const bookingKey = String(booking.booking_id || booking.id);
                 return (
-                  <React.Fragment key={bookingKey}>
-                    {dayViewMode === 'lineup' ? (
                       <DayBookingRow
+                        key={bookingKey}
                         type="button"
-                        $lineup
-                        $stripe={lineupIndex % 2 === 1}
                         aria-label={`View booking ${bookingId}`}
-                        onClick={() => onItemClick?.(booking)}
-                      >
-                        <LineupCell><LineupHearseName>{hearseName === 'Hearse not assigned' ? 'To be allocated' : vehicleTitle}</LineupHearseName></LineupCell>
-                        <LineupCell><LineupPlate>{plate || '—'}</LineupPlate></LineupCell>
-                        <LineupCell>{routeFrom}</LineupCell>
-                        <LineupCell>{routeTo}</LineupCell>
-                        <LineupCell><strong>{schedule.allDay ? 'All Day' : schedule.fs || 'Not set'}</strong></LineupCell>
-                        <LineupCell>
-                          <LineupDriver className={assignedDriverName === 'Unassigned' ? 'unassigned' : ''}>
-                            {assignedDriverName === 'Unassigned'
-                              ? 'Unassigned — allocate now'
-                              : <>
-                                <span className="initials">{getInitials(assignedDriverName)}</span>
-                                <span className="name">{assignedDriverName}</span>
-                              </>}
-                          </LineupDriver>
-                          {assistantName && <small>Assistant: {assistantName}</small>}
-                        </LineupCell>
-                      </DayBookingRow>
-                    ) : (
-                      <DayBookingRow
-                        type="button"
                         onClick={() => onItemClick?.(booking)}
                       >
                         <DayBookingHeader>
@@ -2151,14 +2031,10 @@ const HearseCalendar = ({
                           </DayDetail>
                         </DayBookingBody>
                       </DayBookingRow>
-                    )}
-                  </React.Fragment>
                 );
               }) : (
                 <EmptyDay>
-                  {dayViewMode === 'schedule'
-                    ? 'No bookings for this day. Check the fleet panel for available hearses.'
-                    : 'No bookings are available for the driver lineup.'}
+                  No bookings for this day. Check the fleet panel for available hearses.
                 </EmptyDay>
               )}
             </DayPanel>

@@ -1047,6 +1047,7 @@ const HearseBookings = () => {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode] = useState('calendar');
+  const [calendarDayView, setCalendarDayView] = useState(false);
   const [selectedDate, setSelectedDate] = useState(formatDateStr(new Date()));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -1702,7 +1703,7 @@ const HearseBookings = () => {
       <SwalZIndex />
       <MainContent>
         {/* Stats Cards */}
-        <StatsGrid>
+        {!calendarDayView && <StatsGrid>
           <StatCard $bg="#1e3a8a">
             <StatHeader><StatLabel>Total Bookings</StatLabel><StatIcon>{Icons.truck}</StatIcon></StatHeader>
             <StatValue>{stats.total}</StatValue><StatSubtext>All time</StatSubtext>
@@ -1723,7 +1724,7 @@ const HearseBookings = () => {
             <StatHeader><StatLabel>Completed</StatLabel><StatIcon>{Icons.check}</StatIcon></StatHeader>
             <StatValue>{stats.completed}</StatValue><StatSubtext>Delivered</StatSubtext>
           </StatCard>
-        </StatsGrid>
+        </StatsGrid>}
 
         {/* Filter Bar */}
         <FilterCard>
@@ -1944,6 +1945,7 @@ const HearseBookings = () => {
                   goToMonth(month - 1, year);
                 }
               }}
+              onDayViewChange={setCalendarDayView}
               onItemClick={openDrawer}
               onCreateBooking={onCreateBooking}
               month={new Date(viewYear, viewMonth, 1)}
