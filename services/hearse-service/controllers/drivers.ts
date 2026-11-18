@@ -57,7 +57,9 @@ export const getAllDrivers = asyncHandler(async (req: Request, res: Response) =>
         // namespace as every other hearse read, so invalidateHearseCache() on
         // booking/hearse writes drops this key too; FLEET_CACHE_TTL bounds
         // staleness for the rows that only change via direct DB edits.
-        const cacheKey = 'drivers:list';
+        // Version this key so the old cached empty list cannot mask drivers
+        // after the driver-table query/response shape changes.
+        const cacheKey = 'drivers:list:v2';
         const cachedDrivers = await hearseCacheGet<any>(req, cacheKey);
         if (cachedDrivers) {
             res.status(200).json({ ...cachedDrivers, source: 'cache' });
