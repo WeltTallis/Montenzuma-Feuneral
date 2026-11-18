@@ -5,7 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
-import { Calendar, CheckCircle, Truck, Clock, Check, BarChart3, MapPin, Home, Car, Building, Users } from '../../utils/icons/icons';
+import { Calendar, Clock, BarChart3, MapPin, Home, Car, Building, Users } from '../../utils/icons/icons';
 import { STATUS_CONFIG } from './statusColors';
 import { BR, BRANCH_SLUG_TO_NAME, getBookingRoute } from './viewerShared';
 
@@ -34,7 +34,7 @@ export const getBranchBookingColor = (branchName) => {
   return '#00296B';
 };
 
-const LINEUP_GRID_COLUMNS = 'minmax(150px, 1.15fr) minmax(110px, .8fr) minmax(140px, 1.1fr) minmax(155px, 1.2fr) minmax(80px, .55fr) minmax(165px, 1fr) minmax(100px, .7fr)';
+const LINEUP_GRID_COLUMNS = 'minmax(150px, 1.15fr) minmax(110px, .8fr) minmax(140px, 1.1fr) minmax(155px, 1.2fr) minmax(80px, .55fr) minmax(165px, 1fr)';
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -928,12 +928,6 @@ const LineupDriver = styled.span`
   small { color: #6B6862; font-size: 10px; font-weight: 400; }
 `;
 
-const LineupStatus = styled.strong`
-  color: ${p => p.$color};
-  font-size: 12px;
-  font-weight: 600;
-`;
-
 const DayBookingVehicle = styled.span`
   display: flex;
   min-width: 0;
@@ -1137,16 +1131,6 @@ const DayAssistant = styled.span`
   color: #64748b;
   font-size: 10px;
   }
-`;
-
-const BookingStatus = styled.span`
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: ${p => p.$bg};
-  color: ${p => p.$color};
-  font-size: 10px;
-  font-weight: 800;
-  white-space: nowrap;
 `;
 
 const EmptyDay = styled.div`
@@ -1504,7 +1488,6 @@ const HearseCalendar = ({
   const events = useMemo(() => {
     if (!Array.isArray(bookings)) return [];
     return bookings.map((b, index) => {
-      const status = STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
       const bookingDates = getBookingDates(b);
       const startDate = b.from_timestamp || bookingDates[0];
       if (!startDate) return null;
@@ -1563,11 +1546,8 @@ const HearseCalendar = ({
         extendedProps: {
           ...b,
           status: b.status,
-          statusLabel: status.label,
           statusColor: branchColor,
           branchColor,
-          statusBg: status.bg,
-          statusTextColor: status.textColor,
           from: route.from,
           dest: route.to,
           plate: b.plate_number || b.hearse_plate || b.number_plate || '—',
@@ -1745,9 +1725,7 @@ const HearseCalendar = ({
 
   // ── Renderer ──────────────────────────────────────────────────────────────
   //
-  // MONTH: SOLID RICH status colour fills the entire card, white text on top.
-  //   • background = status.color (the RICH saturated hex — #00296B, #E36414,
-  //     #132A13, #5F0F40, #DD2D4A, #d97706, #0c0b0f, #03071E)
+  // MONTH: solid branch colour fills the entire card, with white text on top.
   //   • color = #FFFFFF
   //   • same colour on the FC wrapper (via backgroundColor on the event object)
   //     AND the inner card (this renderer), so if either layer fails the other
@@ -1759,7 +1737,7 @@ const HearseCalendar = ({
     const props = eventInfo.event.extendedProps;
     const isAllDay = eventInfo.event.allDay;
 
-    const itemColor = props.branchColor || props.statusColor || '#00296B';
+    const itemColor = props.branchColor || '#00296B';
 
     if (isMonthView) {
       const from = props.from || '—';
@@ -1769,9 +1747,7 @@ const HearseCalendar = ({
           style={{
             width: '100%',
             minHeight: '62px',
-            /* Solid rich status colour — no tint, no gradient, no shorthand
-               trickery. `backgroundColor` alone is the most reliable way to
-               paint and cannot be swallowed by FC's CSS. */
+            /* Solid branch colour keeps each branch visually distinct. */
             backgroundColor: itemColor,
             color: '#FFFFFF',
             borderRadius: '6px',
@@ -1857,12 +1833,6 @@ const HearseCalendar = ({
           fontWeight: 700, fontSize: '12px', lineHeight: 1.25,
           display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0
         }}>
-          {props.statusLabel && (
-            <span style={{
-              width: '6px', height: '6px', borderRadius: '50%',
-              background: itemColor, flexShrink: 0, display: 'inline-block'
-            }} />
-          )}
           <span style={{
             display: 'block', overflow: 'hidden',
             textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -1939,30 +1909,6 @@ const HearseCalendar = ({
             <StatIcon color="#00296B"><BarChart3 size={13} /></StatIcon>
             {dailyStats.total} Bookings
           </StatCard>
-          {dailyStats.booked > 0 && (
-            <StatCard color="#00296B" tint="#EFF6FF" border="#DBEAFE">
-              <StatIcon color="#00296B"><CheckCircle size={13} /></StatIcon>
-              {dailyStats.booked} Booked
-            </StatCard>
-          )}
-          {dailyStats.transit > 0 && (
-            <StatCard color="#E36414" tint="#FFEDD5" border="#FBD6B4">
-              <StatIcon color="#E36414"><Truck size={13} /></StatIcon>
-              {dailyStats.transit} In Transit
-            </StatCard>
-          )}
-          {dailyStats.pending > 0 && (
-            <StatCard color="#d97706" tint="#FFFBEB" border="#FDE68A">
-              <StatIcon color="#d97706"><Clock size={13} /></StatIcon>
-              {dailyStats.pending} Pending
-            </StatCard>
-          )}
-          {dailyStats.completed > 0 && (
-            <StatCard color="#5F0F40" tint="#FCE7F3" border="#E9B8D1">
-              <StatIcon color="#5F0F40"><Check size={13} /></StatIcon>
-              {dailyStats.completed} Completed
-            </StatCard>
-          )}
         </StatsBar>
       )}
 
@@ -2107,11 +2053,9 @@ const HearseCalendar = ({
                   <span>Destination</span>
                   <span>Time</span>
                   <span>Driver</span>
-                  <span>Status</span>
                 </LineupTableHeader>
               )}
               {visibleDayBookings.length ? visibleDayBookings.map((booking, lineupIndex) => {
-                const status = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
                 const schedule = getTimeInfo(booking);
                 const hearse = hearses.find((item) => String(item.id ?? item.hearse_id) === String(booking.hearse_id ?? booking.hearse?.id));
                 const hearseName = booking.hearse_name || booking.hearse?.hearse_name || hearse?.hearse_name || 'Hearse not assigned';
@@ -2137,7 +2081,6 @@ const HearseCalendar = ({
                 const { from: routeFrom, to: routeTo } = getBookingRoute(booking);
                 const driverPhone = assignedDriver?.driver_phone || assignedDriver?.phone_number || assignedDriver?.phone || '';
                 const assistantName = booking.assistant_name || '';
-                const lineupStatusColor = branchColor;
                 const bookingKey = String(booking.booking_id || booking.id);
                 return (
                   <React.Fragment key={bookingKey}>
@@ -2165,7 +2108,6 @@ const HearseCalendar = ({
                           </LineupDriver>
                           {assistantName && <small>Assistant: {assistantName}</small>}
                         </LineupCell>
-                        <LineupCell><LineupStatus $color={lineupStatusColor}>{status.label}</LineupStatus></LineupCell>
                       </DayBookingRow>
                     ) : (
                       <DayBookingRow
@@ -2181,7 +2123,6 @@ const HearseCalendar = ({
                           </DayBookingVehicle>
                           <DayBookingMeta>
                             {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
-                            <BookingStatus $bg={branchColor} $color="#FFFFFF">{status.label}</BookingStatus>
                           </DayBookingMeta>
                         </DayBookingHeader>
                         <DayBookingBody>

@@ -4,6 +4,7 @@ import env from '../../utils/config/env';
 import { X, ChevronLeft, ChevronRight, Clock } from '../../utils/icons/icons';
 import { mergeFleetAvailability } from './hearseFleetAvailability';
 import { fetchWithCredentials } from '../../api/axios';
+import Swal from 'sweetalert2';
 import {
   getBranchId,
   getBranchSlug,
@@ -455,7 +456,7 @@ const Spin = styled.span`
 // ═══════════════════════════════════════════════════════
 export default function BookNewHearseModal({
   open = false, initialDates = [], hearses = [], branches = [],
-  onClose, onCreated, showToast,
+  editingBooking = null, onClose, onCreated, onUpdated, showToast,
 }) {
   const [form, setForm] = useState({
     hearse_id: '', client_name: '', client_phone: '', deceased_name: '',
@@ -512,7 +513,18 @@ export default function BookNewHearseModal({
   /* fresh slate every time the panel opens */
   useEffect(() => {
     if (!open) return;
-    const d = Array.isArray(initialDatesRef.current) ? initialDatesRef.current.filter(Boolean) : [];
+    const editing = editingBooking && (editingBooking.booking_id || editingBooking.id);
+    let editDates = [];
+    if (editing) {
+      try {
+        const raw = typeof editingBooking.booking_dates === 'string'
+          ? JSON.parse(editingBooking.booking_dates)
+          : editingBooking.booking_dates;
+        editDates = Array.isArray(raw) ? raw.map((date) => String(date).slice(0, 10)) : [];
+      } catch { editDates = []; }
+      if (!editDates.length && editingBooking.booking_date) editDates = [String(editingBooking.booking_date).slice(0, 10)];
+    }
+    const d = editing ? editDates : (Array.isArray(initialDatesRef.current) ? initialDatesRef.current.filter(Boolean) : []);
     setDates(d);
     const u = safeUser();
     const branchId = u.branchId || u.branch_id || u.branch?.branchId || u.branch?.branch_id || localStorage.getItem('branchId') || '';
@@ -523,23 +535,32 @@ export default function BookNewHearseModal({
       (branchId && branch.id === String(branchId))
       || (branchSlug && branch.slug.toLowerCase() === String(branchSlug).toLowerCase())
     ) || (branchOptions.length === 1 ? branchOptions[0] : null);
-    setSelectedBranchKey(defaultBranch?.key || '');
+    const editBranch = editing && branchOptions.find((branch) =>
+      (editingBooking.branch_id != null && branch.id === String(editingBooking.branch_id))
+      || (editingBooking.branch_slug && branch.slug.toLowerCase() === String(editingBooking.branch_slug).toLowerCase())
+    );
+    setSelectedBranchKey(editBranch?.key || defaultBranch?.key || '');
     setForm({
-      hearse_id: '', client_name: '', client_phone: '', deceased_name: '',
-      from_location: '', to_location: '',
-      branch_id: defaultBranch?.id || String(branchId),
-      branch_slug: defaultBranch?.slug || String(branchSlug),
-      branch_code: defaultBranch?.code || u.branchCode || u.branch_code || u.branch?.branchCode || u.branch?.branch_code || '',
-      branch_name: defaultBranch?.name || u.branchName || u.branch_name || u.branch?.branchName || u.branch?.branch_name || '',
-      service_charge: 0,
+      hearse_id: editing ? (editingBooking.hearse_id || '') : '',
+      client_name: editing ? (editingBooking.client_name || '') : '',
+      client_phone: editing ? (editingBooking.client_phone || '') : '',
+      deceased_name: '',
+      from_location: editing ? (editingBooking.from_location || '') : '',
+      to_location: editing ? (editingBooking.to_location || editingBooking.destination || '') : '',
+      branch_id: editBranch?.id || defaultBranch?.id || String(branchId),
+      branch_slug: editBranch?.slug || defaultBranch?.slug || String(branchSlug),
+      branch_code: editBranch?.code || defaultBranch?.code || u.branchCode || u.branch_code || u.branch?.branchCode || u.branch?.branch_code || '',
+      branch_name: editBranch?.name || defaultBranch?.name || editingBooking?.branch_name || u.branchName || u.branch_name || u.branch?.branchName || u.branch?.branch_name || '',
+      service_charge: editing ? Number(editingBooking.service_charge || 0) : 0,
     });
-    setBookingTime('');
+    const editTimeMatch = String(editingBooking?.from_timestamp || '').match(/(?:T|\s)(\d{2}:\d{2})/);
+    setBookingTime(editing ? (editingBooking.booking_time || editTimeMatch?.[1] || '') : '');
     setTimePickerOpen(false);
     setDraftHour('9'); setDraftMinute('00'); setDraftPeriod('AM');
     setAnchor(null); setFleet({}); setCheckError(null); setErr('');
     setPkM(d[0] ? new Date(d[0] + 'T00:00:00').getMonth() : new Date().getMonth());
     setPkY(d[0] ? new Date(d[0] + 'T00:00:00').getFullYear() : new Date().getFullYear());
-  }, [open]);
+  }, [open, editingBooking]);
 
   useEffect(() => {
     if (!open || selectedBranchKey || !branchOptions.length) return;
@@ -753,7 +774,9 @@ export default function BookNewHearseModal({
   const selHearse = (hearses || []).find(x => String(x.id) === String(form.hearse_id)) || {};
   const selBlocked = (() => {
     const s = fleet[String(form.hearse_id)];
-    return !!(hasD && s && s.status !== 'available');
+    const isExistingHearse = editingBooking
+      && String(form.hearse_id) === String(editingBooking.hearse_id || '');
+    return !!(hasD && s && s.status !== 'available' && !isExistingHearse);
   })();
   const selTotal = Math.round((Number(form.service_charge) || 0) * 100) / 100;
 
@@ -780,7 +803,7 @@ export default function BookNewHearseModal({
   })();
 
   const canSubmit = !loading && hasD && !!form.hearse_id && !selBlocked
-    && !!form.client_name.trim() && !!form.deceased_name.trim()
+    && !!form.client_name.trim() && (editingBooking || !!form.deceased_name.trim())
     && !!form.from_location.trim() && !!form.to_location.trim()
     && !!bookingTime && (!branchOptions.length || !!selectedBranchKey);
 
@@ -790,7 +813,7 @@ export default function BookNewHearseModal({
     if (!dates.length) missing.push('a date');
     if (!form.hearse_id) missing.push('a hearse');
     if (!form.client_name.trim()) missing.push('client name');
-    if (!form.deceased_name.trim()) missing.push('deceased name');
+    if (!editingBooking && !form.deceased_name.trim()) missing.push('deceased name');
     if (!form.from_location.trim()) missing.push('"from"');
     if (!form.to_location.trim()) missing.push('"to"');
     if (!bookingTime) missing.push('pickup time');
@@ -798,6 +821,21 @@ export default function BookNewHearseModal({
     if (missing.length) { setErr('Please add ' + missing.join(', ') + '.'); return; }
     if (checking) { setErr('Still checking availability — try again in a moment.'); return; }
     if (selBlocked) { setErr('That hearse is booked on the selected date(s) — pick another.'); return; }
+
+    if (editingBooking) {
+      const result = await Swal.fire({
+        icon: 'question',
+        title: 'Are you sure?',
+        text: 'Save these booking detail changes?',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, save changes',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#134b5f',
+        cancelButtonColor: '#64748b',
+        reverseButtons: true,
+      });
+      if (!result.isConfirmed) return;
+    }
 
     setLoading(true); setErr('');
     try {
@@ -828,7 +866,13 @@ export default function BookNewHearseModal({
         branch_code: form.branch_code || '',
         service_charge: svcCharge,
       };
-      const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-bookings`, { method: 'POST', headers: hdr, body: JSON.stringify(body) });
+      const bookingId = editingBooking?.booking_id || editingBooking?.id;
+      const r = await fetchWithCredentials(
+        editingBooking
+          ? `${API_BASE_URL}/hearse-bookings/${encodeURIComponent(bookingId)}`
+          : `${API_BASE_URL}/hearse-bookings`,
+        { method: editingBooking ? 'PUT' : 'POST', headers: hdr, body: JSON.stringify(body) }
+      );
       const ed = await r.json().catch(() => ({}));
       if (!r.ok) {
         if (r.status === 409) throw new Error(ed.message || 'Just booked by another user.');
@@ -837,9 +881,9 @@ export default function BookNewHearseModal({
       if (showToast) showToast(svcCharge > 0 ? `Booking created — Total Service Charge KSH ${svcCharge.toLocaleString()}!` : 'Booking created!', 'success');
       setFleet({});
       if (onClose) onClose();
-      if (onCreated) await onCreated();
+      if (editingBooking ? onUpdated : onCreated) await (editingBooking ? onUpdated : onCreated)();
     } catch (ex) {
-      setErr(ex.message || 'Failed to create booking');
+      setErr(ex.message || (editingBooking ? 'Failed to update booking' : 'Failed to create booking'));
       if (showToast) showToast('Failed: ' + (ex.message || 'booking error'), 'error');
     } finally {
       setLoading(false);
@@ -870,7 +914,7 @@ export default function BookNewHearseModal({
 
         <PHead>
           <HeadTxt>
-            <h1>New Hearse Booking</h1>
+            <h1>{editingBooking ? 'Edit Hearse Booking' : 'New Hearse Booking'}</h1>
             <p>Date → hearse → details</p>
           </HeadTxt>
           <XBtn onClick={onClose} aria-label="Close"><X size={12} /></XBtn>

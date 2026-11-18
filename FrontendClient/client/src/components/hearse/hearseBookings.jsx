@@ -330,8 +330,21 @@ const api = {
     });
     if (!r.ok) throw new Error('Unable to load registered drivers for lineup.');
     const payload = await r.json();
-    const drivers = Array.isArray(payload) ? payload : payload?.drivers || payload?.data?.drivers || [];
-    return Array.isArray(drivers) ? drivers.filter((driver) => driver?.driver_id != null && driver?.driver_name) : [];
+    const rawDrivers = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.drivers)
+        ? payload.drivers
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : payload?.data?.drivers || [];
+    return Array.isArray(rawDrivers)
+      ? rawDrivers.map((driver) => ({
+        ...driver,
+        driver_id: driver?.driver_id ?? driver?.id,
+        driver_name: driver?.driver_name || driver?.full_name || driver?.name || '',
+        driver_phone: driver?.driver_phone || driver?.phone || '',
+      })).filter((driver) => driver.driver_id != null && driver.driver_name)
+      : [];
   },
   getDailyLineup: async (date) => {
     const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
@@ -942,6 +955,7 @@ const HearseBookings = () => {
   });
   const [newBookingOpen, setNewBookingOpen] = useState(false);
   const [newBookingInitialDates, setNewBookingInitialDates] = useState([]);
+  const [editingBooking, setEditingBooking] = useState(null);
 
   const [actionMenuId, setActionMenuId] = useState(null);
   const actionMenuRef = useRef(null);
@@ -1356,7 +1370,15 @@ const HearseBookings = () => {
   const closeNewBooking = useCallback(() => {
     setNewBookingOpen(false);
     setNewBookingInitialDates([]);
+    setEditingBooking(null);
   }, []);
+
+  const openEditBooking = useCallback((booking) => {
+    closeDrawer();
+    setEditingBooking(booking);
+    setNewBookingInitialDates([]);
+    setNewBookingOpen(true);
+  }, [closeDrawer]);
 
   const onCreateBooking = useCallback((dates) => {
     if (!dates || dates.length === 0) return;
@@ -1889,6 +1911,7 @@ const HearseBookings = () => {
                 )}
               </DetailGrid>
 
+              <div style={{ minWidth: 0 }}>
               <div style={{
                 border: `1px solid ${COLORS.line}`,
                 borderRadius: COLORS.radiusSm,
@@ -2002,32 +2025,46 @@ const HearseBookings = () => {
                    <DetailValue>{fmtDate(selectedBooking.created_at)}</DetailValue>
                  </DetailItem>
                </BookingMetaGrid>
+               <SecondaryButton
+                 type="button"
+                 onClick={() => openEditBooking(selectedBooking)}
+                 style={{
+                   width: '100%',
+                   justifyContent: 'center',
+                   marginTop: '1rem',
+                   background: '#134b5f',
+                   color: COLORS.white,
+                   borderColor: '#134b5f',
+                 }}
+               >
+                 Edit Booking
+               </SecondaryButton>
+               {!['completed', 'cancelled'].includes(selectedBooking.status) && (
+                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                   {selectedBooking.status === 'booked' && (
+                     <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'in_transit'); }}>
+                       {Icons.truck} Mark In Transit
+                     </PrimaryButton>
+                   )}
+                   {selectedBooking.status === 'in_transit' && (
+                     <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'completed'); }}>
+                       {Icons.check} Mark Completed
+                     </PrimaryButton>
+                   )}
+                   <SecondaryButton
+                     onClick={() => { openCancelModal(selectedBooking); closeDrawer(); }}
+                     style={{
+                       background: COLORS.bookingAccent,
+                       color: COLORS.white,
+                       borderColor: COLORS.bookingAccent,
+                     }}
+                   >
+                     {Icons.x} Cancel Booking
+                   </SecondaryButton>
+                 </div>
+               )}
+               </div>
              </DrawerColumns>
-
-              {!['completed', 'cancelled'].includes(selectedBooking.status) && (
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {selectedBooking.status === 'booked' && (
-                    <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'in_transit'); }}>
-                      {Icons.truck} Mark In Transit
-                    </PrimaryButton>
-                  )}
-                  {selectedBooking.status === 'in_transit' && (
-                    <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'completed'); }}>
-                      {Icons.check} Mark Completed
-                    </PrimaryButton>
-                  )}
-                  <SecondaryButton
-                    onClick={() => { openCancelModal(selectedBooking); closeDrawer(); }}
-                    style={{
-                      background: COLORS.bookingAccent,
-                      color: COLORS.white,
-                      borderColor: COLORS.bookingAccent,
-                    }}
-                  >
-                    {Icons.x} Cancel Booking
-                  </SecondaryButton>
-                </div>
-              )}
             </>
           )}
         </DrawerBody>
@@ -2235,9 +2272,11 @@ const HearseBookings = () => {
           initialDates={newBookingInitialDates}
           hearses={allHearses}
           branches={branches}
+          editingBooking={editingBooking}
           showToast={(msg, type) => { if (type === 'success') notify.success(msg); else notify.error(msg); }}
           onClose={closeNewBooking}
           onCreated={loadData}
+          onUpdated={loadData}
         />
       )}
     </Container>

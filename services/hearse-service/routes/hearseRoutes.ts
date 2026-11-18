@@ -13,6 +13,7 @@ import { postponeHearseBooking } from '../controllers/postPoneHearseBooking';
 import { updateBookingStatus } from '../controllers/updateBookingStatus';
 import { protect } from '../../app-global/middlewares/authMiddleware';
 import { makeHearseBooking } from '../controllers/bookHerse';
+import { updateHearseBooking } from '../controllers/updateHearseBooking';
 
 const router = express.Router();
 
@@ -34,6 +35,7 @@ router.post('/hearse-fuel/driver-purchases', protect, recordDriverFuelPurchase);
 
 // Hearse Bookings
 router.post('/hearse-bookings', protect, makeHearseBooking);
+router.put('/hearse-bookings/:booking_id', protect, updateHearseBooking);
 router.post('/hearse-bookings/check-availability', protect, checkHearseAvailability);
 router.get('/hearse-bookings', protect, getAllHearseBookings);
 router.put('/hearse-bookings/:booking_id/status', protect, updateBookingStatus);
