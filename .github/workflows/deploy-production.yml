@@ -231,11 +231,12 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           inline: |
+            const rollbackTag = ${{ steps.find-rollback-tag.outputs.rollback_tag || 'main' }};
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚨 Rollback initiated - Deploy failed, rolled back to previous stable version: ${{ steps.find-rollback-tag.outputs.rollback_tag || "main" }}. Investigating issues...'
+              body: '🚨 Rollback initiated - Deploy failed, rolled back to previous stable version: ' + rollbackTag + '. Investigating issues...'
             })
 
   verify-deploy:
