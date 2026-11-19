@@ -523,4 +523,4 @@ export const getComparisonDashboard = async (req: any, res: any): Promise<void> 
     });
 };
 
-export { getComprehensiveDashboard, getComparisonDashboard };
+export { getComprehensiveDashboard };

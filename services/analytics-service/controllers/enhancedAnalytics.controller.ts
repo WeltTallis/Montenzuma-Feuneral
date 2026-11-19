@@ -1,7 +1,7 @@
 
 import AnalyticsService from '../services/analyticsService';
 import AnalyticsModel from '../models/analyticsModel';
-import { Logger } from '../../../packages/shared-logger/src/logger';
+import Logger from '../../../packages/shared-logger/src/logger';
 
 // Get dashboard overview
 export const getDashboard = async (req: any, res: any): Promise<void> => {
@@ -118,7 +118,7 @@ export const exportPDF = async (req: any, res: any): Promise<void> => {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${title || 'report'}.pdf"`);
   res.send(pdfBuffer);
-});
+};
 
 // Export to Excel
 export const exportExcel = async (req: any, res: any): Promise<void> => {
@@ -134,7 +134,7 @@ export const exportExcel = async (req: any, res: any): Promise<void> => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${title || 'report'}.xlsx"`);
   res.send(excelBuffer);
-});
+};
 
 // Export to CSV
 export const exportCSV = async (req: any, res: any): Promise<void> => {
@@ -150,7 +150,7 @@ export const exportCSV = async (req: any, res: any): Promise<void> => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename="${title || 'report'}.csv"`);
   res.send(csv);
-});
+};
 
 // Save report
 export const saveReport = async (req: any, res: any): Promise<void> => {
