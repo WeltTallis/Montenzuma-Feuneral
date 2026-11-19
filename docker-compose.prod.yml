@@ -948,7 +948,8 @@ volumes:
   insurance_postgres_data:
     driver: local
   mariadb_data:
-    driver: local
+    external: true
+    name: restpoint_mariadb_data
   redis_data:
     driver: local
   rabbitmq_data:
