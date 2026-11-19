@@ -113,4 +113,4 @@ export const getWorkshopProductionStatus = async (req: any, res: any): Promise<v
     }
 }
 
-export { getWorkshopSummary, getWorkshopProductionStatus };
+export default { getWorkshopSummary, getWorkshopProductionStatus };

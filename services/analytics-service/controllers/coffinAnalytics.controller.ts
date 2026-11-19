@@ -105,4 +105,4 @@ export const getCoffinSales = async (req: any, res: any): Promise<void> => {
     }
 }
 
-export { getCoffinInventorySummary, getCoffinSales };
+export default { getCoffinInventorySummary, getCoffinSales };

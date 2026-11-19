@@ -119,4 +119,4 @@ export const getDeceasedTrends = async (req: any, res: any): Promise<void> => {
     }
 }
 
-export { getDeceasedCount, getCaseStatusDistribution, getDeceasedTrends };
+export default { getDeceasedCount, getCaseStatusDistribution, getDeceasedTrends };

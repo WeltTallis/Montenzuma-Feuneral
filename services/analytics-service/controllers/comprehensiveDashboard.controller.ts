@@ -523,4 +523,4 @@ export const getComprehensiveDashboard = async (req: any, res: any): Promise<voi
         });
     };
 
-    export { getComprehensiveDashboard };
+    export default { getComprehensiveDashboard };

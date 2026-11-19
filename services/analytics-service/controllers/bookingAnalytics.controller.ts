@@ -88,4 +88,4 @@ export const getHearseFleetStatus = async (req: any, res: any): Promise<void> =>
     }
 }
 
-export { getBookingCounts, getHearseFleetStatus };
+export default { getBookingCounts, getHearseFleetStatus };

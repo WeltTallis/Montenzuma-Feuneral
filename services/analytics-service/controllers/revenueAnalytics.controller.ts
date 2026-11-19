@@ -87,4 +87,4 @@ export const getMonthlyRevenueTrends = async (req: any, res: any): Promise<void>
     }
 }
 
-export { getRevenueSummary, getMonthlyRevenueTrends };
+export default { getRevenueSummary, getMonthlyRevenueTrends };

@@ -87,4 +87,4 @@ export const getChemicalUsageTrends = async (req: any, res: any): Promise<void> 
     }
 }
 
-export { getChemicalStockSummary, getChemicalUsageTrends };
+export default { getChemicalStockSummary, getChemicalUsageTrends };
