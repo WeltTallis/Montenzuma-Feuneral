@@ -265,262 +265,262 @@ export const getComprehensiveDashboard = async (req: any, res: any): Promise<voi
         });
     }
 
-/**
- * Fetch comparative data between N branches dynamically
- * Compares: deceased, hearses, bookings, chemicals, coffins across branches
- */
-export const getComparisonDashboard = async (req: any, res: any): Promise<void> => {
-    const requestId = Math.random().toString(36).substring(7);
-    const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
-    let { branches } = req.query;
+    /**
+     * Fetch comparative data between N branches dynamically
+     * Compares: deceased, hearses, bookings, chemicals, coffins across branches
+     */
+    export const getComparisonDashboard = async (req: any, res: any): Promise<void> => {
+        const requestId = Math.random().toString(36).substring(7);
+        const tenantSlug = (req as any).headers['x-tenant-slug'] || (req as any).headers['x-tenant-id'] || 'system_shared';
+        let { branches } = req.query;
 
-    if (!branches) {
-        const { branch1, branch2 } = req.query;
-        if (branch1 && branch2) {
-            branches = branch1 + ',' + branch2;
-        } else {
-            return res.status(400).json({ success: false, message: 'branches query parameter is required (comma separated).' });
-        }
+        if (!branches) {
+            const { branch1, branch2 } = req.query;
+            if (branch1 && branch2) {
+                branches = branch1 + ',' + branch2;
+            } else {
+                return res.status(400).json({ success: false, message: 'branches query parameter is required (comma separated).' });
+            }
         });
 
-    const branchList = branches.split(',').map(b => b.trim()).filter(Boolean);
-    if (branchList.length < 2) {
-        return res.status(400).json({ success: false, message: 'Please provide at least 2 branches to compare.' });
-    }
-
-    const startTime = Date.now();
-
-    const fetchBranchData = async (branchId) => {
-        const branchDb = await resolveBranchDatabaseForTenant(tenantSlug, branchId);
-        const resolveSlug = tenantSlug + '-' + branchId;
-        let dbName;
-        try {
-            dbName = branchDb || await resolveDatabase(resolveSlug) || await lookupTenantDatabase(tenantSlug);
-        } catch (err) {
-            console.warn('[Dashboard] DB unavailable for comparison ' + resolveSlug);
+        const branchList = branches.split(',').map(b => b.trim()).filter(Boolean);
+        if (branchList.length < 2) {
+            return res.status(400).json({ success: false, message: 'Please provide at least 2 branches to compare.' });
         }
 
-        if (!dbName) return null;
+        const startTime = Date.now();
 
-        // Fetch ALL data for this branch in parallel
-        const [
-            deceasedStats,
-            deceasedMonthly,
-            deceasedCauses,
-            bookingStats,
-            hearseStatus,
-            hearseMostBooked,
-            hearseBookingsByBranch,
-            coffinStats,
-            chemicalLowStock,
-            chemicalUsage,
-            revenueSummary,
-            branchInfo
-        ] = await Promise.allSettled([
-            // Deceased stats
-            safeTenantQuery(dbName, `SELECT COUNT(*) as total, COUNT(CASE WHEN MONTH(date_admitted)=MONTH(CURDATE()) AND YEAR(date_admitted)=YEAR(CURDATE()) THEN 1 END) as this_month, COUNT(CASE WHEN WEEK(date_admitted)=WEEK(CURDATE()) AND YEAR(date_admitted)=YEAR(CURDATE()) THEN 1 END) as this_week FROM deceased WHERE branch_id = ?`, [branchId]),
-            // Monthly deceased trends
-            safeTenantQuery(dbName, `SELECT DATE_FORMAT(date_admitted,'%b %Y') as month, COUNT(*) as count FROM deceased WHERE date_admitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH) AND branch_id = ? GROUP BY DATE_FORMAT(date_admitted,'%Y-%m'), DATE_FORMAT(date_admitted,'%b %Y') ORDER BY DATE_FORMAT(date_admitted,'%Y-%m') ASC`, [branchId]),
-            // Causes of death
-            safeTenantQuery(dbName, `SELECT COALESCE(cause_of_death, 'Unknown') as cause, COUNT(*) as count FROM deceased WHERE branch_id = ? GROUP BY cause_of_death ORDER BY count DESC`, [branchId]),
-            // Booking stats
-            safeTenantQuery(dbName, `SELECT COUNT(*) as total, COUNT(CASE WHEN status='booked' THEN 1 END) as active, COUNT(CASE WHEN status='completed' THEN 1 END) as completed, COUNT(CASE WHEN status='cancelled' THEN 1 END) as cancelled FROM hearse_bookings hb JOIN hearses h ON hb.hearse_id = h.id WHERE h.branch_id = ?`, [branchId]),
-            // Hearse fleet
-            safeTenantQuery(dbName, `SELECT COUNT(*) as total, SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available, SUM(CASE WHEN status='booked' THEN 1 ELSE 0 END) as booked, SUM(CASE WHEN status='maintenance' THEN 1 ELSE 0 END) as maintenance FROM hearses WHERE branch_id = ?`, [branchId]),
-            // Most booked hearses
-            safeTenantQuery(dbName, `SELECT h.id, h.hearse_name, h.plate_number, COUNT(hb.id) as total_bookings, SUM(CASE WHEN hb.status='completed' THEN 1 ELSE 0 END) as completed_trips FROM hearses h LEFT JOIN hearse_bookings hb ON hb.hearse_id = h.id WHERE h.branch_id = ? GROUP BY h.id, h.hearse_name, h.plate_number ORDER BY total_bookings DESC LIMIT 5`, [branchId]),
-            // Revenue from bookings
-            safeTenantQuery(dbName, `SELECT COALESCE(SUM(total_charge),0) as total_revenue, COALESCE(SUM(paid_amount),0) as collected FROM hearse_bookings hb JOIN hearses h ON hb.hearse_id = h.id WHERE h.branch_id = ? AND hb.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
-            // Coffin stock
-            safeTenantQuery(dbName, `SELECT COUNT(*) as types, COALESCE(SUM(quantity),0) as total_stock, COALESCE(SUM(exact_price * quantity),0) as total_value FROM coffins WHERE is_deleted = 0`),
-            // Low stock chemicals
-            safeTenantQuery(dbName, `SELECT COUNT(*) as low_stock_count FROM chemicals WHERE branch_id = ? AND is_active = 1 AND current_stock <= min_stock_level`, [branchId]),
-            // Chemical usage
-            safeTenantQuery(dbName, `SELECT COALESCE(SUM(dcu.quantity_used),0) as total_chemical_used FROM chemical_usage dcu JOIN chemicals c ON c.id = dcu.chemical_id WHERE c.branch_id = ? AND dcu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
-            // Revenue from extra charges
-            safeTenantQuery(dbName, `SELECT COALESCE(SUM(amount),0) as extra_revenue, COALESCE(SUM(CASE WHEN status='paid' THEN amount ELSE 0 END),0) as collected FROM extra_charges WHERE branch_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
-            // Branch info
-            safeTenantQuery(dbName, `SELECT branch_id, branch_name, branch_code, branch_location, branch_phone FROM branches WHERE branch_id = ?`, [branchId])
-        ]);
-
-        const extractVal = (result, idx = 0) => {
-            if (result.status === 'fulfilled' && result.value && result.value.length > 0) {
-                return result.value[idx] || result.value[0] || {};
+        const fetchBranchData = async (branchId) => {
+            const branchDb = await resolveBranchDatabaseForTenant(tenantSlug, branchId);
+            const resolveSlug = tenantSlug + '-' + branchId;
+            let dbName;
+            try {
+                dbName = branchDb || await resolveDatabase(resolveSlug) || await lookupTenantDatabase(tenantSlug);
+            } catch (err) {
+                console.warn('[Dashboard] DB unavailable for comparison ' + resolveSlug);
             }
-            return {};
+
+            if (!dbName) return null;
+
+            // Fetch ALL data for this branch in parallel
+            const [
+                deceasedStats,
+                deceasedMonthly,
+                deceasedCauses,
+                bookingStats,
+                hearseStatus,
+                hearseMostBooked,
+                hearseBookingsByBranch,
+                coffinStats,
+                chemicalLowStock,
+                chemicalUsage,
+                revenueSummary,
+                branchInfo
+            ] = await Promise.allSettled([
+                // Deceased stats
+                safeTenantQuery(dbName, `SELECT COUNT(*) as total, COUNT(CASE WHEN MONTH(date_admitted)=MONTH(CURDATE()) AND YEAR(date_admitted)=YEAR(CURDATE()) THEN 1 END) as this_month, COUNT(CASE WHEN WEEK(date_admitted)=WEEK(CURDATE()) AND YEAR(date_admitted)=YEAR(CURDATE()) THEN 1 END) as this_week FROM deceased WHERE branch_id = ?`, [branchId]),
+                // Monthly deceased trends
+                safeTenantQuery(dbName, `SELECT DATE_FORMAT(date_admitted,'%b %Y') as month, COUNT(*) as count FROM deceased WHERE date_admitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH) AND branch_id = ? GROUP BY DATE_FORMAT(date_admitted,'%Y-%m'), DATE_FORMAT(date_admitted,'%b %Y') ORDER BY DATE_FORMAT(date_admitted,'%Y-%m') ASC`, [branchId]),
+                // Causes of death
+                safeTenantQuery(dbName, `SELECT COALESCE(cause_of_death, 'Unknown') as cause, COUNT(*) as count FROM deceased WHERE branch_id = ? GROUP BY cause_of_death ORDER BY count DESC`, [branchId]),
+                // Booking stats
+                safeTenantQuery(dbName, `SELECT COUNT(*) as total, COUNT(CASE WHEN status='booked' THEN 1 END) as active, COUNT(CASE WHEN status='completed' THEN 1 END) as completed, COUNT(CASE WHEN status='cancelled' THEN 1 END) as cancelled FROM hearse_bookings hb JOIN hearses h ON hb.hearse_id = h.id WHERE h.branch_id = ?`, [branchId]),
+                // Hearse fleet
+                safeTenantQuery(dbName, `SELECT COUNT(*) as total, SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available, SUM(CASE WHEN status='booked' THEN 1 ELSE 0 END) as booked, SUM(CASE WHEN status='maintenance' THEN 1 ELSE 0 END) as maintenance FROM hearses WHERE branch_id = ?`, [branchId]),
+                // Most booked hearses
+                safeTenantQuery(dbName, `SELECT h.id, h.hearse_name, h.plate_number, COUNT(hb.id) as total_bookings, SUM(CASE WHEN hb.status='completed' THEN 1 ELSE 0 END) as completed_trips FROM hearses h LEFT JOIN hearse_bookings hb ON hb.hearse_id = h.id WHERE h.branch_id = ? GROUP BY h.id, h.hearse_name, h.plate_number ORDER BY total_bookings DESC LIMIT 5`, [branchId]),
+                // Revenue from bookings
+                safeTenantQuery(dbName, `SELECT COALESCE(SUM(total_charge),0) as total_revenue, COALESCE(SUM(paid_amount),0) as collected FROM hearse_bookings hb JOIN hearses h ON hb.hearse_id = h.id WHERE h.branch_id = ? AND hb.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
+                // Coffin stock
+                safeTenantQuery(dbName, `SELECT COUNT(*) as types, COALESCE(SUM(quantity),0) as total_stock, COALESCE(SUM(exact_price * quantity),0) as total_value FROM coffins WHERE is_deleted = 0`),
+                // Low stock chemicals
+                safeTenantQuery(dbName, `SELECT COUNT(*) as low_stock_count FROM chemicals WHERE branch_id = ? AND is_active = 1 AND current_stock <= min_stock_level`, [branchId]),
+                // Chemical usage
+                safeTenantQuery(dbName, `SELECT COALESCE(SUM(dcu.quantity_used),0) as total_chemical_used FROM chemical_usage dcu JOIN chemicals c ON c.id = dcu.chemical_id WHERE c.branch_id = ? AND dcu.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
+                // Revenue from extra charges
+                safeTenantQuery(dbName, `SELECT COALESCE(SUM(amount),0) as extra_revenue, COALESCE(SUM(CASE WHEN status='paid' THEN amount ELSE 0 END),0) as collected FROM extra_charges WHERE branch_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [branchId]),
+                // Branch info
+                safeTenantQuery(dbName, `SELECT branch_id, branch_name, branch_code, branch_location, branch_phone FROM branches WHERE branch_id = ?`, [branchId])
+            ]);
+
+            const extractVal = (result, idx = 0) => {
+                if (result.status === 'fulfilled' && result.value && result.value.length > 0) {
+                    return result.value[idx] || result.value[0] || {};
+                }
+                return {};
+            };
+            const extractArr = (result) => {
+                if (result.status === 'fulfilled') return result.value || [];
+                return [];
+            };
+
+            const ds = extractVal(deceasedStats, 0);
+            const dm = extractArr(deceasedMonthly);
+            const dc = extractArr(deceasedCauses);
+            const bs = extractVal(bookingStats, 0);
+            const hs = extractVal(hearseStatus, 0);
+            const hm = extractArr(hearseMostBooked);
+            const hb = extractVal(hearseBookingsByBranch, 0);
+            const cs = extractVal(coffinStats, 0);
+            const cl = extractVal(chemicalLowStock, 0);
+            const cu = extractVal(chemicalUsage, 0);
+            const rs = extractVal(revenueSummary, 0);
+            const bi = extractArr(branchInfo);
+
+            const branchName = (bi && bi.length > 0) ? (bi[0].branch_name || `Branch ${branchId}`) : `Branch ${branchId}`;
+            const branchCode = (bi && bi.length > 0) ? (bi[0].branch_code || '') : '';
+
+            return {
+                branchId: parseInt(branchId),
+                branchName: branchName,
+                branchCode: branchCode,
+                branchLocation: (bi && bi.length > 0) ? (bi[0].branch_location || '') : '',
+                branchPhone: (bi && bi.length > 0) ? (bi[0].branch_phone || '') : '',
+                deceased: {
+                    total: parseInt(ds.total) || 0,
+                    thisMonth: parseInt(ds.this_month) || 0,
+                    thisWeek: parseInt(ds.this_week) || 0,
+                    monthly: Array.isArray(dm) ? dm.map(r => ({ month: r.month || 'Unknown', count: parseInt(r.count) || 0 })) : [],
+                    causes: Array.isArray(dc) ? dc.map(r => ({ cause: r.cause || 'Unknown', count: parseInt(r.count) || 0 })) : []
+                },
+                hearses: {
+                    total: parseInt(hs.total) || 0,
+                    available: parseInt(hs.available) || 0,
+                    booked: parseInt(hs.booked) || 0,
+                    maintenance: parseInt(hs.maintenance) || 0,
+                    mostBooked: Array.isArray(hm) ? hm.map(r => ({
+                        id: r.id,
+                        name: r.hearse_name || 'Unnamed',
+                        plate: r.plate_number || 'N/A',
+                        totalBookings: parseInt(r.total_bookings) || 0,
+                        completedTrips: parseInt(r.completed_trips) || 0
+                    })) : []
+                },
+                bookings: {
+                    total: parseInt(bs.total) || 0,
+                    active: parseInt(bs.active) || 0,
+                    completed: parseInt(bs.completed) || 0,
+                    cancelled: parseInt(bs.cancelled) || 0
+                },
+                coffins: {
+                    types: parseInt(cs.types) || 0,
+                    totalStock: parseInt(cs.total_stock) || 0,
+                    totalValue: parseFloat(cs.total_value || 0).toFixed(2)
+                },
+                chemicals: {
+                    lowStockCount: parseInt(cl.low_stock_count) || 0,
+                    totalUsed30d: parseFloat(cu.total_chemical_used || 0).toFixed(1)
+                },
+                revenue: {
+                    total30d: parseFloat(hb.total_revenue || 0) + parseFloat(rs.extra_revenue || 0),
+                    collected30d: parseFloat(hb.collected || 0) + parseFloat(rs.collected || 0),
+                    outstanding: (parseFloat(hb.total_revenue || 0) + parseFloat(rs.extra_revenue || 0)) - (parseFloat(hb.collected || 0) + parseFloat(rs.collected || 0))
+                }
+            };
         };
-        const extractArr = (result) => {
-            if (result.status === 'fulfilled') return result.value || [];
-            return [];
-        };
 
-        const ds = extractVal(deceasedStats, 0);
-        const dm = extractArr(deceasedMonthly);
-        const dc = extractArr(deceasedCauses);
-        const bs = extractVal(bookingStats, 0);
-        const hs = extractVal(hearseStatus, 0);
-        const hm = extractArr(hearseMostBooked);
-        const hb = extractVal(hearseBookingsByBranch, 0);
-        const cs = extractVal(coffinStats, 0);
-        const cl = extractVal(chemicalLowStock, 0);
-        const cu = extractVal(chemicalUsage, 0);
-        const rs = extractVal(revenueSummary, 0);
-        const bi = extractArr(branchInfo);
+        const results = await Promise.all(branchList.map(async (bid) => {
+            const data = await fetchBranchData(bid);
+            return { branchId: bid, data };
+        }));
 
-        const branchName = (bi && bi.length > 0) ? (bi[0].branch_name || `Branch ${branchId}`) : `Branch ${branchId}`;
-        const branchCode = (bi && bi.length > 0) ? (bi[0].branch_code || '') : '';
+        const validResults = results.filter(r => r.data !== null);
+        if (validResults.length === 0) {
+            return res.status(500).json({ success: false, message: 'Failed to fetch data for the requested branches. They may not exist or DB connection failed.' });
+        }
 
-        return {
-            branchId: parseInt(branchId),
-            branchName: branchName,
-            branchCode: branchCode,
-            branchLocation: (bi && bi.length > 0) ? (bi[0].branch_location || '') : '',
-            branchPhone: (bi && bi.length > 0) ? (bi[0].branch_phone || '') : '',
-            deceased: {
-                total: parseInt(ds.total) || 0,
-                thisMonth: parseInt(ds.this_month) || 0,
-                thisWeek: parseInt(ds.this_week) || 0,
-                monthly: Array.isArray(dm) ? dm.map(r => ({ month: r.month || 'Unknown', count: parseInt(r.count) || 0 })) : [],
-                causes: Array.isArray(dc) ? dc.map(r => ({ cause: r.cause || 'Unknown', count: parseInt(r.count) || 0 })) : []
+        const mappedData = {};
+        validResults.forEach(r => {
+            mappedData[r.branchId] = r.data;
+        });
+
+        // Generate insights and comparisons
+        let maxDeceasedBranch = null, maxDeceasedCount = -1;
+        let maxBookingsBranch = null, maxBookingsCount = -1;
+        let maxRevenueBranch = null, maxRevenueVal = -1;
+        let mostBookedHearseOverall = null, maxHearseBookings = -1;
+        const recommendations = [];
+
+        const branchDataArr = Object.values(mappedData);
+
+        branchDataArr.forEach(b => {
+            const decCount = b.deceased?.total || 0;
+            if (decCount > maxDeceasedCount) { maxDeceasedCount = decCount; maxDeceasedBranch = b; }
+
+            const bookCount = b.bookings?.total || 0;
+            if (bookCount > maxBookingsCount) { maxBookingsCount = bookCount; maxBookingsBranch = b; }
+
+            const revVal = b.revenue?.total30d || 0;
+            if (revVal > maxRevenueVal) { maxRevenueVal = revVal; maxRevenueBranch = b; }
+
+            // Check each hearse for most booked overall
+            (b.hearses?.mostBooked || []).forEach(h => {
+                if (h.totalBookings > maxHearseBookings) {
+                    maxHearseBookings = h.totalBookings;
+                    mostBookedHearseOverall = { ...h, branchName: b.branchName };
+                }
+            });
+
+            if (b.hearses?.available === 0 && b.hearses?.total > 0) {
+                recommendations.push(` ${b.branchName}: All hearses are currently booked. Consider fleet expansion.`);
+            }
+            if (b.chemicals?.lowStockCount > 3) {
+                recommendations.push(` ${b.branchName}: ${b.chemicals.lowStockCount} chemicals are below minimum stock. Reorder urgently.`);
+            }
+            if (b.deceased?.thisMonth > (b.deceased?.total / 12) * 1.5) {
+                recommendations.push(` ${b.branchName}: Deceased cases this month (${b.deceased.thisMonth}) are significantly above average.`);
+            }
+        });
+
+        // Build comparison metrics
+        const comparison = {
+            deceasedVolume: {
+                highest: maxDeceasedBranch ? { branchName: maxDeceasedBranch.branchName, count: maxDeceasedCount } : null,
+                lowest: maxDeceasedBranch ? { branchName: branchDataArr.reduce((a, b) => (a.deceased?.total || 0) < (b.deceased?.total || 0) ? a : b).branchName, count: Math.min(...branchDataArr.map(b => b.deceased?.total || 0)) } : null
             },
-            hearses: {
-                total: parseInt(hs.total) || 0,
-                available: parseInt(hs.available) || 0,
-                booked: parseInt(hs.booked) || 0,
-                maintenance: parseInt(hs.maintenance) || 0,
-                mostBooked: Array.isArray(hm) ? hm.map(r => ({
-                    id: r.id,
-                    name: r.hearse_name || 'Unnamed',
-                    plate: r.plate_number || 'N/A',
-                    totalBookings: parseInt(r.total_bookings) || 0,
-                    completedTrips: parseInt(r.completed_trips) || 0
-                })) : []
-            },
-            bookings: {
-                total: parseInt(bs.total) || 0,
-                active: parseInt(bs.active) || 0,
-                completed: parseInt(bs.completed) || 0,
-                cancelled: parseInt(bs.cancelled) || 0
-            },
-            coffins: {
-                types: parseInt(cs.types) || 0,
-                totalStock: parseInt(cs.total_stock) || 0,
-                totalValue: parseFloat(cs.total_value || 0).toFixed(2)
-            },
-            chemicals: {
-                lowStockCount: parseInt(cl.low_stock_count) || 0,
-                totalUsed30d: parseFloat(cu.total_chemical_used || 0).toFixed(1)
+            bookingVolume: {
+                highest: maxBookingsBranch ? { branchName: maxBookingsBranch.branchName, count: maxBookingsCount } : null
             },
             revenue: {
-                total30d: parseFloat(hb.total_revenue || 0) + parseFloat(rs.extra_revenue || 0),
-                collected30d: parseFloat(hb.collected || 0) + parseFloat(rs.collected || 0),
-                outstanding: (parseFloat(hb.total_revenue || 0) + parseFloat(rs.extra_revenue || 0)) - (parseFloat(hb.collected || 0) + parseFloat(rs.collected || 0))
-            }
+                highest: maxRevenueBranch ? { branchName: maxRevenueBranch.branchName, amount: maxRevenueVal.toFixed(2) } : null
+            },
+            mostBookedHearse: mostBookedHearseOverall ? {
+                name: mostBookedHearseOverall.name,
+                plate: mostBookedHearseOverall.plate,
+                branchName: mostBookedHearseOverall.branchName,
+                totalBookings: mostBookedHearseOverall.totalBookings,
+                completedTrips: mostBookedHearseOverall.completedTrips
+            } : null,
+            fleetAvailability: branchDataArr.map(b => ({
+                branchName: b.branchName,
+                available: b.hearses?.available || 0,
+                total: b.hearses?.total || 0,
+                utilizationRate: b.hearses?.total > 0 ? Math.round(((b.hearses?.total - b.hearses?.available) / b.hearses?.total) * 100) : 0
+            }))
         };
-    };
 
-    const results = await Promise.all(branchList.map(async (bid) => {
-        const data = await fetchBranchData(bid);
-        return { branchId: bid, data };
-    }));
-
-    const validResults = results.filter(r => r.data !== null);
-    if (validResults.length === 0) {
-        return res.status(500).json({ success: false, message: 'Failed to fetch data for the requested branches. They may not exist or DB connection failed.' });
-    }
-
-    const mappedData = {};
-    validResults.forEach(r => {
-        mappedData[r.branchId] = r.data;
-    });
-
-    // Generate insights and comparisons
-    let maxDeceasedBranch = null, maxDeceasedCount = -1;
-    let maxBookingsBranch = null, maxBookingsCount = -1;
-    let maxRevenueBranch = null, maxRevenueVal = -1;
-    let mostBookedHearseOverall = null, maxHearseBookings = -1;
-    const recommendations = [];
-
-    const branchDataArr = Object.values(mappedData);
-
-    branchDataArr.forEach(b => {
-        const decCount = b.deceased?.total || 0;
-        if (decCount > maxDeceasedCount) { maxDeceasedCount = decCount; maxDeceasedBranch = b; }
-
-        const bookCount = b.bookings?.total || 0;
-        if (bookCount > maxBookingsCount) { maxBookingsCount = bookCount; maxBookingsBranch = b; }
-
-        const revVal = b.revenue?.total30d || 0;
-        if (revVal > maxRevenueVal) { maxRevenueVal = revVal; maxRevenueBranch = b; }
-
-        // Check each hearse for most booked overall
-        (b.hearses?.mostBooked || []).forEach(h => {
-            if (h.totalBookings > maxHearseBookings) {
-                maxHearseBookings = h.totalBookings;
-                mostBookedHearseOverall = { ...h, branchName: b.branchName };
-            }
+        res.status(200).json({
+            success: true,
+            data: {
+                branches: mappedData,
+                insights: {
+                    winner: maxDeceasedBranch
+                        ? `${maxDeceasedBranch.branchName} is handling the highest volume (${maxDeceasedCount} deceased cases).`
+                        : 'Performance is evenly distributed across branches.',
+                    topPerformer: {
+                        deceasedVolume: maxDeceasedBranch ? maxDeceasedBranch.branchName : 'N/A',
+                        bookingVolume: maxBookingsBranch ? maxBookingsBranch.branchName : 'N/A',
+                        revenue: maxRevenueBranch ? maxRevenueBranch.branchName : 'N/A',
+                        mostBookedHearse: mostBookedHearseOverall ? `${mostBookedHearseOverall.name} (${mostBookedHearseOverall.plate}) - ${mostBookedHearseOverall.branchName}` : 'N/A'
+                    },
+                    recommendations: recommendations.length > 0
+                        ? recommendations
+                        : [' All branches are operating nominally. Monitor seasonal trends.'],
+                    comparison
+                }
+            },
+            metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
         });
-
-        if (b.hearses?.available === 0 && b.hearses?.total > 0) {
-            recommendations.push(`⚠️ ${b.branchName}: All hearses are currently booked. Consider fleet expansion.`);
-        }
-        if (b.chemicals?.lowStockCount > 3) {
-            recommendations.push(`🔴 ${b.branchName}: ${b.chemicals.lowStockCount} chemicals are below minimum stock. Reorder urgently.`);
-        }
-        if (b.deceased?.thisMonth > (b.deceased?.total / 12) * 1.5) {
-            recommendations.push(`📈 ${b.branchName}: Deceased cases this month (${b.deceased.thisMonth}) are significantly above average.`);
-        }
-    });
-
-    // Build comparison metrics
-    const comparison = {
-        deceasedVolume: {
-            highest: maxDeceasedBranch ? { branchName: maxDeceasedBranch.branchName, count: maxDeceasedCount } : null,
-            lowest: maxDeceasedBranch ? { branchName: branchDataArr.reduce((a, b) => (a.deceased?.total || 0) < (b.deceased?.total || 0) ? a : b).branchName, count: Math.min(...branchDataArr.map(b => b.deceased?.total || 0)) } : null
-        },
-        bookingVolume: {
-            highest: maxBookingsBranch ? { branchName: maxBookingsBranch.branchName, count: maxBookingsCount } : null
-        },
-        revenue: {
-            highest: maxRevenueBranch ? { branchName: maxRevenueBranch.branchName, amount: maxRevenueVal.toFixed(2) } : null
-        },
-        mostBookedHearse: mostBookedHearseOverall ? {
-            name: mostBookedHearseOverall.name,
-            plate: mostBookedHearseOverall.plate,
-            branchName: mostBookedHearseOverall.branchName,
-            totalBookings: mostBookedHearseOverall.totalBookings,
-            completedTrips: mostBookedHearseOverall.completedTrips
-        } : null,
-        fleetAvailability: branchDataArr.map(b => ({
-            branchName: b.branchName,
-            available: b.hearses?.available || 0,
-            total: b.hearses?.total || 0,
-            utilizationRate: b.hearses?.total > 0 ? Math.round(((b.hearses?.total - b.hearses?.available) / b.hearses?.total) * 100) : 0
-        }))
     };
 
-    res.status(200).json({
-        success: true,
-        data: {
-            branches: mappedData,
-            insights: {
-                winner: maxDeceasedBranch
-                    ? `${maxDeceasedBranch.branchName} is handling the highest volume (${maxDeceasedCount} deceased cases).`
-                    : 'Performance is evenly distributed across branches.',
-                topPerformer: {
-                    deceasedVolume: maxDeceasedBranch ? maxDeceasedBranch.branchName : 'N/A',
-                    bookingVolume: maxBookingsBranch ? maxBookingsBranch.branchName : 'N/A',
-                    revenue: maxRevenueBranch ? maxRevenueBranch.branchName : 'N/A',
-                    mostBookedHearse: mostBookedHearseOverall ? `${mostBookedHearseOverall.name} (${mostBookedHearseOverall.plate}) - ${mostBookedHearseOverall.branchName}` : 'N/A'
-                },
-                recommendations: recommendations.length > 0
-                    ? recommendations
-                    : ['✅ All branches are operating nominally. Monitor seasonal trends.'],
-                comparison
-            }
-        },
-        metadata: { requestId, timestamp: new Date().toISOString(), executionTime: Date.now() - startTime }
-    });
-};
-
-export { getComprehensiveDashboard };
+    export { getComprehensiveDashboard };

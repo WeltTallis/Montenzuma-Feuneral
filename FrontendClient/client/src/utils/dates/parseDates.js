@@ -1,35 +1,4 @@
-/**
- * @file parseDates.js
- *
- * CENTRALIZED date/time parsing + formatting for the whole client.
- *
- * ============================================================================
- * WHY THIS FILE EXISTS
- * ============================================================================
- * The backend stores dates as `YYYY-MM-DD` and datetimes as `YYYY-MM-DD HH:mm:ss`
- * in KENYA time (Africa/Nairobi, 24-hour) — see
- * `packages/shared-utils/src/timestamps.ts` (getKenyaTimeISO / getKenyaDate).
- *
- * In the browser, the naive patterns that used to be scattered across the UI
- * introduce real bugs:
- *
- *   1. `new Date('2025-06-02')`            -> parsed as UTC midnight, so in any
- *      timezone with a negative offset the rendered day is WRONG (off-by-one).
- *   2. `new Date('2025-06-02 14:30:00')`   -> not reliably parseable on all
- *      engines / browser versions.
- *   3. `new Date().toISOString().split('T')[0]` -> converts to UTC before
- *      slicing, so "today" can be yesterday/tomorrow outside UTC.
- *   4. Each component used its own locale ('en-US', 'en-GB', 'en-KE') and its
- *      own shape, so dates looked different everywhere.
- *
- * Every helper here parses using LOCAL date components (never UTC) and formats
- * with a single consistent style so the whole app renders identically.
- * ============================================================================
- */
 
-/* ---------------------------------------------------------------------------
-   Constants / small helpers
---------------------------------------------------------------------------- */
 const pad = (n) => String(n).padStart(2, '0');
 
 const MONTHS_SHORT = [
@@ -130,9 +99,18 @@ function toDateKey(input) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Local 'YYYY-MM-DD' key for today, in the browser's local time. */
+/** Local 'YYYY-MM-DD' key for today, in Kenya (Nairobi, UTC+3) time.
+ *  Uses the same timezone adjustment as formatRelativeTime to ensure
+ *  correct results regardless of the browser's timezone setting.
+ */
 function todayKey() {
-  return toDateKey(new Date());
+  const d = parseDate(new Date());
+  if (!d) return '';
+  // Adjust to Nairobi time (UTC+3 = 180 minutes offset)
+  const now = new Date();
+  const NairobiOffset = 180; // minutes
+  const dAdjusted = new Date(d.getTime() + (now.getTimezoneOffset() - NairobiOffset) * 60 * 1000);
+  return `${dAdjusted.getFullYear()}-${pad(dAdjusted.getMonth() + 1)}-${pad(dAdjusted.getDate())}`;
 }
 
 /** Local 'YYYY-MM-DD HH:mm' datetime key (backend's 24h format, no seconds). */
@@ -226,7 +204,13 @@ function formatTimeAmPm(input) {
 function formatRelativeTime(input) {
   const d = parseDate(input);
   if (!d) return '';
-  const diffMs = Date.now() - d.getTime();
+  // Use Kenya (Nairobi, UTC+3) time for consistent relative time display
+  // regardless of the browser's timezone.
+  const now = new Date();
+  // Adjust both dates to Nairobi time (UTC+3 = 180 minutes offset)
+  const NairobiOffset = 180; // minutes
+  const dAdjusted = new Date(d.getTime() + (now.getTimezoneOffset() - NairobiOffset) * 60 * 1000);
+  const diffMs = now.getTime() - dAdjusted.getTime();
   const sec = Math.floor(diffMs / 1000);
   if (sec < 45) return 'just now';
   const min = Math.floor(sec / 60);
@@ -256,9 +240,7 @@ function isToday(input) {
   return Boolean(input) && toDateKey(input) === todayKey();
 }
 
-/* ---------------------------------------------------------------------------
-   Exports
---------------------------------------------------------------------------- */
+
 export {
   pad,
   parseDate,

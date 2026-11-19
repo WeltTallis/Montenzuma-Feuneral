@@ -1,25 +1,19 @@
-import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
+import { getDaysInMorgue, getHoursInMorgue, formatCareDuration, withDateTime } from '../deceasedProfile/theme';
 import { getTenantSlug as getStoredTenantSlug, getAuthToken } from '../../../utils/globalAuth';
+import { resolveTenantBranding } from '../../../utils/tenantResolver/tenantBranding';
 import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import ReusableSignaturePad from '../../../utils/signature/signaturepad';
 import { ToastContainer, toast } from 'react-toastify';
 import InOurCare from '../../common/InOurCare';
-// Kenya-safe "today" (YYYY-MM-DD in the browser's local/Nairobi clock).
-// The old `new Date().toISOString().split('T')[0]` default sliced the UTC
-// date, which is 3 hours behind Nairobi — a release captured between 00:00
-// and 02:59 Kenya time stored YESTERDAY's date ("Released Date: Sep 21"
-// while the handover happened on Sep 22).
 import { todayKey } from '../../../utils/dates/parseDates';
-import { getDaysInMorgue, getHoursInMorgue, formatCareDuration, withDateTime } from '../deceasedProfile/theme';
+
 import styled, { keyframes } from 'styled-components';
 import { ENDPOINTS } from '../../../api/endpoints';
 
 // The shared official-record masthead (branding, condolence slider, facility
-// block, date of admission + admission no./barcode) and the dashed-field
-// treatment. Identical to the one the intake sheet renders — see the comment
-// block at the top of that module.
+
 import {
   DASH,
   COLORS,

@@ -173,6 +173,7 @@ export const listReleasesController = async (req: Request, res: Response, next: 
     const releaseResults = releases as any[];
 
     res.status(200).json({
+
       success: true,
       data: releaseResults || [],
       pagination: {
@@ -182,6 +183,7 @@ export const listReleasesController = async (req: Request, res: Response, next: 
         totalPages: Math.ceil(total / limitNumber)
       }
     });
+
   } catch (error: any) {
     Logger.error({
       message: 'Error fetching releases',
