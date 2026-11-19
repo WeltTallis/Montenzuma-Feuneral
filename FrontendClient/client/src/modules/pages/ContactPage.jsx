@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, X, ArrowRight, Mail, MessageCircle, Globe, ShieldCheck, Linkedin } from '../../utils/icons/icons';
+import { ChevronDown, Menu, X, ArrowRight, Mail, MessageCircle, Globe, ShieldCheck, Linkedin, Phone } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
+import { SEOHead, localBusinessSchema, faqSchema } from '../seo/SEOHead';
 
 const C = {
   ink: '#15171A',
@@ -141,6 +142,25 @@ const MobileMenu = ({ navigate, goTerms, goLogin, goStart }) => {
   );
 };
 
+    const contactFaqs = [
+        {
+            question: "What is Rest Point's phone number?",
+            answer: "You can reach Rest Point (Welt Tallis Technologies) on +254-740-045-355 during business hours, Monday to Friday, 8:00 AM to 6:00 PM EAT.",
+        },
+        {
+            question: "How do I email Rest Point?",
+            answer: "For general inquiries email info@restpoint.co.ke. For data and privacy requests email privacy@restpoint.co.ke.",
+        },
+        {
+            question: "Can I contact Rest Point on WhatsApp?",
+            answer: "Yes. Chat with our team directly on WhatsApp via the Contact page link.",
+        },
+        {
+            question: "Where is Rest Point located?",
+            answer: "Rest Point is based in Nairobi, Kenya, and serves funeral homes, churches, SACCOs, chamas and organisations across Kenya and East Africa.",
+        },
+    ];
+
 export default function ContactPage() {
   const navigate = useNavigate();
 
@@ -149,6 +169,14 @@ export default function ContactPage() {
   const goTerms = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/terms'); };
 
   const contactMethods = [
+    {
+      icon: Phone,
+      title: 'Phone',
+      desc: '+254-740-045-355',
+      href: 'tel:+254740045355',
+      iconColor: C.verdigris,
+      external: false
+    },
     {
       icon: Mail,
       title: 'General Inquiries',
@@ -185,6 +213,14 @@ export default function ContactPage() {
 
   return (
     <div className="page-container">
+      <SEOHead
+        title="Contact Us | Rest Point Funeral Management Kenya"
+        description="Get in touch with Rest Point — funeral home management software for Kenya. Call +254-740-045-355, email info@restpoint.co.ke or WhatsApp our team for support, demos and insurance enquiries."
+        keywords="contact Rest Point, Rest Point Kenya, funeral home management software contact, info@restpoint.co.ke, +254-740-045-355, funeral software support Kenya, Welt Tallis Technologies"
+        url="/contact"
+        image="/logo.png"
+        schema={[localBusinessSchema, faqSchema(contactFaqs)]}
+      />
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth}

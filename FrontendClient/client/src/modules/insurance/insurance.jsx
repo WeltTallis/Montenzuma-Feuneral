@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, Check, ArrowRight, X, ShieldCheck, Activity, Layers, DollarSign, Users, FileText, Zap } from '../../utils/icons/icons';
 import Footer from '../../components/layout/Footer';
+import { SEOHead, organizationSchema, localBusinessSchema, faqSchema } from '../seo/SEOHead';
 
 const C = {
     ink: '#15171A',
@@ -282,8 +283,35 @@ export default function InsurancePage() {
         { num: '5', title: 'Share with your family', desc: 'Policies and coverage details are visible in the family portal so everyone knows what to do when the time comes.' },
     ];
 
+    const insuranceFaqs = [
+        {
+            question: "What is funeral insurance and how does it work in Kenya?",
+            answer: "Funeral insurance (last expense cover) pays out a benefit when a member passes away, helping families cover burial costs. Rest Point lets funeral homes enroll members, collect premiums via M-Pesa, and process claims digitally from one platform.",
+        },
+        {
+            question: "Can contributions be collected via M-Pesa?",
+            answer: "Yes. Rest Point integrates with M-Pesa STK push so members pay premiums monthly, quarterly, or annually, and staff can track every contribution in real time.",
+        },
+        {
+            question: "How are claims processed?",
+            answer: "When a death occurs, the family or nominated beneficiary files a claim digitally. Rest Point verifies the beneficiary, calculates the benefit, and disburses the payout fast through automated workflows.",
+        },
+        {
+            question: "Which organisations can use Rest Point funeral insurance?",
+            answer: "Funeral homes, churches, SACCOs, chamas, companies and NGOs across Kenya. It supports multi-branch operations, IRA-accredited insurer panels, and SASRA-aligned welfare reporting.",
+        },
+    ];
+
     return (
         <>
+            <SEOHead
+                title="Funeral Insurance Kenya | Last Expense Cover &amp; Claims Management"
+                description="Rest Point funeral insurance administration software for Kenya. Manage last expense cover, member contributions via M-Pesa, beneficiary verification, claims processing and benefit payouts from one secure platform built for funeral homes, churches, SACCOs and welfare organisations."
+                keywords="funeral insurance Kenya, last expense cover, funeral cover, funeral insurance administration, member contribution tracking, M-Pesa insurance, claims processing, funeral benefit payout, IRA-accredited insurers, group funeral insurance, Kenyan funeral homes, welfare management"
+                url="/insurance"
+                image="/logo.png"
+                schema={[organizationSchema, localBusinessSchema, faqSchema(insuranceFaqs)]}
+            />
             <style>{`
         *{margin:0;padding:0;box-sizing:border-box}
         html{scroll-behavior:smooth}
