@@ -115,6 +115,7 @@ help:
 	@echo ""
 	@echo "$(GREEN) Maintenance $(NC)"
 	@echo "  make clean                - Remove containers & volumes (DESTRUCTIVE)"
+	@echo "  make clean-containers     - Remove leftover containers blocking re-creation (non-destructive)"
 	@echo "  make validate             - Validate docker-compose files"
 	@echo "  make prune                - Remove unused resources"
 	@echo "  make fix-tenant           - Rebuild & restart tenant-service"
@@ -232,6 +233,9 @@ up: validate check-build-list
 	@echo "$(BLUE)Building images (serial, 1 at a time)...$(NC)"
 	@set -e; for svc in $(BUILD_SERVICES); do echo "  -> building $$svc"; $(COMPOSE) build $$svc; done
 	@echo "$(BLUE)Starting all services...$(NC)"
+	@for name in restpoint_mariadb restpoint_redis restpoint_rabbitmq restpoint_api_gateway restpoint_auth_service restpoint_tenant_service restpoint_sms_service restpoint_deceased_service restpoint_invoice_service restpoint_coffin_service restpoint_documents_service restpoint_analytics_service restpoint_mpesa_service restpoint_insurance_service restpoint_store_service restpoint_socketio_service restpoint_bodycheckout_service restpoint_extra_services restpoint_support_service restpoint_chemical_service; do \
+		docker rm -f "$$name" 2>/dev/null || true; \
+	done
 	@$(COMPOSE) up -d --no-build --remove-orphans
 	@echo "$(GREEN) Services started$(NC)"
 	@echo "Waiting for services to be healthy..."
@@ -303,6 +307,16 @@ clean-full:
 	else \
 		echo "Cancelled."; \
 	fi
+
+
+# Remove leftover/stopped containers that block re-creation
+# (fixes "container name ... is already in use" conflicts without touching images/volumes)
+clean-containers:
+	@echo "$(BLUE)Removing leftover RestPoint containers...$(NC)"
+	@for name in restpoint_mariadb restpoint_redis restpoint_rabbitmq restpoint_api_gateway restpoint_auth_service restpoint_tenant_service restpoint_sms_service restpoint_deceased_service restpoint_invoice_service restpoint_coffin_service restpoint_documents_service restpoint_analytics_service restpoint_mpesa_service restpoint_insurance_service restpoint_store_service restpoint_socketio_service restpoint_bodycheckout_service restpoint_extra_services restpoint_support_service restpoint_chemical_service; do \
+		docker rm -f "$$name" 2>/dev/null || true; \
+	done
+	@echo "$(GREEN)✓ Leftover containers cleared$(NC)"
 
 
 # MONITORING TARGETS
@@ -720,7 +734,7 @@ rebuild: clean build up
 
 reset: clean dev
 	@echo "$(GREEN) Reset to development state complete$(NC)"
-=
+
 # FIX SERVICES
 
 
